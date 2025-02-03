@@ -447,11 +447,11 @@ MWPotential2014Potential:
   r_c_kpc:          1.9                    # Cut-off radius of the bulge (in kpc)
   potential_factors: [0.4367419745056084, 1.002641971008805, 0.022264787598364262] # Coefficients that adjust the strength of the halo (1st component), the disk (2nd component) and the bulge (3rd component)
   with_dynamical_friction: 0               # Are we running with dynamical friction ? 0 -> no, 1 -> yes
-  lnLambda         : 5.0                   # Coulomb logarithm
-  sigma_floor_km_p_s : 10.0                # Minimum velocity dispersion for the velocity dispersion model
-  satellite_mass_in_Msun : 1.0e10          # Satellite mass in solar mass
+  df_lnLambda: 5.0                         # Coulomb logarithm
+  df_sigma_floor_km_p_s : 10.0             # Minimum velocity dispersion for the velocity dispersion model
+  df_satellite_mass_in_Msun : 1.0e10       # Satellite mass in solar mass
   df_core_radius_in_kpc: 10                # Radius below which the dynamical friction vanishes.
-  timestep_mult_df : 0.1                   # Dimensionless pre-factor for the time-step condition for the dynamical friction force
+  df_timestep_mult : 0.1                   # Dimensionless pre-factor for the time-step condition for the dynamical friction force
 
 # Parameters related to forcing terms     ----------------------------------------------
 

@@ -115,21 +115,21 @@ struct external_potential {
   /*! Are we using the dynamical friction ?*/
   int with_dynamical_friction;
 
-  /*! Coulomb logarithm */
-  double lnLambda;
+  /*! Coulomb logarithm for the dynamical friction */
+  double df_lnLambda;
 
-  /*! Satellite mass in code unit */
-  double satellite_mass;
+  /*! Satellite mass for the dynamical friction in code unit */
+  double df_satellite_mass;
 
-  /*! Minimum radius for the dynamical friction */
-  double minimum_radius_df;
-    
+  /*! Polynomial fit coefficients for the velocity dispersion model */
+  double df_polyfit_coeffs[17];
+
   /*! Minimum velocity dispersion for the velocity dispersion model */
-  double sigma_floor;
-  
+  double df_sigma_floor;
+
   /*! Radius below which the dynamical friction vanishes */
-  double df_core_radius;  
-  
+  double df_core_radius;
+
   /*! Gamma function evaluation \f$ \Gamma((3-\alpha)/2 \f$ */
   double gamma_psc;
 
@@ -140,7 +140,7 @@ struct external_potential {
 
   /*! Time-step condition pre_factor, this factor is used to constraints
    * the time-step so that the norm of v*dt is a fraction of the acceleration */
-  double timestep_mult_df;
+  double df_timestep_mult;
 
   /*! Minimum time step based on the orbital time at the softening times
    * the timestep_mult */
@@ -229,7 +229,7 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
 
     float a = sqrtf(ax * ax + ay * ay + az * az);
 
-    time_step = min(time_step, potential->timestep_mult_df * v / a);
+    time_step = min(time_step, potential->df_timestep_mult * v / a);
   }
 
   return max(time_step, potential->mintime);
@@ -369,79 +369,80 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   /* Add dynamical friction */
 
   if (potential->with_dynamical_friction) {
-              
+
     const float sqrtpi = 1.7724538509055159;
-    
+
     const float vx = g->v_full[0];
     const float vy = g->v_full[1];
     const float vz = g->v_full[2];
-    
+
     const float v = sqrtf(vx * vx + vy * vy + vz * vz);
-    
-    
+
     /*
-      * a[16] : no units
-      * a[15] : km/s / kpc
-      * a[14] : km/s / kpc**2
-      * 
-      * a[coeffs_len - 1 - i] : km/s / kpc**i
-      * 
-      * */
-    
-    double coeffs[17] = {
-        -2.96536595e-31, 8.88944631e-28, -1.18280578e-24, 9.29479457e-22,
-        -4.82805265e-19, 1.75460211e-16, -4.59976540e-14, 8.83166045e-12,
-        -1.24747700e-09, 1.29060404e-07, -9.65315026e-06, 5.10187806e-04,
-        -1.83800281e-02, 4.26501444e-01, -5.78038064e+00, 3.57956721e+01,
-        1.85478908e+02};
-        
+     * a[16] : no units
+     * a[15] : km/s / kpc
+     * a[14] : km/s / kpc**2
+     *
+     * a[coeffs_len - 1 - i] : km/s / kpc**i
+     *
+     * */
+
+    double coeffs[17] = {-2.96536595e-31, 8.88944631e-28,  -1.18280578e-24,
+                         9.29479457e-22,  -4.82805265e-19, 1.75460211e-16,
+                         -4.59976540e-14, 8.83166045e-12,  -1.24747700e-09,
+                         1.29060404e-07,  -9.65315026e-06, 5.10187806e-04,
+                         -1.83800281e-02, 4.26501444e-01,  -5.78038064e+00,
+                         3.57956721e+01,  1.85478908e+02};
+
     int coeffs_len = (int)(sizeof(coeffs) / sizeof(coeffs[0]));
-    
+
     const double kpc = 1000. * phys_const->const_parsec;
-    const double s_internal_units = phys_const->const_year/31536000;
-    const double km_internal_units = phys_const->const_parsec/3.08567758e+13;
-    const double kms = km_internal_units/s_internal_units;
-    //const double kms = 1e5/units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
-    
-    
+    const double s_internal_units = phys_const->const_year / 31536000;
+    const double km_internal_units = phys_const->const_parsec / 3.08567758e+13;
+    const double kms = km_internal_units / s_internal_units;
+    // const double kms = 1e5/units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+
     /* units conversion */
-      
+
     for (int i = 0; i < coeffs_len; i++)
-      coeffs[coeffs_len - 1 - i] =  coeffs[coeffs_len - 1 - i]/pow(kpc, i)*kms;
-    
-    
+      coeffs[coeffs_len - 1 - i] =
+          coeffs[coeffs_len - 1 - i] / pow(kpc, i) * kms;
+
     /* Compute the velocity dispertion as a function of the radius r, using
-      * using a high order polynomial interpolation.
-      */
+     * using a high order polynomial interpolation.
+     */
     double sigma = 0;
     for (int i = 0; i < coeffs_len; i++)
       sigma = sigma + coeffs[coeffs_len - 1 - i] * pow(r, i);
-      
-    /* Prevent the velocity dispersion to be zero */  
-    sigma = fmax(potential->sigma_floor,sigma);  
-    
+
+    /* Prevent the velocity dispersion to be zero */
+    sigma = fmax(potential->df_sigma_floor, sigma);
+
     /* Compute the chi parameter */
     double X = v / sqrt(2) / sigma;
     double amp1 = erf(X) - (2 * X / sqrtpi * exp(-X * X));
-    
+
     /* Kill the dynamical friction at the center */
-    amp1  *= max(0,erf((r-potential->df_core_radius)/potential->df_core_radius/2.0));
-    
+    amp1 *= max(0, erf((r - potential->df_core_radius) /
+                       potential->df_core_radius / 2.0));
+
     /* Compute the density */
     float density =
         external_gravity_get_density(dx, dy, dz, time, potential, phys_const);
-    
+
     /* Final factor */
-    float dyn_fric_timescale_inv = -4 * M_PI * pow(phys_const->const_newton_G, 2) /
-                          pow(v, 3) * density * potential->lnLambda * amp1 * potential->satellite_mass;
-    
+    float dyn_fric_timescale_inv =
+        -4 * M_PI * pow(phys_const->const_newton_G, 2) / pow(v, 3) * density *
+        potential->df_lnLambda * amp1 * potential->df_satellite_mass;
+
     /* Sanity check */
-    if (dyn_fric_timescale_inv>0)
-      error("dyn_fric_timescale_inv is larger than zero (%g %g %g\n) !",dyn_fric_timescale_inv,erf((r-10)/20),r);
-    
+    if (dyn_fric_timescale_inv > 0)
+      error("dyn_fric_timescale_inv is larger than zero (%g %g %g\n) !",
+            dyn_fric_timescale_inv, erf((r - 10) / 20), r);
+
     /* Acceleration is per unit of G */
     dyn_fric_timescale_inv /= phys_const->const_newton_G;
-    
+
     g->a_grav[0] += dyn_fric_timescale_inv * vx;
     g->a_grav[1] += dyn_fric_timescale_inv * vy;
     g->a_grav[2] += dyn_fric_timescale_inv * vz;
@@ -593,17 +594,22 @@ static INLINE void potential_init_backend(
       potential->f);
   potential->with_dynamical_friction = parser_get_opt_param_int(
       parameter_file, "MWPotential2014Potential:with_dynamical_friction", 0);
-  potential->lnLambda = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:lnLambda", 5.0);
-  potential->satellite_mass = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:satellite_mass_in_Msun", 1e10);
-  potential->timestep_mult_df = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:timestep_mult_df", 0.1);
+  potential->df_lnLambda = parser_get_opt_param_double(
+      parameter_file, "MWPotential2014Potential:df_lnLambda", 5.0);
+  potential->df_satellite_mass = parser_get_opt_param_double(
+      parameter_file, "MWPotential2014Potential:df_satellite_mass_in_Msun", 1e10);
+  parser_get_opt_param_double_array(
+      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs", 17,
+      potential->f);      
+  potential->df_timestep_mult = parser_get_opt_param_double(
+      parameter_file, "MWPotential2014Potential:df_timestep_mult", 0.1);
   potential->df_core_radius = parser_get_opt_param_double(
       parameter_file, "MWPotential2014Potential:df_core_radius_in_kpc", 10);
-  potential->sigma_floor = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:sigma_floor_km_p_s", 10.0);
-      
+  potential->df_sigma_floor = parser_get_opt_param_double(
+      parameter_file, "MWPotential2014Potential:df_sigma_floor_km_p_s", 10.0);
+
+
+
   /* Convert to internal system of units by using the
    * physical constants defined in this system */
   const double kpc = 1000. * phys_const->const_parsec;
@@ -615,10 +621,10 @@ static INLINE void potential_init_backend(
   potential->r_1 *= kpc;
   potential->r_c *= kpc;
   potential->amplitude *= phys_const->const_solar_mass / (kpc * kpc * kpc);
-  potential->sigma_floor *= 1e5;
-  potential->sigma_floor /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
-  potential->satellite_mass*= phys_const->const_solar_mass;
-  potential->df_core_radius*= kpc;
+  potential->df_sigma_floor *= 1e5;
+  potential->df_sigma_floor /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+  potential->df_satellite_mass *= phys_const->const_solar_mass;
+  potential->df_core_radius *= kpc;
 
   /* Compute rho_c */
   const double rho_c = 3.0 * potential->H * potential->H /
