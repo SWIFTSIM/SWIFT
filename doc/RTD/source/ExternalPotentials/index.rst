@@ -374,7 +374,7 @@ The parameters of the model are:
       Mdisk_Msun:       6.8e10                 # Mass of the disk (in M_sun)
       Rdisk_kpc:        3.0                    # Effective radius of the disk (in kpc)
       Zdisk_kpc:        0.280                  # Scale-height of the disk (in kpc)
-      amplitude:        1.0                    # Amplitude of the bulge
+      amplitude_Msun_per_kpc3: 1.0e10          # Amplitude of the bulge (in M_sun/kpc^3)
       r_1_kpc:          1.0                    # Reference radius for amplitude of the bulge (in kpc)
       alpha:            1.8                    # Exponent of the power law of the bulge
       r_c_kpc:          1.9                    # Cut-off radius of the bulge (in kpc)

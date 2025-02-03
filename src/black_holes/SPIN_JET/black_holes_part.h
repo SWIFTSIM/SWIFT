@@ -63,6 +63,9 @@ struct bpart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
   struct {
 
     /* Number of neighbours. */
@@ -102,6 +105,9 @@ struct bpart {
   /*! Density of the gas surrounding the black hole, taking account of only the
    *  hot particles. */
   float rho_gas_hot;
+
+  /*! Internal energy of the gas surrounding the black hole. */
+  float internal_energy_gas;
 
   /*! Smoothed sound speed of the gas surrounding the black hole. */
   float sound_speed_gas;

@@ -1,0 +1,24 @@
+# Intro
+This example is a modified version of the HomogeneousBox in SWIFT that allows to add sink particles to the box. By default, there is no gravity.
+
+The default level is 5 (N_particle = 2^(3*level)). It is quick. If you want to try the example with higher levels, we recommend using HPC facilities.
+
+*This example is mainly used for sink MPI debugging.*
+
+# Configure
+
+To run this example with GEAR model,
+
+./configure --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --enable-debug --enable-debugging-checks
+
+and then
+
+make -j
+
+# ICs
+The run.sh script calls `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
+
+# Run
+Type `run.sh` (or `n_ranks=4 mpi_run.sh`), and let's go!
+
+You can provide parameters to the running scripts, have a look inside them.
