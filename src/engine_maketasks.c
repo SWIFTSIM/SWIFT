@@ -81,62 +81,37 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
-  const int grav_count_was_null = (t_grav_counts == NULL);
+  const int are_particles_forming =
+    (with_star_formation && ci->hydro.count > 0) ||
+    (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0)) ||
+    (with_sinks && ci->hydro.count > 0) ;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
-  if (t_grav_counts == NULL && with_star_formation && ci->hydro.count > 0) {
+  if (t_grav_counts == NULL && are_particles_forming) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
       error(
-          "Attaching a grav_count (with_star_formation) task at a non-top level c->depth=%d "
-          "c->count=%d",
-          ci->depth, ci->hydro.count);
-#endif
-    t_grav_counts = scheduler_addtask(
-        s, task_type_send, task_subtype_grav_counts, ci->mpi.tag, 0, ci, cj);
-    /* scheduler_addunlock(s, ci->hydro.star_formation, t_grav_counts); */
-  }
-  if (t_grav_counts == NULL && with_star_formation_sink
-      && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (ci->depth != 0)
-      error(
-          "Attaching a grav_count (with_star_formation_sink) task at a non-top level c->depth=%d "
+          "Attaching a grav_count task at a non-top level c->depth=%d "
           "c->hydro.count=%d, c->sinks.count=%d",
           ci->depth, ci->hydro.count, ci->sinks.count);
 #endif
+    /* Create the task */
     t_grav_counts = scheduler_addtask(
         s, task_type_send, task_subtype_grav_counts, ci->mpi.tag, 0, ci, cj);
-    /* scheduler_addunlock(s, ci->sinks.star_formation_sink, t_grav_counts); */
-  }
-  if (t_grav_counts == NULL && with_sinks && ci->hydro.count > 0) {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (ci->depth != 0)
-      error(
-          "Attaching a grav_count (with sinks) task at a non-top level c->depth=%d "
-          "c->count=%d",
-          ci->depth, ci->hydro.count);
-#endif
-    t_grav_counts = scheduler_addtask(
-        s, task_type_send, task_subtype_grav_counts, ci->mpi.tag, 0, ci, cj);
-    /* scheduler_addunlock(s, ci->sinks.sink_formation, t_grav_counts); */
-  }
 
-  /* Add the dependencies to t_grav_counts */
-  if (grav_count_was_null && with_star_formation && ci->hydro.count > 0) {
-    scheduler_addunlock(s, ci->top->hydro.star_formation, t_grav_counts);
-  }
-
-  if (grav_count_was_null && with_star_formation_sink
-      && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
-    scheduler_addunlock(s, ci->top->sinks.star_formation_sink, t_grav_counts);
-  }
-
-  if (grav_count_was_null && with_sinks && ci->hydro.count > 0){
-    scheduler_addunlock(s, ci->top->sinks.sink_formation, t_grav_counts);
-  }
+    /* Add the dependencies */
+    if (with_star_formation && ci->hydro.count > 0) {
+      scheduler_addunlock(s, ci->hydro.star_formation, t_grav_counts);
+    }
+    if (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+      scheduler_addunlock(s, ci->sinks.star_formation_sink, t_grav_counts);
+    }
+    if (with_sinks && ci->hydro.count > 0) {
+      scheduler_addunlock(s, ci->sinks.sink_formation, t_grav_counts);
+    }
+  } /* t_grav_counts == NULL */
 
   /* Check if any of the gravity tasks are for the target node. */
   for (l = ci->grav.grav; l != NULL; l = l->next)
@@ -1509,42 +1484,21 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
+  const int are_particles_forming =
+    (with_star_formation && c->hydro.count > 0) ||
+    (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) ||
+    (with_sinks && c->hydro.count > 0) ;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
-  if (t_grav_counts == NULL && with_star_formation && c->hydro.count > 0) {
+  if (t_grav_counts == NULL && are_particles_forming) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->depth != 0)
       error(
-          "Attaching a grav_count (star_formation) task at a non-top level c->depth=%d "
-          "c->count=%d",
-          c->depth, c->hydro.count);
-#endif
-
-    t_grav_counts = scheduler_addtask(
-        s, task_type_recv, task_subtype_grav_counts, c->mpi.tag, 0, c, NULL);
-  }
-  if (t_grav_counts == NULL && with_star_formation_sink
-      && (c->hydro.count > 0 || c->sinks.count > 0)) {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (c->depth != 0)
-      error(
-          "Attaching a grav_count (star_formation_sink) task at a non-top level c->depth=%d "
+          "Attaching a grav_count task at a non-top level c->depth=%d "
           "c->hydro.count=%d, c->sinks.count=%d",
           c->depth, c->hydro.count, c->sinks.count);
-#endif
-
-    t_grav_counts = scheduler_addtask(
-        s, task_type_recv, task_subtype_grav_counts, c->mpi.tag, 0, c, NULL);
-  }
-  if (t_grav_counts == NULL && with_sinks && c->hydro.count > 0) {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (c->depth != 0)
-      error(
-          "Attaching a grav_count (sink_formation) task at a non-top level c->depth=%d "
-          "c->count=%d",
-          c->depth, c->hydro.count);
 #endif
     t_grav_counts = scheduler_addtask(
         s, task_type_recv, task_subtype_grav_counts, c->mpi.tag, 0, c, NULL);
