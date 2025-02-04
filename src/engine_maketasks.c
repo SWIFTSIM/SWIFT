@@ -156,15 +156,10 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
 
-    if (with_star_formation && ci->hydro.count > 0) {
+    /* Add link if we have SF, SF_sink or sink_formation */
+    if (are_particles_forming) {
       engine_addlink(e, &ci->mpi.send, t_grav_counts);
     }
-
-    if (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0))
-      engine_addlink(e, &ci->mpi.send, t_grav_counts);
-
-    if (with_sinks && ci->hydro.count > 0)
-      engine_addlink(e, &ci->mpi.send, t_grav_counts);
   }
 
   /* Recurse? */
@@ -1523,15 +1518,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   if (t_grav != NULL) {
     engine_addlink(e, &c->mpi.recv, t_grav);
 
-    if (with_star_formation && c->hydro.count > 0) {
-      engine_addlink(e, &c->mpi.recv, t_grav_counts);
-    }
-
-    if (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
-      engine_addlink(e, &c->mpi.recv, t_grav_counts);
-    }
-
-    if (with_sinks && c->hydro.count > 0) {
+    /* Add link if we have SF, SF_sink or sink_formation */
+    if (are_particles_forming) {
       engine_addlink(e, &c->mpi.recv, t_grav_counts);
     }
 
