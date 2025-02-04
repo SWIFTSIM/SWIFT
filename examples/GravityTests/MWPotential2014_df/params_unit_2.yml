@@ -15,8 +15,8 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            output_2/output  # Common part of the name of output files
-  time_first:          0.      # Time of the first output (in internal units)
+  basename:            output           # Common part of the name of output files
+  subdir:              output_1         # (Optional) Sub-directory in which to write the snapshots. Defaults to "" (i.e. the directory where SWIFT is run).  time_first:          0.      # Time of the first output (in internal units)
   delta_time:          1e-5    # Time difference between consecutive outputs (in internal units)
   UnitMass_in_cgs:     1.98848e+43
   UnitLength_in_cgs:   3.086e+21
@@ -29,7 +29,7 @@ Statistics:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:          circular_orbits_MW.hdf5 # The file to read
+  file_name:          IC.hdf5 # The file to read
   shift:              [0.5,0.5,0.5]
   periodic:           0
   
