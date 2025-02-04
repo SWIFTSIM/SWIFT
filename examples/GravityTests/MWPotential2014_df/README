@@ -1,8 +1,9 @@
 # Context
 
-This example tests the MWPotential2014, a reference Milky-Way potential implemented on galpy (https://docs.galpy.org). 
-Details of the parameters can be found in galpy's paper, p.7:
-galpy: A Python Library for Galactic Dynamics, Jo Bovy (2015), Astrophys. J. Supp., 216, 29 (<arXiv/1412.3451>)
+This example tests the dynamical friction implemented in the MWPotential2014.
+It compares the orbit predicted by SWIFT with an orbit computed with pNbody, using:
+
+`orbits_integration_MW --t_forward 10 --position 300 0 0 --velocity 0 100 10 --dynamical_friction -o orbit.csv`
 
 # How to run this example
 
@@ -21,5 +22,3 @@ Feel free to adapt other configurations parameters depending on your system. The
 Finally, to run this example, open a terminal in the present directory and type:
 
 `./run.sh`
-
-orbits_integration_MW --t_forward 10  --position 300 0 0   --velocity  0 100  0  --xmax 300 --dynamical_friction

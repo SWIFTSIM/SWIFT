@@ -40,7 +40,7 @@ pos[0, 2] = 0
 vel = np.zeros((1, 3))
 vel[0, 0] = 0
 vel[0, 1] = 100
-vel[0, 2] = 0
+vel[0, 2] = 10
 
 
 ids = np.array([1.0])
