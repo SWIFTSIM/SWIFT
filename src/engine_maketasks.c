@@ -64,8 +64,6 @@ extern int engine_max_parts_per_cooling;
 /**
  * @brief Add send tasks for the gravity pairs to a hierarchy of cells.
  *
- * @TODO: Add sink formation and sf_sink
- *
  * @param e The #engine.
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
@@ -406,6 +404,8 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
+  /* TODO: Here we'll need to do the same trick as engine_addtasks_send_gravity
+     to add the dependencies with both SF and SF_sinks */
   if (t_sf_counts == NULL && with_star_formation && ci->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
