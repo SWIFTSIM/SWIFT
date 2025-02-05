@@ -41,7 +41,7 @@ struct exact_density_data {
 /**
  * @brief Mapper function for the exact sink checks.
  *
- * @brief map_data The #sinks.
+ * @brief map_data The #sink.
  * @brief nr_sinks The number of star particles.
  * @brief extra_data Pointers to the structure containing global interaction
  * counters.

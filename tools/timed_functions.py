@@ -64,6 +64,7 @@ labels = [
     ["VR Collecting particle info", 3],
     ["VR Invocation of velociraptor", 3],
     ["VR Copying group information back", 3],
+    ["calc_all_power_spectra:", 0],
     ["fof_allocate:", 2],
     ["engine_make_fof_tasks:", 2],
     ["engine_activate_fof_tasks:", 2],
