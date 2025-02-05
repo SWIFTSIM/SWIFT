@@ -13,6 +13,11 @@ then
     rm orbits_simulation_Mpc.png
 fi
 
+if [ ! -e orbit.csv ]
+then
+    echo "Fetching solution..."
+    wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/ReferenceSolutions/MWPotential_2014/orbit.csv
+fi
 
 
 #Clears the IC file
@@ -41,7 +46,7 @@ echo "Starting the simulation with the second type of units (Mpc)... Look at out
 echo "Simulation ended."
 
 #Saves the plots
-echo "Save plots of the circular orbits and of the errors"
+echo "Save plots of orbits."
 if command -v python3 &>/dev/null; then
     python3 makePlots.py
 else 
