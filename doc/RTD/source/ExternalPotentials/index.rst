@@ -400,6 +400,12 @@ The velocity dispersion is floored to :math:`\sigma_{\rm min}`, a free parameter
 :math:`\ln \Lambda` is the Coulomb parameter. 
 :math:`M_{\rm sat}` is the mass of the in-falling satellite on which the dynamical friction is supposed to act.
 
+To prevent very high values of the dynamical friction that can occurs at the center of the model, the acceleration is multiplied by:
+
+:math:`\rm{max} \left(0, \rm{erf}\left( 2\, \frac{ r-r_{\rm{core}} }{r_{\rm{core}}} \right) \right)`
+
+This can also mimic the decrease of the dynamical friction due to a core.
+
 
 The additional parameters for the dynamical friction are:
 
