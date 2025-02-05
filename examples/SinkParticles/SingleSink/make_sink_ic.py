@@ -36,7 +36,7 @@ def parse_options():
         dest="rho",
         type="float",
         default=0.1,
-        help="Mean gas density in atom/cm3"
+        help="Mean gas density in atom/cm3",
     )
 
     parser.add_option(
@@ -44,8 +44,8 @@ def parse_options():
         action="store",
         dest="sigma",
         type="float",
-        default=10.,
-        help="Velocity dispersion of the gas in km/s (sets internal energy)."
+        default=10.0,
+        help="Velocity dispersion of the gas in km/s (sets internal energy).",
     )
 
     parser.add_option(
@@ -54,7 +54,7 @@ def parse_options():
         dest="gas_mass",
         type="float",
         default=1e5,
-        help="Gas particle mass in solar masses"
+        help="Gas particle mass in solar masses",
     )
 
     parser.add_option(
@@ -63,7 +63,7 @@ def parse_options():
         dest="sink_mass",
         type="float",
         default=5e6,
-        help="Sink particle mass in solar masses"
+        help="Sink particle mass in solar masses",
     )
 
     parser.add_option(
@@ -71,8 +71,8 @@ def parse_options():
         action="store",
         dest="sink_mach",
         type="float",
-        default=0.,
-        help="Sink velocity as a multiple of the sound speed (i.e. Mach number)"
+        default=0.0,
+        help="Sink velocity as a multiple of the sound speed (i.e. Mach number)",
     )
 
     parser.add_option(
@@ -81,7 +81,7 @@ def parse_options():
         dest="level",
         type="int",
         default=6,
-        help="Resolution level: N = (2**l)**3"
+        help="Resolution level: N = (2**l)**3",
     )
 
     parser.add_option(
@@ -108,7 +108,7 @@ files, opt = parse_options()
 
 # define standard units
 UnitMass_in_cgs = 1.988409870698051e43  # 10^10 M_sun in grams
-UnitLength_in_cgs = 3.0856775814913673e21 # kpc in centimeters
+UnitLength_in_cgs = 3.0856775814913673e21  # kpc in centimeters
 UnitVelocity_in_cgs = 1e5  # km/s in centimeters per second
 UnitCurrent_in_cgs = 1  # Amperes
 UnitTemp_in_cgs = 1  # Kelvin
@@ -132,7 +132,7 @@ rho = rho * constants.m_p / units.cm ** 3
 m = opt.gas_mass * units.Msun  # in solar mass
 
 # Sink particle mass
-sm = opt.sink_mass * units.Msun # in solar mass
+sm = opt.sink_mass * units.Msun  # in solar mass
 
 # Gas mass in the box
 M = N * m
@@ -150,13 +150,13 @@ m = m.to(UnitMass).value
 sm = sm.to(UnitMass).value
 L = L.to(UnitLength).value
 rho = rho.to(UnitMass / UnitLength ** 3).value
-sigma = (opt.sigma * units.km/units.s).to(UnitVelocity).value
+sigma = (opt.sigma * units.km / units.s).to(UnitVelocity).value
 
 # Generate the particles
 pos = np.random.random([N, 3]) * np.array([L, L, L])
 vel = np.zeros([N, 3])
 mass = np.ones(N) * m
-u = np.ones(N) * sigma**2
+u = np.ones(N) * sigma ** 2
 ids = np.arange(N)
 h = np.ones(N) * 3 * L / N ** (1 / 3.0)
 rho = np.ones(N) * rho
@@ -169,24 +169,26 @@ print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 NSINK = 1
 
 sink_pos = np.ones([NSINK, 3])
-sink_pos[:,0] = L/10.
-sink_pos[:,1] = L/2.
-sink_pos[:,2] = L/2.
+sink_pos[:, 0] = L / 10.0
+sink_pos[:, 1] = L / 2.0
+sink_pos[:, 2] = L / 2.0
 
-sink_mass = np.array([sm,])
-sink_ids = np.array([2*ids[-1]])
-sink_h = np.array([3 * L / N ** (1 / 3.0),])
+sink_mass = np.array([sm])
+sink_ids = np.array([2 * ids[-1]])
+sink_h = np.array([3 * L / N ** (1 / 3.0)])
 
-gas_cs = np.sqrt(sigma**2 * 5./3. * ((5./3.)-1))
+gas_cs = np.sqrt(sigma ** 2 * 5.0 / 3.0 * ((5.0 / 3.0) - 1))
 
 sink_vel = np.zeros([NSINK, 3])
-sink_vel[:,0] += gas_cs * opt.sink_mach
+sink_vel[:, 0] += gas_cs * opt.sink_mach
 
 print(f"Sink velocity: {gas_cs * opt.sink_mach}")
 
 if gas_cs * opt.sink_mach > 0:
-    sink_time_in_box = L*0.9 / (gas_cs * opt.sink_mach)
-    print(f"Sink will leave box (neglecting dynamical friction) after time: {sink_time_in_box}")
+    sink_time_in_box = L * 0.9 / (gas_cs * opt.sink_mach)
+    print(
+        f"Sink will leave box (neglecting dynamical friction) after time: {sink_time_in_box}"
+    )
 
 
 # File

@@ -29,13 +29,9 @@ pos[0, 1] = 0
 pos[0, 2] = 0
 
 
-
-
-  
-
-#pos += np.array(
+# pos += np.array(
 #    [box_size / 2, box_size / 2, box_size / 2]
-#)  # shifts the particles to the center of the box
+# )  # shifts the particles to the center of the box
 
 vel = np.zeros((1, 3))
 vel[0, 0] = 0

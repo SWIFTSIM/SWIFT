@@ -60,7 +60,7 @@ def plot_orbits(x, y, z, color, save_fig_name_suffix):
     ax[0].set_xlabel("x (kpc)")
 
     for i in range(0, N_part):
-        ax[1].plot(x[i, :], z[i, :], col[i],label="SWIFT solution")
+        ax[1].plot(x[i, :], z[i, :], col[i], label="SWIFT solution")
 
     ax[1].set_aspect("equal", "box")
     ax[1].set_xlim([-300, 300])
@@ -77,25 +77,21 @@ def plot_orbits(x, y, z, color, save_fig_name_suffix):
     ax[2].set_ylabel("z (kpc)")
     ax[2].set_xlabel("y (kpc)")
     plt.tight_layout()
-    
-    
+
     # add the reference orbit
-    data = np.genfromtxt('orbit.csv', delimiter=',',skip_header=1)
-    t = data[:,0]
-    x = data[:,1]
-    y = data[:,2]
-    z = data[:,3]
-    ax[0].plot(x, y, 'grey',alpha=0.5,lw=5)
-    ax[1].plot(x, z, 'grey',alpha=0.5,lw=5,label="pNbody solution")
-    ax[2].plot(y, z, 'grey',alpha=0.5,lw=5)
-    
+    data = np.genfromtxt("orbit.csv", delimiter=",", skip_header=1)
+    t = data[:, 0]
+    x = data[:, 1]
+    y = data[:, 2]
+    z = data[:, 3]
+    ax[0].plot(x, y, "grey", alpha=0.5, lw=5)
+    ax[1].plot(x, z, "grey", alpha=0.5, lw=5, label="pNbody solution")
+    ax[2].plot(y, z, "grey", alpha=0.5, lw=5)
+
     ax[1].legend()
-    
-    
-    
+
     plt.savefig("orbits" + save_fig_name_suffix + ".png", bbox_inches="tight")
     plt.close()
-
 
 
 #%%Plots the orbits, the deviation from the circular orbit and the deviation from the original precomputed data
@@ -123,4 +119,3 @@ x_2, y_2, z_2, time_2, pot_2 = get_positions_and_time(
     N_snapshots, N_part, output_dir, boxsize
 )
 plot_orbits(x_2, y_2, z_2, col, save_fig_name_suffix)
-
