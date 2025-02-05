@@ -673,7 +673,7 @@ void *runner_main2(void *data) {
   /*A. Nasar: Multiplication by 2 is also to ensure we do not over-run
    *  the allocated memory on buffers and GPU. This can happen if calculated h
    * is larger than cell width and splitting makes bigger than target cells*/
-  int count_max_parts_tmp = 2 * target_n_tasks * (np_per_cell + buff);
+  int count_max_parts_tmp = 8 * target_n_tasks * (np_per_cell + buff);
 
   //  message("np per cell %i, max_parts %i, n_tasks_GPU %i\n", np_per_cell,
   //  count_max_parts_tmp, target_n_tasks);
@@ -1967,8 +1967,8 @@ void *runner_main2(void *data) {
       }
     } /* main loop. */
 
-    message("cpu %i packed %i cells with %i containing more parts than target",
-            r->cpuid, n_cells, n_w_prts_gtr_target);
+    message("cpu %i packed %i cells with %i containing more parts than target of %i",
+            r->cpuid, n_cells, n_w_prts_gtr_target, np_per_cell);
 
     //    message("Worked on %i supers w more than 100 parts", g100);
     // Stuff for writing debug data to file for validation
