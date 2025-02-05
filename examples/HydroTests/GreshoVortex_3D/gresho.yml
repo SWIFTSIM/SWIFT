@@ -38,6 +38,6 @@ SPH:
   
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  greshoVortex_128.hdf5
+  file_name:  greshoVortex.hdf5
   periodic:   1
-  replicate:  2
+  replicate:  4
