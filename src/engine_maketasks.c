@@ -2552,6 +2552,28 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /*Make packing depend on sorts and drift A. Nasar */
     else if (t_type == task_type_self && t_subtype == task_subtype_gpu_pack_d) {
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+      /* Task for the second GPU hydro loop A. Nasar */
+      t_force_gpu = scheduler_addtask(sched, task_type_self,
+                                      task_subtype_gpu_pack_f, 0, 0, ci, NULL);
+      /* Link the tasks to the cells. Do the same for GPU tasks A. Nasar */
+      engine_addlink(e, &ci->hydro.force_pack, t_force_gpu);
+#ifdef EXTRA_HYDRO_LOOP
+      /* Same work for the additional GPU hydro loop A. Nasar */
+      t_gradient_gpu = scheduler_addtask(
+          sched, task_type_self, task_subtype_gpu_pack_g, 0, 0, ci, NULL);
+      /* Add the link between the new loops and the cell. Same for GPU task A.
+       * Nasar */
+      engine_addlink(e, &ci->hydro.gradient_pack, t_gradient_gpu);
+      // A. Nasar add unlocks for pack tasks here. Unpacks depend on packs and
+      // will be used to create downstream deps later
+      scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
+                          t_gradient_gpu);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
+                          t_force_gpu);
+#else
+      /* Now, build all the dependencies for the hydro */
+      scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out, t_force_gpu);
+#endif
     }
 
     /* Sort tasks depend on the drift of the cell (stars version). */
@@ -2570,9 +2592,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Task for the second hydro loop, */
       t_force = scheduler_addtask(sched, task_type_self, task_subtype_force,
                                   flags, 0, ci, NULL);
-      /* Task for the second GPU hydro loop A. Nasar */
-      t_force_gpu = scheduler_addtask(sched, task_type_self,
-                                      task_subtype_gpu_pack_f, 0, 0, ci, NULL);
 
       /* the task for the time-step limiter */
       if (with_timestep_limiter) {
@@ -2638,9 +2657,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               flags, 0, ci, NULL);
       }
 
-      /* Link the tasks to the cells. Do the same for GPU tasks A. Nasar */
+      /* Link the tasks to the cells */
       engine_addlink(e, &ci->hydro.force, t_force);
-      engine_addlink(e, &ci->hydro.force_pack, t_force_gpu);
 
       if (with_timestep_limiter) {
         engine_addlink(e, &ci->hydro.limiter, t_limiter);
@@ -2675,32 +2693,18 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Same work for the additional hydro loop */
       t_gradient = scheduler_addtask(sched, task_type_self,
                                      task_subtype_gradient, flags, 0, ci, NULL);
-      /* Same work for the additional GPU hydro loop A. Nasar */
-      t_gradient_gpu = scheduler_addtask(
-          sched, task_type_self, task_subtype_gpu_pack_g, 0, 0, ci, NULL);
-
       /* Add the link between the new loops and the cell. Same for GPU task A.
        * Nasar */
       engine_addlink(e, &ci->hydro.gradient, t_gradient);
-      engine_addlink(e, &ci->hydro.gradient_pack, t_gradient_gpu);
-
       /* Now, build all the dependencies for the hydro */
       engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                            t_limiter, ci, with_cooling,
                                            with_timestep_limiter);
-
-      // A. Nasar add unlocks for pack tasks here. Unpacks depend on packs and
-      // will be used to create downstream deps later
-      scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
-                          t_gradient_gpu);
-      scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
-                          t_force_gpu);
 #else
 
       /* Now, build all the dependencies for the hydro */
       engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                            with_cooling, with_timestep_limiter);
-      scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out, t_force_gpu);
 #endif
 
       /* Create the task dependencies */
@@ -2847,6 +2851,24 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (ci->hydro.super != cj->hydro.super) {
         scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
       }
+      /* New task for the force A. Nasar */
+      t_force_gpu = scheduler_addtask(sched, task_type_pair,
+                                      task_subtype_gpu_pack_f, 0, 0, ci, cj);
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+      /* The order of operations for an inactive local cell interacting
+       * with an active foreign cell is not guaranteed because the density
+       * (and gradient) iact loops don't exist in that case. So we need
+       * an explicit dependency here to have sorted cells. */
+
+      /* Make GPU force tasks depend on the sorts A. Nasar */
+      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_force_gpu);
+      if (ci->hydro.super != cj->hydro.super) {
+        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_force_gpu);
+      }
+#endif
+      /* Do teh same for GPU tasks A. Nasar*/
+      engine_addlink(e, &ci->hydro.force_pack, t_force_gpu);
+      engine_addlink(e, &cj->hydro.force_pack, t_force_gpu);
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second and third GPU hydro loop
        * A. Nasar */
@@ -2912,9 +2934,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* New task for the force */
       t_force = scheduler_addtask(sched, task_type_pair, task_subtype_force,
                                   flags, 0, ci, cj);
-      /* New task for the force A. Nasar */
-      t_force_gpu = scheduler_addtask(sched, task_type_pair,
-                                      task_subtype_gpu_pack_f, 0, 0, ci, cj);
 
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
       /* The order of operations for an inactive local cell interacting
@@ -2924,11 +2943,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Make all force tasks depend on the sorts */
       scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_force);
-      /* Make GPU force tasks depend on the sorts A. Nasar */
-      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_force_gpu);
       if (ci->hydro.super != cj->hydro.super) {
         scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_force);
-        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_force_gpu);
       }
 #endif
 
@@ -3017,9 +3033,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       engine_addlink(e, &ci->hydro.force, t_force);
       engine_addlink(e, &cj->hydro.force, t_force);
-      /* Do teh same for GPU tasks A. Nasar*/
-      engine_addlink(e, &ci->hydro.force_pack, t_force_gpu);
-      engine_addlink(e, &cj->hydro.force_pack, t_force_gpu);
+
       if (with_timestep_limiter) {
         engine_addlink(e, &ci->hydro.limiter, t_limiter);
         engine_addlink(e, &cj->hydro.limiter, t_limiter);
@@ -3444,8 +3458,35 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /*Make packing depend on sorts and drift A. Nasar */
     else if (t_type == task_type_sub_self &&
              t_subtype == task_subtype_gpu_pack_d) {
+
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
-      //      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+      /* Start by constructing the task for the second hydro loop */
+      t_force_gpu =
+          scheduler_addtask(sched, task_type_sub_self, task_subtype_gpu_pack_f,
+                            flags, 0, ci, NULL);
+      /* Add the link between the new loop and the cell */
+      engine_addlink(e, &ci->hydro.force_pack, t_force_gpu);
+#ifdef EXTRA_HYDRO_LOOP
+
+      /* Start by constructing the task for the second and third hydro loop */
+      t_gradient_gpu =
+          scheduler_addtask(sched, task_type_sub_self, task_subtype_gpu_pack_g,
+                            flags, 0, ci, NULL);
+      /* Add the link between the new loop and the cell */
+      engine_addlink(e, &ci->hydro.gradient_pack, t_gradient_gpu);
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
+      scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
+                          t_gradient_gpu);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
+                          t_force_gpu);
+#else
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
+      scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out, t_force_gpu);
+#endif
     }
     /* Otherwise, sub-self interaction? */
     else if (t_type == task_type_sub_self &&
@@ -3460,9 +3501,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Start by constructing the task for the second hydro loop */
       t_force = scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
                                   flags, 0, ci, NULL);
-      t_force_gpu =
-          scheduler_addtask(sched, task_type_sub_self, task_subtype_gpu_pack_f,
-                            flags, 0, ci, NULL);
 
       /* and the task for the time-step limiter */
       if (with_timestep_limiter) {
@@ -3535,7 +3573,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &ci->hydro.force, t_force);
-      engine_addlink(e, &ci->hydro.force_pack, t_force_gpu);
 
       if (with_timestep_limiter) {
         engine_addlink(e, &ci->hydro.limiter, t_limiter);
@@ -3570,30 +3607,19 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Start by constructing the task for the second and third hydro loop */
       t_gradient = scheduler_addtask(sched, task_type_sub_self,
                                      task_subtype_gradient, flags, 0, ci, NULL);
-      t_gradient_gpu =
-          scheduler_addtask(sched, task_type_sub_self, task_subtype_gpu_pack_g,
-                            flags, 0, ci, NULL);
-
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &ci->hydro.gradient, t_gradient);
-      engine_addlink(e, &ci->hydro.gradient_pack, t_gradient_gpu);
-
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
       engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                            t_limiter, ci, with_cooling,
                                            with_timestep_limiter);
-      scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
-                          t_gradient_gpu);
-      scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
-                          t_force_gpu);
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
       engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                            with_cooling, with_timestep_limiter);
-      scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out, t_force_gpu);
 #endif
 
       /* Create the task dependencies */
