@@ -2847,6 +2847,46 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (ci->hydro.super != cj->hydro.super) {
         scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
       }
+#ifdef EXTRA_HYDRO_LOOP
+      /* Start by constructing the task for the second and third GPU hydro loop
+       * A. Nasar */
+      t_gradient_gpu = scheduler_addtask(sched, task_type_pair,
+                                         task_subtype_gpu_pack_g, 0, 0, ci, cj);
+      //      /* Add the link between the new loop and both cells */
+      engine_addlink(e, &ci->hydro.gradient_pack, t_gradient_gpu);
+      engine_addlink(e, &cj->hydro.gradient_pack, t_gradient_gpu);
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
+      if (ci->nodeID == nodeID) {
+        /*Same for GPU tasks*/
+        scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
+                            t_gradient_gpu);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
+                            t_force_gpu);
+      }
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+        /*Same for GPU tasks*/
+        scheduler_addunlock(sched, cj->hydro.super->hydro.ghost_out,
+                            t_gradient_gpu);
+        scheduler_addunlock(sched, cj->hydro.super->hydro.extra_ghost,
+                            t_force_gpu);
+      }
+#else
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
+      if (ci->nodeID == nodeID) {
+        // GPU tasks A. Nasar
+        scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
+                            t_force_gpu);
+      }
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+        // GPU tasks A. Nasar
+        scheduler_addunlock(sched, cj->hydro.super->hydro.ghost_out,
+                            t_force_gpu);
+      }
+#endif
+
     }
 
     /* Otherwise, pair interaction? */
@@ -3031,17 +3071,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Start by constructing the task for the second and third hydro loop */
       t_gradient = scheduler_addtask(sched, task_type_pair,
                                      task_subtype_gradient, flags, 0, ci, cj);
-      /* Start by constructing the task for the second and third GPU hydro loop
-       * A. Nasar */
-      t_gradient_gpu = scheduler_addtask(sched, task_type_pair,
-                                         task_subtype_gpu_pack_g, 0, 0, ci, cj);
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &ci->hydro.gradient, t_gradient);
       engine_addlink(e, &cj->hydro.gradient, t_gradient);
-      //      /* Add the link between the new loop and both cells */
-      engine_addlink(e, &ci->hydro.gradient_pack, t_gradient_gpu);
-      engine_addlink(e, &cj->hydro.gradient_pack, t_gradient_gpu);
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
@@ -3049,21 +3082,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, ci, with_cooling,
                                              with_timestep_limiter);
-        /*Same for GPU tasks*/
-        scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
-                            t_gradient_gpu);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
-                            t_force_gpu);
       }
       if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, cj, with_cooling,
                                              with_timestep_limiter);
-        /*Same for GPU tasks*/
-        scheduler_addunlock(sched, cj->hydro.super->hydro.ghost_out,
-                            t_gradient_gpu);
-        scheduler_addunlock(sched, cj->hydro.super->hydro.extra_ghost,
-                            t_force_gpu);
       }
 #else
 
@@ -3073,17 +3096,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                              with_cooling,
                                              with_timestep_limiter);
-        // GPU tasks A. Nasar
-        scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
-                            t_force_gpu);
       }
       if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, cj,
                                              with_cooling,
                                              with_timestep_limiter);
-        // GPU tasks A. Nasar
-        scheduler_addunlock(sched, cj->hydro.super->hydro.ghost_out,
-                            t_force_gpu);
       }
 
 #endif
@@ -3723,12 +3740,54 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
         scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
       }
-
       /* Make all density tasks depend on the sorts */
       scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
       if (ci->hydro.super != cj->hydro.super) {
         scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
       }
+      t_force_gpu = scheduler_addtask(
+          sched, task_type_sub_pair, task_subtype_gpu_pack_f, flags, 0, ci, cj);
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+      /* Make all force tasks depend on the sorts */
+      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_force_gpu);
+      if (ci->hydro.super != cj->hydro.super) {
+        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_force_gpu);
+      }
+#endif
+      engine_addlink(e, &ci->hydro.force_pack, t_force_gpu);
+      engine_addlink(e, &cj->hydro.force_pack, t_force_gpu);
+#ifdef EXTRA_HYDRO_LOOP
+      t_gradient_gpu = scheduler_addtask(
+          sched, task_type_sub_pair, task_subtype_gpu_pack_g, flags, 0, ci, cj);
+      engine_addlink(e, &ci->hydro.gradient_pack, t_gradient_gpu);
+      engine_addlink(e, &cj->hydro.gradient_pack, t_gradient_gpu);
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
+      if (ci->nodeID == nodeID) {
+        scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
+                            t_gradient_gpu);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
+                            t_force_gpu);
+      }
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+        scheduler_addunlock(sched, cj->hydro.super->hydro.ghost_out,
+                            t_gradient_gpu);
+        scheduler_addunlock(sched, cj->hydro.super->hydro.extra_ghost,
+                            t_force_gpu);
+      }
+#else
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
+      if (ci->nodeID == nodeID) {
+        scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
+                            t_force_gpu);
+      }
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+        scheduler_addunlock(sched, cj->hydro.super->hydro.ghost_out,
+                            t_force_gpu);
+      }
+#endif
+
     } else if (t_type == task_type_sub_pair &&
                t_subtype == task_subtype_density) {
 
@@ -3752,8 +3811,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* New task for the force */
       t_force = scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
                                   flags, 0, ci, cj);
-      t_force_gpu = scheduler_addtask(
-          sched, task_type_sub_pair, task_subtype_gpu_pack_f, flags, 0, ci, cj);
 
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
       /* The order of operations for an inactive local cell interacting
@@ -3763,10 +3820,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Make all force tasks depend on the sorts */
       scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_force);
-      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_force_gpu);
       if (ci->hydro.super != cj->hydro.super) {
         scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_force);
-        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_force_gpu);
       }
 #endif
 
@@ -3864,8 +3919,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       engine_addlink(e, &ci->hydro.force, t_force);
       engine_addlink(e, &cj->hydro.force, t_force);
-      engine_addlink(e, &ci->hydro.force, t_force_gpu);
-      engine_addlink(e, &cj->hydro.force, t_force_gpu);
       if (with_timestep_limiter) {
         engine_addlink(e, &ci->hydro.limiter, t_limiter);
         engine_addlink(e, &cj->hydro.limiter, t_limiter);
@@ -3919,34 +3972,20 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Start by constructing the task for the second and third hydro loop */
       t_gradient = scheduler_addtask(sched, task_type_sub_pair,
                                      task_subtype_gradient, flags, 0, ci, cj);
-      t_gradient_gpu = scheduler_addtask(
-          sched, task_type_sub_pair, task_subtype_gpu_pack_g, flags, 0, ci, cj);
-
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &ci->hydro.gradient, t_gradient);
       engine_addlink(e, &cj->hydro.gradient, t_gradient);
-      engine_addlink(e, &ci->hydro.gradient, t_gradient_gpu);
-      engine_addlink(e, &cj->hydro.gradient, t_gradient_gpu);
-
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
       if (ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, ci, with_cooling,
                                              with_timestep_limiter);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
-                            t_gradient_gpu);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
-                            t_force_gpu);
       }
       if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, cj, with_cooling,
                                              with_timestep_limiter);
-        scheduler_addunlock(sched, cj->hydro.super->hydro.ghost_out,
-                            t_gradient_gpu);
-        scheduler_addunlock(sched, cj->hydro.super->hydro.extra_ghost,
-                            t_force_gpu);
       }
 #else
 
@@ -3956,15 +3995,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                              with_cooling,
                                              with_timestep_limiter);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
-                            t_force_gpu);
       }
       if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, cj,
                                              with_cooling,
                                              with_timestep_limiter);
-        scheduler_addunlock(sched, cj->hydro.super->hydro.ghost_out,
-                            t_force_gpu);
       }
 #endif
 
