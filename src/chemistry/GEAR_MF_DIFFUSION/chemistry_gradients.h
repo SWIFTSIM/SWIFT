@@ -619,6 +619,15 @@ chemistry_gradients_predict_hydro(struct part *restrict pi,
 
   /* Note: We do not reconstruct v_tilde at the interface since it is not used
      during the Riemann problem. */
+
+  /* If we have negative densities, perform a 0th order reconstruction */
+  if (Wi[0] < 0) {
+    Wi[0] = hydro_get_comoving_density(pi);
+  }
+
+  if (Wj[0] < 0) {
+    Wj[0] = hydro_get_comoving_density(pj);
+  }
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_CHEMISTRY_GRADIENTS_H */
