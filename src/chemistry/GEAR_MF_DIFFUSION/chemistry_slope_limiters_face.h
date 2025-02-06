@@ -127,7 +127,7 @@ __attribute__((always_inline)) INLINE static double chemistry_limiter_koren(
 __attribute__((always_inline)) INLINE static double
 chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j,
                                            double phi_mid0, float xij_norm,
-                                           float r_inv) {
+                                           float r_inv, int enforce_positivity) {
 
   const double psi1 = 0.5;
   const double psi2 = 0.25;
@@ -157,6 +157,11 @@ chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j,
         (phimin != 0.0f) ? phimin / (1.0f + delta1 / fabs(phimin)) : 0.0f;
   }
 
+  if (enforce_positivity) {
+    phiplus = max(0.0, phiplus);
+    phiminus = max(0.0, phiminus);
+  }
+
   /* Determine phi_mid */
   if (phi_i < phi_j) {
     const double temp = min(phibar + delta2, phi_mid0);
@@ -166,13 +171,10 @@ chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j,
     phi_mid = min(phiplus, temp);
   }
 
-  /* Enforce monotonicity */
-  const double minterm =  min(phimax, phi_mid);
-  phi_mid = max(phimin, minterm);
-
   /* Enforce positivity */
-  phi_mid = max(0.0, phi_mid);
-
+  if (enforce_positivity) {
+    phi_mid = max(0.0, phi_mid);
+  }
   return phi_mid - phi_i;
 }
 
@@ -228,13 +230,11 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
 
   const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
-  *dUi = chemistry_slope_limit_face_quantity_double(Ui[0], Uj[0], Ui[0] +
-  dUi[0],
-                                             xij_i_norm, r_inv);
+  *dUi = chemistry_slope_limit_face_quantity_double(Ui[0], Uj[0], Ui[0] + dUi[0],
+						    xij_i_norm, r_inv, 1);
 
-  *dUj = chemistry_slope_limit_face_quantity_double(Uj[0], Ui[0], Uj[0] +
-  dUj[0],
-                                             xij_j_norm, r_inv);
+  *dUj = chemistry_slope_limit_face_quantity_double(Uj[0], Ui[0], Uj[0] +  dUj[0],
+						    xij_j_norm, r_inv, 1);
 #else
   /* chemistry_limiter_minmod(dUi, dUj); */
 
@@ -273,7 +273,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
 __attribute__((always_inline)) INLINE static float
 chemistry_slope_limit_face_quantity_float(float phi_i, float phi_j,
                                           float phi_mid0, float xij_norm,
-                                          float r_inv) {
+                                          float r_inv, int enforce_positivity) {
 
   const float psi1 = 0.5f;
   const float psi2 = 0.25f;
@@ -287,6 +287,11 @@ chemistry_slope_limit_face_quantity_float(float phi_i, float phi_j,
   const float phibar = phi_i + xij_norm * r_inv * (phi_j - phi_i);
 
   float phiplus, phiminus, phi_mid;
+
+  if (enforce_positivity) {
+    phi_i = max(0.0f, phi_i);
+    phi_j = max(0.0f, phi_j);
+  }
 
   if (same_signf(phimax + delta1, phimax)) {
     phiplus = phimax + delta1;
@@ -302,6 +307,11 @@ chemistry_slope_limit_face_quantity_float(float phi_i, float phi_j,
         (phimin != 0.0f) ? phimin / (1.0f + delta1 / fabsf(phimin)) : 0.0f;
   }
 
+  if (enforce_positivity) {
+    phiplus = max(0.0f, phiplus);
+    phiminus = max(0.0f, phiminus);
+  }
+
   if (phi_i < phi_j) {
     const float temp = min(phibar + delta2, phi_mid0);
     phi_mid = max(phiminus, temp);
@@ -310,12 +320,10 @@ chemistry_slope_limit_face_quantity_float(float phi_i, float phi_j,
     phi_mid = min(phiplus, temp);
   }
 
-  /* Enforce monotonicity */
-  const float minterm =  min(phimax, phi_mid);
-  phi_mid = max(phimin, minterm);
-
   /* Enforce positivity */
-  phi_mid = max(0.0, phi_mid);
+  if (enforce_positivity) {
+    phi_mid = max(0.0, phi_mid);
+  }
 
   return phi_mid - phi_i;
 }
@@ -347,24 +355,26 @@ chemistry_slope_limit_face_hydro(float *Wi, float *Wj, float drhoi,
 
   const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
+  /* Particle i */
   drhoi = chemistry_slope_limit_face_quantity_float(Wi[0], Wj[0], Wi[0] + drhoi,
-						      xij_i_norm, r_inv);
+						    xij_i_norm, r_inv, 1);
   dvi[0] = chemistry_slope_limit_face_quantity_float(
-      Wi[1], Wj[1], Wi[1] + dvi[0], xij_i_norm, r_inv);
+      Wi[1], Wj[1], Wi[1] + dvi[0], xij_i_norm, r_inv, 0);
   dvi[1] = chemistry_slope_limit_face_quantity_float(
-      Wi[2], Wj[2], Wi[2] + dvi[1], xij_i_norm, r_inv);
+						     Wi[2], Wj[2], Wi[2] + dvi[1], xij_i_norm, r_inv, 0);
   dvi[2] = chemistry_slope_limit_face_quantity_float(
-      Wi[3], Wj[3], Wi[3] + dvi[2], xij_i_norm, r_inv);
+						     Wi[3], Wj[3], Wi[3] + dvi[2], xij_i_norm, r_inv, 0);
 
+  /* Particle j */
   drhoj = chemistry_slope_limit_face_quantity_float(Wj[0], Wi[0], Wj[0] + drhoj,
-						      xij_j_norm, r_inv);
+						    xij_j_norm, r_inv, 1);
 
   dvj[0] = chemistry_slope_limit_face_quantity_float(
-      Wj[1], Wi[1], Wj[1] + dvj[0], xij_j_norm, r_inv);
+						     Wj[1], Wi[1], Wj[1] + dvj[0], xij_j_norm, r_inv, 0);
   dvj[1] = chemistry_slope_limit_face_quantity_float(
-      Wj[2], Wi[2], Wj[2] + dvj[1], xij_j_norm, r_inv);
+						     Wj[2], Wi[2], Wj[2] + dvj[1], xij_j_norm, r_inv, 0);
   dvj[2] = chemistry_slope_limit_face_quantity_float(
-      Wj[3], Wi[3], Wj[3] + dvj[2], xij_j_norm, r_inv);
+						     Wj[3], Wi[3], Wj[3] + dvj[2], xij_j_norm, r_inv, 0);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_FACE_H */
