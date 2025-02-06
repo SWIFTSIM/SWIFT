@@ -629,6 +629,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     const int with_cosmology, const double time, const double dt,
     const struct chemistry_global_data* cd) {
 
+  /* Update active particles */
   struct chemistry_part_data* chd = &p->chemistry_data;
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
@@ -1042,6 +1043,38 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
         0.5*dt_therm * chd->hyperbolic_flux[m].dF_dt[2];
   }
 #endif
+
+  /* Update inactive particles that are drifted */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    double flux;
+    chemistry_get_fluxes(p, i, &flux);
+
+    /* Update the conserved variable */
+    chd->metal_mass[i] += flux;
+
+    /* Update the diffused metal mass */
+    chd->diffused_metal_mass[i] += flux;
+  }
+
+  /* Reset the fluxes now that they have been applied */
+  chemistry_reset_chemistry_fluxes(p);
+
+  /* Invalidate the particle time-step. It is considered to be inactive until
+     dt is set again in hydro_prepare_force() */
+  chd->flux_dt = -1.0f;
+
+  /* Element-wise sanity checks */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    const double m_metal_old = chd->metal_mass[i];
+    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
+                                     hydro_get_mass(p), /*callloc=*/10,
+                                     /*element*/ i);
+  }
+
+  /* Sanity check on the total metal mass */
+  chemistry_check_unphysical_total_metal_mass(p, 10);
+
+
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */
