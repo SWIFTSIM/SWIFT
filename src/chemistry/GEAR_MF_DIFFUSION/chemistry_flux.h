@@ -166,10 +166,8 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
       pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[2]};
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS
   chemistry_check_unphysical_diffusion_flux(F_diff_i);
   chemistry_check_unphysical_diffusion_flux(F_diff_j);
-#endif
 
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
