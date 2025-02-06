@@ -42,12 +42,6 @@ mkdir "$DIR"
 
 if [[ -z "$debug" || "$debug" -eq 0 ]]; then
     
-    if [ ! -e snapshot_0003restart.hdf5 ]
-    then
-	echo "Fetching the debugging ICs..."
-	# ./getDebuggingICs.sh
-    fi
-    
     printf "Running simulation..."
     ../../../swift --hydro --sinks --stars --self-gravity --feedback \
 		   --cooling --sync --limiter --threads=$n_threads \
@@ -59,6 +53,20 @@ if [[ -z "$debug" || "$debug" -eq 0 ]]; then
     python3 rhoTPlot.py -i 0 -f 282 -s 'snap/snapshot'
     python3 plot_gas_density.py -i 0 -f 282 -s 'snap/snapshot'
 else
+    # Get the debugging ICs
+    if [ ! -e snapshot_0003restart.hdf5 ]
+    then
+	echo "Fetching the debugging ICs..."
+	./getDebuggingICs.sh
+    fi
+
+    # Get the Grackle cooling table
+    if [ ! -e CloudyData_UVB=HM2012_high_density.h5 ]
+    then
+	echo "Fetching the Cloudy tables required by Grackle..."
+	./getGrackleCoolingTable.sh
+    fi
+
     echo "Running simulation in debug mode..."
     ../../../swift --hydro --sinks --stars --self-gravity --feedback \
 		   --cooling --sync --limiter --threads=$n_threads \
