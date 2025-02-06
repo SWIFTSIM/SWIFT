@@ -481,8 +481,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   metal) * mi;
   const double m_Zj_not_extrapolated = chemistry_get_metal_mass_fraction(pj,
   metal) * mj;
-  double m_Zi = *Ui * pi->geometry.volume; /* extrapolated mass */
-  double m_Zj = *Uj * pj->geometry.volume; /* extrapolated mass */
+  double m_Zi = *Ui * mi / hydro_get_comoving_density(pi);
+  double m_Zj = *Uj * mj / hydro_get_comoving_density(pj);
 
   chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
                                    /*callloc=*/1, /*element*/ metal);
@@ -492,10 +492,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   /* If the new masses have been changed, do not extrapolate, use 0th order
      reconstruction and update the state vectors */
   if (m_Zi == m_Zi_not_extrapolated) {
-    *Ui = m_Zi_not_extrapolated / pi->geometry.volume;
+    *Ui = m_Zi_not_extrapolated * hydro_get_comoving_density(pi) / mi;
   }
   if (m_Zj == m_Zj_not_extrapolated) {
-    *Uj = m_Zj_not_extrapolated / pj->geometry.volume;
+    *Uj = m_Zj_not_extrapolated * hydro_get_comoving_density(pj) / mj;
   }
 }
 

@@ -27,6 +27,18 @@
 #include "kernel_hydro.h"
 #include "part.h"
 
+
+/**
+ * @brief Get metal mass fraction from a specific metal specie.
+ *
+ * @param p Particle.
+ * @param metal Index of metal specie
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_metal_mass_fraction(const struct part* restrict p, int metal) {
+  return p->chemistry_data.metal_mass[metal] / hydro_get_mass(p);
+}
+
 /**
  * @brief Get comoving metal density from a specific metal group.
  *
@@ -35,7 +47,7 @@
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_get_comoving_metal_density(const struct part* restrict p, int metal) {
-  return p->chemistry_data.metal_mass[metal] / p->geometry.volume;
+  return chemistry_get_metal_mass_fraction(p, metal) * hydro_get_comoving_density(p);
 }
 
 /**
@@ -49,17 +61,6 @@ __attribute__((always_inline)) INLINE static double
 chemistry_get_physical_metal_density(const struct part* restrict p, int metal,
                                      const struct cosmology* cosmo) {
   return cosmo->a3_inv * chemistry_get_comoving_metal_density(p, metal);
-}
-
-/**
- * @brief Get metal mass fraction from a specific metal specie.
- *
- * @param p Particle.
- * @param metal Index of metal specie
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_metal_mass_fraction(const struct part* restrict p, int metal) {
-  return p->chemistry_data.metal_mass[metal] / hydro_get_mass(p);
 }
 
 /**
