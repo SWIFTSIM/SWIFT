@@ -405,7 +405,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     float density =
         external_gravity_get_density(dx, dy, dz, time, potential, phys_const);
 
-    /* Final factor (Binney & Tremaine 2008, eq.8.6) */
+    /* Final factor (Binney & Tremaine 2008, eq. 8.7) */
     float dyn_fric_timescale_inv =
         -4 * M_PI * pow(phys_const->const_newton_G, 2) / pow(v, 3) * density *
         potential->df_lnLambda * amp1 * potential->df_satellite_mass;

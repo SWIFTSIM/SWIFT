@@ -388,7 +388,7 @@ Dynamical friction
 ..................
 
 This potential can be supplemented by a dynamical friction force, following the Chandrasekhar’s dynamical friction formula,
-where the velocity distribution function is assumed to be Maxwellian (Binney 2012, Eq. 8.7):
+where the velocity distribution function is assumed to be Maxwellian (Binney & Tremaine 2008, eq. 8.7):
 
 :math:`\frac{\rm{d} \vec{v}_{\rm M}}{\rm{d} t}=-\frac{4\pi G^2M_{\rm sat}\rho \ln \Lambda}{v^3_{\rm{M}}} \left[ \rm{erf}(X) - \frac{2 X}{\sqrt\pi} e^{-X^2} \right] \vec{v}_{\rm M}`,
 
