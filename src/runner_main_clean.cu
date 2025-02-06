@@ -1082,6 +1082,7 @@ void *runner_main2(void *data) {
             /* No pack tasks left in queue, flag that we want to run */
             int launch_leftovers = pack_vars_self_dens->launch_leftovers;
             n_cells_d++;
+            maxcount = max(maxcount, ci->hydro.count);
             if (ci->hydro.count > 1.5 * np_per_cell) {
               n_w_prts_gtr_target_d++;
 //              message("count %i target %i", ci->hydro.count, np_per_cell);
@@ -1118,6 +1119,7 @@ void *runner_main2(void *data) {
             ticks tic_cpu_pack = getticks();
 
             n_cells_g++;
+            maxcount = max(maxcount, ci->hydro.count);
             if (ci->hydro.count > 1.5 * np_per_cell) {
               n_w_prts_gtr_target_g++;
 //              message("count %i target %i", ci->hydro.count, np_per_cell);
@@ -1156,6 +1158,7 @@ void *runner_main2(void *data) {
             ticks tic_cpu_pack = getticks();
 
             n_cells_f++;
+            maxcount = max(maxcount, ci->hydro.count);
             if (ci->hydro.count > 1.5 * np_per_cell) {
               n_w_prts_gtr_target_f++;
 //              message("count %i target %i", ci->hydro.count, np_per_cell);
@@ -1323,6 +1326,7 @@ void *runner_main2(void *data) {
 
               ticks tic_cpu_pack = getticks();
               n_cells_p_d++;
+              maxcount = max(maxcount, ci->hydro.count);
               if (ci->hydro.count > 1.5 * np_per_cell) {
                 n_w_prts_gtr_target_p_d++;
   //              message("count %i target %i", ci->hydro.count, np_per_cell);
@@ -1411,6 +1415,7 @@ void *runner_main2(void *data) {
 #endif  // DO_CORNERS
               ticks tic_cpu_pack = getticks();
               n_cells_p_g++;
+              maxcount = max(maxcount, ci->hydro.count);
               if (ci->hydro.count > 1.5 * np_per_cell) {
                 n_w_prts_gtr_target_p_g++;
   //              message("count %i target %i", ci->hydro.count, np_per_cell);
@@ -1505,6 +1510,7 @@ void *runner_main2(void *data) {
                                            cj, t, parts_aos_pair_f4_f_send, e,
                                            fparti_fpartj_lparti_lpartj_forc);
               n_cells_p_f++;
+              maxcount = max(maxcount, ci->hydro.count);
               if (ci->hydro.count > 1.5 * np_per_cell) {
                 n_w_prts_gtr_target_p_f++;
   //              message("count %i target %i", ci->hydro.count, np_per_cell);
@@ -1999,18 +2005,18 @@ void *runner_main2(void *data) {
       }
     } /* main loop. */
 
-    message("cpu %i packed %i cells with %i containing more parts than target of %i",
-            r->cpuid, n_cells_d, n_w_prts_gtr_target_d, np_per_cell);
-    message("cpu %i packed %i cells_G with %i containing more parts than target of %i",
-            r->cpuid, n_cells_g, n_w_prts_gtr_target_g, np_per_cell);
-    message("cpu %i packed %i cells_F with %i containing more parts than target of %i",
-            r->cpuid, n_cells_f, n_w_prts_gtr_target_f, np_per_cell);
-    message("cpu %i packed %i pairs_D with %i containing more parts than target of %i",
-            r->cpuid, n_cells_p_d, n_w_prts_gtr_target_p_d, np_per_cell);
-    message("cpu %i packed %i pairs_G with %i containing more parts than target of %i",
-            r->cpuid, n_cells_p_g, n_w_prts_gtr_target_p_g, np_per_cell);
-    message("cpu %i packed %i pairs_F with %i containing more parts than target of %i",
-            r->cpuid, n_cells_p_f, n_w_prts_gtr_target_p_f, np_per_cell);
+    message("cpu %i packed %i cells with %i containing more parts than target of %i max_count %i",
+            r->cpuid, n_cells_d, n_w_prts_gtr_target_d, np_per_cell, maxcount);
+    message("cpu %i packed %i cells_G with %i containing more parts than target of %i max_count %i",
+            r->cpuid, n_cells_g, n_w_prts_gtr_target_g, np_per_cell, maxcount);
+    message("cpu %i packed %i cells_F with %i containing more parts than target of %i max_count %i",
+            r->cpuid, n_cells_f, n_w_prts_gtr_target_f, np_per_cell, maxcount);
+    message("cpu %i packed %i pairs_D with %i containing more parts than target of %i max_count %i",
+            r->cpuid, n_cells_p_d, n_w_prts_gtr_target_p_d, np_per_cell, maxcount);
+    message("cpu %i packed %i pairs_G with %i containing more parts than target of %i max_count %i",
+            r->cpuid, n_cells_p_g, n_w_prts_gtr_target_p_g, np_per_cell, maxcount);
+    message("cpu %i packed %i pairs_F with %i containing more parts than target of %i max_count %i",
+            r->cpuid, n_cells_p_f, n_w_prts_gtr_target_p_f, np_per_cell, maxcount);
 
     //    message("Worked on %i supers w more than 100 parts", g100);
     // Stuff for writing debug data to file for validation
