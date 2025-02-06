@@ -356,8 +356,9 @@ chemistry_slope_limit_face_hydro(float *Wi, float *Wj, float drhoi,
   dvi[2] = chemistry_slope_limit_face_quantity_float(
       Wi[3], Wj[3], Wi[3] + dvi[2], xij_i_norm, r_inv);
 
-  drhoi = chemistry_slope_limit_face_quantity_float(Wj[0], Wi[0], Wj[0] + drhoj,
+  drhoj = chemistry_slope_limit_face_quantity_float(Wj[0], Wi[0], Wj[0] + drhoj,
 						      xij_j_norm, r_inv);
+
   dvj[0] = chemistry_slope_limit_face_quantity_float(
       Wj[1], Wi[1], Wj[1] + dvj[0], xij_j_norm, r_inv);
   dvj[1] = chemistry_slope_limit_face_quantity_float(
