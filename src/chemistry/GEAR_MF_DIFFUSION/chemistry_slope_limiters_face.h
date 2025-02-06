@@ -310,6 +310,13 @@ chemistry_slope_limit_face_quantity_float(float phi_i, float phi_j,
     phi_mid = min(phiplus, temp);
   }
 
+  /* Enforce monotonicity */
+  const float minterm =  min(phimax, phi_mid);
+  phi_mid = max(phimin, minterm);
+
+  /* Enforce positivity */
+  phi_mid = max(0.0, phi_mid);
+
   return phi_mid - phi_i;
 }
 
