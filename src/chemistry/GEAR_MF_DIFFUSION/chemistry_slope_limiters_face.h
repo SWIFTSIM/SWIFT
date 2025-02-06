@@ -157,11 +157,6 @@ chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j,
         (phimin != 0.0f) ? phimin / (1.0f + delta1 / fabs(phimin)) : 0.0f;
   }
 
-  if (enforce_positivity) {
-    phiplus = max(0.0, phiplus);
-    phiminus = max(0.0, phiminus);
-  }
-
   /* Determine phi_mid */
   if (phi_i < phi_j) {
     const double temp = min(phibar + delta2, phi_mid0);
@@ -305,11 +300,6 @@ chemistry_slope_limit_face_quantity_float(float phi_i, float phi_j,
   } else {
     phiminus =
         (phimin != 0.0f) ? phimin / (1.0f + delta1 / fabsf(phimin)) : 0.0f;
-  }
-
-  if (enforce_positivity) {
-    phiplus = max(0.0f, phiplus);
-    phiminus = max(0.0f, phiminus);
   }
 
   if (phi_i < phi_j) {
