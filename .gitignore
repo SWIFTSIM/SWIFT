@@ -76,16 +76,13 @@ examples/SubgridTests/CosmologicalStellarEvolution/StellarEvolutionSolution*
 examples/SmallCosmoVolume/SmallCosmoVolume_DM/power_spectra
 examples/SmallCosmoVolume/SmallCosmoVolume_cooling/snapshots/
 examples/SmallCosmoVolume/SmallCosmoVolume_hydro/snapshots/
-examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012.h5
-examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012_shielded.h5
-examples/GEAR/AgoraDisk/CloudyData_UVB=HM2012.h5
-examples/GEAR/AgoraDisk/CloudyData_UVB=HM2012_shielded.h5
-examples/GEAR/AgoraDisk/chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
-examples/GEAR/AgoraCosmo/CloudyData_UVB=HM2012_shielded.h5
-examples/GEAR/AgoraCosmo/POPIIsw.h5
-examples/GEAR/ZoomIn/CloudyData_UVB=HM2012.h5
-examples/GEAR/ZoomIn/POPIIsw.h5
-examples/GEAR/ZoomIn/snap/
+examples/**/CloudyData_UVB=HM2012.h5
+examples/**/CloudyData_UVB=HM2012_shielded.h5
+examples/**/chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
+examples/**/POPIIsw.h5
+examples/**/GRACKLE_INFO
+examples/**/snap/
+
 
 tests/testActivePair
 tests/testActivePair.sh
