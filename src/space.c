@@ -1020,7 +1020,7 @@ void space_collect_sum_bpart_mass(void *restrict map_data, int count,
 }
 
 /**
- * @breif Collect the mean mass of each particle type in the #space.
+ * @brief Collect the mean mass of each particle type in the #space.
  */
 void space_collect_mean_masses(struct space *s, int verbose) {
 

@@ -438,7 +438,7 @@ int cell_unpack_grid_extra(const enum grid_construction_level *info,
  * @brief Pack the cell information about time-step sizes and displacements
  * of a cell hierarchy.
  *
- * @param c The #cells to pack.
+ * @param c The #cell's to pack.
  * @param pcells the packed cell structures to pack into.
  *
  * @return The number of cells that were packed.
@@ -484,7 +484,7 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
  * @brief Unpack the cell information about time-step sizes and displacements
  * of a cell hierarchy.
  *
- * @param c The #cells to unpack into.
+ * @param c The #cell's to unpack into.
  * @param pcells the packed cell structures to unpack from.
  *
  * @return The number of cells that were packed.
