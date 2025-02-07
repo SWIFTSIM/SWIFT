@@ -435,7 +435,7 @@ hydro_convert_conserved_to_primitive(
 #elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_SPRINGEL_MACH
   if (p->timestepvars.mach_number > 1.1) {
     /* Recover thermal energy and entropy from total energy */
-    u = thermal_energy * m_inv;
+    u = *thermal_energy * m_inv;
   } else {
     /* Keep entropy conserved and recover thermal and total energy. */
     double A = p->conserved.entropy * m_inv;
@@ -445,11 +445,11 @@ hydro_convert_conserved_to_primitive(
   const float *g = xp->a_grav;
   float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
                 hydro_get_comoving_psize(p);
-  if (thermal_energy > 1e-2 * (Ekin + Egrav)) {
+  if (*thermal_energy > 1e-2 * (Ekin + Egrav)) {
     /* Recover thermal energy and entropy from total energy */
-    u = thermal_energy * m_inv;
-  } else if (thermal_energy < 1e-3 * (p->timestepvars.Ekin + thermal_energy) ||
-             thermal_energy < 1e-3 * Egrav) {
+    u = *thermal_energy * m_inv;
+  } else if (*thermal_energy < 1e-3 * (p->timestepvars.Ekin + *thermal_energy) ||
+             *thermal_energy < 1e-3 * Egrav) {
     /* Keep entropy conserved and recover thermal and total energy. */
     double A = p->conserved.entropy * m_inv;
     u = gas_internal_energy_from_entropy(W[0], A);
