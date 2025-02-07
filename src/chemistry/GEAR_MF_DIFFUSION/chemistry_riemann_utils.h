@@ -206,4 +206,25 @@ chemistry_riemann_compute_alpha(const double c_s_R, const double c_s_L,
   return alpha;
 }
 
+
+/**
+ * @brief Check if the given input states are vacuum or will generate vacuum
+ */
+__attribute__((always_inline)) INLINE static int riemann_is_vacuum(
+    const float* WL, const float* WR, float vL, float vR, float aL, float aR) {
+
+  /* vacuum */
+  if (!WL[0] || !WR[0]) return 1;
+
+  /* vacuum generation */
+  else if (hydro_two_over_gamma_minus_one * aL +
+               hydro_two_over_gamma_minus_one * aR <=
+           vR - vL)
+    return 1;
+
+  /* no vacuum */
+  else
+    return 0;
+}
+
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_UTILS_H */ 
