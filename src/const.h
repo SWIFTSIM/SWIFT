@@ -139,6 +139,8 @@
 #ifndef SHADOWSWIFT_FIX_PARTICLES
 #define SHADOWSWIFT_STEER_MOTION
 #ifdef SHADOWSWIFT_STEER_MOTION
+/*! @brief More agressive cell steering for cold flows, where the other
+ * criterion might become ineffective. */
 //#define SHADOWSWIFT_STEERING_COLD_FLOWS
 #endif
 #endif
