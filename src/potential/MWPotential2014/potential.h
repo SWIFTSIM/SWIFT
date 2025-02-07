@@ -32,12 +32,12 @@
 /* Local includes. */
 #include "error.h"
 #include "gravity.h"
+#include "integer_power.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "space.h"
 #include "units.h"
-#include "integer_power.h"
 
 #ifdef HAVE_LIBGSL
 #include <gsl/gsl_sf_gamma.h>
@@ -263,8 +263,9 @@ __attribute__((always_inline)) INLINE static float external_gravity_get_density(
   const float r = sqrtf(R2 + z * z + potential->eps * potential->eps);
 
   /* First for the NFW part */
-  const float rho_NFW = potential->rho_0 /
-                        ((r / potential->r_s) * (1 + r / potential->r_s)*(1 + r / potential->r_s));
+  const float rho_NFW =
+      potential->rho_0 / ((r / potential->r_s) * (1 + r / potential->r_s) *
+                          (1 + r / potential->r_s));
 
   /* Second the MN disk */
   const float zb = sqrtf(potential->Zdisk * potential->Zdisk + z * z);
@@ -379,13 +380,14 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
      */
     double sigma = 0;
     for (int i = 0; i < DF_COEFFS_LEN; i++)
-      sigma += potential->df_polyfit_coeffs[DF_COEFFS_LEN - 1 - i] * integer_pow(r, i);
+      sigma += potential->df_polyfit_coeffs[DF_COEFFS_LEN - 1 - i] *
+               integer_pow(r, i);
 
     /* Prevent the velocity dispersion to be zero */
     sigma = fmax(potential->df_sigma_floor, sigma);
 
     /* Compute the chi parameter */
-    double X = v / ( sqrt(2) / sigma);
+    double X = v / (sqrt(2) / sigma);
     double amp1 = erf(X) - ((2 * X / sqrtpi) * exp(-X * X));
 
     /* Kill the dynamical friction at the center */
@@ -679,7 +681,8 @@ static INLINE void potential_init_backend(
   potential->df_polyfit_coeffs[16] = df_polyfit_coeffs16;
 
   for (int i = 0; i < DF_COEFFS_LEN; i++)
-    potential->df_polyfit_coeffs[DF_COEFFS_LEN - 1 - i] /= integer_pow(kpc, i) * kms;
+    potential->df_polyfit_coeffs[DF_COEFFS_LEN - 1 - i] /=
+        integer_pow(kpc, i) * kms;
 
   /* Compute rho_c */
   const double rho_c = 3.0 * potential->H * potential->H /
