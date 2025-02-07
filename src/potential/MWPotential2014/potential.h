@@ -20,6 +20,8 @@
 #ifndef SWIFT_POTENTIAL_MWPotential2014_H
 #define SWIFT_POTENTIAL_MWPotential2014_H
 
+#define DF_COEFFS_LEN 17
+
 /* Config parameters. */
 #include <config.h>
 
@@ -35,6 +37,7 @@
 #include "physical_constants.h"
 #include "space.h"
 #include "units.h"
+#include "integer_power.h"
 
 #ifdef HAVE_LIBGSL
 #include <gsl/gsl_sf_gamma.h>
@@ -122,10 +125,7 @@ struct external_potential {
   double df_satellite_mass;
 
   /*! Polynomial fit coefficients for the velocity dispersion model */
-  double df_polyfit_coeffs[17];
-
-  /*! Degree of the polynomial fit the velocity dispersion model */
-  int df_coeffs_len;
+  double df_polyfit_coeffs[DF_COEFFS_LEN];
 
   /*! Minimum velocity dispersion for the velocity dispersion model */
   double df_sigma_floor;
@@ -258,15 +258,13 @@ __attribute__((always_inline)) INLINE static float external_gravity_get_density(
     const struct external_potential* potential,
     const struct phys_const* const phys_const) {
 
-#ifdef HAVE_LIBGSL
-
   /* First for the NFW profile */
   const float R2 = x * x + y * y;
   const float r = sqrtf(R2 + z * z + potential->eps * potential->eps);
 
   /* First for the NFW part */
   const float rho_NFW = potential->rho_0 /
-                        ((r / potential->r_s) * pow(1 + r / potential->r_s, 2));
+                        ((r / potential->r_s) * (1 + r / potential->r_s)*(1 + r / potential->r_s));
 
   /* Second the MN disk */
   const float zb = sqrtf(potential->Zdisk * potential->Zdisk + z * z);
@@ -287,11 +285,6 @@ __attribute__((always_inline)) INLINE static float external_gravity_get_density(
                         potential->f[2] * rho_PSC;
 
   return density;
-
-#else
-  error("Code not compiled with GSL. Can't compute MWPotential2014.");
-  return 0.0;
-#endif
 }
 
 /**
@@ -373,7 +366,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 
   if (potential->with_dynamical_friction) {
 
-    const float sqrtpi = 1.7724538509055159;
+    const float sqrtpi = sqrtf(M_PI);
 
     const float vx = g->v_full[0];
     const float vy = g->v_full[1];
@@ -385,17 +378,15 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
      * using a high order polynomial interpolation.
      */
     double sigma = 0;
-    for (int i = 0; i < potential->df_coeffs_len; i++)
-      sigma = sigma +
-              potential->df_polyfit_coeffs[potential->df_coeffs_len - 1 - i] *
-                  pow(r, i);
+    for (int i = 0; i < DF_COEFFS_LEN; i++)
+      sigma += potential->df_polyfit_coeffs[DF_COEFFS_LEN - 1 - i] * integer_pow(r, i);
 
     /* Prevent the velocity dispersion to be zero */
     sigma = fmax(potential->df_sigma_floor, sigma);
 
     /* Compute the chi parameter */
-    double X = v / sqrt(2) / sigma;
-    double amp1 = erf(X) - (2 * X / sqrtpi * exp(-X * X));
+    double X = v / ( sqrt(2) / sigma);
+    double amp1 = erf(X) - ((2 * X / sqrtpi) * exp(-X * X));
 
     /* Kill the dynamical friction at the center */
     amp1 *= max(0, erf((r - potential->df_core_radius) /
@@ -654,9 +645,7 @@ static INLINE void potential_init_backend(
   /* Convert to internal system of units by using the
    * physical constants defined in this system */
   const double kpc = 1000. * phys_const->const_parsec;
-  const double s_internal_units = phys_const->const_year / 31536000;
-  const double km_internal_units = phys_const->const_parsec / 3.08567758e+13;
-  const double kms = km_internal_units / s_internal_units;
+  const double kms = 1e5 * units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
   potential->M_200 *= phys_const->const_solar_mass;
   potential->H *= phys_const->const_reduced_hubble;
   potential->Mdisk *= phys_const->const_solar_mass;
@@ -671,9 +660,6 @@ static INLINE void potential_init_backend(
   potential->df_core_radius *= kpc;
 
   /* units conversion for polyfit coefficients */
-  potential->df_coeffs_len = (int)(sizeof(potential->df_polyfit_coeffs) /
-                                   sizeof(potential->df_polyfit_coeffs[0]));
-
   potential->df_polyfit_coeffs[0] = df_polyfit_coeffs00;
   potential->df_polyfit_coeffs[1] = df_polyfit_coeffs01;
   potential->df_polyfit_coeffs[2] = df_polyfit_coeffs02;
@@ -692,10 +678,8 @@ static INLINE void potential_init_backend(
   potential->df_polyfit_coeffs[15] = df_polyfit_coeffs15;
   potential->df_polyfit_coeffs[16] = df_polyfit_coeffs16;
 
-  for (int i = 0; i < potential->df_coeffs_len; i++)
-    potential->df_polyfit_coeffs[potential->df_coeffs_len - 1 - i] =
-        potential->df_polyfit_coeffs[potential->df_coeffs_len - 1 - i] /
-        pow(kpc, i) * kms;
+  for (int i = 0; i < DF_COEFFS_LEN; i++)
+    potential->df_polyfit_coeffs[DF_COEFFS_LEN - 1 - i] /= integer_pow(kpc, i) * kms;
 
   /* Compute rho_c */
   const double rho_c = 3.0 * potential->H * potential->H /
