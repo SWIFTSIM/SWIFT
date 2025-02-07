@@ -157,7 +157,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
   const double one_over_dl = 1.f / (lambda_plus - lambda_minus);
   const double F_2 =
       (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl;
-  double F_U = lambda_plus * lambda_minus * dU * one_over_dl;
+  const double F_U = lambda_plus * lambda_minus * dU * one_over_dl;
   const double flux_hll = chemistry_riemann_minmod(
       (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + alpha * F_U);
 
