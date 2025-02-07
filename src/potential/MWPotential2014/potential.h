@@ -269,7 +269,7 @@ __attribute__((always_inline)) INLINE static float external_gravity_get_density(
 
   /* Second the MN disk */
   const float zb = sqrtf(potential->Zdisk * potential->Zdisk + z * z);
-  const float azb2 = pow(potential->Rdisk + zb, 2);
+  const float azb2 = integer_pow(potential->Rdisk + zb, 2);
   const float cte =
       (potential->Zdisk * potential->Zdisk * potential->Mdisk) / (4 * M_PI);
   const float rho_MN =
@@ -279,7 +279,7 @@ __attribute__((always_inline)) INLINE static float external_gravity_get_density(
   /* Third the bulge */
   const float rho_PSC = potential->amplitude *
                         pow(potential->r_1 / r, potential->alpha) *
-                        exp(-pow(r / potential->r_c, 2));
+                        exp(-integer_pow(r / potential->r_c, 2));
 
   /* Total density */
   const float density = potential->f[0] * rho_NFW + potential->f[1] * rho_MN +
@@ -400,7 +400,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 
     /* Final factor (Binney & Tremaine 2008, eq. 8.7) */
     float dyn_fric_timescale_inv =
-        -4 * M_PI * pow(phys_const->const_newton_G, 2) / pow(v, 3) * density *
+        -4 * M_PI * integer_pow(phys_const->const_newton_G, 2) / integer_pow(v, 3) * density *
         potential->df_lnLambda * amp1 * potential->df_satellite_mass;
 
     /* Sanity check */
