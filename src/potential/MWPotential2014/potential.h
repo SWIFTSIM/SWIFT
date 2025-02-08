@@ -20,8 +20,6 @@
 #ifndef SWIFT_POTENTIAL_MWPotential2014_H
 #define SWIFT_POTENTIAL_MWPotential2014_H
 
-#define DF_COEFFS_LEN 17
-
 /* Config parameters. */
 #include <config.h>
 
@@ -42,6 +40,8 @@
 #ifdef HAVE_LIBGSL
 #include <gsl/gsl_sf_gamma.h>
 #endif
+
+#define potential_MW2014_num_coefficients 17
 
 /**
  * @brief External Potential Properties - MWPotential2014 composed by
@@ -125,7 +125,7 @@ struct external_potential {
   double df_satellite_mass;
 
   /*! Polynomial fit coefficients for the velocity dispersion model */
-  double df_polyfit_coeffs[DF_COEFFS_LEN];
+  double df_polyfit_coeffs[potential_MW2014_num_coefficients];
 
   /*! Minimum velocity dispersion for the velocity dispersion model */
   double df_sigma_floor;
@@ -379,9 +379,11 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
      * using a high order polynomial interpolation.
      */
     double sigma = 0;
-    for (int i = 0; i < DF_COEFFS_LEN; i++)
-      sigma += potential->df_polyfit_coeffs[DF_COEFFS_LEN - 1 - i] *
-               integer_pow(r, i);
+    for (int i = 0; i < potential_MW2014_num_coefficients; i++)
+      sigma +=
+          potential
+              ->df_polyfit_coeffs[potential_MW2014_num_coefficients - 1 - i] *
+          integer_pow(r, i);
 
     /* Prevent the velocity dispersion to be zero */
     sigma = fmax(potential->df_sigma_floor, sigma);
@@ -400,8 +402,9 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 
     /* Final factor (Binney & Tremaine 2008, eq. 8.7) */
     float dyn_fric_timescale_inv =
-        -4 * M_PI * integer_pow(phys_const->const_newton_G, 2) / integer_pow(v, 3) * density *
-        potential->df_lnLambda * amp1 * potential->df_satellite_mass;
+        -4 * M_PI * integer_pow(phys_const->const_newton_G, 2) /
+        integer_pow(v, 3) * density * potential->df_lnLambda * amp1 *
+        potential->df_satellite_mass;
 
     /* Sanity check */
     if (dyn_fric_timescale_inv > 0)
@@ -527,23 +530,12 @@ static INLINE void potential_init_backend(
     potential->x[2] += s->dim[2] / 2.;
   }
 
-  double df_polyfit_coeffs00 = -2.96536595e-31;
-  double df_polyfit_coeffs01 = 8.88944631e-28;
-  double df_polyfit_coeffs02 = -1.18280578e-24;
-  double df_polyfit_coeffs03 = 9.29479457e-22;
-  double df_polyfit_coeffs04 = -4.82805265e-19;
-  double df_polyfit_coeffs05 = 1.75460211e-16;
-  double df_polyfit_coeffs06 = -4.59976540e-14;
-  double df_polyfit_coeffs07 = 8.83166045e-12;
-  double df_polyfit_coeffs08 = -1.24747700e-09;
-  double df_polyfit_coeffs09 = 1.29060404e-07;
-  double df_polyfit_coeffs10 = -9.65315026e-06;
-  double df_polyfit_coeffs11 = 5.10187806e-04;
-  double df_polyfit_coeffs12 = -1.83800281e-02;
-  double df_polyfit_coeffs13 = 4.26501444e-01;
-  double df_polyfit_coeffs14 = -5.78038064e+00;
-  double df_polyfit_coeffs15 = 3.57956721e+01;
-  double df_polyfit_coeffs16 = 1.85478908e+02;
+  const double df_polyfit_coeffs_default[potential_MW2014_num_coefficients] = {
+      -2.96536595e-31, 8.88944631e-28, -1.18280578e-24, 9.29479457e-22,
+      -4.82805265e-19, 1.75460211e-16, -4.59976540e-14, 8.83166045e-12,
+      -1.24747700e-09, 1.29060404e-07, -9.65315026e-06, 5.10187806e-04,
+      -1.83800281e-02, 4.26501444e-01, -5.78038064e+00, 3.57956721e+01,
+      1.85478908e+02};
 
   /* Read the other parameters of the model */
   potential->timestep_mult = parser_get_param_double(
@@ -592,57 +584,13 @@ static INLINE void potential_init_backend(
   potential->df_sigma_floor = parser_get_opt_param_double(
       parameter_file, "MWPotential2014Potential:df_sigma_floor_km_p_s", 10.0);
 
-  df_polyfit_coeffs00 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs00",
-      df_polyfit_coeffs00);
-  df_polyfit_coeffs01 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs01",
-      df_polyfit_coeffs01);
-  df_polyfit_coeffs02 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs02",
-      df_polyfit_coeffs02);
-  df_polyfit_coeffs03 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs03",
-      df_polyfit_coeffs03);
-  df_polyfit_coeffs04 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs04",
-      df_polyfit_coeffs04);
-  df_polyfit_coeffs05 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs05",
-      df_polyfit_coeffs05);
-  df_polyfit_coeffs06 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs06",
-      df_polyfit_coeffs06);
-  df_polyfit_coeffs07 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs07",
-      df_polyfit_coeffs07);
-  df_polyfit_coeffs08 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs08",
-      df_polyfit_coeffs08);
-  df_polyfit_coeffs09 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs09",
-      df_polyfit_coeffs09);
-  df_polyfit_coeffs10 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs10",
-      df_polyfit_coeffs10);
-  df_polyfit_coeffs11 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs11",
-      df_polyfit_coeffs11);
-  df_polyfit_coeffs12 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs12",
-      df_polyfit_coeffs12);
-  df_polyfit_coeffs13 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs13",
-      df_polyfit_coeffs13);
-  df_polyfit_coeffs14 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs14",
-      df_polyfit_coeffs14);
-  df_polyfit_coeffs15 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs15",
-      df_polyfit_coeffs15);
-  df_polyfit_coeffs16 = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs16",
-      df_polyfit_coeffs16);
+  /* Read all the dynamical friction coefficients */
+  for (int i = 0; i < potential_MW2014_num_coefficients; i++) {
+    char param_name[128];
+    sprintf(param_name, "MWPotential2014Potential:df_polyfit_coeffs%2d", i);
+    potential->df_polyfit_coeffs[i] = parser_get_opt_param_double(
+        parameter_file, param_name, df_polyfit_coeffs_default[i]);
+  }
 
   /* Convert to internal system of units by using the
    * physical constants defined in this system */
@@ -662,26 +610,8 @@ static INLINE void potential_init_backend(
   potential->df_core_radius *= kpc;
 
   /* units conversion for polyfit coefficients */
-  potential->df_polyfit_coeffs[0] = df_polyfit_coeffs00;
-  potential->df_polyfit_coeffs[1] = df_polyfit_coeffs01;
-  potential->df_polyfit_coeffs[2] = df_polyfit_coeffs02;
-  potential->df_polyfit_coeffs[3] = df_polyfit_coeffs03;
-  potential->df_polyfit_coeffs[4] = df_polyfit_coeffs04;
-  potential->df_polyfit_coeffs[5] = df_polyfit_coeffs05;
-  potential->df_polyfit_coeffs[6] = df_polyfit_coeffs06;
-  potential->df_polyfit_coeffs[7] = df_polyfit_coeffs07;
-  potential->df_polyfit_coeffs[8] = df_polyfit_coeffs08;
-  potential->df_polyfit_coeffs[9] = df_polyfit_coeffs09;
-  potential->df_polyfit_coeffs[10] = df_polyfit_coeffs10;
-  potential->df_polyfit_coeffs[11] = df_polyfit_coeffs11;
-  potential->df_polyfit_coeffs[12] = df_polyfit_coeffs12;
-  potential->df_polyfit_coeffs[13] = df_polyfit_coeffs13;
-  potential->df_polyfit_coeffs[14] = df_polyfit_coeffs14;
-  potential->df_polyfit_coeffs[15] = df_polyfit_coeffs15;
-  potential->df_polyfit_coeffs[16] = df_polyfit_coeffs16;
-
-  for (int i = 0; i < DF_COEFFS_LEN; i++)
-    potential->df_polyfit_coeffs[DF_COEFFS_LEN - 1 - i] /=
+  for (int i = 0; i < potential_MW2014_num_coefficients; i++)
+    potential->df_polyfit_coeffs[potential_MW2014_num_coefficients - 1 - i] /=
         integer_pow(kpc, i) * kms;
 
   /* Compute rho_c */
