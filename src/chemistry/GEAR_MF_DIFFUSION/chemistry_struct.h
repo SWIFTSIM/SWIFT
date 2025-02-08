@@ -109,9 +109,10 @@ struct chemistry_part_data {
   /*! Metal mass flux */
   double diffusion_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
-  /* Debug thing */
+  //#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   /* Metal mass diffused in this timestep */
   double diffused_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+  //#endif
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Hyperbolic flux scheme variables */
