@@ -97,6 +97,18 @@ INLINE static void convert_gas_diffused_metals(const struct engine* e,
   ret[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = m_Z;
 }
 
+INLINE static void convert_gas_diffusion_flux_norm(const struct engine* e,
+					       const struct part* p,
+					       const struct xpart* xp, double* ret) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    double F_diff[3] = {
+      p->chemistry_data.hyperbolic_flux[i].F_diff[0],
+      p->chemistry_data.hyperbolic_flux[i].F_diff[1],
+      p->chemistry_data.hyperbolic_flux[i].F_diff[2]};
+    ret[i] = sqrt(F_diff[0]*F_diff[0] + F_diff[1]*F_diff[1] + F_diff[2]*F_diff[2]);
+  }
+}
+
 INLINE static void convert_chemistry_diffusion_coefficient(
     const struct engine* e, const struct part* p, const struct xpart* xp,
     double* ret) {
@@ -134,7 +146,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
                                             struct io_props* list,
                                             const int with_cosmology) {
   /* Number of fields to write */
-  int num = 5;
+  int num = 6;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -153,6 +165,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       /*can convert to comoving=*/0, convert_chemistry_diffusion_matrix,
       "Physical diffusion matrix, stored in a vector");
 
+  //#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   list[3] = io_make_output_field_convert_part(
       "DiffusedMetalMasses", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
       UNIT_CONV_MASS, 0.f, parts, xparts, convert_gas_diffused_metals,
@@ -163,9 +176,15 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       UNIT_CONV_MASS, 0.f, parts, xparts, convert_gas_feedback_metals,
       "Mass fraction of each element received by feedback events");
 
+  list[5] = io_make_output_field_convert_part(
+      "NormDiffusionFluxes", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
+      UNIT_CONV_MASS_PER_UNIT_TIME_PER_UNIT_AREA, 0.f, parts, xparts, convert_gas_diffusion_flux_norm,
+      "Norm of the diffusion fluxes");
+  //#endif
+
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   // TODO: Check the a exponent
-  list[5] = io_make_physical_output_field(
+  list[6] = io_make_physical_output_field(
        "RelaxationTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f, parts,
        chemistry_data.tau, /*can convert to comoving=*/1,
        "Physical diffusion relaxation time of the particles.");
