@@ -1041,6 +1041,9 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
     chd->hyperbolic_flux[m].F_diff_pred[2] =
         chd->hyperbolic_flux[m].F_diff[2] +
         0.5*dt_therm * chd->hyperbolic_flux[m].dF_dt[2];
+
+    /* Check that the fluxes are meaningful */
+    chemistry_check_unphysical_diffusion_flux(chd->hyperbolic_flux[m].F_diff_pred);
   }
 #endif
 

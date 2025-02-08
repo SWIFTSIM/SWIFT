@@ -166,6 +166,7 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
       pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[2]};
 #endif
 
+  /* Check that the fluxes are meaningful */
   chemistry_check_unphysical_diffusion_flux(F_diff_i);
   chemistry_check_unphysical_diffusion_flux(F_diff_j);
 

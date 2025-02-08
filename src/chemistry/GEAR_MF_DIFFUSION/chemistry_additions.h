@@ -74,6 +74,9 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
       chd->hyperbolic_flux[i].F_diff[0] = dt_factor*(chd->hyperbolic_flux[i].F_diff_pred[0] + 0.5*dt_therm / chd->tau * F_diff_target[0]);
       chd->hyperbolic_flux[i].F_diff[1] = dt_factor*(chd->hyperbolic_flux[i].F_diff_pred[1] + 0.5*dt_therm / chd->tau * F_diff_target[1]);
       chd->hyperbolic_flux[i].F_diff[2] = dt_factor*(chd->hyperbolic_flux[i].F_diff_pred[2] + 0.5*dt_therm / chd->tau * F_diff_target[2]);
+
+      /* Check that the fluxes are meaningful */
+      chemistry_check_unphysical_diffusion_flux(chd->hyperbolic_flux[i].F_diff);
     }
 #endif
   }
