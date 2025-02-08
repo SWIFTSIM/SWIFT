@@ -47,7 +47,7 @@ v_c_cgs = v_c * const_unit_velocity_in_cgs
 
 # Set the magnitude of the uniform seed magnetic field
 
-B0_Gaussian_Units = 1e-6 # 1 micro Gauss
+B0_Gaussian_Units = 1e-6  # 1 micro Gauss
 B0_cgs = np.sqrt(CONST_MU0_CGS / (4.0 * np.pi)) * B0_Gaussian_Units
 
 # Now we use this to get the virial mass and virial radius, which we will set to be the unit mass and radius
@@ -77,11 +77,13 @@ print("UnitVelocity_in_cgs: ", const_unit_velocity_in_cgs)
 
 # Now set the magnetic field unit
 
-const_unit_magnetic_field_in_cgs = 1e-7 # 1muG
+const_unit_magnetic_field_in_cgs = 1e-7  # 1muG
 
 # Derived quantities
 const_unit_time_in_cgs = const_unit_length_in_cgs / const_unit_velocity_in_cgs
-const_unit_current_in_cgs = const_unit_mass_in_cgs / (const_unit_magnetic_field_in_cgs * const_unit_time_in_cgs**2)
+const_unit_current_in_cgs = const_unit_mass_in_cgs / (
+    const_unit_magnetic_field_in_cgs * const_unit_time_in_cgs ** 2
+)
 
 print("UnitTime_in_cgs:     ", const_unit_time_in_cgs)
 print("UnitCurrent_in_cgs:  ", const_unit_current_in_cgs)
@@ -215,7 +217,7 @@ omega = np.zeros((N, 3))
 for i in range(N):
     omega[i, 2] = 3.0 * J / radius[i]
     v[i, :] = np.cross(omega[i, :], (coords[i, :] - boxSize / 2.0))
-    B[i, 2] = B0_cgs / const_unit_magnetic_field_in_cgs 
+    B[i, 2] = B0_cgs / const_unit_magnetic_field_in_cgs
 
 # Header
 grp = file.create_group("/Header")

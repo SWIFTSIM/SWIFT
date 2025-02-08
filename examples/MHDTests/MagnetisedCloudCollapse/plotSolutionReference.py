@@ -15,16 +15,16 @@ data = load(filename)
 center = 0.5 * data.metadata.boxsize
 
 # Constants
-G = 6.67430e-11 * unyt.m **3 / unyt.kg / unyt.s **2 #6.67430e-8
-G = G.to(unyt.cm **3 / unyt.g / unyt.s **2)
-mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s**2 * unyt.A**2)
+G = 6.67430e-11 * unyt.m ** 3 / unyt.kg / unyt.s ** 2  # 6.67430e-8
+G = G.to(unyt.cm ** 3 / unyt.g / unyt.s ** 2)
+mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s ** 2 * unyt.A ** 2)
 
 # Parameters (taken from Hopkins 2016)
 R0 = 4.628516371e16 * unyt.cm
 M = 1.99e33 * unyt.g  # total mass of the sphere
-rhocloud0 = M/(4/3 * np.pi * R0**3 )
-rhouniform = rhocloud0/360
-t_ff = np.sqrt(3/(2*np.pi*G*rhocloud0)) * unyt.s
+rhocloud0 = M / (4 / 3 * np.pi * R0 ** 3)
+rhouniform = rhocloud0 / 360
+t_ff = np.sqrt(3 / (2 * np.pi * G * rhocloud0)) * unyt.s
 tsim = data.metadata.time
 toplot = tsim / t_ff
 print("Showing results at %3f free fall times" % toplot)
@@ -49,7 +49,9 @@ data.gas.mass_weighted_error = data.gas.masses * np.log10(
 )
 data.gas.mass_weighted_vr = data.gas.masses * vr
 data.gas.mass_weighted_Bz = data.gas.masses * abs(B[:, 2])
-data.gas.mass_weighted_J = data.gas.masses * np.sqrt(J[:, 0] ** 2 + J[:, 1] ** 2 + J[:, 2] ** 2) / mu0
+data.gas.mass_weighted_J = (
+    data.gas.masses * np.sqrt(J[:, 0] ** 2 + J[:, 1] ** 2 + J[:, 2] ** 2) / mu0
+)
 
 """
 rotation_matrix = [[1,0,0],
@@ -59,20 +61,20 @@ rotation_matrix = [[1,0,0],
 rotation_matrix = [[0, 0, 1], [0, 1, 0], [-1, 0, 0]]
 
 Lslice_AU = 1000
-Lslice = Lslice_AU * 1.49597871 * 10**13 * unyt.cm
+Lslice = Lslice_AU * 1.49597871 * 10 ** 13 * unyt.cm
 
 visualise_region_xy = [
-    center[0] -  Lslice,
-    center[0] +  Lslice,
-    center[1] -  Lslice,
-    center[1] +  Lslice,
+    center[0] - Lslice,
+    center[0] + Lslice,
+    center[1] - Lslice,
+    center[1] + Lslice,
 ]
 
 visualise_region = [
-    center[0] -  Lslice,
-    center[0] +  Lslice,
-    center[2] -  Lslice,
-    center[2] +  Lslice,
+    center[0] - Lslice,
+    center[0] + Lslice,
+    center[2] - Lslice,
+    center[2] + Lslice,
 ]
 
 
@@ -81,7 +83,7 @@ common_arguments_xy = dict(
     resolution=512,
     parallel=True,
     region=visualise_region_xy,
-    z_slice=center[2], #0.0 * unyt.cm,
+    z_slice=center[2],  # 0.0 * unyt.cm,
 )
 
 common_arguments = dict(
@@ -109,7 +111,7 @@ mass_weighted_density_map = slice_gas(
 mass_weighted_error_map = slice_gas(**common_arguments, project="mass_weighted_error")
 mass_weighted_vr_map = slice_gas(**common_arguments, project="mass_weighted_vr")
 mass_weighted_Bz_map = slice_gas(**common_arguments, project="mass_weighted_Bz")
-mass_weighted_J_map = slice_gas(**common_arguments, project="mass_weighted_J") 
+mass_weighted_J_map = slice_gas(**common_arguments, project="mass_weighted_J")
 
 density_map_xy = mass_weighted_density_map_xy / mass_map_xy
 density_map = mass_weighted_density_map / mass_map
@@ -122,7 +124,7 @@ density_map_xy.convert_to_units(unyt.g * unyt.cm ** (-3))
 density_map.convert_to_units(unyt.g * unyt.cm ** (-3))
 vr_map.convert_to_units(unyt.km / unyt.s)
 Bz_map.convert_to_units(1e-7 * unyt.g / (unyt.A * unyt.s * unyt.s))
-J_map.convert_to_units(unyt.A / (unyt.m**2))
+J_map.convert_to_units(unyt.A / (unyt.m ** 2))
 
 fig, ax = plt.subplots(3, 2, sharey=True, figsize=(10, 15))
 
@@ -146,23 +148,23 @@ a10 = ax[1, 0].contourf(
     vr_map.value, cmap="CMRmap", extend="both", levels=np.linspace(-1.0, 1.0, 100)
 )
 a11 = ax[1, 1].contourf(
-    error_map.value, cmap="jet", extend="both", levels=np.arange(-6.0, 3.0,1.0)
+    error_map.value, cmap="jet", extend="both", levels=np.arange(-6.0, 3.0, 1.0)
 )
 a20 = ax[2, 0].contourf(
     np.log10(np.maximum(J_map.value, -15)),
-    cmap='nipy_spectral',
+    cmap="nipy_spectral",
     extend="both",
-    levels=np.linspace(-15, -11, 100), 
+    levels=np.linspace(-15, -11, 100),
 )
 a21 = ax[2, 1].contourf(
     np.log10(np.maximum(Bz_map.value, -6.9)),
-    cmap="nipy_spectral_r", 
+    cmap="nipy_spectral_r",
     extend="both",
     levels=np.linspace(2.0, 5.0, 100),
 )
 
-locs = [512/4,512/2,3*512/4]
-labels = [-Lslice_AU/2,0,Lslice_AU/2]
+locs = [512 / 4, 512 / 2, 3 * 512 / 4]
+labels = [-Lslice_AU / 2, 0, Lslice_AU / 2]
 
 for ii in range(3):
     ax[ii, 0].set_ylabel(r"$z$ [A.U.]")

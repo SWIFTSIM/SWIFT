@@ -63,9 +63,11 @@ visualise_region = [
     0.5 * boxSize[0] + visfrac * boxSize[0],
     0.5 * boxSize[1] - visfrac * boxSize[1],
     0.5 * boxSize[1] + visfrac * boxSize[1],
-]    
+]
 
-common_arguments = dict(data=data, resolution=512, parallel=True, region=visualise_region)
+common_arguments = dict(
+    data=data, resolution=512, parallel=True, region=visualise_region
+)
 
 mass_map = project_gas(**common_arguments, project="masses")
 
@@ -84,15 +86,15 @@ mass_weighted_normB_map = project_gas(**common_arguments, project="mass_weighted
 mass_weighted_error_map = project_gas(**common_arguments, project="mass_weighted_error")
 
 # Take out mass dependence
-#density_map = mass_weighted_density_map / mass_map
+# density_map = mass_weighted_density_map / mass_map
 
 mass_map.convert_to_units(unyt.Msun * unyt.pc ** (-2))
 
 pressure_map = mass_weighted_pressure_map / mass_map
-#pressure_map.convert_to_units(unyt.kg)
+# pressure_map.convert_to_units(unyt.kg)
 
 normv_map = mass_weighted_normv_map / mass_map
-normv_map.convert_to_units(unyt.km * unyt.s ** (-1)) 
+normv_map.convert_to_units(unyt.km * unyt.s ** (-1))
 
 normB_map = mass_weighted_normB_map / mass_map
 normB_map.convert_to_units(1e-7 * unyt.g * unyt.statA ** (-1) * unyt.s ** (-2))
@@ -106,18 +108,32 @@ fig, ax = plt.subplots(3, 2, figsize=(12.25, 17))
 lvs = 100
 
 a00 = ax[0, 0].contourf(
-    np.log10(mass_map.value.T), cmap="gist_heat", levels=np.linspace(0.5, 2.5, 100), extend='both'
+    np.log10(mass_map.value.T),
+    cmap="gist_heat",
+    levels=np.linspace(0.5, 2.5, 100),
+    extend="both",
 )
 a01 = ax[0, 1].contourf(
-    np.log10(pressure_map.value.T), cmap="gist_heat",  extend='both', levels=lvs #np.linspace(0.0, 1.0, 100)
+    np.log10(pressure_map.value.T),
+    cmap="gist_heat",
+    extend="both",
+    levels=lvs,  # np.linspace(0.0, 1.0, 100)
 )
 a10 = ax[1, 0].contourf(
-    np.log10(normv_map.value.T), cmap="gist_heat", extend='both', levels=lvs #np.linspace(0.0, 1.0, 100)
+    np.log10(normv_map.value.T),
+    cmap="gist_heat",
+    extend="both",
+    levels=lvs,  # np.linspace(0.0, 1.0, 100)
 )
 a11 = ax[1, 1].contourf(
-    np.log10(normB_map.value.T), cmap="gist_heat", extend='both', levels=lvs #np.linspace(0.5, 1.75, 100)
+    np.log10(normB_map.value.T),
+    cmap="gist_heat",
+    extend="both",
+    levels=lvs,  # np.linspace(0.5, 1.75, 100)
 )
-a20 = ax[2, 0].contourf(error_map.value.T, cmap="jet", extend='both', levels=np.linspace(-5.0, 0.0, 6))
+a20 = ax[2, 0].contourf(
+    error_map.value.T, cmap="jet", extend="both", levels=np.linspace(-5.0, 0.0, 6)
+)
 
 # Add panel with infromation about the run
 text_common_args = dict(
@@ -167,7 +183,7 @@ fig.colorbar(
     fraction=0.042,
     pad=0.04,
     location="left",
-    #ticks=np.linspace(0.0, 2.5, 6),
+    # ticks=np.linspace(0.0, 2.5, 6),
 )
 
 fig.colorbar(
@@ -176,7 +192,7 @@ fig.colorbar(
     label=r"$\mathrm{log}_{10} \; P \; [M_{\odot} \; / kpc \; / {Gyr}^{-2}]$",
     fraction=0.042,
     pad=0.04,
-    #ticks=np.linspace(0.0, 1.0, 6),
+    # ticks=np.linspace(0.0, 1.0, 6),
 )
 
 fig.colorbar(
@@ -186,7 +202,7 @@ fig.colorbar(
     fraction=0.042,
     pad=0.04,
     location="left",
-    #ticks=np.linspace(0.0, 1.0, 6),
+    # ticks=np.linspace(0.0, 1.0, 6),
 )
 
 fig.colorbar(
@@ -195,7 +211,7 @@ fig.colorbar(
     label=r"$\mathrm{log}_{10} \; |\mathbf{B}| \; [\mu G]$",
     fraction=0.042,
     pad=0.04,
-    #ticks=np.linspace(0.5, 1.75, 6),
+    # ticks=np.linspace(0.5, 1.75, 6),
 )
 
 fig.colorbar(

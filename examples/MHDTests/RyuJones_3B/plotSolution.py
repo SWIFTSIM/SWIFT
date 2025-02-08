@@ -132,7 +132,7 @@ ax[1][3].text(
 )
 '''
 
-for a in ax[-1,:]:
+for a in ax[-1, :]:
     a.set_xlabel("x")
 
 # make sure all velocity and magnetic fields plots use the same y axis
@@ -141,21 +141,21 @@ ax[0][0].set_ylim(0.4, 1.1)
 ax[0][1].set_ylim(0.2, 1.1)
 ax[0][2].set_ylim(-4.0, 1.0)
 
-for a in ax[1,:]:
-   a.set_ylim(-1.2, 1.2)
+for a in ax[1, :]:
+    a.set_ylim(-1.2, 1.2)
 
 ax[2][1].set_ylim(0.4, 1.1)
 
 for a in [ax[2, 0], ax[2, 2]]:
-   a.set_ylim(-0.5, 0.5)
-  
-'''
+    a.set_ylim(-0.5, 0.5)
+
+"""
 ax[1][3].tick_params(
     left=False, right=False, labelleft=False, labelbottom=False, bottom=False
 )
 ax[1][3].set_xlabel("")
 ax[1][3].plot(frameon=False)
-'''
+"""
 
 # mark the validity area: [0,1] and [3,4] contain the solution of the
 # mirrored Riemann problem across the periodic boundary

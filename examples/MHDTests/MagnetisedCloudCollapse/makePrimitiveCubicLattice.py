@@ -16,8 +16,10 @@ def generate_cube(num_on_side, side_length=1.0):
     Generates a cube
     """
 
-    values, step = np.linspace(0.0, side_length, num_on_side, endpoint=False, retstep=True)
-    values += 0.5*step
+    values, step = np.linspace(
+        0.0, side_length, num_on_side, endpoint=False, retstep=True
+    )
+    values += 0.5 * step
 
     positions = np.empty((num_on_side ** 3, 3), dtype=float)
 

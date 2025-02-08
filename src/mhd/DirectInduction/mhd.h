@@ -452,7 +452,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
 
   /* Zero the fields updated by the mhd force loop */
   p->mhd_data.divB = 0.0f;
-  
+
   p->mhd_data.B_over_rho_dt[0] = 0.0f;
   p->mhd_data.B_over_rho_dt[1] = 0.0f;
   p->mhd_data.B_over_rho_dt[2] = 0.0f;

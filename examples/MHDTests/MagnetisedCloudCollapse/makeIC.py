@@ -131,8 +131,8 @@ B = zeros((numPart, 3))
 B[:, 2] = Bini
 
 A = zeros((numPart, 3))
-A[:,0] = -Bini * (pos[:,1]-0.5*Lbox)/2
-A[:,1] = Bini * (pos[:,0]-0.5*Lbox)/2
+A[:, 0] = -Bini * (pos[:, 1] - 0.5 * Lbox) / 2
+A[:, 1] = Bini * (pos[:, 0] - 0.5 * Lbox) / 2
 
 
 epsilon_lim = cbrt(M / (numPart_in * 1e-11)) / 3.086e18
