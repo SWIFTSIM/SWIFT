@@ -389,8 +389,8 @@ INLINE static void star_formation_compute_SFR_schmidt_law(
  * law based on Schaye and Dalla Vecchia (2008), the star formation
  * rate is calculated as:
  *
- * \dot{m}_\star = A (1 Msun / pc^-2)^-n m_gas (\gamma/G * f_g *
- *                 pressure)**((n-1)/2)
+ * \f$ \dot{m}_\star = A (1 Msun / pc^-2)^-n m_gas (\gamma/G * f_g *
+ *                   pressure)**((n-1)/2) \f$
  *
  * @param p #part.
  * @param xp the #xpart.
