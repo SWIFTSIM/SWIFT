@@ -253,19 +253,21 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   /* Everything is in physical units here */
 
   /* Obtain velocity in interface frame */
-  /* const double u_L = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2]; */
-  /* const double u_R = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2]; */
-  /* const double u_rel = u_R - u_L; */
+  const double u_L = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
+  const double u_R = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
+  const double u_rel = u_R - u_L;
 
   /* Get the fastet speed of sound. Use physical soundspeed */
   /* const double c_s_L = hydro_get_physical_soundspeed(pi, cosmo); */
   /* const double c_s_R = hydro_get_physical_soundspeed(pj, cosmo); */
-  /* const double c_s_L = chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo); */
-  /* const double c_s_R = chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo); */
-  /* const double c_fast = max(c_s_L, c_s_R); */
-  /* const double lambda_plus = fabs(u_rel) + c_fast; */
-  /* const double lambda_plus = c_fast; */
-  /* const double lambda_minus = -lambda_plus; */
+  const double c_s_L = chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo);
+  const double c_s_R = chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo);
+  const double c_fast = max(c_s_L, c_s_R);
+  const double lambda_plus = fabs(u_rel) + c_fast;
+  const double lambda_minus = -lambda_plus;
+
+  const double aL = c_s_L;
+  const double aR = c_s_R;
 
   /* Toro's wavespeed */
   /* const double lambda_plus = max(u_L + c_s_L, u_R + c_s_R); */
@@ -322,7 +324,7 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   pj->chemistry_data.wavespeed = max(pj->chemistry_data.wavespeed, lambda_plus);
 
   /* Handle vacuum: vacuum does not require iteration and is always exact */
-  if (riemann_is_vacuum(WL, WR, uL, uR, aL, aR)) {
+  if (riemann_is_vacuum(WL, WR, u_L, u_R, aL, aR)) {
     *metal_flux = 0.0f;
     return;
   }
