@@ -241,8 +241,8 @@ chemistry_riemann_solver_hopkins2017_HLL(
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
-    const float dx[3],  struct part *restrict pi,
-    struct part *restrict pj, const double UL, const double UR,
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const double UL, const double UR,
     const float WL[5], const float WR[5], const double F_diff_L[3],
     const double F_diff_R[3], const float Anorm, const float n_unit[3],
     const int m, const struct chemistry_global_data *chem_data,
@@ -302,9 +302,6 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   /* } */
   /* const double lambda_minus = -aL * qL; */
   /* const double lambda_plus = aR * qR; */
-
-  pi->chemistry_data.wavespeed = max(pi->chemistry_data.wavespeed, lambda_plus);
-  pj->chemistry_data.wavespeed = max(pj->chemistry_data.wavespeed, lambda_plus);
 
   /* Handle vacuum: vacuum does not require iteration and is always exact */
   if (riemann_is_vacuum(WL, WR, u_L, u_R, aL, aR)) {
