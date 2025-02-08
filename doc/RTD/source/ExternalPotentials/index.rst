@@ -383,6 +383,65 @@ The parameters of the model are:
 Note that the default value of the "Hubble constant" here seems odd. As it
 enters multiplicatively with the :math:`f_1` term, the absolute normalisation is
 actually not important.
+
+Dynamical friction
+..................
+
+This potential can be supplemented by a dynamical friction force, following the Chandrasekhar’s dynamical friction formula,
+where the velocity distribution function is assumed to be Maxwellian (Binney & Tremaine 2008, eq. 8.7):
+
+:math:`\frac{\rm{d} \vec{v}_{\rm M}}{\rm{d} t}=-\frac{4\pi G^2M_{\rm sat}\rho \ln \Lambda}{v^3_{\rm{M}}} \left[ \rm{erf}(X) - \frac{2 X}{\sqrt\pi} e^{-X^2} \right] \vec{v}_{\rm M}`,
+
+with:
+
+:math:`X = \frac{v_{\rm{M}}}{\sqrt{2} \sigma}`, :math:`\sigma` being the radius-dependent velocity dispersion of the galaxy.
+This latter is computed using the Jeans equations, assuming a spherical component. It is provided by a polynomial fit of order 16.
+The velocity dispersion is floored to :math:`\sigma_{\rm min}`, a free parameter.
+:math:`\ln \Lambda` is the Coulomb parameter. 
+:math:`M_{\rm sat}` is the mass of the in-falling satellite on which the dynamical friction is supposed to act.
+
+To prevent very high values of the dynamical friction that can occurs at the center of the model, the acceleration is multiplied by:
+
+:math:`\rm{max} \left(0, \rm{erf}\left( 2\, \frac{ r-r_{\rm{core}} }{r_{\rm{core}}} \right) \right)`
+
+This can also mimic the decrease of the dynamical friction due to a core.
+
+
+The additional parameters for the dynamical friction are:
+
+.. code:: YAML
+
+      with_dynamical_friction: 0               # Are we running with dynamical friction ? 0 -> no, 1 -> yes
+      df_lnLambda: 5.0                         # Coulomb logarithm
+      df_sigma_floor_km_p_s : 10.0             # Minimum velocity dispersion for the velocity dispersion model
+      df_satellite_mass_in_Msun : 1.0e10       # Satellite mass in solar mass
+      df_core_radius_in_kpc: 10                # Radius below which the dynamical friction vanishes.
+      df_polyfit_coeffs00: -2.96536595e-31     # Polynomial fit coefficient for the velocity dispersion model (order 16)
+      df_polyfit_coeffs01:  8.88944631e-28     # Polynomial fit coefficient for the velocity dispersion model (order 15)
+      df_polyfit_coeffs02: -1.18280578e-24     # Polynomial fit coefficient for the velocity dispersion model (order 14)
+      df_polyfit_coeffs03:  9.29479457e-22     # Polynomial fit coefficient for the velocity dispersion model (order 13)
+      df_polyfit_coeffs04: -4.82805265e-19     # Polynomial fit coefficient for the velocity dispersion model (order 12)
+      df_polyfit_coeffs05:  1.75460211e-16     # Polynomial fit coefficient for the velocity dispersion model (order 11)
+      df_polyfit_coeffs06: -4.59976540e-14     # Polynomial fit coefficient for the velocity dispersion model (order 10)
+      df_polyfit_coeffs07:  8.83166045e-12     # Polynomial fit coefficient for the velocity dispersion model (order 9)
+      df_polyfit_coeffs08: -1.24747700e-09     # Polynomial fit coefficient for the velocity dispersion model (order 8)
+      df_polyfit_coeffs09:  1.29060404e-07     # Polynomial fit coefficient for the velocity dispersion model (order 7)
+      df_polyfit_coeffs10: -9.65315026e-06     # Polynomial fit coefficient for the velocity dispersion model (order 6)
+      df_polyfit_coeffs11:  5.10187806e-04     # Polynomial fit coefficient for the velocity dispersion model (order 5)
+      df_polyfit_coeffs12: -1.83800281e-02     # Polynomial fit coefficient for the velocity dispersion model (order 4)
+      df_polyfit_coeffs13:  4.26501444e-01     # Polynomial fit coefficient for the velocity dispersion model (order 3)
+      df_polyfit_coeffs14: -5.78038064e+00     # Polynomial fit coefficient for the velocity dispersion model (order 2)
+      df_polyfit_coeffs15:  3.57956721e+01     # Polynomial fit coefficient for the velocity dispersion model (order 1)
+      df_polyfit_coeffs16:  1.85478908e+02     # Polynomial fit coefficient for the velocity dispersion model (order 0)
+      df_timestep_mult : 0.1                   # Dimensionless pre-factor for the time-step condition for the dynamical friction force
+
+
+
+
+
+ 
+
+
       
 How to implement your own potential
 -----------------------------------
