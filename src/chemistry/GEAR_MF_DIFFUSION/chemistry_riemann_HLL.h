@@ -273,52 +273,35 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   /* const double lambda_plus = max(u_L + c_s_L, u_R + c_s_R); */
   /* const double lambda_minus = min(u_L - c_s_L, u_R - c_s_R); */
 
-  /* Roe's wavespeed */
-  /* const double rho_L = WL[0]; */
-  /* const double rho_R = WR[0]; */
-  /* const double rho_sum = rho_L + rho_R; */
-
-  /* if (rho_sum <= 0.0) { */
-  /*   *metal_flux = 0.0; */
-  /*   return; */
-  /* } */
-
-  /* const double u_bar = (rho_L*u_L + rho_R*u_R)/ rho_sum; */
-  /* const double c_L_2 = c_s_L * c_s_L; */
-  /* const double c_R_2 = c_s_R * c_s_R; */
-  /* const double c_bar = sqrt((rho_L*c_L_2 + rho_R*c_R_2) / rho_sum); */
-  /* const double lambda_plus = u_bar + c_bar; */
-  /* const double lambda_minus = u_bar - c_bar; */
-
   /* PVRS wavespeed approximation */
-  const double uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
-  const double uR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
-  const double rhoLinv = (WL[0] > 0.0f) ? 1.0f / WL[0] : 0.0f;
-  const double rhoRinv = (WR[0] > 0.0f) ? 1.0f / WR[0] : 0.0f;
-  const double aL = sqrtf(hydro_gamma * WL[4] * rhoLinv);
-  const double aR = sqrtf(hydro_gamma * WR[4] * rhoRinv);
+  /* const double u_L = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2]; */
+  /* const double u_R = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2]; */
+  /* const double rhoLinv = (WL[0] > 0.0f) ? 1.0f / WL[0] : 0.0f; */
+  /* const double rhoRinv = (WR[0] > 0.0f) ? 1.0f / WR[0] : 0.0f; */
+  /* const double aL = sqrtf(hydro_gamma * WL[4] * rhoLinv); */
+  /* const double aR = sqrtf(hydro_gamma * WR[4] * rhoRinv); */
 
-  /* Pressure estimate */
-  const double rhobar = WL[0] + WR[0];
-  const double abar = aL + aR;
-  const double pPVRS =
-      0.5f * ((WL[4] + WR[4]) - 0.25f * (uR - uL) * rhobar * abar);
-  const double pstar = max(0.0f, pPVRS);
+  /* /\* Pressure estimate *\/ */
+  /* const double rhobar = WL[0] + WR[0]; */
+  /* const double abar = aL + aR; */
+  /* const double pPVRS = */
+  /*     0.5f * ((WL[4] + WR[4]) - 0.25f * (u_R - u_L) * rhobar * abar); */
+  /* const double pstar = max(0.0f, pPVRS); */
 
-  /* Wave speed estimates
-     all these speeds are along the interface normal, since uL and uR are */
-  double qL = 1.0f;
-  if (pstar > WL[4] && WL[4] > 0.0f) {
-    qL = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                          (pstar / WL[4] - 1.0f));
-  }
-  double qR = 1.0f;
-  if (pstar > WR[4] && WR[4] > 0.0f) {
-    qR = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                          (pstar / WR[4] - 1.0f));
-  }
-  const double lambda_minus = -aL * qL;
-  const double lambda_plus = aR * qR;
+  /* /\* Wave speed estimates */
+  /*    all these speeds are along the interface normal, since u_L and u_R are *\/ */
+  /* double qL = 1.0f; */
+  /* if (pstar > WL[4] && WL[4] > 0.0f) { */
+  /*   qL = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma * */
+  /*                         (pstar / WL[4] - 1.0f)); */
+  /* } */
+  /* double qR = 1.0f; */
+  /* if (pstar > WR[4] && WR[4] > 0.0f) { */
+  /*   qR = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma * */
+  /*                         (pstar / WR[4] - 1.0f)); */
+  /* } */
+  /* const double lambda_minus = -aL * qL; */
+  /* const double lambda_plus = aR * qR; */
 
   pi->chemistry_data.wavespeed = max(pi->chemistry_data.wavespeed, lambda_plus);
   pj->chemistry_data.wavespeed = max(pj->chemistry_data.wavespeed, lambda_plus);
@@ -451,41 +434,6 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /***************************************************************************/
   /* Estimate the eigenvalue of the Jacobian matrix dF/dU */
   /* Everything is in physical units here */
-
-  /* Obtain velocity in interface frame */
-  /* const double u_L = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2]; */
-  /* const double u_R = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2]; */
-  /* const double u_rel = u_R - u_L; */
-
-  /* Get the fastet speed of sound. Use physical soundspeed */
-  /* const double c_s_L = hydro_get_physical_soundspeed(pi, cosmo); */
-  /* const double c_s_R = hydro_get_physical_soundspeed(pj, cosmo); */
-  /* const double c_s_L = chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo); */
-  /* const double c_s_R = chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo); */
-  /* const double c_fast = max(c_s_L, c_s_R); */
-  /* const double lambda_plus = fabs(u_rel) + c_fast; */
-  /* const double lambda_minus = -lambda_plus; */
-
-  /* Toro's wavespeed */
-  /* const double lambda_plus = max(u_L + c_s_L, u_R + c_s_R); */
-  /* const double lambda_minus = min(u_L - c_s_L, u_R - c_s_R); */
-
-  /* Roe's wavespeed */
-  /* const double rho_L = WL[0]; */
-  /* const double rho_R = WR[0]; */
-  /* const double rho_sum = rho_L + rho_R; */
-
-  /* if (rho_sum <= 0.0) { */
-  /*   *metal_flux = 0.0; */
-  /*   return; */
-  /* } */
-
-  /* const double u_bar = (rho_L*u_L + rho_R*u_R)/ rho_sum; */
-  /* const double c_L_2 = c_s_L * c_s_L; */
-  /* const double c_R_2 = c_s_R * c_s_R; */
-  /* const double c_bar = sqrt((rho_L*c_L_2 + rho_R*c_R_2) / rho_sum); */
-  /* const double lambda_plus = u_bar + c_bar; */
-  /* const double lambda_minus = u_bar - c_bar; */
 
   /* PVRS wavespeed approximation */
   const double uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
