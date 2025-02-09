@@ -304,7 +304,7 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   /* const double lambda_plus = aR * qR; */
 
   /* Handle vacuum: vacuum does not require iteration and is always exact */
-  if (riemann_is_vacuum(WL, WR, u_L, u_R, aL, aR)) {
+  if (chemistry_riemann_is_vacuum(WL, WR, u_L, u_R, aL, aR)) {
     *metal_flux = 0.0f;
     return;
   }
@@ -535,7 +535,7 @@ chemistry_riemann_solve_for_flux(
     const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double *metal_flux) {
 
-  riemann_check_input(WL, WR, UL, UR, n_unit);
+  chemistry_riemann_check_input(WL, WR, UL, UR, n_unit);
 
   /* Handle pure vacuum */
   if ((!UL && !UR) || (!WL[0] && !WR[0])) {
@@ -574,7 +574,7 @@ chemistry_riemann_solve_for_flux(
 					   m, chem_data, cosmo, metal_flux);
 #endif
 
-  riemann_check_output(WL, WR, UL, UR, n_unit, metal_flux);
+  chemistry_riemann_check_output(WL, WR, UL, UR, n_unit, metal_flux);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_HLL_H */

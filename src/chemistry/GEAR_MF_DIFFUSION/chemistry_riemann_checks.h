@@ -38,7 +38,7 @@
  * @param U Diffusion state vector.
  * @return 0 if the state vector is valid, 1 otherwise.
  */
-__attribute__((always_inline)) INLINE static int riemann_check_state(
+__attribute__((always_inline)) INLINE static int chemistry_riemann_check_state(
   const float W[5], const double U) {
 
   int errorFlag = 0;
@@ -98,7 +98,7 @@ __attribute__((always_inline)) INLINE static int riemann_check_state(
  * @param x Vector to check.
  * @return 0 if the vector is valid, 1 otherwise.
  */
-__attribute__((always_inline)) INLINE static int riemann_check_vector(
+__attribute__((always_inline)) INLINE static int chemistry_riemann_check_vector(
     const float x[3]) {
 
   int errorFlag = 0;
@@ -134,22 +134,22 @@ __attribute__((always_inline)) INLINE static int riemann_check_vector(
  * @param n Surface normal vector.
  * @param vij Surface velocity vector.
  */
-__attribute__((always_inline)) INLINE static void riemann_check_input(
+__attribute__((always_inline)) INLINE static void chemistry_riemann_check_input(
   const float WL[5], const float WR[5], const double UL, const double UR, const float *n) {
 
   int errorFlag = 0;
 
-  if (riemann_check_state(WL, UL)) {
+  if (chemistry_riemann_check_state(WL, UL)) {
     message("Invalid left state!");
     errorFlag = 1;
   }
 
-  if (riemann_check_state(WR, UR)) {
+  if (chemistry_riemann_check_state(WR, UR)) {
     message("Invalid right state!");
     errorFlag = 1;
   }
 
-  if (riemann_check_vector(n)) {
+  if (chemistry_riemann_check_vector(n)) {
     message("Invalid surface normal vector!");
     errorFlag = 1;
   }
@@ -174,7 +174,7 @@ __attribute__((always_inline)) INLINE static void riemann_check_input(
  * @param vij Surface velocity vector.
  * @param totflux Riemann solver flux result.
  */
-__attribute__((always_inline)) INLINE static void riemann_check_output(
+__attribute__((always_inline)) INLINE static void chemistry_riemann_check_output(
     const float *WL, const float *WR, const double UL, const double UR,
     const float *n, const double* totflux) {
 
