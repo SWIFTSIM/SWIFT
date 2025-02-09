@@ -43,6 +43,8 @@ B0 = 1.0 / (np.sqrt(4.0 * np.pi))  # Magnetic field
 P0 = gamma * B0 * B0  # Pressure
 rho0 = gamma * P0 / v0  # Density
 
+print(rho0,P0)
+
 fileOutputName = "OrszagTangVortex.hdf5"
 
 # Stack unit cells

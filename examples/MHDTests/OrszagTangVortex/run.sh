@@ -20,7 +20,7 @@ then
 fi
 
 # Run the example with SWIFT 
-../../../swift --hydro --threads=4 OrszagTangVortex.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=18 OrszagTangVortex.yml 2>&1 | tee output.log
 
 # Plot the calculated solution at time t=1.0
 python3 plotSolution.py OrszagTangVortex_0011.hdf5 OrszagTangVortex_0011.png	

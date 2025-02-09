@@ -14,7 +14,7 @@ then
 fi
 
 # Run the example with SWIFT 
-../../../swift --hydro --threads=4 Monopole.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=18 Monopole.yml 2>&1 | tee output.log
 
 # Plot the time evolution of the average divergence error
 python3 divergence_evolution.py statistics.txt 

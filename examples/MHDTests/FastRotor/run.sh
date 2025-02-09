@@ -14,7 +14,7 @@ then
 fi
 
 # Run the example with SWIFT 
-../../../swift --hydro --threads=4 FastRotor.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=18 FastRotor.yml 2>&1 | tee output.log
 
 # Plot the calculated solution at time t=0.15
 python3 plotSolution.py FastRotor_0015.hdf5 FastRotor_0015.png	
