@@ -404,18 +404,46 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     mm_i[j][j] -= 0.5 * (Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2]);
     mm_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
   }
+
+  //////////////////////////// Magnetic acceleration variable
+
+  float a_mag_i[3]={0.0f,0.0f,0.0f};
+  float a_mag_j[3]={0.0f,0.0f,0.0f};
+
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
-      pi->a_hydro[i] +=
+      a_mag_i[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pj->a_hydro[i] -=
+      a_mag_j[i] -=
           mi * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pi->a_hydro[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
+      a_mag_i[i] -= 0.0f * pi->mhd_data.Q0 * mj * Bi[i] *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
-      pj->a_hydro[i] += pj->mhd_data.Q0 * mi * Bj[i] *
+      a_mag_j[i] += 0.0f * pj->mhd_data.Q0 * mi * Bj[i] *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
+
+  ////////////////////////////// Correct for lorentz force component parallel to B
+  float a_mul_i = 0.0f;
+  float a_mul_j = 0.0f;
+
+  float B2i = sqrtf(Bi[0]*Bi[0]+Bi[1]*Bi[1]+Bi[2]*Bi[2]);
+  float B2j = sqrtf(Bj[0]*Bj[0]+Bj[1]*Bj[1]+Bj[2]*Bj[2]);
+
+  for (int k = 0; k < 3; k++) {
+    a_mul_i += a_mag_i[k]*Bi[k]/(B2i+FLT_MIN);
+    a_mul_j += a_mag_j[k]*Bj[k]/(B2j+FLT_MIN);
+  }
+  for (int k = 0; k < 3; k++) {
+    a_mag_i[k] -= Bi[k]*a_mul_i;
+    a_mag_j[k] -= Bj[k]*a_mul_j;
+  }  
+
+  ////////////////////////////// Apply forces
+  for (int k = 0; k<3; k++){
+    pi->a_hydro[k]+=a_mag_i[k];
+    pj->a_hydro[k]+=a_mag_j[k];
+  }
 
   /* Save forces*/
   for (int i = 0; i < 3; i++) {
@@ -562,21 +590,43 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     mm_i[j][j] -= 0.5 * (Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2]);
     mm_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
   }
+
+  //////////////////////////// Magnetic acceleration variable
+
+  float a_mag_i[3]={0.0f,0.0f,0.0f};
+
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
-      pi->a_hydro[i] +=
+      a_mag_i[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pi->a_hydro[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
+      a_mag_i[i] -= 0.0f* pi->mhd_data.Q0 * mj * Bi[i] *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
+
+  ////////////////////////////// Correct for lorentz force component parallel to B
+  float a_mul_i = 0.0f;
+
+  float B2i = sqrtf(Bi[0]*Bi[0]+Bi[1]*Bi[1]+Bi[2]*Bi[2]);
+
+  for (int k = 0; k < 3; k++) {
+    a_mul_i += a_mag_i[k]*Bi[k]/(B2i+FLT_MIN);
+  }
+  for (int k = 0; k < 3; k++) {
+    a_mag_i[k] -= Bi[k]*a_mul_i;
+  }  
+
+  ////////////////////////////// Apply forces
+  for (int k = 0; k<3; k++){
+    pi->a_hydro[k]+=a_mag_i[k];
+  }
 
   /* Save forces*/
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       pi->mhd_data.tot_mag_F[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pi->mhd_data.tot_mag_F[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
+      pi->mhd_data.tot_mag_F[i] -= 0.0f * pi->mhd_data.Q0 * mj * Bi[i] *
                                    (Bi[j] * mag_faci + Bj[j] * mag_facj) *
                                    dx[j];
     }
