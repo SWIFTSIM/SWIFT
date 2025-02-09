@@ -86,7 +86,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
 
 #if defined(HYDRO_DOES_MASS_FLUX)
   chemistry_kick_extra_mass_flux(p, dt_therm, dt_grav, dt_hydro, dt_kick_corr,
-                                 cosmo, hydro_props)
+                                 cosmo, hydro_props);
 #endif
 }
 
