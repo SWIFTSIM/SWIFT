@@ -567,7 +567,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 #endif
     chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g],
                                      m_metal_old, hydro_get_mass(p),
-                                     /*callloc=*/3, /*element*/ g);
+                                     /*callloc=*/3, /*element*/ g, p->id);
   }
 
   /* Sanity check on the total metal mass */
@@ -655,7 +655,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     const double m_metal_old = chd->metal_mass[i];
     chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
                                      hydro_get_mass(p), /*callloc=*/2,
-                                     /*element*/ i);
+                                     /*element*/ i, p->id);
   }
 
   /* Sanity check on the total metal mass */
@@ -1071,7 +1071,7 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
     const double m_metal_old = chd->metal_mass[i];
     chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
                                      hydro_get_mass(p), /*callloc=*/10,
-                                     /*element*/ i);
+                                     /*element*/ i, p->id);
   }
 
   /* Sanity check on the total metal mass */
