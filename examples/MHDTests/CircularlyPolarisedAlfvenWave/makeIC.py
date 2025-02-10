@@ -91,13 +91,40 @@ u = np.ones(N) * P / (rho * (gamma - 1))
 v[1, :] = 0.1 * np.sin(wavenum * x1)
 v[2, :] = 0.1 * np.cos(wavenum * x1)
 
+# default ICs 
+#B[0, :] = 1.0
+#B[1, :] = B0 * np.sin(wavenum * x1)
+#B[2, :] = B0 * np.cos(wavenum * x1)
 
-B[0, :] = 1.0
-B[1, :] = B0 * np.sin(wavenum * x1)
-B[2, :] = B0 * np.cos(wavenum * x1)
+#A[1, :] = B0 / wavenum * np.sin(wavenum * x1)
+#A[2, :] = B0 / wavenum * np.cos(wavenum * x1)
 
-A[1, :] = B0 / wavenum * np.sin(wavenum * x1)
-A[2, :] = B0 / wavenum * np.cos(wavenum * x1)
+# New ICs
+aL = 1.0
+aR = 0.0
+phase = 0.0
+
+epsR = [-(+sinb+1j*sina*cosb)/np.sqrt(2),(cosb - 1j * sina * sinb)/np.sqrt(2),1j*cosa/np.sqrt(2)]
+epsL = np.conjugate(epsR) 
+kort = [cosa * cosb, cosa*sinb, sina]
+expikr = np.exp(1j*(wavenum*np.matmul(kort, pos.T)+phase))
+
+kepsR = 1j*np.cross(kort,epsR)
+kepsL = 1j*np.cross(kort,epsL)
+
+#print('1',kepsL, epsR)
+#print('2',kepsR, epsL)
+
+print(np.dot(kepsR,np.conjugate(epsR)))
+
+for k in range(0,2):
+    A[k,:] = B0/wavenum * (aL * np.real(epsL[k] * expikr) + aR * np.real(epsR[k] * expikr))
+    B[k,:] = B0 * (aL * np.real(expikr*kepsL[k]) + aR * np.real(expikr*kepsR[k]))
+print(A)
+print(B)
+#print(x1)
+#print(np.matmul(kort, pos.T))
+
 
 v = np.matmul(Rotation, v)
 B = np.matmul(Rotation, B)
