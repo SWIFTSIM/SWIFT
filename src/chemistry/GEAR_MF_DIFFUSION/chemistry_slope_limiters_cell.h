@@ -86,6 +86,10 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
       min(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][0]);
     chi->limiter.Z[i][1] =
       max(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][1]);
+
+    /* Ensures metalicity never exceeds 1 */
+    chi->limiter.Z[i][1] =
+      min(1.0, chi->limiter.Z[i][1]);
   }
 
   chi->limiter.v[0][0] = min(pj->v[0], chi->limiter.v[0][0]);
