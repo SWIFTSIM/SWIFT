@@ -329,6 +329,7 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
     return;
   }
 
+  /* Note: dx = pi->x - pj->x (with the periodic wrapping terms) */
   const float dx_p[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a, dx[2] * cosmo->a};
   const float dx_p_norm_2 =
       sqrtf(dx_p[0] * dx_p[0] + dx_p[1] * dx_p[1] + dx_p[2] * dx_p[2]);
@@ -357,9 +358,11 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   const double qi = chemistry_get_metal_mass_fraction(pi, m);
   const double qj = chemistry_get_metal_mass_fraction(pj, m);
   const double dq = qj - qi;
-  const double nabla_o_q_dir[3] = {dx_p[0] * dq / dx_p_norm_2,
-                                   dx_p[1] * dq / dx_p_norm_2,
-                                   dx_p[2] * dq / dx_p_norm_2};
+
+  /* Here we want (x_j - x_i) hence we add a minus sign */
+  const double nabla_o_q_dir[3] = {- dx_p[0] * dq / dx_p_norm_2,
+                                   - dx_p[1] * dq / dx_p_norm_2,
+                                   - dx_p[2] * dq / dx_p_norm_2};
   const double kappa_mean =
       0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
 
@@ -377,9 +380,10 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
       -min_dt * 0.5 * (F_diff_L[2] / tau_L + F_diff_R[2] / tau_R) -
           min_dt * kappa_mean * nabla_o_q_dir[2]};
 
-  const double F_A_right_side[3] = {Anorm * dx_p[0] / dx_p_norm,
-                                    Anorm * dx_p[1] / dx_p_norm,
-                                    Anorm * dx_p[2] / dx_p_norm};
+  /* Here we want (x_j - x_i) hence we add a minus sign */
+  const double F_A_right_side[3] = { - Anorm * dx_p[0] / dx_p_norm,
+                                     - Anorm * dx_p[1] / dx_p_norm,
+                                     - Anorm * dx_p[2] / dx_p_norm};
 
   const double F_times_A_dir = F_A_left_side[0] * F_A_right_side[0] +
                                F_A_left_side[1] * F_A_right_side[1] +
