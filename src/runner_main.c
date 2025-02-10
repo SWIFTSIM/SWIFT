@@ -238,18 +238,8 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_density)
             runner_doself1_branch_density(r, ci);
 #ifdef EXTRA_HYDRO_LOOP
-          else if (t->subtype == task_subtype_gradient) {
+          else if (t->subtype == task_subtype_gradient)
             runner_doself1_branch_gradient(r, ci);
-#ifdef SWIFT_DEBUG_CHECKS
-            int found_corresponding_loop = 0;
-            for (struct link *l = ci->stars.density; l != NULL; l = l->next) {
-              if (l->t->type == task_type_self) {
-                found_corresponding_loop = 1;
-              }
-            }
-            assert(found_corresponding_loop);
-#endif
-          }
 #endif
           else if (t->subtype == task_subtype_force)
             runner_doself2_branch_force(r, ci);
@@ -308,20 +298,8 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_density)
             runner_dopair1_branch_density(r, ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
-          else if (t->subtype == task_subtype_gradient) {
+          else if (t->subtype == task_subtype_gradient)
             runner_dopair1_branch_gradient(r, ci, cj);
-#ifdef SWIFT_DEBUG_CHECKS
-            int found_corresponding_loop_pair = 0;
-            for (struct link *l = ci->stars.density; l != NULL; l = l->next) {
-              if (l->t->type == task_type_pair && l->t->ci == ci &&
-                  l->t->cj == cj) {
-                found_corresponding_loop_pair = 1;
-              }
-            }
-            assert(found_corresponding_loop_pair);
-#endif
-          }
-
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dopair2_branch_force(r, ci, cj);
@@ -377,23 +355,10 @@ void *runner_main(void *data) {
         case task_type_sub_self:
           if (t->subtype == task_subtype_density)
             runner_dosub_self1_density(r, ci, 1);
-
 #ifdef EXTRA_HYDRO_LOOP
-          else if (t->subtype == task_subtype_gradient) {
+          else if (t->subtype == task_subtype_gradient)
             runner_dosub_self1_gradient(r, ci, 1);
-#ifdef SWIFT_DEBUG_CHECKS
-            int found_corresponding_loop = 0;
-            for (struct link *l = ci->stars.density; l != NULL; l = l->next) {
-              if (l->t->type == task_type_sub_self) {
-                found_corresponding_loop = 1;
-              }
-            }
-            assert(found_corresponding_loop);
 #endif
-          }
-#endif
-
-
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
           else if (t->subtype == task_subtype_limiter)
@@ -439,20 +404,8 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_density)
             runner_dosub_pair1_density(r, ci, cj, 1);
 #ifdef EXTRA_HYDRO_LOOP
-          else if (t->subtype == task_subtype_gradient) {
+          else if (t->subtype == task_subtype_gradient)
             runner_dosub_pair1_gradient(r, ci, cj, 1);
-#ifdef SWIFT_DEBUG_CHECKS
-            int found_corresponding_loop_pair = 0;
-            for (struct link *l = ci->stars.density; l != NULL; l = l->next) {
-              if (l->t->type == task_type_sub_pair && l->t->ci == ci &&
-                  l->t->cj == cj) {
-                found_corresponding_loop_pair = 1;
-              }
-            }
-            assert(found_corresponding_loop_pair);
-#endif
-          }
-
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, 1);

@@ -410,6 +410,21 @@ void space_split_recursive(struct space *s, struct cell *c,
               c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
           const double r2 = dx * dx + dy * dy + dz * dz;
           r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
+#ifdef SWIFT_DEBUG_CHECKS
+          if (c->grav.multipole->CoM[0] != c->grav.multipole->CoM[0]
+            && cp->grav.multipole->CoM[0] != cp->grav.multipole->CoM[0]) {
+            error("c and cp grav.multipole is NaN");
+          }
+          else if (c->grav.multipole->CoM[0] != c->grav.multipole->CoM[0]) {
+            error("c grav.multipole is NaN");
+          }
+          else if (cp->grav.multipole->CoM[0] != cp->grav.multipole->CoM[0]) {
+            error("cp grav.multipole is NaN");
+          }
+          if (r_max != r_max) {
+            error("r_max is NaN");
+          }
+#endif
         }
       }
 
@@ -429,7 +444,11 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Take minimum of both limits */
       c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
-
+#ifdef SWIFT_DEBUG_CHECKS
+      if (r_max != r_max) {
+        error("r_max is NaN");
+      }
+#endif
       /* Store the value at rebuild time */
       c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
       c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];

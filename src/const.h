@@ -141,7 +141,7 @@
 #ifdef SHADOWSWIFT_STEER_MOTION
 /*! @brief More agressive cell steering for cold flows, where the other
  * criterion might become ineffective. */
-//#define SHADOWSWIFT_STEERING_COLD_FLOWS
+//#define SHADOWSWIFT_STEERING_COLD_FLOWS /* Enable if shockwaves in cold gas/*
 #endif
 #endif
 /* Options controlling thermal energy evolution */
