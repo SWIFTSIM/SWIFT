@@ -66,9 +66,9 @@ chemistry_riemann_compute_K_star(const struct part *restrict pi,
                                  const struct chemistry_global_data *chem_data,
                                  const struct cosmology *cosmo,
                                  double K_star[3][3]) {
-  double KR[3][3], KL[3][3];
-  chemistry_get_physical_matrix_K(pi, chem_data, cosmo, KR);
-  chemistry_get_physical_matrix_K(pj, chem_data, cosmo, KL);
+  double KL[3][3], KR[3][3];
+  chemistry_get_physical_matrix_K(pi, chem_data, cosmo, KL);
+  chemistry_get_physical_matrix_K(pj, chem_data, cosmo, KR);
 
   /* Init K_star to 0.0. */
   for (int i = 0; i < 3; ++i) {
