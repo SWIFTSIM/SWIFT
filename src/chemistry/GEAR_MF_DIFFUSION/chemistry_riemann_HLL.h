@@ -355,8 +355,14 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   const double flux_hll = F_2 + F_U;
 
   /* Compute the direct fluxes */
-  const double qi = chemistry_get_metal_mass_fraction(pi, m);
-  const double qj = chemistry_get_metal_mass_fraction(pj, m);
+  double qi,qj;
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    qi = chemistry_get_physical_metal_density(pi, m, cosmo);
+    qj = chemistry_get_physical_metal_density(pj, m, cosmo);
+  } else {
+    qi = chemistry_get_metal_mass_fraction(pi, m);
+    qj = chemistry_get_metal_mass_fraction(pj, m);
+  }
   const double dq = qj - qi;
 
   /* Here we want (x_j - x_i) hence we add a minus sign */
