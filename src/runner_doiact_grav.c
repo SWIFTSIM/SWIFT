@@ -2314,7 +2314,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
         /* Loop over ci's children */
         for (int k = 0; k < 8; k++) {
-          if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count > 1)
+          if (ci->progeny[k] != NULL)
             runner_dopair_recursive_grav(r, ci->progeny[k], cj, 0);
         }
 
@@ -2325,7 +2325,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
         /* Loop over cj's children */
         for (int k = 0; k < 8; k++) {
-          if (cj->progeny[k] != NULL && cj->progeny[k]->grav.count > 1)
+          if (cj->progeny[k] != NULL)
             runner_dopair_recursive_grav(r, ci, cj->progeny[k], 0);
         }
       }
@@ -2336,7 +2336,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
         /* Loop over cj's children */
         for (int k = 0; k < 8; k++) {
-          if (cj->progeny[k] != NULL && cj->progeny[k]->grav.count > 1)
+          if (cj->progeny[k] != NULL)
             runner_dopair_recursive_grav(r, ci, cj->progeny[k], 0);
         }
 
@@ -2347,7 +2347,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
         /* Loop over ci's children */
         for (int k = 0; k < 8; k++) {
-          if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count > 1)
+          if (ci->progeny[k] != NULL)
             runner_dopair_recursive_grav(r, ci->progeny[k], cj, 0);
         }
       }
@@ -2391,12 +2391,12 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
   if (c->split) {
 
     for (int j = 0; j < 8; j++) {
-      if (c->progeny[j] != NULL && c->progeny[j]->grav.count > 1) {
+      if (c->progeny[j] != NULL) {
 
         runner_doself_recursive_grav(r, c->progeny[j], 0);
 
         for (int k = j + 1; k < 8; k++) {
-          if (c->progeny[k] != NULL && c->progeny[k]->grav.count > 1) {
+          if (c->progeny[k] != NULL) {
 
             runner_dopair_recursive_grav(r, c->progeny[j], c->progeny[k], 0);
           }
