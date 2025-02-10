@@ -44,4 +44,29 @@ __attribute__((always_inline, const)) INLINE static int same_signf(float x,
   return signf(x) == signf(y);
 }
 
+/**
+ * @brief Return the sign of a double number
+ *
+ * @param x The number of interest.
+ * @return >0 if positive, 0 if negative.
+ */
+__attribute__((always_inline, const)) INLINE static int sign(double x) {
+#ifdef __GNUC__
+  return !signbit(x);
+#else
+  return (0.0 < val) - (val < 0.0);
+#endif
+}
+
+/**
+ * @brief Return 1 if two numbers have the same sign, 0 otherwise
+ *
+ * @param x The first number
+ * @param y The second number
+ */
+__attribute__((always_inline, const)) INLINE static int same_sign(double x,
+								  double y) {
+  return signf(x) == signf(y);
+}
+
 #endif

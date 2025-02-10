@@ -19,6 +19,7 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_HLL_H
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_HLL_H
 
+#include "sign.h"
 #include "chemistry_riemann_checks.h"
 #include "chemistry_riemann_utils.h"
 #include "chemistry_gradients.h"
@@ -389,7 +390,7 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
 
   /* Now, choose the righ flux to get F_diff_ij^* */
   const double epsilon = chem_data->hll_riemann_solver_epsilon;
-  if (F_times_A_dir * F_HLL_times_A < 0.0 &&
+  if (!same_sign(F_times_A_dir, F_HLL_times_A) &&
       fabs(F_times_A_dir) > epsilon * fabs(F_HLL_times_A)) {
     *metal_flux = 0;
   } else {
