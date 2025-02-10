@@ -154,8 +154,8 @@ chemistry_riemann_prevent_large_K_star(const struct part *restrict pi,
  * @return The artificial diffusivity \alpha (in physical units).
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_riemann_compute_alpha(const double c_s_R, const double c_s_L,
-                                const double uR, const double uL,
+chemistry_riemann_compute_alpha(const double c_s_L, const double c_s_R,
+                                const double uL, const double uR,
                                 const double dx_norm, const double q_star,
                                 const double U_star, const double K_star[3][3],
                                 const double norm_K_star,
