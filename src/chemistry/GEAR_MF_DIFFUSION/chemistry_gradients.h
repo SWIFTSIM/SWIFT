@@ -234,6 +234,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   /*****************************************/
   /* Collect the cell's min and max for the slope limiter. */
   chemistry_slope_limit_cell_collect(pi, pj, r);
+  chemistry_slope_limit_cell_collect(pj, pi, r);
 }
 
 /**
