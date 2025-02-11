@@ -789,7 +789,7 @@ void engine_config(int restart, int fof, struct engine *e,
 #endif
 
     /* Find the time of the first snapshot output */
-    engine_compute_next_snapshot_time(e);
+    engine_compute_next_snapshot_time(e, restart);
 
     /* Find the time of the first statistics output */
     engine_compute_next_statistics_time(e);
