@@ -66,7 +66,7 @@ void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
   int *restrict tags_out = data->tags_out;
   const int *restrict offset_out = data->offset_out;
   struct cell *space_cells = data->space_cells;
-  const int delta = cells - space_cells;
+  const size_t delta = cells - space_cells;
 
   for (int k = 0; k < num_elements; k++) {
     if (cells[k].mpi.sendto) {
