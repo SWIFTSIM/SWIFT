@@ -88,8 +88,8 @@ ids = np.linspace(1, N, N)
 m = np.ones(N) * rho * vol / N
 u = np.ones(N) * P / (rho * (gamma - 1))
 
-v[1, :] = 0.1 * np.sin(wavenum * x1)
-v[2, :] = 0.1 * np.cos(wavenum * x1)
+#v[1, :] = 0.1 * np.sin(wavenum * x1)
+#v[2, :] = 0.1 * np.cos(wavenum * x1)
 
 # default ICs 
 #B[0, :] = 1.0
@@ -100,35 +100,38 @@ v[2, :] = 0.1 * np.cos(wavenum * x1)
 #A[2, :] = B0 / wavenum * np.cos(wavenum * x1)
 
 # New ICs
-aL = 1.0
-aR = 0.0
-phase = 0.0
+aL = 0.0
+aR = 1.0
+phase = -np.pi/2
+v0 = 0.1 
 
 epsR = [-(+sinb+1j*sina*cosb)/np.sqrt(2),(cosb - 1j * sina * sinb)/np.sqrt(2),1j*cosa/np.sqrt(2)]
 epsL = np.conjugate(epsR) 
 kort = [cosa * cosb, cosa*sinb, sina]
+
 expikr = np.exp(1j*(wavenum*np.matmul(kort, pos.T)+phase))
 
 kepsR = 1j*np.cross(kort,epsR)
 kepsL = 1j*np.cross(kort,epsL)
 
-#print('1',kepsL, epsR)
-#print('2',kepsR, epsL)
 
-print(np.dot(kepsR,np.conjugate(epsR)))
+for k in range(0,3):
+    A[k,:] += np.sqrt(2) * B0 / wavenum * (aL * np.real(epsL[k] * expikr) + aR * np.real(epsR[k] * expikr))
+    B[k,:] += np.sqrt(2) * B0 * (aL * np.real(expikr*kepsL[k]) + aR * np.real(expikr*kepsR[k]))
+    v[k,:] += np.sqrt(2) * v0 * (aL * np.real(expikr*kepsL[k]) + aR * np.real(expikr*kepsR[k]))
 
-for k in range(0,2):
-    A[k,:] = B0/wavenum * (aL * np.real(epsL[k] * expikr) + aR * np.real(epsR[k] * expikr))
-    B[k,:] = B0 * (aL * np.real(expikr*kepsL[k]) + aR * np.real(expikr*kepsR[k]))
-print(A)
-print(B)
-#print(x1)
-#print(np.matmul(kort, pos.T))
+    # adding constant field
+    B[k,:] += 1.0 * kort[k]
+
+    
+for k in range(len(pos)):
+    A.T[k] += 1.0*np.cross(kort,pos[k])/2
 
 
-v = np.matmul(Rotation, v)
-B = np.matmul(Rotation, B)
-A = np.matmul(Rotation, A)
+
+#v = np.matmul(Rotation, v)
+#B = np.matmul(Rotation, B)
+#A = np.matmul(Rotation, A)
 
 # Rotate back to simulation frame
 v = v.T
