@@ -822,7 +822,8 @@ void engine_compute_next_snapshot_time(struct engine *e, const int restart) {
         message("Next snapshot time set to t=%e.", next_snapshot_time);
     }
 
-    /* Unless we are restarting, set the recording triggers accordingly for the next output */
+    /* Unless we are restarting, set the recording triggers accordingly for the
+     * next output */
     if (!restart) engine_set_and_verify_snapshot_triggers(e);
   }
 }
