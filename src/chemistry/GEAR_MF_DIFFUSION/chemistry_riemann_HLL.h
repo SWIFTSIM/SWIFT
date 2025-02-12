@@ -270,40 +270,6 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   const double aL = c_s_L;
   const double aR = c_s_R;
 
-  /* Toro's wavespeed */
-  /* const double lambda_plus = max(u_L + c_s_L, u_R + c_s_R); */
-  /* const double lambda_minus = min(u_L - c_s_L, u_R - c_s_R); */
-
-  /* PVRS wavespeed approximation */
-  /* const double u_L = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2]; */
-  /* const double u_R = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2]; */
-  /* const double rhoLinv = (WL[0] > 0.0f) ? 1.0f / WL[0] : 0.0f; */
-  /* const double rhoRinv = (WR[0] > 0.0f) ? 1.0f / WR[0] : 0.0f; */
-  /* const double aL = sqrtf(hydro_gamma * WL[4] * rhoLinv); */
-  /* const double aR = sqrtf(hydro_gamma * WR[4] * rhoRinv); */
-
-  /* /\* Pressure estimate *\/ */
-  /* const double rhobar = WL[0] + WR[0]; */
-  /* const double abar = aL + aR; */
-  /* const double pPVRS = */
-  /*     0.5f * ((WL[4] + WR[4]) - 0.25f * (u_R - u_L) * rhobar * abar); */
-  /* const double pstar = max(0.0f, pPVRS); */
-
-  /* /\* Wave speed estimates */
-  /*    all these speeds are along the interface normal, since u_L and u_R are *\/ */
-  /* double qL = 1.0f; */
-  /* if (pstar > WL[4] && WL[4] > 0.0f) { */
-  /*   qL = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma * */
-  /*                         (pstar / WL[4] - 1.0f)); */
-  /* } */
-  /* double qR = 1.0f; */
-  /* if (pstar > WR[4] && WR[4] > 0.0f) { */
-  /*   qR = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma * */
-  /*                         (pstar / WR[4] - 1.0f)); */
-  /* } */
-  /* const double lambda_minus = -aL * qL; */
-  /* const double lambda_plus = aR * qR; */
-
   /* Handle vacuum: vacuum does not require iteration and is always exact */
   if (chemistry_riemann_is_vacuum(WL, WR, u_L, u_R, aL, aR)) {
     *metal_flux = 0.0f;
