@@ -42,19 +42,6 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
                                  const double gas_mass, int callloc,
                                  const int element, const long long id) {
 
-  /* Check for negative metal densities/masses */
-#ifdef SWIFT_DEBUG_CHECKS
-  /* float ratio = -1.f; */
-  char print = 0;
-  if (mZ_old == 0.0) {
-    if (*metal_mass < -1.e-20) print = 1;
-  }
-  /* callloc = 1 is gradient extrapolation. Don't print out those. */
-  if (callloc == 1) print = 0;
-  if (print)
-    error("[%lld, %d] Fixing unphysical metal density/mass case %d | %.6e | %.6e",
-          id, element, callloc, *metal_mass, mZ_old);
-#endif
   if (isinf(*metal_mass) || isnan(*metal_mass))
     error("[%lld, %d] Got inf/nan metal density/mass diffusion case %d | %.6e ",
           id, element, callloc, *metal_mass);
