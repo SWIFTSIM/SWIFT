@@ -182,15 +182,19 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
       const double final_fmin =
           (fmin > positive_definite_min) ? fmin : positive_definite_min;
 
-      /* Compute cfac for positivity preservation */
+      /* Compute cfac for positivity preservation
+	 Note: gradtrue has been multiplied by maxr already. Hence, we don't need
+	 to divide (value - final_fmin) by maxr. */
       const double cfac_pos_preserve = (value - final_fmin) / gradtrue;
       alpha = (cfac_pos_preserve < alpha) ? cfac_pos_preserve : alpha;
     }
 
     /* Apply the limiting factor to the gradient */
-    gradient[0] *= alpha;
-    gradient[1] *= alpha;
-    gradient[2] *= alpha;
+    if (alpha < 1.0) {
+      gradient[0] *= alpha;
+      gradient[1] *= alpha;
+      gradient[2] *= alpha;
+    }
   } /* gradtrue != 0 */
 }
 
