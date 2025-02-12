@@ -181,7 +181,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       UNIT_CONV_MASS_PER_UNIT_TIME_PER_UNIT_AREA, 0.f, parts, xparts, convert_gas_diffusion_flux_norm,
       "Norm of the diffusion fluxes");
 
-  num += 3
+  num += 3;
 #endif
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
