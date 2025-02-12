@@ -33,6 +33,22 @@
 
 #include <strings.h>
 
+float feedback_compute_spart_timestep(
+    const struct spart* const sp, const struct feedback_props* feedback_props,
+    const struct phys_const* phys_const,
+    const int with_cosmology, const struct cosmology* cosmo) {
+
+  /* TODO: Compute timestep for feedback */
+  const int dt = FLT_MAX;
+
+  /* If the star is dead, do not limit its timestep */
+  if (sp->feedback_data.is_dead) {
+    return FLT_MAX;
+  } else {
+    return dt;
+  }
+}
+
 /**
  * @brief Update the properties of the particle due to a supernovae.
  *
