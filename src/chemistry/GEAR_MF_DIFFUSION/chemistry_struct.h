@@ -22,6 +22,10 @@
 
 #define GEAR_LABELS_SIZE 10  // redumndant with the one defined in
 
+/* Define the tolerable minimal negative mass for metals. Small negative masses
+   can happen if the metal mass is close to 0. */
+#define GEAR_NEGATIVE_METAL_MASS_TOLERANCE -1e-30
+
 /**
  * @brief The diffusion mode
  */
