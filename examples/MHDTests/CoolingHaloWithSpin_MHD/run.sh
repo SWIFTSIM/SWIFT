@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Generate the initial conditions if they are not present.
+echo "Generating initial conditions for the MHD isothermal potential box example..."
+python3 makeIC.py 10000 
+
+# Run SWIFT with external potential, SPH and cooling
+../../../swift --external-gravity --hydro --cooling --threads=16 cooling_halo.yml 2>&1 | tee output.log
