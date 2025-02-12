@@ -639,8 +639,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     /* Update the conserved variable */
     chd->metal_mass[i] += flux;
 
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
     /* Update the diffused metal mass */
     chd->diffused_metal_mass[i] += flux;
+#endif
   }
 
   /* Reset the fluxes now that they have been applied */
@@ -1055,8 +1057,10 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
     /* Update the conserved variable */
     chd->metal_mass[i] += flux;
 
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
     /* Update the diffused metal mass */
     chd->diffused_metal_mass[i] += flux;
+#endif
   }
 
   /* Reset the fluxes now that they have been applied */

@@ -65,6 +65,27 @@ INLINE static void convert_gas_metals(const struct engine* e,
   ret[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = m_Z / hydro_get_mass(p);
 }
 
+INLINE static void convert_chemistry_diffusion_coefficient(
+    const struct engine* e, const struct part* p, const struct xpart* xp,
+    double* ret) {
+  *ret = p->chemistry_data.kappa;
+}
+
+INLINE static void convert_chemistry_diffusion_matrix(const struct engine* e,
+                                                      const struct part* p,
+                                                      const struct xpart* xp,
+                                                      double* ret) {
+  double K[3][3];
+  chemistry_get_physical_matrix_K(p, e->chemistry, e->cosmology, K);
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      ret[3 * i + j] = K[i][j];
+    }
+  }
+}
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
 INLINE static void convert_gas_feedback_metals(const struct engine* e,
 					       const struct part* p,
 					       const struct xpart* xp, double* ret) {
@@ -108,28 +129,7 @@ INLINE static void convert_gas_diffusion_flux_norm(const struct engine* e,
     ret[i] = sqrt(F_diff[0]*F_diff[0] + F_diff[1]*F_diff[1] + F_diff[2]*F_diff[2]);
   }
 }
-
-INLINE static void convert_chemistry_diffusion_coefficient(
-    const struct engine* e, const struct part* p, const struct xpart* xp,
-    double* ret) {
-
-  *ret = p->chemistry_data.kappa;
-}
-
-INLINE static void convert_chemistry_diffusion_matrix(const struct engine* e,
-                                                      const struct part* p,
-                                                      const struct xpart* xp,
-                                                      double* ret) {
-
-  double K[3][3];
-  chemistry_get_physical_matrix_K(p, e->chemistry, e->cosmology, K);
-
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      ret[3 * i + j] = K[i][j];
-    }
-  }
-}
+#endif /* SWIFT_CHEMISTRY_DEBUG_CHECKS */
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -165,7 +165,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       /*can convert to comoving=*/0, convert_chemistry_diffusion_matrix,
       "Physical diffusion matrix, stored in a vector");
 
-  //#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   list[3] = io_make_output_field_convert_part(
       "DiffusedMetalMasses", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
       UNIT_CONV_MASS, 0.f, parts, xparts, convert_gas_diffused_metals,
@@ -180,7 +180,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       "NormDiffusionFluxes", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
       UNIT_CONV_MASS_PER_UNIT_TIME_PER_UNIT_AREA, 0.f, parts, xparts, convert_gas_diffusion_flux_norm,
       "Norm of the diffusion fluxes");
-  //#endif
+#endif
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   // TODO: Check the a exponent
