@@ -147,6 +147,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
                                              e->rt_props);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_rt_inject(r2, dx, hi, hj, si, pj, a, H, e->rt_props);
+        runner_iact_nonsym_rt_spart_timebin(r2, dx, hi, hj, si, pj, a, H);
 #endif
       }
     } /* loop over the parts in ci. */
@@ -277,6 +278,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
                                              e->rt_props);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_rt_inject(r2, dx, hi, hj, si, pj, a, H, e->rt_props);
+        runner_iact_nonsym_rt_spart_timebin(r2, dx, hi, hj, si, pj, a, H);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -472,6 +474,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                                                e->rt_props);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_rt_inject(r2, dx, hi, hj, spi, pj, a, H, e->rt_props);
+          runner_iact_nonsym_rt_spart_timebin(r2, dx, hi, hj, spi, pj, a, H);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -626,6 +629,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                                                e->rt_props);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_rt_inject(r2, dx, hj, hi, spj, pi, a, H, e->rt_props);
+          runner_iact_nonsym_rt_spart_timebin(r2, dx, hj, hi, spj, pi, a, H);
 #endif
         }
       } /* loop over the parts in ci. */

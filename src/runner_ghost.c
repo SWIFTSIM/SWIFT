@@ -271,6 +271,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             if (with_rt) {
 
               rt_reset_spart(sp);
+              rt_spart_timestep_prepare_feedback(sp);
 
               /* Get particle time-step */
               double dt_star;
@@ -448,6 +449,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         if (with_rt) {
 
           rt_reset_spart(sp);
+          rt_spart_timestep_prepare_feedback(sp);
 
           /* Get particle time-step */
           double dt_star;
@@ -1070,7 +1072,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
         timestep_limiter_prepare_force(p, xp);
         rt_prepare_force(p);
-        rt_timestep_prepare_force(p);
+        rt_part_timestep_prepare_force(p);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1309,7 +1311,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
             timestep_limiter_prepare_force(p, xp);
             rt_prepare_force(p);
-            rt_timestep_prepare_force(p);
+            rt_part_timestep_prepare_force(p);
 
             /* The particle force values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1497,7 +1499,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
         timestep_limiter_prepare_force(p, xp);
         rt_prepare_force(p);
-        rt_timestep_prepare_force(p);
+        rt_part_timestep_prepare_force(p);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
