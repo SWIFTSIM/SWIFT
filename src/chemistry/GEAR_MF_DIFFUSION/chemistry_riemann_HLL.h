@@ -379,6 +379,9 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   const double min_dt_half = 0.5*min_dt;
   const double tau_L = pi->chemistry_data.tau;
   const double tau_R = pj->chemistry_data.tau;
+
+  /* Use 0.5*mindt because F_diff_L/R are the predicted fluxes, so we need to
+     update them for the second half of the timestep. */
   const double F_A_left_side[3] = {
       -min_dt_half * 0.5 * (F_diff_L[0] / tau_L + F_diff_R[0] / tau_R) -
           min_dt_half * kappa_mean * nabla_o_q_dir[0],
