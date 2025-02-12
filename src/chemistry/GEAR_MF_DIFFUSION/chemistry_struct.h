@@ -184,7 +184,8 @@ struct chemistry_part_data {
     float grad_v_tilde[3][3];
   } filtered;
 
-  /* Supertimestepping variables */
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* Supertimestepping variables (only for parabolic diffusion) */
   struct {
     /*! Current substep integer */
     int current_substep;
@@ -192,6 +193,7 @@ struct chemistry_part_data {
     /*! Explicit timestep given by the CFL parabolic condition */
     float explicit_timestep;
   } timesteps;
+#endif
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Relaxation time */

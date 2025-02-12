@@ -315,6 +315,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 
   /***************************************************************************/
   /* Supertimestepping */
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   data->use_supertimestepping = parser_get_opt_param_int(
       parameter_file, "GEARChemistry:use_supertimestepping",
       DEFAULT_USE_SUPERTIMESTEPPING);
@@ -325,11 +326,14 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   data->nu = parser_get_opt_param_float(parameter_file,
                                         "GEARChemistry:nu_supertimestepping",
                                         DEFAULT_NU_SUPERTIMESTEPPPING);
-
   data->C_CFL_chemistry = parser_get_opt_param_float(
       parameter_file, "GEARChemistry:C_CFL_chemistry",
       DEFAULT_C_CFL_CHEMISTRY_SUPERTIMESTEPPPING);
-
+#else
+  /* Make it mandatory for parabolic diffusion */
+  data->C_CFL_chemistry = parser_get_param_float(
+      parameter_file, "GEARChemistry:C_CFL_chemistry");
+#endif
   /***************************************************************************/
   /* Hyperbolic diffusion */
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
@@ -350,9 +354,11 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
     message("Diffusion coefficient:      %e", data->diffusion_coefficient);
     message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
     message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     message("Use supertimestepping:      %d", data->use_supertimestepping);
     message("N_substeps:                 %d", data->N_substeps);
     message("nu:                         %e", data->nu);
+#endif
   }
 }
 
@@ -375,7 +381,7 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* chem_data,
     const struct part* restrict p) {
-
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   if (chem_data->use_supertimestepping) {
     /* For supertimestepping, use the advective timestep eq (D1) */
     return chemistry_compute_advective_supertimestep(p, chem_data, cosmo);
@@ -383,6 +389,10 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     /* Without supertimestepping, use the parabolic timestep eq (15) */
     return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
   }
+#else
+  /* Use the hyperbolic CFL condition */
+  return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
+#endif
 }
 
 /**
@@ -408,6 +418,9 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct chemistry_global_data* cd, struct part* restrict p,
     const float dt_part, const double time_base, const double ti_current) {
 
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  return FLT_MAX;
+#else
   struct chemistry_part_data* chd = &p->chemistry_data;
 
   /* Do not use supertimestepping in the fake timestep */
@@ -476,6 +489,7 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
   } else { /* No supertimestepping */
     return FLT_MAX;
   }
+#endif
 }
 
 /**
@@ -779,10 +793,12 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
      particle */
   p->geometry.wcorr = 1.0f;
 
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Supertimestepping ----*/
   /* Set the substep to 0 so that we can compute everything in timestep for the
      first time. */
   p->chemistry_data.timesteps.current_substep = 0;
+#endif
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {

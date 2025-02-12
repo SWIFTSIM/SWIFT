@@ -101,6 +101,7 @@ chemistry_compute_parabolic_timestep(
 #endif
 }
 
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
 /**
  * @brief Compute the particle supertimestep proportional to h.
  *
@@ -251,5 +252,6 @@ chemistry_make_integer_timestep(const float new_dt, const timebin_t old_bin,
 
   return new_dti;
 }
+#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_TIMESTEPS_H  */
