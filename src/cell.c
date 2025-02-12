@@ -1005,6 +1005,12 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
             c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
         const double r2 = dx * dx + dy * dy + dz * dz;
         r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (r_max != r_max) {
+          error("r_max is NaN");
+        }
+#endif
       }
     }
     /* Alternative upper limit of max CoM<->gpart distance */
@@ -1020,7 +1026,11 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
 
     /* Take minimum of both limits */
     c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
-
+#ifdef SWIFT_DEBUG_CHECKS
+    if (r_max != r_max) {
+      error("r_max is NaN");
+    }
+#endif
     /* Compute the multipole power */
     gravity_multipole_compute_power(&c->grav.multipole->m_pole);
 
