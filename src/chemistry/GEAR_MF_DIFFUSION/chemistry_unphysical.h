@@ -47,12 +47,17 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
           id, element, callloc, *metal_mass);
 
   /* Fix negative masses */
-  if (*metal_mass < 0.0) {
+  if (*metal_mass < GEAR_NEGATIVE_METAL_MASS_TOLERANCE) {
     if (callloc == 1) {
       /* Do not extrapolate, use 0th order reconstruction. */
       *metal_mass = mZ_old;
     } else {
-      *metal_mass = 0.0;
+      /* Note: Correcting metal masses afterwards can artificially create metal
+	 mass out of nothing. This mass creation might is never compensated and
+	 can lead to huge metal mass creation, bigger than gas mass. */
+      error("[%lld, %d] Negative metal density/mass case %d | %.6e | %.6e",
+	    id, element, callloc, *metal_mass, mZ_old);
+      /* metal_mass = 0.0; */
     }
   }
 
