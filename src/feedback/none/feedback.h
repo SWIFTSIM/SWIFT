@@ -26,6 +26,25 @@
 #include "part.h"
 #include "units.h"
 
+
+/**
+ * @brief Computes the time-step length of a given star particle from feedback
+ * physics
+ *
+ * @param sp Pointer to the s-particle data.
+ * @param feedback_props Properties of the feedback model.
+ * @param phys_const The #phys_const.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param cosmo The current cosmological model (used if running with
+ * cosmology).
+ */
+float feedback_compute_spart_timestep(
+    const struct spart* const sp, const struct feedback_props* feedback_props,
+    const struct phys_const* phys_const,
+    const int with_cosmology, const struct cosmology* cosmo) {
+  return FLT_MAX;
+}
+
 /**
  * @brief Update the properties of a particle fue to feedback effects after
  * the cooling was applied.
