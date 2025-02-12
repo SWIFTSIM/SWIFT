@@ -70,8 +70,9 @@ float feedback_compute_spart_timestep(
 void feedback_update_part(struct part* p, struct xpart* xp,
                           const struct engine* e) {
 
+  /* TODO: Treat the pre-SN case */
   /* Did the particle receive a supernovae */
-  if (xp->feedback_data.delta_mass == 0) return;
+  /* if (xp->feedback_data.delta_mass == 0) return; */
 
   const struct cosmology* cosmo = e->cosmology;
   const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
@@ -204,6 +205,9 @@ void feedback_will_do_feedback(
   sp->feedback_data.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
 
+  /* TODO: When mass < minimal mass, set the star to dead state */
+  /* TODO: Should we add  "if star is dead : return" ?*/
+
   /* quit if the birth_scale_factor or birth_time is negative */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return;
 
@@ -264,8 +268,12 @@ void feedback_will_do_feedback(
   /* Apply the energy efficiency factor */
   sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
 
+  /* TODO: See if we need to add something about pre-SN */
   /* Set the particle as doing some feedback */
-  sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.;
+  sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.
+                                       || !sp->feedback_data.is_dead;
+
+  /* TODO: Do we want to multiply pre-SN energy bu the efficiency? */
 }
 
 /**
