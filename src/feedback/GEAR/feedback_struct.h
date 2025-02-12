@@ -68,6 +68,12 @@ struct feedback_spart_data {
 
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
+
+  /* TODO: Add you data in this struct (For clarity purposes :) */
+  /*! Pre-SN data struct */
+  struct {
+
+  } preSN;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */
