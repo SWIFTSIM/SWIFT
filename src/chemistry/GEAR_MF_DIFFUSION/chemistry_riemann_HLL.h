@@ -376,15 +376,16 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
       (pj->chemistry_data.flux_dt > 0.f)
           ? fminf(pi->chemistry_data.flux_dt, pj->chemistry_data.flux_dt)
           : pi->chemistry_data.flux_dt;
+  const double min_dt_half = 0.5*min_dt;
   const double tau_L = pi->chemistry_data.tau;
   const double tau_R = pj->chemistry_data.tau;
   const double F_A_left_side[3] = {
-      -min_dt * 0.5 * (F_diff_L[0] / tau_L + F_diff_R[0] / tau_R) -
-          min_dt * kappa_mean * nabla_o_q_dir[0],
-      -min_dt * 0.5 * (F_diff_L[1] / tau_L + F_diff_R[1] / tau_R) -
-          min_dt * kappa_mean * nabla_o_q_dir[1],
-      -min_dt * 0.5 * (F_diff_L[2] / tau_L + F_diff_R[2] / tau_R) -
-          min_dt * kappa_mean * nabla_o_q_dir[2]};
+      -min_dt_half * 0.5 * (F_diff_L[0] / tau_L + F_diff_R[0] / tau_R) -
+          min_dt_half * kappa_mean * nabla_o_q_dir[0],
+      -min_dt_half * 0.5 * (F_diff_L[1] / tau_L + F_diff_R[1] / tau_R) -
+          min_dt_half * kappa_mean * nabla_o_q_dir[1],
+      -min_dt_half * 0.5 * (F_diff_L[2] / tau_L + F_diff_R[2] / tau_R) -
+          min_dt_half * kappa_mean * nabla_o_q_dir[2]};
 
   /* Here we want (x_j - x_i) hence we add a minus sign */
   const double F_A_right_side[3] = { - Anorm * dx_p[0] / dx_p_norm,
