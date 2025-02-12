@@ -146,7 +146,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
                                             struct io_props* list,
                                             const int with_cosmology) {
   /* Number of fields to write */
-  int num = 6;
+  int num = 3;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -180,11 +180,13 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       "NormDiffusionFluxes", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
       UNIT_CONV_MASS_PER_UNIT_TIME_PER_UNIT_AREA, 0.f, parts, xparts, convert_gas_diffusion_flux_norm,
       "Norm of the diffusion fluxes");
+
+  num += 3
 #endif
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   // TODO: Check the a exponent
-  list[6] = io_make_physical_output_field(
+  list[num] = io_make_physical_output_field(
        "RelaxationTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f, parts,
        chemistry_data.tau, /*can convert to comoving=*/1,
        "Physical diffusion relaxation time of the particles.");
