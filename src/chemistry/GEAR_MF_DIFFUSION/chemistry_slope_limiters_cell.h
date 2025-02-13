@@ -148,7 +148,7 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
      This case can happen e.g. in the MetalDiffusionOnePeak example where we
      only have one particule with non zero metallicity. The slope limiter then
      computes a high value for alpha (1e15). */
-  if (valmin != valmax && gradtrue != 0.0) {
+  if (gradtrue != 0.0) {
     gradtrue *= maxr;
     const double gradtrue_inv = 1.0 / gradtrue;
     const double gradmax = valmax - value;
