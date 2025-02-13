@@ -12,6 +12,8 @@ k = 2.0 * np.pi / wl
 v0 = 0.1
 B0 = 0.1
 
+mu0=1
+
 sina = 2.0 / 3.0
 cosa = np.sqrt(1 - sina ** 2)
 
@@ -80,6 +82,15 @@ x1exact = np.linspace(0.0, max(posp[0, :]), pts)
 vexact = [np.zeros(pts), v0 * np.sin(k * x1exact), v0 * np.cos(k * x1exact)]
 Bexact = [np.ones(pts), B0 * np.sin(k * x1exact), B0 * np.cos(k * x1exact)]
 
+Jexact = [np.zeros(pts), B0 * k * np.sin(k * x1exact), B0 * k * np.cos(k * x1exact)] 
+Flexact = [np.zeros(pts), B0 * k * np.cos(k * x1exact), - B0 * k * np.sin(k * x1exact)]
+
+Mexact = [
+[np.ones(pts)*(-1.0+B0**2)/mu0,                                       -B0*np.sin(k * x1exact)/mu0,                                       -B0 * np.cos(k * x1exact)/mu0],
+[  -B0*np.sin(k * x1exact)/mu0,(np.ones(pts)+B0**2*(np.cos(k * x1exact)-np.sin(k * x1exact)))/mu0,                            -B0**2 * np.sin(2 * k * x1exact)/(2*mu0)],
+[-B0 * np.cos(k * x1exact)/mu0,                          -B0**2 * np.sin(2 * k * x1exact)/(2*mu0), (np.ones(pts)+B0**2*(np.sin(k * x1exact)-np.cos(k * x1exact)))/mu0]
+]
+
 for ind, axi in enumerate(ax[0, :]):
     ax[0, ind].plot(x1exact, Bexact[ind], "k-", lw=0.5, label="Exact Solution")
     ax[1, ind].plot(x1exact, vexact[ind], "k-", lw=0.5, label="Exact Solution")
@@ -99,3 +110,70 @@ ax10b.set_ylabel(r"$err_{\nabla \cdot B}$")
 plt.tight_layout()
 
 plt.savefig("AlfvenWaves.png", dpi=100)
+
+
+# Plot M
+fig, axs = plt.subplots(3, 3, figsize=(3*8, 3*4), sharex=True)
+#fig.subplots_adjust(hspace=0.1,wspace=0.5)
+
+axs[0, 0].plot(x1exact, Mexact[0][0], "k-", lw=0.5, label="Exact Solution")
+axs[0, 1].plot(x1exact, Mexact[0][1], "k-", lw=0.5, label="Exact Solution")
+axs[0, 2].plot(x1exact, Mexact[0][2], "k-", lw=0.5, label="Exact Solution")
+axs[1, 0].plot(x1exact, Mexact[1][0], "k-", lw=0.5, label="Exact Solution")
+axs[1, 1].plot(x1exact, Mexact[1][1], "k-", lw=0.5, label="Exact Solution")
+axs[1, 2].plot(x1exact, Mexact[1][2], "k-", lw=0.5, label="Exact Solution")
+axs[2, 0].plot(x1exact, Mexact[2][0], "k-", lw=0.5, label="Exact Solution")
+axs[2, 1].plot(x1exact, Mexact[2][1], "k-", lw=0.5, label="Exact Solution")
+axs[2, 2].plot(x1exact, Mexact[2][2], "k-", lw=0.5, label="Exact Solution")
+
+
+axs[0, 0].set_ylabel(r'$\rm M_{1,1}$')
+axs[0, 1].set_ylabel(r'$\rm M_{1,2}$')
+axs[0, 2].set_ylabel(r'$\rm M_{1,3}$')
+axs[1, 0].set_ylabel(r'$\rm M_{2,1}$')
+axs[1, 1].set_ylabel(r'$\rm M_{2,2}$')
+axs[1, 2].set_ylabel(r'$\rm M_{2,3}$')
+axs[2, 0].set_ylabel(r'$\rm M_{3,1}$')
+axs[2, 1].set_ylabel(r'$\rm M_{3,2}$')
+axs[2, 2].set_ylabel(r'$\rm M_{3,3}$')
+
+axs[2, 0].set_xlabel(r"$\rm x_1$")
+axs[2, 1].set_xlabel(r"$\rm x_1$")
+axs[2, 2].set_xlabel(r"$\rm x_1$")
+
+
+fig.tight_layout()
+plt.savefig("AlfvenWaves_M.png", dpi=100)
+
+
+
+fig, axs = plt.subplots(3, 3, figsize=(3*8, 3*4), sharex=True)
+
+axs[0, 0].plot(x1exact, Bexact[0], "k-", lw=0.5, label="Exact Solution")
+axs[0, 1].plot(x1exact, Bexact[1], "k-", lw=0.5, label="Exact Solution")
+axs[0, 2].plot(x1exact, Bexact[2], "k-", lw=0.5, label="Exact Solution")
+axs[1, 0].plot(x1exact, Jexact[0], "k-", lw=0.5, label="Exact Solution")
+axs[1, 1].plot(x1exact, Jexact[1], "k-", lw=0.5, label="Exact Solution")
+axs[1, 2].plot(x1exact, Jexact[2], "k-", lw=0.5, label="Exact Solution")
+axs[2, 0].plot(x1exact, Flexact[2], "k-", lw=0.5, label="Exact Solution")
+axs[2, 1].plot(x1exact, Flexact[2], "k-", lw=0.5, label="Exact Solution")
+axs[2, 2].plot(x1exact, Flexact[2], "k-", lw=0.5, label="Exact Solution")
+
+
+axs[0, 0].set_ylabel(r'$\rm B_{1}$')
+axs[0, 1].set_ylabel(r'$\rm B_{2}$')
+axs[0, 2].set_ylabel(r'$\rm B_{3}$')
+axs[1, 0].set_ylabel(r'$\rm J_{1}$')
+axs[1, 1].set_ylabel(r'$\rm J_{2}$')
+axs[1, 2].set_ylabel(r'$\rm J_{3}$')
+axs[2, 0].set_ylabel(r'$\rm F_{L,1}$')
+axs[2, 1].set_ylabel(r'$\rm F_{L,2}$')
+axs[2, 2].set_ylabel(r'$\rm F_{L,3}$')
+
+axs[2, 0].set_xlabel(r"$\rm x_1$")
+axs[2, 1].set_xlabel(r"$\rm x_1$")
+axs[2, 2].set_xlabel(r"$\rm x_1$")
+
+fig.tight_layout()
+
+plt.savefig("AlfvenWaves_B_J_F.png", dpi=100)
