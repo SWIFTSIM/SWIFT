@@ -62,7 +62,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
     const float H) {}
 
 /**
- * @brief do metal diffusion computation in the <GRADIENT LOOP>
+ * @brief do metal diffusion computation in the force loop
  * (symmetric version)
  *
  * @param r2 Comoving square distance between the two particles.
@@ -128,7 +128,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     const struct chemistry_global_data *chem_data) {}
 
 /**
- * @brief Do metal diffusion computation in the <FORCE LOOP>
+ * @brief do metal diffusion computation in the force loop
  * (nonsymmetric version)
  *
  * @param r2 Comoving square distance between the two particles.

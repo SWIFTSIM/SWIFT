@@ -105,8 +105,9 @@ INLINE static void chemistry_copy_sink_properties(const struct part* p,
  */
 static INLINE void chemistry_print_backend(
     const struct chemistry_global_data* data) {
-
-  message("Chemistry function is 'Gear'.");
+  if (engine_rank == 0) {
+    message("Chemistry function is 'Gear'.");
+  }
 }
 
 /**
@@ -283,10 +284,12 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   const float initial_metallicity = parser_get_param_float(
       parameter_file, "GEARChemistry:initial_metallicity");
 
-  if (initial_metallicity < 0) {
-    message("Setting the initial metallicity from the snapshot.");
-  } else {
-    message("Setting the initial metallicity from the parameter file.");
+  if (engine_rank == 0) {
+    if (initial_metallicity < 0) {
+      message("Setting the initial metallicity from the snapshot.");
+    } else {
+      message("Setting the initial metallicity from the parameter file.");
+    }
   }
 
   /* Set the initial metallicities */

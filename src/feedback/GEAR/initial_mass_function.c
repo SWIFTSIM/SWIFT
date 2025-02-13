@@ -66,6 +66,10 @@ float initial_mass_function_get_exponent(
 /** @brief Print the initial mass function */
 void initial_mass_function_print(const struct initial_mass_function *imf) {
 
+  if (engine_rank != 0) {
+    return;
+  }
+
   message("Number of parts: %i", imf->n_parts);
   message("Number of stars per mass units: %g", imf->N_tot);
   message("Mass interval: [%g, %g]", imf->mass_min, imf->mass_max);
