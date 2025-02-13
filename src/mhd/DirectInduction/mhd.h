@@ -264,7 +264,12 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_init_part(
-    struct part *p) {}
+    struct part *p) {
+   /* B smoothing*/
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.smooth_B[k] = 0.0f;
+  }
+}
 
 /**
  * @brief Finishes the density calculation.
@@ -288,9 +293,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
 
   /* Finish B smoothing*/
-  p->mhd_data.smooth_B[k] += p->mass * kernel_root * p->mhd_data.B_over_rho[k];
-  p->mhd_data.smooth_B[k] *= h_inv_dim;
-
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.smooth_B[k] += p->mass * kernel_root * p->mhd_data.B_over_rho[k];
+    p->mhd_data.smooth_B[k] *= h_inv_dim;
+  }
 }
 
 /**
