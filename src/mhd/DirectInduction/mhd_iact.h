@@ -471,12 +471,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
 
   /* Correcting for lorentz force component parallel to B */
-
   float sph_acc_term_mul_i = 0.0f;
   float sph_acc_term_mul_j = 0.0f;
-
-  float sph_acc_term_norm_original_i = sqrtf(sph_acc_term_i[0]*sph_acc_term_i[0]+sph_acc_term_i[1]*sph_acc_term_i[1]+sph_acc_term_i[2]*sph_acc_term_i[2]);
-  float sph_acc_term_norm_original_j = sqrtf(sph_acc_term_j[0]*sph_acc_term_j[0]+sph_acc_term_j[1]*sph_acc_term_j[1]+sph_acc_term_j[2]*sph_acc_term_j[2]);
 
   for (int k = 0; k < 3; k++) {
     sph_acc_term_mul_i += sph_acc_term_i[k]*Bi[k]/B2i;
@@ -485,12 +481,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   for (int k = 0; k < 3; k++) {
     sph_acc_term_i[k] -= Bi[k]*sph_acc_term_mul_i; 
     sph_acc_term_j[k] -= Bj[k]*sph_acc_term_mul_j; 
-  }
-  float sph_acc_term_norm_corrected_i = sqrtf(sph_acc_term_i[0]*sph_acc_term_i[0]+sph_acc_term_i[1]*sph_acc_term_i[1]+sph_acc_term_i[2]*sph_acc_term_i[2]);
-  float sph_acc_term_norm_corrected_j = sqrtf(sph_acc_term_j[0]*sph_acc_term_j[0]+sph_acc_term_j[1]*sph_acc_term_j[1]+sph_acc_term_j[2]*sph_acc_term_j[2]);
-  for (int k = 0; k < 3; k++) {
-    sph_acc_term_mul_i *= sph_acc_term_norm_original_i/sph_acc_term_norm_corrected_i;
-    sph_acc_term_mul_j *= sph_acc_term_norm_original_j/sph_acc_term_norm_corrected_j; 
   }
 
 
@@ -504,7 +494,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->a_hydro[2] -= mi * sph_acc_term_j[2];
 
   /* Save forces */
-  for (int k = 1; k < 3; k++) {
+  for (int k = 0; k < 3; k++) {
     pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
     pj->mhd_data.tot_mag_F[k] -= mi * sph_acc_term_j[k];
   }
@@ -866,17 +856,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* Correcting for lorentz force component parallel to B */
   float sph_acc_term_mul_i = 0.0f;
-  float sph_acc_term_norm_original_i = sqrtf(sph_acc_term_i[0]*sph_acc_term_i[0]+sph_acc_term_i[1]*sph_acc_term_i[1]+sph_acc_term_i[2]*sph_acc_term_i[2]);
 
   for (int k = 0; k < 3; k++) {
     sph_acc_term_mul_i += sph_acc_term_i[k]*Bi[k]/B2i;
   }
   for (int k = 0; k < 3; k++) {
     sph_acc_term_i[k] -= Bi[k]*sph_acc_term_mul_i; 
-  }
-  float sph_acc_term_norm_corrected_i = sqrtf(sph_acc_term_i[0]*sph_acc_term_i[0]+sph_acc_term_i[1]*sph_acc_term_i[1]+sph_acc_term_i[2]*sph_acc_term_i[2]);
-  for (int k = 0; k < 3; k++) {
-    sph_acc_term_mul_i *= sph_acc_term_norm_original_i/sph_acc_term_norm_corrected_i;
   }
 
   /* Use the force Luke ! */
@@ -885,7 +870,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->a_hydro[2] -= mj * sph_acc_term_i[2];
 
   /* Save forces */
-  for (int k = 1; k < 3; k++) {
+  for (int k = 0; k < 3; k++) {
     pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
   }
 
