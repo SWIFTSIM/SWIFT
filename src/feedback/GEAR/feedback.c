@@ -50,7 +50,7 @@ float feedback_compute_spart_timestep(
     const int with_cosmology, const struct cosmology* cosmo) {
 
   /* TODO: Compute timestep for feedback */
-  const int dt = FLT_MAX;
+  const float dt = FLT_MAX;
 
   /* If the star is dead, do not limit its timestep */
   if (sp->feedback_data.is_dead) {
