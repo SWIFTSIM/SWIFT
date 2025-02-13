@@ -49,7 +49,8 @@ with h5py.File(filename, "r") as handle:
 
     B = handle["PartType0/MagneticFluxDensities"][:]
     divB = handle["PartType0/MagneticDivergences"][:]
-
+    J = handle["PartType0/MagneticFluxCurl"][:]
+    Fl = handle["PartType0/LorentzForces"][:]
 # Plot things
 fig, ax = plt.subplots(2, 3, figsize=(11, 6))
 
@@ -62,10 +63,15 @@ err = np.log10(h * abs(divB) / normB)
 pos = pos.T
 v = v.T
 B = B.T
+J = J.T
+Fl = Fl.T
 
 posp = np.dot(Rotation_S_to_Sp, pos)
 vp = np.dot(Rotation_S_to_Sp, v)
 Bp = np.dot(Rotation_S_to_Sp, B)
+Jp = np.dot(Rotation_S_to_Sp, J)
+Flp = np.dot(Rotation_S_to_Sp, Fl)
+
 
 for ind, axi in enumerate(ax[0, :]):
     axi.scatter(posp[0, :], Bp[ind, :], s=0.2, label=filename)
@@ -113,41 +119,56 @@ plt.savefig("AlfvenWaves.png", dpi=100)
 
 
 # Plot M
-fig, axs = plt.subplots(3, 3, figsize=(3*8, 3*4), sharex=True)
+#fig, axs = plt.subplots(3, 3, figsize=(3*8, 3*4), sharex=True)
 #fig.subplots_adjust(hspace=0.1,wspace=0.5)
 
-axs[0, 0].plot(x1exact, Mexact[0][0], "k-", lw=0.5, label="Exact Solution")
-axs[0, 1].plot(x1exact, Mexact[0][1], "k-", lw=0.5, label="Exact Solution")
-axs[0, 2].plot(x1exact, Mexact[0][2], "k-", lw=0.5, label="Exact Solution")
-axs[1, 0].plot(x1exact, Mexact[1][0], "k-", lw=0.5, label="Exact Solution")
-axs[1, 1].plot(x1exact, Mexact[1][1], "k-", lw=0.5, label="Exact Solution")
-axs[1, 2].plot(x1exact, Mexact[1][2], "k-", lw=0.5, label="Exact Solution")
-axs[2, 0].plot(x1exact, Mexact[2][0], "k-", lw=0.5, label="Exact Solution")
-axs[2, 1].plot(x1exact, Mexact[2][1], "k-", lw=0.5, label="Exact Solution")
-axs[2, 2].plot(x1exact, Mexact[2][2], "k-", lw=0.5, label="Exact Solution")
 
 
-axs[0, 0].set_ylabel(r'$\rm M_{1,1}$')
-axs[0, 1].set_ylabel(r'$\rm M_{1,2}$')
-axs[0, 2].set_ylabel(r'$\rm M_{1,3}$')
-axs[1, 0].set_ylabel(r'$\rm M_{2,1}$')
-axs[1, 1].set_ylabel(r'$\rm M_{2,2}$')
-axs[1, 2].set_ylabel(r'$\rm M_{2,3}$')
-axs[2, 0].set_ylabel(r'$\rm M_{3,1}$')
-axs[2, 1].set_ylabel(r'$\rm M_{3,2}$')
-axs[2, 2].set_ylabel(r'$\rm M_{3,3}$')
 
-axs[2, 0].set_xlabel(r"$\rm x_1$")
-axs[2, 1].set_xlabel(r"$\rm x_1$")
-axs[2, 2].set_xlabel(r"$\rm x_1$")
+#axs[0, 0].plot(x1exact, Mexact[0][0], "k-", lw=0.5, label="Exact Solution")
+#axs[0, 1].plot(x1exact, Mexact[0][1], "k-", lw=0.5, label="Exact Solution")
+#axs[0, 2].plot(x1exact, Mexact[0][2], "k-", lw=0.5, label="Exact Solution")
+#axs[1, 0].plot(x1exact, Mexact[1][0], "k-", lw=0.5, label="Exact Solution")
+#axs[1, 1].plot(x1exact, Mexact[1][1], "k-", lw=0.5, label="Exact Solution")
+#axs[1, 2].plot(x1exact, Mexact[1][2], "k-", lw=0.5, label="Exact Solution")
+#axs[2, 0].plot(x1exact, Mexact[2][0], "k-", lw=0.5, label="Exact Solution")
+#axs[2, 1].plot(x1exact, Mexact[2][1], "k-", lw=0.5, label="Exact Solution")
+#axs[2, 2].plot(x1exact, Mexact[2][2], "k-", lw=0.5, label="Exact Solution")
 
 
-fig.tight_layout()
-plt.savefig("AlfvenWaves_M.png", dpi=100)
+#axs[0, 0].set_ylabel(r'$\rm M_{1,1}$')
+#axs[0, 1].set_ylabel(r'$\rm M_{1,2}$')
+#axs[0, 2].set_ylabel(r'$\rm M_{1,3}$')
+#axs[1, 0].set_ylabel(r'$\rm M_{2,1}$')
+#axs[1, 1].set_ylabel(r'$\rm M_{2,2}$')
+#axs[1, 2].set_ylabel(r'$\rm M_{2,3}$')
+#axs[2, 0].set_ylabel(r'$\rm M_{3,1}$')
+#axs[2, 1].set_ylabel(r'$\rm M_{3,2}$')
+#axs[2, 2].set_ylabel(r'$\rm M_{3,3}$')
+
+#axs[2, 0].set_xlabel(r"$\rm x_1$")
+#axs[2, 1].set_xlabel(r"$\rm x_1$")
+#axs[2, 2].set_xlabel(r"$\rm x_1$")
+
+
+#fig.tight_layout()
+#plt.savefig("AlfvenWaves_M.png", dpi=100)
 
 
 
 fig, axs = plt.subplots(3, 3, figsize=(3*8, 3*4), sharex=True)
+
+axs[0,0].scatter(posp[0, :], Bp[0, :], s=0.2, label=filename)
+axs[0,1].scatter(posp[0, :], Bp[1, :], s=0.2, label=filename)
+axs[0,2].scatter(posp[0, :], Bp[2, :], s=0.2, label=filename)
+
+axs[1,0].scatter(posp[0, :], Jp[0, :], s=0.2, label=filename)
+axs[1,1].scatter(posp[0, :], Jp[1, :], s=0.2, label=filename)
+axs[1,2].scatter(posp[0, :], Jp[2, :], s=0.2, label=filename)
+
+axs[2,0].scatter(posp[0, :], Flp[0, :], s=0.2, label=filename)
+axs[2,1].scatter(posp[0, :], Flp[1, :], s=0.2, label=filename)
+axs[2,2].scatter(posp[0, :], Flp[2, :], s=0.2, label=filename)
 
 axs[0, 0].plot(x1exact, Bexact[0], "k-", lw=0.5, label="Exact Solution")
 axs[0, 1].plot(x1exact, Bexact[1], "k-", lw=0.5, label="Exact Solution")
@@ -155,8 +176,8 @@ axs[0, 2].plot(x1exact, Bexact[2], "k-", lw=0.5, label="Exact Solution")
 axs[1, 0].plot(x1exact, Jexact[0], "k-", lw=0.5, label="Exact Solution")
 axs[1, 1].plot(x1exact, Jexact[1], "k-", lw=0.5, label="Exact Solution")
 axs[1, 2].plot(x1exact, Jexact[2], "k-", lw=0.5, label="Exact Solution")
-axs[2, 0].plot(x1exact, Flexact[2], "k-", lw=0.5, label="Exact Solution")
-axs[2, 1].plot(x1exact, Flexact[2], "k-", lw=0.5, label="Exact Solution")
+axs[2, 0].plot(x1exact, Flexact[0], "k-", lw=0.5, label="Exact Solution")
+axs[2, 1].plot(x1exact, Flexact[1], "k-", lw=0.5, label="Exact Solution")
 axs[2, 2].plot(x1exact, Flexact[2], "k-", lw=0.5, label="Exact Solution")
 
 

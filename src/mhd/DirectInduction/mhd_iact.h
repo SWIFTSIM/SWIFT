@@ -414,6 +414,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   sph_acc_term_j[1] = -sph_acc_term_i[1];
   sph_acc_term_j[2] = -sph_acc_term_i[2];
 
+  /* Save forces */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
+    pj->mhd_data.tot_mag_F[k] -= mi * sph_acc_term_j[k];
+  }
+
   /* Divergence cleaning term */
   /* Manifestly *NOT* symmetric in i <-> j */
 
@@ -468,11 +474,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->a_hydro[1] -= mi * sph_acc_term_j[1];
   pj->a_hydro[2] -= mi * sph_acc_term_j[2];
 
-  /* Save forces */
-  for (int k = 1; k < 3; k++) {
-    pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
-    pj->mhd_data.tot_mag_F[k] -= mi * sph_acc_term_j[k];
-  }
 
   /* Direct Induction */
   const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
@@ -797,6 +798,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   sph_acc_term_i[2] +=
       -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[2];
 
+  /* Save forces */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
+  }
+
   /* Divergence cleaning term */
   /* Manifestly *NOT* symmetric in i <-> j */
 
@@ -826,12 +832,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->a_hydro[1] -= mj * sph_acc_term_i[1];
   pi->a_hydro[2] -= mj * sph_acc_term_i[2];
 
-  /* Save forces */
-  for (int k = 1; k < 3; k++) {
-    pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
-  }
-
-  /* */
+    /* */
   const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
   // const float dB_dt_pref_j = over_rho2_j * wj_dr * r_inv;
 
