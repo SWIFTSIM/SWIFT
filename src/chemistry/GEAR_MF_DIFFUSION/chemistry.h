@@ -363,10 +363,15 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
     message("Diffusion coefficient:      %e", data->diffusion_coefficient);
     message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
     message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
+    message("C_CFL:                      %e", data->C_CFL_chemistry);
 #if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     message("Use supertimestepping:      %d", data->use_supertimestepping);
     message("N_substeps:                 %d", data->N_substeps);
     message("nu:                         %e", data->nu);
+#endif
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    message("Riemann solver:             %d", data->riemann_solver);
+    message("Relaxation time (Isotropic_constant): %e", data->tau);
 #endif
   }
 }
