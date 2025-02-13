@@ -171,7 +171,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.smooth_B[k] += mj * wi * pj->mhd_data.B_over_rho[k];
     pj->mhd_data.smooth_B[k] += mi * wj * pi->mhd_data.B_over_rho[k];
-
+  }
 }
 
 /**
@@ -280,7 +280,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
    /* Calculate smooth B */
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.smooth_B[k] += mj * wi * pj->mhd_data.B_over_rho[k];
-
+  }
 }
 
 /**
