@@ -342,9 +342,18 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
         parser_get_param_double(parameter_file, "GEARChemistry:tau");
   }
 
-  /* This is used for testing only */
-  data->riemann_solver = parser_get_opt_param_int(
-      parameter_file, "GEARChemistry:riemann_solver", 1);
+  parser_get_param_string(parameter_file, "GEARChemistry:riemann_solver", temp);
+  if (strcmp(temp, "HLL") == 0)
+    data->riemann_solver = HLL;
+  else if (strcmp(temp, "HLL_parabolic_H17") == 0)
+    data->riemann_solver = HLL_parabolic_Hopkins2017;
+  else if (strcmp(temp, "HLL_hyperbolic_H17") == 0)
+    data->riemann_solver = HLL_hyperbolic_Hopkins2017;
+  else
+    error(
+        "The chemistry diffusion mode must be HLL, HLL_parabolic_H17 or "
+        "or HLL_hyperbolic_H17 "
+        " not %s", temp);
 #endif
 
   /***************************************************************************/

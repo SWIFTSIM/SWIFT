@@ -36,6 +36,17 @@ enum chemistry_diffusion_mode {
 };
 
 /**
+ * @brief The Riemann solver type
+ */
+enum chemistry_riemann_solver {
+  HLL,    /* Regular HLL solver */
+  HLL_parabolic_Hopkins2017, /* Hopkins (2017) HLL Riemann solver for
+				parabolic diffusion*/
+  HLL_hyperbolic_Hopkins2017 /* Improved Hopkins (2017) HLL Riemann solver for
+				hyperbolic diffusion*/
+};
+
+/**
  * @brief Global chemical abundance information.
  */
 struct chemistry_global_data {
