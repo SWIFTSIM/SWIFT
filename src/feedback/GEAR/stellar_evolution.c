@@ -353,8 +353,6 @@ void stellar_evolution_evolve_individual_star(
 
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
-  const double star_age_end_step_myr =
-      (star_age_beg_step + dt) / conversion_to_myr;
   const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
 
   /* Get the metallicity */
@@ -368,6 +366,7 @@ void stellar_evolution_evolve_individual_star(
   /* Determine if the star is dead */
   const int is_dead = (star_age_beg_step_myr > lifetime_myr);
 
+  /* Don't do feedback if you are cold and dead */
   if (is_dead) {
     sp->feedback_data.is_dead = 1;
     return;
@@ -381,63 +380,14 @@ void stellar_evolution_evolve_individual_star(
   /***************************************************************************/
   /* Pre SN feedback (do it until the star is dead) */
   // TODO: Put that into a function
-  stellar_evolution_compute_preSN_feedback();
+  /* stellar_evolution_compute_preSN_feedback(); */
 
   /***************************************************************************/
   /* Supernova feedback */
-  // TODO: Put that into a function  stellar_evolution_compute_SN_feedback();
   /* If the star has not reached its death, don't start the firework */
-  if (lifetime_myr > star_age_end_step_myr) return;
-
-  message(
-      "(%lld) lifetime_myr=%g %g star_age_beg_step=%g star_age_end_step=%g "
-      "(%g)",
-      sp->id, lifetime_myr, lifetime_myr * conversion_to_myr,
-      star_age_beg_step_myr, star_age_end_step_myr,
-      sp->mass / phys_const->const_solar_mass);
-
-  /* This is needed by stellar_evolution_compute_discrete_feedback_properties(),
-     but this is not used inside the function. */
-  const float m_init = 0;
-
-  /* Get the integer number of supernovae */
-  const int number_snia = 0;
-  const int number_snii = 1;
-
-  /* Save the number of supernovae */
-  sp->feedback_data.number_snia = 0;
-  sp->feedback_data.number_snii = number_snii;
-
-  /* this is needed for  stellar_evolution_compute_discrete_feedback_properties
-   */
-  const float m_beg_step = sp->mass / phys_const->const_solar_mass;
-  const float m_end_step = sp->mass / phys_const->const_solar_mass;
-  const float m_avg = 0.5 * (m_beg_step + m_end_step);
-
-  /* Compute the yields */
-  stellar_evolution_compute_discrete_feedback_properties(
-      sp, sm, phys_const, m_beg_step, m_end_step, m_init, number_snia,
-      number_snii);
-
-  /* Compute the supernovae energy associated to the stellar particle */
-
-  const float energy_conversion =
-      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) / 1e51;
-
-  /* initialize */
-  sp->feedback_data.energy_ejected = 0;
-
-  /* snia contribution */
-  const float snia_energy = sm->snia.energy_per_supernovae;
-  sp->feedback_data.energy_ejected +=
-      sp->feedback_data.number_snia * snia_energy;
-
-  /* snii contribution */
-  const float snii_energy =
-      supernovae_ii_get_energy_from_progenitor_mass(&sm->snii, m_avg) /
-      energy_conversion;
-  sp->feedback_data.energy_ejected +=
-      sp->feedback_data.number_snii * snii_energy;
+  stellar_evolution_compute_SN_feedback_individual_star(sp, sm, cosmo, us, phys_const,
+							ti_begin, star_age_beg_step,
+							dt);
 }
 
 /**
@@ -844,4 +794,83 @@ float stellar_evolution_compute_initial_mass(
       return -1.0;
     }
   }
+}
+
+void stellar_evolution_compute_SN_feedback_individual_star(
+    struct spart* restrict sp, const struct stellar_model* sm,
+    const struct cosmology* cosmo, const struct unit_system* us,
+    const struct phys_const* phys_const, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt) {
+
+  /* Check that this function is called for individual starsv*/
+  if (sp->star_type != single_star) {
+    error("This function can only be called for single/individual star!");
+  }
+
+  /* Convert the inputs */
+  const double conversion_to_myr = phys_const->const_year * 1e6;
+  const double star_age_end_step_myr =
+    (star_age_beg_step + dt) / conversion_to_myr;
+  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
+
+  /* Get the metallicity */
+  const float metallicity =
+    chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+
+  const float log_mass = log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
+  const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
+									 &sm->lifetime, log_mass, metallicity));
+
+  /* If the star has not reached its death, don't start the firework */
+  if (lifetime_myr > star_age_end_step_myr) return;
+
+    message(
+	    "(%lld) lifetime_myr=%g %g star_age_beg_step=%g star_age_end_step=%g "
+	    "(%g)",
+	    sp->id, lifetime_myr, lifetime_myr * conversion_to_myr,
+	    star_age_beg_step_myr, star_age_end_step_myr,
+	    sp->mass / phys_const->const_solar_mass);
+
+    /* This is needed by stellar_evolution_compute_discrete_feedback_properties(),
+       but this is not used inside the function. */
+    const float m_init = 0;
+
+    /* Get the integer number of supernovae */
+    const int number_snia = 0;
+    const int number_snii = 1;
+
+    /* Save the number of supernovae */
+    sp->feedback_data.number_snia = 0;
+    sp->feedback_data.number_snii = number_snii;
+
+    /* this is needed for  stellar_evolution_compute_discrete_feedback_properties
+     */
+    const float m_beg_step = sp->mass / phys_const->const_solar_mass;
+    const float m_end_step = sp->mass / phys_const->const_solar_mass;
+    const float m_avg = 0.5 * (m_beg_step + m_end_step);
+
+    /* Compute the yields */
+    stellar_evolution_compute_discrete_feedback_properties(
+							   sp, sm, phys_const, m_beg_step, m_end_step, m_init, number_snia,
+							   number_snii);
+
+    /* Compute the supernovae energy associated to the stellar particle */
+
+    const float energy_conversion =
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) / 1e51;
+
+    /* initialize */
+    sp->feedback_data.energy_ejected = 0;
+
+    /* snia contribution */
+    const float snia_energy = sm->snia.energy_per_supernovae;
+    sp->feedback_data.energy_ejected +=
+      sp->feedback_data.number_snia * snia_energy;
+
+    /* snii contribution */
+    const float snii_energy =
+      supernovae_ii_get_energy_from_progenitor_mass(&sm->snii, m_avg) /
+      energy_conversion;
+    sp->feedback_data.energy_ejected +=
+      sp->feedback_data.number_snii * snii_energy;
 }
