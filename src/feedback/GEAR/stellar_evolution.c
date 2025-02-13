@@ -373,14 +373,12 @@ void stellar_evolution_evolve_individual_star(
   /* message("mass = %e, star_age_beg_step_myr = %e, lifetime = %e", */
 	  /* mass_Msun, star_age_beg_step_myr, lifetime_myr); */
 
-  /***************************************************************************/
-  /* Pre SN feedback (do it until the star is dead) */
-  // TODO: Put that into a function
-  /* stellar_evolution_compute_preSN_feedback(); */
+  /* TODO: Pre-SN feedback (do it until the star is dead) */
+  /* Note: You can update the function parameters as needed. */
+  stellar_evolution_compute_preSN_feedback_individual_star(sp, sm, cosmo, us, phys_const, ti_begin,
+						 star_age_beg_step, dt);
 
-  /***************************************************************************/
   /* Supernova feedback */
-  /* If the star has not reached its death, don't start the firework */
   stellar_evolution_compute_SN_feedback_individual_star(sp, sm, cosmo, us, phys_const,
 							ti_begin, star_age_beg_step,
 							dt);
@@ -427,7 +425,10 @@ void stellar_evolution_evolve_spart(
     return;
   }
 
-  /* Pre-SN feedback */
+  /* TODO: Pre-SN feedback */
+  /* Note: You can update the function parameters as needed. */
+  stellar_evolution_compute_preSN_feedback_spart(sp, sm, cosmo, us, phys_const, ti_begin,
+						 star_age_beg_step, dt);
 
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_spart(sp, sm, cosmo, us, phys_const, ti_begin,
@@ -712,7 +713,7 @@ void stellar_evolution_compute_SN_feedback_individual_star(
   const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
 									 &sm->lifetime, log_mass, metallicity));
 
-  /* If the star has not reached its death, don't start the firework */
+  /* If the star has not reached its death time, don't start the firework */
   if (lifetime_myr > star_age_end_step_myr) return;
 
     message(
