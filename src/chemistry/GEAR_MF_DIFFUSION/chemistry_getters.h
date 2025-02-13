@@ -64,31 +64,6 @@ chemistry_get_physical_metal_density(const struct part* restrict p, int metal,
 }
 
 /**
- * @brief Get particle density.
- *
- * This function must be used for sensitive operations like computing
- * timesteps. At the beggining of a simulation, it can happen that the
- * particle's density is 0 (e.g. not read from ICs) and not yet updated. Since
- * timesteps computations and the diffusion coefficient require the density, we
- * need to estimate it. Otherwise we have null timesteps. This is particularly
- * true with MFM SPH.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static float
-chemistry_get_comoving_density(const struct part* restrict p) {
-  float rho = hydro_get_comoving_density(p);
-
-  if (rho == 0.0) {
-    const float r_cubed =
-        kernel_gamma * kernel_gamma * kernel_gamma * p->h * p->h * p->h;
-    const float volume = 4.0 / 3.0 * M_PI * r_cubed;
-    rho = hydro_get_mass(p) / volume;
-  }
-  return rho;
-}
-
-/**
  * @brief Get the physical shear tensor.
  *
  * @param p Particle.
@@ -239,12 +214,6 @@ chemistry_compute_diffusion_coefficient(
     const struct cosmology* cosmo) {
 
   float rho = p->chemistry_data.filtered.rho;
-
-  /* In case the filtered density is 0, e.g. during the fake-timestep,
-     approximate the density */
-  if (rho == 0.0) {
-    rho = chemistry_get_comoving_density(p);
-  }
 
   /* Convert density to physical units. */
   rho *= cosmo->a3_inv;

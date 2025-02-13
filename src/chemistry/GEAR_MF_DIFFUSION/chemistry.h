@@ -676,15 +676,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 
   /* Sanity check on the total metal mass */
   chemistry_check_unphysical_total_metal_mass(p, 1);
-
-  /* Store the density of the current timestep for the next timestep */
-  p->chemistry_data.rho_prev = chemistry_get_comoving_density(p);
-  p->chemistry_data.filtered.rho_prev = p->chemistry_data.filtered.rho;
-
-  /* Take care of the case where \bar{rho_prev} = 0 */
-  if (p->chemistry_data.filtered.rho_prev == 0) {
-    p->chemistry_data.filtered.rho_prev = p->chemistry_data.rho_prev;
-  }
 }
 
 /**
@@ -1065,7 +1056,8 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   }
 #endif
 
-  /* Update inactive particles that are drifted */
+  /* Update inactive particles that are drifted. This ensures metal mass
+     conservation to machine accuracy. */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     double flux;
     chemistry_get_fluxes(p, i, &flux);
@@ -1082,9 +1074,9 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   /* Reset the fluxes now that they have been applied */
   chemistry_reset_chemistry_fluxes(p);
 
-  /* Invalidate the particle time-step. It is considered to be inactive until
-     dt is set again in hydro_prepare_force() */
-  chd->flux_dt = -1.0f;
+  /* We don't need to invalidate the part's timestep. The active ones were
+     reset in chemistry_end_force() and the inactive do not need an update
+     until the next chemistry_prepare_force() call. */
 
   /* Element-wise sanity checks */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
@@ -1096,8 +1088,6 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
 
   /* Sanity check on the total metal mass */
   chemistry_check_unphysical_total_metal_mass(p, 10);
-
-
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */
