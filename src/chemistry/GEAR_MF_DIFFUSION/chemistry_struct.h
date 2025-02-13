@@ -116,7 +116,7 @@ struct chemistry_part_data {
   double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   /*! Metal mass flux computed with the Riemann solver */
-  double diffusion_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
+  double diffused_metal_mass_fluxes[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
 #ifdef HYDRO_DOES_MASS_FLUX
   /* Note: This is only used by the MFV hydro scheme. */

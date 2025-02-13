@@ -661,7 +661,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     double flux;
-    chemistry_get_fluxes(p, i, &flux);
+    chemistry_get_metal_mass_fluxes(p, i, &flux);
 
     /* Update the conserved variable */
     chd->metal_mass[i] += flux;
@@ -672,8 +672,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 #endif
   }
 
-  /* Reset the fluxes now that they have been applied */
-  chemistry_reset_chemistry_fluxes(p);
+  /* Reset the metal mass fluxes now that they have been applied */
+  chemistry_reset_chemistry_metal_mass_fluxes(p);
 
   /* Invalidate the particle time-step. It is considered to be inactive until
      dt is set again in hydro_prepare_force() */
@@ -1073,7 +1073,7 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
      conservation to machine accuracy. */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     double flux;
-    chemistry_get_fluxes(p, i, &flux);
+    chemistry_get_metal_mass_fluxes(p, i, &flux);
 
     /* Update the conserved variable */
     chd->metal_mass[i] += flux;
@@ -1084,8 +1084,8 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
 #endif
   }
 
-  /* Reset the fluxes now that they have been applied */
-  chemistry_reset_chemistry_fluxes(p);
+  /* Reset the metal mass fluxes now that they have been applied */
+  chemistry_reset_chemistry_metal_mass_fluxes(p);
 
   /* We don't need to invalidate the part's timestep. The active ones were
      reset in chemistry_end_force() and the inactive do not need an update

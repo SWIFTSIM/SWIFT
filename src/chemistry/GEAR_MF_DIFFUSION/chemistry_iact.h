@@ -470,15 +470,15 @@ runner_iact_chemistry_fluxes_common(
     /* First check that we won't have negative masses. If then we need to
        artificially make masses positive, then we have metal mass creation. */
     const double mass_flux = totflux * mindt;
-    const double m_Z_i_new = chi->metal_mass[m] + chi->diffusion_flux[m] - mass_flux;
-    const double m_Z_j_new = chj->metal_mass[m] + chj->diffusion_flux[m] + mass_flux;
+    const double m_Z_i_new = chi->metal_mass[m] + chi->diffused_metal_mass_fluxes[m] - mass_flux;
+    const double m_Z_j_new = chj->metal_mass[m] + chj->diffused_metal_mass_fluxes[m] + mass_flux;
 
     if (m_Z_i_new >= GEAR_NEGATIVE_METAL_MASS_TOLERANCE
 	&& m_Z_j_new >= GEAR_NEGATIVE_METAL_MASS_TOLERANCE) {
       /* Update V*U. */
-      chi->diffusion_flux[m] -= totflux * mindt;
+      chi->diffused_metal_mass_fluxes[m] -= totflux * mindt;
       if (mode == 1 || (chj->flux_dt < 0.f)) {
-	chj->diffusion_flux[m] += totflux * mindt;
+	chj->diffused_metal_mass_fluxes[m] += totflux * mindt;
       }
     }
   }
