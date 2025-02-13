@@ -438,141 +438,12 @@ void stellar_evolution_evolve_spart(
     return;
   }
 
-  /* Convert the inputs */
-  const double conversion_to_myr = phys_const->const_year * 1e6;
-  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
-  const double dt_myr = dt / conversion_to_myr;
+  /* Pre-SN feedback */
 
-  /* Get the metallicity */
-  const float metallicity =
-      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+  /* Supernova feedback */
+  stellar_evolution_compute_SN_feedback_spart(sp, sm, cosmo, us, phys_const, ti_begin,
+					      star_age_beg_step, dt);
 
-  /* Compute masses range */
-  const float log_m_beg_step =
-      star_age_beg_step == 0.
-          ? FLT_MAX
-          : lifetime_get_log_mass_from_lifetime(
-                &sm->lifetime, log10(star_age_beg_step_myr), metallicity);
-  const float log_m_end_step = lifetime_get_log_mass_from_lifetime(
-      &sm->lifetime, log10(star_age_beg_step_myr + dt_myr), metallicity);
-
-  float m_beg_step = star_age_beg_step == 0. ? FLT_MAX : exp10(log_m_beg_step);
-  float m_end_step = exp10(log_m_end_step);
-
-  /* Limit the mass interval to the IMF boundaries */
-  m_end_step = max(m_end_step, sm->imf.mass_min);
-  m_beg_step = min(m_beg_step, sm->imf.mass_max);
-
-  /* Here we are outside the IMF, i.e., both masses are too large or too small
-   */
-  if (m_end_step >= m_beg_step) return;
-
-  /* Star particles representing only the continuous part of the IMF need a
-  special treatment. They do not contain stars above the mass that separate the
-  IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
-  module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
-  feedback. Note that the sm structure contains different information for the
-  'first stars' and the 'late stars'. The right sm data is passed to this
-  function so we do not need any special treatment here. */
-  if (sp->star_type == star_population_continuous_IMF) {
-    /* If it's not time yet for feedback, exit. Notice that both masses are in
-      solar mass. */
-    if (m_beg_step > sm->imf.minimal_discrete_mass_Msun) {
-      return;
-    }
-  }
-
-  /* Check if the star can produce a supernovae */
-  const int can_produce_snia =
-      supernovae_ia_can_explode(&sm->snia, m_end_step, m_beg_step);
-  const int can_produce_snii =
-      supernovae_ii_can_explode(&sm->snii, m_end_step, m_beg_step);
-
-  /* Is it possible to generate a supernovae? */
-  if (!can_produce_snia && !can_produce_snii) return;
-
-  /* Compute the initial mass. The initial mass is different if the star
-     particle is of type 'star_population' or
-     'star_population_continuous_IMF'. The function call treats both cases. */
-  const float m_init =
-      stellar_evolution_compute_initial_mass(sp, sm, phys_const);
-
-  /* Then, for 'star_population_continuous_IMF', everything remain the same as
-     with the "old" 'star_population'! */
-
-  /* Compute number of SNIa */
-  float number_snia_f = 0;
-  if (can_produce_snia) {
-    number_snia_f = supernovae_ia_get_number_per_unit_mass(
-                        &sm->snia, m_end_step, m_beg_step) *
-                    m_init;
-  }
-
-  /* Compute number of SNII */
-  float number_snii_f = 0;
-  if (can_produce_snii) {
-    number_snii_f = supernovae_ii_get_number_per_unit_mass(
-                        &sm->snii, m_end_step, m_beg_step) *
-                    m_init;
-  }
-
-  /* Does this star produce a supernovae? */
-  if (number_snia_f == 0 && number_snii_f == 0) return;
-
-  /* Compute the properties of the feedback (e.g. yields) */
-  if (sm->discrete_yields) {
-    /* Get the integer number of supernovae */
-    const int number_snia = stellar_evolution_compute_integer_number_supernovae(
-        sp, number_snia_f, ti_begin, random_number_stellar_feedback_1);
-
-    /* Get the integer number of supernovae */
-    const int number_snii = stellar_evolution_compute_integer_number_supernovae(
-        sp, number_snii_f, ti_begin, random_number_stellar_feedback_2);
-
-    /* Do we have a supernovae? */
-    if (number_snia == 0 && number_snii == 0) return;
-
-    /* Save the number of supernovae */
-    sp->feedback_data.number_snia = number_snia;
-    sp->feedback_data.number_snii = number_snii;
-
-    /* Compute the yields */
-    stellar_evolution_compute_discrete_feedback_properties(
-        sp, sm, phys_const, m_beg_step, m_end_step, m_init, number_snia,
-        number_snii);
-
-  } else {
-    /* Save the number of supernovae */
-    sp->feedback_data.number_snia = number_snia_f;
-    sp->feedback_data.number_snii = number_snii_f;
-
-    /* Compute the yields */
-    stellar_evolution_compute_continuous_feedback_properties(
-        sp, sm, phys_const, log_m_beg_step, log_m_end_step, m_beg_step,
-        m_end_step, m_init, number_snia_f, number_snii_f);
-  }
-
-  /* Compute the supernovae energy associated to the stellar particle */
-
-  /* Compute the average mass (in solar mass) */
-  const float m_avg = 0.5 * (m_beg_step + m_end_step);
-  const float energy_conversion =
-      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) / 1e51;
-
-  /* initialize */
-  sp->feedback_data.energy_ejected = 0;
-
-  /* snia contribution */
-  const float snia_energy = sm->snia.energy_per_supernovae;
-  sp->feedback_data.energy_ejected +=
-      sp->feedback_data.number_snia * snia_energy;
-
-  /* snii contribution */
-  const float snii_energy =
-      supernovae_ii_get_energy_from_progenitor_mass(&sm->snii, m_avg) /
-      energy_conversion;
-  sp->feedback_data.energy_ejected +=
-      sp->feedback_data.number_snii * snii_energy;
 }
 
 /**
@@ -881,5 +752,181 @@ void stellar_evolution_compute_SN_feedback_individual_star(
       supernovae_ii_get_energy_from_progenitor_mass(&sm->snii, m_avg) /
       energy_conversion;
     sp->feedback_data.energy_ejected +=
+      sp->feedback_data.number_snii * snii_energy;
+}
+
+
+/**
+ * @brief Compute the supernova feedback for a SSP/continuous-IMF #spart.
+ *
+ * This function compute the SN rate and yields before sending
+ * this information to a different MPI rank. It also compute the supernovae
+ * energy to be released by the star.
+ *
+ * Here I am using Myr-solar mass units internally in order to
+ * avoid numerical errors.
+ *
+ * Note: This function treats the case of particles representing the whole IMF
+ * (star_type = star_population) and the particles representing only the
+ * continuous part of the IMF (star_type = star_population_continuous_IMF).
+ *
+ * @param sp The particle to act upon
+ * @param sm The #stellar_model structure.
+ * @param cosmo The current cosmological model.
+ * @param us The unit system.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param ti_begin The #integertime_t at the begining of the step.
+ * @param star_age_beg_step The age of the star at the star of the time-step in
+ * internal units.
+ * @param dt The time-step size of this star in internal units.
+ */
+void stellar_evolution_compute_SN_feedback_spart(
+    struct spart* restrict sp, const struct stellar_model* sm,
+    const struct cosmology* cosmo, const struct unit_system* us,
+    const struct phys_const* phys_const, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt) {
+
+  /* Check that this function is called for populations of stars and not
+     individual stars. */
+  if (sp->star_type == single_star) {
+    error(
+        "This function can only be called for sparts representing stars "
+        "populations!");
+  }
+
+    /* Convert the inputs */
+  const double conversion_to_myr = phys_const->const_year * 1e6;
+  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
+  const double dt_myr = dt / conversion_to_myr;
+
+  /* Get the metallicity */
+  const float metallicity =
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+
+  /* Compute masses range */
+  const float log_m_beg_step =
+      star_age_beg_step == 0.
+          ? FLT_MAX
+          : lifetime_get_log_mass_from_lifetime(
+                &sm->lifetime, log10(star_age_beg_step_myr), metallicity);
+  const float log_m_end_step = lifetime_get_log_mass_from_lifetime(
+      &sm->lifetime, log10(star_age_beg_step_myr + dt_myr), metallicity);
+
+  float m_beg_step = star_age_beg_step == 0. ? FLT_MAX : exp10(log_m_beg_step);
+  float m_end_step = exp10(log_m_end_step);
+
+  /* Limit the mass interval to the IMF boundaries */
+  m_end_step = max(m_end_step, sm->imf.mass_min);
+  m_beg_step = min(m_beg_step, sm->imf.mass_max);
+
+  /* Here we are outside the IMF, i.e., both masses are too large or too small
+   */
+  if (m_end_step >= m_beg_step) return;
+
+  /* Star particles representing only the continuous part of the IMF need a
+  special treatment. They do not contain stars above the mass that separate the
+  IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
+  module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
+  feedback. Note that the sm structure contains different information for the
+  'first stars' and the 'late stars'. The right sm data is passed to this
+  function so we do not need any special treatment here. */
+  if (sp->star_type == star_population_continuous_IMF) {
+    /* If it's not time yet for feedback, exit. Notice that both masses are in
+      solar mass. */
+    if (m_beg_step > sm->imf.minimal_discrete_mass_Msun) {
+      return;
+    }
+  }
+
+  /* Check if the star can produce a supernovae */
+  const int can_produce_snia =
+      supernovae_ia_can_explode(&sm->snia, m_end_step, m_beg_step);
+  const int can_produce_snii =
+      supernovae_ii_can_explode(&sm->snii, m_end_step, m_beg_step);
+
+  /* Is it possible to generate a supernovae? */
+  if (!can_produce_snia && !can_produce_snii) return;
+
+  /* Compute the initial mass. The initial mass is different if the star
+     particle is of type 'star_population' or
+     'star_population_continuous_IMF'. The function call treats both cases. */
+  const float m_init =
+      stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+
+  /* Then, for 'star_population_continuous_IMF', everything remain the same as
+     with the "old" 'star_population'! */
+
+  /* Compute number of SNIa */
+  float number_snia_f = 0;
+  if (can_produce_snia) {
+    number_snia_f = supernovae_ia_get_number_per_unit_mass(
+                        &sm->snia, m_end_step, m_beg_step) *
+                    m_init;
+  }
+
+  /* Compute number of SNII */
+  float number_snii_f = 0;
+  if (can_produce_snii) {
+    number_snii_f = supernovae_ii_get_number_per_unit_mass(
+                        &sm->snii, m_end_step, m_beg_step) *
+                    m_init;
+  }
+
+  /* Does this star produce a supernovae? */
+  if (number_snia_f == 0 && number_snii_f == 0) return;
+
+  /* Compute the properties of the feedback (e.g. yields) */
+  if (sm->discrete_yields) {
+    /* Get the integer number of supernovae */
+    const int number_snia = stellar_evolution_compute_integer_number_supernovae(
+        sp, number_snia_f, ti_begin, random_number_stellar_feedback_1);
+
+    /* Get the integer number of supernovae */
+    const int number_snii = stellar_evolution_compute_integer_number_supernovae(
+        sp, number_snii_f, ti_begin, random_number_stellar_feedback_2);
+
+    /* Do we have a supernovae? */
+    if (number_snia == 0 && number_snii == 0) return;
+
+    /* Save the number of supernovae */
+    sp->feedback_data.number_snia = number_snia;
+    sp->feedback_data.number_snii = number_snii;
+
+    /* Compute the yields */
+    stellar_evolution_compute_discrete_feedback_properties(
+        sp, sm, phys_const, m_beg_step, m_end_step, m_init, number_snia,
+        number_snii);
+
+  } else {
+    /* Save the number of supernovae */
+    sp->feedback_data.number_snia = number_snia_f;
+    sp->feedback_data.number_snii = number_snii_f;
+
+    /* Compute the yields */
+    stellar_evolution_compute_continuous_feedback_properties(
+        sp, sm, phys_const, log_m_beg_step, log_m_end_step, m_beg_step,
+        m_end_step, m_init, number_snia_f, number_snii_f);
+  }
+
+  /* Compute the supernovae energy associated to the stellar particle */
+
+  /* Compute the average mass (in solar mass) */
+  const float m_avg = 0.5 * (m_beg_step + m_end_step);
+  const float energy_conversion =
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) / 1e51;
+
+  /* initialize */
+  sp->feedback_data.energy_ejected = 0;
+
+  /* snia contribution */
+  const float snia_energy = sm->snia.energy_per_supernovae;
+  sp->feedback_data.energy_ejected +=
+      sp->feedback_data.number_snia * snia_energy;
+
+  /* snii contribution */
+  const float snii_energy =
+      supernovae_ii_get_energy_from_progenitor_mass(&sm->snii, m_avg) /
+      energy_conversion;
+  sp->feedback_data.energy_ejected +=
       sp->feedback_data.number_snii * snii_energy;
 }
