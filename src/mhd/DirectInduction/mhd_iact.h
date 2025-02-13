@@ -166,6 +166,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     pj->mhd_data.mean_grad_SPH_err[k] -=
         mi * over_rho_j * wj_dr * r_inv * dx[k];
   }
+ 
+  /* Calculate smooth B */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.smooth_B[k] += mj * wi * pj->mhd_data.B_over_rho[k];
+    pj->mhd_data.smooth_B[k] += mi * wj * pi->mhd_data.B_over_rho[k];
+
 }
 
 /**
@@ -270,6 +276,11 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
     pi->mhd_data.mean_grad_SPH_err[k] +=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
   }
+
+   /* Calculate smooth B */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.smooth_B[k] += mj * wi * pj->mhd_data.B_over_rho[k];
+
 }
 
 /**
@@ -474,13 +485,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   float sph_acc_term_mul_i = 0.0f;
   float sph_acc_term_mul_j = 0.0f;
 
+  float Bsi[3] = pi->mhd_data.smooth_B;
+  float Bsj[3] = pj->mhd_data.smooth_B;
+
+  float Bs2i = Bsi[0]*Bsi[0] + Bsi[1]*Bsi[1] + Bsi[2]*Bsi[2];
+  float Bs2j = Bsj[0]*Bsj[0] + Bsj[1]*Bsj[1] + Bsj[2]*Bsj[2];
+
   for (int k = 0; k < 3; k++) {
-    sph_acc_term_mul_i += sph_acc_term_i[k]*Bi[k]/B2i;
-    sph_acc_term_mul_j += sph_acc_term_j[k]*Bj[k]/B2j; 
+    sph_acc_term_mul_i += sph_acc_term_i[k]*Bsi[k]/Bs2i;
+    sph_acc_term_mul_j += sph_acc_term_j[k]*Bsj[k]/Bs2j; 
   }
   for (int k = 0; k < 3; k++) {
-    sph_acc_term_i[k] -= Bi[k]*sph_acc_term_mul_i; 
-    sph_acc_term_j[k] -= Bj[k]*sph_acc_term_mul_j; 
+    sph_acc_term_i[k] -= Bsi[k]*sph_acc_term_mul_i; 
+    sph_acc_term_j[k] -= Bsj[k]*sph_acc_term_mul_j; 
   }
 
 
@@ -856,6 +873,120 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* Correcting for lorentz force component parallel to B */
   float sph_acc_term_mul_i = 0.0f;
+
+  float Bsi[3] = pi->mhd_data.smooth_B;
+
+  float Bs2i = Bsi[0]*Bsi[0] + Bsi[1]*Bsi[1] + Bsi[2]*Bsi[2];
+
+  for (int k = 0; k < 3; k++) {
+    sph_acc_term_mul_i += sph_acc_term_i[k]*Bsi[k]/Bs2i;
+  }
+  for (int k = 0; k < 3; k++) {
+    sph_acc_term_i[k] -= Bsi[k]*sph_acc_term_mul_i; 
+  }
+
+  /* Use the force Luke ! */
+  pi->a_hydro[0] -= mj * sph_acc_term_i[0];
+  pi->a_hydro[1] -= mj * sph_acc_term_i[1];
+  pi->a_hydro[2] -= mj * sph_acc_term_i[2];
+
+  /* Save forces */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
+  }
+
+  /* */
+  const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
+  // const float dB_dt_pref_j = over_rho2_j * wj_dr * r_inv;
+
+  /* */
+  float dB_dt_i[3];
+  dB_dt_i[0] = -Bri * dv[0];
+  dB_dt_i[1] = -Bri * dv[1];
+  dB_dt_i[2] = -Bri * dv[2];
+
+  /* */
+  pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
+  pi->mhd_data.B_over_rho_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
+  pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
+
+  /* Physical resistivity */
+  const float resistive_eta = pi->mhd_data.resistive_eta;
+
+  const float dB_dt_pref_PR = 2.0f * resistive_eta * r_inv / (rhoi * rhoj);
+
+  pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_PR * wi_dr * dB[0];
+  pi->mhd_data.B_over_rho_dt[1] += mj * dB_dt_pref_PR * wi_dr * dB[1];
+  pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_PR * wi_dr * dB[2];
+
+  /*
+  float curlB_cross_dxi[3];
+  float curlB_cross_dxj[3];
+
+  curlB_cross_dxi[0] = curlBi[1] * dx[2] - curlBi[2] * dx[1];
+  curlB_cross_dxi[1] = curlBi[2] * dx[0] - curlBi[0] * dx[2];
+  curlB_cross_dxi[2] = curlBi[0] * dx[1] - curlBi[1] * dx[0];
+
+  curlB_cross_dxj[0] = curlBj[1] * dx[2] - curlBj[2] * dx[1];
+  curlB_cross_dxj[1] = curlBj[2] * dx[0] - curlBj[0] * dx[2];
+  curlB_cross_dxj[2] = curlBj[0] * dx[1] - curlBj[1] * dx[0];
+
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * resistive_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * resistive_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
+  pi->mhd_data.B_over_rho_dt[1] +=
+      mj * resistive_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
+  pi->mhd_data.B_over_rho_dt[1] +=
+      mj * resistive_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
+  pi->mhd_data.B_over_rho_dt[2] +=
+      mj * resistive_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
+  pi->mhd_data.B_over_rho_dt[2] +=
+      mj * resistive_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
+  */
+
+  /*Artificial resistivity*/
+
+  // const float resistivity_beta = hydro_props->mhd.art_resistivity;
+
+  const float art_diff_beta = pi->mhd_data.art_diff_beta;
+
+  /*
+  const float rhoij = rhoi + rhoj;
+  const float rhoij2 = rhoij * rhoij;
+  const float rhoij2_inv = 1 / rhoij2;
+
+  const float alpha_ARij = pi->mhd_data.alpha_AR + pj->mhd_data.alpha_AR;
+  const float v_sig_Bij  = mhd_get_fast_magnetosonic_wave_speed(dx, pi, a, mu_0)
+  + mhd_get_fast_magnetosonic_wave_speed(dx, pj, a, mu_0);
+
+  const float art_res_pref = resistivity_beta * alpha_ARij * v_sig_Bij *
+  rhoij2_inv * wi_dr;
+  */
+
+  float dv_cross_dx[3];
+  dv_cross_dx[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  dv_cross_dx[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  dv_cross_dx[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+  const float v_sig_B_2 = dv_cross_dx[0] * dv_cross_dx[0] +
+                          dv_cross_dx[1] * dv_cross_dx[1] +
+                          dv_cross_dx[2] * dv_cross_dx[2];
+  const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
+
+  const float art_diff_pref = 0.5f * art_diff_beta * v_sig_B *
+                              (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
+
+  pi->mhd_data.B_over_rho_dt[0] += mj * art_diff_pref * dB[0];
+  pi->mhd_data.B_over_rho_dt[1] += mj * art_diff_pref * dB[1];
+  pi->mhd_data.B_over_rho_dt[2] += mj * art_diff_pref * dB[2];
+
+  pi->u_dt -= 0.5f * mj * permeability_inv * art_diff_pref * dB_2;
+
+  /* Store AR terms */
+  pi->mhd_data.B_over_rho_dt_AR[0] += mj * art_diff_pref * dB[0];
+  pi->mhd_data.B_over_rho_dt_AR[1] += mj * art_diff_pref * dB[1];
+
 
   for (int k = 0; k < 3; k++) {
     sph_acc_term_mul_i += sph_acc_term_i[k]*Bi[k]/B2i;

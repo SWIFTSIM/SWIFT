@@ -280,7 +280,18 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_density(
-    struct part *p, const struct cosmology *cosmo) {}
+    struct part *p, const struct cosmology *cosmo) {
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+
+  /* Finish B smoothing*/
+  p->mhd_data.smooth_B[k] += p->mass * kernel_root * p->mhd_data.B_over_rho[k];
+  p->mhd_data.smooth_B[k] *= h_inv_dim;
+
+}
 
 /**
  * @brief Prepare a particle for the gradient calculation.
