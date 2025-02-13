@@ -429,6 +429,15 @@ void stellar_evolution_evolve_spart(
         "populations!");
   }
 
+  /* Determine if the star is dead */
+  const int is_dead = (sp->mass <= sm->discrete_star_minimal_gravity_mass);
+
+  /* Don't do feedback if you are cold and dead */
+  if (is_dead) {
+    sp->feedback_data.is_dead = 1;
+    return;
+  }
+
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
   const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
