@@ -180,7 +180,6 @@ axs[2, 0].plot(x1exact, Flexact[0], "k-", lw=0.5, label="Exact Solution")
 axs[2, 1].plot(x1exact, Flexact[1], "k-", lw=0.5, label="Exact Solution")
 axs[2, 2].plot(x1exact, Flexact[2], "k-", lw=0.5, label="Exact Solution")
 
-
 axs[0, 0].set_ylabel(r'$\rm B_{1}$')
 axs[0, 1].set_ylabel(r'$\rm B_{2}$')
 axs[0, 2].set_ylabel(r'$\rm B_{3}$')
@@ -198,3 +197,18 @@ axs[2, 2].set_xlabel(r"$\rm x_1$")
 fig.tight_layout()
 
 plt.savefig("AlfvenWaves_B_J_F.png", dpi=100)
+
+
+fig, axs = plt.subplots(1, 1, figsize=(8, 4), sharex=True)
+
+FdotB = Flp[0,:]*Bp[0,:]+Flp[1,:]*Bp[1,:]+Flp[2,:]*Bp[2,:]
+normF = np.sqrt(Flp[0,:]*Flp[0,:]+Flp[1,:]*Flp[1,:]+Flp[2,:]*Flp[2,:])
+Fangle = FdotB/(normB*normF)
+
+
+axs.scatter(posp[0, :], Fangle[:], s=0.2, label=filename)
+
+axs.set_ylabel(r'$\frac{F_{L}\cdot B}{|F_{L}| |B| }$')
+
+fig.tight_layout()
+plt.savefig("Angle_BdotF.png", dpi=100)
