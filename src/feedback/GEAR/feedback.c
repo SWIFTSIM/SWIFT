@@ -205,9 +205,6 @@ void feedback_will_do_feedback(
   sp->feedback_data.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
 
-  /* TODO: When mass < minimal mass, set the star to dead state */
-  /* TODO: Should we add  "if star is dead : return" ?*/
-
   /* quit if the birth_scale_factor or birth_time is negative */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return;
 
