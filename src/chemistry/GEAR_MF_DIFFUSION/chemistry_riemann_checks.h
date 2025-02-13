@@ -176,7 +176,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_check_input(
  */
 __attribute__((always_inline)) INLINE static void chemistry_riemann_check_output(
     const float WL[5], const float WR[5], const double UL, const double UR,
-    const float n[5], const double* totflux) {
+    const float n[3], const double* totflux) {
 
   int errorFlag = 0;
 

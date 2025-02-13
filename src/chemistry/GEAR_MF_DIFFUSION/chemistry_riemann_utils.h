@@ -218,7 +218,6 @@ chemistry_riemann_compute_alpha(const double c_s_L, const double c_s_R,
  * @param aL Left soundspeed (in physical units)
  * @param aR Right soundspeed (in physical units)
  */
- */
 __attribute__((always_inline)) INLINE static int chemistry_riemann_is_vacuum(
     const float* WL, const float* WR, float vL, float vR, float aL, float aR) {
 
