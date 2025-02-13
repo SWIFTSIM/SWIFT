@@ -129,13 +129,12 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_check_vector(
  *
  * @param WL Left hydro state vector.
  * @param WR Right hydro state vector.
- * @param UL Left diffusion state vector.
- * @param UR Right diffusion state vector.
+ * @param UL Left diffusion state vector (metal density).
+ * @param UR Right diffusion state vector (metal density).
  * @param n Surface normal vector.
- * @param vij Surface velocity vector.
  */
 __attribute__((always_inline)) INLINE static void chemistry_riemann_check_input(
-  const float WL[5], const float WR[5], const double UL, const double UR, const float *n) {
+  const float WL[5], const float WR[5], const double UL, const double UR, const float n[3]) {
 
   int errorFlag = 0;
 
@@ -168,19 +167,20 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_check_input(
  * Physically valid output consists of 5 finite (not NaN) flux components.
  * If no valid output is provided, an error is thrown.
  *
- * @param WL Left state vector.
- * @param WR Right state vector.
+ * @param WL Left hydro state vector.
+ * @param WR Right hydro state vector.
+ * @param UL Left diffusion state vector (metal density).
+ * @param UR Right diffusion state vector (metal density).
  * @param n Surface normal vector.
- * @param vij Surface velocity vector.
  * @param totflux Riemann solver flux result.
  */
 __attribute__((always_inline)) INLINE static void chemistry_riemann_check_output(
-    const float *WL, const float *WR, const double UL, const double UR,
-    const float *n, const double* totflux) {
+    const float WL[5], const float WR[5], const double UL, const double UR,
+    const float n[5], const double* totflux) {
 
   int errorFlag = 0;
 
-  /* check that all the fluxes are finite */
+  /* Check that metal mass flux is finite */
   if (totflux[0] != totflux[0]) {
     message("NaN mass flux!");
     errorFlag = 1;

@@ -206,9 +206,18 @@ chemistry_riemann_compute_alpha(const double c_s_L, const double c_s_R,
   return alpha;
 }
 
-
 /**
- * @brief Check if the given input states are vacuum or will generate vacuum
+ * @brief Check if the given input states are vacuum or will generate vacuum.
+ *
+ * @param WL Left state hydrodynamics primitve variables (density, velocity[3],
+ * pressure) (in physical units)
+ * @param WR Right state hydrodynamics primitve variables (density,
+ * velocity[3], pressure) (in physical units)
+ * @param vL Left velocity (in physical units)
+ * @param vR Right velocity (in physical units)
+ * @param aL Left soundspeed (in physical units)
+ * @param aR Right soundspeed (in physical units)
+ */
  */
 __attribute__((always_inline)) INLINE static int chemistry_riemann_is_vacuum(
     const float* WL, const float* WR, float vL, float vR, float aL, float aR) {

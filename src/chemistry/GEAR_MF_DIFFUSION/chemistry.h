@@ -355,7 +355,6 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
         "or HLL_hyperbolic_H17 "
         " not %s", temp);
 #endif
-
   /***************************************************************************/
   /* Print the parameters we use */
   if (engine_rank == 0) {
