@@ -29,13 +29,22 @@
  */
 
 /**
- * @brief Check for and correct, if needed, unphysical values for a diffusion
- * state.
+ * @brief Check for, and correct, if needed, unphysical values for a diffusion
+ * state (metal mass).
  *
- * @param metal_mass pointer to the radiation energy density
- * @param n_old metal density before change to check. Set = 0 if not available
- * @param callloc integer indentifier where this function was called from
- * @param element Integer identifier for the metal specie to correct
+ * @param metal_mass Pointer to the metal mass.
+ * @param mZ_old Metal density before change to check. Set = 0 if not
+ * available.
+ * @param gas_mass #part mass.
+ * @param callloc Integer indentifier where this function was called from
+ *
+ * 0: after density compuations (chemistry_end_density()),
+ * 1: during gradients extrapolation (chemistry_gradients_predict()),
+ * 2: after diffusion computations (chemistry_end_force()),
+ * 3: during drift (chemistry_predict_extra()).
+ *
+ * @param element Integer identifier for the metal specie to correct.
+ * @param id Particle id.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
@@ -74,10 +83,9 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
 }
 
 /**
- * @brief check for and correct if needed unphysical
- * values for a flux in the sense of parabolic conservation laws
+ * @brief Check for and correct if needed unphysical values for a diffusion 3D flux.
  *
- * @param flux  flux: 3 components
+ * @param flux flux: 3 components diffusion flux
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_diffusion_flux(double flux[3]) {
@@ -107,10 +115,15 @@ chemistry_check_unphysical_diffusion_flux(double flux[3]) {
 }
 
 /**
- * @brief Check for and correct if needed unphysical total metal mass.
+ * @brief Check for, and correct if needed, unphysical total metal mass.
  *
- * @param p The #part
+ * @param p The #part to check.
  * @param callloc integer indentifier where this function was called from
+ *
+ * 0: after density compuations (chemistry_end_density()).
+ * 2: after diffusion computations (chemistry_end_force()).
+ * 3: during drift (chemistry_predict_extra()).
+ *
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_total_metal_mass(struct part* restrict p,

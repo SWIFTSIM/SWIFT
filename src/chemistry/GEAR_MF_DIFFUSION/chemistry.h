@@ -594,7 +594,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 #endif
     chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g],
                                      m_metal_old, hydro_get_mass(p),
-                                     /*callloc=*/3, /*element*/ g, p->id);
+                                     /*callloc=*/0, /*element*/ g, p->id);
   }
 
   /* Sanity check on the total metal mass */
@@ -688,7 +688,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   }
 
   /* Sanity check on the total metal mass */
-  chemistry_check_unphysical_total_metal_mass(p, 1);
+  chemistry_check_unphysical_total_metal_mass(p, 2);
 }
 
 /**
@@ -1095,12 +1095,12 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     const double m_metal_old = chd->metal_mass[i];
     chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
-                                     hydro_get_mass(p), /*callloc=*/10,
+                                     hydro_get_mass(p), /*callloc=*/3,
                                      /*element*/ i, p->id);
   }
 
   /* Sanity check on the total metal mass */
-  chemistry_check_unphysical_total_metal_mass(p, 10);
+  chemistry_check_unphysical_total_metal_mass(p, 3);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */

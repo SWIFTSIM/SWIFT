@@ -173,6 +173,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
  * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
  * @param cosmo Cosmology.
  * @param hydro_props Additional hydro properties.
+ * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     struct part* p, float dt_therm, float dt_grav, float dt_hydro,
