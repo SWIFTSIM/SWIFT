@@ -259,10 +259,8 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   const double u_rel = u_R - u_L;
 
   /* Get the fastet speed of sound. Use physical soundspeed */
-  /* const double c_s_L = hydro_get_physical_soundspeed(pi, cosmo); */
-  /* const double c_s_R = hydro_get_physical_soundspeed(pj, cosmo); */
-  const double c_s_L = chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo);
-  const double c_s_R = chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo);
+  const double c_s_L = hydro_get_physical_soundspeed(pi, cosmo);
+  const double c_s_R = hydro_get_physical_soundspeed(pj, cosmo);
   const double c_fast = max(c_s_L, c_s_R);
   const double lambda_plus = fabs(u_rel) + c_fast;
   const double lambda_minus = -lambda_plus;
