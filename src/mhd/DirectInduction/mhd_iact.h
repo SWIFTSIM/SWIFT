@@ -744,7 +744,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* */
   const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
-  
+
   /* */
   float dB_dt_i[3];
   dB_dt_i[0] = -Bri * dv[0];
