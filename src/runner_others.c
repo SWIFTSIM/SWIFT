@@ -754,10 +754,12 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
                               /*dt_alpha=*/0, /*dt_therm=*/0);
           rt_prepare_force(p);
 #endif
-#if defined(CHEMISTRY_GEAR_MF_DIFFUSION) || defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_MF_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
 
-	  /* Some values need to be reset in the Gizmo case. */
-	  chemistry_prepare_force(p, xp, cosmo, /*dt_alpha=*/0, /*dt_therm=*/0, e->chemistry);
+          /* Some values need to be reset in the Gizmo case. */
+          chemistry_prepare_force(p, xp, cosmo, /*dt_alpha=*/0, /*dt_therm=*/0,
+                                  e->chemistry);
 #endif
         }
 #endif

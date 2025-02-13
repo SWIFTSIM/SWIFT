@@ -27,7 +27,6 @@
 #include "kernel_hydro.h"
 #include "part.h"
 
-
 /**
  * @brief Get metal mass fraction from a specific metal specie.
  *
@@ -47,7 +46,8 @@ chemistry_get_metal_mass_fraction(const struct part* restrict p, int metal) {
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_get_comoving_metal_density(const struct part* restrict p, int metal) {
-  return chemistry_get_metal_mass_fraction(p, metal) * hydro_get_comoving_density(p);
+  return chemistry_get_metal_mass_fraction(p, metal) *
+         hydro_get_comoving_density(p);
 }
 
 /**
@@ -378,7 +378,7 @@ chemistry_get_physical_diffusion_speed(
     return FLT_MAX;
   }
 
-  return norm_matrix_K * norm_grad_q / norm_U ;
+  return norm_matrix_K * norm_grad_q / norm_U;
 #endif
 }
 
@@ -405,7 +405,7 @@ chemistry_compute_physical_tau(const struct part* restrict p,
     /* Get soundspeed */
     const double c_hyp =
         chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
-    return  norm_matrix_K / (c_hyp*c_hyp*rho);
+    return norm_matrix_K / (c_hyp * c_hyp * rho);
   } else {
     return chem_data->tau;
   }

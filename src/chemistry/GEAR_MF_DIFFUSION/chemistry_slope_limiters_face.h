@@ -107,7 +107,7 @@ __attribute__((always_inline)) INLINE static double chemistry_limiter_superbee(
 __attribute__((always_inline)) INLINE static double chemistry_limiter_koren(
     const double dQi, const double dQj) {
   const double r = dQj == 0.0 ? dQi * 1e6 : dQi / dQj;
-  const double minterm = min3(2.0*r, (1.0 + 2.0*r)/3.0, 2.0);
+  const double minterm = min3(2.0 * r, (1.0 + 2.0 * r) / 3.0, 2.0);
   return max(0.0, minterm);
 }
 
@@ -127,7 +127,8 @@ __attribute__((always_inline)) INLINE static double chemistry_limiter_koren(
 __attribute__((always_inline)) INLINE static double
 chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j,
                                            double phi_mid0, float xij_norm,
-                                           float r_inv, int enforce_positivity) {
+                                           float r_inv,
+                                           int enforce_positivity) {
 
   const double psi1 = 0.5;
   const double psi2 = 0.25;
@@ -225,11 +226,11 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
 
   const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
-  *dUi = chemistry_slope_limit_face_quantity_double(Ui[0], Uj[0], Ui[0] + dUi[0],
-						    xij_i_norm, r_inv, 1);
+  *dUi = chemistry_slope_limit_face_quantity_double(
+      Ui[0], Uj[0], Ui[0] + dUi[0], xij_i_norm, r_inv, 1);
 
-  *dUj = chemistry_slope_limit_face_quantity_double(Uj[0], Ui[0], Uj[0] +  dUj[0],
-						    xij_j_norm, r_inv, 1);
+  *dUj = chemistry_slope_limit_face_quantity_double(
+      Uj[0], Ui[0], Uj[0] + dUj[0], xij_j_norm, r_inv, 1);
 #else
   /* chemistry_limiter_minmod(dUi, dUj); */
 
@@ -242,13 +243,11 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
 
   const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
-  *dUi = chemistry_slope_limit_face_quantity_double(Ui[0], Uj[0], Ui[0] +
-  dUi[0],
-                                             xij_i_norm, r_inv);
+  *dUi = chemistry_slope_limit_face_quantity_double(
+      Ui[0], Uj[0], Ui[0] + dUi[0], xij_i_norm, r_inv);
 
-  *dUj = chemistry_slope_limit_face_quantity_double(Uj[0], Ui[0], Uj[0] +
-  dUj[0],
-                                             xij_j_norm, r_inv);
+  *dUj = chemistry_slope_limit_face_quantity_double(
+      Uj[0], Ui[0], Uj[0] + dUj[0], xij_j_norm, r_inv);
 
 #endif
 }
@@ -332,10 +331,9 @@ chemistry_slope_limit_face_quantity_float(float phi_i, float phi_j,
  * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_slope_limit_face_hydro(float *Wi, float *Wj, float drhoi,
-				 float drhoj, float *dvi, float *dvj,
-                                 const float *xij_i, const float *xij_j,
-                                 float r) {
+chemistry_slope_limit_face_hydro(float *Wi, float *Wj, float drhoi, float drhoj,
+                                 float *dvi, float *dvj, const float *xij_i,
+                                 const float *xij_j, float r) {
 
   const float xij_i_norm =
       sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
@@ -347,24 +345,24 @@ chemistry_slope_limit_face_hydro(float *Wi, float *Wj, float drhoi,
 
   /* Particle i */
   drhoi = chemistry_slope_limit_face_quantity_float(Wi[0], Wj[0], Wi[0] + drhoi,
-						    xij_i_norm, r_inv, 1);
+                                                    xij_i_norm, r_inv, 1);
   dvi[0] = chemistry_slope_limit_face_quantity_float(
       Wi[1], Wj[1], Wi[1] + dvi[0], xij_i_norm, r_inv, 0);
   dvi[1] = chemistry_slope_limit_face_quantity_float(
-						     Wi[2], Wj[2], Wi[2] + dvi[1], xij_i_norm, r_inv, 0);
+      Wi[2], Wj[2], Wi[2] + dvi[1], xij_i_norm, r_inv, 0);
   dvi[2] = chemistry_slope_limit_face_quantity_float(
-						     Wi[3], Wj[3], Wi[3] + dvi[2], xij_i_norm, r_inv, 0);
+      Wi[3], Wj[3], Wi[3] + dvi[2], xij_i_norm, r_inv, 0);
 
   /* Particle j */
   drhoj = chemistry_slope_limit_face_quantity_float(Wj[0], Wi[0], Wj[0] + drhoj,
-						    xij_j_norm, r_inv, 1);
+                                                    xij_j_norm, r_inv, 1);
 
   dvj[0] = chemistry_slope_limit_face_quantity_float(
-						     Wj[1], Wi[1], Wj[1] + dvj[0], xij_j_norm, r_inv, 0);
+      Wj[1], Wi[1], Wj[1] + dvj[0], xij_j_norm, r_inv, 0);
   dvj[1] = chemistry_slope_limit_face_quantity_float(
-						     Wj[2], Wi[2], Wj[2] + dvj[1], xij_j_norm, r_inv, 0);
+      Wj[2], Wi[2], Wj[2] + dvj[1], xij_j_norm, r_inv, 0);
   dvj[2] = chemistry_slope_limit_face_quantity_float(
-						     Wj[3], Wi[3], Wj[3] + dvj[2], xij_j_norm, r_inv, 0);
+      Wj[3], Wi[3], Wj[3] + dvj[2], xij_j_norm, r_inv, 0);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_FACE_H */

@@ -41,7 +41,7 @@ chemistry_compute_parabolic_timestep(
 
   /* CFL condition */
   const float dt_cfl =
-    CFL_condition * delta_x / p->chemistry_data.timestepvars.vmax;
+      CFL_condition * delta_x / p->chemistry_data.timestepvars.vmax;
   return dt_cfl;
 #else
   const struct chemistry_part_data *chd = &p->chemistry_data;

@@ -83,13 +83,12 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
    * primitive variables among the ngbs */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chi->limiter.Z[i][0] =
-      min(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][0]);
+        min(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][0]);
     chi->limiter.Z[i][1] =
-      max(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][1]);
+        max(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][1]);
 
     /* Ensures metalicity never exceeds 1 */
-    chi->limiter.Z[i][1] =
-      min(1.0, chi->limiter.Z[i][1]);
+    chi->limiter.Z[i][1] = min(1.0, chi->limiter.Z[i][1]);
   }
 
   chi->limiter.v[0][0] = min(pj->v[0], chi->limiter.v[0][0]);
@@ -183,8 +182,8 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
           (fmin > positive_definite_min) ? fmin : positive_definite_min;
 
       /* Compute cfac for positivity preservation
-	 Note: gradtrue has been multiplied by maxr already. Hence, we don't need
-	 to divide (value - final_fmin) by maxr. */
+         Note: gradtrue has been multiplied by maxr already. Hence, we don't
+         need to divide (value - final_fmin) by maxr. */
       const double cfac_pos_preserve = (value - final_fmin) / gradtrue;
       alpha = (cfac_pos_preserve < alpha) ? cfac_pos_preserve : alpha;
     }
@@ -235,7 +234,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
 #endif
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chemistry_slope_limit_quantity(
-        /*gradient=*/ chd->gradients.Z[i],
+        /*gradient=*/chd->gradients.Z[i],
         /*maxr=    */ maxr,
         /*value=   */ chemistry_get_metal_mass_fraction(p, i),
         /*valmin=  */ chd->limiter.Z[i][0],
@@ -245,8 +244,8 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   }
 
   /* Use doubles sice chemistry_slope_limit_quantity() accepts double arrays. */
-  double gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3], gradvy_tilde[3],
-      gradvz_tilde[3];
+  double gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3],
+      gradvy_tilde[3], gradvz_tilde[3];
 
   /* Get the velocity gradients and cast them as double */
   gradvx[0] = chd->gradients.v[0][0];
@@ -288,7 +287,8 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                                  vz_tilde_lim[0], vz_tilde_lim[1], N_cond, 0);
 
   /* Slope limit density gradient */
-  chemistry_slope_limit_quantity(gradrho, maxr, p->rho, rholim[0], rholim[1], N_cond, 1);
+  chemistry_slope_limit_quantity(gradrho, maxr, p->rho, rholim[0], rholim[1],
+                                 N_cond, 1);
 
   /* Set the velocity gradient values */
   chd->gradients.v[0][0] = gradvx[0];

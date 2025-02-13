@@ -28,7 +28,8 @@
 
 /**
  * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_riemann_utils.h
- * @brief File containing functions to modularise the Riemann solver computations.
+ * @brief File containing functions to modularise the Riemann solver
+ * computations.
  *
  * */
 
@@ -219,7 +220,7 @@ chemistry_riemann_compute_alpha(const double c_s_L, const double c_s_R,
  * @param aR Right soundspeed (in physical units)
  */
 __attribute__((always_inline)) INLINE static int chemistry_riemann_is_vacuum(
-    const float* WL, const float* WR, float vL, float vR, float aL, float aR) {
+    const float *WL, const float *WR, float vL, float vR, float aL, float aR) {
 
   /* vacuum */
   if (!WL[0] || !WR[0]) return 1;
@@ -235,4 +236,4 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_is_vacuum(
     return 0;
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_UTILS_H */ 
+#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_UTILS_H */

@@ -85,7 +85,8 @@ chemistry_compute_physical_diffusion_flux(
     /* Here, we use grad (rho Z) */
     double grad_rhoZ[3];
     chemistry_get_metal_density_gradients(p, metal, grad_rhoZ);
-    const double a_inv_4 = cosmo->a_inv*cosmo->a_inv*cosmo->a_inv*cosmo->a_inv;
+    const double a_inv_4 =
+        cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
 
     /* a^-3 for density and a^-1 for gradient */
     F_diff[0] = -kappa * grad_rhoZ[0] * a_inv_4;
@@ -113,12 +114,12 @@ chemistry_compute_physical_diffusion_flux(
             K[i][j] * p->chemistry_data.gradients.Z[metal][j] * cosmo->a_inv;
       }
     } /* End of matrix multiplication */
-    } /* end of if else diffusion_mode */
+  } /* end of if else diffusion_mode */
 }
 
 /**
- * @brief Compute the metal mass flux for the Riemann problem with the given left and right
- * state, and interface normal, surface area and velocity.
+ * @brief Compute the metal mass flux for the Riemann problem with the given
+ * left and right state, and interface normal, surface area and velocity.
  *
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).

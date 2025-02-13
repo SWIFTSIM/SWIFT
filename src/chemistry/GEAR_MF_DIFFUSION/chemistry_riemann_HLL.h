@@ -19,12 +19,12 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_HLL_H
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_HLL_H
 
-#include "sign.h"
+#include "chemistry_gradients.h"
 #include "chemistry_riemann_checks.h"
 #include "chemistry_riemann_utils.h"
-#include "chemistry_gradients.h"
 #include "chemistry_struct.h"
 #include "hydro.h"
+#include "sign.h"
 
 /**
  * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_riemann_HLL.h
@@ -319,7 +319,7 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   const double flux_hll = F_2 + F_U;
 
   /* Compute the direct fluxes */
-  double qi,qj;
+  double qi, qj;
   if (chem_data->diffusion_mode == isotropic_constant) {
     qi = chemistry_get_physical_metal_density(pi, m, cosmo);
     qj = chemistry_get_physical_metal_density(pj, m, cosmo);
@@ -330,9 +330,9 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   const double dq = qj - qi;
 
   /* Here we want (x_j - x_i) hence we add a minus sign */
-  const double nabla_o_q_dir[3] = {- dx_p[0] * dq / dx_p_norm_2,
-                                   - dx_p[1] * dq / dx_p_norm_2,
-                                   - dx_p[2] * dq / dx_p_norm_2};
+  const double nabla_o_q_dir[3] = {-dx_p[0] * dq / dx_p_norm_2,
+                                   -dx_p[1] * dq / dx_p_norm_2,
+                                   -dx_p[2] * dq / dx_p_norm_2};
   const double kappa_mean =
       0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
 
@@ -340,7 +340,7 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
       (pj->chemistry_data.flux_dt > 0.f)
           ? fminf(pi->chemistry_data.flux_dt, pj->chemistry_data.flux_dt)
           : pi->chemistry_data.flux_dt;
-  const double min_dt_half = 0.5*min_dt;
+  const double min_dt_half = 0.5 * min_dt;
   const double tau_L = pi->chemistry_data.tau;
   const double tau_R = pj->chemistry_data.tau;
 
@@ -355,9 +355,9 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
           min_dt_half * kappa_mean * nabla_o_q_dir[2]};
 
   /* Here we want (x_j - x_i) hence we add a minus sign */
-  const double F_A_right_side[3] = { - Anorm * dx_p[0] / dx_p_norm,
-                                     - Anorm * dx_p[1] / dx_p_norm,
-                                     - Anorm * dx_p[2] / dx_p_norm};
+  const double F_A_right_side[3] = {-Anorm * dx_p[0] / dx_p_norm,
+                                    -Anorm * dx_p[1] / dx_p_norm,
+                                    -Anorm * dx_p[2] / dx_p_norm};
 
   const double F_times_A_dir = F_A_left_side[0] * F_A_right_side[0] +
                                F_A_left_side[1] * F_A_right_side[1] +
@@ -539,16 +539,16 @@ chemistry_riemann_solve_for_flux(
                                              m, chem_data, cosmo, metal_flux);
     return;
   } else if (chem_data->riemann_solver == HLL_hyperbolic_Hopkins2017) {
-    chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(dx, pi, pj, UL, UR, WL, WR,
-							F_diff_L, F_diff_R, Anorm, n_unit,
-							m, chem_data, cosmo, metal_flux);
+    chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
+        dx, pi, pj, UL, UR, WL, WR, F_diff_L, F_diff_R, Anorm, n_unit, m,
+        chem_data, cosmo, metal_flux);
     return;
   }
 #else
   /* Hopkins Hopkins 2017 implementation of HLL */
-  chemistry_riemann_solver_hopkins2017_HLL(dx, pi, pj, UL, UR, WL, WR,
-					   F_diff_L, F_diff_R, Anorm, n_unit,
-					   m, chem_data, cosmo, metal_flux);
+  chemistry_riemann_solver_hopkins2017_HLL(dx, pi, pj, UL, UR, WL, WR, F_diff_L,
+                                           F_diff_R, Anorm, n_unit, m,
+                                           chem_data, cosmo, metal_flux);
 #endif
 
   chemistry_riemann_check_output(WL, WR, UL, UR, n_unit, metal_flux);

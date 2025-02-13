@@ -39,7 +39,7 @@
  * @return 0 if the state vector is valid, 1 otherwise.
  */
 __attribute__((always_inline)) INLINE static int chemistry_riemann_check_state(
-  const float W[5], const double U) {
+    const float W[5], const double U) {
 
   int errorFlag = 0;
 
@@ -134,7 +134,8 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_check_vector(
  * @param n Surface normal vector.
  */
 __attribute__((always_inline)) INLINE static void chemistry_riemann_check_input(
-  const float WL[5], const float WR[5], const double UL, const double UR, const float n[3]) {
+    const float WL[5], const float WR[5], const double UL, const double UR,
+    const float n[3]) {
 
   int errorFlag = 0;
 
@@ -154,8 +155,10 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_check_input(
   }
 
   if (errorFlag) {
-    message("WL: %g %g %g %g %g, UL = %e", WL[0], WL[1], WL[2], WL[3], WL[4], UL);
-    message("WR: %g %g %g %g %g, UR = %e", WR[0], WR[1], WR[2], WR[3], WR[4], UR);
+    message("WL: %g %g %g %g %g, UL = %e", WL[0], WL[1], WL[2], WL[3], WL[4],
+            UL);
+    message("WR: %g %g %g %g %g, UR = %e", WR[0], WR[1], WR[2], WR[3], WR[4],
+            UR);
     message("n: %g %g %g", n[0], n[1], n[2]);
     error("Invalid Riemann solver input!");
   }
@@ -174,9 +177,10 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_check_input(
  * @param n Surface normal vector.
  * @param totflux Riemann solver flux result.
  */
-__attribute__((always_inline)) INLINE static void chemistry_riemann_check_output(
-    const float WL[5], const float WR[5], const double UL, const double UR,
-    const float n[3], const double* totflux) {
+__attribute__((always_inline)) INLINE static void
+chemistry_riemann_check_output(const float WL[5], const float WR[5],
+                               const double UL, const double UR,
+                               const float n[3], const double* totflux) {
 
   int errorFlag = 0;
 
@@ -187,8 +191,10 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_check_output
   }
 
   if (errorFlag) {
-    message("WL: %g %g %g %g %g, UL = %e", WL[0], WL[1], WL[2], WL[3], WL[4], UL);
-    message("WR: %g %g %g %g %g, UR = %e", WR[0], WR[1], WR[2], WR[3], WR[4], UR);
+    message("WL: %g %g %g %g %g, UL = %e", WL[0], WL[1], WL[2], WL[3], WL[4],
+            UL);
+    message("WR: %g %g %g %g %g, UR = %e", WR[0], WR[1], WR[2], WR[3], WR[4],
+            UR);
     message("n: %g %g %g", n[0], n[1], n[2]);
     /* message("vij: %g %g %g", vij[0], vij[1], vij[2]); */
     message("totflux: %g %g %g %g %g", totflux[0], totflux[1], totflux[2],
@@ -196,4 +202,4 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_check_output
     error("Invalid Riemann solver output!");
   }
 }
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_CHECKS_H */ 
+#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_CHECKS_H */

@@ -331,15 +331,14 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       DEFAULT_C_CFL_CHEMISTRY_SUPERTIMESTEPPPING);
 #else
   /* Make it mandatory for parabolic diffusion */
-  data->C_CFL_chemistry = parser_get_param_float(
-      parameter_file, "GEARChemistry:C_CFL_chemistry");
+  data->C_CFL_chemistry =
+      parser_get_param_float(parameter_file, "GEARChemistry:C_CFL_chemistry");
 #endif
   /***************************************************************************/
   /* Hyperbolic diffusion */
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   if (data->diffusion_mode == isotropic_constant) {
-    data->tau =
-        parser_get_param_double(parameter_file, "GEARChemistry:tau");
+    data->tau = parser_get_param_double(parameter_file, "GEARChemistry:tau");
   }
 
   parser_get_param_string(parameter_file, "GEARChemistry:riemann_solver", temp);
@@ -353,7 +352,8 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
     error(
         "The chemistry diffusion mode must be HLL, HLL_parabolic_H17 or "
         "or HLL_hyperbolic_H17 "
-        " not %s", temp);
+        " not %s",
+        temp);
 #endif
   /***************************************************************************/
   /* Print the parameters we use */
@@ -1056,16 +1056,17 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     chd->hyperbolic_flux[m].F_diff_pred[0] =
         chd->hyperbolic_flux[m].F_diff[0] +
-        0.5*dt_therm * chd->hyperbolic_flux[m].dF_dt[0];
+        0.5 * dt_therm * chd->hyperbolic_flux[m].dF_dt[0];
     chd->hyperbolic_flux[m].F_diff_pred[1] =
         chd->hyperbolic_flux[m].F_diff[1] +
-        0.5*dt_therm * chd->hyperbolic_flux[m].dF_dt[1];
+        0.5 * dt_therm * chd->hyperbolic_flux[m].dF_dt[1];
     chd->hyperbolic_flux[m].F_diff_pred[2] =
         chd->hyperbolic_flux[m].F_diff[2] +
-        0.5*dt_therm * chd->hyperbolic_flux[m].dF_dt[2];
+        0.5 * dt_therm * chd->hyperbolic_flux[m].dF_dt[2];
 
     /* Check that the fluxes are meaningful */
-    chemistry_check_unphysical_diffusion_flux(chd->hyperbolic_flux[m].F_diff_pred);
+    chemistry_check_unphysical_diffusion_flux(
+        chd->hyperbolic_flux[m].F_diff_pred);
   }
 #endif
 

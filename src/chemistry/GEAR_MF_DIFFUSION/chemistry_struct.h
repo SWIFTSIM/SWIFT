@@ -39,11 +39,11 @@ enum chemistry_diffusion_mode {
  * @brief The Riemann solver type
  */
 enum chemistry_riemann_solver {
-  HLL,    /* Regular HLL solver */
+  HLL,                       /* Regular HLL solver */
   HLL_parabolic_Hopkins2017, /* Hopkins (2017) HLL Riemann solver for
-				parabolic diffusion*/
+                                parabolic diffusion*/
   HLL_hyperbolic_Hopkins2017 /* Improved Hopkins (2017) HLL Riemann solver for
-				hyperbolic diffusion*/
+                                hyperbolic diffusion*/
 };
 
 /**
@@ -129,7 +129,7 @@ struct chemistry_part_data {
   double diffused_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 #endif
 
-   /*! Condition number of matrix_E (eq C1) */
+  /*! Condition number of matrix_E (eq C1) */
   float geometry_condition_number;
 
   /*! Particle chemistry time-step. */
@@ -160,7 +160,8 @@ struct chemistry_part_data {
 
   /* Cell-wise limiter to avoid creating new min or max */
   struct {
-    /*! Extreme values of the fluid metal mass fraction  among the neighbours. */
+    /*! Extreme values of the fluid metal mass fraction  among the neighbours.
+     */
     double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
 
     /*! Extreme values of the density among the neigbours. */

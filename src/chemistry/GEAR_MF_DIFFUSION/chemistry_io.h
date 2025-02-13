@@ -87,8 +87,9 @@ INLINE static void convert_chemistry_diffusion_matrix(const struct engine* e,
 
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
 INLINE static void convert_gas_feedback_metals(const struct engine* e,
-					       const struct part* p,
-					       const struct xpart* xp, double* ret) {
+                                               const struct part* p,
+                                               const struct xpart* xp,
+                                               double* ret) {
   /* GEAR expects the last element to be the metallicity. Since the
   diffusion stores the mass of all "untracked" elements in the last index, we
   need to compute the metallicity and write it in the last index. */
@@ -103,8 +104,9 @@ INLINE static void convert_gas_feedback_metals(const struct engine* e,
 }
 
 INLINE static void convert_gas_diffused_metals(const struct engine* e,
-					       const struct part* p,
-					       const struct xpart* xp, double* ret) {
+                                               const struct part* p,
+                                               const struct xpart* xp,
+                                               double* ret) {
   /* GEAR expects the last element to be the metallicity. Since the
   diffusion stores the mass of all "untracked" elements in the last index, we
   need to compute the metallicity and write it in the last index. */
@@ -119,14 +121,15 @@ INLINE static void convert_gas_diffused_metals(const struct engine* e,
 }
 
 INLINE static void convert_gas_diffusion_flux_norm(const struct engine* e,
-					       const struct part* p,
-					       const struct xpart* xp, double* ret) {
+                                                   const struct part* p,
+                                                   const struct xpart* xp,
+                                                   double* ret) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    double F_diff[3] = {
-      p->chemistry_data.hyperbolic_flux[i].F_diff[0],
-      p->chemistry_data.hyperbolic_flux[i].F_diff[1],
-      p->chemistry_data.hyperbolic_flux[i].F_diff[2]};
-    ret[i] = sqrt(F_diff[0]*F_diff[0] + F_diff[1]*F_diff[1] + F_diff[2]*F_diff[2]);
+    double F_diff[3] = {p->chemistry_data.hyperbolic_flux[i].F_diff[0],
+                        p->chemistry_data.hyperbolic_flux[i].F_diff[1],
+                        p->chemistry_data.hyperbolic_flux[i].F_diff[2]};
+    ret[i] = sqrt(F_diff[0] * F_diff[0] + F_diff[1] * F_diff[1] +
+                  F_diff[2] * F_diff[2]);
   }
 }
 #endif /* SWIFT_CHEMISTRY_DEBUG_CHECKS */
@@ -178,8 +181,8 @@ INLINE static int chemistry_write_particles(const struct part* parts,
 
   list[5] = io_make_output_field_convert_part(
       "NormDiffusionFluxes", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
-      UNIT_CONV_MASS_PER_UNIT_TIME_PER_UNIT_AREA, 0.f, parts, xparts, convert_gas_diffusion_flux_norm,
-      "Norm of the diffusion fluxes");
+      UNIT_CONV_MASS_PER_UNIT_TIME_PER_UNIT_AREA, 0.f, parts, xparts,
+      convert_gas_diffusion_flux_norm, "Norm of the diffusion fluxes");
 
   num += 3;
 #endif
@@ -187,9 +190,9 @@ INLINE static int chemistry_write_particles(const struct part* parts,
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   // TODO: Check the a exponent
   list[num] = io_make_physical_output_field(
-       "RelaxationTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f, parts,
-       chemistry_data.tau, /*can convert to comoving=*/1,
-       "Physical diffusion relaxation time of the particles.");
+      "RelaxationTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f, parts,
+      chemistry_data.tau, /*can convert to comoving=*/1,
+      "Physical diffusion relaxation time of the particles.");
   num += 1;
 #endif
 

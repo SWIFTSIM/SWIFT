@@ -30,7 +30,8 @@
 /* Config parameters. */
 #include <config.h>
 
-#if defined(HYDRO_DOES_MASS_FLUX) || defined(CHEMISTRY_GEAR_MF_DIFFUSION) || defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(HYDRO_DOES_MASS_FLUX) || defined(CHEMISTRY_GEAR_MF_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
 /* Import the right chemistry definition */
 #if defined(CHEMISTRY_AGORA)
 #include "./chemistry/AGORA/chemistry_additions.h"
@@ -38,7 +39,8 @@
 #include "./chemistry/EAGLE/chemistry_additions.h"
 #elif defined(CHEMISTRY_GEAR)
 #include "./chemistry/GEAR/chemistry_additions.h"
-#elif defined(CHEMISTRY_GEAR_MF_DIFFUSION) || defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#elif defined(CHEMISTRY_GEAR_MF_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
 #include "./chemistry/GEAR_MF_DIFFUSION/chemistry_additions.h"
 #elif defined(CHEMISTRY_NONE)
 #include "./chemistry/none/chemistry_additions.h"

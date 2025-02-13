@@ -462,8 +462,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   /* Compute interface position (relative to pj, since we don't need the
      actual position) eqn. (8)
      Do it this way in case dx contains periodicity corrections already */
-  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] +
-  dx[2]};
+  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   /* Linear reconstruction of U_R and U_L (rho*Z) */
   double dUi = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i);
@@ -478,10 +477,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
      particle's mass */
   const double mi = hydro_get_mass(pi);
   const double mj = hydro_get_mass(pj);
-  const double m_Zi_not_extrapolated = chemistry_get_metal_mass_fraction(pi,
-  metal) * mi;
-  const double m_Zj_not_extrapolated = chemistry_get_metal_mass_fraction(pj,
-  metal) * mj;
+  const double m_Zi_not_extrapolated =
+      chemistry_get_metal_mass_fraction(pi, metal) * mi;
+  const double m_Zj_not_extrapolated =
+      chemistry_get_metal_mass_fraction(pj, metal) * mj;
   double m_Zi = *Ui * mi / hydro_get_comoving_density(pi);
   double m_Zj = *Uj * mj / hydro_get_comoving_density(pj);
 
@@ -605,7 +604,8 @@ chemistry_gradients_predict_hydro(struct part *restrict pi,
   dvj_ext[2] = chemistry_gradients_extrapolate_float(dvz_j, xij_j);
 
   /* Apply the slope limiter at this interface */
-  chemistry_slope_limit_face_hydro(Wi, Wj, drhoi_ext, drhoj_ext, dvi_ext, dvj_ext, xij_i, xij_j, r);
+  chemistry_slope_limit_face_hydro(Wi, Wj, drhoi_ext, drhoj_ext, dvi_ext,
+                                   dvj_ext, xij_i, xij_j, r);
 
   /* Reconstruct the values at the interface */
   Wi[0] += drhoi_ext;

@@ -25,7 +25,8 @@
 #endif
 
 #if defined(GIZMO_MFV_SPH) || defined(RT_GEAR) || \
-    defined(CHEMISTRY_GEAR_MF_DIFFUSION) || defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    defined(CHEMISTRY_GEAR_MF_DIFFUSION) ||       \
+    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
 #include "./MFV/fvpm_geometry.h"
 #elif defined(GIZMO_MFM_SPH)
 #include "./MFM/fvpm_geometry.h"

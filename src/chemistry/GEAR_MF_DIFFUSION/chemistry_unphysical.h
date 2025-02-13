@@ -62,10 +62,10 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
       *metal_mass = (mZ_old > 0.0) ? mZ_old : 0;
     } else {
       /* Note: Correcting metal masses afterwards can artificially create metal
-	 mass out of nothing. This mass creation might is never compensated and
-	 can lead to huge metal mass creation, bigger than gas mass. */
-      error("[%lld, %d] Negative metal density/mass case %d | %.6e | %.6e",
-	    id, element, callloc, *metal_mass, mZ_old);
+         mass out of nothing. This mass creation might is never compensated and
+         can lead to huge metal mass creation, bigger than gas mass. */
+      error("[%lld, %d] Negative metal density/mass case %d | %.6e | %.6e", id,
+            element, callloc, *metal_mass, mZ_old);
       /* metal_mass = 0.0; */
     }
   }
@@ -76,14 +76,16 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
       *metal_mass = mZ_old;
     } else {
       *metal_mass /= 1.1 * mZ_old / gas_mass;
-      warning("[%lld, %d] Metal mass bigger than gas mass ! case %d | %e | %e | %e",
-              id, element, callloc, *metal_mass, mZ_old, gas_mass);
+      warning(
+          "[%lld, %d] Metal mass bigger than gas mass ! case %d | %e | %e | %e",
+          id, element, callloc, *metal_mass, mZ_old, gas_mass);
     }
   }
 }
 
 /**
- * @brief Check for and correct if needed unphysical values for a diffusion 3D flux.
+ * @brief Check for and correct if needed unphysical values for a diffusion 3D
+ * flux.
  *
  * @param flux flux: 3 components diffusion flux
  */

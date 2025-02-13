@@ -65,7 +65,7 @@ __attribute__((always_inline, const)) INLINE static int sign(double x) {
  * @param y The second number
  */
 __attribute__((always_inline, const)) INLINE static int same_sign(double x,
-								  double y) {
+                                                                  double y) {
   return signf(x) == signf(y);
 }
 

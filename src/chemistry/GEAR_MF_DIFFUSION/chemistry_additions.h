@@ -20,8 +20,8 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
 
-#include "chemistry_struct.h"
 #include "chemistry_flux.h"
+#include "chemistry_struct.h"
 #include "chemistry_unphysical.h"
 
 /**
@@ -161,7 +161,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
 }
 #endif /* HYDRO_DOES_MASS_FLUX */
 
-
 /**
  * @brief Extra chemistry operations done during the kick. Update the fluxes.
  *
@@ -190,24 +189,33 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
       /* Get the parabolic diffusion flux */
       double F_diff_target[3];
       chemistry_compute_physical_diffusion_flux(p, i, F_diff_target, chem_data,
-						cosmo);
+                                                cosmo);
 
       /* First update dF_dt with the previous value of the diffusion
-	 flux. Notice the + in front of F_diff_target. This is because the
-	 minus sign is already included.  */
+         flux. Notice the + in front of F_diff_target. This is because the
+         minus sign is already included.  */
 
       chd->hyperbolic_flux[i].dF_dt[0] =
-	-chd->hyperbolic_flux[i].F_diff[0]/chd->tau + F_diff_target[0]/chd->tau;
+          -chd->hyperbolic_flux[i].F_diff[0] / chd->tau +
+          F_diff_target[0] / chd->tau;
       chd->hyperbolic_flux[i].dF_dt[1] =
-	-chd->hyperbolic_flux[i].F_diff[1]/chd->tau + F_diff_target[1]/chd->tau;
+          -chd->hyperbolic_flux[i].F_diff[1] / chd->tau +
+          F_diff_target[1] / chd->tau;
       chd->hyperbolic_flux[i].dF_dt[2] =
-	-chd->hyperbolic_flux[i].F_diff[2]/chd->tau + F_diff_target[2]/chd->tau;
+          -chd->hyperbolic_flux[i].F_diff[2] / chd->tau +
+          F_diff_target[2] / chd->tau;
 
       /* Then update the diffusion flux with a semi-implicit scheme */
-      const float dt_factor = 1.0 / (1.0 + 0.5*dt_therm / chd->tau);
-      chd->hyperbolic_flux[i].F_diff[0] = dt_factor*(chd->hyperbolic_flux[i].F_diff_pred[0] + 0.5*dt_therm / chd->tau * F_diff_target[0]);
-      chd->hyperbolic_flux[i].F_diff[1] = dt_factor*(chd->hyperbolic_flux[i].F_diff_pred[1] + 0.5*dt_therm / chd->tau * F_diff_target[1]);
-      chd->hyperbolic_flux[i].F_diff[2] = dt_factor*(chd->hyperbolic_flux[i].F_diff_pred[2] + 0.5*dt_therm / chd->tau * F_diff_target[2]);
+      const float dt_factor = 1.0 / (1.0 + 0.5 * dt_therm / chd->tau);
+      chd->hyperbolic_flux[i].F_diff[0] =
+          dt_factor * (chd->hyperbolic_flux[i].F_diff_pred[0] +
+                       0.5 * dt_therm / chd->tau * F_diff_target[0]);
+      chd->hyperbolic_flux[i].F_diff[1] =
+          dt_factor * (chd->hyperbolic_flux[i].F_diff_pred[1] +
+                       0.5 * dt_therm / chd->tau * F_diff_target[1]);
+      chd->hyperbolic_flux[i].F_diff[2] =
+          dt_factor * (chd->hyperbolic_flux[i].F_diff_pred[2] +
+                       0.5 * dt_therm / chd->tau * F_diff_target[2]);
 
       /* Check that the fluxes are meaningful */
       chemistry_check_unphysical_diffusion_flux(chd->hyperbolic_flux[i].F_diff);
