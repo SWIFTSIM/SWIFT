@@ -318,12 +318,8 @@ void stellar_evolution_compute_discrete_feedback_properties(
 }
 
 /**
- * @brief Evolve an individual star represented by a #spart.
- *
- * This function compute the SN rate and yields before sending
- * this information to a different MPI rank.
- * It also compute the supernovae energy to be released by the
- * star.
+ * @brief Evolve an individual star represented by a #spart, with pre-supernovae
+ * and supernovae feedback.
  *
  * Here I am using Myr-solar mass units internally in order to
  * avoid numerical errors.
@@ -391,15 +387,8 @@ void stellar_evolution_evolve_individual_star(
 }
 
 /**
- * @brief Evolve the stellar properties of a #spart.
- *
- * This function compute the SN rate and yields before sending
- * this information to a different MPI rank.
- * It also compute the supernovae energy to be released by the
- * star.
- *
- * Here I am using Myr-solar mass units internally in order to
- * avoid numerical errors.
+ * @brief Evolve the stellar properties of a #spart, with pre-supernovae and
+ * supernovae feedback.
  *
  * Note: This function treats the case of particles representing the whole IMF
  * (star_type = star_population) and the particles representing only the
@@ -676,6 +665,28 @@ float stellar_evolution_compute_initial_mass(
   }
 }
 
+/**
+ * @brief Compute the supernova feedback for an individual #spart.
+ *
+ * This function compute the SN rate and yields before sending
+ * this information to a different MPI rank. It also compute the supernovae
+ * energy to be released by the star.
+ *
+ * Here I am using Myr-solar mass units internally in order to
+ * avoid numerical errors.
+ *
+ * Note: This function treats the case of single/individual stars.
+ *
+ * @param sp The particle to act upon
+ * @param sm The #stellar_model structure.
+ * @param cosmo The current cosmological model.
+ * @param us The unit system.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param ti_begin The #integertime_t at the begining of the step.
+ * @param star_age_beg_step The age of the star at the star of the time-step in
+ * internal units.
+ * @param dt The time-step size of this star in internal units.
+ */
 void stellar_evolution_compute_SN_feedback_individual_star(
     struct spart* restrict sp, const struct stellar_model* sm,
     const struct cosmology* cosmo, const struct unit_system* us,
