@@ -1,5 +1,5 @@
 # Intro
-This example is a non cosmological homogeneous box with gas. A gas particle is initialized with a non null matallicity, while the other particles are metal-free. This is an hydro-only example *This example is used to test _istotropic_ metal diffusion with the GEAR_MF_DIFFUSION chemistry model.*
+This example is a non cosmological hydro-only homogeneous box with gas. A gas particle is initialized with a non null metallicity, while the other particles are metal-free. *This example is used to test _constant istotropic_ metal diffusion with the GEAR diffusion chemistry models.*
 
 This example is a modified version of the HomogeneousBox in SWIFT that allows to add metallicy to a gas particle in the box.
 
@@ -7,13 +7,17 @@ The default level is 5 (N_particle = 2^(3*level)). It is quick. If you want to t
 
 
 # Configure
-To run this example with GEAR_MF_DIFFUSION model, configure with:
+To run this example with GEAR model,
 
-./configure --with-chemistry=GEAR-MF-DIFFUSION_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT
+```
+./configure --with-chemistry=X --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+```
 
-If you want to test the GEAR smoothed metallicities model, configure with:
+with
+- X=`GEAR_10` for smoothed metallicity scheme,
+- X=`GEAR-MF-DIFFUSION` for the parabolic diffusion scheme,
+- X=`GEAR-MF-HYPERBOLIC-DIFFUSION_10` for the hyperbolic diffusion scheme.
 
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT
 
 and then
 
@@ -28,3 +32,6 @@ Notice that changing the `jeans_length` affects the velocity of the gas particle
 Type run.sh and let's go!
 
 You can provide parameters to the running scripts, have a look inside them.
+
+#Debugging notes
+You can track the metal mass injected by feedback and diffused by the chemitry module by adding `CFLAGS="-DSWIFT_CHEMISTRY_DEBUG_CHECKS" ./configure [other parameters]`. This will also output the total diffused metal mass by each particles over the simulation. If you sum these values, you can track metal mass conservation. Notice that star formation removes metal.
