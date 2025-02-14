@@ -93,9 +93,13 @@ def plot_orbits(x, y, z, t, color, save_fig_name_suffix):
     x = data[:, 1]
     y = data[:, 2]
     z = data[:, 3]
+
+    r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+
     ax[0].plot(x, y, "grey", alpha=0.5, lw=5)
     ax[1].plot(x, z, "grey", alpha=0.5, lw=5, label="pNbody solution")
     ax[2].plot(y, z, "grey", alpha=0.5, lw=5)
+    ax[3].plot(t, r, "grey", alpha=0.5, lw=5)
 
     ax[1].legend()
 
