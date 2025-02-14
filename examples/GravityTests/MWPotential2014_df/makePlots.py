@@ -43,9 +43,9 @@ def get_positions_and_time(N_snapshots, N_part, output_dir, boxsize):
     return xx, yy, zz, time, pot
 
 
-def plot_orbits(x, y, z, color, save_fig_name_suffix):
+def plot_orbits(x, y, z, t, color, save_fig_name_suffix):
     # Plots the orbits
-    fig, ax = plt.subplots(nrows=1, ncols=3, num=1, figsize=(12, 4.1))
+    fig, ax = plt.subplots(nrows=1, ncols=4, num=1, figsize=(12, 4.1))
     fig.suptitle("Orbits", fontsize=15)
     ax[0].clear()
     ax[1].clear()
@@ -76,6 +76,15 @@ def plot_orbits(x, y, z, color, save_fig_name_suffix):
     ax[2].set_ylim([-300, 300])
     ax[2].set_ylabel("z (kpc)")
     ax[2].set_xlabel("y (kpc)")
+    plt.tight_layout()
+
+    for i in range(0, N_part):
+        ax[3].plot(t, np.sqrt(x[i, :] ** 2 + y[i, :] ** 2 + z[i, :] ** 2), col[i])
+
+    ax[3].set_aspect("auto", "box")
+    ax[3].set_ylim([0, 600])
+    ax[3].set_ylabel("r (kpc)")
+    ax[3].set_xlabel("t (kpc)")
     plt.tight_layout()
 
     # add the reference orbit
@@ -109,7 +118,7 @@ save_fig_name_suffix = "_simulation_kpc"
 x_1, y_1, z_1, time_1, pot_1 = get_positions_and_time(
     N_snapshots, N_part, output_dir, boxsize
 )
-plot_orbits(x_1, y_1, z_1, col, save_fig_name_suffix)
+plot_orbits(x_1, y_1, z_1, time_1, col, save_fig_name_suffix)
 
 
 # Second type of units (Mpc) (no need for units conversion to kpc, this is already done by swift in the snapshots)
@@ -118,4 +127,4 @@ save_fig_name_suffix = "_simulation_Mpc"
 x_2, y_2, z_2, time_2, pot_2 = get_positions_and_time(
     N_snapshots, N_part, output_dir, boxsize
 )
-plot_orbits(x_2, y_2, z_2, col, save_fig_name_suffix)
+plot_orbits(x_2, y_2, z_2, time_2, col, save_fig_name_suffix)
