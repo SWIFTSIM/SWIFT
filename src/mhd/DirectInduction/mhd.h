@@ -423,13 +423,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 
   p->mhd_data.alpha_AR =
       normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
-
-  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
-      p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
-
-  xp->mhd_data.psi_over_ch_full += p->mhd_data.psi_over_ch_dt * dt_alpha;
-
-  p->mhd_data.psi_over_ch = xp->mhd_data.psi_over_ch_full;
 }
 
 /**
