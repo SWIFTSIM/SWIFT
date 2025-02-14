@@ -2545,7 +2545,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
               sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
           buff = t->buff = malloc(count);
 
-        } else if (t->subtype == task_subtype_xv ||
+	} else if (t->subtype == task_subtype_sink_gas_swallow) {
+          count = size =
+              t->ci->hydro.count * sizeof(struct sink_part_data);
+          buff = t->buff = malloc(count);
+
+        } else if (t->subtype == task_subtype_sink_merger) {
+          count = size =
+              sizeof(struct sink_sink_data) * t->ci->sinks.count;
+          buff = t->buff = malloc(count);
+	} else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
                    t->subtype == task_subtype_rt_gradient ||
@@ -2589,17 +2598,31 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
 
-        } else if (t->subtype == task_subtype_sf_counts) {
+        } else if (t->subtype == task_subtype_sink_rho) {
+
+          count = t->ci->sinks.count;
+          size = count * sizeof(struct sink);
+          type = sink_mpi_type;
+          buff = t->ci->sinks.parts;
+
+	  /* TODO: sf_sinks and sf will use the same function and
+	     structs. Hence, add  || (t->subtype == task_subtype_sf_sinks_counts) */
+	} else if (t->subtype == task_subtype_sf_counts) {
 
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
           buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_grav_counts) {
-
+	  /* Note: This is used for star and sink formation */
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
           buff = t->buff = malloc(count);
 
-        } else {
+        } else if (t->subtype == task_subtype_sink_formation_counts) {
+
+          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sink_formation_sinks);
+          buff = t->buff = malloc(count);
+
+	} else {
           error("Unknown communication sub-type");
         }
 
@@ -2649,7 +2672,22 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
 
-        } else if (t->subtype == task_subtype_xv ||
+        } else if (t->subtype == task_subtype_sink_gas_swallow) {
+
+          size = count =
+              t->ci->hydro.count * sizeof(struct sink_part_data);
+          buff = t->buff = malloc(size);
+          cell_pack_sink_gas_swallow(t->ci, (struct sink_part_data *)buff);
+
+        } else if (t->subtype == task_subtype_sink_merger) {
+
+          size = count =
+              sizeof(struct sink_sink_data) * t->ci->sinks.count;
+          buff = t->buff = malloc(size);
+          cell_pack_sink_swallow(t->ci,
+                                  (struct sink_sink_data *)t->buff);
+
+	} else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
                    t->subtype == task_subtype_rt_gradient ||
@@ -2690,19 +2728,34 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
 
-        } else if (t->subtype == task_subtype_sf_counts) {
+        } else if (t->subtype == task_subtype_sink_rho) {
+
+          count = t->ci->sinks.count;
+          size = count * sizeof(struct sink);
+          type = sink_mpi_type;
+          buff = t->ci->sinks.parts;
+
+	  /* TODO: sf_sinks and sf will use the same function and
+	     structs. Hence, add  || (t->subtype == task_subtype_sf_sinks_counts) */
+	} else if (t->subtype == task_subtype_sf_counts) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
           buff = t->buff = malloc(size);
           cell_pack_sf_counts(t->ci, (struct pcell_sf_stars *)t->buff);
 
         } else if (t->subtype == task_subtype_grav_counts) {
-
+	  /* Note: This is used for star and sink formation */
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
           buff = t->buff = malloc(size);
           cell_pack_grav_counts(t->ci, (struct pcell_sf_grav *)t->buff);
 
-        } else {
+        } else if (t->subtype == task_subtype_sink_formation_counts) {
+
+          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sink_formation_sinks);
+          buff = t->buff = malloc(size);
+          cell_pack_sink_formation_counts(t->ci, (struct pcell_sink_formation_sinks *)t->buff);
+
+	} else {
           error("Unknown communication sub-type");
         }
 
