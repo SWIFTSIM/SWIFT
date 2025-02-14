@@ -535,8 +535,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   float divB_j = - (Bri - Brj) * wj_dr * r_inv / rhoj;
 
   for (int k = 0; k<3; k++){
-    sph_acc_term_i[k] += Bsi[k] * mj * divB_i / rhoj * permeability_inv;
-    sph_acc_term_j[k] += Bsj[k] * mi * divB_j / rhoi * permeability_inv;
+    sph_acc_term_i[k] -= Bsi[k] * mj * divB_i / rhoj * permeability_inv;
+    sph_acc_term_j[k] -= Bsj[k] * mi * divB_j / rhoi * permeability_inv;
   }
 
   /* Use the force Luke ! */
@@ -950,7 +950,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   float divB_i = - (Bri - Brj) * wi_dr * r_inv / rhoi;
 
   for (int k = 0; k<3; k++){
-    sph_acc_term_i[k] += Bsi[k] * mj * divB_i / rhoj * permeability_inv;
+    sph_acc_term_i[k] -= Bsi[k] * mj * divB_i / rhoj * permeability_inv;
   }
 
 
