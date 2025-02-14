@@ -77,7 +77,7 @@ def parse_options():
         action="store",
         type=float,
         default=1e-4,
-        help="Metal mass fraction of the gas particle placed at the center of  the box",
+        help="Metal mass fraction of the gas particle placed at the center of the box",
     )
 
     parser.add_argument(
