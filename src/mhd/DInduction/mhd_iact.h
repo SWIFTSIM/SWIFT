@@ -391,10 +391,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
         mi * mag_Indj *
         ((Bj[i] * dv[(i + 1) % 3] - Bj[(i + 1) % 3] * dv[i]) * dx[(i + 1) % 3] +
          (Bj[i] * dv[(i + 2) % 3] - Bj[(i + 2) % 3] * dv[i]) * dx[(i + 2) % 3]);
-    pi->mhd_data.Adv_B_source[i] += pi->mhd_data.Q1 * mj * a * a * mag_Indi *
+    pi->mhd_data.Diff_B_source[i] += pi->mhd_data.Q1 * mj * a * a * mag_Indi *
                                     (pi->mhd_data.phi - pj->mhd_data.phi) *
                                     dx[i];
-    pj->mhd_data.Adv_B_source[i] += pj->mhd_data.Q1 * mi * a * a * mag_Indj *
+    pj->mhd_data.Diff_B_source[i] += pj->mhd_data.Q1 * mi * a * a * mag_Indj *
                                     (pi->mhd_data.phi - pj->mhd_data.phi) *
                                     dx[i];
     pi->mhd_data.Diff_B_source[i] +=
@@ -523,7 +523,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
         mj * mag_Indi *
         ((Bi[i] * dv[(i + 1) % 3] - Bi[(i + 1) % 3] * dv[i]) * dx[(i + 1) % 3] +
          (Bi[i] * dv[(i + 2) % 3] - Bi[(i + 2) % 3] * dv[i]) * dx[(i + 2) % 3]);
-    pi->mhd_data.Adv_B_source[i] += pi->mhd_data.Q1 * mj * mag_Indi * a * a *
+    pi->mhd_data.Diff_B_source[i] += pi->mhd_data.Q1 * mj * mag_Indi * a * a *
                                     (pi->mhd_data.phi - pj->mhd_data.phi) *
                                     dx[i];
     pi->mhd_data.Diff_B_source[i] +=
