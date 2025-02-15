@@ -3754,8 +3754,8 @@ void fof_link_foreign_fragments(struct fof_props *props,
   hashmap_uf_init(&map);
 
   /* Store each group ID and its properties. */
-  int group_count = 0;
-  for (int k = 0; k < global_group_link_count; k++) {
+  size_t group_count = 0;
+  for (size_t k = 0; k < global_group_link_count; k++) {
 
     const size_t group_i = global_group_links[k].group_i;
     const size_t group_j = global_group_links[k].group_j;
@@ -3781,7 +3781,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
    * can perform a union-find locally on each node.
    * The value of which is an offset into global_group_id, which is the actual
    * root. */
-  for (int i = 0; i < group_count; i++) global_group_index[i] = i;
+  for (size_t i = 0; i < group_count; i++) global_group_index[i] = i;
 
   /* Store the original group size before incrementing in the Union-Find. */
   size_t *orig_global_group_size = NULL;
@@ -3797,7 +3797,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
          group_count * sizeof(size_t));
 
   /* Perform a union-find on the group links. */
-  for (int k = 0; k < global_group_link_count; k++) {
+  for (size_t k = 0; k < global_group_link_count; k++) {
 
     /* Use the hash table to find the group offsets in the index array. */
     const size_t find_i =
@@ -3845,7 +3845,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
   tic = getticks();
 
   /* Update each group locally with new root information. */
-  for (int i = 0; i < group_count; i++) {
+  for (size_t i = 0; i < group_count; i++) {
 
     const size_t group_id = global_group_id[i];
     const size_t offset = fof_find(global_group_index[i], global_group_index);
