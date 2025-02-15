@@ -64,6 +64,33 @@ chemistry_get_physical_metal_density(const struct part* restrict p, int metal,
 }
 
 /**
+ * @brief Get metal mass from a specific metal group.
+ *
+ * This function sets the metal mass to 0 if metal_mass is within the negative
+ * tolerance bound. If the mass is outside the tolerated negative mass bounds,
+ * we throw an error.
+ *
+ * @param p Particle.
+ * @param metal Index of metal specie
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_part_corrected_metal_mass(const struct part* restrict p, int metal) {
+  double mZi = p->chemistry_data.metal_mass[metal];
+  if (mZi >= GEAR_NEGATIVE_METAL_MASS_TOLERANCE) {
+    /* We tolerate a small deviation around 0 due to flux exchanges. But
+       other modules need not be aware of this. Ensure metal mass is positive to
+       avoid problems (e.g. for cooling). */
+    mZi = max(0.0, mZi);
+  } else {
+    /* More deviations around 0 are not tolerated */
+    error("[%lld] Negative metal mass detected ! metal = %i, m_metal = %e",
+	  p->id, metal, mZi );
+    mZi = 0.0; //In case I want to bypass the error
+  }
+  return mZi;
+}
+
+/**
  * @brief Get the physical shear tensor.
  *
  * @param p Particle.
@@ -426,7 +453,7 @@ __attribute__((always_inline)) INLINE static float
 chemistry_get_total_metal_mass_fraction(const struct part* restrict p) {
   float m_Z_tot = 0.0;
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    m_Z_tot += p->chemistry_data.metal_mass[i];
+    m_Z_tot += chemistry_get_part_corrected_metal_mass(p, i);
   }
   return m_Z_tot / hydro_get_mass(p);
 }

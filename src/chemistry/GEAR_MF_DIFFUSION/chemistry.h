@@ -885,12 +885,12 @@ INLINE static void chemistry_copy_star_formation_properties(
   float mass = hydro_get_mass(p);
 
   /* Store the chemistry struct in the star particle */
-  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
-    sp->chemistry_data.metal_mass_fraction[k] =
-        p->chemistry_data.metal_mass[k] / mass;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    const double part_metal_mass = chemistry_get_part_corrected_metal_mass(p, i);
+    sp->chemistry_data.metal_mass_fraction[i] = part_metal_mass / mass;
 
     /* Remove the metals taken by the star. */
-    p->chemistry_data.metal_mass[k] *= mass / (mass + sp->mass);
+    p->chemistry_data.metal_mass[i] *= mass / (mass + sp->mass);
   }
 }
 
@@ -925,8 +925,8 @@ INLINE static void chemistry_copy_sink_properties(const struct part* p,
 
   /* Store the chemistry struct in the star particle */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    sink->chemistry_data.metal_mass_fraction[i] =
-        p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
+    const double part_metal_mass = chemistry_get_part_corrected_metal_mass(p, i);
+    sink->chemistry_data.metal_mass_fraction[i] = part_metal_mass / hydro_get_mass(p);
   }
 }
 
@@ -957,11 +957,11 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
     struct sink* s, const struct part* p, const double ms_old) {
-  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
-    double mk = s->chemistry_data.metal_mass_fraction[k] * ms_old +
-                p->chemistry_data.metal_mass[k];
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    const double part_metal_mass = chemistry_get_part_corrected_metal_mass(p, i);
+    const double mi = s->chemistry_data.metal_mass_fraction[i] * ms_old + part_metal_mass;
 
-    s->chemistry_data.metal_mass_fraction[k] = mk / s->mass;
+    s->chemistry_data.metal_mass_fraction[i] = mi / s->mass;
   }
 }
 
