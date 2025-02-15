@@ -40,7 +40,8 @@
 #include "common_io.h"
 #include "engine.h"
 #include "fof_catalogue_io.h"
-#include "hashmap.h"
+#include "hashmap_group_props.h"
+#include "hashmap_union_find.h"
 #include "memuse.h"
 #include "proxy.h"
 #include "threadpool.h"
@@ -904,11 +905,11 @@ __attribute__((always_inline)) INLINE static double cell_min_dist(
 
 /* Add a group to the hash table. */
 __attribute__((always_inline)) INLINE static void hashmap_add_group(
-    const size_t group_id, const size_t group_offset, hashmap_t *map) {
+    const size_t group_id, const size_t group_offset, hashmap_uf_t *map) {
 
   int created_new_element = 0;
-  hashmap_value_t *offset =
-      hashmap_get_new(map, group_id, &created_new_element);
+  hashmap_uf_value_t *offset =
+      hashmap_uf_get_new(map, group_id, &created_new_element);
 
   if (offset != NULL) {
 
@@ -922,9 +923,9 @@ __attribute__((always_inline)) INLINE static void hashmap_add_group(
 
 /* Find a group in the hash table. */
 __attribute__((always_inline)) INLINE static size_t hashmap_find_group_offset(
-    const size_t group_id, hashmap_t *map) {
+    const size_t group_id, hashmap_uf_t *map) {
 
-  hashmap_value_t *group_offset = hashmap_get(map, group_id);
+  hashmap_uf_value_t *group_offset = hashmap_uf_get(map, group_id);
 
   if (group_offset == NULL)
     error("Couldn't find key (%zu) or create new one.", group_id);
@@ -1210,7 +1211,7 @@ static INLINE void add_foreign_link_to_list(
   /* If the group_links array is not big enough re-allocate it. */
   if (*local_link_count + 1 > *group_links_size) {
 
-    const int new_size = 2 * (*group_links_size);
+    const int new_size = 1.2 * (*group_links_size);
 
     *group_links_size = new_size;
 
@@ -1220,8 +1221,8 @@ static INLINE void add_foreign_link_to_list(
     /* Reset the local pointer */
     (*local_group_links) = *group_links;
 
-    message("Re-allocating local group links from %d to %d elements.",
-            *local_link_count, new_size);
+    /* message("Re-allocating local group links from %d to %d elements.", */
+    /*         *local_link_count, new_size); */
 
     if (new_size < 0) error("Overflow in size of list of foreign links");
   }
@@ -1778,10 +1779,10 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (index_offset_j > index_offset_i &&
-      (index_offset_j < index_offset_i + count_i))
+      (index_offset_j < index_offset_i + count_i) && (ci->nodeID == cj->nodeID))
     error("Overlapping cells");
   if (index_offset_i > index_offset_j &&
-      (index_offset_i < index_offset_j + count_j))
+      (index_offset_i < index_offset_j + count_j) && (ci->nodeID == cj->nodeID))
     error("Overlapping cells");
 #endif
 
@@ -2069,8 +2070,8 @@ void rec_fof_attach_self(const struct fof_props *props, const double dim[3],
 }
 
 /* Mapper function to atomically update the group size array. */
-void fof_update_group_size_mapper(hashmap_key_t key, hashmap_value_t *value,
-                                  void *data) {
+void fof_update_group_size_mapper(hashmap_uf_key_t key,
+                                  hashmap_uf_value_t *value, void *data) {
 
   size_t *group_size = (size_t *)data;
 
@@ -2099,19 +2100,19 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
   size_t *const group_index_offset = group_index + gparts_offset;
 
   /* Create hash table. */
-  hashmap_t map;
-  hashmap_init(&map);
+  hashmap_uf_t map;
+  hashmap_uf_init(&map);
 
   for (int ind = 0; ind < num_elements; ind++) {
 
-    const hashmap_key_t root =
-        (hashmap_key_t)fof_find(group_index_offset[ind], group_index);
+    const hashmap_uf_key_t root =
+        (hashmap_uf_key_t)fof_find(group_index_offset[ind], group_index);
     const size_t gpart_index = gparts_offset + ind;
 
     /* Only add particles which aren't the root of a group. Stops groups of size
      * 1 being added to the hash table. */
     if (root != gpart_index) {
-      hashmap_value_t *size = hashmap_get(&map, root);
+      hashmap_uf_value_t *size = hashmap_uf_get(&map, root);
 
       if (size != NULL)
         (*size).value_st++;
@@ -2122,14 +2123,14 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
 
   /* Update the group size array. */
   if (map.size > 0)
-    hashmap_iterate(&map, fof_update_group_size_mapper, group_size);
+    hashmap_uf_iterate(&map, fof_update_group_size_mapper, group_size);
 
-  hashmap_free(&map);
+  hashmap_uf_free(&map);
 }
 
 /* Mapper function to atomically update the group mass array. */
-static INLINE void fof_update_group_mass_iterator(hashmap_key_t key,
-                                                  hashmap_value_t *value,
+static INLINE void fof_update_group_mass_iterator(hashmap_gp_key_t key,
+                                                  hashmap_gp_value_t *value,
                                                   void *data) {
 
   double *group_mass = (double *)data;
@@ -2139,8 +2140,8 @@ static INLINE void fof_update_group_mass_iterator(hashmap_key_t key,
 }
 
 /* Mapper function to atomically update the group size array. */
-static INLINE void fof_update_group_size_iterator(hashmap_key_t key,
-                                                  hashmap_value_t *value,
+static INLINE void fof_update_group_size_iterator(hashmap_gp_key_t key,
+                                                  hashmap_gp_value_t *value,
                                                   void *data) {
   long long *group_size = (long long *)data;
 
@@ -2167,8 +2168,8 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
   const size_t group_id_offset = s->e->fof_properties->group_id_offset;
 
   /* Create hash table. */
-  hashmap_t map;
-  hashmap_init(&map);
+  hashmap_gp_t map;
+  hashmap_gp_init(&map);
 
   /* Loop over particles and increment the group mass for groups above
    * min_group_size. */
@@ -2177,8 +2178,8 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
     /* Only check groups above the minimum size. */
     if (gparts[ind].fof_data.group_id != group_id_default) {
 
-      hashmap_key_t index = gparts[ind].fof_data.group_id - group_id_offset;
-      hashmap_value_t *data = hashmap_get(&map, index);
+      hashmap_gp_key_t index = gparts[ind].fof_data.group_id - group_id_offset;
+      hashmap_gp_value_t *data = hashmap_gp_get(&map, index);
 
       /* Update group mass */
       if (data != NULL) {
@@ -2191,17 +2192,17 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
 
   /* Update the group mass array. */
   if (map.size > 0)
-    hashmap_iterate(&map, fof_update_group_mass_iterator, group_mass);
+    hashmap_gp_iterate(&map, fof_update_group_mass_iterator, group_mass);
   if (map.size > 0)
-    hashmap_iterate(&map, fof_update_group_size_iterator, group_size);
+    hashmap_gp_iterate(&map, fof_update_group_size_iterator, group_size);
 
-  hashmap_free(&map);
+  hashmap_gp_free(&map);
 }
 
 #ifdef WITH_MPI
 /* Mapper function to unpack hash table into array. */
-void fof_unpack_group_mass_mapper(hashmap_key_t key, hashmap_value_t *value,
-                                  void *data) {
+void fof_unpack_group_mass_mapper(hashmap_gp_key_t key,
+                                  hashmap_gp_value_t *value, void *data) {
 
   struct fof_mass_send_hashmap *fof_mass_send =
       (struct fof_mass_send_hashmap *)data;
@@ -2259,8 +2260,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   long long *final_group_size = props->final_group_size;
 
   /* Start the hash map */
-  hashmap_t map;
-  hashmap_init(&map);
+  hashmap_gp_t map;
+  hashmap_gp_init(&map);
 
   /* Collect information about the local particles and update the local AND
    * foreign group fragments */
@@ -2295,7 +2296,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         /* The root is *not* local */
 
         /* Get the root in the foreign hashmap (create if necessary) */
-        hashmap_value_t *const data = hashmap_get(&map, (hashmap_key_t)root);
+        hashmap_gp_value_t *const data =
+            hashmap_gp_get(&map, (hashmap_gp_key_t)root);
         if (data == NULL)
           error("Couldn't find key (%zu) or create new one.", root);
 
@@ -2367,7 +2369,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
   /* Unpack mass fragments and roots from hash table. */
   if (map.size > 0)
-    hashmap_iterate(&map, fof_unpack_group_mass_mapper, &hashmap_mass_send);
+    hashmap_gp_iterate(&map, fof_unpack_group_mass_mapper, &hashmap_mass_send);
 
   nsend = hashmap_mass_send.nsend;
 
@@ -2376,7 +2378,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     error("No. of mass fragments to send != elements in hash table.");
 #endif
 
-  hashmap_free(&map);
+  hashmap_gp_free(&map);
 
   /* Sort by global root - this puts the groups in order of which node they're
    * stored on */
@@ -2604,7 +2606,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
       /* Re-allocate the list if it's needed. */
       if (num_groups_local + extra_seed_count >= density_index_size) {
-        const size_t new_size = 2 * density_index_size;
+        const size_t new_size = 1.2 * density_index_size;
 
         max_part_density_index = (long long *)realloc(
             max_part_density_index, new_size * sizeof(long long));
@@ -2781,15 +2783,15 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 
       const int old_size = *group_links_size;
       const int new_size =
-          max(*group_link_count + local_link_count, 2 * old_size);
+          max(*group_link_count + local_link_count, 1.2 * old_size);
 
       (*group_links) = (struct fof_mpi *)realloc(
           *group_links, new_size * sizeof(struct fof_mpi));
 
       *group_links_size = new_size;
 
-      message("Re-allocating global group links from %d to %d elements.",
-              old_size, new_size);
+      /* message("Re-allocating global group links from %d to %d elements.", */
+      /*         old_size, new_size); */
     }
 
     /* Copy the local links to the global list. */
@@ -3654,11 +3656,11 @@ void fof_link_foreign_fragments(struct fof_props *props,
         nr_gparts, sqrt(props->l_x2));
 
   /* Local copy of the variable set in the mapper */
-  const int group_link_count = props->group_link_count;
+  const long long group_link_count = props->group_link_count;
 
   /* Sum the total number of links across MPI domains over each MPI rank. */
-  int global_group_link_count = 0;
-  MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
+  long long global_group_link_count = 0;
+  MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_LONG_LONG,
                 MPI_SUM, MPI_COMM_WORLD);
 
   if (global_group_link_count < 0)
@@ -3722,7 +3724,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
    * Each member of a link is stored separately --> Need 2x as many entries */
   size_t *global_group_index = NULL, *global_group_id = NULL,
          *global_group_size = NULL;
-  const int global_group_list_size = 2 * global_group_link_count;
+  const size_t global_group_list_size = 2 * global_group_link_count;
 
   if (swift_memalign("fof_global_group_index", (void **)&global_group_index,
                      SWIFT_STRUCT_ALIGNMENT,
@@ -3748,12 +3750,12 @@ void fof_link_foreign_fragments(struct fof_props *props,
   bzero(global_group_size, global_group_list_size * sizeof(size_t));
 
   /* Create hash table. */
-  hashmap_t map;
-  hashmap_init(&map);
+  hashmap_uf_t map;
+  hashmap_uf_init(&map);
 
   /* Store each group ID and its properties. */
-  int group_count = 0;
-  for (int k = 0; k < global_group_link_count; k++) {
+  size_t group_count = 0;
+  for (size_t k = 0; k < (size_t)global_group_link_count; k++) {
 
     const size_t group_i = global_group_links[k].group_i;
     const size_t group_j = global_group_links[k].group_j;
@@ -3769,6 +3771,10 @@ void fof_link_foreign_fragments(struct fof_props *props,
     group_count++;
   }
 
+  if (verbose) hashmap_uf_print_stats(&map);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+
   if (verbose)
     message("Global list compression took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -3779,7 +3785,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
    * can perform a union-find locally on each node.
    * The value of which is an offset into global_group_id, which is the actual
    * root. */
-  for (int i = 0; i < group_count; i++) global_group_index[i] = i;
+  for (size_t i = 0; i < group_count; i++) global_group_index[i] = i;
 
   /* Store the original group size before incrementing in the Union-Find. */
   size_t *orig_global_group_size = NULL;
@@ -3795,7 +3801,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
          group_count * sizeof(size_t));
 
   /* Perform a union-find on the group links. */
-  for (int k = 0; k < global_group_link_count; k++) {
+  for (size_t k = 0; k < (size_t)global_group_link_count; k++) {
 
     /* Use the hash table to find the group offsets in the index array. */
     const size_t find_i =
@@ -3834,7 +3840,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
 #endif
   }
 
-  hashmap_free(&map);
+  hashmap_uf_free(&map);
 
   if (verbose)
     message("global_group_index construction took: %.3f %s.",
@@ -3843,7 +3849,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
   tic = getticks();
 
   /* Update each group locally with new root information. */
-  for (int i = 0; i < group_count; i++) {
+  for (size_t i = 0; i < group_count; i++) {
 
     const size_t group_id = global_group_id[i];
     const size_t offset = fof_find(global_group_index[i], global_group_index);
@@ -3899,7 +3905,7 @@ void fof_compute_local_sizes(struct fof_props *props, struct space *s) {
   const ticks tic_total = getticks();
 
   if (engine_rank == 0 && verbose)
-    message("Size of hash table element: %ld", sizeof(hashmap_element_t));
+    message("Size of hash table element: %ld", sizeof(hashmap_gp_element_t));
 
 #ifdef WITH_MPI
 
