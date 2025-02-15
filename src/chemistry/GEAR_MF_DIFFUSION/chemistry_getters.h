@@ -76,16 +76,16 @@ chemistry_get_physical_metal_density(const struct part* restrict p, int metal,
 __attribute__((always_inline)) INLINE static double
 chemistry_get_part_corrected_metal_mass(const struct part* restrict p, int metal) {
   double mZi = p->chemistry_data.metal_mass[metal];
-  if (mZi >= GEAR_NEGATIVE_METAL_MASS_TOLERANCE) {
+  double Zi = chemistry_get_metal_mass_fraction(p, metal);
+  if (Zi >= GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE) {
     /* We tolerate a small deviation around 0 due to flux exchanges. But
        other modules need not be aware of this. Ensure metal mass is positive to
        avoid problems (e.g. for cooling). */
     mZi = max(0.0, mZi);
   } else {
-    /* More deviations around 0 are not tolerated */
-    error("[%lld] Negative metal mass detected ! metal = %i, m_metal = %e",
-	  p->id, metal, mZi );
-    mZi = 0.0; //In case I want to bypass the error
+    /* More deviations around 0 are not tolerated. The error is thown in
+       chemistry_check_unphysical_state(). */
+    mZi = 0.0;
   }
   return mZi;
 }
