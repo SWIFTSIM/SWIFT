@@ -757,7 +757,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Initialize time step criterion variables */
-  cpd->timestepvars.vmax = 0.
+  cpd->timestepvars.vmax = 0.0;
 #endif
 }
 
