@@ -1221,8 +1221,8 @@ static INLINE void add_foreign_link_to_list(
     /* Reset the local pointer */
     (*local_group_links) = *group_links;
 
-    message("Re-allocating local group links from %d to %d elements.",
-            *local_link_count, new_size);
+    /* message("Re-allocating local group links from %d to %d elements.", */
+    /*         *local_link_count, new_size); */
 
     if (new_size < 0) error("Overflow in size of list of foreign links");
   }
@@ -2790,8 +2790,8 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 
       *group_links_size = new_size;
 
-      message("Re-allocating global group links from %d to %d elements.",
-              old_size, new_size);
+      /* message("Re-allocating global group links from %d to %d elements.", */
+      /*         old_size, new_size); */
     }
 
     /* Copy the local links to the global list. */
@@ -3656,12 +3656,12 @@ void fof_link_foreign_fragments(struct fof_props *props,
         nr_gparts, sqrt(props->l_x2));
 
   /* Local copy of the variable set in the mapper */
-  const int group_link_count = props->group_link_count;
+  const long long group_link_count = props->group_link_count;
 
   /* Sum the total number of links across MPI domains over each MPI rank. */
-  int global_group_link_count = 0;
-  MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
-                MPI_SUM, MPI_COMM_WORLD);
+  long long global_group_link_count = 0;
+  MPI_Allreduce(&group_link_count, &global_group_link_count, 1,
+                MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 
   if (global_group_link_count < 0)
     error("Overflow of the size of the global list of foreign links");
@@ -3724,7 +3724,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
    * Each member of a link is stored separately --> Need 2x as many entries */
   size_t *global_group_index = NULL, *global_group_id = NULL,
          *global_group_size = NULL;
-  const int global_group_list_size = 2 * global_group_link_count;
+  const size_t global_group_list_size = 2 * global_group_link_count;
 
   if (swift_memalign("fof_global_group_index", (void **)&global_group_index,
                      SWIFT_STRUCT_ALIGNMENT,
@@ -3755,7 +3755,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
 
   /* Store each group ID and its properties. */
   size_t group_count = 0;
-  for (size_t k = 0; k < global_group_link_count; k++) {
+  for (size_t k = 0; k < (size_t)global_group_link_count; k++) {
 
     const size_t group_i = global_group_links[k].group_i;
     const size_t group_j = global_group_links[k].group_j;
@@ -3771,7 +3771,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
     group_count++;
   }
 
-  if (verbose) hasmap_uf_print_stats(&map);
+  if (verbose) hashmap_uf_print_stats(&map);
 
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -3801,7 +3801,7 @@ void fof_link_foreign_fragments(struct fof_props *props,
          group_count * sizeof(size_t));
 
   /* Perform a union-find on the group links. */
-  for (size_t k = 0; k < global_group_link_count; k++) {
+  for (size_t k = 0; k < (size_t)global_group_link_count; k++) {
 
     /* Use the hash table to find the group offsets in the index array. */
     const size_t find_i =
