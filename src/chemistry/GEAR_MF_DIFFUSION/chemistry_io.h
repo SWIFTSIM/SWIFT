@@ -57,6 +57,12 @@ INLINE static void convert_gas_metals(const struct engine* e,
   need to compute the metallicity and write it in the last index. */
   double m_Z = 0.0;
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    double mZi = p->chemistry_data.metal_mass[i];
+    if (mZi >= GEAR_NEGATIVE_METAL_MASS_TOLERANCE) {
+      /* We tolerate a small deviation around 0 due to flux exchanges. But
+	 the true physical value is 0.0 */
+      mZi = max(0.0, mZi);
+    } /* Do not correct negative values, this helps debugging */
     ret[i] = p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
     m_Z += p->chemistry_data.metal_mass[i];
   }
