@@ -755,8 +755,10 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   /* Init the gradient for the next loops */
   chemistry_gradients_init(p);
 
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Initialize time step criterion variables */
-  cpd->timestepvars.vmax = 0.;
+  cpd->timestepvars.vmax = 0.
+#endif
 }
 
 /**

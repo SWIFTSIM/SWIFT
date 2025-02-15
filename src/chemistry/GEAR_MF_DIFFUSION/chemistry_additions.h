@@ -180,10 +180,10 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* chem_data) {
 
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   struct chemistry_part_data* chd = &p->chemistry_data;
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     /* Avoid 0.0 divisions */
     if (chd->tau != 0.0) {
       /* Get the parabolic diffusion flux */
@@ -220,9 +220,8 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
       /* Check that the fluxes are meaningful */
       chemistry_check_unphysical_diffusion_flux(chd->hyperbolic_flux[i].F_diff);
     }
-#endif
   }
-
+#endif
   /* Reset wcorr */
   p->geometry.wcorr = 1.0f;
 

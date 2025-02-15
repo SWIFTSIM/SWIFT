@@ -53,8 +53,7 @@ chemistry_compute_parabolic_timestep(
 
   /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...), and q = (Z_1, Z_2,
      ...). Hence, the term norm(U)/norm(q) in eq (15) is abs(rho). */
-  const float norm_U_over_norm_q =
-      cosmo->a3_inv * fabs(chemistry_get_comoving_density(p));
+  const float norm_U_over_norm_q = hydro_get_physical_density(p, cosmo);
 
   /* Some helpful variables */
   const float delta_x = kernel_gamma * p->h * cosmo->a;

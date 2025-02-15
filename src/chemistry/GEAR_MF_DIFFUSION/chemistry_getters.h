@@ -349,9 +349,11 @@ chemistry_get_physical_diffusion_speed(
     return hydro_get_physical_soundspeed(p, cosmo);
   }
 #else
+    const struct chemistry_part_data *chd = &p->chemistry_data;
+
   /* Compute diffusion matrix K */
   double K[3][3];
-  chemistry_get_physical_matrix_K(p, cd, cosmo, K);
+  chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
   const double norm_matrix_K = chemistry_get_matrix_norm(K);
 
   /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...). */
@@ -378,7 +380,7 @@ chemistry_get_physical_diffusion_speed(
     return FLT_MAX;
   }
 
-  return norm_matrix_K * norm_grad_q / norm_U;
+  return norm_matrix_K * norm_nabla_q / norm_U;
 #endif
 }
 
