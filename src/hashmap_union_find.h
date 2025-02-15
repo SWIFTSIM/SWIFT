@@ -50,11 +50,6 @@ typedef size_t hashmap_uf_mask_t;
 #ifndef hashmap_uf_value_t
 typedef struct _hashmap_uf_struct {
   long long value_st;
-  long long value_ll;
-  float value_flt;
-  double value_dbl;
-  double value_array_dbl[3];
-  double value_array2_dbl[3];
 } hashmap_uf_struct_t;
 #define hashmap_uf_value_t hashmap_uf_struct_t
 #endif
@@ -70,7 +65,7 @@ typedef struct _hashmap_uf_element {
 #define HASHMAP_UF_BITS_PER_ELEMENT ((int)sizeof(hashmap_uf_element_t) * 8 + 1)
 #define HASHMAP_UF_ELEMENTS_PER_CHUNK \
   ((HASHMAP_UF_TARGET_CHUNK_BYTES * 8) / HASHMAP_UF_BITS_PER_ELEMENT)
-#define HASHMAP_UF_MASKS_PER_CHUNK                               \
+#define HASHMAP_UF_MASKS_PER_CHUNK                                  \
   ((HASHMAP_UF_ELEMENTS_PER_CHUNK + HASHMAP_UF_BITS_PER_MASK - 1) / \
    HASHMAP_UF_BITS_PER_MASK)
 
@@ -116,7 +111,8 @@ typedef struct _hashmap_uf {
  * Pointer to a function that can take a key, a pointer to a value, and a
  * void pointer extra data payload.
  */
-typedef void (*hashmap_uf_mapper_t)(hashmap_uf_key_t, hashmap_uf_value_t *, void *);
+typedef void (*hashmap_uf_mapper_t)(hashmap_uf_key_t, hashmap_uf_value_t *,
+                                    void *);
 
 /**
  * @brief Initialize a hashmap.
@@ -140,7 +136,8 @@ void hashmap_uf_grow(hashmap_uf_t *m, size_t new_size);
  * @brief Add a key/value pair to the hashmap, overwriting whatever was
  * previously there.
  */
-extern void hashmap_uf_put(hashmap_uf_t *m, hashmap_uf_key_t key, hashmap_uf_value_t value);
+extern void hashmap_uf_put(hashmap_uf_t *m, hashmap_uf_key_t key,
+                           hashmap_uf_value_t value);
 
 /**
  * @brief Get the value for a given key. If no value exists a new one will be
@@ -149,7 +146,8 @@ extern void hashmap_uf_put(hashmap_uf_t *m, hashmap_uf_key_t key, hashmap_uf_val
  * Note that the returned pointer is volatile and will be invalidated if the
  * hashmap is re-hashed!
  */
-extern hashmap_uf_value_t *hashmap_uf_get(hashmap_uf_t *m, hashmap_uf_key_t key);
+extern hashmap_uf_value_t *hashmap_uf_get(hashmap_uf_t *m,
+                                          hashmap_uf_key_t key);
 
 /**
  * @brief Get the value for a given key. If no value exists a new one will be
@@ -158,8 +156,9 @@ extern hashmap_uf_value_t *hashmap_uf_get(hashmap_uf_t *m, hashmap_uf_key_t key)
  * Note that the returned pointer is volatile and will be invalidated if the
  * hashmap is re-hashed!
  */
-extern hashmap_uf_value_t *hashmap_uf_get_new(hashmap_uf_t *m, hashmap_uf_key_t key,
-                                        int *created_new_element);
+extern hashmap_uf_value_t *hashmap_uf_get_new(hashmap_uf_t *m,
+                                              hashmap_uf_key_t key,
+                                              int *created_new_element);
 
 /**
  * @brief Look for the given key and return a pointer to its value or NULL if
@@ -168,7 +167,8 @@ extern hashmap_uf_value_t *hashmap_uf_get_new(hashmap_uf_t *m, hashmap_uf_key_t 
  * Note that the returned pointer is volatile and will be invalidated if the
  * hashmap is re-hashed!
  */
-extern hashmap_uf_value_t *hashmap_uf_lookup(hashmap_uf_t *m, hashmap_uf_key_t key);
+extern hashmap_uf_value_t *hashmap_uf_lookup(hashmap_uf_t *m,
+                                             hashmap_uf_key_t key);
 
 /**
  * @brief Iterate the function parameter over each element in the hashmap.
@@ -177,7 +177,8 @@ extern hashmap_uf_value_t *hashmap_uf_lookup(hashmap_uf_t *m, hashmap_uf_key_t k
  * key and a pointer to the correspondig value, respectively, while the third
  * is the `void *data` argument.
  */
-extern void hashmap_uf_iterate(hashmap_uf_t *m, hashmap_uf_mapper_t f, void *data);
+extern void hashmap_uf_iterate(hashmap_uf_t *m, hashmap_uf_mapper_t f,
+                               void *data);
 
 /**
  * @brief De-allocate memory associated with this hashmap, clears all the

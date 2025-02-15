@@ -107,8 +107,8 @@ void hashmap_uf_init(hashmap_uf_t *m) {
     message(
         "Created hash table of size: %zu each element is %zu bytes. Allocated "
         "%zu empty chunks.",
-        m->table_size * sizeof(hashmap_uf_element_t), sizeof(hashmap_uf_element_t),
-        m->nr_chunks);
+        m->table_size * sizeof(hashmap_uf_element_t),
+        sizeof(hashmap_uf_element_t), m->nr_chunks);
   }
 }
 
@@ -145,8 +145,8 @@ hashmap_uf_chunk_t *hashmap_uf_get_chunk(hashmap_uf_t *m) {
  * @brief Looks for the given key and retuns a pointer to the corresponding
  * element.
  *
- * The returned element is either the one that already existed in the hashmap_uf,
- * or a newly-reseverd element initialized to zero.
+ * The returned element is either the one that already existed in the
+ * hashmap_uf, or a newly-reseverd element initialized to zero.
  *
  * If the hashmap_uf is full, NULL is returned.
  *
@@ -156,8 +156,9 @@ hashmap_uf_chunk_t *hashmap_uf_get_chunk(hashmap_uf_t *m) {
  * is repeated for at most HASHMAP_UF_MAX_CHAIN_LENGTH steps, at which point
  * insertion fails.
  */
-hashmap_uf_element_t *hashmap_uf_find(hashmap_uf_t *m, hashmap_uf_key_t key, int create_new,
-                                int *chain_length, int *created_new_element) {
+hashmap_uf_element_t *hashmap_uf_find(hashmap_uf_t *m, hashmap_uf_key_t key,
+                                      int create_new, int *chain_length,
+                                      int *created_new_element) {
   /* If full, return immediately */
   if (create_new && m->size > m->table_size * HASHMAP_UF_MAX_FILL_RATIO) {
     if (HASHMAP_UF_DEBUG_OUTPUT) {
@@ -173,7 +174,8 @@ hashmap_uf_element_t *hashmap_uf_find(hashmap_uf_t *m, hashmap_uf_key_t key, int
   /* Get offsets to the entry, its chunk, it's mask, etc. */
   const size_t offset = rand_r(&curr) % m->table_size;
   const size_t chunk_offset = offset / HASHMAP_UF_ELEMENTS_PER_CHUNK;
-  size_t offset_in_chunk = offset - chunk_offset * HASHMAP_UF_ELEMENTS_PER_CHUNK;
+  size_t offset_in_chunk =
+      offset - chunk_offset * HASHMAP_UF_ELEMENTS_PER_CHUNK;
 
   /* Allocate the chunk if needed. */
   if (m->chunks[chunk_offset] == NULL) {
@@ -191,8 +193,8 @@ hashmap_uf_element_t *hashmap_uf_find(hashmap_uf_t *m, hashmap_uf_key_t key, int
   for (int k = 0; k < HASHMAP_UF_MASKS_PER_CHUNK; k++) {
     chunk_count += __builtin_popcountll(chunk->masks[k]);
   }
-  if (create_new &&
-      chunk_count > HASHMAP_UF_ELEMENTS_PER_CHUNK * HASHMAP_UF_MAX_CHUNK_FILL_RATIO) {
+  if (create_new && chunk_count > HASHMAP_UF_ELEMENTS_PER_CHUNK *
+                                      HASHMAP_UF_MAX_CHUNK_FILL_RATIO) {
     if (HASHMAP_UF_DEBUG_OUTPUT) {
       message(
           "chunk %zu is too full (%i of %i elements used, fill ratio is "
@@ -226,9 +228,6 @@ hashmap_uf_element_t *hashmap_uf_find(hashmap_uf_t *m, hashmap_uf_key_t key, int
 
       /* Set the key. */
       chunk->data[offset_in_chunk].key = key;
-      chunk->data[offset_in_chunk].value.value_array2_dbl[0] = -FLT_MAX;
-      chunk->data[offset_in_chunk].value.value_array2_dbl[1] = -FLT_MAX;
-      chunk->data[offset_in_chunk].value.value_array2_dbl[2] = -FLT_MAX;
 
       /* Return a pointer to the new element. */
       return &chunk->data[offset_in_chunk];
@@ -263,14 +262,15 @@ void hashmap_uf_grow(hashmap_uf_t *m, size_t new_size) {
 
   /* Re-allocate the chunk array. */
   if (new_size == 0) new_size = m->table_size * HASHMAP_UF_GROWTH_FACTOR;
-  m->nr_chunks =
-      (new_size + HASHMAP_UF_ELEMENTS_PER_CHUNK - 1) / HASHMAP_UF_ELEMENTS_PER_CHUNK;
+  m->nr_chunks = (new_size + HASHMAP_UF_ELEMENTS_PER_CHUNK - 1) /
+                 HASHMAP_UF_ELEMENTS_PER_CHUNK;
   m->table_size = m->nr_chunks * HASHMAP_UF_ELEMENTS_PER_CHUNK;
 
   if (HASHMAP_UF_DEBUG_OUTPUT) {
     message("Increasing hash table size from %zu (%zu kb) to %zu (%zu kb).",
-            old_table_size, old_table_size * sizeof(hashmap_uf_element_t) / 1024,
-            m->table_size, m->table_size * sizeof(hashmap_uf_element_t) / 1024);
+            old_table_size,
+            old_table_size * sizeof(hashmap_uf_element_t) / 1024, m->table_size,
+            m->table_size * sizeof(hashmap_uf_element_t) / 1024);
   }
 
   if ((m->chunks = (hashmap_uf_chunk_t **)swift_calloc(
@@ -306,9 +306,9 @@ void hashmap_uf_grow(hashmap_uf_t *m, size_t new_size) {
               &chunk->data[mid * HASHMAP_UF_BITS_PER_MASK + eid];
 
           /* Copy the element over to the new hashmap_uf. */
-          hashmap_uf_element_t *new_element =
-              hashmap_uf_find(m, element->key, /*create_new=*/1,
-                           /*chain_length=*/NULL, /*created_new_element=*/NULL);
+          hashmap_uf_element_t *new_element = hashmap_uf_find(
+              m, element->key, /*create_new=*/1,
+              /*chain_length=*/NULL, /*created_new_element=*/NULL);
 
           if (new_element) {
             new_element->value = element->value;
@@ -343,8 +343,8 @@ void hashmap_uf_grow(hashmap_uf_t *m, size_t new_size) {
   /* Free the old list of chunks. */
   swift_free("hashmap_uf", old_chunks);
 
-  /* If we have any strays, add them back to the hashmap_uf. This will inevitably
-     trigger a rehashing, but that's not our problem. */
+  /* If we have any strays, add them back to the hashmap_uf. This will
+     inevitably trigger a rehashing, but that's not our problem. */
   if (strays_count) {
     for (size_t k = 0; k < strays_count; k++) {
       hashmap_uf_put(m, strays[k].key, strays[k].value);
@@ -353,17 +353,18 @@ void hashmap_uf_grow(hashmap_uf_t *m, size_t new_size) {
   }
 }
 
-void hashmap_uf_put(hashmap_uf_t *m, hashmap_uf_key_t key, hashmap_uf_value_t value) {
+void hashmap_uf_put(hashmap_uf_t *m, hashmap_uf_key_t key,
+                    hashmap_uf_value_t value) {
   /* Try to find an element for the given key. */
   hashmap_uf_element_t *element =
       hashmap_uf_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
-                   /*created_new_element=*/NULL);
+                      /*created_new_element=*/NULL);
 
   /* Loop around, trying to find our place in the world. */
   while (!element) {
     hashmap_uf_grow(m, 0);
     element = hashmap_uf_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
-                           /*created_new_element=*/NULL);
+                              /*created_new_element=*/NULL);
   }
 
   /* Set the value. */
@@ -374,24 +375,24 @@ hashmap_uf_value_t *hashmap_uf_get(hashmap_uf_t *m, hashmap_uf_key_t key) {
   /* Look for the given key. */
   hashmap_uf_element_t *element =
       hashmap_uf_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
-                   /*created_new_element=*/NULL);
+                      /*created_new_element=*/NULL);
   while (!element) {
     hashmap_uf_grow(m, 0);
     element = hashmap_uf_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
-                           /*created_new_element=*/NULL);
+                              /*created_new_element=*/NULL);
   }
   return &element->value;
 }
 
 hashmap_uf_value_t *hashmap_uf_get_new(hashmap_uf_t *m, hashmap_uf_key_t key,
-                                 int *created_new_element) {
+                                       int *created_new_element) {
   /* Look for the given key. */
   hashmap_uf_element_t *element = hashmap_uf_find(
       m, key, /*create_new=*/1, /*chain_length=*/NULL, created_new_element);
   while (!element) {
     hashmap_uf_grow(m, 0);
     element = hashmap_uf_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
-                           created_new_element);
+                              created_new_element);
   }
   return &element->value;
 }
@@ -399,7 +400,7 @@ hashmap_uf_value_t *hashmap_uf_get_new(hashmap_uf_t *m, hashmap_uf_key_t key,
 hashmap_uf_value_t *hashmap_uf_lookup(hashmap_uf_t *m, hashmap_uf_key_t key) {
   hashmap_uf_element_t *element =
       hashmap_uf_find(m, key, /*create_new=*/0, /*chain_length=*/NULL,
-                   /*created_new_element=*/NULL);
+                      /*created_new_element=*/NULL);
   return element ? &element->value : NULL;
 }
 
@@ -457,12 +458,12 @@ size_t hashmap_uf_size(hashmap_uf_t *m) {
 }
 
 #if HASHMAP_UF_DEBUG_OUTPUT
-void hashmap_uf_count_chain_lengths(hashmap_uf_key_t key, hashmap_uf_value_t *value,
-                                 void *data) {
+void hashmap_uf_count_chain_lengths(hashmap_uf_key_t key,
+                                    hashmap_uf_value_t *value, void *data) {
   hashmap_uf_t *m = (hashmap_uf_t *)data;
   int count = 0;
   hashmap_uf_find(m, key, /*create_entry=*/0, &count,
-               /*created_new_element=*/NULL);
+                  /*created_new_element=*/NULL);
   m->chain_length_counts[count] += 1;
 }
 #endif
@@ -522,7 +523,8 @@ void hashmap_uf_print_stats(hashmap_uf_t *m) {
       for (int j = 0; j < HASHMAP_UF_MASKS_PER_CHUNK; j++) {
         count += __builtin_popcountll(chunk->masks[j]);
       }
-      chunk_fill_ratio_counts[(int)(10 * count / HASHMAP_UF_MAX_CHUNK_FILL_RATIO /
+      chunk_fill_ratio_counts[(int)(10 * count /
+                                    HASHMAP_UF_MAX_CHUNK_FILL_RATIO /
                                     HASHMAP_UF_ELEMENTS_PER_CHUNK)] += 1;
     }
   }
