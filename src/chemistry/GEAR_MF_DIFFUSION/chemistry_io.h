@@ -58,13 +58,18 @@ INLINE static void convert_gas_metals(const struct engine* e,
   double m_Z = 0.0;
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     double mZi = p->chemistry_data.metal_mass[i];
+
+    /* When debugging, do not correct the values to check metal mass
+       conservation. */
+#if !defined(SWIFT_CHEMISTRY_DEBUG_CHECKS)
     if (mZi >= GEAR_NEGATIVE_METAL_MASS_TOLERANCE) {
       /* We tolerate a small deviation around 0 due to flux exchanges. But
 	 the true physical value is 0.0 */
       mZi = max(0.0, mZi);
     } /* Do not correct negative values, this helps debugging */
-    ret[i] = p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
-    m_Z += p->chemistry_data.metal_mass[i];
+#endif
+    ret[i] = mZi / hydro_get_mass(p);
+    m_Z += mZi;
   }
 
   /* Now write the metallicity */
