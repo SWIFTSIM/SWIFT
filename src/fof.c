@@ -1211,7 +1211,7 @@ static INLINE void add_foreign_link_to_list(
   /* If the group_links array is not big enough re-allocate it. */
   if (*local_link_count + 1 > *group_links_size) {
 
-    const int new_size = 2 * (*group_links_size);
+    const int new_size = 1.2 * (*group_links_size);
 
     *group_links_size = new_size;
 
@@ -2606,7 +2606,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
       /* Re-allocate the list if it's needed. */
       if (num_groups_local + extra_seed_count >= density_index_size) {
-        const size_t new_size = 2 * density_index_size;
+        const size_t new_size = 1.2 * density_index_size;
 
         max_part_density_index = (long long *)realloc(
             max_part_density_index, new_size * sizeof(long long));
@@ -2783,7 +2783,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 
       const int old_size = *group_links_size;
       const int new_size =
-          max(*group_link_count + local_link_count, 2 * old_size);
+          max(*group_link_count + local_link_count, 1.2 * old_size);
 
       (*group_links) = (struct fof_mpi *)realloc(
           *group_links, new_size * sizeof(struct fof_mpi));
@@ -3770,6 +3770,10 @@ void fof_link_foreign_fragments(struct fof_props *props,
     hashmap_add_group(group_j, group_count, &map);
     group_count++;
   }
+
+  if (verbose) hasmap_uf_print_stats(&map);
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
   if (verbose)
     message("Global list compression took: %.3f %s.",
