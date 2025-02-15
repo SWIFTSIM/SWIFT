@@ -1779,12 +1779,10 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (index_offset_j > index_offset_i &&
-      (index_offset_j < index_offset_i + count_i) &&
-      (ci->nodeID == cj->nodeID))
+      (index_offset_j < index_offset_i + count_i) && (ci->nodeID == cj->nodeID))
     error("Overlapping cells");
   if (index_offset_i > index_offset_j &&
-      (index_offset_i < index_offset_j + count_j) &&
-      (ci->nodeID == cj->nodeID))
+      (index_offset_i < index_offset_j + count_j) && (ci->nodeID == cj->nodeID))
     error("Overlapping cells");
 #endif
 
@@ -3662,8 +3660,8 @@ void fof_link_foreign_fragments(struct fof_props *props,
 
   /* Sum the total number of links across MPI domains over each MPI rank. */
   long long global_group_link_count = 0;
-  MPI_Allreduce(&group_link_count, &global_group_link_count, 1,
-                MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_LONG_LONG,
+                MPI_SUM, MPI_COMM_WORLD);
 
   if (global_group_link_count < 0)
     error("Overflow of the size of the global list of foreign links");
