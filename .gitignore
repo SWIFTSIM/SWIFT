@@ -29,7 +29,12 @@ doc/Doxyfile
 doc/RTD/source/SubgridModels/*/*.png
 doc/RTD/source/RadiativeTransfer/full_dependency_graph_RT.png
 
+examples/*/*/*/*
 examples/*/*/*.xmf
+examples/*/*/*/
+examples/*/*/*.jpg
+examples/*/*/*.jpeg
+examples/*/*/*.gif
 examples/*/*/*.dat
 examples/*/*/*.png
 examples/*/*/*.pdf
@@ -39,9 +44,9 @@ examples/*/*/*.rst
 examples/*/*/*.hdf5
 examples/*/*/*.csv
 examples/*/*/*.dot
-examples/**/cell_hierarchy.html
+examples/*/*/cell_hierarchy.html
 examples/*/*/energy.txt
-examples/**/task_level.txt
+examples/*/*/task_level.txt
 examples/*/*/timesteps_*.txt
 examples/**/timesteps.txt
 examples/**/SFR.txt
@@ -58,6 +63,7 @@ examples/*/*/used_parameters.yml
 examples/*/*/unused_parameters.yml
 examples/*/*/fof_used_parameters.yml
 examples/*/*/fof_unused_parameters.yml
+examples/*/*/partition_fixed_costs.h
 examples/*/*.mpg
 examples/*/*/gravity_checks_*.dat
 examples/*/*/coolingtables.tar.gz

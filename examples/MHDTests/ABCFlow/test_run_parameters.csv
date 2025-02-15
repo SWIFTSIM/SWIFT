@@ -1,0 +1,2 @@
+Run #	v0	A	B	C	Vz_factor	eta	kv	kb	Lbox	Scheme	IAfile	monopole_subtraction	artificial_diffusion	hyperbolic_dedner	hyperbolic_dedner_divv	parabolic_dedner	t_max	max_dt	Forcing_kind	Status	Comment
+example_run	1	1	1	1	1	0.062	1	1	6.2831853	ODI	g32			1	0.5	1	300	1e-2	v		

@@ -29,6 +29,7 @@
 #include <stdio.h>
 
 /* Pre-declarations */
+struct engine;
 struct phys_const;
 struct space;
 struct unit_system;
@@ -131,6 +132,9 @@ struct statistics {
   /*! Total Magnetic helicity */
   double H_mag;
 
+  /*! Mean Squared Magnetic Field Strength */
+  double Brms;
+
   /*! Lock for threaded access */
   swift_lock_type lock;
 };
@@ -143,7 +147,7 @@ void stats_write_to_file(FILE* file, const struct statistics* stats,
                          const double time, const double a, const double z,
                          const int step);
 void stats_init(struct statistics* s);
-void stats_finalize(struct statistics* s);
+void stats_finalize(struct statistics* s, const struct engine* e);
 
 #ifdef WITH_MPI
 extern MPI_Datatype statistics_mpi_type;
