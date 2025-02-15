@@ -1035,7 +1035,7 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 
 /**
  * @brief Have gas particles in a pair of cells moved too much, invalidating the
- * completeness criterion for #ci?
+ * completeness criterion for ci?
  *
  * This function returns true the grid completeness criterion from the
  * perspective of ci (the #cell for which the grid will be constructed) is no
@@ -1049,7 +1049,7 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
  * constructed.
  * @param cj The second #cell. This is the neighbouring cell whose particles are
  * used as ghost particles.
- * @return Whether completeness of #ci is invalidated by the pair (#ci, #cj).
+ * @return Whether completeness of ci is invalidated by the pair (ci, cj).
  */
 __attribute__((always_inline, nonnull)) INLINE static int
 cell_grid_pair_invalidates_completeness(struct cell *ci, struct cell *cj) {

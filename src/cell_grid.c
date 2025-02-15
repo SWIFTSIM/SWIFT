@@ -189,7 +189,7 @@ void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
  *
  * @param ci The first #cell of the pair to be checked.
  * @param cj The second #cell of the pair to be checked. If NULL, only check
- * pairs of subcells from #ci.
+ * pairs of subcells from ci.
  * @param sid The sort_id (direction) of the pair.
  * @param e The #engine.
  * */
@@ -368,7 +368,7 @@ void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
  *
  * @param c The #cell
  * @param construction_level NULL, if we are yet to encounter the suitable
- * construction level, or a pointer to the parent-cell of #c at the construction
+ * construction level, or a pointer to the parent-cell of c at the construction
  * level.
  */
 void cell_set_grid_construction_level(struct cell *c,

@@ -20,7 +20,7 @@
 #include "runner_doiact_sinks.h"
 
 /**
- * @brief Calculate gas and sink interaction around #sinks
+ * @brief Calculate gas and sink interaction around #sink
  *
  * @param r runner task
  * @param c cell
@@ -161,7 +161,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Calculate gas and sink interaction around #sinks
+ * @brief Calculate gas and sink interaction around #sink
  *
  * @param r runner task
  * @param ci The first #cell
@@ -310,8 +310,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 }
 
 /**
- * @brief Calculate swallow for ci #sinks part around the cj #gas and sinks and
- *                              cj #sinks part around the ci #gas and sinks
+ * @brief Calculate swallow for ci #sink part around the cj #part and sinks and
+ *                              cj #sink part around the ci #part and sinks
  *
  * @param r runner task
  * @param ci The first #cell

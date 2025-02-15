@@ -23,9 +23,9 @@ copyright = "2014-2023, SWIFT Collaboration"
 author = "SWIFT Team"
 
 # The short X.Y version
-version = "1.0"
+version = "2025.01"
 # The full version, including alpha/beta/rc tags
-release = "1.0.0"
+release = "2025.01"
 
 # -- Find additional scripts to run as part of the documentation build -------
 import glob
