@@ -858,11 +858,15 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
                        spart_align,
                        sizeof(struct spart) * s->size_sparts_foreign) != 0)
       error("Failed to allocate foreign spart data.");
+
+#ifdef SWIFT_DEBUG_CHECKS
     bzero(s->sparts_foreign, s->size_sparts_foreign * sizeof(struct spart));
+
     for (size_t i = 0; i < s->size_sparts_foreign; ++i) {
       s->sparts_foreign[i].time_bin = time_bin_not_created;
       s->sparts_foreign[i].id = -43;
     }
+#endif
   }
 
   /* Allocate space for the foreign particles we will receive */
@@ -885,6 +889,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
     if (swift_memalign("sinks_foreign", (void **)&s->sinks_foreign, sink_align,
                        sizeof(struct sink) * s->size_sinks_foreign) != 0)
       error("Failed to allocate foreign sink data.");
+
+#ifdef SWIFT_DEBUG_CHECKS
     bzero(s->sinks_foreign, s->size_sinks_foreign * sizeof(struct sink));
 
     /* Note: If you ever see a sink particle with id = -666, the following
@@ -893,6 +899,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       s->sinks_foreign[i].time_bin = time_bin_not_created;
       s->sinks_foreign[i].id = -666;
     }
+#endif
   }
 
   if (e->verbose) {
@@ -932,6 +939,12 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
               sizeof(struct sink) / (1024 * 1024));
     }
   }
+
+  if (e->verbose)
+    message("Allocating and zeroing arrays took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
