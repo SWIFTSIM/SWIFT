@@ -93,7 +93,13 @@ chemistry_compute_parabolic_timestep(
   } else {
     /* Compute the expression in the square bracket in eq (15). Notice that I
        rewrote it to avoid division by 0 when norm_nabla_q = 0. */
-    expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
+    /* expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q); */
+
+    /* The expression above is too strict because of feedback metal
+       injection. The code slows by a factor of 10 compared to the following
+       simpler case. Use the expression above if you want to ensure the
+       correctness of parabolic diffusion. */
+    expression = delta_x;
   }
 
   return expression * expression / norm_matrix_K * norm_U_over_norm_q;
