@@ -241,13 +241,28 @@ chemistry_set_star_supernovae_ejected_yields(
 
     snii_yields_new[i] = snii_yields[i];
     snia_yields_new[i] = snia_yields[i];
+
+    /* Check that the yields have physical values. Negative values may hint
+       interpolation problems. */
+    if (snii_yields_new[i] < 0) {
+      error("[%lld, i] Negative SNII yields detected. Abort. mass = %e, mi = %e",
+	    sp->id, i, sp->mass, snii_yields_new[i]);
+    }
+    if (snia_yields_new[i] < 0) {
+      error("[%lld, i] Negative SNIa yields detected. Abort. mass = %e, mi = %e",
+	    sp->id, i, sp->mass, snia_yields_new[i]);
+    }
   }
 
+  /* In GEAR tables, the last element is the sum of all elements. To get the
+     metal mass of untracked element, we simply need to subtract the total
+     metal mass (the last yield) by the sum of all tracked elements. */
   const int last_elem = GEAR_CHEMISTRY_ELEMENT_COUNT - 1;
   snii_yields_new[last_elem] = snii_yields[last_elem] - m_Z_tot_snii_tracked;
   snia_yields_new[last_elem] =
       snia_yields_new[last_elem] - m_Z_tot_snia_tracked;
 
+  /* Now give your yields to the stars */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
 
     /* Compute the mass fraction of metals */
