@@ -260,7 +260,19 @@ chemistry_set_star_supernovae_ejected_yields(
   const int last_elem = GEAR_CHEMISTRY_ELEMENT_COUNT - 1;
   snii_yields_new[last_elem] = snii_yields[last_elem] - m_Z_tot_snii_tracked;
   snia_yields_new[last_elem] =
-      snia_yields_new[last_elem] - m_Z_tot_snia_tracked;
+      snia_yields[last_elem] - m_Z_tot_snia_tracked;
+
+  /* Check that we do not inject negative yields. Negative masses will produce
+     an error in diffusion because we check that we do not end up with negative
+     metal mass. */
+  if (snii_yields_new[last_elem] < 0) {
+    error("[%lld] Negative snii_yields[9] = %e. Reset to 0.",
+	    sp->id, snii_yields_new[last_elem]);
+  }
+  if (snia_yields_new[last_elem] <= 0) {
+    error("[%lld] Negative snia_yields[9] = %e. Reset to 0.",
+	    sp->id, snia_yields_new[last_elem]);
+  }
 
   /* Now give your yields to the stars */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
