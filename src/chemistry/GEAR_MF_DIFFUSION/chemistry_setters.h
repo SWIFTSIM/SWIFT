@@ -245,11 +245,11 @@ chemistry_set_star_supernovae_ejected_yields(
     /* Check that the yields have physical values. Negative values may hint
        interpolation problems. */
     if (snii_yields_new[i] < 0) {
-      error("[%lld, i] Negative SNII yields detected. Abort. mass = %e, mi = %e",
+      error("[%lld, %d] Negative SNII yields detected. Abort. mass = %e, mi = %e",
 	    sp->id, i, sp->mass, snii_yields_new[i]);
     }
     if (snia_yields_new[i] < 0) {
-      error("[%lld, i] Negative SNIa yields detected. Abort. mass = %e, mi = %e",
+      error("[%lld, %d] Negative SNIa yields detected. Abort. mass = %e, mi = %e",
 	    sp->id, i, sp->mass, snia_yields_new[i]);
     }
   }
