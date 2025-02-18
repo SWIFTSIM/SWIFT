@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[1.0.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[2025.01],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 AC_COPYRIGHT
@@ -431,6 +431,20 @@ if test "$stars_density_checks" = "yes"; then
    AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-stars-density-checks!)
 elif test "$stars_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_STARS_DENSITY_CHECKS], [$enableval] ,[Enable stars density brute-force checks])
+fi
+
+# Check if sink density checks are on for some particles.
+AC_ARG_ENABLE([sink-density-checks],
+   [AS_HELP_STRING([--enable-sink-density-checks],
+     [Activate expensive brute-force sink density checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [sink_density_checks="$enableval"],
+   [sink_density_checks="no"]
+)
+if test "$sink_density_checks" = "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-sink-density-checks!)
+elif test "$sink_density_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_SINK_DENSITY_CHECKS], [$enableval] ,[Enable sink density brute-force checks])
 fi
 
 # Check if ghost statistics are enabled
@@ -2897,6 +2911,9 @@ case "$with_sink" in
    none)
       AC_DEFINE([SINK_NONE], [1], [No sink particle model])
    ;;
+   Basic)
+    AC_DEFINE([SINK_BASIC], [1], [Simple, self-contained sink model with only Bondi-Hoyle accretion and no SF.])
+    ;;
    GEAR)
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     ;;

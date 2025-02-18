@@ -90,7 +90,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
                          multipole_rec_end);
     c->hydro.sorts = NULL;
     c->stars.sorts = NULL;
+#ifdef SWIFT_DEBUG_CHECKS
     c->nr_tasks = 0;
+#endif
     c->grav.nr_mm_tasks = 0;
     c->hydro.density = NULL;
     c->hydro.gradient = NULL;
@@ -254,6 +256,7 @@ void space_recycle(struct space *s, struct cell *c) {
   if (lock_destroy(&c->hydro.lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
       lock_destroy(&c->grav.mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
       lock_destroy(&c->sinks.lock) != 0 ||
+      lock_destroy(&c->hydro.extra_sort_lock) != 0 ||
       lock_destroy(&c->sinks.sink_formation_lock) != 0 ||
       lock_destroy(&c->black_holes.lock) != 0 ||
       lock_destroy(&c->grav.star_formation_lock) != 0 ||
@@ -304,6 +307,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
         lock_destroy(&c->grav.mlock) != 0 ||
         lock_destroy(&c->stars.lock) != 0 ||
         lock_destroy(&c->sinks.lock) != 0 ||
+        lock_destroy(&c->hydro.extra_sort_lock) != 0 ||
         lock_destroy(&c->sinks.sink_formation_lock) != 0 ||
         lock_destroy(&c->black_holes.lock) != 0 ||
         lock_destroy(&c->stars.star_formation_lock) != 0 ||
