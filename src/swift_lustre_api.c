@@ -1,0 +1,187 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2025 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <errno.h>
+#include <string.h>
+
+#include "swift_lustre_api.h"
+
+#include <lustre/lustreapi.h>
+#include <lustre/lustre_user.h>
+
+/* Number of OSTs to pre-allocate for. */
+#define PREALLOC 100
+
+/**
+ * @brief Initialize an OST scan storage structure.
+ *
+ * @param swift_ost_infos pointer to the storage structure.
+ */
+void swift_ost_store_init(struct swift_ost_store *ost_infos) {
+  ost_infos->count = 0;
+  ost_infos->size = PREALLOC;
+  ost_infos->infos = (struct swift_ost_info *)malloc(sizeof(struct swift_ost_info) * PREALLOC);
+  memset(ost_infos->infos, 0, sizeof(struct swift_ost_info) * PREALLOC);
+}
+
+/**
+ * @brief Release any storage associated with an OST scan storage structure.
+ *
+ * @param ost_infos pointer to the storage structure.
+ */
+void swift_ost_store_free(struct swift_ost_store *ost_infos) {
+  free(ost_infos->infos);
+  ost_infos->infos = NULL;
+  ost_infos->count = 0;
+  ost_infos->size = 0;
+}
+
+/**
+ * @brief Print an OST storage structure for debugging purposes.
+ *
+ * @param ost_infos pointer to the storage structure.
+ */
+void swift_ost_store_print(struct swift_ost_store *ost_infos) {
+  printf("%5s %21s %21s\n", "Index", "Size (bytes)", "Used (bytes)");
+  for (int i = 0; i < ost_infos->count; i++) {
+    printf("%5d %21zd %21zd\n",
+           ost_infos->infos[i].index,
+           ost_infos->infos[i].size,
+           ost_infos->infos[i].used);
+  }
+}
+
+/**
+ * @brief Store information about an OST.
+ *
+ * @param ost_infos pointer to the storage structure.
+ * @param index the index, zero based.
+ * @param size the total size in bytes.
+ * @param used the number of bytes used.
+ */
+static void swift_ost_store(struct swift_ost_store *ost_infos, int index, size_t size, size_t used) {
+
+  /* Add extra space if needed. Note not thread safe. */
+  if (ost_infos->count == ost_infos->size - 1) {
+    size_t newsize = ost_infos->size + PREALLOC;
+    struct swift_ost_info *newinfos =
+      (struct swift_ost_info *)malloc(sizeof(struct swift_ost_info) * newsize);
+    memset(newinfos, 0, sizeof(struct swift_ost_info) * newsize);
+    memcpy(newinfos, ost_infos->infos, sizeof(struct swift_ost_info) * ost_infos->size);
+    free(ost_infos->infos);
+    ost_infos->infos = newinfos;
+    ost_infos->size = newsize;
+  }
+  int count = ost_infos->count++;
+  ost_infos->infos[count].index = index;
+  ost_infos->infos[count].size = size;
+  ost_infos->infos[count].used = used;
+}
+
+
+/**
+ * @brief Scan the OSTs associated with a lustre file system given a path.
+ *
+ * On exit the ost_infos struct will be populated with the 
+ * the number of OSTs found and details of the size and used bytes in each
+ * OST.
+ *
+ * @param path a directory on the lustre file system, ideally the mount point.
+ * @param ost_infos pointer to the storage structure.
+ *
+ * @return 0 on success, otherwise an error will have been reported.
+ */
+int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
+
+  char mntdir[PATH_MAX] = "";
+  char fsname[PATH_MAX] = "";
+  char cpath[PATH_MAX] = "";
+  int rc = 0;
+
+  /* Check this path exists. */
+  if (!realpath(path, cpath)) {
+    rc = -errno;
+    fprintf(stderr, "Error: not a real path '%s': %s\n", path, strerror(-rc));
+  } else {
+
+    /* Parse the path into the mount point and file system name. */
+    if (llapi_search_mounts(cpath, 0, mntdir, fsname) == 0) {
+      if (mntdir[0] != '\0') {
+        struct obd_statfs stat_buf;
+        struct obd_uuid uuid_buf;
+        
+        /* Loop while OSTs are located. */
+        for (int index = 0; ; index++) {
+          memset(&stat_buf, 0, sizeof(struct obd_statfs));
+          memset(&uuid_buf, 0, sizeof(struct obd_uuid));
+          
+          int rc = llapi_obd_statfs(mntdir, LL_STATFS_LOV, index,
+                                    &stat_buf, &uuid_buf);
+          if (rc == -ENODEV ||
+              rc == -EAGAIN ||
+              rc == -EINVAL ||
+              rc == -EFAULT) {
+            /* Nothing we can query here, so time to stop search. */
+            break;
+          }
+          
+          /* Inactive devices are empty. */
+          if (rc == -ENODATA) {
+            swift_ost_store(ost_infos, index, 0, 0);
+          } else {
+            size_t used  = (stat_buf.os_blocks - stat_buf.os_bfree) * stat_buf.os_bsize;
+            size_t total = stat_buf.os_blocks * stat_buf.os_bsize;
+            swift_ost_store(ost_infos, index, total, used);
+          }
+        }
+        rc = 0;
+        
+      } else {
+        fprintf(stderr, "Error: no lustre mount point found for: %s\n", path);
+        rc = 1;
+      }
+    } else {
+      fprintf(stderr, "Error: failed to locate a lustre mount point for: %s\n", path);
+      rc = 1;
+    }
+  }
+  return rc;
+}
+
+/**
+ * @brief Create a file with a given OST index and number of OSTs to stripe.
+ *
+ * @param filename name of the file to create.
+ * @param offset index of the first OST used with this file.
+ * @param count number of OSTs to stripe this file over.
+ *
+ * @return non-zero if there are problems creating the file.
+ */
+int swift_create_striped_file(const char *filename, int offset, int count) {
+  int rc = llapi_file_create(filename, 0 /* Default stripe size */,
+                             offset, count, LLAPI_LAYOUT_RAID0);
+  if (rc != 0) {
+    fprintf(stderr, "Error: cannot create file %s : %s\n", filename,
+    strerror(rc));
+  }
+  return rc;
+}
+
