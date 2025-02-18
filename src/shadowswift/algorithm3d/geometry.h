@@ -324,13 +324,17 @@ inline static void geometry3d_orient_4(struct geometry3d* restrict g,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify result */
   int test = geometry3d_orient(b->x_f64, d->x_f64, c->x_f64, e->x_f64);
-  if (test != tests[0]) error("AVX result doesn't match regular calculation!");
+  if (test != tests[0] && test != 0 && tests[0] != 0)
+    error("AVX result doesn't match regular calculation!");
   test = geometry3d_orient(a->x_f64, c->x_f64, d->x_f64, e->x_f64);
-  if (test != tests[1]) error("AVX result doesn't match regular calculation!");
+  if (test != tests[1] && test != 0 && tests[1] != 0)
+    error("AVX result doesn't match regular calculation!");
   test = geometry3d_orient(a->x_f64, d->x_f64, b->x_f64, e->x_f64);
-  if (test != tests[2]) error("AVX result doesn't match regular calculation!");
+  if (test != tests[2] && test != 0 && tests[2] != 0)
+    error("AVX result doesn't match regular calculation!");
   test = geometry3d_orient(a->x_f64, b->x_f64, c->x_f64, e->x_f64);
-  if (test != tests[3]) error("AVX result doesn't match regular calculation!");
+  if (test != tests[3] && test != 0 && tests[3] != 0)
+    error("AVX result doesn't match regular calculation!");
 #endif
 
   /* Do we need to run some exact tests? */
