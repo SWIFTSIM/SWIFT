@@ -46,7 +46,17 @@ struct hydro_props;
 
 /* Some constants. */
 #define space_cellallocchunk 1000
+#ifdef MOVING_MESH
+#ifdef HYDRO_DIMENSION_1D
+#define space_splitsize_default 10
+#elif defined(HYDRO_DIMENSION_2D)
+#define space_splitsize_default 20
+#else
+#define space_splitsize_default 40
+#endif
+#else
 #define space_splitsize_default 400
+#endif
 #define space_maxsize_default 8000000
 #define space_grid_split_threshold_default 400
 #define space_extra_parts_default 0
@@ -54,6 +64,9 @@ struct hydro_props;
 #define space_extra_sparts_default 200
 #define space_extra_bparts_default 0
 #define space_extra_sinks_default 0
+#if defined(SWIFT_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
+#define space_boundary_parts_interior_default 0
+#endif
 #define space_expected_max_nr_strays_default 100
 #define space_subsize_pair_hydro_default 256000000
 #define space_subsize_self_hydro_default 32000
@@ -73,6 +86,9 @@ struct hydro_props;
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
 #define space_maxreldx 0.1f
+#ifdef MOVING_MESH
+#define space_regrid_search_radius_fac 3.f
+#endif
 
 /* Maximum allowed depth of cell splits. */
 #define space_cell_maxdepth 52
@@ -102,6 +118,9 @@ extern int space_extra_gparts;
 extern int space_extra_sparts;
 extern int space_extra_bparts;
 extern int space_extra_sinks;
+#if defined(SWIFT_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
+extern int space_boundary_parts_interior;
+#endif
 extern double engine_redistribute_alloc_margin;
 extern double engine_foreign_alloc_margin;
 
