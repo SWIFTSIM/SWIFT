@@ -2442,7 +2442,6 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
-  const int with_grid_hydro = e->policy & engine_policy_grid_hydro;
   const int with_ext_gravity = e->policy & engine_policy_external_gravity;
   const int with_self_gravity = e->policy & engine_policy_self_gravity;
 
