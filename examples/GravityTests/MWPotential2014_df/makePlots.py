@@ -63,8 +63,8 @@ def plot_orbits(x, y, z, t, color, save_fig_name_suffix):
         ax[1].plot(x[i, :], z[i, :], col[i], label="SWIFT solution")
 
     ax[1].set_aspect("equal", "box")
-    ax[1].set_xlim([-300, 300])
-    ax[1].set_ylim([-300, 300])
+    ax[1].set_xlim([-100, 100])
+    ax[1].set_ylim([-100, 100])
     ax[1].set_ylabel("z (kpc)")
     ax[1].set_xlabel("x (kpc)")
 
@@ -72,8 +72,8 @@ def plot_orbits(x, y, z, t, color, save_fig_name_suffix):
         ax[2].plot(y[i, :], z[i, :], col[i])
 
     ax[2].set_aspect("equal", "box")
-    ax[2].set_xlim([-300, 300])
-    ax[2].set_ylim([-300, 300])
+    ax[2].set_xlim([-100, 100])
+    ax[2].set_ylim([-100, 100])
     ax[2].set_ylabel("z (kpc)")
     ax[2].set_xlabel("y (kpc)")
     plt.tight_layout()
@@ -82,7 +82,7 @@ def plot_orbits(x, y, z, t, color, save_fig_name_suffix):
         ax[3].plot(t, np.sqrt(x[i, :] ** 2 + y[i, :] ** 2 + z[i, :] ** 2), col[i])
 
     ax[3].set_aspect("auto", "box")
-    ax[3].set_ylim([0, 600])
+    ax[3].set_ylim([0, 100])
     ax[3].set_ylabel("r (kpc)")
     ax[3].set_xlabel("t (kpc)")
     plt.tight_layout()
