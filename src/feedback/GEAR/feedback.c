@@ -70,9 +70,11 @@ float feedback_compute_spart_timestep(
 void feedback_update_part(struct part* p, struct xpart* xp,
                           const struct engine* e) {
 
-  /* TODO: Treat the pre-SN case */
+  /* TODO: Treat the pre-SN case
+     WARNING: Do not comment out this line, because it will mess-up with
+     SF/sinks. (I think it injects something that it should not...) */
   /* Did the particle receive a supernovae */
-  /* if (xp->feedback_data.delta_mass == 0) return; */
+  if (xp->feedback_data.delta_mass == 0) return;
 
   const struct cosmology* cosmo = e->cosmology;
   const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
