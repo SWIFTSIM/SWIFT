@@ -21,17 +21,17 @@
 
 /* Structure to store information about an OST. */
 struct swift_ost_info {
-  int index;        /* OST index */
-  size_t size;      /* Size in bytes */
-  size_t used;      /* Used in bytes */
+  int index;   /* OST index */
+  size_t size; /* Size in bytes */
+  size_t used; /* Used in bytes */
 };
 
 /* Structure to store a scan of all the OSTs for a mount point. */
 struct swift_ost_store {
   struct swift_ost_info *infos;
-  int count;        /* Count of active OSTs */
-  int fullcount;    /* Count of OSTs available (only different when culled) */
-  int size;         /* Space available for storing OST infos */
+  int count;     /* Count of active OSTs */
+  int fullcount; /* Count of OSTs available (only different when culled) */
+  int size;      /* Space available for storing OST infos */
 };
 
 /* Public functions. */
@@ -39,6 +39,7 @@ struct swift_ost_store {
 /* OST scanning. */
 int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos);
 void swift_ost_cull(struct swift_ost_store *ost_infos, size_t minfree);
+void swift_ost_remove(struct swift_ost_store *ost_infos, int index);
 int swift_ost_next(struct swift_ost_store *ost_infos, int *arrayindex,
                    int count);
 

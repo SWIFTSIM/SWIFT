@@ -16,22 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <limits.h>
-#include <errno.h>
 #include <string.h>
 
+/* Local includes. */
 #include "swift_lustre_api.h"
 
-#include <lustre/lustreapi.h>
+/* Lustre API */
 #include <lustre/lustre_user.h>
+#include <lustre/lustreapi.h>
 
 /* Number of OSTs to pre-allocate for. */
 #define PREALLOC 100
 
 /* Bytes in a TiB */
-#define TiB (1024.0*1024.0*1024.0)
+#define TiB (1024.0 * 1024.0 * 1024.0)
 
 /**
  * @brief Initialize an OST scan storage structure.
@@ -42,7 +44,8 @@ void swift_ost_store_init(struct swift_ost_store *ost_infos) {
   ost_infos->count = 0;
   ost_infos->fullcount = 0;
   ost_infos->size = PREALLOC;
-  ost_infos->infos = (struct swift_ost_info *)malloc(sizeof(struct swift_ost_info) * PREALLOC);
+  ost_infos->infos =
+      (struct swift_ost_info *)malloc(sizeof(struct swift_ost_info) * PREALLOC);
   memset(ost_infos->infos, 0, sizeof(struct swift_ost_info) * PREALLOC);
 }
 
@@ -78,32 +81,24 @@ void swift_ost_store_print(struct swift_ost_store *ost_infos) {
   size_t umax = 0;
 
   for (int i = 0; i < ost_infos->count; i++) {
-    printf("%5d %21zd %21zd %21zd\n",
-           ost_infos->infos[i].index,
-           ost_infos->infos[i].size,
-           ost_infos->infos[i].used,
+    printf("%5d %21zd %21zd %21zd\n", ost_infos->infos[i].index,
+           ost_infos->infos[i].size, ost_infos->infos[i].used,
            ost_infos->infos[i].size - ost_infos->infos[i].used);
 
     ssum += ost_infos->infos[i].size;
     usum += ost_infos->infos[i].used;
 
-    if (ost_infos->infos[i].size > smax)
-      smax = ost_infos->infos[i].size;
-    if (ost_infos->infos[i].size < smin)
-      smin = ost_infos->infos[i].size;
+    if (ost_infos->infos[i].size > smax) smax = ost_infos->infos[i].size;
+    if (ost_infos->infos[i].size < smin) smin = ost_infos->infos[i].size;
 
-    if (ost_infos->infos[i].used > umax)
-      umax = ost_infos->infos[i].used;
-    if (ost_infos->infos[i].used < umin)
-      umin= ost_infos->infos[i].used;
+    if (ost_infos->infos[i].used > umax) umax = ost_infos->infos[i].used;
+    if (ost_infos->infos[i].used < umin) umin = ost_infos->infos[i].used;
   }
   printf("# Filesystem size:%.2f TiB used:%.2f TiB free:%.2f TiB %.2f%%\n",
-         ssum / TiB,
-         usum / TiB,
-         (ssum - usum) / TiB,
+         ssum / TiB, usum / TiB, (ssum - usum) / TiB,
          100.0 * (double)(ssum - usum) / (double)ssum);
   printf("# Min/max size: %.2f/%.2f TiB Min/max used: %.2f/%.2f TiB\n",
-        smin / TiB, smax / TiB, umin / TiB, umax / TiB);
+         smin / TiB, smax / TiB, umin / TiB, umax / TiB);
 }
 
 /**
@@ -114,15 +109,17 @@ void swift_ost_store_print(struct swift_ost_store *ost_infos) {
  * @param size the total size in bytes.
  * @param used the number of bytes used.
  */
-static void swift_ost_store(struct swift_ost_store *ost_infos, int index, size_t size, size_t used) {
+static void swift_ost_store(struct swift_ost_store *ost_infos, int index,
+                            size_t size, size_t used) {
 
   /* Add extra space if needed. Note not thread safe. */
   if (ost_infos->fullcount == ost_infos->size - 1) {
     size_t newsize = ost_infos->size + PREALLOC;
-    struct swift_ost_info *newinfos =
-      (struct swift_ost_info *)malloc(sizeof(struct swift_ost_info) * newsize);
+    struct swift_ost_info *newinfos = (struct swift_ost_info *)malloc(
+        sizeof(struct swift_ost_info) * newsize);
     memset(newinfos, 0, sizeof(struct swift_ost_info) * newsize);
-    memcpy(newinfos, ost_infos->infos, sizeof(struct swift_ost_info) * ost_infos->size);
+    memcpy(newinfos, ost_infos->infos,
+           sizeof(struct swift_ost_info) * ost_infos->size);
     free(ost_infos->infos);
     ost_infos->infos = newinfos;
     ost_infos->size = newsize;
@@ -166,15 +163,13 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
         struct obd_uuid uuid_buf;
 
         /* Loop while OSTs are located. */
-        for (int index = 0; ; index++) {
+        for (int index = 0;; index++) {
           memset(&stat_buf, 0, sizeof(struct obd_statfs));
           memset(&uuid_buf, 0, sizeof(struct obd_uuid));
 
-          int rc = llapi_obd_statfs(mntdir, LL_STATFS_LOV, index,
-                                    &stat_buf, &uuid_buf);
-          if (rc == -ENODEV ||
-              rc == -EAGAIN ||
-              rc == -EINVAL ||
+          int rc = llapi_obd_statfs(mntdir, LL_STATFS_LOV, index, &stat_buf,
+                                    &uuid_buf);
+          if (rc == -ENODEV || rc == -EAGAIN || rc == -EINVAL ||
               rc == -EFAULT) {
             /* Nothing we can query here, so time to stop search. */
             break;
@@ -184,7 +179,8 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
           if (rc == -ENODATA) {
             swift_ost_store(ost_infos, index, 0, 0);
           } else {
-            size_t used  = (stat_buf.os_blocks - stat_buf.os_bfree) * stat_buf.os_bsize;
+            size_t used =
+                (stat_buf.os_blocks - stat_buf.os_bfree) * stat_buf.os_bsize;
             size_t total = stat_buf.os_blocks * stat_buf.os_bsize;
             swift_ost_store(ost_infos, index, total, used);
           }
@@ -196,7 +192,8 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
         rc = 1;
       }
     } else {
-      fprintf(stderr, "Error: failed to locate a lustre mount point for: %s\n", path);
+      fprintf(stderr, "Error: failed to locate a lustre mount point for: %s\n",
+              path);
       rc = 1;
     }
   }
@@ -205,8 +202,8 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
 
 /** Comparison function for OST free space. */
 static int ostcmp(const void *p1, const void *p2) {
-  const struct swift_ost_info *i1 = (const struct swift_ost_info *) p1;
-  const struct swift_ost_info *i2 = (const struct swift_ost_info *) p2;
+  const struct swift_ost_info *i1 = (const struct swift_ost_info *)p1;
+  const struct swift_ost_info *i2 = (const struct swift_ost_info *)p2;
 
   /* size_t ints so some care is needed to return an int. */
   size_t f1 = i1->size - i1->used;
@@ -264,6 +261,40 @@ int swift_ost_next(struct swift_ost_store *ost_infos, int *arrayindex,
   return ost_infos->infos[index].index;
 }
 
+/**
+ * @brief Remove an OST by index from the store.
+ *
+ * @param ost_infos pointer to populated storage structure.
+ * @param index index of the OST to remove.
+ */
+void swift_ost_remove(struct swift_ost_store *ost_infos, int index) {
+
+  /* Find the array index. */
+  int arrayindex = -1;
+  for (int i = 0; i < ost_infos->fullcount; i++) {
+    if (ost_infos->infos[i].index == index) {
+      arrayindex = i;
+      break;
+    }
+  }
+
+  /* Do nothing if not found or we have the end array index. */
+  if ((arrayindex != -1) && arrayindex != (ost_infos->fullcount - 1)) {
+
+    /* Copy remaining infos down one place. Overlapping.. */
+    memmove(&ost_infos->infos[arrayindex], &ost_infos->infos[arrayindex + 1],
+            (ost_infos->fullcount - arrayindex - 1) *
+                sizeof(struct swift_ost_info));
+    if (arrayindex < ost_infos->count) ost_infos->count = ost_infos->count - 1;
+    ost_infos->fullcount = ost_infos->fullcount - 1;
+
+  } else if (arrayindex == ost_infos->fullcount - 1) {
+
+    /* End array index, just adjust counts. */
+    if (arrayindex < ost_infos->count) ost_infos->count = ost_infos->count - 1;
+    ost_infos->fullcount = ost_infos->fullcount - 1;
+  }
+}
 
 /**
  * @brief Create a file with a given OST index and number of OSTs to stripe.
@@ -279,19 +310,18 @@ int swift_create_striped_file(const char *filename, int offset, int count,
                               int *usedoffset) {
 
   *usedoffset = offset;
-  int rc = llapi_file_create(filename, 0 /* Default block size */,
-                             offset, count,
-                             LLAPI_LAYOUT_RAID0 /* Pattern default */);
+  int rc = llapi_file_create(filename, 0 /* Default block size */, offset,
+                             count, LLAPI_LAYOUT_RAID0 /* Pattern default */);
   if (rc != 0) {
     fprintf(stderr, "Error: cannot create file %s : %s\n", filename,
-    strerror(-rc));
+            strerror(-rc));
   } else {
-    
+
     /* Recover the file offset of first OST in case it is changed from
      * operational reasons. */
     /* Yuk, needs extra space for array os lov_user_ost_data. */
     size_t sizelum = sizeof(struct lov_user_md) +
-      LOV_MAX_STRIPE_COUNT * sizeof(struct lov_user_ost_data);
+                     LOV_MAX_STRIPE_COUNT * sizeof(struct lov_user_ost_data);
     struct lov_user_md *lum = (struct lov_user_md *)malloc(sizelum);
 
     rc = llapi_file_get_stripe(filename, lum);
