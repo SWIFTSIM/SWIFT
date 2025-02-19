@@ -21,27 +21,34 @@
 
 /* Structure to store information about an OST. */
 struct swift_ost_info {
-  int index;
-  size_t size;
-  size_t used;
+  int index;        /* OST index */
+  size_t size;      /* Size in bytes */
+  size_t used;      /* Used in bytes */
 };
 
 /* Structure to store a scan of all the OSTs for a mount point. */
 struct swift_ost_store {
   struct swift_ost_info *infos;
-  int count;
-  int size;
+  int count;        /* Count of active OSTs */
+  int fullcount;    /* Count of OSTs available (only different when culled) */
+  int size;         /* Space available for storing OST infos */
 };
 
 /* Public functions. */
 
 /* OST scanning. */
+int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos);
+void swift_ost_cull(struct swift_ost_store *ost_infos, size_t minfree);
+int swift_ost_next(struct swift_ost_store *ost_infos, int *arrayindex,
+                   int count);
+
+/* OST store. */
 void swift_ost_store_init(struct swift_ost_store *ost_infos);
 void swift_ost_store_free(struct swift_ost_store *ost_infos);
 void swift_ost_store_print(struct swift_ost_store *ost_infos);
-int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos);
 
 /* File striping. */
-int swift_create_striped_file(const char *filename, int offset, int count);
+int swift_create_striped_file(const char *filename, int offset, int count,
+                              int *usedoffset);
 
 #endif /* SWIFT_LUSTRE_API_H */
