@@ -83,7 +83,6 @@ def plot_orbits(x, y, z, t, color, save_fig_name_suffix):
 
     ax[3].set_aspect("auto", "box")
     ax[3].set_ylim([0, 100])
-    ax[3].set_ylim([0, 600])
     ax[3].set_ylabel("r (kpc)")
     ax[3].set_xlabel("t (kpc)")
     plt.tight_layout()
