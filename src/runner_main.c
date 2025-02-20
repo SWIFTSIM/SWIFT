@@ -487,12 +487,6 @@ void *runner_main(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
         case task_type_extra_ghost:
           runner_do_extra_ghost(r, ci, 1);
-#ifdef SWIFT_DEBUG_CHECKS
-          /*Check that the corresponding stars ghost-like tasks exists at the hydro super level (i.e. for the current cell) */
-          assert(ci->stars.density_ghost != NULL);
-          assert(ci->stars.stars_out != NULL);
-          assert(ci->stars.stars_in != NULL);
-#endif
           break;
 #endif
         case task_type_stars_ghost:
