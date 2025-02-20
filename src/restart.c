@@ -29,6 +29,7 @@
 #include "engine.h"
 #include "error.h"
 #include "restart.h"
+#include "swift_lustre_api.h"
 #include "version.h"
 
 #include <errno.h>

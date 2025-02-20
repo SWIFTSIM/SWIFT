@@ -30,8 +30,10 @@
 #include "swift_lustre_api.h"
 
 /* Lustre API */
+#ifdef HAVE_LUSTREAPI
 #include <lustre/lustre_user.h>
 #include <lustre/lustreapi.h>
+#endif
 
 /* Number of OSTs to pre-allocate space for. */
 #define PREALLOC 100
@@ -45,12 +47,14 @@
  * @param swift_ost_infos pointer to the storage structure.
  */
 void swift_ost_store_init(struct swift_ost_store *ost_infos) {
+#ifdef HAVE_LUSTREAPI
   ost_infos->count = 0;
   ost_infos->fullcount = 0;
   ost_infos->size = PREALLOC;
   ost_infos->infos =
       (struct swift_ost_info *)malloc(sizeof(struct swift_ost_info) * PREALLOC);
   memset(ost_infos->infos, 0, sizeof(struct swift_ost_info) * PREALLOC);
+#endif
 }
 
 /**
@@ -59,11 +63,13 @@ void swift_ost_store_init(struct swift_ost_store *ost_infos) {
  * @param ost_infos pointer to the storage structure.
  */
 void swift_ost_store_free(struct swift_ost_store *ost_infos) {
+#ifdef HAVE_LUSTREAPI
   free(ost_infos->infos);
   ost_infos->infos = NULL;
   ost_infos->count = 0;
   ost_infos->fullcount = 0;
   ost_infos->size = 0;
+#endif
 }
 
 /**
@@ -72,6 +78,7 @@ void swift_ost_store_free(struct swift_ost_store *ost_infos) {
  * @param ost_infos pointer to the storage structure.
  */
 void swift_ost_store_print(struct swift_ost_store *ost_infos) {
+#ifdef HAVE_LUSTREAPI
   printf("#  Listing of OSTs. Using %d of %d\n", ost_infos->count,
          ost_infos->fullcount);
 
@@ -103,8 +110,10 @@ void swift_ost_store_print(struct swift_ost_store *ost_infos) {
          100.0 * (double)(ssum - usum) / (double)ssum);
   printf("# Min/max size: %.2f/%.2f TiB Min/max used: %.2f/%.2f TiB\n",
          smin / TiB, smax / TiB, umin / TiB, umax / TiB);
+#endif
 }
 
+#ifdef HAVE_LUSTREAPI
 /**
  * @brief Store information about an OST.
  *
@@ -115,7 +124,6 @@ void swift_ost_store_print(struct swift_ost_store *ost_infos) {
  */
 static void swift_ost_store(struct swift_ost_store *ost_infos, int index,
                             size_t size, size_t used) {
-
   /* Add extra space if needed. Note not thread safe. */
   if (ost_infos->fullcount == ost_infos->size - 1) {
     size_t newsize = ost_infos->size + PREALLOC;
@@ -134,6 +142,7 @@ static void swift_ost_store(struct swift_ost_store *ost_infos, int index,
   ost_infos->infos[count].used = used;
   ost_infos->fullcount = ost_infos->count;
 }
+#endif
 
 /**
  * @brief Scan the OSTs associated with a lustre file system given a path.
@@ -149,10 +158,11 @@ static void swift_ost_store(struct swift_ost_store *ost_infos, int index,
  */
 int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
 
+  int rc = 0;
+#ifdef HAVE_LUSTREAPI
   char mntdir[PATH_MAX] = "";
   char fsname[PATH_MAX] = "";
   char cpath[PATH_MAX] = "";
-  int rc = 0;
 
   /* Check this path exists. */
   if (!realpath(path, cpath)) {
@@ -201,9 +211,11 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
       rc = 1;
     }
   }
+#endif
   return rc;
 }
 
+#ifdef HAVE_LUSTREAPI
 /** Comparison function for OST free space. */
 static int ostcmp(const void *p1, const void *p2) {
   const struct swift_ost_info *i1 = (const struct swift_ost_info *)p1;
@@ -216,6 +228,7 @@ static int ostcmp(const void *p1, const void *p2) {
   if (f1 > f2) return -1;
   return 0;
 }
+#endif
 
 /**
  * @brief Sort the OSTs into decreasing free space culling those that do not
@@ -226,7 +239,7 @@ static int ostcmp(const void *p1, const void *p2) {
  *                storing. Zero for no effect.
  */
 void swift_ost_cull(struct swift_ost_store *ost_infos, size_t minfree) {
-
+#ifdef HAVE_LUSTREAPI
   /* Sort by free space. */
   qsort(ost_infos->infos, ost_infos->count, sizeof(struct swift_ost_info),
         ostcmp);
@@ -244,6 +257,7 @@ void swift_ost_cull(struct swift_ost_store *ost_infos, size_t minfree) {
       }
     }
   }
+#endif
 }
 
 /**
@@ -260,9 +274,13 @@ void swift_ost_cull(struct swift_ost_store *ost_infos, size_t minfree) {
  */
 int swift_ost_next(struct swift_ost_store *ost_infos, int *arrayindex,
                    int count) {
+#ifdef HAVE_LUSTREAPI
   int index = (*arrayindex % ost_infos->count);
   *arrayindex = index + count;
   return ost_infos->infos[index].index;
+#else
+  return 0;
+#endif
 }
 
 /**
@@ -273,6 +291,7 @@ int swift_ost_next(struct swift_ost_store *ost_infos, int *arrayindex,
  */
 void swift_ost_remove(struct swift_ost_store *ost_infos, int index) {
 
+#ifdef HAVE_LUSTREAPI
   /* Find the array index. */
   int arrayindex = -1;
   for (int i = 0; i < ost_infos->fullcount; i++) {
@@ -298,6 +317,7 @@ void swift_ost_remove(struct swift_ost_store *ost_infos, int index) {
     if (arrayindex < ost_infos->count) ost_infos->count = ost_infos->count - 1;
     ost_infos->fullcount = ost_infos->fullcount - 1;
   }
+#endif
 }
 
 /**
@@ -312,10 +332,12 @@ void swift_ost_remove(struct swift_ost_store *ost_infos, int index) {
  */
 int swift_create_striped_file(const char *filename, int offset, int count,
                               int *usedoffset) {
+  int rc = 0;
 
+#ifdef HAVE_LUSTREAPI
   *usedoffset = offset;
-  int rc = llapi_file_create(filename, 0 /* Default block size */, offset,
-                             count, LLAPI_LAYOUT_RAID0 /* Pattern default */);
+  rc = llapi_file_create(filename, 0 /* Default block size */, offset,
+                         count, LLAPI_LAYOUT_RAID0 /* Pattern default */);
   if (rc != 0) {
     fprintf(stderr, "Error: cannot create file %s : %s\n", filename,
             strerror(-rc));
@@ -332,5 +354,6 @@ int swift_create_striped_file(const char *filename, int offset, int count,
     *usedoffset = lum->lmm_objects[0].l_ost_idx;
     free(lum);
   }
+#endif
   return rc;
 }
