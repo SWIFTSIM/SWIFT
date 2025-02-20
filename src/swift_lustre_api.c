@@ -16,6 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+/* Config parameters. */
+#include <config.h>
+
+/* Standard includes. */
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -29,7 +33,7 @@
 #include <lustre/lustre_user.h>
 #include <lustre/lustreapi.h>
 
-/* Number of OSTs to pre-allocate for. */
+/* Number of OSTs to pre-allocate space for. */
 #define PREALLOC 100
 
 /* Bytes in a TiB */
@@ -167,8 +171,8 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
           memset(&stat_buf, 0, sizeof(struct obd_statfs));
           memset(&uuid_buf, 0, sizeof(struct obd_uuid));
 
-          int rc = llapi_obd_statfs(mntdir, LL_STATFS_LOV, index, &stat_buf,
-                                    &uuid_buf);
+          rc = llapi_obd_statfs(mntdir, LL_STATFS_LOV, index, &stat_buf,
+                                &uuid_buf);
           if (rc == -ENODEV || rc == -EAGAIN || rc == -EINVAL ||
               rc == -EFAULT) {
             /* Nothing we can query here, so time to stop search. */
