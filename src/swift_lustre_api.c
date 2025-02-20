@@ -27,6 +27,7 @@
 #include <string.h>
 
 /* Local includes. */
+#include "error.h"
 #include "swift_lustre_api.h"
 
 /* Lustre API */
@@ -79,11 +80,11 @@ void swift_ost_store_free(struct swift_ost_store *ost_infos) {
  */
 void swift_ost_store_print(struct swift_ost_store *ost_infos) {
 #ifdef HAVE_LUSTREAPI
-  printf("#  Listing of OSTs. Using %d of %d\n", ost_infos->count,
-         ost_infos->fullcount);
+  message("#  Listing of OSTs. Using %d of %d", ost_infos->count,
+          ost_infos->fullcount);
 
-  printf("%5s %21s %21s %21s\n", "Index", "Size (bytes)", "Used (bytes)",
-         "Free (bytes)");
+  message("# %5s %21s %21s %21s", "Index", "Size (bytes)", "Used (bytes)",
+          "Free (bytes)");
   size_t ssum = 0;
   size_t usum = 0;
   size_t smin = ost_infos->infos[0].size;
@@ -92,9 +93,9 @@ void swift_ost_store_print(struct swift_ost_store *ost_infos) {
   size_t umax = 0;
 
   for (int i = 0; i < ost_infos->count; i++) {
-    printf("%5d %21zd %21zd %21zd\n", ost_infos->infos[i].index,
-           ost_infos->infos[i].size, ost_infos->infos[i].used,
-           ost_infos->infos[i].size - ost_infos->infos[i].used);
+    message("# %5d %21zd %21zd %21zd", ost_infos->infos[i].index,
+            ost_infos->infos[i].size, ost_infos->infos[i].used,
+            ost_infos->infos[i].size - ost_infos->infos[i].used);
 
     ssum += ost_infos->infos[i].size;
     usum += ost_infos->infos[i].used;
@@ -105,11 +106,11 @@ void swift_ost_store_print(struct swift_ost_store *ost_infos) {
     if (ost_infos->infos[i].used > umax) umax = ost_infos->infos[i].used;
     if (ost_infos->infos[i].used < umin) umin = ost_infos->infos[i].used;
   }
-  printf("# Filesystem size:%.2f TiB used:%.2f TiB free:%.2f TiB %.2f%%\n",
-         ssum / TiB, usum / TiB, (ssum - usum) / TiB,
-         100.0 * (double)(ssum - usum) / (double)ssum);
-  printf("# Min/max size: %.2f/%.2f TiB Min/max used: %.2f/%.2f TiB\n",
-         smin / TiB, smax / TiB, umin / TiB, umax / TiB);
+  message("# Filesystem size:%.2f TiB used:%.2f TiB free:%.2f TiB %.2f%%",
+          ssum / TiB, usum / TiB, (ssum - usum) / TiB,
+          100.0 * (double)(ssum - usum) / (double)ssum);
+  message("# Min/max size: %.2f/%.2f TiB Min/max used: %.2f/%.2f TiB",
+          smin / TiB, smax / TiB, umin / TiB, umax / TiB);
 #endif
 }
 
@@ -166,8 +167,8 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
 
   /* Check this path exists. */
   if (!realpath(path, cpath)) {
-    rc = -errno;
-    fprintf(stderr, "Error: not a real path '%s': %s\n", path, strerror(-rc));
+    rc = errno;
+    message("Not a filesystem path '%s': %s\n", path, strerror(rc)); 
   } else {
 
     /* Parse the path into the mount point and file system name. */
@@ -183,14 +184,15 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
 
           rc = llapi_obd_statfs(mntdir, LL_STATFS_LOV, index, &stat_buf,
                                 &uuid_buf);
-          if (rc == -ENODEV || rc == -EAGAIN || rc == -EINVAL ||
-              rc == -EFAULT) {
+          rc = -rc;
+          if (rc == ENODEV || rc == EAGAIN || rc == EINVAL ||
+              rc == EFAULT) {
             /* Nothing we can query here, so time to stop search. */
             break;
           }
 
           /* Inactive devices are empty. */
-          if (rc == -ENODATA) {
+          if (rc == ENODATA) {
             swift_ost_store(ost_infos, index, 0, 0);
           } else {
             size_t used =
@@ -202,11 +204,11 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
         rc = 0;
 
       } else {
-        fprintf(stderr, "Error: no lustre mount point found for: %s\n", path);
+        message("No lustre mount point found for path: %s", path);
         rc = 1;
       }
     } else {
-      fprintf(stderr, "Error: failed to locate a lustre mount point for: %s\n",
+      message("Failed to locate a lustre mount point using path: %s",
               path);
       rc = 1;
     }
@@ -339,8 +341,8 @@ int swift_create_striped_file(const char *filename, int offset, int count,
   rc = llapi_file_create(filename, 0 /* Default block size */, offset,
                          count, LLAPI_LAYOUT_RAID0 /* Pattern default */);
   if (rc != 0) {
-    fprintf(stderr, "Error: cannot create file %s : %s\n", filename,
-            strerror(-rc));
+    rc = -rc;
+    message("Cannot create file %s : %s\n", filename, strerror(rc));
   } else {
 
     /* Recover the file offset of first OST in case it is changed from
@@ -351,7 +353,13 @@ int swift_create_striped_file(const char *filename, int offset, int count,
     struct lov_user_md *lum = (struct lov_user_md *)malloc(sizelum);
 
     rc = llapi_file_get_stripe(filename, lum);
-    *usedoffset = lum->lmm_objects[0].l_ost_idx;
+    rc = -rc;
+    if (rc == 0) {
+      *usedoffset = lum->lmm_objects[0].l_ost_idx;
+    } else {
+      /* Shouldn't be fatal. */
+      *usedoffset = offset;
+    }
     free(lum);
   }
 #endif
