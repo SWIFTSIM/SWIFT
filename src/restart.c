@@ -137,18 +137,58 @@ void restart_write(struct engine *e, const char *filename) {
   /* Use a single Lustre stripe with a rank-based OST offset? */
   if (e->restart_lustre_OST_count != 0) {
 
-    /* Use a random offset to avoid placing things in the same OSTs. We do
-     * this to keep the use of OSTs balanced, much like using -1 for the
-     * stripe. */
-    int offset = rand() % e->restart_lustre_OST_count;
+    /* Gather information about the current state of the OSTs. */
+    struct swift_ost_store ost_infos;
+
 #ifdef WITH_MPI
-    MPI_Bcast(&offset, 1, MPI_INT, 0, MPI_COMM_WORLD);
-#endif
-    int nodeoffset = (e->nodeID + offset) % e->restart_lustre_OST_count;
-    int usedoffset = 0;
+
+    /* Don't flood the OSTs with RPC calls. */
+    if (e->nodeID == 0) {
+      swift_ost_store_init(&ost_infos);
+      int rc = swift_ost_scan(filename, &ost_infos);
+      if (rc == 0) {
+
+        /* Cull these so we do not use OSTs with too little free space.  Also
+         * sorts into most free space order. */
+        if (e->restart_lustre_OST_free != 0) {
+          swift_ost_cull(&ost_infos, e->restart_lustre_OST_free);
+        }
+
+        if (e->restart_lustre_OST_check == 1) {
+          /* Test writing to all OSTs and remove any that are not writable. 
+          * We do this by creating our file on every OST and checking it was
+          * created on it. */
+          int usedindex = 0;
+          for (int i = 0; i < ost_infos.count; i++) {
+            usedindex = ost_infos.infos[0].index;
+            rc = swift_create_striped_file(filename, ost_infos.infos[0].index,
+                                           1, &usedindex);
+            /* Bye. */
+            if (usedindex != ost_infos.infos[0].index) {
+              swift_ost_remove(&ost_infos, ost_infos.infos[0].index);
+            }
+            unlink(filename);
+          }
+        }
+      }
+    }
+
+    /* Distribute the OST information. XXX alternative would be to distribute
+     * the picked OSTs? */
+    MPI_Bcast(&ost_infos, (int)(&osts_info.last_element - &ost_infos),
+              MPI_BYTE, 0, MPI_COMM_WORLD);
+
+    /* We now know how many OSTs are available, each rank should attempt to
+     * use a different one, but overtime we should try not to use the same
+     * ones. Culling will order things by free space so we should get some
+     * reordering of those if we do this process each time? */
+    int dummy = 0;
+    int offset = swift_ost_next(&ost_infos, e->nodeID, &dummy, 1);
+
+    /* And create the file. */
     const int result = swift_create_striped_file(filename,
                                                  nodeoffset, 1,
-                                                 &usedoffset);
+                                                 &dummy);
     if (result != 0) {
       message("failed to set stripe of restart file");
     }
