@@ -19,6 +19,9 @@
 #ifndef SWIFT_LUSTRE_API_H
 #define SWIFT_LUSTRE_API_H
 
+/* For size_t */
+#include <stddef.h>
+
 /* Structure to store information about an OST. */
 struct swift_ost_info {
   int index;   /* OST index */
