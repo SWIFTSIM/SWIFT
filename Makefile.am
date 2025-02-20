@@ -38,14 +38,14 @@ MYFLAGS =
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
 AM_CFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/argparse $(HDF5_CPPFLAGS) \
 	$(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS) \
-	$(CHEALPIX_CFLAGS)
+	$(CHEALPIX_CFLAGS) $(LUSTREAPI_CFLAGS)
 
 AM_LDFLAGS = $(HDF5_LDFLAGS)
 
 # Extra libraries.
 EXTRA_LIBS = $(GSL_LIBS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) \
 	$(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) \
-	$(CHEALPIX_LIBS)
+	$(CHEALPIX_LIBS) $(LUSTREAPI_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS) $(FFTW_MPI_LIBS)
