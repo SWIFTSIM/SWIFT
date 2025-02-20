@@ -1007,7 +1007,7 @@ void write_output_distributed(struct engine* e,
                                                  nodeoffset, 1,
                                                  &usedoffset);
     if (result != 0) {
-      message("failed to set stripe of restart file");
+      message("failed to set stripe of snapshot");
     }
   }
 
