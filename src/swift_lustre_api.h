@@ -35,6 +35,7 @@ struct swift_ost_store {
   int count;     /* Count of active OSTs */
   int fullcount; /* Count of OSTs available (only different when culled) */
   int size;      /* Space available for storing OST infos */
+  int lastelement; /* Must be last element in this struct for sizing */
 };
 
 /* Public functions. */
