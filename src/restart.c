@@ -144,12 +144,13 @@ void restart_write(struct engine *e, const char *filename) {
 #ifdef WITH_MPI
     MPI_Bcast(&offset, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
-    char string[1200];
-    sprintf(string, "lfs setstripe -c 1 -i %d %s",
-            ((e->nodeID + offset) % e->restart_lustre_OST_count), filename);
-    const int result = system(string);
+    int nodeoffset = (e->nodeID + offset) % e->restart_lustre_OST_count;
+    int usedoffset = 0;
+    const int result = swift_create_striped_file(filename,
+                                                 nodeoffset, 1,
+                                                 &usedoffset);
     if (result != 0) {
-      message("lfs setstripe command returned error code %d", result);
+      message("failed to set stripe of restart file");
     }
   }
 
