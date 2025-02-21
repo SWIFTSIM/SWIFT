@@ -119,6 +119,9 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     fluid_v[0] = p->v[0] + xp->v_full[0] - p->v_part_full[0];
     fluid_v[1] = p->v[1] + xp->v_full[1] - p->v_part_full[1];
     fluid_v[2] = p->v[2] + xp->v_full[2] - p->v_part_full[2];
+    v[0] = fluid_v[0];
+    v[1] = fluid_v[1];
+    v[2] = fluid_v[2];
 
 #ifdef SHADOWSWIFT_STEER_MOTION
     /* Add a correction to the velocity to keep particle positions close enough
@@ -156,14 +159,15 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
       if (d < 1.1f * etaR) {
         fac *= 5.0f * (d - 0.9f * etaR) / etaR;
       }
-      v[0] = fluid_v[0] + ds[0] * fac;
-      v[1] = fluid_v[1] + ds[1] * fac;
-      v[2] = fluid_v[2] + ds[2] * fac;
+      v[0] += ds[0] * fac;
+      v[1] += ds[1] * fac;
+      v[2] += ds[2] * fac;
     }
 #endif  // SHADOWSWIFT_STEER_MOTION
   }
 
   if (p->rho < 0.) {
+    /* Linearly suppress particle velocity near vacuum */
     float fac = p->rho * 1e-10;
     v[0] *= fac;
     v[1] *= fac;
