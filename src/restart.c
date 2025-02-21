@@ -148,7 +148,7 @@ void restart_write(struct engine *e, const char *filename) {
     if (e->nodeID == 0) {
 #endif
       swift_ost_store_init(&ost_infos);
-      int rc = swift_ost_scan(filename, &ost_infos);
+      int rc = swift_ost_scan(e->restart_dir, &ost_infos);
       if (rc == 0) {
 
         /* Cull these so we do not use OSTs with too little free space.  Also
@@ -175,15 +175,22 @@ void restart_write(struct engine *e, const char *filename) {
           * We do this by creating our file on every OST and checking it was
           * created on it. */
           int usedindex = 0;
+          int keep = 0;
           for (int i = 0; i < ost_infos.count; i++) {
-            usedindex = ost_infos.infos[0].index;
-            rc = swift_create_striped_file(filename, ost_infos.infos[0].index,
+            usedindex = ost_infos.infos[i].index;
+            rc = swift_create_striped_file(filename, ost_infos.infos[i].index,
                                            1, &usedindex);
             /* Bye. */
-            if (usedindex != ost_infos.infos[0].index) {
-              swift_ost_remove(&ost_infos, ost_infos.infos[0].index);
+            if (usedindex != ost_infos.infos[i].index) {
+              swift_ost_remove(&ost_infos, ost_infos.infos[i].index);
+            } else {
+              keep++;
             }
             unlink(filename);
+          }
+          if (keep == 0) {
+            /* Whole file system cannot be written to. Really? */
+            error("Failed to find any OSTs that are writable");
           }
         }
       }
