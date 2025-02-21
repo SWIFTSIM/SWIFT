@@ -41,19 +41,20 @@ struct swift_ost_store {
 
 /* OST scanning. */
 int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos);
-void swift_ost_cull(struct swift_ost_store *ost_infos, const size_t minfree);
-void swift_ost_remove(struct swift_ost_store *ost_infos, const int index);
+void swift_ost_cull(struct swift_ost_store *ost_infos, size_t minfree);
+void swift_ost_remove(struct swift_ost_store *ost_infos, int index);
 int swift_ost_next(struct swift_ost_store *ost_infos, int *arrayindex,
-                   const int count);
+                   int count);
 
 /* OST store. */
 void swift_ost_store_init(struct swift_ost_store *ost_infos);
-void swift_ost_store_alloc(struct swift_ost_store *ost_infos, const int size);
+void swift_ost_store_alloc(struct swift_ost_store *ost_infos, int size);
 void swift_ost_store_free(struct swift_ost_store *ost_infos);
-void swift_ost_store_print(struct swift_ost_store *ost_infos);
+void swift_ost_store_print(struct swift_ost_store *ost_infos,
+                           int verbose);
 
 /* File striping. */
-int swift_create_striped_file(const char *filename, const int offset,
-                              const int count, int *usedoffset);
+int swift_create_striped_file(const char *filename, int offset,
+                              int count, int *usedoffset);
 
 #endif /* SWIFT_LUSTRE_API_H */
