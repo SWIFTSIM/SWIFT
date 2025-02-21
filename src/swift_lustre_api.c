@@ -45,15 +45,14 @@
 /**
  * @brief Allocate storage for a number of OSTs.
  *
- * Note assumes store is empty, free the resources first it not true.
+ * Note does not reset count or fullcount. Zero these if you want an
+ * empty struct.
  *
  * @param swift_ost_infos pointer to the storage structure.
  * @param size number of OSTs to make space for.
  */
 void swift_ost_store_alloc(struct swift_ost_store *ost_infos, const int size) {
 #ifdef HAVE_LUSTREAPI
-  ost_infos->count = 0;
-  ost_infos->fullcount = 0;
   ost_infos->size = size;
   ost_infos->infos =
       (struct swift_ost_info *)malloc(sizeof(struct swift_ost_info) * size);
@@ -69,6 +68,8 @@ void swift_ost_store_alloc(struct swift_ost_store *ost_infos, const int size) {
 void swift_ost_store_init(struct swift_ost_store *ost_infos) {
 #ifdef HAVE_LUSTREAPI
   swift_ost_store_alloc(ost_infos, PREALLOC);
+  ost_infos->count = 0;
+  ost_infos->fullcount = 0;
 #endif
 }
 
