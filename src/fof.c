@@ -1778,10 +1778,10 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (index_offset_j > index_offset_i &&
-      (index_offset_j < index_offset_i + count_i))
+      (index_offset_j < index_offset_i + count_i) && (ci->nodeID == cj->nodeID))
     error("Overlapping cells");
   if (index_offset_i > index_offset_j &&
-      (index_offset_i < index_offset_j + count_j))
+      (index_offset_i < index_offset_j + count_j) && (ci->nodeID == cj->nodeID))
     error("Overlapping cells");
 #endif
 
