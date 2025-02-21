@@ -60,6 +60,7 @@
 #include "units.h"
 #include "version.h"
 #include "xmf.h"
+#include "swift_lustre_api.h"
 
 /* Are we timing the i/o? */
 // #define IO_SPEED_MEASUREMENT
@@ -1000,12 +1001,13 @@ void write_output_distributed(struct engine* e,
     int offset = rand() % e->snapshot_lustre_OST_count;
     MPI_Bcast(&offset, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    char string[1200];
-    sprintf(string, "lfs setstripe -c 1 -i %d %s",
-            ((e->nodeID + offset) % e->snapshot_lustre_OST_count), fileName);
-    const int result = system(string);
+    int nodeoffset = (e->nodeID + offset) % e->snapshot_lustre_OST_count;
+    int usedoffset = 0;
+    const int result = swift_create_striped_file(fileName,
+                                                 nodeoffset, 1,
+                                                 &usedoffset);
     if (result != 0) {
-      message("lfs setstripe command returned error code %d", result);
+      message("failed to set stripe of snapshot");
     }
   }
 
