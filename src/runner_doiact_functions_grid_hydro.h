@@ -115,7 +115,9 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 #endif
 
   struct engine *e = r->e;
+#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
   const struct hydro_props *hydro = e->hydro_properties;
+#endif
 
   /* Recurse? If the cells have been flipped in the branch function, ci might
    * be above its construction level. */
@@ -367,7 +369,9 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
   TIMER_TIC;
 
   struct engine *e = r->e;
+#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
   const struct hydro_props *hydro = e->hydro_properties;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   assert(c->grid.voronoi != NULL);
