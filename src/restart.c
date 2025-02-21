@@ -149,6 +149,11 @@ void restart_write(struct engine *e, const char *filename) {
 #endif
       swift_ost_store_init(&ost_infos);
       int rc = swift_ost_scan(e->restart_dir, &ost_infos);
+      if (e->verbose) {
+        message("Scanned OSTs");
+        swift_ost_store_print(&ost_infos, 0);
+      }
+
       if (rc == 0) {
 
         /* Cull these so we do not use OSTs with too little free space.  Also
@@ -167,6 +172,8 @@ void restart_write(struct engine *e, const char *filename) {
           } else {
             threshold = e->restart_lustre_OST_free;
           }
+          if (e->verbose) message("Applying OST free space threshold: %zd",
+                                  threshold);
           swift_ost_cull(&ost_infos, threshold);
         }
 
@@ -192,9 +199,19 @@ void restart_write(struct engine *e, const char *filename) {
             /* Whole file system cannot be written to. Really? */
             error("Failed to find any OSTs that are writable");
           }
+          if (e->verbose) {
+            if (keep < ost_infos.fullcount) {
+              message("Rejected %d OST as readonly", ost_infos.fullcount - keep);
+            }
+          }
         }
       }
 #ifdef WITH_MPI
+
+      if (e->verbose) {
+        message("Using OSTs");
+        swift_ost_store_print(&ost_infos, 0);
+      }
 
     }
     /* Distribute the OST information. Could just send an OST per rank?*/
@@ -221,6 +238,9 @@ void restart_write(struct engine *e, const char *filename) {
     if (result != 0) {
       message("failed to set stripe of restart file");
     }
+
+    /* Finished with this. */
+    swift_ost_store_free(&ost_infos);
   }
 
   FILE *stream = fopen(filename, "w");
