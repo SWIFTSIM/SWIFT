@@ -351,7 +351,7 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
     /* Make sure boundary faces do not move perpendicular to the boundary. */
     for (int i = 0; i < 3; i++)
       if (sortlist_shift_vector[sid][i] != 0) {
-        p_boundary.v_full[i] *= -1.f;
+        p_boundary.v_part_full[i] *= -1.f;
         /* Also fix centroid of reflected particle */
         p_boundary.geometry.centroid[i] *= -1.f;
       }

@@ -49,9 +49,9 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_velocity_from_momentum(const float* restrict momentum,
                                  float inverse_mass, float rho,
                                  float* restrict /*return*/ velocity) {
-  if (rho < 1e-10) {
+  if (rho < 0) {
     /* Suppress velocity linearly near vacuum */
-    const float fac = rho * 1e10f;
+    const float fac = rho * 1e20f;
     velocity[0] = fac * momentum[0] * inverse_mass;
     velocity[1] = fac * momentum[1] * inverse_mass;
     velocity[2] = fac * momentum[2] * inverse_mass;
@@ -77,7 +77,7 @@ hydro_set_velocity_from_momentum(const float* restrict momentum,
  */
 __attribute__((always_inline)) INLINE static void
 hydro_generator_velocity_half_kick(struct part* p, struct xpart* xp, float dt) {
-  if (p->rho > 0.f) {
+  if (p->rho > 0.) {
     float rho_inv = 1.f / p->rho;
     xp->v_full[0] -= dt * p->gradients.P[0] * rho_inv;
     xp->v_full[1] -= dt * p->gradients.P[1] * rho_inv;
@@ -98,6 +98,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
   /* We first get the particle velocity. */
   float v[3] = {0.f, 0.f, 0.f};
+  float fluid_v[3] = {0.f, 0.f, 0.f};
   int fix_particle = 0;
 
 #ifdef SHADOWSWIFT_FIX_PARTICLES
@@ -110,16 +111,19 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
   if (!fix_particle && p->conserved.mass > 0.0f && p->rho > 0.0f) {
 
-    /* Normal case: use (kicked) fluid velocity. */
-    v[0] = xp->v_full[0];
-    v[1] = xp->v_full[1];
-    v[2] = xp->v_full[2];
+    /* Normal case: use (kicked) fluid velocity.
+     * NOTE (yuytenh, 2025): At this point, xp->v_full will have recieved all
+     * the necessary hydro and gravity half kicks, while p->v and p->v_part_full
+     * will still be at the value from the last full timestep. So we can
+     * calculate the kicked fluid velocity as follows: */
+    fluid_v[0] = p->v[0] + xp->v_full[0] - p->v_part_full[0];
+    fluid_v[1] = p->v[1] + xp->v_full[1] - p->v_part_full[1];
+    fluid_v[2] = p->v[2] + xp->v_full[2] - p->v_part_full[2];
 
 #ifdef SHADOWSWIFT_STEER_MOTION
     /* Add a correction to the velocity to keep particle positions close enough
        to the centroid of their voronoi cell. */
-    /* The correction term below is the same one described in Springel (2010).
-     */
+    /* The correction term below is based on the one from Springel (2010). */
     float ds[3];
     ds[0] = p->geometry.centroid[0];
     ds[1] = p->geometry.centroid[1];
@@ -135,33 +139,48 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
        distance to the centroid. */
     if (d > 0.9f * etaR || d > p->geometry.min_face_dist) {
       float fac = xi * soundspeed / d;
+      float fac_dt = 0.5f * xi / dt;
+      if (fac_dt < fac) {
+        fac = fac_dt;
+      } else {
 #ifdef SHADOWSWIFT_STEERING_COLD_FLOWS
-      /* In very cold flows, the sound speed may be significantly slower than
-       * the actual speed of the particles, rendering this scheme ineffective.
-       * In this case, use a criterion based on the timestep instead */
-      if (25.f * soundspeed * soundspeed <
-          p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) {
-        fac = fmaxf(fac, 0.5f * xi / dt);
-      }
+        /* In very cold flows, the sound speed may be significantly slower than
+         * the actual speed of the particles, rendering this scheme ineffective.
+         * In this case, use a criterion based on the timestep instead */
+        if (25.f * soundspeed * soundspeed <
+            p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) {
+          fac = fac_dt;
+        }
 #endif
+      }
       if (d < 1.1f * etaR) {
         fac *= 5.0f * (d - 0.9f * etaR) / etaR;
       }
-      v[0] += ds[0] * fac;
-      v[1] += ds[1] * fac;
-      v[2] += ds[2] * fac;
+      v[0] = fluid_v[0] + ds[0] * fac;
+      v[1] = fluid_v[1] + ds[1] * fac;
+      v[2] = fluid_v[2] + ds[2] * fac;
     }
 #endif  // SHADOWSWIFT_STEER_MOTION
   }
 
-  /* Now make sure all velocity variables are up-to-date. */
+  if (p->rho < 0.) {
+    float fac = p->rho * 1e-10;
+    v[0] *= fac;
+    v[1] *= fac;
+    v[2] *= fac;
+  }
+
+  /* Now make sure all velocity variables are up-to-date with the new generator
+   * velocity. */
   xp->v_full[0] = v[0];
   xp->v_full[1] = v[1];
   xp->v_full[2] = v[2];
-
-  p->v_full[0] = v[0];
-  p->v_full[1] = v[1];
-  p->v_full[2] = v[2];
+  p->v_part_full[0] = v[0];
+  p->v_part_full[1] = v[1];
+  p->v_part_full[2] = v[2];
+  p->v_rel_full[0] = fluid_v[0] - p->v_part_full[0];
+  p->v_rel_full[1] = fluid_v[1] - p->v_part_full[1];
+  p->v_rel_full[2] = fluid_v[2] - p->v_part_full[2];
 
   if (p->gpart) {
     p->gpart->v_full[0] = v[0];
