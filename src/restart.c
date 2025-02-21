@@ -134,28 +134,44 @@ void restart_write(struct engine *e, const char *filename) {
   /* Save a backup the existing restart file, if requested. */
   if (e->restart_save) restart_save_previous(filename);
 
-  /* Use a single Lustre stripe with a rank-based OST offset? */
-  if (e->restart_lustre_OST_count != 0) {
+  /* Attempt to use lustre OSTs intelligently so we avoid issues with
+   * overfilled OSTs, OSTs that are not writable and making sure we only write
+   * restart files using one stripe. For larger simulations taking care about
+   * this makes sense. */
+  if (e->restart_lustre_OST_checks != 0) {
 
     /* Gather information about the current state of the OSTs. */
     struct swift_ost_store ost_infos;
 
 #ifdef WITH_MPI
-
     /* Don't flood the OSTs with RPC calls. */
     if (e->nodeID == 0) {
+#endif
       swift_ost_store_init(&ost_infos);
       int rc = swift_ost_scan(filename, &ost_infos);
       if (rc == 0) {
 
         /* Cull these so we do not use OSTs with too little free space.  Also
-         * sorts into most free space order. */
+         * sorts into most free space order.  If given a value use that,
+         * otherwise we use the resident set size of the process, dumps are
+         * smaller than that. */
         if (e->restart_lustre_OST_free != 0) {
-          swift_ost_cull(&ost_infos, e->restart_lustre_OST_free);
+          size_t threshold = 0;
+          if (e->restart_lustre_OST_free < 0) {
+            /* No guarantee this will work, hopefully will return 0 in those
+             * cases and we do nothing. */
+            long size, resident, shared, text, library, data, dirty;
+            memuse_use(&size, &resident, &shared, &text, &data, &library,
+                       &dirty);
+            threshold = resident;
+          } else {
+            threshold = e->restart_lustre_OST_free;
+          }
+          swift_ost_cull(&ost_infos, threshold);
         }
 
-        if (e->restart_lustre_OST_check == 1) {
-          /* Test writing to all OSTs and remove any that are not writable. 
+        if (e->restart_lustre_OST_test != 0) {
+          /* Test writing to all OSTs and remove any that are not writable.
           * We do this by creating our file on every OST and checking it was
           * created on it. */
           int usedindex = 0;
@@ -171,24 +187,30 @@ void restart_write(struct engine *e, const char *filename) {
           }
         }
       }
-    }
+#ifdef WITH_MPI
 
-    /* Distribute the OST information. XXX alternative would be to distribute
-     * the picked OSTs? */
-    MPI_Bcast(&ost_infos, (int)(&osts_info.last_element - &ost_infos),
+    }
+    /* Distribute the OST information. Could just send an OST per rank?*/
+    MPI_Bcast(&ost_infos, sizeof(struct swift_ost_store), MPI_BYTE, 0,
+              MPI_COMM_WORLD);
+
+    /* Need to make space for this many OSTs and copy those. */
+    if (e->nodeID != 0) {
+      swift_ost_store_alloc(&ost_infos, ost_infos.size);
+    }
+    MPI_Bcast(ost_infos.infos, sizeof(struct swift_ost_info) * ost_infos.size,
               MPI_BYTE, 0, MPI_COMM_WORLD);
+#endif
 
     /* We now know how many OSTs are available, each rank should attempt to
      * use a different one, but overtime we should try not to use the same
      * ones. Culling will order things by free space so we should get some
      * reordering of those if we do this process each time? */
-    int dummy = 0;
-    int offset = swift_ost_next(&ost_infos, e->nodeID, &dummy, 1);
+    int dummy = e->nodeID;
+    int offset = swift_ost_next(&ost_infos, &dummy, 1);
 
-    /* And create the file. */
-    const int result = swift_create_striped_file(filename,
-                                                 nodeoffset, 1,
-                                                 &dummy);
+    /* And create the file with a stripe of 1 on the OST. */
+    const int result = swift_create_striped_file(filename, offset, 1, &dummy);
     if (result != 0) {
       message("failed to set stripe of restart file");
     }

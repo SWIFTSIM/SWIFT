@@ -37,10 +37,29 @@
 #endif
 
 /* Number of OSTs to pre-allocate space for. */
-#define PREALLOC 100
+#define PREALLOC (100)
 
 /* Bytes in a TiB */
 #define TiB (1024.0 * 1024.0 * 1024.0)
+
+/**
+ * @brief Allocate storage for a number of OSTs.
+ *
+ * Note assumes store is empty, free the resources first it not true.
+ *
+ * @param swift_ost_infos pointer to the storage structure.
+ * @param size number of OSTs to make space for.
+ */
+void swift_ost_store_alloc(struct swift_ost_store *ost_infos, const int size) {
+#ifdef HAVE_LUSTREAPI
+  ost_infos->count = 0;
+  ost_infos->fullcount = 0;
+  ost_infos->size = size;
+  ost_infos->infos =
+      (struct swift_ost_info *)malloc(sizeof(struct swift_ost_info) * size);
+  memset(ost_infos->infos, 0, sizeof(struct swift_ost_info) * size);
+#endif
+}
 
 /**
  * @brief Initialize an OST scan storage structure.
@@ -49,12 +68,7 @@
  */
 void swift_ost_store_init(struct swift_ost_store *ost_infos) {
 #ifdef HAVE_LUSTREAPI
-  ost_infos->count = 0;
-  ost_infos->fullcount = 0;
-  ost_infos->size = PREALLOC;
-  ost_infos->infos =
-      (struct swift_ost_info *)malloc(sizeof(struct swift_ost_info) * PREALLOC);
-  memset(ost_infos->infos, 0, sizeof(struct swift_ost_info) * PREALLOC);
+  swift_ost_store_alloc(ost_infos, PREALLOC);
 #endif
 }
 
@@ -240,7 +254,7 @@ static int ostcmp(const void *p1, const void *p2) {
  * @param minfree the number of bytes that the OST show be capable of
  *                storing. Zero for no effect.
  */
-void swift_ost_cull(struct swift_ost_store *ost_infos, size_t minfree) {
+void swift_ost_cull(struct swift_ost_store *ost_infos, const size_t minfree) {
 #ifdef HAVE_LUSTREAPI
   /* Sort by free space. */
   qsort(ost_infos->infos, ost_infos->count, sizeof(struct swift_ost_info),
@@ -275,7 +289,7 @@ void swift_ost_cull(struct swift_ost_store *ost_infos, size_t minfree) {
  * @return the selected OST index.
  */
 int swift_ost_next(struct swift_ost_store *ost_infos, int *arrayindex,
-                   int count) {
+                   const int count) {
 #ifdef HAVE_LUSTREAPI
   int index = (*arrayindex % ost_infos->count);
   *arrayindex = index + count;
@@ -291,7 +305,7 @@ int swift_ost_next(struct swift_ost_store *ost_infos, int *arrayindex,
  * @param ost_infos pointer to populated storage structure.
  * @param index index of the OST to remove.
  */
-void swift_ost_remove(struct swift_ost_store *ost_infos, int index) {
+void swift_ost_remove(struct swift_ost_store *ost_infos, const int index) {
 
 #ifdef HAVE_LUSTREAPI
   /* Find the array index. */
@@ -332,8 +346,8 @@ void swift_ost_remove(struct swift_ost_store *ost_infos, int index) {
  *
  * @return non-zero if there are problems creating the file.
  */
-int swift_create_striped_file(const char *filename, int offset, int count,
-                              int *usedoffset) {
+int swift_create_striped_file(const char *filename, const int offset,
+                              const int count, int *usedoffset) {
   int rc = 0;
 
 #ifdef HAVE_LUSTREAPI
