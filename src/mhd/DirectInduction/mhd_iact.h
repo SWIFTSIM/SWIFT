@@ -500,6 +500,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     sph_acc_term_mul_i += sph_acc_term_i[k]*Bsi[k]/Bs2i;
     sph_acc_term_mul_j += sph_acc_term_j[k]*Bsj[k]/Bs2j; 
   }
+  sph_acc_term_mul_i *= tensile_correction_scale_i
+  sph_acc_term_mul_j *= tensile_correction_scale_j
   for (int k = 0; k < 3; k++) {
     sph_acc_term_i[k] -= Bsi[k]*sph_acc_term_mul_i; 
     sph_acc_term_j[k] -= Bsj[k]*sph_acc_term_mul_j; 
@@ -524,6 +526,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     sph_acc_term_mul_i += sph_acc_term_i[k]*CurlBi[k]/CurlB2i;
     sph_acc_term_mul_j += sph_acc_term_j[k]*CurlBj[k]/CurlB2j;
   }
+  sph_acc_term_mul_i *= tensile_correction_scale_i
+  sph_acc_term_mul_j *= tensile_correction_scale_j
   for (int k = 0; k < 3; k++) {
     sph_acc_term_i[k] -= CurlBi[k]*sph_acc_term_mul_i; 
     sph_acc_term_j[k] -= CurlBj[k]*sph_acc_term_mul_j; 
@@ -923,6 +927,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int k = 0; k < 3; k++) {
     sph_acc_term_mul_i += sph_acc_term_i[k]*Bsi[k]/Bs2i;
   }
+  sph_acc_term_mul_i *= tensile_correction_scale_i
   for (int k = 0; k < 3; k++) {
     sph_acc_term_i[k] -= Bsi[k]*sph_acc_term_mul_i; 
   }
@@ -941,6 +946,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int k = 0; k < 3; k++) {
     sph_acc_term_mul_i += sph_acc_term_i[k]*CurlBi[k]/CurlB2i;
   }
+  sph_acc_term_mul_i *= tensile_correction_scale_i
   for (int k = 0; k < 3; k++) {
     sph_acc_term_i[k] -= CurlBi[k]*sph_acc_term_mul_i; 
   }
