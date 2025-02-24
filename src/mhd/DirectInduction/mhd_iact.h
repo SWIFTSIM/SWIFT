@@ -533,16 +533,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     sph_acc_term_j[k] -= CurlBj[k]*sph_acc_term_mul_j; 
   }
 
-  /* Explicitly adding antisymmetric monopole force for momentum conservation */
-
-  float divB_i = - (Bri - Brj) * wi_dr * r_inv / rhoi;
-  float divB_j = - (Bri - Brj) * wj_dr * r_inv / rhoj;
-
-  for (int k = 0; k<3; k++){
-    sph_acc_term_i[k] -= Bsi[k] * mj * divB_i / rhoj * permeability_inv;
-    sph_acc_term_j[k] -= Bsj[k] * mi * divB_j / rhoi * permeability_inv;
-  }
-
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * sph_acc_term_i[0];
   pi->a_hydro[1] -= mj * sph_acc_term_i[1];
@@ -950,17 +940,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int k = 0; k < 3; k++) {
     sph_acc_term_i[k] -= CurlBi[k]*sph_acc_term_mul_i; 
   }
-
-  /* Explicitly adding antisymmetric monopole force for momentum conservation */
-
-  float divB_i = - (Bri - Brj) * wi_dr * r_inv / rhoi;
-
-  for (int k = 0; k<3; k++){
-    sph_acc_term_i[k] -= Bsi[k] * mj * divB_i / rhoj * permeability_inv;
-  }
-
-
-
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * sph_acc_term_i[0];
