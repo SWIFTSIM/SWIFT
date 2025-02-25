@@ -42,6 +42,9 @@
 /* Bytes in a TiB */
 #define TiB (1024.0 * 1024.0 * 1024.0)
 
+/* Bytes in a MiB */
+#define MiB (1024.0 * 1024.0)
+
 /**
  * @brief Allocate storage for a number of OSTs in a OST scan storage struct.
  *
@@ -76,8 +79,8 @@ void swift_ost_store_copy(struct swift_ost_store *ost_infos_src,
   ost_infos_dst->size = ost_infos_src->fullcount; /* Used size. */
   ost_infos_dst->count = ost_infos_src->count;
   ost_infos_dst->fullcount = ost_infos_src->fullcount;
-  ost_infos_dst->infos = (struct swift_ost_info *)
-    malloc(sizeof(struct swift_ost_info) * ost_infos_dst->size);
+  ost_infos_dst->infos = (struct swift_ost_info *)malloc(
+      sizeof(struct swift_ost_info) * ost_infos_dst->size);
   if (ost_infos_dst->infos == NULL)
     error("Failed to allocate space for an OST scan copy");
   memcpy(ost_infos_dst->infos, ost_infos_src->infos,
@@ -121,8 +124,8 @@ void swift_ost_store_free(struct swift_ost_store *ost_infos) {
  */
 void swift_ost_store_write(FILE *file, struct swift_ost_store *ost_infos) {
 #ifdef HAVE_LUSTREAPI
-  fprintf(file,"# %5s %21s %21s %21s\n", "Index", "Size (bytes)", "Used (bytes)",
-          "Free (bytes)");
+  fprintf(file, "# %5s %21s %21s %21s\n", "Index", "Size (MiB)", "Used (MiB)",
+          "Free (MiB)");
   size_t ssum = 0;
   size_t usum = 0;
   size_t smin = ost_infos->infos[0].size;
@@ -131,9 +134,10 @@ void swift_ost_store_write(FILE *file, struct swift_ost_store *ost_infos) {
   size_t umax = 0;
 
   for (int i = 0; i < ost_infos->count; i++) {
-    fprintf(file, "# %5d %21zd %21zd %21zd\n", ost_infos->infos[i].index,
-            ost_infos->infos[i].size, ost_infos->infos[i].used,
-            ost_infos->infos[i].size - ost_infos->infos[i].used);
+    int msize = (int)(ost_infos->infos[i].size / MiB);
+    int mused = (int)(ost_infos->infos[i].used / MiB);
+    fprintf(file, "# %5d %21d %21d %21d\n", ost_infos->infos[i].index, msize,
+            mused, msize - mused);
 
     ssum += ost_infos->infos[i].size;
     usum += ost_infos->infos[i].used;
@@ -148,7 +152,7 @@ void swift_ost_store_write(FILE *file, struct swift_ost_store *ost_infos) {
           "# Filesystem size:%.2f TiB used:%.2f TiB free:%.2f TiB %.2f%%\n",
           ssum / TiB, usum / TiB, (ssum - usum) / TiB,
           100.0 * (double)(ssum - usum) / (double)ssum);
-  fprintf(file,"# Min/max size: %.2f/%.2f TiB Min/max used: %.2f/%.2f TiB\n",
+  fprintf(file, "# Min/max size: %.2f/%.2f TiB Min/max used: %.2f/%.2f TiB\n",
           smin / TiB, smax / TiB, umin / TiB, umax / TiB);
 #endif
 }
@@ -183,8 +187,7 @@ static void swift_ost_store(struct swift_ost_store *ost_infos, int index,
     size_t newsize = ost_infos->size + PREALLOC;
     struct swift_ost_info *newinfos = (struct swift_ost_info *)malloc(
         sizeof(struct swift_ost_info) * newsize);
-    if (newinfos == NULL)
-      error("Failed to allocate space for OST information");
+    if (newinfos == NULL) error("Failed to allocate space for OST information");
     memset(newinfos, 0, sizeof(struct swift_ost_info) * newsize);
     memcpy(newinfos, ost_infos->infos,
            sizeof(struct swift_ost_info) * ost_infos->size);
@@ -210,7 +213,8 @@ static void swift_ost_store(struct swift_ost_store *ost_infos, int index,
  * @param path a directory on the lustre file system, ideally the mount point.
  * @param ost_infos pointer to the storage structure.
  *
- * @return 0 on success, otherwise an error will have been reported.
+ * @return 0 on success, otherwise an error will have been reported to stdout.
+ * If an error occurs the store will never be changed.
  */
 int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
 
@@ -240,8 +244,7 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
           rc = llapi_obd_statfs(mntdir, LL_STATFS_LOV, index, &stat_buf,
                                 &uuid_buf);
           rc = -rc;
-          if (rc == ENODEV || rc == EAGAIN || rc == EINVAL ||
-              rc == EFAULT) {
+          if (rc == ENODEV || rc == EAGAIN || rc == EINVAL || rc == EFAULT) {
             /* Nothing we can query here, so time to stop search. */
             break;
           }
@@ -263,8 +266,7 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
         rc = 1;
       }
     } else {
-      message("Failed to locate a lustre mount point using path: %s",
-              path);
+      message("Failed to locate a lustre mount point using path: %s", path);
       rc = 1;
     }
   }
@@ -292,10 +294,10 @@ static int ostcmp(const void *p1, const void *p2) {
  * meet a free space threshold.
  *
  * @param ost_infos pointer to populated storage structure.
- * @param minfree the number of bytes that the OST show be capable of
+ * @param minfree the number of MiB that the OST should be capable of
  *                storing. Zero for no effect.
  */
-void swift_ost_cull(struct swift_ost_store *ost_infos, size_t minfree) {
+void swift_ost_cull(struct swift_ost_store *ost_infos, int minfree) {
 #ifdef HAVE_LUSTREAPI
   /* Sort by free space. */
   qsort(ost_infos->infos, ost_infos->count, sizeof(struct swift_ost_info),
@@ -303,11 +305,13 @@ void swift_ost_cull(struct swift_ost_store *ost_infos, size_t minfree) {
 
   /* And cull if needed. */
   if (minfree > 0) {
+    size_t bytesfree = minfree * (size_t)MiB;
+    message("OST threshold = %d -> %zd", minfree, bytesfree);
 
     /* Always keep at least one! */
     for (int i = 1; i < ost_infos->count; i++) {
       struct swift_ost_info *curr = &ost_infos->infos[i];
-      if ((curr->size - curr->used) < minfree) {
+      if ((curr->size - curr->used) < bytesfree) {
 
         /* Throw the rest away. Note fullcount now decoupled. */
         ost_infos->count = i;
@@ -387,14 +391,14 @@ void swift_ost_remove(struct swift_ost_store *ost_infos, int index) {
  *
  * @return non-zero if there are problems creating the file.
  */
-int swift_create_striped_file(const char *filename, int offset,
-                              int count, int *usedoffset) {
+int swift_create_striped_file(const char *filename, int offset, int count,
+                              int *usedoffset) {
   int rc = 0;
 
 #ifdef HAVE_LUSTREAPI
   *usedoffset = offset;
-  rc = llapi_file_create(filename, 0 /* Default block size */, offset,
-                         count, LLAPI_LAYOUT_RAID0 /* Pattern default */);
+  rc = llapi_file_create(filename, 0 /* Default block size */, offset, count,
+                         LLAPI_LAYOUT_RAID0 /* Pattern default */);
   if (rc != 0) {
     rc = -rc;
     message("Cannot create file %s : %s\n", filename, strerror(rc));

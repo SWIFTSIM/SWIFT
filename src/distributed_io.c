@@ -56,11 +56,11 @@
 #include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
+#include "swift_lustre_api.h"
 #include "tools.h"
 #include "units.h"
 #include "version.h"
 #include "xmf.h"
-#include "swift_lustre_api.h"
 
 /* Are we timing the i/o? */
 // #define IO_SPEED_MEASUREMENT
@@ -1003,9 +1003,8 @@ void write_output_distributed(struct engine* e,
 
     int nodeoffset = (e->nodeID + offset) % e->snapshot_lustre_OST_count;
     int usedoffset = 0;
-    const int result = swift_create_striped_file(fileName,
-                                                 nodeoffset, 1,
-                                                 &usedoffset);
+    const int result =
+        swift_create_striped_file(fileName, nodeoffset, 1, &usedoffset);
     if (result != 0) {
       message("failed to set stripe of snapshot");
     }
