@@ -20,7 +20,7 @@
 #define SWIFT_LUSTRE_API_H
 
 /* For size_t */
-#include <stddef.h>
+#include <stdlib.h>
 
 /* Structure to store information about an OST. */
 struct swift_ost_info {
@@ -49,9 +49,12 @@ int swift_ost_next(struct swift_ost_store *ost_infos, int *arrayindex,
 /* OST store. */
 void swift_ost_store_init(struct swift_ost_store *ost_infos);
 void swift_ost_store_alloc(struct swift_ost_store *ost_infos, int size);
+void swift_ost_store_copy(struct swift_ost_store *ost_infos_src,
+                          struct swift_ost_store *ost_infos_dst);
 void swift_ost_store_free(struct swift_ost_store *ost_infos);
 void swift_ost_store_print(struct swift_ost_store *ost_infos,
                            int verbose);
+void swift_ost_store_write(FILE *file, struct swift_ost_store *ost_infos);
 
 /* File striping. */
 int swift_create_striped_file(const char *filename, int offset,
