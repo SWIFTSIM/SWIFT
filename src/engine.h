@@ -594,7 +594,7 @@ struct engine {
   int restart_lustre_OST_checks;
 
   /* Free space that an OST should have to be used, -1 makes this
-   * the rss size. */
+   * the rss size. In MiB so we can use an int and human sized. */
   int restart_lustre_OST_free;
 
   /* Whether to check is OSTs are writable, if not then they are not used. */

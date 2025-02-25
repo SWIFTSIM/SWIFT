@@ -19,7 +19,7 @@
 #ifndef SWIFT_LUSTRE_API_H
 #define SWIFT_LUSTRE_API_H
 
-/* For size_t */
+/* For size_t and FILE. */
 #include <stdlib.h>
 
 /* Structure to store information about an OST. */
@@ -41,7 +41,7 @@ struct swift_ost_store {
 
 /* OST scanning. */
 int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos);
-void swift_ost_cull(struct swift_ost_store *ost_infos, size_t minfree);
+void swift_ost_cull(struct swift_ost_store *ost_infos, int minfree);
 void swift_ost_remove(struct swift_ost_store *ost_infos, int index);
 int swift_ost_next(struct swift_ost_store *ost_infos, int *arrayindex,
                    int count);
@@ -52,12 +52,11 @@ void swift_ost_store_alloc(struct swift_ost_store *ost_infos, int size);
 void swift_ost_store_copy(struct swift_ost_store *ost_infos_src,
                           struct swift_ost_store *ost_infos_dst);
 void swift_ost_store_free(struct swift_ost_store *ost_infos);
-void swift_ost_store_print(struct swift_ost_store *ost_infos,
-                           int verbose);
+void swift_ost_store_print(struct swift_ost_store *ost_infos, int verbose);
 void swift_ost_store_write(FILE *file, struct swift_ost_store *ost_infos);
 
 /* File striping. */
-int swift_create_striped_file(const char *filename, int offset,
-                              int count, int *usedoffset);
+int swift_create_striped_file(const char *filename, int offset, int count,
+                              int *usedoffset);
 
 #endif /* SWIFT_LUSTRE_API_H */
