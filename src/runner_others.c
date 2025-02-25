@@ -611,7 +611,8 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
 
         /* Update the h_max */
         c->sinks.h_max = max(c->sinks.h_max, cp->sinks.h_max);
-        c->sinks.h_max_active = max(c->sinks.h_max_active, cp->sinks.h_max_active);
+        c->sinks.h_max_active =
+            max(c->sinks.h_max_active, cp->sinks.h_max_active);
       }
   } else {
 
@@ -670,7 +671,6 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
               /* Update the cell h_max if necessary */
               c->sinks.h_max = max(c->sinks.h_max, sink->h);
               c->sinks.h_max_active = max(c->sinks.h_max_active, sink->h);
-
             }
           }
         }
