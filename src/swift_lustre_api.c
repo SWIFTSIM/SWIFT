@@ -421,18 +421,6 @@ int swift_create_striped_file(const char *filename, int offset, int count,
     }
     free(lum);
   }
-#else
-
-  /* Use an "lfs" command instead. This is the way that we used to do this
-   * and could still be useful when the lustre api is not installed. */
-  char string[1200];
-  sprintf(string, "lfs setstripe -c 1 -i %d %s", offset, filename);
-  const int result = system(string);
-  if (result != 0) {
-    message("lfs setstripe command returned error code %d", result);
-  }
-  *usedoffset = offset;
-
 #endif
   return rc;
 }
