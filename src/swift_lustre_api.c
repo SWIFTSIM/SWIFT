@@ -43,12 +43,12 @@
 #define TiB (1024.0 * 1024.0 * 1024.0)
 
 /**
- * @brief Allocate storage for a number of OSTs.
+ * @brief Allocate storage for a number of OSTs in a OST scan storage struct.
  *
  * Note does not reset count or fullcount. Zero these if you want an
  * empty struct.
  *
- * @param swift_ost_infos pointer to the storage structure.
+ * @param ost_infos pointer to the storage structure.
  * @param size number of OSTs to make space for.
  */
 void swift_ost_store_alloc(struct swift_ost_store *ost_infos, int size) {
@@ -56,14 +56,39 @@ void swift_ost_store_alloc(struct swift_ost_store *ost_infos, int size) {
   ost_infos->size = size;
   ost_infos->infos =
       (struct swift_ost_info *)malloc(sizeof(struct swift_ost_info) * size);
+  if (ost_infos->infos == NULL)
+    error("Failed to allocate space for an OST scan");
   memset(ost_infos->infos, 0, sizeof(struct swift_ost_info) * size);
+#endif
+}
+
+/**
+ * @brief Create a copy of an OST scan storage struct.
+ *
+ * @param ost_infos_src pointer to the storage structure to copy
+ * @param ost_infos_dst pointer to a storage structure to populate with
+ *                      the copy. Assumed to have no OST space so not
+ *                      used or initialized.
+ */
+void swift_ost_store_copy(struct swift_ost_store *ost_infos_src,
+                          struct swift_ost_store *ost_infos_dst) {
+#ifdef HAVE_LUSTREAPI
+  ost_infos_dst->size = ost_infos_src->fullcount; /* Used size. */
+  ost_infos_dst->count = ost_infos_src->count;
+  ost_infos_dst->fullcount = ost_infos_src->fullcount;
+  ost_infos_dst->infos = (struct swift_ost_info *)
+    malloc(sizeof(struct swift_ost_info) * ost_infos_dst->size);
+  if (ost_infos_dst->infos == NULL)
+    error("Failed to allocate space for an OST scan copy");
+  memcpy(ost_infos_dst->infos, ost_infos_src->infos,
+         sizeof(struct swift_ost_info) * ost_infos_dst->size);
 #endif
 }
 
 /**
  * @brief Initialize an OST scan storage structure.
  *
- * @param swift_ost_infos pointer to the storage structure.
+ * @param ost_infos pointer to the storage structure.
  */
 void swift_ost_store_init(struct swift_ost_store *ost_infos) {
 #ifdef HAVE_LUSTREAPI
@@ -89,20 +114,15 @@ void swift_ost_store_free(struct swift_ost_store *ost_infos) {
 }
 
 /**
- * @brief Print an OST storage structure for informational or debugging.
+ * @brief Write about an OST storage structure to a given FILE.
  *
+ * @param file FILE stream to write output to.
  * @param ost_infos pointer to the storage structure.
- * @param verbose if none zero all the OSTs will be listed, otherwise
- *                just the summaries will be shown.
  */
-void swift_ost_store_print(struct swift_ost_store *ost_infos, int verbose) {
+void swift_ost_store_write(FILE *file, struct swift_ost_store *ost_infos) {
 #ifdef HAVE_LUSTREAPI
-  message("#  Listing of OSTs. Using %d of %d", ost_infos->count,
-          ost_infos->fullcount);
-
-  if (verbose)
-    message("# %5s %21s %21s %21s", "Index", "Size (bytes)", "Used (bytes)",
-            "Free (bytes)");
+  fprintf(file,"# %5s %21s %21s %21s\n", "Index", "Size (bytes)", "Used (bytes)",
+          "Free (bytes)");
   size_t ssum = 0;
   size_t usum = 0;
   size_t smin = ost_infos->infos[0].size;
@@ -111,10 +131,9 @@ void swift_ost_store_print(struct swift_ost_store *ost_infos, int verbose) {
   size_t umax = 0;
 
   for (int i = 0; i < ost_infos->count; i++) {
-    if (verbose)
-      message("# %5d %21zd %21zd %21zd", ost_infos->infos[i].index,
-              ost_infos->infos[i].size, ost_infos->infos[i].used,
-              ost_infos->infos[i].size - ost_infos->infos[i].used);
+    fprintf(file, "# %5d %21zd %21zd %21zd\n", ost_infos->infos[i].index,
+            ost_infos->infos[i].size, ost_infos->infos[i].used,
+            ost_infos->infos[i].size - ost_infos->infos[i].used);
 
     ssum += ost_infos->infos[i].size;
     usum += ost_infos->infos[i].used;
@@ -125,11 +144,26 @@ void swift_ost_store_print(struct swift_ost_store *ost_infos, int verbose) {
     if (ost_infos->infos[i].used > umax) umax = ost_infos->infos[i].used;
     if (ost_infos->infos[i].used < umin) umin = ost_infos->infos[i].used;
   }
-  message("# Filesystem size:%.2f TiB used:%.2f TiB free:%.2f TiB %.2f%%",
+  fprintf(file,
+          "# Filesystem size:%.2f TiB used:%.2f TiB free:%.2f TiB %.2f%%\n",
           ssum / TiB, usum / TiB, (ssum - usum) / TiB,
           100.0 * (double)(ssum - usum) / (double)ssum);
-  message("# Min/max size: %.2f/%.2f TiB Min/max used: %.2f/%.2f TiB",
+  fprintf(file,"# Min/max size: %.2f/%.2f TiB Min/max used: %.2f/%.2f TiB\n",
           smin / TiB, smax / TiB, umin / TiB, umax / TiB);
+#endif
+}
+
+/**
+ * @brief Print information about OST storage structure
+ *
+ * @param ost_infos pointer to the storage structure.
+ * @param verbose if non zero additional information will be written
+ *                to stdout.
+ */
+void swift_ost_store_print(struct swift_ost_store *ost_infos, int verbose) {
+#ifdef HAVE_LUSTREAPI
+  message("#  OSTs, using %d of %d", ost_infos->count, ost_infos->fullcount);
+  if (verbose) swift_ost_store_write(stdout, ost_infos);
 #endif
 }
 
@@ -149,6 +183,8 @@ static void swift_ost_store(struct swift_ost_store *ost_infos, int index,
     size_t newsize = ost_infos->size + PREALLOC;
     struct swift_ost_info *newinfos = (struct swift_ost_info *)malloc(
         sizeof(struct swift_ost_info) * newsize);
+    if (newinfos == NULL)
+      error("Failed to allocate space for OST information");
     memset(newinfos, 0, sizeof(struct swift_ost_info) * newsize);
     memcpy(newinfos, ost_infos->infos,
            sizeof(struct swift_ost_info) * ost_infos->size);
@@ -187,7 +223,7 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
   /* Check this path exists. */
   if (!realpath(path, cpath)) {
     rc = errno;
-    message("Not a filesystem path '%s': %s\n", path, strerror(rc)); 
+    message("Not a filesystem path '%s': %s\n", path, strerror(rc));
   } else {
 
     /* Parse the path into the mount point and file system name. */
