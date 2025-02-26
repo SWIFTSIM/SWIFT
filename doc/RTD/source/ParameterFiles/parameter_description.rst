@@ -1430,17 +1430,35 @@ the MPI-rank. SWIFT writes one file per MPI rank. If the ``save`` option has
 been activated, the previous set of restart files will be named
 ``basename_000000.rst.prev``.
 
-On Lustre filesystems [#f4]_ it is important to properly stripe files to achieve
-a good writing and reading speed. If the parameter ``lustre_OST_count`` is set
-to the number of OSTs present on the system, then SWIFT will set the `stripe
-count` of each restart file to `1` and set each file's `stripe index` to the MPI
-rank generating it modulo the OST count [#f5]_. If the parameter is not set then
-the files will be created with the default system policy (or whatever was set
-for the directory where the files are written). This parameter has no effect on
-non-Lustre file systems.
+On Lustre filesystems [#f4]_ it is important to properly stripe files to
+achieve a good writing and reading speed. If the parameter
+``lustre_OST_check`` is set and the lustre API is available SWIFT will
+determine the number of OSTs available and rank these by free space, it will
+then set the `stripe count` of each restart file to `1` and choose an OST
+`offset` so each rank writes to a different OST, unless there are more ranks
+than OSTs in which case the assignment wraps. In this way OSTs should be
+filled evenly and written to using an optimal access pattern.
 
-* The number of Lustre OSTs to distribute the single-striped restart files over:
-  ``lustre_OST_count`` (default: ``0``)
+If the parameter is not set then the files will be created with the default
+system policy (or whatever was set for the directory where the files are
+written). This parameter has no effect on non-Lustre file systems.
+
+Other parameters are also provided to handle the cases when individual OSTs do
+not have sufficient free space to write a restart file: ``lustre_OST_free`` and
+when OSTs are closed for administrative reasons: ``lustre_OST_test``, in which
+case they cannot be written. This is important as the `offset` assignment in
+this case is not used by lustre which picks the next writable OST, so in our
+scheme such OSTs will be used more times than we intended.
+
+* Use the lustre API to assign a stripe and offset to restart files:
+  ``lustre_OST_checks`` (default: ``0``)
+
+* Do not use OSTs that do not have a certain amount of free space in MiB.
+  Zero disables and -1 activates a guess based on the size of the process:
+  ``lustre_OST_free`` (default: ``0``)
+
+* Check OSTs can be written to and remove those from consideration:
+  ``lustre_OST_test`` (default: ``0``)
 
 SWIFT can also be stopped by creating an empty file called ``stop`` in the
 directory where the restart files are written (i.e. the directory speicified by
