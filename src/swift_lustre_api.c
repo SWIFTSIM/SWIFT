@@ -149,12 +149,17 @@ void swift_ost_store_write(FILE *file, struct swift_ost_store *ost_infos) {
     if (ost_infos->infos[i].used > umax) umax = ost_infos->infos[i].used;
     if (ost_infos->infos[i].used < umin) umin = ost_infos->infos[i].used;
   }
-  fprintf(file,
-          "# Filesystem size:%.2f TiB used:%.2f TiB free:%.2f TiB %.2f%%\n",
-          ssum / TiB, usum / TiB, (ssum - usum) / TiB,
-          100.0 * (double)(ssum - usum) / (double)ssum);
-  fprintf(file, "# Min/max size: %.2f/%.2f TiB Min/max used: %.2f/%.2f TiB\n",
-          smin / TiB, smax / TiB, umin / TiB, umax / TiB);
+  if (ost_infos->count == ost_infos->fullcount) {
+    /* Size is for used OSTs not all, so don't report as misleading. */
+    fprintf(file,
+            "# Filesystem size:%.2f TiB used:%.2f TiB free:%.2f TiB %.2f%%\n",
+            ssum / TiB, usum / TiB, (ssum - usum) / TiB,
+            100.0 * (double)(ssum - usum) / (double)ssum);
+    fprintf(file, "# Min/max size: %.2f/%.2f TiB Min/max used: %.2f/%.2f TiB\n",
+            smin / TiB, smax / TiB, umin / TiB, umax / TiB);
+  } else {
+    fprintf(file,"#\n");
+  }
 #endif
 }
 
@@ -221,14 +226,14 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
 
   int rc = 0;
 #ifdef HAVE_LUSTREAPI
-  char mntdir[PATH_MAX] = "";
-  char fsname[PATH_MAX] = "";
-  char cpath[PATH_MAX] = "";
+  char mntdir[PATH_MAX] = {0};
+  char fsname[PATH_MAX] = {0};
+  char cpath[PATH_MAX] = {0};
 
   /* Check this path exists. */
   if (!realpath(path, cpath)) {
     rc = errno;
-    message("Not a filesystem path '%s': %s\n", path, strerror(rc));
+    message("Not a filesystem path '%s': %s", path, strerror(rc));
   } else {
 
     /* Parse the path into the mount point and file system name. */
@@ -307,7 +312,6 @@ void swift_ost_cull(struct swift_ost_store *ost_infos, int minfree) {
   /* And cull if needed. */
   if (minfree > 0) {
     size_t bytesfree = minfree * (size_t)MiB;
-    message("OST threshold = %d -> %zd", minfree, bytesfree);
 
     /* Always keep at least one! */
     for (int i = 1; i < ost_infos->count; i++) {
@@ -402,7 +406,7 @@ int swift_create_striped_file(const char *filename, int offset, int count,
                          LLAPI_LAYOUT_RAID0 /* Pattern default */);
   if (rc != 0) {
     rc = -rc;
-    message("Cannot create file %s : %s\n", filename, strerror(rc));
+    message("Cannot create file %s : %s", filename, strerror(rc));
   } else {
 
     /* Recover the file offset of first OST in case it is changed from
@@ -507,6 +511,15 @@ void swift_ost_select(struct swift_ost_store *ost_infos, const char *filepath,
         usedindex = ost_infos->infos[i].index;
         rc = swift_create_striped_file(filepath, ost_infos->infos[i].index,
                                        1, &usedindex);
+
+        if (rc != 0) {
+          /* Failed so not likely to succeed next time. Probably file
+           * exists, there is nothing we should do about that, the existing
+           * stripe will be reused, along with the space of the existing file.
+           */
+          message("Failed testing file creation on OSTs, aborting test");
+          break;
+        }
 
         if (usedindex != ost_infos->infos[i].index) {
           /* Differing OST indices, so not what we asked for, bye. */
