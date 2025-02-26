@@ -21,6 +21,7 @@
 
 /* Standard includes. */
 #include <errno.h>
+#include <libgen.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -423,4 +424,117 @@ int swift_create_striped_file(const char *filename, int offset, int count,
   }
 #endif
   return rc;
+}
+
+/**
+ * @brief Scan for the available OSTs for a given file path.
+ *
+ * The OSTs will be sorted by free space on exit and may be further selected
+ * to remove OSTs that are too full for use or cannot be written to. If too
+ * many OSTs are rejected it will be considered to be a parameter error and
+ * all OSTs, sorted by free space, will be returned.
+ * We don't want to flood the OSTs with RPC calls so only one MPI rank
+ * should make this call.
+ *
+ * @param ost_infos pointer to empty OST storage struct. Will contain the
+ *                  selected free-space ordered OSTs found on exit. The OST
+ *                  count will remain at zero if anything fails. Note this
+ *                  will need to be freed as usual regardless.
+ * @param filepath  path to a file on the lustre file system. Must not exist.
+ *                  The containing directory must exist and be part of the
+ *                  lustre file system.
+ * @param minfree minimum free space to allow in MiB. -1 for use a guess based on
+ *                size of the current process, 0 to disable selection.
+ * @param writetest whether to check if the OSTs are writable. If used
+ *                  the path must be that of a non-existent file on the
+ *                  file system that is writable by the process.
+ * @param verbose if true information about the OSTs and the selections made
+ *                will be output.
+ *
+ */
+void swift_ost_select(struct swift_ost_store *ost_infos, const char *filepath,
+                      int minfree, int writetest, int verbose) {
+
+  /* Initialise the struct. */
+  swift_ost_store_init(ost_infos);
+
+  /* Get directory of filepath. */
+  char *filepathc = strdup(filepath);
+  char *dirp = dirname(filepathc);
+
+  /* Scan for all OSTs. */
+  int rc = swift_ost_scan(dirp, ost_infos);
+  free(dirp);
+
+  /* If does not succeed we do nothing, probably not a lustre mount. */
+  if (rc == 0) {
+    if (verbose) swift_ost_store_print(ost_infos, 1);
+
+    /* Make a copy so we can undo any changes. */
+    struct swift_ost_store ost_infos_full;
+    swift_ost_store_copy(ost_infos, &ost_infos_full);
+
+    /* Cull these so we do not use OSTs with too little free space. Also sorts
+     * into most free space order. If given a value use that, otherwise we use
+     * the resident set size of the process, dumps and restarts are always
+     * smaller than that. */
+    if (minfree != 0) {
+      if (minfree < 0) {
+
+        /* No guarantee this will work, hopefully will return 0 in those cases
+         * and we do nothing. */
+        long size, resident, shared, text, library, data, dirty;
+        memuse_use(&size, &resident, &shared, &text, &data, &library, &dirty);
+
+        /* KiB into MiB. */
+        minfree = (int)(resident / 1024.0);
+      }
+
+      /* And cull and sort. */
+      swift_ost_cull(ost_infos, minfree);
+      if (verbose)
+        message("Rejected %d OSTs using free space threshold %d (MiB)",
+                ost_infos->fullcount - ost_infos->count, minfree);
+    }
+
+    if (writetest != 0) {
+      /* Test writing to all OSTs and remove any that are not writable.  We do
+       * this by creating our file on every OST and checking it was created on
+       * it. */
+      int usedindex = 0;
+      int removed = 0;
+      for (int i = ost_infos->count - 1; i >= 0; i--) {
+        usedindex = ost_infos->infos[i].index;
+        rc = swift_create_striped_file(filepath, ost_infos->infos[i].index,
+                                       1, &usedindex);
+
+        if (usedindex != ost_infos->infos[i].index) {
+          /* Differing OST indices, so not what we asked for, bye. */
+          swift_ost_remove(ost_infos, ost_infos->infos[i].index);
+          removed++;
+        }
+        unlink(filepath);
+      }
+      if (verbose) message("Rejected %d OSTs as readonly", removed);
+    }
+
+    /* Safety first. If we have too few OSTs left after the above we will
+     * make the choice to do nothing. */
+    if ((ost_infos->fullcount * 0.25 > ost_infos->count) || ost_infos->count < 2) {
+      message("Too many OSTs have been rejected (%d of %d).",
+              ost_infos->fullcount - ost_infos->count, ost_infos->fullcount);
+      message("Assuming OST rejection is flawed and skipping.");
+      swift_ost_store_copy(&ost_infos_full, ost_infos);
+
+      /* Still good to use a sorted list. */
+      swift_ost_cull(ost_infos, 0);
+    }
+    swift_ost_store_free(&ost_infos_full);
+    if (verbose) swift_ost_store_print(ost_infos, 1);
+
+  } else {
+
+    /* If the scan failed we do nothing, this is probably not a lustre mount. */
+    message("Lustre OST scan failed, is this a lustre mount?");
+  }
 }

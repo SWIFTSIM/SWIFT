@@ -143,94 +143,18 @@ void restart_write(struct engine *e, const char *filename) {
     /* Gather information about the current state of the OSTs. */
     struct swift_ost_store ost_infos;
 
-    /* Don't flood the OSTs with RPC calls so just one rank does this. */
+    /* Select good OSTs sorted by free space. */
     if (e->nodeID == 0) {
-
-      swift_ost_store_init(&ost_infos);
-      int rc = swift_ost_scan(e->restart_dir, &ost_infos);
-      if (rc == 0) {
-        if (e->verbose) swift_ost_store_print(&ost_infos, 1);
-
-        /* Make a copy so we can undo these changes. */
-        struct swift_ost_store ost_infos_full;
-        swift_ost_store_copy(&ost_infos, &ost_infos_full);
-
-        /* Cull these so we do not use OSTs with too little free space. Also
-         * sorts into most free space order. If given a value use that,
-         * otherwise we use the resident set size of the process, dumps are
-         * always smaller than that. */
-        if (e->restart_lustre_OST_free != 0) {
-          int threshold = 0;
-          if (e->restart_lustre_OST_free < 0) {
-
-            /* No guarantee this will work, hopefully will return 0 in those
-             * cases and we do nothing. */
-            long size, resident, shared, text, library, data, dirty;
-            memuse_use(&size, &resident, &shared, &text, &data, &library,
-                       &dirty);
-            /* KiB into MiB. */
-            threshold = (int)(resident / 1024.0);
-          } else {
-
-            /* User defined threshold in MiB. */
-            threshold = e->restart_lustre_OST_free;
-          }
-
-          /* And cull and sort. */
-          swift_ost_cull(&ost_infos, threshold);
-          if (e->verbose)
-            message("Rejected %d OSTs using free space threshold %d (MiB)",
-                    ost_infos.fullcount - ost_infos.count, threshold);
-        }
-
-        if (e->restart_lustre_OST_test != 0) {
-          /* Test writing to all OSTs and remove any that are not writable.
-           * We do this by creating our file on every OST and checking it was
-           * created on it. */
-          int usedindex = 0;
-          int removed = 0;
-          for (int i = ost_infos.count - 1; i >= 0; i--) {
-            usedindex = ost_infos.infos[i].index;
-            rc = swift_create_striped_file(filename, ost_infos.infos[i].index,
-                                           1, &usedindex);
-
-            if (usedindex != ost_infos.infos[i].index) {
-              /* Differing OST indices, so not what we asked for, bye. */
-              swift_ost_remove(&ost_infos, ost_infos.infos[i].index);
-              removed++;
-            }
-            unlink(filename);
-          }
-          if (e->verbose) message("Rejected %d OSTs as readonly", removed);
-        }
-
-        /* Safety first. If we have too few OSTs left after the above we will
-         * make the choice to do nothing. */
-        if ((ost_infos.fullcount * 0.25 > ost_infos.count) ||
-            ost_infos.count < 2) {
-          message("Too many OSTs have been rejected (%d of %d).",
-                  ost_infos.fullcount - ost_infos.count, ost_infos.fullcount);
-          message("Assuming OST rejection is flawed and skipping.");
-          swift_ost_store_copy(&ost_infos_full, &ost_infos);
-
-          /* Still good to use a sorted list. */
-          swift_ost_cull(&ost_infos, 0);
-        }
-        swift_ost_store_free(&ost_infos_full);
-        if (e->verbose) swift_ost_store_print(&ost_infos, 1);
-
-      } else {
-
-        /* Safety first, if the scan failed we do nothing. */
-        message("OST scan failed, see reported warnings.");
-      }
+      swift_ost_select(&ost_infos, filename, e->restart_lustre_OST_free,
+                       e->restart_lustre_OST_test, e->verbose);
     }
 
     /* Distribute the OST information. */
     MPI_Bcast(&ost_infos, sizeof(struct swift_ost_store), MPI_BYTE, 0,
               MPI_COMM_WORLD);
 
-    /* Need to make space for this many OSTs and copy those. */
+    /* Need to make space for the OSTs and copy those locally. If the count is
+     * zero this is probably not a lustre mount. */
     if (ost_infos.size > 0) {
       if (e->nodeID != 0) swift_ost_store_alloc(&ost_infos, ost_infos.size);
       MPI_Bcast(ost_infos.infos, sizeof(struct swift_ost_info) * ost_infos.size,
@@ -239,7 +163,7 @@ void restart_write(struct engine *e, const char *filename) {
       /* We now know how many OSTs are available, each rank should attempt to
        * use a different one, but overtime we should try not to use the same
        * ones. Culling will order things by free space so we should get some
-       * reordering of those if we do this process each time? */
+       * reordering of those if we do this process each time. */
       int dummy = e->nodeID;
       int offset = swift_ost_next(&ost_infos, &dummy, 1);
 
@@ -248,6 +172,8 @@ void restart_write(struct engine *e, const char *filename) {
       if (result != 0) message("failed to set stripe of restart file");
 
       /* Finished with this. */
+      swift_ost_store_free(&ost_infos);
+    } else if (e->nodeID == 0) {
       swift_ost_store_free(&ost_infos);
     }
   }
