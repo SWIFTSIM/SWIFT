@@ -247,7 +247,9 @@ Restarts:
   max_run_time:       24.0       # (optional) Maximal wall-clock time in hours. The application will exit when this limit is reached.
   resubmit_on_exit:   0          # (Optional) whether to run a command when exiting after the time limit has been reached.
   resubmit_command:   ./resub.sh # (Optional) Command to run when time limit is reached. Compulsory if resubmit_on_exit is switched on. Note potentially unsafe.
-  lustre_OST_count:  0           # (Optional) If > 0, the number of lustre OSTs to distribure the single-striped restart files over. Has no effect on non-Lustre filesystems.
+  lustre_OST_checks: 0           # (Optional) Perform OST selection checks
+  lustre_OST_free: 0             # (Optional) OST free space requirement, -1 for guess.
+  lustre_OST_test: 0             # (Optional) Check that OSTs are writable.
 
 # Parameters governing domain decomposition
 DomainDecomposition:
