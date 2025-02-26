@@ -39,7 +39,9 @@ struct swift_ost_store {
 
 /* Public functions. */
 
-/* OST scanning. */
+/* OST scanning and selection. */
+void swift_ost_select(struct swift_ost_store *ost_infos, const char *path,
+                      int minfree, int writetest, int verbose);
 int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos);
 void swift_ost_cull(struct swift_ost_store *ost_infos, int minfree);
 void swift_ost_remove(struct swift_ost_store *ost_infos, int index);
