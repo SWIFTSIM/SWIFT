@@ -274,6 +274,10 @@ void *runner_main2(void *data) {
           mpi_rank);
 
   cudaError_t cu_error;
+  size_t free_mem, total_mem;
+  cudaMemGetInfo(&free_mem, &total_mem);
+
+  fprintf(stderr, "free mem %lu, total mem %lu\n", free_mem, total_mem);
   // how many tasks do we want for each launch of GPU kernel
   //  fprintf(stderr,"pack_size is %i\n", sched->pack_size);
   const int target_n_tasks = sched->pack_size;
