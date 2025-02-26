@@ -993,20 +993,43 @@ void write_output_distributed(struct engine* e,
   };
 
   /* Use a single Lustre stripe with a rank-based OST offset? */
-  if (e->snapshot_lustre_OST_count != 0) {
+  if (e->snapshot_lustre_OST_checks != 0) {
 
-    /* Use a random offset to avoid placing things in the same OSTs. We do
-     * this to keep the use of OSTs balanced, much like using -1 for the
-     * stripe. */
-    int offset = rand() % e->snapshot_lustre_OST_count;
-    MPI_Bcast(&offset, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    /* Gather information about the current state of the OSTs. */
+    struct swift_ost_store ost_infos;
 
-    int nodeoffset = (e->nodeID + offset) % e->snapshot_lustre_OST_count;
-    int usedoffset = 0;
-    const int result =
-        swift_create_striped_file(fileName, nodeoffset, 1, &usedoffset);
-    if (result != 0) {
-      message("failed to set stripe of snapshot");
+    /* Select good OSTs sorted by free space. */
+    if (e->nodeID == 0) {
+      swift_ost_select(&ost_infos, fileName, e->snapshot_lustre_OST_free,
+                       e->snapshot_lustre_OST_test, e->verbose);
+    }
+
+    /* Distribute the OST information. */
+    MPI_Bcast(&ost_infos, sizeof(struct swift_ost_store), MPI_BYTE, 0,
+              MPI_COMM_WORLD);
+
+    /* Need to make space for the OSTs and copy those locally. If the count is
+     * zero this is probably not a lustre mount. */
+    if (ost_infos.size > 0) {
+      if (e->nodeID != 0) swift_ost_store_alloc(&ost_infos, ost_infos.size);
+      MPI_Bcast(ost_infos.infos, sizeof(struct swift_ost_info) * ost_infos.size,
+                MPI_BYTE, 0, MPI_COMM_WORLD);
+
+      /* We now know how many OSTs are available, each rank should attempt to
+       * use a different one, but overtime we should try not to use the same
+       * ones. Culling will order things by free space so we should get some
+       * reordering of those if we do this process each time. */
+      int dummy = e->nodeID;
+      int offset = swift_ost_next(&ost_infos, &dummy, 1);
+
+      /* And create the file with a stripe of 1 on the OST. */
+      const int result = swift_create_striped_file(fileName, offset, 1, &dummy);
+      if (result != 0) message("failed to set stripe of snapshot");
+
+      /* Finished with this. */
+      swift_ost_store_free(&ost_infos);
+    } else if (e->nodeID == 0) {
+      swift_ost_store_free(&ost_infos);
     }
   }
 

@@ -350,7 +350,9 @@ struct engine {
   float snapshot_subsample_fraction[swift_type_count];
   int snapshot_run_on_dump;
   int snapshot_distributed;
-  int snapshot_lustre_OST_count;
+  int snapshot_lustre_OST_checks;
+  int snapshot_lustre_OST_free;
+  int snapshot_lustre_OST_test;
   int snapshot_compression;
   int snapshot_invoke_stf;
   int snapshot_invoke_fof;
