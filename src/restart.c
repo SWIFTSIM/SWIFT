@@ -155,7 +155,7 @@ void restart_write(struct engine *e, const char *filename) {
 
     /* Need to make space for the OSTs and copy those locally. If the count is
      * zero this is probably not a lustre mount. */
-    if (ost_infos.size > 0) {
+    if (ost_infos.count > 0) {
       if (e->nodeID != 0) swift_ost_store_alloc(&ost_infos, ost_infos.size);
       MPI_Bcast(ost_infos.infos, sizeof(struct swift_ost_info) * ost_infos.size,
                 MPI_BYTE, 0, MPI_COMM_WORLD);
@@ -175,6 +175,10 @@ void restart_write(struct engine *e, const char *filename) {
       swift_ost_store_free(&ost_infos);
     } else if (e->nodeID == 0) {
       swift_ost_store_free(&ost_infos);
+
+      /* Don't try this again until next launch. */
+      e->snapshot_lustre_OST_checks = 0;
+      message("Disabling further lustre OST checks");
     }
   }
 #endif /* Lustre OST checks. */
