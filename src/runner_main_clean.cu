@@ -677,7 +677,7 @@ void *runner_main2(void *data) {
   /*A. Nasar: Multiplication by 2 is also to ensure we do not over-run
    *  the allocated memory on buffers and GPU. This can happen if calculated h
    * is larger than cell width and splitting makes bigger than target cells*/
-  int count_max_parts_tmp = 8 * target_n_tasks * (np_per_cell + buff);
+  int count_max_parts_tmp = 64 * 8 * target_n_tasks * (np_per_cell + buff);
 
   //  message("np per cell %i, max_parts %i, n_tasks_GPU %i\n", np_per_cell,
   //  count_max_parts_tmp, target_n_tasks);
@@ -1025,6 +1025,10 @@ void *runner_main2(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
+      if (ci == NULL && (t->subtype != task_subtype_gpu_unpack_d
+    		  && t->subtype != task_subtype_gpu_unpack_g
+			  && t->subtype != task_subtype_gpu_unpack_f)) error("This cannot be");
+
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
       t->rid = r->cpuid;
@@ -1350,15 +1354,17 @@ void *runner_main2(void *data) {
               struct cell * cells_right[n_expected_cells];
               runner_recurse_gpu(r, sched, pack_vars_pair_dens, ci, cj, t,
                       parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, &n_leafs_found, cells_left, cells_right, depth);
-//              for(int i = 0; i < n_leafs_found; i++)
-//              message("number of leafs found %i", n_leafs_found);
               n_leafs_total += n_leafs_found;
               /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
-              /*for (cid = 0; cid = n_daughters; cid++){*/
-              packing_time_pair += runner_dopair1_pack_f4(
-                  r, sched, pack_vars_pair_dens, ci, cj, t,
+              for (int cid = 0; cid < n_leafs_found; cid++){
+                packing_time_pair += runner_dopair1_pack_f4(
+                  r, sched, pack_vars_pair_dens, cells_left[cid], cells_right[cid], t,
                   parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
-              /*}*/
+//                message("Packing task %i in recursed tasks\n", cid);
+              }
+              /* Copies done. Release the lock ! */
+              cell_unlocktree(ci);
+              cell_unlocktree(cj);
 
               t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
               /* Packed enough tasks or no pack tasks left in queue, flag that
