@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /* Local includes. */
 #include "error.h"
@@ -158,7 +159,7 @@ void swift_ost_store_write(FILE *file, struct swift_ost_store *ost_infos) {
     fprintf(file, "# Min/max size: %.2f/%.2f TiB Min/max used: %.2f/%.2f TiB\n",
             smin / TiB, smax / TiB, umin / TiB, umax / TiB);
   } else {
-    fprintf(file,"#\n");
+    fprintf(file, "#\n");
   }
 #endif
 }
@@ -447,8 +448,8 @@ int swift_create_striped_file(const char *filename, int offset, int count,
  * @param filepath  path to a file on the lustre file system. Must not exist.
  *                  The containing directory must exist and be part of the
  *                  lustre file system.
- * @param minfree minimum free space to allow in MiB. -1 for use a guess based on
- *                size of the current process, 0 to disable selection.
+ * @param minfree minimum free space to allow in MiB. -1 for use a guess based
+ * on size of the current process, 0 to disable selection.
  * @param writetest whether to check if the OSTs are writable. If used
  *                  the path must be that of a non-existent file on the
  *                  file system that is writable by the process.
@@ -509,8 +510,8 @@ void swift_ost_select(struct swift_ost_store *ost_infos, const char *filepath,
       int removed = 0;
       for (int i = ost_infos->count - 1; i >= 0; i--) {
         usedindex = ost_infos->infos[i].index;
-        rc = swift_create_striped_file(filepath, ost_infos->infos[i].index,
-                                       1, &usedindex);
+        rc = swift_create_striped_file(filepath, ost_infos->infos[i].index, 1,
+                                       &usedindex);
 
         if (rc != 0) {
           /* Failed so not likely to succeed next time. Probably file
@@ -533,7 +534,8 @@ void swift_ost_select(struct swift_ost_store *ost_infos, const char *filepath,
 
     /* Safety first. If we have too few OSTs left after the above we will
      * make the choice to do nothing. */
-    if ((ost_infos->fullcount * 0.25 > ost_infos->count) || ost_infos->count < 2) {
+    if ((ost_infos->fullcount * 0.25 > ost_infos->count) ||
+        ost_infos->count < 2) {
       message("Too many OSTs have been rejected (%d of %d).",
               ost_infos->fullcount - ost_infos->count, ost_infos->fullcount);
       message("Assuming OST rejection is flawed and skipping.");
