@@ -1,5 +1,6 @@
 #include "scheduler.h"
-
+#include "runner_doiact_hydro.h"
+#include "active.h"
 #include <atomic.h>
 struct pack_vars_self {
   /*List of tasks and respective cells to be packed*/
@@ -599,6 +600,57 @@ void runner_dopair1_pack(struct runner *r, struct scheduler *s,
   //	task_unlock(t);
   cell_unlocktree(ci);
   cell_unlocktree(cj);
+}
+
+void runner_recurse_gpu(struct runner *r, struct scheduler *s,
+                              struct pack_vars_pair *restrict pack_vars,
+                              struct cell *ci, struct cell *cj, struct task *t,
+                              struct part_aos_f4_send *parts_send,
+                              struct engine *e,
+                              int4 *fparti_fpartj_lparti_lpartj, int *n_leafs_found,
+							  struct cell ** cells_left, struct cell ** cells_right, int depth) {
+	  /* Should we even bother? A. Nasar: For GPU code we need to be clever about this */
+	  if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
+	  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
+
+	  /* Get the type of pair and flip ci/cj if needed. */
+	  double shift[3];
+	  const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
+
+	  /* Recurse? */
+	  if (cell_can_recurse_in_pair_hydro_task(ci) &&
+	      cell_can_recurse_in_pair_hydro_task(cj)) {
+	    struct cell_split_pair *csp = &cell_split_pairs[sid];
+	    for (int k = 0; k < csp->count; k++) {
+	      const int pid = csp->pairs[k].pid;
+	      const int pjd = csp->pairs[k].pjd;
+	      /*Do we want to do anything before we recurse?*/
+
+	      /*We probably want to record */
+	      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL){
+	        runner_recurse_gpu(r, s, pack_vars, ci->progeny[pid], cj->progeny[pjd], t, parts_send, e, fparti_fpartj_lparti_lpartj,
+	        		n_leafs_found, cells_left, cells_right, depth + 1);
+//	        message("recursing to depth %i", depth + 1);
+	      }
+	    }
+	  }
+	  else if (CELL_IS_ACTIVE(ci, e) || CELL_IS_ACTIVE(cj, e)) {
+//	  else { //A .Nasar: WE DEFO HAVE A LEAF
+		/* if both cells inactive: skip; later: skip only asymmetric iact */
+		if(!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
+		/* if any cell empty: skip */
+		if(ci->hydro.count == 0 || cj->hydro.count == 0) return;
+		/* if cells too far apart (check rshift and compare with hmax), skip */
+
+		/*for all leafs to be sent add to cell list */
+        cells_left[*n_leafs_found] = ci;
+        cells_right[*n_leafs_found] = cj;
+//        message("incrementing");
+		*n_leafs_found = *n_leafs_found + 1;
+		if(*n_leafs_found >= 1024)
+			error("Created %i more than expected leaf cells. depth %i", *n_leafs_found, depth);
+	  }
+
 }
 
 double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,

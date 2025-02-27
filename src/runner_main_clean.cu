@@ -914,6 +914,7 @@ void *runner_main2(void *data) {
     int cpu_pair = 0;
     int cpu_pair_f = 0;
     int cpu_pair_g = 0;
+    int n_leafs_total = 0;
     //	Initialise timers to zero
     double time_for_density_cpu = 0.0;
     double time_for_density_cpu_pair = 0.0;
@@ -1335,9 +1336,29 @@ void *runner_main2(void *data) {
                 n_w_prts_gtr_target_p_d++;
   //              message("count %i target %i", ci->hydro.count, np_per_cell);
               }
+
+
+              /*Call recursion here. This will be a function in runner_doiact_functions_hydro_gpu.h.
+               * We are recursing separately to find out how much work we have before offloading*/
+              //We need to allocate a list to put cell pointers into. We need to allocate a list of cell pair interaction.
+              int n_expected_cells = 1024;
+              int n_leafs_found = 0;
+              int depth = 0;
+//              struct cell ** cells_left = (struct cell **)calloc(n_expected_cells, sizeof(struct cell *));
+//              struct cell ** cells_right = (struct cell **)calloc(n_expected_cells, sizeof(struct cell *));
+              struct cell * cells_left[n_expected_cells];
+              struct cell * cells_right[n_expected_cells];
+              runner_recurse_gpu(r, sched, pack_vars_pair_dens, ci, cj, t,
+                      parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, &n_leafs_found, cells_left, cells_right, depth);
+//              for(int i = 0; i < n_leafs_found; i++)
+//              message("number of leafs found %i", n_leafs_found);
+              n_leafs_total += n_leafs_found;
+              /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
+              /*for (cid = 0; cid = n_daughters; cid++){*/
               packing_time_pair += runner_dopair1_pack_f4(
                   r, sched, pack_vars_pair_dens, ci, cj, t,
                   parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
+              /*}*/
 
               t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
               /* Packed enough tasks or no pack tasks left in queue, flag that
@@ -2009,18 +2030,19 @@ void *runner_main2(void *data) {
       }
     } /* main loop. */
 
-    message("cpu %i packed %i cells with %i containing more parts than target of %i max_count %i",
-            r->cpuid, n_cells_d, n_w_prts_gtr_target_d, np_per_cell, maxcount);
-    message("cpu %i packed %i cells_G with %i containing more parts than target of %i max_count %i",
-            r->cpuid, n_cells_g, n_w_prts_gtr_target_g, np_per_cell, maxcount);
-    message("cpu %i packed %i cells_F with %i containing more parts than target of %i max_count %i",
-            r->cpuid, n_cells_f, n_w_prts_gtr_target_f, np_per_cell, maxcount);
-    message("cpu %i packed %i pairs_D with %i containing more parts than target of %i max_count %i",
-            r->cpuid, n_cells_p_d, n_w_prts_gtr_target_p_d, np_per_cell, maxcount);
-    message("cpu %i packed %i pairs_G with %i containing more parts than target of %i max_count %i",
-            r->cpuid, n_cells_p_g, n_w_prts_gtr_target_p_g, np_per_cell, maxcount);
-    message("cpu %i packed %i pairs_F with %i containing more parts than target of %i max_count %i",
-            r->cpuid, n_cells_p_f, n_w_prts_gtr_target_p_f, np_per_cell, maxcount);
+    message("n_leafs found %i", n_leafs_total);
+//    message("cpu %i packed %i cells with %i containing more parts than target of %i max_count %i",
+//            r->cpuid, n_cells_d, n_w_prts_gtr_target_d, np_per_cell, maxcount);
+//    message("cpu %i packed %i cells_G with %i containing more parts than target of %i max_count %i",
+//            r->cpuid, n_cells_g, n_w_prts_gtr_target_g, np_per_cell, maxcount);
+//    message("cpu %i packed %i cells_F with %i containing more parts than target of %i max_count %i",
+//            r->cpuid, n_cells_f, n_w_prts_gtr_target_f, np_per_cell, maxcount);
+//    message("cpu %i packed %i pairs_D with %i containing more parts than target of %i max_count %i",
+//            r->cpuid, n_cells_p_d, n_w_prts_gtr_target_p_d, np_per_cell, maxcount);
+//    message("cpu %i packed %i pairs_G with %i containing more parts than target of %i max_count %i",
+//            r->cpuid, n_cells_p_g, n_w_prts_gtr_target_p_g, np_per_cell, maxcount);
+//    message("cpu %i packed %i pairs_F with %i containing more parts than target of %i max_count %i",
+//            r->cpuid, n_cells_p_f, n_w_prts_gtr_target_p_f, np_per_cell, maxcount);
 
     //    message("Worked on %i supers w more than 100 parts", g100);
     // Stuff for writing debug data to file for validation
