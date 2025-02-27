@@ -636,12 +636,8 @@ void runner_recurse_gpu(struct runner *r, struct scheduler *s,
 	  }
 	  else if (CELL_IS_ACTIVE(ci, e) || CELL_IS_ACTIVE(cj, e)) {
 //	  else { //A .Nasar: WE DEFO HAVE A LEAF
-		/* if both cells inactive: skip; later: skip only asymmetric iact */
-		if(!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
 		/* if any cell empty: skip */
 		if(ci->hydro.count == 0 || cj->hydro.count == 0) return;
-		/* if cells too far apart (check rshift and compare with hmax), skip */
-
 		/*for all leafs to be sent add to cell list */
         cells_left[*n_leafs_found] = ci;
         cells_right[*n_leafs_found] = cj;
@@ -673,6 +669,13 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
   //  pthread_mutex_unlock(&s->sleep_mutex);
 
   double x_tmp = 0.0, y_tmp = 0.0, z_tmp = 0.0;
+  struct cell *citmp, *cjtmp;
+  citmp=ci;
+  cjtmp=cj;
+  /* Get the type of pair and flip ci/cj if needed. */
+  double shift[3];
+  const int sid = space_getsid_and_swap_cells(s, &citmp, &cjtmp, shift);
+  if(citmp != ci) error("I'm flipped");
   /*Get the shifts in case of periodics*/
   space_getsid_GPU(e->s, &ci, &cj, &x_tmp, &y_tmp, &z_tmp);
 
@@ -740,9 +743,6 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
 
   /* Record that we have now done a packing (self) */
   t->done = 1;
-  /* Copies done. Release the lock ! */
-  cell_unlocktree(ci);
-  cell_unlocktree(cj);
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
