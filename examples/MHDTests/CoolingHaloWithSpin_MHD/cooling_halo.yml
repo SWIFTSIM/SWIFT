@@ -10,7 +10,7 @@ InternalUnitSystem:
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   10.   # The end time of the simulation (in internal units).
-  dt_min:     1e-8  # The minimal time-step size of the simulation (in internal units).
+  dt_min:     1e-12 #1e-8  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-1  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the conserved quantities statistics
@@ -24,20 +24,20 @@ Scheduler:
 Snapshots:
   basename:            CoolingHalo  # Common part of the name of output files
   time_first:          0.               # Time of the first output (in internal units)
-  delta_time:          0.1             # Time difference between consecutive outputs (in internal units)
+  delta_time:          0.01 #0.1             # Time difference between consecutive outputs (in internal units)
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.2349   # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
+  resolution_eta:        1.3663   #1.2349   # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   1e4      # Kelvin
 
 # Parameters for MHD schemes
 MHD:
   monopole_subtraction:   1.0
-  artificial_diffusion:   1.0
-  hyperbolic_dedner:      1.0
-  hyperbolic_dedner_divv: 0.5
+  artificial_diffusion:   0.0
+  hyperbolic_dedner:      0.1
+  hyperbolic_dedner_divv: 0.0
   parabolic_dedner:       1.0
   resistive_eta:          0.0
 
@@ -48,9 +48,9 @@ InitialConditions:
   
 # External potential parameters
 IsothermalPotential:
-  vrot:            200.   # Rotation speed of isothermal potential in internal units
+  vrot:            44.8 #200.   # Rotation speed of isothermal potential in internal units
   timestep_mult:   0.03   # Controls time step
-  epsilon:         1.0    # Softening for the isothermal potential
+  epsilon:         0.1 #1.0    # Softening for the isothermal potential
   useabspos:       0
   position:        [0., 0., 0.]
 

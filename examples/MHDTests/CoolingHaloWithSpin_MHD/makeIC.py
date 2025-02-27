@@ -17,6 +17,8 @@
 #
 ##############################################################################
 
+# this cooling halo example was set up to produce something close to 0712.0872
+
 import h5py
 import sys
 import numpy as np
@@ -35,35 +37,38 @@ CONST_G_CGS = 6.672e-8
 CONST_MU0_CGS = 4 * np.pi * 1e-2
 h = 0.67777  # hubble parameter
 gamma = 5.0 / 3.0
-eta = 1.2349
+eta = 1.3663 #1.2349
 spin_lambda = 0.05  # spin parameter
-f_b = 0.2  # baryon fraction
+f_b = 0.1 #0.2  # baryon fraction
 
 # First set unit velocity and then the circular velocity parameter for the isothermal potential
 const_unit_velocity_in_cgs = 1.0e5  # kms^-1
 
-v_c = 200.0
-v_c_cgs = v_c * const_unit_velocity_in_cgs
+#v_c = 200.0 #200.0
+#v_c_cgs = v_c * const_unit_velocity_in_cgs
 
 # Set the magnitude of the uniform seed magnetic field
 
-B0_Gaussian_Units = 1e-6  # 1 micro Gauss
+B0_Gaussian_Units = 1e-9 #1e-6  # 1 micro Gauss
 B0_cgs = np.sqrt(CONST_MU0_CGS / (4.0 * np.pi)) * B0_Gaussian_Units
 
 # Now we use this to get the virial mass and virial radius, which we will set to be the unit mass and radius
 
 # Find H_0, the inverse Hubble time, in cgs
 
-H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
+#H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # From this we can find the virial radius, the radius within which the average density of the halo is
 # 200. * the mean matter density
 
-r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
+r_vir_cgs = 21.5 * 1e3 * PARSEC_IN_CGS #v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
 
 # Now get the virial mass
+MSOL_IN_CGS = 1.9891e33 # Solar mass 
+M_vir_cgs = 1e10 * MSOL_IN_CGS #r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
 
-M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
+v_c = 44.8
+v_c_cgs = v_c * const_unit_velocity_in_cgs
 
 # Now set the unit length and mass
 
