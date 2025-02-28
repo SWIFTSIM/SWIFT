@@ -136,6 +136,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       cell_sink_counts == NULL)
     error("Failed to allocate cell particle count buffer.");
 
+#ifdef MOVING_MESH
   /* Make sure parts are in gparts*/
   for (int i = 0; i < s->nr_parts; ++i) {
     const struct part* p = &s->parts[i];
@@ -146,6 +147,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       p->gpart->x[2] = p->x[2];
     }
   }
+#endif
 
 
   /* Initialise the counters, including buffer space for future particles */
@@ -1011,6 +1013,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
      cell to get the full AMR grid. */
   space_split(s, verbose);
 
+#ifdef MOVING_MESH
   /* Make sure parts are moved to CoM */
   for (int i = 0; i < s->nr_parts; ++i) {
     const struct part* p = &s->parts[i];
@@ -1021,6 +1024,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       p->gpart->x[2] = p->x[2] + p->geometry.centroid[2];
     }
   }
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
