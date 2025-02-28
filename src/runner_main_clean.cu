@@ -849,6 +849,8 @@ void *runner_main2(void *data) {
 
   pack_vars_pair_dens->task_list =
       (struct task **)calloc(target_n_tasks, sizeof(struct task *));
+  pack_vars_pair_dens->top_task_list =
+      (struct task **)calloc(target_n_tasks, sizeof(struct task *));
   pack_vars_pair_dens->ci_list =
       (struct cell **)calloc(target_n_tasks, sizeof(struct cell *));
   pack_vars_pair_dens->cj_list =
@@ -941,6 +943,8 @@ void *runner_main2(void *data) {
     pack_vars_pair_dens->tasks_packed = 0;
     pack_vars_self_dens->count_parts = 0;
     pack_vars_pair_dens->count_parts = 0;
+    pack_vars_pair_dens->task_locked = 0;
+    pack_vars_pair_dens->top_tasks_packed = 0;
     // Initialise packing counters
     pack_vars_self_forc->tasks_packed = 0;
     pack_vars_pair_forc->tasks_packed = 0;
@@ -1004,7 +1008,6 @@ void *runner_main2(void *data) {
     int g100 = 0;
     int l100 = 0;
     int maxcount = 0;
-
     /* Loop while there are tasks... */
     tasks_done_gpu_inc = 0;
     ticks hang_time = getticks();
@@ -1341,58 +1344,86 @@ void *runner_main2(void *data) {
   //              message("count %i target %i", ci->hydro.count, np_per_cell);
               }
 
-
               /*Call recursion here. This will be a function in runner_doiact_functions_hydro_gpu.h.
                * We are recursing separately to find out how much work we have before offloading*/
-              //We need to allocate a list to put cell pointers into. We need to allocate a list of cell pair interaction.
-              int n_expected_cells = 1024;
+              //We need to allocate a list to put cell pointers into for each new task
+              int n_expected_tasks = 1024;
               int n_leafs_found = 0;
               int depth = 0;
-//              struct cell ** cells_left = (struct cell **)calloc(n_expected_cells, sizeof(struct cell *));
-//              struct cell ** cells_right = (struct cell **)calloc(n_expected_cells, sizeof(struct cell *));
-              struct cell * cells_left[n_expected_cells];
-              struct cell * cells_right[n_expected_cells];
+//              struct cell ** cells_left = (struct cell **)calloc(n_expected_tasks, sizeof(struct cell *));
+//              struct cell ** cells_right = (struct cell **)calloc(n_expected_tasks, sizeof(struct cell *));
+              struct cell * cells_left[n_expected_tasks];
+              struct cell * cells_right[n_expected_tasks];
               runner_recurse_gpu(r, sched, pack_vars_pair_dens, ci, cj, t,
                       parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, &n_leafs_found, cells_left, cells_right, depth);
               n_leafs_total += n_leafs_found;
-              /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
-              for (int cid = 0; cid < n_leafs_found; cid++){
-                packing_time_pair += runner_dopair1_pack_f4(
+
+              int cstart = 0, cend = n_leafs_found;
+
+              int cid = 0;
+              pack_vars_pair_dens->task_locked = 1;
+              int top_tasks_packed = pack_vars_pair_dens->top_tasks_packed;
+              pack_vars_pair_dens->top_tasks_packed++;
+              pack_vars_pair_dens->top_task_list[top_tasks_packed] = t;
+              int t_s, t_e;
+              t_s = 0;
+              while(cid < n_leafs_found){
+                //////////////////////////////////////////////////////////////////////////////////
+                /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
+                for (cid = cstart; pack_vars_pair_dens->tasks_packed < pack_vars_pair_dens->target_n_tasks
+                     && cid < n_leafs_found; cid++){
+
+                  packing_time_pair += runner_dopair1_pack_f4(
                   r, sched, pack_vars_pair_dens, cells_left[cid], cells_right[cid], t,
                   parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
+//                  if (pack_vars_pair_dens->unfinished)
+//                	break;
 //                message("Packing task %i in recursed tasks\n", cid);
-              }
-              /* Copies done. Release the lock ! */
-              cell_unlocktree(ci);
-              cell_unlocktree(cj);
+                }
+                /* Copies done. Release the lock ! */
+                pack_vars_pair_dens->task_locked = 0;
+//                if(cid == n_leafs_found){
+//                  cell_unlocktree(ci);
+//                  cell_unlocktree(cj);
+//                  pack_vars_pair_dens->task_locked = 0;
+//                }
+                cstart = cid + 1;
+                t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
+                /* Packed enough tasks or no pack tasks left in queue, flag that
+                 * we want to run */
+                int launch = pack_vars_pair_dens->launch;
+                int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
 
-              t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
-              /* Packed enough tasks or no pack tasks left in queue, flag that
-               * we want to run */
-              int launch = pack_vars_pair_dens->launch;
-              int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
+                /* Do we have enough stuff to run the GPU ? */
+                if (launch) n_full_p_d_bundles++;
+                if (launch_leftovers) n_partial_p_d_bundles++;
 
-              /* Do we have enough stuff to run the GPU ? */
-              if (launch) n_full_p_d_bundles++;
-              if (launch_leftovers) n_partial_p_d_bundles++;
-
-              //              if ((sched->p_d_left[qid] < 1)){
-              //            	  launch_leftovers = 1;
-              //            	  pack_vars_pair_dens->launch_leftovers = 1;
-              //              }
-              if (launch || launch_leftovers) {
-                /*Launch GPU tasks*/
-                int t_packed = pack_vars_pair_dens->tasks_packed;
-                //                signal_sleeping_runners(sched, t, t_packed);
-                runner_dopair1_launch_f4_one_memcpy(
+                if (launch || launch_leftovers) {
+                  /*Launch GPU tasks*/
+                  int t_packed = pack_vars_pair_dens->tasks_packed;
+                  //                signal_sleeping_runners(sched, t, t_packed);
+                  runner_dopair1_launch_f4_one_memcpy(
                     r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
                     parts_aos_pair_f4_recv, d_parts_aos_pair_f4_send,
                     d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e,
                     &packing_time_pair, &time_for_density_gpu_pair,
                     &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
                     pair_end);
+                  for (int tid = 0; tid < pack_vars_pair_dens->top_tasks_packed -1; tid++){
+                    /*schedule my dependencies (Only unpacks really)*/
+                	struct task *tii = pack_vars_pair_dens->top_task_list[tid];
+                    enqueue_dependencies(sched, tii);
+                  }
+                  pack_vars_pair_dens->top_tasks_packed = 1;
+                  pack_vars_pair_dens->top_task_list[0] = t;
+                }
+                ///////////////////////////////////////////////////////////////////////
               }
+              cell_unlocktree(ci);
+              cell_unlocktree(cj);
+              pack_vars_pair_dens->task_locked = 0;
               pack_vars_pair_dens->launch_leftovers = 0;
+
 #ifdef DO_CORNERS
             } /* End of GPU work Pairs */
 #endif  // DO_CORNERS

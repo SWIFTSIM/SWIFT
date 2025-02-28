@@ -5,6 +5,7 @@
 struct pack_vars_self {
   /*List of tasks and respective cells to be packed*/
   struct task **task_list;
+  struct task **top_task_list;
   struct cell **cell_list;
   /*List of cell positions*/
   double *cellx;
@@ -19,6 +20,7 @@ struct pack_vars_self {
   int count_parts;
   /**/
   int tasks_packed;
+  int top_tasks_packed;
   int *task_first_part;
   int *task_last_part;
   int *d_task_first_part;
@@ -38,6 +40,7 @@ struct pack_vars_self {
 struct pack_vars_pair {
   /*List of tasks and respective cells to be packed*/
   struct task **task_list;
+  struct task **top_task_list;
   struct cell **ci_list;
   struct cell **cj_list;
   /*List of cell shifts*/
@@ -53,6 +56,7 @@ struct pack_vars_pair {
   int count_parts;
   /**/
   int tasks_packed;
+  int top_tasks_packed;
   int *task_first_part;
   int *task_last_part;
   int *d_task_first_part;
@@ -66,6 +70,7 @@ struct pack_vars_pair {
   int target_n_tasks;
   int nBundles;
   int tasksperbundle;
+  int task_locked;
 
 } pack_vars_pair;
 
@@ -751,6 +756,7 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
   //  atomic_dec(&(s->queues[qid].n_packs_pair_left));
   //  if ((s->p_d_left < 1)) pack_vars->launch_leftovers = 1;
 
+  //A. Nasar: Need to come back to this at some point!
   lock_lock(&s->queues[qid].lock);
 
   s->queues[qid].n_packs_pair_left_d--;
@@ -759,8 +765,9 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
 
   lock_unlock(&s->queues[qid].lock);
 
-  if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
+  if (pack_vars->tasks_packed == pack_vars->target_n_tasks){
     pack_vars->launch = 1;
+  }
   /*Add time to packing_time. Timer for end of GPU work after the if(launch ||
    * launch_leftovers statement)*/
   clock_gettime(CLOCK_REALTIME, &t1);
@@ -3044,14 +3051,17 @@ void runner_dopair1_launch_f4_one_memcpy(
         struct cell *cjj = pack_vars->cj_list[tid];
         struct task *tii = pack_vars->task_list[tid];
 
-        /*Let's lock ci*/
-        while (cell_locktree(cii)) {
-          ; /* spin until we acquire the lock */
-        }
-        /*Let's lock cj*/
-        while (cell_locktree(cjj)) {
-          ; /* spin until we acquire the lock */
-        }
+//        if(!pack_vars->task_locked){
+//          /*Let's lock ci*/
+//          while (cell_locktree(cii)) {
+//            ; /* spin until we acquire the lock */
+//          }
+//          /*Let's lock cj*/
+//          while (cell_locktree(cjj)) {
+//            ; /* spin until we acquire the lock */
+//          }
+//          pack_vars->task_locked = 1;
+//        }
 
         const ticks tic = getticks();
 
@@ -3067,22 +3077,19 @@ void runner_dopair1_launch_f4_one_memcpy(
         /* Record things for debugging */
         cii->gpu_done_pair++;
         cjj->gpu_done_pair++;
-        pthread_mutex_lock(&s->sleep_mutex);
-        atomic_dec(&s->waiting);
-        pthread_cond_broadcast(&s->sleep_cond);
-        pthread_mutex_unlock(&s->sleep_mutex);
-        //		  /* Release the locks */
-        cell_unlocktree(cii);
-        //		  /* Release the locks */
-        cell_unlocktree(cjj);
+
+        if(pack_vars->task_locked){
+          /* Release the locks */
+          cell_unlocktree(cii);
+          /* Release the locks */
+          cell_unlocktree(cjj);
+          pack_vars->task_locked = 0;
+        }
 
         /*Time end of unpacking*/
         clock_gettime(CLOCK_REALTIME, &tp1);
         *unpack_time += (tp1.tv_sec - tp0.tv_sec) +
                         (tp1.tv_nsec - tp0.tv_nsec) / 1000000000.0;
-
-        /*schedule my dependencies (Only unpacks really)*/
-        enqueue_dependencies(s, tii);
         /*Signal sleeping runners*/
         // MATTHIEU signal_sleeping_runners(s, tii);
 
@@ -3090,9 +3097,17 @@ void runner_dopair1_launch_f4_one_memcpy(
       }
     }
   }
+
+
+  pthread_mutex_lock(&s->sleep_mutex);
+  atomic_sub(&s->waiting, pack_vars->top_tasks_packed);
+  pthread_cond_broadcast(&s->sleep_cond);
+  pthread_mutex_unlock(&s->sleep_mutex);
+
   /* Zero counters for the next pack operations */
   pack_vars->count_parts = 0;
   pack_vars->tasks_packed = 0;
+
   //	/*Time end of unpacking*/
   //	clock_gettime(CLOCK_REALTIME, &t1);
   //	*packing_time += (t1.tv_sec - t0.tv_sec) +
