@@ -108,6 +108,18 @@ void feedback_update_part(struct part* p, struct xpart* xp,
 }
 
 /**
+ * @brief Finishes the #part density calculation.
+ *
+ * Save the #part density.wcount for use in feedback loops.
+ *
+ * @param p The particle to act upon
+ * @param xp The extra particle to act upon
+ */
+__attribute__((always_inline)) INLINE void feedback_end_density(struct part* p, struct xpart* xp) {
+  p->feedback_data.density.wcount = p->density.wcount;
+}
+
+/**
  * @brief Reset the gas particle-carried fields related to feedback at the
  * start of a step.
  *

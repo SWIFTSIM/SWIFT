@@ -25,7 +25,13 @@
 /**
  * @brief Feedback fields carried by each hydro particles
  */
-struct feedback_part_data {};
+struct feedback_part_data {
+  /* Save quantities computed in the #hydro density loop for feedback loop */
+  struct {
+    /*! Neighbour number count. */
+    float wcount;
+  } density;
+};
 
 /**
  * @brief Extra feedback fields carried by each hydro particles

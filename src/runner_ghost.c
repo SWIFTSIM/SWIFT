@@ -1218,6 +1218,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           mhd_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
           star_formation_end_density(p, xp, star_formation, cosmo);
+	  feedback_end_density(p, xp);
 
           /* Are we using the alternative definition of the
              number of neighbours? */
