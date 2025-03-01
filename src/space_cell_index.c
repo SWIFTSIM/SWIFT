@@ -154,7 +154,10 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
       cell_counts[index]++;
 
       /* Compute minimal mass */
-      min_mass = min(min_mass, hydro_get_mass(p));
+      float mass = hydro_get_mass(p);
+      if (mass > 0.f) {
+        min_mass = min(min_mass, mass);
+      }
 
       /* Compute sum of velocity norm */
       sum_vel_norm += p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2];
