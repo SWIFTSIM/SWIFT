@@ -337,7 +337,21 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   /***************************************************************************/
   /* Hyperbolic diffusion */
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  if (data->diffusion_mode == isotropic_constant) {
+
+  char temp2[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(parameter_file, "GEARChemistry:relaxation_time_mode", temp2);
+  if (strcmp(temp2, "Constant") == 0)
+    data->relaxation_time_mode = constant_mode;
+  else if (strcmp(temp2, "Soundspeed") == 0)
+    data->relaxation_time_mode = soundspeed_mode;
+  else
+    error(
+        "The chemistry relaxation time mode must be Constant or Soundspeed"
+        " not %s",
+        temp2);
+
+  /* Note: This is the physical relaxation time, not comoving */
+  if (data->relaxation_time_mode == constant_mode) {
     data->tau = parser_get_param_double(parameter_file, "GEARChemistry:tau");
   }
 
@@ -370,7 +384,8 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 #endif
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     message("Riemann solver:             %d", data->riemann_solver);
-    message("Relaxation time (Isotropic_constant): %e", data->tau);
+    message("Relaxation time mode:       %u", data->relaxation_time_mode);
+    message("Relaxation time (constant_mode): %e", data->tau);
 #endif
   }
 }

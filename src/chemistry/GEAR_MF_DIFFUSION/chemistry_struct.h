@@ -36,6 +36,14 @@ enum chemistry_diffusion_mode {
 };
 
 /**
+ * @brief The relaxation time mode
+ */
+enum chemistry_relaxation_time_mode {
+  constant_mode,    /* Constant */
+  soundspeed_mode,  /* Based on the gas soundspeed: tau = ||K||/(c_s^2 rho) */
+};
+
+/**
  * @brief The Riemann solver type
  */
 enum chemistry_riemann_solver {
@@ -67,8 +75,11 @@ struct chemistry_global_data {
   float diffusion_coefficient;
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  /*! Relaxation time for the constant isotropic case */
+  /*! Relaxation time for the constant relaxation time case. In physical units. */
   double tau;
+
+  /*! Relaxation time mode. 0: constant, 1: . */
+  enum chemistry_relaxation_time_mode relaxation_time_mode;
 
   /* 1=Hopkins 2017, 2=HLL, 3=HLLC */
   int riemann_solver;

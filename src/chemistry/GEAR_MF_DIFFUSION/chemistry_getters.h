@@ -349,13 +349,15 @@ chemistry_get_physical_hyperbolic_soundspeed(
     const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo) {
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  if (chem_data->diffusion_mode == isotropic_constant) {
+  //TODO: For all cases, the solution is sqrt(kappa/tau) and not diffusion_coefficient
+  if (chem_data->relaxation_time_mode == constant_mode) {
     return sqrt(chem_data->diffusion_coefficient / chem_data->tau);
   } else {
     return hydro_get_physical_soundspeed(p, cosmo);
   }
 #else
-  return hydro_get_physical_soundspeed(p, cosmo);
+  error("This function cannot be called for the parabolic diffusion mode.")
+  return -1.0;
 #endif
 }
 
@@ -370,13 +372,16 @@ chemistry_get_physical_diffusion_speed(
     const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo) {
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  if (chem_data->diffusion_mode == isotropic_constant) {
+  if (chem_data->relaxation_time_mode == constant_mode) {
     return sqrt(chem_data->diffusion_coefficient) / chem_data->tau;
   } else {
     return hydro_get_physical_soundspeed(p, cosmo);
   }
 #else
-    const struct chemistry_part_data *chd = &p->chemistry_data;
+  /* For the parabolic diffusion, we can estimate the diffusion speed with
+                v_diff ~ ||K|| * || Grad q || / ||U||.
+     See apendix D in Hopkins 2017 (https://arxiv.org/abs/1602.07703). */
+  const struct chemistry_part_data *chd = &p->chemistry_data;
 
   /* Compute diffusion matrix K */
   double K[3][3];
