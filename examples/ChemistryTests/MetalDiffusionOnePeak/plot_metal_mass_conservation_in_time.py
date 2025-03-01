@@ -60,7 +60,6 @@ for i, filename in enumerate(tqdm(files)):
     # Load data
     data = sw.load(filename)
     boxsize = data.metadata.boxsize
-    
 
     if hasattr(data.gas.metal_mass_fractions, 'fe'):
         m_fe_iter = data.gas.metal_mass_fractions.fe * data.gas.masses

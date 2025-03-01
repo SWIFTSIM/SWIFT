@@ -181,7 +181,7 @@ else:
     pos = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
 
 print(pos.shape)
-vel = np.tile(velocity, (N, 1)) # np.zeros([N, 3])
+vel = np.tile(velocity, (N, 1))
 mass = np.ones(N) * m
 u = np.zeros(N)
 ids = np.arange(N)

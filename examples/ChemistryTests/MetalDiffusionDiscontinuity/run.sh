@@ -84,11 +84,13 @@ printf "Running simulation..."
 if [ "$with_hydro_MFM" -eq 1 ]; then
     # ./configure --with-hydro=gizmo-mfm --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-stars=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks --with-riemann-solver=hllc && make clean && make -j12
     echo "Running with MFM hydro solver..."
-    ~/swiftsim/swift --hydro --external-gravity --stars --threads=$n_threads params.yml 2>&1 | tee output.log
+    ~/swiftsim/swift --hydro --external-gravity --stars \
+		     --threads=$n_threads params.yml 2>&1 | tee output.log
 else
     # ./configure --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening=yes --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks
     echo "Running with SPH hydro solver"
-    ~/swiftsim/swift --hydro --external-gravity --stars --feedback --threads=$n_threads params.yml 2>&1 | tee output.log
+    ~/swiftsim/swift --hydro --external-gravity --stars --feedback
+    \ --threads=$n_threads params.yml 2>&1 | tee output.log
 fi
 
 #Do some data analysis to show what's in this box
