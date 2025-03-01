@@ -645,7 +645,7 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
      from the paper. Moreover, Gizmo uses wcount = rho/mass for the gas and not
      the MFV/M volume. */
   const double n_bar_i = si->density.wcount;
-  const double n_bar_j = pj->rho / pj->mass;
+  const double n_bar_j = pj->feedback_data.density.wcount;
   const double n_bar_i_2_inv = 1.0 / (n_bar_i * n_bar_i);
   const double n_bar_j_2_inv = 1.0 / (n_bar_j * n_bar_j);
 
