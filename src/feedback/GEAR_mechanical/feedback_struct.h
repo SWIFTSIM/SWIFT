@@ -52,9 +52,6 @@ struct feedback_xpart_data {
  */
 struct feedback_spart_data {
 
-  /* Number of neighbours contributing to feedback */
-  double density_wcount;
-
   /* Normalisation factor used for the enrichment. Corresponds to the
      denominator in eq (9) in https://arxiv.org/abs/1707.07010  */
   float enrichment_weight;

@@ -60,20 +60,6 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   if (r2 > r_max_2) {
     return;
   }
-
-  /* Now compute the number of neighbour eligible to feedback */
-  float wi, wi_dx;
-
-  /* Get r and 1/r. */
-  const float r = sqrtf(r2);
-
-  /* Compute the kernel function */
-  const float hi_inv = 1.0f / hi;
-  const float ui = r * hi_inv;
-  kernel_deval(ui, &wi, &wi_dx);
-
-  /* Compute contribution to the number of neighbours */
-  si->feedback_data.density_wcount += wi;
 }
 
 /**
