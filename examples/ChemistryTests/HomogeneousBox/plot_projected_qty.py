@@ -43,24 +43,6 @@ def surface_density(data, qty):
     # projected_density.convert_to_cgs()
     return projected_density
 
-
-def smoothed_metal_surface_density(data):
-
-    data.gas.m_fe = data.gas.smoothed_metal_mass_fractions.fe * data.gas.masses
-
-    # Compute projected density
-    projected_density = project_gas(
-        data,
-        resolution=image_resolution,
-        project="m_fe",
-        parallel=True,
-        periodic=True,
-    ).T
-
-    projected_density.convert_to_cgs()
-    return projected_density
-
-
 def make_plot(boxsize, metal_density, output_name, log=False, vmin=None, vmax=None):
     figsize = (10, 10)
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=figsize, num=1)
