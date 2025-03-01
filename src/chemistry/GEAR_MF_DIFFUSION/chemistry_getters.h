@@ -349,12 +349,11 @@ chemistry_get_physical_hyperbolic_soundspeed(
     const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo) {
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  //TODO: For all cases, the solution is sqrt(kappa/tau) and not diffusion_coefficient
-  if (chem_data->relaxation_time_mode == constant_mode) {
-    return sqrt(chem_data->diffusion_coefficient / chem_data->tau);
-  } else {
-    return hydro_get_physical_soundspeed(p, cosmo);
-  }
+  /* Compute diffusion matrix K */
+  double K[3][3];
+  chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
+  const double norm_matrix_K = chemistry_get_matrix_norm(K);
+  return sqrt(norm_matrix_K / chem_data->tau);
 #else
   error("This function cannot be called for the parabolic diffusion mode.")
   return -1.0;
@@ -373,7 +372,11 @@ chemistry_get_physical_diffusion_speed(
     const struct cosmology* cosmo) {
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   if (chem_data->relaxation_time_mode == constant_mode) {
-    return sqrt(chem_data->diffusion_coefficient) / chem_data->tau;
+    /* Compute diffusion matrix K */
+    double K[3][3];
+    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
+    const double norm_matrix_K = chemistry_get_matrix_norm(K);
+    return sqrt(norm_matrix_K) / chem_data->tau;
   } else {
     return hydro_get_physical_soundspeed(p, cosmo);
   }
