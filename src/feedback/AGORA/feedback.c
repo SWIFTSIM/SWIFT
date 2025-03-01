@@ -86,6 +86,16 @@ void feedback_update_part(struct part* p, struct xpart* xp,
 }
 
 /**
+ * @brief Finishes the #part density calculation.
+ *
+ * Nothing to do here.
+ *
+ * @param p The particle to act upon
+ * @param xp The extra particle to act upon
+ */
+__attribute__((always_inline)) INLINE void feedback_end_density(struct part* p, struct xpart* xp) {}
+
+/**
  * @brief Compute the times for the stellar model.
  *
  * This function assumed to be called in the time step task.

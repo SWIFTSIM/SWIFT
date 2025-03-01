@@ -291,7 +291,10 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
  * @param pj Second (gas) particle.
  * @param xpj Extra particle data
  * @param cosmo The cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
  * @param fb_props Properties of the feedback scheme.
+ * @param constants The physical constants (in internal units).
+ * @param us The internal system of units.
  * @param ti_current Current integer time used value for seeding random number
  * generator
  */
