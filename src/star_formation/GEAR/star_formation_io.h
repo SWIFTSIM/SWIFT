@@ -72,6 +72,7 @@ __attribute__((always_inline)) INLINE static int
 star_formation_write_sparticles(const struct spart* sparts,
                                 struct io_props* list) {
 
+  int num = 4;
   list[0] = io_make_physical_output_field(
       "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
       sf_data.birth_density, /*can convert to comoving=*/0,
@@ -94,7 +95,16 @@ star_formation_write_sparticles(const struct spart* sparts,
       "ProgenitorIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
       sf_data.progenitor_id, "Unique IDs of the progenitor particle");
 
-  return 4;
+#if defined(CHEMISTRY_GEAR_MF_DIFFUSION) || defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  list[4] = io_make_output_field(
+      "ProgenitorDiffusionMatrixNorms", DOUBLE, 1, UNIT_CONV_DIFF_COEFF, 0.f, sparts,
+      sf_data.norm_matrix_K,
+      "Physical diffusion matrix of the progenitor gas particle");
+
+  num += 1;
+#endif
+
+  return num;
 }
 
 /**
