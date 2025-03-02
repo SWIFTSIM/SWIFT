@@ -476,7 +476,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                  */
                 star_formation_copy_properties(
                     p, xp, sp, e, sf_props, cosmo, with_cosmology, phys_const,
-                    hydro_props, us, cooling, part_converted);
+                    hydro_props, us, cooling, e->chemistry, part_converted);
 
                 /* Update the Star formation history */
                 star_formation_logger_log_new_spart(sp, &c->stars.sfh);

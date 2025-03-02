@@ -892,9 +892,11 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_sink(
  * @param p the gas particles.
  * @param xp the additional properties of the gas particles.
  * @param sp the new created star particle with its properties.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
  */
 INLINE static void chemistry_copy_star_formation_properties(
-    struct part* p, const struct xpart* xp, struct spart* sp) {
+							    struct part* p, const struct xpart* xp, struct spart* sp, const struct chemistry_global_data* chem_data, const struct cosmology* cosmo) {
 
   /* gas mass after update */
   float mass = hydro_get_mass(p);
@@ -907,6 +909,14 @@ INLINE static void chemistry_copy_star_formation_properties(
     /* Remove the metals taken by the star. */
     p->chemistry_data.metal_mass[i] *= mass / (mass + sp->mass);
   }
+
+  /* Now copy some properties of the gas to the star to track the SF state */
+
+  /* Compute diffusion matrix K */
+  double K[3][3];
+  chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
+  const double norm_matrix_K = chemistry_get_matrix_norm(K);
+  sp->sf_data.norm_matrix_K = norm_matrix_K;
 }
 
 /**

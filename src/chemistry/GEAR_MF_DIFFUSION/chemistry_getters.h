@@ -342,6 +342,8 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
  * @brief Get the physical hyperbolic diffusion soundspeed.
  *
  * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_get_physical_hyperbolic_soundspeed(
@@ -364,6 +366,8 @@ chemistry_get_physical_hyperbolic_soundspeed(
  * @brief Get the physical diffusion speed.
  *
  * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_get_physical_diffusion_speed(
