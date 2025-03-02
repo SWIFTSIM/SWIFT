@@ -29,43 +29,48 @@
  */
 
 /**
- * @brief Check for and correct, if needed, unphysical values for a diffusion
- * state.
+ * @brief Check for, and correct, if needed, unphysical values for a diffusion
+ * state (metal mass).
  *
- * @param metal_mass pointer to the radiation energy density
- * @param n_old metal density before change to check. Set = 0 if not available
- * @param callloc integer indentifier where this function was called from
- * @param element Integer identifier for the metal specie to correct
+ * @param metal_mass Pointer to the metal mass.
+ * @param mZ_old Metal density before change to check. Set = 0 if not
+ * available.
+ * @param gas_mass #part mass.
+ * @param callloc Integer indentifier where this function was called from
+ *
+ * 0: after density compuations (chemistry_end_density()),
+ * 1: during gradients extrapolation (chemistry_gradients_predict()),
+ * 2: after diffusion computations (chemistry_end_force()),
+ * 3: during drift (chemistry_predict_extra()).
+ *
+ * @param element Integer identifier for the metal specie to correct.
+ * @param id Particle id.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
                                  const double gas_mass, int callloc,
-                                 const int element) {
+                                 const int element, const long long id) {
 
-  /* Check for negative metal densities/masses */
-#ifdef SWIFT_DEBUG_CHECKS
-  /* float ratio = -1.f; */
-  char print = 0;
-  if (mZ_old == 0.0) {
-    if (*metal_mass < -1.e-20) print = 1;
-  }
-  /* callloc = 1 is gradient extrapolation. Don't print out those. */
-  if (callloc == 1) print = 0;
-  if (print)
-    error("[%d] Fixing unphysical metal density/mass case %d | %.6e | %.6e",
-          element, callloc, *metal_mass, mZ_old);
-#endif
   if (isinf(*metal_mass) || isnan(*metal_mass))
-    error("[%d] Got inf/nan metal density/mass diffusion case %d | %.6e ",
-          element, callloc, *metal_mass);
+    error("[%lld, %d] Got inf/nan metal density/mass diffusion case %d | %.6e ",
+          id, element, callloc, *metal_mass);
 
   /* Fix negative masses */
-  if (*metal_mass < 0.0) {
+  const double metal_mass_fraction = *metal_mass / gas_mass;
+  const double Z_old = mZ_old / gas_mass;
+  if (metal_mass_fraction < GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE) {
     if (callloc == 1) {
       /* Do not extrapolate, use 0th order reconstruction. */
-      *metal_mass = mZ_old;
+      *metal_mass = (Z_old >= GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE)
+	            ? mZ_old : 0.0;
     } else {
-      *metal_mass = 0.0;
+      /* Note: Correcting metal masses afterwards can artificially create metal
+         mass out of nothing. This mass creation might is never compensated and
+         can lead to huge metal mass creation, bigger than gas mass. */
+      error("[%lld, %d] Negative metal density/mass case %d | %e %e | %e %e",
+	    id, element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
+	    Z_old);
+      /* metal_mass = 0.0; */
     }
   }
 
@@ -75,17 +80,18 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
       *metal_mass = mZ_old;
     } else {
       *metal_mass /= 1.1 * mZ_old / gas_mass;
-      warning("[%d] Metal mass bigger than gas mass ! case %d | %e | %e | %e",
-              element, callloc, *metal_mass, mZ_old, gas_mass);
+      warning(
+          "[%lld, %d] Metal mass bigger than gas mass ! case %d | %e | %e | %e",
+          id, element, callloc, *metal_mass, mZ_old, gas_mass);
     }
   }
 }
 
 /**
- * @brief check for and correct if needed unphysical
- * values for a flux in the sense of parabolic conservation laws
+ * @brief Check for and correct if needed unphysical values for a diffusion 3D
+ * flux.
  *
- * @param flux  flux: 3 components
+ * @param flux flux: 3 components diffusion flux
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_diffusion_flux(double flux[3]) {
@@ -115,10 +121,15 @@ chemistry_check_unphysical_diffusion_flux(double flux[3]) {
 }
 
 /**
- * @brief Check for and correct if needed unphysical total metal mass.
+ * @brief Check for, and correct if needed, unphysical total metal mass.
  *
- * @param p The #part
+ * @param p The #part to check.
  * @param callloc integer indentifier where this function was called from
+ *
+ * 0: after density compuations (chemistry_end_density()).
+ * 2: after diffusion computations (chemistry_end_force()).
+ * 3: during drift (chemistry_predict_extra()).
+ *
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_total_metal_mass(struct part* restrict p,

@@ -28,6 +28,17 @@
 #include "part.h"
 
 /**
+ * @brief Get metal mass fraction from a specific metal specie.
+ *
+ * @param p Particle.
+ * @param metal Index of metal specie
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_metal_mass_fraction(const struct part* restrict p, int metal) {
+  return p->chemistry_data.metal_mass[metal] / hydro_get_mass(p);
+}
+
+/**
  * @brief Get comoving metal density from a specific metal group.
  *
  * @param p Particle.
@@ -35,7 +46,8 @@
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_get_comoving_metal_density(const struct part* restrict p, int metal) {
-  return p->chemistry_data.metal_mass[metal] / p->geometry.volume;
+  return chemistry_get_metal_mass_fraction(p, metal) *
+         hydro_get_comoving_density(p);
 }
 
 /**
@@ -52,39 +64,30 @@ chemistry_get_physical_metal_density(const struct part* restrict p, int metal,
 }
 
 /**
- * @brief Get metal mass fraction from a specific metal specie.
+ * @brief Get metal mass from a specific metal group.
+ *
+ * This function sets the metal mass to 0 if metal_mass is within the negative
+ * tolerance bound. If the mass is outside the tolerated negative mass bounds,
+ * we throw an error.
  *
  * @param p Particle.
  * @param metal Index of metal specie
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_get_metal_mass_fraction(const struct part* restrict p, int metal) {
-  return p->chemistry_data.metal_mass[metal] / hydro_get_mass(p);
-}
-
-/**
- * @brief Get particle density.
- *
- * This function must be used for sensitive operations like computing
- * timesteps. At the beggining of a simulation, it can happen that the
- * particle's density is 0 (e.g. not read from ICs) and not yet updated. Since
- * timesteps computations and the diffusion coefficient require the density, we
- * need to estimate it. Otherwise we have null timesteps. This is particularly
- * true with MFM SPH.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static float
-chemistry_get_comoving_density(const struct part* restrict p) {
-  float rho = hydro_get_comoving_density(p);
-
-  if (rho == 0.0) {
-    const float r_cubed =
-        kernel_gamma * kernel_gamma * kernel_gamma * p->h * p->h * p->h;
-    const float volume = 4.0 / 3.0 * M_PI * r_cubed;
-    rho = hydro_get_mass(p) / volume;
+chemistry_get_part_corrected_metal_mass(const struct part* restrict p, int metal) {
+  double mZi = p->chemistry_data.metal_mass[metal];
+  double Zi = chemistry_get_metal_mass_fraction(p, metal);
+  if (Zi >= GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE) {
+    /* We tolerate a small deviation around 0 due to flux exchanges. But
+       other modules need not be aware of this. Ensure metal mass is positive to
+       avoid problems (e.g. for cooling). */
+    mZi = max(0.0, mZi);
+  } else {
+    /* More deviations around 0 are not tolerated. The error is thown in
+       chemistry_check_unphysical_state(). */
+    mZi = 0.0;
   }
-  return rho;
+  return mZi;
 }
 
 /**
@@ -239,12 +242,6 @@ chemistry_compute_diffusion_coefficient(
 
   float rho = p->chemistry_data.filtered.rho;
 
-  /* In case the filtered density is 0, e.g. during the fake-timestep,
-     approximate the density */
-  if (rho == 0.0) {
-    rho = chemistry_get_comoving_density(p);
-  }
-
   /* Convert density to physical units. */
   rho *= cosmo->a3_inv;
 
@@ -352,13 +349,73 @@ chemistry_get_physical_hyperbolic_soundspeed(
     const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo) {
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  if (chem_data->diffusion_mode == isotropic_constant) {
-    return sqrt(chem_data->diffusion_coefficient / chem_data->tau);
+  /* Compute diffusion matrix K */
+  double K[3][3];
+  chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
+  const double norm_matrix_K = chemistry_get_matrix_norm(K);
+  return sqrt(norm_matrix_K / chem_data->tau);
+#else
+  error("This function cannot be called for the parabolic diffusion mode.");
+  return -1.0;
+#endif
+}
+
+/**
+ * @brief Get the physical diffusion speed.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_physical_diffusion_speed(
+    const struct part* restrict p,
+    const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo) {
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  if (chem_data->relaxation_time_mode == constant_mode) {
+    /* Compute diffusion matrix K */
+    double K[3][3];
+    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
+    const double norm_matrix_K = chemistry_get_matrix_norm(K);
+    return sqrt(norm_matrix_K) / chem_data->tau;
   } else {
     return hydro_get_physical_soundspeed(p, cosmo);
   }
 #else
-  return hydro_get_physical_soundspeed(p, cosmo);
+  /* For the parabolic diffusion, we can estimate the diffusion speed with
+                v_diff ~ ||K|| * || Grad q || / ||U||.
+     See apendix D in Hopkins 2017 (https://arxiv.org/abs/1602.07703). */
+  const struct chemistry_part_data *chd = &p->chemistry_data;
+
+  /* Compute diffusion matrix K */
+  double K[3][3];
+  chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
+  const double norm_matrix_K = chemistry_get_matrix_norm(K);
+
+  /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...). */
+  double norm_U = 0.0;
+  double norm_nabla_q = 0.0;
+
+  /* Compute the norms */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    norm_U += chemistry_get_physical_metal_density(p, i, cosmo) *
+              chemistry_get_physical_metal_density(p, i, cosmo);
+
+    for (int j = 0; j < 3; j++) {
+      /* Compute the Frobenius norm of \nabla \otimes q */
+      norm_nabla_q += chd->gradients.Z[i][j] * chd->gradients.Z[i][j];
+    }
+  }
+
+  /* Take the sqrt and convert to physical units */
+  norm_U = sqrtf(norm_U);
+  norm_nabla_q = sqrtf(norm_nabla_q) * cosmo->a_inv;
+
+  /* Prevent pathological cases */
+  if (norm_U == 0.0) {
+    return FLT_MAX;
+  }
+
+  return norm_matrix_K * norm_nabla_q / norm_U;
 #endif
 }
 
@@ -385,7 +442,7 @@ chemistry_compute_physical_tau(const struct part* restrict p,
     /* Get soundspeed */
     const double c_hyp =
         chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
-    return  norm_matrix_K / (c_hyp*c_hyp*rho);
+    return norm_matrix_K / (c_hyp * c_hyp * rho);
   } else {
     return chem_data->tau;
   }
@@ -404,7 +461,7 @@ __attribute__((always_inline)) INLINE static float
 chemistry_get_total_metal_mass_fraction(const struct part* restrict p) {
   float m_Z_tot = 0.0;
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    m_Z_tot += p->chemistry_data.metal_mass[i];
+    m_Z_tot += chemistry_get_part_corrected_metal_mass(p, i);
   }
   return m_Z_tot / hydro_get_mass(p);
 }

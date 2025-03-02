@@ -65,12 +65,19 @@ def parse_options():
         help="Resolution level: N = (2**l)**3",
     )
 
+    parser.add_argument("--velocity",
+                        action=store_as_array,
+                        nargs=3,
+                        type=float,
+                        default=np.zeros(0),
+                        help="Velocity boost to all particles")
+
     parser.add_argument(
         "--metal_mass_fraction",
         action="store",
         type=float,
         default=1e-4,
-        help="Metal mass fraction of the gas particle placed at the center of  the box",
+        help="Metal mass fraction of the gas particle placed at the center of the box",
     )
 
     parser.add_argument(
@@ -98,7 +105,7 @@ def parse_options():
         help="output filename",
     )
 
-    parser.add_argument('--random_position', default=False, action="store_true",
+    parser.add_argument('--random_positions', default=False, action="store_true",
                         help="Place the particles randomly in the box.")
 
     options = parser.parse_args()
@@ -113,8 +120,9 @@ opt = parse_options()
 
 N_metal = opt.N_metal
 epsilon = opt.epsilon
-random_position = opt.random_position
+random_positions = opt.random_positions
 level = opt.level
+velocity = opt.velocity
 
 # define standard units
 UnitMass_in_cgs = 1.988409870698051e43  # 10^10 M_sun in grams
@@ -160,7 +168,7 @@ rho = rho.to(UnitMass / UnitLength ** 3).value
 
 # Generate the particles
 
-if random_position:
+if random_positions:
     print("Sampling random positions in the box")
     pos = np.random.random([N, 3]) * np.array([L, L, L])
 else:
@@ -173,7 +181,7 @@ else:
     pos = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
 
 print(pos.shape)
-vel = np.zeros([N, 3])
+vel = np.tile(velocity, (N, 1))
 mass = np.ones(N) * m
 u = np.zeros(N)
 ids = np.arange(N)

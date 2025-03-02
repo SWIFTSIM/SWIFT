@@ -234,6 +234,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   /*****************************************/
   /* Collect the cell's min and max for the slope limiter. */
   chemistry_slope_limit_cell_collect(pi, pj, r);
+  chemistry_slope_limit_cell_collect(pj, pi, r);
 }
 
 /**
@@ -461,8 +462,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   /* Compute interface position (relative to pj, since we don't need the
      actual position) eqn. (8)
      Do it this way in case dx contains periodicity corrections already */
-  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] +
-  dx[2]};
+  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   /* Linear reconstruction of U_R and U_L (rho*Z) */
   double dUi = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i);
@@ -477,25 +477,25 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
      particle's mass */
   const double mi = hydro_get_mass(pi);
   const double mj = hydro_get_mass(pj);
-  const double m_Zi_not_extrapolated = chemistry_get_metal_mass_fraction(pi,
-  metal) * mi;
-  const double m_Zj_not_extrapolated = chemistry_get_metal_mass_fraction(pj,
-  metal) * mj;
-  double m_Zi = *Ui * pi->geometry.volume; /* extrapolated mass */
-  double m_Zj = *Uj * pj->geometry.volume; /* extrapolated mass */
+  const double m_Zi_not_extrapolated =
+      chemistry_get_metal_mass_fraction(pi, metal) * mi;
+  const double m_Zj_not_extrapolated =
+      chemistry_get_metal_mass_fraction(pj, metal) * mj;
+  double m_Zi = *Ui * mi / hydro_get_comoving_density(pi);
+  double m_Zj = *Uj * mj / hydro_get_comoving_density(pj);
 
   chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
-                                   /*callloc=*/1, /*element*/ metal);
+                                   /*callloc=*/1, /*element*/ metal, pi->id);
   chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
-                                   /*callloc=*/1, /*element*/ metal);
+                                   /*callloc=*/1, /*element*/ metal, pj->id);
 
   /* If the new masses have been changed, do not extrapolate, use 0th order
      reconstruction and update the state vectors */
   if (m_Zi == m_Zi_not_extrapolated) {
-    *Ui = m_Zi_not_extrapolated / pi->geometry.volume;
+    *Ui = m_Zi_not_extrapolated * hydro_get_comoving_density(pi) / mi;
   }
   if (m_Zj == m_Zj_not_extrapolated) {
-    *Uj = m_Zj_not_extrapolated / pj->geometry.volume;
+    *Uj = m_Zj_not_extrapolated * hydro_get_comoving_density(pj) / mj;
   }
 }
 
@@ -583,43 +583,52 @@ chemistry_gradients_predict_hydro(struct part *restrict pi,
    * position) eqn. (8) */
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
+  /* Get the gradients */
   float drho_i[3], drho_j[3];
   float dvx_i[3], dvy_i[3], dvz_i[3];
   float dvx_j[3], dvy_j[3], dvz_j[3];
   chemistry_get_hydro_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i);
   chemistry_get_hydro_gradients(pj, drho_j, dvx_j, dvy_j, dvz_j);
 
-  float drhoi;
-  drhoi = chemistry_gradients_extrapolate_float(drho_i, xij_i);
+  /* Extrapolate the gradients on the face vector */
+  float drhoi_ext, dvi_ext[3];
+  drhoi_ext = chemistry_gradients_extrapolate_float(drho_i, xij_i);
+  dvi_ext[0] = chemistry_gradients_extrapolate_float(dvx_i, xij_i);
+  dvi_ext[1] = chemistry_gradients_extrapolate_float(dvy_i, xij_i);
+  dvi_ext[2] = chemistry_gradients_extrapolate_float(dvz_i, xij_i);
 
-  float dvi[3];
-  dvi[0] = chemistry_gradients_extrapolate_float(dvx_i, xij_i);
-  dvi[1] = chemistry_gradients_extrapolate_float(dvy_i, xij_i);
-  dvi[2] = chemistry_gradients_extrapolate_float(dvz_i, xij_i);
-
-  float drhoj;
-  drhoj = chemistry_gradients_extrapolate_float(drho_j, xij_j);
-
-  float dvj[3];
-  dvj[0] = chemistry_gradients_extrapolate_float(dvx_j, xij_j);
-  dvj[1] = chemistry_gradients_extrapolate_float(dvy_j, xij_j);
-  dvj[2] = chemistry_gradients_extrapolate_float(dvz_j, xij_j);
+  float drhoj_ext, dvj_ext[3];
+  drhoj_ext = chemistry_gradients_extrapolate_float(drho_j, xij_j);
+  dvj_ext[0] = chemistry_gradients_extrapolate_float(dvx_j, xij_j);
+  dvj_ext[1] = chemistry_gradients_extrapolate_float(dvy_j, xij_j);
+  dvj_ext[2] = chemistry_gradients_extrapolate_float(dvz_j, xij_j);
 
   /* Apply the slope limiter at this interface */
-  chemistry_slope_limit_face_hydro(Wi, Wj, dvi, dvj, xij_i, xij_j, r);
+  chemistry_slope_limit_face_hydro(Wi, Wj, drhoi_ext, drhoj_ext, dvi_ext,
+                                   dvj_ext, xij_i, xij_j, r);
 
-  Wi[0] += drhoi;
-  Wi[1] += dvi[0];
-  Wi[2] += dvi[1];
-  Wi[3] += dvi[2];
+  /* Reconstruct the values at the interface */
+  Wi[0] += drhoi_ext;
+  Wi[1] += dvi_ext[0];
+  Wi[2] += dvi_ext[1];
+  Wi[3] += dvi_ext[2];
 
-  Wj[0] += drhoj;
-  Wj[1] += dvj[0];
-  Wj[2] += dvj[1];
-  Wj[3] += dvj[2];
+  Wj[0] += drhoj_ext;
+  Wj[1] += dvj_ext[0];
+  Wj[2] += dvj_ext[1];
+  Wj[3] += dvj_ext[2];
 
   /* Note: We do not reconstruct v_tilde at the interface since it is not used
      during the Riemann problem. */
+
+  /* If we have negative densities, perform a 0th order reconstruction */
+  if (Wi[0] < 0) {
+    Wi[0] = hydro_get_comoving_density(pi);
+  }
+
+  if (Wj[0] < 0) {
+    Wj[0] = hydro_get_comoving_density(pj);
+  }
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_CHEMISTRY_GRADIENTS_H */

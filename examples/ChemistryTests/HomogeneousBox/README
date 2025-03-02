@@ -1,0 +1,36 @@
+# Intro
+This example is a non cosmological homogeneous box with gas only. The cooling and small perturbations fragment the box into small compact regions that create stars. Stars explode in supernovae and release metals, which are diffused with the new diffusion schemes.
+
+The default level is 5 (N_particle = 2^(3*level)). It is quick. If you want to try the example with higher levels, we recommend using HPC facilities.
+
+This example allows you to play with the diffusion parameters to see how they impact the simulation. You can also change parameters in the feedback, the cooling, etc.
+
+# Configure
+To run this example with GEAR model,
+
+```
+./configure --with-chemistry=X --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening --with-grackle=path/to/grackle
+```
+
+with
+- X=`GEAR_10` for smoothed metallicity scheme,
+- X=`GEAR-MF-DIFFUSION` for the parabolic diffusion scheme,
+- X=`GEAR-MF-HYPERBOLIC-DIFFUSION_10` for the hyperbolic diffusion scheme.
+
+Then,
+
+```
+make -j
+```
+
+You can remove the adaptive softening. In this case, you may need to change the default `max_physical_baryon_softening` value.
+
+
+# ICs
+The run.sh script calls `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
+
+# Run
+Type run.sh, and let's go!
+
+#Debugging notes
+You can track the metal mass injected by feedback and diffused by the chemitry module by adding `CFLAGS="-DSWIFT_CHEMISTRY_DEBUG_CHECKS" ./configure [other parameters]`. This will also output the total diffused metal mass by each particles over the simulation. If you sum these values, you can track metal mass conservation. Notice that star formation removes metal.

@@ -20,134 +20,15 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
 
-#include "chemistry_getters.h"
+#include "chemistry_flux.h"
 #include "chemistry_struct.h"
+#include "chemistry_unphysical.h"
 
 /**
  * @file src/chemistry/GEAR/chemistry_additions.h
  * @brief Routines to update chemistry data during kick operations and compute
  * metal mass fluxes in MFV hydro scheme.
  */
-
-/**
- * @brief Extra chemistry operations done during the kick. Update the fluxes.
- *
- * @param p Particle to act upon.
- * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
- * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
- * @param dt_hydro Hydro acceleration time-step
- * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
- * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
- * @param cosmo Cosmology.
- * @param hydro_props Additional hydro properties.
- */
-__attribute__((always_inline)) INLINE static void chemistry_kick_extra(
-    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
-    float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props,
-    const struct chemistry_global_data* chem_data) {
-
-  struct chemistry_part_data* chd = &p->chemistry_data;
-
-  if (chd->flux_dt != 0.0f) {
-    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-      double flux;
-      chemistry_get_fluxes(p, i, &flux);
-
-      /* Update the conserved variable */
-      chd->metal_mass[i] += flux;
-
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-      /* Avoid 0.0 divisions */
-      if (chd->tau != 0.0) {
-	/* Get the parabolic diffusion flux */
-	double F_diff_target[3];
-	chemistry_compute_physical_diffusion_flux(p, i, F_diff_target, chem_data,
-						  cosmo);
-
-	/* First update dF_dt with the previous value of the diffusion
-	   flux. Notice the + in front of F_diff_target. This is because the
-	   minus sign is already included.  */
-
-	chd->hyperbolic_flux[i].dF_dt[0] =
-          -chd->hyperbolic_flux[i].F_diff[0]/chd->tau + F_diff_target[0]/chd->tau;
-	chd->hyperbolic_flux[i].dF_dt[1] =
-          -chd->hyperbolic_flux[i].F_diff[1]/chd->tau + F_diff_target[1]/chd->tau;
-	chd->hyperbolic_flux[i].dF_dt[2] =
-          -chd->hyperbolic_flux[i].F_diff[2]/chd->tau + F_diff_target[2]/chd->tau;
-
-	/* Then update the diffusion flux with a semi-implicit scheme */
-	/* chd->hyperbolic_flux[i].F_diff[0] = */
-        /*   chd->hyperbolic_flux[i].F_diff_pred[0] + */
-        /*   dt_therm / (chd->tau + dt_therm) * */
-	/*   (F_diff_target[0] - chd->hyperbolic_flux[i].F_diff_pred[0]); */
-	/* chd->hyperbolic_flux[i].F_diff[1] = */
-        /*   chd->hyperbolic_flux[i].F_diff_pred[1] + */
-        /*   dt_therm / (chd->tau + dt_therm) * */
-	/*   (F_diff_target[1] - chd->hyperbolic_flux[i].F_diff_pred[1]); */
-	/* chd->hyperbolic_flux[i].F_diff[2] = */
-        /*   chd->hyperbolic_flux[i].F_diff_pred[2] + */
-        /*   dt_therm / (chd->tau + dt_therm) * */
-	/*   (F_diff_target[2] - chd->hyperbolic_flux[i].F_diff_pred[2]); */
-
-	/* Update with an implicit solver */
-	const float dt_factor = 1.0 / (1.0 + dt_therm / chd->tau);
-	chd->hyperbolic_flux[i].F_diff[0] = dt_factor*(chd->hyperbolic_flux[i].F_diff[0] + dt_therm / chd->tau * F_diff_target[0]);
-	chd->hyperbolic_flux[i].F_diff[1] = dt_factor*(chd->hyperbolic_flux[i].F_diff[1] + dt_therm / chd->tau * F_diff_target[1]);
-	chd->hyperbolic_flux[i].F_diff[2] = dt_factor*(chd->hyperbolic_flux[i].F_diff[2] + dt_therm / chd->tau * F_diff_target[2]);
-      }
-
-      if (chd->kappa == 0.0 && chd->tau == 0.0) {
-	/* According to the equations, we have F = 0 and dF/dt = 0.0 */
-	chd->hyperbolic_flux[i].dF_dt[0] = 0.0;
-	chd->hyperbolic_flux[i].dF_dt[1] = 0.0;
-	chd->hyperbolic_flux[i].dF_dt[2] = 0.0;
-
-	/* Then update the diffusion flux with a semi-implicit scheme */
-	chd->hyperbolic_flux[i].F_diff[0] = 0.0;
-	chd->hyperbolic_flux[i].F_diff[1] = 0.0;
-	chd->hyperbolic_flux[i].F_diff[2] = 0.0;
-      }
-#endif
-    }
-
-    /* Reset the fluxes, so that they do not get used again in kick1 */
-    chemistry_reset_chemistry_fluxes(p);
-
-    /* Invalidate the particle time-step. It is considered to be inactive until
-       dt is set again in hydro_prepare_force() */
-    chd->flux_dt = -1.0f;
-  } else /* (p->chemistry_data.flux_dt == 0.f) */ {
-    /* something tricky happens at the beginning of the simulation: the flux
-       exchange is done for all particles, but using a time step of 0. This
-       in itself is not a problem. However, it causes some issues with the
-       initialisation of flux.dt for inactive particles, since this value will
-       remain 0 until the particle is active again, and its flux.dt is set to
-       the actual time step in hydro_prepare_force(). We have to make sure it
-       is properly set to -1 here, so that inactive particles are indeed found
-       to be inactive during the flux loop. */
-    chd->flux_dt = -1.0f;
-  }
-
-  /* Element-wise sanity checks */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    const double m_metal_old = chd->metal_mass[i];
-    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
-                                     hydro_get_mass(p), /*callloc=*/2,
-                                     /*element*/ i);
-  }
-
-  /* Sanity check on the total metal mass */
-  chemistry_check_unphysical_total_metal_mass(p, 1);
-
-  /* Reset wcorr */
-  p->geometry.wcorr = 1.0f;
-
-#if defined(HYDRO_DOES_MASS_FLUX)
-  chemistry_kick_extra_mass_flux(p, dt_therm, dt_grav, dt_hydro, dt_kick_corr,
-                                 cosmo, hydro_props)
-#endif
-}
 
 #if defined(HYDRO_DOES_MASS_FLUX)
 /**
@@ -189,7 +70,6 @@ chemistry_kick_extra_mass_flux(struct part* p, float dt_therm, float dt_grav,
     if (p->conserved.mass + p->flux.mass <= 0.) {
       for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
         p->chemistry_data.metal_mass[i] = 0.;
-        p->chemistry_data.smoothed_metal_mass_fraction[i] = 0.;
       }
       chemistry_reset_mass_fluxes(p);
       /* Nothing left to do */
@@ -280,5 +160,75 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
   }
 }
 #endif /* HYDRO_DOES_MASS_FLUX */
+
+/**
+ * @brief Extra chemistry operations done during the kick. Update the fluxes.
+ *
+ * @param p Particle to act upon.
+ * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
+ * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
+ * @param dt_hydro Hydro acceleration time-step
+ * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
+ * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
+ * @param cosmo Cosmology.
+ * @param hydro_props Additional hydro properties.
+ * @param chem_data The global properties of the chemistry scheme.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_kick_extra(
+    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props,
+    const struct chemistry_global_data* chem_data) {
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  struct chemistry_part_data* chd = &p->chemistry_data;
+
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    /* Avoid 0.0 divisions */
+    if (chd->tau != 0.0) {
+      /* Get the parabolic diffusion flux */
+      double F_diff_target[3];
+      chemistry_compute_physical_diffusion_flux(p, i, F_diff_target, chem_data,
+                                                cosmo);
+
+      /* First update dF_dt with the previous value of the diffusion
+         flux. Notice the + in front of F_diff_target. This is because the
+         minus sign is already included.  */
+
+      chd->hyperbolic_flux[i].dF_dt[0] =
+          -chd->hyperbolic_flux[i].F_diff[0] / chd->tau +
+          F_diff_target[0] / chd->tau;
+      chd->hyperbolic_flux[i].dF_dt[1] =
+          -chd->hyperbolic_flux[i].F_diff[1] / chd->tau +
+          F_diff_target[1] / chd->tau;
+      chd->hyperbolic_flux[i].dF_dt[2] =
+          -chd->hyperbolic_flux[i].F_diff[2] / chd->tau +
+          F_diff_target[2] / chd->tau;
+
+      /* Then update the diffusion flux with a semi-implicit scheme */
+      const float dt_factor = 1.0 / (1.0 + 0.5 * dt_therm / chd->tau);
+      chd->hyperbolic_flux[i].F_diff[0] =
+          dt_factor * (chd->hyperbolic_flux[i].F_diff_pred[0] +
+                       0.5 * dt_therm / chd->tau * F_diff_target[0]);
+      chd->hyperbolic_flux[i].F_diff[1] =
+          dt_factor * (chd->hyperbolic_flux[i].F_diff_pred[1] +
+                       0.5 * dt_therm / chd->tau * F_diff_target[1]);
+      chd->hyperbolic_flux[i].F_diff[2] =
+          dt_factor * (chd->hyperbolic_flux[i].F_diff_pred[2] +
+                       0.5 * dt_therm / chd->tau * F_diff_target[2]);
+
+      /* Check that the fluxes are meaningful */
+      chemistry_check_unphysical_diffusion_flux(chd->hyperbolic_flux[i].F_diff);
+    }
+  }
+#endif
+  /* Reset wcorr */
+  p->geometry.wcorr = 1.0f;
+
+#if defined(HYDRO_DOES_MASS_FLUX)
+  chemistry_kick_extra_mass_flux(p, dt_therm, dt_grav, dt_hydro, dt_kick_corr,
+                                 cosmo, hydro_props);
+#endif
+}
 
 #endif  // SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H

@@ -69,7 +69,6 @@ for i, filename in enumerate(tqdm(files)):
     m_fe[i] = np.sum(m_fe_iter.value)
     time[i] = data.metadata.time.value
 
-
 figsize = (4.6, 6.2)
 fig, ax = plt.subplots(ncols=1, nrows=1, figsize=figsize, num=1)
 
@@ -79,7 +78,8 @@ if log:
 ax.set_ylabel("$M_{\mathrm{Fe}}$ [M$_\odot$]")
 ax.set_xlabel("$t$ [Gyr]")
 
-ax.plot(time, m_fe)
+ax.plot(time, m_fe, label='Metal mass')
+ax.legend()
 plt.savefig("metal_mass_evolution.png", format='png',
             bbox_inches='tight', dpi=300)
 plt.close()

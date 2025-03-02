@@ -47,7 +47,7 @@
 #define FILTERING_SMOOTHING_FACTOR 0.8
 #define DEFAULT_DIFFUSION_NORMALISATION 1
 #define DEFAULT_PSI_RIEMANN_SOLVER 0.1
-#define DEFAULT_EPSILON_RIEMANN_SOLVER 0.5
+#define DEFAULT_EPSILON_RIEMANN_SOLVER 0.1
 #define DEFAULT_USE_SUPERTIMESTEPPING 0
 #define DEFAULT_N_SUBSTEPS 5
 #define DEFAULT_NU_SUPERTIMESTEPPPING 0.04
@@ -275,7 +275,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 #endif
 
   /***************************************************************************/
-  data->diffusion_coefficient = parser_get_opt_param_float(
+  data->diffusion_coefficient = parser_get_opt_param_double(
       parameter_file, "GEARChemistry:diffusion_coefficient",
       DEFAULT_DIFFUSION_NORMALISATION);
 
@@ -315,6 +315,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 
   /***************************************************************************/
   /* Supertimestepping */
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   data->use_supertimestepping = parser_get_opt_param_int(
       parameter_file, "GEARChemistry:use_supertimestepping",
       DEFAULT_USE_SUPERTIMESTEPPING);
@@ -325,24 +326,49 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   data->nu = parser_get_opt_param_float(parameter_file,
                                         "GEARChemistry:nu_supertimestepping",
                                         DEFAULT_NU_SUPERTIMESTEPPPING);
-
   data->C_CFL_chemistry = parser_get_opt_param_float(
       parameter_file, "GEARChemistry:C_CFL_chemistry",
       DEFAULT_C_CFL_CHEMISTRY_SUPERTIMESTEPPPING);
-
+#else
+  /* Make it mandatory for parabolic diffusion */
+  data->C_CFL_chemistry =
+      parser_get_param_float(parameter_file, "GEARChemistry:C_CFL_chemistry");
+#endif
   /***************************************************************************/
   /* Hyperbolic diffusion */
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  if (data->diffusion_mode == isotropic_constant) {
-    data->tau =
-        parser_get_param_double(parameter_file, "GEARChemistry:tau");
+
+  char temp2[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(parameter_file, "GEARChemistry:relaxation_time_mode", temp2);
+  if (strcmp(temp2, "Constant") == 0)
+    data->relaxation_time_mode = constant_mode;
+  else if (strcmp(temp2, "Soundspeed") == 0)
+    data->relaxation_time_mode = soundspeed_mode;
+  else
+    error(
+        "The chemistry relaxation time mode must be Constant or Soundspeed"
+        " not %s",
+        temp2);
+
+  /* Note: This is the physical relaxation time, not comoving */
+  if (data->relaxation_time_mode == constant_mode) {
+    data->tau = parser_get_param_double(parameter_file, "GEARChemistry:tau");
   }
 
-  /* This is used for testing only */
-  data->riemann_solver = parser_get_opt_param_int(
-      parameter_file, "GEARChemistry:riemann_solver", 1);
+  parser_get_param_string(parameter_file, "GEARChemistry:riemann_solver", temp);
+  if (strcmp(temp, "HLL") == 0)
+    data->riemann_solver = HLL;
+  else if (strcmp(temp, "HLL_parabolic_H17") == 0)
+    data->riemann_solver = HLL_parabolic_Hopkins2017;
+  else if (strcmp(temp, "HLL_hyperbolic_H17") == 0)
+    data->riemann_solver = HLL_hyperbolic_Hopkins2017;
+  else
+    error(
+        "The chemistry diffusion mode must be HLL, HLL_parabolic_H17 or "
+        "or HLL_hyperbolic_H17 "
+        " not %s",
+        temp);
 #endif
-
   /***************************************************************************/
   /* Print the parameters we use */
   if (engine_rank == 0) {
@@ -350,9 +376,17 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
     message("Diffusion coefficient:      %e", data->diffusion_coefficient);
     message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
     message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
+    message("C_CFL:                      %e", data->C_CFL_chemistry);
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     message("Use supertimestepping:      %d", data->use_supertimestepping);
     message("N_substeps:                 %d", data->N_substeps);
     message("nu:                         %e", data->nu);
+#endif
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    message("Riemann solver:             %d", data->riemann_solver);
+    message("Relaxation time mode:       %u", data->relaxation_time_mode);
+    message("Relaxation time (constant_mode): %e", data->tau);
+#endif
   }
 }
 
@@ -375,7 +409,7 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* chem_data,
     const struct part* restrict p) {
-
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   if (chem_data->use_supertimestepping) {
     /* For supertimestepping, use the advective timestep eq (D1) */
     return chemistry_compute_advective_supertimestep(p, chem_data, cosmo);
@@ -383,6 +417,10 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     /* Without supertimestepping, use the parabolic timestep eq (15) */
     return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
   }
+#else
+  /* Use the hyperbolic CFL condition */
+  return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
+#endif
 }
 
 /**
@@ -408,6 +446,9 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct chemistry_global_data* cd, struct part* restrict p,
     const float dt_part, const double time_base, const double ti_current) {
 
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  return FLT_MAX;
+#else
   struct chemistry_part_data* chd = &p->chemistry_data;
 
   /* Do not use supertimestepping in the fake timestep */
@@ -476,6 +517,7 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
   } else { /* No supertimestepping */
     return FLT_MAX;
   }
+#endif
 }
 
 /**
@@ -567,7 +609,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 #endif
     chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g],
                                      m_metal_old, hydro_get_mass(p),
-                                     /*callloc=*/3, /*element*/ g);
+                                     /*callloc=*/0, /*element*/ g, p->id);
   }
 
   /* Sanity check on the total metal mass */
@@ -629,14 +671,39 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     const int with_cosmology, const double time, const double dt,
     const struct chemistry_global_data* cd) {
 
-  /* Store the density of the current timestep for the next timestep */
-  p->chemistry_data.rho_prev = chemistry_get_comoving_density(p);
-  p->chemistry_data.filtered.rho_prev = p->chemistry_data.filtered.rho;
+  /* Update active particles */
+  struct chemistry_part_data* chd = &p->chemistry_data;
 
-  /* Take care of the case where \bar{rho_prev} = 0 */
-  if (p->chemistry_data.filtered.rho_prev == 0) {
-    p->chemistry_data.filtered.rho_prev = p->chemistry_data.rho_prev;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    double flux;
+    chemistry_get_metal_mass_fluxes(p, i, &flux);
+
+    /* Update the conserved variable */
+    chd->metal_mass[i] += flux;
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+    /* Update the diffused metal mass */
+    chd->diffused_metal_mass[i] += flux;
+#endif
   }
+
+  /* Reset the metal mass fluxes now that they have been applied */
+  chemistry_reset_chemistry_metal_mass_fluxes(p);
+
+  /* Invalidate the particle time-step. It is considered to be inactive until
+     dt is set again in hydro_prepare_force() */
+  chd->flux_dt = -1.0f;
+
+  /* Element-wise sanity checks */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    const double m_metal_old = chd->metal_mass[i];
+    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
+                                     hydro_get_mass(p), /*callloc=*/2,
+                                     /*element*/ i, p->id);
+  }
+
+  /* Sanity check on the total metal mass */
+  chemistry_check_unphysical_total_metal_mass(p, 2);
 }
 
 /**
@@ -703,8 +770,10 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   /* Init the gradient for the next loops */
   chemistry_gradients_init(p);
 
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Initialize time step criterion variables */
-  cpd->timestepvars.vmax = 0.;
+  cpd->timestepvars.vmax = 0.0;
+#endif
 }
 
 /**
@@ -745,10 +814,12 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
      particle */
   p->geometry.wcorr = 1.0f;
 
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Supertimestepping ----*/
   /* Set the substep to 0 so that we can compute everything in timestep for the
      first time. */
   p->chemistry_data.timesteps.current_substep = 0;
+#endif
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
@@ -829,12 +900,12 @@ INLINE static void chemistry_copy_star_formation_properties(
   float mass = hydro_get_mass(p);
 
   /* Store the chemistry struct in the star particle */
-  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
-    sp->chemistry_data.metal_mass_fraction[k] =
-        p->chemistry_data.metal_mass[k] / mass;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    const double part_metal_mass = chemistry_get_part_corrected_metal_mass(p, i);
+    sp->chemistry_data.metal_mass_fraction[i] = part_metal_mass / mass;
 
     /* Remove the metals taken by the star. */
-    p->chemistry_data.metal_mass[k] *= mass / (mass + sp->mass);
+    p->chemistry_data.metal_mass[i] *= mass / (mass + sp->mass);
   }
 }
 
@@ -869,8 +940,8 @@ INLINE static void chemistry_copy_sink_properties(const struct part* p,
 
   /* Store the chemistry struct in the star particle */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    sink->chemistry_data.metal_mass_fraction[i] =
-        p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
+    const double part_metal_mass = chemistry_get_part_corrected_metal_mass(p, i);
+    sink->chemistry_data.metal_mass_fraction[i] = part_metal_mass / hydro_get_mass(p);
   }
 }
 
@@ -901,11 +972,11 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
     struct sink* s, const struct part* p, const double ms_old) {
-  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
-    double mk = s->chemistry_data.metal_mass_fraction[k] * ms_old +
-                p->chemistry_data.metal_mass[k];
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    const double part_metal_mass = chemistry_get_part_corrected_metal_mass(p, i);
+    const double mi = s->chemistry_data.metal_mass_fraction[i] * ms_old + part_metal_mass;
 
-    s->chemistry_data.metal_mass_fraction[k] = mk / s->mass;
+    s->chemistry_data.metal_mass_fraction[i] = mi / s->mass;
   }
 }
 
@@ -1002,15 +1073,52 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     chd->hyperbolic_flux[m].F_diff_pred[0] =
         chd->hyperbolic_flux[m].F_diff[0] +
-        dt_therm * chd->hyperbolic_flux[m].dF_dt[0];
+        0.5 * dt_therm * chd->hyperbolic_flux[m].dF_dt[0];
     chd->hyperbolic_flux[m].F_diff_pred[1] =
         chd->hyperbolic_flux[m].F_diff[1] +
-        dt_therm * chd->hyperbolic_flux[m].dF_dt[1];
+        0.5 * dt_therm * chd->hyperbolic_flux[m].dF_dt[1];
     chd->hyperbolic_flux[m].F_diff_pred[2] =
         chd->hyperbolic_flux[m].F_diff[2] +
-        dt_therm * chd->hyperbolic_flux[m].dF_dt[2];
+        0.5 * dt_therm * chd->hyperbolic_flux[m].dF_dt[2];
+
+    /* Check that the fluxes are meaningful */
+    chemistry_check_unphysical_diffusion_flux(
+        chd->hyperbolic_flux[m].F_diff_pred);
   }
 #endif
+
+  /* Update inactive particles that are drifted. This ensures metal mass
+     conservation to machine accuracy. */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    double flux;
+    chemistry_get_metal_mass_fluxes(p, i, &flux);
+
+    /* Update the conserved variable */
+    chd->metal_mass[i] += flux;
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+    /* Update the diffused metal mass */
+    chd->diffused_metal_mass[i] += flux;
+#endif
+  }
+
+  /* Reset the metal mass fluxes now that they have been applied */
+  chemistry_reset_chemistry_metal_mass_fluxes(p);
+
+  /* We don't need to invalidate the part's timestep. The active ones were
+     reset in chemistry_end_force() and the inactive do not need an update
+     until the next chemistry_prepare_force() call. */
+
+  /* Element-wise sanity checks */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    const double m_metal_old = chd->metal_mass[i];
+    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
+                                     hydro_get_mass(p), /*callloc=*/3,
+                                     /*element*/ i, p->id);
+  }
+
+  /* Sanity check on the total metal mass */
+  chemistry_check_unphysical_total_metal_mass(p, 3);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */

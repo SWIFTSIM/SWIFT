@@ -30,20 +30,20 @@
  * */
 
 /**
- * @brief Reset the diffusion fluxes for the given particle.
+ * @brief Reset the metal mass fluxes for the given particle.
  *
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_reset_chemistry_fluxes(struct part* restrict p) {
+chemistry_reset_chemistry_metal_mass_fluxes(struct part* restrict p) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    p->chemistry_data.diffusion_flux[i] = 0.0;
+    p->chemistry_data.diffused_metal_mass_fluxes[i] = 0.0;
   }
 }
 
 /**
- * @brief Get the diffusion fluxes for the given particle.
+ * @brief Get the metal mass fluxes for the given particle.
  *
  * Notice that this function returns the solution to the Riemann problem. Hence
  * the flux is 1D.
@@ -52,9 +52,9 @@ chemistry_reset_chemistry_fluxes(struct part* restrict p) {
  * @param metal Index of metal specie.
  * @param flux Fluxes for the particle (array of size 1).
  */
-__attribute__((always_inline)) INLINE void chemistry_get_fluxes(
+__attribute__((always_inline)) INLINE void chemistry_get_metal_mass_fluxes(
     const struct part* restrict p, int metal, double* flux) {
-  *flux = p->chemistry_data.diffusion_flux[metal];
+  *flux = p->chemistry_data.diffused_metal_mass_fluxes[metal];
 }
 
 /**
@@ -85,7 +85,8 @@ chemistry_compute_physical_diffusion_flux(
     /* Here, we use grad (rho Z) */
     double grad_rhoZ[3];
     chemistry_get_metal_density_gradients(p, metal, grad_rhoZ);
-    const double a_inv_4 = cosmo->a_inv*cosmo->a_inv*cosmo->a_inv*cosmo->a_inv;
+    const double a_inv_4 =
+        cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
 
     /* a^-3 for density and a^-1 for gradient */
     F_diff[0] = -kappa * grad_rhoZ[0] * a_inv_4;
@@ -113,12 +114,12 @@ chemistry_compute_physical_diffusion_flux(
             K[i][j] * p->chemistry_data.gradients.Z[metal][j] * cosmo->a_inv;
       }
     } /* End of matrix multiplication */
-    } /* end of if else diffusion_mode */
+  } /* end of if else diffusion_mode */
 }
 
 /**
- * @brief Compute the flux for the Riemann problem with the given left and right
- * state, and interface normal, surface area and velocity.
+ * @brief Compute the metal mass flux for the Riemann problem with the given
+ * left and right state, and interface normal, surface area and velocity.
  *
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
@@ -166,10 +167,9 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
       pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[2]};
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the fluxes are meaningful */
   chemistry_check_unphysical_diffusion_flux(F_diff_i);
   chemistry_check_unphysical_diffusion_flux(F_diff_j);
-#endif
 
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */

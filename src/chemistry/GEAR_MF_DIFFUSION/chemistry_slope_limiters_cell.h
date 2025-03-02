@@ -83,9 +83,12 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
    * primitive variables among the ngbs */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chi->limiter.Z[i][0] =
-      min(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][0]);
+        min(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][0]);
     chi->limiter.Z[i][1] =
-      max(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][1]);
+        max(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][1]);
+
+    /* Ensures metalicity never exceeds 1 */
+    chi->limiter.Z[i][1] = min(1.0, chi->limiter.Z[i][1]);
   }
 
   chi->limiter.v[0][0] = min(pj->v[0], chi->limiter.v[0][0]);
@@ -144,7 +147,7 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
      This case can happen e.g. in the MetalDiffusionOnePeak example where we
      only have one particule with non zero metallicity. The slope limiter then
      computes a high value for alpha (1e15). */
-  if (valmin != valmax && gradtrue != 0.0) {
+  if (gradtrue != 0.0) {
     gradtrue *= maxr;
     const double gradtrue_inv = 1.0 / gradtrue;
     const double gradmax = valmax - value;
@@ -178,15 +181,19 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
       const double final_fmin =
           (fmin > positive_definite_min) ? fmin : positive_definite_min;
 
-      /* Compute cfac for positivity preservation */
+      /* Compute cfac for positivity preservation
+         Note: gradtrue has been multiplied by maxr already. Hence, we don't
+         need to divide (value - final_fmin) by maxr. */
       const double cfac_pos_preserve = (value - final_fmin) / gradtrue;
       alpha = (cfac_pos_preserve < alpha) ? cfac_pos_preserve : alpha;
     }
 
     /* Apply the limiting factor to the gradient */
-    gradient[0] *= alpha;
-    gradient[1] *= alpha;
-    gradient[2] *= alpha;
+    if (alpha < 1.0) {
+      gradient[0] *= alpha;
+      gradient[1] *= alpha;
+      gradient[2] *= alpha;
+    }
   } /* gradtrue != 0 */
 }
 
@@ -227,7 +234,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
 #endif
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chemistry_slope_limit_quantity(
-        /*gradient=*/ chd->gradients.Z[i],
+        /*gradient=*/chd->gradients.Z[i],
         /*maxr=    */ maxr,
         /*value=   */ chemistry_get_metal_mass_fraction(p, i),
         /*valmin=  */ chd->limiter.Z[i][0],
@@ -237,8 +244,8 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   }
 
   /* Use doubles sice chemistry_slope_limit_quantity() accepts double arrays. */
-  double gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3], gradvy_tilde[3],
-      gradvz_tilde[3];
+  double gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3],
+      gradvy_tilde[3], gradvz_tilde[3];
 
   /* Get the velocity gradients and cast them as double */
   gradvx[0] = chd->gradients.v[0][0];
@@ -280,7 +287,8 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                                  vz_tilde_lim[0], vz_tilde_lim[1], N_cond, 0);
 
   /* Slope limit density gradient */
-  chemistry_slope_limit_quantity(gradrho, maxr, p->rho, rholim[0], rholim[1], N_cond, 1);
+  chemistry_slope_limit_quantity(gradrho, maxr, p->rho, rholim[0], rholim[1],
+                                 N_cond, 1);
 
   /* Set the velocity gradient values */
   chd->gradients.v[0][0] = gradvx[0];

@@ -41,7 +41,7 @@ chemistry_compute_parabolic_timestep(
 
   /* CFL condition */
   const float dt_cfl =
-    CFL_condition * delta_x / p->chemistry_data.timestepvars.vmax;
+      CFL_condition * delta_x / p->chemistry_data.timestepvars.vmax;
   return dt_cfl;
 #else
   const struct chemistry_part_data *chd = &p->chemistry_data;
@@ -53,8 +53,7 @@ chemistry_compute_parabolic_timestep(
 
   /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...), and q = (Z_1, Z_2,
      ...). Hence, the term norm(U)/norm(q) in eq (15) is abs(rho). */
-  const float norm_U_over_norm_q =
-      cosmo->a3_inv * fabs(chemistry_get_comoving_density(p));
+  const float norm_U_over_norm_q = hydro_get_physical_density(p, cosmo);
 
   /* Some helpful variables */
   const float delta_x = kernel_gamma * p->h * cosmo->a;
@@ -94,13 +93,20 @@ chemistry_compute_parabolic_timestep(
   } else {
     /* Compute the expression in the square bracket in eq (15). Notice that I
        rewrote it to avoid division by 0 when norm_nabla_q = 0. */
-    expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
+    /* expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q); */
+
+    /* The expression above is too strict because of feedback metal
+       injection. The code slows by a factor of 10 compared to the following
+       simpler case. Use the expression above if you want to ensure the
+       correctness of parabolic diffusion. */
+    expression = delta_x;
   }
 
   return expression * expression / norm_matrix_K * norm_U_over_norm_q;
 #endif
 }
 
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
 /**
  * @brief Compute the particle supertimestep proportional to h.
  *
@@ -251,5 +257,6 @@ chemistry_make_integer_timestep(const float new_dt, const timebin_t old_bin,
 
   return new_dti;
 }
+#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_TIMESTEPS_H  */
