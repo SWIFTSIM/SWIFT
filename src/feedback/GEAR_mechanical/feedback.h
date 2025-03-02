@@ -33,6 +33,8 @@
 void feedback_update_part(struct part* p, struct xpart* xp,
                           const struct engine* e);
 
+void feedback_end_density(struct part* p, struct xpart* xp);
+
 void feedback_reset_part(struct part* p, struct xpart* xp);
 
 void feedback_will_do_feedback(

@@ -108,6 +108,18 @@ void feedback_update_part(struct part* p, struct xpart* xp,
 }
 
 /**
+ * @brief Finishes the #part density calculation.
+ *
+ * Save the #part density.wcount for use in feedback loops.
+ *
+ * @param p The particle to act upon
+ * @param xp The extra particle to act upon
+ */
+__attribute__((always_inline)) INLINE void feedback_end_density(struct part* p, struct xpart* xp) {
+  p->feedback_data.density.wcount = p->density.wcount;
+}
+
+/**
  * @brief Reset the gas particle-carried fields related to feedback at the
  * start of a step.
  *
@@ -356,7 +368,6 @@ double feedback_get_enrichment_timestep(const struct spart* sp,
  * @param sp The particle to act upon
  */
 void feedback_init_spart(struct spart* sp) {
-  sp->feedback_data.density_wcount = 0;
   sp->feedback_data.enrichment_weight = 0.f;
 
   sp->feedback_data.f_plus_num[0] = 0.0;
@@ -426,7 +437,6 @@ void feedback_init_after_star_formation(
  */
 void feedback_reset_feedback(struct spart* sp,
                              const struct feedback_props* feedback_props) {
-  sp->feedback_data.density_wcount = 0;
   sp->feedback_data.energy_ejected = 0;
   sp->feedback_data.enrichment_weight = 0.f;
 
@@ -631,9 +641,11 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
   /* The star wcount has been computed in the feedback density loop. It need to
    * be multiplied by 1/h^d. The gas wcount cannot be retrived from here. So we
    * approximate it using rho/mass. */
-  const double n_bar_i =
-      si->feedback_data.density_wcount * pow_dimension(1.0 / hi);
-  const double n_bar_j = pj->rho / pj->mass;
+  /* Note: Gizmo does not compute the matrix E for stars, as we can understand
+     from the paper. Moreover, Gizmo uses wcount = rho/mass for the gas and not
+     the MFV/M volume. */
+  const double n_bar_i = si->density.wcount;
+  const double n_bar_j = pj->feedback_data.density.wcount;
   const double n_bar_i_2_inv = 1.0 / (n_bar_i * n_bar_i);
   const double n_bar_j_2_inv = 1.0 / (n_bar_j * n_bar_j);
 
