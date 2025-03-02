@@ -655,7 +655,7 @@ static INLINE void runner_dopair_grav_pp_full(
 #ifdef SWIFT_DEBUG_CHECKS
       /* The gravity_cache are sometimes allocated with more
          place than required => flag with mass=0 */
-      if (gparts_j[pjd].time_bin == time_bin_not_created && mass_j != 0.f) {
+      if (mass_j != 0.f && gparts_j[pjd].time_bin == time_bin_not_created) {
         error("Found an extra gpart in the gravity interaction");
       }
       if (gparts_i[pid].time_bin == time_bin_not_created &&

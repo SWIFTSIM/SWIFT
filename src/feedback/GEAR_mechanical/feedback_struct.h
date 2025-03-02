@@ -25,7 +25,13 @@
 /**
  * @brief Feedback fields carried by each hydro particles
  */
-struct feedback_part_data {};
+struct feedback_part_data {
+  /* Save quantities computed in the #hydro density loop for feedback loop */
+  struct {
+    /*! Neighbour number count. */
+    float wcount;
+  } density;
+};
 
 /**
  * @brief Extra feedback fields carried by each hydro particles
@@ -51,9 +57,6 @@ struct feedback_xpart_data {
  * @brief Feedback fields carried by each star particles
  */
 struct feedback_spart_data {
-
-  /* Number of neighbours contributing to feedback */
-  double density_wcount;
 
   /* Normalisation factor used for the enrichment. Corresponds to the
      denominator in eq (9) in https://arxiv.org/abs/1707.07010  */

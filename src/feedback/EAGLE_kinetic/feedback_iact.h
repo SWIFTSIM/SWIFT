@@ -199,8 +199,10 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
  * @param si First (star) particle (not updated).
  * @param pj Second (gas) particle.
  * @param xpj Extra particle data
- * @param cosmo The cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
  * @param fb_props Properties of the feedback scheme.
+ * @param constants The physical constants (in internal units).
+ * @param us The internal system of units.
  * @param ti_current Current integer time used value for seeding random number
  * generator
  */
@@ -209,7 +211,8 @@ runner_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
     const struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct feedback_props *fb_props, const integertime_t ti_current) {
+    const struct feedback_props *fb_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (si->count_since_last_enrichment != 0 && engine_current_step > 0)

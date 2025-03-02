@@ -23,7 +23,7 @@
 #include "sink_part.h"
 
 /**
- * @file src/sink/GEAR/sink_getter.h
+ * @file src/sink/GEAR/sink_getters.h
  * @brief Getter functions for GEAR sink scheme to avoid exposing
  * implementation details to the outer world. Keep the code clean and lean.
  */
