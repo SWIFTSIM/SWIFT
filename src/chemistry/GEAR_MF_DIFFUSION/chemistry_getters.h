@@ -355,7 +355,7 @@ chemistry_get_physical_hyperbolic_soundspeed(
   const double norm_matrix_K = chemistry_get_matrix_norm(K);
   return sqrt(norm_matrix_K / chem_data->tau);
 #else
-  error("This function cannot be called for the parabolic diffusion mode.")
+  error("This function cannot be called for the parabolic diffusion mode.");
   return -1.0;
 #endif
 }

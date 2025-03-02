@@ -132,6 +132,7 @@ INLINE static void convert_gas_diffused_metals(const struct engine* e,
   ret[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = m_Z;
 }
 
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
 INLINE static void convert_gas_diffusion_flux_norm(const struct engine* e,
                                                    const struct part* p,
                                                    const struct xpart* xp,
@@ -144,6 +145,7 @@ INLINE static void convert_gas_diffusion_flux_norm(const struct engine* e,
                   F_diff[2] * F_diff[2]);
   }
 }
+#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
 #endif /* SWIFT_CHEMISTRY_DEBUG_CHECKS */
 
 /**
@@ -191,13 +193,17 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       UNIT_CONV_MASS, 0.f, parts, xparts, convert_gas_feedback_metals,
       "Mass fraction of each element received by feedback events");
 
+  num += 2;
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   list[5] = io_make_output_field_convert_part(
       "NormDiffusionFluxes", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
       UNIT_CONV_MASS_PER_UNIT_TIME_PER_UNIT_AREA, 0.f, parts, xparts,
       convert_gas_diffusion_flux_norm, "Norm of the diffusion fluxes");
 
-  num += 3;
-#endif
+  num += 1;
+#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
+#endif /* SWIFT_CHEMISTRY_DEBUG_CHECKS */
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   // TODO: Check the a exponent
