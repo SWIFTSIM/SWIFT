@@ -71,8 +71,9 @@ chemistry_riemann_solver_hopkins2017_HLL(
   /* Everything is in physical units here */
 
   /* Obtain velocity in interface frame */
-  const double uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
-  const double uR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
+  const double u_L = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
+  const double u_R = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
+  const double u_rel = u_R - u_L;
 
   /* Get the fastet speed of sound. Use physical soundspeed */
   const double c_s_L = hydro_get_physical_soundspeed(pi, cosmo);
@@ -80,8 +81,14 @@ chemistry_riemann_solver_hopkins2017_HLL(
   const double c_fast = max(c_s_L, c_s_R);
 
   /* Approximate lambda_plus and lambda_minus. Use velocity difference. */
-  const double lambda_plus = fabs(uL - uR) + c_fast;
+  const double lambda_plus = fabs(u_rel) + c_fast;
   const double lambda_minus = -lambda_plus;
+
+  /* Handle vacuum: vacuum does not require iteration and is always exact */
+  if (chemistry_riemann_is_vacuum(WL, WR, u_L, u_R, c_s_L, c_s_R)) {
+    *metal_flux = 0.0f;
+    return;
+  }
 
   if (lambda_plus == 0.f && lambda_minus == 0.f) {
     *metal_flux = 0.f;
@@ -102,32 +109,72 @@ chemistry_riemann_solver_hopkins2017_HLL(
     return;
   }
 
-  /* Prevent exessively large diffusion coefficients (same as Gizmo) */
+  /* Prevent exessively large diffusion coefficients (same as
+     Gizmo). Uncomment this line if you want to use it. */
   /* chemistry_riemann_prevent_large_K_star(pi, pj, Anorm, cosmo, &norm_K_star,
    * K_star); */
 
   /* Get U_star. Already in physical units. */
   const double U_star = 0.5 * (UR + UL);
 
-  /* Reconstruct ZR and ZL at the interface. Note that we have reconstructed UL
+  /* Reconstruct qR and qL at the interface. Note that we have reconstructed UL
      and UR in chemistry_gradients_predict(), but not q. We have everything to
      do so now. */
-  double ZL = chemistry_get_metal_mass_fraction(pi, m);
-  double ZR = chemistry_get_metal_mass_fraction(pj, m);
-  chemistry_gradients_predict_Z(pi, pj, m, dx, cosmo, &ZL, &ZR);
+  double qL, qR;
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    /* In this case, q = U = rho*Z */
+    qL = chemistry_get_physical_metal_density(pi, m, cosmo);
+    qR = chemistry_get_physical_metal_density(pj, m, cosmo);
 
+    const float r = sqrtf(dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]);
+    const float xfac = -pi->h / (pi->h + pj->h);
+    const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
+    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, &qL, &qR);
+  } else {
+    /* In these cases, U = rho*Z, q = Z */
+    qL = chemistry_get_metal_mass_fraction(pi, m);
+    qR = chemistry_get_metal_mass_fraction(pj, m);
+
+    /* TODO: Make API similar to gradients_predict() */
+    chemistry_gradients_predict_Z(pi, pj, m, dx, cosmo, &qL, &qR);
+  }
   /* Now compute q_star and grad_q_star. Convert the gradient to physical
      units by dividing by a. Z is physical. */
-  const double q_star = 0.5 * (ZR + ZL);
-  double grad_q_star[3] = {0.5 * cosmo->a_inv *
-                               (pi->chemistry_data.gradients.Z[m][0] +
-                                pj->chemistry_data.gradients.Z[m][0]),
-                           0.5 * cosmo->a_inv *
-                               (pi->chemistry_data.gradients.Z[m][1] +
-                                pj->chemistry_data.gradients.Z[m][1]),
-                           0.5 * cosmo->a_inv *
-                               (pi->chemistry_data.gradients.Z[m][2] +
-                                pj->chemistry_data.gradients.Z[m][2])};
+  const double q_star = 0.5 * (qR + qL);
+
+  /* Get the physical gradients */
+  double grad_q_L[3], grad_q_R[3];
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    /* In this case, q = U = rho*Z, grad q = grad (rho*Z) */
+    chemistry_get_metal_density_gradients(pi, m, grad_q_L);
+    chemistry_get_metal_density_gradients(pj, m, grad_q_R);
+
+    /* Convert to physical units: multiply by a^-4 (a^-3 for density and a^-1 for gradient) */
+    const double a_inv_4 = cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
+    grad_q_L[0] *= a_inv_4;
+    grad_q_L[1] *= a_inv_4;
+    grad_q_L[2] *= a_inv_4;
+
+    grad_q_R[0] *= a_inv_4;
+    grad_q_R[1] *= a_inv_4;
+    grad_q_R[2] *= a_inv_4;
+  } else {
+    /* In these cases, U = rho*Z, q = Z, grad q = grad Z */
+    chemistry_get_metal_mass_fraction_gradients(pi, m, grad_q_L);
+    chemistry_get_metal_mass_fraction_gradients(pj, m, grad_q_R);
+
+    /* Convert to physical units: multiply by a^-1 (Z is already physical) */
+    grad_q_L[0] *= cosmo->a_inv;
+    grad_q_L[1] *= cosmo->a_inv;
+    grad_q_L[2] *= cosmo->a_inv;
+
+    grad_q_R[0] *= cosmo->a_inv;
+    grad_q_R[1] *= cosmo->a_inv;
+    grad_q_R[2] *= cosmo->a_inv;
+  }
+  double grad_q_star[3] = {0.5 * (grad_q_L[0] + grad_q_R[0]),
+			   0.5 * (grad_q_L[1] + grad_q_R[1]),
+                           0.5 * (grad_q_L[2] + grad_q_R[2])};
 
   /* Define some convenient variables. Convert to physical: add a for the norm
    */
@@ -139,7 +186,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
   /* Now compute alpha to reduce numerical diffusion below physical
      diffusion. */
   const double alpha =
-      chemistry_riemann_compute_alpha(c_s_L, c_s_R, uL, uR, dx_p_norm, q_star,
+      chemistry_riemann_compute_alpha(c_s_L, c_s_R, u_L, u_R, dx_p_norm, q_star,
                                       U_star, K_star, norm_K_star, grad_q_star);
 
   /****************************************************************************/
@@ -163,8 +210,14 @@ chemistry_riemann_solver_hopkins2017_HLL(
       (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + alpha * F_U);
 
   /* Compute the direct fluxes */
-  const double qi = chemistry_get_metal_mass_fraction(pi, m);
-  const double qj = chemistry_get_metal_mass_fraction(pj, m);
+  double qi, qj;
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    qi = chemistry_get_physical_metal_density(pi, m, cosmo);
+    qj = chemistry_get_physical_metal_density(pj, m, cosmo);
+  } else {
+    qi = chemistry_get_metal_mass_fraction(pi, m);
+    qj = chemistry_get_metal_mass_fraction(pj, m);
+  }
   const double dq = qj - qi;
   const double nabla_o_q_dir[3] = {dx_p[0] * dq / dx_p_norm_2,
                                    dx_p[1] * dq / dx_p_norm_2,
@@ -262,14 +315,13 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
   const double c_s_L = hydro_get_physical_soundspeed(pi, cosmo);
   const double c_s_R = hydro_get_physical_soundspeed(pj, cosmo);
   const double c_fast = max(c_s_L, c_s_R);
+
+  /* Approximate lambda_plus and lambda_minus. Use velocity difference. */
   const double lambda_plus = fabs(u_rel) + c_fast;
   const double lambda_minus = -lambda_plus;
 
-  const double aL = c_s_L;
-  const double aR = c_s_R;
-
   /* Handle vacuum: vacuum does not require iteration and is always exact */
-  if (chemistry_riemann_is_vacuum(WL, WR, u_L, u_R, aL, aR)) {
+  if (chemistry_riemann_is_vacuum(WL, WR, u_L, u_R, c_s_L, c_s_R)) {
     *metal_flux = 0.0f;
     return;
   }
