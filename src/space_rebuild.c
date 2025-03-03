@@ -138,7 +138,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
 #ifdef MOVING_MESH
   /* Make sure parts are in gparts*/
-  for (int i = 0; i < s->nr_parts; ++i) {
+  for (size_t i = 0; i < s->nr_parts; ++i) {
     const struct part* p = &s->parts[i];
 
     if (p->gpart != NULL) {
@@ -1015,7 +1015,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
 #ifdef MOVING_MESH
   /* Make sure parts are moved to CoM */
-  for (int i = 0; i < s->nr_parts; ++i) {
+  for (size_t i = 0; i < s->nr_parts; ++i) {
     const struct part* p = &s->parts[i];
 
     if (p->gpart != NULL) {
