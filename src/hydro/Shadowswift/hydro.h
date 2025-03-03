@@ -71,14 +71,10 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float W[6];
   hydro_part_get_primitive_variables(p, W);
 
-  /* v_full is the actual velocity of the particle, v is its
-     hydrodynamical velocity. The time step depends on the relative difference
-     of the two. */
-  float v_rel[3];
-  hydro_part_get_relative_fluid_velocity(p, v_rel);
-  float vmax =
-      sqrtf(v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]) +
-      hydro_get_comoving_soundspeed(p);
+  float vmax = sqrtf(p->v_rel_full[0] * p->v_rel_full[0] +
+                     p->v_rel_full[1] * p->v_rel_full[1] +
+                     p->v_rel_full[2] * p->v_rel_full[2]) +
+               hydro_get_comoving_soundspeed(p);
   vmax = max(vmax, p->timestepvars.vmax);
 
   /* Get the comoving psize, since we will compare with another comoving
@@ -418,8 +414,9 @@ hydro_convert_conserved_to_primitive(
 #else
   double Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
   *thermal_energy = Q[4] - Ekin;
-#ifdef SHADOWSWIFT_THERMAL_ENERGY_SWITCH
-#if SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_SPRINGEL
+#if SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_NONE
+  u = *thermal_energy * m_inv;
+#elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_SPRINGEL
   const float *g = xp->a_grav;
   float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
                 hydro_get_comoving_psize(p);
@@ -448,7 +445,8 @@ hydro_convert_conserved_to_primitive(
   if (*thermal_energy > 1e-2 * (Ekin + Egrav)) {
     /* Recover thermal energy and entropy from total energy */
     u = *thermal_energy * m_inv;
-  } else if (*thermal_energy < 1e-3 * (p->timestepvars.Ekin + *thermal_energy) ||
+  } else if (*thermal_energy <
+                 1e-3 * (p->timestepvars.Ekin + *thermal_energy) ||
              *thermal_energy < 1e-3 * Egrav) {
     /* Keep entropy conserved and recover thermal and total energy. */
     double A = p->conserved.entropy * m_inv;
@@ -459,9 +457,6 @@ hydro_convert_conserved_to_primitive(
   }
 #else
   error("Unknown thermal energy switch!");
-#endif
-#else
-  u = thermal_energy * m_inv;
 #endif
 
   /* Apply entropy floor.
@@ -577,14 +572,22 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #ifdef SWIFT_DEBUG_CHECKS
     assert(p->timestepvars.last_kick == KICK1);
 #endif
-    /* Kick generator (undo the last half kick) */
-    hydro_generator_velocity_half_kick(p, xp, dt_therm);
 
     /* Signal that we just did a rollback */
     p->timestepvars.last_kick = ROLLBACK;
 
     /* Reset the flux.dt */
     p->flux.dt = -1.0f;
+
+    /* (Backwards) hydro kick for generator velocity, back to full timestep */
+    hydro_generator_velocity_half_kick(p, xp, dt_therm);
+
+    /* Reset particle velocity after rollback, new kicked particle velocity and
+     * relative velocity will be computed during the kick1 following this
+     * rollback. */
+    p->v_part_full[0] = xp->v_full[0];
+    p->v_part_full[1] = xp->v_full[1];
+    p->v_part_full[2] = xp->v_full[2];
 
     /* Nothing else to do here. */
     return;
@@ -630,7 +633,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       }
       float dE_springel = hydro_gravity_energy_update_term(
           dt_grav_corr1, dt_grav_corr2, xp->a_grav, a_grav, p->gravity.mflux,
-          p->v_full, grav_kick);
+          p->v_part_full, grav_kick);
 
       p->conserved.energy += dE_springel;
     }
@@ -713,13 +716,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     }
 #endif
 
-#ifndef SHADOWSWIFT_FIX_PARTICLES
-    /* Set the generator velocity to the fluid velocity. Steering will be
-     * applied after the first half kick */
-    xp->v_full[0] = p->v[0];
-    xp->v_full[1] = p->v[1];
-    xp->v_full[2] = p->v[2];
-#endif
+    /* NOTE: We update the generator velocity and relative velocity here
+     * already, because it is used in the timestep calculation, as well as the
+     * hydro velocity half kick. */
+    hydro_velocities_set(p, xp, dt_therm);
 
     /* Reset the fluxes so that they do not get used again in the kick1. */
     hydro_part_reset_fluxes(p);
@@ -742,7 +742,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #ifdef SWIFT_DEBUG_CHECKS
     assert(p->flux.dt == -1.0f);
 #endif
-    /* Kick generator */
+    /* Hydro kick for generator velocity (used for drifting) */
     hydro_generator_velocity_half_kick(p, xp, dt_therm);
 
     /* Update the flux.dt */
@@ -760,7 +760,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #ifdef SWIFT_DEBUG_CHECKS
     assert(p->flux.dt >= 0.0f);
 #endif
-    /* Kick generator */
+    /* Hydro kick for generator velocity */
     hydro_generator_velocity_half_kick(p, xp, dt_therm);
 
     /* Add the remainder of this particle's timestep to flux.dt */
@@ -782,7 +782,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #ifdef SWIFT_DEBUG_CHECKS
     assert(p->flux.dt == -1.0f);
 #endif
-    /* Kick generator */
+    /* Hydro kick for generator velocity */
     hydro_generator_velocity_half_kick(p, xp, dt_therm);
 
     /* Update the time step used in the flux calculation */

@@ -28,6 +28,7 @@ hydro_gravity_extra_velocity_drift(struct part* p) {
  * @param a_grav_prev Gravitational acceleration at the previous full timestep.
  * @param grav_kick Gravitational kick vector also used to update momentum:
  * $dt (m^n a^n + m^(n+1) a^(n+1)$.
+ * @param v_full Particle velocity for this timestep
  * @return Term used to update the energy variable.
  */
 __attribute__((always_inline)) INLINE static float
@@ -94,8 +95,8 @@ hydro_grav_work_from_half_state(struct part* pi, struct part* pj,
   float v_dot_c_i = 0.f;
   float v_dot_c_j = 0.f;
   for (int i = 0; i < 3; i++) {
-    v_dot_c_i += (v_half_lab[i] - pi->v_full[i]) * (cij[i] - ri[i]);
-    v_dot_c_j += (v_half_lab[i] - pj->v_full[i]) * (cij[i] - rj[i]);
+    v_dot_c_i += (v_half_lab[i] - pi->v_part_full[i]) * (cij[i] - ri[i]);
+    v_dot_c_j += (v_half_lab[i] - pj->v_part_full[i]) * (cij[i] - rj[i]);
   }
   for (int i = 0; i < 3; i++) {
     pi->gravity.mflux[i] += Whalf[0] * v_dot_c_i * area * n_unit[i];

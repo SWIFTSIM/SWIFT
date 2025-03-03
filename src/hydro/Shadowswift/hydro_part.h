@@ -60,7 +60,7 @@ struct xpart {
   /*! Offset between the current position and position at the last sort. */
   float x_diff_sort[3];
 
-  /*! Velocity at the last full step. */
+  /*! Velocity (particle, kicked) for this full step. */
   float v_full[3];
 
   /*! Gravitational acceleration at the end of the last step */
@@ -111,11 +111,14 @@ struct part {
   /*! Density. */
   float rho;
 
-  /*! Fluid velocity. */
+  /*! Fluid velocity (integrated) */
   float v[3];
 
   /*! Particle velocity */
-  float v_full[3];
+  float v_part_full[3];
+
+  /*! Relative fluid velocity (constant for this full timestep) */
+  float v_rel_full[3];
 
   /*! Pressure. */
   float P;

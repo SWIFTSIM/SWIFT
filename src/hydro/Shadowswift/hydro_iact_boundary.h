@@ -50,8 +50,8 @@ __attribute__((always_inline)) INLINE static void runner_reflect_primitives(
                         0.5 * (p->x[1] + p_boundary->x[1]),
                         0.5 * (p->x[2] + p_boundary->x[2])};
   float vij[3];
-  hydro_get_interface_velocity(p->v_full, p_boundary->v_full, dx, r2, midpoint,
-                               centroid, vij);
+  hydro_get_interface_velocity(p->v_part_full, p_boundary->v_part_full, dx, r2,
+                               midpoint, centroid, vij);
   /* Particle velocity in interface frame*/
   float v[3] = {p->v[0] - vij[0], p->v[1] - vij[1], p->v[2] - vij[2]};
 #ifdef SWIFT_DEBUG_CHECKS
@@ -291,8 +291,8 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
   double midpoint[3] = {0.5 * (p->x[0] + p_boundary->x[0]),
                         0.5 * (p->x[1] + p_boundary->x[1]),
                         0.5 * (p->x[2] + p_boundary->x[2])};
-  hydro_get_interface_velocity(p->v_full, p_boundary->v_full, dx, r2, midpoint,
-                               centroid, vij);
+  hydro_get_interface_velocity(p->v_part_full, p_boundary->v_part_full, dx, r2,
+                               midpoint, centroid, vij);
   /* Get primitive variables of pi. */
   float WL[6];
   hydro_part_get_primitive_variables(p, WL);
