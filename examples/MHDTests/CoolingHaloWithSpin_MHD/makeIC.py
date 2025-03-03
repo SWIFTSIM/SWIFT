@@ -17,8 +17,6 @@
 #
 ##############################################################################
 
-# this cooling halo example was set up to produce something close to 0712.0872
-
 import h5py
 import sys
 import numpy as np
@@ -223,6 +221,7 @@ for i in range(N):
     omega[i, 2] = 3.0 * J / radius[i]
     v[i, :] = np.cross(omega[i, :], (coords[i, :] - boxSize / 2.0))
     B[i, 2] = B0_cgs / const_unit_magnetic_field_in_cgs
+    #B[i, 0] = B0_cgs / const_unit_magnetic_field_in_cgs
 
 # Header
 grp = file.create_group("/Header")

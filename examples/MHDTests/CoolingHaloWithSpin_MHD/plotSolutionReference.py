@@ -1,5 +1,3 @@
-# colormaps for the script were chosen to match 1909.09650v2
-
 import numpy as np
 import h5py
 import sys
@@ -59,6 +57,8 @@ data.gas.mass_weighted_error = data.gas.masses * np.log10(
 )
 data.gas.mass_weighted_vr = data.gas.masses * vr
 data.gas.mass_weighted_Bz = data.gas.masses * abs(B[:, 2])
+data.gas.mass_weighted_Bx = data.gas.masses * abs(B[:, 0])
+data.gas.mass_weighted_By = data.gas.masses * abs(B[:, 1])
 data.gas.mass_weighted_J = (
     data.gas.masses * np.sqrt(J[:, 0] ** 2 + J[:, 1] ** 2 + J[:, 2] ** 2) / mu0
 )
@@ -73,7 +73,8 @@ rotation_matrix = [[1,0,0],
 """
 rotation_matrix = [[0, 0, 1], [0, 1, 0], [-1, 0, 0]]
 
-Lslice_kPc = 5.5 #2*21.5 #5.5
+# set plot area
+Lslice_kPc = 5.5 #2*21.5 
 Lslice = Lslice_kPc * 3.08e18 * 1e3 * unyt.cm
 
 visualise_region_xy = [
@@ -125,12 +126,16 @@ mass_weighted_error_map = slice_gas(**common_arguments, project="mass_weighted_e
 mass_weighted_error_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_error")
 mass_weighted_vr_map = slice_gas(**common_arguments, project="mass_weighted_vr")
 mass_weighted_Bz_map = slice_gas(**common_arguments, project="mass_weighted_Bz")
+mass_weighted_Bx_map = slice_gas(**common_arguments, project="mass_weighted_Bx")
+mass_weighted_By_map = slice_gas(**common_arguments, project="mass_weighted_By")
 mass_weighted_J_map = slice_gas(**common_arguments, project="mass_weighted_J")
 
 mass_weighted_plasmaBeta_map = slice_gas(**common_arguments, project="mass_weighted_plasmaBeta")
 mass_weighted_normv_map = slice_gas(**common_arguments, project="mass_weighted_normv")
 mass_weighted_normv_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_normv")
 mass_weighted_Bz_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_Bz")
+mass_weighted_Bx_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_Bx")
+mass_weighted_By_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_By")
 
 density_map_xy = mass_weighted_density_map_xy / mass_map_xy
 density_map = mass_weighted_density_map / mass_map
@@ -138,7 +143,11 @@ error_map = mass_weighted_error_map / mass_map
 error_map_xy = mass_weighted_error_map_xy / mass_map_xy
 vr_map = mass_weighted_vr_map / mass_map
 Bz_map = mass_weighted_Bz_map / mass_map
+Bx_map = mass_weighted_Bx_map / mass_map
+By_map = mass_weighted_By_map / mass_map
 Bz_map_xy = mass_weighted_Bz_map_xy / mass_map_xy
+Bx_map_xy = mass_weighted_Bx_map_xy / mass_map_xy
+By_map_xy = mass_weighted_By_map_xy / mass_map_xy
 J_map = mass_weighted_J_map / mass_map
 plasmaBeta_map = mass_weighted_plasmaBeta_map / mass_map
 normv_map = mass_weighted_normv_map / mass_map
@@ -146,12 +155,22 @@ normv_map_xy = mass_weighted_normv_map_xy / mass_map_xy
 
 density_map_xy.convert_to_units(unyt.g * unyt.cm ** (-3))
 density_map.convert_to_units(unyt.g * unyt.cm ** (-3))
+
+nH_map_xy = density_map_xy/(1.67e-24 * unyt.g)
+nH_map = density_map/(1.67e-24 * unyt.g)
+
 vr_map.convert_to_units(unyt.km / unyt.s)
 Bz_map.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
+Bx_map.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
+By_map.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
 Bz_map_xy.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
+Bx_map_xy.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
+By_map_xy.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
 J_map.convert_to_units(unyt.statA / (unyt.m ** 2))
 normv_map.convert_to_units(unyt.km / unyt.s)
 normv_map_xy.convert_to_units(unyt.km / unyt.s)
+normB_map = np.sqrt(Bx_map**2+By_map**2+Bz_map**2)
+normB_map_xy = np.sqrt(Bx_map_xy**2+By_map_xy**2+Bz_map_xy**2)
 
 nx = 2
 ny = 4
@@ -160,17 +179,17 @@ fig, ax = plt.subplots(ny, nx, sharey=True, figsize=(5*nx, 5*ny))
 #fig.suptitle("Plotting at %.3f free fall times" % toplot)
 
 a00 = ax[0, 0].contourf(
-    np.log10(density_map.value),
+    np.log10(nH_map.value),
     cmap="plasma",#"gist_stern",#"RdBu",
     extend="both",
-    levels=np.linspace(-28.0, -19.0, 100),
+    levels=np.linspace(-6, 4, 100),
 )
 
 a01 = ax[0, 1].contourf(
-    np.log10(density_map_xy.value),
+    np.log10(nH_map_xy.value),
     cmap="plasma",#"gist_stern", #"RdBu",
     extend="both",
-    levels=np.linspace(-28.0, -19.0, 100),
+    levels=np.linspace(-6, 4, 100),
 )
 
 #a10 = ax[1, 0].contourf(
@@ -189,13 +208,13 @@ a01 = ax[0, 1].contourf(
 #    levels=np.linspace(-3, 4, 100),
 #)
 a10 = ax[1, 0].contourf(
-    np.maximum(np.log10(Bz_map.value), -10),
+    np.maximum(np.log10(normB_map.value), -6),
     cmap="viridis", #"nipy_spectral_r",
     extend="both",
     levels=np.linspace(-4, 2, 100),
 )
 a11 = ax[1, 1].contourf(
-    np.maximum(np.log10(Bz_map_xy.value), -10),
+    np.maximum(np.log10(normB_map_xy.value), -6),
     cmap="viridis", #"nipy_spectral_r",
     extend="both",
     levels=np.linspace(-4, 2, 100),
@@ -229,16 +248,16 @@ for ii in range(ny):
         ax[ii,jj].set_ylim(0, 511)
 
 
-ticks_rho = [-28,-27,-26,-25,-24,-23,-22,-21,-20,-19]
+ticks_rho = [-6,-5,-4,-3,-2,-1,0,1,2,3,4]
 cbar1 = plt.colorbar(
     a00, ax=ax[0, 0], fraction=0.046, pad=0.04, ticks=ticks_rho
 )
-cbar1.set_label(r"$\mathrm{log}_{10} \rho \; [g/ {cm}^{-3}]$")
+cbar1.set_label(r"$\mathrm{log}_{10} \rho / m_H \; [ {cm}^{-3}]$")
 cbar2 = plt.colorbar(
     a01, ax=ax[0, 1], fraction=0.046, pad=0.04, ticks=ticks_rho
 )
 ax[0, 1].set_ylabel(r"$y$ [kPc]")
-cbar2.set_label(r"$\mathrm{log}_{10} \rho \; [g/ {cm}^{-3}]$")
+cbar2.set_label(r"$\mathrm{log}_{10} \rho / m_H \; [ {cm}^{-3}]$")
 
 #cbar3 = plt.colorbar(
 #    a10, ax=ax[1, 0], fraction=0.046, pad=0.04, ticks=np.linspace(1, 2, 2)
@@ -261,11 +280,11 @@ ticks_B = [-4,-3,-2,-1,0,1,2]
 cbar3 = plt.colorbar(
     a11, ax=ax[1, 0], fraction=0.046, pad=0.04, ticks=ticks_B
 )
-cbar3.set_label(r"$\mathrm{log}_{10} B_z \; [\mu G]$")
+cbar3.set_label(r"$\mathrm{log}_{10} B \; [G]$")
 cbar4 = plt.colorbar(
     a11, ax=ax[1, 1], fraction=0.046, pad=0.04, ticks=ticks_B
 )
-cbar4.set_label(r"$\mathrm{log}_{10} B_z \; [\mu G]$")
+cbar4.set_label(r"$\mathrm{log}_{10} B \; [G]$")
 
 ax[2, 1].set_ylabel(r"$y$ [kPc]")
 
@@ -403,7 +422,7 @@ print(f'Particle {index}, \nwith maximal velocity {vpart.value} km/s, \nmagnetic
 
 part_pixel_coords = 512/2*(1+rpart.value/Lslice_kPc)
 
-ax[1,0].scatter(part_pixel_coords[0],part_pixel_coords[2],color='red',marker='x')
+#ax[1,0].scatter(part_pixel_coords[0],part_pixel_coords[2],color='red',marker='x')
 
 
 # add panel with infromation about the run
