@@ -23,7 +23,6 @@
 #define GPUOFFLOAD_GRADIENT 1  // off-load hydro gradient to GPU
 #define GPUOFFLOAD_FORCE 1     // off-load hydro force to GPU
 
-// #define DO_CORNERS 1 //do corner pair tasks on CPU
 // #define DUMP_TIMINGS 1
 #include "../config.h"
 
@@ -151,7 +150,7 @@ extern "C" {
  * @param data A pointer to this thread's data.
  **/
 
-/* CUDA Header */
+/* CUDA Header. Wrap in extern "C" to prevent C++ function name mangling */
 #ifdef WITH_CUDA
 #ifdef __cplusplus
 extern "C" {
@@ -168,17 +167,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-// Convenience function for checking CUDA runtime API results
-// can be wrapped around any runtime API call. No-op in release builds.
-#define CUDA_DEBUG
-
-inline cudaError_t checkCuda(cudaError_t result) {
-  if (result != cudaSuccess) {
-    fprintf(stderr, "CUDA Runtime Error: %s\n", cudaGetErrorString(result));
-    assert(result == cudaSuccess);
-  }
-  return result;
-}
 
 void *runner_main2(void *data) {
   struct runner *r = (struct runner *)data;
