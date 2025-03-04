@@ -272,6 +272,19 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
 }
 
 /**
+ * @brief Returns the center mass of a particle
+ *
+ * @param p The particle of interest
+ * @param com (Return) The center of mass vector
+ */
+__attribute__((always_inline)) INLINE static void hydro_get_center_of_mass(
+    const struct part *restrict p, double *com) {
+  com[0] = p->x[0];
+  com[1] = p->x[1];
+  com[2] = p->x[2];
+}
+
+/**
  * @brief Sets the mass of a particle
  *
  * @param p The particle of interest
@@ -1014,5 +1027,32 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
       p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->mass,
       p->u, p->force.pressure, p->rho, p->h, p->mat_id, time);
 }
+
+/**
+ * @brief Split additional hydrodynamic quantities when splitting particles.
+ *
+ * Note that the mass is already handled in
+ * @engine_split_gas_particle_split_mapper, so this will be a no-op for most
+ * hydro schemes.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ * @param particle_split_factor Over how many particles are we splitting?
+ */
+__attribute__((always_inline)) INLINE static void hydro_split_part(
+    struct part *p, struct xpart *xp, const int particle_split_factor) {}
+
+/**
+ * @brief Update given random displacement vector if needed.
+ *
+ * No-op for most schemes, but might be necessary for schemes with asymmetric
+ * cells/particles.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ * @param displacement (in-out) initial random displacement vector.
+ */
+__attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
+    struct part *p, struct xpart *xp, double *displacement) {}
 
 #endif /* SWIFT_PLANETARY_HYDRO_H */
