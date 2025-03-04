@@ -180,24 +180,6 @@ inline cudaError_t checkCuda(cudaError_t result) {
   return result;
 }
 
-// inline void gpuErrchk(cudaError_t code) {
-// #define __FILE__ __LINE__
-//   inline void gpuAssert(cudaError_t code, const char *file, int line) {
-//     int abort = 0;
-//     if (code != cudaSuccess) {
-//       //			fprintf( stderr, "cudaCheckError() failed at
-//       //%s:%i : %s\n",
-//       //                 file, line, cudaGetErrorString( code ) );
-//       abort = 1;
-//       fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code),
-//       file,
-//               line);
-//       if (abort)
-//         exit(code);
-//     }
-//   }
-// }
-
 void *runner_main2(void *data) {
   struct runner *r = (struct runner *)data;
   struct engine *e = r->e;
@@ -275,7 +257,6 @@ void *runner_main2(void *data) {
 
   fprintf(stderr, "free mem %lu, total mem %lu\n", free_mem, total_mem);
   // how many tasks do we want for each launch of GPU kernel
-  //  fprintf(stderr,"pack_size is %i\n", sched->pack_size);
   const int target_n_tasks = sched->pack_size;
   const int target_n_tasks_pair = sched->pack_size_pair;
   pack_vars_self_dens->target_n_tasks = target_n_tasks;
@@ -295,8 +276,6 @@ void *runner_main2(void *data) {
   pack_vars_pair_forc->bundle_size = bundle_size_pair;
   pack_vars_self_grad->bundle_size = bundle_size;
   pack_vars_pair_grad->bundle_size = bundle_size_pair;
-  //  fprintf(stderr, "size %i size %i\n", sizeof(*pack_vars_self_dens),
-  //  sizeof(pack_vars_self)); const int bundle_size_pair = bundle_size/2;
   // Keep track of first and last particles for each task (particle data is
   // arranged in long arrays containing particles from all the tasks we will
   // work with)
@@ -332,8 +311,6 @@ void *runner_main2(void *data) {
 
   cudaMallocHost((void **)&fparti_fpartj_lparti_lpartj_dens,
                  target_n_tasks * sizeof(int4));
-  //  cudaMalloc((void**)&d_fparti_fpartj_lparti_lpartj_dens,
-  //  		  target_n_tasks * sizeof(int4));
 
   cudaMallocHost((void **)&fparti_fpartj_lparti_lpartj_forc,
                  target_n_tasks * sizeof(int4));
@@ -344,9 +321,6 @@ void *runner_main2(void *data) {
                  target_n_tasks * sizeof(int4));
   cudaMalloc((void **)&d_fparti_fpartj_lparti_lpartj_grad,
              target_n_tasks * sizeof(int4));
-
-  //  cudaMallocManaged((void**)&d_task_last_part_self_dens_f4,
-  //		  target_n_tasks * sizeof(int), cudaMemAttachGlobal);
 
   // Arrays keeping track of the row numbers of the first and last particles
   // within each bundle. Required by the GPU code
@@ -738,54 +712,36 @@ void *runner_main2(void *data) {
   struct part_aos_f4_g_send *d_parts_aos_pair_f4_g_send;
   struct part_aos_f4_g_recv *d_parts_aos_pair_f4_g_recv;
 
-  //  cudaMalloc((void**)&d_parts_aos_dens, count_max_parts_tmp * sizeof(struct
-  //  part_aos));
   cudaMalloc((void **)&d_parts_aos_f4_send,
              count_max_parts_tmp * sizeof(struct part_aos_f4_send));
   cudaMalloc((void **)&d_parts_aos_f4_recv,
              count_max_parts_tmp * sizeof(struct part_aos_f4_recv));
-  //  cudaMalloc((void**)&d_parts_aos_dens_f4, count_max_parts_tmp *
-  //  sizeof(struct part_aos_f4)); cudaMalloc((void**)&d_parts_aos_forc,
-  //  count_max_parts_tmp * sizeof(struct part_aos_f));
-  //  cudaMalloc((void**)&d_parts_aos_forc_f4, count_max_parts_tmp *
-  //  sizeof(struct part_aos_f4_f));
+
   cudaMalloc((void **)&d_parts_aos_forc_f4_send,
              count_max_parts_tmp * sizeof(struct part_aos_f4_f_send));
   cudaMalloc((void **)&d_parts_aos_forc_f4_recv,
              count_max_parts_tmp * sizeof(struct part_aos_f4_f_recv));
-  //  cudaMalloc((void**)&d_parts_aos_grad, count_max_parts_tmp * sizeof(struct
-  //  part_aos_g)); cudaMalloc((void**)&d_parts_aos_grad_f4, count_max_parts_tmp
-  //  * sizeof(struct part_aos_f4_g));
+
   cudaMalloc((void **)&d_parts_aos_grad_f4_send,
              count_max_parts_tmp * sizeof(struct part_aos_f4_g_send));
   cudaMalloc((void **)&d_parts_aos_grad_f4_recv,
              count_max_parts_tmp * sizeof(struct part_aos_f4_g_recv));
 
-  //  cudaMallocHost((void **)&parts_aos_dens, count_max_parts_tmp *
-  //  sizeof(struct part_aos));
   cudaMallocHost((void **)&parts_aos_f4_send,
                  count_max_parts_tmp * sizeof(struct part_aos_f4_send));
   cudaMallocHost((void **)&parts_aos_f4_recv,
                  count_max_parts_tmp * sizeof(struct part_aos_f4_recv));
-  //  cudaMallocHost((void **)&parts_aos_dens_f4, count_max_parts_tmp *
-  //  sizeof(struct part_aos_f4)); cudaMallocHost((void **)&parts_aos_forc,
-  //  count_max_parts_tmp * sizeof(struct part_aos_f)); cudaMallocHost((void
-  //  **)&parts_aos_forc_f4, count_max_parts_tmp * sizeof(struct
-  //  part_aos_f4_f));
+
   cudaMallocHost((void **)&parts_aos_forc_f4_send,
                  count_max_parts_tmp * sizeof(struct part_aos_f4_f_send));
   cudaMallocHost((void **)&parts_aos_forc_f4_recv,
                  count_max_parts_tmp * sizeof(struct part_aos_f4_f_recv));
-  //  cudaMallocHost((void **)&parts_aos_grad, count_max_parts_tmp *
-  //  sizeof(struct part_aos_g)); cudaMallocHost((void **)&parts_aos_grad_f4,
-  //  count_max_parts_tmp * sizeof(struct part_aos_f4_g));
+
   cudaMallocHost((void **)&parts_aos_grad_f4_send,
                  count_max_parts_tmp * sizeof(struct part_aos_f4_g_send));
   cudaMallocHost((void **)&parts_aos_grad_f4_recv,
                  count_max_parts_tmp * sizeof(struct part_aos_f4_g_recv));
 
-  //  cudaMalloc((void**)&d_parts_aos_pair_dens, 2 * count_max_parts_tmp *
-  //  sizeof(struct part_aos));
   cudaMalloc((void **)&d_parts_aos_pair_f4_send,
              2 * count_max_parts_tmp * sizeof(struct part_aos_f4_send));
   cudaMalloc((void **)&d_parts_aos_pair_f4_recv,
@@ -810,8 +766,6 @@ void *runner_main2(void *data) {
   ///////////Probably not needed
   /// anymore////////////////////////////////////////////////////////////////
 
-  //  cudaMallocHost((void **)&parts_aos_pair_dens, 2 * count_max_parts_tmp *
-  //  sizeof(struct part_aos));
   cudaMallocHost((void **)&parts_aos_pair_f4_send,
                  2 * count_max_parts_tmp * sizeof(struct part_aos_f4_send));
   cudaMallocHost((void **)&parts_aos_pair_f4_recv,
@@ -977,7 +931,6 @@ void *runner_main2(void *data) {
     snprintf(buf5, sizeof(buf5), "t%dr%dstep%d", r->cpuid, engine_rank, step);
 #ifdef DUMP_TIMINGS
     FILE *fgpu_steps;
-    //    if(step == 0 || step%10 == 0)fgpu_steps = fopen(buf5, "w");
     fgpu_steps = fopen(buf5, "w");
 #endif
     //    if (step == 0) cudaProfilerStart();
@@ -1008,7 +961,6 @@ void *runner_main2(void *data) {
     tasks_done_gpu_inc = 0;
     ticks hang_time = getticks();
     while (1) {
-      //      ticks tic_get_task = getticks();
       // A. Nasar: Get qid for re-use later
       int qid = r->qid;
       /* If there's no old task, try to get a new one. */
@@ -1093,24 +1045,15 @@ void *runner_main2(void *data) {
             maxcount = max(maxcount, ci->hydro.count);
             if (ci->hydro.count > 1.5 * np_per_cell) {
               n_w_prts_gtr_target_d++;
-//              message("count %i target %i", ci->hydro.count, np_per_cell);
             }
-            //            	error("There's %i parts in a cell when it should
-            //            be %i max", ci->hydro.count, np_per_cell);
-            /*Packed enough tasks let's go*/
+            /*Packed enough tasks. Let's go*/
             int launch = pack_vars_self_dens->launch;
-
-            //            if ((sched->s_d_left[qid] < 1)){
-            //            	launch_leftovers = 1;
-            //            	pack_vars_self_dens->launch_leftovers = 1;
-            //            }
             /* Do we have enough stuff to run the GPU ? */
             if (launch) n_full_d_bundles++;
             if (launch_leftovers) n_partial_d_bundles++;
             if (launch || launch_leftovers) {
               /*Launch GPU tasks*/
               int t_packed = pack_vars_self_dens->tasks_packed;
-              //              signal_sleeping_runners(sched, t, t_packed);
               runner_doself1_launch_f4(
                   r, sched, pack_vars_self_dens, ci, t, parts_aos_f4_send,
                   parts_aos_f4_recv, d_parts_aos_f4_send, d_parts_aos_f4_recv,
@@ -1130,7 +1073,6 @@ void *runner_main2(void *data) {
             maxcount = max(maxcount, ci->hydro.count);
             if (ci->hydro.count > 1.5 * np_per_cell) {
               n_w_prts_gtr_target_g++;
-//              message("count %i target %i", ci->hydro.count, np_per_cell);
             }
             packing_time_g += runner_doself1_pack_f4_g(
                 r, sched, pack_vars_self_grad, ci, t, parts_aos_grad_f4_send,
@@ -1143,10 +1085,6 @@ void *runner_main2(void *data) {
             /*Packed enough tasks let's go*/
             int launch = pack_vars_self_grad->launch;
 
-            //            if ((sched->s_g_left[qid] < 1)){
-            //              launch_leftovers = 1;
-            //          	  pack_vars_self_grad->launch_leftovers = 1;
-            //            }
             /* Do we have enough stuff to run the GPU ? */
             if (launch || launch_leftovers) {
               /*Launch GPU tasks*/
@@ -1169,7 +1107,6 @@ void *runner_main2(void *data) {
             maxcount = max(maxcount, ci->hydro.count);
             if (ci->hydro.count > 1.5 * np_per_cell) {
               n_w_prts_gtr_target_f++;
-//              message("count %i target %i", ci->hydro.count, np_per_cell);
             }
             packing_time_f += runner_doself1_pack_f4_f(
                 r, sched, pack_vars_self_forc, ci, t, parts_aos_forc_f4_send,
@@ -1182,10 +1119,6 @@ void *runner_main2(void *data) {
             /*Packed enough tasks let's go*/
             int launch = pack_vars_self_forc->launch;
 
-            //            if ((sched->s_f_left[qid] < 1)){
-            //              launch_leftovers = 1;
-            //          	  pack_vars_self_forc->launch_leftovers = 1;
-            //            }
             /* Do we have enough stuff to run the GPU ? */
             if (launch || launch_leftovers) {
               /*Launch GPU tasks*/
@@ -1296,8 +1229,6 @@ void *runner_main2(void *data) {
             packing_time_pair += (t1.tv_sec - t0.tv_sec) +
                                  (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
             if ((sid == 0 || sid == 2 || sid == 6 || sid == 8) && step > 1) {
-              //		  if((sid != 4 && sid != 10 && sid == 12) &&
-              // step > 1){
               clock_gettime(CLOCK_REALTIME, &t0);
               runner_dopair1_branch_density(r, ci, cj);
               t->corner_pair = 1;
@@ -1337,7 +1268,6 @@ void *runner_main2(void *data) {
               maxcount = max(maxcount, ci->hydro.count);
               if (ci->hydro.count > 1.5 * np_per_cell) {
                 n_w_prts_gtr_target_p_d++;
-  //              message("count %i target %i", ci->hydro.count, np_per_cell);
               }
 
               /*Call recursion here. This will be a function in runner_doiact_functions_hydro_gpu.h.
@@ -1346,8 +1276,6 @@ void *runner_main2(void *data) {
               int n_expected_tasks = 1024;
               int n_leafs_found = 0;
               int depth = 0;
-//              struct cell ** cells_left = (struct cell **)calloc(n_expected_tasks, sizeof(struct cell *));
-//              struct cell ** cells_right = (struct cell **)calloc(n_expected_tasks, sizeof(struct cell *));
               struct cell * cells_left[n_expected_tasks];
               struct cell * cells_right[n_expected_tasks];
               runner_recurse_gpu(r, sched, pack_vars_pair_dens, ci, cj, t,
@@ -1490,10 +1418,6 @@ void *runner_main2(void *data) {
               /*Packed enough tasks, let's go*/
               int launch = pack_vars_pair_grad->launch;
 
-              //              if ((sched->p_g_left[qid] < 1)){
-              //            	  launch_leftovers = 1;
-              //            	  pack_vars_pair_grad->launch_leftovers = 1;
-              //              }
               /* Do we have enough stuff to run the GPU ? */
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
@@ -1558,9 +1482,7 @@ void *runner_main2(void *data) {
               }
             } else {
 #endif  // DO_CORNERS
-        //            runner_dopair1_pack_f(r, sched, pack_vars_pair_forc,
-        //            ci, 		cj, t, parts_aos_pair_forc, e,
-        //            &packing_time_f);
+
               ticks tic_cpu_pack = getticks();
 
               packing_time_pair_f +=
@@ -1689,12 +1611,10 @@ void *runner_main2(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient) {
             runner_dosub_self1_gradient(r, ci, 1);
-            //            fprintf(stderr, "split a g task\n");
           }
 #endif
           else if (t->subtype == task_subtype_force) {
             runner_dosub_self2_force(r, ci, 1);
-            //            fprintf(stderr, "split a f task\n");
           } else if (t->subtype == task_subtype_limiter)
             runner_dosub_self1_limiter(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -1735,18 +1655,15 @@ void *runner_main2(void *data) {
         case task_type_sub_pair:
           if (t->subtype == task_subtype_density) {
             int nothing = 0;
-            //            message("Doing a pair sub task");
             runner_dosub_pair1_density(r, ci, cj, 1);
           }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient) {
             runner_dosub_pair1_gradient(r, ci, cj, 1);
-            //            fprintf(stderr, "split a g task\n");
           }
 #endif
           else if (t->subtype == task_subtype_force) {
             runner_dosub_pair2_force(r, ci, cj, 1);
-            //            fprintf(stderr, "split a f task\n");
           } else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -1999,9 +1916,6 @@ void *runner_main2(void *data) {
           error("Unknown/invalid task type (%d).", t->type);
       }
       r->active_time += (getticks() - task_beg);
-//      if(g100 > 0)
-//    	  message("less than 100 %i more than 100 %i max count %i", l100, g100,
-//    maxcount);
 
 /* Mark that we have run this task on these cells */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2323,14 +2237,3 @@ void *runner_main2(void *data) {
 
 #endif  // WITH_CUDA
 
-#include <stdio.h>
-#include <sys/resource.h>
-#include <sys/time.h>
-
-// uint64_t time_used ( ) {
-//    struct rusage ru;
-//    struct timeval t;
-//    getrusage(RUSAGE_THREAD,&ru);
-//    t = ru.ru_utime;
-//    return (uint64_t) t.tv_sec*1000 + t.tv_usec/1000;
-// }
