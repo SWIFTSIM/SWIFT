@@ -1219,49 +1219,6 @@ void *runner_main2(void *data) {
           else if (t->subtype == task_subtype_gpu_pack_d) {
             packed_pair++;
 #ifdef GPUOFFLOAD_DENSITY
-#ifdef DO_CORNERS
-            struct timespec t0, t1, dt;
-            clock_gettime(CLOCK_REALTIME, &t0);
-            double shift[3] = {0.0};
-            t->corner_pair = 0;
-            int sid = space_getsid_filter(e->s, &ci, &cj, shift);
-            clock_gettime(CLOCK_REALTIME, &t1);
-            packing_time_pair += (t1.tv_sec - t0.tv_sec) +
-                                 (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-            if ((sid == 0 || sid == 2 || sid == 6 || sid == 8) && step > 1) {
-              clock_gettime(CLOCK_REALTIME, &t0);
-              runner_dopair1_branch_density(r, ci, cj);
-              t->corner_pair = 1;
-              int qid = r->qid;
-              atomic_dec(&(sched->queues[qid].n_packs_pair_left));
-              /* Tell the cells they have been packed */
-              ci->pack_done++;
-              cj->pack_done++;
-              t->done = 1;
-              int launch = 0, launch_leftovers = 0;
-              if ((sched->queues[qid].n_packs_pair_left == 0))
-                launch_leftovers = 1;
-              /* Tasks done. Release the lock ! */
-              task_unlock(t);
-              /*schedule my dependencies (Only unpacks really)*/
-              enqueue_dependencies(sched, t);
-              /*Signal sleeping runners*/
-              signal_sleeping_runners(sched, t);
-              clock_gettime(CLOCK_REALTIME, &t1);
-              packing_time_pair += (t1.tv_sec - t0.tv_sec) +
-                                   (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-              if (launch_leftovers) {
-                pack_vars_pair_dens->launch_leftovers = 1;
-                runner_dopair1_launch_f4_one_memcpy(
-                    r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
-                    parts_aos_pair_f4_recv, d_parts_aos_pair_f4_send,
-                    d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e,
-                    &packing_time_pair, &time_for_density_gpu_pair,
-                    &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
-                    pair_end);
-              }
-            } else {
-#endif  // DO_CORNERS
 
               ticks tic_cpu_pack = getticks();
               n_cells_p_d++;
@@ -1269,7 +1226,7 @@ void *runner_main2(void *data) {
               if (ci->hydro.count > 1.5 * np_per_cell) {
                 n_w_prts_gtr_target_p_d++;
               }
-
+              /////////////////////W.I.P!!!////////////////////////////////////////////////////////
               /*Call recursion here. This will be a function in runner_doiact_functions_hydro_gpu.h.
                * We are recursing separately to find out how much work we have before offloading*/
               //We need to allocate a list to put cell pointers into for each new task
@@ -1348,57 +1305,13 @@ void *runner_main2(void *data) {
               pack_vars_pair_dens->task_locked = 0;
               pack_vars_pair_dens->launch_leftovers = 0;
 
-#ifdef DO_CORNERS
-            } /* End of GPU work Pairs */
-#endif  // DO_CORNERS
+              /////////////////////W.I.P!!!////////////////////////////////////////////////////////
+
 #endif  // GPUOFFLOAD_DENSITY
           } /* pair / pack */
           else if (t->subtype == task_subtype_gpu_pack_g) {
             packed_pair_g++;
 #ifdef GPUOFFLOAD_GRADIENT
-#ifdef DO_CORNERS
-            struct timespec t0, t1, dt;
-            clock_gettime(CLOCK_REALTIME, &t0);
-            double shift[3] = {0.0};
-            t->corner_pair = 0;
-            int sid = space_getsid_filter(e->s, &ci, &cj, shift);
-            clock_gettime(CLOCK_REALTIME, &t1);
-            packing_time_pair += (t1.tv_sec - t0.tv_sec) +
-                                 (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-            if ((sid == 0 || sid == 2 || sid == 6 || sid == 8) && step > 1) {
-              clock_gettime(CLOCK_REALTIME, &t0);
-              runner_dopair1_branch_gradient(r, ci, cj);
-              t->corner_pair = 1;
-              int qid = r->qid;
-              atomic_dec(&(sched->queues[qid].n_packs_pair_left_g));
-              /* Tell the cells they have been packed */
-              ci->pack_done++;
-              cj->pack_done++;
-              t->done = 1;
-              int launch = 0, launch_leftovers = 0;
-              if ((sched->queues[qid].n_packs_pair_left_g == 0))
-                launch_leftovers = 1;
-              /* Tasks done. Release the lock ! */
-              task_unlock(t);
-              /*schedule my dependencies (Only unpacks really)*/
-              enqueue_dependencies(sched, t);
-              /*Signal sleeping runners*/
-              signal_sleeping_runners(sched, t);
-              clock_gettime(CLOCK_REALTIME, &t1);
-              packing_time_pair_g += (t1.tv_sec - t0.tv_sec) +
-                                     (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-              if (launch_leftovers) {
-                pack_vars_pair_grad->launch_leftovers = 1;
-                runner_dopair1_launch_f4_g_one_memcpy(
-                    r, sched, pack_vars_pair_grad, t, parts_aos_pair_f4_g_send,
-                    parts_aos_pair_f4_g_recv, d_parts_aos_pair_f4_g_send,
-                    d_parts_aos_pair_f4_g_recv, stream_pairs, d_a, d_H, e,
-                    &packing_time_pair_g, &time_for_gpu_pair_g,
-                    &unpacking_time_pair_g, fparti_fpartj_lparti_lpartj_grad,
-                    pair_end_g);
-              }
-            } else {
-#endif  // DO_CORNERS
               ticks tic_cpu_pack = getticks();
               n_cells_p_g++;
               maxcount = max(maxcount, ci->hydro.count);
@@ -1410,14 +1323,11 @@ void *runner_main2(void *data) {
                   runner_dopair1_pack_f4_g(r, sched, pack_vars_pair_grad, ci,
                                            cj, t, parts_aos_pair_f4_g_send, e,
                                            fparti_fpartj_lparti_lpartj_grad);
-
               t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
-
               /* No pack tasks left in queue, flag that we want to run */
               int launch_leftovers = pack_vars_pair_grad->launch_leftovers;
               /*Packed enough tasks, let's go*/
               int launch = pack_vars_pair_grad->launch;
-
               /* Do we have enough stuff to run the GPU ? */
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
@@ -1432,57 +1342,10 @@ void *runner_main2(void *data) {
                     pair_end_g);
               }
               pack_vars_pair_grad->launch_leftovers = 0;
-#ifdef DO_CORNERS
-            } /* End of GPU work Pairs */
-#endif  // DO_CORNERS
 #endif  // GPUOFFLOAD_GRADIENT
           } else if (t->subtype == task_subtype_gpu_pack_f) {
             packed_pair_f++;
 #ifdef GPUOFFLOAD_FORCE
-#ifdef DO_CORNERS
-            struct timespec t0, t1, dt;
-            clock_gettime(CLOCK_REALTIME, &t0);
-            double shift[3] = {0.0};
-            t->corner_pair = 0;
-            int sid = space_getsid_filter(e->s, &ci, &cj, shift);
-            clock_gettime(CLOCK_REALTIME, &t1);
-            packing_time_pair += (t1.tv_sec - t0.tv_sec) +
-                                 (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-            if ((sid == 0 || sid == 2 || sid == 6 || sid == 8) && step > 1) {
-              //          if((sid != 4 && sid != 10 && sid == 12) && step > 1){
-              runner_dopair1_branch_force(r, ci, cj);
-              t->corner_pair = 1;
-              int qid = r->qid;
-              atomic_dec(&(sched->queues[qid].n_packs_pair_left_f));
-              /* Tell the cells they have been packed */
-              ci->pack_done++;
-              cj->pack_done++;
-              t->done = 1;
-              int launch = 0, launch_leftovers = 0;
-              if ((sched->queues[qid].n_packs_pair_left_f == 0))
-                launch_leftovers = 1;
-              /* Tasks done. Release the lock ! */
-              task_unlock(t);
-              /*schedule my dependencies (Only unpacks really)*/
-              enqueue_dependencies(sched, t);
-              /*Signal sleeping runners*/
-              signal_sleeping_runners(sched, t);
-              clock_gettime(CLOCK_REALTIME, &t1);
-              packing_time_pair_f += (t1.tv_sec - t0.tv_sec) +
-                                     (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-              if (launch_leftovers) {
-                pack_vars_pair_forc->launch_leftovers = 1;
-                runner_dopair1_launch_f4_f_one_memcpy(
-                    r, sched, pack_vars_pair_forc, t, parts_aos_pair_f4_f_send,
-                    parts_aos_pair_f4_f_recv, d_parts_aos_pair_f4_f_send,
-                    d_parts_aos_pair_f4_f_recv, stream_pairs, d_a, d_H, e,
-                    &packing_time_pair_f, &time_for_gpu_pair_f,
-                    &unpacking_time_pair_f, fparti_fpartj_lparti_lpartj_forc,
-                    pair_end_f);
-              }
-            } else {
-#endif  // DO_CORNERS
-
               ticks tic_cpu_pack = getticks();
 
               packing_time_pair_f +=
@@ -1520,9 +1383,6 @@ void *runner_main2(void *data) {
 
                 pack_vars_pair_forc->launch_leftovers = 0;
               } /* End of GPU work Pairs */
-#ifdef DO_CORNERS
-            }
-#endif  // DO_CORNERS
 #endif  // GPUOFFLOAD_FORCE
           } else if (t->subtype == task_subtype_gpu_unpack_d) {
             unpacked_pair++;
