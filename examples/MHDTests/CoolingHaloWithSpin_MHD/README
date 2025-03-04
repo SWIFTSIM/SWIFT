@@ -24,6 +24,11 @@ collapse into a spinning disc.
 
 Compilation
 -----------
+
+for runs with EAGLE cooling+chemistry+entropy floor
+./configure --with-spmhd=direct-induction --with-cooling=EAGLE --with-chemistry=EAGLE --with-entropy-floor=EAGLE --with-ext-potential=nfw --with-kernel=quintic-spline --disable-hand-vec --disable-compiler-warnings --disable-doxygen-doc
+
+for runs with lambda cooling
 ./configure --with-spmhd=direct-induction --with-cooling=const-lambda --with-ext-potential=nfw --with-kernel=quintic-spline --disable-hand-vec --disable-compiler-warnings --disable-doxygen-doc
 
 Snapshot slices
