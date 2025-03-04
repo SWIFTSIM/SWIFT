@@ -17,6 +17,8 @@
 #
 ##############################################################################
 
+# Halo parameters similar to Peng Wang, Tom Abel, 0712.0872
+
 import h5py
 import sys
 import numpy as np
@@ -33,17 +35,15 @@ PARSEC_IN_CGS = 3.0856776e18
 KM_PER_SEC_IN_CGS = 1.0e5
 CONST_G_CGS = 6.672e-8
 CONST_MU0_CGS = 4 * np.pi * 1e-2
+MSOL_IN_CGS = 1.9891e33 # Solar mass 
 h = 0.67777  # hubble parameter
 gamma = 5.0 / 3.0
-eta = 1.3663 #1.2349
+eta = 1.3663 # kernel smoothing
 spin_lambda = 0.05  # spin parameter
-f_b = 0.1 #0.2  # baryon fraction
+f_b = 0.1  # baryon fraction
 
 # First set unit velocity and then the circular velocity parameter for the isothermal potential
 const_unit_velocity_in_cgs = 1.0e5  # kms^-1
-
-#v_c = 200.0 #200.0
-#v_c_cgs = v_c * const_unit_velocity_in_cgs
 
 # Set the magnitude of the uniform seed magnetic field
 
@@ -54,29 +54,27 @@ B0_cgs = np.sqrt(CONST_MU0_CGS / (4.0 * np.pi)) * B0_Gaussian_Units
 
 # Find H_0, the inverse Hubble time, in cgs
 
-#H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
+H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # From this we can find the virial radius, the radius within which the average density of the halo is
 # 200. * the mean matter density
 
-r_vir_cgs = 21.5 * 1e3 * PARSEC_IN_CGS #v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
 
-# Now get the virial mass
-MSOL_IN_CGS = 1.9891e33 # Solar mass 
-M_vir_cgs = 1e10 * MSOL_IN_CGS #r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
-
-v_c = 44.8
-v_c_cgs = v_c * const_unit_velocity_in_cgs
+# Set M200 and get R200 and V200 
+M_200_cgs = 1e10 * MSOL_IN_CGS 
+rhoc_cgs = 3*H_0_cgs**2/(8*np.pi*CONST_G_CGS)
+r_200_cgs = (3*M_200_cgs/(4*np.pi*rhoc_cgs))**(1/3)
+v_200_cgs = np.sqrt(CONST_G_CGS*M_200_cgs/r_200_cgs)
+v_200 = v_200_cgs / const_unit_velocity_in_cgs 
 
 # Now set the unit length and mass
 
-const_unit_mass_in_cgs = M_vir_cgs
-const_unit_length_in_cgs = r_vir_cgs
+const_unit_mass_in_cgs = M_200_cgs
+const_unit_length_in_cgs = r_200_cgs
 
 print("UnitMass_in_cgs:     ", const_unit_mass_in_cgs)
 print("UnitLength_in_cgs:   ", const_unit_length_in_cgs)
 print("UnitVelocity_in_cgs: ", const_unit_velocity_in_cgs)
-
 
 # Now set the magnetic field unit
 
@@ -211,7 +209,7 @@ B = np.zeros((N, 3))
 
 # first work out total angular momentum of the halo within the virial radius
 # we work in units where r_vir = 1 and M_vir = 1
-Total_E = v_c ** 2 / 2.0
+Total_E = v_200 ** 2 / 2.0
 J = spin_lambda * const_G / np.sqrt(Total_E)
 print("J =", J)
 # all particles within the virial radius have omega parallel to the z-axis, magnitude
@@ -267,7 +265,7 @@ ds[()] = h
 h = np.zeros(1)
 
 # Internal energies
-u = v_c ** 2 / (2.0 * (gamma - 1.0))
+u = v_200 ** 2 / (2.0 * (gamma - 1.0))
 u = np.full((N,), u)
 ds = grp.create_dataset("InternalEnergy", (N,), "f")
 ds[()] = u

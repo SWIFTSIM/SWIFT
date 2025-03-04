@@ -24,12 +24,15 @@ collapse into a spinning disc.
 
 Compilation
 -----------
-
 for runs with EAGLE cooling+chemistry+entropy floor
 ./configure --with-spmhd=direct-induction --with-cooling=EAGLE --with-chemistry=EAGLE --with-entropy-floor=EAGLE --with-ext-potential=nfw --with-kernel=quintic-spline --disable-hand-vec --disable-compiler-warnings --disable-doxygen-doc
 
 for runs with lambda cooling
 ./configure --with-spmhd=direct-induction --with-cooling=const-lambda --with-ext-potential=nfw --with-kernel=quintic-spline --disable-hand-vec --disable-compiler-warnings --disable-doxygen-doc
+
+Setup
+-----
+There are two setups present: 1) dwarfsize, one similar to Peng Wang, Tom Abel, 0712.0872; 2) MWsize, similar to R. Pakmor, V. Springel, 1212.1452
 
 Snapshot slices
 ---------------
