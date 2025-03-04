@@ -158,19 +158,12 @@ extern "C" {
 #endif
 
 #include "cuda/part_gpu.h"
-//#include "files_for_new_functions/arrays_malloc.h"
-//#include "files_for_new_functions/host_device_data_transfer.h"
 #include <cuda.h>
 #include <cuda_profiler_api.h>
 #include <cuda_runtime.h>
 #include "runner_doiact_functions_hydro_gpu.h"
 #include "runner_gpu_pack_functions.h"
-// #include "./cuda/BLOCK_SIZE.h"
 #include "cuda/GPU_runner_functions.h"
-
-//#include <cuda.h>
-//#include <cuda_profiler_api.h>
-//#include <cuda_runtime.h>
 
 #ifdef __cplusplus
 }
