@@ -198,8 +198,11 @@ void *runner_main(void *data) {
             runner_doself1_branch_density(r, ci);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            // runner_doself1_branch_gradient(r, ci);
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
             runner_doself2_branch_gradient(r, ci);
+#else
+            runner_doself1_branch_gradient(r, ci);
+#endif
 #endif
           else if (t->subtype == task_subtype_force)
             runner_doself2_branch_force(r, ci);
@@ -249,8 +252,11 @@ void *runner_main(void *data) {
             runner_dopair1_branch_density(r, ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            // runner_dopair1_branch_gradient(r, ci, cj);
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
             runner_dopair2_branch_gradient(r, ci, cj);
+#else
+            runner_dopair1_branch_gradient(r, ci, cj);
+#endif
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dopair2_branch_force(r, ci, cj);
@@ -298,8 +304,11 @@ void *runner_main(void *data) {
             runner_dosub_self1_density(r, ci, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
             runner_dosub_self2_gradient(r, ci, 1);
-            //  runner_dosub_self1_gradient(r, ci, 1);
+#else
+            runner_dosub_self1_gradient(r, ci, 1);
+#endif
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
@@ -345,8 +354,11 @@ void *runner_main(void *data) {
             runner_dosub_pair1_density(r, ci, cj, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
             runner_dosub_pair2_gradient(r, ci, cj, 1);
-            // runner_dosub_pair1_gradient(r, ci, cj, 1);
+#else
+            runner_dosub_pair1_gradient(r, ci, cj, 1);
+#endif
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, 1);

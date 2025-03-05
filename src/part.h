@@ -84,6 +84,7 @@ struct threadpool;
 #include "./hydro/REMIX/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
+#define EXTRA_HYDRO_LOOP_TYPE2
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_part.h"
 #define hydro_need_extra_init_loop 0
