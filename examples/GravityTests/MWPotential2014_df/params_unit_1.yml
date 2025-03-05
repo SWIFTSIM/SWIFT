@@ -16,7 +16,7 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   basename:            output           # Common part of the name of output files
-  subdir:              output_2         # (Optional) Sub-directory in which to write the snapshots. Defaults to "" (i.e. the directory where SWIFT is run).
+  subdir:              output_1         # (Optional) Sub-directory in which to write the snapshots. Defaults to "" (i.e. the directory where SWIFT is run).
   time_first:          0.      # Time of the first output (in internal units)
   delta_time:          1e-2    # Time difference between consecutive outputs (in internal units)
   UnitMass_in_cgs:     1.98848e+43
@@ -44,7 +44,7 @@ MWPotential2014Potential:
   df_lnLambda:        5.0              # Coulomb logarithm
   df_satellite_mass_in_Msun: 1e10      # Satellite mass in solar mass
   df_core_radius_in_kpc: 10            # Radius below which the dynamical friction vanishes.  
-  df_timestep_mult:0.001               # Dimensionless pre-factor for the time-step condition for the dynamical friction force
+  df_timestep_mult:0.1                 # Dimensionless pre-factor for the time-step condition for the dynamical friction force
   df_polyfit_coeffs00: -2.96536595e-31 # Polynomial fit coefficient for the velocity dispersion model (order 16)
   df_polyfit_coeffs01:  8.88944631e-28 # Polynomial fit coefficient for the velocity dispersion model (order 15)
   df_polyfit_coeffs02: -1.18280578e-24 # Polynomial fit coefficient for the velocity dispersion model (order 14)
