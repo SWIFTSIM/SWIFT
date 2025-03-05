@@ -220,12 +220,13 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   float vtilde_i[3], vtilde_j[3];
 
   // Viscosity parameters
-  const float alpha = viscosity_global.alpha;
-  const float beta = viscosity_global.beta;
-  const float epsilon = viscosity_global.epsilon;
-  const float a_visc = viscosity_global.a_visc;
-  const float b_visc = viscosity_global.b_visc;
-  const float eta_crit = viscosity_global.eta_crit;
+  const float alpha = const_remix_visc_alpha;
+  const float beta = const_remix_visc_beta;
+  const float epsilon = const_remix_visc_epsilon;
+  const float a_visc = const_remix_visc_a;
+  const float b_visc = const_remix_visc_b;
+  const float eta_crit = 0.5f * (pi->force.eta_crit + pj->force.eta_crit);
+  const float slope_limiter_exp_denom = const_remix_slope_limiter_exp_denom;
 
   if ((!pi->is_h_max) && (!pj->is_h_max)) {
     /* A numerators and denominators (eq 22 in Rosswog 2020) */
@@ -275,9 +276,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     float eta_ab = min(r * hi_inv, r * hj_inv);
     if (eta_ab < eta_crit) {
       phi_i_v *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
-                      hydro_slope_limiter_exp_denom);
+                      slope_limiter_exp_denom);
       phi_j_v *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
-                      hydro_slope_limiter_exp_denom);
+                      slope_limiter_exp_denom);
     }
 
     // ...
@@ -338,6 +339,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_difn(
 
   const float hi_inv = 1.0f / pi->h;
   const float hj_inv = 1.0f / pj->h;
+
+  const float eta_crit = 0.5f * (pi->force.eta_crit + pj->force.eta_crit);
+  const float slope_limiter_exp_denom = const_remix_slope_limiter_exp_denom;
 
   if ((!pi->is_h_max) && (!pj->is_h_max)) {
     /* A numerators and denominators (eq 22 in Rosswog 2020) */
@@ -410,16 +414,16 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_difn(
 
     // ...
     float eta_ab = min(r * hi_inv, r * hj_inv);
-    const float eta_crit = viscosity_global.eta_crit;
+
     if (eta_ab < eta_crit) {
       phi_i_u *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
-                      hydro_slope_limiter_exp_denom);
+                      slope_limiter_exp_denom);
       phi_j_u *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
-                      hydro_slope_limiter_exp_denom);
+                      slope_limiter_exp_denom);
       phi_i_rho *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
-                        hydro_slope_limiter_exp_denom);
+                        slope_limiter_exp_denom);
       phi_j_rho *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
-                        hydro_slope_limiter_exp_denom);
+                        slope_limiter_exp_denom);
     }
 
     /* Assemble the reconstructed velocity (eq 17 in Rosswog 2020) */

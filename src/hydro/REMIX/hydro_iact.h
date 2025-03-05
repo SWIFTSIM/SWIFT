@@ -335,7 +335,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                              (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
                              (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
-    const float alpha_norm = diffusion_global.alpha_norm;
+    const float alpha_norm = const_remix_norm_alpha;
     float drho_dt_norm_and_difn_i =
         alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
         (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
@@ -346,10 +346,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     // Diffusion for same materials
     if (pi->mat_id == pj->mat_id) {
       // Diffusion parameters
-      const float a_difn_rho = diffusion_global.a_difn_rho;
-      const float b_difn_rho = diffusion_global.b_difn_rho;
-      const float a_difn_u = diffusion_global.a_difn_u;
-      const float b_difn_u = diffusion_global.b_difn_u;
+      const float a_difn_rho = const_remix_difn_a_rho;
+      const float b_difn_rho = const_remix_difn_b_rho;
+      const float a_difn_u = const_remix_difn_a_u;
+      const float b_difn_u = const_remix_difn_b_u;
 
       // ...
       float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
@@ -489,7 +489,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                              (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
                              (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
-    const float alpha_norm = diffusion_global.alpha_norm;
+    const float alpha_norm = const_remix_norm_alpha;
     float drho_dt_norm_and_difn_i =
         alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
         (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
@@ -497,10 +497,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     // Diffusion for same materials
     if (pi->mat_id == pj->mat_id) {
       // Diffusion parameters
-      const float a_difn_rho = diffusion_global.a_difn_rho;
-      const float b_difn_rho = diffusion_global.b_difn_rho;
-      const float a_difn_u = diffusion_global.a_difn_u;
-      const float b_difn_u = diffusion_global.b_difn_u;
+      const float a_difn_rho = const_remix_difn_a_rho;
+      const float b_difn_rho = const_remix_difn_b_rho;
+      const float a_difn_u = const_remix_difn_a_u;
+      const float b_difn_u = const_remix_difn_b_u;
 
       // ...
       float utilde_i, utilde_j, rhotilde_i, rhotilde_j;

@@ -251,6 +251,9 @@ struct part {
       /*! Variable switch to identify proximity to vacuum boundaries. */
       float vac_switch;
 
+      /*! Constant needed for slope limiter: 1 / eta_neighbours. */
+      float eta_crit;
+
     } force;
   };
 

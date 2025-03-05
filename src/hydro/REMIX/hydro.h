@@ -691,6 +691,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+  p->force.eta_crit = 1.f / hydro_props->eta_neighbours;
 }
 
 /**
