@@ -174,12 +174,12 @@ void *runner_main2(void *data) {
   struct scheduler *sched = &e->sched;
   struct space *space = e->s;
 
-  /*pack_vars contain data required for packing tasks destined for the GPU*/
+  //////////Declare and allocate GPU launch control data structures/////////
+  /*pack_vars contain data required for self and pair packing tasks destined
+   *  for the GPU*/
   struct pack_vars_self *pack_vars_self_dens;
   struct pack_vars_self *pack_vars_self_forc;
   struct pack_vars_self *pack_vars_self_grad;
-
-  /*pack_vars contain data required for packing tasks destined for the GPU*/
   struct pack_vars_pair *pack_vars_pair_dens;
   struct pack_vars_pair *pack_vars_pair_forc;
   struct pack_vars_pair *pack_vars_pair_grad;
@@ -197,53 +197,51 @@ void *runner_main2(void *data) {
                  sizeof(struct pack_vars_pair *));
   cudaMallocHost((void **)&pack_vars_pair_grad,
                  sizeof(struct pack_vars_pair *));
-
-  int devId = 0;  // find and print gpu device name
+  ///////////////////////////////////////////////////////////////////////////
+  /*Find and print GPU name(s)*/
+  int devId = 0;  //gpu device name
   struct cudaDeviceProp prop;
   int nDevices;
   int maxBlocksSM;
   int nSMs;
+  /*Get my rank*/
+  int mpi_rank = 0;
+#ifdef WITH_MPI
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+#endif
   cudaGetDeviceCount(&nDevices);
+  //If running on MPI we set code to use one MPI rank per GPU
+  //This was found to work very well and simplifies writing slurm scipts
+  if (nDevices == 1) cudaSetDevice(devId);
+#ifdef WITH_MPI
+  else {
+    cudaSetDevice(mpi_rank);
+    devId = mpi_rank;
+  }
+#endif
+  //Now tell me some info about my device
   cudaGetDeviceProperties(&prop, devId);
   cudaDeviceGetAttribute(&maxBlocksSM, cudaDevAttrMaxBlocksPerMultiprocessor,
                          devId);
   cudaDeviceGetAttribute(&nSMs, cudaDevAttrMultiProcessorCount, devId);
   int nPartsPerCell = space->nr_parts / space->tot_cells;
-  int mpi_rank = 0;
-#ifdef WITH_MPI
-  MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-#endif
+
   if (r->cpuid == 0 && mpi_rank == 0) {
-    fprintf(stderr, "%i devices available device id is %i\n", nDevices, devId);
-    fprintf(stderr, "Device : %s\n", prop.name);
-    fprintf(stderr, "nSMs %i max blocks per SM %i maxnBlocks per stream %i\n",
+    message("%i devices available device id is %i\n", nDevices, devId);
+    message("Device : %s\n", prop.name);
+    message("nSMs %i max blocks per SM %i maxnBlocks per stream %i\n",
             nSMs, maxBlocksSM, nSMs * maxBlocksSM);
-    fprintf(stderr, "Target nBlocks per kernel is %i\n",
+    message("Target nBlocks per kernel is %i\n",
             N_TASKS_BUNDLE_SELF * nPartsPerCell / BLOCK_SIZE);
-    fprintf(stderr, "Target nBlocks per stream is %i\n",
+    message("Target nBlocks per stream is %i\n",
             N_TASKS_PER_PACK_SELF * nPartsPerCell / BLOCK_SIZE);
   }
-  if (nDevices == 1) cudaSetDevice(devId);
-#ifndef WITH_MPI
-  else {
-    cudaSetDevice(devId);
-  }
-#endif
-#ifdef WITH_MPI
-  else {
-    cudaSetDevice(mpi_rank);
-    fprintf(stderr, "%i devices available device id is %i\n", nDevices,
-            mpi_rank);
-  }
-#endif
-  fprintf(stderr, "after dev select engine_rank %i rank %i\n", engine_rank,
-          mpi_rank);
 
   cudaError_t cu_error;
   size_t free_mem, total_mem;
   cudaMemGetInfo(&free_mem, &total_mem);
 
-  fprintf(stderr, "free mem %lu, total mem %lu\n", free_mem, total_mem);
+  message("free mem %lu, total mem %lu", free_mem, total_mem);
   // how many tasks do we want for each launch of GPU kernel
   const int target_n_tasks = sched->pack_size;
   const int target_n_tasks_pair = sched->pack_size_pair;
