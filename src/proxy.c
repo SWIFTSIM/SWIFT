@@ -107,7 +107,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
 #ifdef WITH_MPI
 
-  ticks tic2 = getticks();
+  /* ticks tic2 = getticks(); */
 
   /* Run through the cells and get the size of the tags that will be sent off.
    */
@@ -155,11 +155,11 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                  s->cells_top, s->nr_cells, sizeof(struct cell),
                  threadpool_auto_chunk_size, &extra_data);
 
-  if (s->e->verbose)
-    message("Cell pack tags took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  /* if (s->e->verbose) */
+  /*   message("Cell pack tags took %.3f %s.", */
+  /*           clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
 
-  tic2 = getticks();
+  /* tic2 = getticks(); */
 
   /* Allocate the incoming and outgoing request handles. */
   int num_reqs_out = 0;
@@ -200,21 +200,21 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     }
   }
 
-  if (s->e->verbose)
-    message("Emitting Send/Recv for tags took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  /* if (s->e->verbose) */
+  /*   message("Emitting Send/Recv for tags took %.3f %s.", */
+  /*           clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
 
-  tic2 = getticks();
+  /* tic2 = getticks(); */
 
   /* Wait for all the sends to have completed. */
   if (MPI_Waitall(num_reqs_in, reqs_in, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     error("MPI_Waitall on sends failed.");
 
-  if (s->e->verbose)
-    message("WaitAll on tags took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  /* if (s->e->verbose) */
+  /*   message("WaitAll on tags took %.3f %s.", */
+  /*           clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
 
-  tic2 = getticks();
+  /* tic2 = getticks(); */
 
   /* Unpack the tags we received */
   extra_data.tags_in = tags_in;
@@ -224,9 +224,9 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                  num_reqs_in, sizeof(int), threadpool_auto_chunk_size,
                  &extra_data);
 
-  if (s->e->verbose)
-    message("Cell unpack tags took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  /* if (s->e->verbose) */
+  /*   message("Cell unpack tags took %.3f %s.", */
+  /*           clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
 
   /* Wait for all the sends to have completed. */
   if (MPI_Waitall(num_reqs_out, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
