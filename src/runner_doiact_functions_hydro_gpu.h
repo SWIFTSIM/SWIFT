@@ -118,24 +118,14 @@ double runner_doself1_pack_f4(struct runner *r, struct scheduler *s,
    * tp0 and tp1 only time packing and unpacking*/
   struct timespec t0, t1;  //
   clock_gettime(CLOCK_REALTIME, &t0);
-  /* Record that we have now done a packing (self) */
+  /* Find my queue for use later*/
   int qid = r->qid;
-  //  atomic_dec(&(s->queues[qid].n_packs_pair_left_f));
-  //  pthread_mutex_lock(&s->sleep_mutex);
-  //  atomic_dec(&(s->s_d_left[qid]));
-  //  pthread_cond_broadcast(&s->sleep_cond);
-  //  pthread_mutex_unlock(&s->sleep_mutex);
-
+  /*Place pointers to the task and cells packed in an array for use later
+   * when unpacking after the GPU offload*/
   int tasks_packed = pack_vars->tasks_packed;
-  //	pack_vars->cellx[tasks_packed] = ci->loc[0];
-  //	pack_vars->celly[tasks_packed] = ci->loc[1];
-  //	pack_vars->cellz[tasks_packed] = ci->loc[2];
-  /*Get pointers to the list of tasks and cells packed*/
   pack_vars->task_list[tasks_packed] = t;
   pack_vars->cell_list[tasks_packed] = ci;
-  //    /* Identify row in particle arrays where this task starts*/
-  //	pack_vars->task_first_part[tasks_packed] = pack_vars->count_parts;
-  //	d_task_first_part_self_dens_f4[tasks_packed].x = pack_vars->count_parts;
+  /* Identify row in particle arrays where this task starts*/
   task_first_part_f4[tasks_packed].x = pack_vars->count_parts;
   int *count_parts_self = &pack_vars->count_parts;
   /* This re-arranges the particle data from cell->hydro->parts into a
@@ -143,10 +133,8 @@ double runner_doself1_pack_f4(struct runner *r, struct scheduler *s,
   runner_doself1_gpu_pack_neat_aos_f4(
       r, ci, parts_send, 0 /*timer. 0 no timing, 1 for timing*/,
       count_parts_self, tasks_packed, pack_vars->count_max_parts);
-  //    // identify the row in the array where this task ends (row id of its
-  //    last particle)
-  //	pack_vars->task_last_part[tasks_packed] = pack_vars->count_parts;
-  //	d_task_first_part_self_dens_f4[tasks_packed].y = pack_vars->count_parts;
+  /* Identify the row in the array where this task ends (row id of its
+     last particle)*/
   task_first_part_f4[tasks_packed].y = pack_vars->count_parts;
   /* Identify first particle for each bundle of tasks */
   const int bundle_size = pack_vars->bundle_size;
@@ -163,25 +151,21 @@ double runner_doself1_pack_f4(struct runner *r, struct scheduler *s,
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
 
+  /*Get a lock to the queue so we can safely decrement counter and check for launch leftover condition*/
   lock_lock(&s->queues[qid].lock);
-
   s->queues[qid].n_packs_self_left_d--;
-
   if (s->queues[qid].n_packs_self_left_d < 1) pack_vars->launch_leftovers = 1;
-
   lock_unlock(&s->queues[qid].lock);
-
-  //  if ((s->s_d_left[qid] < 1)) pack_vars->launch_leftovers = 1;
+  /*Have we packed enough tasks to offload to GPU?*/
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
-  /*Add time to packing_time. Timer for end of GPU work after the if(launch ||
-   * launch_leftovers statement)*/
+
+  /*Record the end of packing time*/
   clock_gettime(CLOCK_REALTIME, &t1);
   /* Release the lock on the cell */
   cell_unlocktree(ci);
   t->gpu_done = 1;
-  //		cell_unlocktree(ci);
-  //		// MATTHIEU signal_sleeping_runners(s, t);
+  /*Calculate time spen packing and return to runner_main*/
   return (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
 }
 
