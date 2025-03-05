@@ -338,100 +338,6 @@ double runner_doself1_pack_f4_f(struct runner *r, struct scheduler *s,
   return (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
 }
 
-void runner_dopair1_pack(struct runner *r, struct scheduler *s,
-                         struct pack_vars_pair *pack_vars, struct cell *ci,
-                         struct cell *cj, struct task *t,
-                         struct part_aos *parts_aos, struct engine *e,
-                         double *packing_time) {
-
-  /* Timers for how long this all takes.
-   * t0 and t1 are from start to finish including GPU calcs
-   * tp0 and tp1 only time packing and unpacking*/
-  struct timespec t0, t1;  //
-  clock_gettime(CLOCK_REALTIME, &t0);
-  int tasks_packed = pack_vars->tasks_packed;
-
-  double x_tmp = 0.0, y_tmp = 0.0, z_tmp = 0.0;
-  /*Get the shifts in case of periodics*/
-  space_getsid_GPU(e->s, &ci, &cj, &x_tmp, &y_tmp, &z_tmp);
-
-  /*Get pointers to the list of tasks and cells packed*/
-  pack_vars->task_list[tasks_packed] = t;
-  pack_vars->ci_list[tasks_packed] = ci;
-  pack_vars->cj_list[tasks_packed] = cj;
-
-  float3 shift_tmp = {x_tmp, y_tmp, z_tmp};
-
-  const int count_ci = ci->hydro.count;
-  const int count_cj = cj->hydro.count;
-
-  /*Assign an id for this task*/
-  const int tid = tasks_packed;
-  /*Indexing increment per task is 2 fot these arrays*/
-  const int packed_tmp = tasks_packed * 2;
-
-  /* Find first parts in task for ci and cj. Packed_tmp is index for cell i.
-   * packed_tmp+1 is index for cell j */
-  pack_vars->task_first_part[packed_tmp] = pack_vars->count_parts;
-  pack_vars->task_first_part[packed_tmp + 1] =
-      pack_vars->count_parts + count_ci;
-
-  int *count_parts = &pack_vars->count_parts;
-  //    if(r->cpuid == 0)fprintf(stderr, "cpu %i before count %i\n", r->cpuid,
-  //    pack_vars->count_parts);
-  /* This re-arranges the particle data from cell->hydro->parts into a
-  long array of part structs*/
-  runner_do_ci_cj_gpu_pack_neat_aos(
-      r, ci, cj, parts_aos, 0 /*timer. 0 no timing, 1 for timing*/, count_parts,
-      tid, pack_vars->count_max_parts, count_ci, count_cj, shift_tmp);
-  //	runner_doself1_gpu_pack_neat_aos(r, ci, parts_aos, 0/*timer. 0 no
-  // timing, 1 for timing*/, 		  count_parts, tasks_packed,
-  // pack_vars->count_max_parts); //This may cause an issue. Be sure to test
-  // that
-  // pack_vars->count_parts is actually increment here
-  /* Find last parts in task for ci and cj. Packed_tmp is index for cell i.
-   * packed_tmp+1 is index for cell j */
-
-  //    if(r->cpuid == 0)fprintf(stderr, "cpu %i after count %i pack_vars_count
-  //    %i\n", r->cpuid, *count_parts, 		pack_vars->count_parts);
-  pack_vars->task_last_part[packed_tmp] = pack_vars->count_parts - count_cj;
-  pack_vars->task_last_part[packed_tmp + 1] = pack_vars->count_parts;
-
-  /* Tell the cells they have been packed */
-  ci->pack_done++;
-  cj->pack_done++;
-
-  /* Identify first particle for each bundle of tasks */
-  const int bundle_size = pack_vars->bundle_size;
-  if (tasks_packed % bundle_size == 0) {
-    int bid = tasks_packed / bundle_size;
-    pack_vars->bundle_first_part[bid] = pack_vars->task_first_part[packed_tmp];
-    pack_vars->bundle_first_task_list[bid] = tasks_packed;
-  }
-
-  /* Record that we have now done a packing (self) */
-  int qid = r->qid;
-  atomic_dec(&(s->queues[qid].n_packs_pair_left_d));
-  t->done = 1;
-
-  pack_vars->tasks_packed++;
-  pack_vars->launch = 0;
-  pack_vars->launch_leftovers = 0;
-  if ((s->queues[qid].n_packs_pair_left_d == 0))
-    pack_vars->launch_leftovers = 1;
-  if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
-    pack_vars->launch = 1;
-  /*Add time to packing_time. Timer for end of GPU work after the if(launch ||
-   * launch_leftovers statement)*/
-  clock_gettime(CLOCK_REALTIME, &t1);
-  *packing_time +=
-      (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-  /* Copies done. Release the lock ! */
-  //	task_unlock(t);
-  cell_unlocktree(ci);
-  cell_unlocktree(cj);
-}
-
 void runner_recurse_gpu(struct runner *r, struct scheduler *s,
                               struct pack_vars_pair *restrict pack_vars,
                               struct cell *ci, struct cell *cj, struct task *t,
@@ -439,45 +345,46 @@ void runner_recurse_gpu(struct runner *r, struct scheduler *s,
                               struct engine *e,
                               int4 *fparti_fpartj_lparti_lpartj, int *n_leafs_found,
 							  struct cell ** cells_left, struct cell ** cells_right, int depth) {
-	  /* Should we even bother? A. Nasar: For GPU code we need to be clever about this */
-	  if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
-	  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
-	  /* Get the type of pair and flip ci/cj if needed. */
-	  double shift[3];
-	  const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
+	/* Should we even bother? A. Nasar: For GPU code we need to be clever about this */
+  if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
+  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
-	  /* Recurse? */
-	  if (cell_can_recurse_in_pair_hydro_task(ci) &&
-	      cell_can_recurse_in_pair_hydro_task(cj)) {
-	    struct cell_split_pair *csp = &cell_split_pairs[sid];
-	    for (int k = 0; k < csp->count; k++) {
-	      const int pid = csp->pairs[k].pid;
-	      const int pjd = csp->pairs[k].pjd;
-	      /*Do we want to do anything before we recurse?*/
+  /* Get the type of pair and flip ci/cj if needed. */
+  double shift[3];
+  const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
-	      /*We probably want to record */
-	      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL){
-	        runner_recurse_gpu(r, s, pack_vars, ci->progeny[pid], cj->progeny[pjd], t, parts_send, e, fparti_fpartj_lparti_lpartj,
-	        		n_leafs_found, cells_left, cells_right, depth + 1);
+  /* Recurse? */
+  if (cell_can_recurse_in_pair_hydro_task(ci) &&
+	  cell_can_recurse_in_pair_hydro_task(cj)) {
+	struct cell_split_pair *csp = &cell_split_pairs[sid];
+	for (int k = 0; k < csp->count; k++) {
+	  const int pid = csp->pairs[k].pid;
+	  const int pjd = csp->pairs[k].pjd;
+	  /*Do we want to do anything before we recurse?*/
+
+	  /*We probably want to record */
+	  if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL){
+		runner_recurse_gpu(r, s, pack_vars, ci->progeny[pid], cj->progeny[pjd], t, parts_send, e, fparti_fpartj_lparti_lpartj,
+				n_leafs_found, cells_left, cells_right, depth + 1);
 //	        message("recursing to depth %i", depth + 1);
-	      }
-	    }
 	  }
-	  else if (CELL_IS_ACTIVE(ci, e) || CELL_IS_ACTIVE(cj, e)) {
+	}
+  }
+  else if (CELL_IS_ACTIVE(ci, e) || CELL_IS_ACTIVE(cj, e)) {
 //	  else { //A .Nasar: WE DEFO HAVE A LEAF
-		/* if any cell empty: skip */
-		if(ci->hydro.count == 0 || cj->hydro.count == 0) return;
-		/*for all leafs to be sent add to cell list */
-        cells_left[*n_leafs_found] = ci;
-        cells_right[*n_leafs_found] = cj;
+	/* if any cell empty: skip */
+	if(ci->hydro.count == 0 || cj->hydro.count == 0) return;
+	/*for all leafs to be sent add to cell list */
+	cells_left[*n_leafs_found] = ci;
+	cells_right[*n_leafs_found] = cj;
 //        message("incrementing");
-		*n_leafs_found = *n_leafs_found + 1;
-		if(*n_leafs_found >= 1024)
-			error("Created %i more than expected leaf cells. depth %i", *n_leafs_found, depth);
-	  }
+	*n_leafs_found = *n_leafs_found + 1;
+	if(*n_leafs_found >= 1024)
+		error("Created %i more than expected leaf cells. depth %i", *n_leafs_found, depth);
+  }
 
-}
+};
 
 double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
                               struct pack_vars_pair *restrict pack_vars,
@@ -597,110 +504,7 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
    * launch_leftovers statement)*/
   clock_gettime(CLOCK_REALTIME, &t1);
   return (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-}
-
-void runner_dopair1_pack_g(struct runner *r, struct scheduler *s,
-                           struct pack_vars_pair *pack_vars, struct cell *ci,
-                           struct cell *cj, struct task *t,
-                           struct part_aos_g *parts_aos, struct engine *e,
-                           double *packing_time) {
-
-  /* Timers for how long this all takes.
-   * t0 and t1 are from start to finish including GPU calcs
-   * tp0 and tp1 only time packing and unpacking*/
-  struct timespec t0, t1;  //
-  clock_gettime(CLOCK_REALTIME, &t0);
-  int tasks_packed = pack_vars->tasks_packed;
-  const int tid_tmp = 2 * tasks_packed;
-  /*shifts for ci*/
-  pack_vars->shiftx[tid_tmp] = 0.0;
-  pack_vars->shifty[tid_tmp] = 0.0;
-  pack_vars->shiftz[tid_tmp] = 0.0;
-  /*shifts for cj. Stored using strided indexing (stride of two per task)*/
-  pack_vars->shiftx[tid_tmp + 1] = 0.0;
-  pack_vars->shifty[tid_tmp + 1] = 0.0;
-  pack_vars->shiftz[tid_tmp + 1] = 0.0;
-
-  double x_tmp = 0.0, y_tmp = 0.0, z_tmp = 0.0;
-  /*Get the shifts in case of periodics*/
-  space_getsid_GPU(e->s, &ci, &cj, &x_tmp, &y_tmp, &z_tmp);
-
-  /*Get pointers to the list of tasks and cells packed*/
-  pack_vars->task_list[tasks_packed] = t;
-  pack_vars->ci_list[tasks_packed] = ci;
-  pack_vars->cj_list[tasks_packed] = cj;
-
-  const double cjx = cj->loc[0];
-  const double cjy = cj->loc[1];
-  const double cjz = cj->loc[2];
-
-  /*Correct the shifts for cell i*/
-  pack_vars->shiftx[tid_tmp] = x_tmp + cjx;
-  pack_vars->shifty[tid_tmp] = y_tmp + cjy;
-  pack_vars->shiftz[tid_tmp] = z_tmp + cjz;
-  /*Shift for cell j is it's position. Stored using strided indexing (stride of
-   * two per task)*/
-  pack_vars->shiftx[tid_tmp + 1] = cjx;
-  pack_vars->shifty[tid_tmp + 1] = cjy;
-  pack_vars->shiftz[tid_tmp + 1] = cjz;
-
-  const int count_ci = ci->hydro.count;
-  const int count_cj = cj->hydro.count;
-
-  /*Assign an id for this task*/
-  const int tid = tasks_packed;
-  /*Indexing increment per task is 2 fot these arrays*/
-  const int packed_tmp = tasks_packed * 2;
-
-  /* Find first parts in task for ci and cj. Packed_tmp is index for cell i.
-   * packed_tmp+1 is index for cell j */
-  pack_vars->task_first_part[packed_tmp] = pack_vars->count_parts;
-  pack_vars->task_first_part[packed_tmp + 1] =
-      pack_vars->count_parts + count_ci;
-
-  int *count_parts = &pack_vars->count_parts;
-  /* This re-arranges the particle data from cell->hydro->parts into a
-  long array of part structs*/
-  runner_do_ci_cj_gpu_pack_neat_aos_g(
-      r, ci, cj, parts_aos, 0 /*timer. 0 no timing, 1 for timing*/, count_parts,
-      tid, pack_vars->count_max_parts, count_ci, count_cj);
-  /* Find last parts in task for ci and cj. Packed_tmp is index for cell i.
-   * packed_tmp+1 is index for cell j */
-
-  pack_vars->task_last_part[packed_tmp] = pack_vars->count_parts - count_cj;
-  pack_vars->task_last_part[packed_tmp + 1] = pack_vars->count_parts;
-
-  /* Tell the cells they have been packed */
-  ci->pack_done_g++;
-  cj->pack_done_g++;
-
-  /* Identify first particle for each bundle of tasks */
-  const int bundle_size = pack_vars->bundle_size;
-  if (tasks_packed % bundle_size == 0) {
-    int bid = tasks_packed / bundle_size;
-    pack_vars->bundle_first_part[bid] = pack_vars->task_first_part[packed_tmp];
-    pack_vars->bundle_first_task_list[bid] = tasks_packed;
-  }
-
-  /* Record that we have now done a packing (self) */
-  int qid = r->qid;
-  atomic_dec(&(s->queues[qid].n_packs_pair_left_g));
-  t->done = 1;
-  /* Copies done. Release the lock ! */
-  task_unlock(t);
-  pack_vars->tasks_packed++;
-  pack_vars->launch = 0;
-  pack_vars->launch_leftovers = 0;
-  if ((s->queues[qid].n_packs_pair_left_g == 0))
-    pack_vars->launch_leftovers = 1;
-  if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
-    pack_vars->launch = 1;
-  /*Add time to packing_time. Timer for end of GPU work after the if(launch ||
-   * launch_leftovers statement)*/
-  clock_gettime(CLOCK_REALTIME, &t1);
-  *packing_time +=
-      (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-}
+};
 
 double runner_dopair1_pack_f4_g(struct runner *r, struct scheduler *s,
                                 struct pack_vars_pair *restrict pack_vars,
@@ -817,110 +621,6 @@ double runner_dopair1_pack_f4_g(struct runner *r, struct scheduler *s,
    * launch_leftovers statement)*/
   clock_gettime(CLOCK_REALTIME, &t1);
   return (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-}
-
-void runner_dopair1_pack_f(struct runner *r, struct scheduler *s,
-                           struct pack_vars_pair *pack_vars, struct cell *ci,
-                           struct cell *cj, struct task *t,
-                           struct part_aos_f *parts_aos, struct engine *e,
-                           double *packing_time) {
-
-  /* Timers for how long this all takes.
-   * t0 and t1 are from start to finish including GPU calcs
-   * tp0 and tp1 only time packing and unpacking*/
-  struct timespec t0, t1;  //
-  clock_gettime(CLOCK_REALTIME, &t0);
-  int tasks_packed =
-      pack_vars->tasks_packed;  // Copy pasted this code again. Issue isn't here
-  const int tid_tmp = 2 * tasks_packed;
-  /*shifts for ci*/
-  pack_vars->shiftx[tid_tmp] = 0.0;
-  pack_vars->shifty[tid_tmp] = 0.0;
-  pack_vars->shiftz[tid_tmp] = 0.0;
-  /*shifts for cj. Stored using strided indexing (stride of two per task)*/
-  pack_vars->shiftx[tid_tmp + 1] = 0.0;
-  pack_vars->shifty[tid_tmp + 1] = 0.0;
-  pack_vars->shiftz[tid_tmp + 1] = 0.0;
-
-  double x_tmp = 0.0, y_tmp = 0.0, z_tmp = 0.0;
-  /*Get the shifts in case of periodics*/
-  space_getsid_GPU(e->s, &ci, &cj, &x_tmp, &y_tmp, &z_tmp);
-
-  /*Get pointers to the list of tasks and cells packed*/
-  pack_vars->task_list[tasks_packed] = t;
-  pack_vars->ci_list[tasks_packed] = ci;
-  pack_vars->cj_list[tasks_packed] = cj;
-
-  const double cjx = cj->loc[0];
-  const double cjy = cj->loc[1];
-  const double cjz = cj->loc[2];
-
-  /*Correct the shifts for cell i*/
-  pack_vars->shiftx[tid_tmp] = x_tmp + cjx;
-  pack_vars->shifty[tid_tmp] = y_tmp + cjy;
-  pack_vars->shiftz[tid_tmp] = z_tmp + cjz;
-  /*Shift for cell j is it's position. Stored using strided indexing (stride of
-   * two per task)*/
-  pack_vars->shiftx[tid_tmp + 1] = cjx;
-  pack_vars->shifty[tid_tmp + 1] = cjy;
-  pack_vars->shiftz[tid_tmp + 1] = cjz;
-
-  const int count_ci = ci->hydro.count;
-  const int count_cj = cj->hydro.count;
-
-  /*Assign an id for this task*/
-  const int tid = tasks_packed;
-  /*Indexing increment per task is 2 fot these arrays*/
-  const int packed_tmp = tasks_packed * 2;
-
-  /* Find first parts in task for ci and cj. Packed_tmp is index for cell i.
-   * packed_tmp+1 is index for cell j */
-  pack_vars->task_first_part[packed_tmp] = pack_vars->count_parts;
-  pack_vars->task_first_part[packed_tmp + 1] =
-      pack_vars->count_parts + count_ci;
-
-  int *count_parts = &pack_vars->count_parts;
-  /* This re-arranges the particle data from cell->hydro->parts into a
-  long array of part structs*/
-  runner_do_ci_cj_gpu_pack_neat_aos_f(
-      r, ci, cj, parts_aos, 0 /*timer. 0 no timing, 1 for timing*/, count_parts,
-      tid, pack_vars->count_max_parts, count_ci, count_cj);
-  /* Find last parts in task for ci and cj. Packed_tmp is index for cell i.
-   * packed_tmp+1 is index for cell j */
-
-  pack_vars->task_last_part[packed_tmp] = pack_vars->count_parts - count_cj;
-  pack_vars->task_last_part[packed_tmp + 1] = pack_vars->count_parts;
-
-  /* Tell the cells they have been packed */
-  ci->pack_done_f++;
-  cj->pack_done_f++;
-
-  /* Identify first particle for each bundle of tasks */
-  const int bundle_size = pack_vars->bundle_size;
-  if (tasks_packed % bundle_size == 0) {
-    int bid = tasks_packed / bundle_size;
-    pack_vars->bundle_first_part[bid] = pack_vars->task_first_part[packed_tmp];
-    pack_vars->bundle_first_task_list[bid] = tasks_packed;
-  }
-
-  /* Record that we have now done a packing (self) */
-  int qid = r->qid;
-  atomic_dec(&(s->queues[qid].n_packs_pair_left_f));
-  t->done = 1;
-  /* Copies done. Release the lock ! */
-  task_unlock(t);
-  pack_vars->tasks_packed++;
-  pack_vars->launch = 0;
-  pack_vars->launch_leftovers = 0;
-  if ((s->queues[qid].n_packs_pair_left_f == 0))
-    pack_vars->launch_leftovers = 1;
-  if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
-    pack_vars->launch = 1;
-  /*Add time to packing_time. Timer for end of GPU work after the if(launch ||
-   * launch_leftovers statement)*/
-  clock_gettime(CLOCK_REALTIME, &t1);
-  *packing_time +=
-      (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
 }
 
 double runner_dopair1_pack_f4_f(struct runner *r, struct scheduler *s,
