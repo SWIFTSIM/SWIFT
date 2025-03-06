@@ -265,6 +265,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
         fmaxf(pj->timestepvars.mach_number, mach_number);
   }
 
+  /* Prevent fluxes from exceeding total mass */
+  if (totflux[0] > pi->conserved.mass || -totflux[0] > pj->conserved.mass) {
+    totflux[0] = 0.;
+    totflux[1] = 0.;
+    totflux[2] = 0.;
+    totflux[3] = 0.;
+    totflux[4] = 0.;
+    totflux[5] = 0.;
+  }
+
   /* If we're working with RT, we need to pay additional attention to the
    * individual mass fractions of ionizing species. */
   rt_part_update_mass_fluxes(pi, pj, totflux[0], symmetric);
