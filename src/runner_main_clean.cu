@@ -313,6 +313,7 @@ void *runner_main2(void *data) {
 
   // first part and last part are the first and last particle ids (locally
   // within this thread). A. Nasar: All these are used in GPU offload setup
+
   cudaMallocHost((void **)&pack_vars_self_dens->bundle_first_part,
                  nBundles * sizeof(int));
   cudaMallocHost((void **)&pack_vars_self_dens->bundle_last_part,
@@ -355,24 +356,24 @@ void *runner_main2(void *data) {
   cudaMallocHost((void **)&pack_vars_pair_grad->bundle_first_task_list,
                  2 * nBundles * sizeof(int));
 
+  /*Create streams so that we can off-load different batches of work in
+   * different streams and get some con-CURRENCY! Events used to maximise
+   * asynchrony further*/
+
   cudaStream_t stream[nBundles];
   cudaStream_t stream_pairs[nBundles_pair];
 
   cudaEvent_t self_end[nBundles];
   for (int i = 0; i < nBundles; i++) cudaEventCreate(&self_end[i]);
-
   cudaEvent_t self_end_g[nBundles];
   for (int i = 0; i < nBundles; i++) cudaEventCreate(&self_end_g[i]);
-
   cudaEvent_t self_end_f[nBundles];
   for (int i = 0; i < nBundles; i++) cudaEventCreate(&self_end_f[i]);
 
   cudaEvent_t pair_end[nBundles];
   for (int i = 0; i < nBundles; i++) cudaEventCreate(&pair_end[i]);
-
   cudaEvent_t pair_end_g[nBundles];
   for (int i = 0; i < nBundles; i++) cudaEventCreate(&pair_end_g[i]);
-
   cudaEvent_t pair_end_f[nBundles];
   for (int i = 0; i < nBundles; i++) cudaEventCreate(&pair_end_f[i]);
 
@@ -389,7 +390,6 @@ void *runner_main2(void *data) {
 
   for (int i = 0; i < nBundles; ++i)
     cudaStreamCreateWithFlags(&stream[i], cudaStreamNonBlocking);
-
   for (int i = 0; i < nBundles_pair; ++i)
     cudaStreamCreateWithFlags(&stream_pairs[i], cudaStreamNonBlocking);
 
@@ -417,16 +417,11 @@ void *runner_main2(void *data) {
   /*A. Nasar: Increase parts per recursed task-level cell by buffer to
     ensure we allocate enough memory*/
   int buff = ceil(0.5 * np_per_cell);
-
-  int tot_self_tasks = space->nr_parts / np_per_cell;
-
   /*A. Nasar: Multiplication by 2 is also to ensure we do not over-run
    *  the allocated memory on buffers and GPU. This can happen if calculated h
    * is larger than cell width and splitting makes bigger than target cells*/
   int count_max_parts_tmp = 64 * 8 * target_n_tasks * (np_per_cell + buff);
 
-  //  message("np per cell %i, max_parts %i, n_tasks_GPU %i\n", np_per_cell,
-  //  count_max_parts_tmp, target_n_tasks);
   pack_vars_self_dens->count_max_parts = count_max_parts_tmp;
   pack_vars_pair_dens->count_max_parts = count_max_parts_tmp;
   pack_vars_self_forc->count_max_parts = count_max_parts_tmp;
@@ -434,60 +429,44 @@ void *runner_main2(void *data) {
   pack_vars_self_grad->count_max_parts = count_max_parts_tmp;
   pack_vars_pair_grad->count_max_parts = count_max_parts_tmp;
 
-  struct part_aos *parts_aos_dens;
-  struct part_aos_f4 *parts_aos_dens_f4;
+  /*Declare Buffer and GPU particle arrays*/
   struct part_aos_f4_send *parts_aos_f4_send;
   struct part_aos_f4_recv *parts_aos_f4_recv;
 
-  struct part_aos_f *parts_aos_forc;
-  struct part_aos_f4_f *parts_aos_forc_f4;
   struct part_aos_f4_f_send *parts_aos_forc_f4_send;
   struct part_aos_f4_f_recv *parts_aos_forc_f4_recv;
 
-  struct part_aos_g *parts_aos_grad;
-  struct part_aos_f4_g *parts_aos_grad_f4;
   struct part_aos_f4_g_send *parts_aos_grad_f4_send;
   struct part_aos_f4_g_recv *parts_aos_grad_f4_recv;
 
-  struct part_aos *d_parts_aos_dens;
-  struct part_aos_f4 *d_parts_aos_dens_f4;
   struct part_aos_f4_send *d_parts_aos_f4_send;
   struct part_aos_f4_recv *d_parts_aos_f4_recv;
 
-  struct part_aos_f *d_parts_aos_forc;
-  struct part_aos_f4_f *d_parts_aos_forc_f4;
   struct part_aos_f4_f_send *d_parts_aos_forc_f4_send;
   struct part_aos_f4_f_recv *d_parts_aos_forc_f4_recv;
 
-  struct part_aos_g *d_parts_aos_grad;
-  struct part_aos_f4_g *d_parts_aos_grad_f4;
   struct part_aos_f4_g_send *d_parts_aos_grad_f4_send;
   struct part_aos_f4_g_recv *d_parts_aos_grad_f4_recv;
 
-  struct part_aos *parts_aos_pair_dens;
   struct part_aos_f4_send *parts_aos_pair_f4_send;
   struct part_aos_f4_recv *parts_aos_pair_f4_recv;
 
-  struct part_aos *d_parts_aos_pair_dens;
   struct part_aos_f4_send *d_parts_aos_pair_f4_send;
   struct part_aos_f4_recv *d_parts_aos_pair_f4_recv;
 
-  struct part_aos_f *parts_aos_pair_forc;
   struct part_aos_f4_f_send *parts_aos_pair_f4_f_send;
   struct part_aos_f4_f_recv *parts_aos_pair_f4_f_recv;
 
-  struct part_aos_f *d_parts_aos_pair_forc;
   struct part_aos_f4_f_send *d_parts_aos_pair_f4_f_send;
   struct part_aos_f4_f_recv *d_parts_aos_pair_f4_f_recv;
 
-  struct part_aos_g *parts_aos_pair_grad;
   struct part_aos_f4_g_send *parts_aos_pair_f4_g_send;
   struct part_aos_f4_g_recv *parts_aos_pair_f4_g_recv;
 
-  struct part_aos_g *d_parts_aos_pair_grad;
   struct part_aos_f4_g_send *d_parts_aos_pair_f4_g_send;
   struct part_aos_f4_g_recv *d_parts_aos_pair_f4_g_recv;
 
+  /*Now allocate memory for Buffer and GPU particle arrays*/
   cudaMalloc((void **)&d_parts_aos_f4_send,
              count_max_parts_tmp * sizeof(struct part_aos_f4_send));
   cudaMalloc((void **)&d_parts_aos_f4_recv,
@@ -533,15 +512,6 @@ void *runner_main2(void *data) {
   cudaMalloc((void **)&d_parts_aos_pair_f4_g_recv,
              2 * count_max_parts_tmp * sizeof(struct part_aos_f4_g_recv));
 
-  ///////////Probably not needed
-  /// anymore////////////////////////////////////////////////////////////////
-  cudaMalloc((void **)&d_parts_aos_pair_forc,
-             2 * count_max_parts_tmp * sizeof(struct part_aos_f));
-  cudaMalloc((void **)&d_parts_aos_pair_grad,
-             2 * count_max_parts_tmp * sizeof(struct part_aos_g));
-  ///////////Probably not needed
-  /// anymore////////////////////////////////////////////////////////////////
-
   cudaMallocHost((void **)&parts_aos_pair_f4_send,
                  2 * count_max_parts_tmp * sizeof(struct part_aos_f4_send));
   cudaMallocHost((void **)&parts_aos_pair_f4_recv,
@@ -556,11 +526,6 @@ void *runner_main2(void *data) {
                  2 * count_max_parts_tmp * sizeof(struct part_aos_f4_f_send));
   cudaMallocHost((void **)&parts_aos_pair_f4_f_recv,
                  2 * count_max_parts_tmp * sizeof(struct part_aos_f4_f_recv));
-
-  cudaMallocHost((void **)&parts_aos_pair_forc,
-                 2 * count_max_parts_tmp * sizeof(struct part_aos_f));
-  cudaMallocHost((void **)&parts_aos_pair_grad,
-                 2 * count_max_parts_tmp * sizeof(struct part_aos_g));
 
   /*Declare some global variables*/
   float d_a = e->cosmology->a;
