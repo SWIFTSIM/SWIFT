@@ -295,7 +295,7 @@ void runner_recurse_gpu(struct runner *r, struct scheduler *s,
                               struct part_aos_f4_send *parts_send,
                               struct engine *e,
                               int4 *fparti_fpartj_lparti_lpartj, int *n_leafs_found,
-							  struct cell ** cells_left, struct cell ** cells_right, int depth) {
+							  struct cell ** cells_left, struct cell ** cells_right, int depth, int n_expected_tasks) {
 
 	/* Should we even bother? A. Nasar: For GPU code we need to be clever about this */
   if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
@@ -317,21 +317,19 @@ void runner_recurse_gpu(struct runner *r, struct scheduler *s,
 	  /*We probably want to record */
 	  if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL){
 		runner_recurse_gpu(r, s, pack_vars, ci->progeny[pid], cj->progeny[pjd], t, parts_send, e, fparti_fpartj_lparti_lpartj,
-				n_leafs_found, cells_left, cells_right, depth + 1);
+				n_leafs_found, cells_left, cells_right, depth + 1, n_expected_tasks);
 //	        message("recursing to depth %i", depth + 1);
 	  }
 	}
   }
   else if (CELL_IS_ACTIVE(ci, e) || CELL_IS_ACTIVE(cj, e)) {
-//	  else { //A .Nasar: WE DEFO HAVE A LEAF
 	/* if any cell empty: skip */
 	if(ci->hydro.count == 0 || cj->hydro.count == 0) return;
 	/*for all leafs to be sent add to cell list */
 	cells_left[*n_leafs_found] = ci;
 	cells_right[*n_leafs_found] = cj;
-//        message("incrementing");
 	*n_leafs_found = *n_leafs_found + 1;
-	if(*n_leafs_found >= 1024)
+	if(*n_leafs_found >= n_expected_tasks)
 		error("Created %i more than expected leaf cells. depth %i", *n_leafs_found, depth);
   }
 

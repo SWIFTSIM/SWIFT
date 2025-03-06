@@ -941,13 +941,14 @@ void *runner_main2(void *data) {
               /*Call recursion here. This will be a function in runner_doiact_functions_hydro_gpu.h.
                * We are recursing separately to find out how much work we have before offloading*/
               //We need to allocate a list to put cell pointers into for each new task
-              int n_expected_tasks = 1024;
+              int n_expected_tasks = 1024; //A. Nasar: Need to come up with a good estimate for this
               int n_leafs_found = 0;
               int depth = 0;
               struct cell * cells_left[n_expected_tasks];
               struct cell * cells_right[n_expected_tasks];
               runner_recurse_gpu(r, sched, pack_vars_pair_dens, ci, cj, t,
-                      parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, &n_leafs_found, cells_left, cells_right, depth);
+                      parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, &n_leafs_found,
+					  cells_left, cells_right, depth, n_expected_tasks);
               n_leafs_total += n_leafs_found;
 
               int cstart = 0, cend = n_leafs_found;
