@@ -665,7 +665,7 @@ void runner_doself1_launch_f4(
     struct part_aos_f4_recv *parts_recv, struct part_aos_f4_send *d_parts_send,
     struct part_aos_f4_recv *d_parts_recv, cudaStream_t *stream, float d_a,
     float d_H, struct engine *e, double *packing_time, double *gpu_time,
-    double *unpack_time, int2 *d_task_first_part_self_dens_f4, int devId,
+    double *unpack_time, int devId,
     int2 *task_first_part_f4, int2 *d_task_first_part_f4,
     cudaEvent_t *self_end) {
 

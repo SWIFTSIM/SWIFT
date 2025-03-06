@@ -40,4 +40,4 @@ SPH:
 InitialConditions:
   file_name:  greshoVortex.hdf5
   periodic:   1
-    #  replicate:  2
+  replicate:  2

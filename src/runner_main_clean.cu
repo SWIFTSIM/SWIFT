@@ -177,6 +177,7 @@ void *runner_main2(void *data) {
   //////////Declare and allocate GPU launch control data structures/////////
   /*pack_vars contain data required for self and pair packing tasks destined
    *  for the GPU*/
+  //A. N: Needed
   struct pack_vars_self *pack_vars_self_dens;
   struct pack_vars_self *pack_vars_self_forc;
   struct pack_vars_self *pack_vars_self_grad;
@@ -255,7 +256,6 @@ void *runner_main2(void *data) {
   // different streams)
   const int bundle_size = N_TASKS_BUNDLE_SELF;
   const int bundle_size_pair = N_TASKS_BUNDLE_PAIR;
-
   pack_vars_self_dens->bundle_size = bundle_size;
   pack_vars_pair_dens->bundle_size = bundle_size_pair;
   pack_vars_self_forc->bundle_size = bundle_size;
@@ -267,16 +267,13 @@ void *runner_main2(void *data) {
   // work with)
 
   // Copy of the above residing on the GPU
-  int *d_task_first_part_self_dens, *d_task_last_part_self_dens;
-  int2 *task_first_part_self_dens_f4;
+  // A. N.: Needed
   int2 *task_first_part_f4;
   int2 *task_first_part_f4_f;
   int2 *task_first_part_f4_g;
   int2 *d_task_first_part_f4;
   int2 *d_task_first_part_f4_f;
   int2 *d_task_first_part_f4_g;
-  int *d_task_first_part_self_forc, *d_task_last_part_self_forc;
-  int *d_task_first_part_self_grad, *d_task_last_part_self_grad;
   int *d_task_first_parts_pair_dens, *d_task_last_parts_pair_dens;
 
   int4 *fparti_fpartj_lparti_lpartj_dens;
@@ -286,8 +283,6 @@ void *runner_main2(void *data) {
   int *d_task_first_parts_pair_forc, *d_task_last_parts_pair_forc;
   int *d_task_first_parts_pair_grad, *d_task_last_parts_pair_grad;
 
-  cudaMallocManaged((void **)&task_first_part_self_dens_f4,
-                    target_n_tasks * sizeof(int2), cudaMemAttachGlobal);
   cudaMallocHost((void **)&task_first_part_f4, target_n_tasks * sizeof(int2));
   cudaMalloc((void **)&d_task_first_part_f4, target_n_tasks * sizeof(int2));
   cudaMallocHost((void **)&task_first_part_f4_f, target_n_tasks * sizeof(int2));
@@ -405,29 +400,6 @@ void *runner_main2(void *data) {
   cudaMallocHost((void **)&pack_vars_pair_grad->bundle_first_task_list,
                  2 * nBundles * sizeof(int));
 
-  // These I need to keep/////////////////
-  cudaMalloc((void **)&d_task_first_part_self_dens,
-             target_n_tasks * sizeof(int));
-  cudaMalloc((void **)&d_task_first_part_self_forc,
-             target_n_tasks * sizeof(int));
-  cudaMalloc((void **)&d_task_first_part_self_grad,
-             target_n_tasks * sizeof(int));
-
-  cudaMalloc((void **)&d_task_last_part_self_dens,
-             target_n_tasks * sizeof(int));
-  cudaMalloc((void **)&d_task_last_part_self_forc,
-             target_n_tasks * sizeof(int));
-  cudaMalloc((void **)&d_task_last_part_self_grad,
-             target_n_tasks * sizeof(int));
-  // These I need to keep/////////////////
-  pack_vars_self_dens->d_task_first_part = d_task_first_part_self_dens;
-  pack_vars_self_dens->d_task_last_part = d_task_last_part_self_dens;
-  // These I need to keep/////////////////
-  pack_vars_self_forc->d_task_first_part = d_task_first_part_self_forc;
-  pack_vars_self_forc->d_task_last_part = d_task_last_part_self_forc;
-  // These I need to keep/////////////////
-  pack_vars_self_grad->d_task_first_part = d_task_first_part_self_grad;
-  pack_vars_self_grad->d_task_last_part = d_task_last_part_self_grad;
 
   // These I need to keep/////////////////
   cudaMalloc((void **)&d_task_first_parts_pair_dens,
@@ -1035,7 +1007,7 @@ void *runner_main2(void *data) {
                   r, sched, pack_vars_self_dens, ci, t, parts_aos_f4_send,
                   parts_aos_f4_recv, d_parts_aos_f4_send, d_parts_aos_f4_recv,
                   stream, d_a, d_H, e, &packing_time, &time_for_density_gpu,
-                  &unpack_time_self, task_first_part_self_dens_f4, devId,
+                  &unpack_time_self, devId,
                   task_first_part_f4, d_task_first_part_f4, self_end);
             } /*End of GPU work Self*/
 #endif
