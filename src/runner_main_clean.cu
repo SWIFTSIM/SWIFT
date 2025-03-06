@@ -292,38 +292,6 @@ void *runner_main2(void *data) {
   cudaMallocHost((void **)&fparti_fpartj_lparti_lpartj_grad,
                  target_n_tasks * sizeof(int4));
 
-  // Arrays keeping track of the row numbers of the first and last particles
-  // within each bundle. Required by the GPU code
-
-  cudaMallocHost((void **)&pack_vars_self_dens->task_first_part,
-                 target_n_tasks * sizeof(int));
-  cudaMallocHost((void **)&pack_vars_self_dens->task_last_part,
-                 target_n_tasks * sizeof(int));
-
-  cudaMallocHost((void **)&pack_vars_pair_dens->task_first_part,
-                 2 * target_n_tasks * sizeof(int));
-  cudaMallocHost((void **)&pack_vars_pair_dens->task_last_part,
-                 2 * target_n_tasks * sizeof(int));
-
-  cudaMallocHost((void **)&pack_vars_self_forc->task_first_part,
-                 target_n_tasks * sizeof(int));
-  cudaMallocHost((void **)&pack_vars_self_forc->task_last_part,
-                 target_n_tasks * sizeof(int));
-
-  cudaMallocHost((void **)&pack_vars_pair_forc->task_first_part,
-                 2 * target_n_tasks * sizeof(int));
-  cudaMallocHost((void **)&pack_vars_pair_forc->task_last_part,
-                 2 * target_n_tasks * sizeof(int));
-
-  cudaMallocHost((void **)&pack_vars_self_grad->task_first_part,
-                 target_n_tasks * sizeof(int));
-  cudaMallocHost((void **)&pack_vars_self_grad->task_last_part,
-                 target_n_tasks * sizeof(int));
-
-  cudaMallocHost((void **)&pack_vars_pair_grad->task_first_part,
-                 2 * target_n_tasks * sizeof(int));
-  cudaMallocHost((void **)&pack_vars_pair_grad->task_last_part,
-                 2 * target_n_tasks * sizeof(int));
 
   /* nBundles is the number of task bundles each
   thread has ==> Used to loop through bundles */
