@@ -265,24 +265,14 @@ void *runner_main2(void *data) {
   // Keep track of first and last particles for each task (particle data is
   // arranged in long arrays containing particles from all the tasks we will
   // work with)
-
-  // Copy of the above residing on the GPU
-  // A. N.: Needed
+  /* A. N.: Needed for offloading self tasks as we use these to sort through
+   *        which parts need to interact with which */
   int2 *task_first_part_f4;
   int2 *task_first_part_f4_f;
   int2 *task_first_part_f4_g;
   int2 *d_task_first_part_f4;
   int2 *d_task_first_part_f4_f;
   int2 *d_task_first_part_f4_g;
-  int *d_task_first_parts_pair_dens, *d_task_last_parts_pair_dens;
-
-  int4 *fparti_fpartj_lparti_lpartj_dens;
-  int4 *fparti_fpartj_lparti_lpartj_forc, *d_fparti_fpartj_lparti_lpartj_forc;
-  int4 *fparti_fpartj_lparti_lpartj_grad, *d_fparti_fpartj_lparti_lpartj_grad;
-
-  int *d_task_first_parts_pair_forc, *d_task_last_parts_pair_forc;
-  int *d_task_first_parts_pair_grad, *d_task_last_parts_pair_grad;
-
   cudaMallocHost((void **)&task_first_part_f4, target_n_tasks * sizeof(int2));
   cudaMalloc((void **)&d_task_first_part_f4, target_n_tasks * sizeof(int2));
   cudaMallocHost((void **)&task_first_part_f4_f, target_n_tasks * sizeof(int2));
@@ -290,18 +280,17 @@ void *runner_main2(void *data) {
   cudaMallocHost((void **)&task_first_part_f4_g, target_n_tasks * sizeof(int2));
   cudaMalloc((void **)&d_task_first_part_f4_g, target_n_tasks * sizeof(int2));
 
+  /*A. N.: Needed but only for small part in launch functions. Might
+           be useful for recursion on the GPU so keep for now     */
+  int4 *fparti_fpartj_lparti_lpartj_dens;
+  int4 *fparti_fpartj_lparti_lpartj_forc;
+  int4 *fparti_fpartj_lparti_lpartj_grad;
   cudaMallocHost((void **)&fparti_fpartj_lparti_lpartj_dens,
                  target_n_tasks * sizeof(int4));
-
   cudaMallocHost((void **)&fparti_fpartj_lparti_lpartj_forc,
                  target_n_tasks * sizeof(int4));
-  cudaMalloc((void **)&d_fparti_fpartj_lparti_lpartj_forc,
-             target_n_tasks * sizeof(int4));
-
   cudaMallocHost((void **)&fparti_fpartj_lparti_lpartj_grad,
                  target_n_tasks * sizeof(int4));
-  cudaMalloc((void **)&d_fparti_fpartj_lparti_lpartj_grad,
-             target_n_tasks * sizeof(int4));
 
   // Arrays keeping track of the row numbers of the first and last particles
   // within each bundle. Required by the GPU code
@@ -400,28 +389,6 @@ void *runner_main2(void *data) {
   cudaMallocHost((void **)&pack_vars_pair_grad->bundle_first_task_list,
                  2 * nBundles * sizeof(int));
 
-
-  // These I need to keep/////////////////
-  cudaMalloc((void **)&d_task_first_parts_pair_dens,
-             2 * target_n_tasks * sizeof(int));
-  cudaMalloc((void **)&d_task_first_parts_pair_forc,
-             2 * target_n_tasks * sizeof(int));
-  cudaMalloc((void **)&d_task_first_parts_pair_grad,
-             2 * target_n_tasks * sizeof(int));
-
-  cudaMalloc((void **)&d_task_last_parts_pair_dens,
-             2 * target_n_tasks * sizeof(int));
-  cudaMalloc((void **)&d_task_last_parts_pair_forc,
-             2 * target_n_tasks * sizeof(int));
-  cudaMalloc((void **)&d_task_last_parts_pair_grad,
-             2 * target_n_tasks * sizeof(int));
-  // These I need to keep/////////////////
-  pack_vars_pair_dens->d_task_first_part = d_task_first_parts_pair_dens;
-  pack_vars_pair_dens->d_task_last_part = d_task_last_parts_pair_dens;
-  pack_vars_pair_forc->d_task_first_part = d_task_first_parts_pair_forc;
-  pack_vars_pair_forc->d_task_last_part = d_task_last_parts_pair_forc;
-  pack_vars_pair_grad->d_task_first_part = d_task_first_parts_pair_grad;
-  pack_vars_pair_grad->d_task_last_part = d_task_last_parts_pair_grad;
   // cell positions for self tasks REMEMBER to remove CPU copies as these are no
   // longer necessary
   double *d_dens_cell_x, *d_dens_cell_y, *d_dens_cell_z;
