@@ -292,7 +292,6 @@ void *runner_main2(void *data) {
   cudaMallocHost((void **)&fparti_fpartj_lparti_lpartj_grad,
                  target_n_tasks * sizeof(int4));
 
-
   /* nBundles is the number of task bundles each
   thread has ==> Used to loop through bundles */
   int nBundles = (target_n_tasks + bundle_size - 1) / bundle_size;
@@ -313,8 +312,7 @@ void *runner_main2(void *data) {
   pack_vars_pair_grad->nBundles = nBundles_pair;
 
   // first part and last part are the first and last particle ids (locally
-  // within this thread)
-
+  // within this thread). A. Nasar: All these are used in GPU offload setup
   cudaMallocHost((void **)&pack_vars_self_dens->bundle_first_part,
                  nBundles * sizeof(int));
   cudaMallocHost((void **)&pack_vars_self_dens->bundle_last_part,
@@ -356,121 +354,6 @@ void *runner_main2(void *data) {
                  2 * nBundles * sizeof(int));
   cudaMallocHost((void **)&pack_vars_pair_grad->bundle_first_task_list,
                  2 * nBundles * sizeof(int));
-
-  // cell positions for self tasks REMEMBER to remove CPU copies as these are no
-  // longer necessary
-  double *d_dens_cell_x, *d_dens_cell_y, *d_dens_cell_z;
-  float3 *d_dens_f3_cell_x;
-  double *d_grad_cell_x, *d_grad_cell_y, *d_grad_cell_z;
-  double *d_forc_cell_x, *d_forc_cell_y, *d_forc_cell_z;
-  // Shifts for pair tasks REMEMBER to remove CPU copies as these are no longer
-  // necessary
-  double *d_dens_shift_x, *d_dens_shift_y, *d_dens_shift_z;
-  double *d_grad_shift_x, *d_grad_shift_y, *d_grad_shift_z;
-  double *d_forc_shift_x, *d_forc_shift_y, *d_forc_shift_z;
-
-  // These I need to keep/////////////////
-  cudaMalloc((void **)&d_dens_cell_x, target_n_tasks * sizeof(double));
-  cudaMalloc((void **)&d_dens_cell_y, target_n_tasks * sizeof(double));
-  cudaMalloc((void **)&d_dens_cell_z, target_n_tasks * sizeof(double));
-
-  cudaMalloc((void **)&d_dens_f3_cell_x, target_n_tasks * sizeof(float3));
-
-  cudaMalloc((void **)&d_forc_cell_x, target_n_tasks * sizeof(double));
-  cudaMalloc((void **)&d_forc_cell_y, target_n_tasks * sizeof(double));
-  cudaMalloc((void **)&d_forc_cell_z, target_n_tasks * sizeof(double));
-
-  cudaMalloc((void **)&d_grad_cell_x, target_n_tasks * sizeof(double));
-  cudaMalloc((void **)&d_grad_cell_y, target_n_tasks * sizeof(double));
-  cudaMalloc((void **)&d_grad_cell_z, target_n_tasks * sizeof(double));
-
-  cudaMalloc((void **)&d_dens_shift_x, 2 * target_n_tasks * sizeof(double));
-  cudaMalloc((void **)&d_dens_shift_y, 2 * target_n_tasks * sizeof(double));
-  cudaMalloc((void **)&d_dens_shift_z, 2 * target_n_tasks * sizeof(double));
-
-  cudaMalloc((void **)&d_forc_shift_x, 2 * target_n_tasks * sizeof(double));
-  cudaMalloc((void **)&d_forc_shift_y, 2 * target_n_tasks * sizeof(double));
-  cudaMalloc((void **)&d_forc_shift_z, 2 * target_n_tasks * sizeof(double));
-
-  cudaMalloc((void **)&d_grad_shift_x, 2 * target_n_tasks * sizeof(double));
-  cudaMalloc((void **)&d_grad_shift_y, 2 * target_n_tasks * sizeof(double));
-  cudaMalloc((void **)&d_grad_shift_z, 2 * target_n_tasks * sizeof(double));
-  // These I need to keep/////////////////
-
-  cudaMallocHost((void **)&pack_vars_self_dens->cellx,
-                 target_n_tasks * sizeof(double));  // Pinned allocation on host
-  cudaMallocHost((void **)&pack_vars_self_dens->celly,
-                 target_n_tasks * sizeof(double));  // Pinned allocation on host
-  cudaMallocHost((void **)&pack_vars_self_dens->cellz,
-                 target_n_tasks * sizeof(double));  // Pinned allocation on host
-
-  pack_vars_self_dens->d_cellx = d_dens_cell_x;
-  pack_vars_self_dens->d_celly = d_dens_cell_y;
-  pack_vars_self_dens->d_cellz = d_dens_cell_z;
-
-  cudaMallocHost(
-      (void **)&pack_vars_pair_dens->shiftx,
-      2 * target_n_tasks * sizeof(double));  // Pinned allocation on host
-  cudaMallocHost(
-      (void **)&pack_vars_pair_dens->shifty,
-      2 * target_n_tasks * sizeof(double));  // Pinned allocation on host
-  cudaMallocHost(
-      (void **)&pack_vars_pair_dens->shiftz,
-      2 * target_n_tasks * sizeof(double));  // Pinned allocation on host
-
-  pack_vars_pair_dens->d_shiftx = d_dens_shift_x;
-  pack_vars_pair_dens->d_shifty = d_dens_shift_y;
-  pack_vars_pair_dens->d_shiftz = d_dens_shift_z;
-
-  cudaMallocHost((void **)&pack_vars_self_forc->cellx,
-                 target_n_tasks * sizeof(double));  // Pinned allocation on host
-  cudaMallocHost((void **)&pack_vars_self_forc->celly,
-                 target_n_tasks * sizeof(double));  // Pinned allocation on host
-  cudaMallocHost((void **)&pack_vars_self_forc->cellz,
-                 target_n_tasks * sizeof(double));  // Pinned allocation on host
-
-  pack_vars_self_forc->d_cellx = d_forc_cell_x;
-  pack_vars_self_forc->d_celly = d_forc_cell_y;
-  pack_vars_self_forc->d_cellz = d_forc_cell_z;
-
-  cudaMallocHost(
-      (void **)&pack_vars_pair_forc->shiftx,
-      2 * target_n_tasks * sizeof(double));  // Pinned allocation on host
-  cudaMallocHost(
-      (void **)&pack_vars_pair_forc->shifty,
-      2 * target_n_tasks * sizeof(double));  // Pinned allocation on host
-  cudaMallocHost(
-      (void **)&pack_vars_pair_forc->shiftz,
-      2 * target_n_tasks * sizeof(double));  // Pinned allocation on host
-
-  pack_vars_pair_forc->d_shiftx = d_forc_shift_x;
-  pack_vars_pair_forc->d_shifty = d_forc_shift_y;
-  pack_vars_pair_forc->d_shiftz = d_forc_shift_z;
-
-  cudaMallocHost((void **)&pack_vars_self_grad->cellx,
-                 target_n_tasks * sizeof(double));  // Pinned allocation on host
-  cudaMallocHost((void **)&pack_vars_self_grad->celly,
-                 target_n_tasks * sizeof(double));  // Pinned allocation on host
-  cudaMallocHost((void **)&pack_vars_self_grad->cellz,
-                 target_n_tasks * sizeof(double));  // Pinned allocation on host
-
-  pack_vars_self_grad->d_cellx = d_grad_cell_x;
-  pack_vars_self_grad->d_celly = d_grad_cell_y;
-  pack_vars_self_grad->d_cellz = d_grad_cell_z;
-
-  cudaMallocHost(
-      (void **)&pack_vars_pair_grad->shiftx,
-      2 * target_n_tasks * sizeof(double));  // Pinned allocation on host
-  cudaMallocHost(
-      (void **)&pack_vars_pair_grad->shifty,
-      2 * target_n_tasks * sizeof(double));  // Pinned allocation on host
-  cudaMallocHost(
-      (void **)&pack_vars_pair_grad->shiftz,
-      2 * target_n_tasks * sizeof(double));  // Pinned allocation on host
-
-  pack_vars_pair_grad->d_shiftx = d_grad_shift_x;
-  pack_vars_pair_grad->d_shifty = d_grad_shift_y;
-  pack_vars_pair_grad->d_shiftz = d_grad_shift_z;
 
   cudaStream_t stream[nBundles];
   cudaStream_t stream_pairs[nBundles_pair];
