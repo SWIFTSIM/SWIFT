@@ -549,6 +549,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
+
+  /* Save forces*/
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.tot_mag_F[k] *= p->mass;
+  }
 }
 
 /**

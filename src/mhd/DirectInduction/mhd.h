@@ -538,6 +538,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
       Hubble_induction_pref * p->mhd_data.B_over_rho[1];
   p->mhd_data.B_over_rho_dt[2] +=
       Hubble_induction_pref * p->mhd_data.B_over_rho[2];
+
+  /* Save forces*/
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.tot_mag_F[k] *= p->mass;
+  }
 }
 
 /**

@@ -113,7 +113,8 @@ INLINE static void calculate_R1(const struct engine* e, const struct part* p,
                              p->mhd_data.mean_grad_SPH_err[2]};
 
   /* Get total force acting on particles*/
-  const float Ftot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
+  const float Ftot[3] = {p->mass * p->a_hydro[0], p->mass * p->a_hydro[1],
+                         p->mass * p->a_hydro[2]};
   const float Ftot_abs =
       sqrtf(Ftot[0] * Ftot[0] + Ftot[1] * Ftot[1] + Ftot[2] * Ftot[2]);
 
@@ -125,9 +126,10 @@ INLINE static void calculate_R1(const struct engine* e, const struct part* p,
 
   /* Estimate noise level in Fmag from SPH aproximation of gradients */
   const float two_Pmag_over_rho = B_abs * B_abs / (p->rho * mu0 + FLT_MIN);
-  const float Fmag_SPH_gr_err[3] = {fabsf(two_Pmag_over_rho * SPH_gr_1[0]),
-                                    fabsf(two_Pmag_over_rho * SPH_gr_1[1]),
-                                    fabsf(two_Pmag_over_rho * SPH_gr_1[2])};
+  const float Fmag_SPH_gr_err[3] = {
+      p->mass * fabsf(two_Pmag_over_rho * SPH_gr_1[0]),
+      p->mass * fabsf(two_Pmag_over_rho * SPH_gr_1[1]),
+      p->mass * fabsf(two_Pmag_over_rho * SPH_gr_1[2])};
 
   /* Estimate noise level in Fmag from SPH sums */
   const float Fmag_SPH_1_err[3] = {fabsf(SPH_1_diff * Fmag[0]),
