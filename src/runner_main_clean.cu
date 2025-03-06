@@ -960,55 +960,54 @@ void *runner_main2(void *data) {
             pack_vars_pair_dens->top_task_list[top_tasks_packed] = t;
             int t_s, t_e;
             t_s = 0;
+            int n_t_tasks = pack_vars_pair_dens->target_n_tasks;
             while(cid < n_leafs_found){
               //////////////////////////////////////////////////////////////////////////////////
               /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
-              for (cid = cstart; pack_vars_pair_dens->tasks_packed < pack_vars_pair_dens->target_n_tasks
-                  && cid < n_leafs_found; cid++){
+              for (cid = cstart; pack_vars_pair_dens->tasks_packed < n_t_tasks && cid < n_leafs_found; cid++){
                   packing_time_pair += runner_dopair1_pack_f4(
                   r, sched, pack_vars_pair_dens, cells_left[cid], cells_right[cid], t,
                   parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
+                  if(pack_vars_pair_dens->count_parts > count_max_parts_tmp)
+                	  error("Packed more parts than possible");
               }
               /* Copies done. Release the lock ! */
               pack_vars_pair_dens->task_locked = 0;
-              cstart = cid + 1;
+              cstart = cid;
               t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
               /* Packed enough tasks or no pack tasks left in queue, flag that
                * we want to run */
               int launch = pack_vars_pair_dens->launch;
               int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
-
               /* Do we have enough stuff to run the GPU ? */
               if (launch) n_full_p_d_bundles++;
-                if (launch_leftovers) n_partial_p_d_bundles++;
+              if (launch_leftovers) n_partial_p_d_bundles++;
 
-                if (launch || launch_leftovers) {
-                  /*Launch GPU tasks*/
-                  int t_packed = pack_vars_pair_dens->tasks_packed;
-                  //                signal_sleeping_runners(sched, t, t_packed);
-                  runner_dopair1_launch_f4_one_memcpy(
+              if (launch || launch_leftovers) {
+                /*Launch GPU tasks*/
+                int t_packed = pack_vars_pair_dens->tasks_packed;
+                runner_dopair1_launch_f4_one_memcpy(
                     r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
                     parts_aos_pair_f4_recv, d_parts_aos_pair_f4_send,
                     d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e,
                     &packing_time_pair, &time_for_density_gpu_pair,
                     &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
                     pair_end);
-                  for (int tid = 0; tid < pack_vars_pair_dens->top_tasks_packed -1; tid++){
-                    /*schedule my dependencies (Only unpacks really)*/
-                    struct task *tii = pack_vars_pair_dens->top_task_list[tid];
-                    enqueue_dependencies(sched, tii);
-                  }
-                  pack_vars_pair_dens->top_tasks_packed = 1;
-                  pack_vars_pair_dens->top_task_list[0] = t;
+                for (int tid = 0; tid < pack_vars_pair_dens->top_tasks_packed -1; tid++){
+                  /*schedule my dependencies (Only unpacks really)*/
+                  struct task *tii = pack_vars_pair_dens->top_task_list[tid];
+                  enqueue_dependencies(sched, tii);
                 }
-              ///////////////////////////////////////////////////////////////////////
+                pack_vars_pair_dens->top_tasks_packed = 1;
+                pack_vars_pair_dens->top_task_list[0] = t;
               }
-              cell_unlocktree(ci);
-              cell_unlocktree(cj);
-              pack_vars_pair_dens->task_locked = 0;
-              pack_vars_pair_dens->launch_leftovers = 0;
-
-              /////////////////////W.I.P!!!////////////////////////////////////////////////////////
+              ///////////////////////////////////////////////////////////////////////
+            }
+            cell_unlocktree(ci);
+            cell_unlocktree(cj);
+            pack_vars_pair_dens->task_locked = 0;
+            pack_vars_pair_dens->launch_leftovers = 0;
+            /////////////////////W.I.P!!!////////////////////////////////////////////////////////
 
 #endif  // GPUOFFLOAD_DENSITY
           } /* pair / pack */
