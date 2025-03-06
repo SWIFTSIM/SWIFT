@@ -931,64 +931,55 @@ void *runner_main2(void *data) {
             packed_pair++;
 #ifdef GPUOFFLOAD_DENSITY
 
-              ticks tic_cpu_pack = getticks();
-              n_cells_p_d++;
-              maxcount = max(maxcount, ci->hydro.count);
-              if (ci->hydro.count > 1.5 * np_per_cell) {
-                n_w_prts_gtr_target_p_d++;
-              }
-              /////////////////////W.I.P!!!////////////////////////////////////////////////////////
-              /*Call recursion here. This will be a function in runner_doiact_functions_hydro_gpu.h.
-               * We are recursing separately to find out how much work we have before offloading*/
-              //We need to allocate a list to put cell pointers into for each new task
-              int n_expected_tasks = 1024; //A. Nasar: Need to come up with a good estimate for this
-              int n_leafs_found = 0;
-              int depth = 0;
-              struct cell * cells_left[n_expected_tasks];
-              struct cell * cells_right[n_expected_tasks];
-              runner_recurse_gpu(r, sched, pack_vars_pair_dens, ci, cj, t,
+            ticks tic_cpu_pack = getticks();
+            n_cells_p_d++;
+            maxcount = max(maxcount, ci->hydro.count);
+            if (ci->hydro.count > 1.5 * np_per_cell) {
+              n_w_prts_gtr_target_p_d++;
+            }
+            /////////////////////W.I.P!!!////////////////////////////////////////////////////////
+            /*Call recursion here. This will be a function in runner_doiact_functions_hydro_gpu.h.
+            * We are recursing separately to find out how much work we have before offloading*/
+            //We need to allocate a list to put cell pointers into for each new task
+            int n_expected_tasks = 1024; //A. Nasar: Need to come up with a good estimate for this
+            int n_leafs_found = 0;
+            int depth = 0;
+            struct cell * cells_left[n_expected_tasks];
+            struct cell * cells_right[n_expected_tasks];
+            runner_recurse_gpu(r, sched, pack_vars_pair_dens, ci, cj, t,
                       parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, &n_leafs_found,
 					  cells_left, cells_right, depth, n_expected_tasks);
-              n_leafs_total += n_leafs_found;
+            n_leafs_total += n_leafs_found;
 
-              int cstart = 0, cend = n_leafs_found;
+            int cstart = 0, cend = n_leafs_found;
 
-              int cid = 0;
-              pack_vars_pair_dens->task_locked = 1;
-              int top_tasks_packed = pack_vars_pair_dens->top_tasks_packed;
-              pack_vars_pair_dens->top_tasks_packed++;
-              pack_vars_pair_dens->top_task_list[top_tasks_packed] = t;
-              int t_s, t_e;
-              t_s = 0;
-              while(cid < n_leafs_found){
-                //////////////////////////////////////////////////////////////////////////////////
-                /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
-                for (cid = cstart; pack_vars_pair_dens->tasks_packed < pack_vars_pair_dens->target_n_tasks
-                     && cid < n_leafs_found; cid++){
-
+            int cid = 0;
+            pack_vars_pair_dens->task_locked = 1;
+            int top_tasks_packed = pack_vars_pair_dens->top_tasks_packed;
+            pack_vars_pair_dens->top_tasks_packed++;
+            pack_vars_pair_dens->top_task_list[top_tasks_packed] = t;
+            int t_s, t_e;
+            t_s = 0;
+            while(cid < n_leafs_found){
+              //////////////////////////////////////////////////////////////////////////////////
+              /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
+              for (cid = cstart; pack_vars_pair_dens->tasks_packed < pack_vars_pair_dens->target_n_tasks
+                  && cid < n_leafs_found; cid++){
                   packing_time_pair += runner_dopair1_pack_f4(
                   r, sched, pack_vars_pair_dens, cells_left[cid], cells_right[cid], t,
                   parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
-//                  if (pack_vars_pair_dens->unfinished)
-//                	break;
-//                message("Packing task %i in recursed tasks\n", cid);
-                }
-                /* Copies done. Release the lock ! */
-                pack_vars_pair_dens->task_locked = 0;
-//                if(cid == n_leafs_found){
-//                  cell_unlocktree(ci);
-//                  cell_unlocktree(cj);
-//                  pack_vars_pair_dens->task_locked = 0;
-//                }
-                cstart = cid + 1;
-                t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
-                /* Packed enough tasks or no pack tasks left in queue, flag that
-                 * we want to run */
-                int launch = pack_vars_pair_dens->launch;
-                int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
+              }
+              /* Copies done. Release the lock ! */
+              pack_vars_pair_dens->task_locked = 0;
+              cstart = cid + 1;
+              t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
+              /* Packed enough tasks or no pack tasks left in queue, flag that
+               * we want to run */
+              int launch = pack_vars_pair_dens->launch;
+              int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
 
-                /* Do we have enough stuff to run the GPU ? */
-                if (launch) n_full_p_d_bundles++;
+              /* Do we have enough stuff to run the GPU ? */
+              if (launch) n_full_p_d_bundles++;
                 if (launch_leftovers) n_partial_p_d_bundles++;
 
                 if (launch || launch_leftovers) {
@@ -1004,13 +995,13 @@ void *runner_main2(void *data) {
                     pair_end);
                   for (int tid = 0; tid < pack_vars_pair_dens->top_tasks_packed -1; tid++){
                     /*schedule my dependencies (Only unpacks really)*/
-                	struct task *tii = pack_vars_pair_dens->top_task_list[tid];
+                    struct task *tii = pack_vars_pair_dens->top_task_list[tid];
                     enqueue_dependencies(sched, tii);
                   }
                   pack_vars_pair_dens->top_tasks_packed = 1;
                   pack_vars_pair_dens->top_task_list[0] = t;
                 }
-                ///////////////////////////////////////////////////////////////////////
+              ///////////////////////////////////////////////////////////////////////
               }
               cell_unlocktree(ci);
               cell_unlocktree(cj);
