@@ -30,6 +30,7 @@
 /* Local includes. */
 #include "error.h"
 #include "gravity.h"
+#include "integer_power.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -39,6 +40,8 @@
 #ifdef HAVE_LIBGSL
 #include <gsl/gsl_sf_gamma.h>
 #endif
+
+#define potential_MW2014_num_coefficients 17
 
 /**
  * @brief External Potential Properties - MWPotential2014 composed by
@@ -79,6 +82,9 @@ struct external_potential {
   /*! The virial mass */
   double M_200;
 
+  /*! The NFW density at rs */
+  double rho_0;
+
   /*! Disk Size */
   double Rdisk;
 
@@ -109,6 +115,24 @@ struct external_potential {
   /*! Prefactor \f$ 2 \pi amplitude r_1^\alpha r_c^(2-\alpha) \f$ */
   double prefactor_psc_2;
 
+  /*! Are we using the dynamical friction ?*/
+  int with_dynamical_friction;
+
+  /*! Coulomb logarithm for the dynamical friction */
+  double df_lnLambda;
+
+  /*! Satellite mass for the dynamical friction in code unit */
+  double df_satellite_mass;
+
+  /*! Polynomial fit coefficients for the velocity dispersion model */
+  double df_polyfit_coeffs[potential_MW2014_num_coefficients];
+
+  /*! Minimum velocity dispersion for the velocity dispersion model */
+  double df_sigma_floor;
+
+  /*! Radius below which the dynamical friction vanishes */
+  double df_core_radius;
+
   /*! Gamma function evaluation \f$ \Gamma((3-\alpha)/2 \f$ */
   double gamma_psc;
 
@@ -116,6 +140,10 @@ struct external_potential {
    * orbital time, so in the case of 0.01 we take 1% of the orbital time as
    * the time integration steps */
   double timestep_mult;
+
+  /*! Time-step condition pre_factor, this factor is used to constraints
+   * the time-step so that the norm of v*dt is a fraction of the acceleration */
+  double df_timestep_mult;
 
   /*! Minimum time step based on the orbital time at the softening times
    * the timestep_mult */
@@ -186,7 +214,26 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   const float period = 2.0f * M_PI * r / Vcirc;
 
   /* Time-step as a fraction of the circular period */
-  const float time_step = potential->timestep_mult * period;
+  float time_step = potential->timestep_mult * period;
+
+  /* Add dynamical friction */
+
+  if (potential->with_dynamical_friction) {
+
+    const float vx = g->v_full[0];
+    const float vy = g->v_full[1];
+    const float vz = g->v_full[2];
+
+    float v = sqrtf(vx * vx + vy * vy + vz * vz);
+
+    const float ax = g->a_grav[0];
+    const float ay = g->a_grav[1];
+    const float az = g->a_grav[2];
+
+    float a = sqrtf(ax * ax + ay * ay + az * az);
+
+    time_step = min(time_step, potential->df_timestep_mult * v / a);
+  }
 
   return max(time_step, potential->mintime);
 
@@ -194,6 +241,51 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   error("Code not compiled with GSL. Can't compute MWPotential2014.");
   return 0.0;
 #endif
+}
+
+/**
+ * @brief Computes the mass density of the MW2014 model.
+ *
+ * @param x The x coordinate.
+ * @param y The y coordinate.
+ * @param z The y coordinate.
+ * @param time The current time (unused here).
+ * @param potential The #external_potential used in the run.
+ * @param phys_const Physical constants in internal units.
+ */
+__attribute__((always_inline)) INLINE static float external_gravity_get_density(
+    float x, float y, float z, double time,
+    const struct external_potential* potential,
+    const struct phys_const* const phys_const) {
+
+  /* First for the NFW profile */
+  const float R2 = x * x + y * y;
+  const float r = sqrtf(R2 + z * z + potential->eps * potential->eps);
+
+  /* First for the NFW part */
+  const float rho_NFW =
+      potential->rho_0 / ((r / potential->r_s) * (1 + r / potential->r_s) *
+                          (1 + r / potential->r_s));
+
+  /* Second the MN disk */
+  const float zb = sqrtf(potential->Zdisk * potential->Zdisk + z * z);
+  const float azb2 = integer_pow(potential->Rdisk + zb, 2);
+  const float cte =
+      (potential->Zdisk * potential->Zdisk * potential->Mdisk) / (4 * M_PI);
+  const float rho_MN =
+      cte * (potential->Rdisk * R2 + (potential->Rdisk + 3 * zb) * azb2) /
+      (pow(R2 + azb2, 2.5) * zb * zb * zb);
+
+  /* Third the bulge */
+  const float rho_PSC = potential->amplitude *
+                        pow(potential->r_1 / r, potential->alpha) *
+                        exp(-integer_pow(r / potential->r_c, 2));
+
+  /* Total density */
+  const float density = potential->f[0] * rho_NFW + potential->f[1] * rho_MN +
+                        potential->f[2] * rho_PSC;
+
+  return density;
 }
 
 /**
@@ -270,6 +362,62 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   g->a_grav[1] -= potential->f[2] * dpot_dr * dy * r_inv;
   g->a_grav[2] -= potential->f[2] * dpot_dr * dz * r_inv;
   gravity_add_comoving_potential(g, potential->f[2] * pot_psc);
+
+  /* Add dynamical friction */
+
+  if (potential->with_dynamical_friction) {
+
+    const float sqrtpi = sqrtf(M_PI);
+
+    const float vx = g->v_full[0];
+    const float vy = g->v_full[1];
+    const float vz = g->v_full[2];
+
+    const float v = sqrtf(vx * vx + vy * vy + vz * vz);
+
+    /* Compute the velocity dispertion as a function of the radius r, using
+     * using a high order polynomial interpolation.
+     */
+    double sigma = 0;
+    for (int i = 0; i < potential_MW2014_num_coefficients; i++)
+      sigma +=
+          potential
+              ->df_polyfit_coeffs[potential_MW2014_num_coefficients - 1 - i] *
+          integer_pow(r, i);
+
+    /* Prevent the velocity dispersion to be zero */
+    sigma = fmax(potential->df_sigma_floor, sigma);
+
+    /* Compute the chi parameter */
+    double X = v / (sqrt(2) * sigma);
+    double amp1 = erf(X) - ((2 * X / sqrtpi) * exp(-X * X));
+
+    /* Kill the dynamical friction at the center */
+    amp1 *= max(0, erf((r - potential->df_core_radius) /
+                       potential->df_core_radius / 2.0));
+
+    /* Compute the density */
+    float density =
+        external_gravity_get_density(dx, dy, dz, time, potential, phys_const);
+
+    /* Final factor (Binney & Tremaine 2008, eq. 8.7) */
+    float dyn_fric_timescale_inv =
+        -4 * M_PI * integer_pow(phys_const->const_newton_G, 2) /
+        integer_pow(v, 3) * density * potential->df_lnLambda * amp1 *
+        potential->df_satellite_mass;
+
+    /* Sanity check */
+    if (dyn_fric_timescale_inv > 0)
+      error("dyn_fric_timescale_inv is larger than zero (%g %g %g\n) !",
+            dyn_fric_timescale_inv, erf((r - 10) / 20), r);
+
+    /* Acceleration is per unit of G */
+    dyn_fric_timescale_inv /= phys_const->const_newton_G;
+
+    g->a_grav[0] += dyn_fric_timescale_inv * vx;
+    g->a_grav[1] += dyn_fric_timescale_inv * vy;
+    g->a_grav[2] += dyn_fric_timescale_inv * vz;
+  }
 
 #else
   error("Code not compiled with GSL. Can't compute MWPotential2014.");
@@ -382,6 +530,13 @@ static INLINE void potential_init_backend(
     potential->x[2] += s->dim[2] / 2.;
   }
 
+  const double df_polyfit_coeffs_default[potential_MW2014_num_coefficients] = {
+      -2.96536595e-31, 8.88944631e-28, -1.18280578e-24, 9.29479457e-22,
+      -4.82805265e-19, 1.75460211e-16, -4.59976540e-14, 8.83166045e-12,
+      -1.24747700e-09, 1.29060404e-07, -9.65315026e-06, 5.10187806e-04,
+      -1.83800281e-02, 4.26501444e-01, -5.78038064e+00, 3.57956721e+01,
+      1.85478908e+02};
+
   /* Read the other parameters of the model */
   potential->timestep_mult = parser_get_param_double(
       parameter_file, "MWPotential2014Potential:timestep_mult");
@@ -415,10 +570,32 @@ static INLINE void potential_init_backend(
   parser_get_opt_param_double_array(
       parameter_file, "MWPotential2014Potential:potential_factors", 3,
       potential->f);
+  potential->with_dynamical_friction = parser_get_opt_param_int(
+      parameter_file, "MWPotential2014Potential:with_dynamical_friction", 0);
+  potential->df_lnLambda = parser_get_opt_param_double(
+      parameter_file, "MWPotential2014Potential:df_lnLambda", 5.0);
+  potential->df_satellite_mass = parser_get_opt_param_double(
+      parameter_file, "MWPotential2014Potential:df_satellite_mass_in_Msun",
+      1e10);
+  potential->df_timestep_mult = parser_get_opt_param_double(
+      parameter_file, "MWPotential2014Potential:df_timestep_mult", 0.1);
+  potential->df_core_radius = parser_get_opt_param_double(
+      parameter_file, "MWPotential2014Potential:df_core_radius_in_kpc", 10);
+  potential->df_sigma_floor = parser_get_opt_param_double(
+      parameter_file, "MWPotential2014Potential:df_sigma_floor_km_p_s", 10.0);
+
+  /* Read all the dynamical friction coefficients */
+  for (int i = 0; i < potential_MW2014_num_coefficients; i++) {
+    char param_name[128];
+    sprintf(param_name, "MWPotential2014Potential:df_polyfit_coeffs%2d", i);
+    potential->df_polyfit_coeffs[i] = parser_get_opt_param_double(
+        parameter_file, param_name, df_polyfit_coeffs_default[i]);
+  }
 
   /* Convert to internal system of units by using the
    * physical constants defined in this system */
   const double kpc = 1000. * phys_const->const_parsec;
+  const double kms = 1e5 / units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
   potential->M_200 *= phys_const->const_solar_mass;
   potential->H *= phys_const->const_reduced_hubble;
   potential->Mdisk *= phys_const->const_solar_mass;
@@ -427,6 +604,14 @@ static INLINE void potential_init_backend(
   potential->r_1 *= kpc;
   potential->r_c *= kpc;
   potential->amplitude *= phys_const->const_solar_mass / (kpc * kpc * kpc);
+  potential->df_sigma_floor *= kms;
+  potential->df_satellite_mass *= phys_const->const_solar_mass;
+  potential->df_core_radius *= kpc;
+
+  /* units conversion for polyfit coefficients */
+  for (int i = 0; i < potential_MW2014_num_coefficients; i++)
+    potential->df_polyfit_coeffs[potential_MW2014_num_coefficients - 1 - i] /=
+        integer_pow(kpc, i) * kms;
 
   /* Compute rho_c */
   const double rho_c = 3.0 * potential->H * potential->H /
@@ -444,11 +629,11 @@ static INLINE void potential_init_backend(
   potential->log_c200_term =
       log(1. + potential->c_200) - potential->c_200 / (1. + potential->c_200);
 
-  const double rho_0 =
+  potential->rho_0 =
       potential->M_200 / (4.f * M_PI * r_s3 * potential->log_c200_term);
 
   /* Pre-factor for the accelerations (note G is multiplied in later on) */
-  potential->pre_factor = 4.0f * M_PI * rho_0 * r_s3;
+  potential->pre_factor = 4.0f * M_PI * potential->rho_0 * r_s3;
 
   /* Prefactor for the mass of the PSC profile */
   potential->prefactor_psc_1 = 2.0 * M_PI * potential->amplitude *
