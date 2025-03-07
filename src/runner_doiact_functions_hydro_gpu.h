@@ -1565,12 +1565,6 @@ void runner_dopair1_launch_f4_one_memcpy(
     }
   }
 
-
-  pthread_mutex_lock(&s->sleep_mutex);
-  atomic_sub(&s->waiting, pack_vars->top_tasks_packed);
-  pthread_cond_broadcast(&s->sleep_cond);
-  pthread_mutex_unlock(&s->sleep_mutex);
-
   /* Zero counters for the next pack operations */
   pack_vars->count_parts = 0;
   pack_vars->tasks_packed = 0;

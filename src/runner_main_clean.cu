@@ -932,11 +932,7 @@ void *runner_main2(void *data) {
 #ifdef GPUOFFLOAD_DENSITY
 
             ticks tic_cpu_pack = getticks();
-            n_cells_p_d++;
-            maxcount = max(maxcount, ci->hydro.count);
-            if (ci->hydro.count > 1.5 * np_per_cell) {
-              n_w_prts_gtr_target_p_d++;
-            }
+
             /////////////////////W.I.P!!!////////////////////////////////////////////////////////
             /*Call recursion here. This will be a function in runner_doiact_functions_hydro_gpu.h.
             * We are recursing separately to find out how much work we have before offloading*/
@@ -997,6 +993,10 @@ void *runner_main2(void *data) {
                   /*schedule my dependencies (Only unpacks really)*/
                   struct task *tii = pack_vars_pair_dens->top_task_list[tid];
                   enqueue_dependencies(sched, tii);
+                  pthread_mutex_lock(&sched->sleep_mutex);
+                  atomic_dec(&sched->waiting);
+                  pthread_cond_broadcast(&sched->sleep_cond);
+                  pthread_mutex_unlock(&sched->sleep_mutex);
                 }
                 pack_vars_pair_dens->top_tasks_packed = 1;
                 pack_vars_pair_dens->top_task_list[0] = t;
