@@ -690,9 +690,16 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
-  /* Compute the Balsara switch */
+  /* Get the squares of the necessary quantities */
+  const float fac_B_2 = fac_B * fac_B;
+  const float curl_v_2 = curl_v * curl_v;
+  const float abs_div_v_2 = abs_div_v * abs_div_v;
+  const float soundspeed_2 = soundspeed * soundspeed;
+  const float h_2 = p->h * p->h;
+  
+  /* Compute the Balsara-like switch (Price et a. (2018), eq. 47; a simplified version of eq. 18 in Cullen & Dehnen (2012)) */
   const float balsara =
-      abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed * fac_B / p->h);
+      abs_div_v_2 / (abs_div_v_2 + curl_v_2 + 0.0001f * soundspeed_2 * fac_B_2 / h_2);
 
   /* Compute the "grad h" term  - Note here that we have \tilde{x}
    * as 1 as we use the local number density to find neighbours. This
@@ -872,7 +879,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Source term is only activated if flow is converging (i.e. in the pre-
    * shock region) */
   const float S = p->viscosity.div_v < 0.f
-                      ? kernel_support_physical * kernel_support_physical *
+                      ? p->force.balsara * kernel_support_physical * kernel_support_physical *
                             max(0.f, -1.f * div_v_dt)
                       : 0.f;
 
