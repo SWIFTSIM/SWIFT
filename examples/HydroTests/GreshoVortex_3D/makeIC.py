@@ -28,7 +28,7 @@ gamma = 5.0 / 3.0  # Gas adiabatic index
 rho0 = 1  # Gas density
 P0 = 0.0  # Constant additional pressure (should have no impact on the dynamics)
 fileOutputName = "greshoVortex.hdf5"
-fileGlass = "glassCube_128.hdf5"
+fileGlass = "glassCube_64.hdf5"
 # ---------------------------------------------------
 
 # Get position and smoothing lengths from the glass

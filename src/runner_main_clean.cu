@@ -965,19 +965,19 @@ void *runner_main2(void *data) {
             t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
             while(cid < n_leafs_found){
               tic_cpu_pack = getticks();
-              if(pack_vars_pair_dens->task_locked = 0){
-            	/*Is this lock necessary? Maybe not since we are only reading positions etc.
-            	  Leave it in for now as I'm just getting it to work and need it to be locked
-            	  in case I unlock in the outside loop*/
-                while (cell_locktree(ci)) {
-                  ; /* spin until we acquire the lock */
-                }
-                /*Let's lock cj*/
-                while (cell_locktree(cj)) {
-                  ; /* spin until we acquire the lock */
-                }
-   		        pack_vars_pair_dens->task_locked = 1;
-              }
+//              if(pack_vars_pair_dens->task_locked == 0){
+//            	/*Is this lock necessary? Maybe not since we are only reading positions etc.
+//            	  Leave it in for now as I'm just getting it to work and need it to be locked
+//            	  in case I unlock in the outside loop*/
+//                while (cell_locktree(ci)) {
+//                  ; /* spin until we acquire the lock */
+//                }
+//                /*Let's lock cj*/
+//                while (cell_locktree(cj)) {
+//                  ; /* spin until we acquire the lock */
+//                }
+//   		        pack_vars_pair_dens->task_locked = 1;
+//              }
               /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
               while(cstart < n_leafs_found && pack_vars_pair_dens->tasks_packed < n_t_tasks){
                 packing_time_pair += runner_dopair1_pack_f4(
@@ -987,11 +987,11 @@ void *runner_main2(void *data) {
                   error("Packed more parts than possible");
                 cstart++;
               }
-              if(pack_vars_pair_dens->task_locked){
+//              if(pack_vars_pair_dens->task_locked){
   		        cell_unlocktree(ci);
   		        cell_unlocktree(cj);
   		        pack_vars_pair_dens->task_locked = 0;
-              }
+//              }
               cid = cstart;
               /* Copies done. Release the lock ! */
               t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
@@ -1010,7 +1010,7 @@ void *runner_main2(void *data) {
                     &packing_time_pair, &time_for_density_gpu_pair,
                     &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
                     pair_end);
-                int ntasks = 0;
+                int ntoptasks = 0;
                 runner_dopair1_unpack_f4(
                     r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
                     parts_aos_pair_f4_recv, d_parts_aos_pair_f4_send,
@@ -1018,29 +1018,39 @@ void *runner_main2(void *data) {
                     &packing_time_pair, &time_for_density_gpu_pair,
                     &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
                     pair_end);
-                if(cid == n_leafs_found) ntasks = pack_vars_pair_dens->top_tasks_packed;
-                else ntasks = pack_vars_pair_dens->top_tasks_packed - 1;
-//                for (int tid = 0; tid < ntasks; tid++){
-                  /*schedule my dependencies (Only unpacks really)*/
-                int ttid = pack_vars_pair_dens->top_tasks_packed - 1;
-			    struct task *tii = pack_vars_pair_dens->top_task_list[ttid];
+                if(cstart == n_leafs_found)
+                	pack_vars_pair_dens->top_tasks_packed = 0;
+                else
+                    pack_vars_pair_dens->top_tasks_packed = 1;
 
+                pack_vars_pair_dens->tasks_packed = 0;
+//                else{
+//
 //                }
-                if(cid == n_leafs_found){
-                  pack_vars_pair_dens->top_tasks_packed = 1;
-                  pack_vars_pair_dens->top_task_list[0] = t;
-                }
-                else{
-                  pack_vars_pair_dens->top_tasks_packed = 0;
-                  pack_vars_pair_dens->top_task_list[0] = NULL;
-                }
+//                if(cid == n_leafs_found) ntoptasks = pack_vars_pair_dens->top_tasks_packed;
+//                else ntoptasks = pack_vars_pair_dens->top_tasks_packed - 1;
+////                for (int tid = 0; tid < ntasks; tid++){
+//                  /*schedule my dependencies (Only unpacks really)*/
+//                int ttid = pack_vars_pair_dens->top_tasks_packed - 1;
+//			    struct task *tii = pack_vars_pair_dens->top_task_list[ttid];
+//
+////                }
+//                if(cid == n_leafs_found){
+//                  pack_vars_pair_dens->top_tasks_packed = 1;
+//                  pack_vars_pair_dens->top_task_list[0] = t;
+//                }
+//                else{
+//                  pack_vars_pair_dens->tasks_packed = 0;
+//                  pack_vars_pair_dens->top_task_list[0] = NULL;
+//                }
               }
               ///////////////////////////////////////////////////////////////////////
             }
-		    cell_unlocktree(ci);
-		    cell_unlocktree(cj);
-            pack_vars_pair_dens->task_locked = 0;
+//		    cell_unlocktree(ci);
+//		    cell_unlocktree(cj);
+//            pack_vars_pair_dens->task_locked = 0;
             pack_vars_pair_dens->launch_leftovers = 0;
+            pack_vars_pair_dens->launch = 0;
             /////////////////////W.I.P!!!////////////////////////////////////////////////////////
 
 #endif  // GPUOFFLOAD_DENSITY

@@ -1589,30 +1589,33 @@ void runner_dopair1_unpack_f4(
     double *unpack_time, int4 *fparti_fpartj_lparti_lpartj_dens,
     cudaEvent_t *pair_end){
   int topid;
-  for (topid = 0; topid < pack_vars->top_tasks_packed - 1; topid++) {
-	//lock top level cell here
-	struct cell * cii = pack_vars->top_task_list[topid]->ci;
-	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
-	while (cell_locktree(cii)) {
-		; /* spin until we acquire the lock */
-	}
-	/*Let's lock cj*/
-	while (cell_locktree(cjj)) {
-		; /* spin until we acquire the lock */
-	}
-  }
-  if(pack_vars->task_locked = 0){
-	struct cell * cii = pack_vars->top_task_list[topid]->ci;
-	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
-	while (cell_locktree(cii)) {
-		; /* spin until we acquire the lock */
-	}
-	/*Let's lock cj*/
-	while (cell_locktree(cjj)) {
-		; /* spin until we acquire the lock */
-	}
+  if(pack_vars->task_locked == 0){
+    for (topid = 0; topid < pack_vars->top_tasks_packed; topid++) {
+    	//lock top level cell here
+    	struct cell * cii = pack_vars->top_task_list[topid]->ci;
+    	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
+    	while (cell_locktree(cii)) {
+    		; /* spin until we acquire the lock */
+    	}
+    	/*Let's lock cj*/
+    	while (cell_locktree(cjj)) {
+    		; /* spin until we acquire the lock */
+    	}
+    }
 	pack_vars->task_locked = 1;
   }
+//  if(pack_vars->task_locked == 0){
+//	struct cell * cii = pack_vars->top_task_list[topid]->ci;
+//	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
+//	while (cell_locktree(cii)) {
+//	  ; /* spin until we acquire the lock */
+//	}
+//	/*Let's lock cj*/
+//	while (cell_locktree(cjj)) {
+//	  ; /* spin until we acquire the lock */
+//	}
+//	pack_vars->task_locked = 1;
+//  }
   int pack_length_unpack = 0;
   ticks total_cpu_unpack_ticks = 0;
   for(int tid = 0; tid < pack_vars->tasks_packed; tid++){
@@ -1628,7 +1631,7 @@ void runner_dopair1_unpack_f4(
 	const ticks toc = getticks();
 	total_cpu_unpack_ticks += toc - tic;
   }
-  for (topid = 0; topid < pack_vars->top_tasks_packed - 1; topid++) {
+  for (topid = 0; topid < pack_vars->top_tasks_packed; topid++) {
 	//lock top level cell here
 	struct cell * cii = pack_vars->top_task_list[topid]->ci;
 	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
@@ -1641,20 +1644,22 @@ void runner_dopair1_unpack_f4(
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
+    pack_vars->task_locked = 0;
   }
-  if(pack_vars->task_locked){
-	struct cell * cii = pack_vars->top_task_list[topid]->ci;
-	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
-	/* Release the locks */
-	cell_unlocktree(cii);
-	/* Release the locks */
-	cell_unlocktree(cjj);
-    enqueue_dependencies(s, pack_vars->top_task_list[topid]);
-    pthread_mutex_lock(&s->sleep_mutex);
-    atomic_dec(&s->waiting);
-    pthread_cond_broadcast(&s->sleep_cond);
-    pthread_mutex_unlock(&s->sleep_mutex);
-  }
+//  if(pack_vars->task_locked){
+//	struct cell * cii = pack_vars->top_task_list[topid]->ci;
+//	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
+//	/* Release the locks */
+//	cell_unlocktree(cii);
+//	/* Release the locks */
+//	cell_unlocktree(cjj);
+//    enqueue_dependencies(s, pack_vars->top_task_list[topid]);
+//    pthread_mutex_lock(&s->sleep_mutex);
+//    atomic_dec(&s->waiting);
+//    pthread_cond_broadcast(&s->sleep_cond);
+//    pthread_mutex_unlock(&s->sleep_mutex);
+//    pack_vars->task_locked = 0;
+//  }
 
 }
 void runner_dopair1_launch_f4_g_one_memcpy(
