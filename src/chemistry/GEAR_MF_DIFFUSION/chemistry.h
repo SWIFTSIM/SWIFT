@@ -645,7 +645,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
     const struct cosmology* cosmo, const float dt_alpha, const float dt_therm,
     const struct chemistry_global_data* cd) {
-  p->chemistry_data.flux_dt = dt_therm;
+  p->chemistry_data.flux_dt = dt_therm * cosmo->a2_inv;
 
   /* Update the diffusion coefficient for the new loop */
   p->chemistry_data.kappa =
@@ -1079,17 +1079,20 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   chd->kappa = chemistry_compute_diffusion_coefficient(p, chem_data, cosmo);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* Convert the timestep to physical units */
+  const double dt_therm_phys = dt_therm * cosmo->a2_inv;
+
   /* Compute the predicted flux */
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     chd->hyperbolic_flux[m].F_diff_pred[0] =
         chd->hyperbolic_flux[m].F_diff[0] +
-        0.5 * dt_therm * chd->hyperbolic_flux[m].dF_dt[0];
+        0.5 * dt_therm_phys * chd->hyperbolic_flux[m].dF_dt[0];
     chd->hyperbolic_flux[m].F_diff_pred[1] =
         chd->hyperbolic_flux[m].F_diff[1] +
-        0.5 * dt_therm * chd->hyperbolic_flux[m].dF_dt[1];
+        0.5 * dt_therm_phys * chd->hyperbolic_flux[m].dF_dt[1];
     chd->hyperbolic_flux[m].F_diff_pred[2] =
         chd->hyperbolic_flux[m].F_diff[2] +
-        0.5 * dt_therm * chd->hyperbolic_flux[m].dF_dt[2];
+        0.5 * dt_therm_phys * chd->hyperbolic_flux[m].dF_dt[2];
 
     /* Check that the fluxes are meaningful */
     chemistry_check_unphysical_diffusion_flux(
