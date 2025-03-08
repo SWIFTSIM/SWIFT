@@ -41,6 +41,7 @@ struct pack_vars_pair {
   /*List of tasks and respective cells to be packed*/
   struct task **task_list;
   struct task **top_task_list;
+  struct task ****leaf_task_list;
   struct cell **ci_list;
   struct cell **cj_list;
   /*List of cell shifts*/
@@ -340,7 +341,7 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
                               struct cell *ci, struct cell *cj, struct task *t,
                               struct part_aos_f4_send *parts_send,
                               struct engine *e,
-                              int4 *fparti_fpartj_lparti_lpartj) {
+                              int4 *fparti_fpartj_lparti_lpartj, int leaves_packed) {
   /* Timers for how long this all takes.
    * t0 and t1 are from start to finish including GPU calcs
    * tp0 and tp1 only time packing and unpacking*/
@@ -361,7 +362,8 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
   space_getsid_GPU(e->s, &ci, &cj, &x_tmp, &y_tmp, &z_tmp);
 
   /*Get pointers to the list of tasks and cells packed*/
-  pack_vars->task_list[tasks_packed] = t;
+//  pack_vars->task_list[tasks_packed] = t;
+  pack_vars->leaf_task_list[pack_vars->top_tasks_packed][leaves_packed] = t;
   pack_vars->ci_list[tasks_packed] = ci;
   pack_vars->cj_list[tasks_packed] = cj;
 
@@ -403,7 +405,6 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
         fparti_fpartj_lparti_lpartj[tasks_packed].x;
     pack_vars->bundle_first_task_list[bid] = tasks_packed;
   }
-
   /* Record that we have now done a packing (self) */
   t->done = 1;
   pack_vars->tasks_packed++;
@@ -1509,60 +1510,60 @@ void runner_dopair1_launch_f4_one_memcpy(
     /*Time unpacking*/
     //		clock_gettime(CLOCK_REALTIME, &tp0);
 
-    for (int tid = bid * bundle_size; tid < (bid + 1) * bundle_size; tid++) {
-
-      if (tid < tasks_packed) {
-        clock_gettime(CLOCK_REALTIME, &tp0);
-        /*grab cell and task pointers*/
-        struct cell *cii = pack_vars->ci_list[tid];
-        struct cell *cjj = pack_vars->cj_list[tid];
-        struct task *tii = pack_vars->task_list[tid];
-
-//        if(!pack_vars->task_locked){
-//          /*Let's lock ci*/
-//          while (cell_locktree(cii)) {
-//            ; /* spin until we acquire the lock */
-//          }
-//          /*Let's lock cj*/
-//          while (cell_locktree(cjj)) {
-//            ; /* spin until we acquire the lock */
-//          }
-//          pack_vars->task_locked = 1;
-//        }
-
-        const ticks tic = getticks();
-
-        /* Do the copy */
-        runner_do_ci_cj_gpu_unpack_neat_aos_f4(
-            r, cii, cjj, parts_recv, 0, &pack_length_unpack, tid,
-            2 * pack_vars->count_max_parts, e);
-
-        const ticks toc = getticks();
-
-        total_cpu_unpack_ticks += toc - tic;
-
-        /* Record things for debugging */
-        cii->gpu_done_pair++;
-        cjj->gpu_done_pair++;
-
-        if(pack_vars->task_locked){
-          /* Release the locks */
-          cell_unlocktree(cii);
-          /* Release the locks */
-          cell_unlocktree(cjj);
-          pack_vars->task_locked = 0;
-        }
-
-        /*Time end of unpacking*/
-        clock_gettime(CLOCK_REALTIME, &tp1);
-        *unpack_time += (tp1.tv_sec - tp0.tv_sec) +
-                        (tp1.tv_nsec - tp0.tv_nsec) / 1000000000.0;
-        /*Signal sleeping runners*/
-        // MATTHIEU signal_sleeping_runners(s, tii);
-
-        tii->gpu_done = 1;
-      }
-    }
+//    for (int tid = bid * bundle_size; tid < (bid + 1) * bundle_size; tid++) {
+//
+//      if (tid < tasks_packed) {
+//        clock_gettime(CLOCK_REALTIME, &tp0);
+//        /*grab cell and task pointers*/
+//        struct cell *cii = pack_vars->ci_list[tid];
+//        struct cell *cjj = pack_vars->cj_list[tid];
+//        struct task *tii = pack_vars->task_list[tid];
+//
+////        if(!pack_vars->task_locked){
+////          /*Let's lock ci*/
+////          while (cell_locktree(cii)) {
+////            ; /* spin until we acquire the lock */
+////          }
+////          /*Let's lock cj*/
+////          while (cell_locktree(cjj)) {
+////            ; /* spin until we acquire the lock */
+////          }
+////          pack_vars->task_locked = 1;
+////        }
+//
+//        const ticks tic = getticks();
+//
+//        /* Do the copy */
+//        runner_do_ci_cj_gpu_unpack_neat_aos_f4(
+//            r, cii, cjj, parts_recv, 0, &pack_length_unpack, tid,
+//            2 * pack_vars->count_max_parts, e);
+//
+//        const ticks toc = getticks();
+//
+//        total_cpu_unpack_ticks += toc - tic;
+//
+//        /* Record things for debugging */
+//        cii->gpu_done_pair++;
+//        cjj->gpu_done_pair++;
+//
+////        if(pack_vars->task_locked){
+////          /* Release the locks */
+////          cell_unlocktree(cii);
+////          /* Release the locks */
+////          cell_unlocktree(cjj);
+//          pack_vars->task_locked = 0;
+////        }
+//
+//        /*Time end of unpacking*/
+//        clock_gettime(CLOCK_REALTIME, &tp1);
+//        *unpack_time += (tp1.tv_sec - tp0.tv_sec) +
+//                        (tp1.tv_nsec - tp0.tv_nsec) / 1000000000.0;
+//        /*Signal sleeping runners*/
+//        // MATTHIEU signal_sleeping_runners(s, tii);
+//
+//        tii->gpu_done = 1;
+//      }
+//    }
   }
 
   /* Zero counters for the next pack operations */
@@ -1579,6 +1580,83 @@ void runner_dopair1_launch_f4_one_memcpy(
 
 } /*End of GPU work*/
 
+void runner_dopair1_unpack_f4(
+    struct runner *r, struct scheduler *s, struct pack_vars_pair *pack_vars,
+    struct task *t, struct part_aos_f4_send *parts_send,
+    struct part_aos_f4_recv *parts_recv, struct part_aos_f4_send *d_parts_send,
+    struct part_aos_f4_recv *d_parts_recv, cudaStream_t *stream, float d_a,
+    float d_H, struct engine *e, double *packing_time, double *gpu_time,
+    double *unpack_time, int4 *fparti_fpartj_lparti_lpartj_dens,
+    cudaEvent_t *pair_end){
+  int topid;
+  for (topid = 0; topid < pack_vars->top_tasks_packed - 1; topid++) {
+	//lock top level cell here
+	struct cell * cii = pack_vars->top_task_list[topid]->ci;
+	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
+	while (cell_locktree(cii)) {
+		; /* spin until we acquire the lock */
+	}
+	/*Let's lock cj*/
+	while (cell_locktree(cjj)) {
+		; /* spin until we acquire the lock */
+	}
+  }
+  if(pack_vars->task_locked = 0){
+	struct cell * cii = pack_vars->top_task_list[topid]->ci;
+	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
+	while (cell_locktree(cii)) {
+		; /* spin until we acquire the lock */
+	}
+	/*Let's lock cj*/
+	while (cell_locktree(cjj)) {
+		; /* spin until we acquire the lock */
+	}
+	pack_vars->task_locked = 1;
+  }
+  int pack_length_unpack = 0;
+  ticks total_cpu_unpack_ticks = 0;
+  for(int tid = 0; tid < pack_vars->tasks_packed; tid++){
+	/*grab cell and task pointers*/
+	struct cell *cii = pack_vars->ci_list[tid];
+	struct cell *cjj = pack_vars->cj_list[tid];
+	const ticks tic = getticks();
+	/* Do the copy */
+	runner_do_ci_cj_gpu_unpack_neat_aos_f4(
+			r, cii, cjj, parts_recv, 0, &pack_length_unpack, tid,
+			2 * pack_vars->count_max_parts, e);
+
+	const ticks toc = getticks();
+	total_cpu_unpack_ticks += toc - tic;
+  }
+  for (topid = 0; topid < pack_vars->top_tasks_packed - 1; topid++) {
+	//lock top level cell here
+	struct cell * cii = pack_vars->top_task_list[topid]->ci;
+	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
+	/* Release the locks */
+	cell_unlocktree(cii);
+	/* Release the locks */
+	cell_unlocktree(cjj);
+    enqueue_dependencies(s, pack_vars->top_task_list[topid]);
+    pthread_mutex_lock(&s->sleep_mutex);
+    atomic_dec(&s->waiting);
+    pthread_cond_broadcast(&s->sleep_cond);
+    pthread_mutex_unlock(&s->sleep_mutex);
+  }
+  if(pack_vars->task_locked){
+	struct cell * cii = pack_vars->top_task_list[topid]->ci;
+	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
+	/* Release the locks */
+	cell_unlocktree(cii);
+	/* Release the locks */
+	cell_unlocktree(cjj);
+    enqueue_dependencies(s, pack_vars->top_task_list[topid]);
+    pthread_mutex_lock(&s->sleep_mutex);
+    atomic_dec(&s->waiting);
+    pthread_cond_broadcast(&s->sleep_cond);
+    pthread_mutex_unlock(&s->sleep_mutex);
+  }
+
+}
 void runner_dopair1_launch_f4_g_one_memcpy(
     struct runner *r, struct scheduler *s, struct pack_vars_pair *pack_vars,
     struct task *t, struct part_aos_f4_g_send *parts_send,

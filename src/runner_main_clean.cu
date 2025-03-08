@@ -542,6 +542,14 @@ void *runner_main2(void *data) {
       (struct task **)calloc(target_n_tasks, sizeof(struct task *));
   pack_vars_pair_dens->top_task_list =
       (struct task **)calloc(target_n_tasks, sizeof(struct task *));
+  int n_leaves_max = 4096;
+  /*Allocate target_n_tasks for top level tasks. This is a 2D array with length target_n_tasks and width n_leaves_max*/
+  pack_vars_pair_dens->leaf_task_list =
+      (struct task **)calloc(target_n_tasks, sizeof(struct task *));
+  /*Allocate memory for n_leaves_max task pointers per top level task*/
+  for(int i = 0; i < target_n_tasks; i++)
+	  pack_vars_pair_dens->leaf_task_list[i] = (struct task **)calloc(n_leaves_max, sizeof(struct task *));
+
   pack_vars_pair_dens->ci_list =
       (struct cell **)calloc(target_n_tasks, sizeof(struct cell *));
   pack_vars_pair_dens->cj_list =
@@ -937,7 +945,7 @@ void *runner_main2(void *data) {
             /*Call recursion here. This will be a function in runner_doiact_functions_hydro_gpu.h.
             * We are recursing separately to find out how much work we have before offloading*/
             //We need to allocate a list to put cell pointers into for each new task
-            int n_expected_tasks = 1024; //A. Nasar: Need to come up with a good estimate for this
+            int n_expected_tasks = 4096; //A. Nasar: Need to come up with a good estimate for this
             int n_leafs_found = 0;
             int depth = 0;
             struct cell * cells_left[n_expected_tasks];
@@ -947,39 +955,52 @@ void *runner_main2(void *data) {
 					  cells_left, cells_right, depth, n_expected_tasks);
             n_leafs_total += n_leafs_found;
 
-            int cstart = 0, cend = n_leafs_found;
-
-            int cid = 0;
-            pack_vars_pair_dens->task_locked = 1;
-            int top_tasks_packed = pack_vars_pair_dens->top_tasks_packed;
+            int cstart = 0, cid = 0;
+            pack_vars_pair_dens->top_task_list[pack_vars_pair_dens->top_tasks_packed] = t;
             pack_vars_pair_dens->top_tasks_packed++;
-            pack_vars_pair_dens->top_task_list[top_tasks_packed] = t;
+            pack_vars_pair_dens->task_locked = 1;
             int t_s, t_e;
             t_s = 0;
             int n_t_tasks = pack_vars_pair_dens->target_n_tasks;
+            t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
             while(cid < n_leafs_found){
-              //////////////////////////////////////////////////////////////////////////////////
-              /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
-              for (cid = cstart; pack_vars_pair_dens->tasks_packed < n_t_tasks && cid < n_leafs_found; cid++){
-                  packing_time_pair += runner_dopair1_pack_f4(
-                  r, sched, pack_vars_pair_dens, cells_left[cid], cells_right[cid], t,
-                  parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
-                  if(pack_vars_pair_dens->count_parts > count_max_parts_tmp)
-                	  error("Packed more parts than possible");
+              tic_cpu_pack = getticks();
+              if(pack_vars_pair_dens->task_locked = 0){
+            	/*Is this lock necessary? Maybe not since we are only reading positions etc.
+            	  Leave it in for now as I'm just getting it to work and need it to be locked
+            	  in case I unlock in the outside loop*/
+                while (cell_locktree(ci)) {
+                  ; /* spin until we acquire the lock */
+                }
+                /*Let's lock cj*/
+                while (cell_locktree(cj)) {
+                  ; /* spin until we acquire the lock */
+                }
+   		        pack_vars_pair_dens->task_locked = 1;
               }
+              /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
+              while(cstart < n_leafs_found && pack_vars_pair_dens->tasks_packed < n_t_tasks){
+                packing_time_pair += runner_dopair1_pack_f4(
+                  r, sched, pack_vars_pair_dens, cells_left[cstart], cells_right[cstart], t,
+                  parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, cstart);
+                if(pack_vars_pair_dens->count_parts > count_max_parts_tmp)
+                  error("Packed more parts than possible");
+                cstart++;
+              }
+              if(pack_vars_pair_dens->task_locked){
+  		        cell_unlocktree(ci);
+  		        cell_unlocktree(cj);
+  		        pack_vars_pair_dens->task_locked = 0;
+              }
+              cid = cstart;
               /* Copies done. Release the lock ! */
-              pack_vars_pair_dens->task_locked = 0;
-              cstart = cid;
               t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
               /* Packed enough tasks or no pack tasks left in queue, flag that
                * we want to run */
               int launch = pack_vars_pair_dens->launch;
               int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
               /* Do we have enough stuff to run the GPU ? */
-              if (launch) n_full_p_d_bundles++;
-              if (launch_leftovers) n_partial_p_d_bundles++;
-
-              if (launch || launch_leftovers) {
+              if (launch || (launch_leftovers && cstart == n_leafs_found)) {
                 /*Launch GPU tasks*/
                 int t_packed = pack_vars_pair_dens->tasks_packed;
                 runner_dopair1_launch_f4_one_memcpy(
@@ -989,22 +1010,35 @@ void *runner_main2(void *data) {
                     &packing_time_pair, &time_for_density_gpu_pair,
                     &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
                     pair_end);
-                for (int tid = 0; tid < pack_vars_pair_dens->top_tasks_packed -1; tid++){
+                int ntasks = 0;
+                runner_dopair1_unpack_f4(
+                    r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
+                    parts_aos_pair_f4_recv, d_parts_aos_pair_f4_send,
+                    d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e,
+                    &packing_time_pair, &time_for_density_gpu_pair,
+                    &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
+                    pair_end);
+                if(cid == n_leafs_found) ntasks = pack_vars_pair_dens->top_tasks_packed;
+                else ntasks = pack_vars_pair_dens->top_tasks_packed - 1;
+//                for (int tid = 0; tid < ntasks; tid++){
                   /*schedule my dependencies (Only unpacks really)*/
-                  struct task *tii = pack_vars_pair_dens->top_task_list[tid];
-                  enqueue_dependencies(sched, tii);
-                  pthread_mutex_lock(&sched->sleep_mutex);
-                  atomic_dec(&sched->waiting);
-                  pthread_cond_broadcast(&sched->sleep_cond);
-                  pthread_mutex_unlock(&sched->sleep_mutex);
+                int ttid = pack_vars_pair_dens->top_tasks_packed - 1;
+			    struct task *tii = pack_vars_pair_dens->top_task_list[ttid];
+
+//                }
+                if(cid == n_leafs_found){
+                  pack_vars_pair_dens->top_tasks_packed = 1;
+                  pack_vars_pair_dens->top_task_list[0] = t;
                 }
-                pack_vars_pair_dens->top_tasks_packed = 1;
-                pack_vars_pair_dens->top_task_list[0] = t;
+                else{
+                  pack_vars_pair_dens->top_tasks_packed = 0;
+                  pack_vars_pair_dens->top_task_list[0] = NULL;
+                }
               }
               ///////////////////////////////////////////////////////////////////////
             }
-            cell_unlocktree(ci);
-            cell_unlocktree(cj);
+		    cell_unlocktree(ci);
+		    cell_unlocktree(cj);
             pack_vars_pair_dens->task_locked = 0;
             pack_vars_pair_dens->launch_leftovers = 0;
             /////////////////////W.I.P!!!////////////////////////////////////////////////////////
