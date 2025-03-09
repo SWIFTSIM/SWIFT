@@ -645,7 +645,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
     const struct cosmology* cosmo, const float dt_alpha, const float dt_therm,
     const struct chemistry_global_data* cd) {
-  p->chemistry_data.flux_dt = dt_therm * cosmo->a2_inv;
+  p->chemistry_data.flux_dt = dt_therm * cosmo->a * cosmo->a;
 
   /* Update the diffusion coefficient for the new loop */
   p->chemistry_data.kappa =
@@ -1080,7 +1080,7 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Convert the timestep to physical units */
-  const double dt_therm_phys = dt_therm * cosmo->a2_inv;
+  const double dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
 
   /* Compute the predicted flux */
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {

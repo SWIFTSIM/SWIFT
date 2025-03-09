@@ -184,7 +184,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
   struct chemistry_part_data* chd = &p->chemistry_data;
 
   /* Convert the timestep to physical units */
-  const double dt_therm_phys = dt_therm * cosmo->a2_inv;
+  const double dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     /* Avoid 0.0 divisions */
