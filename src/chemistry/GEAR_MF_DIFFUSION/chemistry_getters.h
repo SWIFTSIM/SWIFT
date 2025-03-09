@@ -111,6 +111,12 @@ chemistry_get_physical_shear_tensor(const struct part* restrict p,
       S[i][j] *= cosmo->a2_inv;
     }
   }
+
+  /* Now add the Hubble flow term to the diagonal elements. Note that because
+     the shear tensore is symmetric, the Hubble flow adds only once. */
+  S[0][0] += cosmo->H;
+  S[1][1] += cosmo->H;
+  S[2][2] += cosmo->H;
 }
 
 /**
