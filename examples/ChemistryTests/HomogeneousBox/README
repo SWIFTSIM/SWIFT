@@ -32,5 +32,12 @@ The run.sh script calls `makeIC.py' script with default values. You can experime
 # Run
 Type run.sh, and let's go!
 
-#Debugging notes
+# Debugging notes
 You can track the metal mass injected by feedback and diffused by the chemitry module by adding `CFLAGS="-DSWIFT_CHEMISTRY_DEBUG_CHECKS" ./configure [other parameters]`. This will also output the total diffused metal mass by each particles over the simulation. If you sum these values, you can track metal mass conservation. Notice that star formation removes metal.
+
+# Use cosmology
+This example can be run with cosmology if you comment some lines in `src/space.c:space_check_cosmology()`. You have to comment the line with "The cold dark matter content of the simulation does not match the cosmology in the parameter file [...]" (aroun line 2134) and the liens below. These lines check that the matter content in the initial conditions match with the cosmology.
+
+Then, run with
+
+jeans_length=250 rho=0.000001 with_cosmology=1 ./run.sh

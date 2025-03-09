@@ -10,16 +10,30 @@ InternalUnitSystem:
 Gravity:
   MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
-  theta:                         0.7       # Opening angle (Multipole acceptance criterion).
-  mesh_side_length:              32
   theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
-  eta:                           0.025     # Constant dimensionless multiplier for time integration.
-  comoving_baryon_softening:     0.007429  # Comoving softening length (in internal units).
-
+  eta:          0.025               # Constant dimensionless multiplier for time integration.
+  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
+  # max_physical_baryon_softening: 0.005  # Physical softening length (in internal units)
+  mesh_side_length:        32
+  comoving_DM_softening:         0.002823     # Comoving softening length (in internal units).
+  max_physical_DM_softening:     0.007429    # Physical softening length (in internal units).
+  comoving_baryon_softening:     0.007429    # Comoving softening length (in internal units).
+  max_physical_baryon_softening: 0.001485    # Physical softening length (in internal units).
+  
+# Cosmological parameters
+Cosmology:
+  h:              0.673        # Reduced Hubble constant
+  a_begin:        0.1 #0.014084507042253521  # Initial scale-factor of the simulation
+  a_end:          0.8 #0.3333333333333333 # (z=2) 0.16666666666666666 (z=5)  # Final scale factor of the simulation
+  Omega_cdm:      0.2664       # Matter density parameter
+  Omega_lambda:   0.685        # Dark-energy density parameter
+  Omega_b:        0.0486       # Baryon density parameter
+  Omega_r:        0.           # (Optional) Radiation density parameter
+  w_0:            -1.0         # (Optional) Dark-energy equation-of-state parameter at z=0.
+  w_a:            0.           # (Optional) Dark-energy equation-of-state time evolution parameter.
+  
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
-  time_begin:        0.    # The starting time of the simulation (in internal units).
-  time_end:          0.5   # 500 Myr # The end time of the simulation (in internal units).
   dt_min:            1e-12 # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
 
@@ -27,8 +41,8 @@ TimeIntegration:
 Snapshots:
   subdir: snap
   basename:   snapshot      # Common part of the name of output files
-  time_first: 0.0 #0.269            # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 1e-3          # Time difference between consecutive outputs (in internal units)
+  time_first: 0.0           # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 1.01          # Time difference between consecutive outputs (in internal units)
 
 Scheduler:
   cell_extra_gparts: 10000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
@@ -38,8 +52,8 @@ Scheduler:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:           1e-3     # Time between statistics output
-  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+  delta_time:           1.001   # Time between statistics output
+  time_first:             0.    # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
 
 # Parameters related to the initial conditions
 InitialConditions:
@@ -73,15 +87,15 @@ GrackleCooling:
 
 GEARChemistry:
   initial_metallicity: -1
-  diffusion_coefficient : 0.045       # (Optional, GEAR (MF) diffusion only) Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). Default: 1
-  diffusion_mode:  Smagorinsky        # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
+  diffusion_coefficient : 0.045 # (Optional, GEAR (MF) diffusion only) Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). Default: 1
+  diffusion_mode:  Smagorinsky #Isotropic_constant  # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
   hll_riemann_solver_epsilon: 0.1     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.5
   hll_riemann_solver_psi:  0.1        # (Optional, parabolic diffusion only) Tolerance parameter (> 0) for artificial diffusion, eq (7) in Hi2017. (Default: 0.1)
 
   relaxation_time_mode:  Constant     # Relaxation time mode. Constant = constant relaxation time ; Soundspeed = relaxation time based on gas soundspeed.
-  tau: 1e-1                           # (Optional, hyperbolic diffusion only) Relaxation time for the Isotropic_constant diffusion mode.
-  riemann_solver: HLL_parabolic_H17   # (Hyperbolic diffusion only) Riemann solver to use: HLL, HLL_parabolic_H17 or HLL_hyperbolic_H17
-  C_CFL_chemistry: 0.8                # (Optional) Courant-Friedrich-Levy condition for time integration of the supertimestep/hyperbolic diffusion.
+  tau: 1e-1                      # (Optional, hyperbolic diffusion only) Relaxation time for the Isotropic_constant diffusion mode.
+  riemann_solver: HLL_parabolic_H17    # (Hyperbolic diffusion only) Riemann solver to use: HLL, HLL_parabolic_H17 or HLL_hyperbolic_H17
+  C_CFL_chemistry: 0.8          # (Optional) Courant-Friedrich-Levy condition for time integration of the supertimestep/hyperbolic diffusion.
 
   # Supertimestepping parameters
   use_supertimestepping: 0        # (Optional, parabolic diffusion only) Do we want to use supertimestepping? Supertimestepping can accelerate simulations. (Default: 0)
@@ -106,4 +120,3 @@ GEARStarFormation:
 
 GEARPressureFloor:
   jeans_factor: 10
-
