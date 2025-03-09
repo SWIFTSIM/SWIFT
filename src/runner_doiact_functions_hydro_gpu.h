@@ -1587,23 +1587,23 @@ void runner_dopair1_unpack_f4(
     struct part_aos_f4_recv *d_parts_recv, cudaStream_t *stream, float d_a,
     float d_H, struct engine *e, double *packing_time, double *gpu_time,
     double *unpack_time, int4 *fparti_fpartj_lparti_lpartj_dens,
-    cudaEvent_t *pair_end){
+    cudaEvent_t *pair_end, int cstart, int n_leaves_found){
   int topid;
-  if(pack_vars->task_locked == 0){
-    for (topid = 0; topid < pack_vars->top_tasks_packed; topid++) {
-    	//lock top level cell here
-    	struct cell * cii = pack_vars->top_task_list[topid]->ci;
-    	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
-    	while (cell_locktree(cii)) {
-    		; /* spin until we acquire the lock */
-    	}
-    	/*Let's lock cj*/
-    	while (cell_locktree(cjj)) {
-    		; /* spin until we acquire the lock */
-    	}
-    }
-	pack_vars->task_locked = 1;
-  }
+//  if(pack_vars->task_locked == 0){
+//    for (topid = 0; topid < pack_vars->top_tasks_packed; topid++) {
+//    	//lock top level cell here
+//    	struct cell * cii = pack_vars->top_task_list[topid]->ci;
+//    	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
+//    	while (cell_locktree(cii)) {
+//    		; /* spin until we acquire the lock */
+//    	}
+//    	/*Let's lock cj*/
+//    	while (cell_locktree(cjj)) {
+//    		; /* spin until we acquire the lock */
+//    	}
+//    }
+//	pack_vars->task_locked = 1;
+//  }
 //  if(pack_vars->task_locked == 0){
 //	struct cell * cii = pack_vars->top_task_list[topid]->ci;
 //	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
@@ -1633,12 +1633,14 @@ void runner_dopair1_unpack_f4(
   }
   for (topid = 0; topid < pack_vars->top_tasks_packed; topid++) {
 	//lock top level cell here
-	struct cell * cii = pack_vars->top_task_list[topid]->ci;
-	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
-	/* Release the locks */
-	cell_unlocktree(cii);
-	/* Release the locks */
-	cell_unlocktree(cjj);
+//	struct cell * cii = pack_vars->top_task_list[topid]->ci;
+//	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
+//	/* Release the locks */
+//	cell_unlocktree(cii);
+//	/* Release the locks */
+//	cell_unlocktree(cjj);
+	if(topid == pack_vars->top_tasks_packed -1 && cstart != n_leaves_found)
+		break;
     enqueue_dependencies(s, pack_vars->top_task_list[topid]);
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);

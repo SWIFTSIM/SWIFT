@@ -963,7 +963,7 @@ void *runner_main2(void *data) {
             t_s = 0;
             int n_t_tasks = pack_vars_pair_dens->target_n_tasks;
             t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
-            while(cid < n_leafs_found){
+            while(cstart < n_leafs_found){
               tic_cpu_pack = getticks();
 //              if(pack_vars_pair_dens->task_locked == 0){
 //            	/*Is this lock necessary? Maybe not since we are only reading positions etc.
@@ -988,8 +988,8 @@ void *runner_main2(void *data) {
                 cstart++;
               }
 //              if(pack_vars_pair_dens->task_locked){
-  		        cell_unlocktree(ci);
-  		        cell_unlocktree(cj);
+//  		        cell_unlocktree(ci);
+//  		        cell_unlocktree(cj);
   		        pack_vars_pair_dens->task_locked = 0;
 //              }
               cid = cstart;
@@ -1017,12 +1017,17 @@ void *runner_main2(void *data) {
                     d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e,
                     &packing_time_pair, &time_for_density_gpu_pair,
                     &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
-                    pair_end);
+                    pair_end, cstart, n_leafs_found);
+                /*This ensure that if we still have leaves left we start at index 1.
+                  Otherwise, reset the index since we will be grabbing a new task*/
                 if(cstart == n_leafs_found)
                 	pack_vars_pair_dens->top_tasks_packed = 0;
-                else
+                else{
                     pack_vars_pair_dens->top_tasks_packed = 1;
-
+                    pack_vars_pair_dens->top_task_list[0] = t;
+                }
+                /*This makes it such that the remaining leaf tasks are packed starting from a
+                  fresh list since we are still in the while cstart < n_leafs_found loop*/
                 pack_vars_pair_dens->tasks_packed = 0;
 //                else{
 //
@@ -1046,8 +1051,8 @@ void *runner_main2(void *data) {
               }
               ///////////////////////////////////////////////////////////////////////
             }
-//		    cell_unlocktree(ci);
-//		    cell_unlocktree(cj);
+		    cell_unlocktree(ci);
+		    cell_unlocktree(cj);
 //            pack_vars_pair_dens->task_locked = 0;
             pack_vars_pair_dens->launch_leftovers = 0;
             pack_vars_pair_dens->launch = 0;
