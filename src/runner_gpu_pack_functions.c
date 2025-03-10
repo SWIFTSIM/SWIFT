@@ -542,8 +542,8 @@ void runner_do_ci_cj_gpu_unpack_neat_aos_f4(
     int tid, int count_max_parts_tmp, struct engine *e) {
 
   /* Anything to do here? */
-  //  if (c->hydro.count == 0)
-  //    return;
+//    if (ci->hydro.count == 0 || cj->hydro.count == 0)
+//      return;
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) {
     message("Inactive cell\n");
     return;

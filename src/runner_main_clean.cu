@@ -544,11 +544,27 @@ void *runner_main2(void *data) {
       (struct task **)calloc(target_n_tasks, sizeof(struct task *));
   int n_leaves_max = 4096;
   /*Allocate target_n_tasks for top level tasks. This is a 2D array with length target_n_tasks and width n_leaves_max*/
-  pack_vars_pair_dens->leaf_task_list =
-      (struct task **)calloc(target_n_tasks, sizeof(struct task *));
+  struct leaf_cell_list l_list[target_n_tasks];
+  pack_vars_pair_dens->leaf_list = (struct leaf_cell_list *)calloc(target_n_tasks, sizeof(struct leaf_cell_list));
+  for (int i = 0; i < target_n_tasks; i++){
+    l_list[i].ci = (struct cell **)calloc(n_leaves_max, sizeof(struct cell *));
+    l_list[i].cj = (struct cell **)calloc(n_leaves_max, sizeof(struct cell *));
+    l_list[i].n_leaves = 0;
+    pack_vars_pair_dens->leaf_list[i].ci = (struct cell **)calloc(n_leaves_max, sizeof(struct cell *));
+    pack_vars_pair_dens->leaf_list[i].cj = (struct cell **)calloc(n_leaves_max, sizeof(struct cell *));
+    pack_vars_pair_dens->leaf_list[i].n_leaves = 0;
+    for (int j = 0; j < n_leaves_max; j++){
+      pack_vars_pair_dens->leaf_list[i].ci[j] = l_list[i].ci[j];
+      pack_vars_pair_dens->leaf_list[i].cj[j] = l_list[i].cj[j];
+
+    }
+  }
+//  pack_vars_pair_dens->leaf_list = l_list;
+//  pack_vars_pair_dens->leaf_list->ci =
+//	      (struct cell **)calloc(n_leaves_max, sizeof(struct cell *));
+//  pack_vars_pair_dens->leaf_list->cj =
+//	      (struct cell **)calloc(n_leaves_max, sizeof(struct cell *));
   /*Allocate memory for n_leaves_max task pointers per top level task*/
-  for(int i = 0; i < target_n_tasks; i++)
-	  pack_vars_pair_dens->leaf_task_list[i] = (struct task **)calloc(n_leaves_max, sizeof(struct task *));
 
   pack_vars_pair_dens->ci_list =
       (struct cell **)calloc(target_n_tasks, sizeof(struct cell *));
@@ -654,6 +670,8 @@ void *runner_main2(void *data) {
     pack_vars_pair_grad->tasks_packed = 0;
     pack_vars_self_grad->count_parts = 0;
     pack_vars_pair_grad->count_parts = 0;
+    for(int i = 0; i < target_n_tasks; i++)
+    	pack_vars_pair_dens->leaf_list[i].n_leaves = 0;
 
     int total_tasks_packed_this_time_pair = 0;
     double packing_time = 0.0;
@@ -946,27 +964,29 @@ void *runner_main2(void *data) {
             * We are recursing separately to find out how much work we have before offloading*/
             //We need to allocate a list to put cell pointers into for each new task
             int n_expected_tasks = 4096; //A. Nasar: Need to come up with a good estimate for this
-            int n_leafs_found = 0;
+            int n_leaves_found = 0;
             int depth = 0;
             struct cell * cells_left[n_expected_tasks];
             struct cell * cells_right[n_expected_tasks];
             runner_recurse_gpu(r, sched, pack_vars_pair_dens, ci, cj, t,
-                      parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, &n_leafs_found,
+                      parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, &n_leaves_found,
 					  cells_left, cells_right, depth, n_expected_tasks);
-            n_leafs_total += n_leafs_found;
+            n_leafs_total += n_leaves_found;
 
             int cstart = 0, cid = 0;
             pack_vars_pair_dens->top_task_list[pack_vars_pair_dens->top_tasks_packed] = t;
             pack_vars_pair_dens->top_tasks_packed++;
             pack_vars_pair_dens->task_locked = 1;
+            //This might be abit iffy setting it to zero here. What if we loop through a task twice for recursion but do not offload the second time? We could be unpacking to the wrong leaves
+            pack_vars_pair_dens->leaf_list[pack_vars_pair_dens->top_tasks_packed - 1].n_packed = 0;
             int t_s, t_e;
             t_s = 0;
             int n_t_tasks = pack_vars_pair_dens->target_n_tasks;
             t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
-            while(cstart < n_leafs_found){
+            while(cstart < n_leaves_found){
               tic_cpu_pack = getticks();
               /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
-              while(cstart < n_leafs_found && pack_vars_pair_dens->tasks_packed < n_t_tasks){
+              while(cstart < n_leaves_found && pack_vars_pair_dens->tasks_packed < n_t_tasks){
                 packing_time_pair += runner_dopair1_pack_f4(
                   r, sched, pack_vars_pair_dens, cells_left[cstart], cells_right[cstart], t,
                   parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, cstart);
@@ -974,8 +994,6 @@ void *runner_main2(void *data) {
                   error("Packed more parts than possible");
                 cstart++;
               }
-  		      pack_vars_pair_dens->task_locked = 0;
-              cid = cstart;
               /* Copies done. Release the lock ! */
               t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
               /* Packed enough tasks or no pack tasks left in queue, flag that
@@ -983,8 +1001,10 @@ void *runner_main2(void *data) {
               int launch = pack_vars_pair_dens->launch;
               int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
               /* Do we have enough stuff to run the GPU ? */
-              if (launch || (launch_leftovers && cstart == n_leafs_found)) {
+              if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
+//            	cell_unlocktree(ci);
+//            	cell_unlocktree(cj);
                 int t_packed = pack_vars_pair_dens->tasks_packed;
                 runner_dopair1_launch_f4_one_memcpy(
                     r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
@@ -1000,17 +1020,25 @@ void *runner_main2(void *data) {
                     d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e,
                     &packing_time_pair, &time_for_density_gpu_pair,
                     &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
-                    pair_end, cstart, n_leafs_found);
+                    pair_end, cstart, n_leaves_found);
                 /*This ensure that if we still have leaves left we start at index 1.
                   Otherwise, reset the index since we will be grabbing a new task*/
-                if(cstart == n_leafs_found)
+                if(cstart == n_leaves_found){
                 	pack_vars_pair_dens->top_tasks_packed = 0;
+                }
                 else{
                     pack_vars_pair_dens->top_tasks_packed = 1;
                     pack_vars_pair_dens->top_task_list[0] = t;
+//                    pack_vars_pair_dens->leaf_list[0].n_packed = 0;
+                    pack_vars_pair_dens->leaf_list[0].ci[0] =
+                        pack_vars_pair_dens->leaf_list[pack_vars_pair_dens->top_tasks_packed - 1].ci[pack_vars_pair_dens->tasks_packed - 1];
+                    pack_vars_pair_dens->leaf_list[0].cj[0] =
+                        pack_vars_pair_dens->leaf_list[pack_vars_pair_dens->top_tasks_packed - 1].cj[pack_vars_pair_dens->tasks_packed - 1];
                 }
                 /*This makes it such that the remaining leaf tasks are packed starting from a
-                  fresh list since we are still in the while cstart < n_leafs_found loop*/
+                  fresh list since we are still in the while cstart < n_leaves_found loop*/
+
+                pack_vars_pair_dens->leaf_list[0].n_packed = 0;
                 pack_vars_pair_dens->tasks_packed = 0;
               }
               ///////////////////////////////////////////////////////////////////////

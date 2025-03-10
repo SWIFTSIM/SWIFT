@@ -36,12 +36,17 @@ struct pack_vars_self {
   int tasksperbundle;
 
 } pack_vars_self;
-
+struct leaf_cell_list{
+  struct cell **ci;
+  struct cell **cj;
+  int n_leaves;
+  int n_packed;
+};
 struct pack_vars_pair {
   /*List of tasks and respective cells to be packed*/
   struct task **task_list;
   struct task **top_task_list;
-  struct task ****leaf_task_list;
+  struct leaf_cell_list * leaf_list;
   struct cell **ci_list;
   struct cell **cj_list;
   /*List of cell shifts*/
@@ -329,6 +334,10 @@ void runner_recurse_gpu(struct runner *r, struct scheduler *s,
 	/*for all leafs to be sent add to cell list */
 	cells_left[*n_leafs_found] = ci;
 	cells_right[*n_leafs_found] = cj;
+	/*Add leaf cells to list for each top_level task*/
+	pack_vars->leaf_list[pack_vars->top_tasks_packed].ci[*n_leafs_found] = ci;
+	pack_vars->leaf_list[pack_vars->top_tasks_packed].cj[*n_leafs_found] = cj;
+	pack_vars->leaf_list[pack_vars->top_tasks_packed].n_leaves++;
 	*n_leafs_found = *n_leafs_found + 1;
 	if(*n_leafs_found >= n_expected_tasks)
 		error("Created %i more than expected leaf cells. depth %i", *n_leafs_found, depth);
@@ -363,7 +372,6 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
 
   /*Get pointers to the list of tasks and cells packed*/
 //  pack_vars->task_list[tasks_packed] = t;
-  pack_vars->leaf_task_list[pack_vars->top_tasks_packed][leaves_packed] = t;
   pack_vars->ci_list[tasks_packed] = ci;
   pack_vars->cj_list[tasks_packed] = cj;
 
@@ -410,6 +418,7 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
+  pack_vars->leaf_list[pack_vars->top_tasks_packed - 1].n_packed++;
 
   //A. Nasar: Need to come back to this at some point!
   lock_lock(&s->queues[qid].lock);
@@ -1588,57 +1597,31 @@ void runner_dopair1_unpack_f4(
     float d_H, struct engine *e, double *packing_time, double *gpu_time,
     double *unpack_time, int4 *fparti_fpartj_lparti_lpartj_dens,
     cudaEvent_t *pair_end, int cstart, int n_leaves_found){
+
   int topid;
-//  if(pack_vars->task_locked == 0){
-//  if(pack_vars->top_tasks_packed > 1){
-//    for (topid = 0; topid < pack_vars->top_tasks_packed - 1; topid++) {
-//    	//lock top level cell here
-//    	struct cell * cii = pack_vars->top_task_list[topid]->ci;
-//    	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
-//    	while (cell_locktree(cii)) {
-//    		; /* spin until we acquire the lock */
-//    	}
-//    	/*Let's lock cj*/
-//    	while (cell_locktree(cjj)) {
-//    		; /* spin until we acquire the lock */
-//    	}
-//    }
-//  }
   int pack_length_unpack = 0;
   ticks total_cpu_unpack_ticks = 0;
-  for(int tid = 0; tid < pack_vars->tasks_packed; tid++){
-	/*grab cell and task pointers*/
-	struct cell *cii = pack_vars->ci_list[tid];
-	struct cell *cjj = pack_vars->cj_list[tid];
+  for (topid = 0; topid < pack_vars->top_tasks_packed; topid++) {
+	//lock top level cell here
+	struct cell * cii = pack_vars->top_task_list[topid]->ci;
+	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
 	const ticks tic = getticks();
 	/* Do the copy */
-	runner_do_ci_cj_gpu_unpack_neat_aos_f4(
-			r, cii, cjj, parts_recv, 0, &pack_length_unpack, tid,
+
+	int n_leaves_in_task = pack_vars->leaf_list[topid].n_packed;
+	for(int tid = 0; tid < n_leaves_in_task; tid++){
+	  //Get pointers to the leaf cells. SEEMS I'm NOT GETTING A CORRECT POINTER
+	  struct cell * cii_l = pack_vars->leaf_list[topid].ci[tid];
+	  struct cell * cjj_l = pack_vars->leaf_list[topid].cj[tid];
+	  runner_do_ci_cj_gpu_unpack_neat_aos_f4(
+			r, cii_l, cjj_l, parts_recv, 0, &pack_length_unpack, tid,
 			2 * pack_vars->count_max_parts, e);
+	}
 
 	const ticks toc = getticks();
 	total_cpu_unpack_ticks += toc - tic;
-  }
-
-//  if(pack_vars->top_tasks_packed > 1){
-//    for (topid = 0; topid < pack_vars->top_tasks_packed; topid++) {
-//    	/*The failed to unlock cell issue is related to this if statement. REVISE*/
-//    if(topid == pack_vars->top_tasks_packed -1 && cstart != n_leaves_found)
-//      continue;
-//	struct cell * cii = pack_vars->top_task_list[topid]->ci;
-//	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
-//	/*For some reason the code fails if we get a leaf pair task
-//	 *this if statement stops the code from trying to unlock same cells twice*/
-//	if(n_leaves_found > 1){
-//	  /* Release the locks */
-//	  cell_unlocktree(cii);
-//	  /* Release the locks */
-//	  cell_unlocktree(cjj);
-//	}
-//    }
-//  }
-  for (topid = 0; topid < pack_vars->top_tasks_packed; topid++) {
-	//lock top level cell here
+	/*For some reason the code fails if we get a leaf pair task
+	 *this if statement stops the code from trying to unlock same cells twice*/
 	if(topid == pack_vars->top_tasks_packed -1 && cstart != n_leaves_found)
 		continue;
     enqueue_dependencies(s, pack_vars->top_task_list[topid]);
