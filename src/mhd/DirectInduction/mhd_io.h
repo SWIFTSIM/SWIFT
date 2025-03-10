@@ -390,15 +390,15 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "co-moving DivB  of the particle");
 
   list[2] = io_make_output_field(
-      "DednerScalars", FLOAT, 1, UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH,
+      "DednerScalarsOverCleaningSpeeds", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
       -1.5f * hydro_gamma - 1.f, parts, mhd_data.psi_over_ch,
-      "Dedner scalar associated to the particle");
+      "Dedner scalars over cleaning speeds of the particles");
 
   list[3] = io_make_output_field(
-      "DednerScalarsdt", FLOAT, 1,
-      UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH_RATE, 1.f, parts,
+      "DednerScalarsOverCleaningSpeedsdt", FLOAT, 1,
+      UNIT_CONV_MAGNETIC_FIELD_PER_TIME, 1.f, parts,
       mhd_data.psi_over_ch_dt,
-      "Time derivative of Dedner scalar associated to particle");
+      "Time derivative of Dedner scalars over cleaning speeds of the particles");
 
   list[4] = io_make_output_field(
       "MagneticFluxDensitiesdt", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME,
