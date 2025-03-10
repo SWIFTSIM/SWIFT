@@ -51,7 +51,7 @@ with h5py.File(args.input, "r") as handle:
     u = handle["PartType0/InternalEnergies"][:]
     B = handle["PartType0/MagneticFluxDensities"][:]
     divB = handle["PartType0/MagneticDivergences"][:]
-    psi = handle["PartType0/DednerScalars"][:]
+    psi = handle["PartType0/DednerScalarsOverCleaningSpeeds"][:]
     git = handle["Code"].attrs["Git Revision"]
     gitBranch = handle["Code"].attrs["Git Branch"]
     scheme = handle["/HydroScheme"].attrs["Scheme"]
