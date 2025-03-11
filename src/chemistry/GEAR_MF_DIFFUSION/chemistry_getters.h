@@ -218,13 +218,13 @@ chemistry_get_physical_matrix_K(const struct part* restrict p,
  */
 __attribute__((always_inline)) INLINE static double chemistry_get_matrix_norm(
     const double K[3][3]) {
-  float norm = 0.0;
+  double norm = 0.0;
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       norm += K[i][j] * K[i][j];
     }
   }
-  return sqrtf(norm);
+  return sqrt(norm);
 }
 
 /**
