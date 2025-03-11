@@ -254,8 +254,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   hydro_grav_work_from_half_state(pi, pj, shift, Whalf, vij, centroid, n_unit,
                                   surface_area, min_dt);
 #else
-  const float mach_number =
+  float mach_number =
       hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, totflux);
+  const float epsilon_rho = 1e-10;
+  const float epsilon_P = 1e-10;
+  hydro_part_positivity_limiter_fluxes(pi, pj, n_unit, vij, surface_area, epsilon_rho, epsilon_P, totflux);
+
   hydro_grav_work_from_mass_flux(pi, pj, dx, totflux[0], min_dt);
 #endif
   pi->timestepvars.mach_number =

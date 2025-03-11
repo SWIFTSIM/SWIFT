@@ -270,6 +270,9 @@ struct part {
     /*! Voronoi cell volume. */
     float volume;
 
+    /*! Total area of Voronoi cell */
+    float area;
+
     /*! Voronoi cell centroid, relative to this particles position. */
     float centroid[3];
 

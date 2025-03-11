@@ -305,6 +305,7 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     /* Create a new voronoi cell for this generator */
     struct part *p = &parts[p_idx];
     double volume = 0.;
+    double area = 0.;
     double centroid[3] = {0., 0., 0.};
     int nface = 0;
 #ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
@@ -478,6 +479,8 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
 #ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
         nface++;
 #endif
+        area += face_area;
+
         /* Get the position of the neighbouring generator and update
          * min_face_dist_sqrd */
         double ngb_pos[3];
@@ -522,6 +525,7 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
                   sqrt(min_face_dist_sqrd);
 
     p->geometry.volume = (float)volume;
+    p->geometry.area = (float)area;
     p->geometry.centroid[0] = (float)(centroid[0] - generator_pos[0]);
     p->geometry.centroid[1] = (float)(centroid[1] - generator_pos[1]);
     p->geometry.centroid[2] = (float)(centroid[2] - generator_pos[2]);

@@ -141,7 +141,7 @@ static inline double voronoi_compute_midpoint_area_face(double ax, double ay,
 static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
                                    int del_vert_idx, int ngb_del_vert_idx,
                                    struct part *parts, double ax, double ay,
-                                   double bx, double by) {
+                                   double bx, double by, double *cell_area) {
   int sid;
   int left_part_idx = d->vertex_part_idx[del_vert_idx];
   int right_part_idx = d->vertex_part_idx[ngb_del_vert_idx];
@@ -159,6 +159,7 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
         if (connection._1 == 13 &&
             v->pairs[connection._1][connection._0].right_idx == left_part_idx) {
           int2_lifo_queue_push(&v->cell_pair_connections, connection);
+          *cell_area += v->pairs[connection._1][connection._0].surface_area;
           return 1;
         }
       }
@@ -196,6 +197,7 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
     return 0;
   }
 
+  *cell_area += surface_area;
   this_pair->surface_area = surface_area;
   this_pair->left_idx = left_part_idx;
   this_pair->right_idx = right_part_idx;
@@ -407,6 +409,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
 
     struct part *p = &parts[p_idx];
     double cell_volume = 0.;
+    double cell_area = 0.;
     double cell_centroid[2] = {0., 0.};
     double centroid[2];
     int nface = 0;
@@ -475,7 +478,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
          determines the next triangle */
       int ngb_del_vert_ix = d->triangles[t1].vertices[next_t_ix_in_cur_t];
       if (voronoi_add_pair(v, d, del_vert_ix, ngb_del_vert_ix, parts, bx, by,
-                           cx, cy)) {
+                           cx, cy, &cell_area)) {
         nface++;
         /* Update the minimal dist to a neighbouring generator */
         double ngb_pos[2];
@@ -508,7 +511,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     cell_centroid[1] += V * centroid[1];
 
     if (voronoi_add_pair(v, d, del_vert_ix, first_ngb_del_vert_ix, parts, bx,
-                         by, cx, cy)) {
+                         by, cx, cy, &cell_area)) {
       nface++;
       /* Update the minimal dist to a neighbouring generator */
       double ngb_pos[2];
@@ -539,6 +542,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
 
     /* Store the voronoi cell in the particle. */
     p->geometry.volume = (float)cell_volume;
+    p->geometry.area = (float)cell_area;
     p->geometry.centroid[0] = (float)(cell_centroid[0] - p->x[0]);
     p->geometry.centroid[1] = (float)(cell_centroid[1] - p->x[1]);
     p->geometry.centroid[2] = 0.f;
