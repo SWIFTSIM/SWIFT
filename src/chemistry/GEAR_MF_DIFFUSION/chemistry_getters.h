@@ -445,7 +445,7 @@ chemistry_compute_physical_tau(const struct part* restrict p,
     /* Compute the diffusion matrix K */
     double K[3][3];
     chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
-    const float norm_matrix_K = chemistry_get_matrix_norm(K);
+    const double norm_matrix_K = chemistry_get_matrix_norm(K);
 
     const double rho = hydro_get_physical_density(p, cosmo);
 
