@@ -23,7 +23,7 @@
 
 /**
  * @file Planetary/hydro.h
- * @brief REMIX implementation of SPH (Sandnes et al. 2024)
+ * @brief REMIX implementation of SPH (Sandnes et al. 2025)
  */
 
 #include "adiabatic_index.h"
@@ -493,7 +493,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 #endif
 
   hydro_init_part_extra_kernel(p);
-  hydro_init_part_extra_viscosity(p);
+  hydro_init_part_extra_visc_difn(p);
 }
 
 /**
@@ -535,7 +535,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->n_density *= h_inv_dim;
 #endif
 
-  hydro_end_density_extra_viscosity(p);
+  hydro_end_density_extra_visc_difn(p);
   hydro_end_density_extra_kernel(p);
 }
 
@@ -589,6 +589,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
+  /* Set p->is_h_max = 1 if smoothing length is h_max */
   if (p->h > 0.999f * hydro_props->h_max) {
     p->is_h_max = 1;
   } else {
@@ -596,7 +597,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   }
 
   hydro_prepare_gradient_extra_kernel(p);
-  hydro_prepare_gradient_extra_viscosity(p);
+  hydro_prepare_gradient_extra_visc_difn(p);
 }
 
 /**
@@ -625,9 +626,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part *p) {
 
   hydro_end_gradient_extra_kernel(p);
-  hydro_end_gradient_extra_viscosity(p);
+  hydro_end_gradient_extra_visc_difn(p);
 
-  // Set the density to be used in the force loop to be the evolved density
+  /* Set the density to be used in the force loop to be the evolved density */
   p->rho = p->rho_evol;
 }
 
@@ -676,7 +677,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   float mod_curl_v = sqrtf(curl_v[0] * curl_v[0] + curl_v[1] * curl_v[1] +
                            curl_v[2] * curl_v[2]);
 
-  // Balsara switch using normalised kernel gradients
+  /* Balsara switch using normalised kernel gradients (Sandnes+2025 Eqn. 34 with
+   * velocity gradients calculated by Eqn. 35) */
   float balsara;
   if (div_v == 0.f) {
     balsara = 0.f;
@@ -691,6 +693,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+  /* Set eta_crit for arificial viscosity and diffusion slope limiters */
   p->force.eta_crit = 1.f / hydro_props->eta_neighbours;
 }
 
@@ -738,6 +741,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Re-set the internal energy */
   p->u = xp->u_full;
 
+  /* Re-set the density */
   p->rho = xp->rho_evol_full;
   p->rho_evol = xp->rho_evol_full;
 
@@ -790,6 +794,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float floor_rho = p->mass * kernel_root * h_inv_dim;
   p->rho_evol = max(p->rho_evol, floor_rho);
+  p->rho = p->rho_evol;
 
   /* Check against absolute minimum */
   const float min_u =
@@ -803,15 +808,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
   else
     p->h *= expf(w1);
-
-  /* Predict density */
-  const float w2 = -hydro_dimension * w1;
-  if (fabsf(w2) < 0.2f)
-    p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-  else
-    p->rho *= expf(w2);
-
-  p->rho = p->rho_evol;
 
   const float floor_u = FLT_MIN;
   p->u = max(p->u, floor_u);
@@ -890,12 +886,14 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->u_dt = 0.f;
   }
 
+  /* Integrate the density forward in time */
   const float delta_rho = p->drho_dt * dt_therm;
 
+  /* Do not decrease the density by more than a factor of 2*/
   xp->rho_evol_full =
       max(xp->rho_evol_full + delta_rho, 0.5f * xp->rho_evol_full);
 
-  /* Minimum SPH quantities */
+  /* Minimum SPH density */
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */

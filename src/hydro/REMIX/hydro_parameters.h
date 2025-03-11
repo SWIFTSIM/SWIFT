@@ -36,7 +36,7 @@
 
 /**
  * @file Planetary/hydro_parameters.h
- * @brief REMIX implementation of SPH (Sandnes et al. 2024) (default parameters)
+ * @brief REMIX implementation of SPH (Sandnes et al. 2025) (default parameters)
  *
  * This file defines a number of things that are used in
  * hydro_properties.c as defaults for run-time parameters

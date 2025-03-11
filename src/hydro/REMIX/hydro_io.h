@@ -23,7 +23,7 @@
 
 /**
  * @file Planetary/hydro_io.h
- * @brief REMIX implementation of SPH (Sandnes et al. 2024) i/o routines
+ * @brief REMIX implementation of SPH (Sandnes et al. 2025) i/o routines
  */
 
 #include "adiabatic_index.h"

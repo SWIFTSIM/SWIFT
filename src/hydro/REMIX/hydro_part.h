@@ -23,13 +23,13 @@
 
 /**
  * @file Planetary/hydro_part.h
- * @brief REMIX implementation of SPH (Sandnes et al. 2024)
+ * @brief REMIX implementation of SPH (Sandnes et al. 2025)
  */
 
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
-#include "equation_of_state.h"  // For enum material_id
+#include "equation_of_state.h"  /* For enum material_id */
 #include "feedback_struct.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"

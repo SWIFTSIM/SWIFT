@@ -74,7 +74,7 @@
 #elif defined(REMIX_SPH)
 #include "./hydro/REMIX/hydro.h"
 #include "./hydro/REMIX/hydro_iact.h"
-#define SPH_IMPLEMENTATION "SPH with multiple materials and methods"
+#define SPH_IMPLEMENTATION "REMIX (Sandnes+ 2025)"
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro.h"
 #include "./hydro/SPHENIX/hydro_iact.h"
