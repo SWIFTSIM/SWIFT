@@ -122,12 +122,40 @@ def phi_grav(r_value, c_200=7.2):
     phi_pref = CONST_G_CGS*M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/r_200_cgs
     return -phi_pref/r_value*np.log(1+r_value*c_200)
 
-# Energy distribution
-u_func = -phi_grav(r)/gamma
+def rho_over_rho0_equil_r(r_value, c_200 = 7.2, T0=1e5):
+    m_H_cgs = 1.67e-24
+    kb_cgs = 1.38e-16
+    phi_pref = CONST_G_CGS*M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/r_200_cgs
+    Delta_NFW = phi_pref*m_H_cgs/(kb_cgs*T0)
+    rho_over_rho0 = (1-((gamma-1)/gamma)*Delta_NFW*(1-np.log(1+r_value*c_200)/(r_value * c_200)))**(1/(gamma-1))
+    rho_over_rho0[np.isnan(rho_over_rho0)]=0.0
+    return rho_over_rho0
 
-# Find density and radial particle distribution
-rho_func_unnorm = u_func**(1/(gamma-1)) 
-f_r_distr_func = rho_func_unnorm * r**2 
+def u_vs_r(r_value,c_200=7.2,T0=1e5):
+    m_H_cgs = 1.67e-24
+    kb_cgs = 1.38e-16
+    return rho_over_rho0_equil_r(r_value, c_200, T0)**(gamma-1)*kb_cgs*T0/m_H_cgs/const_unit_velocity_in_cgs**2
+
+
+f_r_distr_func = 4*np.pi*r**2 * rho_over_rho0_equil_r(r) 
+f_r_distr_norm = np.sum(f_r_distr_func)*np.mean(np.diff(r)) * r_200_cgs**3
+rho0 = f_b * M_200_cgs / f_r_distr_norm
+OMEGAb = 0.05
+rho_outer = rhoc_cgs * OMEGAb
+f_r_distr_func = 4*np.pi*r**2 *( rho_over_rho0_equil_r(r) * rho0 + rho_outer )
+
+
+def u_vs_r(r_value,c_200=7.2,T0=1e5):
+    m_H_cgs = 1.67e-24
+    kb_cgs = 1.38e-16
+    rho_over_rho0 = rho_over_rho0_equil_r(r_value, c_200, T0)+rho_outer/rho0
+    return rho_over_rho0**(gamma-1)*kb_cgs*T0/m_H_cgs/const_unit_velocity_in_cgs**2
+
+
+
+import matplotlib.pyplot as plt
+plt.plot(r,f_r_distr_func)
+plt.savefig('test.png')
 
 # Normalize f(r) to get a probability density function (PDF)
 pdf = f_r_distr_func / np.trapezoid(f_r_distr_func, r)  # Normalize with trapezoidal integration
@@ -284,7 +312,7 @@ ds[()] = h
 h = np.zeros(1)
 
 # Internal energies
-u = -phi_grav(radius)/gamma/const_unit_velocity_in_cgs**2
+u = u_vs_r(radius)
 u = np.full((N,), u)
 ds = grp.create_dataset("InternalEnergy", (N,), "f")
 ds[()] = u
