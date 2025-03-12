@@ -458,35 +458,9 @@ runner_iact_chemistry_fluxes_common(
     chemistry_compute_flux(dx, pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm, m,
                            chem_data, cosmo, &totflux);
 
+    /* Flux limiter */
     /* First check that we won't have negative masses. If then we need to
        artificially make masses positive, then we have metal mass creation. */
-    /* const double mass_flux = totflux * mindt; */
-    /* const double m_Z_i_new = */
-    /*     chi->metal_mass[m] + chi->diffused_metal_mass_fluxes[m] - mass_flux; */
-    /* const double m_Z_j_new = */
-    /*     chj->metal_mass[m] + chj->diffused_metal_mass_fluxes[m] + mass_flux; */
-    /* const double Z_i_new = m_Z_i_new / mi; */
-    /* const double Z_j_new = m_Z_j_new / mj; */
-
-    /* if (Z_i_new >= GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE && */
-    /*     Z_j_new >= GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE) { */
-    /*   /\* Update V*U ****************************************\/ */
-    /*   /\* When solving the Riemann problem, we assume pi is left state, and */
-    /*    * pj is right state. The sign convention is that a positive total */
-    /*    * flux is subtracted from the left state, and added to the right */
-    /*    * state, based on how we chose the unit vector. By this convention, */
-    /*    * the time integration results in conserved quantity += flux * dt *\/ */
-    /*   /\* Unlike in SPH schemes, we do need to update inactive neighbours, so that */
-    /*    * the fluxes are always exchanged symmetrically. Thanks to our sneaky use */
-    /*    * of flux_dt, we can detect inactive neighbours through their negative time */
-    /*    * step. *\/ */
-    /*   chi->diffused_metal_mass_fluxes[m] -= mass_flux; */
-    /*   if (mode == 1 || (chj->flux_dt < 0.f)) { */
-    /*     chj->diffused_metal_mass_fluxes[m] += mass_flux; */
-    /*   } */
-    /* } */
-
-    /* Flux limiter */
     double metal_mass_flux = totflux * mindt;
 
     /* Use the updated metal masses to ensure that the final result won't be negative */
