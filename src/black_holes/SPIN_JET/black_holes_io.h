@@ -189,7 +189,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 61;
+  *num_fields = 62;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -580,6 +580,13 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "GasTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, bparts,
       convert_bpart_gas_temperatures,
       "Temperature of the gas surrounding the black holes.");
+
+  list[61] = io_make_output_field(
+      "AccretionEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      accretion_efficiency,
+      "The accretion efficiencies of black holes. These are used to convert "
+      "from the large-scale accretion rate onto an accretion disc (the raw "
+      "Bondi-like accretion rate) to the accretion rate onto the BH itself.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
