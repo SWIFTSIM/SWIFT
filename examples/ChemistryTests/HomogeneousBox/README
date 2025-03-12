@@ -40,4 +40,4 @@ This example can be run with cosmology if you comment some lines in `src/space.c
 
 Then, run with
 
-jeans_length=250 rho=0.000001 with_cosmology=1 ./run.sh
+jeans_length=250 rho=0.000001 with_cosmo=1 ./run.sh
