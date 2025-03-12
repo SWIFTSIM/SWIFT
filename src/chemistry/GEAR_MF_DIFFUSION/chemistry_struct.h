@@ -24,7 +24,7 @@
 
 /* Define the tolerable minimal negative mass for metals. Small negative masses
    can happen if the metal mass is close to 0. */
-#define GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE 0 //-1e-30
+#define GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE 0
 
 /**
  * @brief The diffusion mode
