@@ -441,8 +441,6 @@ runner_iact_chemistry_fluxes_common(
   /* Now solve the Riemann problem for each metal specie */
   /* Helper variable */
   const float a2 = cosmo->a * cosmo->a;
-  /* const float mi = hydro_get_mass(pi); */
-  /* const float mj = hydro_get_mass(pj); */
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
 
     /* Predict the diffusion state at the interface to compute fluxes */
@@ -458,7 +456,7 @@ runner_iact_chemistry_fluxes_common(
     chemistry_compute_flux(dx, pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm, m,
                            chem_data, cosmo, &totflux);
 
-    /* Flux limiter */
+    /* Flux limiter*******************************/
     /* First check that we won't have negative masses. If then we need to
        artificially make masses positive, then we have metal mass creation. */
     double metal_mass_flux = totflux * mindt;
