@@ -64,7 +64,7 @@ Gravity:
   MAC:                adaptive
   theta_cr:           0.7
   epsilon_fmm:        0.001
-  max_physical_baryon_softening: 3.24   # Physical softening length (in internal units).
+  max_physical_baryon_softening: 0.1   # Physical softening length (in internal units).
   mesh_side_length:   64
 
 # Simple model cooling parameters
