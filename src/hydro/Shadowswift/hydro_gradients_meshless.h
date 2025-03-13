@@ -162,6 +162,15 @@ hydro_gradients_finalize_single_quantity(float grad[3], const float B[3][3]) {
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     struct part* p) {
+
+  if (p->conserved.mass <= 0.) {
+    hydro_gradients_init(p);
+#ifdef SHADOWSWIFT_WARNINGS
+    warning("Mass is 0, falling back to first order for this particle");
+#endif
+    return;
+  }
+
   if (invert_dimension_by_dimension_matrix(p->gradients.matrix_wls) != 0) {
 #ifdef SHADOWSWIFT_WARNINGS
     warning(
