@@ -278,12 +278,19 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Apply the pressure floor. */
   /* Temporarily apply the time extrapolation to density as it is used in the
    * pressure floor... */
+#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+  const float d_rho = p->dW_time[0];
+  const float d_P = p->dW_time[4];
+#else
+  const float d_rho = 0.f;
+  const float d_P = 0.f;
+#endif
   const float rho = p->rho;
-  p->rho += p->dW_time[0];
+  p->rho += d_rho;
   const float pressure_with_floor =
       pressure_floor_get_comoving_pressure(p, pressure_floor,
-                                           p->P + p->dW_time[4], cosmo) -
-      p->dW_time[4];
+                                           p->P + d_P, cosmo) -
+      d_P;
   p->rho = rho;
   if (p->P < pressure_with_floor) {
     p->P = pressure_with_floor;
