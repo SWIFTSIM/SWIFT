@@ -681,6 +681,10 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
       t_sink_merger = scheduler_addtask(
           s, task_type_send, task_subtype_sink_merger, ci->mpi.tag, 0, ci, cj);
 
+      /* Add dependencies between the send tasks to respect the taks order */
+      scheduler_addunlock(s, t_rho, t_sink_gas_swallow);
+      scheduler_addunlock(s, t_sink_gas_swallow, t_sink_merger);
+
       /* Drift before you send density */
       scheduler_addunlock(s, ci->hydro.super->sinks.drift, t_rho);
 
