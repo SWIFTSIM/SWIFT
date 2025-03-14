@@ -1064,12 +1064,11 @@ cell_grid_pair_invalidates_completeness(struct cell *ci, struct cell *cj) {
   /* NOTE: Both completeness flags should already be updated at this point */
   const int ci_self_complete = ci->grid.self_completeness == grid_complete;
   const int cj_self_complete = cj->grid.self_completeness == grid_complete;
-  if (!ci_self_complete) return 1;
 #ifdef SHADOWSWIFT_RELAXED_COMPLETENESS
   /* If if ci is self-complete and cj is not, but its maximal search radius is
    * sufficiently small, we still consider the pair (ci, cj) complete.
    * NOTE: ci->dmin == cj->dmin */
-  if (!cj_self_complete && kernel_gamma * ci->hydro.h_max > 0.5 * cj->dmin)
+  if (!ci_self_complete || (!cj_self_complete && kernel_gamma * ci->hydro.h_max > 0.5 * cj->dmin))
     return 1;
 #else
   if (!ci_self_complete || !cj_self_complete) return 1;
@@ -1423,7 +1422,7 @@ __attribute__((always_inline)) INLINE static void cell_free_grid(
 #endif
 }
 
-void cell_free_grid_rec(struct cell *c);
+void cell_grid_free_rec(struct cell *c);
 
 /**
  * @brief Set the given flag for the given cell.

@@ -34,7 +34,7 @@
  *
  * @param c The #cell.
  */
-void cell_free_grid_rec(struct cell *c) {
+void cell_grid_free_rec(struct cell *c) {
 
 #ifndef MOVING_MESH
   /* Nothing to do as we have no tessellations */
@@ -45,7 +45,7 @@ void cell_free_grid_rec(struct cell *c) {
 #endif
   if (c->grid.construction_level == NULL) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_free_grid_rec(c->progeny[k]);
+      if (c->progeny[k] != NULL) cell_grid_free_rec(c->progeny[k]);
 
   } else if (c->grid.construction_level == c) {
     cell_free_grid(c);
