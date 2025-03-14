@@ -115,51 +115,38 @@ grp.attrs["Unit time in cgs (U_t)"] = (
 grp.attrs["Unit current in cgs (U_I)"] = const_unit_current_in_cgs
 grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
-# We define NFW profile in CGS
-
-rmin = 1e-6 * boxSize
-r = np.linspace(rmin, boxSize*np.sqrt(3)/2, round(N**(1/3)))
-
+# NFW-like gas density profile
 def rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
     rho_0 = M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/(4*np.pi*r_200_cgs**3/c_200**3)
     return rho_0*f_b/(c_200*r_value*(1+c_200*r_value)**2) 
 
+# NFW-like gas mass inside a sphere with radius R 
+def Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
+    M_0 = M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))
+    return M_0 * f_b * (np.log(1+c_200*r_value)-r_value/(1+c_200*r_value)) 
+
+# NFW Gravitational acceleration
 def a_NFW(r_value, M_200_cgs,r_200_cgs, c_200):
     a_pref = CONST_G_CGS*M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/r_200_cgs**2
     return a_pref*((r_value/(r_value+1/c_200))-np.log(1+c_200*r_value))/r_value**2
 
+# Unnormalized mass shell distribution
+r = np.linspace(1e-6*boxSize,boxSize * np.sqrt(3.0) / 2.0,round(N**(1/3)))
 f_r_distr_func = 4*np.pi*r**2 * rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200)
 
-# Define the integrand
-def integrand(r_value, f_b, M_200_cgs, r_200_cgs, c_200):
-    return rho_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200) * a_NFW(r_value, M_200_cgs,r_200_cgs, c_200)
-
+# Integrate rho_gas*a_NFW
 def integrate(r_min, r_max, f_b, M_200_cgs, r_200_cgs, c_200, Nsteps = 1000):
     # Perform the integration
     r_range = np.linspace(r_min, r_max, Nsteps)
     dr = np.abs((r_max-r_min)/Nsteps)
-    integrands = integrand(r_range, f_b, M_200_cgs, r_200_cgs, c_200)
+    integrands = rho_r(r_range, f_b, M_200_cgs, r_200_cgs, c_200) * a_NFW(r_range, M_200_cgs,r_200_cgs, c_200)
     result_cgs = np.sum(integrands*dr)*r_200_cgs
     return result_cgs
 
+# NFW-like gas hydrostatic equilibrium internal energy profile
 def u_vs_r(P_0, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
-    result_cgs = P_0/(gamma-1)/rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)-1/(gamma-1)/rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)*integrate(r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200)
+    result_cgs = (P_0+integrate(r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200))/(gamma-1)/rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)
     return result_cgs
-
-
-import matplotlib.pyplot as plt
-#plt.plot(r,f_r_distr_func)
-#plt.plot(r, rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200))
-#plt.plot(r, a_NFW(r, M_200_cgs, c_200))
-
-#rmin = 1e-6 * boxSize
-#r = np.linspace(rmin, boxSize*np.sqrt(3)/2, round(N**(1/3)))
-u_vs_r_values = [u_vs_r(0, r[i], 2*boxSize, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(len(r))]
-plt.plot(r,u_vs_r_values)
-
-plt.savefig('test.png')
-
-
 
 # Normalize f(r) to get a probability density function (PDF)
 pdf = f_r_distr_func / np.trapezoid(f_r_distr_func, r)  # Normalize with trapezoidal integration
@@ -184,6 +171,13 @@ coords = np.zeros((N, 3))
 coords[:, 0] = radius * stheta * np.cos(phi)
 coords[:, 1] = radius * stheta * np.sin(phi)
 coords[:, 2] = radius * ctheta
+
+# Masses
+gas_mass = (
+    Mgas_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200)/M_200_cgs
+)  # get total gas mass within a sphere of radius sqrt(3)/2*Lbox
+gas_particle_mass = gas_mass / float(N)
+print('Gas particle mass is %E ' % (gas_particle_mass*1e12))
 
 # shift to centre of box
 coords += np.full((N, 3), boxSize / 2.0)
@@ -236,11 +230,6 @@ z_coords = z_coords[ind]
 N = x_coords.size
 
 print("Number of particles in the box = ", N)
-
-gas_mass = (
-    f_b # np.sqrt(3.0) / 2.0
-)  # virial mass of halo is 1, virial radius is 1, enclosed mass scales with r
-gas_particle_mass = gas_mass / float(N)
 
 # make the coords and radius arrays again
 coords = np.zeros((N, 3))
