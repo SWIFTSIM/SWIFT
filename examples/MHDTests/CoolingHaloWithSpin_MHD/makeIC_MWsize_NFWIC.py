@@ -50,6 +50,7 @@ eta = 1.3663 # kernel smoothing
 # DM halo parameters
 spin_lambda = 0.05  # spin parameter
 f_b = 0.17  # baryon fraction
+c_200 = 7.2
 
 # Set the magnitude of the uniform seed magnetic field
 B0_Gaussian_Units = 1e-9 #1e-6  # 1 micro Gauss
@@ -115,47 +116,50 @@ grp.attrs["Unit current in cgs (U_I)"] = const_unit_current_in_cgs
 grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
 # We define NFW profile in CGS
+
 rmin = 1e-6 * boxSize
-r = np.linspace(rmin, boxSize*np.sqrt(3)/2, N)
+r = np.linspace(rmin, boxSize*np.sqrt(3)/2, round(N**(1/3)))
 
-def phi_grav(r_value, c_200=7.2):
-    phi_pref = CONST_G_CGS*M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/r_200_cgs
-    return -phi_pref/r_value*np.log(1+r_value*c_200)
+def rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
+    rho_0 = M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/(4*np.pi*r_200_cgs**3/c_200**3)
+    return rho_0*f_b/(c_200*r_value*(1+c_200*r_value)**2) 
 
-def rho_over_rho0_equil_r(r_value, c_200 = 7.2, T0=1e5):
-    m_H_cgs = 1.67e-24
-    kb_cgs = 1.38e-16
-    phi_pref = CONST_G_CGS*M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/r_200_cgs
-    Delta_NFW = phi_pref*m_H_cgs/(kb_cgs*T0)
-    rho_over_rho0 = (1-((gamma-1)/gamma)*Delta_NFW*(1-np.log(1+r_value*c_200)/(r_value * c_200)))**(1/(gamma-1))
-    rho_over_rho0[np.isnan(rho_over_rho0)]=0.0
-    return rho_over_rho0
+def a_NFW(r_value, M_200_cgs,r_200_cgs, c_200):
+    a_pref = CONST_G_CGS*M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/r_200_cgs**2
+    return a_pref*((r_value/(r_value+1/c_200))-np.log(1+c_200*r_value))/r_value**2
 
-def u_vs_r(r_value,c_200=7.2,T0=1e5):
-    m_H_cgs = 1.67e-24
-    kb_cgs = 1.38e-16
-    return rho_over_rho0_equil_r(r_value, c_200, T0)**(gamma-1)*kb_cgs*T0/m_H_cgs/const_unit_velocity_in_cgs**2
+f_r_distr_func = 4*np.pi*r**2 * rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200)
 
+# Define the integrand
+def integrand(r_value, f_b, M_200_cgs, r_200_cgs, c_200):
+    return rho_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200) * a_NFW(r_value, M_200_cgs,r_200_cgs, c_200)
 
-f_r_distr_func = 4*np.pi*r**2 * rho_over_rho0_equil_r(r) 
-f_r_distr_norm = np.sum(f_r_distr_func)*np.mean(np.diff(r)) * r_200_cgs**3
-rho0 = f_b * M_200_cgs / f_r_distr_norm
-OMEGAb = 0.05
-rho_outer = rhoc_cgs * OMEGAb
-f_r_distr_func = 4*np.pi*r**2 *( rho_over_rho0_equil_r(r) * rho0 + rho_outer )
+def integrate(r_min, r_max, f_b, M_200_cgs, r_200_cgs, c_200, Nsteps = 1000):
+    # Perform the integration
+    r_range = np.linspace(r_min, r_max, Nsteps)
+    dr = np.abs((r_max-r_min)/Nsteps)
+    integrands = integrand(r_range, f_b, M_200_cgs, r_200_cgs, c_200)
+    result_cgs = np.sum(integrands*dr)*r_200_cgs
+    return result_cgs
 
-
-def u_vs_r(r_value,c_200=7.2,T0=1e5):
-    m_H_cgs = 1.67e-24
-    kb_cgs = 1.38e-16
-    rho_over_rho0 = rho_over_rho0_equil_r(r_value, c_200, T0)+rho_outer/rho0
-    return rho_over_rho0**(gamma-1)*kb_cgs*T0/m_H_cgs/const_unit_velocity_in_cgs**2
-
+def u_vs_r(P_0, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
+    result_cgs = P_0/(gamma-1)/rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)-1/(gamma-1)/rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)*integrate(r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200)
+    return result_cgs
 
 
 import matplotlib.pyplot as plt
-plt.plot(r,f_r_distr_func)
+#plt.plot(r,f_r_distr_func)
+#plt.plot(r, rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200))
+#plt.plot(r, a_NFW(r, M_200_cgs, c_200))
+
+#rmin = 1e-6 * boxSize
+#r = np.linspace(rmin, boxSize*np.sqrt(3)/2, round(N**(1/3)))
+u_vs_r_values = [u_vs_r(0, r[i], 2*boxSize, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(len(r))]
+plt.plot(r,u_vs_r_values)
+
 plt.savefig('test.png')
+
+
 
 # Normalize f(r) to get a probability density function (PDF)
 pdf = f_r_distr_func / np.trapezoid(f_r_distr_func, r)  # Normalize with trapezoidal integration
@@ -312,7 +316,9 @@ ds[()] = h
 h = np.zeros(1)
 
 # Internal energies
-u = u_vs_r(radius)
+u = [u_vs_r(0, radius[i], 2*boxSize, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(N)]
+
+#u_vs_r(radius)
 u = np.full((N,), u)
 ds = grp.create_dataset("InternalEnergy", (N,), "f")
 ds[()] = u
