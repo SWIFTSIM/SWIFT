@@ -362,7 +362,7 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
   runner_iact_boundary_set_primitives(p_boundary, p, centroid, hs);
   /* Set gradients of boundary particle to 0. */
   hydro_gradients_init(p_boundary);
-  runner_iact_flux_exchange(p, p_boundary, centroid, surface_area, shift, 0);
+  runner_iact_flux_exchange(p, p_boundary, centroid, surface_area, shift, hydro, 0);
 #elif SHADOWSWIFT_BC == OPEN_BC
   /* Open BC: Whalf = (rho_l, v_l, P_l), interface velocity = 0.0, so we can
    * calculate the flux exactly. */

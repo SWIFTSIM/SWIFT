@@ -315,7 +315,7 @@ void DOPAIR_BRANCH(struct runner *restrict r, struct cell *ci,
 void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
-  const struct hydro_props *hydro;
+  const struct hydro_props *hydro = e->hydro_properties;
 
   /* Recurse? */
   if (c->grid.construction_level == NULL) {
