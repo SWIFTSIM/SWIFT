@@ -732,8 +732,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
        * mess up the splitting of this cell (gparts should go with their hydro
        * parts). */
       for (int i = 0; i < c->hydro.count; i++) {
-        struct part* part = &c->hydro.parts[i];
-        struct gpart* gpart = part->gpart;
+        struct part *part = &c->hydro.parts[i];
+        struct gpart *gpart = part->gpart;
         gpart->x[0] = part->x[0];
         gpart->x[1] = part->x[1];
         gpart->x[2] = part->x[2];
@@ -757,8 +757,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
        * we can set the gpart position to the position of the *centroid* of the
        * hydro parts again. */
       for (int i = 0; i < c->hydro.count; i++) {
-        struct part* part = &c->hydro.parts[i];
-        struct gpart* gpart = part->gpart;
+        struct part *part = &c->hydro.parts[i];
+        struct gpart *gpart = part->gpart;
         gpart->x[0] += part->geometry.centroid[0];
         gpart->x[1] += part->geometry.centroid[1];
         gpart->x[2] += part->geometry.centroid[2];

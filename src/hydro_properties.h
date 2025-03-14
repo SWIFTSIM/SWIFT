@@ -112,6 +112,17 @@ struct hydro_props {
   /*! Mean molecular weight above hydrogen ionization temperature */
   float mu_ionised;
 
+  /* ------ Parameters that define near-vacuum ----- */
+  /*! For densities below this value, the code might become less accurate to
+   * maintain robustness */
+  float epsilon_rho;
+  float epsilon_rho_inv;
+
+  /*! For pressures below this value, the code might become less accurate to
+   * maintain robustness */
+  float epsilon_P;
+  float epsilon_P_inv;
+
   /* ------ Particle splitting parameters ---------- */
 
   /*! Is particle splitting activated? */

@@ -46,6 +46,8 @@
 #define hydro_props_default_init_temp 0.f
 #define hydro_props_default_min_temp 0.f
 #define hydro_props_default_H_ionization_temperature 1e4
+#define hydro_props_default_epsilon_rho 1e-13f
+#define hydro_props_default_epsilon_P 1e-13f
 
 /**
  * @brief Initialize the global properties of the hydro scheme.
@@ -187,6 +189,14 @@ void hydro_props_init(struct hydro_props *p,
     mean_molecular_weight = 4. / (1. + 3. * p->hydrogen_mass_fraction);
 
   p->minimal_internal_energy = u_min / mean_molecular_weight;
+
+  /* ------ Parameters that define near-vacuum ----- */
+  p->epsilon_rho = parser_get_opt_param_float(params, "SPH:epsilon_rho",
+                                              hydro_props_default_epsilon_rho);
+  p->epsilon_rho_inv = 1.f / p->epsilon_rho;
+  p->epsilon_P = parser_get_opt_param_float(params, "SPH:epsilon_P",
+                                            hydro_props_default_epsilon_P);
+  p->epsilon_P_inv = 1.f / p->epsilon_P;
 
   /* ------ Particle splitting parameters ---------- */
 

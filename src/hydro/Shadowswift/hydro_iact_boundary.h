@@ -168,10 +168,12 @@ runner_iact_boundary_set_primitives(struct part *p_boundary,
 __attribute__((always_inline)) INLINE static void
 runner_iact_boundary_slope_estimate(struct part *p, struct part *p_boundary,
                                     double const *centroid, float surface_area,
-                                    const struct hydro_space *hs) {
+                                    const struct hydro_space *hs,
+                                    const struct hydro_props *hydro) {
   const double shift[3] = {0., 0., 0.};
   runner_iact_boundary_set_primitives(p_boundary, p, centroid, hs);
-  runner_iact_slope_estimate(p, p_boundary, centroid, surface_area, shift, 0);
+  runner_iact_slope_estimate(p, p_boundary, centroid, surface_area, shift,
+                             hydro, 0);
 }
 
 /**
@@ -191,11 +193,13 @@ runner_iact_boundary_slope_estimate(struct part *p, struct part *p_boundary,
 __attribute__((always_inline)) INLINE static void
 runner_iact_boundary_slope_limiter(struct part *p, struct part *p_boundary,
                                    const double *centroid, float surface_area,
-                                   const struct hydro_space *hs) {
+                                   const struct hydro_space *hs,
+                                   const struct hydro_props *hydro) {
 
   const double shift[3] = {0., 0., 0.};
   runner_iact_boundary_set_primitives(p_boundary, p, centroid, hs);
-  runner_iact_slope_limiter(p, p_boundary, centroid, surface_area, shift, 0);
+  runner_iact_slope_limiter(p, p_boundary, centroid, surface_area, shift, hydro,
+                            0);
 }
 
 __attribute__((always_inline)) INLINE static float fsgnf(float x) {
@@ -349,7 +353,8 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
 __attribute__((always_inline)) INLINE static void
 runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
                                    double const *centroid, float surface_area,
-                                   const struct hydro_space *hs) {
+                                   const struct hydro_space *hs,
+                                   const struct hydro_props *hydro) {
 
 #if SHADOWSWIFT_BC == VACUUM_BC || SHADOWSWIFT_BC == INFLOW_BC || \
     SHADOWSWIFT_BC == RADIAL_INFLOW_BC

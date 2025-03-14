@@ -40,7 +40,8 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
     struct part *pi, struct part *pj, double const *centroid,
-    float surface_area, const double *shift, int symmetric) {
+    float surface_area, const double *shift, const struct hydro_props *hydro,
+    int symmetric) {
 #ifdef SHADOWSWIFT_GRADIENTS
   if (!surface_area) {
     /* particle is not a cell neighbour: do nothing */
@@ -89,7 +90,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
     struct part *pi, struct part *pj, const double *centroid,
-    float surface_area, const double *shift, int symmetric) {
+    float surface_area, const double *shift, const struct hydro_props *hydro,
+    int symmetric) {
 #ifdef SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
   float f_ij[3] = {centroid[0] - pi->x[0], centroid[1] - pi->x[1],
                    centroid[2] - pi->x[2]};
@@ -127,7 +129,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
     struct part *pi, struct part *pj, double const *centroid,
-    float surface_area, const double *shift, int symmetric) {
+    float surface_area, const double *shift, const struct hydro_props *hydro,
+    int symmetric) {
 
   /* Initialize local variables */
   /* Vector from pj to pi */
@@ -256,9 +259,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 #else
   float mach_number =
       hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, totflux);
-  const float epsilon_rho = 1e-10;
-  const float epsilon_P = 1e-10;
-  hydro_part_positivity_limiter_fluxes(pi, pj, n_unit, vij, surface_area, epsilon_rho, epsilon_P, totflux);
+  hydro_part_positivity_limiter_fluxes(pi, pj, n_unit, vij, surface_area,
+                                       hydro->epsilon_rho, hydro->epsilon_P,
+                                       totflux);
 
   hydro_grav_work_from_mass_flux(pi, pj, dx, totflux[0], min_dt);
 #endif
