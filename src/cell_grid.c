@@ -83,7 +83,7 @@ void cell_grid_update_self_completeness(struct cell *c, int force) {
     int all_complete = 1;
 
     /* recurse */
-    for (int i = 0; all_complete && i < 8; i++) {
+    for (int i = 0; i < 8; i++) {
       if (c->progeny[i] != NULL) {
         cell_grid_update_self_completeness(c->progeny[i], force);
         /* As long as all progeny is complete, this cell can safely be split for
@@ -133,6 +133,13 @@ void cell_grid_update_self_completeness(struct cell *c, int force) {
     c->grid.self_completeness = grid_complete;
     c->grid.complete = 1;
   } else {
+#ifdef SHADOWSWIFT_RELAXED_COMPLETENESS
+    if (kernel_gamma * c->hydro.h_max < 0.5 * c->dmin) {
+      c->grid.self_completeness = grid_complete;
+      c->grid.complete = 1;
+      return;
+    }
+#endif
     c->grid.self_completeness = grid_incomplete;
     c->grid.complete = 0;
   }
