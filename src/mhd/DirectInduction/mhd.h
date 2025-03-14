@@ -147,8 +147,6 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
  */
 __attribute__((always_inline)) INLINE static float mhd_get_comoving_Alfven_speed(
     const struct part *restrict p, const float mu_0) {
-
-  const float permeability_inv = 1.0f / mu_0;
   
   /* Recover some data */
   const float rho = p->rho;
@@ -161,7 +159,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_comoving_Alfven_speed
   const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
 
   /* Square of Alfven speed */
-  const float vA2 = permeability_inv * B2 / rho;
+  const float vA2 = B2 / (mu_0 * rho);
   
   return sqrtf(vA2);
 }
@@ -173,7 +171,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_comoving_magnetosonic
     const struct part *restrict p) {
 
   /* Compute square of fast magnetosonic speed */
-  const float cs = p->force.soundspeed;
+  const float cs = hydro_get_comoving_soundspeed(p);
   const float cs2 = cs * cs;
   
   const float vA = p->mhd_data.Alfven_speed;
