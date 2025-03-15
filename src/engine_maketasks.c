@@ -4649,7 +4649,6 @@ void engine_make_fof_tasks(struct engine *e) {
     scheduler_reset(sched, engine_estimate_nr_tasks(e));
   }
 
-  
   /* Construct a FOF loop over neighbours */
   if (e->policy & engine_policy_fof)
     threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
