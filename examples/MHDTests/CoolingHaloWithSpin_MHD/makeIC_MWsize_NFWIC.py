@@ -47,7 +47,7 @@ H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # Gas parameters
 gamma = 5.0 / 3.0
-T0_cgs = 1e5 # gas temperature on the edge of the box
+T0_cgs = 1e5 # gas temperature on the edge of the box (if we want to set this manually)
 nH_max_cgs = 1e0 # maximum hydrogen number density
 
 # DM halo parameters
@@ -71,7 +71,13 @@ rhoc_cgs = 3*H_0_cgs**2/(8*np.pi*CONST_G_CGS)
 r_200_cgs = (3*M_200_cgs/(4*np.pi*rhoc_cgs))**(1/3)
 v_200_cgs = np.sqrt(CONST_G_CGS*M_200_cgs/r_200_cgs)
 v_200 = v_200_cgs / const_unit_velocity_in_cgs 
+T_200_cgs = m_H_cgs*v_200_cgs**2/(2*kb_cgs)
 
+# Gas parameters
+gamma = 5.0 / 3.0
+T0_cgs = T_200_cgs #1e5 # gas temperature on the edge of the box (if we want to set this manually)
+nH_max_cgs = 1e0 # maximum hydrogen number density
+print("T_200 = %E" % T_200_cgs)
 
 # Now set the unit length and mass
 const_unit_mass_in_cgs = M_200_cgs
