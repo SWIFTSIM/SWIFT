@@ -165,6 +165,12 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
     struct sink* sp, const struct sink_props* sink_props,
     const struct engine* e) {
 
+  /* Set the smoothing length if it is fixed. Note that, otherwise, the
+     smoothing lengths were read from the ICs. */
+  if (sink_props->use_fixed_r_cut) {
+    sp->h = sink_props->cut_off_radius / kernel_gamma;
+  }
+
   sp->time_bin = 0;
 
   sp->number_of_gas_swallows = 0;
