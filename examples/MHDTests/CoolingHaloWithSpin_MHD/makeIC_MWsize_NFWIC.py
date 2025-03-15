@@ -34,6 +34,8 @@ KM_PER_SEC_IN_CGS = 1.0e5
 CONST_G_CGS = 6.672e-8
 CONST_MU0_CGS = 4 * np.pi * 1e-2
 MSOL_IN_CGS = 1.9891e33 # Solar mass 
+kb_cgs = 1.38e-16 # boltzmann constant
+m_H_cgs = 1.68e-24 # atomic hydrogen mass 
 # First set unit velocity and then the circular velocity parameter for the isothermal potential
 const_unit_velocity_in_cgs = 1.0e5  # kms^-1
 
@@ -45,7 +47,8 @@ H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # Gas parameters
 gamma = 5.0 / 3.0
-eta = 1.3663 # kernel smoothing
+T0_cgs = 1e5 # gas temperature on the edge of the box
+nH_max_cgs = 1e0 # maximum hydrogen number density
 
 # DM halo parameters
 spin_lambda = 0.05  # spin parameter
@@ -68,6 +71,7 @@ rhoc_cgs = 3*H_0_cgs**2/(8*np.pi*CONST_G_CGS)
 r_200_cgs = (3*M_200_cgs/(4*np.pi*rhoc_cgs))**(1/3)
 v_200_cgs = np.sqrt(CONST_G_CGS*M_200_cgs/r_200_cgs)
 v_200 = v_200_cgs / const_unit_velocity_in_cgs 
+
 
 # Now set the unit length and mass
 const_unit_mass_in_cgs = M_200_cgs
@@ -118,7 +122,12 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 # NFW-like gas density profile
 def rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
     rho_0 = M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/(4*np.pi*r_200_cgs**3/c_200**3)
-    return rho_0*f_b/(c_200*r_value*(1+c_200*r_value)**2) 
+    result_cgs = rho_0*f_b/(c_200*r_value*(1+c_200*r_value)**2)
+    # Apply density cut
+    rho_max_cgs = nH_max_cgs*m_H_cgs
+    result_cgs = np.array(result_cgs)
+    result_cgs[result_cgs>rho_max_cgs]=rho_max_cgs
+    return result_cgs 
 
 # NFW-like gas mass inside a sphere with radius R 
 def Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
@@ -144,9 +153,32 @@ def integrate(r_min, r_max, f_b, M_200_cgs, r_200_cgs, c_200, Nsteps = 1000):
     return result_cgs
 
 # NFW-like gas hydrostatic equilibrium internal energy profile
-def u_vs_r(P_0, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
-    result_cgs = (P_0+integrate(r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200))/(gamma-1)/rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)
+def u_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
+    result_cgs = (P0_cgs-integrate(r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200))/(gamma-1)/rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)
     return result_cgs
+
+
+# NFW-like gas hydrostatic equilibrium temperature profile
+def T_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):    
+    result_cgs = u_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200) * (gamma-1) * m_H_cgs/kb_cgs
+    return result_cgs
+
+# Internal energies
+
+rho0_cgs = rho_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200) #gas density on the edge
+P0_cgs = rho0_cgs*kb_cgs*T0_cgs/m_H_cgs # gas pressure on the edge of the box
+densities_vs_r = rho_r(r,f_b,M_200_cgs,r_200_cgs,c_200)
+#u_plot = [u_vs_r(0, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(len(r))] # gas particle internal energies
+u_plot = [u_vs_r(P0_cgs, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(len(r))] # gas particle internal energies
+T_plot = [T_vs_r(P0_cgs, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200) for i in range(len(r))]
+
+# plot temperature profile
+import matplotlib.pyplot as plt
+plt.plot(r,densities_vs_r/m_H_cgs)
+#plt.plot(r,T_plot)
+plt.yscale('log')
+plt.savefig('test.png')
+
 
 # Normalize f(r) to get a probability density function (PDF)
 pdf = f_r_distr_func / np.trapezoid(f_r_distr_func, r)  # Normalize with trapezoidal integration
@@ -305,8 +337,9 @@ ds[()] = h
 h = np.zeros(1)
 
 # Internal energies
-u = [u_vs_r(0, radius[i], 2*boxSize, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(N)]
-
+rho0_cgs = rho_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200) #gas density on the edge
+P0_cgs = rho0_cgs*kb_cgs*T0_cgs/m_H_cgs # gas pressure on the edge of the box
+u = [u_vs_r(P0_cgs, radius[i], 2*boxSize, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(N)] # gas particle internal energies
 #u_vs_r(radius)
 u = np.full((N,), u)
 ds = grp.create_dataset("InternalEnergy", (N,), "f")
