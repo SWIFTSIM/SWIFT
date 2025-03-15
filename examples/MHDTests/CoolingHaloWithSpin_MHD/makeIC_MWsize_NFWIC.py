@@ -53,7 +53,7 @@ nH_max_cgs = 1e0 # maximum hydrogen number density
 # DM halo parameters
 spin_lambda = 0.05  # spin parameter
 f_b = 0.17  # baryon fraction
-c_200 = 7.2
+c_200 = 7.2 # concentration parameter
 
 # Set the magnitude of the uniform seed magnetic field
 B0_Gaussian_Units = 1e-9 #1e-6  # 1 micro Gauss
@@ -139,10 +139,6 @@ def a_NFW(r_value, M_200_cgs,r_200_cgs, c_200):
     a_pref = CONST_G_CGS*M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/r_200_cgs**2
     return a_pref*((r_value/(r_value+1/c_200))-np.log(1+c_200*r_value))/r_value**2
 
-# Unnormalized mass shell distribution
-r = np.linspace(1e-6*boxSize,boxSize * np.sqrt(3.0) / 2.0,round(N**(1/3)))
-f_r_distr_func = 4*np.pi*r**2 * rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200)
-
 # Integrate rho_gas*a_NFW
 def integrate(r_min, r_max, f_b, M_200_cgs, r_200_cgs, c_200, Nsteps = 1000):
     # Perform the integration
@@ -165,6 +161,11 @@ def T_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
 
 # Internal energies
 
+# Unnormalized mass shell distribution
+r = np.linspace(1e-6*boxSize,boxSize * np.sqrt(3.0) / 2.0,round(10*N**(1/3)))
+f_r_distr_func = 4*np.pi*r**2 * rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200)
+
+# Plot
 rho0_cgs = rho_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200) #gas density on the edge
 P0_cgs = rho0_cgs*kb_cgs*T0_cgs/m_H_cgs # gas pressure on the edge of the box
 densities_vs_r = rho_r(r,f_b,M_200_cgs,r_200_cgs,c_200)
@@ -174,14 +175,16 @@ T_plot = [T_vs_r(P0_cgs, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, 
 
 # plot temperature profile
 import matplotlib.pyplot as plt
-plt.plot(r,densities_vs_r/m_H_cgs)
-#plt.plot(r,T_plot)
+#plt.plot(r,densities_vs_r/m_H_cgs)
+plt.plot(r,T_plot)
 plt.yscale('log')
 plt.savefig('test.png')
 
+# Mass shell distribution function
+dM_dr = 4*np.pi*r**2 * rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200)
 
 # Normalize f(r) to get a probability density function (PDF)
-pdf = f_r_distr_func / np.trapezoid(f_r_distr_func, r)  # Normalize with trapezoidal integration
+pdf = dM_dr / np.trapz(dM_dr, r)  # Normalize with trapezoidal integration
 # Compute CDF
 cdf = np.cumsum(pdf * np.diff(np.concatenate(([0], r))))  # Cumulative sum approximation
 # set seed for random number
@@ -339,7 +342,7 @@ h = np.zeros(1)
 # Internal energies
 rho0_cgs = rho_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200) #gas density on the edge
 P0_cgs = rho0_cgs*kb_cgs*T0_cgs/m_H_cgs # gas pressure on the edge of the box
-u = [u_vs_r(P0_cgs, radius[i], 2*boxSize, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(N)] # gas particle internal energies
+u = [u_vs_r(P0_cgs, radius[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(N)] # gas particle internal energies
 #u_vs_r(radius)
 u = np.full((N,), u)
 ds = grp.create_dataset("InternalEnergy", (N,), "f")
