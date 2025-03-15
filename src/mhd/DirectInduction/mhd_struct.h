@@ -30,18 +30,19 @@ struct mhd_part_data {
   /* Time derivative of magnetic field over density */
   float B_over_rho_dt[3];
 
-  /* Alfven speed (=sqrt(B2/(mu_0 * rho))) of the particle drifted to the current time */
+  /* Alfven speed (=sqrt(B2/(mu_0 * rho))) of the particle drifted to the
+   * current time */
   float Alfven_speed;
 
   /* Divergence of the magnetic field */
   float divB;
 
-  /* Curl of the magnetic field */ 
+  /* Curl of the magnetic field */
   float curl_B[3];
- 
+
   /* Tensile instability correction multiplicative prefactor */
   float monopole_beta;
-  
+
   /* Artifical resistivity multiplicative prefactor */
   float art_diff_beta;
 
@@ -51,12 +52,14 @@ struct mhd_part_data {
   /* Artificial resistivity gradient based switch */
   float alpha_AR;
 
-  /* Artificial resistivity contribution to the time derivative of magnetic field over density */
+  /* Artificial resistivity contribution to the time derivative of magnetic
+   * field over density */
   float B_over_rho_dt_AR[3];
 
-  /* Artificial resistivity contribution to the time derivative of thermal energy */
+  /* Artificial resistivity contribution to the time derivative of thermal
+   * energy */
   float u_dt_AR;
-  
+
   /* Physical resistive parameter */
   float resistive_eta;
 
@@ -74,13 +77,13 @@ struct mhd_part_data {
 
   /* Magnetic force */
   float tot_mag_F[3];
-  
+
   /* B advection source */
   float Adv_B_source[3];
-  
+
   /* B total diffusion source */
   float Diff_B_source[3];
-  
+
   /* Laplacian B */
   float Delta_B[3];
 };

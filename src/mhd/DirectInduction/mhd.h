@@ -145,9 +145,9 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 /**
  * @brief Compute Alfven speed
  */
-__attribute__((always_inline)) INLINE static float mhd_get_comoving_Alfven_speed(
-    const struct part *restrict p, const float mu_0) {
-  
+__attribute__((always_inline)) INLINE static float
+mhd_get_comoving_Alfven_speed(const struct part *restrict p, const float mu_0) {
+
   /* Recover some data */
   const float rho = p->rho;
   float B[3];
@@ -160,20 +160,20 @@ __attribute__((always_inline)) INLINE static float mhd_get_comoving_Alfven_speed
 
   /* Square of Alfven speed */
   const float vA2 = B2 / (mu_0 * rho);
-  
+
   return sqrtf(vA2);
 }
 
 /**
  * @brief Compute magnetosonic speed
  */
-__attribute__((always_inline)) INLINE static float mhd_get_comoving_magnetosonic_speed(
-    const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float
+mhd_get_comoving_magnetosonic_speed(const struct part *restrict p) {
 
   /* Compute square of fast magnetosonic speed */
   const float cs = hydro_get_comoving_soundspeed(p);
   const float cs2 = cs * cs;
-  
+
   const float vA = p->mhd_data.Alfven_speed;
   const float vA2 = vA * vA;
 
@@ -186,9 +186,9 @@ __attribute__((always_inline)) INLINE static float mhd_get_comoving_magnetosonic
  * @brief Compute fast magnetosonic wave phase veolcity
  */
 __attribute__((always_inline)) INLINE static float
-mhd_get_comoving_fast_magnetosonic_wave_phase_velocity(const float dx[3],
-                                              const struct part *restrict p,
-                                              const float a, const float mu_0) {
+mhd_get_comoving_fast_magnetosonic_wave_phase_velocity(
+    const float dx[3], const struct part *restrict p, const float a,
+    const float mu_0) {
 
   /* Get r and 1/r. */
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
@@ -287,10 +287,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props, const float mu_0) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const float mu_0) {
 
   p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
-  
+
   p->force.balsara = 1.f;
 }
 
@@ -485,7 +486,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
  * @param cosmo The cosmological model
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
-    struct part *p, const struct xpart *xp, const struct cosmology *cosmo, const float mu_0) {
+    struct part *p, const struct xpart *xp, const struct cosmology *cosmo,
+    const float mu_0) {
 
   /* Re-set the predicted magnetic flux densities */
   p->mhd_data.B_over_rho[0] = xp->mhd_data.B_over_rho_full[0];

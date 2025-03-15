@@ -271,7 +271,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
  * @param cosmo The cosmological model
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
-    struct part *p, const struct xpart *xp, const struct cosmology *cosmo, const float mu_0) {}
+    struct part *p, const struct xpart *xp, const struct cosmology *cosmo,
+    const float mu_0) {}
 
 /**
  * @brief Predict additional particle fields forward in time when drifting

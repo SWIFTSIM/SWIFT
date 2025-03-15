@@ -1111,7 +1111,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
   const float mu_0 = e->physical_constants->const_vacuum_permeability;
- 
+
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_rt = (e->policy & engine_policy_rt);
 
