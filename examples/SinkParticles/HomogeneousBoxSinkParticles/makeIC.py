@@ -201,7 +201,6 @@ N_sink = opt.n_sink
 m_sink = opt.sink_mass * units.M_sun
 m_sink = m_sink.to(UnitMass).value  # Convert the sink mass to internal units
 
-
 if N_sink == 1:
     pos_sink = np.reshape(opt.sinks_vel, (N_sink, 3))
 else:
@@ -215,6 +214,7 @@ else:
     np.zeros([N_sink, 3])
 
 mass_sink = np.ones(N_sink) * m_sink
+h_sink =  np.ones(N_sink) * 3 * L / (N + N_sink) ** (1 / 3.0)
 ids_sink = np.arange(N, N + N_sink)
 
 #####################
@@ -263,5 +263,6 @@ grp = fileOutput.create_group("/PartType3")
 grp.create_dataset("Coordinates", data=pos_sink, dtype="d")
 grp.create_dataset("Velocities", data=vel_sink, dtype="f")
 grp.create_dataset("Masses", data=mass_sink, dtype="f")
+grp.create_dataset("SmoothingLength", data=h_sink, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids_sink, dtype="L")
 fileOutput.close()
