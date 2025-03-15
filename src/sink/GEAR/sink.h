@@ -77,7 +77,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
       sink->to_collect.sound_speed_gas * cosmo->a_factor_sound_speed;
   const double gas_c_phys2 = gas_c_phys * gas_c_phys;
   const float denominator = sqrtf(gas_c_phys2 + gas_v_norm2);
-  const float h_min = cosmo->a * min(sink->h, sink->to_collect.minimal_h_gas);
+  const float h_min = cosmo->a * kernel_gamma * min(sink->h, sink->to_collect.minimal_h_gas);
   float dt_cfl = 0.0;
 
   /* This case can happen if the sink is just born. */
