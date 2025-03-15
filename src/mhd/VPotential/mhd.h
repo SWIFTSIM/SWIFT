@@ -342,7 +342,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const float mu_0) {
 
   p->force.balsara = 1.f;
 }
@@ -496,7 +497,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
  * @param cosmo The cosmological model
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
-    struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {}
+    struct part *p, const struct xpart *xp, const struct cosmology *cosmo,
+    const float mu_0) {}
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
@@ -594,7 +596,7 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props) {
+    const struct hydro_props *hydro_props, const float mu_0) {
 
   const float a_fact = pow(cosmo->a, -mhd_comoving_factor - 1.f);
   /* Set Restitivity Eta */

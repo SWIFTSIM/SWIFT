@@ -394,11 +394,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
       -1.5f * hydro_gamma - 1.f, parts, mhd_data.psi_over_ch,
       "Dedner scalars over cleaning speeds of the particles");
 
-  list[3] = io_make_output_field(
-      "DednerScalarsOverCleaningSpeedsdt", FLOAT, 1,
-      UNIT_CONV_MAGNETIC_FIELD_PER_TIME, 1.f, parts,
-      mhd_data.psi_over_ch_dt,
-      "Time derivative of Dedner scalars over cleaning speeds of the particles");
+  list[3] = io_make_output_field("DednerScalarsOverCleaningSpeedsdt", FLOAT, 1,
+                                 UNIT_CONV_MAGNETIC_FIELD_PER_TIME, 1.f, parts,
+                                 mhd_data.psi_over_ch_dt,
+                                 "Time derivative of Dedner scalars over "
+                                 "cleaning speeds of the particles");
 
   list[4] = io_make_output_field(
       "MagneticFluxDensitiesdt", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME,
