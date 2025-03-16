@@ -202,7 +202,9 @@ def generate_coordinates(r_valuesp, N_vs_r_dr, noise_drp):
             
             # add noise to the shell 
             noise_drp = np.random.randn(int(Np),3)
-            noise_drp *= drp/np.linalg.norm(noise_drp, axis=1, keepdims=True)  # Normalize
+            noise_drp *= 1/np.linalg.norm(noise_drp, axis=1, keepdims=True)  # Normalize
+            noise_magnitudes = np.random.normal(loc=0, scale=drp/2, size=(int(Np), 1))  # Add gaussian noise amplitude distribution, with 2sigma = shell thickness
+            noise_drp *= noise_magnitudes
             scaled_points += noise_drp
             
             # append shell
@@ -253,7 +255,7 @@ def generate_particle_distribution(shell_sampling = round(10*N**(1/3)), noise_le
 
     return coords
 
-coords = generate_particle_distribution(noise_level=0.1)
+coords = generate_particle_distribution(noise_level=0.25)
 
 # shift to centre of box
 coords += np.full(coords.shape, boxSize / 2.0)
