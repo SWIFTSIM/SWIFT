@@ -180,11 +180,11 @@ u_plot = [u_vs_r(P0_cgs, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, 
 T_plot = [T_vs_r(P0_cgs, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200) for i in range(len(r))]
 
 # plot temperature profile
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 #plt.plot(r,densities_vs_r/m_H_cgs)
-plt.plot(r,T_plot)
-plt.yscale('log')
-plt.savefig('test.png')
+#plt.plot(r,T_plot)
+#plt.yscale('log')
+#plt.savefig('test.png')
 
 # Mass shell distribution function
 dM_dr = 4*np.pi*r**2 * rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200)
@@ -202,16 +202,62 @@ sampled_r_values = np.interp(uniform_samples, cdf, r)
 
 # Positions
 # r^(-2) distribution corresponds to uniform distribution in radius
-radius = (
-      sampled_r_values # np.random.rand(N)
-)  # the diagonal extent of the cube
-ctheta = -1.0 + 2 * np.random.rand(N)
-stheta = np.sqrt(1.0 - ctheta ** 2)
-phi = 2 * math.pi * np.random.rand(N)
-coords = np.zeros((N, 3))
-coords[:, 0] = radius * stheta * np.cos(phi)
-coords[:, 1] = radius * stheta * np.sin(phi)
-coords[:, 2] = radius * ctheta
+#radius = (
+#      sampled_r_values # np.random.rand(N)
+#)  # the diagonal extent of the cube
+#ctheta = -1.0 + 2 * np.random.rand(N)
+#stheta = np.sqrt(1.0 - ctheta ** 2)
+#phi = 2 * math.pi * np.random.rand(N)
+#coords = np.zeros((N, 3))
+#coords[:, 0] = radius * stheta * np.cos(phi)
+#coords[:, 1] = radius * stheta * np.sin(phi)
+#coords[:, 2] = radius * ctheta
+
+# fibonacci-based grid spherical distribution
+def fibonacci_sphere(Np):
+    """Returns `Np` points distributed on a unit sphere using a Fibonacci lattice."""
+    indicesp = np.arange(0, Np, dtype=float) + 0.5
+    phip = (1 + np.sqrt(5)) / 2  # Golden ratio
+    thetap = 2 * np.pi * indicesp / phip
+    zp = 1 - (2 * indicesp / Np)
+    radiusp = np.sqrt(1 - zp**2)
+    xp, yp = radiusp * np.cos(thetap), radiusp * np.sin(thetap)
+    return np.vstack((xp, yp, zp)).T
+
+def generate_coordinates(N_vs_r_dr, r_values):
+    """Generates 3D coordinates based on a given radial distribution and particle counts."""
+    all_coords = []
+    
+    for i, (Np, rp) in enumerate(zip(N_vs_r_dr, r_values)):
+        if Np > 0:  # Avoid empty shells
+            sphere_points = fibonacci_sphere(Np)  # Generate points on unit sphere
+            scaled_points = sphere_points * rp  # Scale by radius
+            all_coords.append(scaled_points)
+    
+    return np.vstack(all_coords)  # Stack all coordinates into a single array
+
+# random-based spherical distribution
+def generate_coordinates_rand(sampled_r_values):
+    radius = (
+          sampled_r_values # np.random.rand(N)
+    )  # the diagonal extent of the cube
+    ctheta = -1.0 + 2 * np.random.rand(N)
+    stheta = np.sqrt(1.0 - ctheta ** 2)
+    phi = 2 * math.pi * np.random.rand(N)
+    coords = np.zeros((N, 3))
+    coords[:, 0] = radius * stheta * np.cos(phi)
+    coords[:, 1] = radius * stheta * np.sin(phi)
+    coords[:, 2] = radius * ctheta
+
+# Example usage
+N_vs_r_dr = np.round(pdf*N/np.sum(pdf),0)  # Number of particles in each shell
+import matplotlib.pyplot as plt
+#plt.plot(r,densities_vs_r/m_H_cgs)
+plt.plot(r,N_vs_r_dr)
+plt.yscale('log')
+plt.savefig('test_N_vs_r.png')
+
+coords = generate_coordinates(N_vs_r_dr, r)
 
 # Masses
 gas_mass = (
@@ -221,7 +267,7 @@ gas_particle_mass = gas_mass / float(N)
 print('Gas particle mass is %E ' % (gas_particle_mass*1e12))
 
 # shift to centre of box
-coords += np.full((N, 3), boxSize / 2.0)
+coords += np.full(coords.shape, boxSize / 2.0)
 print("x range = (%f,%f)" % (np.min(coords[:, 0]), np.max(coords[:, 0])))
 print("y range = (%f,%f)" % (np.min(coords[:, 1]), np.max(coords[:, 1])))
 print("z range = (%f,%f)" % (np.min(coords[:, 2]), np.max(coords[:, 2])))
