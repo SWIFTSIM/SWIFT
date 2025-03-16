@@ -837,17 +837,26 @@ void stellar_evolution_compute_SN_feedback_spart(
   if (m_end_step >= m_beg_step) return;
 
   /* Star particles representing only the continuous part of the IMF need a
-  special treatment. They do not contain stars above the mass that separate the
-  IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
-  module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
-  feedback. Note that the sm structure contains different information for the
-  'first stars' and the 'late stars'. The right sm data is passed to this
-  function so we do not need any special treatment here. */
+     special treatment. They do not contain stars above the mass that separate the
+     IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
+     module). So, if m_end_step > minimal_discrete_mass_Msun, you don't do
+     feedback. Note that the sm structure contains different information for the
+     'first stars' and the 'late stars'. The right sm data is passed to this
+     function so we do not need any special treatment here. */
   if (sp->star_type == star_population_continuous_IMF) {
     /* If it's not time yet for feedback, exit. Notice that both masses are in
-      solar mass. */
-    if (m_beg_step > sm->imf.minimal_discrete_mass_Msun) {
+       solar mass. */
+    if (m_end_step > sm->imf.minimal_discrete_mass_Msun) {
       return;
+    }
+
+    /* If we are in a case where
+       m_beg_step > minimal_discrete_mass_Msun > m_end_step,
+       then we need to be careful. We don't want feedback from the discrete
+       part, only the continuous part. Hence, we need to update m_beg_step.
+    */
+    if (m_beg_step > sm->imf.minimal_discrete_mass_Msun) {
+      m_beg_step = sm->imf.minimal_discrete_mass_Msun;
     }
   }
 

@@ -2238,24 +2238,28 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 /**
  * @brief Creates all the task dependencies for the gravity
  *
- * @param e The #engine
+ * @param map_data The task array passed to this pool thread.
+ * @param num_elements The number of tasks in this pool thread.
+ * @param extra_data Pointer to the #engine.
  */
-void engine_link_gravity_tasks(struct engine *e) {
+void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
+                                      void *extra_data) {
 
+  struct task *tasks = (struct task *)map_data;
+  struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
-  const int nr_tasks = sched->nr_tasks;
 
-  for (int k = 0; k < nr_tasks; k++) {
+  for (int k = 0; k < num_elements; k++) {
 
     /* Get a pointer to the task. */
-    struct task *t = &sched->tasks[k];
+    struct task *t = &tasks[k];
 
     if (t->type == task_type_none) continue;
 
     /* Get the cells we act on */
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+    struct cell *restrict ci = t->ci;
+    struct cell *restrict cj = t->cj;
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
@@ -2297,7 +2301,8 @@ void engine_link_gravity_tasks(struct engine *e) {
     }
 
     /* Self-interaction for external gravity ? */
-    if (t_type == task_type_self && t_subtype == task_subtype_external_grav) {
+    else if (t_type == task_type_self &&
+             t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (ci_nodeID != nodeID) error("Non-local self task");
@@ -4639,7 +4644,10 @@ void engine_make_fof_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   ticks tic = getticks();
 
-  if (e->restarting) error("Running FOF on a restart step!");
+  if (e->restarting) {
+    /* Re-set the scheduler. */
+    scheduler_reset(sched, engine_estimate_nr_tasks(e));
+  }
 
   /* Construct a FOF loop over neighbours */
   if (e->policy & engine_policy_fof)
@@ -4815,8 +4823,13 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Add the dependencies for the gravity stuff */
-  if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
-    engine_link_gravity_tasks(e);
+  if (e->policy &
+      (engine_policy_self_gravity | engine_policy_external_gravity)) {
+
+    threadpool_map(&e->threadpool, engine_link_gravity_tasks_mapper,
+                   e->sched.tasks, e->sched.nr_tasks, sizeof(struct task),
+                   threadpool_auto_chunk_size, e);
+  }
 
   if (e->verbose)
     message("Linking gravity tasks took %.3f %s.",
@@ -4934,7 +4947,7 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Set the unlocks per task. */
-  scheduler_set_unlocks(sched);
+  scheduler_set_unlocks(sched, &e->threadpool);
 
   if (e->verbose)
     message("Setting unlocks took %.3f %s.",
