@@ -3,7 +3,7 @@
 This example tests the dynamical friction implemented in the MWPotential2014.
 It compares the orbit predicted by SWIFT with an orbit computed with pNbody, using:
 
-`orbits_integration_MW --t_forward 10 --position 300 0 0 --velocity 0 100 10 --dynamical_friction -o orbit.csv`
+`orbits_integration_MW --t_forward 10 --position 0.1 0.1 100 --velocity 80 0 0 --dynamical_friction -o orbit.csv`
 
 # How to run this example
 

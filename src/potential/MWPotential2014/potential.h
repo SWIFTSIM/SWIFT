@@ -389,7 +389,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     sigma = fmax(potential->df_sigma_floor, sigma);
 
     /* Compute the chi parameter */
-    double X = v / (sqrt(2) / sigma);
+    double X = v / (sqrt(2) * sigma);
     double amp1 = erf(X) - ((2 * X / sqrtpi) * exp(-X * X));
 
     /* Kill the dynamical friction at the center */
@@ -595,7 +595,7 @@ static INLINE void potential_init_backend(
   /* Convert to internal system of units by using the
    * physical constants defined in this system */
   const double kpc = 1000. * phys_const->const_parsec;
-  const double kms = 1e5 * units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+  const double kms = 1e5 / units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
   potential->M_200 *= phys_const->const_solar_mass;
   potential->H *= phys_const->const_reduced_hubble;
   potential->Mdisk *= phys_const->const_solar_mass;
@@ -604,8 +604,7 @@ static INLINE void potential_init_backend(
   potential->r_1 *= kpc;
   potential->r_c *= kpc;
   potential->amplitude *= phys_const->const_solar_mass / (kpc * kpc * kpc);
-  potential->df_sigma_floor *= 1e5;
-  potential->df_sigma_floor /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+  potential->df_sigma_floor *= kms;
   potential->df_satellite_mass *= phys_const->const_solar_mass;
   potential->df_core_radius *= kpc;
 
