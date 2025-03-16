@@ -46,7 +46,7 @@ y = data.gas.coordinates[:, 1].to_physical()
 z = data.gas.coordinates[:, 2].to_physical()
 
 rho = data.gas.densities
-nH = rho/(1.67e-24*unyt.g)
+nH = rho.to(unyt.g/unyt.cm**3)/(1.67e-24*unyt.g)
 h = data.gas.smoothing_lengths
 v = data.gas.velocities
 P = data.gas.pressures
@@ -60,27 +60,88 @@ R3 = data.gas.r3
 
 normB = np.sqrt(B[:,0]**2+B[:,1]**2+B[:,2]**2)
 
+# Retrieve some information about the simulation run
+artDiffusion = data.metadata.hydro_scheme["Artificial Diffusion Constant"]
+dedHyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"]
+dedHypDivv = data.metadata.hydro_scheme["Dedner Hyperbolic div(v) Constant"]
+dedPar = data.metadata.hydro_scheme["Dedner Parabolic Constant"]
+eta = data.metadata.hydro_scheme["Resistive Eta"]
+git = data.metadata.code["Git Revision"]
+gitBranch = data.metadata.code["Git Branch"]
+hydroScheme = data.metadata.hydro_scheme["Scheme"]
+kernel = data.metadata.hydro_scheme["Kernel function"]
+neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"]
+
+
 ########################################## Make histogram
 if to_plot == "hist":
-    min_metric = 0.1
+    #min_metric = 0.1
     quantity = (
-        T.to(unyt.K)#rho.to(unyt.g/unyt.cm**3)
+        nH #T.to(unyt.K)#rho.to(unyt.g/unyt.cm**3)
     ).value  # (rho.to_physical()/rho_mean).value#(abs_vec(v).to_physical()/vrms).value
-    qname = r"T $[K]$"#r"$\rho$ $[g/cm^3]$"  #'rho/<rho>' #'$|v|/v_{rms}$'
+    qname = r"$n_H$ $[cm^{-3}]$"#r"$\rho$ $[g/cm^3]$"  #'rho/<rho>' #'$|v|/v_{rms}$'
     Nbins = 100
     # bins = np.linspace(np.min(quantity),np.max(quantity),Nbins)
     bins = np.logspace(
         int(np.log10(np.min(quantity))) - 1, int(np.log10(np.max(quantity))) + 1, Nbins
     )
     fig, ax = plt.subplots()
-    plt.hist(quantity, bins=bins, color="blue", label=qname, alpha=0.5, density=False)
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.legend()
-    ax.set_ylabel("$N_{particles}$/bin")
-    ax.set_xlabel(qname)
+    
+    nx = 2
+    ny = 1
+    fig, ax = plt.subplots(ny, nx, sharey=True, figsize=(5*nx, 5*ny))
+
+    ax[0].hist(quantity, bins=bins, color="blue", label=qname, alpha=0.5, density=False)
+    ax[0].set_xscale("log")
+    ax[0].set_yscale("log")
+    ax[0].legend()
+    ax[0].set_ylabel("$N_{particles}$/bin")
+    ax[0].set_xlabel(qname)
+    ax[0].set_ylim([1,1e5])
     #ax.set_title(f"z={z_to_display:}")
-    plt.grid()
+    ax[0].grid()
+
+
+    # add panel with infromation about the run
+    Np = len(quantity)
+    text_common_args = dict(
+        fontsize=10, ha="center", va="center", transform=ax[1].transAxes
+    )
+
+    ax[1].text(
+        0.5,
+        0.8,
+        "Cooling halo with spin at time $t=%.2f$ Gyr" % data.metadata.time,
+        **text_common_args,
+    )
+    ax[1].text(0.5, 0.7, "swift %s" % git.decode("utf-8"), **text_common_args)
+    ax[1].text(0.5, 0.6, "Branch %s" % gitBranch.decode("utf-8"), **text_common_args)
+    ax[1].text(0.5, 0.5, hydroScheme.decode("utf-8"), **text_common_args)
+    ax[1].text(
+        0.5,
+        0.4,
+        kernel.decode("utf-8") + " with $%.2f$ neighbours" % (neighbours),
+        **text_common_args,
+    )
+    ax[1].text(
+        0.5, 0.3, "Artificial diffusion: $%.2f$ " % (artDiffusion), **text_common_args
+    )
+    ax[1].text(
+        0.5,
+        0.2,
+        "Dedner Hyp, Hyp_div(v), Par: $%.2f,%.2f,%.2f$ " % (dedHyp, dedHypDivv, dedPar),
+        **text_common_args,
+    )
+    ax[1].text(
+        0.5, 0.1, "Physical resistivity $\eta$: $%.2f$ " % (eta), **text_common_args
+    )
+    ax[1].text(
+        0.5, 0.0, "Number of particles $N_p$: $%.0f$ " % (Np), **text_common_args
+    )
+    ax[1].axis("off")
+
+    fig.tight_layout()
+
     plt.savefig(sys.argv[2], dpi=100)
     exit()
 ########################################## Make correlation histograms
@@ -122,25 +183,65 @@ def plot_histogram_density_plot(quantity_x, quantity_y, qname_x, qname_y, Nbins=
     X,Y,hist = prepare_histogram_density_plot(
         quantity_x, quantity_y, Nbins
     )
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    nx = 2
+    ny = 1
+    fig, ax = plt.subplots(ny, nx, sharey=True, figsize=(5*nx, 5*ny))
 
-    fig.suptitle(f"({qname_x},{qname_y}) space at %2f Gyr" % time)
+    fig.suptitle(f"({qname_x},{qname_y}) space")
 
-    ax.set_title(r"$f_{12}(x,y)$")
-    ax.set_ylabel(qname_y)
-    ax.set_xlabel(qname_x)
-    ax.set_box_aspect(1)
+    ax[0].set_title(r"$f_{12}(x,y)$")
+    ax[0].set_ylabel(qname_y)
+    ax[0].set_xlabel(qname_x)
+    ax[0].set_box_aspect(1)
     #plt.imshow(hist.T, origin='lower', aspect='auto', cmap='plasma')
 
-    pax = ax.pcolormesh(X, Y, hist.T, cmap=prefered_color, norm=LogNorm())
-    ax.grid(True, linewidth=0.5,alpha=0.3)
-    ax.set_xscale("log")
-    ax.set_yscale("log")
+    pax = ax[0].pcolormesh(X, Y, hist.T, cmap=prefered_color, norm=LogNorm())
+    ax[0].grid(True, linewidth=0.5,alpha=0.3)
+    ax[0].set_xscale("log")
+    ax[0].set_yscale("log")
 
     x = np.logspace(np.log10(min(quantity_x)),np.log10(max(quantity_x)),100)
     y = min(quantity_y)/10 * (x/min(quantity_x))**(2/3)
 
-    #ax.plot(x,y,color='red',alpha=0.5)
+    #ax[0].plot(x,y,color='red',alpha=0.5)
+
+    # add panel with infromation about the run
+    Np = len(quantity_x)
+    text_common_args = dict(
+        fontsize=10, ha="center", va="center", transform=ax[1].transAxes
+    )
+
+    ax[1].text(
+        0.5,
+        0.8,
+        "Cooling halo with spin at time $t=%.2f$ Gyr" % data.metadata.time,
+        **text_common_args,
+    )
+    ax[1].text(0.5, 0.7, "swift %s" % git.decode("utf-8"), **text_common_args)
+    ax[1].text(0.5, 0.6, "Branch %s" % gitBranch.decode("utf-8"), **text_common_args)
+    ax[1].text(0.5, 0.5, hydroScheme.decode("utf-8"), **text_common_args)
+    ax[1].text(
+        0.5,
+        0.4,
+        kernel.decode("utf-8") + " with $%.2f$ neighbours" % (neighbours),
+        **text_common_args,
+    )
+    ax[1].text(
+        0.5, 0.3, "Artificial diffusion: $%.2f$ " % (artDiffusion), **text_common_args
+    )
+    ax[1].text(
+        0.5,
+        0.2,
+        "Dedner Hyp, Hyp_div(v), Par: $%.2f,%.2f,%.2f$ " % (dedHyp, dedHypDivv, dedPar),
+        **text_common_args,
+    )
+    ax[1].text(
+        0.5, 0.1, "Physical resistivity $\eta$: $%.2f$ " % (eta), **text_common_args
+    )
+    ax[1].text(
+        0.5, 0.0, "Number of particles $N_p$: $%.0f$ " % (Np), **text_common_args
+    )
+    ax[1].axis("off")
 
     #fig.colorbar(pax)
     fig.tight_layout()

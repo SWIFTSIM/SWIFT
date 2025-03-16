@@ -40,14 +40,19 @@ v = data.gas.velocities
 norm_r = np.sqrt(r[:, 0] ** 2 + r[:, 1] ** 2 + r[:, 2] ** 2)
 vr = np.sum(v * r, axis=1) / norm_r
 normv = np.sqrt(v[:, 0] ** 2 + v[:, 1] ** 2 + v[:, 2] ** 2)
-B = data.gas.magnetic_flux_densities
-J = data.gas.magnetic_flux_curl
+B = data.gas.magnetic_flux_densities 
+#B = v.value * 0.0 * 1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s)
+#J = data.gas.magnetic_flux_curl
 normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
-normJ = np.sqrt(J[:, 0] ** 2 + J[:, 1] ** 2 + J[:, 2] ** 2)
+#normJ = np.sqrt(J[:, 0] ** 2 + J[:, 1] ** 2 + J[:, 2] ** 2)
 divB = data.gas.magnetic_divergences
+#divB = norm_r.value * 0.0 * 1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s* unyt.cm)
 h = data.gas.smoothing_lengths
 rho = data.gas.densities
 Np = len(h)
+print('Number of particles %E' % len(data.gas.masses))
+print('Total mass %E Msol' % np.sum(data.gas.masses.to(unyt.Msun).value))
+print('Gas particle mass %E Msol' % np.mean(data.gas.masses.to(unyt.Msun).value))
 
 plasmaBeta = data.gas.pressures/(normB**2/(2*mu0))
 
@@ -59,12 +64,13 @@ data.gas.mass_weighted_vr = data.gas.masses * vr
 data.gas.mass_weighted_Bz = data.gas.masses * abs(B[:, 2])
 data.gas.mass_weighted_Bx = data.gas.masses * abs(B[:, 0])
 data.gas.mass_weighted_By = data.gas.masses * abs(B[:, 1])
-data.gas.mass_weighted_J = (
-    data.gas.masses * np.sqrt(J[:, 0] ** 2 + J[:, 1] ** 2 + J[:, 2] ** 2) / mu0
-)
+#data.gas.mass_weighted_J = (
+#    data.gas.masses * np.sqrt(J[:, 0] ** 2 + J[:, 1] ** 2 + J[:, 2] ** 2) / mu0
+#)
 
 data.gas.mass_weighted_plasmaBeta = data.gas.masses * plasmaBeta 
 data.gas.mass_weighted_normv = data.gas.masses * normv
+data.gas.mass_weighted_normB = data.gas.masses * normB
 
 """
 rotation_matrix = [[1,0,0],
@@ -74,7 +80,7 @@ rotation_matrix = [[1,0,0],
 rotation_matrix = [[0, 0, 1], [0, 1, 0], [-1, 0, 0]]
 
 # set plot area
-Lslice_kPc = 5.5 #2*21.5 
+Lslice_kPc = 20.0 #2*21.5 
 Lslice = Lslice_kPc * 3.08e18 * 1e3 * unyt.cm
 
 visualise_region_xy = [
@@ -128,11 +134,13 @@ mass_weighted_vr_map = slice_gas(**common_arguments, project="mass_weighted_vr")
 mass_weighted_Bz_map = slice_gas(**common_arguments, project="mass_weighted_Bz")
 mass_weighted_Bx_map = slice_gas(**common_arguments, project="mass_weighted_Bx")
 mass_weighted_By_map = slice_gas(**common_arguments, project="mass_weighted_By")
-mass_weighted_J_map = slice_gas(**common_arguments, project="mass_weighted_J")
+#mass_weighted_J_map = slice_gas(**common_arguments, project="mass_weighted_J")
 
 mass_weighted_plasmaBeta_map = slice_gas(**common_arguments, project="mass_weighted_plasmaBeta")
 mass_weighted_normv_map = slice_gas(**common_arguments, project="mass_weighted_normv")
 mass_weighted_normv_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_normv")
+mass_weighted_normB_map = slice_gas(**common_arguments, project="mass_weighted_normB")
+mass_weighted_normB_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_normB")
 mass_weighted_Bz_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_Bz")
 mass_weighted_Bx_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_Bx")
 mass_weighted_By_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_By")
@@ -148,13 +156,18 @@ By_map = mass_weighted_By_map / mass_map
 Bz_map_xy = mass_weighted_Bz_map_xy / mass_map_xy
 Bx_map_xy = mass_weighted_Bx_map_xy / mass_map_xy
 By_map_xy = mass_weighted_By_map_xy / mass_map_xy
-J_map = mass_weighted_J_map / mass_map
+#J_map = mass_weighted_J_map / mass_map
 plasmaBeta_map = mass_weighted_plasmaBeta_map / mass_map
 normv_map = mass_weighted_normv_map / mass_map
 normv_map_xy = mass_weighted_normv_map_xy / mass_map_xy
+normB_map = mass_weighted_normB_map / mass_map
+normB_map_xy = mass_weighted_normB_map_xy / mass_map_xy
 
-density_map_xy.convert_to_units(unyt.g * unyt.cm ** (-3))
-density_map.convert_to_units(unyt.g * unyt.cm ** (-3))
+#density_map_xy.convert_to_units(unyt.g * unyt.cm ** (-3))
+#density_map.convert_to_units(unyt.g * unyt.cm ** (-3))
+
+density_map_xy.convert_to_units(1e10*(1e33*unyt.g) * (3.08e21*unyt.cm) ** (-3))
+density_map.convert_to_units(1e10*(1e33*unyt.g) * (3.08e21*unyt.cm) ** (-3))
 
 nH_map_xy = density_map_xy/(1.67e-24 * unyt.g)
 nH_map = density_map/(1.67e-24 * unyt.g)
@@ -166,11 +179,13 @@ By_map.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
 Bz_map_xy.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
 Bx_map_xy.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
 By_map_xy.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
-J_map.convert_to_units(unyt.statA / (unyt.m ** 2))
+#J_map.convert_to_units(unyt.statA / (unyt.m ** 2))
 normv_map.convert_to_units(unyt.km / unyt.s)
 normv_map_xy.convert_to_units(unyt.km / unyt.s)
-normB_map = np.sqrt(Bx_map**2+By_map**2+Bz_map**2)
-normB_map_xy = np.sqrt(Bx_map_xy**2+By_map_xy**2+Bz_map_xy**2)
+normB_map.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
+normB_map_xy.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
+#normB_map = np.sqrt(Bx_map**2+By_map**2+Bz_map**2)
+#normB_map_xy = np.sqrt(Bx_map_xy**2+By_map_xy**2+Bz_map_xy**2)
 
 nx = 2
 ny = 4
@@ -180,16 +195,20 @@ fig, ax = plt.subplots(ny, nx, sharey=True, figsize=(5*nx, 5*ny))
 
 a00 = ax[0, 0].contourf(
     np.log10(nH_map.value),
-    cmap="plasma",#"gist_stern",#"RdBu",
+    #np.log10(density_map.value),
+    cmap="jet",#"plasma",#"gist_stern",#"RdBu",
     extend="both",
-    levels=np.linspace(-6, 4, 100),
+    levels=np.linspace(-4, 2, 100),
+    #levels=np.linspace(-7, -1, 100),
 )
 
 a01 = ax[0, 1].contourf(
     np.log10(nH_map_xy.value),
-    cmap="plasma",#"gist_stern", #"RdBu",
+    #np.log10(density_map_xy.value).T,
+    cmap="jet",#"plasma",#"gist_stern", #"RdBu",
     extend="both",
-    levels=np.linspace(-6, 4, 100),
+    levels=np.linspace(-4, 2, 100),
+    #levels=np.linspace(-7, -1, 100),
 )
 
 #a10 = ax[1, 0].contourf(
@@ -209,22 +228,22 @@ a01 = ax[0, 1].contourf(
 #)
 a10 = ax[1, 0].contourf(
     np.maximum(np.log10(normB_map.value), -6),
-    cmap="viridis", #"nipy_spectral_r",
+    cmap="jet",#"viridis", #"nipy_spectral_r",
     extend="both",
-    levels=np.linspace(-4, 2, 100),
+    levels=np.linspace(-2, 2, 100),
 )
 a11 = ax[1, 1].contourf(
-    np.maximum(np.log10(normB_map_xy.value), -6),
-    cmap="viridis", #"nipy_spectral_r",
+    np.maximum(np.log10(normB_map_xy.value), -6).T,
+    cmap="jet",#"viridis", #"nipy_spectral_r",
     extend="both",
-    levels=np.linspace(-4, 2, 100),
+    levels=np.linspace(-2, 2, 100),
 )
 
 a20 = ax[2, 0].contourf(
     error_map.value, cmap="jet", extend="both", levels=np.arange(-6.0, 3.0, 1.0)
 )
 a21 = ax[2, 1].contourf(
-    error_map_xy.value, cmap="jet", extend="both", levels=np.arange(-6.0, 3.0, 1.0)
+    (error_map_xy.value).T, cmap="jet", extend="both", levels=np.arange(-6.0, 3.0, 1.0)
 )
 
 a30 = ax[3, 0].contourf(
@@ -248,16 +267,19 @@ for ii in range(ny):
         ax[ii,jj].set_ylim(0, 511)
 
 
-ticks_rho = [-6,-5,-4,-3,-2,-1,0,1,2,3,4]
+ticks_rho =  [-4,-3,-2,-1, 0, 1, 2]
+#ticks_rho = [-7,-6,-5,-4,-3,-2,-1]
 cbar1 = plt.colorbar(
     a00, ax=ax[0, 0], fraction=0.046, pad=0.04, ticks=ticks_rho
 )
 cbar1.set_label(r"$\mathrm{log}_{10} \rho / m_H \; [ {cm}^{-3}]$")
+#cbar1.set_label(r"$\mathrm{log}_{10} \rho \; [10^{10} {M}_{sol} {kpc}^{-3}]$")
 cbar2 = plt.colorbar(
     a01, ax=ax[0, 1], fraction=0.046, pad=0.04, ticks=ticks_rho
 )
 ax[0, 1].set_ylabel(r"$y$ [kPc]")
 cbar2.set_label(r"$\mathrm{log}_{10} \rho / m_H \; [ {cm}^{-3}]$")
+#cbar2.set_label(r"$\mathrm{log}_{10} \rho \; [10^{10} {M}_{sol} {kpc}^{-3}]$")
 
 #cbar3 = plt.colorbar(
 #    a10, ax=ax[1, 0], fraction=0.046, pad=0.04, ticks=np.linspace(1, 2, 2)
@@ -276,15 +298,15 @@ ax[1, 1].set_ylabel(r"$y$ [kPc]")
 #    a20, ax=ax[2, 0], fraction=0.046, pad=0.04, ticks=ticks_Beta
 #)
 #cbar5.set_label(r"$\mathrm{log}_{10} \beta \;$")
-ticks_B = [-4,-3,-2,-1,0,1,2]
+ticks_B = [-2,-1,0,1,2]
 cbar3 = plt.colorbar(
     a11, ax=ax[1, 0], fraction=0.046, pad=0.04, ticks=ticks_B
 )
-cbar3.set_label(r"$\mathrm{log}_{10} B \; [G]$")
+cbar3.set_label(r"$\mathrm{log}_{10} B \; [\mu G]$")
 cbar4 = plt.colorbar(
     a11, ax=ax[1, 1], fraction=0.046, pad=0.04, ticks=ticks_B
 )
-cbar4.set_label(r"$\mathrm{log}_{10} B \; [G]$")
+cbar4.set_label(r"$\mathrm{log}_{10} B \; [\mu G]$")
 
 ax[2, 1].set_ylabel(r"$y$ [kPc]")
 
@@ -320,7 +342,7 @@ ax[0,1].streamplot(
     new_y,
     np.transpose(vx_map_xy.reshape((dimx, dimy))),
     np.transpose(vy_map_xy.reshape((dimx, dimy))),
-    color="w",
+    color="black",
     density=1.0,
     linewidth=0.2,
     arrowsize=0.4,
@@ -346,7 +368,7 @@ ax[0,0].streamplot(
     new_y,
     np.transpose(vx_map.reshape((dimx, dimy))),
     np.transpose(vz_map.reshape((dimx, dimy))),
-    color="w",
+    color="black",
     density=1.0,
     linewidth=0.2,
     arrowsize=0.4,
@@ -375,7 +397,7 @@ ax[1,1].streamplot(
     new_y,
     np.transpose(Bx_map_xy.reshape((dimx, dimy))),
     np.transpose(By_map_xy.reshape((dimx, dimy))),
-    color="w",
+    color="black",
     density=1.0,
     linewidth=0.2,
     arrowsize=0.4,
@@ -401,7 +423,7 @@ ax[1,0].streamplot(
     new_y,
     np.transpose(Bx_map.reshape((dimx, dimy))),
     np.transpose(Bz_map.reshape((dimx, dimy))),
-    color="w",
+    color="black",
     density=1.0,
     linewidth=0.2,
     arrowsize=0.4,
