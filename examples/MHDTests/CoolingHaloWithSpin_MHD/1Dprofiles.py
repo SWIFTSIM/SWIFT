@@ -71,6 +71,7 @@ n_gas = data.metadata.n_gas
 
 # Retrieve particle attributes of interest
 rho = data.gas.densities
+rho.convert_to_units(unyt.g*unyt.cm**(-3))
 
 P = data.gas.pressures
 
@@ -126,11 +127,7 @@ errB_map = mass_weighted_errB_map / mass_map
 
 map_pixel_length = len(mass_map)
 
-
-n_H = density_map/(m_H_cgs*unyt.g)
-n_H.convert_to_units(unyt.cm**(-3))
-
-
+n_H = density_map/m_H_cgs
 
 x = np.linspace(0.0, 1.0, map_pixel_length)
 slice_ind = int(np.floor(y0 * map_pixel_length))

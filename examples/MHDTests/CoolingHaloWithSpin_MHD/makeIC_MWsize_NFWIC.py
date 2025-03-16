@@ -191,16 +191,23 @@ def fibonacci_sphere(Np):
     return coordsp
 
 # fill volume with spherical shells with a given dN vs r distribution
-def generate_coordinates(r_valuesp, N_vs_r_dr):
+def generate_coordinates(r_valuesp, N_vs_r_dr, noise_drp):
     """Generates 3D coordinates based on a given radial distribution and particle counts."""
     all_coords = []
     
-    for i, (rp, Np) in enumerate(zip(r_valuesp, N_vs_r_dr)):
+    for i, (rp, Np, drp) in enumerate(zip(r_valuesp, N_vs_r_dr, noise_drp)):
         if Np > 2:  # Avoid empty shells
             sphere_points = fibonacci_sphere(Np)  # Generate points on unit sphere
             scaled_points = sphere_points * rp  # Scale by radius
+            
+            # add noise to the shell 
+            noise_drp = np.random.randn(int(Np),3)
+            noise_drp *= drp/np.linalg.norm(noise_drp, axis=1, keepdims=True)  # Normalize
+            scaled_points += noise_drp
+            
+            # append shell
             all_coords.append(scaled_points)
- 
+
     return np.vstack(all_coords)  # Stack all coordinates into a single array
 
 # selects non-overlapping shells
@@ -217,19 +224,14 @@ def minimal_covering_intervals(intervals, x_min, x_max):
         indeces_non_intersect = np.argwhere(distances_to_left>0) # find intervals that don't intersect
         if len(indeces_non_intersect)>0: # if there are still non-intersecting intervals to the left
             ilast = np.min(indeces_non_intersect)-1 # find index of last intersecting interval
-            #print('way 1.1 i=',i)
         else:
-            #print('way 1.2 i=',i)
             break
         
         if i<ilast: 
             indeces = np.append(indeces,ilast)
             i=ilast
-            print('way 2.1 i=',i)
         else:
-            print(ilast)
             i=ilast+1
-            print('way 2.2 i=',i)
         
         # Loop safety
         counter+=1
@@ -240,18 +242,18 @@ def minimal_covering_intervals(intervals, x_min, x_max):
     return indeces
 
 # get particle distribution for the selected gas profile (NFW-like)
-def generate_particle_distribution(shell_sampling = round(10*N**(1/3))):
+def generate_particle_distribution(shell_sampling = round(10*N**(1/3)), noise_level = 1e-1):
 
     r = np.logspace(np.log10(1e-6*boxSize),np.log10(boxSize * np.sqrt(3.0) / 2.0),shell_sampling) # radial sampling
     d_bin = (gas_particle_mass*M_200_cgs/rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200))**(1/3)/const_unit_length_in_cgs # estimate shell thickness
     dN_bin = np.round(4*np.pi*r**2/(d_bin)**2,0) # estimate amount of particles for each shell
     bins = np.vstack([r-d_bin/2,r+d_bin/2]).T # get shell radial intervals
     indeces_selected = minimal_covering_intervals(bins, d_bin[0]/2, r[-1]) # select non-overlapping shells
-    coords = generate_coordinates(r[indeces_selected],dN_bin[indeces_selected]) # generate particle distribution
+    coords = generate_coordinates(r[indeces_selected],dN_bin[indeces_selected],noise_level*d_bin[indeces_selected]) # generate particle distribution
 
     return coords
 
-coords = generate_particle_distribution()
+coords = generate_particle_distribution(noise_level=0.1)
 
 # shift to centre of box
 coords += np.full(coords.shape, boxSize / 2.0)
