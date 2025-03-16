@@ -63,10 +63,14 @@ In order to compile SWIFT with Grackle, you need to provide the options ``with-c
 where ``$GRACKLE_ROOT`` is the root of the install directory (not the ``lib``). 
 
 .. warning::
-  The actual Grackle version fully supported by SWIFT is 3.2.1. It can be downloaded from 
-  `the official Grackle git repository <https://github.com/grackle-project/grackle/archive/refs/tags/grackle-3.2.1.tar.gz>`_.
-  However, this version still had a bug when using threadsafe functions. Alternately, it is possible to get a fixed version
-  using `the following fork frozen for compatibility with SWIFT <https://github.com/mladenivkovic/grackle-swift>`_.
+    (State 2023) Grackle is experiencing current development, and the API is subject
+    to changes in the future. For convenience, a frozen version is hosted as a fork
+    on github here: https://github.com/mladenivkovic/grackle-swift .
+    The version available there will be tried and tested and ensured to work with
+    SWIFT.
+
+    Additionally, that repository hosts files necessary to install that specific 
+    version of grackle with spack.
 
 
 To compile it, run
