@@ -174,30 +174,6 @@ print('Gas particle mass is %E ' % (gas_particle_mass*1e12))
 
 # Unnormalized mass shell distribution
 r = np.logspace(np.log10(1e-6*boxSize),np.log10(boxSize * np.sqrt(3.0) / 2.0),round(10*N**(1/3)))
-#r = np.linspace(1e-6*boxSize,boxSize * np.sqrt(3.0) / 2.0,round(10*N**(1/3)))
-f_r_distr_func = 4*np.pi*r**2 * rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200)
-
-# Plot
-#rho0_cgs = rho_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200) #gas density on the edge
-#P0_cgs = rho0_cgs*kb_cgs*T0_cgs/m_H_cgs # gas pressure on the edge of the box
-#densities_vs_r = rho_r(r,f_b,M_200_cgs,r_200_cgs,c_200)
-#u_plot = [u_vs_r(0, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(len(r))] # gas particle internal energies
-#u_plot = [u_vs_r(P0_cgs, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(len(r))] # gas particle internal energies
-#T_plot = [T_vs_r(P0_cgs, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200) for i in range(len(r))]
-
-# Mass shell distribution function
-dM_dr = 4*np.pi*r**2 * rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200)
-
-# Normalize f(r) to get a probability density function (PDF)
-pdf = dM_dr / np.trapz(dM_dr, r)  # Normalize with trapezoidal integration
-# Compute CDF
-cdf = np.cumsum(pdf * np.diff(np.concatenate(([0], r))))  # Cumulative sum approximation
-# set seed for random number
-np.random.seed(1234)
-# Generate N uniform random numbers in [0,1]
-uniform_samples = np.random.rand(N)
-# Use inverse transform sampling (interpolate CDF to find r values)
-sampled_r_values = np.interp(uniform_samples, cdf, r)
 
 # fibonacci-based grid spherical distribution
 def fibonacci_sphere(Np):
@@ -214,6 +190,7 @@ def fibonacci_sphere(Np):
     coordsp = np.vstack((xp, yp, zp)).T
     return coordsp
 
+# fill volume with spherical shells with a given dN vs r distribution
 def generate_coordinates(r_valuesp, N_vs_r_dr):
     """Generates 3D coordinates based on a given radial distribution and particle counts."""
     all_coords = []
@@ -226,29 +203,7 @@ def generate_coordinates(r_valuesp, N_vs_r_dr):
  
     return np.vstack(all_coords)  # Stack all coordinates into a single array
 
-
-
-
-# random-based spherical distribution
-def generate_coordinates_rand(sampled_r_values):
-    radius = (
-          sampled_r_values # np.random.rand(N)
-    )  # the diagonal extent of the cube
-    ctheta = -1.0 + 2 * np.random.rand(N)
-    stheta = np.sqrt(1.0 - ctheta ** 2)
-    phi = 2 * math.pi * np.random.rand(N)
-    coords = np.zeros((N, 3))
-    coords[:, 0] = radius * stheta * np.cos(phi)
-    coords[:, 1] = radius * stheta * np.sin(phi)
-    coords[:, 2] = radius * ctheta
-
-# Example usage:
-# intervals = np.array([[1, 3], [2, 6], [5, 10]])
-# x_min = 1
-# x_max = 10
-# print(minimal_covering_intervals(intervals, x_min, x_max))
-
-
+# selects non-overlapping shells
 def minimal_covering_intervals(intervals, x_min, x_max):
 
     # Sort intervals based on their starting points (and ending points in case of ties)
@@ -284,28 +239,19 @@ def minimal_covering_intervals(intervals, x_min, x_max):
 
     return indeces
 
-# Generate sphere
-d_bin = (gas_particle_mass*M_200_cgs/rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200))**(1/3)/const_unit_length_in_cgs
-dN_bin = np.round(4*np.pi*r**2/(d_bin)**2,0)
-bins = np.vstack([r-d_bin/2,r+d_bin/2]).T
-indeces_selected = minimal_covering_intervals(bins, d_bin[0]/2, r[-1])
+# get particle distribution for the selected gas profile (NFW-like)
+def generate_particle_distribution(shell_sampling = round(10*N**(1/3))):
 
-#dN_bin *= N/np.sum(dN_bin)
-#print(np.sum(dN_bin[indeces_selected]),N)
+    r = np.logspace(np.log10(1e-6*boxSize),np.log10(boxSize * np.sqrt(3.0) / 2.0),shell_sampling) # radial sampling
+    d_bin = (gas_particle_mass*M_200_cgs/rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200))**(1/3)/const_unit_length_in_cgs # estimate shell thickness
+    dN_bin = np.round(4*np.pi*r**2/(d_bin)**2,0) # estimate amount of particles for each shell
+    bins = np.vstack([r-d_bin/2,r+d_bin/2]).T # get shell radial intervals
+    indeces_selected = minimal_covering_intervals(bins, d_bin[0]/2, r[-1]) # select non-overlapping shells
+    coords = generate_coordinates(r[indeces_selected],dN_bin[indeces_selected]) # generate particle distribution
 
-import matplotlib.pyplot as plt
-plt.scatter(r[indeces_selected],dN_bin[indeces_selected])
-#plt.yscale('log')
-plt.savefig('test_N_vs_r.png')
+    return coords
 
-coords = generate_coordinates(r[indeces_selected],dN_bin[indeces_selected])
-
-# Masses
-#gas_mass = (
-#    Mgas_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200)/M_200_cgs
-#)  # get total gas mass within a sphere of radius sqrt(3)/2*Lbox
-#gas_particle_mass = gas_mass / float(N)
-print('Gas particle mass is %E ' % (gas_particle_mass*1e12))
+coords = generate_particle_distribution()
 
 # shift to centre of box
 coords += np.full(coords.shape, boxSize / 2.0)
