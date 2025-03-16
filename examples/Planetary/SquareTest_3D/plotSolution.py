@@ -16,8 +16,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-"""
-Plots a central slice from the 3D square test
+"""Plot a central slice from a 3D square test snapshot.
+
+Parameters
+----------
+snap : int
+    The snapshot ID to plot.
 """
 
 import sys
@@ -26,90 +30,107 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def plot_square(A1_x, A1_y, A1_rho, A1_u, A1_P, A1_size):
+    # Use Gridspec to set up figure
+    n_gs_ax = 40
+    n_gs_ax_gap = 10
+    n_gs_cbar_gap = 2
+    n_gs_cbar = 2
 
-	# Use Gridspec to set up figure
-	n_gs_ax = 40
-	n_gs_ax_gap = 10
-	n_gs_cbar_gap = 2
-	n_gs_cbar = 2
+    ax_len = 5
+    ax_gap_len = n_gs_ax_gap * ax_len / n_gs_ax
+    cbar_gap_len = n_gs_cbar_gap * ax_len / n_gs_ax
+    cbar_len = n_gs_cbar * ax_len / n_gs_ax
 
-	ax_len = 5
-	ax_gap_len = n_gs_ax_gap * ax_len / n_gs_ax
-	cbar_gap_len = n_gs_cbar_gap * ax_len / n_gs_ax
-	cbar_len = n_gs_cbar * ax_len / n_gs_ax
+    fig = plt.figure(
+        figsize=(3 * ax_len + 2 * ax_gap_len + 3 * cbar_gap_len + 3 * cbar_len, ax_len)
+    )
+    gs = mpl.gridspec.GridSpec(
+        nrows=n_gs_ax,
+        ncols=3 * n_gs_ax + 2 * n_gs_ax_gap + 3 * n_gs_cbar_gap + 3 * n_gs_cbar,
+    )
 
-	fig = plt.figure(figsize=(3 * ax_len + 2 * ax_gap_len + 3 * cbar_gap_len + 3 * cbar_len, ax_len))
-	gs = mpl.gridspec.GridSpec(nrows=n_gs_ax, ncols=3 * n_gs_ax + 2 * n_gs_ax_gap + 3 * n_gs_cbar_gap + 3 * n_gs_cbar)
+    # Quantities to plot
+    plot_quantity = ["Density", "Internal Energy", "Pressure"]
+    plot_vectors = [A1_rho, A1_u, A1_P]
+    cmaps = ["Spectral_r", "inferno", "viridis"]
 
-	# Quantities to plot
-	plot_quantity = ["Density", "Internal Energy", "Pressure"]
-	plot_vectors = [A1_rho, A1_u, A1_P]
-	cmaps = ["Spectral_r", "inferno", "viridis"]
+    for i in range(3):
+        # Set up subfig and color bar axes
+        y0 = 0
+        y1 = n_gs_ax
+        x0 = i * (n_gs_ax + n_gs_cbar_gap + n_gs_cbar + n_gs_ax_gap)
+        x1 = x0 + n_gs_ax
+        ax = plt.subplot(gs[y0:y1, x0:x1])
+        x0 = x1 + n_gs_cbar_gap
+        x1 = x0 + n_gs_cbar
+        cax = plt.subplot(gs[y0:y1, x0:x1])
 
-	for i in range(3):
+        # Colour map
+        cmap = plt.get_cmap(cmaps[i])
+        norm = mpl.colors.Normalize(
+            vmin=np.min(plot_vectors[i]), vmax=np.max(plot_vectors[i])
+        )
 
-		# Set up subfig and color bar axes
-		y0 = 0
-		y1 = n_gs_ax
-		x0 = i * (n_gs_ax + n_gs_cbar_gap + n_gs_cbar + n_gs_ax_gap)
-		x1 = x0 + n_gs_ax
-		ax = plt.subplot(gs[y0:y1, x0:x1])
-		x0 = x1 + n_gs_cbar_gap
-		x1 = x0 + n_gs_cbar
-		cax = plt.subplot(gs[y0:y1, x0:x1])
+        # Plot
+        scatter = ax.scatter(
+            A1_x,
+            A1_y,
+            c=plot_vectors[i],
+            norm=norm,
+            cmap=cmap,
+            s=A1_size,
+            edgecolors="none",
+        )
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_facecolor((0.9, 0.9, 0.9))
+        ax.set_xlim((np.min(A1_x), np.max(A1_x)))
+        ax.set_ylim((np.min(A1_y), np.max(A1_y)))
 
-		# Colour map
-		cmap = plt.get_cmap(cmaps[i])
-		norm = mpl.colors.Normalize(vmin=np.min(plot_vectors[i]),vmax=np.max(plot_vectors[i]))
+        # Colour bar
+        cbar = plt.colorbar(scatter, cax)
+        cbar.ax.tick_params(labelsize=14)
+        cbar.set_label(plot_quantity[i], rotation=90, labelpad=8, fontsize=18)
 
-		# Plot
-		scatter = ax.scatter(A1_x, A1_y, c=plot_vectors[i], norm=norm, cmap=cmap, s=A1_size, edgecolors="none")
-		ax.set_xticks([])
-		ax.set_yticks([])
-		ax.set_facecolor((0.9,0.9,0.9))
-		ax.set_xlim((np.min(A1_x),np.max(A1_x)))
-		ax.set_ylim((np.min(A1_y),np.max(A1_y)))
+    plt.savefig("square.pdf", dpi=300, bbox_inches="tight")
 
-		# Colour bar
-		cbar = plt.colorbar(scatter, cax)
-		cbar.ax.tick_params(labelsize=14)
-		cbar.set_label(plot_quantity[i], rotation=90, labelpad=8, fontsize=18)
-
-	plt.savefig("square.pdf", dpi=300, bbox_inches="tight")
 
 if __name__ == "__main__":
+    # Load snapshot data
+    mpl.use("Agg")
+    snap = int(sys.argv[1])
+    snap_file = "square_%04d.hdf5" % snap
 
-	# Load snapshot data
-	mpl.use("Agg")
-	snap = int(sys.argv[1])
-	snap_file = "square_%04d.hdf5"%snap
+    with h5py.File(snap_file, "r") as f:
+        A1_x = f["/PartType0/Coordinates"][:, 0]
+        A1_y = f["/PartType0/Coordinates"][:, 1]
+        A1_z = f["/PartType0/Coordinates"][:, 2]
+        A1_rho = f["/PartType0/Densities"][:]
+        A1_u = f["/PartType0/InternalEnergies"][:]
+        A1_P = f["/PartType0/Pressures"][:]
+        A1_m = f["/PartType0/Masses"][:]
 
-	with h5py.File(snap_file, "r") as f:
-	    A1_x = f["/PartType0/Coordinates"][:,0]
-	    A1_y = f["/PartType0/Coordinates"][:,1]
-	    A1_z = f["/PartType0/Coordinates"][:,2]
-	    A1_rho = f["/PartType0/Densities"][:]
-	    A1_u = f["/PartType0/InternalEnergies"][:]
-	    A1_P = f["/PartType0/Pressures"][:]
-	    A1_m = f["/PartType0/Masses"][:]
+    # Mask to select slice
+    slice_thickness = 0.1
+    slice_pos_z = 0.5 * (np.max(A1_z) + np.min(A1_z))
+    mask_slice = np.logical_and(
+        A1_z > slice_pos_z - 0.5 * slice_thickness,
+        A1_z < slice_pos_z + 0.5 * slice_thickness,
+    )
 
-	# Mask to select slice
-	slice_thickness = 0.1
-	slice_pos_z = 0.5 * (np.max(A1_z) + np.min(A1_z))
-	mask_slice = np.logical_and(A1_z > slice_pos_z - 0.5 * slice_thickness, A1_z < slice_pos_z + 0.5 * slice_thickness)
+    # Select particles to plot
+    A1_x_slice = A1_x[mask_slice]
+    A1_y_slice = A1_y[mask_slice]
+    A1_rho_slice = A1_rho[mask_slice]
+    A1_u_slice = A1_u[mask_slice]
+    A1_P_slice = A1_P[mask_slice]
+    A1_m_slice = A1_m[mask_slice]
 
-	# Select particles to plot
-	A1_x_slice = A1_x[mask_slice]
-	A1_y_slice = A1_y[mask_slice]
-	A1_rho_slice = A1_rho[mask_slice]
-	A1_u_slice = A1_u[mask_slice]
-	A1_P_slice = A1_P[mask_slice]
-	A1_m_slice = A1_m[mask_slice]
+    # Size of plotted particles
+    size_factor = 5e4
+    A1_size = size_factor * (A1_m_slice / A1_rho_slice) ** (2 / 3)
 
-	# Size of plotted particles
-	size_factor = 5e4
-	A1_size = size_factor * (A1_m_slice / A1_rho_slice)**(2/3)
-
-	# Plot figure
-	plot_square(A1_x_slice, A1_y_slice, A1_rho_slice, A1_u_slice, A1_P_slice, A1_size)
+    # Plot figure
+    plot_square(A1_x_slice, A1_y_slice, A1_rho_slice, A1_u_slice, A1_P_slice, A1_size)

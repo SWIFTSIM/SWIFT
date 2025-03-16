@@ -18,21 +18,19 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
+"""Make initial conditions for the 3D square test with equal particle spacing."""
 
 import h5py
 import numpy as np
 
-# Generates a swift IC file for the 3D square test with equal particle spacing
-
 # Parameters
-N_l = 40           # Number of particles on one side
+N_l = 40  # Number of particles on one side
 gamma = 5.0 / 3.0  # Gas adiabatic index
-rho_in = 4.0  	   # Density of inner region
-rho_out = 1.0      # Density of outer region
-P_in = 2.5         # Pressure of inner region
-P_out = 2.5        # Pressure of outer region
+rho_in = 4.0  # Density of inner region
+rho_out = 1.0  # Density of outer region
+P_in = 2.5  # Pressure of inner region
+P_out = 2.5  # Pressure of outer region
 fileOutputName = "square.hdf5"
-# ---------------------------------------------------
 
 vol = 1.0
 numPart = N_l * N_l * N_l
@@ -46,7 +44,16 @@ pos[:, 1] = A3_pos_y.flatten()
 pos[:, 2] = A3_pos_z.flatten()
 
 # 3d mask
-mask_inside = np.logical_and.reduce([A3_pos_x < 0.75, A3_pos_x > 0.25, A3_pos_y < 0.75, A3_pos_y > 0.25, A3_pos_z < 0.75, A3_pos_z > 0.25])
+mask_inside = np.logical_and.reduce(
+    [
+        A3_pos_x < 0.75,
+        A3_pos_x > 0.25,
+        A3_pos_y < 0.75,
+        A3_pos_y > 0.25,
+        A3_pos_z < 0.75,
+        A3_pos_z > 0.25,
+    ]
+)
 
 # Set particle masses
 mass_in = rho_in * vol / numPart
@@ -81,41 +88,33 @@ mat = np.zeros(numPart)
 
 # Write ICs to file
 with h5py.File(fileOutputName, "w") as f:
-	# Header
-	grp = f.create_group("/Header")
-	grp.attrs["BoxSize"] = [vol, vol, vol]
-	grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-	grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-	grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-	grp.attrs["Time"] = 0.0
-	grp.attrs["NumFilesPerSnapshot"] = 1
-	grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-	grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-	grp.attrs["Dimension"] = 3
+    # Header
+    grp = f.create_group("/Header")
+    grp.attrs["BoxSize"] = [vol, vol, vol]
+    grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
+    grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
+    grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
+    grp.attrs["Time"] = 0.0
+    grp.attrs["NumFilesPerSnapshot"] = 1
+    grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
+    grp.attrs["Dimension"] = 3
 
-	# Units
-	grp = f.create_group("/Units")
-	grp.attrs["Unit length in cgs (U_L)"] = 1.0
-	grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-	grp.attrs["Unit time in cgs (U_t)"] = 1.0
-	grp.attrs["Unit current in cgs (U_I)"] = 1.0
-	grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+    # Units
+    grp = f.create_group("/Units")
+    grp.attrs["Unit length in cgs (U_L)"] = 1.0
+    grp.attrs["Unit mass in cgs (U_M)"] = 1.0
+    grp.attrs["Unit time in cgs (U_t)"] = 1.0
+    grp.attrs["Unit current in cgs (U_I)"] = 1.0
+    grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
-	# Particle group
-	grp = f.create_group("/PartType0")
-	ds = grp.create_dataset("Coordinates", (numPart, 3), "d")
-	ds[()] = pos
-	ds = grp.create_dataset("Velocities", (numPart, 3), "f")
-	ds[()] = vel
-	ds = grp.create_dataset("Masses", (numPart, 1), "f")
-	ds[()] = m.reshape((numPart, 1))
-	ds = grp.create_dataset("Density", (numPart, 1), "f")
-	ds[()] = rho.reshape((numPart, 1))
-	ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
-	ds[()] = h.reshape((numPart, 1))
-	ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
-	ds[()] = u.reshape((numPart, 1))
-	ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
-	ds[()] = ids.reshape((numPart, 1))
-	ds = grp.create_dataset('MaterialIDs', (numPart,1), 'i')
-	ds[()] = mat.reshape((numPart,1))
+    # Particle group
+    grp = f.create_group("/PartType0")
+    grp.create_dataset("Coordinates", data=pos, dtype="d")
+    grp.create_dataset("Velocities", data=vel, dtype="f")
+    grp.create_dataset("Masses", data=m.reshape((numPart, 1)), dtype="f")
+    grp.create_dataset("Density", data=rho.reshape((numPart, 1)), dtype="f")
+    grp.create_dataset("SmoothingLength", data=h.reshape((numPart, 1)), dtype="f")
+    grp.create_dataset("InternalEnergy", data=u.reshape((numPart, 1)), dtype="f")
+    grp.create_dataset("ParticleIDs", data=ids.reshape((numPart, 1)), dtype="L")
+    grp.create_dataset("MaterialIDs", data=mat.reshape((numPart, 1)), dtype="i")
