@@ -12,6 +12,7 @@ PARSEC_IN_CGS = 3.0856776e18
 KM_PER_SEC_IN_CGS = 1.0e5
 CONST_G_CGS = 6.672e-8
 MSOL_IN_CGS = 1.9891e33 # Solar mass 
+kb_cgs = 1.38e-16 # boltzmann constant
 m_H_cgs = 1.68e-24 # atomic hydrogen mass 
 # First set unit velocity and then the circular velocity parameter for the isothermal potential
 const_unit_velocity_in_cgs = 1.0e5  # kms^-1
@@ -31,7 +32,7 @@ rhoc_cgs = 3*H_0_cgs**2/(8*np.pi*CONST_G_CGS)
 r_200_cgs = (3*M_200_cgs/(4*np.pi*rhoc_cgs))**(1/3)
 v_200_cgs = np.sqrt(CONST_G_CGS*M_200_cgs/r_200_cgs)
 v_200 = v_200_cgs / const_unit_velocity_in_cgs 
-
+T_200_cgs = m_H_cgs*v_200_cgs**2/(2*kb_cgs)
 
 # load reference
 with_reference = False
@@ -74,6 +75,7 @@ rho = data.gas.densities
 rho.convert_to_units(unyt.g*unyt.cm**(-3))
 
 P = data.gas.pressures
+T = data.gas.temperatures
 
 B = data.gas.magnetic_flux_densities
 
@@ -98,6 +100,8 @@ data.gas.mass_weighted_By = data.gas.masses * By
 
 data.gas.mass_weighted_errB = data.gas.masses * errB
 
+data.gas.mass_weighted_T = data.gas.masses * T
+
 common_arguments = dict(
     data=data, z_slice=0.5 * data.metadata.boxsize[2], resolution=512, parallel=True
 )
@@ -117,6 +121,7 @@ mass_weighted_Bx_map = slice_gas(**common_arguments, project="mass_weighted_Bx")
 mass_weighted_By_map = slice_gas(**common_arguments, project="mass_weighted_By")
 
 mass_weighted_errB_map = slice_gas(**common_arguments, project="mass_weighted_errB")
+mass_weighted_T_map = slice_gas(**common_arguments, project="mass_weighted_T")
 
 # Take out mass dependence
 density_map = mass_weighted_density_map / mass_map
@@ -124,6 +129,7 @@ pressure_map = mass_weighted_pressure_map / mass_map
 Bx_map = mass_weighted_Bx_map / mass_map
 By_map = mass_weighted_By_map / mass_map
 errB_map = mass_weighted_errB_map / mass_map
+T_map = mass_weighted_T_map / mass_map
 
 map_pixel_length = len(mass_map)
 
@@ -137,14 +143,9 @@ slice_ind = int(np.floor(y0 * map_pixel_length))
 plt.rcParams.update({"font.size": 16})
 
 nx = 1
-ny = 2
+ny = 3
 fig, axs = plt.subplots(ny, nx, figsize=((10*nx, 5*ny)), sharex=True)
 fig.subplots_adjust(hspace=0.1)
-
-#axs[0].plot(x, density_map[:, slice_ind], "k-", lw=0.5)
-#axs[0].set_yticks(np.arange(2.0, 14.0, 2.0))
-#axs[0].set_ylabel(r"$\rho$")
-#axs[0].set_ylim(0.0, 13.0)
 
 Lbox_kpc = data.metadata.boxsize.to(PARSEC_IN_CGS*1e3*unyt.cm).value[0]
 #locs = [map_pixel_length / 4, map_pixel_length / 2, 3 * map_pixel_length / 4]
@@ -155,9 +156,11 @@ slice_ind = int(np.floor(y0 * map_pixel_length))
 axs[0].plot(x, n_H[:, slice_ind], "k-",color='black')
 axs[0].set_yscale('log')
 axs[0].set_yticks(np.logspace(-7, 2, 10))
-axs[0].set_ylabel(r"$n_H(x,y_0)$ $[cm^{-3}]$")
 axs[0].set_ylim(1e-7, 1e2)
 
+
+axs[1].plot(x, T_map[:, slice_ind], "k-",color='black')
+axs[1].set_yscale('log')
 
 # NFW-like gas density profile
 def rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
@@ -169,21 +172,66 @@ def rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
     result_cgs[result_cgs>rho_max_cgs]=rho_max_cgs
     return result_cgs 
 
+# NFW-like gas mass inside a sphere with radius R 
+def Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
+    M_0 = M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))
+    return M_0 * f_b * (np.log(1+c_200*r_value)-r_value/(1+c_200*r_value)) 
+
+# NFW Gravitational acceleration
+def a_NFW(r_value, M_200_cgs,r_200_cgs, c_200):
+    a_pref = CONST_G_CGS*M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/r_200_cgs**2
+    return a_pref*((r_value/(r_value+1/c_200))-np.log(1+c_200*r_value))/r_value**2
+
+# Integrate rho_gas*a_NFW
+def integrate(r_min, r_max, f_b, M_200_cgs, r_200_cgs, c_200, Nsteps = 10000):
+    # Perform the integration
+    r_range = np.linspace(r_min, r_max, Nsteps)
+    dr = np.abs((r_max-r_min)/Nsteps)
+    integrands = rho_r(r_range, f_b, M_200_cgs, r_200_cgs, c_200) * a_NFW(r_range, M_200_cgs,r_200_cgs, c_200)
+    result_cgs = np.sum(integrands*dr)*r_200_cgs
+    return result_cgs
+
+# NFW-like gas hydrostatic equilibrium internal energy profile
+def u_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
+    result_cgs = (P0_cgs-integrate(r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200))/(gamma-1)/rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)
+    return result_cgs
+
+
+# NFW-like gas hydrostatic equilibrium temperature profile
+def T_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):    
+    result_cgs = u_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200) * (gamma-1) * m_H_cgs/kb_cgs
+    return result_cgs
+
 r_200_kpc = r_200_cgs / (PARSEC_IN_CGS*1e3)
 n_H_analytic = rho_r(np.abs(x)/r_200_kpc,f_b,M_200_cgs,r_200_cgs,c_200)/m_H_cgs
-axs[0].plot(x, n_H_analytic, "k-",color='red')
+
+# Gas parameters
+gamma = 5.0 / 3.0
+T0_cgs = T_200_cgs #1e5 # gas temperature on the edge of the box (if we want to set this manually)
+
+rho0_cgs = rho_r(Lbox_kpc/r_200_kpc*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200) #gas density on the edge
+P0_cgs = rho0_cgs*kb_cgs*T0_cgs/m_H_cgs # gas pressure on the edge of the box
+
+T_analytic = [T_vs_r(P0_cgs, x[i]/r_200_kpc, Lbox_kpc/r_200_kpc*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200) for i in range(map_pixel_length)] # gas particle internal energies
+
 
 locs = [map_pixel_length / 4, map_pixel_length / 2, 3 * map_pixel_length / 4]
 labels = [-Lbox_kpc / 2, 0, Lbox_kpc / 2]
 
-axs[0].set_xlabel(r"$x$ [kPc]")
+axs[0].set_xlabel(r"$x$ [kpc]")
 axs[0].set_xticks(locs, labels)
 axs[0].set_xlim(0, map_pixel_length-1)
+axs[0].plot(x, n_H_analytic, "k-",color='red')
+axs[0].set_ylabel(r"$n_H(x,y_0)$ $[cm^{-3}]$")
 
-
-
-
-
+axs[1].set_xlabel(r"$x$ [kpc]")
+axs[1].set_xticks(locs, labels)
+axs[1].set_xlim(0, map_pixel_length-1)
+axs[1].plot(x, T_analytic, "k-",color='red')
+axs[1].set_ylabel(r"$T(x,y_0)$ $[K]$")
+axs[1].set_yscale('log')
+axs[1].set_yticks(np.logspace(4, 8, 5))
+axs[1].set_ylim(1e4, 1e6)
 
 #axs[1].plot(x, pressure_map[:, slice_ind], "k-",color='black')
 #axs[1].set_yticks(np.arange(-0.5, 0.55, 0.25))
@@ -209,7 +257,7 @@ if with_reference:
 
 #axs[2].legend()
 # Add panel with infromation about the run
-Ninfo = 1
+Ninfo = 2
 text_common_args = dict(
     fontsize=10, ha="center", va="center", transform=axs[Ninfo].transAxes
 )
