@@ -165,26 +165,25 @@ def T_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
     result_cgs = u_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200) * (gamma-1) * m_H_cgs/kb_cgs
     return result_cgs
 
-# Internal energies
+# Masses
+gas_mass = (
+    Mgas_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200)/M_200_cgs
+)  # get total gas mass within a sphere of radius sqrt(3)/2*Lbox
+gas_particle_mass = gas_mass / float(N)
+print('Gas particle mass is %E ' % (gas_particle_mass*1e12))
 
 # Unnormalized mass shell distribution
-r = np.linspace(1e-6*boxSize,boxSize * np.sqrt(3.0) / 2.0,round(10*N**(1/3)))
+r = np.logspace(np.log10(1e-6*boxSize),np.log10(boxSize * np.sqrt(3.0) / 2.0),round(10*N**(1/3)))
+#r = np.linspace(1e-6*boxSize,boxSize * np.sqrt(3.0) / 2.0,round(10*N**(1/3)))
 f_r_distr_func = 4*np.pi*r**2 * rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200)
 
 # Plot
-rho0_cgs = rho_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200) #gas density on the edge
-P0_cgs = rho0_cgs*kb_cgs*T0_cgs/m_H_cgs # gas pressure on the edge of the box
-densities_vs_r = rho_r(r,f_b,M_200_cgs,r_200_cgs,c_200)
+#rho0_cgs = rho_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200) #gas density on the edge
+#P0_cgs = rho0_cgs*kb_cgs*T0_cgs/m_H_cgs # gas pressure on the edge of the box
+#densities_vs_r = rho_r(r,f_b,M_200_cgs,r_200_cgs,c_200)
 #u_plot = [u_vs_r(0, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(len(r))] # gas particle internal energies
-u_plot = [u_vs_r(P0_cgs, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(len(r))] # gas particle internal energies
-T_plot = [T_vs_r(P0_cgs, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200) for i in range(len(r))]
-
-# plot temperature profile
-#import matplotlib.pyplot as plt
-#plt.plot(r,densities_vs_r/m_H_cgs)
-#plt.plot(r,T_plot)
-#plt.yscale('log')
-#plt.savefig('test.png')
+#u_plot = [u_vs_r(P0_cgs, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(len(r))] # gas particle internal energies
+#T_plot = [T_vs_r(P0_cgs, r[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200) for i in range(len(r))]
 
 # Mass shell distribution function
 dM_dr = 4*np.pi*r**2 * rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200)
@@ -200,19 +199,6 @@ uniform_samples = np.random.rand(N)
 # Use inverse transform sampling (interpolate CDF to find r values)
 sampled_r_values = np.interp(uniform_samples, cdf, r)
 
-# Positions
-# r^(-2) distribution corresponds to uniform distribution in radius
-#radius = (
-#      sampled_r_values # np.random.rand(N)
-#)  # the diagonal extent of the cube
-#ctheta = -1.0 + 2 * np.random.rand(N)
-#stheta = np.sqrt(1.0 - ctheta ** 2)
-#phi = 2 * math.pi * np.random.rand(N)
-#coords = np.zeros((N, 3))
-#coords[:, 0] = radius * stheta * np.cos(phi)
-#coords[:, 1] = radius * stheta * np.sin(phi)
-#coords[:, 2] = radius * ctheta
-
 # fibonacci-based grid spherical distribution
 def fibonacci_sphere(Np):
     """Returns `Np` points distributed on a unit sphere using a Fibonacci lattice."""
@@ -220,21 +206,28 @@ def fibonacci_sphere(Np):
     phip = (1 + np.sqrt(5)) / 2  # Golden ratio
     thetap = 2 * np.pi * indicesp / phip
     zp = 1 - (2 * indicesp / Np)
+    mask_badzp = np.abs(zp)>1
+    zp[mask_badzp] = np.sign(zp[mask_badzp])*1
     radiusp = np.sqrt(1 - zp**2)
     xp, yp = radiusp * np.cos(thetap), radiusp * np.sin(thetap)
-    return np.vstack((xp, yp, zp)).T
 
-def generate_coordinates(N_vs_r_dr, r_values):
+    coordsp = np.vstack((xp, yp, zp)).T
+    return coordsp
+
+def generate_coordinates(r_valuesp, N_vs_r_dr):
     """Generates 3D coordinates based on a given radial distribution and particle counts."""
     all_coords = []
     
-    for i, (Np, rp) in enumerate(zip(N_vs_r_dr, r_values)):
-        if Np > 0:  # Avoid empty shells
+    for i, (rp, Np) in enumerate(zip(r_valuesp, N_vs_r_dr)):
+        if Np > 2:  # Avoid empty shells
             sphere_points = fibonacci_sphere(Np)  # Generate points on unit sphere
             scaled_points = sphere_points * rp  # Scale by radius
             all_coords.append(scaled_points)
-    
+ 
     return np.vstack(all_coords)  # Stack all coordinates into a single array
+
+
+
 
 # random-based spherical distribution
 def generate_coordinates_rand(sampled_r_values):
@@ -249,21 +242,69 @@ def generate_coordinates_rand(sampled_r_values):
     coords[:, 1] = radius * stheta * np.sin(phi)
     coords[:, 2] = radius * ctheta
 
-# Example usage
-N_vs_r_dr = np.round(pdf*N/np.sum(pdf),0)  # Number of particles in each shell
+# Example usage:
+# intervals = np.array([[1, 3], [2, 6], [5, 10]])
+# x_min = 1
+# x_max = 10
+# print(minimal_covering_intervals(intervals, x_min, x_max))
+
+
+def minimal_covering_intervals(intervals, x_min, x_max):
+
+    # Sort intervals based on their starting points (and ending points in case of ties)
+    
+    i = 0
+    indeces = np.array([0])
+    counter = 0
+
+    while i<len(intervals)-1:
+        distances_to_left = intervals[:,0]-intervals[i,1] # select ith interval and find distances to left edges
+        indeces_non_intersect = np.argwhere(distances_to_left>0) # find intervals that don't intersect
+        if len(indeces_non_intersect)>0: # if there are still non-intersecting intervals to the left
+            ilast = np.min(indeces_non_intersect)-1 # find index of last intersecting interval
+            #print('way 1.1 i=',i)
+        else:
+            #print('way 1.2 i=',i)
+            break
+        
+        if i<ilast: 
+            indeces = np.append(indeces,ilast)
+            i=ilast
+            print('way 2.1 i=',i)
+        else:
+            print(ilast)
+            i=ilast+1
+            print('way 2.2 i=',i)
+        
+        # Loop safety
+        counter+=1
+        if counter>len(intervals):
+            print('program loop')
+            break
+
+    return indeces
+
+# Generate sphere
+d_bin = (gas_particle_mass*M_200_cgs/rho_r(r, f_b, M_200_cgs, r_200_cgs, c_200))**(1/3)/const_unit_length_in_cgs
+dN_bin = np.round(4*np.pi*r**2/(d_bin)**2,0)
+bins = np.vstack([r-d_bin/2,r+d_bin/2]).T
+indeces_selected = minimal_covering_intervals(bins, d_bin[0]/2, r[-1])
+
+#dN_bin *= N/np.sum(dN_bin)
+#print(np.sum(dN_bin[indeces_selected]),N)
+
 import matplotlib.pyplot as plt
-#plt.plot(r,densities_vs_r/m_H_cgs)
-plt.plot(r,N_vs_r_dr)
-plt.yscale('log')
+plt.scatter(r[indeces_selected],dN_bin[indeces_selected])
+#plt.yscale('log')
 plt.savefig('test_N_vs_r.png')
 
-coords = generate_coordinates(N_vs_r_dr, r)
+coords = generate_coordinates(r[indeces_selected],dN_bin[indeces_selected])
 
 # Masses
-gas_mass = (
-    Mgas_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200)/M_200_cgs
-)  # get total gas mass within a sphere of radius sqrt(3)/2*Lbox
-gas_particle_mass = gas_mass / float(N)
+#gas_mass = (
+#    Mgas_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200)/M_200_cgs
+#)  # get total gas mass within a sphere of radius sqrt(3)/2*Lbox
+#gas_particle_mass = gas_mass / float(N)
 print('Gas particle mass is %E ' % (gas_particle_mass*1e12))
 
 # shift to centre of box
@@ -323,6 +364,22 @@ coords = np.zeros((N, 3))
 coords[:, 0] = x_coords
 coords[:, 1] = y_coords
 coords[:, 2] = z_coords
+
+
+# Save particle arrangement to .vtk file to view
+import vtk
+vtk_points = vtk.vtkPoints()
+for x, y, z in coords:
+    vtk_points.InsertNextPoint(x, y, z)
+
+poly_data = vtk.vtkPolyData()
+poly_data.SetPoints(vtk_points)
+
+writer = vtk.vtkPolyDataWriter()
+writer.SetFileName("output.vtk")
+writer.SetInputData(poly_data)
+writer.Write() # you can use paraview to watch how particles are arranged
+
 
 radius = np.sqrt(
     (coords[:, 0] - boxSize / 2.0) ** 2
