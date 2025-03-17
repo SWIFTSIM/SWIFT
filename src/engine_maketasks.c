@@ -2162,7 +2162,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       atomic_inc(&ci->nr_tasks);
 #endif
       if (t_subtype == task_subtype_density) {
-        error("found a hydro self!");
+	engine_addlink(e, &ci->hydro.density, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -2171,39 +2171,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       /* Link pair tasks to cells. */
     } else if (t_type == task_type_pair) {
-#ifdef SWIFT_DEBUG_CHECKS
-      atomic_inc(&ci->nr_tasks);
-      atomic_inc(&cj->nr_tasks);
-#endif
-
-      if (t_subtype == task_subtype_density) {
-        error("Found a hydro pair!");
-      } else if (t_subtype == task_subtype_grav) {
-        engine_addlink(e, &ci->grav.grav, t);
-        engine_addlink(e, &cj->grav.grav, t);
-      }
-#ifdef SWIFT_DEBUG_CHECKS
-      else if (t_subtype == task_subtype_external_grav) {
-        error("Found a pair/external-gravity task...");
-      }
-#endif
-
-      /* Link sub-self tasks to cells. */
-    } else if (t_type == task_type_sub_self) {
-#ifdef SWIFT_DEBUG_CHECKS
-      atomic_inc(&ci->nr_tasks);
-#endif
-
-      if (t_subtype == task_subtype_density) {
-        engine_addlink(e, &ci->hydro.density, t);
-      } else if (t_subtype == task_subtype_grav) {
-        engine_addlink(e, &ci->grav.grav, t);
-      } else if (t_subtype == task_subtype_external_grav) {
-        engine_addlink(e, &ci->grav.grav, t);
-      }
-
-      /* Link sub-pair tasks to cells. */
-    } else if (t_type == task_type_sub_pair) {
 #ifdef SWIFT_DEBUG_CHECKS
       atomic_inc(&ci->nr_tasks);
       atomic_inc(&cj->nr_tasks);
@@ -2335,7 +2302,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     }
 
     /* Otherwise, sub-self interaction? */
-    else if (t_type == task_type_sub_self && t_subtype == task_subtype_grav) {
+    else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (ci_nodeID != nodeID) error("Non-local sub-self task");
@@ -2348,7 +2315,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     }
 
     /* Sub-self-interaction for external gravity ? */
-    else if (t_type == task_type_sub_self &&
+    else if (t_type == task_type_self &&
              t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2361,7 +2328,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     }
 
     /* Otherwise, sub-pair interaction? */
-    else if (t_type == task_type_sub_pair && t_subtype == task_subtype_grav) {
+    else if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
 
       if (ci_nodeID == nodeID) {
 
@@ -2529,18 +2496,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
     }
 
-    /* Self-interaction? */
-    else if (t_type == task_type_self && t_subtype == task_subtype_density) {
-      error("Found a hydro self!");
-    }
-
-    /* Otherwise, pair interaction? */
-    else if (t_type == task_type_pair && t_subtype == task_subtype_density) {
-      error("Found a hydro pair!");
-    }
-
-    /* Otherwise, sub-self interaction? */
-    else if (t_type == task_type_sub_self &&
+    /* Otherwise, self interaction? */
+    else if (t_type == task_type_self &&
              t_subtype == task_subtype_density) {
 
       const int bcount_i = ci->black_holes.count;
@@ -2550,30 +2507,30 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
 
       /* Start by constructing the task for the second hydro loop */
-      t_force = scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
+      t_force = scheduler_addtask(sched, task_type_self, task_subtype_force,
                                   flags, 0, ci, NULL);
 
       /* and the task for the time-step limiter */
       if (with_timestep_limiter) {
-        t_limiter = scheduler_addtask(sched, task_type_sub_self,
+        t_limiter = scheduler_addtask(sched, task_type_self,
                                       task_subtype_limiter, flags, 0, ci, NULL);
       }
 
       /* The stellar feedback tasks */
       if (with_feedback) {
         t_star_density =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_stars_density, flags, 0, ci, NULL);
         t_star_feedback =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_stars_feedback, flags, 0, ci, NULL);
 
 #ifdef EXTRA_STAR_LOOPS
         t_star_prep1 =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_stars_prep1, flags, 0, ci, NULL);
         t_star_prep2 =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_stars_prep2, flags, 0, ci, NULL);
 #endif
       }
@@ -2581,47 +2538,47 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* The sink tasks */
       if (with_sink) {
         t_sink_density =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_sink_density, flags, 0, ci, NULL);
         t_sink_swallow =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_sink_swallow, flags, 0, ci, NULL);
         t_sink_do_sink_swallow = scheduler_addtask(
-            sched, task_type_sub_self, task_subtype_sink_do_sink_swallow, flags,
+            sched, task_type_self, task_subtype_sink_do_sink_swallow, flags,
             0, ci, NULL);
         t_sink_do_gas_swallow = scheduler_addtask(
-            sched, task_type_sub_self, task_subtype_sink_do_gas_swallow, flags,
+            sched, task_type_self, task_subtype_sink_do_gas_swallow, flags,
             0, ci, NULL);
       }
 
       /* The black hole feedback tasks */
       if (with_black_holes && bcount_i > 0) {
         t_bh_density =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_bh_density, flags, 0, ci, NULL);
         t_bh_swallow =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_bh_swallow, flags, 0, ci, NULL);
 
         t_do_gas_swallow =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_do_gas_swallow, flags, 0, ci, NULL);
 
         t_do_bh_swallow =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_do_bh_swallow, flags, 0, ci, NULL);
 
         t_bh_feedback =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_bh_feedback, flags, 0, ci, NULL);
       }
 
       if (with_rt) {
         t_rt_gradient =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_rt_gradient, flags, 0, ci, NULL);
         t_rt_transport =
-            scheduler_addtask(sched, task_type_sub_self,
+            scheduler_addtask(sched, task_type_self,
                               task_subtype_rt_transport, flags, 0, ci, NULL);
       }
 
@@ -2659,7 +2616,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Start by constructing the task for the second and third hydro loop */
-      t_gradient = scheduler_addtask(sched, task_type_sub_self,
+      t_gradient = scheduler_addtask(sched, task_type_self,
                                      task_subtype_gradient, flags, 0, ci, NULL);
 
       /* Add the link between the new loop and the cell */
@@ -2816,8 +2773,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
     }
 
-    /* Otherwise, sub-pair interaction? */
-    else if (t_type == task_type_sub_pair &&
+    /* Otherwise, pair interaction? */
+    else if (t_type == task_type_pair &&
              t_subtype == task_subtype_density) {
 
       const int bcount_i = ci->black_holes.count;
@@ -2838,7 +2795,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* New task for the force */
-      t_force = scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
+      t_force = scheduler_addtask(sched, task_type_pair, task_subtype_force,
                                   flags, 0, ci, cj);
 
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
@@ -2856,25 +2813,25 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* and the task for the time-step limiter */
       if (with_timestep_limiter) {
-        t_limiter = scheduler_addtask(sched, task_type_sub_pair,
+        t_limiter = scheduler_addtask(sched, task_type_pair,
                                       task_subtype_limiter, flags, 0, ci, cj);
       }
 
       /* The stellar feedback tasks */
       if (with_feedback) {
         t_star_density =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_stars_density, flags, 0, ci, cj);
         t_star_feedback =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_stars_feedback, flags, 0, ci, cj);
 
 #ifdef EXTRA_STAR_LOOPS
         t_star_prep1 =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_stars_prep1, flags, 0, ci, cj);
         t_star_prep2 =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_stars_prep2, flags, 0, ci, cj);
 #endif
       }
@@ -2882,44 +2839,44 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* The sink tasks */
       if (with_sink) {
         t_sink_density =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_sink_density, flags, 0, ci, cj);
         t_sink_swallow =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_sink_swallow, flags, 0, ci, cj);
         t_sink_do_sink_swallow = scheduler_addtask(
-            sched, task_type_sub_pair, task_subtype_sink_do_sink_swallow, flags,
+            sched, task_type_pair, task_subtype_sink_do_sink_swallow, flags,
             0, ci, cj);
         t_sink_do_gas_swallow = scheduler_addtask(
-            sched, task_type_sub_pair, task_subtype_sink_do_gas_swallow, flags,
+            sched, task_type_pair, task_subtype_sink_do_gas_swallow, flags,
             0, ci, cj);
       }
 
       /* The black hole feedback tasks */
       if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         t_bh_density =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_bh_density, flags, 0, ci, cj);
         t_bh_swallow =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_bh_swallow, flags, 0, ci, cj);
         t_do_gas_swallow =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_do_gas_swallow, flags, 0, ci, cj);
         t_do_bh_swallow =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_do_bh_swallow, flags, 0, ci, cj);
         t_bh_feedback =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_bh_feedback, flags, 0, ci, cj);
       }
 
       if (with_rt) {
         t_rt_gradient =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_rt_gradient, flags, 0, ci, cj);
         t_rt_transport =
-            scheduler_addtask(sched, task_type_sub_pair,
+            scheduler_addtask(sched, task_type_pair,
                               task_subtype_rt_transport, flags, 0, ci, cj);
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
         /* The order of operations for an inactive local cell interacting
@@ -2999,7 +2956,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Start by constructing the task for the second and third hydro loop */
-      t_gradient = scheduler_addtask(sched, task_type_sub_pair,
+      t_gradient = scheduler_addtask(sched, task_type_pair,
                                      task_subtype_gradient, flags, 0, ci, cj);
 
       /* Add the link between the new loop and both cells */
@@ -3429,7 +3386,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_sub_self, task_subtype_density, 0, 0, ci,
+      scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
                         NULL);
     }
 
@@ -3462,7 +3419,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Construct the pair task */
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-          scheduler_addtask(sched, task_type_sub_pair, task_subtype_density, sid, 0,
+          scheduler_addtask(sched, task_type_pair, task_subtype_density, sid, 0,
                             ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS

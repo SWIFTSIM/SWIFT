@@ -491,24 +491,14 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               error("Density task should have been run.");
 #endif
 
-            /* Self-interaction? */
+            /* Self interaction? */
             if (l->t->type == task_type_self) {
-              error("Found a self!");
-            }
-
-            /* Otherwise, pair interaction? */
-            else if (l->t->type == task_type_pair) {
-              error("Found a pair!");
-            }
-
-            /* Otherwise, sub-self interaction? */
-            else if (l->t->type == task_type_sub_self) {
               runner_dosub_self_subset_stars_density(r, finger, sparts, sid,
                                                      scount, 1);
             }
 
-            /* Otherwise, sub-pair interaction? */
-            else if (l->t->type == task_type_sub_pair) {
+            /* Otherwise, pair interaction? */
+            else if (l->t->type == task_type_pair) {
 
               /* Left or right? */
               if (l->t->ci == finger)
@@ -517,7 +507,11 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               else
                 runner_dosub_pair_subset_stars_density(r, finger, sparts, sid,
                                                        scount, l->t->ci, 1);
-            }
+            } else {
+#ifdef SWIFT_DEBUG_CHECKS
+	      error("Invalid sub-type!");
+#endif
+	    }
           }
         }
       }
@@ -838,23 +832,13 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
             /* Self-interaction? */
             if (l->t->type == task_type_self) {
-              error("Found a self!");
-            }
-
-            /* Otherwise, pair interaction? */
-            else if (l->t->type == task_type_pair) {
-              error("Found a pair!");
-            }
-
-            /* Otherwise, sub-self interaction? */
-            else if (l->t->type == task_type_sub_self) {
               runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
                                              NULL, 1);
             }
-
-            /* Otherwise, sub-pair interaction? */
-            else if (l->t->type == task_type_sub_pair) {
-
+	    
+            /* Otherwise, pair interaction? */
+            else if (l->t->type == task_type_pair) {
+	      
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
@@ -862,8 +846,12 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
               else
                 runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
                                                l->t->ci, 1);
-            }
-          }
+            } else {
+#ifdef SWIFT_DEBUG_CHECKS
+	      error("Invalid sub-type!");
+#endif
+	    }
+	  }
         }
       }
     }
@@ -1524,22 +1512,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Self-interaction? */
             if (l->t->type == task_type_self) {
-              error("Found a self!");
+              runner_dosub_self_subset_density(r, finger, parts, pid, count, 1);
             }
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
-              error("Found a pair!");
-            }
-
-            /* Otherwise, sub-self interaction? */
-            else if (l->t->type == task_type_sub_self) {
-              runner_dosub_self_subset_density(r, finger, parts, pid, count, 1);
-            }
-
-            /* Otherwise, sub-pair interaction? */
-            else if (l->t->type == task_type_sub_pair) {
-
+	      
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dosub_pair_subset_density(r, finger, parts, pid, count,
@@ -1547,8 +1525,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               else
                 runner_dosub_pair_subset_density(r, finger, parts, pid, count,
                                                  l->t->ci, 1);
-            }
-          }
+            } else {
+#ifdef SWIFT_DEBUG_CHECKS
+	      error("Invalid sub-type!");
+#endif
+	    }
+	  }
         }
       }
     }
@@ -1989,22 +1971,12 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
               /* Self-interaction? */
               if (l->t->type == task_type_self) {
-                error("Found a self!");
-              }
-
-              /* Otherwise, pair interaction? */
-              else if (l->t->type == task_type_pair) {
-                error("Found a pair!");
-              }
-
-              /* Otherwise, sub-self interaction? */
-              else if (l->t->type == task_type_sub_self) {
                 runner_dosub_subset_sinks_density(r, finger, sinks, sid, scount,
                                                   NULL, 1);
               }
 
-              /* Otherwise, sub-pair interaction? */
-              else if (l->t->type == task_type_sub_pair) {
+              /* Otherwise, pair interaction? */
+              else if (l->t->type == task_type_pair) {
 
                 /* Left or right? */
                 if (l->t->ci == finger)
@@ -2013,6 +1985,10 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
                 else
                   runner_dosub_subset_sinks_density(r, finger, sinks, sid,
                                                     scount, l->t->ci, 1);
+	      } else {
+#ifdef SWIFT_DEBUG_CHECKS
+	      error("Invalid sub-type!");
+#endif
               }
             }
           }

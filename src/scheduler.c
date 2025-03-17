@@ -1171,13 +1171,13 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
     /* Is this a non-empty self-task? */
     const int is_self =
-        (t->type == task_type_sub_self) && (t->ci != NULL) &&
+        (t->type == task_type_self) && (t->ci != NULL) &&
         ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0) ||
          (with_sinks && t->ci->sinks.count > 0) ||
          (with_black_holes && t->ci->black_holes.count > 0));
 
     /* Is this a non-empty pair-task? */
-    const int is_pair = (t->type == task_type_sub_pair) && (t->ci != NULL) &&
+    const int is_pair = (t->type == task_type_pair) && (t->ci != NULL) &&
                         (t->cj != NULL) &&
                         ((t->ci->hydro.count > 0) ||
                          (with_feedback && t->ci->stars.count > 0) ||
@@ -1199,7 +1199,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     }
 
     /* Self-interaction? */
-    if (t->type == task_type_sub_self) {
+    if (t->type == task_type_self) {
       /* Get a handle on the cell involved. */
       struct cell *ci = t->ci;
 
@@ -1214,9 +1214,9 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         /* Make a sub? */
         if (scheduler_dosub && (ci->hydro.count < space_subsize_self_hydro) &&
             (ci->stars.count < space_subsize_self_stars)) {
-          /* convert to a self-subtask. */
-          t->type = task_type_sub_self;
-
+	  
+	  /* Nothing to do here */
+	  
           /* Otherwise, make tasks explicitly. */
         } else {
           /* Take a step back (we're going to recycle the current task)... */
@@ -1235,7 +1235,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                 (ci->progeny[k]->hydro.count ||
                  (with_stars && ci->progeny[k]->stars.count))) {
               scheduler_splittask_hydro(
-                  scheduler_addtask(s, task_type_sub_self, t->subtype, 0, 0,
+                  scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
                                     ci->progeny[k], NULL),
                   s);
             }
@@ -1253,7 +1253,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                     (ci->progeny[k]->hydro.count ||
                      (with_feedback && ci->progeny[k]->stars.count))) {
                   scheduler_splittask_hydro(
-                      scheduler_addtask(s, task_type_sub_pair, t->subtype,
+                      scheduler_addtask(s, task_type_pair, t->subtype,
                                         sub_sid_flag[j][k], 0, ci->progeny[j],
                                         ci->progeny[k]),
                       s);
@@ -1267,7 +1267,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     } /* Self interaction */
 
     /* Pair interaction? */
-    else if (t->type == task_type_sub_pair) {
+    else if (t->type == task_type_pair) {
       /* Get a handle on the cells involved. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
@@ -1326,9 +1326,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
             (do_sub_hydro && do_sub_stars_i && do_sub_stars_j) &&
             !sort_is_corner(sid)) {
 
-          /* Make this task a sub task. */
-          t->type = task_type_sub_pair;
-
+	  /* Nothing to do here! */
+	  
           /* Otherwise, split it. */
         } else {
           /* Take a step back (we're going to recycle the current task)... */
@@ -1346,7 +1345,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           t->flags = csp->pairs[0].sid;
           for (int k = 1; k < csp->count; k++) {
             scheduler_splittask_hydro(
-                scheduler_addtask(s, task_type_sub_pair, t->subtype,
+                scheduler_addtask(s, task_type_pair, t->subtype,
                                   csp->pairs[k].sid, 0,
                                   ci->progeny[csp->pairs[k].pid],
                                   cj->progeny[csp->pairs[k].pjd]),
@@ -1368,7 +1367,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
             for (int k = 0; k < 8; k++)
               if (cj->progeny[k] != NULL && cj->progeny[k]->hydro.count) {
                 struct task *tl =
-                    scheduler_addtask(s, task_type_sub_pair, t->subtype, 0, 0,
+                    scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
                                       ci->progeny[j], cj->progeny[k]);
                 scheduler_splittask_hydro(tl, s);
                 tl->flags = space_getsid_and_swap_cells(s->space, &t->ci,
@@ -2058,29 +2057,50 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * (wscale * gcount_i) * gcount_i;
         } else if (t->subtype == task_subtype_external_grav) {
           cost = 1.f * wscale * gcount_i;
+	} else if (t->subtype == task_subtype_stars_density ||
+            t->subtype == task_subtype_stars_prep1 ||
+            t->subtype == task_subtype_stars_prep2 ||
+            t->subtype == task_subtype_stars_feedback) {
+          cost = 1.f * (wscale * scount_i) * count_i;
+        } else if (t->subtype == task_subtype_sink_density ||
+                   t->subtype == task_subtype_sink_swallow ||
+                   t->subtype == task_subtype_sink_do_gas_swallow) {
+          cost = 1.f * (wscale * sink_count_i) * count_i;
+        } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
+          cost = 1.f * (wscale * sink_count_i) * sink_count_i;
+        } else if (t->subtype == task_subtype_bh_density ||
+                   t->subtype == task_subtype_bh_swallow ||
+                   t->subtype == task_subtype_bh_feedback) {
+          cost = 1.f * (wscale * bcount_i) * count_i;
+        } else if (t->subtype == task_subtype_do_gas_swallow) {
+          cost = 1.f * wscale * count_i;
+        } else if (t->subtype == task_subtype_do_bh_swallow) {
+          cost = 1.f * wscale * bcount_i;
+        } else if (t->subtype == task_subtype_density ||
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_force ||
+                   t->subtype == task_subtype_limiter) {
+          cost = 1.f * (wscale * count_i) * count_i;
+        } else if (t->subtype == task_subtype_rt_gradient) {
+          cost = 1.f * wscale * scount_i * count_i;
+        } else if (t->subtype == task_subtype_rt_transport) {
+          cost = 1.f * wscale * scount_i * count_i;
         } else {
           error("Untreated sub-type for selfs: %s",
                 subtaskID_names[t->subtype]);
         }
-        break;
+	break;
 
       case task_type_pair:
+#ifdef SWIFT_DEBUG_CHECKS
+        if (t->flags < 0) error("Negative flag value!");
+#endif
         if (t->subtype == task_subtype_grav) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
-        } else {
-          error("Untreated sub-type for pairs: %s",
-                subtaskID_names[t->subtype]);
-        }
-        break;
-
-      case task_type_sub_pair:
-#ifdef SWIFT_DEBUG_CHECKS
-        if (t->flags < 0) error("Negative flag value!");
-#endif
-        if (t->subtype == task_subtype_stars_density ||
+        } else if (t->subtype == task_subtype_stars_density ||
             t->subtype == task_subtype_stars_prep1 ||
             t->subtype == task_subtype_stars_prep2 ||
             t->subtype == task_subtype_stars_feedback) {
@@ -2152,45 +2172,11 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_rt_transport) {
           cost = 1.f * wscale * count_i * count_j;
         } else {
-          error("Untreated sub-type for sub-pairs: %s",
+          error("Untreated sub-type for pairs: %s",
                 subtaskID_names[t->subtype]);
         }
         break;
 
-      case task_type_sub_self:
-        if (t->subtype == task_subtype_stars_density ||
-            t->subtype == task_subtype_stars_prep1 ||
-            t->subtype == task_subtype_stars_prep2 ||
-            t->subtype == task_subtype_stars_feedback) {
-          cost = 1.f * (wscale * scount_i) * count_i;
-        } else if (t->subtype == task_subtype_sink_density ||
-                   t->subtype == task_subtype_sink_swallow ||
-                   t->subtype == task_subtype_sink_do_gas_swallow) {
-          cost = 1.f * (wscale * sink_count_i) * count_i;
-        } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
-          cost = 1.f * (wscale * sink_count_i) * sink_count_i;
-        } else if (t->subtype == task_subtype_bh_density ||
-                   t->subtype == task_subtype_bh_swallow ||
-                   t->subtype == task_subtype_bh_feedback) {
-          cost = 1.f * (wscale * bcount_i) * count_i;
-        } else if (t->subtype == task_subtype_do_gas_swallow) {
-          cost = 1.f * wscale * count_i;
-        } else if (t->subtype == task_subtype_do_bh_swallow) {
-          cost = 1.f * wscale * bcount_i;
-        } else if (t->subtype == task_subtype_density ||
-                   t->subtype == task_subtype_gradient ||
-                   t->subtype == task_subtype_force ||
-                   t->subtype == task_subtype_limiter) {
-          cost = 1.f * (wscale * count_i) * count_i;
-        } else if (t->subtype == task_subtype_rt_gradient) {
-          cost = 1.f * wscale * scount_i * count_i;
-        } else if (t->subtype == task_subtype_rt_transport) {
-          cost = 1.f * wscale * scount_i * count_i;
-        } else {
-          error("Untreated sub-type for sub-selfs: %s",
-                subtaskID_names[t->subtype]);
-        }
-        break;
       case task_type_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
         break;
@@ -2446,7 +2432,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     short int *owner = NULL;
     switch (t->type) {
       case task_type_self:
-      case task_type_sub_self:
         if (t->subtype == task_subtype_grav ||
             t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
@@ -2476,7 +2461,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         owner = &t->ci->super->owner;
         break;
       case task_type_pair:
-      case task_type_sub_pair:
         qid = t->ci->super->owner;
         owner = &t->ci->super->owner;
         if ((qid < 0) ||
