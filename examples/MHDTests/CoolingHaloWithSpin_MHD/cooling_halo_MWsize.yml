@@ -52,7 +52,7 @@ NFWPotential:
     useabspos:       0              # 0 -> positions based on centre, 1 -> absolute positions
     position:        [0.,0.,0.]     # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
     M_200:           1000000        # M200 of the galaxy disk
-    h:               0.704          # reduced Hubble constant (value does not specify the used units!)
+    h:               0.681          # reduced Hubble constant (using FLAMINGO cosmology) (value does not specify the used units!)
     concentration:   7.2            # concentration of the Halo
     timestep_mult:   0.01           # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
     epsilon:         0.2            # Softening size (internal units)

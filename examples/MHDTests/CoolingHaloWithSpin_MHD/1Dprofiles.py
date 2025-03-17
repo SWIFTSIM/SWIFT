@@ -17,7 +17,7 @@ m_H_cgs = 1.68e-24 # atomic hydrogen mass
 # First set unit velocity and then the circular velocity parameter for the isothermal potential
 const_unit_velocity_in_cgs = 1.0e5  # kms^-1
 
-h = 0.67777  # hubble parameter
+h = 0.681 #0.67777  # hubble parameter
 H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # From this we can find the virial radius, the radius within which the average density of the halo is
@@ -212,7 +212,7 @@ T0_cgs = T_200_cgs #1e5 # gas temperature on the edge of the box (if we want to 
 rho0_cgs = rho_r(Lbox_kpc/r_200_kpc*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200) #gas density on the edge
 P0_cgs = rho0_cgs*kb_cgs*T0_cgs/m_H_cgs # gas pressure on the edge of the box
 
-T_analytic = [T_vs_r(P0_cgs, x[i]/r_200_kpc, Lbox_kpc/r_200_kpc*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200) for i in range(map_pixel_length)] # gas particle internal energies
+T_analytic = [T_vs_r(P0_cgs, np.abs(x[i]/r_200_kpc), Lbox_kpc/r_200_kpc*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200) for i in range(map_pixel_length)] # gas particle internal energies
 
 
 locs = [map_pixel_length / 4, map_pixel_length / 2, 3 * map_pixel_length / 4]
