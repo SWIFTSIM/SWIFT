@@ -1171,13 +1171,13 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
     /* Is this a non-empty self-task? */
     const int is_self =
-        (t->type == task_type_self) && (t->ci != NULL) &&
+        (t->type == task_type_sub_self) && (t->ci != NULL) &&
         ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0) ||
          (with_sinks && t->ci->sinks.count > 0) ||
          (with_black_holes && t->ci->black_holes.count > 0));
 
     /* Is this a non-empty pair-task? */
-    const int is_pair = (t->type == task_type_pair) && (t->ci != NULL) &&
+    const int is_pair = (t->type == task_type_sub_pair) && (t->ci != NULL) &&
                         (t->cj != NULL) &&
                         ((t->ci->hydro.count > 0) ||
                          (with_feedback && t->ci->stars.count > 0) ||
@@ -1199,7 +1199,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     }
 
     /* Self-interaction? */
-    if (t->type == task_type_self) {
+    if (t->type == task_type_sub_self) {
       /* Get a handle on the cell involved. */
       struct cell *ci = t->ci;
 
@@ -1235,7 +1235,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                 (ci->progeny[k]->hydro.count ||
                  (with_stars && ci->progeny[k]->stars.count))) {
               scheduler_splittask_hydro(
-                  scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
+                  scheduler_addtask(s, task_type_sub_self, t->subtype, 0, 0,
                                     ci->progeny[k], NULL),
                   s);
             }
@@ -1253,7 +1253,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                     (ci->progeny[k]->hydro.count ||
                      (with_feedback && ci->progeny[k]->stars.count))) {
                   scheduler_splittask_hydro(
-                      scheduler_addtask(s, task_type_pair, t->subtype,
+                      scheduler_addtask(s, task_type_sub_pair, t->subtype,
                                         sub_sid_flag[j][k], 0, ci->progeny[j],
                                         ci->progeny[k]),
                       s);
@@ -1263,15 +1263,11 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           }
         }
 
-      } /* Task is splittable */
-      else {
-        t->type = task_type_sub_self;
       }
-
     } /* Self interaction */
 
     /* Pair interaction? */
-    else if (t->type == task_type_pair) {
+    else if (t->type == task_type_sub_pair) {
       /* Get a handle on the cells involved. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
@@ -1350,7 +1346,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           t->flags = csp->pairs[0].sid;
           for (int k = 1; k < csp->count; k++) {
             scheduler_splittask_hydro(
-                scheduler_addtask(s, task_type_pair, t->subtype,
+                scheduler_addtask(s, task_type_sub_pair, t->subtype,
                                   csp->pairs[k].sid, 0,
                                   ci->progeny[csp->pairs[k].pid],
                                   cj->progeny[csp->pairs[k].pjd]),
@@ -1372,15 +1368,12 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
             for (int k = 0; k < 8; k++)
               if (cj->progeny[k] != NULL && cj->progeny[k]->hydro.count) {
                 struct task *tl =
-                    scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
+                    scheduler_addtask(s, task_type_sub_pair, t->subtype, 0, 0,
                                       ci->progeny[j], cj->progeny[k]);
                 scheduler_splittask_hydro(tl, s);
                 tl->flags = space_getsid_and_swap_cells(s->space, &t->ci,
                                                         &t->cj, shift);
               }
-      } else {
-
-        t->type = task_type_sub_pair;
       }
     } /* pair interaction? */
   } /* iterate over the current task. */
