@@ -28,15 +28,16 @@ Snapshots:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.3663     # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
-  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  minimal_temperature:   1e2 #1e4 #1e2 # 1e4      # Kelvin
+  resolution_eta:        1.595     # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.05      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   1e2       # Kelvin
+  h_tolerance: 1e-6
 
 # Parameters for MHD schemes
 MHD:
   monopole_subtraction:   1.0
   artificial_diffusion:   0.0
-  hyperbolic_dedner:      0.1
+  hyperbolic_dedner:      1.0 #1.0
   hyperbolic_dedner_divv: 0.0
   parabolic_dedner:       1.0
   resistive_eta:          0.0
@@ -64,7 +65,7 @@ Gravity:
   MAC:                adaptive
   theta_cr:           0.7
   epsilon_fmm:        0.001
-  max_physical_baryon_softening: 0.1   # Physical softening length (in internal units).
+  max_physical_baryon_softening:  1.0 #0.1  # Physical softening length (in internal units). Depends on resolution!
   mesh_side_length:   64
 
 # Simple model cooling parameters
