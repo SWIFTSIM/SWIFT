@@ -292,10 +292,26 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      if (si->ti_drift != e->ti_current)
-        error("Particle si not drifted to current time");
-      if (sj->ti_drift != e->ti_current)
-        error("Particle sj not drifted to current time");
+      if (si->ti_drift != e->ti_current) {
+	scheduler_write_cell_dependencies_debug(&r->e->sched, e->verbose, e->step, ci);
+	scheduler_write_cell_dependencies_debug(&r->e->sched, e->verbose, e->step, cj);
+        error("Particle si not drifted to current time. si->id = %lld, sj->id = %lld | i: hydro super = %lld, grav super = %lld,"
+	      " top = %lld, c = %lld | j hydro super = %lld, grav super = %lld,"
+	      " top = %lld, c = %lld",
+	      si->id, sj->id, ci->hydro.super->cellID, ci->grav.super->cellID, ci->top->cellID,
+	      ci->cellID, cj->hydro.super->cellID, cj->grav.super->cellID, cj->top->cellID,
+	      cj->cellID);
+      }
+      if (sj->ti_drift != e->ti_current) {
+	scheduler_write_cell_dependencies_debug(&r->e->sched, e->verbose, e->step, ci);
+	scheduler_write_cell_dependencies_debug(&r->e->sched, e->verbose, e->step, cj);
+        error("Particle sj not drifted to current time. si->id = %lld, sj->id = %lld | i: hydro super = %lld, grav super = %lld,"
+	      " top = %lld, c = %lld | j hydro super = %lld, grav super = %lld,"
+	      " top = %lld, c = %lld",
+	      si->id, sj->id, ci->hydro.super->cellID, ci->grav.super->cellID, ci->top->cellID,
+	      ci->cellID, cj->hydro.super->cellID, cj->grav.super->cellID, cj->top->cellID,
+	      cj->cellID);
+      }
 #endif
 
       if (r2 < hig2 || r2 < hjg2) {
