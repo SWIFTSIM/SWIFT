@@ -2177,7 +2177,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 #endif
 
       if (t_subtype == task_subtype_density) {
-	error("Found a hydro pair!");
+        error("Found a hydro pair!");
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);

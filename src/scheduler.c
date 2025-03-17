@@ -1378,8 +1378,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                 tl->flags = space_getsid_and_swap_cells(s->space, &t->ci,
                                                         &t->cj, shift);
               }
-      }
-      else {
+      } else {
 
         t->type = task_type_sub_pair;
       }
@@ -2066,10 +2065,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * (wscale * gcount_i) * gcount_i;
         } else if (t->subtype == task_subtype_external_grav) {
           cost = 1.f * wscale * gcount_i;
-	} else {
+        } else {
           error("Untreated sub-type for selfs: %s",
                 subtaskID_names[t->subtype]);
-	}
+        }
         break;
 
       case task_type_pair:
@@ -2078,7 +2077,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
-	} else {
+        } else {
           error("Untreated sub-type for pairs: %s",
                 subtaskID_names[t->subtype]);
         }

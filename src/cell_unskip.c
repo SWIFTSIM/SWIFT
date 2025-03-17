@@ -1660,12 +1660,12 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
       /* Activate hydro drift */
       if (t->type == task_type_self) {
-	error("Found a self task!");
+        error("Found a self task!");
       }
 
       /* Set the correct sorting flags and activate hydro drifts */
       else if (t->type == task_type_pair) {
-	error("Found a pair task!");
+        error("Found a pair task!");
       }
 
       /* Store current values of dx_max and h_max. */
@@ -2210,7 +2210,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       scheduler_activate(s, t);
 
       if (t->type == task_type_pair) {
-	error("Found a pair task!");
+        error("Found a pair task!");
       }
 
       else if (t->type == task_type_sub_self) {
@@ -2586,12 +2586,12 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
       /* Activate the drifts & sync */
       if (t->type == task_type_self) {
-	error("Found a self task!");	
+        error("Found a self task!");
       }
 
       /* Activate the drifts */
       else if (t->type == task_type_pair) {
-	error("Found a pair task!");
+        error("Found a pair task!");
       }
 
       /* Store current values of dx_max and h_max. */
@@ -2909,12 +2909,12 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
       /* Activate drifts for self tasks */
       if (t->type == task_type_self) {
-	error("Found a self task!");
+        error("Found a self task!");
       }
 
       /* Activate drifts for pair tasks */
       else if (t->type == task_type_pair) {
-	error("Found a pair task!");
+        error("Found a pair task!");
       }
 
       /* Store current values of dx_max and h_max. */
@@ -3113,7 +3113,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
       if (!sub_cycle) {
         /* Activate sorts only during main/normal steps. */
         if (t->type == task_type_pair) {
-	  error("Found a pair!");
+          error("Found a pair!");
         }
 
         /* Store current values of dx_max and h_max. */
@@ -3316,7 +3316,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
           if (!sub_cycle) {
             /* Activate sorts only during main/normal steps. */
             if (t->type == task_type_pair) {
-	      error("Found a pair!");
+              error("Found a pair!");
             }
 
             /* Store current values of dx_max and h_max. */
