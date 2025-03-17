@@ -1,6 +1,7 @@
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+#               2025 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -20,6 +21,9 @@
 
 Parameters
 ----------
+type : str
+    Either "equal_spacing" or "equal_mass".
+
 snap : int
     The snapshot ID to plot.
 """
@@ -94,14 +98,16 @@ def plot_square(A1_x, A1_y, A1_rho, A1_u, A1_P, A1_size):
         cbar.ax.tick_params(labelsize=14)
         cbar.set_label(plot_quantity[i], rotation=90, labelpad=8, fontsize=18)
 
-    plt.savefig("square.pdf", dpi=300, bbox_inches="tight")
+    plt.savefig("square_%s_%04d.png" % (type, snap), dpi=300, bbox_inches="tight")
 
 
 if __name__ == "__main__":
     # Load snapshot data
     mpl.use("Agg")
-    snap = int(sys.argv[1])
-    snap_file = "square_%04d.hdf5" % snap
+    type = sys.argv[1]
+    snap = int(sys.argv[2])
+    assert type in ["equal_spacing", "equal_mass"]
+    snap_file = "square_%s_%04d.hdf5" % (type, snap)
 
     with h5py.File(snap_file, "r") as f:
         A1_x = f["/PartType0/Coordinates"][:, 0]

@@ -1,6 +1,7 @@
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+#               2025 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
 #               2019 Josh Borrow (joshua.borrow@durham.ac.uk)
 #               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
 #
@@ -30,7 +31,7 @@ rho_in = 4.0  # Density of inner region
 rho_out = 1.0  # Density of outer region
 P_in = 2.5  # Pressure of inner region
 P_out = 2.5  # Pressure of outer region
-fileOutputName = "square.hdf5"
+fileOutputName = "square_equal_spacing.hdf5"
 
 vol = 1.0
 numPart = N_l * N_l * N_l

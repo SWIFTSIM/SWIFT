@@ -15,13 +15,13 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            square       # Common part of the name of output files
+  basename:            square_equal_spacing  # Common part of the name of output files
   time_first:          0.           # Time of the first output (in internal units)
-  delta_time:          1e-1         # Time difference between consecutive outputs (in internal units)
+  delta_time:          2e-1         # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-2         # Time between statistics output
+  delta_time:          2e-1         # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -30,8 +30,8 @@ SPH:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./square.hdf5         # The file to read
-  periodic:   1
+  file_name:  ./square_equal_spacing.hdf5  # The file to read
+  periodic:   1                     # Are we running with periodic ICs?
 
 # Parameters related to the equation of state
 EoS:
