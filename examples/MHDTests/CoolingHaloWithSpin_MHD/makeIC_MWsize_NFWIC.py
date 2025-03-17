@@ -63,7 +63,7 @@ eta = 1.3663 # kernel smoothing
 # Set M200 and get R200 and V200
 M_200_cgs = 1e12 * MSOL_IN_CGS 
 rhoc_cgs = 3*H_0_cgs**2/(8*np.pi*CONST_G_CGS)
-r_200_cgs = (3*M_200_cgs/(4*np.pi*rhoc_cgs))**(1/3)
+r_200_cgs = (3*M_200_cgs/(4*np.pi*rhoc_cgs*200))**(1/3)
 v_200_cgs = np.sqrt(CONST_G_CGS*M_200_cgs/r_200_cgs)
 v_200 = v_200_cgs / const_unit_velocity_in_cgs 
 T_200_cgs = m_H_cgs*v_200_cgs**2/(2*kb_cgs)
