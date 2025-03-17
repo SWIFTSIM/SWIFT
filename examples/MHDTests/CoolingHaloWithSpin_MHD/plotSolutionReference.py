@@ -32,7 +32,7 @@ neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"]
 # Constants
 G = 6.67430e-11 * unyt.m ** 3 / unyt.kg / unyt.s ** 2  # 6.67430e-8
 G = G.to(unyt.cm ** 3 / unyt.g / unyt.s ** 2)
-mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s ** 2 * unyt.A ** 2)
+mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s ** 2 * unyt.statA ** 2)
 
 # First create a mass-weighted temperature dataset
 r = data.gas.coordinates - center
@@ -173,17 +173,17 @@ nH_map_xy = density_map_xy/(1.67e-24 * unyt.g)
 nH_map = density_map/(1.67e-24 * unyt.g)
 
 vr_map.convert_to_units(unyt.km / unyt.s)
-Bz_map.convert_to_units(1e-7*unyt.g / (unyt.A * unyt.s * unyt.s))
-Bx_map.convert_to_units(1e-7*unyt.g / (unyt.A * unyt.s * unyt.s))
-By_map.convert_to_units(1e-7*unyt.g / (unyt.A * unyt.s * unyt.s))
-Bz_map_xy.convert_to_units(1e-7*unyt.g / (unyt.A * unyt.s * unyt.s))
-Bx_map_xy.convert_to_units(1e-7*unyt.g / (unyt.A * unyt.s * unyt.s))
-By_map_xy.convert_to_units(1e-7*unyt.g / (unyt.A * unyt.s * unyt.s))
+Bz_map.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
+Bx_map.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
+By_map.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
+Bz_map_xy.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
+Bx_map_xy.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
+By_map_xy.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
 #J_map.convert_to_units(unyt.statA / (unyt.m ** 2))
 normv_map.convert_to_units(unyt.km / unyt.s)
 normv_map_xy.convert_to_units(unyt.km / unyt.s)
-normB_map.convert_to_units(1e-7*unyt.g / (unyt.A * unyt.s * unyt.s))
-normB_map_xy.convert_to_units(1e-7*unyt.g / (unyt.A * unyt.s * unyt.s))
+normB_map.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
+normB_map_xy.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
 #normB_map = np.sqrt(Bx_map**2+By_map**2+Bz_map**2)
 #normB_map_xy = np.sqrt(Bx_map_xy**2+By_map_xy**2+Bz_map_xy**2)
 
@@ -470,7 +470,7 @@ hpart = h[index]
 vpart.convert_to_units(unyt.km / unyt.s)
 rpart.convert_to_units(3.08e18*1e3*unyt.cm)
 hpart.convert_to_units(3.08e18*1e3*unyt.cm)
-Bpart.convert_to_units(1e-7*unyt.g / (unyt.A * unyt.s * unyt.s))
+Bpart.convert_to_units(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s))
 print(f'Particle {index}, \nwith maximal velocity {vpart.value} km/s, \nmagnetic field {Bpart.value} muG, \nwith error level {Berrpart.value}, \nwith smoothing length {hpart.value} kPc, \nlocated at {rpart.value} kPc')
 
 part_pixel_coords = 512/2*(1+rpart.value/Lslice_kPc)
