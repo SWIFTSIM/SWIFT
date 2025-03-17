@@ -1937,7 +1937,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       struct task *t = l->t;
-      if (t->type != task_type_pair && t->type != task_type_sub_pair) continue;
+      
+      if (t->type != task_type_sub_pair) continue;
 
       struct cell *ci = l->t->ci;
       struct cell *cj = l->t->cj;
@@ -1952,30 +1953,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
            ci_nodeID != nodeID)) {
         scheduler_activate(s, l->t);
 
-        if (t->type == task_type_pair) {
-          /* Store some values. */
-          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
-
-          /* Activate the drift tasks. */
-          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
-
-          /* Activate the limiter tasks. */
-          if (ci_nodeID == nodeID && with_timestep_limiter)
-            cell_activate_limiter(ci, s);
-          if (cj_nodeID == nodeID && with_timestep_limiter)
-            cell_activate_limiter(cj, s);
-
-          /* Check the sorts and activate them if needed. */
-          cell_activate_hydro_sorts(ci, t->flags, s);
-          cell_activate_hydro_sorts(cj, t->flags, s);
-        }
-
         /* Store current values of dx_max and h_max. */
-        else if (t->type == task_type_sub_pair) {
+        if (t->type == task_type_sub_pair) {
           cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
         }
       }
@@ -2480,7 +2459,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       scheduler_activate(s, t);
     }
 
-    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+    else if (t->type == task_type_sub_pair) {
 
       if (ci_active || cj_active) {
         /* Activate stars_out for each cell that is part of
@@ -3297,8 +3276,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
        * cells, so, we have to do this now, from the active remote cell). */
       for (struct link *l = c->rt.rt_transport; l != NULL; l = l->next) {
         struct task *t = l->t;
-        if (t->type != task_type_pair && t->type != task_type_sub_pair)
-          continue;
+        if (t->type != task_type_sub_pair)  continue;
 
         struct cell *ci = l->t->ci;
         struct cell *cj = l->t->cj;
