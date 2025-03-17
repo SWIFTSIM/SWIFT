@@ -344,8 +344,8 @@ step = 20
 ax[0,1].quiver(
     new_x[::step],
     new_y[::step],
-    np.transpose(vx_map_xy.reshape((dimx, dimy))).T[::step,::step],
-    np.transpose(vy_map_xy.reshape((dimx, dimy))).T[::step,::step],
+    np.transpose(vx_map_xy.reshape((dimx, dimy)))[::step,::step],
+    np.transpose(vy_map_xy.reshape((dimx, dimy)))[::step,::step],
     color="black",
     scale=1.5/step,
     scale_units="xy",     # Fixes the arrow length in data coordinates  
@@ -414,8 +414,8 @@ step = 20
 ax[1,1].quiver(
     new_x[::step],
     new_y[::step],
-    np.transpose(Bx_map_xy.reshape((dimx, dimy))).T[::step,::step],
-    np.transpose(By_map_xy.reshape((dimx, dimy))).T[::step,::step],
+    np.transpose(Bx_map_xy.reshape((dimx, dimy)))[::step,::step],
+    np.transpose(By_map_xy.reshape((dimx, dimy)))[::step,::step],
     color="black",
     scale=1.5/step,
     scale_units="xy",     # Fixes the arrow length in data coordinates  
