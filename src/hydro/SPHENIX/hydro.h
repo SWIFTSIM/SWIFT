@@ -606,7 +606,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density(
-    struct part *restrict p, const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+    struct part *restrict p, const struct cosmology *cosmo) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
