@@ -2319,7 +2319,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     }
 #endif
 
-    else if (t->type == task_type_self && ci_active) {
+    if (t->type == task_type_self && ci_active) {
       scheduler_activate(s, t);
     }
 
