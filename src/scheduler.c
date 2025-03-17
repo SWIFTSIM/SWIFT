@@ -1214,9 +1214,9 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         /* Make a sub? */
         if (scheduler_dosub && (ci->hydro.count < space_subsize_self_hydro) &&
             (ci->stars.count < space_subsize_self_stars)) {
-	  
-	  /* Nothing to do here */
-	  
+
+          /* Nothing to do here */
+
           /* Otherwise, make tasks explicitly. */
         } else {
           /* Take a step back (we're going to recycle the current task)... */
@@ -1262,7 +1262,6 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
             }
           }
         }
-
       }
     } /* Self interaction */
 
@@ -1326,8 +1325,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
             (do_sub_hydro && do_sub_stars_i && do_sub_stars_j) &&
             !sort_is_corner(sid)) {
 
-	  /* Nothing to do here! */
-	  
+          /* Nothing to do here! */
+
           /* Otherwise, split it. */
         } else {
           /* Take a step back (we're going to recycle the current task)... */
@@ -2057,10 +2056,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * (wscale * gcount_i) * gcount_i;
         } else if (t->subtype == task_subtype_external_grav) {
           cost = 1.f * wscale * gcount_i;
-	} else if (t->subtype == task_subtype_stars_density ||
-            t->subtype == task_subtype_stars_prep1 ||
-            t->subtype == task_subtype_stars_prep2 ||
-            t->subtype == task_subtype_stars_feedback) {
+        } else if (t->subtype == task_subtype_stars_density ||
+                   t->subtype == task_subtype_stars_prep1 ||
+                   t->subtype == task_subtype_stars_prep2 ||
+                   t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
         } else if (t->subtype == task_subtype_sink_density ||
                    t->subtype == task_subtype_sink_swallow ||
@@ -2089,7 +2088,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           error("Untreated sub-type for selfs: %s",
                 subtaskID_names[t->subtype]);
         }
-	break;
+        break;
 
       case task_type_pair:
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2101,9 +2100,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
         } else if (t->subtype == task_subtype_stars_density ||
-            t->subtype == task_subtype_stars_prep1 ||
-            t->subtype == task_subtype_stars_prep2 ||
-            t->subtype == task_subtype_stars_feedback) {
+                   t->subtype == task_subtype_stars_prep1 ||
+                   t->subtype == task_subtype_stars_prep2 ||
+                   t->subtype == task_subtype_stars_feedback) {
           if (t->ci->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * scount_j * sid_scale[t->flags];
           } else if (t->cj->nodeID != nodeID) {

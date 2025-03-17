@@ -1927,7 +1927,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       struct task *t = l->t;
-      
+
       if (t->type != task_type_pair) continue;
 
       struct cell *ci = l->t->ci;
@@ -3216,7 +3216,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
        * cells, so, we have to do this now, from the active remote cell). */
       for (struct link *l = c->rt.rt_transport; l != NULL; l = l->next) {
         struct task *t = l->t;
-        if (t->type != task_type_pair)  continue;
+        if (t->type != task_type_pair) continue;
 
         struct cell *ci = l->t->ci;
         struct cell *cj = l->t->cj;

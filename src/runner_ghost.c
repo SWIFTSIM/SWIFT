@@ -509,9 +509,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
                                                        scount, l->t->ci, 1);
             } else {
 #ifdef SWIFT_DEBUG_CHECKS
-	      error("Invalid sub-type!");
+              error("Invalid sub-type!");
 #endif
-	    }
+            }
           }
         }
       }
@@ -835,10 +835,10 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
               runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
                                              NULL, 1);
             }
-	    
+
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
-	      
+
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
@@ -848,10 +848,10 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
                                                l->t->ci, 1);
             } else {
 #ifdef SWIFT_DEBUG_CHECKS
-	      error("Invalid sub-type!");
+              error("Invalid sub-type!");
 #endif
-	    }
-	  }
+            }
+          }
         }
       }
     }
@@ -1517,7 +1517,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
-	      
+
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dosub_pair_subset_density(r, finger, parts, pid, count,
@@ -1527,10 +1527,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
                                                  l->t->ci, 1);
             } else {
 #ifdef SWIFT_DEBUG_CHECKS
-	      error("Invalid sub-type!");
+              error("Invalid sub-type!");
 #endif
-	    }
-	  }
+            }
+          }
         }
       }
     }
@@ -1985,9 +1985,9 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
                 else
                   runner_dosub_subset_sinks_density(r, finger, sinks, sid,
                                                     scount, l->t->ci, 1);
-	      } else {
+              } else {
 #ifdef SWIFT_DEBUG_CHECKS
-	      error("Invalid sub-type!");
+                error("Invalid sub-type!");
 #endif
               }
             }
