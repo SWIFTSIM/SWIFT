@@ -45,11 +45,6 @@ h = 0.681 #0.67777  # hubble parameter
 # Find H_0, the inverse Hubble time, in cgs
 H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
-# Gas parameters
-gamma = 5.0 / 3.0
-T0_cgs = 1e5 # gas temperature on the edge of the box (if we want to set this manually)
-nH_max_cgs = 1e0 # maximum hydrogen number density
-
 # DM halo parameters
 spin_lambda = 0.05  # spin parameter
 f_b = 0.17  # baryon fraction
