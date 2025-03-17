@@ -1214,7 +1214,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Finish the density calculation */
-          hydro_end_density(p, cosmo, hydro_props);
+          hydro_end_density(p, cosmo);
           adaptive_softening_end_density(p, e->gravity_properties);
           mhd_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
