@@ -1263,7 +1263,10 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           }
         }
 
-      } /* Cell is split */
+      } /* Task is splittable */
+      else {
+        t->type = task_type_sub_self;
+      }
 
     } /* Self interaction */
 
@@ -1375,6 +1378,10 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                 tl->flags = space_getsid_and_swap_cells(s->space, &t->ci,
                                                         &t->cj, shift);
               }
+      }
+      else {
+
+        t->type = task_type_sub_pair;
       }
     } /* pair interaction? */
   } /* iterate over the current task. */
