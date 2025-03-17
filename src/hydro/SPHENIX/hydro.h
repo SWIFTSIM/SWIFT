@@ -628,40 +628,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Finish matrix and volume computations for FVPM Radiative Transfer */
   fvpm_compute_volume_and_matrix(p, h_inv_dim);
-
-  /* Compute the "grad h" term  - Note here that we have \tilde{x}
-   * as 1 as we use the local number density to find neighbours. This
-   * introduces a j-component that is considered in the force loop,
-   * meaning that this cached grad_h_term gives:
-   *
-   * f_ij = 1.f - grad_h_term_i / m_j */
-  const float common_factor = p->h * hydro_dimension_inv / p->density.wcount;
-  float grad_h_term;
-
-  /* Ignore changing-kernel effects when h ~= h_max */
-  if (p->h > 0.9999f * hydro_props->h_max) {
-    grad_h_term = 0.f;
-    warning("h ~ h_max for particle with ID %lld (h: %g)", p->id, p->h);
-  } else {
-    const float grad_W_term = common_factor * p->density.wcount_dh;
-    if (grad_W_term < -0.9999f) {
-      /* if we get here, we either had very small neighbour contributions
-         (which should be treated as a no neighbour case in the ghost) or
-         a very weird particle distribution (e.g. particles sitting on
-         top of each other). Either way, we cannot use the normal
-         expression, since that would lead to overflow or excessive round
-         off and cause excessively high accelerations in the force loop */
-      grad_h_term = 0.f;
-      warning(
-          "grad_W_term very small for particle with ID %lld (h: %g, wcount: "
-          "%g, wcount_dh: %g)",
-          p->id, p->h, p->density.wcount, p->density.wcount_dh);
-    } else {
-      grad_h_term = common_factor * p->density.rho_dh / (1.f + grad_W_term);
-    }
-  }
-
-  p->force.f = grad_h_term;
   
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_density += kernel_root;
@@ -697,7 +663,40 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
+  /* Compute the "grad h" term  - Note here that we have \tilde{x}
+   * as 1 as we use the local number density to find neighbours. This
+   * introduces a j-component that is considered in the force loop,
+   * meaning that this cached grad_h_term gives:
+   *
+   * f_ij = 1.f - grad_h_term_i / m_j */
+  const float common_factor = p->h * hydro_dimension_inv / p->density.wcount;
+  float grad_h_term;
+
+  /* Ignore changing-kernel effects when h ~= h_max */
+  if (p->h > 0.9999f * hydro_props->h_max) {
+    grad_h_term = 0.f;
+    warning("h ~ h_max for particle with ID %lld (h: %g)", p->id, p->h);
+  } else {
+    const float grad_W_term = common_factor * p->density.wcount_dh;
+    if (grad_W_term < -0.9999f) {
+      /* if we get here, we either had very small neighbour contributions
+         (which should be treated as a no neighbour case in the ghost) or
+         a very weird particle distribution (e.g. particles sitting on
+         top of each other). Either way, we cannot use the normal
+         expression, since that would lead to overflow or excessive round
+         off and cause excessively high accelerations in the force loop */
+      grad_h_term = 0.f;
+      warning(
+          "grad_W_term very small for particle with ID %lld (h: %g, wcount: "
+          "%g, wcount_dh: %g)",
+          p->id, p->h, p->density.wcount, p->density.wcount_dh);
+    } else {
+      grad_h_term = common_factor * p->density.rho_dh / (1.f + grad_W_term);
+    }
+  }
+  
   /* Update variables. */
+  p->force.f = grad_h_term;
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
 }
