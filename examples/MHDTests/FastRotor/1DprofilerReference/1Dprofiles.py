@@ -154,7 +154,7 @@ text_common_args = dict(
 axs[4].text(
     0.5,
     0.8,
-    "Orszag Tang Vortex at $t=%.2f$, $y_0 = %.4f$" % (data.metadata.time, y0),
+    "Fast Rotor at $t=%.2f$, $y_0 = %.4f$" % (data.metadata.time, y0),
     **text_common_args,
 )
 axs[4].text(0.5, 0.7, "SWIFT %s" % git.decode("utf-8"), **text_common_args)

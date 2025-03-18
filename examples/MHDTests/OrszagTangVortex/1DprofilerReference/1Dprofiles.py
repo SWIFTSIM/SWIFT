@@ -120,7 +120,7 @@ fig.subplots_adjust(hspace=0.1)
 #axs[0].set_ylim(0.0, 13.0)
 axs[0].plot(x, density_map[:, slice_ind], "k-",color='black')
 axs[0].set_yticks(np.arange(0.0, 0.35, 0.05))
-axs[0].set_ylabel(r"$\rho(x,y_0)$ [g/cm^3]")
+axs[0].set_ylabel(r"$\rho(x,y_0)$ $[g/cm^3]$")
 axs[0].set_ylim(0.0, 0.35)
 
 axs[1].plot(x, Bx_map[:, slice_ind], "k-",color='black')
