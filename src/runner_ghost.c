@@ -1125,7 +1125,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Running value of the maximal smoothing length */
   float h_max = c->hydro.h_max;
-  float h_max_active = 0.f;
+  float h_max_active = c->hydro.h_max_active;
 
   TIMER_TIC;
 
