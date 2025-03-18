@@ -13,12 +13,13 @@ from swiftsimio.visualisation.slice import slice_gas
 with_reference = True
 
 # Load digitalized data, figure 11 from the paper
+folder='OrszagTangVortex_GIZMO_MFM'
 if with_reference:
     import pandas as pd
-    rho_vs_x_data = pd.read_csv('./1Dreference/rho_vs_x.csv',header=None)
-    Bx_vs_x_data = pd.read_csv('./1Dreference/Bx_vs_x.csv',header=None)
-    By_vs_x_data = pd.read_csv('./1Dreference/By_vs_x.csv',header=None)
-    Berr_vs_x_data = pd.read_csv('./1Dreference/Berr_vs_x.csv',header=None)
+    rho_vs_x_data = pd.read_csv('./'+folder+'/rho_vs_x.csv',header=None)
+    Bx_vs_x_data = pd.read_csv('./'+folder+'/Bx_vs_x.csv',header=None)
+    By_vs_x_data = pd.read_csv('./'+folder+'/By_vs_x.csv',header=None)
+    Berr_vs_x_data = pd.read_csv('./'+folder+'/Berr_vs_x.csv',header=None)
 
 # Parse command line arguments
 argparser = argparse.ArgumentParser()
