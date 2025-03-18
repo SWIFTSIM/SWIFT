@@ -21,8 +21,6 @@ if with_reference:
     By_vs_x_data = pd.read_csv('./'+folder+'/By_vs_x.csv',header=0).to_numpy()
     Berr_vs_x_data = pd.read_csv('./'+folder+'/Berr_vs_x.csv',header=0).to_numpy()
 
-print(rho_vs_x_data)
-
 # Parse command line arguments
 argparser = argparse.ArgumentParser()
 argparser.add_argument("input")
