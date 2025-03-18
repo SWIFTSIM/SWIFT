@@ -12,14 +12,16 @@ from swiftsimio.visualisation.slice import slice_gas
 # load reference
 with_reference = True
 
-# Load digitalized data, figure 11 from the paper
-folder='OrszagTangVortex_GIZMO_MFM'
+# Load digitalized data, at t=0.5, figure 11 from the paper
+folder='OrszagTangVortex_GIZMO_MFM_t=0.5_y=0.3125'
 if with_reference:
     import pandas as pd
-    rho_vs_x_data = pd.read_csv('./'+folder+'/rho_vs_x.csv',header=None)
-    Bx_vs_x_data = pd.read_csv('./'+folder+'/Bx_vs_x.csv',header=None)
-    By_vs_x_data = pd.read_csv('./'+folder+'/By_vs_x.csv',header=None)
-    Berr_vs_x_data = pd.read_csv('./'+folder+'/Berr_vs_x.csv',header=None)
+    rho_vs_x_data = pd.read_csv('./'+folder+'/rho_vs_x.csv',header=0).to_numpy()
+    Bx_vs_x_data = pd.read_csv('./'+folder+'/Bx_vs_x.csv',header=0).to_numpy()
+    By_vs_x_data = pd.read_csv('./'+folder+'/By_vs_x.csv',header=0).to_numpy()
+    Berr_vs_x_data = pd.read_csv('./'+folder+'/Berr_vs_x.csv',header=0).to_numpy()
+
+print(rho_vs_x_data)
 
 # Parse command line arguments
 argparser = argparse.ArgumentParser()
@@ -140,10 +142,10 @@ axs[3].set_ylabel(r"$\mathrm{log}_{10} \left( h \quad \nabla \cdot B / |B| \righ
 axs[3].set_ylim(-6.5, 0.5)
 
 if with_reference:
-    axs[0].plot(rho_vs_x_data[0],rho_vs_x_data[1],label='MFM $256^3$',color='red')
-    axs[1].plot(Bx_vs_x_data[0],Bx_vs_x_data[1],label='MFM $256^3$',color='red')
-    axs[2].plot(By_vs_x_data[0],By_vs_x_data[1],label='MFM $256^3$',color='red')
-    axs[3].plot(Berr_vs_x_data[0],Berr_vs_x_data[1],label='MFM $256^3$',color='red')
+    axs[0].plot(rho_vs_x_data[:,0],rho_vs_x_data[:,1],label='MFM $256^3$',color='red')
+    axs[1].plot(Bx_vs_x_data[:,0],Bx_vs_x_data[:,1],label='MFM $256^3$',color='red')
+    axs[2].plot(By_vs_x_data[:,0],By_vs_x_data[:,1],label='MFM $256^3$',color='red')
+    axs[3].plot(Berr_vs_x_data[:,0],Berr_vs_x_data[:,1],label='MFM $256^3$',color='red')
 
 axs[2].legend()
 # Add panel with infromation about the run
