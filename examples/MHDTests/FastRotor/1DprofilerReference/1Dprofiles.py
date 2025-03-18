@@ -113,11 +113,6 @@ plt.rcParams.update({"font.size": 16})
 fig, axs = plt.subplots(5, 1, figsize=((2*4, 4*4)), sharex=True)
 fig.subplots_adjust(hspace=0.1)
 
-
-#axs[0].plot(x, density_map[:, slice_ind], "k-", lw=0.5)
-#axs[0].set_yticks(np.arange(2.0, 14.0, 2.0))
-#axs[0].set_ylabel(r"$\rho$")
-#axs[0].set_ylim(0.0, 13.0)
 axs[0].plot(x, density_map[:, slice_ind], "k-",color='black')
 axs[0].set_yticks(np.arange(2.0, 14.0, 2.0))
 axs[0].set_ylabel(r"$\rho(x,y_0)$ $[g/cm^3]$")
@@ -146,6 +141,7 @@ if with_reference:
     axs[3].plot(Berr_vs_x_data[:,0],Berr_vs_x_data[:,1],label='MFM $256^3$',color='red')
 
 axs[2].legend()
+
 # Add panel with infromation about the run
 text_common_args = dict(
     fontsize=10, ha="center", va="center", transform=axs[4].transAxes

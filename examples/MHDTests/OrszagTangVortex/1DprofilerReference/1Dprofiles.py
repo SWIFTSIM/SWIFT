@@ -35,10 +35,10 @@ filename = args.input
 data = load(filename)
 
 # Retrieve some information about the simulation run
-#artDiffusion = data.metadata.hydro_scheme["Artificial Diffusion Constant"]
-#dedHyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"]
-#dedHypDivv = data.metadata.hydro_scheme["Dedner Hyperbolic div(v) Constant"]
-#dedPar = data.metadata.hydro_scheme["Dedner Parabolic Constant"]
+artDiffusion = data.metadata.hydro_scheme["Artificial Diffusion Constant"]
+dedHyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"]
+dedHypDivv = data.metadata.hydro_scheme["Dedner Hyperbolic div(v) Constant"]
+dedPar = data.metadata.hydro_scheme["Dedner Parabolic Constant"]
 eta = data.metadata.hydro_scheme["Resistive Eta"]
 git = data.metadata.code["Git Revision"]
 gitBranch = data.metadata.code["Git Branch"]
@@ -114,10 +114,6 @@ fig, axs = plt.subplots(5, 1, figsize=((2*4, 4*4)), sharex=True)
 fig.subplots_adjust(hspace=0.1)
 
 
-#axs[0].plot(x, density_map[:, slice_ind], "k-", lw=0.5)
-#axs[0].set_yticks(np.arange(2.0, 14.0, 2.0))
-#axs[0].set_ylabel(r"$\rho$")
-#axs[0].set_ylim(0.0, 13.0)
 axs[0].plot(x, density_map[:, slice_ind], "k-",color='black')
 axs[0].set_yticks(np.arange(0.0, 0.35, 0.05))
 axs[0].set_ylabel(r"$\rho(x,y_0)$ $[g/cm^3]$")
@@ -166,15 +162,15 @@ axs[4].text(
     kernel.decode("utf-8") + " with $%.2f$ neighbours" % (neighbours),
     **text_common_args,
 )
-#axs[4].text(
-#    0.5, 0.3, "Artificial diffusion: $%.2f$ " % (artDiffusion), **text_common_args
-#)
-#axs[4].text(
-#    0.5,
-#    0.2,
-#    "Dedner Hyp, Hyp_div(v), Par: $%.2f,%.2f,%.2f$ " % (dedHyp, dedHypDivv, dedPar),
-#    **text_common_args,
-#)
+axs[4].text(
+    0.5, 0.3, "Artificial diffusion: $%.2f$ " % (artDiffusion), **text_common_args
+)
+axs[4].text(
+    0.5,
+    0.2,
+    "Dedner Hyp, Hyp_div(v), Par: $%.2f,%.2f,%.2f$ " % (dedHyp, dedHypDivv, dedPar),
+    **text_common_args,
+)
 axs[4].text(
     0.5, 0.1, r"Physical resistivity: $\eta$: $%.2f$ " % (eta), **text_common_args
 )
