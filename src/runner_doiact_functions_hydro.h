@@ -1042,7 +1042,7 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
  *      given indices in c.
  *
  * @param r The #runner.
- * @param i The #cell.
+ * @param c The #cell.
  * @param parts The #part to interact.
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
@@ -1192,7 +1192,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
-  /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
+  /* Factor 2.02: Add 1% tolerance. */
   const float shift_threshold_x =
       2.02 * ci->width[0] +
       2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
@@ -2878,10 +2878,6 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
                              /*rt_request=*/0, /*clock=*/0);
       }
 
-      /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
-       */
-      /* 	      cj->hydro.count); */
-
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
          with all their neighbours */
       DOPAIR1_BRANCH(r, ci, cj, /*limit_h_min=*/1, /*limit_h_max=*/1);
@@ -3107,8 +3103,6 @@ void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max,
     /* If some particles are larger than the daughter cells, we must
        process them at this level before going deeper */
     if (recurse_below_h_max) {
-
-      /* message("Multi-level SELF! c->count=%d", c->hydro.count); */
 
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
          with all their neighbours */
