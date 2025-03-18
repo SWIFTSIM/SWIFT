@@ -13,13 +13,14 @@ from swiftsimio.visualisation.slice import slice_gas
 with_reference = True
 
 # Load digitalized data, at t=0.5, figure 11 from the paper
-folder='OrszagTangVortex_GIZMO_MFM_t=0.5_y=0.3125'
+folder = "OrszagTangVortex_GIZMO_MFM_t=0.5_y=0.3125"
 if with_reference:
     import pandas as pd
-    rho_vs_x_data = pd.read_csv('./'+folder+'/rho_vs_x.csv',header=0).to_numpy()
-    Bx_vs_x_data = pd.read_csv('./'+folder+'/Bx_vs_x.csv',header=0).to_numpy()
-    By_vs_x_data = pd.read_csv('./'+folder+'/By_vs_x.csv',header=0).to_numpy()
-    Berr_vs_x_data = pd.read_csv('./'+folder+'/Berr_vs_x.csv',header=0).to_numpy()
+
+    rho_vs_x_data = pd.read_csv("./" + folder + "/rho_vs_x.csv", header=0).to_numpy()
+    Bx_vs_x_data = pd.read_csv("./" + folder + "/Bx_vs_x.csv", header=0).to_numpy()
+    By_vs_x_data = pd.read_csv("./" + folder + "/By_vs_x.csv", header=0).to_numpy()
+    Berr_vs_x_data = pd.read_csv("./" + folder + "/Berr_vs_x.csv", header=0).to_numpy()
 
 # Parse command line arguments
 argparser = argparse.ArgumentParser()
@@ -28,7 +29,7 @@ argparser.add_argument("output")
 args = argparser.parse_args()
 
 # Where we want to slice the slice
-y0 = 0.3125 #0.5
+y0 = 0.3125  # 0.5
 
 # Load snapshot
 filename = args.input
@@ -110,36 +111,44 @@ slice_ind = int(np.floor(y0 * map_pixel_length))
 # Plot maps
 plt.rcParams.update({"font.size": 16})
 
-fig, axs = plt.subplots(5, 1, figsize=((2*4, 4*4)), sharex=True)
+fig, axs = plt.subplots(5, 1, figsize=((2 * 4, 4 * 4)), sharex=True)
 fig.subplots_adjust(hspace=0.1)
 
 
-axs[0].plot(x, density_map[:, slice_ind], "k-",color='black')
+axs[0].plot(x, density_map[:, slice_ind], "k-", color="black")
 axs[0].set_yticks(np.arange(0.0, 0.35, 0.05))
 axs[0].set_ylabel(r"$\rho(x,y_0)$ $[g/cm^3]$")
 axs[0].set_ylim(0.0, 0.35)
 
-axs[1].plot(x, Bx_map[:, slice_ind], "k-",color='black')
+axs[1].plot(x, Bx_map[:, slice_ind], "k-", color="black")
 axs[1].set_yticks(np.arange(-0.5, 0.55, 0.25))
 axs[1].set_ylabel(r"$B_x(x,y_0)$ $[g*s^{-2}*A^{-1}]$")
 axs[1].set_ylim(-0.5, 0.5)
 
-axs[2].plot(x, By_map[:, slice_ind], "k-", color='black',label='SWIFT')
+axs[2].plot(x, By_map[:, slice_ind], "k-", color="black", label="SWIFT")
 axs[2].set_yticks(np.arange(-0.5, 0.55, 0.25))
 axs[2].set_ylabel(r"$B_y(x,y_0)$ $[g*s^{-2}*A^{-1}]$")
 axs[2].set_ylim(-0.5, 0.5)
 
-axs[3].plot(x, errB_map[:, slice_ind], "k-",color='black', label = 'SWIFT')
+axs[3].plot(x, errB_map[:, slice_ind], "k-", color="black", label="SWIFT")
 axs[3].set_yticks(np.arange(-6.0, 1.0, 1.0))
 axs[3].set_xlabel(r"$x$")
 axs[3].set_ylabel(r"$\mathrm{log}_{10} \left( h \quad \nabla \cdot B / |B| \right)$")
 axs[3].set_ylim(-6.5, 0.5)
 
 if with_reference:
-    axs[0].plot(rho_vs_x_data[:,0],rho_vs_x_data[:,1],label='MFM $256^3$',color='red')
-    axs[1].plot(Bx_vs_x_data[:,0],Bx_vs_x_data[:,1],label='MFM $256^3$',color='red')
-    axs[2].plot(By_vs_x_data[:,0],By_vs_x_data[:,1],label='MFM $256^3$',color='red')
-    axs[3].plot(Berr_vs_x_data[:,0],Berr_vs_x_data[:,1],label='MFM $256^3$',color='red')
+    axs[0].plot(
+        rho_vs_x_data[:, 0], rho_vs_x_data[:, 1], label="MFM $256^3$", color="red"
+    )
+    axs[1].plot(
+        Bx_vs_x_data[:, 0], Bx_vs_x_data[:, 1], label="MFM $256^3$", color="red"
+    )
+    axs[2].plot(
+        By_vs_x_data[:, 0], By_vs_x_data[:, 1], label="MFM $256^3$", color="red"
+    )
+    axs[3].plot(
+        Berr_vs_x_data[:, 0], Berr_vs_x_data[:, 1], label="MFM $256^3$", color="red"
+    )
 
 axs[2].legend()
 # Add panel with infromation about the run
@@ -179,7 +188,6 @@ axs[4].text(
 )
 
 axs[4].axis("off")
-
 
 
 for ax in axs:
