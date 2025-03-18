@@ -1783,4 +1783,22 @@ __attribute__((always_inline)) static INLINE void cell_set_bpart_h_depth(
 #endif
 }
 
+/**
+ * @brief Retrieve the h_max_active for hydro operations.
+ *
+ * @param c The cell
+ */
+__attribute__((always_inline)) static INLINE float cell_get_hydro_h_max_active(const struct cell* c) {
+  return c->hydro.h_max_active;
+}
+
+/**
+ * @brief Retrieve the h_max_active for hydro operations.
+ *
+ * @param c The cell
+ */
+__attribute__((always_inline)) static INLINE float cell_get_rt_h_max_active(const struct cell* c) {
+  return c->rt.h_max_active;
+}
+
 #endif /* SWIFT_CELL_H */

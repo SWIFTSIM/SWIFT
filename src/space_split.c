@@ -74,6 +74,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   float black_holes_h_max_active = 0.f;
   float sinks_h_max = 0.f;
   float sinks_h_max_active = 0.f;
+  float rt_h_max_active = 0.0f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_rt_min_step_size = max_nr_timesteps;
@@ -248,6 +249,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->black_holes.h_max = 0.f;
       cp->black_holes.h_max_active = 0.f;
       cp->black_holes.dx_max_part = 0.f;
+      cp->rt.h_max_active = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->top = c->top;
@@ -309,6 +311,7 @@ void space_split_recursive(struct space *s, struct cell *c,
             max(black_holes_h_max_active, cp->black_holes.h_max_active);
         sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
         sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
+        rt_h_max_active = max(rt_h_max_active, cp->rt.h_max_active);
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -498,6 +501,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_rt_end_min = min(ti_rt_end_min, ti_rt_end);
         ti_rt_beg_max = max(ti_rt_beg_max, ti_rt_beg);
         ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
+        if (part_is_rt_active(&parts[k], e))
+          rt_h_max_active = max(h_max_active, parts[k].h);
       }
 
       h_max = max(h_max, parts[k].h);
@@ -681,6 +686,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.h_max = black_holes_h_max;
   c->black_holes.h_max_active = black_holes_h_max_active;
+  c->rt.h_max_active = rt_h_max_active;
   c->maxdepth = maxdepth;
 
   /* No runner owns this cell yet. We assign those during scheduling. */
