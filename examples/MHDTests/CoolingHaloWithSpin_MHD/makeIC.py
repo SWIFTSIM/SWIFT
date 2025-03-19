@@ -136,9 +136,11 @@ if IAsource == 'IAfile':
     IAfile = 'glassCube_128.hdf5'
     coords,_ = open_IAfile(IAfile)
     lcut = (N/len(coords))**(1/3)
-    mask = ((coords[:,0]<=lcut)&(coords[:,1]<=lcut)&(coords[:,2]<=lcut))
+    coords -= 0.5
+    mask = ((np.abs(coords[:,0])<=lcut/2) & (np.abs(coords[:,1])<=lcut/2) & (np.abs(coords[:,2])<=lcut/2))
     coords = coords[mask]
     coords /= lcut
+    coords+=0.5
 
 elif IAsource == 'grid':
     Nside = int(N**(1/3))
