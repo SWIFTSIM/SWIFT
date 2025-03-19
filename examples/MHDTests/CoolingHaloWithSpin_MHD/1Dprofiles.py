@@ -14,6 +14,7 @@ CONST_G_CGS = 6.672e-8
 MSOL_IN_CGS = 1.9891e33 # Solar mass 
 kb_cgs = 1.38e-16 # boltzmann constant
 m_H_cgs = 1.68e-24 # atomic hydrogen mass 
+GYR_IN_CGS = 3.1536e16 # gigayear
 # First set unit velocity and then the circular velocity parameter for the isothermal potential
 const_unit_velocity_in_cgs = 1.0e5  # kms^-1
 
@@ -162,17 +163,18 @@ axs[0].set_yticks(np.logspace(-7, 2, 10))
 axs[0].set_ylim(1e-7, 1e2)
 
 # plot temperature
-axs[1].plot(x, T_map[:, slice_ind], "k-",color='black')
+P = pressure_map[:, slice_ind].to(MSOL_IN_CGS*unyt.g/(PARSEC_IN_CGS*unyt.cm * (GYR_IN_CGS*unyt.s)**2))
+print(P)
+axs[1].plot(x, P, "k-",color='black')
 axs[1].set_yscale('log')
 
 # plot mass
 coords = coords.to(1e3*PARSEC_IN_CGS*unyt.cm).value-Lbox_kpc/2
-r_values = np.logspace(np.log10(1e-6),np.log10(Lbox_kpc/2),1000)
+r_values = np.logspace(np.log10(1e-6),np.log10(Lbox_kpc/2),100)
 rp_kpc = np.linalg.norm(coords, axis=1)
 m=data.gas.masses.to(MSOL_IN_CGS*unyt.g).value
-samples = 100
 M_x =np.array([ np.sum(m[rp_kpc<=r_values[i]]) for i in range(len(r_values))])
-axs[2].scatter(r_values,M_x)
+axs[2].scatter(r_values,M_x,color='black', marker='+',s=100)
 
 # NFW-like gas density profile
 def rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
@@ -208,6 +210,10 @@ def u_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
     result_cgs = (P0_cgs-integrate(r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200))/(gamma-1)/rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)
     return result_cgs
 
+# NFW-like gas hydrostatic equilibrium pressure profile
+def P_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
+    result_cgs = P0_cgs-integrate(r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200)
+    return result_cgs
 
 # NFW-like gas hydrostatic equilibrium temperature profile
 def T_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):    
@@ -217,7 +223,7 @@ def T_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
 r_200_kpc = r_200_cgs / (PARSEC_IN_CGS*1e3)
 n_H_analytic = rho_r(np.abs(x)/r_200_kpc,f_b,M_200_cgs,r_200_cgs,c_200)/m_H_cgs
 M_gas_analytic = Mgas_r(np.abs(x)/r_200_kpc,f_b,M_200_cgs,r_200_cgs,c_200)/MSOL_IN_CGS
-print('MGAS',Mgas_r(1,f_b,M_200_cgs,r_200_cgs,c_200)/M_200_cgs)
+
 # Gas parameters
 gamma = 5.0 / 3.0
 T0_cgs = T_200_cgs #1e5 # gas temperature on the edge of the box (if we want to set this manually)
@@ -225,7 +231,9 @@ T0_cgs = T_200_cgs #1e5 # gas temperature on the edge of the box (if we want to 
 rho0_cgs = rho_r(Lbox_kpc/r_200_kpc*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200) #gas density on the edge
 P0_cgs = rho0_cgs*kb_cgs*T0_cgs/m_H_cgs # gas pressure on the edge of the box
 
-T_analytic = [T_vs_r(P0_cgs, np.abs(x[i]/r_200_kpc), Lbox_kpc/r_200_kpc*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200) for i in range(map_pixel_length)] # gas particle internal energies
+Pressure_UNIT =  MSOL_IN_CGS / PARSEC_IN_CGS / GYR_IN_CGS**2 
+P_analytic = [P_vs_r(P0_cgs, np.abs(x[i]/r_200_kpc), Lbox_kpc/r_200_kpc*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200)/Pressure_UNIT for i in range(map_pixel_length)] # gas particle internal energies
+#T_analytic = [T_vs_r(P0_cgs, np.abs(x[i]/r_200_kpc), Lbox_kpc/r_200_kpc*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200) for i in range(map_pixel_length)] # gas particle internal energies
 
 
 #locs = [map_pixel_length / 4, map_pixel_length / 2, 3 * map_pixel_length / 4, map_pixel_length]
@@ -243,11 +251,11 @@ axs[0].axvline(x=r_200_kpc,color='gray',ls='dashed',label = '$R_200$')
 axs[1].set_xlabel(r"$x$ [kpc]")
 axs[1].set_xticks(locs, labels)
 axs[1].set_xlim(0, map_pixel_length/2)
-axs[1].plot(x, T_analytic, "k-",color='red')
-axs[1].set_ylabel(r"$T(x,y_0)$ $[K]$")
+axs[1].plot(x, P_analytic, "k-",color='red')
+axs[1].set_ylabel(r"$P(x,y_0)$ $[M_{sol} pc^{-1} Gyr^{-2}]$")
 axs[1].set_yscale('log')
-axs[1].set_yticks(np.logspace(4, 8, 5))
-axs[1].set_ylim(1e4, 1e7)
+axs[1].set_yticks(np.logspace(3, 8, 6))
+axs[1].set_ylim(1e3, 1e8)
 axs[1].axvline(x=r_200_kpc,color='gray',ls='dashed',label = '$R_200$')
 
 axs[2].set_xlabel(r"$r$ [kpc]")
