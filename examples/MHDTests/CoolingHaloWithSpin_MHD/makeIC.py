@@ -105,7 +105,7 @@ periodic = 1  # 1 For periodic box
 boxSize = 4.0
 G = const_G
 N = int(sys.argv[1])  # Number of particles
-IAsource = 'grid' #'IAfile'
+IAsource = 'IAfile'#'grid' #'IAfile'
 
 # Create the file
 filename = "CoolingHalo.hdf5"
@@ -133,8 +133,13 @@ def open_IAfile(path_to_file):
 
 if IAsource == 'IAfile': 
     # Loading initial arrangement file
-    IAfile = 'glassCube_64.hdf5'
+    IAfile = 'glassCube_128.hdf5'
     coords,_ = open_IAfile(IAfile)
+    lcut = (N/len(coords))**(1/3)
+    mask = ((coords[:,0]<=lcut)&(coords[:,1]<=lcut)&(coords[:,2]<=lcut))
+    coords = coords[mask]
+    coords /= lcut
+
 elif IAsource == 'grid':
     Nside = int(N**(1/3))
     grid_1d = np.linspace(0.0, 1.0, Nside)  # Cube side is 1, centered at (0.5,0.5,0.5)
