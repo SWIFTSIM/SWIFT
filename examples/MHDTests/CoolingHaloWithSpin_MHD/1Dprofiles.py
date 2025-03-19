@@ -26,7 +26,7 @@ H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 # Set M200 and get R200 and V200
 f_b = 0.17
 c_200 = 7.2
-nH_max_cgs = 1e2
+nH_max_cgs = 1e0
 M_200_cgs = 1e12 * MSOL_IN_CGS 
 rhoc_cgs = 3*H_0_cgs**2/(8*np.pi*CONST_G_CGS)
 r_200_cgs = (3*M_200_cgs/(4*np.pi*rhoc_cgs*200))**(1/3)
@@ -51,7 +51,7 @@ argparser.add_argument("output")
 args = argparser.parse_args()
 
 # Where we want to slice the slice
-y0 = 0.5 #0.5
+y0 = 0.5
 
 # Load snapshot
 filename = args.input
@@ -136,7 +136,7 @@ map_pixel_length = len(mass_map)
 n_H = density_map/m_H_cgs
 
 x = np.linspace(0.0, 1.0, map_pixel_length)
-slice_ind = int(np.floor(y0 * map_pixel_length))
+slice_ind = int(np.round(y0 * map_pixel_length,0))
 
 
 # Plot maps
@@ -144,7 +144,7 @@ plt.rcParams.update({"font.size": 16})
 
 nx = 1
 ny = 3
-fig, axs = plt.subplots(ny, nx, figsize=((10*nx, 5*ny)), sharex=True)
+fig, axs = plt.subplots(ny, nx, figsize=((10*nx, 5*ny)))
 fig.subplots_adjust(hspace=0.1)
 
 Lbox_kpc = data.metadata.boxsize.to(PARSEC_IN_CGS*1e3*unyt.cm).value[0]
@@ -215,23 +215,27 @@ P0_cgs = rho0_cgs*kb_cgs*T0_cgs/m_H_cgs # gas pressure on the edge of the box
 T_analytic = [T_vs_r(P0_cgs, np.abs(x[i]/r_200_kpc), Lbox_kpc/r_200_kpc*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200) for i in range(map_pixel_length)] # gas particle internal energies
 
 
-locs = [map_pixel_length / 4, map_pixel_length / 2, 3 * map_pixel_length / 4]
-labels = [-Lbox_kpc / 2, 0, Lbox_kpc / 2]
+#locs = [map_pixel_length / 4, map_pixel_length / 2, 3 * map_pixel_length / 4, map_pixel_length]
+#labels = np.array([Lbox_kpc / 4, Lbox_kpc / 2, 3*Lbox_kpc / 4, Lbox_kpc])
+locs = np.linspace(0,400,9)
+labels = np.round(locs,0)
 
 axs[0].set_xlabel(r"$x$ [kpc]")
 axs[0].set_xticks(locs, labels)
-axs[0].set_xlim(0, map_pixel_length-1)
+axs[0].set_xlim(0, map_pixel_length/2)
 axs[0].plot(x, n_H_analytic, "k-",color='red')
 axs[0].set_ylabel(r"$n_H(x,y_0)$ $[cm^{-3}]$")
+axs[0].axvline(x=r_200_kpc,color='gray',ls='dashed',label = '$R_200$')
 
 axs[1].set_xlabel(r"$x$ [kpc]")
 axs[1].set_xticks(locs, labels)
-axs[1].set_xlim(0, map_pixel_length-1)
+axs[1].set_xlim(0, map_pixel_length/2)
 axs[1].plot(x, T_analytic, "k-",color='red')
 axs[1].set_ylabel(r"$T(x,y_0)$ $[K]$")
 axs[1].set_yscale('log')
 axs[1].set_yticks(np.logspace(4, 8, 5))
-axs[1].set_ylim(1e4, 1e6)
+axs[1].set_ylim(1e4, 1e7)
+axs[1].axvline(x=r_200_kpc,color='gray',ls='dashed',label = '$R_200$')
 
 #axs[1].plot(x, pressure_map[:, slice_ind], "k-",color='black')
 #axs[1].set_yticks(np.arange(-0.5, 0.55, 0.25))
