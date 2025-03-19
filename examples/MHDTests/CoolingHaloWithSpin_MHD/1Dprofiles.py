@@ -72,6 +72,8 @@ n_gas = data.metadata.n_gas
 
 # Retrieve particle attributes of interest
 rho = data.gas.densities
+m = data.gas.masses
+coords = data.gas.coordinates
 rho.convert_to_units(unyt.g*unyt.cm**(-3))
 
 P = data.gas.pressures
@@ -143,7 +145,7 @@ slice_ind = int(np.round(y0 * map_pixel_length,0))
 plt.rcParams.update({"font.size": 16})
 
 nx = 1
-ny = 3
+ny = 4
 fig, axs = plt.subplots(ny, nx, figsize=((10*nx, 5*ny)))
 fig.subplots_adjust(hspace=0.1)
 
@@ -153,14 +155,24 @@ Lbox_kpc = data.metadata.boxsize.to(PARSEC_IN_CGS*1e3*unyt.cm).value[0]
 x = np.linspace(-Lbox_kpc/2, Lbox_kpc/2, map_pixel_length)
 slice_ind = int(np.floor(y0 * map_pixel_length))
 
+# plot density
 axs[0].plot(x, n_H[:, slice_ind], "k-",color='black')
 axs[0].set_yscale('log')
 axs[0].set_yticks(np.logspace(-7, 2, 10))
 axs[0].set_ylim(1e-7, 1e2)
 
-
+# plot temperature
 axs[1].plot(x, T_map[:, slice_ind], "k-",color='black')
 axs[1].set_yscale('log')
+
+# plot mass
+coords = coords.to(1e3*PARSEC_IN_CGS*unyt.cm).value-Lbox_kpc/2
+r_values = np.logspace(np.log10(1e-6),np.log10(Lbox_kpc/2),1000)
+rp_kpc = np.linalg.norm(coords, axis=1)
+m=data.gas.masses.to(MSOL_IN_CGS*unyt.g).value
+samples = 100
+M_x =np.array([ np.sum(m[rp_kpc<=r_values[i]]) for i in range(len(r_values))])
+axs[2].scatter(r_values,M_x)
 
 # NFW-like gas density profile
 def rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
@@ -175,7 +187,7 @@ def rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
 # NFW-like gas mass inside a sphere with radius R 
 def Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
     M_0 = M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))
-    return M_0 * f_b * (np.log(1+c_200*r_value)-r_value/(1+c_200*r_value)) 
+    return M_0 * f_b * (np.log(1+c_200*r_value)-c_200*r_value/(1+c_200*r_value)) 
 
 # NFW Gravitational acceleration
 def a_NFW(r_value, M_200_cgs,r_200_cgs, c_200):
@@ -204,7 +216,8 @@ def T_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
 
 r_200_kpc = r_200_cgs / (PARSEC_IN_CGS*1e3)
 n_H_analytic = rho_r(np.abs(x)/r_200_kpc,f_b,M_200_cgs,r_200_cgs,c_200)/m_H_cgs
-
+M_gas_analytic = Mgas_r(np.abs(x)/r_200_kpc,f_b,M_200_cgs,r_200_cgs,c_200)/MSOL_IN_CGS
+print('MGAS',Mgas_r(1,f_b,M_200_cgs,r_200_cgs,c_200)/M_200_cgs)
 # Gas parameters
 gamma = 5.0 / 3.0
 T0_cgs = T_200_cgs #1e5 # gas temperature on the edge of the box (if we want to set this manually)
@@ -237,21 +250,18 @@ axs[1].set_yticks(np.logspace(4, 8, 5))
 axs[1].set_ylim(1e4, 1e7)
 axs[1].axvline(x=r_200_kpc,color='gray',ls='dashed',label = '$R_200$')
 
-#axs[1].plot(x, pressure_map[:, slice_ind], "k-",color='black')
-#axs[1].set_yticks(np.arange(-0.5, 0.55, 0.25))
-#axs[1].set_ylabel(r"$B_x(x,y_0)$")
-#axs[1].set_ylim(-0.5, 0.5)
+axs[2].set_xlabel(r"$r$ [kpc]")
+axs[2].set_xticks(locs, labels)
+axs[2].set_xlim(0, map_pixel_length/2)
+axs[2].plot(x, M_gas_analytic, "k-",color='red')
+axs[2].set_ylabel(r"$M_{gas}$ $[M_{sol}]$")
+axs[2].set_yscale('log')
+axs[2].set_yticks(np.logspace(9, 12, 4))
+axs[2].set_ylim(1e9, 1e12)
+axs[2].axvline(x=r_200_kpc,color='gray',ls='dashed',label = '$R_200$')
+axs[2].axhline(y=f_b*M_200_cgs/(MSOL_IN_CGS),color='gray',ls='dashed',label = '$M_200$')
 
-#axs[2].plot(x, By_map[:, slice_ind], "k-", color='black',label='SWIFT')
-#axs[2].set_yticks(np.arange(-0.5, 0.55, 0.25))
-#axs[2].set_ylabel(r"$B_y(x,y_0)$")
-#axs[2].set_ylim(-0.5, 0.5)
 
-#axs[3].plot(x, errB_map[:, slice_ind], "k-",color='black', label = 'SWIFT')
-#axs[3].set_yticks(np.arange(-6.0, 1.0, 1.0))
-#axs[3].set_xlabel(r"$x$")
-#axs[3].set_ylabel(r"$\mathrm{log}_{10} \left( h \quad \nabla \cdot B / |B| \right)$")
-#axs[3].set_ylim(-6.5, 0.5)
 
 if with_reference:
     axs[0].plot(rho_vs_x_data[0],rho_vs_x_data[1],label='MFM $256^2$',color='red')
@@ -261,7 +271,7 @@ if with_reference:
 
 #axs[2].legend()
 # Add panel with infromation about the run
-Ninfo = 2
+Ninfo = 3
 text_common_args = dict(
     fontsize=10, ha="center", va="center", transform=axs[Ninfo].transAxes
 )

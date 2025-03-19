@@ -104,7 +104,8 @@ print("G=", const_G)
 periodic = 1  # 1 For periodic box
 boxSize = 4.0
 G = const_G
-#N = int(sys.argv[1])  # Number of particles
+N = int(sys.argv[1])  # Number of particles
+IAsource = 'grid' #'IAfile'
 
 # Create the file
 filename = "CoolingHalo.hdf5"
@@ -122,7 +123,7 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
 
 # Loading initial arrangement file
-IAfile = sys.argv[1]
+IAfile = 'glassCube_64.hdf5'
 # smoothing kernel optimized for numpy Price 1012.1885 (6)
 def open_IAfile(path_to_file):
     IAfile = h5py.File(path_to_file, "r")
@@ -130,19 +131,30 @@ def open_IAfile(path_to_file):
     h = IAfile["/PartType0/SmoothingLength"][:]
     return pos, h
 
-coords,_ = open_IAfile(IAfile)
+if IAsource == 'IAfile': 
+    # Loading initial arrangement file
+    IAfile = 'glassCube_64.hdf5'
+    coords,_ = open_IAfile(IAfile)
+elif IAsource == 'grid':
+    Nside = int(N**(1/3))
+    grid_1d = np.linspace(0.0, 1.0, Nside)  # Cube side is 1, centered at (0.5,0.5,0.5)
+    # Create a 3D grid of coordinates
+    x, y, z = np.meshgrid(grid_1d, grid_1d, grid_1d, indexing="ij")
+    # Reshape into a list of points
+    coords = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
+    coords += 0.5/Nside
 
 import scipy.optimize as opt
 def nfw_cdf(r, r_s):
     """Computes the cumulative mass fraction of the NFW profile."""
     return (np.log(1 + r/r_s) - (r/r_s) / (1 + r/r_s))
 
-def invert_nfw_cdf(F_uni, r_s, R_max):
+def invert_nfw_cdf(F_uni, r_s, R_max, Rmin = 1e-6):
     """Find r_NFW by solving F_uni = F_NFW using a numerical solver."""
     F_NFW_max = nfw_cdf(R_max, r_s)  # Normalization factor
     def objective(r_nfw):
         return nfw_cdf(r_nfw, r_s) / F_NFW_max - F_uni  # Find r where CDFs match
-    return opt.root_scalar(objective, bracket=[1e-6, R_max], method='bisect').root
+    return opt.root_scalar(objective, bracket=[Rmin, R_max], method='bisect').root
 
 # make center at zero
 coords -= 0.5
@@ -180,6 +192,22 @@ r_nfw = np.array([invert_nfw_cdf(F, r_s, R_max) for F in F_uni])
 scaling_factors = r_nfw / r_uni
 coords *= scaling_factors[:, np.newaxis]
 
+# Save particle arrangement to .vtk file to view
+import vtk
+vtk_points = vtk.vtkPoints()
+for x, y, z in coords:
+    vtk_points.InsertNextPoint(x, y, z)
+
+poly_data = vtk.vtkPolyData()
+poly_data.SetPoints(vtk_points)
+
+writer = vtk.vtkPolyDataWriter()
+writer.SetFileName("rescaled.vtk")
+writer.SetInputData(poly_data)
+writer.Write() # you can use paraview to watch how particles are arranged
+
+
+
 # NFW-like gas density profile
 def rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
     rho_0 = M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/(4*np.pi*r_200_cgs**3/c_200**3)
@@ -193,7 +221,8 @@ def rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
 # NFW-like gas mass inside a sphere with radius R 
 def Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
     M_0 = M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))
-    return M_0 * f_b * (np.log(1+c_200*r_value)-r_value/(1+c_200*r_value)) 
+    return M_0 * f_b * (np.log(1+c_200*r_value)-c_200*r_value/(1+c_200*r_value)) 
+
 
 # NFW Gravitational acceleration
 def a_NFW(r_value, M_200_cgs,r_200_cgs, c_200):
@@ -221,12 +250,11 @@ def T_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
 
 N = len(coords)
 
-# Masses
 gas_mass = (
-    Mgas_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200)/M_200_cgs
+    Mgas_r(R_max,f_b,M_200_cgs,r_200_cgs,c_200)/M_200_cgs
 )  # get total gas mass within a sphere of radius sqrt(3)/2*Lbox
 gas_particle_mass = gas_mass / float(N)
-print('Gas particle mass is %E ' % (gas_particle_mass*1e12))
+print('Gas particle mass is %E ' % (gas_particle_mass*M_200_cgs/MSOL_IN_CGS))
 
 # Unnormalized mass shell distribution
 r = np.logspace(np.log10(1e-6*boxSize),np.log10(boxSize * np.sqrt(3.0) / 2.0),round(10*N**(1/3)))
@@ -293,7 +321,7 @@ coords[:, 2] = z_coords
 # Save particle arrangement to .vtk file to view
 import vtk
 vtk_points = vtk.vtkPoints()
-for x, y, z in coords:
+for x, y, z in (coords-boxSize/2):
     vtk_points.InsertNextPoint(x, y, z)
 
 poly_data = vtk.vtkPolyData()
