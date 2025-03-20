@@ -447,7 +447,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->a_hydro[2] -= mi * sph_acc_term_j[2];
 
   /* Save forces */
-  for (int k = 1; k < 3; k++) {
+  for (int k = 0; k < 3; k++) {
     pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
     pj->mhd_data.tot_mag_F[k] -= mi * sph_acc_term_j[k];
   }
@@ -534,8 +534,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /*Divergence diffusion */
 
-  const float vsig_Dedner_i = mhd_get_magnetosonic_speed(pi, a, mu_0);
-  const float vsig_Dedner_j = mhd_get_magnetosonic_speed(pj, a, mu_0);
+  const float vsig_Dedner_i = mhd_get_comoving_magnetosonic_speed(pi);
+  const float vsig_Dedner_j = mhd_get_comoving_magnetosonic_speed(pj);
 
   const float delta_psi =
       psi_over_ch_i * vsig_Dedner_i - psi_over_ch_j * vsig_Dedner_j;
@@ -738,7 +738,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->a_hydro[2] -= mj * sph_acc_term_i[2];
 
   /* Save forces */
-  for (int k = 1; k < 3; k++) {
+  for (int k = 0; k < 3; k++) {
     pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
   }
 
@@ -796,8 +796,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /*Divergence diffusion */
 
-  const float vsig_Dedner_i = mhd_get_magnetosonic_speed(pi, a, mu_0);
-  const float vsig_Dedner_j = mhd_get_magnetosonic_speed(pj, a, mu_0);
+  const float vsig_Dedner_i = mhd_get_comoving_magnetosonic_speed(pi);
+  const float vsig_Dedner_j = mhd_get_comoving_magnetosonic_speed(pj);
 
   const float delta_psi =
       psi_over_ch_i * vsig_Dedner_i - psi_over_ch_j * vsig_Dedner_j;

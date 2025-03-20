@@ -41,9 +41,9 @@ INLINE static int mhd_read_particles(struct part* parts,
 INLINE static void convert_B(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
-  ret[0] = xp->mhd_data.B_over_rho_full[0] * p->rho;
-  ret[1] = xp->mhd_data.B_over_rho_full[1] * p->rho;
-  ret[2] = xp->mhd_data.B_over_rho_full[2] * p->rho;
+  ret[0] = p->mhd_data.B_over_rho[0] * p->rho;
+  ret[1] = p->mhd_data.B_over_rho[1] * p->rho;
+  ret[2] = p->mhd_data.B_over_rho[2] * p->rho;
 }
 
 /**
@@ -120,7 +120,8 @@ INLINE static void calculate_R1(const struct engine* e, const struct part* p,
                              p->mhd_data.mean_grad_SPH_err[2]};
 
   /* Get total force acting on particles*/
-  const float Ftot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
+  const float Ftot[3] = {p->mass * p->a_hydro[0], p->mass * p->a_hydro[1],
+                         p->mass * p->a_hydro[2]};
   const float Ftot_abs =
       sqrtf(Ftot[0] * Ftot[0] + Ftot[1] * Ftot[1] + Ftot[2] * Ftot[2]);
 
@@ -132,9 +133,10 @@ INLINE static void calculate_R1(const struct engine* e, const struct part* p,
 
   /* Estimate noise level in Fmag from SPH aproximation of gradients */
   const float two_Pmag_over_rho = B_abs * B_abs / (p->rho * mu0 + FLT_MIN);
-  const float Fmag_SPH_gr_err[3] = {fabsf(two_Pmag_over_rho * SPH_gr_1[0]),
-                                    fabsf(two_Pmag_over_rho * SPH_gr_1[1]),
-                                    fabsf(two_Pmag_over_rho * SPH_gr_1[2])};
+  const float Fmag_SPH_gr_err[3] = {
+      p->mass * fabsf(two_Pmag_over_rho * SPH_gr_1[0]),
+      p->mass * fabsf(two_Pmag_over_rho * SPH_gr_1[1]),
+      p->mass * fabsf(two_Pmag_over_rho * SPH_gr_1[2])};
 
   /* Estimate noise level in Fmag from SPH sums */
   const float Fmag_SPH_1_err[3] = {fabsf(SPH_1_diff * Fmag[0]),
@@ -388,15 +390,15 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "co-moving DivB  of the particle");
 
   list[2] = io_make_output_field(
-      "DednerScalars", FLOAT, 1, UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH,
+      "DednerScalarsOverCleaningSpeeds", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
       -1.5f * hydro_gamma - 1.f, parts, mhd_data.psi_over_ch,
-      "Dedner scalar associated to the particle");
+      "Dedner scalars over cleaning speeds of the particles");
 
-  list[3] = io_make_output_field(
-      "DednerScalarsdt", FLOAT, 1,
-      UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH_RATE, 1.f, parts,
-      mhd_data.psi_over_ch_dt,
-      "Time derivative of Dedner scalar associated to particle");
+  list[3] = io_make_output_field("DednerScalarsOverCleaningSpeedsdt", FLOAT, 1,
+                                 UNIT_CONV_MAGNETIC_FIELD_PER_TIME, 1.f, parts,
+                                 mhd_data.psi_over_ch_dt,
+                                 "Time derivative of Dedner scalars over "
+                                 "cleaning speeds of the particles");
 
   list[4] = io_make_output_field(
       "MagneticFluxDensitiesdt", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME,
