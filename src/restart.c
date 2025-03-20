@@ -29,6 +29,7 @@
 #include "engine.h"
 #include "error.h"
 #include "restart.h"
+#include "swift_lustre_api.h"
 #include "version.h"
 
 #include <errno.h>
@@ -133,24 +134,54 @@ void restart_write(struct engine *e, const char *filename) {
   /* Save a backup the existing restart file, if requested. */
   if (e->restart_save) restart_save_previous(filename);
 
-  /* Use a single Lustre stripe with a rank-based OST offset? */
-  if (e->restart_lustre_OST_count != 0) {
-
-    /* Use a random offset to avoid placing things in the same OSTs. We do
-     * this to keep the use of OSTs balanced, much like using -1 for the
-     * stripe. */
-    int offset = rand() % e->restart_lustre_OST_count;
 #ifdef WITH_MPI
-    MPI_Bcast(&offset, 1, MPI_INT, 0, MPI_COMM_WORLD);
-#endif
-    char string[1200];
-    sprintf(string, "lfs setstripe -c 1 -i %d %s",
-            ((e->nodeID + offset) % e->restart_lustre_OST_count), filename);
-    const int result = system(string);
-    if (result != 0) {
-      message("lfs setstripe command returned error code %d", result);
+  /* Attempt to use lustre OSTs intelligently so we avoid issues with full
+   * OSTs, OSTs that are not writable and making sure we only write restart
+   * files using one stripe. Only relevant for MPI. */
+  if (e->restart_lustre_OST_checks != 0) {
+
+    /* Gather information about the current state of the OSTs. */
+    struct swift_ost_store ost_infos;
+
+    /* Select good OSTs sorted by free space. */
+    if (e->nodeID == 0) {
+      swift_ost_select(&ost_infos, filename, e->restart_lustre_OST_free,
+                       e->restart_lustre_OST_test, e->verbose);
+    }
+
+    /* Distribute the OST information. */
+    MPI_Bcast(&ost_infos, sizeof(struct swift_ost_store), MPI_BYTE, 0,
+              MPI_COMM_WORLD);
+
+    /* Need to make space for the OSTs and copy those locally. If the count is
+     * zero this is probably not a lustre mount. */
+    if (ost_infos.count > 0) {
+      if (e->nodeID != 0) swift_ost_store_alloc(&ost_infos, ost_infos.size);
+      MPI_Bcast(ost_infos.infos, sizeof(struct swift_ost_info) * ost_infos.size,
+                MPI_BYTE, 0, MPI_COMM_WORLD);
+
+      /* We now know how many OSTs are available, each rank should attempt to
+       * use a different one, but overtime we should try not to use the same
+       * ones. Culling will order things by free space so we should get some
+       * reordering of those if we do this process each time. */
+      int dummy = e->nodeID;
+      int offset = swift_ost_next(&ost_infos, &dummy, 1);
+
+      /* And create the file with a stripe of 1 on the OST. */
+      const int result = swift_create_striped_file(filename, offset, 1, &dummy);
+      if (result != 0) message("failed to set stripe of restart file");
+
+      /* Finished with this. */
+      swift_ost_store_free(&ost_infos);
+    } else if (e->nodeID == 0) {
+      swift_ost_store_free(&ost_infos);
+
+      /* Don't try this again until next launch. */
+      e->snapshot_lustre_OST_checks = 0;
+      message("Disabling further lustre OST checks");
     }
   }
+#endif /* Lustre OST checks. */
 
   FILE *stream = fopen(filename, "w");
   if (stream == NULL)
