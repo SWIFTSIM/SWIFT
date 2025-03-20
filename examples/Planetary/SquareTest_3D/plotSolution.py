@@ -35,7 +35,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_square(A1_x, A1_y, A1_rho, A1_u, A1_P, A1_size):
+def plot_square(A1_x, A1_y, A1_rho, A1_u, A1_P, A1_size, boxsize_l):
     # Use Gridspec to set up figure
     n_gs_ax = 40
     n_gs_ax_gap = 10
@@ -90,8 +90,8 @@ def plot_square(A1_x, A1_y, A1_rho, A1_u, A1_P, A1_size):
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_facecolor((0.9, 0.9, 0.9))
-        ax.set_xlim((np.min(A1_x), np.max(A1_x)))
-        ax.set_ylim((np.min(A1_y), np.max(A1_y)))
+        ax.set_xlim((0, boxsize_l))
+        ax.set_ylim((0, boxsize_l))
 
         # Colour bar
         cbar = plt.colorbar(scatter, cax)
@@ -110,6 +110,7 @@ if __name__ == "__main__":
     snap_file = "square_%s_%04d.hdf5" % (type, snap)
 
     with h5py.File(snap_file, "r") as f:
+        boxsize_l = f["Header"].attrs["BoxSize"][0]
         A1_x = f["/PartType0/Coordinates"][:, 0]
         A1_y = f["/PartType0/Coordinates"][:, 1]
         A1_z = f["/PartType0/Coordinates"][:, 2]
@@ -139,4 +140,4 @@ if __name__ == "__main__":
     A1_size = size_factor * (A1_m_slice / A1_rho_slice) ** (2 / 3)
 
     # Plot figure
-    plot_square(A1_x_slice, A1_y_slice, A1_rho_slice, A1_u_slice, A1_P_slice, A1_size)
+    plot_square(A1_x_slice, A1_y_slice, A1_rho_slice, A1_u_slice, A1_P_slice, A1_size, boxsize_l)

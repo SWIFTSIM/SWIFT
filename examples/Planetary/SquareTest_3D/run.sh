@@ -17,5 +17,5 @@ fi
 ../../../swift --hydro --threads=4 square_equal_mass.yml 2>&1 | tee output_equal_mass.log
 
 # Plot the solutions
-python3 ./plotSolution.py "equal_spacing" 40
-python3 ./plotSolution.py "equal_mass" 40
+python3 ./plotSolution.py "equal_spacing" 20
+python3 ./plotSolution.py "equal_mass" 20
