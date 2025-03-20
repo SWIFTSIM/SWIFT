@@ -203,7 +203,7 @@ a00 = ax[0, 0].contourf(
 )
 
 a01 = ax[0, 1].contourf(
-    np.log10(nH_map_xy.value),
+    np.log10(nH_map_xy.value).T,
     #np.log10(density_map_xy.value).T,
     cmap="jet",#"plasma",#"gist_stern", #"RdBu",
     extend="both",
