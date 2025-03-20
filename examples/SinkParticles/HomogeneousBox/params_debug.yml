@@ -1,0 +1,134 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses 
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc 
+  UnitVelocity_in_cgs: 1e5   # km/s
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters for the self-gravity scheme
+Gravity:
+  MAC:              adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
+  epsilon_fmm:      0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
+  theta_cr:         0.7       # Opening angle for the purely gemoetric criterion.
+  eta:              0.025     # Constant dimensionless multiplier for time integration.
+  theta:            0.7       # Opening angle (Multipole acceptance criterion).
+  max_physical_baryon_softening: 0.01  # Physical softening length (in internal units)
+  mesh_side_length:        32
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:        0.     # The starting time of the simulation (in internal units).
+  time_end:          1.0    # The end time of the simulation (in internal units).
+  dt_min:            1e-12  # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2   # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  subdir:     snap
+  basename:   snapshot    # Common part of the name of output files
+  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
+
+Restarts:
+  enable:      1
+  delta_hours: 1 # Write one restart file per hour
+
+Scheduler:
+  cell_extra_gparts: 10000       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks:  10000       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts: 10000       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  max_top_level_cells: 3
+  dependency_graph_frequency: 1  # (Optional) Dumping frequency of the dependency graph. By default, writes only at the first step.
+#  dependency_graph_cell:       3866632 # Once the code crashes, you can get the problematic cells
+  links_per_tasks: 30
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:           1e-2     # Time between statistics output
+  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:         snapshot_0003restart.hdf5 # ICs_homogeneous_box.hdf5 # The file to read
+  periodic:          1                         # Are we running with periodic ICs?
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   1
+
+# Cooling with Grackle 3.0
+GrackleCooling:
+  cloudy_table: CloudyData_UVB=HM2012_high_density.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  with_UV_background: 0                  # Enable or not the UV background
+  redshift:           -1                 # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                  # Enable or not the metal cooling
+  provide_volumetric_heating_rates: 0    # User provide volumetric heating rates
+  provide_specific_heating_rates:   0    # User provide specific heating rates
+  self_shielding_method:            -1   # Grackle (<= 3) or Gear self shielding method
+  self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
+  max_steps:          1000
+  convergence_limit:  1e-2
+  thermal_time_myr:   5
+  maximal_density_Hpcm3: 1e10            # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+
+GEARChemistry:
+  initial_metallicity: -1     # If < 0, use the metallicity sotred in the ICs
+
+GEARFeedback:
+  supernovae_energy_erg:    1e51                # Supernovae energy, used only for SNIa
+  supernovae_efficiency:    0.1                 # Supernovae energy efficiency, used for both SNIa and SNII
+  yields_table:             POPIIsw.h5
+  yields_table_first_stars: POPIIsw.h5
+  discrete_yields:          1
+  imf_transition_metallicity: -5                # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).ppp
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]  # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
+
+# These parameters are set to trigger sink formation more quickly than in the params.yml file
+GEARSink:
+  use_fixed_cut_off_radius: 1                 # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
+  cut_off_radius: 1e-2                        # Cut off radius of all the sinks in internal units.
+  f_acc: 0.1
+  temperature_threshold_K: 3e4                # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
+  density_threshold_Hpcm3: 1e1                # Minimum gas density (in g/cm3) required to form a sink particle
+  maximal_density_threshold_Hpcm3: 1e2        # If the gas density exceeds this value (in g/cm3), a sink forms regardless of temperature if all other criteria are passed
+  stellar_particle_mass_Msun: 60              # Mass of the stellar particle representing the low mass stars, in solar mass
+  minimal_discrete_mass_Msun: 8               # Minimal mass of stars represented by discrete particles, in solar mass
+  stellar_particle_mass_first_stars_Msun: 60  # Mass of the stellar particle representing the low mass stars, in solar mass
+  minimal_discrete_mass_first_stars_Msun: 8   # Minimal mass of stars represented by discrete particles, in solar mass
+  star_spawning_sigma_factor: 0.5             # Factor to rescale the velocity dispersion of the stars when they are spawned. (Default: 0.2)
+  sink_formation_contracting_gas_criterion: 0     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
+  sink_formation_smoothing_length_criterion: 0    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
+  sink_formation_jeans_instability_criterion: 0   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
+  sink_formation_bound_state_criterion: 0         # (Optional) Activate the bound state check for sink formation. (Default: 1)
+  sink_formation_overlapping_sink_criterion: 0    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
+  disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)
+
+  # Timesteps parameters
+  CFL_condition:                        0.8       # Courant-Friedrich-Levy condition for time integration.
+  timestep_age_threshold_unlimited_Myr: 100.      # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.
+  timestep_age_threshold_Myr:           25.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_young_Myr:               2.       # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_old_Myr:                 5.       # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
+#  n_IMF:                               2.       # (Optional) Number of times the IMF mass can be swallowed in a single timestep. (Default: FLTM_MAX)
+
+# Use GEAR SF if needed
+GEARStarFormation:
+  star_formation_efficiency: 0.01     # star formation efficiency (c_*)
+  maximal_temperature_K:     3e4      # Upper limit to the temperature of a star forming particle
+  density_threshold_Hpcm3:   10      # Density threshold in Hydrogen atoms/cm3
+  n_stars_per_particle: 4
+  min_mass_frac: 0.5
+
+# GEAR SF requires this to be set
+GEARPressureFloor:
+  jeans_factor: 10
+
+Stars:
+  timestep_age_threshold_unlimited_Myr: 30.      # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.
+  timestep_age_threshold_Myr:           10.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_young_Myr:               1       # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_old_Myr:                 5         # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
+

@@ -1102,6 +1102,36 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subpair_hydro_task(const struct cell *c) {
+
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  return ((kernel_gamma * c->hydro.h_max_active + c->hydro.dx_max_part_old) <
+          0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-pair hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subpair2_hydro_task(const struct cell *c) {
+
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  return ((kernel_gamma * c->hydro.h_max + c->hydro.dx_max_part) <
+          0.5f * c->dmin);
+}
+
+/**
  * @brief Can a sub-self hydro task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -1115,6 +1145,32 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-self hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subself_hydro_task(const struct cell *c) {
+
+  /* Is the cell not smaller than the smoothing length? */
+  return (kernel_gamma * c->hydro.h_max_active < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subself2_hydro_task(const struct cell *c) {
+
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split && (kernel_gamma * c->hydro.h_max < 0.5f * c->dmin);
+}
+
+/**
  * @brief Can a sub-pair star task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -1122,18 +1178,29 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
  * @param cj The #cell with hydro parts.
  */
 __attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_pair_stars_task(const struct cell *ci,
-                                    const struct cell *cj) {
+cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
-  return ci->split && cj->split &&
-         ((kernel_gamma * ci->stars.h_max_old + ci->stars.dx_max_part_old) <
-          0.5f * ci->dmin) &&
-         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
-          0.5f * cj->dmin);
+  return c->split && ((kernel_gamma * c->stars.h_max_old +
+                       c->stars.dx_max_part_old) < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-pair stars task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subpair_stars_task(const struct cell *c) {
+
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  return ((kernel_gamma * c->stars.h_max_active + c->stars.dx_max_part_old) <
+          0.5f * c->dmin);
 }
 
 /**
@@ -1148,6 +1215,19 @@ cell_can_recurse_in_self_stars_task(const struct cell *c) {
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin) &&
          (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-self stars task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subself_stars_task(const struct cell *c) {
+
+  /* Is the cell not smaller than the smoothing length? */
+  return (kernel_gamma * c->stars.h_max_active < 0.5f * c->dmin);
 }
 
 /**
@@ -1358,7 +1438,7 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 
 /**
  * @brief Have gas particles in a pair of cells moved too much, invalidating the
- * completeness criterion for #ci?
+ * completeness criterion for ci?
  *
  * This function returns true the grid completeness criterion from the
  * perspective of ci (the #cell for which the grid will be constructed) is no
@@ -1372,7 +1452,7 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
  * constructed.
  * @param cj The second #cell. This is the neighbouring cell whose particles are
  * used as ghost particles.
- * @return Whether completeness of #ci is invalidated by the pair (#ci, #cj).
+ * @return Whether completeness of ci is invalidated by the pair (ci, cj).
  */
 __attribute__((always_inline, nonnull)) INLINE static int
 cell_grid_pair_invalidates_completeness(struct cell *ci, struct cell *cj) {
