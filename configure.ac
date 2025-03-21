@@ -1430,6 +1430,38 @@ if test "$with_hdf5" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
 
+# Check for lustre support. Attempted by default.
+have_lustreapi="no"
+AC_ARG_WITH([lustreapi],
+   [AS_HELP_STRING([--with-lustreapi=PATH],
+      [use the lustre api library for some striping control @<:@yes/no@:>@]
+   )],
+   [with_lustreapi="$withval"],
+   [with_lustreapi="yes"]
+)
+
+if test "x$with_lustreapi" != "xno"; then
+   if test "x$with_lustreapi" != "xyes" -a "x$with_lustreapi" != "x"; then
+      LUSTREAPI_LIBS="-L$with_lustreapi -llustreapi"
+      LUSTREAPI_INCS="-I$with_lustreapi/include"
+   else
+      LUSTREAPI_LIBS="-llustreapi"
+      LUSTREAPI_INCS=""
+   fi
+   AC_CHECK_LIB([lustreapi], [llapi_obd_statfs], [have_lustreapi="yes"], 
+                [have_lustreapi="no"],[$LUSTREAPI_LIBS])
+
+   if test "$have_lustreapi" = "yes"; then
+      AC_DEFINE([HAVE_LUSTREAPI],1,[The lustre API library appears to be present.])
+   else
+      LUSTREAPI_LIBS=""
+   fi
+fi
+AC_SUBST([LUSTREAPI_LIBS])
+AC_SUBST([LUSTREAPI_INCS])
+AM_CONDITIONAL([HAVELUSTREAPI],[test -n "$LUSTREAPI_LIBS"])
+
+
 # Check for grackle.
 have_grackle="no"
 AC_ARG_WITH([grackle],
@@ -3321,6 +3353,7 @@ AC_MSG_RESULT([
    MPI enabled          : $enable_mpi
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5
+   LUSTRE API enabled   : $have_lustreapi
    METIS/ParMETIS       : $have_metis / $have_parmetis
    FFTW3 enabled        : $have_fftw
     - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw

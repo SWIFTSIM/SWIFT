@@ -105,6 +105,16 @@ GRACKLE
 GRACKLE cooling is implemented in SWIFT. If you wish to take advantage of it, you 
 will need it installed. It can be found `here <https://github.com/grackle-project/grackle>`_.
 
+.. warning::
+    (State 2023) Grackle is experiencing current development, and the API is subject
+    to changes in the future. For convenience, a frozen version is hosted as a fork
+    on github here: https://github.com/mladenivkovic/grackle-swift .
+    The version available there will be tried and tested and ensured to work with
+    SWIFT.
+
+    Additionally, that repository hosts files necessary to install that specific 
+    version of grackle with spack.
+
 
 HEALPix C library
 ~~~~~~~~~~~~~~~~~~~

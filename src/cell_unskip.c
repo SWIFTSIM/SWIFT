@@ -970,8 +970,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     if (!ci_active && !cj_active) return;
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
-        cell_can_recurse_in_pair_stars_task(cj, ci)) {
+    if (cell_can_recurse_in_pair_stars_task(ci) &&
+        cell_can_recurse_in_pair_stars_task(cj)) {
 
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
@@ -1703,11 +1703,25 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_self) {
         cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
+
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (ci_nodeID == nodeID && with_timestep_limiter)
+          cell_activate_limiter(ci, s);
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair) {
         cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
+
+        /* Activate the drift tasks. */
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+        /* Activate the limiter tasks. */
+        if (ci_nodeID == nodeID && with_timestep_limiter)
+          cell_activate_limiter(ci, s);
+        if (cj_nodeID == nodeID && with_timestep_limiter)
+          cell_activate_limiter(cj, s);
       }
     }
 
@@ -2284,12 +2298,28 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation,
                                           with_star_formation_sink,
                                           with_timestep_sync);
+
+        cell_activate_drift_spart(ci, s);
+        cell_activate_drift_part(ci, s);
+        if (with_timestep_sync) cell_activate_sync_part(ci, s);
       }
 
       else if (t->type == task_type_sub_pair) {
         cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
                                           with_star_formation_sink,
                                           with_timestep_sync);
+
+        /* Activate the drift tasks. */
+        if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+        if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+        if (cj_nodeID == nodeID && with_timestep_sync)
+          cell_activate_sync_part(cj, s);
+
+        /* Activate the drift tasks. */
+        if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (ci_nodeID == nodeID && with_timestep_sync)
+          cell_activate_sync_part(ci, s);
 
         /* Activate stars_in for each cell that is part of
          * a sub_pair task as to not miss any dependencies */
