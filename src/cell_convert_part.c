@@ -971,6 +971,9 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
   /* Set a smoothing length */
   sp->h = p->h;
 
+  /* Give the new particle the correct depth */
+  cell_set_spart_h_depth(sp, c);
+
   /* Here comes the Sun! */
   return sp;
 }
@@ -1048,6 +1051,9 @@ struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
 
   /* Set a smoothing length */
   sp->h = p->h;
+
+  /* Give the new particle the correct depth */
+  cell_set_spart_h_depth(sp, c);
 
   /* Here comes the Sun! */
   return sp;
@@ -1196,6 +1202,9 @@ struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
 
   /* Set a smoothing length */
   sp->h = s->h;
+
+  /* Give the new particle the correct depth */
+  cell_set_spart_h_depth(sp, c);
 
   /* Here comes the Sun! */
   return sp;
