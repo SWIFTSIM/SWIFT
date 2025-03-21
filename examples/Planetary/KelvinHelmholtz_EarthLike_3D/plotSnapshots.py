@@ -132,13 +132,13 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
 if __name__ == "__main__":
 
     # Set colormap
-    cmap1 = plt.get_cmap('Blues')
+    cmap1 = plt.get_cmap('YlOrRd')
     mat_id1 = 402
     rho_min1 = 7950
     rho_max1 = 10050
     norm1 = mpl.colors.Normalize(vmin=rho_min1,vmax=rho_max1)
 
-    cmap2 = plt.get_cmap('Oranges_r')
+    cmap2 = plt.get_cmap('Blues_r')
     mat_id2 = 400
     rho_min2 = 4950
     rho_max2 = 5550
@@ -163,11 +163,11 @@ if __name__ == "__main__":
     sm1 = plt.cm.ScalarMappable(cmap=cmap1, norm=norm1)
     cbar1 = plt.colorbar(sm1, caxs[0])
     cbar1.ax.tick_params(labelsize=14)
-    cbar1.set_label(r"Iron density (g/cm$^3$)", rotation=90, labelpad=8, fontsize=12)
+    cbar1.set_label(r"Iron density (kg/m$^3$)", rotation=90, labelpad=8, fontsize=12)
 
     sm2 = plt.cm.ScalarMappable(cmap=cmap2, norm=norm2)
     cbar2 = plt.colorbar(sm2, caxs[1])
     cbar2.ax.tick_params(labelsize=14)
-    cbar2.set_label(r"Rock density (g/cm$^3$)", rotation=90, labelpad=16, fontsize=12)
+    cbar2.set_label(r"Rock density (kg/m$^3$)", rotation=90, labelpad=16, fontsize=12)
 
     plt.savefig("kelvin_helmholtz.png", dpi=300, bbox_inches="tight")

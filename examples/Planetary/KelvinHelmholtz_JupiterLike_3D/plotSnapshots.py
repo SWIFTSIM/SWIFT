@@ -132,7 +132,7 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
 if __name__ == "__main__":
 
     # Set colormap
-    cmap1 = plt.get_cmap('Blues')
+    cmap1 = plt.get_cmap('Purples')
     mat_id1 = 304
     rho_min1 = 6800
     rho_max1 = 8700
@@ -163,11 +163,11 @@ if __name__ == "__main__":
     sm1 = plt.cm.ScalarMappable(cmap=cmap1, norm=norm1)
     cbar1 = plt.colorbar(sm1, caxs[0])
     cbar1.ax.tick_params(labelsize=14)
-    cbar1.set_label(r"Ice density (g/cm$^3$)", rotation=90, labelpad=8, fontsize=12)
+    cbar1.set_label(r"Ice density (kg/m$^3$)", rotation=90, labelpad=8, fontsize=12)
 
     sm2 = plt.cm.ScalarMappable(cmap=cmap2, norm=norm2)
     cbar2 = plt.colorbar(sm2, caxs[1])
     cbar2.ax.tick_params(labelsize=14)
-    cbar2.set_label(r"H--He density (g/cm$^3$)", rotation=90, labelpad=8, fontsize=12)
+    cbar2.set_label(r"H--He density (kg/m$^3$)", rotation=90, labelpad=8, fontsize=12)
 
     plt.savefig("kelvin_helmholtz.png", dpi=300, bbox_inches="tight")

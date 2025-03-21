@@ -25,6 +25,7 @@ import numpy as np
 
 # Constants
 R_earth = 6371000    # Earth radius
+R_jupiter = 11.2089 * R_earth   # Jupiter radius
 
 # Parameters
 N2_l     = 128       # Particles along one edge in the low-density region
@@ -37,7 +38,7 @@ u1    = 283591514    # Central region specific internal energy
 u2    = 804943158    # Outskirts specific internal energy
 rho1_approx =  9000  # Central region density. Readjusted later
 rho2 =  3500         # Outskirts density
-boxsize_l = 11.2089 * R_earth   # size of simulation box in x and y dimension
+boxsize_l = R_jupiter     # size of simulation box in x and y dimension
 v1   = boxsize_l / 10000  # Central region velocity
 v2   = -boxsize_l / 10000 # Outskirts velocity
 boxsize_depth = boxsize_l * N2_depth / N2_l # size of simulation box in z dimension
