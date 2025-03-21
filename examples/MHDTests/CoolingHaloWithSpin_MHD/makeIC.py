@@ -345,6 +345,10 @@ radius = np.sqrt(
     + (coords[:, 1] - boxSize / 2.0) ** 2
     + (coords[:, 2] - boxSize / 2.0) ** 2
 )
+axis_distance = np.sqrt(
+    (coords[:, 0] - boxSize / 2.0) ** 2
+    + (coords[:, 1] - boxSize / 2.0) ** 2
+)
 
 # now give particle's velocities and magnetic fields
 v = np.zeros((N, 3))
@@ -358,10 +362,10 @@ print("J =", J)
 # all particles within the virial radius have omega parallel to the z-axis, magnitude
 # is proportional to 1 over the radius
 omega = np.zeros((N, 3))
+l = np.zeros((N,3))
 for i in range(N):
-    omega[i, 2] = 3.0 * J / radius[i]
+    omega[i, 2] = J / axis_distance[i]**2
     v[i, :] = np.cross(omega[i, :], (coords[i, :] - boxSize / 2.0))
-    #B[i, 2] = B0_cgs / const_unit_magnetic_field_in_cgs
     B[i, 0] = B0_cgs / const_unit_magnetic_field_in_cgs
 
 # Header

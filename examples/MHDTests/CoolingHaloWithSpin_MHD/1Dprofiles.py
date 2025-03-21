@@ -27,6 +27,7 @@ H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 # Set M200 and get R200 and V200
 f_b = 0.17
 c_200 = 7.2
+spin_lambda = 0.05
 nH_max_cgs = 1e0
 M_200_cgs = 1e12 * MSOL_IN_CGS 
 rhoc_cgs = 3*H_0_cgs**2/(8*np.pi*CONST_G_CGS)
@@ -34,6 +35,18 @@ r_200_cgs = (3*M_200_cgs/(4*np.pi*rhoc_cgs*200))**(1/3)
 v_200_cgs = np.sqrt(CONST_G_CGS*M_200_cgs/r_200_cgs)
 v_200 = v_200_cgs / const_unit_velocity_in_cgs 
 T_200_cgs = m_H_cgs*v_200_cgs**2/(2*kb_cgs)
+
+const_unit_mass_in_cgs = M_200_cgs
+const_unit_length_in_cgs = r_200_cgs
+# Derived quantities
+const_unit_time_in_cgs = const_unit_length_in_cgs / const_unit_velocity_in_cgs
+const_G = (
+    CONST_G_CGS
+    * const_unit_mass_in_cgs
+    * const_unit_time_in_cgs
+    * const_unit_time_in_cgs
+    / (const_unit_length_in_cgs * const_unit_length_in_cgs * const_unit_length_in_cgs)
+)
 
 # load reference
 with_reference = False
@@ -75,6 +88,8 @@ n_gas = data.metadata.n_gas
 rho = data.gas.densities
 m = data.gas.masses
 coords = data.gas.coordinates
+velocities = data.gas.velocities
+l = np.vstack([m,m,m]).T * np.cross((coords-data.metadata.boxsize/2),velocities) # specific angular momentum
 rho.convert_to_units(unyt.g*unyt.cm**(-3))
 
 P = data.gas.pressures
@@ -146,7 +161,7 @@ slice_ind = int(np.round(y0 * map_pixel_length,0))
 plt.rcParams.update({"font.size": 16})
 
 nx = 1
-ny = 4
+ny = 5
 fig, axs = plt.subplots(ny, nx, figsize=((10*nx, 5*ny)))
 fig.subplots_adjust(hspace=0.1)
 
@@ -164,7 +179,6 @@ axs[0].set_ylim(1e-7, 1e2)
 
 # plot temperature
 P = pressure_map[:, slice_ind].to(MSOL_IN_CGS*unyt.g/(PARSEC_IN_CGS*unyt.cm * (GYR_IN_CGS*unyt.s)**2))
-print(P)
 axs[1].plot(x, P, "k-",color='black')
 axs[1].set_yscale('log')
 
@@ -175,6 +189,14 @@ rp_kpc = np.linalg.norm(coords, axis=1)
 m=data.gas.masses.to(MSOL_IN_CGS*unyt.g).value
 M_x =np.array([ np.sum(m[rp_kpc<=r_values[i]]) for i in range(len(r_values))])
 axs[2].scatter(r_values,M_x,color='black', marker='+',s=100)
+
+# plot specific angular momentum
+l_units_cgs = const_unit_mass_in_cgs * const_unit_length_in_cgs * const_unit_velocity_in_cgs
+l = l.to(l_units_cgs*unyt.g*unyt.cm**2/unyt.s).value
+L_r =np.array([ np.sum(l[rp_kpc<=r_values[i]],axis=0) for i in range(len(r_values))])
+norm_L_r = np.sqrt(L_r[:,0]**2+L_r[:,1]**2+L_r[:,2]**2)
+axs[3].scatter(r_values,norm_L_r,color='black', marker='+',s=100)
+
 
 # NFW-like gas density profile
 def rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
@@ -224,6 +246,14 @@ r_200_kpc = r_200_cgs / (PARSEC_IN_CGS*1e3)
 n_H_analytic = rho_r(np.abs(x)/r_200_kpc,f_b,M_200_cgs,r_200_cgs,c_200)/m_H_cgs
 M_gas_analytic = Mgas_r(np.abs(x)/r_200_kpc,f_b,M_200_cgs,r_200_cgs,c_200)/MSOL_IN_CGS
 
+# Angular momentum 
+Total_E = v_200_cgs ** 2 / 2.0
+J_cgs = spin_lambda * const_G / np.sqrt(Total_E) * const_unit_length_in_cgs * const_unit_velocity_in_cgs
+
+L_200_cgs = np.linalg.norm(np.sum(l[rp_kpc<=r_200_kpc],axis=0))
+Mass_ratio = Mgas_r(np.abs(x)/r_200_kpc,f_b,M_200_cgs,r_200_cgs,c_200)/(f_b*M_200_cgs)
+L_analytic = Mass_ratio*L_200_cgs
+
 # Gas parameters
 gamma = 5.0 / 3.0
 T0_cgs = T_200_cgs #1e5 # gas temperature on the edge of the box (if we want to set this manually)
@@ -247,6 +277,8 @@ axs[0].set_xlim(0, map_pixel_length/2)
 axs[0].plot(x, n_H_analytic, "k-",color='red')
 axs[0].set_ylabel(r"$n_H(x,y_0)$ $[cm^{-3}]$")
 axs[0].axvline(x=r_200_kpc,color='gray',ls='dashed',label = '$R_200$')
+axs[0].set_xscale('log')
+axs[0].set_xlim(0.5,300)
 
 axs[1].set_xlabel(r"$x$ [kpc]")
 axs[1].set_xticks(locs, labels)
@@ -257,6 +289,8 @@ axs[1].set_yscale('log')
 axs[1].set_yticks(np.logspace(3, 8, 6))
 axs[1].set_ylim(1e3, 1e8)
 axs[1].axvline(x=r_200_kpc,color='gray',ls='dashed',label = '$R_200$')
+axs[1].set_xscale('log')
+axs[1].set_xlim(0.5,300)
 
 axs[2].set_xlabel(r"$r$ [kpc]")
 axs[2].set_xticks(locs, labels)
@@ -264,12 +298,24 @@ axs[2].set_xlim(0, map_pixel_length/2)
 axs[2].plot(x, M_gas_analytic, "k-",color='red')
 axs[2].set_ylabel(r"$M_{gas}$ $[M_{sol}]$")
 axs[2].set_yscale('log')
-axs[2].set_yticks(np.logspace(9, 12, 4))
-axs[2].set_ylim(1e9, 1e12)
+axs[2].set_yticks(np.logspace(8, 12, 5))
+axs[2].set_ylim(1e8, 1e12)
 axs[2].axvline(x=r_200_kpc,color='gray',ls='dashed',label = '$R_200$')
 axs[2].axhline(y=f_b*M_200_cgs/(MSOL_IN_CGS),color='gray',ls='dashed',label = '$M_200$')
+axs[2].set_xscale('log')
+axs[2].set_xlim(0.5,300)
 
-
+axs[3].set_xlabel(r"$r$ [kpc]")
+axs[3].set_xticks(locs, labels)
+axs[3].set_xlim(0, map_pixel_length/2)
+axs[3].plot(x, L_analytic, "k-",color='red')
+axs[3].set_ylabel(r"$L_{gas}(r)$ $[M_{sol}\cdot kpc \cdot km/s ]$ ")
+axs[3].set_yscale('log')
+#axs[3].set_yticks(np.logspace(8, 17, 10))
+#axs[3].set_ylim(1e8, 1e17)
+axs[3].axvline(x=r_200_kpc,color='gray',ls='dashed',label = '$R_200$')
+axs[3].set_xscale('log')
+axs[3].set_xlim(0.5,300)
 
 if with_reference:
     axs[0].plot(rho_vs_x_data[0],rho_vs_x_data[1],label='MFM $256^2$',color='red')
@@ -279,7 +325,7 @@ if with_reference:
 
 #axs[2].legend()
 # Add panel with infromation about the run
-Ninfo = 3
+Ninfo = 4
 text_common_args = dict(
     fontsize=10, ha="center", va="center", transform=axs[Ninfo].transAxes
 )
@@ -287,25 +333,25 @@ text_common_args = dict(
 axs[Ninfo].text(
     0.5,
     0.8,
-    "Orszag Tang Vortex at $t=%.2f$, $y_0 = %.4f$" % (data.metadata.time, y0),
+    r"Cooling Halo with Spin at $t=%.2f$, $y_0 = %.4f$" % (data.metadata.time, y0),
     **text_common_args,
 )
-axs[Ninfo].text(0.5, 0.7, "SWIFT %s" % git.decode("utf-8"), **text_common_args)
-axs[Ninfo].text(0.5, 0.6, "Branch %s" % gitBranch.decode("utf-8"), **text_common_args)
+axs[Ninfo].text(0.5, 0.7, r"SWIFT %s" % git.decode("utf-8"), **text_common_args)
+axs[Ninfo].text(0.5, 0.6, r"Branch %s" % gitBranch.decode("utf-8"), **text_common_args)
 axs[Ninfo].text(0.5, 0.5, hydroScheme.decode("utf-8"), **text_common_args)
 axs[Ninfo].text(
     0.5,
     0.4,
-    kernel.decode("utf-8") + " with $%.2f$ neighbours" % (neighbours),
+    kernel.decode("utf-8") + r" with $%.2f$ neighbours" % (neighbours),
     **text_common_args,
 )
 axs[Ninfo].text(
-    0.5, 0.3, "Artificial diffusion: $%.2f$ " % (artDiffusion), **text_common_args
+    0.5, 0.3, r"Artificial diffusion: $%.2f$ " % (artDiffusion), **text_common_args
 )
 axs[Ninfo].text(
     0.5,
     0.2,
-    "Dedner Hyp, Hyp_div(v), Par: $%.2f,%.2f,%.2f$ " % (dedHyp, dedHypDivv, dedPar),
+    r"Dedner Hyp, Hyp_div(v), Par: $%.2f,%.2f,%.2f$ " % (dedHyp, dedHypDivv, dedPar),
     **text_common_args,
 )
 axs[Ninfo].text(
