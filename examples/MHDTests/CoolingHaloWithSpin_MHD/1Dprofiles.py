@@ -247,12 +247,12 @@ n_H_analytic = rho_r(np.abs(x)/r_200_kpc,f_b,M_200_cgs,r_200_cgs,c_200)/m_H_cgs
 M_gas_analytic = Mgas_r(np.abs(x)/r_200_kpc,f_b,M_200_cgs,r_200_cgs,c_200)/MSOL_IN_CGS
 
 # Angular momentum 
-Total_E = v_200_cgs ** 2 / 2.0
+Total_E = v_200 ** 2 / 2.0
 J_cgs = spin_lambda * const_G / np.sqrt(Total_E) * const_unit_length_in_cgs * const_unit_velocity_in_cgs
 
-L_200_cgs = np.linalg.norm(np.sum(l[rp_kpc<=r_200_kpc],axis=0))
+L_200_cgs = J_cgs * M_200_cgs * f_b #np.linalg.norm(np.sum(l[rp_kpc<=r_200_kpc],axis=0))
 Mass_ratio = Mgas_r(np.abs(x)/r_200_kpc,f_b,M_200_cgs,r_200_cgs,c_200)/(f_b*M_200_cgs)
-L_analytic = Mass_ratio*L_200_cgs
+L_analytic = Mass_ratio*L_200_cgs/l_units_cgs
 
 # Gas parameters
 gamma = 5.0 / 3.0
@@ -309,7 +309,7 @@ axs[3].set_xlabel(r"$r$ [kpc]")
 axs[3].set_xticks(locs, labels)
 axs[3].set_xlim(0, map_pixel_length/2)
 axs[3].plot(x, L_analytic, "k-",color='red')
-axs[3].set_ylabel(r"$L_{gas}(r)$ $[M_{sol}\cdot kpc \cdot km/s ]$ ")
+axs[3].set_ylabel(r"$L_{gas}(r)$ $[M_{200}\cdot R_{200} \cdot v_{200} ]$ ")
 axs[3].set_yscale('log')
 #axs[3].set_yticks(np.logspace(8, 17, 10))
 #axs[3].set_ylim(1e8, 1e17)
