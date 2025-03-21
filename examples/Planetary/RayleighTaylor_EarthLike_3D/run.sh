@@ -7,6 +7,14 @@ then
     python3 makeIC.py
 fi
 
+# Download the equation of state tables if not already present
+if [ ! -e ../EoSTables/ANEOS_forsterite_S19.txt ]
+then
+    cd ../EoSTables
+    ./get_eos_tables.sh
+    cd -
+fi
+
 # Run SWIFT
 ../../../swift --hydro --external-gravity --threads=4 rayleigh_taylor.yml 2>&1 | tee output_rayleigh_taylor.log
 
