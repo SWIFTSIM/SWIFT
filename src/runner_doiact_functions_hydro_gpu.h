@@ -36,7 +36,9 @@ struct pack_vars_self {
   int tasksperbundle;
 
 } pack_vars_self;
+
 struct leaf_cell_list{
+  struct cell_list;
   struct cell **ci;
   struct cell **cj;
   int n_leaves;
@@ -301,7 +303,8 @@ void runner_recurse_gpu(struct runner *r, struct scheduler *s,
                               struct part_aos_f4_send *parts_send,
                               struct engine *e,
                               int4 *fparti_fpartj_lparti_lpartj, int *n_leafs_found,
-							  struct cell ** cells_left, struct cell ** cells_right, int depth, int n_expected_tasks) {
+							  struct cell ** cells_left, struct cell ** cells_right,
+							  int depth, int n_expected_tasks, struct cell ****cell_list_i, struct cell ****cell_list_j) {
 
 	/* Should we even bother? A. Nasar: For GPU code we need to be clever about this */
   if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
@@ -323,7 +326,7 @@ void runner_recurse_gpu(struct runner *r, struct scheduler *s,
 	  /*We probably want to record */
 	  if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL){
 		runner_recurse_gpu(r, s, pack_vars, ci->progeny[pid], cj->progeny[pjd], t, parts_send, e, fparti_fpartj_lparti_lpartj,
-				n_leafs_found, cells_left, cells_right, depth + 1, n_expected_tasks);
+				n_leafs_found, cells_left, cells_right, depth + 1, n_expected_tasks, cell_list_i, cell_list_j);
 //	        message("recursing to depth %i", depth + 1);
 	  }
 	}
@@ -336,10 +339,11 @@ void runner_recurse_gpu(struct runner *r, struct scheduler *s,
 	cells_left[leafs_found] = ci;
 	cells_right[leafs_found] = cj;
 	/*Add leaf cells to list for each top_level task*/
-	pack_vars->leaf_list[pack_vars->top_tasks_packed].ci[leafs_found] = ci;
-	pack_vars->leaf_list[pack_vars->top_tasks_packed].cj[leafs_found] = cj;
+//	pack_vars->leaf_list[pack_vars->top_tasks_packed].ci[leafs_found] = ci;
+//	pack_vars->leaf_list[pack_vars->top_tasks_packed].cj[leafs_found] = cj;
+	cell_list_i[pack_vars->top_tasks_packed][leafs_found] = ci;
+	cell_list_j[pack_vars->top_tasks_packed][leafs_found] = cj;
 	pack_vars->leaf_list[pack_vars->top_tasks_packed].n_leaves++;
-//	error("stop");
 	*n_leafs_found = leafs_found + 1;
 	if(*n_leafs_found >= n_expected_tasks)
 		error("Created %i more than expected leaf cells. depth %i", *n_leafs_found, depth);
@@ -1598,7 +1602,7 @@ void runner_dopair1_unpack_f4(
     struct part_aos_f4_recv *d_parts_recv, cudaStream_t *stream, float d_a,
     float d_H, struct engine *e, double *packing_time, double *gpu_time,
     double *unpack_time, int4 *fparti_fpartj_lparti_lpartj_dens,
-    cudaEvent_t *pair_end, int cstart, int n_leaves_found){
+    cudaEvent_t *pair_end, int cstart, int n_leaves_found, struct cell ****cell_list_i, struct cell ****cell_list_j){
 
   int topid;
   int pack_length_unpack = 0;
@@ -1613,12 +1617,13 @@ void runner_dopair1_unpack_f4(
 	int n_leaves_in_task = pack_vars->leaf_list[topid].n_packed;
 	for(int tid = 0; tid < n_leaves_in_task; tid++){
 	  //Get pointers to the leaf cells. SEEMS I'm NOT GETTING A CORRECT POINTER
-	  struct cell * cii_l = pack_vars->leaf_list[topid].ci[tid];
-	  struct cell * cjj_l = pack_vars->leaf_list[topid].cj[tid];
-	  message("loc %f %f %f topid %i tid %i nleaves %i", pack_vars->leaf_list[topid].ci[tid]->loc[0]
-                            , pack_vars->leaf_list[topid].ci[tid]->loc[1]
-	                        , pack_vars->leaf_list[topid].ci[tid]->loc[2]
-                            , topid, tid, n_leaves_in_task);
+//	  error("Here");
+	  struct cell * cii_l = cell_list_i[topid][tid];
+	  struct cell * cjj_l = cell_list_j[topid][tid];
+//	  message("loc %f %f %f topid %i tid %i nleaves %i", l_list_p_d[topid].ci[tid]->loc[0]
+//                            , l_list_p_d[topid].ci[tid]->loc[1]
+//	                        , l_list_p_d[topid].ci[tid]->loc[2]
+//                            , topid, tid, n_leaves_in_task);
 //	  if(*cii_l == NULL || *cjj_l == NULL)error("stop");
 	  runner_do_ci_cj_gpu_unpack_neat_aos_f4(
 			r, cii_l, cjj_l, parts_recv, 0, &pack_length_unpack, tid,
