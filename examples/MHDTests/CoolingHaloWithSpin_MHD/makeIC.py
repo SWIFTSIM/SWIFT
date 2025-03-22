@@ -357,16 +357,40 @@ B = np.zeros((N, 3))
 # first work out total angular momentum of the halo within the virial radius
 # we work in units where r_vir = 1 and M_vir = 1
 Total_E = v_200 ** 2 / 2.0
-J = spin_lambda * const_G / np.sqrt(Total_E)
-print("J =", J)
+#J = spin_lambda * const_G / np.sqrt(Total_E)
+j_sp = spin_lambda * np.sqrt(2) * v_200 * 1
+print("j_sp =",j_sp )
 # all particles within the virial radius have omega parallel to the z-axis, magnitude
 # is proportional to 1 over the radius
+
+def j(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
+    return j_sp * Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)/(M_200_cgs*f_b)
+
+def v_circ_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
+    return v_200 * (Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)/(M_200_cgs*f_b) * 1/r_value)**0.5
+
 omega = np.zeros((N, 3))
+omega_ort = np.zeros((N, 3))
+radius_vect = np.zeros((N, 3))
 l = np.zeros((N,3))
 for i in range(N):
-    omega[i, 2] = J / axis_distance[i]**2
-    v[i, :] = np.cross(omega[i, :], (coords[i, :] - boxSize / 2.0))
+    radius_vect[i,:] = coords[i, :] - boxSize / 2.0 
+    omega_ort[i, 2] = 1
+    v[i, :] = np.cross(omega_ort[i, :], radius_vect[i,:])
+    v[i, :] /= np.linalg.norm(v[i, :])
+    v[i, :] *= v_circ_r(radius[i],f_b,M_200_cgs,r_200_cgs,c_200)
     B[i, 0] = B0_cgs / const_unit_magnetic_field_in_cgs
+    #l[i, :] = gas_particle_mass * np.cross(radius_vect[i,:],v[i, :])
+
+
+j_200 = 1 * v_circ_r(1,f_b,M_200_cgs,r_200_cgs,c_200)
+
+v *= j_sp/j_200
+
+normV = np.linalg.norm(v,axis=1)
+import matplotlib.pyplot as plt
+plt.scatter(radius, normV)
+plt.savefig('v_distr.png')
 
 # Header
 grp = file.create_group("/Header")
