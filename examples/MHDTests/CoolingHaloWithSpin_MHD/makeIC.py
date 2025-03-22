@@ -230,11 +230,15 @@ def Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
     M_0 = M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))
     return M_0 * f_b * (np.log(1+c_200*r_value)-c_200*r_value/(1+c_200*r_value)) 
 
-
 # NFW Gravitational acceleration
 def a_NFW(r_value, M_200_cgs,r_200_cgs, c_200):
     a_pref = CONST_G_CGS*M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/r_200_cgs**2
     return a_pref*((r_value/(r_value+1/c_200))-np.log(1+c_200*r_value))/r_value**2
+
+# NFW Gravitational potential
+def phi_NFW(r_value, M_200_cgs,r_200_cgs, c_200):
+    phi_pref = CONST_G_CGS*M_200_cgs/(np.log(1+c_200)-c_200/(1+c_200))/r_200_cgs
+    return -phi_pref*np.log(1+c_200*r_value)/r_value
 
 # Integrate rho_gas*a_NFW
 def integrate(r_min, r_max, f_b, M_200_cgs, r_200_cgs, c_200, Nsteps = 10000):
@@ -367,7 +371,7 @@ def j(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
     return j_sp * Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)/(M_200_cgs*f_b)
 
 def v_circ_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
-    return spin_lambda*v_200 * (Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)/(M_200_cgs*f_b) * 1/r_value)**0.5
+    return spin_lambda * v_200 * (a_NFW(r_value, M_200_cgs,r_200_cgs, c_200)/a_NFW(1, M_200_cgs,r_200_cgs, c_200) * r_value / 1)**0.5
 
 omega = np.zeros((N, 3))
 omega_ort = np.zeros((N, 3))
@@ -388,17 +392,24 @@ Lp_tot = np.sum(l[mask_r_200],axis=0)
 Lp_tot_abs = np.linalg.norm(Lp_tot)
 
 normV = np.linalg.norm(v,axis = 1)
+
 Ep_kin = gas_particle_mass * normV**2 / 2 
-Ep_pot = -const_G*gas_particle_mass*Mgas_r(radius,f_b,M_200_cgs,r_200_cgs,c_200)/(M_200_cgs*f_b)/radius
+Ep_pot = gas_particle_mass * phi_NFW(radius, M_200_cgs,r_200_cgs, c_200)/(const_unit_velocity_in_cgs**2)
 Ep_tot = np.sum(Ep_kin[mask_r_200]+Ep_pot[mask_r_200])
 
-calc_spin_par = Lp_tot_abs * np.sqrt(np.abs(Ep_tot))/const_G / (f_b*1)**(5/2)
-v *= spin_lambda/calc_spin_par
-l *=spin_lambda/calc_spin_par
+calc_spin_par_P = Lp_tot_abs * np.sqrt(np.abs(Ep_tot))/const_G / (f_b*1)**(5/2)
+jp_sp = Lp_tot_abs/(gas_particle_mass*np.sum(mask_r_200))
+calc_spin_par_B = jp_sp/(np.sqrt(2) * 1 * v_200)
+v *= spin_lambda/calc_spin_par_B
+l *=spin_lambda/calc_spin_par_B
 
 normV = np.linalg.norm(v,axis = 1)
 import matplotlib.pyplot as plt
-plt.scatter(radius, normV)
+fig,ax = plt.subplots(figsize = (5,5))
+ax.scatter(radius*r_200_cgs/(1e3*PARSEC_IN_CGS), normV)
+#ax.scatter(radius*r_200_cgs/(1e3*PARSEC_IN_CGS), v_circ_r(radius,f_b,M_200_cgs,r_200_cgs,c_200)/spin_lambda)
+ax.set_xlim(0,40)
+ax.set_ylim(0,100)
 plt.savefig('v_distr.png')
 
 # Header
