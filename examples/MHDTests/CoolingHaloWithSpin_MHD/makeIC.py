@@ -367,7 +367,7 @@ def j(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
     return j_sp * Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)/(M_200_cgs*f_b)
 
 def v_circ_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
-    return v_200 * (Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)/(M_200_cgs*f_b) * 1/r_value)**0.5
+    return spin_lambda*v_200 * (Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)/(M_200_cgs*f_b) * 1/r_value)**0.5
 
 omega = np.zeros((N, 3))
 omega_ort = np.zeros((N, 3))
@@ -380,14 +380,22 @@ for i in range(N):
     v[i, :] /= np.linalg.norm(v[i, :])
     v[i, :] *= v_circ_r(radius[i],f_b,M_200_cgs,r_200_cgs,c_200)
     B[i, 0] = B0_cgs / const_unit_magnetic_field_in_cgs
-    #l[i, :] = gas_particle_mass * np.cross(radius_vect[i,:],v[i, :])
+    l[i, :] = gas_particle_mass * np.cross(radius_vect[i,:],v[i, :])
 
+mask_r_200 = radius <= 1
 
-j_200 = 1 * v_circ_r(1,f_b,M_200_cgs,r_200_cgs,c_200)
+Lp_tot = np.sum(l[mask_r_200],axis=0)
+Lp_tot_abs = np.linalg.norm(Lp_tot)
 
-v *= j_sp/j_200
+normV = np.linalg.norm(v,axis = 1)
+Ep_kin = gas_particle_mass * normV**2 / 2 
+Ep_pot = -const_G*gas_particle_mass*Mgas_r(radius,f_b,M_200_cgs,r_200_cgs,c_200)/(M_200_cgs*f_b)/radius
+Ep_tot = np.sum(Ep_kin[mask_r_200]+Ep_pot[mask_r_200])
 
-normV = np.linalg.norm(v,axis=1)
+calc_spin_par = Lp_tot_abs * np.sqrt(np.abs(Ep_tot))/const_G / (f_b*1)**(5/2)
+v *= spin_lambda/calc_spin_par
+l *=spin_lambda/calc_spin_par
+
 import matplotlib.pyplot as plt
 plt.scatter(radius, normV)
 plt.savefig('v_distr.png')
