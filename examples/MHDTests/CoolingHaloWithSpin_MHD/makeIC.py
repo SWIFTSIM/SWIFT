@@ -396,6 +396,7 @@ calc_spin_par = Lp_tot_abs * np.sqrt(np.abs(Ep_tot))/const_G / (f_b*1)**(5/2)
 v *= spin_lambda/calc_spin_par
 l *=spin_lambda/calc_spin_par
 
+normV = np.linalg.norm(v,axis = 1)
 import matplotlib.pyplot as plt
 plt.scatter(radius, normV)
 plt.savefig('v_distr.png')
