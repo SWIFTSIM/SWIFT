@@ -27,7 +27,6 @@ then
 	    -o ICs_homogeneous_box.hdf5
 fi
 
-
 # Get the Grackle cooling table
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
@@ -35,13 +34,11 @@ then
     ./getGrackleCoolingTable.sh
 fi
 
-
 if [ ! -e POPIIsw.h5 ]
 then
     echo "Fetching the chemistry tables..."
     ./getChemistryTable.sh
 fi
-
 
 # Create output directory
 DIR="snap"
