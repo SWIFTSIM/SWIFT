@@ -31,11 +31,10 @@ Snapshots:
   delta_time: 1e-6          # Time difference between consecutive outputs (in internal units)
 
 Scheduler:
-  cell_extra_gparts: 10000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sinks: 10000       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sparts: 10000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  max_top_level_cells: 3        #
-  tasks_per_cell: 300
+  cell_extra_gparts: 10      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks: 10       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts: 10      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  max_top_level_cells: 3
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -45,7 +44,7 @@ Statistics:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:          ICs_homogeneous_box.hdf5
-  periodic:                    1    # Are we running with periodic ICs?
+  periodic:                 1    # Are we running with periodic ICs?
   shift:              [0.0,0.0,0.0]
 
 # Parameters for the hydrodynamics scheme
@@ -59,29 +58,29 @@ SPH:
 # Cooling with Grackle 3.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  with_UV_background: 0 # Enable or not the UV background
-  redshift: -1 # Redshift to use (-1 means time based redshift)
-  with_metal_cooling: 1 # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0 # User provide volumetric heating rates
-  provide_specific_heating_rates: 0 # User provide specific heating rates
-  self_shielding_method: -1 # Grackle (<= 3) or Gear self shielding method
+  with_UV_background: 0                  # Enable or not the UV background
+  redshift: -1                           # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                  # Enable or not the metal cooling
+  provide_volumetric_heating_rates: 0    # User provide volumetric heating rates
+  provide_specific_heating_rates: 0      # User provide specific heating rates
+  self_shielding_method: -1              # Grackle (<= 3) or Gear self shielding method
   self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
   max_steps: 1000
   convergence_limit: 1e-2
   thermal_time_myr: 5
-  maximal_density_Hpcm3: -1    # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+  maximal_density_Hpcm3: -1              # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
 
 GEARChemistry:
   initial_metallicity: 0
 
 GEARFeedback:
-  supernovae_energy_erg: 1e51           # supernovae energy, used only for SNIa
-  supernovae_efficiency: 0.1           # supernovae energy efficiency, used for both SNIa and SNII
+  supernovae_energy_erg: 1e51                   # supernovae energy, used only for SNIa
+  supernovae_efficiency: 0.1                    # supernovae energy efficiency, used for both SNIa and SNII
   yields_table: POPIIsw.h5
   yields_table_first_stars: POPIIsw.h5
   discrete_yields: 1
-  imf_transition_metallicity: -5         # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
-  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
+  imf_transition_metallicity: -5                # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]  # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 30.      # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.
