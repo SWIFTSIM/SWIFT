@@ -367,8 +367,8 @@ print("j_sp =",j_sp )
 # all particles within the virial radius have omega parallel to the z-axis, magnitude
 # is proportional to 1 over the radius
 
-def j(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
-    return j_sp * Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)/(M_200_cgs*f_b)
+def j(r_value,j_max,s,f_b,M_200_cgs,r_200_cgs,c_200):
+    return j_max * (Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)/(M_200_cgs*f_b))**s
 
 def v_circ_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
     return spin_lambda * v_200 * (a_NFW(r_value, M_200_cgs,r_200_cgs, c_200)/a_NFW(1, M_200_cgs,r_200_cgs, c_200) * r_value / 1)**0.5
@@ -379,9 +379,9 @@ radius_vect = np.zeros((N, 3))
 l = np.zeros((N,3))
 for i in range(N):
     radius_vect[i,:] = coords[i, :] - boxSize / 2.0 
-    omega_ort[i, 2] = 1
-    v[i, :] = np.cross(omega_ort[i, :], radius_vect[i,:])
-    v[i, :] /= np.linalg.norm(v[i, :])
+    omega[i, 2] = j(radius[i],1,1,f_b,M_200_cgs,r_200_cgs,c_200)/radius[i]**2
+    v[i, :] = np.cross(omega[i, :], radius_vect[i,:])
+    #v[i, :] /= np.linalg.norm(v[i, :])
     v[i, :] *= v_circ_r(radius[i],f_b,M_200_cgs,r_200_cgs,c_200)
     B[i, 0] = B0_cgs / const_unit_magnetic_field_in_cgs
     l[i, :] = gas_particle_mass * np.cross(radius_vect[i,:],v[i, :])
