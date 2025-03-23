@@ -382,7 +382,7 @@ for i in range(N):
     omega[i, 2] = j(radius[i],1,1,f_b,M_200_cgs,r_200_cgs,c_200)/radius[i]**2
     v[i, :] = np.cross(omega[i, :], radius_vect[i,:])
     #v[i, :] /= np.linalg.norm(v[i, :])
-    v[i, :] *= v_circ_r(radius[i],f_b,M_200_cgs,r_200_cgs,c_200)
+    #v[i, :] *= v_circ_r(radius[i],f_b,M_200_cgs,r_200_cgs,c_200)
     B[i, 0] = B0_cgs / const_unit_magnetic_field_in_cgs
     l[i, :] = gas_particle_mass * np.cross(radius_vect[i,:],v[i, :])
 
