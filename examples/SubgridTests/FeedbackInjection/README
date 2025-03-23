@@ -38,3 +38,12 @@ run_name="GEAR_MECH1" n_runs=100 ./run_multiple.sh
 
 # Isotropy checking
 To verify how the feedback distributes its quantities, such as metal mass, momentum, and energy, run the Python script `isotropy_check.py`. This script will compute the metal mass flux per solid angle seen by the stars over many runs (see previous section) and plot the median.
+
+Note: It can be useful to disable the momentum injection of the mechanical feedback, since it will biase the computations of the face area by the Python script. You can comment the following ines in `src/feedback/GEAR_mechanical/feedbac_iact.h`:
+
+```
+  /* Now we can give momentum, thermal and kinetic energy to the xpart. */
+  for (int i = 0; i < 3; i++) {
+    xpj->feedback_data.delta_p[i] += dp_prime[i];
+  }
+```
