@@ -26,11 +26,11 @@ x_min = -1.0
 x_max = -x_min
 
 gamma = 5.0 / 3.0  # Gas adiabatic index
-rho  = 1.0
-P    = 1.0
+rho = 1.0
+P = 1.0
 
 vx_L = -1.0  # Velocity left state
-vx_R = 1.0   # Velocity right state
+vx_R = 1.0  # Velocity right state
 
 By = 1.0
 
@@ -68,7 +68,7 @@ h_L, h_R = h_unit, h_unit
 for ii in range(1, args.numcubes):
     pos_L = np.vstack((pos_L, pos_unit + np.array([ii * scale, 0.0, 0.0])))
     pos_R = np.vstack((pos_R, pos_unit + np.array([ii * scale, 0.0, 0.0])))
-    
+
     h_L = np.vstack((h_L, h_unit))
     h_R = np.vstack((h_R, h_unit))
 

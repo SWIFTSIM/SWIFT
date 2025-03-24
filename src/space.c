@@ -785,6 +785,7 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
   const struct cosmology *cosmo = s->e->cosmology;
   const struct hydro_props *hydro_props = s->e->hydro_properties;
   const struct pressure_floor_props *floor = s->e->pressure_floor_props;
+  const float mu_0 = s->e->physical_constants->const_vacuum_permeability;
   struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
@@ -795,7 +796,7 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
     if (parts[k].time_bin <= num_time_bins) {
       hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props,
                                floor);
-      mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+      mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props, mu_0);
     }
   }
 }
@@ -1017,7 +1018,7 @@ void space_collect_sum_bpart_mass(void *restrict map_data, int count,
 }
 
 /**
- * @breif Collect the mean mass of each particle type in the #space.
+ * @brief Collect the mean mass of each particle type in the #space.
  */
 void space_collect_mean_masses(struct space *s, int verbose) {
 

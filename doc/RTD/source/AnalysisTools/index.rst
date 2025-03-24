@@ -176,7 +176,7 @@ A short summary of the scripts in ``tools/task_plots/``:
     whole step and per thread and the minimum and maximum times spent per task type.
 - ``iplot_tasks.py``:
     An interactive task plot, showing what thread was doing what task and for
-    how long for a step.  **Needs python2 and the tkinter module**.
+    how long for a step.  **Needs the tkinter module**.
 - ``plot_tasks.py``:
     Creates a task plot image, showing what thread was doing what task and for how long.
 - ``plot_threadpool.py``:

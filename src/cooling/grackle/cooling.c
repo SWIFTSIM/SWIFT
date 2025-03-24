@@ -434,6 +434,10 @@ float cooling_get_radiated_energy(const struct xpart* xp) {
  */
 void cooling_print_backend(const struct cooling_function_data* cooling) {
 
+  if (engine_rank != 0) {
+    return;
+  }
+
   message("Cooling function is 'Grackle'.");
   message("Using Grackle = %i", cooling->chemistry_data.use_grackle);
   message("Chemical network = %i",
@@ -1276,8 +1280,10 @@ void cooling_init_units(const struct unit_system* us,
 void cooling_init_grackle(struct cooling_function_data* cooling) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* enable verbose for grackle */
-  grackle_verbose = 1;
+  /* Enable verbose for grackle for rank 0 only. */
+  if (engine_rank == 0) {
+    grackle_verbose = 1;
+  }
 #endif
 
   chemistry_data* chemistry = &cooling->chemistry_data;
