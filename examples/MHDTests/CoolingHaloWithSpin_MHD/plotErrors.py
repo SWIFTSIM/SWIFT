@@ -55,6 +55,9 @@ R0 = data.gas.r0
 R1 = data.gas.r1
 R2 = data.gas.r2
 OW = data.gas.owtriggers
+mean_OW = np.mean(OW)
+print('Mean OW is ',np.round(mean_OW,1))
+OW = OW/mean_OW
 
 # Normalize errors
 R0[R0<1e-2] = 1e-2
@@ -193,16 +196,16 @@ a21 = ax[2, 1].contourf(
 
 a30 = ax[3, 0].contourf(
     np.log10(OW_map.value),
-    cmap="plasma",#"viridis", #"nipy_spectral_r",
+    cmap="bwr",#"viridis", #"nipy_spectral_r",
     extend="both",
-    levels=np.linspace(-2, 0, 100),
+    levels=np.linspace(-1, 1, 100),
 )
 
 a31 = ax[3, 1].contourf(
     np.log10(OW_map_xy.value).T,
-    cmap="plasma",#"viridis", #"nipy_spectral_r",
+    cmap="bwr",#"viridis", #"nipy_spectral_r",
     extend="both",
-    levels=np.linspace(-2, 0, 100),
+    levels=np.linspace(-1, 1, 100),
 )
 
 locs = [512 / 4, 512 / 2, 3 * 512 / 4]
@@ -253,10 +256,10 @@ cbar6.set_label(r"$\mathrm{log}_{10} R_2 \;$")
 
 ticksOW=[-1,0,1]
 cbar7 = plt.colorbar(a30, ax=ax[3, 0], fraction=0.046, pad=0.04,ticks=ticksOW)
-cbar7.set_label(r"$\mathrm{log}_{10} OW \;$")
+cbar7.set_label(r"$\mathrm{log}_{10} OW/\langle OW \rangle \;$")
 
 cbar8 = plt.colorbar(a31, ax=ax[3, 1], fraction=0.046, pad=0.04,ticks=ticksOW)
-cbar8.set_label(r"$\mathrm{log}_{10} OW \;$")
+cbar8.set_label(r"$\mathrm{log}_{10} OW/'\langle OW \rangle \;$")
 
 Ninfo = 4
 
