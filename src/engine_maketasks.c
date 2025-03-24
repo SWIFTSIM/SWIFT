@@ -74,9 +74,10 @@ extern int engine_max_parts_per_cooling;
  * @param with_fof Are we running with FOF?
  */
 void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
-                                  struct cell *cj, struct task *t_grav,
-                                  struct task *t_pack_grav, struct task *t_fof,
-                                  struct task *t_pack_fof, const int with_fof,
+                                  struct cell *cj, struct task *t_grav_counts,
+                                  struct task *t_grav, struct task *t_pack_grav,
+                                  struct task *t_fof, struct task *t_pack_fof,
+                                  const int with_fof,
                                   const int with_star_formation) {
 
 #ifdef WITH_MPI
@@ -164,8 +165,9 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav, t_pack_grav,
-                                     t_fof, t_pack_fof, with_fof, with_star_formation);
+        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav_counts,
+                                     t_grav, t_pack_grav, t_fof, t_pack_fof,
+                                     with_fof, with_star_formation);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1198,7 +1200,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                c->mpi.tag, 0, c, NULL);
 
-   if (t_grav_counts != NULL) scheduler_addunlock(s, t_grav, t_grav_counts);
+    if (t_grav_counts != NULL) scheduler_addunlock(s, t_grav, t_grav_counts);
 
     if (with_fof)
       t_fof = scheduler_addtask(s, task_type_recv, task_subtype_fof, c->mpi.tag,
@@ -1224,8 +1226,9 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav_counts, t_grav, t_fof, tend,
-                                     with_fof, with_star_formation);
+        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav_counts, t_grav,
+                                     t_fof, tend, with_fof,
+                                     with_star_formation);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -4481,10 +4484,10 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_send_gravity(
-          e, ci, cj, /*t_grav_counts=*/NULL, /*t_grav=*/NULL, /*t_pack_grav=*/NULL,
-          /*t_fof=*/NULL, /*t_pack_fof=*/NULL, with_fof
-, with_star_formation);
+      engine_addtasks_send_gravity(e, ci, cj, /*t_grav_count=*/NULL,
+                                   /*t_grav=*/NULL, /*t_pack_grav=*/NULL,
+                                   /*t_fof=*/NULL, /*t_pack_fof=*/NULL,
+                                   with_fof, with_star_formation);
   }
 }
 
@@ -4581,7 +4584,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, /*t_fof=*/NULL, tend,
+      engine_addtasks_recv_gravity(e, ci, /*t_grav_count=*/NULL,
+                                   /*t_grav=*/NULL, /*t_fof=*/NULL, tend,
                                    with_fof, with_star_formation);
   }
 }
