@@ -73,6 +73,18 @@ struct feedback_spart_data {
   /*! Pre-SN data struct */
   struct {
 
+    /*! Energy injected in the surrounding particles*/
+    float energy_ejected;
+
+    /*! Total Mass ejected */
+    float mass_ejected;
+
+    /*! Stellar wind velocity*/
+    float v_infinity;
+
+    /*! Metal mass ejected */
+    //float metal_mass_ejected[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
   } preSN;
 };
 

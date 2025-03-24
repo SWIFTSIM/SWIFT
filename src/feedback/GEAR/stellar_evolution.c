@@ -29,6 +29,7 @@
 #include "stellar_evolution_struct.h"
 #include "supernovae_ia.h"
 #include "supernovae_ii.h"
+#include "stellar_wind.h"
 #include "exp10.h"
 
 #include <math.h>
@@ -317,6 +318,50 @@ void stellar_evolution_compute_discrete_feedback_properties(
     /* Convert everything in code units */
     sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
   }
+}
+
+/**
+ * @brief compute the pre-supernova feedback's properties. For the 
+ * 
+ * @param sp The particle to act upon
+ * @param sm The #stellar_model structure.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param m_beg_step Mass of a star ending its life at the begining of the step
+ * (solMass)
+ * @param m_end_step Mass of a star ending its life at the end of the step
+ * (solMass)
+ * @param m_init Birth mass in solMass.
+ * 
+ * TODO...
+ */
+void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const struct stellar_model* sm,
+  const struct phys_const* phys_const, const float m_beg_step,
+  const float m_end_step, const float m_init) {
+
+  /* Limit the mass within the imf limits */
+  const float m_beg_lim = min(m_beg_step, sm->imf.mass_max);
+  const float m_end_lim = max(m_end_step, sm->imf.mass_min);
+
+  /* Compute the average mass */
+  const float m_avg = 0.5 * (m_beg_lim + m_end_lim);
+  const float log_m_avg = log10(m_avg);
+
+  const float log_metallicity = log10(chemistry_get_star_total_metal_mass_fraction_for_feedback(sp));
+
+  /* Stellar winds */
+  /* Compute the mass ejected */
+  sp->feedback_data.preSN.mass_ejected = stellar_wind_get_ejected_mass(log_metallicity, log_m_avg);
+  /* Compute the stellar winds terminal velocity (needed to calculate the winds kinetic energy)*/
+  sp->feedback_data.preSN.v_infinity = stellar_wind_get_wind_velocity(log_metallicity, log_m_avg);
+  /* Radiation ? */
+  
+  /* Do we want to count other than the mass ejected by the wind ? */
+  // sp->feedback_data.preSN.mass_ejected = mass_wind + mass_radiation;
+
+  /* Transform into internal units ? */
+  // sp->feedback_data.mass_ejected *= phys_const->const_solar_mass;
+
+  /* Removes the ejected mass from the star ?*/
 }
 
 /**
@@ -792,7 +837,7 @@ void stellar_evolution_compute_SN_feedback_individual_star(
     const int number_snii = 1;
 
     /* Save the number of supernovae */
-    sp->feedback_data.number_snia = 0;
+    sp->feedback_data.number_snia = number_snia;
     sp->feedback_data.number_snii = number_snii;
 
     /* this is needed for  stellar_evolution_compute_discrete_feedback_properties
@@ -848,7 +893,7 @@ void stellar_evolution_compute_SN_feedback_individual_star(
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
  * @param ti_begin The #integertime_t at the begining of the step.
- * @param star_age_beg_step The age of the star at the star of the time-step in
+ * @param star_age_beg_step The age of the star at the start of the time-step in
  * internal units.
  * @param dt The time-step size of this star in internal units.
  */
@@ -896,26 +941,17 @@ void stellar_evolution_compute_SN_feedback_spart(
   if (m_end_step >= m_beg_step) return;
 
   /* Star particles representing only the continuous part of the IMF need a
-     special treatment. They do not contain stars above the mass that separate the
-     IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
-     module). So, if m_end_step > minimal_discrete_mass_Msun, you don't do
-     feedback. Note that the sm structure contains different information for the
-     'first stars' and the 'late stars'. The right sm data is passed to this
-     function so we do not need any special treatment here. */
+  special treatment. They do not contain stars above the mass that separate the
+  IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
+  module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
+  feedback. Note that the sm structure contains different information for the
+  'first stars' and the 'late stars'. The right sm data is passed to this
+  function so we do not need any special treatment here. */
   if (sp->star_type == star_population_continuous_IMF) {
     /* If it's not time yet for feedback, exit. Notice that both masses are in
-       solar mass. */
-    if (m_end_step > sm->imf.minimal_discrete_mass_Msun) {
-      return;
-    }
-
-    /* If we are in a case where
-       m_beg_step > minimal_discrete_mass_Msun > m_end_step,
-       then we need to be careful. We don't want feedback from the discrete
-       part, only the continuous part. Hence, we need to update m_beg_step.
-    */
+      solar mass. */
     if (m_beg_step > sm->imf.minimal_discrete_mass_Msun) {
-      m_beg_step = sm->imf.minimal_discrete_mass_Msun;
+      return;
     }
   }
 
@@ -1032,6 +1068,57 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
     const struct phys_const* phys_const, const integertime_t ti_begin,
 							   const double star_age_beg_step, const double dt) {
   /* TODO */
+
+  /* Check that this function is called for individual stars (REDUNDANT) */
+  if (sp->star_type != single_star) {
+    error("This function can only be called for single/individual star!");
+  }
+
+  /* Convert the inputs */
+  const double conversion_to_myr = phys_const->const_year * 1e6;
+  double star_age_end_step_myr =
+    (star_age_beg_step + dt) / conversion_to_myr;
+  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
+
+  /* Get the metallicity */
+  const float metallicity = chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+
+  const float log_mass = log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
+  const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
+									 &sm->lifetime, log_mass, metallicity));
+
+  /* Check if supernova occurs in the beetween of time steps. If it's the case, continue but only considering the time where the star is alive*/
+  if (lifetime_myr < star_age_end_step_myr) {
+    const double star_age_end_myr = lifetime_myr;
+  }
+
+  /* this is needed for  stellar_evolution_compute_discrete_feedback_properties
+     */
+  const float m_beg_step = sp->mass / phys_const->const_solar_mass;
+  const float m_end_step = sp->mass / phys_const->const_solar_mass;
+
+  
+  /* This is needed by stellar_evolution_compute_preSN_feedback_properties(),
+      but this is not used inside the function. */
+  const float m_init = 0;
+
+  /* The duration of the preSN feedback in Myr*/
+  const float feedback_duration_yr = (star_age_end_step_myr - star_age_beg_step_myr) * conversion_to_myr;
+  /*  Compute the preSN properties */   // Do we consider the duration of the feedback inside or outside the function ?
+  stellar_evolution_compute_preSN_properties(sp, sm, phys_const,m_beg_step, m_end_step, m_init);
+  /* stellar_update_spart_from_ejected_mass() inside stellar_evolution_compute_discrete_preSN_properties() ? */
+
+  /* initialize */
+  sp->feedback_data.preSN.energy_ejected = 0;
+
+  /* Stellar winds contribution */
+  float wind_energy = stellar_wind_get_energy_dot(sp); 
+  wind_energy *= feedback_duration_yr;
+
+  sp->feedback_data.energy_ejected += wind_energy;
+
+  /* maybe we want to consider also the radiation contribution */
+
 }
 
 /**
