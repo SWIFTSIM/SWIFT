@@ -348,7 +348,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   B[2] = p->mhd_data.B_over_rho[2] * rho;
 
   float OW;
-  OW = 1.0f;
+  OW = 10.0f;
 
   const float ker_hdnv = pow_dimension(1.0f/p->rho); /* 1/h^d */
 
@@ -700,7 +700,7 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     p->mhd_data.Diff_B_source[k] = 0.0f;
     p->mhd_data.Delta_B[k] = 0.0f;
   }
-  p->mhd_data.eta_OWAR = 0.0f; 
+  p->mhd_data.eta_OWAR = 0.01f*p->mhd_data.resistive_eta; 
 
 }
 

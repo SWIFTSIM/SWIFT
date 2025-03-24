@@ -159,7 +159,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
 
   /* Calculate OWAR */
   float OW;
-  OW = 1.0f;
+  OW = 10.0f;
 
   const float ker_hdinv = pow_dimension(hi_inv); /* 1/h^d */
   const float ker_hdjnv = pow_dimension(hj_inv); /* 1/h^d */
@@ -287,7 +287,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   /* Calculate OWAR */
   float OW;
-  OW = 1.0f;
+  OW = 10.0f;
 
   const float ker_hdinv = pow_dimension(hi_inv); /* 1/h^d */
 
