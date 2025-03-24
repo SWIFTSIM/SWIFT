@@ -136,7 +136,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
   const float dt_eta = p->mhd_data.resistive_eta+p->mhd_data.eta_OWAR != 0.f
                            ? hydro_properties->CFL_condition * cosmo->a *
                                  cosmo->a * p->h * p->h /
-                                 p->mhd_data.resistive_eta+p->mhd_data.eta_OWAR
+                                 (p->mhd_data.resistive_eta+p->mhd_data.eta_OWAR)
                            : FLT_MAX;
 
   return dt_eta;
