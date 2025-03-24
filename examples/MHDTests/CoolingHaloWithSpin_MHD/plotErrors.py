@@ -259,7 +259,7 @@ cbar7 = plt.colorbar(a30, ax=ax[3, 0], fraction=0.046, pad=0.04,ticks=ticksOW)
 cbar7.set_label(r"$\mathrm{log}_{10} OW/\langle OW \rangle \;$")
 
 cbar8 = plt.colorbar(a31, ax=ax[3, 1], fraction=0.046, pad=0.04,ticks=ticksOW)
-cbar8.set_label(r"$\mathrm{log}_{10} OW/'\langle OW \rangle \;$")
+cbar8.set_label(r"$\mathrm{log}_{10} OW/\langle OW \rangle \;$")
 
 Ninfo = 4
 
@@ -296,7 +296,7 @@ ax[Ninfo, 1].text(
     0.5, 0.1, "Physical resistivity $\eta$: $%.2f$ " % (eta), **text_common_args
 )
 ax[Ninfo, 1].text(
-    0.5, 0.0, "Number of particles $N_p$: $%.0f$ " % (Np), **text_common_args
+    0.5, 0.0, r"Number of particles $N_p$: $%.0f$, $\langle OW \rangle$ = $%.0f$ " % (Np,mean_OW), **text_common_args
 )
 ax[Ninfo, 1].axis("off")
 
