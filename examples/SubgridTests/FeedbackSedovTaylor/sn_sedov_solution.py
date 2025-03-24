@@ -271,7 +271,7 @@ except Exception as e:
     sys.exit(f"Unexpected error: {e}")
 
 # Bin the data
-r_bin_edge = np.arange(0.0, r.max(), 0.5)
+r_bin_edge = np.arange(0.0, r.max(), 0.05)
 r_bin = 0.5 * (r_bin_edge[1:] + r_bin_edge[:-1])
 rho_bin, _, _ = stats.binned_statistic(
     r, rho, statistic="mean", bins=r_bin_edge)
@@ -292,7 +292,6 @@ u2_bin, _, _ = stats.binned_statistic(
 rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
 v_sigma_bin = np.sqrt(v2_bin - v_bin ** 2)
 P_sigma_bin = np.sqrt(P2_bin - P_bin ** 2)
-S_sigma_bin = np.sqrt(S2_bin - S_bin ** 2)
 u_sigma_bin = np.sqrt(u2_bin - u_bin ** 2)
 
 if plot_diffusion:
@@ -331,7 +330,6 @@ v_s = np.insert(v_s, np.size(v_s), [0, 0])
 
 # Additional arrays
 u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
-s_s = P_s / rho_s ** gas_gamma  # entropic function
 
 #################################
 # Plot the interesting quantities
@@ -357,11 +355,8 @@ errorbar_props = dict(color=binned_color,
                       ms=binned_marker_size, fmt=".", lw=1.2)
 
 # Function for unit conversion
-
-
 def convert_units(quantity, unit):
     return (quantity * 1e10 * units.Msun / units.kpc**3).to(unit).value
-
 
 # Convert density-related quantities
 rho_s = convert_units(rho_s, units.g / units.cm**3)
@@ -370,11 +365,8 @@ rho = convert_units(rho, units.g / units.cm**3)
 rho_sigma_bin = convert_units(rho_sigma_bin, units.g / units.cm**3)
 
 # Convert internal energy-related quantities
-
-
 def convert_energy(quantity):
     return (quantity * 1e10 * units.Msun * units.kpc**2 / units.Gyr**2).to(units.erg).value
-
 
 u = convert_energy(u)
 u_s = convert_energy(u_s)
