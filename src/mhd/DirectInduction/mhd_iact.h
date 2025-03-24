@@ -157,45 +157,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
         mi * over_rho_j * wj_dr * r_inv * dx[k];
   }
 
-  /* Calculate nessesary ar for OW to be 1.0 */
-/**  float OW;
-  OW = 1.0f;
-
-  float absBi;
-  absBi = sqrtf(Bi[0]*Bi[0]+Bi[1]*Bi[1]+Bi[2]*Bi[2]);
-  float Adv_B_sourcei[3];
-  float Delta_Bi[3];
-  for (int k = 0; k < 3; k++) {
-    Adv_B_sourcei[k] = pi->mhd_data.Adv_B_source[k];
-    Delta_Bi[k] = pi->mhd_data.Delta_B[k]; 
-  }
-  float Abs_Adv_B_sourcei;
-  float Abs_Delta_Bi;
-  float Cos_Ind_Diffi;
-  Abs_Adv_B_sourcei = sqrtf(Adv_B_sourcei[0]*Adv_B_sourcei[0]+Adv_B_sourcei[1]*Adv_B_sourcei[1]+Adv_B_sourcei[2]*Adv_B_sourcei[2]);
-  Abs_Delta_Bi = sqrtf(Delta_Bi[0]*Delta_Bi[0]+Delta_Bi[1]*Delta_Bi[1]+Delta_Bi[2]*Delta_Bi[2]);
-  Cos_Ind_Diffi = (Adv_B_sourcei[0]*Delta_Bi[0]+Adv_B_sourcei[1]*Delta_Bi[1]+Adv_B_sourcei[2]*Delta_Bi[2])/(Abs_Adv_B_sourcei*Abs_Delta_Bi+FLT_MIN);
-  pi->mhd_data.eta_OWAR = 1.0f/OW * ( 0.5f * hi * hi / (absBi+FLT_MIN)) * (0.5f*(1-Cos_Ind_Diffi))*Abs_Adv_B_sourcei;
-
-  float absBj;
-  absBj = sqrtf(Bj[0]*Bj[0]+Bj[1]*Bj[1]+Bj[2]*Bj[2]);
-  float Adv_B_sourcej[3];
-  float Delta_Bj[3];
-  for (int k = 0; k < 3; k++) {
-    Adv_B_sourcej[k] = pj->mhd_data.Adv_B_source[k];
-    Delta_Bj[k] = pj->mhd_data.Delta_B[k]; 
-  }
-  float Abs_Adv_B_sourcej;
-  float Abs_Delta_Bj;
-  float Cos_Ind_Diffj;
-  Abs_Adv_B_sourcej = sqrtf(Adv_B_sourcej[0]*Adv_B_sourcej[0]+Adv_B_sourcej[1]*Adv_B_sourcej[1]+Adv_B_sourcej[2]*Adv_B_sourcej[2]);
-  Abs_Delta_Bj = sqrtf(Delta_Bj[0]*Delta_Bj[0]+Delta_Bj[1]*Delta_Bj[1]+Delta_Bj[2]*Delta_Bj[2]);
-  Cos_Ind_Diffj = (Adv_B_sourcej[0]*Delta_Bj[0]+Adv_B_sourcej[1]*Delta_Bj[1]+Adv_B_sourcej[2]*Delta_Bj[2])/(Abs_Adv_B_sourcej*Abs_Delta_Bj+FLT_MIN);
-  pj->mhd_data.eta_OWAR = 1.0f/OW * ( 0.5f * hj * hj / (absBj+FLT_MIN)) * (0.5f*(1-Cos_Ind_Diffj))*Abs_Adv_B_sourcej;
-**/
-
+  /* Calculate OWAR */
   float OW;
-  OW = 0.25f;
+  OW = 1.0f;
 
   const float ker_hdinv = pow_dimension(hi_inv); /* 1/h^d */
   const float ker_hdjnv = pow_dimension(hj_inv); /* 1/h^d */
@@ -321,29 +285,9 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
         mj * over_rho_i * wi_dr * r_inv * dx[k];
   }
 
-  /* Calculate nessesary ar for OW to be 1.0 */
- /** float OW;
-  OW = 1.0f;
-
-  float absBi;
-  absBi = sqrtf(Bi[0]*Bi[0]+Bi[1]*Bi[1]+Bi[2]*Bi[2]);
-  float Adv_B_sourcei[3];
-  float Delta_Bi[3];
-  for (int k = 0; k < 3; k++) {
-    Adv_B_sourcei[k] = pi->mhd_data.Adv_B_source[k];
-    Delta_Bi[k] = pi->mhd_data.Delta_B[k]; 
-  }
-  float Abs_Adv_B_sourcei;
-  float Abs_Delta_Bi;
-  float Cos_Ind_Diffi;
-  Abs_Adv_B_sourcei = sqrtf(Adv_B_sourcei[0]*Adv_B_sourcei[0]+Adv_B_sourcei[1]*Adv_B_sourcei[1]+Adv_B_sourcei[2]*Adv_B_sourcei[2]);
-  Abs_Delta_Bi = sqrtf(Delta_Bi[0]*Delta_Bi[0]+Delta_Bi[1]*Delta_Bi[1]+Delta_Bi[2]*Delta_Bi[2]);
-  Cos_Ind_Diffi = (Adv_B_sourcei[0]*Delta_Bi[0]+Adv_B_sourcei[1]*Delta_Bi[1]+Adv_B_sourcei[2]*Delta_Bi[2])/(Abs_Adv_B_sourcei*Abs_Delta_Bi+FLT_MIN);
-  pi->mhd_data.eta_OWAR = 1.0f/OW * ( 0.5f * hi * hi / (absBi+FLT_MIN)) * (0.5f*(1-Cos_Ind_Diffi))*Abs_Adv_B_sourcei;
-**/
-
+  /* Calculate OWAR */
   float OW;
-  OW = 0.25f;
+  OW = 1.0f;
 
   const float ker_hdinv = pow_dimension(hi_inv); /* 1/h^d */
 

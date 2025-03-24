@@ -348,7 +348,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   B[2] = p->mhd_data.B_over_rho[2] * rho;
 
   float OW;
-  OW = 0.25f;
+  OW = 1.0f;
 
   const float ker_hdnv = pow_dimension(1.0f/p->rho); /* 1/h^d */
 
@@ -499,31 +499,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] = 0.0f;
   }
-   /* Calculate nessesary OWAR */
-/** const float rho = p->rho;
-  float B[3];
-  B[0] = p->mhd_data.B_over_rho[0] * rho;
-  B[1] = p->mhd_data.B_over_rho[1] * rho;
-  B[2] = p->mhd_data.B_over_rho[2] * rho;
-
-  float OW;
-  OW = 1.0f;
-  float absB;
-  absB = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
-  float Adv_B_source[3];
-  float Delta_B[3];
-  for (int k = 0; k < 3; k++) {
-    Adv_B_source[k] = p->mhd_data.Adv_B_source[k];
-    Delta_B[k] = p->mhd_data.Delta_B[k]; 
-  }
-  float Abs_Adv_B_source;
-  float Abs_Delta_B;
-  float Cos_Ind_Diff;
-  Abs_Adv_B_source = sqrtf(Adv_B_source[0]*Adv_B_source[0]+Adv_B_source[1]*Adv_B_source[1]+Adv_B_source[2]*Adv_B_source[2]);
-  Abs_Delta_B = sqrtf(Delta_B[0]*Delta_B[0]+Delta_B[1]*Delta_B[1]+Delta_B[2]*Delta_B[2]);
-  Cos_Ind_Diff = (Adv_B_source[0]*Delta_B[0]+Adv_B_source[1]*Delta_B[1]+Adv_B_source[2]*Delta_B[2])/(Abs_Adv_B_source*Abs_Delta_B+FLT_MIN);
-  p->mhd_data.eta_OWAR = 1.0f/OW * ( 0.5f * p->h * p->h / (absB+FLT_MIN)) * (0.5f*(1-Cos_Ind_Diff))*Abs_Adv_B_source;
-**/
   /* Save induction sources*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.Adv_B_source[k] = 0.0f;
