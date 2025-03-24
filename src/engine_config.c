@@ -789,7 +789,7 @@ void engine_config(int restart, int fof, struct engine *e,
 #endif
 
     /* Find the time of the first snapshot output */
-    engine_compute_next_snapshot_time(e);
+    engine_compute_next_snapshot_time(e, restart);
 
     /* Find the time of the first statistics output */
     engine_compute_next_statistics_time(e);
@@ -831,9 +831,13 @@ void engine_config(int restart, int fof, struct engine *e,
      * on restart. */
     e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);
 
-    /* Read the number of Lustre OSTs to distribute the restart files over */
-    e->restart_lustre_OST_count =
-        parser_get_opt_param_int(params, "Restarts:lustre_OST_count", 0);
+    /* Lustre OST options. Disabled by default. */
+    e->restart_lustre_OST_checks =
+        parser_get_opt_param_int(params, "Restarts:lustre_OST_checks", 0);
+    e->restart_lustre_OST_free =
+        parser_get_opt_param_int(params, "Restarts:lustre_OST_free", 0);
+    e->restart_lustre_OST_test =
+        parser_get_opt_param_int(params, "Restarts:lustre_OST_test", 0);
 
     /* Hours between restart dumps. Can be changed on restart. */
     float dhours =
@@ -950,6 +954,8 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
     space_extra_bparts = parser_get_opt_param_int(
         params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
+    space_extra_sinks = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_sinks", space_extra_sinks_default);
 
     /* Do we want any spare particles for on the fly creation?
        This condition should be the same than in space.c */

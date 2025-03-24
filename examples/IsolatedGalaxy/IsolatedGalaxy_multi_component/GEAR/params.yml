@@ -71,21 +71,23 @@ GrackleCooling:
   maximal_density_Hpcm3: -1 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
 
 GEARStarFormation:
-  star_formation_efficiency: 0.01   # star formation efficiency (c_*)
-  maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
+  star_formation_efficiency: 0.01     # star formation efficiency (c_*)
+  maximal_temperature_K:     3e4      # Upper limit to the temperature of a star forming particle
+  density_threshold_Hpcm3:   0.1      # Density threshold in Hydrogen atoms/cm3
   n_stars_per_particle: 4
   min_mass_frac: 0.5
-  density_threshold:   1.67e-25   # Density threashold in g/cm3
 
 GEARSink:
-  cut_off_radius: 5e-3                       # Cut off radius of all the sinks in internal units.
+  use_fixed_cut_off_radius: 1                 # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
+  cut_off_radius: 5e-3                        # Cut off radius of all the sinks in internal units. Ignored if use_fixed_cut_off_radius is 0. 
   f_acc: 0.1
-  maximal_temperature:  1e4                  # Upper limit to the temperature of a star forming particle
-  density_threshold_g_per_cm3:   1.67e-24    # Density threashold in g/cm3 (1.67e-24 =1acc)
+  temperature_threshold_K: 1e4               # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
+  density_threshold_Hpcm3: 1e0               # Minimum gas density (in Hydrogen atoms/cm3) required to form a sink particle.
+  maximal_density_threshold_Hpcm3: 1e5       # If the gas density exceeds this value (in Hydrogen atoms/cm3), a sink forms regardless of temperature if all other criteria are passed.
   stellar_particle_mass_Msun: 1e5            # Mass of the stellar particle representing the low mass stars, in solar mass
   minimal_discrete_mass_Msun: 30             # Minimal mass of stars represented by discrete particles, in solar mass
   stellar_particle_mass_first_stars_Msun: 1e5 # Mass of the stellar particle representing the low mass stars, in solar mass
-  minimal_discrete_mass_first_stars_Msun: 30 # Minimal mass of stars represented by discrete particles, in solar mass
+  minimal_discrete_mass_first_stars_Msun: 30  # Minimal mass of stars represented by discrete particles, in solar mass
   star_spawning_sigma_factor: 0.5             # Factor to rescale the velocity dispersion of the stars when they are spawned. (Default: 0.2)
   sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
   sink_formation_smoothing_length_criterion: 0    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
@@ -93,6 +95,14 @@ GEARSink:
   sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
   sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
   disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)
+
+  # Timesteps parameters
+  CFL_condition:                        0.5       # Courant-Friedrich-Levy condition for time integration.
+  timestep_age_threshold_unlimited_Myr: 100.      # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.
+  timestep_age_threshold_Myr:           25.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_young_Myr:                1.       # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_old_Myr:                  5.       # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
+  n_IMF:                                 2        # (Optional) Number of times the IMF mass can be swallowed in a single timestep. (Default: FLTM_MAX)
 
 
 GEARPressureFloor:
