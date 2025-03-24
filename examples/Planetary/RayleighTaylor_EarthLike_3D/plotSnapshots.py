@@ -69,8 +69,8 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
 
     with h5py.File(snap_file, "r") as f:
         # Units from file metadata to SI
-        m=float(f["Units"].attrs["Unit mass in cgs (U_M)"]) * 1e-3
-        l=float(f["Units"].attrs["Unit length in cgs (U_L)"]) * 1e-2
+        m=float(f["Units"].attrs["Unit mass in cgs (U_M)"][0]) * 1e-3
+        l=float(f["Units"].attrs["Unit length in cgs (U_L)"][0]) * 1e-2
 
         boxsize_x = f["Header"].attrs["BoxSize"][0] * l
         boxsize_y = f["Header"].attrs["BoxSize"][1] * l
@@ -128,7 +128,7 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
     ax.set_yticks([])
     ax.set_facecolor((0.9, 0.9, 0.9))
     ax.set_xlim((0.0, boxsize_x))
-    ax.set_ylim((0.05, 0.95 * boxsize_y))
+    ax.set_ylim((0.05 * boxsize_y, 0.95 * boxsize_y))
 
 
 
@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     # The three snapshots to be plotted
     snaps = [8, 12, 16]
-    times = ["4000", "6000", "8000"]
+    times = ["400", "600", "800"]
 
     # Plot
     for i, snap in enumerate(snaps):

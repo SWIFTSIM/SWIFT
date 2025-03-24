@@ -83,7 +83,7 @@ if __name__ == "__main__":
     ax = plt.subplot(gs[:, :])
 
     # Snapshots and corresponding times
-    snaps = np.arange(21)
+    snaps = np.arange(26)
     times = 0.1 * snaps
 
     # Calculate mode mode growth

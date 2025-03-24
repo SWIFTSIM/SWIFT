@@ -67,8 +67,8 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
 
     with h5py.File(snap_file, "r") as f:
         # Units from file metadata to SI
-        m=float(f["Units"].attrs["Unit mass in cgs (U_M)"]) * 1e-3
-        l=float(f["Units"].attrs["Unit length in cgs (U_L)"]) * 1e-2
+        m=float(f["Units"].attrs["Unit mass in cgs (U_M)"][0]) * 1e-3
+        l=float(f["Units"].attrs["Unit length in cgs (U_L)"][0]) * 1e-2
 
         boxsize_l = f["Header"].attrs["BoxSize"][0] * l
         A1_x = f["/PartType0/Coordinates"][:, 0] * l

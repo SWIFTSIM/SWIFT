@@ -117,8 +117,8 @@ if __name__ == "__main__":
     axs, cax = make_axes()
 
     # The three snapshots to be plotted
-    snaps = [10, 15, 20]
-    times = ["1.0", "1.5", "2.0"]
+    snaps = [15, 20, 25]
+    times = ["1.5", "2.0", "2.5"]
 
     # Plot
     for i, snap in enumerate(snaps):

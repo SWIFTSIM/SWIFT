@@ -105,7 +105,7 @@ def plot_kh(ax, snap, cmap, norm):
     ax.set_yticks([])
     ax.set_facecolor((0.9, 0.9, 0.9))
     ax.set_xlim((0.0, boxsize_x))
-    ax.set_ylim((0.05, 0.95 * boxsize_y))
+    ax.set_ylim((0.05 * boxsize_y, 0.95 * boxsize_y))
 
 
 

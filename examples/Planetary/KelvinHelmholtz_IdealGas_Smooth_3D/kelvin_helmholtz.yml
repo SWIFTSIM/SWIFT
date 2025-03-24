@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.0    # The starting time of the simulation (in internal units).
-  time_end:   2.12   # The end time of the simulation (in internal units). Corresponding to 2 \tau_{KH}.
+  time_end:   2.625  # The end time of the simulation (in internal units). Corresponding to 2 \tau_{KH}.
   dt_min:     1e-9   # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-2   # The maximal time-step size of the simulation (in internal units).
 

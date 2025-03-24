@@ -27,7 +27,7 @@ import numpy as np
 # Parameters
 N_l = 40  # Number of particles on one side
 gamma = 5.0 / 3.0  # Gas adiabatic index
-rho_in_approx = 4.0  # Density of inner region
+rho_in_approx = 16**3/10**3  # Density of inner region
 rho_out = 1.0  # Density of outer region
 P_in = 2.5  # Pressure of inner region
 P_out = 2.5  # Pressure of outer region

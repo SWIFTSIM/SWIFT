@@ -46,7 +46,7 @@ target_prof = woma.Planet(
 
 # Load material tables
 woma.load_eos_tables(
-    np.unique(np.append(target_prof.A1_mat_layer, impactor_prof.A1_mat_layer))
+    np.unique(target_prof.A1_mat_layer)
 )
 
 # Compute profiles

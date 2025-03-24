@@ -97,7 +97,7 @@ def plot_snapshot(A2_pos, A1_u):
     cbar = plt.colorbar(scat, cax=cax)
     cbar.set_label(r"Sp. Int. Energy (J kg$^{-1}$)")
 
-    ax_lim = 1.5
+    ax_lim = 15
     ax.set_xlim(-ax_lim, ax_lim)
     ax.set_yticks(ax.get_xticks())
     ax.set_ylim(-ax_lim, ax_lim)
