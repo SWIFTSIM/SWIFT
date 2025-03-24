@@ -56,7 +56,9 @@ R1 = data.gas.r1
 R2 = data.gas.r2
 OW = data.gas.owtriggers
 mean_OW = np.mean(OW)
+min_OW = np.min(OW)
 print('Mean OW is ',np.round(mean_OW,1))
+print('Min OW is ', np.round(min_OW,1))
 OW = OW/mean_OW
 
 # Normalize errors
@@ -296,7 +298,7 @@ ax[Ninfo, 1].text(
     0.5, 0.1, "Physical resistivity $\eta$: $%.2f$ " % (eta), **text_common_args
 )
 ax[Ninfo, 1].text(
-    0.5, 0.0, r"Number of particles $N_p$: $%.0f$, $\langle OW \rangle$ = $%.0f$ " % (Np,mean_OW), **text_common_args
+    0.5, 0.0, r"Number of particles $N_p$: $%.0f$, $\langle OW \rangle$ = $%.0f$, $ OW_{min}$ = $%.0f$ " % (Np,mean_OW,min_OW), **text_common_args
 )
 ax[Ninfo, 1].axis("off")
 
