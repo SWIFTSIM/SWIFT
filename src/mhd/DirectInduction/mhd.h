@@ -348,7 +348,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   B[2] = p->mhd_data.B_over_rho[2] * rho;
 
   float OW;
-  OW = 10.0f;
+  OW = 1.0f;
 
 //  const float ker_hdnv = pow_dimension(1.0f/p->rho); /* 1/h^d */
 
