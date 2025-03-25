@@ -373,6 +373,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
 
   Cos_Ind_Diff = (Adv_B_source[0]*Delta_B[0]+Adv_B_source[1]*Delta_B[1]+Adv_B_source[2]*Delta_B[2]);
   if (fabsf(Cos_Ind_Diff)>1.0f){
+    printf("Error: incorrect cosine values. Cos_Ind_Diff = %f\n", Cos_Ind_Diff);
     error(
         "Error: incorrect cosine values "
         );
