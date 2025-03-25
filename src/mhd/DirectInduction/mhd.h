@@ -372,18 +372,19 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   }
 
   Cos_Ind_Diff = (Adv_B_source[0]*Delta_B[0]+Adv_B_source[1]*Delta_B[1]+Adv_B_source[2]*Delta_B[2]);
-  if (fabsf(Cos_Ind_Diff)>1.0f):
+  if (fabsf(Cos_Ind_Diff)>1.0f){
     error(
         "Error: incorrect cosine values "
         );
+}
 
   p->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * p->h * p->h / (absB+FLT_MIN)) * 0.5f * fabsf(1.0f-Cos_Ind_Diff) * Abs_Adv_B_source*(p->mass * kernel_root*ker_hdnv);
 
-  if (p->mhd_data.eta_OWAR<0.0f):
+  if (p->mhd_data.eta_OWAR<0.0f){
     error(
         "Error: incorrect OWAR "
         );
-
+}
 
  
 }
