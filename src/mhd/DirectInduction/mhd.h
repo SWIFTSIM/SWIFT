@@ -350,7 +350,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   float OW;
   OW = 1.0f;
 
-//  const float ker_hdnv = pow_dimension(1.0f/p->rho); /* 1/h^d */
+  const float ker_hdnv = pow_dimension(1.0f/p->rho); /* 1/h^d */
 
   float absB;
   absB = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
