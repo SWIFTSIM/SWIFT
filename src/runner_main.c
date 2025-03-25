@@ -215,7 +215,8 @@ void *runner_main(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
-            runner_doself2_branch_gradient(r, ci);
+            runner_doself2_branch_gradient(r, ci, /*limit_h_min=*/0,
+                                           /*limit_h_max=*/0);
 #else
             runner_doself1_branch_gradient(r, ci, /*limit_h_min=*/0,
                                            /*limit_h_max=*/0);
@@ -279,7 +280,8 @@ void *runner_main(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
-            runner_dopair2_branch_gradient(r, ci, cj);
+            runner_dopair2_branch_gradient(r, ci, cj, /*limit_h_min=*/0,
+                                           /*limit_h_max=*/0);
 #else
             runner_dopair1_branch_gradient(r, ci, cj, /*limit_h_min=*/0,
                                            /*limit_h_max=*/0);
@@ -340,7 +342,7 @@ void *runner_main(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
-            runner_dosub_self2_gradient(r, ci, 1);
+            runner_dosub_self2_gradient(r, ci, /*below_h_max=*/0, 1);
 #else
             runner_dosub_self1_gradient(r, ci, /*below_h_max=*/0, 1);
 #endif
@@ -392,7 +394,7 @@ void *runner_main(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
-            runner_dosub_pair2_gradient(r, ci, cj, 1);
+            runner_dosub_pair2_gradient(r, ci, cj, /*below_h_max=*/0, 1);
 #else
             runner_dosub_pair1_gradient(r, ci, cj, /*below_h_max=*/0, 1);
 #endif
