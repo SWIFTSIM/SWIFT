@@ -350,7 +350,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   float OW;
   OW = 10.0f;
 
-  const float ker_hdnv = pow_dimension(1.0f/p->rho); /* 1/h^d */
+//  const float ker_hdnv = pow_dimension(1.0f/p->rho); /* 1/h^d */
 
   float absB;
   absB = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
@@ -373,7 +373,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
 
   Cos_Ind_Diff = (Adv_B_source[0]*Delta_B[0]+Adv_B_source[1]*Delta_B[1]+Adv_B_source[2]*Delta_B[2]);
   
-  p->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * p->h * p->h / (absB+FLT_MIN)) * 0.5f * fmaxf(0.0f,1.0f-Cos_Ind_Diff) * Abs_Adv_B_source*(p->mass * kernel_root*ker_hdnv);
+  p->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * p->h * p->h / (absB+FLT_MIN)) * 0.5f * fmaxf(0.0f,1.0f-Cos_Ind_Diff) * Abs_Adv_B_source; //   *(p->mass * kernel_root*ker_hdnv);
 
   if (p->mhd_data.eta_OWAR<0.0f){
     error(

@@ -158,11 +158,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   }
 
   /* Calculate OWAR */
+/**
   float OW;
   OW = 10.0f;
 
-  const float ker_hdinv = pow_dimension(hi_inv); /* 1/h^d */
-  const float ker_hdjnv = pow_dimension(hj_inv); /* 1/h^d */
+  const float ker_hdinv = pow_dimension(hi_inv); 
+  const float ker_hdjnv = pow_dimension(hj_inv);
 
   float absBi;
   absBi = sqrtf(Bi[0]*Bi[0]+Bi[1]*Bi[1]+Bi[2]*Bi[2]);
@@ -219,7 +220,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
         );
 }
 
-
+**/
 
 }
 
@@ -309,10 +310,11 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   }
 
   /* Calculate OWAR */
+/**
   float OW;
   OW = 10.0f;
 
-  const float ker_hdinv = pow_dimension(hi_inv); /* 1/h^d */
+  const float ker_hdinv = pow_dimension(hi_inv); 
 
   float absBj;
   absBj = sqrtf(Bj[0]*Bj[0]+Bj[1]*Bj[1]+Bj[2]*Bj[2]);
@@ -343,7 +345,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
         "Error: incorrect OWAR "
         );
 }
-
+**/
 }
 
 /**
