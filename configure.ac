@@ -1431,6 +1431,38 @@ if test "$with_hdf5" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
 
+# Check for lustre support. Attempted by default.
+have_lustreapi="no"
+AC_ARG_WITH([lustreapi],
+   [AS_HELP_STRING([--with-lustreapi=PATH],
+      [use the lustre api library for some striping control @<:@yes/no@:>@]
+   )],
+   [with_lustreapi="$withval"],
+   [with_lustreapi="yes"]
+)
+
+if test "x$with_lustreapi" != "xno"; then
+   if test "x$with_lustreapi" != "xyes" -a "x$with_lustreapi" != "x"; then
+      LUSTREAPI_LIBS="-L$with_lustreapi -llustreapi"
+      LUSTREAPI_INCS="-I$with_lustreapi/include"
+   else
+      LUSTREAPI_LIBS="-llustreapi"
+      LUSTREAPI_INCS=""
+   fi
+   AC_CHECK_LIB([lustreapi], [llapi_obd_statfs], [have_lustreapi="yes"], 
+                [have_lustreapi="no"],[$LUSTREAPI_LIBS])
+
+   if test "$have_lustreapi" = "yes"; then
+      AC_DEFINE([HAVE_LUSTREAPI],1,[The lustre API library appears to be present.])
+   else
+      LUSTREAPI_LIBS=""
+   fi
+fi
+AC_SUBST([LUSTREAPI_LIBS])
+AC_SUBST([LUSTREAPI_INCS])
+AM_CONDITIONAL([HAVELUSTREAPI],[test -n "$LUSTREAPI_LIBS"])
+
+
 # Check for grackle.
 have_grackle="no"
 AC_ARG_WITH([grackle],
@@ -1839,7 +1871,7 @@ if test "$have_armv7apmccntr"x = "yes"x; then
 fi
 
 # Check if we have native exp10 and exp10f functions. If not fallback to our
-# implementations. On Apple/CLANG/homebrew gcc we have __exp10, so also check for that
+# implementations. On Apple/CLANG/Homebrew gcc we have __exp10, so also check for that
 # if the compiler is clang.
 AC_CHECK_LIB([m],[exp10], [AC_DEFINE([HAVE_EXP10],1,[The exp10 function is present.])])
 AC_CHECK_LIB([m],[exp10f], [AC_DEFINE([HAVE_EXP10F],1,[The exp10f function is present.])])
@@ -1856,7 +1888,7 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
 fi
 
-# On Apple, check for __sincos and __sincosf inline functions in the headers.
+# On Apple (CLANG or Homebrew gcc), check for __sincos and __sincosf inline functions in the headers.
 AC_CHECK_HEADERS([math.h], [
   AC_CHECK_DECLS([__sincos, __sincosf], [
     AC_DEFINE([HAVE___SINCOS], 1, [The __sincos function is present.])
@@ -3345,6 +3377,7 @@ AC_MSG_RESULT([
    MPI enabled          : $enable_mpi
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5
+   LUSTRE API enabled   : $have_lustreapi
    METIS/ParMETIS       : $have_metis / $have_parmetis
    FFTW3 enabled        : $have_fftw
     - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw
