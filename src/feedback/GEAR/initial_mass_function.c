@@ -21,6 +21,7 @@
 #include "initial_mass_function.h"
 #include "exp10.h"
 
+#include "exp10.h"
 #include "hdf5_functions.h"
 #include "stellar_evolution_struct.h"
 
