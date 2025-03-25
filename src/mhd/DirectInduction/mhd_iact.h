@@ -181,7 +181,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
 
   for (int k = 0; k < 3; k++) {
   Adv_B_sourcei[k] /= (Abs_Adv_B_sourcei+FLT_MIN);
-  Adv_Delta_Bi[k] /= (Abs_Delta_Bi+FLT_MIN);
+  Delta_Bi[k] /= (Abs_Delta_Bi+FLT_MIN);
   }
 
   Cos_Ind_Diffi = (Adv_B_sourcei[0]*Delta_Bi[0]+Adv_B_sourcei[1]*Delta_Bi[1]+Adv_B_sourcei[2]*Delta_Bi[2]);
@@ -203,7 +203,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
 
   for (int k = 0; k < 3; k++) {
   Adv_B_sourcej[k] /= (Abs_Adv_B_sourcej+FLT_MIN);
-  Adv_Delta_Bj[k] /= (Abs_Delta_Bj+FLT_MIN);
+  Delta_Bj[k] /= (Abs_Delta_Bj+FLT_MIN);
   }
 
   Cos_Ind_Diffj = (Adv_B_sourcej[0]*Delta_Bj[0]+Adv_B_sourcej[1]*Delta_Bj[1]+Adv_B_sourcej[2]*Delta_Bj[2]);
@@ -322,7 +322,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   for (int k = 0; k < 3; k++) {
   Adv_B_sourcej[k] /= (Abs_Adv_B_sourcej+FLT_MIN);
-  Adv_Delta_Bj[k] /= (Abs_Delta_Bj+FLT_MIN);
+  Delta_Bj[k] /= (Abs_Delta_Bj+FLT_MIN);
   }
 
   Cos_Ind_Diffj = (Adv_B_sourcej[0]*Delta_Bj[0]+Adv_B_sourcej[1]*Delta_Bj[1]+Adv_B_sourcej[2]*Delta_Bj[2]);

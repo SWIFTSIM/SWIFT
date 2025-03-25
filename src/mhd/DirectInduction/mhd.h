@@ -368,7 +368,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
 
   for (int k = 0; k < 3; k++) {
   Adv_B_source[k] /= (Abs_Adv_B_source+FLT_MIN);
-  Adv_Delta_B[k] /= (Abs_Delta_B+FLT_MIN);
+  Delta_B[k] /= (Abs_Delta_B+FLT_MIN);
   }
 
   Cos_Ind_Diff = (Adv_B_source[0]*Delta_B[0]+Adv_B_source[1]*Delta_B[1]+Adv_B_source[2]*Delta_B[2]);
