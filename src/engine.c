@@ -3481,8 +3481,12 @@ void engine_init(
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
   e->snapshot_distributed =
       parser_get_opt_param_int(params, "Snapshots:distributed", 0);
-  e->snapshot_lustre_OST_count =
-      parser_get_opt_param_int(params, "Snapshots:lustre_OST_count", 0);
+  e->snapshot_lustre_OST_checks =
+      parser_get_opt_param_int(params, "Snapshots:lustre_OST_checks", 0);
+  e->snapshot_lustre_OST_free =
+      parser_get_opt_param_int(params, "Snapshots:lustre_OST_free", 0);
+  e->snapshot_lustre_OST_test =
+      parser_get_opt_param_int(params, "Snapshots:lustre_OST_test", 0);
   e->snapshot_invoke_stf =
       parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
   e->snapshot_invoke_fof =
