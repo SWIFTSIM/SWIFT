@@ -21,6 +21,7 @@
 #include "stellar_evolution.h"
 
 /* Include local headers */
+#include "exp10.h"
 #include "hdf5_functions.h"
 #include "initial_mass_function.h"
 #include "lifetime.h"
@@ -28,7 +29,6 @@
 #include "stellar_evolution_struct.h"
 #include "supernovae_ia.h"
 #include "supernovae_ii.h"
-#include "exp10.h"
 
 #include <math.h>
 #include <stddef.h>
