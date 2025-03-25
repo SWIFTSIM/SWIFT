@@ -250,6 +250,8 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
  *
  * Returns 0 if \f$u > \gamma = H/h\f$.
  *
+ * Note: Types edited to long double to avoid truncation.
+ *
  * @param u The ratio of the distance to the smoothing length \f$u = x/h\f$.
  * @param W (return) The value of the kernel function \f$W(x,h)\f$.
  * @param dW_dx (return) The norm of the gradient of \f$|\nabla W(x,h)|\f$.
@@ -258,7 +260,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
     float u, float *restrict W, float *restrict dW_dx) {
 
   /* Go to the range [0,1[ from [0,H[ */
-  const float x = u * kernel_gamma_inv;
+  const long double x = u * kernel_gamma_inv;
 
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x * kernel_ivals_f);
@@ -266,15 +268,14 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
   const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
 
   /* First two terms of the polynomial ... */
-  float w = coeffs[0] * x + coeffs[1];
-  float dw_dx = coeffs[0];
+  long double w = coeffs[0] * x + coeffs[1];
+  long double dw_dx = coeffs[0];
 
   /* ... and the rest of them */
   for (int k = 2; k <= kernel_degree; k++) {
     dw_dx = dw_dx * x + w;
     w = x * w + coeffs[k];
   }
-
   w = max(w, 0.f);
   dw_dx = min(dw_dx, 0.f);
 
