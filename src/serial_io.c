@@ -782,7 +782,14 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     /* Is it this rank's turn to read ? */
     if (rank == mpi_rank) {
 
-      h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
+      /* Set the minimal API version to avoid issues with advanced features */
+      hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+      herr_t err =
+          H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                               HDF5_HIGHEST_FILE_FORMAT_VERSION);
+      if (err < 0) error("Error setting the hdf5 API version");
+
+      h_file = H5Fopen(fileName, H5F_ACC_RDONLY, h_props);
       if (h_file < 0)
         error("Error while opening file '%s' on rank %d.", fileName, mpi_rank);
 
@@ -889,6 +896,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
       /* Close file */
       H5Fclose(h_file);
+      H5Pclose(h_props);
     }
 
     /* Wait for the read of the reading to complete */
@@ -972,7 +980,7 @@ void write_output_serial(struct engine* e,
                          const int fof, const int mpi_rank, const int mpi_size,
                          MPI_Comm comm, MPI_Info info) {
 
-  hid_t h_file = 0, h_grp = 0;
+  hid_t h_file = 0, h_grp = 0, h_props = 0;
   int numFiles = 1;
   const struct part* parts = e->s->parts;
   const struct xpart* xparts = e->s->xparts;
@@ -1165,9 +1173,15 @@ void write_output_serial(struct engine* e,
     /* Write the part corresponding to this specific output */
     xmf_write_outputheader(xmfFile, fileName, e->time);
 
+    /* Set the minimal API version to avoid issues with advanced features */
+    h_props = H5Pcreate(H5P_FILE_ACCESS);
+    herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                      HDF5_HIGHEST_FILE_FORMAT_VERSION);
+    if (err < 0) error("Error setting the hdf5 API version");
+
     /* Open file */
     /* message("Opening file '%s'.", fileName); */
-    h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
     if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
     /* Open header to write simulation properties */
@@ -1307,14 +1321,22 @@ void write_output_serial(struct engine* e,
 
     /* Close file */
     H5Fclose(h_file);
+    H5Pclose(h_props);
   }
 
   /* Now write the top-level cell structure */
-  hid_t h_file_cells = 0, h_grp_cells = 0;
+  hid_t h_file_cells = 0, h_grp_cells = 0, h_props_cells = 0;
   if (mpi_rank == 0) {
 
+    /* Set the minimal API version to avoid issues with advanced features */
+    h_props_cells = H5Pcreate(H5P_FILE_ACCESS);
+    herr_t err =
+        H5Pset_libver_bounds(h_props_cells, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                             HDF5_HIGHEST_FILE_FORMAT_VERSION);
+    if (err < 0) error("Error setting the hdf5 API version");
+
     /* Open the snapshot on rank 0 */
-    h_file_cells = H5Fopen(fileName, H5F_ACC_RDWR, H5P_DEFAULT);
+    h_file_cells = H5Fopen(fileName, H5F_ACC_RDWR, h_props_cells);
     if (h_file_cells < 0)
       error("Error while opening file '%s' on rank %d.", fileName, mpi_rank);
 
@@ -1335,6 +1357,7 @@ void write_output_serial(struct engine* e,
   if (mpi_rank == 0) {
     H5Gclose(h_grp_cells);
     H5Fclose(h_file_cells);
+    H5Pclose(h_props_cells);
   }
 
   /* Now loop over ranks and write the data */
@@ -1343,7 +1366,14 @@ void write_output_serial(struct engine* e,
     /* Is it this rank's turn to write ? */
     if (rank == mpi_rank) {
 
-      h_file = H5Fopen(fileName, H5F_ACC_RDWR, H5P_DEFAULT);
+      /* Set the minimal API version to avoid issues with advanced features */
+      h_props = H5Pcreate(H5P_FILE_ACCESS);
+      herr_t err =
+          H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                               HDF5_HIGHEST_FILE_FORMAT_VERSION);
+      if (err < 0) error("Error setting the hdf5 API version");
+
+      h_file = H5Fopen(fileName, H5F_ACC_RDWR, h_props);
       if (h_file < 0)
         error("Error while opening file '%s' on rank %d.", fileName, mpi_rank);
 
@@ -1706,6 +1736,7 @@ void write_output_serial(struct engine* e,
 
       /* Close file */
       H5Fclose(h_file);
+      H5Pclose(h_props);
     }
 
     /* Wait for the read of the reading to complete */

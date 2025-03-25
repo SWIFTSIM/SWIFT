@@ -106,7 +106,8 @@ enum task_types {
   task_type_fof_attach_self,
   task_type_fof_attach_pair,
   task_type_neutrino_weight,
-  task_type_sink_in,     /* Implicit */
+  task_type_sink_in, /* Implicit */
+  task_type_sink_density_ghost,
   task_type_sink_ghost1, /* Implicit */
   task_type_sink_ghost2, /* Implicit */
   task_type_sink_out,    /* Implicit */
@@ -148,6 +149,7 @@ enum task_subtypes {
   task_subtype_stars_prep2,
   task_subtype_stars_feedback,
   task_subtype_sf_counts,
+  task_subtype_grav_counts,
   task_subtype_bpart_rho,
   task_subtype_bpart_feedback,
   task_subtype_bh_density,
@@ -155,6 +157,7 @@ enum task_subtypes {
   task_subtype_do_gas_swallow,
   task_subtype_do_bh_swallow,
   task_subtype_bh_feedback,
+  task_subtype_sink_density,
   task_subtype_sink_do_sink_swallow,
   task_subtype_sink_swallow,
   task_subtype_sink_do_gas_swallow,
@@ -292,12 +295,6 @@ struct task {
 #ifdef SWIFT_DEBUG_CHECKS
   /* When was this task last run? */
   integertime_t ti_run;
-
-  /* Was this task activted by unskip? */
-  char activated_by_unskip;
-
-  /* Was this task activted by marktask? */
-  char activated_by_marktask;
 #endif /* SWIFT_DEBUG_CHECKS */
 
 } SWIFT_STRUCT_ALIGN;

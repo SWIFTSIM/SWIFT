@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[1.0.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[2025.01],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 AC_COPYRIGHT
@@ -138,7 +138,6 @@ if test "$enable_ipo" = "yes"; then
       CFLAGS="$CFLAGS -ipo"
       LDFLAGS="$LDFLAGS -ipo"
       AC_CHECK_PROGS([AR], [xiar])
-      AC_CHECK_PROGS([LD], [xild])
       AC_CHECK_PROGS([RANLIB], [llvm-ranlib])
       AC_MSG_RESULT([added oneapi interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
@@ -344,7 +343,7 @@ if test "$enable_cell_graph" = "yes"; then
    AC_DEFINE([SWIFT_CELL_GRAPH],1,[Enable cell graph])
 fi
 
-# Check if using our custom icbrtf is enalbled.
+# Check if using our custom icbrtf is enabled.
 AC_ARG_ENABLE([custom-icbrtf],
    [AS_HELP_STRING([--enable-custom-icbrtf],
      [Use SWIFT's custom icbrtf function instead of the system cbrtf @<:@yes/no@:>@]
@@ -432,6 +431,20 @@ if test "$stars_density_checks" = "yes"; then
    AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-stars-density-checks!)
 elif test "$stars_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_STARS_DENSITY_CHECKS], [$enableval] ,[Enable stars density brute-force checks])
+fi
+
+# Check if sink density checks are on for some particles.
+AC_ARG_ENABLE([sink-density-checks],
+   [AS_HELP_STRING([--enable-sink-density-checks],
+     [Activate expensive brute-force sink density checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [sink_density_checks="$enableval"],
+   [sink_density_checks="no"]
+)
+if test "$sink_density_checks" = "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-sink-density-checks!)
+elif test "$sink_density_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_SINK_DENSITY_CHECKS], [$enableval] ,[Enable sink density brute-force checks])
 fi
 
 # Check if ghost statistics are enabled
@@ -818,6 +831,42 @@ fi
 AC_SUBST([GSL_LIBS])
 AC_SUBST([GSL_INCS])
 AM_CONDITIONAL([HAVEGSL],[test -n "$GSL_LIBS"])
+
+# Check for GMP. We test for this in the standard directories by default,
+# and only disable if using --with-gmp=no or --without-gmp. When a value
+# is given GMP must be found.
+have_gmp="no"
+AC_ARG_WITH([gmp],
+    [AS_HELP_STRING([--with-gmp=PATH],
+       [root directory where GMP is installed @<:@yes/no@:>@]
+    )],
+    [with_gmp="$withval"],
+    [with_gmp="test"]
+)
+if test "x$with_gmp" != "xno"; then
+   if test "x$with_gmp" != "xyes" -a "x$with_gmp" != "xtest" -a "x$with_gmp" != "x"; then
+      GMP_LIBS="-L$with_gmp/lib -lgmp"
+   else
+      GMP_LIBS="-lgmp"
+   fi
+   #  GMP is not specified, so just check if we have it.
+   if test "x$with_gmp" = "xtest"; then
+      AC_CHECK_LIB([gmp],[__gmpz_inits],[have_gmp="yes"],[have_gmp="no"],$GMP_LIBS)
+      if test "x$have_gmp" != "xno"; then
+         AC_DEFINE([HAVE_LIBGMP],1,[The GMP library appears to be present.])
+      fi
+   else
+      AC_CHECK_LIB([gmp],[__gmpz_inits],
+         AC_DEFINE([HAVE_LIBGMP],1,[The GMP library appears to be present.]),
+         AC_MSG_ERROR(something is wrong with the GMP library!), $GMP_LIBS)
+      have_gmp="yes"
+   fi
+   if test "$have_gmp" = "no"; then
+      GMP_LIBS=""
+   fi
+fi
+AC_SUBST([GMP_LIBS])
+AM_CONDITIONAL([HAVEGMP],[test -n "$GMP_LIBS"])
 
 # Check for pthreads.
 AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
@@ -1382,6 +1431,38 @@ if test "$with_hdf5" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
 
+# Check for lustre support. Attempted by default.
+have_lustreapi="no"
+AC_ARG_WITH([lustreapi],
+   [AS_HELP_STRING([--with-lustreapi=PATH],
+      [use the lustre api library for some striping control @<:@yes/no@:>@]
+   )],
+   [with_lustreapi="$withval"],
+   [with_lustreapi="yes"]
+)
+
+if test "x$with_lustreapi" != "xno"; then
+   if test "x$with_lustreapi" != "xyes" -a "x$with_lustreapi" != "x"; then
+      LUSTREAPI_LIBS="-L$with_lustreapi -llustreapi"
+      LUSTREAPI_INCS="-I$with_lustreapi/include"
+   else
+      LUSTREAPI_LIBS="-llustreapi"
+      LUSTREAPI_INCS=""
+   fi
+   AC_CHECK_LIB([lustreapi], [llapi_obd_statfs], [have_lustreapi="yes"],
+                [have_lustreapi="no"],[$LUSTREAPI_LIBS])
+
+   if test "$have_lustreapi" = "yes"; then
+      AC_DEFINE([HAVE_LUSTREAPI],1,[The lustre API library appears to be present.])
+   else
+      LUSTREAPI_LIBS=""
+   fi
+fi
+AC_SUBST([LUSTREAPI_LIBS])
+AC_SUBST([LUSTREAPI_INCS])
+AM_CONDITIONAL([HAVELUSTREAPI],[test -n "$LUSTREAPI_LIBS"])
+
+
 # Check for grackle.
 have_grackle="no"
 AC_ARG_WITH([grackle],
@@ -1588,9 +1669,25 @@ else
    have_chealpix="no"
 fi
 
-# Check for floating-point execeptions
-AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
-    [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
+# Check for floating-point exception trapping support.
+#
+# We do not allow this to be enabled when optimizing as compilers do operations
+# which are unsafe for speed. This can result in FPEs on valid vector
+# operations when additional padding is used. This has been seen on clang and
+# GCC based compilers.
+if test "$enable_opt" != "yes"; then
+   if test "$ax_cv_c_compiler_vendor" != "oneapi"; then
+      AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
+         [Defined if floating-point exceptions can be trapped.]))
+   else
+      #  Default optimization for Intel is too high , -O2, so we also need
+      #  to have debugging enabled which uses -O0 as well.
+      if test "$ax_enable_debug" != "no"; then
+         AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
+            [Defined if floating-point exceptions can be trapped.]))
+      fi
+   fi
+fi
 
 # Check for setaffinity.
 AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[1],
@@ -1773,7 +1870,7 @@ if test "$have_armv7apmccntr"x = "yes"x; then
       AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
 fi
 
-# Check if we have native exp10 and exp10f functions. If not failback to our
+# Check if we have native exp10 and exp10f functions. If not fallback to our
 # implementations. On Apple/CLANG we have __exp10, so also check for that
 # if the compiler is clang.
 AC_CHECK_LIB([m],[exp10], [AC_DEFINE([HAVE_EXP10],1,[The exp10 function is present.])])
@@ -1783,7 +1880,7 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__exp10f], [AC_DEFINE([HAVE___EXP10F],1,[The __exp10f function is present.])])
 fi
 
-# Check if we have native sincos and sincosf functions. If not failback to our
+# Check if we have native sincos and sincosf functions. If not fallback to our
 # implementations. On Apple/CLANG we have __sincos, so also check for that
 # if the compiler is clang.
 AC_CHECK_LIB([m],[sincos], [AC_DEFINE([HAVE_SINCOS],1,[The sincos function is present.])])
@@ -1792,7 +1889,7 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincos], [AC_DEFINE([HAVE___SINCOS],1,[The __sincos function is present.])])
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
 fi
- 
+
 # The aocc compiler has optimized maths libraries that we should use. Check
 # any clang for this support. Note do this after the basic check for maths
 # as we need to make sure -lm follows. Also note needs -Ofast or -ffast-math
@@ -1912,7 +2009,8 @@ AC_SUBST([SUNDIALS_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should
+		start here. Options are: @<:@none, GEAR, GEAR-G3, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1939,12 +2037,24 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_pressure_floor=GEAR
+	with_subgrid_stars=GEAR
+	with_subgrid_star_formation=GEAR
+	with_subgrid_feedback=GEAR
+	with_subgrid_black_holes=none
+	with_subgrid_sink=GEAR
+	with_subgrid_extra_io=none
+	enable_fof=no
+   ;;
+   GEAR-G3)
+	with_subgrid_cooling=grackle_3
+	with_subgrid_chemistry=GEAR_10
 	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=GEAR
 	with_subgrid_black_holes=none
-	with_subgrid_sink=none
+	with_subgrid_sink=GEAR
 	with_subgrid_extra_io=none
 	enable_fof=no
    ;;
@@ -2013,6 +2123,19 @@ case "$with_subgrid" in
    ;;
    SPIN_JET_EAGLE)
 	with_subgrid_cooling=EAGLE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+	with_subgrid_feedback=EAGLE
+	with_subgrid_black_holes=SPIN_JET
+	with_subgrid_sink=none
+	with_subgrid_extra_io=none
+	enable_fof=yes
+   ;;
+  SPIN_JET_EAGLE-XL)
+	with_subgrid_cooling=PS2020
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=EAGLE
@@ -2094,7 +2217,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowfax, planetary, remix, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -2131,9 +2254,12 @@ case "$with_hydro" in
       AC_DEFINE([GIZMO_MFM_SPH], [1], [GIZMO MFM SPH])
       need_riemann_solver=yes
    ;;
-   shadowfax)
-      AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])
+   shadowswift)
+      AC_DEFINE([SHADOWSWIFT], [1], [ShadowSWIFT hydrodynamics])
+      AC_DEFINE([MOVING_MESH_HYDRO], [1], [Moving mesh hydrodynamics])
+      need_moving_mesh=yes
       need_riemann_solver=yes
+      hydro_does_mass_flux=yes
    ;;
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
@@ -2183,8 +2309,8 @@ fi
 if test "$with_hydro" = "gizmo-mfv" -a "$with_spmhd" != "none"; then
   AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
 fi
-if test "$with_hydro" = "shadowfax" -a "$with_spmhd" != "none"; then
-  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+if test "$with_hydro" = "shadowswift" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a moving mesh hydro solver!"])
 fi
 
 # Check if debugging interactions stars is switched on.
@@ -2411,6 +2537,27 @@ esac
 
 if test "x$need_riemann_solver" = "xyes" -a "$with_riemann" = "none"; then
   AC_MSG_ERROR([Hydro scheme $with_hydro requires selection of a Riemann solver!])
+fi
+
+# Moving mesh
+AC_ARG_ENABLE([moving-mesh],
+    [AS_HELP_STRING([--enable-moving-mesh],
+        [enable the moving mesh computation]
+    )],
+    [enable_moving_mesh="${enableval}"],
+    [enable_moving_mesh="no"]
+)
+if test "x$need_moving_mesh" = "xyes"; then
+    enable_moving_mesh="yes"
+fi
+if test "$enable_moving_mesh" = "yes"; then
+    if test "$have_gmp" = "no"; then
+        AC_MSG_ERROR([GMP is required when using moving mesh!])
+    fi
+    if test "$have_gsl" = "no"; then
+        AC_MSG_ERROR([GSL is required when using moving mesh!])
+    fi
+    AC_DEFINE([MOVING_MESH], [1], [Unstructured Voronoi mesh])
 fi
 
 # Hydro does mass flux?
@@ -2767,6 +2914,9 @@ case "$with_sink" in
    none)
       AC_DEFINE([SINK_NONE], [1], [No sink particle model])
    ;;
+   Basic)
+    AC_DEFINE([SINK_BASIC], [1], [Simple, self-contained sink model with only Bondi-Hoyle accretion and no SF.])
+    ;;
    GEAR)
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     ;;
@@ -3010,6 +3160,7 @@ case "$with_rt" in
       AC_DEFINE([RT_GEAR], [1], [GEAR M1 closure scheme])
       number_group=${with_rt#*_}
       AC_DEFINE_UNQUOTED([RT_NGROUPS], [$number_group], [Number of photon groups to follow])
+      AC_DEFINE([MPI_SYMMETRIC_FORCE_INTERACTION_RT], [1], [Do symmetric MPI interactions])
 
       if test "$number_group" = "0"; then
           AC_MSG_ERROR([GEAR-RT: Cannot work with zero photon groups])
@@ -3024,9 +3175,14 @@ case "$with_rt" in
           AC_DEFINE([SWIFT_RT_DEBUG_CHECKS], [1], [additional debugging checks for RT])
       fi
 
-      if test "$with_hydro" != "gizmo-mfv"; then
-          AC_MSG_ERROR([GEAR-RT: Cannot work without gizmo-mfv hydro. Compile using --with-hydro=gizmo-mfv])
-      fi
+      case "$with_hydro" in
+          "gizmo-mfv" | "sphenix")
+          # allowed.
+        ;;
+        *)
+          AC_MSG_ERROR([GEAR-RT: Cannot work without gizmo-mfv or sphenix hydro. Compile using --with-hydro=gizmo-mfv or --with-hydro=sphenix])
+        ;;
+      esac
 
       if test "$with_rt_riemann_solver" = "none"; then
           AC_MSG_ERROR([GEAR-RT: You need to select an RT Riemann solver (--with-rt-riemann-solver=...)])
@@ -3143,6 +3299,9 @@ AM_CONDITIONAL([HAVESPHM1RTRT], [test "${with_rt:0:7}" = "SPHM1RT"])
 # Check if using GEAR-RT radiative transfer
 AM_CONDITIONAL([HAVEGEARRT], [test "${with_rt:0:4}" = "GEAR"])
 
+# Check if using Moving mesh
+AM_CONDITIONAL([HAVE_MOVING_MESH], [test "$enable_moving_mesh" = "yes"])
+
 
 
 
@@ -3194,12 +3353,14 @@ AC_MSG_RESULT([
    MPI enabled          : $enable_mpi
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5
+   LUSTRE API enabled   : $have_lustreapi
    METIS/ParMETIS       : $have_metis / $have_parmetis
    FFTW3 enabled        : $have_fftw
     - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw
     - MPI               : $have_mpi_fftw
     - ARM               : $have_arm_fftw
    GSL enabled          : $have_gsl
+   GMP enabled          : $have_gmp
    HEALPix C enabled    : $have_chealpix
    libNUMA enabled      : $have_numa
    GRACKLE enabled      : $have_grackle
@@ -3210,6 +3371,7 @@ AC_MSG_RESULT([
    VELOCIraptor enabled : $have_velociraptor
    FoF activated:       : $enable_fof
    Lightcones enabled   : $enable_lightcone
+   Moving-mesh enabled  : $enable_moving_mesh
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension

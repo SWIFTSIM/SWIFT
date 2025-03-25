@@ -177,6 +177,10 @@ int main(int argc, char *argv[]) {
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
+#ifdef MOVING_MESH
+  int with_grid_hydro = 0;
+  int with_grid = 0;
+#endif
   int with_stars = 0;
   int with_fof = 0;
   int with_lightcone = 0;
@@ -409,6 +413,11 @@ int main(int argc, char *argv[]) {
     with_cooling = 1;
     with_feedback = 1;
   }
+#ifdef MOVING_MESH
+  if (with_hydro) {
+    with_grid = 1;
+  }
+#endif
 
   /* Deal with thread numbers */
   if (nr_threads <= 0)
@@ -519,11 +528,17 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifdef WITH_MPI
+#ifdef SWIFT_DEBUG_CHECKS
+  if (with_sinks) {
+    pretime_message("Warning: sink particles are are WIP yet with MPI.");
+  }
+#else
   if (with_sinks) {
     pretime_message("Error: sink particles are not available yet with MPI.");
     return 1;
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
+#endif /* WITH_MPI */
 
   if (with_sinks && with_star_formation) {
     pretime_message(
@@ -1075,6 +1090,11 @@ int main(int argc, char *argv[]) {
 #ifdef NONE_SPH
       error("Can't run with hydro when compiled without a hydro model!");
 #endif
+#ifdef MOVING_MESH
+      warning(
+          "Moving mesh hydrodynamics is in the process of being merged and "
+          "will not perform as expected right now!");
+#endif
     }
     if (with_stars) {
 #ifdef STARS_NONE
@@ -1154,7 +1174,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the sink properties */
     if (with_sinks) {
       sink_props_init(&sink_properties, &feedback_properties, &prog_const, &us,
-                      params, &cosmo);
+                      params, &hydro_properties, &cosmo, with_feedback);
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
 
@@ -1507,7 +1527,12 @@ int main(int argc, char *argv[]) {
     if (with_drift_all) engine_policies |= engine_policy_drift_all;
     if (with_mpole_reconstruction)
       engine_policies |= engine_policy_reconstruct_mpoles;
+#ifndef MOVING_MESH
     if (with_hydro) engine_policies |= engine_policy_hydro;
+#else
+    if (with_hydro) engine_policies |= engine_policy_grid_hydro;
+    if (with_grid) engine_policies |= engine_policy_grid;
+#endif
     if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
     if (with_external_gravity)
       engine_policies |= engine_policy_external_gravity;

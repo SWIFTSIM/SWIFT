@@ -565,7 +565,7 @@ void engine_io(struct engine *e) {
 #endif
 
         /* ... and find the next output time */
-        engine_compute_next_snapshot_time(e);
+        engine_compute_next_snapshot_time(e, /*restart=*/0);
         break;
 
       case output_statistics:
@@ -702,13 +702,16 @@ void engine_io(struct engine *e) {
  */
 void engine_set_and_verify_snapshot_triggers(struct engine *e) {
 
+  integertime_t ti_next_snap = e->ti_next_snapshot;
+  if (ti_next_snap == -1) ti_next_snap = max_nr_timesteps;
+
   /* Time until the next snapshot */
   double time_to_next_snap;
   if (e->policy & engine_policy_cosmology) {
-    time_to_next_snap = cosmology_get_delta_time(e->cosmology, e->ti_current,
-                                                 e->ti_next_snapshot);
+    time_to_next_snap =
+        cosmology_get_delta_time(e->cosmology, e->ti_current, ti_next_snap);
   } else {
-    time_to_next_snap = (e->ti_next_snapshot - e->ti_current) * e->time_base;
+    time_to_next_snap = (ti_next_snap - e->ti_current) * e->time_base;
   }
 
   /* Do we need to reduce any of the recording trigger times?
@@ -749,15 +752,19 @@ void engine_set_and_verify_snapshot_triggers(struct engine *e) {
  * @brief Computes the next time (on the time line) for a dump
  *
  * @param e The #engine.
+ * @param restart Are we calling this upon a restart event?
  */
-void engine_compute_next_snapshot_time(struct engine *e) {
+void engine_compute_next_snapshot_time(struct engine *e, const int restart) {
 
   /* Do output_list file case */
   if (e->output_list_snapshots) {
     output_list_read_next_time(e->output_list_snapshots, e, "snapshots",
                                &e->ti_next_snapshot);
 
-    engine_set_and_verify_snapshot_triggers(e);
+    /* Unless we are restarting, check the allowed recording trigger time */
+    if (!restart) engine_set_and_verify_snapshot_triggers(e);
+
+    /* All done in the list case */
     return;
   }
 
@@ -815,8 +822,9 @@ void engine_compute_next_snapshot_time(struct engine *e) {
         message("Next snapshot time set to t=%e.", next_snapshot_time);
     }
 
-    /* Set the recording triggers accordingly for the next output */
-    engine_set_and_verify_snapshot_triggers(e);
+    /* Unless we are restarting, set the recording triggers accordingly for the
+     * next output */
+    if (!restart) engine_set_and_verify_snapshot_triggers(e);
   }
 }
 
@@ -1181,7 +1189,7 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
     if (e->output_list_snapshots->select_output_on)
       output_list_check_selection(e->output_list_snapshots, output_options);
 
-    engine_compute_next_snapshot_time(e);
+    engine_compute_next_snapshot_time(e, /*restart=*/0);
 
     if (e->policy & engine_policy_cosmology)
       e->a_first_snapshot =
@@ -1277,12 +1285,15 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   /* Time until the next snapshot */
+  integertime_t ti_next_snap = e->ti_next_snapshot;
+  if (ti_next_snap == -1) ti_next_snap = max_nr_timesteps;
+
   double time_to_next_snap;
   if (e->policy & engine_policy_cosmology) {
-    time_to_next_snap = cosmology_get_delta_time(e->cosmology, e->ti_current,
-                                                 e->ti_next_snapshot);
+    time_to_next_snap =
+        cosmology_get_delta_time(e->cosmology, e->ti_current, ti_next_snap);
   } else {
-    time_to_next_snap = (e->ti_next_snapshot - e->ti_current) * e->time_base;
+    time_to_next_snap = (ti_next_snap - e->ti_current) * e->time_base;
   }
 
   /* Should any not yet switched on trigger be activated? (part version) */
@@ -1317,10 +1328,10 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
         /* Time from the start of the particle's step to the snapshot */
         double total_time;
         if (with_cosmology) {
-          total_time = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                                e->ti_next_snapshot);
+          total_time =
+              cosmology_get_delta_time(e->cosmology, ti_begin, ti_next_snap);
         } else {
-          total_time = (e->ti_next_snapshot - ti_begin) * e->time_base;
+          total_time = (ti_next_snap - ti_begin) * e->time_base;
         }
 
         /* Time to deduct = time since the start of the step - trigger time */
@@ -1378,10 +1389,10 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
         /* Time from the start of the particle's step to the snapshot */
         double total_time;
         if (with_cosmology) {
-          total_time = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                                e->ti_next_snapshot);
+          total_time =
+              cosmology_get_delta_time(e->cosmology, ti_begin, ti_next_snap);
         } else {
-          total_time = (e->ti_next_snapshot - ti_begin) * e->time_base;
+          total_time = (ti_next_snap - ti_begin) * e->time_base;
         }
 
         /* Time to deduct = time since the start of the step - trigger time */
@@ -1438,10 +1449,10 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
         /* Time from the start of the particle's step to the snapshot */
         double total_time;
         if (with_cosmology) {
-          total_time = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                                e->ti_next_snapshot);
+          total_time =
+              cosmology_get_delta_time(e->cosmology, ti_begin, ti_next_snap);
         } else {
-          total_time = (e->ti_next_snapshot - ti_begin) * e->time_base;
+          total_time = (ti_next_snap - ti_begin) * e->time_base;
         }
 
         /* Time to deduct = time since the start of the step - trigger time */

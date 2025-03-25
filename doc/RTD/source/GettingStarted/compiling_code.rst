@@ -31,10 +31,10 @@ To compile SWIFT, you will need the following libraries:
 HDF5
 ~~~~
 
-Version 1.8.x or higher is required. Input and output files are stored as HDF5
+Version 1.10.x or higher is required. Input and output files are stored as HDF5
 and are compatible with the existing GADGET-2 specification. Please consider
 using a build of parallel-HDF5, as SWIFT can leverage this when writing and
-reading snapshots. We recommend using HDF5 > 1.10.x as this is *vastly superior*
+reading snapshots. We recommend using HDF5 >= 1.12.x as this is *vastly superior*
 in parallel.
 
 HDF5 is widely available through system package managers.
@@ -104,6 +104,16 @@ GRACKLE
 ~~~~~~~
 GRACKLE cooling is implemented in SWIFT. If you wish to take advantage of it, you 
 will need it installed. It can be found `here <https://github.com/grackle-project/grackle>`_.
+
+.. warning::
+    (State 2023) Grackle is experiencing current development, and the API is subject
+    to changes in the future. For convenience, a frozen version is hosted as a fork
+    on github here: https://github.com/mladenivkovic/grackle-swift .
+    The version available there will be tried and tested and ensured to work with
+    SWIFT.
+
+    Additionally, that repository hosts files necessary to install that specific 
+    version of grackle with spack.
 
 
 HEALPix C library

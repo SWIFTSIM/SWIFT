@@ -57,8 +57,8 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_init(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj) {}
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj) {}
 
 /**
  * @brief Gradient calculations done during the neighbour loop: non-symmetric
@@ -72,7 +72,8 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gradients_nonsym_collect(float r2, const float* dx, float hi, float hj,
+hydro_gradients_nonsym_collect(const float r2, const float dx[3],
+                               const float hi, const float hj,
                                struct part* restrict pi,
                                struct part* restrict pj) {}
 
@@ -105,8 +106,9 @@ __attribute__((always_inline)) INLINE static float hydro_gradients_extrapolate(
  * gradients_none does nothing, since all gradients are zero -- are they?).
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
-    struct part* restrict pi, struct part* restrict pj, float hi, float hj,
-    const float* dx, float r, const float* xij_i, float* Wi, float* Wj) {
+    struct part* restrict pi, struct part* restrict pj, const float hi,
+    const float hj, const float* dx, float r, const float* xij_i, float* Wi,
+    float* Wj) {
 
   /* perform gradient reconstruction in space and time */
   /* Compute interface position (relative to pj, since we don't need the actual

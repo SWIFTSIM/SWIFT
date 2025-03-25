@@ -22,6 +22,7 @@
 
 #include "adiabatic_index.h"
 #include "black_holes_part.h"
+#include "black_holes_properties.h"
 #include "io_properties.h"
 
 /**
@@ -162,6 +163,18 @@ INLINE static void convert_bpart_gas_velocity_curl(const struct engine* e,
   ret[2] = bp->curl_v_gas[2] * cosmo->a2_inv;
 }
 
+INLINE static void convert_bpart_gas_temperatures(const struct engine* e,
+                                                  const struct bpart* bp,
+                                                  float* ret) {
+
+  const struct black_holes_props* props = e->black_holes_properties;
+  const struct cosmology* cosmo = e->cosmology;
+
+  /* Conversion from specific internal energy to temperature */
+  ret[0] = bp->internal_energy_gas * cosmo->a_factor_internal_energy /
+           props->temp_to_u_factor;
+}
+
 /**
  * @brief Specifies which b-particle fields to write to a dataset
  *
@@ -227,7 +240,8 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[9] = io_make_output_field(
       "EnergyReservoirs", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
       energy_reservoir,
-      "Physcial energy contained in the feedback reservoir of the particles");
+      "Physcial energy contained in the thermal feedback reservoir of the "
+      "particles");
 
   list[10] = io_make_output_field(
       "AccretionRates", FLOAT, 1, UNIT_CONV_MASS_PER_UNIT_TIME, 0.f, bparts,
@@ -393,14 +407,15 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[32] = io_make_physical_output_field(
       "NumberOfAGNEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_AGN_events, /*can convert to comoving=*/1,
-      "Integer number of AGN events the black hole has had so far"
-      " (the number of time steps the BH did AGN feedback)");
+      "Integer number of heating AGN events the black hole has had so far"
+      " (the number of time steps the BH did thermal AGN feedback)");
 
   if (with_cosmology) {
     list[33] = io_make_physical_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         bparts, last_AGN_event_scale_factor, /*can convert to comoving=*/0,
-        "Scale-factors at which the black holes last had an AGN event.");
+        "Scale-factors at which the black holes last had a thermal AGN "
+        "event.");
   } else {
     list[33] = io_make_output_field(
         "LastAGNFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
@@ -417,8 +432,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[35] = io_make_output_field(
       "AGNTotalInjectedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
       AGN_cumulative_energy,
-      "Total (cumulative) physical energies injected into gas particles "
-      "in AGN feedback, including the effects of both radiation and winds.");
+      "Total (cumulative) physical thermal energies injected into gas "
+      "particles in thermal AGN feedback, including the effects of both "
+      "radiation and winds.");
 
   list[36] = io_make_output_field_convert_bpart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
@@ -440,7 +456,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
 
   list[40] = io_make_output_field(
       "RadiativeEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      radiative_efficiency, "AGN luminosity divided by accretion rate.");
+      radiative_efficiency,
+      "The radiative efficiencies of the BHs, i.e. the "
+      "AGN luminosity divided by accretion rate.");
 
   list[41] = io_make_output_field("CosAccretionDiskAngle", FLOAT, 1,
                                   UNIT_CONV_NO_UNITS, 0.f, bparts,
@@ -552,23 +570,23 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "respectively.");
 
   list[59] = io_make_output_field(
-      "LastRepositionVelocities", FLOAT, 1, UNIT_CONV_SPEED, 0.f, bparts,
-      last_repos_vel,
-      "Physical speeds at which the black holes repositioned most recently. "
-      "This is 0 for black holes that have never repositioned, or if the "
-      "simulation has been run without prescribed repositioning speed.");
-
-  list[60] = io_make_output_field(
       "AccretionBoostFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       accretion_boost_factor,
       "Multiplicative factors by which the Bondi-Hoyle-Lyttleton accretion "
       "rates have been increased by the density-dependent Booth & Schaye "
       "(2009) accretion model.");
 
-  list[61] = io_make_output_field_convert_bpart(
+  list[60] = io_make_output_field_convert_bpart(
       "GasTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, bparts,
       convert_bpart_gas_temperatures,
       "Temperature of the gas surrounding the black holes.");
+
+  list[61] = io_make_output_field(
+      "AccretionEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      accretion_efficiency,
+      "The accretion efficiencies of black holes. These are used to convert "
+      "from the large-scale accretion rate onto an accretion disc (the raw "
+      "Bondi-like accretion rate) to the accretion rate onto the BH itself.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

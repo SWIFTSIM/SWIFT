@@ -305,8 +305,14 @@ void write_fof_virtual_file(const struct fof_props* props,
   sprintf(file_name_base, "%s/%s", subdir_name, base);
   sprintf(file_name, "%s/%s.hdf5", subdir_name, base);
 
+  /* Set the minimal API version to avoid issues with advanced features */
+  hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+  herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                    HDF5_HIGHEST_FILE_FORMAT_VERSION);
+  if (err < 0) error("Error setting the hdf5 API version");
+
   /* Open HDF5 file with the chosen parameters */
-  hid_t h_file = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  hid_t h_file = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
   if (h_file < 0) error("Error while opening file '%s'.", file_name);
 
   /* Start by writing the header */
@@ -356,6 +362,7 @@ void write_fof_virtual_file(const struct fof_props* props,
   /* Close everything */
   H5Gclose(h_grp);
   H5Fclose(h_file);
+  H5Pclose(h_props);
 #endif
 }
 
@@ -533,7 +540,13 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
           e->snapshot_output_count);
 #endif
 
-  hid_t h_file = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  /* Set the minimal API version to avoid issues with advanced features */
+  hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+  herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                    HDF5_HIGHEST_FILE_FORMAT_VERSION);
+  if (err < 0) error("Error setting the hdf5 API version");
+
+  hid_t h_file = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
   if (h_file < 0) error("Error while opening file '%s'.", file_name);
 
   /* Compute the number of groups */
@@ -593,6 +606,7 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   /* Close everything */
   H5Gclose(h_grp);
   H5Fclose(h_file);
+  H5Pclose(h_props);
 
 #ifdef WITH_MPI
 #if H5_VERSION_GE(1, 10, 0)

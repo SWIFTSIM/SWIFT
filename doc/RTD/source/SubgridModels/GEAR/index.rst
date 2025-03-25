@@ -63,10 +63,14 @@ In order to compile SWIFT with Grackle, you need to provide the options ``with-c
 where ``$GRACKLE_ROOT`` is the root of the install directory (not the ``lib``). 
 
 .. warning::
-  The actual Grackle version fully supported by SWIFT is 3.2.1. It can be downloaded from 
-  `the official Grackle git repository <https://github.com/grackle-project/grackle/archive/refs/tags/grackle-3.2.1.tar.gz>`_.
-  However, this version still had a bug when using threadsafe functions. Alternately, it is possible to get a fixed version
-  using `the following fork frozen for compatibility with SWIFT <https://github.com/mladenivkovic/grackle-swift>`_.
+    (State 2023) Grackle is experiencing current development, and the API is subject
+    to changes in the future. For convenience, a frozen version is hosted as a fork
+    on github here: https://github.com/mladenivkovic/grackle-swift .
+    The version available there will be tried and tested and ensured to work with
+    SWIFT.
+
+    Additionally, that repository hosts files necessary to install that specific 
+    version of grackle with spack.
 
 
 To compile it, run
@@ -149,8 +153,8 @@ The star formation is done in two steps: first we check if a particle is in the 
 
 A particle is in the star forming regime if:
  - The velocity divergence is negative (:math:`\nabla\cdot v < 0`),
- - The temperature is lower than a threshold (:math:`T < T_t` where :math:`T_t` is defined with ``GEARStarFormation:maximal_temperature``),
- - The gas density is higher than a threshold (:math:`\rho > \rho_t` where :math:`\rho_t` is defined with ``GEARStarFormation:density_threshold``)
+ - The temperature is lower than a threshold (:math:`T < T_t` where :math:`T_t` is defined with ``GEARStarFormation:maximal_temperature_K``),
+ - The gas density is higher than a threshold (:math:`\rho > \rho_t` where :math:`\rho_t` is defined with ``GEARStarFormation:density_threshold_Hpcm3``)
  - The particle reaches the pressure floor (:math:`\rho > \frac{\pi}{4 G N_\textrm{Jeans}^{2/3} h^2}\frac{\gamma k_B T}{\mu m_p}` where :math:`N_\textrm{Jeans}` is defined in the pressure floor).
 
 If ``GEARStarFormation:star_formation_mode`` is set to ``agora``, the condition on the pressure floor is ignored. Its default value is ``default``.
@@ -164,7 +168,8 @@ Implementing the other hydro schemes is not complicated but requires some carefu
 
   GEARStarFormation:
     star_formation_efficiency: 0.01   # star formation efficiency (c_*)
-    maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
+    maximal_temperature_K:  3e4       # Upper limit to the temperature of a star forming particle
+    density_threshold_Hpcm3:   10     # Density threshold (Hydrogen atoms/cm^3) for star formation
     n_stars_per_particle: 4           # Number of stars that an hydro particle can generate
     min_mass_frac: 0.5                # Minimal mass for a stellar particle as a fraction of the average mass for the stellar particles.
 

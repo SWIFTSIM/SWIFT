@@ -28,6 +28,7 @@
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
 #include "star_formation_struct.h"
+#include "stars_stellar_type.h"
 #include "tracers_struct.h"
 
 /**
@@ -81,6 +82,8 @@ struct spart {
     float birth_scale_factor;
   };
 
+  enum stellar_type star_type;
+
   /*! Star formation struct */
   struct star_formation_spart_data sf_data;
 
@@ -106,6 +109,9 @@ struct spart {
 
   /*! Particle time bin */
   timebin_t time_bin;
+
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

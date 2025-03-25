@@ -24,18 +24,6 @@
 #define sink_need_unique_id 1
 
 /**
- * @brief The star type that sink particle will sample/spawn. We can sample a
- * star particle representing single star ("sink_single_star") or a star
- * particle representing a stellar population ("sink_star_population").
- */
-typedef enum sink_star_modes {
-  sink_single_star, /* particle representing a single star (discrete sampling of
-                       IMF)*/
-  sink_star_population /* particle representing a population (continuous
-                     sampling of IMF) */
-} sink_star_type;
-
-/**
  * @brief Particle fields for the sink particles.
  *
  * All quantities related to gravity are stored in the associate #gpart.
@@ -57,23 +45,30 @@ struct sink {
   /*! Particle velocity. */
   float v[3];
 
-  /*! Cut off radius. */
-  float r_cut;
+  /* Particle smoothing length */
+  float h;
+
+  struct {
+
+    /* Number of neighbours. */
+    float wcount;
+
+    /* Number of neighbours spatial derivative. */
+    float wcount_dh;
+
+  } density;
 
   /*! Sink particle mass */
   float mass;
 
-  /*! Sink target mass */
-  float target_mass;
-
-  /*! Sink target stellar type */
-  sink_star_type target_type;
-
   /*! Particle time bin */
   timebin_t time_bin;
 
-  /*! Number of stars contained in the sink */
-  int n_stars;
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
+  /*! Integer number of neighbours */
+  int num_ngbs;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -111,6 +106,29 @@ struct sink {
   /*! List of interacting particles in compute formation SELF and PAIR */
   long long ids_ngbs_accretion[MAX_NUM_OF_NEIGHBOURS_SINKS];
 #endif
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+
+  /* Integer number of neighbours in the density loop */
+  int N_check_density;
+
+  /* Exact integer number of neighbours in the density loop */
+  int N_check_density_exact;
+
+  /*! Has this particle interacted with any unhibited neighbour? */
+  char inhibited_check_exact;
+
+  float n_check;
+
+  float n_check_exact;
+
+  float rho_check;
+
+  /*! Exact value of the density field obtained via brute-force loop */
+  float rho_check_exact;
+
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_DEFAULT_SINK_PART_H */

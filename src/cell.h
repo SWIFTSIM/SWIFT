@@ -35,6 +35,7 @@
 #include "align.h"
 #include "cell_black_holes.h"
 #include "cell_grav.h"
+#include "cell_grid.h"
 #include "cell_hydro.h"
 #include "cell_rt.h"
 #include "cell_sinks.h"
@@ -201,7 +202,7 @@ struct pcell {
     int count;
 
     /*! Maximal cut off radius. */
-    float r_cut_max;
+    float h_max;
 
     /*! Minimal integer end-of-timestep in this cell for sinks tasks */
     integertime_t ti_end_min;
@@ -210,6 +211,12 @@ struct pcell {
     integertime_t ti_old_part;
 
   } sinks;
+
+  /*! Grid variables */
+  struct {
+    /*! self complete flag */
+    enum grid_completeness self_completeness;
+  } grid;
 
   /*! RT variables */
   struct {
@@ -275,6 +282,15 @@ struct pcell_step {
 
   struct {
 
+    /*! Minimal integer end-of-timestep in this cell (sinks) */
+    integertime_t ti_end_min;
+
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
+  } sinks;
+
+  struct {
+
     /*! Minimal integer end-of-timestep in this cell (rt) */
     integertime_t ti_rt_end_min;
 
@@ -285,34 +301,32 @@ struct pcell_step {
 };
 
 /**
- * @brief Cell information to propagate the new counts of star particles.
+ * @brief Cell information to propagate the new counts of star particles (star
+ * variables).
  */
-struct pcell_sf {
+struct pcell_sf_stars {
 
-  /*! Stars variables */
-  struct {
+  /* Distance by which the stars pointer has moved since the last rebuild */
+  ptrdiff_t delta_from_rebuild;
 
-    /* Distance by which the stars pointer has moved since the last rebuild */
-    ptrdiff_t delta_from_rebuild;
+  /* Number of particles in the cell */
+  int count;
 
-    /* Number of particles in the cell */
-    int count;
+  /*! Maximum part movement in this cell since last construction. */
+  float dx_max_part;
+};
 
-    /*! Maximum part movement in this cell since last construction. */
-    float dx_max_part;
+/**
+ * @brief Cell information to propagate the new counts of star particles (grav
+ * variables).
+ */
+struct pcell_sf_grav {
 
-  } stars;
+  /* Distance by which the gpart pointer has moved since the last rebuild */
+  ptrdiff_t delta_from_rebuild;
 
-  /*! Grav. variables */
-  struct {
-
-    /* Distance by which the gpart pointer has moved since the last rebuild */
-    ptrdiff_t delta_from_rebuild;
-
-    /* Number of particles in the cell */
-    int count;
-
-  } grav;
+  /* Number of particles in the cell */
+  int count;
 };
 
 /**
@@ -395,6 +409,9 @@ struct cell {
   /*! Sink particles variables */
   struct cell_sinks sinks;
 
+  /*! The grid variables */
+  struct cell_grid grid;
+
   /*! Radiative transfer variables */
   struct cell_rt rt;
 
@@ -460,6 +477,14 @@ struct cell {
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
 
+  /*! When walking the tree and running loops at different level, this is
+   * the minimal h that can be processed at this level */
+  float h_min_allowed;
+
+  /*! When walking the tree and running loops at different level, this is
+   * the maximal h that can be processed at this level */
+  float h_max_allowed;
+
   /*! ID of the previous owner, e.g. runner. */
   short int owner;
 
@@ -468,9 +493,6 @@ struct cell {
 
   /*! ID of the node this cell lives on. */
   int nodeID;
-
-  /*! Number of tasks that are associated with this cell. */
-  short int nr_tasks;
 
   /*! The depth of this cell in the tree. */
   char depth;
@@ -487,6 +509,9 @@ struct cell {
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
+
+  /*! Number of tasks that are associated with this cell. */
+  short int nr_tasks;
 
   /*! The list of tasks that have been executed on this cell */
   char tasks_executed[task_type_count];
@@ -535,19 +560,26 @@ void cell_unpack_bpart_swallow(struct cell *c,
                                const struct black_holes_bpart_data *data);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
+int cell_pack_grid_extra(const struct cell *c,
+                         enum grid_construction_level *info);
+int cell_unpack_grid_extra(const enum grid_construction_level *info,
+                           struct cell *c, struct cell *construction_level);
 int cell_pack_end_step(const struct cell *c, struct pcell_step *pcell);
 int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcell);
 void cell_pack_timebin(const struct cell *const c, timebin_t *const t);
 void cell_unpack_timebin(struct cell *const c, timebin_t *const t);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
-int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
-int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
+int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
+int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
+int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
+int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
 int cell_link_sparts(struct cell *c, struct spart *sparts);
 int cell_link_bparts(struct cell *c, struct bpart *bparts);
+int cell_link_sinks(struct cell *c, struct sink *sinks);
 int cell_link_foreign_parts(struct cell *c, struct part *parts);
 int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts);
 void cell_unlink_foreign_particles(struct cell *c);
@@ -563,6 +595,7 @@ void cell_clean(struct cell *c);
 void cell_check_part_drift_point(struct cell *c, void *data);
 void cell_check_gpart_drift_point(struct cell *c, void *data);
 void cell_check_spart_drift_point(struct cell *c, void *data);
+void cell_check_bpart_drift_point(struct cell *c, void *data);
 void cell_check_sink_drift_point(struct cell *c, void *data);
 void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
@@ -632,12 +665,18 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
+void cell_grid_update_self_completeness(struct cell *c, int force);
+void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
+                                       void *extra_data);
+void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
+                                             void *extra_data);
+void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
+                                            void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);
 void cell_check_sort_flags(const struct cell *c);
 void cell_clear_stars_sort_flags(struct cell *c, const int unused_flags);
 void cell_clear_hydro_sort_flags(struct cell *c, const int unused_flags);
-void cell_clear_unskip_flags(struct cell *c);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
@@ -666,7 +705,8 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
                                        struct part *p, struct xpart *xp);
 void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset);
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
-                               struct spart *sparts, struct sink *sinks);
+                               struct spart *sparts, struct sink *sinks,
+                               struct bpart *bparts);
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
 void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
@@ -770,6 +810,36 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subpair_hydro_task(const struct cell *c) {
+
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  return ((kernel_gamma * c->hydro.h_max_active + c->hydro.dx_max_part_old) <
+          0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-pair hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subpair2_hydro_task(const struct cell *c) {
+
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  return ((kernel_gamma * c->hydro.h_max + c->hydro.dx_max_part) <
+          0.5f * c->dmin);
+}
+
+/**
  * @brief Can a sub-self hydro task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -783,6 +853,32 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-self hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subself_hydro_task(const struct cell *c) {
+
+  /* Is the cell not smaller than the smoothing length? */
+  return (kernel_gamma * c->hydro.h_max_active < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subself2_hydro_task(const struct cell *c) {
+
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split && (kernel_gamma * c->hydro.h_max < 0.5f * c->dmin);
+}
+
+/**
  * @brief Can a sub-pair star task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -790,18 +886,29 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
  * @param cj The #cell with hydro parts.
  */
 __attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_pair_stars_task(const struct cell *ci,
-                                    const struct cell *cj) {
+cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
-  return ci->split && cj->split &&
-         ((kernel_gamma * ci->stars.h_max_old + ci->stars.dx_max_part_old) <
-          0.5f * ci->dmin) &&
-         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
-          0.5f * cj->dmin);
+  return c->split && ((kernel_gamma * c->stars.h_max_old +
+                       c->stars.dx_max_part_old) < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-pair stars task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subpair_stars_task(const struct cell *c) {
+
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  return ((kernel_gamma * c->stars.h_max_active + c->stars.dx_max_part_old) <
+          0.5f * c->dmin);
 }
 
 /**
@@ -816,6 +923,19 @@ cell_can_recurse_in_self_stars_task(const struct cell *c) {
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin) &&
          (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-self stars task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subself_stars_task(const struct cell *c) {
+
+  /* Is the cell not smaller than the smoothing length? */
+  return (kernel_gamma * c->stars.h_max_active < 0.5f * c->dmin);
 }
 
 /**
@@ -834,7 +954,7 @@ cell_can_recurse_in_pair_sinks_task(const struct cell *ci,
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
   return ci->split && cj->split &&
-         ((ci->sinks.r_cut_max_old + ci->sinks.dx_max_part_old) <
+         ((kernel_gamma * ci->sinks.h_max_old + ci->sinks.dx_max_part_old) <
           0.5f * ci->dmin) &&
          ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
           0.5f * cj->dmin);
@@ -887,7 +1007,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_sinks_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  return c->split && (c->sinks.r_cut_max_old < 0.5f * c->dmin) &&
+  return c->split && (kernel_gamma * c->sinks.h_max_old < 0.5f * c->dmin) &&
          (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
 }
 
@@ -994,6 +1114,45 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 }
 
 /**
+ * @brief Have gas particles in a pair of cells moved too much, invalidating the
+ * completeness criterion for ci?
+ *
+ * This function returns true the grid completeness criterion from the
+ * perspective of ci (the #cell for which the grid will be constructed) is no
+ * longer valid.
+ *
+ * NOTE: This function assumes that the self_completeness flags are up to date.
+ * NOTE: This whether a cell needs a rebuild for a grid construction pair is an
+ * asymmetric property, so it should always be checked both ways!
+ *
+ * @param ci The first #cell. This is the cell for which the grid will be
+ * constructed.
+ * @param cj The second #cell. This is the neighbouring cell whose particles are
+ * used as ghost particles.
+ * @return Whether completeness of ci is invalidated by the pair (ci, cj).
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_grid_pair_invalidates_completeness(struct cell *ci, struct cell *cj) {
+
+  /* Check completeness criteria */
+  /* NOTE: Both completeness flags should already be updated at this point */
+  const int ci_self_complete = ci->grid.self_completeness == grid_complete;
+  const int cj_self_complete = cj->grid.self_completeness == grid_complete;
+  if (!ci_self_complete) return 1;
+#ifdef SHADOWSWIFT_RELAXED_COMPLETENESS
+  /* If if ci is self-complete and cj is not, but its maximal search radius is
+   * sufficiently small, we still consider the pair (ci, cj) complete.
+   * NOTE: ci->dmin == cj->dmin */
+  if (!cj_self_complete && kernel_gamma * ci->hydro.h_max > 0.5 * cj->dmin)
+    return 1;
+#else
+  if (!ci_self_complete || !cj_self_complete) return 1;
+#endif
+
+  return 0;
+}
+
+/**
  * @brief Have star particles in a pair of cells moved too much and require a
  * rebuild?
  *
@@ -1027,7 +1186,7 @@ cell_need_rebuild_for_sinks_pair(const struct cell *ci, const struct cell *cj) {
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
-  if (max(ci->sinks.r_cut_max, kernel_gamma * cj->hydro.h_max) +
+  if (max(kernel_gamma * ci->sinks.h_max, kernel_gamma * cj->hydro.h_max) +
           ci->sinks.dx_max_part + cj->hydro.dx_max_part >
       cj->dmin) {
     return 1;
@@ -1315,6 +1474,32 @@ cell_get_stars_sorts(const struct cell *c, const int sid) {
 }
 
 /**
+ * @brief Free grid memory for cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_free_grid(
+    struct cell *c) {
+
+#ifndef MOVING_MESH
+  /* Nothing to do as we have no tessellations */
+#else
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->grid.construction_level != c && c->grid.voronoi != NULL)
+    error("Grid allocated, but not on grid construction level!");
+#endif
+  if (c->grid.construction_level == c) {
+    if (c->grid.voronoi != NULL) {
+      voronoi_destroy(c->grid.voronoi);
+      c->grid.voronoi = NULL;
+    }
+  }
+#endif
+}
+
+void cell_free_grid_rec(struct cell *c);
+
+/**
  * @brief Set the given flag for the given cell.
  */
 __attribute__((always_inline)) INLINE static void cell_set_flag(
@@ -1454,6 +1639,147 @@ __attribute__((always_inline)) INLINE void cell_assign_cell_index(
     c->cellID = child_id;
   }
 
+#endif
+}
+
+/**
+ * @brief Set the depth_h field of a #part.
+ *
+ * @param p The #part.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_part_h_depth(
+    struct part *p, const struct cell *leaf_cell) {
+
+  const float h = p->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    p->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      p->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
+}
+
+/**
+ * @brief Set the depth_h field of a #sink.
+ *
+ * @param sp The #sink.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_sink_h_depth(
+    struct sink *sp, const struct cell *leaf_cell) {
+
+  const float h = sp->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    sp->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      sp->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
+}
+
+/**
+ * @brief Set the depth_h field of a #spart.
+ *
+ * @param sp The #spart.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_spart_h_depth(
+    struct spart *sp, const struct cell *leaf_cell) {
+
+  const float h = sp->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    sp->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      sp->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
+}
+
+/**
+ * @brief Set the depth_h field of a #bpart.
+ *
+ * @param bp The #bpart.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_bpart_h_depth(
+    struct bpart *bp, const struct cell *leaf_cell) {
+
+  const float h = bp->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    bp->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      bp->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
 #endif
 }
 

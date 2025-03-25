@@ -73,7 +73,7 @@ struct threadpool;
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
 #define MPI_SYMMETRIC_FORCE_INTERACTION
-#elif defined(SHADOWFAX_SPH)
+#elif defined(SHADOWSWIFT)
 #include "./hydro/Shadowswift/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
@@ -137,6 +137,8 @@ struct threadpool;
 /* Import the right sink particle definition */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink_part.h"
+#elif defined(SINK_BASIC)
+#include "./sink/Basic/sink_part.h"
 #elif defined(SINK_GEAR)
 #include "./sink/GEAR/sink_part.h"
 #else
@@ -176,6 +178,7 @@ extern MPI_Datatype xpart_mpi_type;
 extern MPI_Datatype gpart_mpi_type;
 extern MPI_Datatype spart_mpi_type;
 extern MPI_Datatype bpart_mpi_type;
+extern MPI_Datatype sink_mpi_type;
 
 void part_create_mpi_types(void);
 void part_free_mpi_types(void);
