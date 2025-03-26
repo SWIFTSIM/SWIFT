@@ -511,9 +511,14 @@ runner_iact_nonsym_feedback_apply(
 #endif /* FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
 
   /* Now we can give momentum, thermal and kinetic energy to the xpart. */
+#if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
+  /* Do not give momentum for the isotropy check test. Momentum pushes
+     particles too efficiently and then the python face area computations are
+     not exacly the same as what SWIFT. */
   for (int i = 0; i < 3; i++) {
     xpj->feedback_data.delta_p[i] += dp_prime[i];
   }
+#endif /* not defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
   xpj->feedback_data.delta_u += dU / new_mass;
   xpj->feedback_data.delta_E_kin += dKE;
