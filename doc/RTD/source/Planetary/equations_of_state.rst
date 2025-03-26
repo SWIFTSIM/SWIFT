@@ -36,6 +36,7 @@ planetary initial conditions, `WoMa  <https://github.com/srbonilla/WoMa>`_:
     + Granite: ``101``
     + Water: ``102``
     + Basalt: ``103``
+    + Ice: ``104``
     + Custom user-provided parameters: ``190``, ``191``, ..., ``199``
 + Hubbard \& MacFarlane (1980): ``2``
     + Hydrogen-helium atmosphere: ``200``
