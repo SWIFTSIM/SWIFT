@@ -1401,8 +1401,6 @@ void runner_dopair1_launch_f4_one_memcpy(
     pack_vars->bundle_last_part[0] = pack_vars->count_parts;
 
   /* Launch the copies for each bundle and run the GPU kernel */
-  /*We don't go into this loop if tasks_left_self == 1 as
-   nBundles_temp will be zero DUHDUHDUHDUHHHHHH!!!!!*/
   for (int bid = 0; bid < nBundles_temp; bid++) {
 
     int max_parts_i = 0;

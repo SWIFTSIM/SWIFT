@@ -727,6 +727,7 @@ void *runner_main2(void *data) {
     /* Loop while there are tasks... */
     tasks_done_gpu_inc = 0;
     ticks hang_time = getticks();
+    struct task * ttop_prev;
     while (1) {
       // A. Nasar: Get qid for re-use later
       int qid = r->qid;
@@ -742,6 +743,8 @@ void *runner_main2(void *data) {
       /* Get the cells. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
+
+      struct task * ttop = t;
 
       if (ci == NULL && (t->subtype != task_subtype_gpu_unpack_d
     		  && t->subtype != task_subtype_gpu_unpack_g
@@ -988,6 +991,8 @@ void *runner_main2(void *data) {
             while(cstart < n_leaves_found){
               tic_cpu_pack = getticks();
 
+//              if(pack_vars_pair_dens->top_task_list[0] == ttop_prev)
+//                error("Working on prev top level task");
               pack_vars_pair_dens->launch_leftovers = 0;
               pack_vars_pair_dens->launch = 0;
               /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
@@ -1057,6 +1062,7 @@ void *runner_main2(void *data) {
               }
               ///////////////////////////////////////////////////////////////////////
             }
+            ttop_prev = t;
             cell_unlocktree(ci);
             cell_unlocktree(cj);
             pack_vars_pair_dens->launch_leftovers = 0;
