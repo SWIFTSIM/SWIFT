@@ -544,38 +544,21 @@ void *runner_main2(void *data) {
       (struct task **)calloc(target_n_tasks, sizeof(struct task *));
   int n_leaves_max = 4096;
   /*Allocate target_n_tasks for top level tasks. This is a 2D array with length target_n_tasks and width n_leaves_max*/
-  struct leaf_cell_list l_list_p_d[target_n_tasks];
-  struct cell **** cell_list_i = (struct cell ****)malloc(target_n_tasks * sizeof(struct cell ***));
-  struct cell **** cell_list_j = (struct cell ****)malloc(target_n_tasks * sizeof(struct cell ***));
+  struct leaf_cell_list l_list[target_n_tasks];
   pack_vars_pair_dens->leaf_list = (struct leaf_cell_list *)calloc(target_n_tasks, sizeof(struct leaf_cell_list));
   for (int i = 0; i < target_n_tasks; i++){
-    cell_list_i[i] = (struct cell ***) malloc(n_leaves_max * sizeof(struct cell **));
-    cell_list_j[i] = (struct cell ***) malloc(n_leaves_max * sizeof(struct cell **));
-    for(int j =0; j < n_leaves_max; j++){
-      cell_list_i[i][j] = (struct cell **) malloc(sizeof(struct cell *));
-      cell_list_j[i][j] = (struct cell **) malloc(sizeof(struct cell *));
-    }
-//    l_list_p_d[i].cell_list.ci = malloc(n_leaves_max * sizeof (struct cell *));//calloc(n_leaves_max, sizeof(struct cell *));
-//    l_list_p_d[i].cell_list.ci = malloc(n_leaves_max * sizeof (struct cell *));//calloc(n_leaves_max, sizeof(struct cell *));
-//    l_list_p_d[i].ci_list = malloc(n_leaves_max * sizeof (struct cell *));//calloc(n_leaves_max, sizeof(struct cell *));
-//    l_list_p_d[i].cj_list = malloc(n_leaves_max * sizeof (struct cell *));//calloc(n_leaves_max, sizeof(struct cell *));
-//    for(int j = 0; j < n_leaves_max; j++){
-//      l_list_p_d[i].ci[j] = malloc(sizeof (struct cell *));
-//      l_list_p_d[i].cj[j] = malloc(sizeof (struct cell *));
-//      message("Alocating");
-//    }
+//    l_list[i].ci = (struct cell **)calloc(n_leaves_max, sizeof(struct cell *));
+//    l_list[i].cj = (struct cell **)calloc(n_leaves_max, sizeof(struct cell *));
 //    l_list[i].n_leaves = 0;
-//    pack_vars_pair_dens->leaf_list[i].ci = malloc(n_leaves_max * sizeof(struct cell *));
-//    pack_vars_pair_dens->leaf_list[i].cj = malloc(n_leaves_max * sizeof(struct cell *));
-//    pack_vars_pair_dens->leaf_list[i].n_leaves = 0;
-//    pack_vars_pair_dens->leaf_list[i].n_packed = 0;
+    pack_vars_pair_dens->leaf_list[i].ci = malloc(n_leaves_max * sizeof(struct cell *));
+    pack_vars_pair_dens->leaf_list[i].cj = malloc(n_leaves_max * sizeof(struct cell *));
+    pack_vars_pair_dens->leaf_list[i].n_leaves = 0;
+    pack_vars_pair_dens->leaf_list[i].n_packed = 0;
 //    for (int j = 0; j < n_leaves_max; j++){
 //      pack_vars_pair_dens->leaf_list[i].ci[j] = l_list[i].ci[j];
 //      pack_vars_pair_dens->leaf_list[i].cj[j] = l_list[i].cj[j];
 //    }
   }
-
-//  error("Alloced");
 //  pack_vars_pair_dens->leaf_list = l_list;
 //  pack_vars_pair_dens->leaf_list->ci =
 //	      (struct cell **)calloc(n_leaves_max, sizeof(struct cell *));
@@ -989,7 +972,7 @@ void *runner_main2(void *data) {
             pack_vars_pair_dens->leaf_list[top_tasks_packed].n_leaves = 0;
             runner_recurse_gpu(r, sched, pack_vars_pair_dens, ci, cj, t,
                       parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, &n_leaves_found,
-					  cells_left, cells_right, depth, n_expected_tasks, cell_list_i, cell_list_j);
+					  cells_left, cells_right, depth, n_expected_tasks);
             n_leafs_total += n_leaves_found;
 //            if(n_leaves_found > 4 && r->cpuid == 0){
 //              fprintf(stderr, "leaves found %i\n", n_leaves_found);
@@ -1057,22 +1040,22 @@ void *runner_main2(void *data) {
                     d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e,
                     &packing_time_pair, &time_for_density_gpu_pair,
                     &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
-                    pair_end, cstart, n_leaves_found, cell_list_i, cell_list_j);
+                    pair_end, cstart, n_leaves_found);
                 /*This ensure that if we still have leaves left we start at index 1.
                   Otherwise, reset the index since we will be grabbing a new task*/
                 if(cstart == n_leaves_found){
                 	pack_vars_pair_dens->top_tasks_packed = 0;
                     pack_vars_pair_dens->tasks_packed = 0;
-//                    l_list_p_d[0].ci = NULL;
-//                    l_list_p_d[0].cj = NULL;
+                    pack_vars_pair_dens->leaf_list[0].ci = NULL;
+                    pack_vars_pair_dens->leaf_list[0].cj = NULL;
                     pack_vars_pair_dens->leaf_list[0].n_leaves = 0;
                     pack_vars_pair_dens->leaf_list[0].n_packed = 0;
                 }
                 else{
-                  cell_list_i[0][0] =
-                    cell_list_i[pack_vars_pair_dens->top_tasks_packed - 1][pack_vars_pair_dens->tasks_packed - 1];
-                  cell_list_j[0][0] =
-                    cell_list_j[pack_vars_pair_dens->top_tasks_packed - 1][pack_vars_pair_dens->tasks_packed - 1];
+                  pack_vars_pair_dens->leaf_list[0].ci[0] =
+                      pack_vars_pair_dens->leaf_list[pack_vars_pair_dens->top_tasks_packed - 1].ci[pack_vars_pair_dens->tasks_packed - 1];
+                  pack_vars_pair_dens->leaf_list[0].cj[0] =
+                      pack_vars_pair_dens->leaf_list[pack_vars_pair_dens->top_tasks_packed - 1].cj[pack_vars_pair_dens->tasks_packed - 1];
 
                   pack_vars_pair_dens->tasks_packed = 0;
                   pack_vars_pair_dens->top_tasks_packed = 1;
