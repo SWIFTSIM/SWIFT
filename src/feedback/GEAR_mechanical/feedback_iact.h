@@ -528,7 +528,7 @@ runner_iact_nonsym_feedback_apply(
   /****************************************************************************
    * Now we accumulate to verify the conservation of the fluxes.
    ****************************************************************************/
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   si->feedback_data.fluxes_conservation_check.delta_m += dm;
   si->feedback_data.fluxes_conservation_check.delta_p_norm += sqrt(dp_norm_2);
 
@@ -544,7 +544,7 @@ runner_iact_nonsym_feedback_apply(
       si->feedback_data.fluxes_conservation_check.delta_p[0],
       si->feedback_data.fluxes_conservation_check.delta_p[1],
       si->feedback_data.fluxes_conservation_check.delta_p[2], m_ej, E_ej, p_ej);
-#endif /* SWIFT_DEBUG_CHECKS */
+#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 }
 
 #endif /* SWIFT_GEAR_MECHANICAL_FEEDBACK_IACT_H */

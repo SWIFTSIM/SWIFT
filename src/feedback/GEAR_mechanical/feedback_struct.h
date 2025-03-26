@@ -105,13 +105,13 @@ struct feedback_spart_data {
 
   /* Checks that the sum of the fluxes is 0. These ensures the weights are
      properly constructed. */
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   struct {
     double delta_m;
     double delta_p_norm;
     double delta_p[3];
   } fluxes_conservation_check;
-#endif /* SWIFT_DEBUG_CHECKS */
+#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_MECHANICAL_H */
