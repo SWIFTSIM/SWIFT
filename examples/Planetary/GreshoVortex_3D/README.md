@@ -1,8 +1,8 @@
-Sod Shock 3D (Planetary)
-============
+Gresho Vortex 3D (Planetary)
+=============
 
-This is a copy of `/examples/HydroTests/SodShock_3D` for testing the Planetary 
-hydro scheme with the planetary ideal gas equation of state. 
+This is a copy of `/examples/HydroTests/GreshoVortex_3D` for testing the 
+Planetary hydro scheme with the planetary ideal gas equation of state. 
 
 The results should be highly similar to the Minimal hydro scheme, though 
 slightly different because of the higher viscosity beta used here. To recover 
