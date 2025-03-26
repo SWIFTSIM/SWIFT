@@ -3375,9 +3375,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_feedback) {
 
-        if (with_cooling)
+        if (with_cooling) {
           scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
                               t_star_density);
+        }
 
         scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                             t_star_density);
@@ -4201,9 +4202,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_feedback) {
 
-        if (with_cooling)
+        if (with_cooling) {
           scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
                               t_star_density);
+        }
 
         scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                             t_star_density);
@@ -5348,6 +5350,7 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
   const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_sink = (e->policy & engine_policy_sinks);
 
   struct task *t_star_density = NULL;
@@ -5782,6 +5785,12 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
 
           /* Scheduler */
           if (with_feedback) {
+
+            if (with_cooling) {
+              scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                  t_star_density);
+            }
+
             scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                                 t_star_density);
             scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
@@ -5792,11 +5801,11 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
                                 t_star_density);
             scheduler_addunlock(sched, t_star_density,
                                 ci->hydro.super->stars.density_ghost);
+            scheduler_addunlock(sched, t_star_feedback,
+                                ci->hydro.super->stars.stars_out);
             /* Else from EXTRA_STAR_LOOPS */
             scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
                                 t_star_feedback);
-            scheduler_addunlock(sched, t_star_feedback,
-                                ci->hydro.super->stars.stars_out);
           }
 
           if (with_sink) {
@@ -5843,6 +5852,12 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
 
             /* Scheduler */
             if (with_feedback) {
+
+              if (with_cooling) {
+                scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
+                                    t_star_density);
+              }
+
               scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                                   t_star_density);
               scheduler_addunlock(sched, cj->hydro.super->stars.drift,
