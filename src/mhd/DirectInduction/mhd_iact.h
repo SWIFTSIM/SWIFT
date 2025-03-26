@@ -479,18 +479,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Physical resistivity */
   const float resistive_eta_i = pi->mhd_data.resistive_eta;
   const float resistive_eta_j = pj->mhd_data.resistive_eta;
-  const float dB_dt_pref_PR_i = 2.0f * resistive_eta_i * r_inv / (rhoi * rhoj);
-  const float dB_dt_pref_PR_j = 2.0f * resistive_eta_j * r_inv / (rhoi * rhoj);
 
-  pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_PR_i * wi_dr * dB[0];
-  pi->mhd_data.B_over_rho_dt[1] += mj * dB_dt_pref_PR_i * wi_dr * dB[1];
-  pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_PR_i * wi_dr * dB[2];
+  const float rho_term_PR = 1.0f / (rhoi * rhoj);
+  const float grad_term_PR = f_ij * wi_dr + f_ji * wj_dr; 
 
-  pj->mhd_data.B_over_rho_dt[0] -= mi * dB_dt_pref_PR_j * wj_dr * dB[0];
-  pj->mhd_data.B_over_rho_dt[1] -= mi * dB_dt_pref_PR_j * wj_dr * dB[1];
-  pj->mhd_data.B_over_rho_dt[2] -= mi * dB_dt_pref_PR_j * wj_dr * dB[2];
+  const float dB_dt_pref_PR = rho_term_PR * grad_term_PR * r_inv;
 
-  /*Artificial resistivity*/
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.B_over_rho_dt[k] += resistive_eta_i * mj * dB_dt_pref_PR * dB[k];
+    pj->mhd_data.B_over_rho_dt[k] -= resistive_eta_j * mi * dB_dt_pref_PR * dB[k];
+  }
+
+  pi->u_dt -= 0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;  
+  pj->u_dt -= 0.5f * permeability_inv * resistive_eta_j * mi * dB_dt_pref_PR * dB_2;  
+  
+  /* Artificial resistivity */
   const float art_diff_beta_i = pi->mhd_data.art_diff_beta;
   const float art_diff_beta_j = pj->mhd_data.art_diff_beta;
 
@@ -560,8 +563,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
     pi->mhd_data.Adv_B_source[i] -= mj * grad_psi_i * dx[i];
     pj->mhd_data.Adv_B_source[i] -= mi * grad_psi_j * dx[i];
-    pi->mhd_data.Diff_B_source[i] += mj * dB_dt_pref_PR_i * wi_dr * dB[i];
-    pj->mhd_data.Diff_B_source[i] -= mi * dB_dt_pref_PR_j * wj_dr * dB[i];
+    pi->mhd_data.Diff_B_source[i] += resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
+    pj->mhd_data.Diff_B_source[i] -= resistive_eta_j * mi * dB_dt_pref_PR * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref_i * dB[i];
     pj->mhd_data.Diff_B_source[i] -= mi * art_diff_pref_j * dB[i];
     pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap_i * wi_dr * dB[i];
@@ -757,15 +760,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
 
   /* Physical resistivity */
-  const float resistive_eta = pi->mhd_data.resistive_eta;
+  const float resistive_eta_i = pi->mhd_data.resistive_eta;
 
-  const float dB_dt_pref_PR = 2.0f * resistive_eta * r_inv / (rhoi * rhoj);
+  const float rho_term_PR = 1.0f / (rhoi * rhoj);
+  const float grad_term_PR = f_ij * wi_dr + f_ji * wj_dr; 
 
-  pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_PR * wi_dr * dB[0];
-  pi->mhd_data.B_over_rho_dt[1] += mj * dB_dt_pref_PR * wi_dr * dB[1];
-  pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_PR * wi_dr * dB[2];
+  const float dB_dt_pref_PR = rho_term_PR * grad_term_PR * r_inv;
 
-  /*Artificial resistivity*/
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.B_over_rho_dt[k] += resistive_eta_i * mj * dB_dt_pref_PR * dB[k];
+  }
+
+  pi->u_dt -= 0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;  
+  
+  /* Artificial resistivity */
   const float art_diff_beta = pi->mhd_data.art_diff_beta;
 
   float dv_cross_dx[3];
@@ -813,7 +821,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
     pi->mhd_data.Adv_B_source[i] -= mj * grad_psi_i * dx[i];
-    pi->mhd_data.Diff_B_source[i] += mj * dB_dt_pref_PR * wi_dr * dB[i];
+    pi->mhd_data.Diff_B_source[i] += resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
     pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap * wi_dr * dB[i];
   }
