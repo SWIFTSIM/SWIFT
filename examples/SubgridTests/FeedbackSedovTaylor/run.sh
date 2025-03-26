@@ -56,7 +56,7 @@ printf "Running simulation..."
 	       params.yml 2>&1 | tee output.log
 
 #Do some data analysis to show what's in this box
-# python3 plot_gas_density.py -i 282 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 282 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 0 -f 282 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 0 -f 282 -s 'snap/snapshot'
+python3 plot_gas_density.py -i 100 -s 'snap/snapshot'
+python3 rhoTPlot.py -i 100 -s 'snap/snapshot'
+python3 rhoTPlot.py -i 0 -f 100 -s 'snap/snapshot'
+python3 plot_gas_density.py -i 0 -f 100 -s 'snap/snapshot'
