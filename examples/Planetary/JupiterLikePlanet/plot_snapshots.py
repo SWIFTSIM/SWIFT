@@ -1,7 +1,7 @@
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
-#	            2023 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+# 	            2023 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -28,7 +28,7 @@ import h5py
 import woma
 
 # Number of particles
-N = 10 ** 7
+N = 10**7
 N_label = "n%d" % (10 * np.log10(N))
 
 # Plotting options
@@ -47,7 +47,7 @@ Di_mat_colour = {"AQUA": "orangered", "CD21_HHe": "gold"}
 Di_id_colour = {woma.Di_mat_id[mat]: colour for mat, colour in Di_mat_colour.items()}
 
 # Scale point size with resolution
-size = (1 * np.cbrt(10 ** 6 / N)) ** 2
+size = (1 * np.cbrt(10**6 / N)) ** 2
 
 
 def load_snapshot(filename):

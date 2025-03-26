@@ -27,6 +27,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def make_axes():
     # Use Gridspec to set up figure
     n_gs_ax_x = 40
@@ -50,11 +51,38 @@ def make_axes():
     )
 
     ax_0 = plt.subplot(gs[:n_gs_ax_y, :n_gs_ax_x])
-    ax_1 = plt.subplot(gs[:n_gs_ax_y, n_gs_ax_x+n_gs_ax_gap:2*n_gs_ax_x+n_gs_ax_gap])
-    ax_2 = plt.subplot(gs[:n_gs_ax_y, 2*n_gs_ax_x+2*n_gs_ax_gap:3*n_gs_ax_x+2*n_gs_ax_gap])
+    ax_1 = plt.subplot(
+        gs[:n_gs_ax_y, n_gs_ax_x + n_gs_ax_gap : 2 * n_gs_ax_x + n_gs_ax_gap]
+    )
+    ax_2 = plt.subplot(
+        gs[
+            :n_gs_ax_y,
+            2 * n_gs_ax_x + 2 * n_gs_ax_gap : 3 * n_gs_ax_x + 2 * n_gs_ax_gap,
+        ]
+    )
 
-    cax_0 = plt.subplot(gs[:int(0.5*n_gs_ax_y)-1, 3*n_gs_ax_x+2*n_gs_ax_gap+n_gs_cbar_gap:3*n_gs_ax_x+2*n_gs_ax_gap+n_gs_cbar_gap+n_gs_cbar])
-    cax_1 = plt.subplot(gs[int(0.5*n_gs_ax_y)+1:, 3*n_gs_ax_x+2*n_gs_ax_gap+n_gs_cbar_gap:3*n_gs_ax_x+2*n_gs_ax_gap+n_gs_cbar_gap+n_gs_cbar])
+    cax_0 = plt.subplot(
+        gs[
+            : int(0.5 * n_gs_ax_y) - 1,
+            3 * n_gs_ax_x
+            + 2 * n_gs_ax_gap
+            + n_gs_cbar_gap : 3 * n_gs_ax_x
+            + 2 * n_gs_ax_gap
+            + n_gs_cbar_gap
+            + n_gs_cbar,
+        ]
+    )
+    cax_1 = plt.subplot(
+        gs[
+            int(0.5 * n_gs_ax_y) + 1 :,
+            3 * n_gs_ax_x
+            + 2 * n_gs_ax_gap
+            + n_gs_cbar_gap : 3 * n_gs_ax_x
+            + 2 * n_gs_ax_gap
+            + n_gs_cbar_gap
+            + n_gs_cbar,
+        ]
+    )
 
     axs = [ax_0, ax_1, ax_2]
     caxs = [cax_0, cax_1]
@@ -69,8 +97,8 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
 
     with h5py.File(snap_file, "r") as f:
         # Units from file metadata to SI
-        m=float(f["Units"].attrs["Unit mass in cgs (U_M)"][0]) * 1e-3
-        l=float(f["Units"].attrs["Unit length in cgs (U_L)"][0]) * 1e-2
+        m = float(f["Units"].attrs["Unit mass in cgs (U_M)"][0]) * 1e-3
+        l = float(f["Units"].attrs["Unit length in cgs (U_L)"][0]) * 1e-2
 
         boxsize_x = f["Header"].attrs["BoxSize"][0] * l
         boxsize_y = f["Header"].attrs["BoxSize"][1] * l
@@ -140,21 +168,20 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
     ax.set_ylim((0.05 * boxsize_y, 0.95 * boxsize_y))
 
 
-
 if __name__ == "__main__":
 
     # Set colormap
-    cmap1 = plt.get_cmap('winter_r')
+    cmap1 = plt.get_cmap("winter_r")
     mat_id1 = 304
     rho_min1 = 6800
     rho_max1 = 8700
-    norm1 = mpl.colors.Normalize(vmin=rho_min1,vmax=rho_max1)
+    norm1 = mpl.colors.Normalize(vmin=rho_min1, vmax=rho_max1)
 
-    cmap2 = plt.get_cmap('autumn')
+    cmap2 = plt.get_cmap("autumn")
     mat_id2 = 307
     rho_min2 = 3450
     rho_max2 = 4050
-    norm2 = mpl.colors.Normalize(vmin=rho_min2,vmax=rho_max2)
+    norm2 = mpl.colors.Normalize(vmin=rho_min2, vmax=rho_max2)
 
     # Generate axes
     axs, caxs = make_axes()
@@ -169,7 +196,14 @@ if __name__ == "__main__":
         time = times[i]
 
         plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2)
-        ax.text(0.5,-0.05,r"$t =\;$"+time+r"$\,$s", horizontalalignment='center',size=18, transform=ax.transAxes)
+        ax.text(
+            0.5,
+            -0.05,
+            r"$t =\;$" + time + r"$\,$s",
+            horizontalalignment="center",
+            size=18,
+            transform=ax.transAxes,
+        )
 
     # Colour bar
     sm1 = plt.cm.ScalarMappable(cmap=cmap1, norm=norm1)

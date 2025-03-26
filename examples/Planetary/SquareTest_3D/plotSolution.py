@@ -150,4 +150,6 @@ if __name__ == "__main__":
     A1_size = size_factor * (A1_m_slice / A1_rho_slice) ** (2 / 3)
 
     # Plot figure
-    plot_square(A1_x_slice, A1_y_slice, A1_rho_slice, A1_u_slice, A1_P_slice, A1_size, boxsize_l)
+    plot_square(
+        A1_x_slice, A1_y_slice, A1_rho_slice, A1_u_slice, A1_P_slice, A1_size, boxsize_l
+    )

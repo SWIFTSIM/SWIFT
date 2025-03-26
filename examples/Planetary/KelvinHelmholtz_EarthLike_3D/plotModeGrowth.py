@@ -28,6 +28,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def calculate_mode_growth(snap, vy_init_amp, wavelength):
 
     # Load data
@@ -40,46 +41,72 @@ def calculate_mode_growth(snap, vy_init_amp, wavelength):
         A1_h = f["/PartType0/SmoothingLengths"][:] / boxsize_l
 
     # Adjust positions
-    A2_pos[:,0] += 0.5
-    A2_pos[:,1] += 0.5
+    A2_pos[:, 0] += 0.5
+    A2_pos[:, 1] += 0.5
 
     # Masks to select the upper and lower halfs of the simulations
-    mask_up = A2_pos[:,1] >= 0.5
-    mask_down = A2_pos[:,1] < 0.5
+    mask_up = A2_pos[:, 1] >= 0.5
+    mask_down = A2_pos[:, 1] < 0.5
 
     # McNally et al. 2012 Eqn. 10
     s = np.empty(len(A1_h))
-    s[mask_down] = A2_vel[mask_down, 1] * A1_h[mask_down]**3 * np.sin(2 * np.pi * A2_pos[mask_down, 0] / wavelength) * np.exp(-2 * np.pi * np.abs(A2_pos[mask_down, 1] - 0.25) / wavelength)
-    s[mask_up] = A2_vel[mask_up, 1] * A1_h[mask_up]**3 * np.sin(2 * np.pi * A2_pos[mask_up, 0] / wavelength) * np.exp(-2 * np.pi * np.abs((1 - A2_pos[mask_up, 1]) - 0.25) / wavelength)
+    s[mask_down] = (
+        A2_vel[mask_down, 1]
+        * A1_h[mask_down] ** 3
+        * np.sin(2 * np.pi * A2_pos[mask_down, 0] / wavelength)
+        * np.exp(-2 * np.pi * np.abs(A2_pos[mask_down, 1] - 0.25) / wavelength)
+    )
+    s[mask_up] = (
+        A2_vel[mask_up, 1]
+        * A1_h[mask_up] ** 3
+        * np.sin(2 * np.pi * A2_pos[mask_up, 0] / wavelength)
+        * np.exp(-2 * np.pi * np.abs((1 - A2_pos[mask_up, 1]) - 0.25) / wavelength)
+    )
 
     # McNally et al. 2012 Eqn. 11
     c = np.empty(len(A1_h))
-    c[mask_down] = A2_vel[mask_down, 1] * A1_h[mask_down]**3 * np.cos(2 * np.pi * A2_pos[mask_down, 0] / wavelength) * np.exp(-2 * np.pi * np.abs(A2_pos[mask_down, 1] - 0.25) / wavelength)
-    c[mask_up] = A2_vel[mask_up, 1] * A1_h[mask_up]**3 * np.cos(2 * np.pi * A2_pos[mask_up, 0] / wavelength) * np.exp(-2 * np.pi * np.abs((1 - A2_pos[mask_up, 1]) - 0.25) / wavelength)
+    c[mask_down] = (
+        A2_vel[mask_down, 1]
+        * A1_h[mask_down] ** 3
+        * np.cos(2 * np.pi * A2_pos[mask_down, 0] / wavelength)
+        * np.exp(-2 * np.pi * np.abs(A2_pos[mask_down, 1] - 0.25) / wavelength)
+    )
+    c[mask_up] = (
+        A2_vel[mask_up, 1]
+        * A1_h[mask_up] ** 3
+        * np.cos(2 * np.pi * A2_pos[mask_up, 0] / wavelength)
+        * np.exp(-2 * np.pi * np.abs((1 - A2_pos[mask_up, 1]) - 0.25) / wavelength)
+    )
 
     # McNally et al. 2012 Eqn. 12
     d = np.empty(len(A1_h))
-    d[mask_down] = A1_h[mask_down]**3 * np.exp(-2 * np.pi * np.abs(A2_pos[mask_down, 1] - 0.25) / wavelength)
-    d[mask_up] = A1_h[mask_up]**3 * np.exp(-2 * np.pi * np.abs((1 - A2_pos[mask_up, 1]) - 0.25) / wavelength)
+    d[mask_down] = A1_h[mask_down] ** 3 * np.exp(
+        -2 * np.pi * np.abs(A2_pos[mask_down, 1] - 0.25) / wavelength
+    )
+    d[mask_up] = A1_h[mask_up] ** 3 * np.exp(
+        -2 * np.pi * np.abs((1 - A2_pos[mask_up, 1]) - 0.25) / wavelength
+    )
 
     # McNally et al. 2012 Eqn. 13
-    M = 2 * np.sqrt((np.sum(s)/ np.sum(d))**2 + (np.sum(c)/ np.sum(d))**2)
+    M = 2 * np.sqrt((np.sum(s) / np.sum(d)) ** 2 + (np.sum(c) / np.sum(d)) ** 2)
 
     return M
-
 
 
 if __name__ == "__main__":
 
     # Simulation paramerters for nomralisation of mode growth
-    vy_init_amp = 2e-6 # Initial amplitude of y velocity perturbation in units of the boxsize per second
-    wavelength = 0.5   # wavelength of initial perturbation in units of the boxsize
+    vy_init_amp = 2e-6  # Initial amplitude of y velocity perturbation in units of the boxsize per second
+    wavelength = 0.5  # wavelength of initial perturbation in units of the boxsize
 
     # Use Gridspec to set up figure
     n_gs_ax = 40
     ax_len = 5
     fig = plt.figure(figsize=(9, 6))
-    gs = mpl.gridspec.GridSpec(nrows=40, ncols=60,)
+    gs = mpl.gridspec.GridSpec(
+        nrows=40,
+        ncols=60,
+    )
     ax = plt.subplot(gs[:, :])
 
     # Snapshots and corresponding times
@@ -98,8 +125,8 @@ if __name__ == "__main__":
     ax.set_ylabel(r"$\log( \, M \; / \; M^{}_0 \, )$", fontsize=18)
     ax.set_xlabel(r"$t \; / \; \tau^{}_{\rm KH}$", fontsize=18)
     ax.minorticks_on()
-    ax.tick_params(which='major', direction="in")
-    ax.tick_params(which='minor', direction="in")
+    ax.tick_params(which="major", direction="in")
+    ax.tick_params(which="minor", direction="in")
     ax.tick_params(labelsize=14)
 
     plt.savefig("mode_growth.png", dpi=300, bbox_inches="tight")

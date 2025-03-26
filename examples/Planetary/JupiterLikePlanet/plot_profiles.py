@@ -1,7 +1,7 @@
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
-#	            2023 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+# 	            2023 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -35,7 +35,7 @@ import h5py
 import woma
 
 # Number of particles
-N = 10 ** 7
+N = 10**7
 N_label = "n%d" % (10 * np.log10(N))
 
 # Plotting options
@@ -62,7 +62,7 @@ def plot_profile_and_particles(profile, A1_r, A1_rho):
     ax.plot(profile.A1_r / R_E, profile.A1_rho)
 
     # Particles
-    ax.scatter(A1_r / R_E, A1_rho, c="k", marker=".", s=1 ** 2)
+    ax.scatter(A1_r / R_E, A1_rho, c="k", marker=".", s=1**2)
 
     ax.set_xlim(0, None)
     ax.set_xlabel(r"Radial distance ($R_\oplus$)")
@@ -93,7 +93,7 @@ if __name__ == "__main__":
                 np.array(f["PartType0/Coordinates"][()])
                 - 0.5 * f["Header"].attrs["BoxSize"]
             ) * file_to_SI.l
-            A1_r = np.sqrt(np.sum(A2_pos ** 2, axis=1))
+            A1_r = np.sqrt(np.sum(A2_pos**2, axis=1))
             A1_rho = np.array(f["PartType0/Densities"][()]) * file_to_SI.rho
 
         # Plot the data

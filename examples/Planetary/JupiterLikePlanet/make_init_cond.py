@@ -1,7 +1,7 @@
 ################################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
-#		        2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+# 		        2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -24,7 +24,7 @@ import h5py
 import woma
 
 # Number of particles
-N = 10 ** 7
+N = 10**7
 N_label = "n%d" % (10 * np.log10(N))
 
 # Earth units
@@ -41,16 +41,14 @@ target_prof = woma.Planet(
     A1_M_layer=[10 * M_E, 298 * M_E],
     P_s=1e5,
     T_s=165,
-    num_prof= 10000,
+    num_prof=10000,
 )
 
 # Load material tables
-woma.load_eos_tables(
-    np.unique(target_prof.A1_mat_layer)
-)
+woma.load_eos_tables(np.unique(target_prof.A1_mat_layer))
 
 # Compute profiles
-target_prof.gen_prof_L2_find_R_R1_given_M1_M2(R_min = 10.7*R_E, R_max = 11.2*R_E)
+target_prof.gen_prof_L2_find_R_R1_given_M1_M2(R_min=10.7 * R_E, R_max=11.2 * R_E)
 
 # Save profile data
 target_prof.save("demo_target_profile.hdf5")

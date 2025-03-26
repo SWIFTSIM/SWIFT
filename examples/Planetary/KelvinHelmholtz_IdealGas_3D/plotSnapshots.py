@@ -27,6 +27,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def make_axes():
     # Use Gridspec to set up figure
     n_gs_ax = 40
@@ -48,9 +49,21 @@ def make_axes():
     )
 
     ax_0 = plt.subplot(gs[:n_gs_ax, :n_gs_ax])
-    ax_1 = plt.subplot(gs[:n_gs_ax, n_gs_ax+n_gs_ax_gap:2*n_gs_ax+n_gs_ax_gap])
-    ax_2 = plt.subplot(gs[:n_gs_ax, 2*n_gs_ax+2*n_gs_ax_gap:3*n_gs_ax+2*n_gs_ax_gap])
-    cax = plt.subplot(gs[:n_gs_ax, 3*n_gs_ax+2*n_gs_ax_gap+n_gs_cbar_gap:3*n_gs_ax+2*n_gs_ax_gap+n_gs_cbar_gap+n_gs_cbar])
+    ax_1 = plt.subplot(gs[:n_gs_ax, n_gs_ax + n_gs_ax_gap : 2 * n_gs_ax + n_gs_ax_gap])
+    ax_2 = plt.subplot(
+        gs[:n_gs_ax, 2 * n_gs_ax + 2 * n_gs_ax_gap : 3 * n_gs_ax + 2 * n_gs_ax_gap]
+    )
+    cax = plt.subplot(
+        gs[
+            :n_gs_ax,
+            3 * n_gs_ax
+            + 2 * n_gs_ax_gap
+            + n_gs_cbar_gap : 3 * n_gs_ax
+            + 2 * n_gs_ax_gap
+            + n_gs_cbar_gap
+            + n_gs_cbar,
+        ]
+    )
 
     axs = [ax_0, ax_1, ax_2]
 
@@ -113,7 +126,6 @@ def plot_kh(ax, snap, cmap, norm):
     ax.set_ylim((0, boxsize_l))
 
 
-
 if __name__ == "__main__":
 
     # Set colormap
@@ -134,7 +146,14 @@ if __name__ == "__main__":
         time = times[i]
 
         plot_kh(ax, snap, cmap, norm)
-        ax.text(0.5,-0.1,r"$t =\;$"+time+r"$\, \tau^{}_{\rm KH}$", horizontalalignment='center',size=18, transform=ax.transAxes)
+        ax.text(
+            0.5,
+            -0.1,
+            r"$t =\;$" + time + r"$\, \tau^{}_{\rm KH}$",
+            horizontalalignment="center",
+            size=18,
+            transform=ax.transAxes,
+        )
 
     # Colour bar
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
