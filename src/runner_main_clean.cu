@@ -1042,10 +1042,12 @@ void *runner_main2(void *data) {
                     pack_vars_pair_dens->leaf_list[0].n_packed = 0;
                 }
                 else{
+                  int tt_packed = pack_vars_pair_dens->top_tasks_packed;
+                  int t_packed = pack_vars_pair_dens->tasks_packed;
                   pack_vars_pair_dens->leaf_list[0].ci[0] =
-                      pack_vars_pair_dens->leaf_list[pack_vars_pair_dens->top_tasks_packed - 1].ci[pack_vars_pair_dens->tasks_packed - 1];
+                      pack_vars_pair_dens->leaf_list[tt_packed - 1].ci[t_packed - 1];
                   pack_vars_pair_dens->leaf_list[0].cj[0] =
-                      pack_vars_pair_dens->leaf_list[pack_vars_pair_dens->top_tasks_packed - 1].cj[pack_vars_pair_dens->tasks_packed - 1];
+                      pack_vars_pair_dens->leaf_list[tt_packed - 1].cj[t_packed - 1];
 
                   pack_vars_pair_dens->tasks_packed = 0;
                   pack_vars_pair_dens->top_tasks_packed = 1;
