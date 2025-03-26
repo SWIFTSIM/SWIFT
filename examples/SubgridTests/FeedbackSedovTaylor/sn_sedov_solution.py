@@ -25,6 +25,7 @@ import h5py
 from scipy import stats
 from scipy.special import gamma as Gamma
 import astropy.units as units
+from scipy.optimize import leastsq
 
 # %%
 
@@ -245,6 +246,7 @@ try:
         S = sim["/PartType0/Entropies"][:]
         P = sim["/PartType0/Pressures"][:]
         rho = sim["/PartType0/Densities"][:]
+        mass = sim["/PartType0/Masses"][:]
 
         # Compute radial positions centered on explosion
         x, y, z = pos[:, 0] - box_size / 2, pos[:, 1] - \
@@ -315,11 +317,225 @@ if plot_viscosity:
 ################################
 # Now, work our the solution....
 ################################
+
+from scipy.optimize import curve_fit
+from scipy.interpolate import interp1d
+
+def sedov_2(t, E0, rho0, P0, g, n=1000, nu=3):
+    """
+    solve the sedov problem
+    t - the time
+    E0 - the initial energy
+    rho0 - the initial density
+    n - number of points (10000)
+    nu - the dimension
+    g - the polytropic gas gamma
+    """
+    n = n-2
+    
+    # the similarity variable
+    v_min = 2.0 / ((nu + 2) * g)
+    v_max = 4.0 / ((nu + 2) * (g + 1))
+
+    v = v_min + np.arange(n) * (v_max - v_min) / (n - 1.0)
+
+    a = calc_a(g, nu)
+    beta = calc_beta(v, g=g, nu=nu)
+    lbeta = np.log(beta)
+
+    r = np. exp(-a[0] * lbeta[0] - a[2] * lbeta[1] - a[1] * lbeta[2])
+    rho = ((g + 1.0) / (g - 1.0)) * np.exp(
+        a[3] * lbeta[1] + a[5] * lbeta[3] + a[4] * lbeta[2]
+    )
+    p = np.exp(nu * a[0] * lbeta[0] + (a[5] + 1) *
+               lbeta[3] + (a[4] - 2 * a[1]) * lbeta[2])
+    u = beta[0] * r * 4.0 / ((g + 1) * (nu + 2))
+    p *= 8.0 / ((g + 1) * (nu + 2) * (nu + 2))
+
+    # we have to take extra care at v=v_min, since this can be a special point.
+    # It is not a singularity, however, the gradients of our variables (wrt v) are.
+    # r -> 0, u -> 0, rho -> 0, p-> constant
+
+    u[0] = 0.0
+    rho[0] = 0.0
+    r[0] = 0.0
+    p[0] = p[1]
+
+    # volume of an n-sphere
+    vol = (np.pi ** (nu / 2.0) / Gamma(nu / 2.0 + 1)) * np.power(r, nu)
+
+    # note we choose to evaluate the integral in this way because the
+    # volumes of the first few elements (i.e near v=vmin) are shrinking
+    # very slowly, so we dramatically improve the error convergence by
+    # finding the volumes exactly. This is most important for the
+    # pressure integral, as this is on the order of the volume.
+
+    # (dimensionless) energy of the model solution
+    de = rho * u * u * 0.5 + p / (g - 1)
+    # integrate (trapezium rule)
+    q = np.inner(de[1:] + de[:-1], np.diff(vol)) * 0.5
+
+    # the factor to convert to this particular problem
+    fac = (q * (t ** nu) * rho0 / E0) ** (-1.0 / (nu + 2))
+
+    # shock speed
+    shock_speed = fac * (2.0 / (nu + 2))
+    rho_s = ((g + 1) / (g - 1)) * rho0
+    r_s = shock_speed * t * (nu + 2) / 2.0
+    p_s = (2.0 * rho0 * shock_speed * shock_speed) / (g + 1)
+    u_s = (2.0 * shock_speed) / (g + 1)
+
+    r *= fac * t
+    u *= fac
+    p *= fac * fac * rho0
+    rho *= rho0
+    
+    # Append points for after the shock
+    r_shock = np.asarray(r_s).flatten()
+    r = np.insert(r, np.size(r), [r_shock[0], r_shock[0] * 1.5])
+    rho = np.insert(rho, np.size(rho), [rho0, rho0])
+    p = np.insert(p, np.size(p), [P0, P0])
+    v = np.insert(v, np.size(v), [0, 0])
+    
+    u_0 = P0 / (rho0 * (g - 1.0)) 
+    u = np.insert(u, np.size(u), [u_0, u_0])
+    return r, p, rho, u, r_s, p_s, rho_s, u_s, shock_speed
+
+# # The fitting model that will be used by curve_fit
+# def sedov_fit_model(r, E_0, rho_0, P_0, time, g=1.4, nu=3):
+#     """
+#     A wrapper for the sedov function to be used in curve fitting.
+#     Returns r_s, rho_s, and P_s based on the parameters (E_0, rho_0, P_0).
+    
+#     r_s    - radius
+#     E_0    - initial energy
+#     rho_0  - initial density
+#     P_0    - initial pressure
+#     g      - polytropic gamma (default 1.4)
+#     nu     - dimensionality (default 3)
+#     """
+    
+#     npoint = len(r) # Then we will append the values after the shock
+#     r_s, P_s, rho_s, v_s, r_shock, _, _, _, _ = sedov_2(
+#         t=time,  # You can modify this based on your setup
+#         E0=E_0,
+#         rho0=rho_0,
+#         P0=P_0,
+#         g=g,
+#         n=npoint,  # Number of points (can be adjusted)
+#         nu=nu
+#     )
+#     # print("-------")
+#     # print(r_s.shape)
+#     # print(P_s.shape)
+#     # print(rho_s.shape)
+#     # print(v_s.shape)
+#     # Combine into a single vector for fitting
+#     # return np.vstack((rho_s, P_s, v_s)).T  
+    
+#     # TODO : We need to link the values in r. The sedov function does not take r as 
+#     # argument. We receive given radii r_s that might not match the radii in r. 
+#     # We need to make them match so that the fit can properly work
+#     # For r > r_shock, set the values to rho_0, P_0, v_0
+    
+#     data = np.vstack((rho_s, P_s, v_s)).T  
+#     data = data.ravel().T
+    
+#     # print(data.shape)
+#     return data
+
+def sedov_fit_model(r, E_0, rho_0, P_0, time, g=1.4, nu=3):
+    """
+    A wrapper for the Sedov function to be used in curve fitting.
+    Returns interpolated values of rho, P, and v at given radii r.
+    """
+
+    # Solve Sedov blast wave problem
+    r_s, P_s, rho_s, v_s, r_shock, _, _, _, _ = sedov_2(
+        t=time,  
+        E0=E_0,
+        rho0=rho_0,
+        P0=P_0,
+        g=g,
+        n=len(r),  
+        nu=nu
+    )
+
+    # Ensure monotonicity for interpolation (sort values if needed)
+    sorted_indices = np.argsort(r_s)
+    r_s = r_s[sorted_indices]
+    P_s = P_s[sorted_indices]
+    rho_s = rho_s[sorted_indices]
+    v_s = v_s[sorted_indices]
+
+    # Interpolation functions
+    interp_rho = interp1d(r_s, rho_s, kind="linear", fill_value="extrapolate")
+    interp_P = interp1d(r_s, P_s, kind="linear", fill_value="extrapolate")
+    interp_v = interp1d(r_s, v_s, kind="linear", fill_value="extrapolate")
+
+    # Interpolated values at given r
+    rho_fit = interp_rho(r)
+    P_fit = interp_P(r)
+    v_fit = interp_v(r)
+
+    # Assign ambient conditions for r > r_shock
+    mask_post_shock = r > r_shock
+    rho_fit[mask_post_shock] = rho_0
+    P_fit[mask_post_shock] = P_0
+    v_fit[mask_post_shock] = P_0 / (rho_0 * (g - 1.0))  # v_0
+
+    # Flatten and return as a single vector
+    return np.hstack((rho_fit, P_fit, v_fit))
+
+# Initial guess for the parameters (E_0, rho_0, P_0)
+print(E_0, rho_0, P_0)
+
+P_0 = np.min(P)
+rho_0 = np.min(rho)
+# E_0 = 0.5*np.min(mass)*np.min(v_r)*np.min(v_r)
+
+# print(np.min(u))
+# print( P_0 / (rho_0 * (gas_gamma - 1.0)) )  # internal energy
+# print( P_0 / (np.max(rho) * (gas_gamma - 1.0)) )  # internal energy
+
+print(E_0, rho_0, P_0)
+
+initial_guess = [E_0, rho_0, P_0]
+
+# Bounds to ensure the solutions ares non-negative
+bounds = ([1e-20, 1e-20, 1e-20], [np.inf, np.inf, np.inf])
+
+# x = r # y : v_r, P, rho
+data = np.vstack((rho, P, v_r)).T
+data = data.ravel().T
+
+# popt, pcov = curve_fit(lambda r, E_0, rho_0, P_0: sedov_fit_model(r, E_0, rho_0, P_0, time, gas_gamma), 
+#                        r, data, p0=initial_guess, bounds=bounds)
+
+# Fit parameters using logarithmic scaling
+log_initial_guess = np.log(initial_guess)
+log_bounds = (np.log(bounds[0]), np.log(bounds[1]))
+
+log_popt, log_pcov = curve_fit(
+    lambda r, log_E_0, log_rho_0, log_P_0: sedov_fit_model(r, np.exp(log_E_0), np.exp(log_rho_0), np.exp(log_P_0), time, gas_gamma), 
+    r, np.log(data), 
+    p0=log_initial_guess, 
+    bounds=log_bounds
+)
+
+popt = np.exp(log_popt)
+
+# Extract the fitted parameters
+E_0_fit, rho_0_fit, P_0_fit = popt
+
+print(E_0_fit, rho_0_fit, P_0_fit)
+print(E_0, rho_0, P_0)
+
+E_0, rho_0, P_0 = E_0_fit, rho_0_fit, P_0_fit
+
 # The main properties of the solution
 r_s, P_s, rho_s, v_s, r_shock, _, _, _, _ = sedov(
     time, E_0, rho_0, gas_gamma, 1000, 3)
-
-print(r_shock)
 
 # Append points for after the shock
 r_shock = np.asarray(r_shock).flatten()  # Ensures it's 1D
@@ -374,7 +590,7 @@ u_bin = convert_energy(u_bin)
 u_sigma_bin = convert_energy(u_sigma_bin)
 
 # Create figure with subplots
-fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+fig, axes = plt.subplots(1, 4, figsize=(16, 4))
 
 # Velocity profile
 ax = axes[0]
@@ -401,6 +617,15 @@ ax.plot(r_s, u_s, "--", color=line_color, alpha=0.8, lw=1.2)
 ax.errorbar(r_bin, u_bin, yerr=u_sigma_bin, **errorbar_props)
 ax.set_xlabel("$r$ [kpc]")
 ax.set_ylabel("$u_{\mathrm{int}}$ [erg]")
+ax.set_xlim(0, n_shock * r_shock)
+
+# Pressure profile
+ax = axes[3]
+ax.plot(r, P, **scatter_props)
+ax.plot(r_s, P_s, "--", color=line_color, alpha=0.8, lw=1.2)
+ax.errorbar(r_bin, P_bin, yerr=P_sigma_bin, **errorbar_props)
+ax.set_xlabel("$r$ [kpc]")
+ax.set_ylabel("$P$")
 ax.set_xlim(0, n_shock * r_shock)
 
 # Adjust layout and save figure
