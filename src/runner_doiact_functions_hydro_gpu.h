@@ -1601,16 +1601,14 @@ void runner_dopair1_unpack_f4(
   int topid;
   int pack_length_unpack = 0;
   ticks total_cpu_unpack_ticks = 0;
+  /*Loop over top level tasks*/
   for (topid = 0; topid < pack_vars->top_tasks_packed - 1; topid++) {
-	//lock top level cell here
-//	struct cell * cii = pack_vars->top_task_list[topid]->ci;
-//	struct cell * cjj = pack_vars->top_task_list[topid]->cj;
 	const ticks tic = getticks();
-	/* Do the copy */
-
+	/* Loop through each daughter task */
 	int n_leaves_in_task = pack_vars->leaf_list[topid].n_packed;
 	for(int tid = 0; tid < n_leaves_in_task; tid++){
-	  //Get pointers to the leaf cells. SEEMS I'm NOT GETTING A CORRECT POINTER
+	  /*Get pointers to the leaf cells. SEEMS I'm NOT GETTING A CORRECT POINTER
+	   *but likely due to incorrect book keeping*/
 	  struct cell * cii_l = pack_vars->leaf_list[topid].ci[tid];
 	  struct cell * cjj_l = pack_vars->leaf_list[topid].cj[tid];
 	  message("loc %f %f %f topid %i tid %i nleaves %i", pack_vars->leaf_list[topid].ci[tid]->loc[0]
