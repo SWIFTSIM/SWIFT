@@ -81,6 +81,15 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
         A1_m = f["/PartType0/Masses"][:] * m
         A1_mat_id = f["/PartType0/MaterialIDs"][:]
 
+    # Sort arrays based on z position
+    sort_indices = np.argsort(A1_z)
+    A1_x = A1_x[sort_indices]
+    A1_y = A1_y[sort_indices]
+    A1_z = A1_z[sort_indices]
+    A1_rho = A1_rho[sort_indices]
+    A1_m = A1_m[sort_indices]
+    A1_mat_id = A1_mat_id[sort_indices]
+
     # Mask to select slice
     slice_thickness = 0.1 * (np.max(A1_z) - np.min(A1_z))
     slice_pos_z = 0.5 * (np.max(A1_z) + np.min(A1_z))
@@ -160,7 +169,7 @@ if __name__ == "__main__":
         time = times[i]
 
         plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2)
-        ax.text(0.5,-0.05,r"$t =\;$"+time+"$\,$s", horizontalalignment='center',size=18, transform=ax.transAxes)
+        ax.text(0.5,-0.05,r"$t =\;$"+time+r"$\,$s", horizontalalignment='center',size=18, transform=ax.transAxes)
 
     # Colour bar
     sm1 = plt.cm.ScalarMappable(cmap=cmap1, norm=norm1)

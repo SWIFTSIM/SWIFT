@@ -119,6 +119,16 @@ if __name__ == "__main__":
         A1_P = f["/PartType0/Pressures"][:]
         A1_m = f["/PartType0/Masses"][:]
 
+    # Sort arrays based on z position
+    sort_indices = np.argsort(A1_z)
+    A1_x = A1_x[sort_indices]
+    A1_y = A1_y[sort_indices]
+    A1_z = A1_z[sort_indices]
+    A1_rho = A1_rho[sort_indices]
+    A1_u = A1_u[sort_indices]
+    A1_P = A1_P[sort_indices]
+    A1_m = A1_m[sort_indices]
+
     # Mask to select slice
     slice_thickness = 0.1
     slice_pos_z = 0.5 * (np.max(A1_z) + np.min(A1_z))
