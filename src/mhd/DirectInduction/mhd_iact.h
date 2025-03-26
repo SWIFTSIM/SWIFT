@@ -489,6 +489,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pi->mhd_data.B_over_rho_dt[k] += resistive_eta_i * mj * dB_dt_pref_PR * dB[k];
     pj->mhd_data.B_over_rho_dt[k] -= resistive_eta_j * mi * dB_dt_pref_PR * dB[k];
   }
+
+  pi->u_dt -= 0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;  
+  pj->u_dt -= 0.5f * permeability_inv * resistive_eta_j * mi * dB_dt_pref_PR * dB_2;  
   
   /* Artificial resistivity */
   const float art_diff_beta_i = pi->mhd_data.art_diff_beta;
@@ -767,6 +770,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.B_over_rho_dt[k] += resistive_eta_i * mj * dB_dt_pref_PR * dB[k];
   }
+
+  pi->u_dt -= 0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;  
   
   /* Artificial resistivity */
   const float art_diff_beta = pi->mhd_data.art_diff_beta;
