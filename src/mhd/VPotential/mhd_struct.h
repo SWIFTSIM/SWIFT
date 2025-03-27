@@ -54,6 +54,7 @@ struct mhd_part_data {
   float Diff_A_source[3];
   /* Laplacian A */
   float Delta_A[3];
+  float MaxVsig;
 };
 
 /**

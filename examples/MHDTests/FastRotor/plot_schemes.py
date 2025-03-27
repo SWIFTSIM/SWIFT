@@ -78,12 +78,14 @@ for ii in range(nini, nfin):
 
     B = data.gas.magnetic_flux_densities
     divB = data.gas.magnetic_divergences
+    #divB = data.gas.vector_potential_divergences
+    #divB = data.gas.velocities[:,2]
     P_mag = (B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2) / 2
     h = data.gas.smoothing_lengths
 
     normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
 
-    data.gas.DivB_error = np.maximum(h * abs(divB) / normB, 1e-10)
+    data.gas.DivB_error =  np.maximum(h * abs(divB) / normB, 1e-10)
 
     # Then create a mass-weighted B error dataset
     data.gas.mass_weighted_magnetic_divB_error = data.gas.masses * data.gas.DivB_error

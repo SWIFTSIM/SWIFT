@@ -53,7 +53,8 @@ case $WHAT in
 	  SCHEME_Nr=4
 	;;
 	all)
-	  SCHEME_Nr=( 0 1 2 3 4 )
+#	  SCHEME_Nr=( 0 1 2 3 4 )
+	  SCHEME_Nr=( 0 1 2 )
 	;;
 	*)
 	  echo $WHAT" wrong scheme"
@@ -80,14 +81,14 @@ do
       cur_dir=`pwd`
       cd ../../../../
       pwd
-      ./TestAllMHD.sh $IDD "--with-adiabatic-index=7/5"
+      ./TestAllMHD.sh $IDD "--with-adiabatic-index=7/5 --with-kernel=wendland-C2 --disable-hand-vec"
       cd $cur_dir
       cp ../../../../sw_$ID .
    fi
    cat <<-EOF > ./run.sh
 	#!/bin/bash
 	# Run SWIFT
-	./sw_$ID --hydro --threads=4 ../FastRotor_schemes.yml 2>&1 > out.log 
+	./sw_$ID --hydro --threads=12 ../FastRotor_schemes.yml 2>&1 > out.log 
 	
 	# Plot the evolution
 	python3 ../plot_schemes.py 0 61 2>&1 > plot.log

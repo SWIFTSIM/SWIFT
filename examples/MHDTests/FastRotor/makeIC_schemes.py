@@ -27,7 +27,7 @@ unit_cell = glass["/PartType0/Coordinates"][:, :]
 h_unit_cell = glass["/PartType0/SmoothingLength"][:]
 
 N_unit_cell = len(h_unit_cell)
-times = 2
+times = 4
 
 ratio = np.cbrt(rho_in_0 / rho_out_0)
 
@@ -36,6 +36,7 @@ ratio = np.cbrt(rho_in_0 / rho_out_0)
 cx_out = times
 cy_out = times
 cz_out = 1
+cz_out = times
 
 cx_in = int(np.ceil(ratio * cx_out))
 cy_in = int(np.ceil(ratio * cy_out))
@@ -144,6 +145,7 @@ u[N_out_f:] = P_0 / (rho_in_0 * (gamma - 1))
 
 v[N_out_f:, 0] = -rot[N_out_f:] * omega_0 * np.sin(theta[N_out_f:])
 v[N_out_f:, 1] = rot[N_out_f:] * omega_0 * np.cos(theta[N_out_f:])
+v[N_out_f:, 2] = 0.0 
 
 # B[:, 0] = B_0
 
@@ -164,7 +166,7 @@ hh[N:] = h
 h = hh
 vel = np.zeros((N2, 3))
 vel[:N, :] = v[:, :]
-vel[N:, :] = v[:, :]
+vel[N:, :] = -v[:, :]
 v = vel
 ids = np.linspace(1, N2, N2)
 m = np.ones(N2) * rho_out_0 * vol / N_out
