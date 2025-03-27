@@ -401,49 +401,6 @@ def sedov_2(t, E0, rho0, P0, g, n=1000, nu=3):
     u = np.insert(u, np.size(u), [u_0, u_0])
     return r, p, rho, u, r_s, p_s, rho_s, u_s, shock_speed
 
-# # The fitting model that will be used by curve_fit
-# def sedov_fit_model(r, E_0, rho_0, P_0, time, g=1.4, nu=3):
-#     """
-#     A wrapper for the sedov function to be used in curve fitting.
-#     Returns r_s, rho_s, and P_s based on the parameters (E_0, rho_0, P_0).
-    
-#     r_s    - radius
-#     E_0    - initial energy
-#     rho_0  - initial density
-#     P_0    - initial pressure
-#     g      - polytropic gamma (default 1.4)
-#     nu     - dimensionality (default 3)
-#     """
-    
-#     npoint = len(r) # Then we will append the values after the shock
-#     r_s, P_s, rho_s, v_s, r_shock, _, _, _, _ = sedov_2(
-#         t=time,  # You can modify this based on your setup
-#         E0=E_0,
-#         rho0=rho_0,
-#         P0=P_0,
-#         g=g,
-#         n=npoint,  # Number of points (can be adjusted)
-#         nu=nu
-#     )
-#     # print("-------")
-#     # print(r_s.shape)
-#     # print(P_s.shape)
-#     # print(rho_s.shape)
-#     # print(v_s.shape)
-#     # Combine into a single vector for fitting
-#     # return np.vstack((rho_s, P_s, v_s)).T  
-    
-#     # TODO : We need to link the values in r. The sedov function does not take r as 
-#     # argument. We receive given radii r_s that might not match the radii in r. 
-#     # We need to make them match so that the fit can properly work
-#     # For r > r_shock, set the values to rho_0, P_0, v_0
-    
-#     data = np.vstack((rho_s, P_s, v_s)).T  
-#     data = data.ravel().T
-    
-#     # print(data.shape)
-#     return data
-
 def sedov_fit_model(r, E_0, rho_0, P_0, time, g=1.4, nu=3):
     """
     A wrapper for the Sedov function to be used in curve fitting.
