@@ -495,9 +495,9 @@ runner_iact_nonsym_feedback_apply(
   const double E_kin_new = p_new_norm_2 / (2.0 * new_mass);
   const double dKE = E_kin_new - E_kin_old;
 
-  const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
+  const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
   message(
       "beta_1 = %e, beta_2 = %e, psi = %e, psi*p_available = %e, p_available = "
       "%e",
@@ -507,7 +507,7 @@ runner_iact_nonsym_feedback_apply(
       "E_ej = %e, E_tot = %e, U_tot = %e, E_kin_tot = %e, p_ej = %e, "
       "p_terminal = %e, dU = %e, f_therm = %e",
       E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, dU, f_therm);
-#endif /* SWIFT_DEBUG_CHECKS */
+#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 #endif /* FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
 
   /* Now we can give momentum, thermal and kinetic energy to the xpart. */
