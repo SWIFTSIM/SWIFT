@@ -632,8 +632,8 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
   }
 
   /* Has this cell been sorted at all for the given sid? */
-  if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank) {
-    atomic_or(&c->hydro.do_sort, (1 << sid));
+  if (!(c->hydro.sorted & (0x1FFF)) || c->nodeID != engine_rank) {
+    atomic_or(&c->hydro.do_sort, (0x1FFF));
     cell_activate_hydro_sorts_up(c, s);
   }
 }
@@ -711,8 +711,8 @@ void cell_activate_rt_sorts(struct cell *c, int sid, struct scheduler *s) {
   }
 
   /* Has this cell been sorted at all for the given sid? */
-  if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank) {
-    atomic_or(&c->hydro.do_sort, (1 << sid));
+  if (!(c->hydro.sorted & (0x1FFF)) || c->nodeID != engine_rank) {
+    atomic_or(&c->hydro.do_sort, (0x1FFF));
     cell_activate_rt_sorts_up(c, s);
   }
 }
@@ -785,8 +785,8 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
   }
 
   /* Has this cell been sorted at all for the given sid? */
-  if (!(c->stars.sorted & (1 << sid)) || c->nodeID != engine_rank) {
-    atomic_or(&c->stars.do_sort, (1 << sid));
+  if (!(c->stars.sorted & (0x1FFF)) || c->nodeID != engine_rank) {
+    atomic_or(&c->stars.do_sort, (0x1FFF));
     cell_activate_stars_sorts_up(c, s);
   }
 }
@@ -865,8 +865,8 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     /* Otherwise, activate the sorts and drifts. */
     else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
       /* We are going to interact this pair, so store some values. */
-      atomic_or(&ci->hydro.requires_sorts, 1 << sid);
-      atomic_or(&cj->hydro.requires_sorts, 1 << sid);
+      atomic_or(&ci->hydro.requires_sorts, 0x1FFF);
+      atomic_or(&cj->hydro.requires_sorts, 0x1FFF);
       ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
       cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
@@ -990,8 +990,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
       if (ci_active) {
 
         /* We are going to interact this pair, so store some values. */
-        atomic_or(&cj->hydro.requires_sorts, 1 << sid);
-        atomic_or(&ci->stars.requires_sorts, 1 << sid);
+        atomic_or(&cj->hydro.requires_sorts, 0x1FFF);
+        atomic_or(&ci->stars.requires_sorts, 0x1FFF);
 
         cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
         ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
@@ -1010,8 +1010,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
       if (cj_active) {
 
         /* We are going to interact this pair, so store some values. */
-        atomic_or(&cj->stars.requires_sorts, 1 << sid);
-        atomic_or(&ci->hydro.requires_sorts, 1 << sid);
+        atomic_or(&cj->stars.requires_sorts, 0x1FFF);
+        atomic_or(&ci->hydro.requires_sorts, 0x1FFF);
 
         ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
         cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
@@ -1239,7 +1239,7 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
       if (ci_active) {
 
         /* We are going to interact this pair, so store some values. */
-        atomic_or(&cj->hydro.requires_sorts, 1 << sid);
+        atomic_or(&cj->hydro.requires_sorts, 0x1FFF);
         cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
         /* Activate the drifts if the cells are local. */
@@ -1254,7 +1254,7 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
       if (cj_active) {
 
         /* We are going to interact this pair, so store some values. */
-        atomic_or(&ci->hydro.requires_sorts, 1 << sid);
+        atomic_or(&ci->hydro.requires_sorts, 0x1FFF);
         ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
 
         /* Activate the drifts if the cells are local. */
@@ -1605,8 +1605,8 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
     else if (ci_active || cj_active) {
 
       /* We are going to interact this pair, so store some values. */
-      atomic_or(&ci->hydro.requires_sorts, 1 << sid);
-      atomic_or(&cj->hydro.requires_sorts, 1 << sid);
+      atomic_or(&ci->hydro.requires_sorts, 0x1FFF);
+      atomic_or(&cj->hydro.requires_sorts, 0x1FFF);
       ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
       cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
