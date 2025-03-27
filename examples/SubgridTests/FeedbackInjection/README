@@ -9,7 +9,7 @@ This example's purpose is to test the isotropy distribution of fluxes (metal, mo
 To run this example with the GEAR model,
 
 ```
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=X --with-kernel=wendland-C2 --with-adaptive-softening --with-grackle=path/to/grackle
+CFLAGS="-DSWIFT_TEST_FEEDBACK_ISOTROPY_CHECK" ./configure --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=X --with-kernel=wendland-C2 --with-adaptive-softening=yes --with-grackle=/Users/roduit/local
 ```
 
 where X can be:
@@ -41,11 +41,4 @@ run_name="GEAR_MECH1" n_runs=100 ./run_multiple.sh
 # Isotropy checking
 To verify how the feedback distributes its quantities, such as metal mass, momentum, and energy, run the Python script `isotropy_check.py`. This script will compute the metal mass flux per solid angle seen by the stars over many runs (see previous section) and plot the median.
 
-Note: It can be useful to disable the momentum injection of the mechanical feedback, since it will biase the computations of the face area by the Python script. You can comment the following ines in `src/feedback/GEAR_mechanical/feedbac_iact.h`:
-
-```
-  /* Now we can give momentum, thermal and kinetic energy to the xpart. */
-  for (int i = 0; i < 3; i++) {
-    xpj->feedback_data.delta_p[i] += dp_prime[i];
-  }
-```
+Note: Momentum injection of the mechanical feedback is disabled because it introduces too much movement of the particles and thus biases the computations of the face area in the Python script.
