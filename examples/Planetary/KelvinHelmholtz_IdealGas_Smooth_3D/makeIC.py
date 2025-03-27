@@ -60,7 +60,7 @@ A1_ids = np.linspace(1, numPart, numPart)
 for i in range(N_depth):
     for j in range(N_l):
         for k in range(N_l):
-            index = i * N_l**2 + j * N_l + k
+            index = i * N_l ** 2 + j * N_l + k
 
             x = (j / float(N_l) + 1.0 / (2.0 * N_l)) * boxsize_l
             y = (k / float(N_l) + 1.0 / (2.0 * N_l)) * boxsize_l
@@ -73,25 +73,25 @@ for i in range(N_depth):
             if 0.0 <= y <= 0.25:
                 A1_rho[index] = rho2 - rhom * np.exp((y - 0.25) / delta)
                 A2_vel[index, 0] = v2 - vm * np.exp((y - 0.25) / delta)
-                A1_m[index] = A1_rho[index] / N_l**3
+                A1_m[index] = A1_rho[index] / N_l ** 3
                 A1_u[index] = P2 / (A1_rho[index] * (gamma - 1.0))
 
             elif 0.25 <= y <= 0.5:
                 A1_rho[index] = rho1 + rhom * np.exp((0.25 - y) / delta)
                 A2_vel[index, 0] = v1 + vm * np.exp((0.25 - y) / delta)
-                A1_m[index] = A1_rho[index] / N_l**3
+                A1_m[index] = A1_rho[index] / N_l ** 3
                 A1_u[index] = P1 / (A1_rho[index] * (gamma - 1.0))
 
             elif 0.5 <= y <= 0.75:
                 A1_rho[index] = rho1 + rhom * np.exp((y - 0.75) / delta)
                 A2_vel[index, 0] = v1 + vm * np.exp((y - 0.75) / delta)
-                A1_m[index] = A1_rho[index] / N_l**3
+                A1_m[index] = A1_rho[index] / N_l ** 3
                 A1_u[index] = P1 / (A1_rho[index] * (gamma - 1.0))
 
             elif 0.75 <= y <= 1:
                 A1_rho[index] = rho2 - rhom * np.exp((0.75 - y) / delta)
                 A2_vel[index, 0] = v2 - vm * np.exp((0.75 - y) / delta)
-                A1_m[index] = A1_rho[index] / N_l**3
+                A1_m[index] = A1_rho[index] / N_l ** 3
                 A1_u[index] = P2 / (A1_rho[index] * (gamma - 1.0))
 
 # Finally add the velocity perturbation

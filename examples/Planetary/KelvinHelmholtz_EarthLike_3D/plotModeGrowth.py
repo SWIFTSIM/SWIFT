@@ -96,17 +96,16 @@ def calculate_mode_growth(snap, vy_init_amp, wavelength):
 if __name__ == "__main__":
 
     # Simulation paramerters for nomralisation of mode growth
-    vy_init_amp = 2e-6  # Initial amplitude of y velocity perturbation in units of the boxsize per second
+    vy_init_amp = (
+        2e-6
+    )  # Initial amplitude of y velocity perturbation in units of the boxsize per second
     wavelength = 0.5  # wavelength of initial perturbation in units of the boxsize
 
     # Use Gridspec to set up figure
     n_gs_ax = 40
     ax_len = 5
     fig = plt.figure(figsize=(9, 6))
-    gs = mpl.gridspec.GridSpec(
-        nrows=40,
-        ncols=60,
-    )
+    gs = mpl.gridspec.GridSpec(nrows=40, ncols=60)
     ax = plt.subplot(gs[:, :])
 
     # Snapshots and corresponding times

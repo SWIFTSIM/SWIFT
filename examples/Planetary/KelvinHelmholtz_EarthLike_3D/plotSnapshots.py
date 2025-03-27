@@ -44,8 +44,7 @@ def make_axes():
         figsize=(3 * ax_len + 2 * ax_gap_len + cbar_gap_len + cbar_len, ax_len)
     )
     gs = mpl.gridspec.GridSpec(
-        nrows=n_gs_ax,
-        ncols=3 * n_gs_ax + 2 * n_gs_ax_gap + n_gs_cbar_gap + n_gs_cbar,
+        nrows=n_gs_ax, ncols=3 * n_gs_ax + 2 * n_gs_ax_gap + n_gs_cbar_gap + n_gs_cbar
     )
 
     ax_0 = plt.subplot(gs[:n_gs_ax, :n_gs_ax])
@@ -97,7 +96,7 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
         A1_x = f["/PartType0/Coordinates"][:, 0] * l
         A1_y = f["/PartType0/Coordinates"][:, 1] * l
         A1_z = f["/PartType0/Coordinates"][:, 2] * l
-        A1_rho = f["/PartType0/Densities"][:] * (m / l**3)
+        A1_rho = f["/PartType0/Densities"][:] * (m / l ** 3)
         A1_m = f["/PartType0/Masses"][:] * m
         A1_mat_id = f["/PartType0/MaterialIDs"][:]
 
@@ -127,7 +126,7 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
 
     # Size of plotted particles
     size_factor = 5e4
-    A1_size = size_factor * (A1_m_slice / A1_rho_slice) ** (2 / 3) / boxsize_l**2
+    A1_size = size_factor * (A1_m_slice / A1_rho_slice) ** (2 / 3) / boxsize_l ** 2
 
     mask_mat1 = A1_mat_id_slice == mat_id1
     mask_mat2 = A1_mat_id_slice == mat_id2

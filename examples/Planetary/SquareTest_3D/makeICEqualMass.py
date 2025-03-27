@@ -27,7 +27,7 @@ import numpy as np
 # Parameters
 N_l = 40  # Number of particles on one side
 gamma = 5.0 / 3.0  # Gas adiabatic index
-rho_in_approx = 16**3 / 10**3  # Density of inner region
+rho_in_approx = 16 ** 3 / 10 ** 3  # Density of inner region
 rho_out = 1.0  # Density of outer region
 P_in = 2.5  # Pressure of inner region
 P_out = 2.5  # Pressure of outer region
@@ -41,7 +41,7 @@ numPart_in_approx = N_l * N_l * N_l * cube_vol_factor * rho_in_approx / rho_out
 # Calculate the number of particles on one side of relevant region
 N_l_out = int(np.cbrt(numPart_out))
 N_l_in = int(np.cbrt(numPart_in_approx))
-numPart_in = int(N_l_in**3)
+numPart_in = int(N_l_in ** 3)
 
 # Set up outer region (cube not yet removed from this lattice)
 pos_out = np.zeros((numPart_out, 3))

@@ -105,7 +105,7 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
         A1_x = f["/PartType0/Coordinates"][:, 0] * l
         A1_y = f["/PartType0/Coordinates"][:, 1] * l
         A1_z = f["/PartType0/Coordinates"][:, 2] * l
-        A1_rho = f["/PartType0/Densities"][:] * (m / l**3)
+        A1_rho = f["/PartType0/Densities"][:] * (m / l ** 3)
         A1_m = f["/PartType0/Masses"][:] * m
         A1_mat_id = f["/PartType0/MaterialIDs"][:]
 
@@ -135,7 +135,7 @@ def plot_kh(ax, snap, mat_id1, mat_id2, cmap1, cmap2, norm1, norm2):
 
     # Size of plotted particles
     size_factor = 5e4
-    A1_size = size_factor * (A1_m_slice / A1_rho_slice) ** (2 / 3) / boxsize_x**2
+    A1_size = size_factor * (A1_m_slice / A1_rho_slice) ** (2 / 3) / boxsize_x ** 2
 
     mask_mat1 = A1_mat_id_slice == mat_id1
     mask_mat2 = A1_mat_id_slice == mat_id2

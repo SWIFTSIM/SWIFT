@@ -67,7 +67,7 @@ h = ones(numPart) * 2.0 * R / numPart ** (1.0 / 3.0)
 v = zeros((numPart, 3))
 ids = linspace(1, numPart, numPart)
 m = ones(numPart) * M / numPart
-rho = M / (2 * pi * R**2 * r)
+rho = M / (2 * pi * R ** 2 * r)
 u = ones(numPart) * u0
 mat = zeros(numPart)
 

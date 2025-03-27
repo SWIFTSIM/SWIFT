@@ -81,7 +81,7 @@ A1_h2 = np.full(numPart2, boxsize_l / N2_l)
 for i in range(N1_depth):
     for j in range(N1_l):
         for k in range(N1_l):
-            index = i * N1_l**2 + j * N1_l + k
+            index = i * N1_l ** 2 + j * N1_l + k
             A2_coords1[index, 0] = (j / float(N1_l) + 1.0 / (2.0 * N1_l)) * boxsize_l
             A2_coords1[index, 1] = (k / float(N1_l) + 1.0 / (2.0 * N1_l)) * boxsize_l
             A2_coords1[index, 2] = (
@@ -92,7 +92,7 @@ for i in range(N1_depth):
 for i in range(N2_depth):
     for j in range(N2_l):
         for k in range(N2_l):
-            index = i * N2_l**2 + j * N2_l + k
+            index = i * N2_l ** 2 + j * N2_l + k
             A2_coords2[index, 0] = (j / float(N2_l) + 1.0 / (2.0 * N2_l)) * boxsize_l
             A2_coords2[index, 1] = (k / float(N2_l) + 1.0 / (2.0 * N2_l)) * boxsize_l
             A2_coords2[index, 2] = (
