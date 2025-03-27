@@ -1353,7 +1353,10 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
-     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
+  /* MPI note: We need to update prep1 to update the stars */
   /* Here we update the stars --> the star cell must be local */
   const int ci_local = (ci->nodeID == e->nodeID);
   const int cj_local = (cj->nodeID == e->nodeID);
@@ -1433,7 +1436,10 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
-     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
+  /* MPI note: We need to update prep1 to update the stars */
   /* Here we update the stars --> the star cell must be local */
   const int ci_local = (ci->nodeID == e->nodeID);
   const int cj_local = (cj->nodeID == e->nodeID);
