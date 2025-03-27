@@ -115,9 +115,7 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 #endif
 
   struct engine *e = r->e;
-#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
   const struct hydro_props *hydro = e->hydro_properties;
-#endif
 
   /* Recurse? If the cells have been flipped in the branch function, ci might
    * be above its construction level. */
@@ -241,15 +239,16 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
         }
       }
       /* Flux exchange always symmetric */
-      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
+      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
+           hydro, 1);
 #else
       /* Only do the gradient calculations for local active particles */
       if (ci_local && left_active && cj_local && right_active) {
         IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
-             1);
+             hydro, 1);
       } else if (ci_local && left_active) {
         IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
-             0);
+             hydro, 0);
       } else if (cj_local && right_active) {
         /* The pair needs to be flipped around */
         /* The midpoint from the reference frame of the right particle */
@@ -258,7 +257,8 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
                               pair->midpoint[2] - shift[2]};
         /* The reversed shift */
         double r_shift[3] = {-shift[0], -shift[1], -shift[2]};
-        IACT(part_right, part_left, midpoint, pair->surface_area, r_shift, 0);
+        IACT(part_right, part_left, midpoint, pair->surface_area, r_shift,
+             hydro, 0);
       }
 #endif
     }
@@ -315,6 +315,7 @@ void DOPAIR_BRANCH(struct runner *restrict r, struct cell *ci,
 void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
+  const struct hydro_props *hydro = e->hydro_properties;
 
   /* Recurse? */
   if (c->grid.construction_level == NULL) {
@@ -360,7 +361,7 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 
     /* Interact with boundary particle */
     IACT_BOUNDARY(p, &p_boundary, pair->midpoint, pair->surface_area,
-                  &r->e->s->hs);
+                  &r->e->s->hs, hydro);
   }
 }
 
@@ -369,9 +370,7 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
   TIMER_TIC;
 
   struct engine *e = r->e;
-#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
   const struct hydro_props *hydro = e->hydro_properties;
-#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   assert(c->grid.voronoi != NULL);
@@ -427,14 +426,18 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
       }
     }
     /* Flux exchange always symmetric */
-    IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
+    IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
+         hydro, 1);
 #else
     if (left_is_active && right_is_active) {
-      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
+      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
+           hydro, 1);
     } else if (left_is_active) {
-      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 0);
+      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
+           hydro, 0);
     } else if (right_is_active) {
-      IACT(part_right, part_left, pair->midpoint, pair->surface_area, shift, 0);
+      IACT(part_right, part_left, pair->midpoint, pair->surface_area, shift,
+           hydro, 0);
     }
 #endif
   }

@@ -42,16 +42,15 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_init(
 
 /**
  * @brief Set the velocities based on the particles momentum.
- *
- * Velocities near vacuum are linearly suppressed.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_set_velocity_from_momentum(const float* restrict momentum,
                                  float inverse_mass, float rho,
+                                 const struct hydro_props* hydro_properties,
                                  float* restrict /*return*/ velocity) {
-  if (rho < 0) {
+  if (rho < hydro_properties->epsilon_rho) {
     /* Suppress velocity linearly near vacuum */
-    const float fac = rho * 1e20f;
+    const float fac = rho * hydro_properties->epsilon_rho_inv;
     velocity[0] = fac * momentum[0] * inverse_mass;
     velocity[1] = fac * momentum[1] * inverse_mass;
     velocity[2] = fac * momentum[2] * inverse_mass;
@@ -91,10 +90,12 @@ hydro_generator_velocity_half_kick(struct part* p, struct xpart* xp, float dt) {
  *
  * @param p The particle to act upon.
  * @param xp The extended particle data to act upon.
+ * @param hydro_properties The hydro_props struct
  * @param dt The hydrodynamical time-step of the particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_velocities_set(
-    struct part* restrict p, struct xpart* restrict xp, float dt) {
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct hydro_props* hydro_properties, float dt) {
 
   /* We first get the particle velocity. */
   float v[3] = {0.f, 0.f, 0.f};
@@ -142,7 +143,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
        distance to the centroid. */
     if (d > 0.9f * etaR || d > p->geometry.min_face_dist) {
       float fac = xi * soundspeed / d;
-      float fac_dt = 0.5f * xi / dt;
+      float fac_dt = dt > 0. ? 0.5f * xi / dt : 0.;
       if (fac_dt < fac) {
         fac = fac_dt;
       } else {
@@ -150,8 +151,9 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
         /* In very cold flows, the sound speed may be significantly slower than
          * the actual speed of the particles, rendering this scheme ineffective.
          * In this case, use a criterion based on the timestep instead */
-        if (25.f * soundspeed * soundspeed <
-            p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) {
+        if (25.f * soundspeed * soundspeed < fluid_v[0] * fluid_v[0] +
+                                                 fluid_v[1] * fluid_v[1] +
+                                                 fluid_v[2] * fluid_v[2]) {
           fac = fac_dt;
         }
 #endif
@@ -166,9 +168,9 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 #endif  // SHADOWSWIFT_STEER_MOTION
   }
 
-  if (p->rho < 0.) {
+  if (p->rho < hydro_properties->epsilon_rho) {
     /* Linearly suppress particle velocity near vacuum */
-    float fac = p->rho * 1e-10;
+    float fac = p->rho * hydro_properties->epsilon_rho_inv;
     v[0] *= fac;
     v[1] *= fac;
     v[2] *= fac;

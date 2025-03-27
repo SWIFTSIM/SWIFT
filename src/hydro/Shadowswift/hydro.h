@@ -278,12 +278,18 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Apply the pressure floor. */
   /* Temporarily apply the time extrapolation to density as it is used in the
    * pressure floor... */
+#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+  const float d_rho = p->dW_time[0];
+  const float d_P = p->dW_time[4];
+#else
+  const float d_rho = 0.f;
+  const float d_P = 0.f;
+#endif
   const float rho = p->rho;
-  p->rho += p->dW_time[0];
-  const float pressure_with_floor =
-      pressure_floor_get_comoving_pressure(p, pressure_floor,
-                                           p->P + p->dW_time[4], cosmo) -
-      p->dW_time[4];
+  p->rho += d_rho;
+  const float pressure_with_floor = pressure_floor_get_comoving_pressure(
+                                        p, pressure_floor, p->P + d_P, cosmo) -
+                                    d_P;
   p->rho = rho;
   if (p->P < pressure_with_floor) {
     p->P = pressure_with_floor;
@@ -399,12 +405,23 @@ hydro_convert_conserved_to_primitive(
     const struct entropy_floor_properties *floor_props, float *Q, float *W,
     double *thermal_energy) {
 
-  const float m_inv = (Q[0] != 0.0f) ? 1.0f / Q[0] : 0.0f;
-  const float volume_inv = 1.f / p->geometry.volume;
+  /* Check for vacuum (near limits of floating point precision), which give rise
+   * to precision errors resulting in NaNs... */
+  const double epsilon = 16. * FLT_MIN;
+  if (Q[0] < epsilon || Q[4] < epsilon) {
+    for (int k = 0; k < 6; k++) {
+      Q[k] = 0.f;
+      W[k] = 0.f;
+    }
+    *thermal_energy = 0.f;
+  }
+
+  const double m_inv = (Q[0] != 0.0f) ? 1.0 / Q[0] : 0.0f;
+  const double volume_inv = 1.f / p->geometry.volume;
 
   /* Update density and velocity */
   W[0] = Q[0] * volume_inv;
-  hydro_set_velocity_from_momentum(&Q[1], m_inv, W[0], &W[1]);
+  hydro_set_velocity_from_momentum(&Q[1], m_inv, W[0], hydro_props, &W[1]);
 
   /* Calculate the updated internal energy and entropic function A.
    * NOTE: This may violate energy conservation. */
@@ -457,6 +474,11 @@ hydro_convert_conserved_to_primitive(
   }
 #else
   error("Unknown thermal energy switch!");
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (u == INFINITY) error("Infinite internal energy!");
+  if (u != u) error("NaN internal energy!");
 #endif
 
   /* Apply entropy floor.
@@ -719,7 +741,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* NOTE: We update the generator velocity and relative velocity here
      * already, because it is used in the timestep calculation, as well as the
      * hydro velocity half kick. */
-    hydro_velocities_set(p, xp, dt_therm);
+    hydro_velocities_set(p, xp, hydro_props, dt_therm);
 
     /* Reset the fluxes so that they do not get used again in the kick1. */
     hydro_part_reset_fluxes(p);
@@ -772,7 +794,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
-    hydro_velocities_set(p, xp, p->flux.dt);
+    hydro_velocities_set(p, xp, hydro_props, p->flux.dt);
 
     /* Signal we just did a kick1 */
     p->timestepvars.last_kick = KICK1;
@@ -797,7 +819,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
-    hydro_velocities_set(p, xp, p->flux.dt);
+    hydro_velocities_set(p, xp, hydro_props, p->flux.dt);
 
     /* Signal we just did a kick1 */
     p->timestepvars.last_kick = KICK1;

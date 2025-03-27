@@ -2206,7 +2206,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       struct part *p = &c->hydro.parts[i];
       if (part_is_active(p, e)) {
         /* Set the particle's smoothing length */
-        p->h = kernel_gamma_inv * p->geometry.search_radius;
+        p->h = 1.25f * kernel_gamma_inv * p->geometry.search_radius;
         h_max_active = max(h_max_active, p->h);
         /* The particles smoothing length is updated by the volume calculation,
          * so we must update the h_depth as well. */

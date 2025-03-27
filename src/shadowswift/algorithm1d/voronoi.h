@@ -154,6 +154,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     voronoi_add_pair(v, d, gen_idx_in_d, n_left_in_d, parts, vor_vert0);
     voronoi_add_pair(v, d, gen_idx_in_d, n_right_in_d, parts, vor_vert1);
     p->geometry.volume = (float)(vor_vert1 - vor_vert0);
+    p->geometry.area = 2.f;
     p->geometry.centroid[0] =
         (float)(0.5 * (vor_vert0 + vor_vert1) - generator);
     p->geometry.centroid[1] = 0.f;

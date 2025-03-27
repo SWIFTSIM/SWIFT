@@ -133,7 +133,7 @@
 
 /* Options controlling particle movement */
 /*! @brief This option disables cell movement */
-//#define SHADOWSWIFT_FIX_PARTICLES
+// #define SHADOWSWIFT_FIX_PARTICLES
 /*! @brief This option enables cell steering, i.e. trying to keep the cells
  * regular by adding a correction to the cell velocities.*/
 #ifndef SHADOWSWIFT_FIX_PARTICLES
@@ -141,7 +141,7 @@
 #ifdef SHADOWSWIFT_STEER_MOTION
 /*! @brief More agressive cell steering for cold flows, where the other
  * criterion might become ineffective. */
-//#define SHADOWSWIFT_STEERING_COLD_FLOWS /* Enable if shockwaves in cold gas/*
+// #define SHADOWSWIFT_STEERING_COLD_FLOWS
 #endif
 #endif
 /* Options controlling thermal energy evolution */

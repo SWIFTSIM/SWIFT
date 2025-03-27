@@ -139,7 +139,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef MOVING_MESH
   /* Make sure parts are in gparts*/
   for (size_t i = 0; i < s->nr_parts; ++i) {
-    const struct part* p = &s->parts[i];
+    const struct part *p = &s->parts[i];
 
     if (p->gpart != NULL) {
       p->gpart->x[0] = p->x[0];
@@ -148,7 +148,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     }
   }
 #endif
-
 
   /* Initialise the counters, including buffer space for future particles */
   for (int i = 0; i < s->nr_cells; ++i) {
@@ -1016,7 +1015,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef MOVING_MESH
   /* Make sure parts are moved to CoM */
   for (size_t i = 0; i < s->nr_parts; ++i) {
-    const struct part* p = &s->parts[i];
+    const struct part *p = &s->parts[i];
 
     if (p->gpart != NULL) {
       p->gpart->x[0] = p->x[0] + p->geometry.centroid[0];
