@@ -1,6 +1,7 @@
 ###############################################################################
 # This file is part of SWIFT.
-# Copyright (c) 2023 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+# Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+# 	            2023 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -34,7 +35,7 @@ import h5py
 import woma
 
 # Number of particles
-N = 10 ** 5
+N = 10 ** 7
 N_label = "n%d" % (10 * np.log10(N))
 
 # Plotting options
@@ -72,7 +73,7 @@ def plot_profile_and_particles(profile, A1_r, A1_rho):
 
 if __name__ == "__main__":
     # Plot each snapshot
-    for body in ["target", "impactor"]:
+    for body in ["target"]:
         # Load profiles
         profile = woma.Planet(load_file="demo_%s_profile.hdf5" % body)
 

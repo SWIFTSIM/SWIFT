@@ -214,7 +214,7 @@ else:
     np.zeros([N_sink, 3])
 
 mass_sink = np.ones(N_sink) * m_sink
-h_sink =  np.ones(N_sink) * 3 * L / (N + N_sink) ** (1 / 3.0)
+h_sink = np.ones(N_sink) * 3 * L / (N + N_sink) ** (1 / 3.0)
 ids_sink = np.arange(N, N + N_sink)
 
 #####################
