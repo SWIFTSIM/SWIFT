@@ -178,4 +178,30 @@ INLINE static float idg_soundspeed_from_pressure(float density, float P,
   return sqrtf(mat->gamma * P / density);
 }
 
+// gas_temperature_from_internal_energy
+INLINE static float idg_temperature_from_internal_energy(
+    float density, float u, const struct idg_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+// gas_density_from_pressure_and_temperature
+INLINE static float idg_density_from_pressure_and_temperature(
+    float P, float T, const struct idg_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+// gas_density_from_pressure_and_internal_energy
+INLINE static float idg_density_from_pressure_and_internal_energy(
+    float P, float u, float rho_ref, float rho_sph,
+    const struct idg_params *mat) {
+
+  return mat->one_over_gamma_minus_one * P / u;
+}
+
 #endif /* SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H */
