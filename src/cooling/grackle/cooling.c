@@ -1087,7 +1087,7 @@ void cooling_cool_part(const struct phys_const* phys_const,
                        const double dt_therm, const double time) {
 
   /* Nothing to do here? */
-  if (dt == 0.) return;
+  if (dt == 0. || p->rho == 0.) return;
 
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
