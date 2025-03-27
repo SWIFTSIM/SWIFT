@@ -67,6 +67,7 @@ h = ones(numPart) * 2.0 * R / numPart ** (1.0 / 3.0)
 v = zeros((numPart, 3))
 ids = linspace(1, numPart, numPart)
 m = ones(numPart) * M / numPart
+rho = M / (2 * pi * R ** 2 * r)
 u = ones(numPart) * u0
 mat = zeros(numPart)
 
@@ -100,6 +101,7 @@ grp = file.create_group("/PartType0")
 grp.create_dataset("Coordinates", data=pos, dtype="d")
 grp.create_dataset("Velocities", data=v, dtype="f")
 grp.create_dataset("Masses", data=m, dtype="f")
+grp.create_dataset("Density", data=rho, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
