@@ -136,6 +136,7 @@ GEAR_FEEDBACK_SOURCES =
 if HAVEGEARFEEDBACK
 GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedback.c
 GEAR_FEEDBACK_SOURCES += feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
+GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_wind.c
 endif
 
 # source files for AGORA feedback
@@ -469,6 +470,7 @@ nobase_noinst_HEADERS += feedback/EAGLE/enrichment.h
 nobase_noinst_HEADERS += feedback/GEAR/stellar_evolution_struct.h feedback/GEAR/stellar_evolution.h 
 nobase_noinst_HEADERS += feedback/GEAR/feedback.h feedback/GEAR/feedback_iact.h 
 nobase_noinst_HEADERS += feedback/GEAR/feedback_properties.h feedback/GEAR/feedback_struct.h 
+nobase_noinst_HEADERS += feedback/GEAR/stellar_wind.h
 nobase_noinst_HEADERS += feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h 
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h 
 nobase_noinst_HEADERS += feedback/GEAR/feedback_debug.h
