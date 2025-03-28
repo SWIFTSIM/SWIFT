@@ -388,7 +388,7 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
     /* Calculate the part of the imf which is not considered yet for supernovae*/
     while (imf_m + dM < m_end_lim){
       log_m = log10(imf_m + dM / 2);
-      N_star_m = floor(initial_mass_function_get_imf_number_fraction(sm->imf,imf_m,imf_m+dM) * m_init);
+      N_star_m = floor(initial_mass_function_get_imf_number_fraction(&sm->imf,imf_m,imf_m+dM) * m_init);
       
       mass_loss = stellar_wind_get_ejected_mass(log_metallicity, log_m);
       v_infty = stellar_wind_get_wind_velocity(log_metallicity, log_m);
@@ -399,7 +399,7 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
     }
     if (imf_m < m_end_lim){
       log_m = log10((imf_m + m_end_lim) / 2);
-      N_star_m = floor(initial_mass_function_get_imf_number_fraction(sm->imf,imf_m,m_end_lim) * m_init);
+      N_star_m = floor(initial_mass_function_get_imf_number_fraction(&sm->imf,imf_m,m_end_lim) * m_init);
       
       mass_loss = stellar_wind_get_ejected_mass(log_metallicity, log_m);
       v_infty = stellar_wind_get_wind_velocity(log_metallicity, log_m);
@@ -413,7 +413,7 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
     dM = imf_m / 10 ;
     while (imf_m + dM < m_beg_lim){
       log_m = log10(imf_m + dM / 2);
-      N_star_m = floor(initial_mass_function_get_imf_number_fraction(sm->imf,imf_m,imf_m+dM));
+      N_star_m = floor(initial_mass_function_get_imf_number_fraction(&sm->imf,imf_m,imf_m+dM));
       mass_loss = stellar_wind_get_ejected_mass(log_metallicity, log_m);
       v_infty = stellar_wind_get_wind_velocity(log_metallicity, log_m);
       sp->feedback_data.preSN.mass_loss += mass_loss * N_star_m;
@@ -423,7 +423,7 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
     }
     if (imf_m < m_beg_lim){
       log_m = log10((imf_m + m_beg_lim) / 2);
-      N_star_m = floor(initial_mass_function_get_imf_number_fraction(sm->imf,imf_m,m_beg_lim));
+      N_star_m = floor(initial_mass_function_get_imf_number_fraction(&sm->imf,imf_m,m_beg_lim));
       
       mass_loss = stellar_wind_get_ejected_mass(log_metallicity, log_m);
       v_infty = stellar_wind_get_wind_velocity(log_metallicity, log_m);
@@ -1171,7 +1171,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
 
   /* Check if supernova occurs in the beetween of time steps. If it's the case, continue but only considering the time where the star is alive*/
   if (lifetime_myr < star_age_end_step_myr) {
-    const double star_age_end_myr = lifetime_myr;
+    star_age_end_step_myr = lifetime_myr;
   }
 
   /* this is needed for  stellar_evolution_compute_preSN_properties */

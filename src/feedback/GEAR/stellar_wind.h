@@ -30,10 +30,10 @@ static const float stellar_wind_x0 = 2;
 
 float calculate_b_parameter(const float log_Z, const float a[]);
 
-float stellar_wind_get_ejected_mass(const float *log_Z,const float *log_m);
+float stellar_wind_get_ejected_mass(const float log_Z,const float log_m);
 
-float stellar_wind_get_wind_velocity(const float *log_Z,const float *log_m);
+float stellar_wind_get_wind_velocity(const float log_Z,const float log_m);
 
-float stellar_wind_get_energy_dot(struct spart* restrict sp);
+float stellar_wind_get_energy_dot(const float mass_loss, const float v_infinity);
 
 #endif 
