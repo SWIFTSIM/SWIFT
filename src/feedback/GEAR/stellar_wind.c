@@ -117,6 +117,6 @@ float stellar_wind_get_wind_velocity(const float *log_Z,const float *log_m){
  * @param spart The stellar particle which has the wind properties
  * @return The wind energy in [units ? /yr]
  */
-float stellar_wind_get_energy_dot(struct spart* restrict sp){
-    return 0.5 * sp->feedback_data.preSN.mass_ejected * sp->feedback_data.preSN.v_infinity * sp->feedback_data.preSN.v_infinity 
+float stellar_wind_get_energy_dot(const float mass_loss, const float v_infinity){
+    return 0.5 * mass_loss * v_infinity * v_infinity 
 }
