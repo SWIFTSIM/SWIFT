@@ -67,11 +67,12 @@ GrackleCooling:
   self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
   max_steps: 1000
   convergence_limit: 1e-2
-  thermal_time_myr: 5
+  thermal_time_myr: 0
   maximal_density_Hpcm3: -1              # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
 
 GEARChemistry:
-  initial_metallicity: 0
+  initial_metallicity: 1
+  scale_initial_metallicity: 1
 
 GEARFeedback:
   supernovae_energy_erg: 1e51                   # supernovae energy, used only for SNIa
