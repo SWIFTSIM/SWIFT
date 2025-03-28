@@ -35,7 +35,7 @@ float calculate_b_parameter(const float log_Z, const float a[]){
  * 
  * @return The mass-loss due to stellar winds in M_sol/yr
  */
-float stellar_wind_get_ejected_mass(const float *log_Z,const float *log_m){
+float stellar_wind_get_ejected_mass(const float log_Z,const float log_m){
     float coeffs[4][3]= {
         {-1.79317697e-02, -4.21353945e-01, -2.15261087e+01},
         {0.01857143,  0.58428571, 17.99571429},
@@ -77,7 +77,7 @@ float stellar_wind_get_ejected_mass(const float *log_Z,const float *log_m){
  * 
  * @return The wind velocity of stellar winds in km/s
  */
-float stellar_wind_get_wind_velocity(const float *log_Z,const float *log_m){
+float stellar_wind_get_wind_velocity(const float log_Z,const float log_m){
     float coeffs[4][3]= {
         {-0.00513859,  0.14728145,  3.24600213},
         {0.00834222, 0.0259435,  0.33506397},
