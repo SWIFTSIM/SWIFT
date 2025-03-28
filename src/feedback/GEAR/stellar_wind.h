@@ -26,7 +26,7 @@
 /* The cut off parameter for the ejected mass function.
  * In ratio of log_10(M/M_sol)
  */
-static const float stellar_wind_x0 = 2
+static const float stellar_wind_x0 = 2;
 
 float calculate_b_parameter(const float log_Z, const float a[]);
 
