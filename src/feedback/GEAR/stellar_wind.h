@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STELLAR_WIND_GEAR_H
-#define SWIFT_STELLAR_WIND_GEAR_H
+#ifndef SWIFT_GEAR_STELLAR_WIND_H
+#define SWIFT_GEAR_STELLAR_WIND_H
 
 #include "hdf5_functions.h"
 #include "interpolation.h"
@@ -35,3 +35,5 @@ float stellar_wind_get_ejected_mass(const float *log_Z,const float *log_m);
 float stellar_wind_get_wind_velocity(const float *log_Z,const float *log_m);
 
 float stellar_wind_get_energy_dot(struct spart* restrict sp);
+
+#endif 
