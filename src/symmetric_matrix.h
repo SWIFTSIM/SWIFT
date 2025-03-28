@@ -154,9 +154,6 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
 __attribute__((always_inline)) INLINE static void sym_matrix_invert(
     struct sym_matrix *M_inv, const struct sym_matrix *M) {
 
-  // Can probably do this by just typing out all the elements,
-  // so we don't have to go back and forth between arrays and sym_matrix.
-  // But, for now use invert_dimension_by_dimension_matrix function
   float M_inv_matrix[3][3];
   get_matrix_from_sym_matrix(M_inv_matrix, M);
   int res = invert_dimension_by_dimension_matrix(M_inv_matrix);
