@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_HYDRO_KERNELS_H
-#define SWIFT_PLANETARY_HYDRO_KERNELS_H
+#ifndef SWIFT_REMIX_HYDRO_KERNELS_H
+#define SWIFT_REMIX_HYDRO_KERNELS_H
 
 /**
- * @file Planetary/hydro_kernels.h
+ * @file REMIX/hydro_kernels.h
  * @brief Utilities for REMIX hydro kernels.
  */
 
@@ -636,4 +636,4 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
   }
 }
 
-#endif /* SWIFT_PLANETARY_HYDRO_KERNELS_H */
+#endif /* SWIFT_REMIX_HYDRO_KERNELS_H */

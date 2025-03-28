@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_HYDRO_VISC_DIFN_H
-#define SWIFT_PLANETARY_HYDRO_VISC_DIFN_H
+#ifndef SWIFT_REMIX_HYDRO_VISC_DIFN_H
+#define SWIFT_REMIX_HYDRO_VISC_DIFN_H
 
 /**
- * @file Planetary/hydro_visc_difn.h
+ * @file REMIX/hydro_visc_difn.h
  * @brief Utilities for REMIX artificial viscosity and diffusion calculations.
  */
 
@@ -490,4 +490,4 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_difn(
   }
 }
 
-#endif /* SWIFT_PLANETARY_HYDRO_VISC_DIFN_H */
+#endif /* SWIFT_REMIX_HYDRO_VISC_DIFN_H */

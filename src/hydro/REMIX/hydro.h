@@ -18,11 +18,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_HYDRO_H
-#define SWIFT_PLANETARY_HYDRO_H
+#ifndef SWIFT_REMIX_HYDRO_H
+#define SWIFT_REMIX_HYDRO_H
 
 /**
- * @file Planetary/hydro.h
+ * @file REMIX/hydro.h
  * @brief REMIX implementation of SPH (Sandnes et al. 2025)
  */
 
@@ -999,4 +999,4 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
       p->u, p->force.pressure, p->rho, p->h, p->mat_id, time);
 }
 
-#endif /* SWIFT_PLANETARY_HYDRO_H */
+#endif /* SWIFT_REMIX_HYDRO_H */

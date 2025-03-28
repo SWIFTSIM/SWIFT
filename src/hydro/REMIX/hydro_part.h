@@ -18,11 +18,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_HYDRO_PART_H
-#define SWIFT_PLANETARY_HYDRO_PART_H
+#ifndef SWIFT_REMIX_HYDRO_PART_H
+#define SWIFT_REMIX_HYDRO_PART_H
 
 /**
- * @file Planetary/hydro_part.h
+ * @file REMIX/hydro_part.h
  * @brief REMIX implementation of SPH (Sandnes et al. 2025)
  */
 
@@ -310,4 +310,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_PLANETARY_HYDRO_PART_H */
+#endif /* SWIFT_REMIX_HYDRO_PART_H */

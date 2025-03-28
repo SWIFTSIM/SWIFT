@@ -18,11 +18,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_HYDRO_IACT_H
-#define SWIFT_PLANETARY_HYDRO_IACT_H
+#ifndef SWIFT_REMIX_HYDRO_IACT_H
+#define SWIFT_REMIX_HYDRO_IACT_H
 
 /**
- * @file Planetary/hydro_iact.h
+ * @file REMIX/hydro_iact.h
  * @brief REMIX implementation of SPH (Sandnes et al. 2025)
  */
 
@@ -537,4 +537,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 }
 
-#endif /* SWIFT_PLANETARY_HYDRO_IACT_H */
+#endif /* SWIFT_REMIX_HYDRO_IACT_H */

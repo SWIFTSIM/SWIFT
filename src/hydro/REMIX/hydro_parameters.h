@@ -18,8 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_HYDRO_PARAMETERS_H
-#define SWIFT_PLANETARY_HYDRO_PARAMETERS_H
+#ifndef SWIFT_REMIX_HYDRO_PARAMETERS_H
+#define SWIFT_REMIX_HYDRO_PARAMETERS_H
 
 /* Configuration file */
 #include "config.h"
@@ -35,7 +35,7 @@
 #include "inline.h"
 
 /**
- * @file Planetary/hydro_parameters.h
+ * @file REMIX/hydro_parameters.h
  * @brief REMIX implementation of SPH (Sandnes et al. 2025) (default parameters)
  *
  * This file defines a number of things that are used in
@@ -181,4 +181,4 @@ static INLINE void diffusion_print_snapshot(
 }
 #endif
 
-#endif /* SWIFT_PLANETARY_HYDRO_PARAMETERS_H */
+#endif /* SWIFT_REMIX_HYDRO_PARAMETERS_H */

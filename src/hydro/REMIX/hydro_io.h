@@ -18,11 +18,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_HYDRO_IO_H
-#define SWIFT_PLANETARY_HYDRO_IO_H
+#ifndef SWIFT_REMIX_HYDRO_IO_H
+#define SWIFT_REMIX_HYDRO_IO_H
 
 /**
- * @file Planetary/hydro_io.h
+ * @file REMIX/hydro_io.h
  * @brief REMIX implementation of SPH (Sandnes et al. 2025) i/o routines
  */
 
@@ -237,4 +237,4 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
  */
 INLINE static int writeEntropyFlag(void) { return 0; }
 
-#endif /* SWIFT_PLANETARY_HYDRO_IO_H */
+#endif /* SWIFT_REMIX_HYDRO_IO_H */
