@@ -267,12 +267,14 @@ void feedback_will_do_feedback(
   /* Apply the energy efficiency factor */
   sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
 
+  /* TODO: Do we want to multiply pre-SN energy by the efficiency? */
+  sp->feedback_data.preSN.energy_ejected *= feedback_props->preSN_efficiency;
+
   /* TODO: See if we need to add something about pre-SN */
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.
+                                       || sp->feedback_data.preSN.energy_ejected != 0.
                                        || !sp->feedback_data.is_dead;
-
-  /* TODO: Do we want to multiply pre-SN energy bu the efficiency? */
 }
 
 /**

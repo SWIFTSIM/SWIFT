@@ -76,8 +76,8 @@ struct feedback_spart_data {
     /*! Energy injected in the surrounding particles*/
     float energy_ejected;
 
-    /*! Total Mass ejected */
-    float mass_ejected;
+    /*! the instanteneous Mass-Loss */
+    float mass_loss;
 
     /*! Stellar wind velocity*/
     float v_infinity;
