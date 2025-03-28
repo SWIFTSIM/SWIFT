@@ -352,18 +352,18 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
   if (sp->star_type == single_star) {
     /* Stellar winds */
     /* Compute the mass-loss */
-    sp->feedback_data.preSN.mass_ejected = stellar_wind_get_ejected_mass(log_metallicity, log_m_avg);
+    sp->feedback_data.preSN.mass_loss = stellar_wind_get_ejected_mass(log_metallicity, log_m_avg);
 
     /* Compute the stellar winds terminal velocity (needed to calculate the winds kinetic energy)*/
     const float v_infinity = stellar_wind_get_wind_velocity(log_metallicity, log_m_avg);
   
     /* Stellar winds contribution */
-    sp->feedback_data.preSN.energy_ejected = stellar_wind_get_energy_dot(sp->feedback_data.preSN.mass_ejected,v_infinity); 
+    sp->feedback_data.preSN.energy_ejected = stellar_wind_get_energy_dot(sp->feedback_data.preSN.mass_loss,v_infinity); 
     
     /* Radiation ? */
 
     /* Do we want to count other than the mass ejected by the wind ? */
-    // sp->feedback_data.preSN.mass_ejected = mass_wind + mass_radiation;
+    // sp->feedback_data.preSN.mass_loss = mass_wind + mass_radiation;
 
     /* Transform into internal units ? */
     // sp->feedback_data.mass_ejected *= phys_const->const_solar_mass;
