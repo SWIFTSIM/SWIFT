@@ -38,15 +38,6 @@ def parse_options():
     parser = argparse.ArgumentParser(description=usage)
 
     parser.add_argument(
-        "--lJ",
-        action="store",
-        dest="lJ",
-        type=float,
-        default=0.250,
-        help="Jeans wavelength in box size unit",
-    )
-
-    parser.add_argument(
         "--rho",
         action="store",
         dest="rho",
@@ -71,6 +62,15 @@ def parse_options():
         type=int,
         default=5,
         help="Resolution level: N = (2**l)**3",
+    )
+
+    parser.add_argument(
+        "--boxsize",
+        action="store",
+        dest="boxsize",
+        type=float,
+        default=None,
+        help="Boxzise in kpc",
     )
 
     parser.add_argument("--star_mass",
@@ -134,40 +134,38 @@ rho = rho * constants.m_p / units.cm ** 3
 m = opt.mass  # in solar mass
 m = m * units.Msun
 
-# Gas mass in the box
-M = N * m
-
 # Size of the box
-L = (M / rho) ** (1 / 3.0)
+if opt.boxsize is None:
+    # If we don't give the boxsize, then we can determine it
+    # Gas mass in the box
+    M = N * m
+    L = (M / rho) ** (1 / 3.0) 
+else:
+    # If we fixed the boxsize, then the number of particles might change
+    L = opt.boxsize*units.kpc
+    M = rho * L**3
 
-# Jeans wavelength in box size unit
-lJ = opt.lJ
-lJ = lJ * L
+    print(M.to(units.Msun))
+    N = int(np.ceil(M.to(units.Msun) / m))
+    print(N)
 
 # Gravitational constant
 G = constants.G
 
-# Jeans wave number
-kJ = 2 * np.pi / lJ
-
-# Velocity dispersion
-sigma = np.sqrt(4 * np.pi * G * rho) / kJ
-
 print("Boxsize                               : {}".format(L.to(units.kpc)))
+print("Total mas                             : {}".format(M.to(units.Msun)))
 print("Number of particles                   : {}".format(N))
-print("Equivalent velocity dispertion        : {}".format(sigma.to(units.m / units.s)))
 
 # Convert to code units
 m = m.to(UnitMass).value
 L = L.to(UnitLength).value
 rho = rho.to(UnitMass / UnitLength ** 3).value
-sigma = sigma.to(UnitVelocity).value
 
 # Generate the particles
 pos = np.random.random([N, 3]) * np.array([L, L, L])
 vel = np.zeros([N, 3])
 mass = np.ones(N) * m
-u = np.ones(N) * sigma ** 2
+u = np.ones(N)
 ids = np.arange(N)
 h = np.ones(N) * 3 * L / N ** (1 / 3.0)
 rho = np.ones(N) * rho
