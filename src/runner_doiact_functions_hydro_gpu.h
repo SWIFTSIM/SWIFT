@@ -40,6 +40,8 @@ struct leaf_cell_list{
   struct cell **ci;
   struct cell **cj;
   int n_leaves;
+  int n_start;
+  int n_end;
   int n_packed;
 };
 struct pack_vars_pair {
@@ -301,7 +303,7 @@ void runner_recurse_gpu(struct runner *r, struct scheduler *s,
                               struct part_aos_f4_send *parts_send,
                               struct engine *e,
                               int4 *fparti_fpartj_lparti_lpartj, int *n_leafs_found,
-							  struct cell ** cells_left, struct cell ** cells_right, int depth, int n_expected_tasks) {
+							  int depth, int n_expected_tasks) {
 
 	/* Should we even bother? A. Nasar: For GPU code we need to be clever about this */
   if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
@@ -323,7 +325,7 @@ void runner_recurse_gpu(struct runner *r, struct scheduler *s,
 	  /*We probably want to record */
 	  if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL){
 		runner_recurse_gpu(r, s, pack_vars, ci->progeny[pid], cj->progeny[pjd], t, parts_send, e, fparti_fpartj_lparti_lpartj,
-				n_leafs_found, cells_left, cells_right, depth + 1, n_expected_tasks);
+				n_leafs_found, depth + 1, n_expected_tasks);
 //	        message("recursing to depth %i", depth + 1);
 	  }
 	}
@@ -333,8 +335,8 @@ void runner_recurse_gpu(struct runner *r, struct scheduler *s,
 	if(ci->hydro.count == 0 || cj->hydro.count == 0) return;
 	int leafs_found = *n_leafs_found;
 	/*for all leafs to be sent add to cell list */
-	cells_left[leafs_found] = ci;
-	cells_right[leafs_found] = cj;
+//	cells_left[leafs_found] = ci;
+//	cells_right[leafs_found] = cj;
 	/*Add leaf cells to list for each top_level task*/
 	pack_vars->leaf_list[pack_vars->top_tasks_packed].ci[leafs_found] = ci;
 	pack_vars->leaf_list[pack_vars->top_tasks_packed].cj[leafs_found] = cj;
@@ -352,7 +354,7 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
                               struct cell *ci, struct cell *cj, struct task *t,
                               struct part_aos_f4_send *parts_send,
                               struct engine *e,
-                              int4 *fparti_fpartj_lparti_lpartj, int leaves_packed) {
+                              int4 *fparti_fpartj_lparti_lpartj) {
   /* Timers for how long this all takes.
    * t0 and t1 are from start to finish including GPU calcs
    * tp0 and tp1 only time packing and unpacking*/
@@ -1576,8 +1578,8 @@ void runner_dopair1_launch_f4_one_memcpy(
   }
 
   /* Zero counters for the next pack operations */
-  pack_vars->count_parts = 0;
-  pack_vars->tasks_packed = 0;
+//  pack_vars->count_parts = 0;
+//  pack_vars->tasks_packed = 0;
 
   //	/*Time end of unpacking*/
   //	clock_gettime(CLOCK_REALTIME, &t1);
@@ -1606,7 +1608,8 @@ void runner_dopair1_unpack_f4(
 	const ticks tic = getticks();
 	/* Loop through each daughter task */
 	int n_leaves_in_task = pack_vars->leaf_list[topid].n_packed;
-	for(int tid = 0; tid < n_leaves_in_task; tid++){
+	int nstart = pack_vars->leaf_list[topid].n_start;
+	for(int tid = nstart; tid < n_leaves_in_task; tid++){
 	  /*Get pointers to the leaf cells. SEEMS I'm NOT GETTING A CORRECT POINTER
 	   *but likely due to incorrect book keeping*/
 	  struct cell * cii_l = pack_vars->leaf_list[topid].ci[tid];
@@ -1623,6 +1626,7 @@ void runner_dopair1_unpack_f4(
 
 	const ticks toc = getticks();
 	total_cpu_unpack_ticks += toc - tic;
+	pack_vars->count_parts = 0;
 	/*For some reason the code fails if we get a leaf pair task
 	 *this if statement stops the code from trying to unlock same cells twice*/
 	if(topid == pack_vars->top_tasks_packed -1 && cstart != n_leaves_found)
@@ -1632,7 +1636,6 @@ void runner_dopair1_unpack_f4(
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
-    pack_vars->task_locked = 0;
   }
 }
 void runner_dopair1_launch_f4_g_one_memcpy(

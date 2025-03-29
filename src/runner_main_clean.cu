@@ -970,24 +970,27 @@ void *runner_main2(void *data) {
             int n_leaves_found = 0;
             int top_tasks_packed = pack_vars_pair_dens->top_tasks_packed;
             int depth = 0;
-            struct cell * cells_left[n_expected_tasks];
-            struct cell * cells_right[n_expected_tasks];
+//            struct cell * cells_left[n_expected_tasks];
+//            struct cell * cells_right[n_expected_tasks];
             pack_vars_pair_dens->leaf_list[top_tasks_packed].n_leaves = 0;
+            pack_vars_pair_dens->leaf_list[top_tasks_packed].n_start = 0;
+            pack_vars_pair_dens->leaf_list[top_tasks_packed].n_packed = 0;
             runner_recurse_gpu(r, sched, pack_vars_pair_dens, ci, cj, t,
-                      parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, &n_leaves_found,
-					  cells_left, cells_right, depth, n_expected_tasks);
+                      parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, &n_leaves_found, depth, n_expected_tasks);
             n_leafs_total += n_leaves_found;
             int cstart = 0, cid = 0;
             pack_vars_pair_dens->top_task_list[top_tasks_packed] = t;
 
-            //This might be a bit iffy setting it to zero here. What if we loop through a task twice after recursion but do not offload the second time? We could be unpacking to the wrong leaves
-            pack_vars_pair_dens->leaf_list[top_tasks_packed].n_packed = 0;
             pack_vars_pair_dens->top_tasks_packed++;
             pack_vars_pair_dens->task_locked = 1;
             int t_s, t_e;
             t_s = 0;
             int n_t_tasks = pack_vars_pair_dens->target_n_tasks;
             t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
+
+            pack_vars_pair_dens->leaf_list[0].n_start = 0;
+            int ntop_packed = pack_vars_pair_dens->top_tasks_packed;
+
             while(cstart < n_leaves_found){
               tic_cpu_pack = getticks();
 
@@ -997,9 +1000,20 @@ void *runner_main2(void *data) {
               pack_vars_pair_dens->launch = 0;
               /*Loop through n_daughters such that the pack_vars_pair_dens counters are updated*/
               while(cstart < n_leaves_found && pack_vars_pair_dens->tasks_packed < n_t_tasks){
+                // n_start is incremented in pack. However, for cases where we have launched
+                // but there are still some daughters left unpacked, we need to restart the
+                // count from zero for the packed arrays as the daughters we previously worked on are no longer necessary.
+                // Thus, the counter for cii and cjj should remain cstart but counter for packing/unpacking arrays
+                // should be n_start which is set to zero after launch. count_parts should also be zero ater launch
+                struct cell * cii = pack_vars_pair_dens->leaf_list[ntop_packed - 1].ci[cstart];
+                struct cell * cjj = pack_vars_pair_dens->leaf_list[ntop_packed - 1].cj[cstart];
                 packing_time_pair += runner_dopair1_pack_f4(
-                  r, sched, pack_vars_pair_dens, cells_left[cstart], cells_right[cstart], t,
-                  parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens, cstart);
+                    /////////////////////////////Are we sure we should use
+                    /////////////////////////////cells_left/cells right and not
+                    /////////////////////////////pack_vars_pair_dens->leaf_list[top_tasks_packed].ci & cj?
+                  r, sched, pack_vars_pair_dens, cii, cjj, t,
+                    /////////////////////////////      HERE        //////////////////////////////////////////
+                  parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
                 if(pack_vars_pair_dens->count_parts > count_max_parts_tmp)
                   error("Packed more parts than possible");
                 cstart++;
@@ -1013,8 +1027,6 @@ void *runner_main2(void *data) {
               /* Do we have enough stuff to run the GPU ? */
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
-//            	cell_unlocktree(ci);
-//            	cell_unlocktree(cj);
                 int t_packed = pack_vars_pair_dens->tasks_packed;
                 runner_dopair1_launch_f4_one_memcpy(
                     r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
@@ -1023,7 +1035,7 @@ void *runner_main2(void *data) {
                     &packing_time_pair, &time_for_density_gpu_pair,
                     &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
                     pair_end);
-                int ntoptasks = 0;
+                //A. Nasar: Unpack data and zero count_parts counter
                 runner_dopair1_unpack_f4(
                     r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
                     parts_aos_pair_f4_recv, d_parts_aos_pair_f4_send,
@@ -1033,31 +1045,33 @@ void *runner_main2(void *data) {
                     pair_end, cstart, n_leaves_found);
                 /*This ensure that if we still have leaves left we start at index 1.
                   Otherwise, reset the index since we will be grabbing a new task*/
+                int n_packed = pack_vars_pair_dens->tasks_packed;
+                //A. Nasar: We've packed all daughters and have launched --> one way or the other
                 if(cstart == n_leaves_found){
-                	pack_vars_pair_dens->top_tasks_packed = 0;
-                    pack_vars_pair_dens->tasks_packed = 0;
-                    pack_vars_pair_dens->leaf_list[0].ci = NULL;
-                    pack_vars_pair_dens->leaf_list[0].cj = NULL;
-                    pack_vars_pair_dens->leaf_list[0].n_leaves = 0;
-                    pack_vars_pair_dens->leaf_list[0].n_packed = 0;
+                  pack_vars_pair_dens->top_tasks_packed = 0;
+                  for(int i = 0; i < ntop_packed; i++){
+                    pack_vars_pair_dens->leaf_list[i].n_leaves = 0;
+                    pack_vars_pair_dens->leaf_list[i].n_packed = 0;
+                    pack_vars_pair_dens->leaf_list[i].n_start = 0;
+                  }
                 }
+                // A. Nasar: We've launched but we have not packed all daughters.
+                // Need to set counters so we start from the last top-task packed
+                // and it's last packed daughter-task and start packing to the beginning of GPU arrays
+                // which is reset to zero (count_parts) in "....unpack_f4()"
                 else{
-                  int tt_packed = pack_vars_pair_dens->top_tasks_packed;
-                  int t_packed = pack_vars_pair_dens->tasks_packed;
-                  pack_vars_pair_dens->leaf_list[0].ci[0] =
-                      pack_vars_pair_dens->leaf_list[tt_packed - 1].ci[t_packed - 1];
-                  pack_vars_pair_dens->leaf_list[0].cj[0] =
-                      pack_vars_pair_dens->leaf_list[tt_packed - 1].cj[t_packed - 1];
-
-                  pack_vars_pair_dens->tasks_packed = 0;
                   pack_vars_pair_dens->top_tasks_packed = 1;
-                  pack_vars_pair_dens->top_task_list[0] = t;
-//                    pack_vars_pair_dens->leaf_list[0].n_packed = 0;
+                  pack_vars_pair_dens->top_task_list[0]= t;
+                  // A. Nasar: We've launched so need to restart counting tasks
+                  // from zero and need to reset tasks_packed to zero.
+                  // However, the counter for
+                  pack_vars_pair_dens->leaf_list[0].n_start = cstart;
+                  //A. Nasar: We have packed all daughter tasks in this parent task
+                  /*This makes it such that the remaining leaf tasks are packed starting from a
+                      fresh list since we are still in the while cstart < n_leaves_found loop**/
                 }
-                /*This makes it such that the remaining leaf tasks are packed starting from a
-                  fresh list since we are still in the while cstart < n_leaves_found loop*/
-
-                pack_vars_pair_dens->leaf_list[0].n_packed = 0;
+                // A. Nasar: These need to be reset to zero either way as our GPU array counters
+                // need to re-start from zero
                 pack_vars_pair_dens->tasks_packed = 0;
                 pack_vars_pair_dens->launch_leftovers = 0;
                 pack_vars_pair_dens->launch = 0;
@@ -1067,8 +1081,8 @@ void *runner_main2(void *data) {
             ttop_prev = t;
             cell_unlocktree(ci);
             cell_unlocktree(cj);
-            pack_vars_pair_dens->launch_leftovers = 0;
-            pack_vars_pair_dens->launch = 0;
+//            pack_vars_pair_dens->launch_leftovers = 0;
+//            pack_vars_pair_dens->launch = 0;
             /////////////////////W.I.P!!!////////////////////////////////////////////////////////
 
 #endif  // GPUOFFLOAD_DENSITY
