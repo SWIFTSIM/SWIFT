@@ -1,13 +1,13 @@
 # Intro
 This example consists of a homogeneous and periodic box filled with gas particles of equal mass. An individual star particle lies at the center.
 
-This example tests the Taylor-Sedov blastwave for different feedback implementations. It also serves for convergence testing.
+This example tests the Taylor-Sedov blastwave for different feedback implementations. It also serves to test the convergence of the different feedback schemes.
 
 # Configure
 To run this example with the GEAR model,
 
 ```
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=X --with-kernel=wendland-C2 --with-adaptive-softening --with-grackle=path/to/grackle
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=X --with-cooling=grackle_3 --with-stars=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 ```
 
 where X can be:
@@ -21,17 +21,10 @@ Then, type
 make -j
 ```
 
-You can remove the adaptive softening. In this case, you may need to change the default `max_physical_baryon_softening` value.
-
 # ICs
 The run.sh script calls the `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
 
 # Run
 Type run.sh, and let's go!
 
-# Multiple runs (TODO)
-To perform many runs to get statistics for the isotropy, you can use:
-
-```
-run_name="GEAR_MECH1" n_runs=100 ./run_multiple.sh
-```
+# Convergence test
