@@ -82,6 +82,11 @@ GEARFeedback:
   imf_transition_metallicity: -5                # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]  # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
+  #Mechanical feedback
+  maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)
+  enable_multiple_SN_momentum_correction_factor: 0         # Enable the correction factor to momentum if multiple SN affect a gas particle during one timestep. This factor ensures exact energy conservation in the case of multiple SN. (Default: 0)
+  f_kin_0: 0.28                                            # Fraction of the SN energy available to kinetic energy. The default value is for an idealized Sedov solution in a homogenous background. Only for GEAR-mechanical_2. (Default: 0.28)
+
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.      # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.
   timestep_age_threshold_Myr:           7.      # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
