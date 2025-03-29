@@ -1604,20 +1604,20 @@ void runner_dopair1_unpack_f4(
   int pack_length_unpack = 0;
   ticks total_cpu_unpack_ticks = 0;
   /*Loop over top level tasks*/
-  for (topid = 0; topid < pack_vars->top_tasks_packed - 1; topid++) {
+  for (topid = 0; topid < pack_vars->top_tasks_packed; topid++) {
 	const ticks tic = getticks();
 	/* Loop through each daughter task */
 	int n_leaves_in_task = pack_vars->leaf_list[topid].n_packed;
 	int nstart = pack_vars->leaf_list[topid].n_start;
-	for(int tid = nstart; tid < n_leaves_in_task; tid++){
+	for(int tid = nstart; tid < n_leaves_in_task + nstart; tid++){
 	  /*Get pointers to the leaf cells. SEEMS I'm NOT GETTING A CORRECT POINTER
 	   *but likely due to incorrect book keeping*/
 	  struct cell * cii_l = pack_vars->leaf_list[topid].ci[tid];
 	  struct cell * cjj_l = pack_vars->leaf_list[topid].cj[tid];
-	  message("loc %f %f %f topid %i tid %i nleaves %i", pack_vars->leaf_list[topid].ci[tid]->loc[0]
-                            , pack_vars->leaf_list[topid].ci[tid]->loc[1]
-	                        , pack_vars->leaf_list[topid].ci[tid]->loc[2]
-                            , topid, tid, n_leaves_in_task);
+//	  message("loc %f %f %f topid %i tid %i nleaves %i", pack_vars->leaf_list[topid].ci[tid]->loc[0]
+//                            , pack_vars->leaf_list[topid].ci[tid]->loc[1]
+//	                        , pack_vars->leaf_list[topid].ci[tid]->loc[2]
+//                            , topid, tid, n_leaves_in_task);
 //	  if(*cii_l == NULL || *cjj_l == NULL)error("stop");
 	  runner_do_ci_cj_gpu_unpack_neat_aos_f4(
 			r, cii_l, cjj_l, parts_recv, 0, &pack_length_unpack, tid,
