@@ -1614,10 +1614,10 @@ void runner_dopair1_unpack_f4(
 	   *but likely due to incorrect book keeping*/
 	  struct cell * cii_l = pack_vars->leaf_list[topid].ci[tid];
 	  struct cell * cjj_l = pack_vars->leaf_list[topid].cj[tid];
-//	  message("loc %f %f %f topid %i tid %i nleaves %i", pack_vars->leaf_list[topid].ci[tid]->loc[0]
-//                            , pack_vars->leaf_list[topid].ci[tid]->loc[1]
-//	                        , pack_vars->leaf_list[topid].ci[tid]->loc[2]
-//                            , topid, tid, n_leaves_in_task);
+	  message("loc %f %f %f topid %i tid %i nleaves %i", pack_vars->leaf_list[topid].ci[tid]->loc[0]
+                            , pack_vars->leaf_list[topid].ci[tid]->loc[1]
+	                        , pack_vars->leaf_list[topid].ci[tid]->loc[2]
+                            , topid, tid, n_leaves_in_task);
 //	  if(*cii_l == NULL || *cjj_l == NULL)error("stop");
 	  runner_do_ci_cj_gpu_unpack_neat_aos_f4(
 			r, cii_l, cjj_l, parts_recv, 0, &pack_length_unpack, tid,
