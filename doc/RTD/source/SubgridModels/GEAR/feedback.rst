@@ -1,4 +1,4 @@
-.. GEAR sub-grid model feedbac and stellar evolution
+.. GEAR sub-grid model feedback and stellar evolution
    Loic Hausammann, 17th April 2020
    Darwin Roduit, 30th March 2025
 
