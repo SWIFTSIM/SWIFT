@@ -6,7 +6,7 @@ set -e
 on_hpc=${on_hpc:="false"}
 n_threads=${n_threads:=8}  #Number of threads to use
 level=${level:=6}  #Number of particles = 2^(3*level)
-gas_density=${gas_density:=0.1} #Gas density in atom/cm^3
+gas_density=${gas_density:=1} #Gas density in atom/cm^3
 gas_particle_mass=${gas_particle_mass:=10} #Mass of the gas particles
 star_mass=${star_mass:=29.7} #Mass of the gas particles
 with_cooling=${with_cooling:=0}
