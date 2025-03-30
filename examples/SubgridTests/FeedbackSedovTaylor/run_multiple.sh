@@ -1,8 +1,4 @@
 #!/bin/bash
-
-# Number of different seeds to run
-n_runs=${n_runs:=10}  # Change this to the desired number of runs
-
 # Base directory to store results
 RESULTS_DIR=${run_name:="simulation_results"}
 mkdir -p "$RESULTS_DIR"
