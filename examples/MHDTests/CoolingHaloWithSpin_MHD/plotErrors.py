@@ -40,13 +40,13 @@ v = data.gas.velocities
 norm_r = np.sqrt(r[:, 0] ** 2 + r[:, 1] ** 2 + r[:, 2] ** 2)
 vr = np.sum(v * r, axis=1) / norm_r
 normv = np.sqrt(v[:, 0] ** 2 + v[:, 1] ** 2 + v[:, 2] ** 2)
-B = data.gas.magnetic_flux_densities 
-#B = v.value * 0.0 * 1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s)
-#J = data.gas.magnetic_flux_curl
+B = data.gas.magnetic_flux_densities
+# B = v.value * 0.0 * 1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s)
+# J = data.gas.magnetic_flux_curl
 normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
-#normJ = np.sqrt(J[:, 0] ** 2 + J[:, 1] ** 2 + J[:, 2] ** 2)
+# normJ = np.sqrt(J[:, 0] ** 2 + J[:, 1] ** 2 + J[:, 2] ** 2)
 divB = data.gas.magnetic_divergences
-#divB = norm_r.value * 0.0 * 1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s* unyt.cm)
+# divB = norm_r.value * 0.0 * 1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s* unyt.cm)
 h = data.gas.smoothing_lengths
 rho = data.gas.densities
 
@@ -57,22 +57,21 @@ R2 = data.gas.r2
 OW = data.gas.owtriggers
 mean_OW = np.mean(OW)
 min_OW = np.min(OW)
-print('Mean OW is ',np.round(mean_OW,1))
-print('Min OW is ', np.round(min_OW,1))
-OW = OW/mean_OW
+print("Mean OW is ", np.round(mean_OW, 1))
+print("Min OW is ", np.round(min_OW, 1))
+OW = OW / mean_OW
 
 # Normalize errors
-R0[R0<1e-2] = 1e-2
-R1[R1<1e-2] = 1e-2
-R2[R2<1e-2] = 1e-2
-OW[OW<1e-2] = 1e-2
-
+R0[R0 < 1e-2] = 1e-2
+R1[R1 < 1e-2] = 1e-2
+R2[R2 < 1e-2] = 1e-2
+OW[OW < 1e-2] = 1e-2
 
 
 Np = len(h)
-print('Number of particles %E' % len(data.gas.masses))
-print('Total mass %E Msol' % np.sum(data.gas.masses.to(unyt.Msun).value))
-print('Gas particle mass %E Msol' % np.mean(data.gas.masses.to(unyt.Msun).value))
+print("Number of particles %E" % len(data.gas.masses))
+print("Total mass %E Msol" % np.sum(data.gas.masses.to(unyt.Msun).value))
+print("Gas particle mass %E Msol" % np.mean(data.gas.masses.to(unyt.Msun).value))
 
 data.gas.mass_weighted_R0 = data.gas.masses * R0
 data.gas.mass_weighted_R1 = data.gas.masses * R1
@@ -88,7 +87,7 @@ rotation_matrix = [[1,0,0],
 rotation_matrix = [[0, 0, 1], [0, 1, 0], [-1, 0, 0]]
 
 # set plot area
-Lslice_kPc = 20.0 #2*21.5 
+Lslice_kPc = 20.0  # 2*21.5
 Lslice = Lslice_kPc * 3.08e18 * 1e3 * unyt.cm
 
 visualise_region_xy = [
@@ -139,7 +138,7 @@ mass_weighted_R1_map = slice_gas(**common_arguments, project="mass_weighted_R1")
 mass_weighted_R2_map = slice_gas(**common_arguments, project="mass_weighted_R2")
 mass_weighted_OW_map = slice_gas(**common_arguments, project="mass_weighted_OW")
 
-#mass_weighted_J_map = slice_gas(**common_arguments, project="mass_weighted_J")
+# mass_weighted_J_map = slice_gas(**common_arguments, project="mass_weighted_J")
 R0_map_xy = mass_weighted_R0_map_xy / mass_map_xy
 R1_map_xy = mass_weighted_R1_map_xy / mass_map_xy
 R2_map_xy = mass_weighted_R2_map_xy / mass_map_xy
@@ -152,60 +151,60 @@ OW_map = mass_weighted_OW_map / mass_map
 
 nx = 2
 ny = 5
-fig, ax = plt.subplots(ny, nx, sharey=True, figsize=(5*nx, 5*ny))
+fig, ax = plt.subplots(ny, nx, sharey=True, figsize=(5 * nx, 5 * ny))
 
-#fig.suptitle("Plotting at %.3f free fall times" % toplot)
+# fig.suptitle("Plotting at %.3f free fall times" % toplot)
 
 a00 = ax[0, 0].contourf(
     np.log10(R0_map.value),
-    cmap="plasma",#"plasma",#"gist_stern",#"RdBu",
+    cmap="plasma",  # "plasma",#"gist_stern",#"RdBu",
     extend="both",
     levels=np.linspace(-2, 0, 100),
 )
 
 a01 = ax[0, 1].contourf(
     np.log10(R0_map_xy.value).T,
-    cmap="plasma",#"plasma",#"gist_stern", #"RdBu",
+    cmap="plasma",  # "plasma",#"gist_stern", #"RdBu",
     extend="both",
     levels=np.linspace(-2, 0, 100),
 )
 a10 = ax[1, 0].contourf(
     np.log10(R1_map.value),
-    cmap="plasma",#"viridis", #"nipy_spectral_r",
+    cmap="plasma",  # "viridis", #"nipy_spectral_r",
     extend="both",
     levels=np.linspace(-2, 0, 100),
 )
 a11 = ax[1, 1].contourf(
     np.log10(R1_map_xy.value).T,
-    cmap="plasma",#"viridis", #"nipy_spectral_r",
+    cmap="plasma",  # "viridis", #"nipy_spectral_r",
     extend="both",
     levels=np.linspace(-2, 0, 100),
 )
 
 a20 = ax[2, 0].contourf(
     np.log10(R2_map.value),
-    cmap="plasma",#"viridis", #"nipy_spectral_r",
+    cmap="plasma",  # "viridis", #"nipy_spectral_r",
     extend="both",
     levels=np.linspace(-2, 0, 100),
 )
 
 a21 = ax[2, 1].contourf(
     np.log10(R2_map_xy.value).T,
-    cmap="plasma",#"viridis", #"nipy_spectral_r",
+    cmap="plasma",  # "viridis", #"nipy_spectral_r",
     extend="both",
     levels=np.linspace(-2, 0, 100),
 )
 
 a30 = ax[3, 0].contourf(
     np.log10(OW_map.value),
-    cmap="bwr",#"viridis", #"nipy_spectral_r",
+    cmap="bwr",  # "viridis", #"nipy_spectral_r",
     extend="both",
     levels=np.linspace(-1, 1, 100),
 )
 
 a31 = ax[3, 1].contourf(
     np.log10(OW_map_xy.value).T,
-    cmap="bwr",#"viridis", #"nipy_spectral_r",
+    cmap="bwr",  # "viridis", #"nipy_spectral_r",
     extend="both",
     levels=np.linspace(-1, 1, 100),
 )
@@ -222,45 +221,37 @@ for ii in range(ny):
     for jj in range(nx):
         ax[ii, jj].set_xlabel(r"$x$ [kPc]")
         ax[ii, jj].set_xticks(locs, labels)
-        #ax[ii, jj].set_aspect("equal")
-        ax[ii,jj].set_aspect('equal', adjustable='box')
-        ax[ii,jj].set_xlim(0, 511)
-        ax[ii,jj].set_ylim(0, 511)
+        # ax[ii, jj].set_aspect("equal")
+        ax[ii, jj].set_aspect("equal", adjustable="box")
+        ax[ii, jj].set_xlim(0, 511)
+        ax[ii, jj].set_ylim(0, 511)
 
 
-ticks_error =  [-2,-1,0]
-cbar1 = plt.colorbar(
-    a00, ax=ax[0, 0], fraction=0.046, pad=0.04, ticks=ticks_error
-)
+ticks_error = [-2, -1, 0]
+cbar1 = plt.colorbar(a00, ax=ax[0, 0], fraction=0.046, pad=0.04, ticks=ticks_error)
 cbar1.set_label(r"$\mathrm{log}_{10} R_0 \; $")
-cbar2 = plt.colorbar(
-    a01, ax=ax[0, 1], fraction=0.046, pad=0.04, ticks=ticks_error
-)
+cbar2 = plt.colorbar(a01, ax=ax[0, 1], fraction=0.046, pad=0.04, ticks=ticks_error)
 ax[0, 1].set_ylabel(r"$y$ [kPc]")
 cbar2.set_label(r"$\mathrm{log}_{10} R_0 \; $")
 ax[1, 1].set_ylabel(r"$y$ [kPc]")
-cbar3 = plt.colorbar(
-    a11, ax=ax[1, 0], fraction=0.046, pad=0.04, ticks=ticks_error
-)
+cbar3 = plt.colorbar(a11, ax=ax[1, 0], fraction=0.046, pad=0.04, ticks=ticks_error)
 cbar3.set_label(r"$\mathrm{log}_{10} R_1 \;$")
-cbar4 = plt.colorbar(
-    a11, ax=ax[1, 1], fraction=0.046, pad=0.04, ticks=ticks_error
-)
+cbar4 = plt.colorbar(a11, ax=ax[1, 1], fraction=0.046, pad=0.04, ticks=ticks_error)
 cbar4.set_label(r"$\mathrm{log}_{10} R_1 \;$")
 
 ax[2, 1].set_ylabel(r"$y$ [kPc]")
 
-cbar5 = plt.colorbar(a20, ax=ax[2, 0], fraction=0.046, pad=0.04,  ticks=ticks_error)
+cbar5 = plt.colorbar(a20, ax=ax[2, 0], fraction=0.046, pad=0.04, ticks=ticks_error)
 cbar5.set_label(r"$\mathrm{log}_{10} R_2 \;$")
 
 cbar6 = plt.colorbar(a21, ax=ax[2, 1], fraction=0.046, pad=0.04, ticks=ticks_error)
 cbar6.set_label(r"$\mathrm{log}_{10} R_2 \;$")
 
-ticksOW=[-1,0,1]
-cbar7 = plt.colorbar(a30, ax=ax[3, 0], fraction=0.046, pad=0.04,ticks=ticksOW)
+ticksOW = [-1, 0, 1]
+cbar7 = plt.colorbar(a30, ax=ax[3, 0], fraction=0.046, pad=0.04, ticks=ticksOW)
 cbar7.set_label(r"$\mathrm{log}_{10} OW/\langle OW \rangle \;$")
 
-cbar8 = plt.colorbar(a31, ax=ax[3, 1], fraction=0.046, pad=0.04,ticks=ticksOW)
+cbar8 = plt.colorbar(a31, ax=ax[3, 1], fraction=0.046, pad=0.04, ticks=ticksOW)
 cbar8.set_label(r"$\mathrm{log}_{10} OW/\langle OW \rangle \;$")
 
 Ninfo = 4
@@ -298,11 +289,14 @@ ax[Ninfo, 1].text(
     0.5, 0.1, "Physical resistivity $\eta$: $%.2f$ " % (eta), **text_common_args
 )
 ax[Ninfo, 1].text(
-    0.5, 0.0, r"Number of particles $N_p$: $%.0f$, $\langle OW \rangle$ = $%.0f$, $ OW_{min}$ = $%.0f$ " % (Np,mean_OW,min_OW), **text_common_args
+    0.5,
+    0.0,
+    r"Number of particles $N_p$: $%.0f$, $\langle OW \rangle$ = $%.0f$, $ OW_{min}$ = $%.0f$ "
+    % (Np, mean_OW, min_OW),
+    **text_common_args,
 )
 ax[Ninfo, 1].axis("off")
 
 fig.tight_layout()
 
-plt.savefig(sys.argv[2],dpi=220)
-
+plt.savefig(sys.argv[2], dpi=220)
