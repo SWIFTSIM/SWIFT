@@ -47,6 +47,7 @@ H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # DM halo parameters
 spin_lambda = 0.05  # spin parameter
+spin_lambda_choice = 'Bullock' # which definition of spin parameter to use
 f_b = 0.17  # baryon fraction
 c_200 = 7.2 # concentration parameter
 
@@ -56,6 +57,11 @@ B0_cgs = np.sqrt(CONST_MU0_CGS / (4.0 * np.pi)) * B0_Gaussian_Units
 
 # SPH
 eta = 1.3663 # kernel smoothing
+
+# Additional options
+spin_lambda_choice = 'Bullock' # which definition of spin parameter to use (Peebles or Bullock)
+save_to_vtk = False
+plot_v_distribution = False
 
 # From this we can find the virial radius, the radius within which the average density of the halo is
 # 200. * the mean matter density
@@ -105,7 +111,7 @@ periodic = 1  # 1 For periodic box
 boxSize = 4.0
 G = const_G
 N = int(sys.argv[1])  # Number of particles
-IAsource = 'IAfile'#'grid' #'IAfile'
+IAsource = 'IAfile'
 
 # Create the file
 filename = "CoolingHalo.hdf5"
@@ -141,7 +147,6 @@ if IAsource == 'IAfile':
     coords = coords[mask]
     coords /= lcut
     coords+=0.5
-
 elif IAsource == 'grid':
     Nside = int(N**(1/3))
     grid_1d = np.linspace(0.0, 1.0, Nside)  # Cube side is 1, centered at (0.5,0.5,0.5)
@@ -151,6 +156,7 @@ elif IAsource == 'grid':
     coords = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
     coords += 0.5/Nside
 
+# functions for coordinate transformation
 import scipy.optimize as opt
 def nfw_cdf(r, r_s):
     """Computes the cumulative mass fraction of the NFW profile."""
@@ -169,22 +175,7 @@ coords -= 0.5
 # cut a sphere
 r_uni = np.linalg.norm(coords, axis=1)
 coords = coords[r_uni<=0.5]
-
 coords *= boxSize * np.sqrt(3)
-
-# Save particle arrangement to .vtk file to view
-import vtk
-vtk_points = vtk.vtkPoints()
-for x, y, z in coords:
-    vtk_points.InsertNextPoint(x, y, z)
-
-poly_data = vtk.vtkPolyData()
-poly_data.SetPoints(vtk_points)
-
-writer = vtk.vtkPolyDataWriter()
-writer.SetFileName("input.vtk")
-writer.SetInputData(poly_data)
-writer.Write() # you can use paraview to watch how particles are arranged
 
 # calculate max distance from the center (units of r_200)
 R_max = np.sqrt(3)*(boxSize/2)
@@ -198,22 +189,6 @@ r_nfw = np.array([invert_nfw_cdf(F, r_s, R_max) for F in F_uni])
 # Rescale positions
 scaling_factors = r_nfw / r_uni
 coords *= scaling_factors[:, np.newaxis]
-
-# Save particle arrangement to .vtk file to view
-import vtk
-vtk_points = vtk.vtkPoints()
-for x, y, z in coords:
-    vtk_points.InsertNextPoint(x, y, z)
-
-poly_data = vtk.vtkPolyData()
-poly_data.SetPoints(vtk_points)
-
-writer = vtk.vtkPolyDataWriter()
-writer.SetFileName("rescaled.vtk")
-writer.SetInputData(poly_data)
-writer.Write() # you can use paraview to watch how particles are arranged
-
-
 
 # NFW-like gas density profile
 def rho_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
@@ -329,20 +304,18 @@ coords[:, 1] = y_coords
 coords[:, 2] = z_coords
 
 
-# Save particle arrangement to .vtk file to view
-import vtk
-vtk_points = vtk.vtkPoints()
-for x, y, z in (coords-boxSize/2):
-    vtk_points.InsertNextPoint(x, y, z)
-
-poly_data = vtk.vtkPolyData()
-poly_data.SetPoints(vtk_points)
-
-writer = vtk.vtkPolyDataWriter()
-writer.SetFileName("output.vtk")
-writer.SetInputData(poly_data)
-writer.Write() # you can use paraview to watch how particles are arranged
-
+# Save particle arrangement to .vtk file to open with paraview
+if save_to_vtk:
+    import vtk
+    vtk_points = vtk.vtkPoints()
+    for x, y, z in (coords-boxSize/2):
+        vtk_points.InsertNextPoint(x, y, z)
+    poly_data = vtk.vtkPolyData()
+    poly_data.SetPoints(vtk_points)
+    writer = vtk.vtkPolyDataWriter()
+    writer.SetFileName("output.vtk") 
+    writer.SetInputData(poly_data)
+    writer.Write() # one can use paraview to watch how particles are arranged
 
 radius = np.sqrt(
     (coords[:, 0] - boxSize / 2.0) ** 2
@@ -365,13 +338,11 @@ Total_E = v_200 ** 2 / 2.0
 j_sp = spin_lambda * np.sqrt(2) * v_200 * 1
 print("j_sp =",j_sp )
 # all particles within the virial radius have omega parallel to the z-axis, magnitude
-# is proportional to 1 over the radius
+# is proportional to j/r^2
 
+# define specific angular momentum distribution
 def j(r_value,j_max,s,f_b,M_200_cgs,r_200_cgs,c_200):
     return j_max * (Mgas_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200)/(M_200_cgs*f_b))**s
-
-def v_circ_r(r_value,f_b,M_200_cgs,r_200_cgs,c_200):
-    return spin_lambda * v_200 * (a_NFW(r_value, M_200_cgs,r_200_cgs, c_200)/a_NFW(1, M_200_cgs,r_200_cgs, c_200) * r_value / 1)**0.5
 
 omega = np.zeros((N, 3))
 omega_ort = np.zeros((N, 3))
@@ -381,36 +352,39 @@ for i in range(N):
     radius_vect[i,:] = coords[i, :] - boxSize / 2.0 
     omega[i, 2] = j(radius[i],1,1,f_b,M_200_cgs,r_200_cgs,c_200)/radius[i]**2
     v[i, :] = np.cross(omega[i, :], radius_vect[i,:])
-    #v[i, :] /= np.linalg.norm(v[i, :])
-    #v[i, :] *= v_circ_r(radius[i],f_b,M_200_cgs,r_200_cgs,c_200)
     B[i, 0] = B0_cgs / const_unit_magnetic_field_in_cgs
     l[i, :] = gas_particle_mass * np.cross(radius_vect[i,:],v[i, :])
 
+# select particles inside R_200
 mask_r_200 = radius <= 1
-
 Lp_tot = np.sum(l[mask_r_200],axis=0)
 Lp_tot_abs = np.linalg.norm(Lp_tot)
-
 normV = np.linalg.norm(v,axis = 1)
 
-Ep_kin = gas_particle_mass * normV**2 / 2 
-Ep_pot = gas_particle_mass * phi_NFW(radius, M_200_cgs,r_200_cgs, c_200)/(const_unit_velocity_in_cgs**2)
-Ep_tot = np.sum(Ep_kin[mask_r_200]+Ep_pot[mask_r_200])
+if spin_lambda_choice == 'Peebles':
+    # Normalize to Peebles spin parameter
+    Ep_kin = gas_particle_mass * normV**2 / 2 
+    Ep_pot = gas_particle_mass * phi_NFW(radius, M_200_cgs,r_200_cgs, c_200)/(const_unit_velocity_in_cgs**2)
+    Ep_tot = np.sum(Ep_kin[mask_r_200]+Ep_pot[mask_r_200])
+    calc_spin_par_P = Lp_tot_abs * np.sqrt(np.abs(Ep_tot))/const_G / (f_b*1)**(5/2)
+    v *= spin_lambda/calc_spin_par_P
+    l *=spin_lambda/calc_spin_par_P
+elif spin_lambda_choice == 'Bullock':
+    # Normalize to Bullock
+    jp_sp = Lp_tot_abs/(gas_particle_mass*np.sum(mask_r_200))
+    calc_spin_par_B = jp_sp/(np.sqrt(2) * 1 * v_200)
+    v *= spin_lambda/calc_spin_par_B
+    l *=spin_lambda/calc_spin_par_B
 
-calc_spin_par_P = Lp_tot_abs * np.sqrt(np.abs(Ep_tot))/const_G / (f_b*1)**(5/2)
-jp_sp = Lp_tot_abs/(gas_particle_mass*np.sum(mask_r_200))
-calc_spin_par_B = jp_sp/(np.sqrt(2) * 1 * v_200)
-v *= spin_lambda/calc_spin_par_B
-l *=spin_lambda/calc_spin_par_B
-
-normV = np.linalg.norm(v,axis = 1)
-import matplotlib.pyplot as plt
-fig,ax = plt.subplots(figsize = (5,5))
-ax.scatter(radius*r_200_cgs/(1e3*PARSEC_IN_CGS), normV)
-#ax.scatter(radius*r_200_cgs/(1e3*PARSEC_IN_CGS), v_circ_r(radius,f_b,M_200_cgs,r_200_cgs,c_200)/spin_lambda)
-ax.set_xlim(0,40)
-ax.set_ylim(0,100)
-plt.savefig('v_distr.png')
+# Draw velocity distribution
+if plot_v_distribution:
+    import matplotlib.pyplot as plt
+    normV = np.linalg.norm(v,axis = 1)
+    fig,ax = plt.subplots(figsize = (5,5))
+    ax.scatter(radius*r_200_cgs/(1e3*PARSEC_IN_CGS), normV)
+    ax.set_xlim(0,40)
+    ax.set_ylim(0,100)
+    plt.savefig('v_distribution.png')
 
 # Header
 grp = file.create_group("/Header")
@@ -455,11 +429,10 @@ ds = grp.create_dataset("SmoothingLength", (N,), "f")
 ds[()] = h
 h = np.zeros(1)
 
-# Internal energies
+# Internal energies in hydrostatic equilibrium
 rho0_cgs = rho_r(boxSize*np.sqrt(3)/2,f_b,M_200_cgs,r_200_cgs,c_200) #gas density on the edge
 P0_cgs = rho0_cgs*kb_cgs*T0_cgs/m_H_cgs # gas pressure on the edge of the box
 u = [u_vs_r(P0_cgs, radius[i], boxSize*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200)/const_unit_velocity_in_cgs**2 for i in range(N)] # gas particle internal energies
-#u_vs_r(radius)
 u = np.full((N,), u)
 ds = grp.create_dataset("InternalEnergy", (N,), "f")
 ds[()] = u
