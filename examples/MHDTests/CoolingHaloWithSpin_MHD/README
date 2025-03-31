@@ -32,7 +32,7 @@ for runs with lambda cooling
 
 Setup
 -----
-There are two setups present: 1) dwarfsize, one similar to Peng Wang, Tom Abel, 0712.0872; 2) MWsize, similar to R. Pakmor, V. Springel, 1212.1452
+We follow R. Pakmor, V. Springel, 1212.1452
 
 Snapshot slices
 ---------------
