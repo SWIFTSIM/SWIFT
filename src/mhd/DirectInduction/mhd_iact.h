@@ -183,7 +183,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   }
 
   Cos_Ind_Diffi = (Adv_B_sourcei[0]*Delta_Bi[0]+Adv_B_sourcei[1]*Delta_Bi[1]+Adv_B_sourcei[2]*Delta_Bi[2]);
-  pj->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * hi * hi / (absBi+FLT_MIN)) * 0.5f * fmaxf(0.0f,1.0f-Cos_Ind_Diffi) * Abs_Adv_B_sourcei * rhoi * (wj*mi);
+  pj->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * hi * hi / (absBi+FLT_MIN)) * 0.5f * fmaxf(0.0f,1.0f-Cos_Ind_Diffi) * Abs_Adv_B_sourcei * (wj*mi);
   if (pj->mhd_data.eta_OWAR<0.0f){
     error(
         "Error: incorrect OWAR "
@@ -210,7 +210,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   }
 
   Cos_Ind_Diffj = (Adv_B_sourcej[0]*Delta_Bj[0]+Adv_B_sourcej[1]*Delta_Bj[1]+Adv_B_sourcej[2]*Delta_Bj[2]);
-  pi->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * hj * hj / (absBj+FLT_MIN)) * 0.5f * fmaxf(0.0f,1.0f-Cos_Ind_Diffj) * Abs_Adv_B_sourcej * rhoj * (wi*mj);
+  pi->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * hj * hj / (absBj+FLT_MIN)) * 0.5f * fmaxf(0.0f,1.0f-Cos_Ind_Diffj) * Abs_Adv_B_sourcej * (wi*mj);
   if (pi->mhd_data.eta_OWAR<0.0f){
     error(
         "Error: incorrect OWAR "
@@ -334,7 +334,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   Cos_Ind_Diffj = (Adv_B_sourcej[0]*Delta_Bj[0]+Adv_B_sourcej[1]*Delta_Bj[1]+Adv_B_sourcej[2]*Delta_Bj[2]);
   
-  pi->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * hj * hj / (absBj+FLT_MIN)) * 0.5f * fmaxf(0.0f,1.0f-Cos_Ind_Diffj) * Abs_Adv_B_sourcej * rhoj * (wi*mj);
+  pi->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * hj * hj / (absBj+FLT_MIN)) * 0.5f * fmaxf(0.0f,1.0f-Cos_Ind_Diffj) * Abs_Adv_B_sourcej * (wi*mj);
   if (pi->mhd_data.eta_OWAR<0.0f){
     error(
         "Error: incorrect OWAR "
