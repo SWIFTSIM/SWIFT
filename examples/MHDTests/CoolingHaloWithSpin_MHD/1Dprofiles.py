@@ -48,15 +48,6 @@ const_G = (
     / (const_unit_length_in_cgs * const_unit_length_in_cgs * const_unit_length_in_cgs)
 )
 
-# load reference
-with_reference = False
-
-if with_reference:
-    import pandas as pd
-    rho_vs_x_data = pd.read_csv('./1Dreference/rho_vs_x.csv',header=None)
-    Bx_vs_x_data = pd.read_csv('./1Dreference/Bx_vs_x.csv',header=None)
-    By_vs_x_data = pd.read_csv('./1Dreference/By_vs_x.csv',header=None)
-    Berr_vs_x_data = pd.read_csv('./1Dreference/Berr_vs_x.csv',header=None)
 
 # Parse command line arguments
 argparser = argparse.ArgumentParser()
@@ -161,7 +152,7 @@ slice_ind = int(np.round(y0 * map_pixel_length,0))
 plt.rcParams.update({"font.size": 16})
 
 nx = 1
-ny = 5
+ny = 4
 fig, axs = plt.subplots(ny, nx, figsize=((10*nx, 5*ny)))
 fig.subplots_adjust(hspace=0.1)
 
@@ -195,7 +186,7 @@ l_units_cgs = const_unit_mass_in_cgs * const_unit_length_in_cgs * const_unit_vel
 l = l.to(l_units_cgs*unyt.g*unyt.cm**2/unyt.s).value
 L_r =np.array([ np.sum(l[rp_kpc<=r_values[i]],axis=0) for i in range(len(r_values))])
 norm_L_r = np.sqrt(L_r[:,0]**2+L_r[:,1]**2+L_r[:,2]**2)
-axs[3].scatter(r_values,norm_L_r,color='black', marker='+',s=100)
+#axs[3].scatter(r_values,norm_L_r,color='black', marker='+',s=100)
 
 
 # NFW-like gas density profile
@@ -305,27 +296,8 @@ axs[2].axhline(y=f_b*M_200_cgs/(MSOL_IN_CGS),color='gray',ls='dashed',label = '$
 axs[2].set_xscale('log')
 axs[2].set_xlim(0.5,300)
 
-axs[3].set_xlabel(r"$r$ [kpc]")
-axs[3].set_xticks(locs, labels)
-axs[3].set_xlim(0, map_pixel_length/2)
-axs[3].plot(x, L_analytic, "k-",color='red')
-axs[3].set_ylabel(r"$|\vec{L}_{gas}(<r)|$ $[M_{200}\cdot R_{200} \cdot v_{200} ]$ ")
-axs[3].set_yscale('log')
-axs[3].set_yticks(np.logspace(-4, 1, 6))
-axs[3].set_ylim(1e-4, 1e1)
-axs[3].axvline(x=r_200_kpc,color='gray',ls='dashed',label = '$R_200$')
-axs[3].set_xscale('log')
-axs[3].set_xlim(0.5,300)
 
-if with_reference:
-    axs[0].plot(rho_vs_x_data[0],rho_vs_x_data[1],label='MFM $256^2$',color='red')
-    #axs[1].plot(Bx_vs_x_data[0],Bx_vs_x_data[1],label='MFM $256^2$',color='red')
-    #axs[2].plot(By_vs_x_data[0],By_vs_x_data[1],label='MFM $256^2$',color='red')
-    #axs[3].plot(Berr_vs_x_data[0],Berr_vs_x_data[1],label='MFM $256^2$',color='red')
-
-#axs[2].legend()
-# Add panel with infromation about the run
-Ninfo = 4
+Ninfo = 3
 text_common_args = dict(
     fontsize=10, ha="center", va="center", transform=axs[Ninfo].transAxes
 )
