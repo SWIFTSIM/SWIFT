@@ -111,26 +111,17 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  */
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
-
-  /* Convert internal energy to thermal energy */
-#ifdef EOS_ISOTHERMAL_GAS
-  p->thermal_energy = Q[0] * gas_internal_energy_from_entropy(0.0f, 0.0f);
-#else
-  /* This needs to be corrected by a scale factor for cosmological runs, but
-   * that happens in `hydro_convert_quantities(...)` */
-  p->thermal_energy = p->thermal_energy * p->conserved.mass;
-#endif
-
-  /* Compute momentum from velocity and mass */
-  p->conserved.momentum[0] = p->conserved.mass * p->v[0];
-  p->conserved.momentum[1] = p->conserved.mass * p->v[1];
-  p->conserved.momentum[2] = p->conserved.mass * p->v[2];
-
   /* overwrite all hydro variables if we are using Lloyd's algorithm */
   /* TODO */
 
   /* initialize the generator velocity based on the primitive fluid velocity */
   hydro_velocities_init(p, xp);
+
+#ifdef EOS_ISOTHERMAL_GAS
+  /* Overwrite internal energy from ics. */
+  p->conserved.energy = gas_internal_energy_from_entropy(0.0f, 0.0f);
+#endif
+  xp->u_full = p->conserved.energy;
 
   /* Ignore hydro accelerations present in the initial condition */
   p->a_hydro[0] = 0.0f;
@@ -396,24 +387,21 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param floor_props The properties of the entropy floor.
  * @param Q (inout) The vector of conserved quantities
  * @param W (out) The vector of primitive quantities
- * @param thermal_energy (out) The updated thermal energy of the particle
  */
 __attribute__((always_inline)) INLINE static void
 hydro_convert_conserved_to_primitive(
-    struct part *restrict p, const struct xpart *restrict xp,
+    struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props, float *Q, float *W,
-    double *thermal_energy) {
+    const struct entropy_floor_properties *floor_props, float *Q, float *W) {
 
-  /* Check for vacuum (near limits of floating point precision), which give rise
-   * to precision errors resulting in NaNs... */
+  /* Check for vacuum (or near limits of floating point precision), which give
+   * rise to precision errors resulting in NaNs... */
   const double epsilon = 16. * FLT_MIN;
   if (Q[0] < epsilon || Q[4] < epsilon) {
     for (int k = 0; k < 6; k++) {
       Q[k] = 0.f;
       W[k] = 0.f;
     }
-    *thermal_energy = 0.f;
   }
 
   const double m_inv = (Q[0] != 0.0f) ? 1.0 / Q[0] : 0.0f;
@@ -430,47 +418,54 @@ hydro_convert_conserved_to_primitive(
   u = gas_internal_energy_from_pressure(0.f, 0.f);
 #else
   double Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
-  *thermal_energy = Q[4] - Ekin;
+  double thermal_energy = Q[4] - Ekin;
 #if SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_NONE
-  u = *thermal_energy * m_inv;
+  u = thermal_energy * m_inv;
 #elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_SPRINGEL
   const float *g = xp->a_grav;
   float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
                 hydro_get_comoving_psize(p);
-  if (*thermal_energy > 1e-2 * p->timestepvars.Ekin &&
-      *thermal_energy > 1e-2 * Egrav) {
+  if (thermal_energy > 1e-2 * p->timestepvars.Ekin &&
+      thermal_energy > 1e-2 * Egrav) {
     /* Recover thermal energy and entropy from total energy */
-    u = *thermal_energy * m_inv;
+    u = thermal_energy * m_inv;
   } else {
     /* Keep entropy conserved and recover thermal and total energy. */
-    double A = p->conserved.entropy * m_inv;
+    double A = Q[5] * m_inv;
     u = gas_internal_energy_from_entropy(W[0], A);
   }
 #elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_SPRINGEL_MACH
   if (p->timestepvars.mach_number > 1.1) {
     /* Recover thermal energy and entropy from total energy */
-    u = *thermal_energy * m_inv;
+    u = thermal_energy * m_inv;
   } else {
     /* Keep entropy conserved and recover thermal and total energy. */
-    double A = p->conserved.entropy * m_inv;
+    double A = Q[5] * m_inv;
     u = gas_internal_energy_from_entropy(W[0], A);
   }
 #elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_ASENSIO
   const float *g = xp->a_grav;
   float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
                 hydro_get_comoving_psize(p);
-  if (*thermal_energy > 1e-2 * (Ekin + Egrav)) {
+  if (thermal_energy > 1e-2 * (Ekin + Egrav)) {
     /* Recover thermal energy and entropy from total energy */
-    u = *thermal_energy * m_inv;
-  } else if (*thermal_energy <
-                 1e-3 * (p->timestepvars.Ekin + *thermal_energy) ||
-             *thermal_energy < 1e-3 * Egrav) {
+    u = thermal_energy * m_inv;
+  } else if (thermal_energy < 1e-3 * (p->timestepvars.Ekin + thermal_energy) ||
+             thermal_energy < 1e-3 * Egrav) {
     /* Keep entropy conserved and recover thermal and total energy. */
-    double A = p->conserved.entropy * m_inv;
+    double A = Q[5] * m_inv;
     u = gas_internal_energy_from_entropy(W[0], A);
   } else {
     /* Use evolved thermal energy to set total energy and entropy */
-    u = p->thermal_energy * m_inv;
+    // See eq. 24 in Alonso Asensio et al. (preprint 2023)
+    float flux[6];
+    hydro_part_get_fluxes(p, flux);
+    double thermal_energy_evolved =
+        p->conserved.mass * xp->u_full + flux[4] -
+        (p->v[0] * flux[1] + p->v[1] * flux[2] + p->v[2] * flux[3]) +
+        0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) *
+            flux[0];
+    u = thermal_energy_evolved * m_inv;
   }
 #else
   error("Unknown thermal energy switch!");
@@ -498,8 +493,8 @@ hydro_convert_conserved_to_primitive(
    * affected by our choice of thermal energy. */
   W[4] = gas_pressure_from_internal_energy(W[0], u);
   W[5] = gas_entropy_from_internal_energy(W[0], u);
-  *thermal_energy = Q[0] * u;
-  Q[4] = Ekin + *thermal_energy;
+  xp->u_full = u;
+  Q[4] = Ekin + Q[0] * u;
   Q[5] = Q[0] * W[5];
 
   /* reset the primitive variables if we are using Lloyd's algorithm */
@@ -530,40 +525,41 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   /* Get some quantities that we'll be using */
   float Q[6], W[6];
-  hydro_part_get_conserved_variables(p, Q);
-  hydro_part_get_primitive_variables(p, W);
-  const float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
   const float volume_inv = 1.f / p->geometry.volume;
 
-  /* First of all, convert thermal energy to comoving thermal energy. */
-  const float thermal_energy =
-      p->thermal_energy / cosmo->a_factor_internal_energy;
+  /* First of all, rescale the internal energy.
+   * NOTE: At this point, the part->conserved.energy field contains the internal
+   * energy, as this is read from the ICs */
+  const float internal_energy =
+      p->conserved.energy / cosmo->a_factor_internal_energy;
 
-  /* Total energy */
-  Q[4] =
-      thermal_energy + 0.5f * m_inv * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]);
-
-  /* Density */
-  W[0] = Q[0] * volume_inv;
-
-  /* Pressure and entropy */
+  /* Set primitive quantities */
+  W[0] = p->conserved.mass * volume_inv;
+  W[1] = p->v[0];
+  W[2] = p->v[1];
+  W[3] = p->v[2];
 #ifdef EOS_ISOTHERMAL_GAS
   /* although the pressure is not formally used anywhere if an isothermal eos
-     has been selected, we still make sure it is set to the correct value */
+       has been selected, we still make sure it is set to the correct value */
   W[4] = gas_pressure_from_internal_energy(W[0], 0.0f);
   W[5] = gas_entropy_from_pressure(W[0], W[4]);
-  Q[5] = Q[0] * W[5];
 #else
-  const float u = thermal_energy * m_inv;
-  W[4] = gas_pressure_from_internal_energy(W[0], u);
-  Q[5] = Q[0] * gas_entropy_from_internal_energy(W[0], u);
-  W[5] = Q[5] * m_inv;
+  W[4] = gas_pressure_from_internal_energy(W[0], internal_energy);
+  W[5] = gas_entropy_from_internal_energy(W[0], internal_energy);
 #endif
 
-  /* Update quantities */
+  /* Set conserved quantities */
+  Q[0] = p->conserved.mass;
+  Q[1] = Q[0] * W[1];
+  Q[2] = Q[0] * W[2];
+  Q[3] = Q[0] * W[3];
+  Q[4] = Q[0] *
+         (internal_energy + 0.5f * (W[1] * W[1] + W[2] * W[2] + W[3] * W[3]));
+  Q[5] = Q[0] * W[5];
+
+  /* Apply updates */
   hydro_part_set_conserved_variables(p, Q);
   hydro_part_set_primitive_variables(p, W);
-  p->thermal_energy = thermal_energy;
 }
 
 /**
@@ -691,12 +687,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #else
       Q[4] += flux[4];
       Q[5] += flux[5];
-      // See eq. 24 in Alonso Asensio et al. (preprint 2023)
-      p->thermal_energy +=
-          flux[4] -
-          (p->v[0] * flux[1] + p->v[1] * flux[2] + p->v[2] * flux[3]) +
-          0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) *
-              flux[0];
 #endif
 
 #ifndef HYDRO_GAMMA_5_3
@@ -714,14 +704,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
      * of conserved quantities (e.g. for cold flows).
      * This also applies entropy floor/minimal internal energy limit. */
     float W[6];
-    double thermal_energy;
     hydro_convert_conserved_to_primitive(p, xp, cosmo, hydro_props, floor_props,
-                                         Q, W, &thermal_energy);
+                                         Q, W);
 
     /* Update the particle */
     hydro_part_set_conserved_variables(p, Q);
     hydro_part_set_primitive_variables(p, W);
-    p->thermal_energy = thermal_energy;
 #ifdef SWIFT_DEBUG_CHECKS
     if (p->conserved.mass < 0.) {
       error(

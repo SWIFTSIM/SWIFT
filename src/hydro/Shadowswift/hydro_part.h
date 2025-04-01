@@ -66,7 +66,7 @@ struct xpart {
   /*! Gravitational acceleration at the end of the last step */
   float a_grav[3];
 
-  /*! Internal energy at the last full step. */
+  /*! Fluid internal energy at the last full timestep. */
   float u_full;
 
   /*! Additional data used to record particle splits */
@@ -125,9 +125,6 @@ struct part {
 
   /*! Entropic function */
   float A;
-
-  /*! Fluid thermal energy (not per unit mass!). */
-  float thermal_energy;
 
   /*! Gradients of the primitive variables. */
   struct {
