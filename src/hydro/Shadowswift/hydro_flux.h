@@ -194,15 +194,22 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
       -pj->geometry.area / Anorm * pj->flux.dt * fluxes[0]) {
     theta = fmin(theta, pj->conserved.mass / (-flux_fac_j * fluxes[0]));
   }
+  if (pi->conserved.energy <
+      pi->geometry.area / Anorm * pi->flux.dt * fluxes[4]) {
+    theta = fmin(theta, pi->conserved.energy / (flux_fac_i * fluxes[4]));
+  }
+  if (pj->conserved.energy <
+      -pj->geometry.area / Anorm * pj->flux.dt * fluxes[4]) {
+    theta = fmin(theta, pj->conserved.energy / (-flux_fac_j * fluxes[4]));
+  }
   theta = fmax(0., theta);
   if (theta < 1.) {
 #ifdef SHADOWSWIFT_WARNINGS
     warning(
-        "Positivity flux limiter failed! Falling back to simply rescaling "
-        "fluxes...");
+        "Positivity flux limiter failed! Discarding fluxes");
 #endif
     for (int k = 0; k < 6; ++k) {
-      fluxes[k] *= theta;
+      fluxes[k] *= 0.;
     }
   }
 }
