@@ -396,6 +396,10 @@ hydro_convert_conserved_to_primitive(
 
   /* Check for vacuum (or near limits of floating point precision), which give
    * rise to precision errors resulting in NaNs... */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (Q[0] < 0. || Q[4] < 0.)
+    warning("Negative mass or energy after applying fluxes! Q[0] = %E, Q[4] = %E", Q[0], Q[4]);
+#endif
   const double epsilon = 16. * FLT_MIN;
   if (Q[0] < epsilon || Q[4] < epsilon) {
     for (int k = 0; k < 6; k++) {
