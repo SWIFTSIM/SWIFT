@@ -22,6 +22,7 @@ import swiftsimio as sw
 from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
+import unyt as u
 
 #%%
 
@@ -123,16 +124,15 @@ for base_folder in base_folders:
         x, y, z = pos[:, 0], pos[:, 1], pos[:, 2]
 
         # Compute radial velocity component
-        p_r = (x * gas_momentum[:, 0] + y * gas_momentum[:, 1] + z * gas_momentum[:, 2]) / r
+        p_r = np.abs((x * gas_momentum[:, 0] + y * gas_momentum[:, 1] + z * gas_momentum[:, 2]) / r)
 
         #%% Now plot quantities
         fig, ax = plt.subplots()
-        ax.scatter(r, p_r, s=1, alpha=0.5)
+        ax.scatter(r, p_r.to(u.Msun * u.km/u.s), s=1, alpha=0.5)
         ax.set_xlabel(r"$r$ [kpc]")
-        ax.set_ylabel("p$_r$")
+        ax.set_ylabel("p$_r$ [M$_\odot$ km/s]")
         ax.grid(True, linestyle="--", alpha=0.6)
 
+        # Save plot
         fig.tight_layout()
-
-        # Save plot to the specified output location and filename
         plt.savefig(output_filename, format="png", bbox_inches='tight', dpi=300)
