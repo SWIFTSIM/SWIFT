@@ -834,12 +834,21 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 __attribute__((always_inline)) INLINE static void hydro_split_part(
     struct part *p, struct xpart *xp, const int particle_split_factor) {
   const float fraction = 1.f / (float)particle_split_factor;
-  /* Conserved quantities (without mass) */
+  /* Subtract the fluxes again from the mass (was added due to call to
+   * hydro_get_mass).
+   * NOTE: the mass has already been rescales, so we should rescale the fluxes
+   * as well. */
+  p->conserved.mass -= fraction * p->flux.mass;
+  if (p->gpart)
+    p->gpart->mass -= fraction * p->flux.mass;
+
+  /* Rescale conserved quantities (without mass) */
   p->conserved.momentum[0] *= fraction;
   p->conserved.momentum[2] *= fraction;
   p->conserved.momentum[1] *= fraction;
   p->conserved.energy *= fraction;
   p->conserved.entropy *= fraction;
+
   /* Any not applied fluxes */
   p->flux.mass *= fraction;
   p->flux.momentum[0] *= fraction;
@@ -847,6 +856,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
   p->flux.momentum[2] *= fraction;
   p->flux.energy *= fraction;
   p->flux.entropy *= fraction;
+
   /* Volume */
   p->geometry.volume *= fraction;
   /* Temporarily set centroid to position.
@@ -880,7 +890,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
   }
 #endif
   /* Rescale to make displacement smaller */
-  double fac = fmax(1e-4, 1e-8 / displacement_nrm);
+  double fac = fmax(1e-6, 1e-8 * p->h / displacement_nrm);
   displacement[0] *= fac;
   displacement[1] *= fac;
   displacement[2] *= fac;
@@ -888,7 +898,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
   /* make perpendicular to cell axis */
   const float *axis = p->geometry.centroid;
   double axis_nrm2 = axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2];
-  if (axis_nrm2 < 1e-16) {
+  if (axis_nrm2 < 1e-12 * p->h * p->h) {
     /* Centroidal cell is symmetric */
     return;
   }
@@ -897,15 +907,6 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
   double delta_x = displacement[0] - axis[0] * delta_dot_axis / axis_nrm2;
   double delta_y = displacement[1] - axis[1] * delta_dot_axis / axis_nrm2;
   double delta_z = displacement[2] - axis[2] * delta_dot_axis / axis_nrm2;
-
-  if (delta_x * delta_x + delta_y * delta_y + delta_z * delta_z < 1e-17) {
-    /* try again with cyclic permutation */
-    delta_dot_axis = displacement[1] * axis[0] + displacement[2] * axis[1] +
-                     displacement[0] * axis[2];
-    delta_x = displacement[0] - axis[0] * delta_dot_axis / axis_nrm2;
-    delta_y = displacement[1] - axis[1] * delta_dot_axis / axis_nrm2;
-    delta_z = displacement[2] - axis[2] * delta_dot_axis / axis_nrm2;
-  }
 
   displacement[0] = delta_x;
   displacement[1] = delta_y;
