@@ -478,20 +478,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  p->N_density = 1; /* Self contribution */
-  p->N_force = 0;
-  p->N_density_exact = 0;
-  p->N_force_exact = 0;
-  p->rho_exact = 0.f;
-  p->n_density = 0.f;
-  p->n_density_exact = 0.f;
-  p->n_force = 0.f;
-  p->n_force_exact = 0.f;
-  p->inhibited_exact = 0;
-  p->limited_part = 0;
-#endif
-
   hydro_init_part_extra_kernel(p);
   hydro_init_part_extra_visc_difn(p);
 }
@@ -529,11 +515,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.rho_dh *= h_inv_dim_plus_one;
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
-
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  p->n_density += kernel_root;
-  p->n_density *= h_inv_dim;
-#endif
 
   hydro_end_density_extra_visc_difn(p);
   hydro_end_density_extra_kernel(p);
@@ -668,13 +649,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho_evol, p->u, p->mat_id);
 
-  float div_v = p->dv_norm_kernel[0][0] + p->dv_norm_kernel[1][1] +
+  const float div_v = p->dv_norm_kernel[0][0] + p->dv_norm_kernel[1][1] +
                 p->dv_norm_kernel[2][2];
   float curl_v[3];
   curl_v[0] = p->dv_norm_kernel[1][2] - p->dv_norm_kernel[2][1];
   curl_v[1] = p->dv_norm_kernel[2][0] - p->dv_norm_kernel[0][2];
   curl_v[2] = p->dv_norm_kernel[0][1] - p->dv_norm_kernel[1][0];
-  float mod_curl_v = sqrtf(curl_v[0] * curl_v[0] + curl_v[1] * curl_v[1] +
+  const float mod_curl_v = sqrtf(curl_v[0] * curl_v[0] + curl_v[1] * curl_v[1] +
                            curl_v[2] * curl_v[2]);
 
   /* Balsara switch using normalised kernel gradients (Sandnes+2025 Eqn. 34 with

@@ -89,14 +89,11 @@ hydro_end_density_extra_visc_difn(struct part *restrict p) {}
 __attribute__((always_inline)) INLINE static void
 hydro_prepare_gradient_extra_visc_difn(struct part *restrict p) {
 
-  for (int i = 0; i < 3; i++) {
-    p->du_norm_kernel[i] = 0.f;
-    p->drho_norm_kernel[i] = 0.f;
-    p->dh_norm_kernel[i] = 0.f;
-    for (int j = 0; j < 3; j++) {
-      p->dv_norm_kernel[i][j] = 0.f;
-    }
-  }
+  memset(p->du_norm_kernel, 0.f, 3*sizeof(float));
+  memset(p->drho_norm_kernel, 0.f, 3*sizeof(float));
+  memset(p->dh_norm_kernel, 0.f, 3*sizeof(float));
+  memset(p->dv_norm_kernel, 0.f, 3*3*sizeof(float));
+
 }
 
 /**
@@ -131,8 +128,8 @@ hydro_runner_iact_gradient_extra_visc_difn(struct part *restrict pi,
   const float hj_inv_dim = pow_dimension(hj_inv);        /* 1/h^d */
   const float hj_inv_dim_plus_one = hj_inv_dim * hj_inv; /* 1/h^(d+1) */
 
-  float volume_i = pi->mass / pi->rho_evol;
-  float volume_j = pj->mass / pj->rho_evol;
+  const float volume_i = pi->mass / pi->rho_evol;
+  const float volume_j = pj->mass / pj->rho_evol;
 
   /* Gradients of normalised kernel (Sandnes+2025 Eqn. 30) */
   float wi_dx_term[3], wj_dx_term[3];
@@ -196,7 +193,7 @@ hydro_runner_iact_nonsym_gradient_extra_visc_difn(
   const float hi_inv_dim = pow_dimension(hi_inv);        /* 1/h^d */
   const float hi_inv_dim_plus_one = hi_inv_dim * hi_inv; /* 1/h^(d+1) */
 
-  float volume_j = pj->mass / pj->rho_evol;
+  const float volume_j = pj->mass / pj->rho_evol;
 
   /* Gradients of normalised kernel (Sandnes+2025 Eqn. 30) */
   float wi_dx_term[3];
@@ -268,7 +265,17 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float eta_crit = 0.5f * (pi->force.eta_crit + pj->force.eta_crit);
   const float slope_limiter_exp_denom = const_remix_slope_limiter_exp_denom;
 
-  if ((!pi->is_h_max) && (!pj->is_h_max)) {
+  if ((pi->is_h_max) || (pj->is_h_max)) {
+    /* Don't reconstruct velocity if either particle has h=h_max */
+    vtilde_i[0] = 0.f;
+    vtilde_i[1] = 0.f;
+    vtilde_i[2] = 0.f;
+
+    vtilde_j[0] = 0.f;
+    vtilde_j[1] = 0.f;
+    vtilde_j[2] = 0.f;
+
+  } else {
     /* A numerators and denominators (Sandnes+2025 Eqn. 38) */
     float A_i_v = 0.f;
     float A_j_v = 0.f;
@@ -311,7 +318,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     }
 
     /* exp in slope limiter (middle case in Sandnes+2025 Eqn. 37) */
-    float eta_ab = min(r * hi_inv, r * hj_inv);
+    const float eta_ab = min(r * hi_inv, r * hj_inv);
     if (eta_ab < eta_crit) {
       phi_i_v *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
                       slope_limiter_exp_denom);
@@ -326,21 +333,15 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
       vtilde_j[i] =
           pj->v[i] + (1.f - pj->force.balsara) * phi_j_v * v_reconst_j[i];
     }
-  } else {
-    for (int i = 0; i < 3; i++) {
-      /* If h=h_max don't reconstruct velocity */
-      vtilde_i[i] = 0.f;
-      vtilde_j[i] = 0.f;
-    }
   }
 
   /* Assemble Sandnes+2025 Eqn. 40 */
-  float mu_i =
+  const float mu_i =
       min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
                 (vtilde_i[1] - vtilde_j[1]) * dx[1] +
                 (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
                    hi_inv / (r2 * hi_inv * hi_inv + epsilon * epsilon));
-  float mu_j =
+  const float mu_j =
       min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
                 (vtilde_i[1] - vtilde_j[1]) * dx[1] +
                 (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
@@ -391,103 +392,104 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_difn(
   const float eta_crit = 0.5f * (pi->force.eta_crit + pj->force.eta_crit);
   const float slope_limiter_exp_denom = const_remix_slope_limiter_exp_denom;
 
-  if ((!pi->is_h_max) && (!pj->is_h_max)) {
-    /* A numerators and denominators (Sandnes+2025 Eqns. 48 and 49) */
-    float A_i_u = 0.f;
-    float A_j_u = 0.f;
-    float A_i_rho = 0.f;
-    float A_j_rho = 0.f;
-
-    /* 1/2 * (r_j - r_i) * du/dr in second term of Sandnes+2025 Eqn. 44 */
-    float u_reconst_i = 0.f;
-    float u_reconst_j = 0.f;
-
-    /* 1/2 * (r_j - r_i) * drho/dr in second term of Sandnes+2025 Eqn. 45 */
-    float rho_reconst_i = 0.f;
-    float rho_reconst_j = 0.f;
-
-    for (int i = 0; i < 3; i++) {
-      /* Get the A numerators and denominators (Sandnes+2025 Eqns. 48 and 49).
-       * du_norm_kernel is from Eqn. 46 and drho_norm_kernel is from Eqn. 47 */
-      A_i_u += pi->du_norm_kernel[i] * dx[i];
-      A_j_u += pj->du_norm_kernel[i] * dx[i];
-      A_i_rho += pi->drho_norm_kernel[i] * dx[i];
-      A_j_rho += pj->drho_norm_kernel[i] * dx[i];
-
-      u_reconst_i -= 0.5 * pi->du_norm_kernel[i] * dx[i];
-      u_reconst_j += 0.5 * pj->du_norm_kernel[i] * dx[i];
-      rho_reconst_i -= 0.5 * pi->drho_norm_kernel[i] * dx[i];
-      rho_reconst_j += 0.5 * pj->drho_norm_kernel[i] * dx[i];
-    }
-
-    float phi_i_u, phi_j_u, phi_i_rho, phi_j_rho;
-    /* Slope limiter (Sandnes+2025 Eqn. 37) special cases */
-    if ((A_i_u == 0.f) && (A_j_u == 0.f)) {
-      phi_i_u = 1.f;
-      phi_j_u = 1.f;
-
-    } else if ((A_i_u == 0.f && A_j_u != 0.f) ||
-               (A_j_u == 0.f && A_i_u != 0.f) || (A_i_u == -A_j_u)) {
-      phi_i_u = 0.f;
-      phi_j_u = 0.f;
-    } else {
-      /* Slope limiter (Sandnes+2025 Eqn. 37) */
-      phi_i_u = min(1.f, 4.f * A_i_u / A_j_u / (1.f + A_i_u / A_j_u) /
-                             (1.f + A_i_u / A_j_u));
-      phi_i_u = max(0.f, phi_i_u);
-
-      phi_j_u = min(1.f, 4.f * A_j_u / A_i_u / (1.f + A_j_u / A_i_u) /
-                             (1.f + A_j_u / A_i_u));
-      phi_j_u = max(0.f, phi_j_u);
-    }
-
-    /* Slope limiter (Sandnes+2025 Eqn. 37) special cases */
-    if ((A_i_rho == 0.f) && (A_j_rho == 0.f)) {
-      phi_i_rho = 1.f;
-      phi_j_rho = 1.f;
-
-    } else if ((A_i_rho == 0.f && A_j_rho != 0.f) ||
-               (A_j_rho == 0.f && A_i_rho != 0.f) || (A_i_rho == -A_j_rho)) {
-      phi_i_rho = 0.f;
-      phi_j_rho = 0.f;
-    } else {
-      /* Slope limiter (Sandnes+2025 Eqn. 37) */
-      phi_i_rho = min(1.f, 4.f * A_i_rho / A_j_rho / (1.f + A_i_rho / A_j_rho) /
-                               (1.f + A_i_rho / A_j_rho));
-      phi_i_rho = max(0.f, phi_i_rho);
-
-      phi_j_rho = min(1.f, 4.f * A_j_rho / A_i_rho / (1.f + A_j_rho / A_i_rho) /
-                               (1.f + A_j_rho / A_i_rho));
-      phi_j_rho = max(0.f, phi_j_rho);
-    }
-
-    /* exp in slope limiter (middle case in Sandnes+2025 Eqn. 37) */
-    float eta_ab = min(r * hi_inv, r * hj_inv);
-    if (eta_ab < eta_crit) {
-      phi_i_u *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
-                      slope_limiter_exp_denom);
-      phi_j_u *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
-                      slope_limiter_exp_denom);
-      phi_i_rho *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
-                        slope_limiter_exp_denom);
-      phi_j_rho *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
-                        slope_limiter_exp_denom);
-    }
-
-    /* Assemble the reconstructed internal energy (Sandnes+2025 Eqn. 44) and
-     * density (Sandnes+2025 Eqn. 45) */
-    *utilde_i = pi->u + phi_i_u * u_reconst_i;
-    *utilde_j = pj->u + phi_j_u * u_reconst_j;
-    *rhotilde_i = pi->rho_evol + phi_i_rho * rho_reconst_i;
-    *rhotilde_j = pj->rho_evol + phi_j_rho * rho_reconst_j;
-
-  } else {
-    /* If h=h_max don't reconstruct internal energy of density */
+  if ((pi->is_h_max) || (pj->is_h_max)) {
+    /* Don't reconstruct internal energy of density if either particle has h=h_max */
     *utilde_i = 0.f;
     *utilde_j = 0.f;
     *rhotilde_i = 0.f;
     *rhotilde_j = 0.f;
+
+    return;
   }
+
+  /* A numerators and denominators (Sandnes+2025 Eqns. 48 and 49) */
+  float A_i_u = 0.f;
+  float A_j_u = 0.f;
+  float A_i_rho = 0.f;
+  float A_j_rho = 0.f;
+
+  /* 1/2 * (r_j - r_i) * du/dr in second term of Sandnes+2025 Eqn. 44 */
+  float u_reconst_i = 0.f;
+  float u_reconst_j = 0.f;
+
+  /* 1/2 * (r_j - r_i) * drho/dr in second term of Sandnes+2025 Eqn. 45 */
+  float rho_reconst_i = 0.f;
+  float rho_reconst_j = 0.f;
+
+  for (int i = 0; i < 3; i++) {
+    /* Get the A numerators and denominators (Sandnes+2025 Eqns. 48 and 49).
+     * du_norm_kernel is from Eqn. 46 and drho_norm_kernel is from Eqn. 47 */
+    A_i_u += pi->du_norm_kernel[i] * dx[i];
+    A_j_u += pj->du_norm_kernel[i] * dx[i];
+    A_i_rho += pi->drho_norm_kernel[i] * dx[i];
+    A_j_rho += pj->drho_norm_kernel[i] * dx[i];
+
+    u_reconst_i -= 0.5 * pi->du_norm_kernel[i] * dx[i];
+    u_reconst_j += 0.5 * pj->du_norm_kernel[i] * dx[i];
+    rho_reconst_i -= 0.5 * pi->drho_norm_kernel[i] * dx[i];
+    rho_reconst_j += 0.5 * pj->drho_norm_kernel[i] * dx[i];
+  }
+
+  float phi_i_u, phi_j_u, phi_i_rho, phi_j_rho;
+  /* Slope limiter (Sandnes+2025 Eqn. 37) special cases */
+  if ((A_i_u == 0.f) && (A_j_u == 0.f)) {
+    phi_i_u = 1.f;
+    phi_j_u = 1.f;
+
+  } else if ((A_i_u == 0.f && A_j_u != 0.f) ||
+             (A_j_u == 0.f && A_i_u != 0.f) || (A_i_u == -A_j_u)) {
+    phi_i_u = 0.f;
+    phi_j_u = 0.f;
+  } else {
+    /* Slope limiter (Sandnes+2025 Eqn. 37) */
+    phi_i_u = min(1.f, 4.f * A_i_u / A_j_u / (1.f + A_i_u / A_j_u) /
+                           (1.f + A_i_u / A_j_u));
+    phi_i_u = max(0.f, phi_i_u);
+
+    phi_j_u = min(1.f, 4.f * A_j_u / A_i_u / (1.f + A_j_u / A_i_u) /
+                           (1.f + A_j_u / A_i_u));
+    phi_j_u = max(0.f, phi_j_u);
+  }
+
+  /* Slope limiter (Sandnes+2025 Eqn. 37) special cases */
+  if ((A_i_rho == 0.f) && (A_j_rho == 0.f)) {
+    phi_i_rho = 1.f;
+    phi_j_rho = 1.f;
+
+  } else if ((A_i_rho == 0.f && A_j_rho != 0.f) ||
+             (A_j_rho == 0.f && A_i_rho != 0.f) || (A_i_rho == -A_j_rho)) {
+    phi_i_rho = 0.f;
+    phi_j_rho = 0.f;
+  } else {
+    /* Slope limiter (Sandnes+2025 Eqn. 37) */
+    phi_i_rho = min(1.f, 4.f * A_i_rho / A_j_rho / (1.f + A_i_rho / A_j_rho) /
+                             (1.f + A_i_rho / A_j_rho));
+    phi_i_rho = max(0.f, phi_i_rho);
+
+    phi_j_rho = min(1.f, 4.f * A_j_rho / A_i_rho / (1.f + A_j_rho / A_i_rho) /
+                             (1.f + A_j_rho / A_i_rho));
+    phi_j_rho = max(0.f, phi_j_rho);
+  }
+
+  /* exp in slope limiter (middle case in Sandnes+2025 Eqn. 37) */
+  const float eta_ab = min(r * hi_inv, r * hj_inv);
+  if (eta_ab < eta_crit) {
+    phi_i_u *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
+                    slope_limiter_exp_denom);
+    phi_j_u *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
+                    slope_limiter_exp_denom);
+    phi_i_rho *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
+                      slope_limiter_exp_denom);
+    phi_j_rho *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
+                      slope_limiter_exp_denom);
+  }
+
+  /* Assemble the reconstructed internal energy (Sandnes+2025 Eqn. 44) and
+   * density (Sandnes+2025 Eqn. 45) */
+  *utilde_i = pi->u + phi_i_u * u_reconst_i;
+  *utilde_j = pj->u + phi_j_u * u_reconst_j;
+  *rhotilde_i = pi->rho_evol + phi_i_rho * rho_reconst_i;
+  *rhotilde_j = pj->rho_evol + phi_j_rho * rho_reconst_j;
 }
 
 #endif /* SWIFT_REMIX_HYDRO_VISC_DIFN_H */

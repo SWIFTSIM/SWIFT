@@ -87,13 +87,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->n_density += wi;
-  pj->n_density += wj;
-  pi->N_density++;
-  pj->N_density++;
-#endif
-
   hydro_runner_iact_density_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_density_extra_visc_difn(pi, pj, dx, wi, wj, wi_dx, wj_dx);
 }
@@ -138,11 +131,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
-
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->n_density += wi;
-  pi->N_density++;
-#endif
 
   hydro_runner_iact_nonsym_density_extra_kernel(pi, pj, dx, wi, wi_dx);
   hydro_runner_iact_nonsym_density_extra_visc_difn(pi, pj, dx, wi, wi_dx);
@@ -288,10 +276,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                   pj, dx);
 
   /* Pressure terms to be used in evolution equations */
-  float P_i_term = pressurei / (pi->rho * pj->rho);
-  float P_j_term = pressurej / (pi->rho * pj->rho);
-  float Q_i_term = Qi / (pi->rho * pj->rho);
-  float Q_j_term = Qj / (pi->rho * pj->rho);
+  const float P_i_term = pressurei / (pi->rho * pj->rho);
+  const float P_j_term = pressurej / (pi->rho * pj->rho);
+  const float Q_i_term = Qi / (pi->rho * pj->rho);
+  const float Q_j_term = Qj / (pi->rho * pj->rho);
 
   /* Use the force Luke! */
   for (int i = 0; i < 3; i++) {
@@ -324,71 +312,67 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
-  /* Only apply diffusion and normalising term if neither particle has h=h_max */
-  if ((!pi->is_h_max) && (!pj->is_h_max)) {
-    /* Calculate some quantities */
-    float mean_rho = 0.5f * (pi->rho + pj->rho);
-    float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
-    float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
-                        G_mean[2] * G_mean[2]);
-    float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
-                             (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
-                             (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
-    /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
-    const float alpha_norm = const_remix_norm_alpha;
-    float drho_dt_norm_and_difn_i =
-        alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
-        (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
-    float drho_dt_norm_and_difn_j =
-        alpha_norm * mi * v_sig_norm * pj->force.vac_switch *
-        (pj->m0 * pj->rho_evol - pj->rho_evol) * mod_G / mean_rho;
-
-    /* Only include diffusion for same-material particle pair */
-    if (pi->mat_id == pj->mat_id) {
-      /* Diffusion parameters */
-      const float a_difn_rho = const_remix_difn_a_rho;
-      const float b_difn_rho = const_remix_difn_b_rho;
-      const float a_difn_u = const_remix_difn_a_u;
-      const float b_difn_u = const_remix_difn_b_u;
-
-      float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
-                           pj, dx);
-      float v_sig_difn = difn_signal_velocity;
-
-      /* Calculate artificial diffusion of internal energy (Sandnes+2025 Eqn. 42) */
-      float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
-                           v_sig_difn * (utilde_i - utilde_j) * mod_G /
-                           mean_rho;
-      float du_dt_difn_j = -(a_difn_u + b_difn_u * mean_balsara) * mi *
-                           v_sig_difn * (utilde_j - utilde_i) * mod_G /
-                           mean_rho;
-
-      /* Add artificial diffusion to evolution of internal energy */
-      pi->u_dt += du_dt_difn_i;
-      pj->u_dt += du_dt_difn_j;
-
-      /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
-      drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
-                                 mj * (pi->rho / pj->rho) * v_sig_difn *
-                                 (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
-      drho_dt_norm_and_difn_j += -(a_difn_rho + b_difn_rho * mean_balsara) *
-                                 mi * (pj->rho / pi->rho) * v_sig_difn *
-                                 (rhotilde_j - rhotilde_i) * mod_G / mean_rho;
-    }
-
-    /* Add normalising term and artificial diffusion to evolution of density */
-    pi->drho_dt += drho_dt_norm_and_difn_i;
-    pj->drho_dt += drho_dt_norm_and_difn_j;
+  if ((pi->is_h_max) || (pj->is_h_max)) {
+    /* Do not add diffusion or normalising terms if either particle has h=h_max */
+    return;
   }
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->n_force += wi + wj;
-  pj->n_force += wi + wj;
-  pi->N_force++;
-  pj->N_force++;
-#endif
+  /* Calculate some quantities */
+  const float mean_rho = 0.5f * (pi->rho + pj->rho);
+  const float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
+  const float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
+                      G_mean[2] * G_mean[2]);
+  const float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
+                           (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
+                           (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
+
+  /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
+  const float alpha_norm = const_remix_norm_alpha;
+  float drho_dt_norm_and_difn_i =
+      alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
+      (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
+  float drho_dt_norm_and_difn_j =
+      alpha_norm * mi * v_sig_norm * pj->force.vac_switch *
+      (pj->m0 * pj->rho_evol - pj->rho_evol) * mod_G / mean_rho;
+
+  /* Only include diffusion for same-material particle pair */
+  if (pi->mat_id == pj->mat_id) {
+    /* Diffusion parameters */
+    const float a_difn_rho = const_remix_difn_a_rho;
+    const float b_difn_rho = const_remix_difn_b_rho;
+    const float a_difn_u = const_remix_difn_a_u;
+    const float b_difn_u = const_remix_difn_b_u;
+
+    float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
+    hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
+                         pj, dx);
+    const float v_sig_difn = difn_signal_velocity;
+
+    /* Calculate artificial diffusion of internal energy (Sandnes+2025 Eqn. 42) */
+    const float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
+                         v_sig_difn * (utilde_i - utilde_j) * mod_G /
+                         mean_rho;
+    const float du_dt_difn_j = -(a_difn_u + b_difn_u * mean_balsara) * mi *
+                         v_sig_difn * (utilde_j - utilde_i) * mod_G /
+                         mean_rho;
+
+    /* Add artificial diffusion to evolution of internal energy */
+    pi->u_dt += du_dt_difn_i;
+    pj->u_dt += du_dt_difn_j;
+
+    /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
+    drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
+                               mj * (pi->rho / pj->rho) * v_sig_difn *
+                               (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
+    drho_dt_norm_and_difn_j += -(a_difn_rho + b_difn_rho * mean_balsara) *
+                               mi * (pj->rho / pi->rho) * v_sig_difn *
+                               (rhotilde_j - rhotilde_i) * mod_G / mean_rho;
+  }
+
+  /* Add normalising term and artificial diffusion to evolution of density */
+  pi->drho_dt += drho_dt_norm_and_difn_i;
+  pj->drho_dt += drho_dt_norm_and_difn_j;
 }
 
 /**
@@ -451,10 +435,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                   pj, dx);
 
   /* Pressure terms to be used in evolution equations */
-  float P_i_term = pressurei / (pi->rho * pj->rho);
-  float P_j_term = pressurej / (pi->rho * pj->rho);
-  float Q_i_term = Qi / (pi->rho * pj->rho);
-  float Q_j_term = Qj / (pi->rho * pj->rho);
+  const float P_i_term = pressurei / (pi->rho * pj->rho);
+  const float P_j_term = pressurej / (pi->rho * pj->rho);
+  const float Q_i_term = Qi / (pi->rho * pj->rho);
+  const float Q_j_term = Qj / (pi->rho * pj->rho);
 
   /* Use the force Luke! */
   for (int i = 0; i < 3; i++) {
@@ -481,60 +465,57 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
-  /* Only apply diffusion and normalising term if neither particle has h=h_max */
-  if ((!pi->is_h_max) && (!pj->is_h_max)) {
-    /* Calculate some quantities */
-    float mean_rho = 0.5f * (pi->rho + pj->rho);
-    float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
-    float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
-                        G_mean[2] * G_mean[2]);
-
-    float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
-                             (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
-                             (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
-
-
-     /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
-    const float alpha_norm = const_remix_norm_alpha;
-    float drho_dt_norm_and_difn_i =
-        alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
-        (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
-
-    /* Only include diffusion for same-material particle pair */
-    if (pi->mat_id == pj->mat_id) {
-      /* Diffusion parameters */
-      const float a_difn_rho = const_remix_difn_a_rho;
-      const float b_difn_rho = const_remix_difn_b_rho;
-      const float a_difn_u = const_remix_difn_a_u;
-      const float b_difn_u = const_remix_difn_b_u;
-
-      float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
-                           pj, dx);
-      float v_sig_difn = difn_signal_velocity;
-
-      /* Calculate artificial diffusion of internal energy (Sandnes+2025 Eqn. 42) */
-      float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
-                           v_sig_difn * (utilde_i - utilde_j) * mod_G /
-                           mean_rho;
-
-      /* Add artificial diffusion to evolution of internal energy */
-      pi->u_dt += du_dt_difn_i;
-
-      /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
-      drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
-                                 mj * (pi->rho / pj->rho) * v_sig_difn *
-                                 (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
-    }
-
-    /* Add normalising term and artificial diffusion to evolution of density */
-    pi->drho_dt += drho_dt_norm_and_difn_i;
+  if ((pi->is_h_max) || (pj->is_h_max)) {
+    /* Do not add diffusion or normalising terms if either particle has h=h_max */
+    return;
   }
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->n_force += wi + wj;
-  pi->N_force++;
-#endif
+  /* Calculate some quantities */
+  const float mean_rho = 0.5f * (pi->rho + pj->rho);
+  const float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
+  const float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
+                      G_mean[2] * G_mean[2]);
+
+  const float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
+                           (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
+                           (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
+
+
+   /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
+  const float alpha_norm = const_remix_norm_alpha;
+  float drho_dt_norm_and_difn_i =
+      alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
+      (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
+
+  /* Only include diffusion for same-material particle pair */
+  if (pi->mat_id == pj->mat_id) {
+    /* Diffusion parameters */
+    const float a_difn_rho = const_remix_difn_a_rho;
+    const float b_difn_rho = const_remix_difn_b_rho;
+    const float a_difn_u = const_remix_difn_a_u;
+    const float b_difn_u = const_remix_difn_b_u;
+
+    float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
+    hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
+                         pj, dx);
+    const float v_sig_difn = difn_signal_velocity;
+
+    /* Calculate artificial diffusion of internal energy (Sandnes+2025 Eqn. 42) */
+    const float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
+                         v_sig_difn * (utilde_i - utilde_j) * mod_G /
+                         mean_rho;
+
+    /* Add artificial diffusion to evolution of internal energy */
+    pi->u_dt += du_dt_difn_i;
+
+    /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
+    drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
+                               mj * (pi->rho / pj->rho) * v_sig_difn *
+                               (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
+  }
+
+  /* Add normalising term and artificial diffusion to evolution of density */
+  pi->drho_dt += drho_dt_norm_and_difn_i;
 }
 
 #endif /* SWIFT_REMIX_HYDRO_IACT_H */
