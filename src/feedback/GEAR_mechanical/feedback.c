@@ -792,10 +792,11 @@ __attribute__((always_inline)) INLINE double feedback_get_SN_terminal_momentum(
     const struct xpart* restrict xp, const struct phys_const* phys_const,
     const struct unit_system* us) {
 
-  /* Terminal momentum 0 (in internal units) */
+  /* Terminal momentum 0 (in internal units). Note the 1e-5 term since we want
+     it in km and not cm. */
   const double p_terminal_0 =
       2.5e5 * phys_const->const_solar_mass * 1e-5 *
-      units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+    units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
 
   /* In erg */
   const double E_ej = sp->feedback_data.energy_ejected *
