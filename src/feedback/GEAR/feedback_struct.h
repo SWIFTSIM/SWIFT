@@ -74,7 +74,7 @@ struct feedback_spart_data {
   struct {
 
     /*! Energy injected in the surrounding particles*/
-    float energy_ejected;
+    double energy_ejected;
 
     /*! the instanteneous Mass-Loss */
     float mass_loss;

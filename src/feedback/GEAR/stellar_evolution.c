@@ -31,6 +31,7 @@
 #include "supernovae_ii.h"
 #include "stellar_wind.h"
 #include "exp10.h"
+#include "feedback_struct.h"
 
 #include <math.h>
 #include <stddef.h>
@@ -343,10 +344,18 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
   const float m_end_lim = max(m_end_step, sm->imf.mass_min);
 
   /* Compute the average mass */
-  const float m_avg = 0.5 * (m_beg_lim + m_end_lim);
+  const float m_avg = 0.5 * (m_beg_lim + m_end_lim);// * phys_const->const_solar_mass;
+  message("The solar mass considered is %g", m_avg);
   const float log_m_avg = log10(m_avg);
 
-  const float log_metallicity = log10(chemistry_get_star_total_metal_mass_fraction_for_feedback(sp));
+  /* TODO implement either a function to get solar metal mass-fraction either directly the normalised metallicity*/
+  const float metallicity = chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+  float log_metallicity = 0;
+  if (fabs(metallicity) < 1e-10){
+    log_metallicity = -8;
+  }else {
+    log_metallicity = log10(metallicity / 0.02);
+  }
 
   /* If the star particle the calculation is straight forward */
   if (sp->star_type == single_star) {
@@ -359,6 +368,11 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
   
     /* Stellar winds contribution */
     sp->feedback_data.preSN.energy_ejected = stellar_wind_get_energy_dot(sp->feedback_data.preSN.mass_loss,v_infinity); 
+
+    message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
+      sp->feedback_data.preSN.mass_loss,
+      v_infinity,
+      sp->feedback_data.preSN.energy_ejected);
     
     /* Radiation ? */
 
@@ -396,6 +410,10 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
       energy_dot += stellar_wind_get_energy_dot(mass_loss, v_infty) * N_star_m;
       imf_m = imf_m + dM;
       dM = imf_m / 10;
+      message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
+        mass_loss,
+        v_infty,
+        energy_dot);
     }
     if (imf_m < m_end_lim){
       log_m = log10((imf_m + m_end_lim) / 2);
@@ -405,6 +423,10 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
       v_infty = stellar_wind_get_wind_velocity(log_metallicity, log_m);
       sp->feedback_data.preSN.mass_loss += mass_loss * N_star_m;
       energy_dot += stellar_wind_get_energy_dot(mass_loss, v_infty) * N_star_m;
+      message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
+        mass_loss,
+        v_infty,
+        energy_dot);
     }
 
     /* Then consider the imf part which could provoke supernovae*/ 
@@ -420,6 +442,10 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
       energy_dot += stellar_wind_get_energy_dot(mass_loss, v_infty) * N_star_m;
       imf_m = imf_m + dM;
       dM = imf_m / 10;
+      message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
+        mass_loss,
+        v_infty,
+        energy_dot);
     }
     if (imf_m < m_beg_lim){
       log_m = log10((imf_m + m_beg_lim) / 2);
@@ -429,9 +455,14 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
       v_infty = stellar_wind_get_wind_velocity(log_metallicity, log_m);
       sp->feedback_data.preSN.mass_loss += mass_loss * N_star_m;
       energy_dot += stellar_wind_get_energy_dot(mass_loss, v_infty) * N_star_m;
+      message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
+        mass_loss,
+        v_infty,
+        energy_dot);
     }
 
     sp->feedback_data.preSN.energy_ejected = energy_dot;
+    
 
   }
 }
@@ -1150,6 +1181,8 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
     const struct phys_const* phys_const, const integertime_t ti_begin,
 							   const double star_age_beg_step, const double dt) {
   /* TODO */
+  /* TODO erase this debug line*/
+  message("Computing individual preSN feedback for stellar particle : %lld", sp->id);
 
   /* Check that this function is called for individual stars (REDUNDANT) */
   if (sp->star_type != single_star) {
@@ -1194,6 +1227,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
 
   sp->feedback_data.preSN.energy_ejected *= feedback_duration_yr;
 
+  message("The energy amount to eject is : %f", sp->feedback_data.preSN.energy_ejected);
   /* maybe we want to consider also the radiation contribution */
 
 }

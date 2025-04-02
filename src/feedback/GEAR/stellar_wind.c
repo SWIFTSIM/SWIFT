@@ -22,9 +22,15 @@
 
 #include <math.h>
 #include <stdio.h>
+// #include "unit.h"
+
+/* convert the quantities calculated here in erg */
+double convertToErg(float energyToConvert){
+    return energyToConvert * 1e5 * 1e5 * 1.989e33;
+}
 
 float calculate_b_parameter(const float log_Z, const float a[]){
-    return a[0] + a[1] * log_Z + a[2] * log_Z * log_Z;
+    return a[2] + a[1] * log_Z + a[0] * log_Z * log_Z;
 }
 
 /**
@@ -67,7 +73,7 @@ float stellar_wind_get_ejected_mass(const float log_Z,const float log_m){
         mass_ejected += A0 + dLogA0 * (log_m - stellar_wind_x0);
     }
 
-    return mass_ejected;
+    return exp10(mass_ejected);
 }
 
 /**
@@ -91,6 +97,7 @@ float stellar_wind_get_wind_velocity(const float log_Z,const float log_m){
     /* If the star is lower than a limit mass, calculate the function*/
     if(log_m < stellar_wind_x0){
         for (int i=0; i < 4; i++){
+            message("Inside wind velocity, calculate parameter %i is = %f", i, calculate_b_parameter(log_Z,coeffs[i]));
             wind_velocity += calculate_b_parameter(log_Z,coeffs[i]) * pow(log_m,i);
         }
     /*  Else, the function will be only a linear relation between the initial mass and the function calculated for the limit mass */
@@ -100,6 +107,7 @@ float stellar_wind_get_wind_velocity(const float log_Z,const float log_m){
 
         for (int i=0; i < 4; i++){
             A0 += calculate_b_parameter(log_Z,coeffs[i]) * pow(stellar_wind_x0,i);
+            message("Inside wind velocity, calculate parameter %i is = %f", i, calculate_b_parameter(log_Z,coeffs[i]));
             // The derivative take one less step in the loop
             if (i == 0){
                 continue;
@@ -110,7 +118,9 @@ float stellar_wind_get_wind_velocity(const float log_Z,const float log_m){
         wind_velocity += A0 + dLogA0 * (log_m - stellar_wind_x0);
     }
 
-    return wind_velocity;
+    message("Inside wind velocity computation : V_infty = %f", wind_velocity);
+
+    return exp10(wind_velocity);
 }
 
 /**
@@ -119,6 +129,6 @@ float stellar_wind_get_wind_velocity(const float log_Z,const float log_m){
  * @param spart The stellar particle which has the wind properties
  * @return The wind energy in [units ? /yr]
  */
-float stellar_wind_get_energy_dot(const float mass_loss, const float v_infinity){
-    return 0.5 * mass_loss * v_infinity * v_infinity;
+double stellar_wind_get_energy_dot(const float mass_loss, const float v_infinity){
+    return convertToErg(0.5 * mass_loss * v_infinity * v_infinity);
 }

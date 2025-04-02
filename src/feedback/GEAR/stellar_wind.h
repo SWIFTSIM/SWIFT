@@ -34,6 +34,6 @@ float stellar_wind_get_ejected_mass(const float log_Z,const float log_m);
 
 float stellar_wind_get_wind_velocity(const float log_Z,const float log_m);
 
-float stellar_wind_get_energy_dot(const float mass_loss, const float v_infinity);
+double stellar_wind_get_energy_dot(const float mass_loss, const float v_infinity);
 
 #endif 
