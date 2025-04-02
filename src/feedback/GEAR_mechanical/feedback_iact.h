@@ -112,21 +112,13 @@ runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
   feedback_compute_scalar_weight(r2, dx, hi, hj, si, pj, dx_ij_plus,
                                  dx_ij_minus, &scalar_weight_j);
 
-  si->feedback_data.f_plus_num[0] += scalar_weight_j * fabs(dx_ij_minus[0]);
-  si->feedback_data.f_plus_num[1] += scalar_weight_j * fabs(dx_ij_minus[1]);
-  si->feedback_data.f_plus_num[2] += scalar_weight_j * fabs(dx_ij_minus[2]);
+  si->feedback_data.f_sum_plus_term[0] += scalar_weight_j * fabs(dx_ij_plus[0]);
+  si->feedback_data.f_sum_plus_term[1] += scalar_weight_j * fabs(dx_ij_plus[1]);
+  si->feedback_data.f_sum_plus_term[2] += scalar_weight_j * fabs(dx_ij_plus[2]);
 
-  si->feedback_data.f_plus_denom[0] += scalar_weight_j * fabs(dx_ij_plus[0]);
-  si->feedback_data.f_plus_denom[1] += scalar_weight_j * fabs(dx_ij_plus[1]);
-  si->feedback_data.f_plus_denom[2] += scalar_weight_j * fabs(dx_ij_plus[2]);
-
-  si->feedback_data.f_minus_num[0] += scalar_weight_j * fabs(dx_ij_plus[0]);
-  si->feedback_data.f_minus_num[1] += scalar_weight_j * fabs(dx_ij_plus[1]);
-  si->feedback_data.f_minus_num[2] += scalar_weight_j * fabs(dx_ij_plus[2]);
-
-  si->feedback_data.f_minus_denom[0] += scalar_weight_j * fabs(dx_ij_minus[0]);
-  si->feedback_data.f_minus_denom[1] += scalar_weight_j * fabs(dx_ij_minus[1]);
-  si->feedback_data.f_minus_denom[2] += scalar_weight_j * fabs(dx_ij_minus[2]);
+  si->feedback_data.f_sum_minus_term[0] += scalar_weight_j * fabs(dx_ij_minus[0]);
+  si->feedback_data.f_sum_minus_term[1] += scalar_weight_j * fabs(dx_ij_minus[1]);
+  si->feedback_data.f_sum_minus_term[2] += scalar_weight_j * fabs(dx_ij_minus[2]);
 }
 
 /**

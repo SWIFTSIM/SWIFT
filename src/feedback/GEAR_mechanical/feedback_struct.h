@@ -82,10 +82,8 @@ struct feedback_spart_data {
 
   /* Parameters to be accumulated in the feedback loops. Used to compute the
      vector weights (isotropic distribution) */
-  double f_plus_num[3];
-  double f_plus_denom[3];
-  double f_minus_num[3];
-  double f_minus_denom[3];
+  double f_sum_plus_term[3];
+  double f_sum_minus_term[3];
 
   struct {
     /* Accumulated value for the total energy available in the SN, taking into

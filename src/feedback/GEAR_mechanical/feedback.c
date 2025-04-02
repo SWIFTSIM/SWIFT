@@ -384,21 +384,13 @@ double feedback_get_enrichment_timestep(const struct spart* sp,
 void feedback_init_spart(struct spart* sp) {
   sp->feedback_data.enrichment_weight = 0.f;
 
-  sp->feedback_data.f_plus_num[0] = 0.0;
-  sp->feedback_data.f_plus_num[1] = 0.0;
-  sp->feedback_data.f_plus_num[2] = 0.0;
+  sp->feedback_data.f_sum_minus_term[0] = 0.0;
+  sp->feedback_data.f_sum_minus_term[1] = 0.0;
+  sp->feedback_data.f_sum_minus_term[2] = 0.0;
 
-  sp->feedback_data.f_plus_denom[0] = 0.0;
-  sp->feedback_data.f_plus_denom[1] = 0.0;
-  sp->feedback_data.f_plus_denom[2] = 0.0;
-
-  sp->feedback_data.f_minus_num[0] = 0.0;
-  sp->feedback_data.f_minus_num[1] = 0.0;
-  sp->feedback_data.f_minus_num[2] = 0.0;
-
-  sp->feedback_data.f_minus_denom[0] = 0.0;
-  sp->feedback_data.f_minus_denom[1] = 0.0;
-  sp->feedback_data.f_minus_denom[2] = 0.0;
+  sp->feedback_data.f_sum_plus_term[0] = 0.0;
+  sp->feedback_data.f_sum_plus_term[1] = 0.0;
+  sp->feedback_data.f_sum_plus_term[2] = 0.0;
 
   sp->feedback_data.accumulator.E_total = 0;
   sp->feedback_data.accumulator.beta_1 = 0;
@@ -454,21 +446,13 @@ void feedback_reset_feedback(struct spart* sp,
   sp->feedback_data.energy_ejected = 0;
   sp->feedback_data.enrichment_weight = 0.f;
 
-  sp->feedback_data.f_plus_num[0] = 0.0;
-  sp->feedback_data.f_plus_num[1] = 0.0;
-  sp->feedback_data.f_plus_num[2] = 0.0;
+  sp->feedback_data.f_sum_minus_term[0] = 0.0;
+  sp->feedback_data.f_sum_minus_term[1] = 0.0;
+  sp->feedback_data.f_sum_minus_term[2] = 0.0;
 
-  sp->feedback_data.f_plus_denom[0] = 0.0;
-  sp->feedback_data.f_plus_denom[1] = 0.0;
-  sp->feedback_data.f_plus_denom[2] = 0.0;
-
-  sp->feedback_data.f_minus_num[0] = 0.0;
-  sp->feedback_data.f_minus_num[1] = 0.0;
-  sp->feedback_data.f_minus_num[2] = 0.0;
-
-  sp->feedback_data.f_minus_denom[0] = 0.0;
-  sp->feedback_data.f_minus_denom[1] = 0.0;
-  sp->feedback_data.f_minus_denom[2] = 0.0;
+  sp->feedback_data.f_sum_plus_term[0] = 0.0;
+  sp->feedback_data.f_sum_plus_term[1] = 0.0;
+  sp->feedback_data.f_sum_plus_term[2] = 0.0;
 
   sp->feedback_data.accumulator.E_total = 0;
   sp->feedback_data.accumulator.beta_1 = 0;
@@ -710,34 +694,60 @@ feedback_compute_vector_weight_non_normalized(const float r2, const float* dx,
 
   /* Now, that we have accumulated the sums, we can compute the f_plus and
      f_minus */
-  const double value_plus[3] = {
-      1 + (si->feedback_data.f_plus_num[0] * si->feedback_data.f_plus_num[0]) /
-              (si->feedback_data.f_plus_denom[0] *
-               si->feedback_data.f_plus_denom[0]),
-      1 + (si->feedback_data.f_plus_num[1] * si->feedback_data.f_plus_num[1]) /
-              (si->feedback_data.f_plus_denom[1] *
-               si->feedback_data.f_plus_denom[1]),
-      1 + (si->feedback_data.f_plus_num[2] * si->feedback_data.f_plus_num[2]) /
-              (si->feedback_data.f_plus_denom[2] *
-               si->feedback_data.f_plus_denom[2])};
+  double value_plus[3] = {
+      1 + (si->feedback_data.f_sum_minus_term[0] * si->feedback_data.f_sum_minus_term[0]) /
+              (si->feedback_data.f_sum_plus_term[0] *
+               si->feedback_data.f_sum_plus_term[0]),
+      1 + (si->feedback_data.f_sum_minus_term[1] * si->feedback_data.f_sum_minus_term[1]) /
+              (si->feedback_data.f_sum_plus_term[1] *
+               si->feedback_data.f_sum_plus_term[1]),
+      1 + (si->feedback_data.f_sum_minus_term[2] * si->feedback_data.f_sum_minus_term[2]) /
+              (si->feedback_data.f_sum_plus_term[2] *
+               si->feedback_data.f_sum_plus_term[2])};
+
+  /* In rare cases, f_sum_plus_term can have a component that is 0. Since
+     division by 0 will give inf and further operations will give NaNs, give a
+     large number to represent inf. */
+  if (isinf(value_plus[0])) {
+    value_plus[0] = FLT_MAX;
+  }
+  if (isinf(value_plus[1])) {
+    value_plus[1] = FLT_MAX;
+  }
+  if (isinf(value_plus[2])) {
+    value_plus[2] = FLT_MAX;
+  }
 
   /* Compute the vector factor f_plus */
   f_plus_i[0] = sqrt(0.5 * value_plus[0]);
   f_plus_i[1] = sqrt(0.5 * value_plus[1]);
   f_plus_i[2] = sqrt(0.5 * value_plus[2]);
 
-  const double value_minus[3] = {1 + (si->feedback_data.f_minus_num[0] *
-                                      si->feedback_data.f_minus_num[0]) /
-                                         (si->feedback_data.f_minus_denom[0] *
-                                          si->feedback_data.f_minus_denom[0]),
-                                 1 + (si->feedback_data.f_minus_num[1] *
-                                      si->feedback_data.f_minus_num[1]) /
-                                         (si->feedback_data.f_minus_denom[1] *
-                                          si->feedback_data.f_minus_denom[1]),
-                                 1 + (si->feedback_data.f_minus_num[2] *
-                                      si->feedback_data.f_minus_num[2]) /
-                                         (si->feedback_data.f_minus_denom[2] *
-                                          si->feedback_data.f_minus_denom[2])};
+  double value_minus[3] = {1 + (si->feedback_data.f_sum_plus_term[0] *
+                                      si->feedback_data.f_sum_plus_term[0]) /
+                                         (si->feedback_data.f_sum_minus_term[0] *
+                                          si->feedback_data.f_sum_minus_term[0]),
+                                 1 + (si->feedback_data.f_sum_plus_term[1] *
+                                      si->feedback_data.f_sum_plus_term[1]) /
+                                         (si->feedback_data.f_sum_minus_term[1] *
+                                          si->feedback_data.f_sum_minus_term[1]),
+                                 1 + (si->feedback_data.f_sum_plus_term[2] *
+                                      si->feedback_data.f_sum_plus_term[2]) /
+                                         (si->feedback_data.f_sum_minus_term[2] *
+                                          si->feedback_data.f_sum_minus_term[2])};
+
+  /* In rare cases, f_sum_minus_term can have a component that is 0. Since
+     division by 0 will give inf and further operations will give NaNs, give a
+     large number to represent inf. */
+  if (isinf(value_minus[0])) {
+    value_minus[0] = FLT_MAX;
+  }
+  if (isinf(value_minus[1])) {
+    value_minus[1] = FLT_MAX;
+  }
+  if (isinf(value_minus[2])) {
+    value_minus[2] = FLT_MAX;
+  }
 
   /* Compute the vector factor f_minus */
   f_minus_i[0] = sqrt(0.5 * value_minus[0]);
