@@ -3,7 +3,6 @@
 # make run.sh fail if a subcommand fails
 set -e
 
-on_hpc=${on_hpc:="false"}
 n_threads=${n_threads:=8}  #Number of threads to use
 level=${level:=6}  #Number of particles = 2^(3*level)
 gas_density=${gas_density:=1} #Gas density in atom/cm^3
@@ -92,11 +91,11 @@ python3 radial_momentum_profile.py snap/snapshot_0040.hdf5 \
 	-o radial_momentum_profile_0040.png
 python3 radial_momentum_profile.py snap/snapshot_0050.hdf5 \
 	-o radial_momentum_profile_0050.png
-python3 radial_momentum_profile.py snap/snapshot_0050.hdf5 \
+python3 radial_momentum_profile.py snap/snapshot_0100.hdf5 \
 	-o radial_momentum_profile_0100.png
 
-python3 sn_sedov_solution.py snap/snapshot_0030.hdf5 --rho_0  2e-4 --P 1e-5 \
---E_0 5e-4
+# python3 sn_sedov_solution.py snap/snapshot_0030.hdf5 --rho_0  2e-4 --P 1e-5 \
+# --E_0 5e-4
 
 
 if [ -z "$run_name" ]; then

@@ -97,10 +97,13 @@ def get_gas_mu(data: sw.SWIFTDataset) -> np.array:
         u = u.to_physical()
         u = u.to(unyt.erg / unyt.g)
 
-        # Get hydrigen fraction
-        H_frac = float(
-            data.metadata.parameters["GrackleCooling:HydrogenFractionByMass"]
-        )
+        # Get hydrogen fraction
+        try:
+            H_frac = float(
+                data.metadata.parameters["GrackleCooling:HydrogenFractionByMass"]
+            )
+        except KeyError: # Happend when running without cooling
+            H_frac = 1.0
 
         # Compute T/mu
         T_over_mu = (gamma - 1.0) * u.value * mH_in_g.value / k_B_cgs.value
