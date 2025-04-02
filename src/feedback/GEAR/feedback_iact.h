@@ -91,8 +91,12 @@ runner_iact_nonsym_feedback_apply(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const integertime_t ti_current) {
 
+  //message("No feedback applied");
+
   const double e_sn = si->feedback_data.energy_ejected;
   const double e_preSN = si->feedback_data.preSN.energy_ejected;
+
+  message("The preSN energy of the particle %lli is : %lf",si->id,e_preSN);
 
   const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);
@@ -116,7 +120,7 @@ runner_iact_nonsym_feedback_apply(
   const double dm = m_ej * weight;
   const double new_mass = mj + dm;
 
-  if (e_sn != 0.0) {
+  if (false) { //e_sn != 0.0) {
     /* Energy received */
     const double du = (e_sn) * weight / new_mass;
 
@@ -139,7 +143,7 @@ runner_iact_nonsym_feedback_apply(
   if (e_preSN != 0.0) {
     /* Energy received */
     const double du = (e_preSN) * weight / new_mass;
-
+    message("the received energy of particle %lld is : %e",pj->id,du);
     xpj->feedback_data.delta_u += du;
   }
 
