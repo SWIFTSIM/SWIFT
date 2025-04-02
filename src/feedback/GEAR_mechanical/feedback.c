@@ -342,6 +342,20 @@ int feedback_is_active(const struct spart* sp, const struct engine* e) {
   return sp->feedback_data.will_do_feedback;
 }
 
+
+/**
+ * @brief Should this particle inject anything as feedback?
+ *
+ * This function is used in feedback_iact.h to determine if we have something
+ * to inject in the gas.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_feedback(const struct spart* sp) {
+  /* Do we have supernovae? */
+  return sp->feedback_data.energy_ejected != 0;
+}
+
 /**
  * @brief Returns the length of time since the particle last did
  * enrichment/feedback.

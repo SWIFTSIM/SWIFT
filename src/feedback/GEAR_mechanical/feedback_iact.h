@@ -60,6 +60,11 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   if (r2 > r_max_2) {
     return;
   }
+
+  /* Do we have supernovae? */
+  if (!feedback_should_inject_feedback(si)) {
+    return;
+  }
 }
 
 /**
@@ -93,6 +98,11 @@ runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
   /* If the particle is farther than the maximal radius, it does not receive
      feedback */
   if (r2 > r_max_2) {
+    return;
+  }
+
+  /* Do we have supernovae? */
+  if (!feedback_should_inject_feedback(si)) {
     return;
   }
 
@@ -153,6 +163,11 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
     return;
   }
 
+  /* Do we have supernovae? */
+  if (!feedback_should_inject_feedback(si)) {
+    return;
+  }
+
   /* Now we can compute f_plus and f_minus for the star */
   double f_plus_i[3], f_minus_i[3], w_j[3];
   feedback_compute_vector_weight_non_normalized(r2, dx, hi, hj, si, pj,
@@ -194,6 +209,11 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
   /* If the particle is farther than the maximal radius, it does not receive
      feedback */
   if (r2 > r_max_2) {
+    return;
+  }
+
+  /* Do we have supernovae? */
+  if (!feedback_should_inject_feedback(si)) {
     return;
   }
 
@@ -276,6 +296,11 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
   if (r2 > r_max_2) {
     return;
   }
+
+  /* Do we have supernovae? */
+  if (!feedback_should_inject_feedback(si)) {
+    return;
+  }
 }
 #endif /*  FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
 
@@ -320,10 +345,8 @@ runner_iact_nonsym_feedback_apply(
     return;
   }
 
-  const double E_ej = si->feedback_data.energy_ejected;
-
   /* Do we have supernovae? */
-  if (E_ej == 0) {
+  if (!feedback_should_inject_feedback(si)) {
     return;
   }
 
@@ -346,6 +369,7 @@ runner_iact_nonsym_feedback_apply(
   }
 
   /* Here just get the feedback properties we want to distribute */
+  const double E_ej = si->feedback_data.energy_ejected;
   const float mj = hydro_get_mass(pj);
   const double m_ej = si->feedback_data.mass_ejected;
 

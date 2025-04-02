@@ -44,7 +44,7 @@ void feedback_will_do_feedback(
     const integertime_t ti_current, const double time_base);
 
 int feedback_is_active(const struct spart* sp, const struct engine* e);
-
+int feedback_should_inject_feedback(const struct spart* sp);
 double feedback_get_enrichment_timestep(const struct spart* sp,
                                         const int with_cosmology,
                                         const struct cosmology* cosmo,
