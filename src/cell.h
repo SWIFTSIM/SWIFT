@@ -1065,10 +1065,13 @@ cell_grid_pair_invalidates_completeness(struct cell *ci, struct cell *cj) {
   const int ci_self_complete = ci->grid.self_completeness == grid_complete;
   const int cj_self_complete = cj->grid.self_completeness == grid_complete;
 #ifdef SHADOWSWIFT_RELAXED_COMPLETENESS
-  /* If if ci is self-complete and cj is not, but its maximal search radius is
-   * sufficiently small, we still consider the pair (ci, cj) complete.
+  if (!ci_self_complete) return 1;
+  /* If if ci is self-complete and cj is not, but ci's maximal search radius is
+   * sufficiently small *and* cj has particles, we still consider the pair
+   * (ci, cj) complete.
    * NOTE: ci->dmin == cj->dmin */
-  if (!ci_self_complete || (!cj_self_complete && kernel_gamma * ci->hydro.h_max > 0.5 * cj->dmin))
+  if (!cj_self_complete &&
+      (kernel_gamma * ci->hydro.h_max > 0.5 * cj->dmin || cj->hydro.count == 0))
     return 1;
 #else
   if (!ci_self_complete || !cj_self_complete) return 1;
