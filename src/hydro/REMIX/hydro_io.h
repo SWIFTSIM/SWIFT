@@ -228,15 +228,17 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
   io_write_attribute_s(h_grpsph, "Density estimate", "Evolved in time");
   io_write_attribute_s(h_grpsph, "EoM free functions", "Evolved densities");
   io_write_attribute_s(h_grpsph, "Kernel gradients",
-                          "Linear-order reproducing kernels with grad-h terms");
+                       "Linear-order reproducing kernels with grad-h terms");
   io_write_attribute_s(h_grpsph, "Vacuum boundary treatment",
-                                 "As presented in Sandnes et al. (2025)");
-  io_write_attribute_s(h_grpsph, "Artificial viscosity",
-          "With linear reconstruction, van Leer slope limiter, Balsara switch");
-  io_write_attribute_s(h_grpsph, "Artificial diffusion",
-          "With linear reconstruction, van Leer slope limiter, Balsara switch");
+                       "As presented in Sandnes et al. (2025)");
+  io_write_attribute_s(
+      h_grpsph, "Artificial viscosity",
+      "With linear reconstruction, van Leer slope limiter, Balsara switch");
+  io_write_attribute_s(
+      h_grpsph, "Artificial diffusion",
+      "With linear reconstruction, van Leer slope limiter, Balsara switch");
   io_write_attribute_s(h_grpsph, "Normalising term",
-                                 "As presented in Sandnes et al. (2025)");
+                       "As presented in Sandnes et al. (2025)");
 }
 
 /**

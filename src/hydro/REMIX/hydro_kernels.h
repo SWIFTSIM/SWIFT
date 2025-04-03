@@ -68,9 +68,9 @@ hydro_runner_iact_density_extra_kernel(struct part *restrict pi,
 
   /* Geometric moments and gradients that use an unmodified kernel (Sandnes+2025
    * Eqn. 50 and its gradient). Used in the normalising term (Eqn. 51) and in
-   * gradient estimates (using Eqn. 30) that are used for the calculation of grad-h
-   * terms (Eqn. 31) and in the artificial viscosity (Eqn. 35) and diffusion
-   * (Eqns. 46 and 47) schemes */
+   * gradient estimates (using Eqn. 30) that are used for the calculation of
+   * grad-h terms (Eqn. 31) and in the artificial viscosity (Eqn. 35) and
+   * diffusion (Eqns. 46 and 47) schemes */
   pi->m0 += pj->mass * wi / pj->rho_evol;
   pj->m0 += pi->mass * wj / pi->rho_evol;
 
@@ -107,9 +107,9 @@ hydro_runner_iact_nonsym_density_extra_kernel(struct part *restrict pi,
 
   /* Geometric moments and gradients that use an unmodified kernel (Sandnes+2025
    * Eqn. 50 and its gradient). Used in the normalising term (Eqn. 51) and in
-   * gradient estimates (using Eqn. 30) that are used for the calculation of grad-h
-   * terms (Eqn. 31) and in the artificial viscosity (Eqn. 35) and diffusion
-   * (Eqns. 46 and 47) schemes */
+   * gradient estimates (using Eqn. 30) that are used for the calculation of
+   * grad-h terms (Eqn. 31) and in the artificial viscosity (Eqn. 35) and
+   * diffusion (Eqns. 46 and 47) schemes */
   pi->m0 += pj->mass * wi / pj->rho_evol;
 
   const float volume_j = pj->mass / pj->rho_evol;
@@ -134,9 +134,9 @@ hydro_end_density_extra_kernel(struct part *restrict p) {
 
   /* Geometric moments and gradients that use an unmodified kernel (Sandnes+2025
    * Eqn. 50 and its gradient). Used in the normalising term (Eqn. 51) and in
-   * gradient estimates (using Eqn. 30) that are used for the calculation of grad-h
-   * terms (Eqn. 31) and in the artificial viscosity (Eqn. 35) and diffusion
-   * (Eqns. 46 and 47) schemes */
+   * gradient estimates (using Eqn. 30) that are used for the calculation of
+   * grad-h terms (Eqn. 31) and in the artificial viscosity (Eqn. 35) and
+   * diffusion (Eqns. 46 and 47) schemes */
   p->m0 += p->mass * kernel_root / p->rho_evol;
   p->m0 *= h_inv_dim;
   p->grad_m0[0] *= h_inv_dim_plus_one;
@@ -161,14 +161,14 @@ hydro_prepare_gradient_extra_kernel(struct part *restrict p) {
   zero_sym_matrix(&p->gradient.grad_m2_bar[2]);
   zero_sym_matrix(&p->gradient.grad_m2_bar_gradhterm);
 
-  /* Geometric moments and gradients that us a kernel given by 0.5 * (W_{ij} + W_{ji}).
-   * These are used to construct the linear-order repr. kernel */
+  /* Geometric moments and gradients that us a kernel given by 0.5 * (W_{ij} +
+   * W_{ji}). These are used to construct the linear-order repr. kernel */
   p->gradient.m0_bar = 0.f;
   p->gradient.grad_m0_bar_gradhterm = 0.f;
-  memset(p->gradient.m1_bar, 0.f, 3*sizeof(float));
-  memset(p->gradient.grad_m0_bar, 0.f, 3*sizeof(float));
-  memset(p->gradient.grad_m1_bar_gradhterm, 0.f, 3*sizeof(float));
-  memset(p->gradient.grad_m1_bar, 0.f, 3*3*sizeof(float));
+  memset(p->gradient.m1_bar, 0.f, 3 * sizeof(float));
+  memset(p->gradient.grad_m0_bar, 0.f, 3 * sizeof(float));
+  memset(p->gradient.grad_m1_bar_gradhterm, 0.f, 3 * sizeof(float));
+  memset(p->gradient.grad_m1_bar, 0.f, 3 * 3 * sizeof(float));
 }
 
 /**
@@ -211,7 +211,8 @@ hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
   const float wi_term = 0.5f * (wi * hi_inv_dim + wj * hj_inv_dim);
   const float wj_term = wi_term;
   float wi_dx_term[3], wj_dx_term[3];
-  const float mean_dw_dr = 0.5f * (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);
+  const float mean_dw_dr =
+      0.5f * (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);
   wi_dx_term[0] = dx[0] * r_inv * mean_dw_dr;
   wi_dx_term[1] = dx[1] * r_inv * mean_dw_dr;
   wi_dx_term[2] = dx[2] * r_inv * mean_dw_dr;
@@ -309,7 +310,8 @@ hydro_runner_iact_nonsym_gradient_extra_kernel(
   /* Mean ij kernel and gradients */
   const float wi_term = 0.5f * (wi * hi_inv_dim + wj * hj_inv_dim);
   float wi_dx_term[3];
-  const float mean_dw_dr = 0.5f * (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);
+  const float mean_dw_dr =
+      0.5f * (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);
   wi_dx_term[0] = dx[0] * r_inv * mean_dw_dr;
   wi_dx_term[1] = dx[1] * r_inv * mean_dw_dr;
   wi_dx_term[2] = dx[2] * r_inv * mean_dw_dr;
@@ -403,9 +405,9 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
     /* Linear-order reproducing kernel parameters are set to "defaults" */
     p->force.A = 1.f;
     p->force.vac_switch = 1.f;
-    memset(p->force.B, 0.f, 3*sizeof(float));
-    memset(p->force.grad_A, 0.f, 3*sizeof(float));
-    memset(p->force.grad_B, 0.f, 3*3*sizeof(float));
+    memset(p->force.B, 0.f, 3 * sizeof(float));
+    memset(p->force.grad_A, 0.f, 3 * sizeof(float));
+    memset(p->force.grad_B, 0.f, 3 * 3 * sizeof(float));
 
     return;
   }
@@ -494,16 +496,15 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
   /* Calculate grad B (Sandnes+2025 Eqn. B.9) */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      grad_B[j][i] =
-          -m2_bar_inv_mult_grad_m1_bar[j][i] + ABA_mult_m1_bar[j][i];
+      grad_B[j][i] = -m2_bar_inv_mult_grad_m1_bar[j][i] + ABA_mult_m1_bar[j][i];
     }
   }
 
   /* Store final values */
   p->force.A = A;
-  memcpy(p->force.B, B, 3*sizeof(float));
-  memcpy(p->force.grad_A, grad_A, 3*sizeof(float));
-  memcpy(p->force.grad_B, grad_B, 3*3*sizeof(float));
+  memcpy(p->force.B, B, 3 * sizeof(float));
+  memcpy(p->force.grad_A, grad_A, 3 * sizeof(float));
+  memcpy(p->force.grad_B, grad_B, 3 * 3 * sizeof(float));
 
   /* Vacuum-boundary proximity switch (Sandnes+2025 Eqn. 33) */
   p->force.vac_switch = 1.f;
@@ -520,11 +521,14 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
 /**
  * @brief Set gradient terms for linear-order reproducing kernel.
  *
- * Note `G` here corresponds to `d/dr tilde{mathcal{W}}` in Sandnes et al.(2025).
- * These are used in the REMIX equations of motion (Sandnes+2025 Eqns. 14--16).
+ * Note `G` here corresponds to `d/dr tilde{mathcal{W}}` in Sandnes et
+ * al.(2025). These are used in the REMIX equations of motion (Sandnes+2025
+ * Eqns. 14--16).
  *
- * @param Gi (return) Gradient of linear-order reproducing kernel for first particle.
- * @param Gj (return) Gradient of linear-order reproducing kernel for second particle.
+ * @param Gi (return) Gradient of linear-order reproducing kernel for first
+ * particle.
+ * @param Gj (return) Gradient of linear-order reproducing kernel for second
+ * particle.
  * @param pi First particle.
  * @param pj Second particle.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -579,17 +583,18 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
   const float Ai = pi->force.A;
   const float Aj = pj->force.A;
   float grad_Ai[3], grad_Aj[3], Bi[3], Bj[3], grad_Bi[3][3], grad_Bj[3][3];
-  memcpy(grad_Ai, pi->force.grad_A, 3*sizeof(float));
-  memcpy(grad_Aj, pj->force.grad_A, 3*sizeof(float));
-  memcpy(Bi, pi->force.B, 3*sizeof(float));
-  memcpy(Bj, pj->force.B, 3*sizeof(float));
-  memcpy(grad_Bi, pi->force.grad_B, 3*3*sizeof(float));
-  memcpy(grad_Bj, pj->force.grad_B, 3*3*sizeof(float));
+  memcpy(grad_Ai, pi->force.grad_A, 3 * sizeof(float));
+  memcpy(grad_Aj, pj->force.grad_A, 3 * sizeof(float));
+  memcpy(Bi, pi->force.B, 3 * sizeof(float));
+  memcpy(Bj, pj->force.B, 3 * sizeof(float));
+  memcpy(grad_Bi, pi->force.grad_B, 3 * 3 * sizeof(float));
+  memcpy(grad_Bj, pj->force.grad_B, 3 * 3 * sizeof(float));
 
   for (int i = 0; i < 3; i++) {
 
     /* Assemble Sandnes+2025 Eqn. 29 */
-    const float mean_dw_dr = 0.5f * (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);
+    const float mean_dw_dr =
+        0.5f * (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);
     wi_dx_term[i] = dx[i] * r_inv * mean_dw_dr;
     wj_dx_term[i] = -wi_dx_term[i];
 

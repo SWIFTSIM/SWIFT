@@ -29,7 +29,7 @@
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
-#include "equation_of_state.h"  /* For enum material_id */
+#include "equation_of_state.h" /* For enum material_id */
 #include "feedback_struct.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
@@ -287,11 +287,11 @@ struct part {
   /*! Tree-depth at which size / 2 <= h * gamma < size */
   char depth_h;
 
-  /*! Time-step limiter information */
-  struct timestep_limiter_data limiter_data;
-
   /* Whether or not the particle has h=h_max ('1' or '0') */
   char is_h_max;
+
+  /*! Time-step limiter information */
+  struct timestep_limiter_data limiter_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

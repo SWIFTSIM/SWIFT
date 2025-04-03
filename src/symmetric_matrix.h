@@ -116,23 +116,17 @@ __attribute__((always_inline)) INLINE static void sym_matrix_multiplication_ABA(
     }
   }
 
-  M_out->xx = (A->xx * BA_array[0][0] +
-               A->xy * BA_array[1][0] +
+  M_out->xx = (A->xx * BA_array[0][0] + A->xy * BA_array[1][0] +
                A->xz * BA_array[2][0]);
-  M_out->yy = (A->xy * BA_array[0][1] +
-               A->yy * BA_array[1][1] +
+  M_out->yy = (A->xy * BA_array[0][1] + A->yy * BA_array[1][1] +
                A->yz * BA_array[2][1]);
-  M_out->zz = (A->xz * BA_array[0][2] +
-               A->yz * BA_array[1][2] +
+  M_out->zz = (A->xz * BA_array[0][2] + A->yz * BA_array[1][2] +
                A->zz * BA_array[2][2]);
-  M_out->xy = (A->xy * BA_array[0][0] +
-               A->yy * BA_array[1][0] +
+  M_out->xy = (A->xy * BA_array[0][0] + A->yy * BA_array[1][0] +
                A->yz * BA_array[2][0]);
-  M_out->xz = (A->xz * BA_array[0][0] +
-               A->yz * BA_array[1][0] +
+  M_out->xz = (A->xz * BA_array[0][0] + A->yz * BA_array[1][0] +
                A->zz * BA_array[2][0]);
-  M_out->yz = (A->xz * BA_array[0][1] +
-               A->yz * BA_array[1][1] +
+  M_out->yz = (A->xz * BA_array[0][1] + A->yz * BA_array[1][1] +
                A->zz * BA_array[2][1]);
 }
 

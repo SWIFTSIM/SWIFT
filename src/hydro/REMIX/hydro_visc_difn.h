@@ -30,8 +30,8 @@
 #include "math.h"
 
 /**
- * @brief Prepares extra artificial viscosity and artificial diffusion parameters for a particle for the density
- * calculation.
+ * @brief Prepares extra artificial viscosity and artificial diffusion
+ * parameters for a particle for the density calculation.
  *
  * @param p The particle to act upon
  */
@@ -39,7 +39,8 @@ __attribute__((always_inline)) INLINE static void
 hydro_init_part_extra_visc_difn(struct part *restrict p) {}
 
 /**
- * @brief Extra artificial viscosity and artificial diffusion density interaction between two particles
+ * @brief Extra artificial viscosity and artificial diffusion density
+ * interaction between two particles
  *
  * @param pi First particle.
  * @param pj Second particle.
@@ -57,7 +58,8 @@ hydro_runner_iact_density_extra_visc_difn(struct part *restrict pi,
                                           const float wj_dx) {}
 
 /**
- * @brief Extra artificial viscosity and artificial diffusion density interaction between two particles (non-symmetric)
+ * @brief Extra artificial viscosity and artificial diffusion density
+ * interaction between two particles (non-symmetric)
  *
  * @param pi First particle.
  * @param pj Second particle.
@@ -73,7 +75,8 @@ hydro_runner_iact_nonsym_density_extra_visc_difn(struct part *restrict pi,
                                                  const float wi_dx) {}
 
 /**
- * @brief Finishes extra artificial viscosity and artificial diffusion parts of the density calculation.
+ * @brief Finishes extra artificial viscosity and artificial diffusion parts of
+ * the density calculation.
  *
  * @param p The particle to act upon
  */
@@ -81,23 +84,23 @@ __attribute__((always_inline)) INLINE static void
 hydro_end_density_extra_visc_difn(struct part *restrict p) {}
 
 /**
- * @brief Prepares extra artificial viscosity and artificial diffusion parameters for a particle for the gradient
- * calculation.
+ * @brief Prepares extra artificial viscosity and artificial diffusion
+ * parameters for a particle for the gradient calculation.
  *
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
 hydro_prepare_gradient_extra_visc_difn(struct part *restrict p) {
 
-  memset(p->du_norm_kernel, 0.f, 3*sizeof(float));
-  memset(p->drho_norm_kernel, 0.f, 3*sizeof(float));
-  memset(p->dh_norm_kernel, 0.f, 3*sizeof(float));
-  memset(p->dv_norm_kernel, 0.f, 3*3*sizeof(float));
-
+  memset(p->du_norm_kernel, 0.f, 3 * sizeof(float));
+  memset(p->drho_norm_kernel, 0.f, 3 * sizeof(float));
+  memset(p->dh_norm_kernel, 0.f, 3 * sizeof(float));
+  memset(p->dv_norm_kernel, 0.f, 3 * 3 * sizeof(float));
 }
 
 /**
- * @brief Extra artificial viscosity and artificial diffusion gradient interaction between two particles
+ * @brief Extra artificial viscosity and artificial diffusion gradient
+ * interaction between two particles
  *
  * @param pi First particle.
  * @param pj Second particle.
@@ -150,7 +153,8 @@ hydro_runner_iact_gradient_extra_visc_difn(struct part *restrict pi,
     pi->dh_norm_kernel[i] += (pj->h - pi->h) * wi_dx_term[i] * volume_j;
     pj->dh_norm_kernel[i] += (pi->h - pj->h) * wj_dx_term[i] * volume_i;
 
-    /* Contributions only from same-material particles for u and rho diffusion */
+    /* Contributions only from same-material particles for u and rho diffusion
+     */
     if (pi->mat_id == pj->mat_id) {
       pi->du_norm_kernel[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
       pj->du_norm_kernel[i] += (pi->u - pj->u) * wj_dx_term[i] * volume_i;
@@ -171,7 +175,8 @@ hydro_runner_iact_gradient_extra_visc_difn(struct part *restrict pi,
 }
 
 /**
- * @brief Extra artificial viscosity and artificial diffusion gradient interaction between two particles (non-symmetric)
+ * @brief Extra artificial viscosity and artificial diffusion gradient
+ * interaction between two particles (non-symmetric)
  *
  * @param pi First particle.
  * @param pj Second particle.
@@ -208,7 +213,8 @@ hydro_runner_iact_nonsym_gradient_extra_visc_difn(
   for (int i = 0; i < 3; i++) {
     pi->dh_norm_kernel[i] += (pj->h - pi->h) * wi_dx_term[i] * volume_j;
 
-    /* Contributions only from same-material particles for u and rho diffusion */
+    /* Contributions only from same-material particles for u and rho diffusion
+     */
     if (pi->mat_id == pj->mat_id) {
       pi->du_norm_kernel[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
       pi->drho_norm_kernel[i] +=
@@ -223,7 +229,8 @@ hydro_runner_iact_nonsym_gradient_extra_visc_difn(
 }
 
 /**
- * @brief Finishes extra artificial viscosity and artificial diffusion parts of the gradient calculation.
+ * @brief Finishes extra artificial viscosity and artificial diffusion parts of
+ * the gradient calculation.
  *
  * @param p The particle to act upon
  */
@@ -252,8 +259,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float hi_inv = 1.0f / pi->h;
   const float hj_inv = 1.0f / pj->h;
 
-  /* Reconstructed velocities at the halfway point between particles (Sandnes+2025
-   * Eqn. 36) */
+  /* Reconstructed velocities at the halfway point between particles
+   * (Sandnes+2025 Eqn. 36) */
   float vtilde_i[3], vtilde_j[3];
 
   /* Viscosity parameters. These are set in hydro_parameters.h  */
@@ -286,8 +293,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
 
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
-        /* Get the A numerators and denominators (Sandnes+2025 Eqn. 38). dv_norm_kernel
-         * is from Eqn. 35 */
+        /* Get the A numerators and denominators (Sandnes+2025 Eqn. 38).
+         * dv_norm_kernel is from Eqn. 35 */
         A_i_v += pi->dv_norm_kernel[i][j] * dx[i] * dx[j];
         A_j_v += pj->dv_norm_kernel[i][j] * dx[i] * dx[j];
 
@@ -358,9 +365,11 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
 
   /* Account for alpha being outside brackets in timestep code */
   const float viscosity_parameter_factor = (alpha == 0.f) ? 0.f : beta / alpha;
-  *visc_signal_velocity = ci + cj - 2.f * viscosity_parameter_factor * min(mu_i, mu_j);
+  *visc_signal_velocity =
+      ci + cj - 2.f * viscosity_parameter_factor * min(mu_i, mu_j);
 
-  /* Signal velocity used for the artificial diffusion (Sandnes+2025 Eqns. 42 and 43) */
+  /* Signal velocity used for the artificial diffusion (Sandnes+2025 Eqns. 42
+   * and 43) */
   *difn_signal_velocity =
       sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
             (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
@@ -373,7 +382,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
  * @param utilde_i (return) u reconstructed to midpoint from first particle.
  * @param utilde_j (return) u reconstructed to midpoint from second particle.
  * @param rhotilde_i (return) rho reconstructed to midpoint from first particle.
- * @param rhotilde_j (return) rho reconstructed to midpoint from second particle.
+ * @param rhotilde_j (return) rho reconstructed to midpoint from second
+ * particle.
  * @param pi First particle.
  * @param pj Second particle.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -393,7 +403,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_difn(
   const float slope_limiter_exp_denom = const_remix_slope_limiter_exp_denom;
 
   if ((pi->is_h_max) || (pj->is_h_max)) {
-    /* Don't reconstruct internal energy of density if either particle has h=h_max */
+    /* Don't reconstruct internal energy of density if either particle has
+     * h=h_max */
     *utilde_i = 0.f;
     *utilde_j = 0.f;
     *rhotilde_i = 0.f;
@@ -436,8 +447,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_difn(
     phi_i_u = 1.f;
     phi_j_u = 1.f;
 
-  } else if ((A_i_u == 0.f && A_j_u != 0.f) ||
-             (A_j_u == 0.f && A_i_u != 0.f) || (A_i_u == -A_j_u)) {
+  } else if ((A_i_u == 0.f && A_j_u != 0.f) || (A_j_u == 0.f && A_i_u != 0.f) ||
+             (A_i_u == -A_j_u)) {
     phi_i_u = 0.f;
     phi_j_u = 0.f;
   } else {

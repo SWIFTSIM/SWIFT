@@ -650,13 +650,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
       gas_soundspeed_from_internal_energy(p->rho_evol, p->u, p->mat_id);
 
   const float div_v = p->dv_norm_kernel[0][0] + p->dv_norm_kernel[1][1] +
-                p->dv_norm_kernel[2][2];
+                      p->dv_norm_kernel[2][2];
   float curl_v[3];
   curl_v[0] = p->dv_norm_kernel[1][2] - p->dv_norm_kernel[2][1];
   curl_v[1] = p->dv_norm_kernel[2][0] - p->dv_norm_kernel[0][2];
   curl_v[2] = p->dv_norm_kernel[0][1] - p->dv_norm_kernel[1][0];
   const float mod_curl_v = sqrtf(curl_v[0] * curl_v[0] + curl_v[1] * curl_v[1] +
-                           curl_v[2] * curl_v[2]);
+                                 curl_v[2] * curl_v[2]);
 
   /* Balsara switch using normalised kernel gradients (Sandnes+2025 Eqn. 34 with
    * velocity gradients calculated by Eqn. 35) */

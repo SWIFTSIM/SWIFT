@@ -176,8 +176,10 @@ static INLINE void diffusion_print_snapshot(
     hid_t h_grpsph, const struct diffusion_global_data* diffusion) {
   io_write_attribute_f(h_grpsph, "Diffusion a_difn_u", const_remix_difn_a_u);
   io_write_attribute_f(h_grpsph, "Diffusion b_difn_u", const_remix_difn_b_u);
-  io_write_attribute_f(h_grpsph, "Diffusion a_difn_rho", const_remix_difn_a_rho);
-  io_write_attribute_f(h_grpsph, "Diffusion b_difn_rho", const_remix_difn_b_rho);
+  io_write_attribute_f(h_grpsph, "Diffusion a_difn_rho",
+                       const_remix_difn_a_rho);
+  io_write_attribute_f(h_grpsph, "Diffusion b_difn_rho",
+                       const_remix_difn_b_rho);
 }
 #endif
 
