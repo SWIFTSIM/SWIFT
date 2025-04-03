@@ -88,7 +88,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
   hydro_runner_iact_density_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
-  hydro_runner_iact_density_extra_visc_difn(pi, pj, dx, wi, wj, wi_dx, wj_dx);
 }
 
 /**
@@ -133,7 +132,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
   hydro_runner_iact_nonsym_density_extra_kernel(pi, pj, dx, wi, wi_dx);
-  hydro_runner_iact_nonsym_density_extra_visc_difn(pi, pj, dx, wi, wi_dx);
 }
 
 /**

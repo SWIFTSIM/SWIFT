@@ -31,60 +31,6 @@
 
 /**
  * @brief Prepares extra artificial viscosity and artificial diffusion
- * parameters for a particle for the density calculation.
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_init_part_extra_visc_difn(struct part *restrict p) {}
-
-/**
- * @brief Extra artificial viscosity and artificial diffusion density
- * interaction between two particles
- *
- * @param pi First particle.
- * @param pj Second particle.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param wi The value of the unmodified kernel function W(r, hi) * hi^d.
- * @param wj The value of the unmodified kernel function W(r, hj) * hj^d.
- * @param wi_dx The norm of the gradient of wi: dW(r, hi)/dr * hi^(d+1).
- * @param wj_dx The norm of the gradient of wj: dW(r, hj)/dr * hj^(d+1).
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_density_extra_visc_difn(struct part *restrict pi,
-                                          struct part *restrict pj,
-                                          const float dx[3], const float wi,
-                                          const float wj, const float wi_dx,
-                                          const float wj_dx) {}
-
-/**
- * @brief Extra artificial viscosity and artificial diffusion density
- * interaction between two particles (non-symmetric)
- *
- * @param pi First particle.
- * @param pj Second particle.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param wi The value of the unmodified kernel function W(r, hi) * hi^d.
- * @param wi_dx The norm of the gradient of wi: dW(r, hi)/dr * hi^(d+1).
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_density_extra_visc_difn(struct part *restrict pi,
-                                                 const struct part *restrict pj,
-                                                 const float dx[3],
-                                                 const float wi,
-                                                 const float wi_dx) {}
-
-/**
- * @brief Finishes extra artificial viscosity and artificial diffusion parts of
- * the density calculation.
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_end_density_extra_visc_difn(struct part *restrict p) {}
-
-/**
- * @brief Prepares extra artificial viscosity and artificial diffusion
  * parameters for a particle for the gradient calculation.
  *
  * @param p The particle to act upon

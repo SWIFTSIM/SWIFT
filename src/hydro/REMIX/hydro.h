@@ -479,7 +479,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rho_dh = 0.f;
 
   hydro_init_part_extra_kernel(p);
-  hydro_init_part_extra_visc_difn(p);
 }
 
 /**
@@ -516,7 +515,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
 
-  hydro_end_density_extra_visc_difn(p);
   hydro_end_density_extra_kernel(p);
 }
 
