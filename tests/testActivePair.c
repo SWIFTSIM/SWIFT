@@ -282,6 +282,35 @@ void zero_particle_fields_force(
     }
     p->geometry.volume = 1.0f;
 #endif
+#if defined(REMIX_SPH)
+    p->rho = 1.f;
+    p->rho_evol = 1.f;
+    p->m0 = 1.f;
+    p->density.rho_dh = 0.f;
+    p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
+    p->density.wcount_dh = 0.f;
+    p->gradient.m0_bar = 1.f;
+    p->gradient.grad_m0_bar_gradhterm = 0.f;
+    memset(p->grad_m0, 0.f, 3*sizeof(float));
+    memset(p->dv_norm_kernel, 0.f, 3*3*sizeof(float));
+    memset(p->du_norm_kernel, 0.f, 3*sizeof(float));
+    memset(p->drho_norm_kernel, 0.f, 3*sizeof(float));
+    memset(p->dh_norm_kernel, 0.f, 3*sizeof(float));
+    memset(p->gradient.grad_m0_bar, 0.f, 3*sizeof(float));
+    memset(p->gradient.m1_bar, 0.f, 3*sizeof(float));
+    memset(p->gradient.grad_m1_bar, 0.f, 3*3*sizeof(float));
+    memset(p->gradient.grad_m1_bar_gradhterm, 0.f, 3*sizeof(float));
+    p->gradient.m2_bar.xx = 1.f;
+    p->gradient.m2_bar.yy = 1.f;
+    p->gradient.m2_bar.zz = 1.f;
+    p->gradient.m2_bar.xy = 0.f;
+    p->gradient.m2_bar.xz = 0.f;
+    p->gradient.m2_bar.yz = 0.f;
+    zero_sym_matrix(&p->gradient.grad_m2_bar[0]);
+    zero_sym_matrix(&p->gradient.grad_m2_bar[1]);
+    zero_sym_matrix(&p->gradient.grad_m2_bar[2]);
+    zero_sym_matrix(&p->gradient.grad_m2_bar_gradhterm);
+#endif /* REMIX_SPH */
 
     /* And prepare for a round of force tasks. */
     hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor, 0., 0.);
