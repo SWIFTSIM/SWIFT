@@ -244,8 +244,8 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
 
       if (with_gravity) {
         /* Apply new masses and positions to gparts */
-        gp->mass = hydro_get_mass(p);
-        global_gparts[k_gparts].mass = hydro_get_mass(&global_parts[k_parts]);
+        gp->mass = new_mass;
+        global_gparts[k_gparts].mass = new_mass;
         gp->x[0] = p->x[0];
         gp->x[1] = p->x[1];
         gp->x[2] = p->x[2];

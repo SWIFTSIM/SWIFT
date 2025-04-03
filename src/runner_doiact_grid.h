@@ -169,7 +169,11 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     }
     count_unconverged = redo;
     if (r_max_active > c->dmin) {
+#ifdef SHADOWSWIFT_RELAXED_COMPLETENESS
+      warning("Particle search radii grew larger than cell dimensions!");
+#else
       error("Particle search radii grew larger than cell dimensions!");
+#endif
     }
 
 #ifdef SHADOWSWIFT_BVH

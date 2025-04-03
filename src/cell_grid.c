@@ -84,12 +84,12 @@ void cell_grid_update_self_completeness(struct cell *c, int force) {
 
     /* recurse */
     for (int i = 0; i < 8; i++) {
-      if (c->progeny[i] != NULL) {
-        cell_grid_update_self_completeness(c->progeny[i], force);
+      struct cell* cp = c->progeny[i];
+      if (cp != NULL) {
+        cell_grid_update_self_completeness(cp, force);
         /* As long as all progeny is complete, this cell can safely be split for
          * the grid construction (when not considering neighbouring cells) */
-        all_complete &=
-            (c->progeny[i]->grid.self_completeness == grid_complete);
+        all_complete &= cp->grid.self_completeness == grid_complete;
       }
     }
 
@@ -101,6 +101,14 @@ void cell_grid_update_self_completeness(struct cell *c, int force) {
       /* We are done here */
       return;
     }
+  }
+
+  /* Cells containing no hydro particles are incomplete */
+  if (c->hydro.count == 0) {
+    c->grid.self_completeness = grid_incomplete;
+    c->grid.complete = 0;
+    /* Nothing left to do. */
+    return;
   }
 
   /* If this cell is not split, or not all subcells are complete, we need to

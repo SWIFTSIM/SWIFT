@@ -70,7 +70,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_LENGTH, parts, h);
   list[4] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-                                thermal_energy);
+                                conserved.energy);
   list[5] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
@@ -102,7 +102,8 @@ INLINE static void convert_u(const struct engine* e, const struct part* p,
   }
   float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
   float Ekin = 0.5f * m_inv * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]);
-  if (p->thermal_energy > 1e-2 * Ekin) {
+  float Etherm = Q[4] - Ekin;
+  if (Etherm > 1e-6 * Ekin) {
     ret[0] = m_inv * (Q[4] - Ekin);
   } else {
     ret[0] = hydro_get_comoving_internal_energy(p, xp);
