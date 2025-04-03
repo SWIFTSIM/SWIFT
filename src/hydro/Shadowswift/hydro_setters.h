@@ -177,8 +177,7 @@ hydro_set_comoving_internal_energy(struct part* p, const float u) {
 
   /* thermal_energy is NOT the specific energy (u), but the total thermal
      energy (u*m) */
-  p->thermal_energy = p->conserved.mass * u;
-  p->conserved.energy = p->thermal_energy + Ekin;
+  p->conserved.energy = p->conserved.mass * u + Ekin;
   p->conserved.entropy = p->conserved.mass * p->A;
 }
 
@@ -264,8 +263,8 @@ hydro_set_init_internal_energy(struct part* p, float u_init) {
 
   /* We store the initial energy per unit mass in the energy
    * variable as the conversion to energy will be done later,
-   * in hydro_first_init_part(). */
-  p->thermal_energy = u_init;
+   * in hydro_convert_part(). */
+  p->conserved.energy = u_init;
 }
 
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_SETTERS_H */
