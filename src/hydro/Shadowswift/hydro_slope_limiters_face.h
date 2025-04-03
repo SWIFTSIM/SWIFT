@@ -60,6 +60,42 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
   return phi_mid - phi_i;
 }
 
+__attribute__((always_inline)) INLINE static void hydro_slope_limit_pair(
+  const float *Wi, const float *Wj, float *dWi, float *dWj) {
+  for (int k = 0; k < 6; k++) {
+    float phi_i_mid = Wi[k] + dWi[k];
+    float phi_j_mid = Wj[k] + dWj[k];
+
+    if (Wi[k] < Wj[k]) {
+      /* Clamp extrapolations to interval [phi_i; phi_j] */
+      phi_i_mid = fmaxf(Wi[k], fminf(phi_i_mid, Wj[k]));
+      phi_j_mid = fmaxf(Wi[k], fminf(phi_j_mid, Wj[k]));
+
+      /* Prevent inversion of quantities */
+      if (phi_i_mid > phi_j_mid) {
+        float mean = 0.5 * (phi_i_mid + phi_j_mid);
+        phi_i_mid = mean;
+        phi_j_mid = mean;
+      }
+    } else /* Wi[k] > Wj[k] */ {
+      /* Clamp extrapolations to interval [phi_i; phi_j] */
+      phi_i_mid = fmaxf(Wj[k], fminf(phi_i_mid, Wi[k]));
+      phi_j_mid = fmaxf(Wj[k], fminf(phi_j_mid, Wi[k]));
+
+      /* Prevent inversion of quantities */
+      if (phi_i_mid < phi_j_mid) {
+        float mean = 0.5 * (phi_i_mid + phi_j_mid);
+        phi_i_mid = mean;
+        phi_j_mid = mean;
+      }
+    }
+
+    /* Apply updates */
+    dWi[k] = phi_i_mid - Wi[k];
+    dWj[k] = phi_j_mid - Wj[k];
+  }
+}
+
 /**
  * @brief Slope limit the slopes at the interface between two particles
  *
@@ -111,6 +147,10 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
                                            xij_j_norm_over_r);
   dWj[5] = hydro_slope_limit_face_quantity(Wj[5], Wi[5], Wj[5] + dWj[5],
                                            xij_j_norm_over_r);
+
+#ifdef SHADOWSWIFT_EXTRA_PAIRWISE_LIMITER
+  hydro_slope_limit_pair(Wi, Wj, dWi, dWj);
+#endif
 }
 
 #endif  // SWIFTSIM_HYDRO_SLOPE_LIMITERS_PER_FACE_H
