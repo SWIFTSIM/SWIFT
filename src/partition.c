@@ -710,10 +710,11 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        size of number of cells. If refine is 1, then this should contain
  *        the old partition on entry.
  */
-static void pick_parmetis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int refine,
-                          int adaptive, float itr, int *celllist) {
 
+static void pick_parmetis_multi(int nodeID, struct space *s, int nregions,
+                          double *vertexw, double *edgew, int refine,
+                          int adaptive, float itr, int *celllist,
+                          idx_t ncon, real_t *tpwgts, real_t *ubvec) {
   int res;
   MPI_Comm comm;
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
@@ -768,9 +769,11 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     error("Failed to allocate adjncy array.");
 
   idx_t *weights_v = NULL;
-  if (vertexw != NULL)
-    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * nverts)) == NULL)
+  if (vertexw != NULL) {
+    /* Allocate space for multi-constraint weights */
+    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * nverts * ncon)) == NULL)
       error("Failed to allocate vertex weights array");
+  }
 
   idx_t *weights_e = NULL;
   if (edgew != NULL)
@@ -806,10 +809,14 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     idx_t *full_adjncy = NULL;
     if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
       error("Failed to allocate full adjncy array.");
+    
     idx_t *full_weights_v = NULL;
-    if (weights_v != NULL)
-      if ((full_weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+    if (weights_v != NULL) {
+      /* Allocate space for multi-constraint vertex weights */
+      if ((full_weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells * ncon)) == NULL)
         error("Failed to allocate full vertex weights array");
+    }
+      
     idx_t *full_weights_e = NULL;
     if (weights_e != NULL)
       if ((full_weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) ==
@@ -822,26 +829,29 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         error("Failed to allocate full regionid array");
     }
 
-    /* Init the vertex weights array. */
+    /* Init the multi-constraint vertex weights array. */
     if (vertexw != NULL) {
       for (int k = 0; k < ncells; k++) {
-        if (vertexw[k] > 1) {
-          full_weights_v[k] = vertexw[k];
-        } else {
-          full_weights_v[k] = 0;
+        for (int c = 0; c < ncon; c++) {
+          idx_t weight_val = (idx_t)vertexw[k * ncon + c];
+          if (weight_val > 1) {
+            full_weights_v[k * ncon + c] = weight_val;
+          } else {
+            full_weights_v[k * ncon + c] = 1; // Minimum weight of 1
+          }
         }
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check weights are all in range. */
       int failed = 0;
-      for (int k = 0; k < ncells; k++) {
+      for (int k = 0; k < ncells * ncon; k++) {
         if ((idx_t)vertexw[k] < 0) {
           message("Input vertex weight out of range: %ld", (long)vertexw[k]);
           failed++;
         }
-        if (full_weights_v[k] < 0) {
-          message("Used vertex weight  out of range: %" PRIDX,
+        if (full_weights_v[k] < 1) {
+          message("Used vertex weight out of range: %" PRIDX,
                   full_weights_v[k]);
           failed++;
         }
@@ -920,7 +930,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         if (weights_e != NULL)
           memcpy(weights_e, &full_weights_e[j2], sizeof(idx_t) * nedge);
         if (weights_v != NULL)
-          memcpy(weights_v, &full_weights_v[j3], sizeof(idx_t) * nvt);
+          memcpy(weights_v, &full_weights_v[j3 * ncon], sizeof(idx_t) * nvt * ncon);
         if (refine) memcpy(regionid, full_regionid, sizeof(idx_t) * nvt);
 
       } else {
@@ -933,7 +943,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
           res = MPI_Isend(&full_weights_e[j2], nvt * 26, IDX_T, rank, 2, comm,
                           &reqs[5 * rank + 2]);
         if (res == MPI_SUCCESS && weights_v != NULL)
-          res = MPI_Isend(&full_weights_v[j3], nvt, IDX_T, rank, 3, comm,
+          res = MPI_Isend(&full_weights_v[j3 * ncon], nvt * ncon, IDX_T, rank, 3, comm,
                           &reqs[5 * rank + 3]);
         if (refine && res == MPI_SUCCESS)
           res = MPI_Isend(&full_regionid[j3], nvt, IDX_T, rank, 4, comm,
@@ -976,7 +986,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if (res == MPI_SUCCESS && weights_e != NULL)
       res = MPI_Irecv(weights_e, nverts * 26, IDX_T, 0, 2, comm, &reqs[2]);
     if (res == MPI_SUCCESS && weights_v != NULL)
-      res = MPI_Irecv(weights_v, nverts, IDX_T, 0, 3, comm, &reqs[3]);
+      res = MPI_Irecv(weights_v, nverts * ncon, IDX_T, 0, 3, comm, &reqs[3]);
     if (refine && res == MPI_SUCCESS)
       res += MPI_Irecv((void *)regionid, nverts, IDX_T, 0, 4, comm, &reqs[4]);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive graph data");
@@ -994,11 +1004,37 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
   }
 
-  /* Set up the tpwgts array. This is just 1/nregions. */
-  real_t *tpwgts;
-  if ((tpwgts = (real_t *)malloc(sizeof(real_t) * nregions)) == NULL)
-    error("Failed to allocate tpwgts array");
-  for (int i = 0; i < nregions; i++) tpwgts[i] = 1.0 / (real_t)nregions;
+  /* If tpwgts wasn't provided, create it with default values */
+  real_t *local_tpwgts = tpwgts;
+  int need_to_free_tpwgts = 0;
+  
+  if (local_tpwgts == NULL) {
+    if ((local_tpwgts = (real_t *)malloc(sizeof(real_t) * nregions * ncon)) == NULL)
+      error("Failed to allocate tpwgts array");
+    need_to_free_tpwgts = 1;
+    
+    /* Set default balanced weights */
+    for (int i = 0; i < nregions; i++) {
+      for (int c = 0; c < ncon; c++) {
+        local_tpwgts[i * ncon + c] = 1.0 / (real_t)nregions;
+      }
+    }
+  }
+
+  /* If ubvec wasn't provided, create it with default values */
+  real_t *local_ubvec = ubvec;
+  int need_to_free_ubvec = 0;
+  
+  if (local_ubvec == NULL) {
+    if ((local_ubvec = (real_t *)malloc(sizeof(real_t) * ncon)) == NULL)
+      error("Failed to allocate ubvec array");
+    need_to_free_ubvec = 1;
+    
+    /* Set default tolerance */
+    for (int c = 0; c < ncon; c++) {
+      local_ubvec[c] = 1.05; /* Default 5% imbalance tolerance */
+    }
+  }
 
   /* Common parameters. */
   idx_t options[4];
@@ -1006,15 +1042,11 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   options[1] = 0;
 
   idx_t edgecut;
-  idx_t ncon = 1;
   idx_t nparts = nregions;
   idx_t numflag = 0;
   idx_t wgtflag = 0;
   if (edgew != NULL) wgtflag += 1;
   if (vertexw != NULL) wgtflag += 2;
-
-  real_t ubvec[1];
-  ubvec[0] = 1.001;
 
   if (refine) {
     /* Refine an existing partition, uncouple as we do not have the cells
@@ -1032,13 +1064,13 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       real_t itr_real_t = itr;
       if (ParMETIS_V3_AdaptiveRepart(
               vtxdist, xadj, adjncy, weights_v, NULL, weights_e, &wgtflag,
-              &numflag, &ncon, &nparts, tpwgts, ubvec, &itr_real_t, options,
+              &numflag, &ncon, &nparts, local_tpwgts, local_ubvec, &itr_real_t, options,
               &edgecut, regionid, &comm) != METIS_OK)
         error("Call to ParMETIS_V3_AdaptiveRepart failed.");
     } else {
       if (ParMETIS_V3_RefineKway(vtxdist, xadj, adjncy, weights_v, weights_e,
-                                 &wgtflag, &numflag, &ncon, &nparts, tpwgts,
-                                 ubvec, options, &edgecut, regionid,
+                                 &wgtflag, &numflag, &ncon, &nparts, local_tpwgts,
+                                 local_ubvec, options, &edgecut, regionid,
                                  &comm) != METIS_OK)
         error("Call to ParMETIS_V3_RefineKway failed.");
     }
@@ -1056,8 +1088,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       options[2] = clocks_random_seed();
 
       if (ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, weights_v, weights_e,
-                               &wgtflag, &numflag, &ncon, &nparts, tpwgts,
-                               ubvec, options, &edgecut, regionid,
+                               &wgtflag, &numflag, &ncon, &nparts, local_tpwgts,
+                               local_ubvec, options, &edgecut, regionid,
                                &comm) != METIS_OK)
         error("Call to ParMETIS_V3_PartKway failed.");
 
@@ -1173,17 +1205,33 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
 
+  /* Free temporary allocated arrays if needed */
+  if (need_to_free_tpwgts) free(local_tpwgts);
+  if (need_to_free_ubvec) free(local_ubvec);
+
   /* Clean up. */
   free(reqs);
   free(stats);
   if (weights_v != NULL) free(weights_v);
   if (weights_e != NULL) free(weights_e);
   free(vtxdist);
-  free(tpwgts);
   free(xadj);
   free(adjncy);
   free(regionid);
 }
+static void pick_parmetis(int nodeID, struct space *s, int nregions,
+                          double *vertexw, double *edgew, int refine,
+                          int adaptive, float itr, int *celllist) {
+  /* Default values for single-constraint partitioning */
+  idx_t ncon = 1;
+  real_t *tpwgts = NULL;
+  real_t ubvec[1] = {1.05}; /* Default 5% imbalance tolerance */
+
+  /* Call the multi-constraint version with default single-constraint values */
+  pick_parmetis_multi(nodeID, s, nregions, vertexw, edgew, refine,
+                      adaptive, itr, celllist, ncon, tpwgts, ubvec);
+}
+
 #endif
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
@@ -1571,18 +1619,28 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
              NULL /* no xadj needed */, &nxadj);
 
   /* Allocate and init weights. */
-  double *weights_v = NULL;
   double *weights_e = NULL;
-  if (vweights) {
-    if ((weights_v = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
-      error("Failed to allocate vertex weights arrays.");
-    bzero(weights_v, sizeof(double) * nr_cells);
-  }
   if (eweights) {
     if ((weights_e = (double *)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
       error("Failed to allocate edge weights arrays.");
     bzero(weights_e, sizeof(double) * 26 * nr_cells);
   }
+  
+  /* Calculate volume weights - each cell contributes equally to volume */
+  double *volume_weights = NULL;
+  if ((volume_weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+    error("Failed to allocate volume weights array.");
+    
+  /* Set equal volume weight for each cell */
+  for (int k = 0; k < s->nr_cells; k++) {
+    volume_weights[k] = 1.0;
+  }
+  
+  /* Calculate computation weights using tasks */
+  double *compute_weights = NULL;
+  if ((compute_weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+    error("Failed to allocate compute weights array.");
+  bzero(compute_weights, sizeof(double) * s->nr_cells);
 
   /* Gather weights. */
   struct weights_mapper_data weights_data;
@@ -1593,9 +1651,9 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   weights_data.nodeID = nodeID;
   weights_data.nr_cells = nr_cells;
   weights_data.timebins = timebins;
-  weights_data.vweights = vweights;
+  weights_data.vweights = 1; /* Always using vertex weights */
   weights_data.weights_e = weights_e;
-  weights_data.weights_v = weights_v;
+  weights_data.weights_v = compute_weights; /* Store in compute_weights */
   weights_data.use_ticks = repartition->use_ticks;
 
   ticks tic = getticks();
@@ -1608,17 +1666,15 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
             clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
-  check_weights(tasks, nr_tasks, &weights_data, weights_v, weights_e);
+  check_weights(tasks, nr_tasks, &weights_data, compute_weights, weights_e);
 #endif
 
   /* Merge the weights arrays across all nodes. */
   int res;
-  if (vweights) {
-    res = MPI_Allreduce(MPI_IN_PLACE, weights_v, nr_cells, MPI_DOUBLE, MPI_SUM,
-                        MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to allreduce vertex weights.");
-  }
+  res = MPI_Allreduce(MPI_IN_PLACE, compute_weights, nr_cells, MPI_DOUBLE, MPI_SUM,
+                      MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS)
+    mpi_error(res, "Failed to allreduce compute weights.");
 
   if (eweights) {
     res = MPI_Allreduce(MPI_IN_PLACE, weights_e, 26 * nr_cells, MPI_DOUBLE,
@@ -1641,83 +1697,72 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     repartition->ncelllist = nr_cells;
   }
 
-  /* We need to rescale the sum of the weights so that the sums of the two
-   * types of weights are less than IDX_MAX, that is the range of idx_t.  */
-  double vsum = 0.0;
-  if (vweights)
-    for (int k = 0; k < nr_cells; k++) vsum += weights_v[k];
-  double esum = 0.0;
-  if (eweights)
-    for (int k = 0; k < 26 * nr_cells; k++) esum += weights_e[k];
-
-  /* Do the scaling, if needed, keeping both weights in proportion. */
-  double vscale = 1.0;
-  double escale = 1.0;
-  if (vweights && eweights) {
-    if (vsum > esum) {
-      if (vsum > (double)IDX_MAX) {
-        vscale = (double)(IDX_MAX - 10000) / vsum;
-        escale = vscale;
-      }
-    } else {
-      if (esum > (double)IDX_MAX) {
-        escale = (double)(IDX_MAX - 10000) / esum;
-        vscale = escale;
-      }
-    }
-  } else if (vweights) {
-    if (vsum > (double)IDX_MAX) {
-      vscale = (double)(IDX_MAX - 10000) / vsum;
-    }
-  } else if (eweights) {
-    if (esum > (double)IDX_MAX) {
-      escale = (double)(IDX_MAX - 10000) / esum;
-    }
-  }
-
-  if (vweights && vscale != 1.0) {
-    vsum = 0.0;
-    for (int k = 0; k < nr_cells; k++) {
-      weights_v[k] *= vscale;
-      vsum += weights_v[k];
-    }
-    vscale = 1.0;
-  }
-  if (eweights && escale != 1.0) {
-    esum = 0.0;
-    for (int k = 0; k < 26 * nr_cells; k++) {
-      weights_e[k] *= escale;
-      esum += weights_e[k];
-    }
-    escale = 1.0;
-  }
-
-  /* Balance edges and vertices when the edge weights are timebins, as these
-   * have no reason to have equivalent scales, we use an equipartition. */
-  if (timebins && eweights) {
-
-    /* Make sums the same. */
-    if (vsum > esum) {
-      escale = vsum / esum;
-      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= escale;
-    } else {
-      vscale = esum / vsum;
-      for (int k = 0; k < nr_cells; k++) weights_v[k] *= vscale;
-    }
-  }
-
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
-               repartition->celllist);
+    /* For METIS, use computation weights as the primary constraint */
+    pick_metis(nodeID, s, nr_nodes, compute_weights, weights_e, 
+              repartition->celllist);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
-                  repartition->adaptive, repartition->itr,
-                  repartition->celllist);
+    /* Multi-constraint partitioning with ParMETIS */
+    
+    /* Prepare the multi-constraint double weights array */
+    double *multi_weights = NULL;
+    if ((multi_weights = (double *)malloc(sizeof(double) * s->nr_cells * 2)) == NULL)
+      error("Failed to allocate multi-constraint weights array.");
+    
+    /* Scale compute weights to avoid overflows */
+    double csum = 0.0;
+    for (int k = 0; k < s->nr_cells; k++) {
+      csum += compute_weights[k];
+    }
+    
+    /* Scale weights to fit in idx_t range */
+    double cscale = (csum > (double)IDX_MAX) ? (double)(IDX_MAX/2 - 1000) / csum : 1.0;
+    
+    /* Fill multi-constraint weights array */
+    for (int k = 0; k < s->nr_cells; k++) {
+      /* First constraint: computation cost */
+      multi_weights[k*2] = compute_weights[k] * cscale;
+      if (multi_weights[k*2] < 1.0) multi_weights[k*2] = 1.0;
+      
+      /* Second constraint: volume (cell count) */
+      multi_weights[k*2+1] = volume_weights[k];
+    }
+    
+    /* Setup multi-constraint parameters */
+    idx_t ncon = 2;  /* Two constraints */
+    real_t *tpwgts = NULL;
+    if ((tpwgts = (real_t *)malloc(sizeof(real_t) * ncon * nr_nodes)) == NULL)
+      error("Failed to allocate tpwgts array");
+    
+    /* Set target weights for each partition and constraint */
+    for (int i = 0; i < nr_nodes; i++) {
+      tpwgts[i*ncon+0] = 1.0/nr_nodes;  /* Equal computational weight */
+      tpwgts[i*ncon+1] = 1.0/nr_nodes;  /* Equal volume/cell count */
+    }
+    
+    /* Set imbalance tolerances - different values for each constraint */
+    real_t *ubvec = NULL;
+    if ((ubvec = (real_t *)malloc(sizeof(real_t) * ncon)) == NULL)
+      error("Failed to allocate ubvec array");
+    
+    ubvec[0] = 1.05;  /* Allow 5% imbalance in computation */
+    ubvec[1] = 2.05;  /* Allow 5% imbalance in volume/cells */
+    
+    /* Use multi-constraint version of pick_parmetis */
+    pick_parmetis_multi(nodeID, s, nr_nodes, multi_weights, weights_e, refine,
+                     repartition->adaptive, repartition->itr,
+                     repartition->celllist, ncon, tpwgts, ubvec);
+    
+    /* Clean up multi-constraint resources */
+    free(multi_weights);
+    free(tpwgts);
+    free(ubvec);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
+  pick_metis(nodeID, s, nr_nodes, compute_weights, weights_e, 
+             repartition->celllist);
 #endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
@@ -1755,8 +1800,9 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
   /* Clean up. */
   free(inds);
-  if (vweights) free(weights_v);
-  if (eweights) free(weights_e);
+  free(compute_weights);
+  free(volume_weights);
+  if (weights_e != NULL) free(weights_e);
 }
 
 /**
