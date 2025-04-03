@@ -110,6 +110,9 @@
 #define SHADOWSWIFT_EXTRAPOLATE_TIME
 #endif
 
+/*! @brief Option to enable extra flux positivity limiter */
+#define SHADOWSWIFT_FLUX_LIMITER
+
 /*! @brief Option controlling output of grids */
 // #define SHADOWSWIFT_OUTPUT_GRIDS
 

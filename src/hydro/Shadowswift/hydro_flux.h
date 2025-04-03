@@ -184,32 +184,17 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
     fluxes[k] = fluxes_lo[k] * (1. - theta_P) + fluxes[k] * theta_P;
   }
 
-  /* As an absolute last resort, just rescale fluxes if necessary */
-  double theta = 1.;
-  if (pi->conserved.mass <
-      flux_fac_i * fluxes[0]) {
-    theta = fmin(theta, pi->conserved.mass / (flux_fac_i * fluxes[0]));
-  }
-  if (pj->conserved.mass <
-      -flux_fac_j * fluxes[0]) {
-    theta = fmin(theta, pj->conserved.mass / (-flux_fac_j * fluxes[0]));
-  }
-  if (pi->conserved.energy <
-      flux_fac_i * fluxes[4]) {
-    theta = fmin(theta, pi->conserved.energy / (flux_fac_i * fluxes[4]));
-  }
-  if (pj->conserved.energy <
-      -flux_fac_j * fluxes[4]) {
-    theta = fmin(theta, pj->conserved.energy / (-flux_fac_j * fluxes[4]));
-  }
-  theta = fmax(0., theta);
-  if (theta < 1.) {
+  /* Fall back to first order fluxes if limiter has failed */
+  if (pi->conserved.mass < flux_fac_i * fluxes[0] ||
+      pj->conserved.mass < -flux_fac_j * fluxes[0] ||
+      pi->conserved.energy < flux_fac_i * fluxes[4] ||
+      pj->conserved.energy < -flux_fac_j * fluxes[4]) {
 #ifdef SHADOWSWIFT_WARNINGS
     warning(
-        "Positivity flux limiter failed! Discarding fluxes");
+        "Positivity flux limiter failed! Falling back to first order flux estimates");
 #endif
     for (int k = 0; k < 6; ++k) {
-      fluxes[k] *= 0.;
+      fluxes[k] = fluxes_lo[k];
     }
   }
 }
