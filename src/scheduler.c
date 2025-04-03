@@ -1791,8 +1791,9 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
           }
         }
         if (first_pair_id == csp->count)
-          error("No suitable pair of sub cells found, but above construction "
-                "level!");
+          error(
+              "No suitable pair of sub cells found, but above construction "
+              "level!");
 
         cell_set_flag(t->ci, cell_flag_has_tasks);
         cell_set_flag(t->cj, cell_flag_has_tasks);

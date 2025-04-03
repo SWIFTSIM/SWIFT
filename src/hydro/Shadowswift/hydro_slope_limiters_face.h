@@ -61,7 +61,7 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
 }
 
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_pair(
-  const float *Wi, const float *Wj, float *dWi, float *dWj) {
+    const float *Wi, const float *Wj, float *dWi, float *dWj) {
   for (int k = 0; k < 6; k++) {
     float phi_i_mid = Wi[k] + dWi[k];
     float phi_j_mid = Wj[k] + dWj[k];

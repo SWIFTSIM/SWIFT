@@ -84,7 +84,7 @@ void cell_grid_update_self_completeness(struct cell *c, int force) {
 
     /* recurse */
     for (int i = 0; i < 8; i++) {
-      struct cell* cp = c->progeny[i];
+      struct cell *cp = c->progeny[i];
       if (cp != NULL) {
         cell_grid_update_self_completeness(cp, force);
         /* As long as all progeny is complete, this cell can safely be split for

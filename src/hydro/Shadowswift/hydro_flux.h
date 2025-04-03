@@ -191,7 +191,8 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
       pj->conserved.energy < -flux_fac_j * fluxes[4]) {
 #ifdef SHADOWSWIFT_WARNINGS
     warning(
-        "Positivity flux limiter failed! Falling back to first order flux estimates");
+        "Positivity flux limiter failed! Falling back to first order flux "
+        "estimates");
 #endif
     for (int k = 0; k < 6; ++k) {
       fluxes[k] = fluxes_lo[k];

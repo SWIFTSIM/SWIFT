@@ -398,7 +398,9 @@ hydro_convert_conserved_to_primitive(
    * rise to precision errors resulting in NaNs... */
 #ifdef SWIFT_DEBUG_CHECKS
   if (Q[0] < 0. || Q[4] < 0.)
-    warning("Negative mass or energy after applying fluxes! Q[0] = %E, Q[4] = %E", Q[0], Q[4]);
+    warning(
+        "Negative mass or energy after applying fluxes! Q[0] = %E, Q[4] = %E",
+        Q[0], Q[4]);
 #endif
   const double epsilon = 16. * FLT_MIN;
   if (Q[0] < epsilon || Q[4] < epsilon) {
@@ -843,8 +845,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
    * NOTE: the mass has already been rescales, so we should rescale the fluxes
    * as well. */
   p->conserved.mass -= fraction * p->flux.mass;
-  if (p->gpart)
-    p->gpart->mass -= fraction * p->flux.mass;
+  if (p->gpart) p->gpart->mass -= fraction * p->flux.mass;
 
   /* Rescale conserved quantities (without mass) */
   p->conserved.momentum[0] *= fraction;
