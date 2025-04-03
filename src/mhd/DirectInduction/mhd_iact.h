@@ -658,8 +658,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
     pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
-    pi->mhd_data.Adv_B_source[i] -= mj * grad_psi_i * dx[i];
-    pj->mhd_data.Adv_B_source[i] -= mi * grad_psi_j * dx[i];
+    //pi->mhd_data.Adv_B_source[i] -= mj * grad_psi_i * dx[i];
+    //pj->mhd_data.Adv_B_source[i] -= mi * grad_psi_j * dx[i];
     pi->mhd_data.Diff_B_source[i] += mj * dB_dt_pref_PR_i * wi_dr * dB[i];
     pj->mhd_data.Diff_B_source[i] -= mi * dB_dt_pref_PR_j * wj_dr * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref_i * dB[i];
@@ -913,7 +913,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
-    pi->mhd_data.Adv_B_source[i] -= mj * grad_psi_i * dx[i];
+    //pi->mhd_data.Adv_B_source[i] -= mj * grad_psi_i * dx[i];
     pi->mhd_data.Diff_B_source[i] += mj * dB_dt_pref_PR * wi_dr * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
     pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap * wi_dr * dB[i];
