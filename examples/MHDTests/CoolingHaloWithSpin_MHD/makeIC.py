@@ -41,7 +41,7 @@ const_unit_velocity_in_cgs = 1.0e5  # kms^-1
 
 # Cosmological parameters
 OMEGA = 0.3  # Cosmological matter fraction at z = 0
-h = 0.681  # 0.67777  # hubble parameter
+h = 0.704  # 0.67777  # hubble parameter
 # Find H_0, the inverse Hubble time, in cgs
 H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 

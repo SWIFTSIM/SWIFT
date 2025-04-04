@@ -1,8 +1,8 @@
-# Define the system of units to use internally. 
+# Define the system of units to use internally.
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.98848e39    # 10^6 solar masses
-  UnitLength_in_cgs:   3.0856776e21  # Kiloparsecs
-  UnitVelocity_in_cgs: 1e5           # Kilometres per second
+  UnitMass_in_cgs:     1.9891E43   # 10^10 solar masses 
+  UnitLength_in_cgs:   3.08567758E21   # 1 kpc 
+  UnitVelocity_in_cgs: 1E5   # km/s
   UnitCurrent_in_cgs:  2.088431e13    # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
@@ -15,10 +15,13 @@ TimeIntegration:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-2 # Time between statistics output
+  delta_time:  0.01023    # Time difference between consecutive outputs (in internal units)  0.001023 TU = 10 Myr
+  compression: 4           # Compress the snapshots
+  recording_triggers_part: [-1, -1]   # Not recording as we have many snapshots
+  recording_triggers_bpart: [-1, -1]  # Not recording as we have many snapshots 
 
-Scheduler:
-  tasks_per_cell:      200
+#Scheduler:
+#  tasks_per_cell:      200
 
 # Parameters governing the snapshots
 Snapshots:
@@ -31,8 +34,10 @@ SPH:
   resolution_eta:        1.595     # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.05      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   1e2       # Kelvin
-  h_tolerance: 1e-6
-
+  h_tolerance: 1e-6               # smoothing length accuracy
+  h_min_ratio:           0.1      # Minimal smoothing in units of softening.
+  h_max:                 10.
+ 
 # Parameters for MHD schemes
 MHD:
   monopole_subtraction:   1.0
@@ -45,7 +50,8 @@ MHD:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  CoolingHalo.hdf5       # The file to read
-  periodic:   1
+  periodic:   0 # was 1
+  stars_smoothing_length:  0.5
  
 # Note: softening 2.6 below is for 1.4e7 Msol particle mass to impose density cut 1e2 cm^-3
  
@@ -53,72 +59,68 @@ InitialConditions:
 NFWPotential:
     useabspos:       0              # 0 -> positions based on centre, 1 -> absolute positions
     position:        [0.,0.,0.]     # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
-    M_200:           1000000        # M200 of the galaxy disk
-    h:               0.681          # reduced Hubble constant (using FLAMINGO cosmology) (value does not specify the used units!)
+    M_200:           100        # M200 of the galaxy disk
+    h:               0.704          # reduced Hubble constant (using FLAMINGO cosmology) (value does not specify the used units!)
     concentration:   7.2            # concentration of the Halo
     timestep_mult:   0.01           # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
-    epsilon:         0.569 #2.6            # Softening size (internal units)
-    #diskfraction:    0.0            # Disk mass fraction
-    #bulgefraction:   0.0            # Bulge mass fraction
+    epsilon:         0.2             # Softening size (internal units)
 
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:                0.025
-  MAC:                adaptive
-  theta_cr:           0.7
-  epsilon_fmm:        0.001
-  max_physical_baryon_softening:  0.569 #2.6  # Physical softening length (in internal units). Depends on resolution!
-  mesh_side_length:   64
+  eta:          0.025                 # Constant dimensionless multiplier for time integration.
+  MAC:          geometric
+  theta_cr:     0.7                 # Opening angle (Multipole acceptance criterion).
+  use_tree_below_softening:  1
+  max_physical_DM_softening:     0.2  # Physical softening length (in internal units).
+  max_physical_baryon_softening: 0.2  # Physical softening length (in internal units).
 
-# Simple model cooling parameters
-LambdaCooling:
-  lambda_nH2_cgs:              1e-23  # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
-  cooling_tstep_mult:          0.1    # Dimensionless pre-factor for the time-step condition
-
-# Parameters for the EAGLE "equation of state"
-EAGLEEntropyFloor:
-  Jeans_density_threshold_H_p_cm3: 1e-4      # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
-  Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
-  Jeans_temperature_norm_K:        800       # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
-  Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
-  Cool_density_threshold_H_p_cm3: 1e-5       # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
-  Cool_over_density_threshold:    10.        # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
-  Cool_temperature_norm_K:        10.        # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin. (NOTE: This is below the min T and hence this floor does nothing)
-  Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
-
-
-# Use primordial abundances
-EAGLEChemistry:
-  init_abundance_metal:     0.
-  init_abundance_Hydrogen:  0.755
-  init_abundance_Helium:    0.245
-  init_abundance_Carbon:    0.
-  init_abundance_Nitrogen:  0.
-  init_abundance_Oxygen:    0.
-  init_abundance_Neon:      0.
-  init_abundance_Magnesium: 0.
-  init_abundance_Silicon:   0.
-  init_abundance_Iron:      0.
-
-# Use solar abundances
-#EAGLEChemistry:
-#  init_abundance_metal:     0.0129   
-#  init_abundance_Hydrogen:  0.7065   
-#  init_abundance_Helium:    0.2806   
-#  init_abundance_Carbon:    0.00207  
-#  init_abundance_Nitrogen:  0.000836 
-#  init_abundance_Oxygen:    0.00549  
-#  init_abundance_Neon:      0.00141  
-#  init_abundance_Magnesium: 0.000591 
-#  init_abundance_Silicon:   0.000683 
-#  init_abundance_Iron:      0.0011   
+# Parameters for the stars
+Stars:
+  overwrite_birth_time:        1     # Make sure the stars in the ICs do not do any feedback
+  birth_time:                 -1.    # by setting all of their birth times to -1
+  timestep_age_threshold_Myr: 10.    # Age at which stars switch from young to old (in Mega-years).
+  max_timestep_young_Myr:      0.1   # Maximal time-step length of young stars (in Mega-years).
+  max_timestep_old_Myr:        1.0   # Maximal time-step length of old stars (in Mega-years).
+  luminosity_filename:   ./photometry
 
 # Standard EAGLE cooling options
 EAGLECooling:
   dir_name:                ./coolingtables/  # Location of the Wiersma+09 cooling tables
-  H_reion_z:               7.5               # Redshift of Hydrogen re-ionization
-  H_reion_eV_p_H:          2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
+  H_reion_z:               11.5              # Redshift of Hydrogen re-ionization
+  H_reion_eV_p_H:          2.0
   He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
   He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
   He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
 
+# Solar abundances
+EAGLEChemistry:
+  init_abundance_metal:     0.0129       # Inital fraction of particle mass in *all* metals
+  init_abundance_Hydrogen:  0.7065       # Inital fraction of particle mass in Hydrogen
+  init_abundance_Helium:    0.2806       # Inital fraction of particle mass in Helium
+  init_abundance_Carbon:    0.00207      # Inital fraction of particle mass in Carbon
+  init_abundance_Nitrogen:  0.000836     # Inital fraction of particle mass in Nitrogen
+  init_abundance_Oxygen:    0.00549      # Inital fraction of particle mass in Oxygen
+  init_abundance_Neon:      0.00141      # Inital fraction of particle mass in Neon
+  init_abundance_Magnesium: 0.000591     # Inital fraction of particle mass in Magnesium
+  init_abundance_Silicon:   0.000683     # Inital fraction of particle mass in Silicon
+  init_abundance_Iron:      0.0011       # Inital fraction of particle mass in Iron
+
+# EAGLE star formation parameters
+EAGLEStarFormation:
+  SF_threshold:                      Zdep         # Zdep (Schaye 2004) or Subgrid
+  SF_model:                          PressureLaw  # PressureLaw (Schaye et al. 2008) or SchmidtLaw
+  gas_fraction:                      0.3          # The gas fraction used internally by the model.
+  KS_normalisation:                  1.515e-4     # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+  KS_exponent:                       1.4          # The exponent of the Kennicutt-Schmidt law.
+  min_over_density:                  100.0        # The over-density above which star-formation is allowed.
+  KS_high_density_threshold_H_p_cm3: 1e3          # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+  KS_high_density_exponent:          2.0          # Slope of the Kennicut-Schmidt law above the high-density threshold.
+  EOS_entropy_margin_dex:            0.3          # When using Z-based SF threshold, logarithm base 10 of the maximal entropy above the EOS at which stars can form.
+  threshold_norm_H_p_cm3:            0.1          # When using Z-based SF threshold, normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_Z0:                      0.002        # When using Z-based SF threshold, reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
+  threshold_slope:                   -0.64        # When using Z-based SF threshold, slope of the metal-dependant star formation threshold
+  threshold_max_density_H_p_cm3:     10.0         # When using Z-based SF threshold, maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_temperature1_K:          1000         # When using subgrid-based SF threshold, subgrid temperature below which gas is star-forming.
+  threshold_temperature2_K:          31622        # When using subgrid-based SF threshold, subgrid temperature below which gas is star-forming if also above the density limit.
+  threshold_number_density_H_p_cm3:  10           # When using subgrid-based SF threshold, subgrid number density above which gas is star-forming if also below the second temperature limit.
+  
