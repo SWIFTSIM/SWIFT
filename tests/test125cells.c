@@ -221,6 +221,11 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
     hydro_first_init_part(p, &c->hydro.xparts[i]);
     p->time_bin = 1;
 #endif
+#if defined(REMIX_SPH)
+    p->rho = density;
+    hydro_first_init_part(p, &c->hydro.xparts[i]);
+    p->time_bin = 1;
+#endif
 
     hydro_init_part(p, hs);
     adaptive_softening_init_part(p);
@@ -290,6 +295,9 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
+#endif
+#if defined(REMIX_SPH)
+        part->rho = density;
 #endif
 
         set_velocity(part, vel, size);
