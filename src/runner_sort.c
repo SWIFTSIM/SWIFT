@@ -231,7 +231,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
     return;
   }
 
-  if (cleanup || flags != c->hydro.sorted) {
+  if (cleanup) {
     c->hydro.sorted = 0;
   }
 
@@ -366,7 +366,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   else {
 
     /* Reset the sort distance */
-    if (c->hydro.sorted == 0) {
+    if (c->hydro.sorted != flags) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (xparts != NULL && c->nodeID != engine_rank)
         error("Have non-NULL xparts in foreign cell");
