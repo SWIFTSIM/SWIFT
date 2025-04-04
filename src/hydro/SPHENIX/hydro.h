@@ -757,30 +757,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* Include the extra factors in the del^2 u */
 
   p->diffusion.laplace_u *= 2.f * h_inv_dim_plus_one;
-
-  /* Compute Balsara switch */
-  const float fac_B = cosmo->a_factor_Balsara_eps;
-
-  /* Compute the norm of the curl */
-  const float curl_v = sqrtf(p->viscosity.rot_v[0] * p->viscosity.rot_v[0] +
-                             p->viscosity.rot_v[1] * p->viscosity.rot_v[1] +
-                             p->viscosity.rot_v[2] * p->viscosity.rot_v[2]);
-
-  /* Compute the norm of div v */
-  const float abs_div_v = fabsf(p->viscosity.div_v);
-
-  /* Compute the sound speed  */
-  const float pressure = hydro_get_comoving_pressure(p);
-  const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
-  const float soundspeed =
-      gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
-
-  /* Compute the Balsara switch */
-  const float balsara =
-      abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed * fac_B / p->h);
-
-  p->force.balsara = balsara;
   
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_gradient += kernel_root;
@@ -865,13 +841,39 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed_physical =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor) *
       cosmo->a_factor_sound_speed;
-
+  const float fac_B = cosmo->a_factor_Balsara_eps;
+  
   const float sound_crossing_time_inverse =
       soundspeed_physical * kernel_support_physical_inv;
 
+  /* Compute the norm of the curl */
+  const float curl_v = sqrtf(p->viscosity.rot_v[0] * p->viscosity.rot_v[0] +
+                             p->viscosity.rot_v[1] * p->viscosity.rot_v[1] +
+                             p->viscosity.rot_v[2] * p->viscosity.rot_v[2]);
+
+  /* Compute the norm of div v */
+  const float abs_div_v = fabsf(p->viscosity.div_v);
+
+  /* Compute the sound speed  */
+  const float pressure = hydro_get_comoving_pressure(p);
+  const float pressure_including_floor =
+      pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
+
+  /* Get the squares of the quantities necessary for the Balsara-like switch */
+  const float fac_B_2 = fac_B * fac_B;
+  const float curl_v_2 = curl_v * curl_v;
+  const float abs_div_v_2 = abs_div_v * abs_div_v;
+  const float soundspeed_2 = soundspeed * soundspeed;
+  const float h_2 = p->h * p->h;
+  
+  /* Compute the Balsara-like switch (Price et a. (2018), eq. 47; a simplified version of eq. 18 in Cullen & Dehnen (2012)) */
+  const float balsara =
+      abs_div_v_2 / (abs_div_v_2 + curl_v_2 + 0.0001f * soundspeed_2 * fac_B_2 / h_2);
+  
   /* Construct time differential of div.v implicitly following the ANARCHY spec
    */
-
   const float div_v_dt =
       dt_alpha == 0.f
           ? 0.f
@@ -882,7 +884,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Source term is only activated if flow is converging (i.e. in the pre-
    * shock region) */
   const float S = p->viscosity.div_v < 0.f
-                      ? kernel_support_physical * kernel_support_physical *
+                      ? balsara * kernel_support_physical * kernel_support_physical *
                             max(0.f, -1.f * div_v_dt)
                       : 0.f;
 
