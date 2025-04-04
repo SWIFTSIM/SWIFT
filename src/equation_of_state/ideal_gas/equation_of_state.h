@@ -60,7 +60,7 @@ gas_internal_energy_from_entropy(const float density, const float entropy) {
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$A\f$.
  */
-__attribute__((always_inline, const)) INLINE static const float
+__attribute__((always_inline, const)) INLINE static float
 gas_pressure_from_entropy(const float density, const float entropy) {
 
   return entropy * pow_gamma(density);
