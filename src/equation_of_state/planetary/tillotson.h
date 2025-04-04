@@ -212,7 +212,7 @@ INLINE static void convert_units_Til(struct Til_params *mat,
   struct unit_system si;
   units_init_si(&si);
 
-  int N = 10000;
+  const int N = 10000;
 
   // SI to cgs
   mat->rho_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
@@ -312,10 +312,9 @@ INLINE static float Til_pressure_from_internal_energy(
   const float nu = 1.f / eta - 1.f;
   const float w = u / (mat->u_0 * eta_sq) + 1.f;
   const float w_inv = 1.f / w;
-  float P_c, P_e, P;
 
   // Condensed or cold
-  P_c =
+  float P_c =
       (mat->a + mat->b * w_inv) * density * u + mat->A * mu + mat->B * mu * mu;
   if (eta < mat->eta_zero) {
     P_c = 0.f;
@@ -323,11 +322,12 @@ INLINE static float Til_pressure_from_internal_energy(
     P_c *= (eta - mat->eta_zero) / (mat->eta_min - mat->eta_zero);
   }
   // Expanded and hot
-  P_e = mat->a * density * u +
-        (mat->b * density * u * w_inv + mat->A * mu * expf(-mat->beta * nu)) *
-            expf(-mat->alpha * nu * nu);
+  float P_e = mat->a * density * u + (mat->b * density * u * w_inv +
+                                      mat->A * mu * expf(-mat->beta * nu)) *
+                                         expf(-mat->alpha * nu * nu);
 
   // Condensed or cold state
+  float P;
   if ((1.f < eta) || (u < mat->u_iv)) {
     P = P_c;
   }
@@ -373,25 +373,25 @@ INLINE static float Til_soundspeed_from_internal_energy(
   const float w_inv_sq = w_inv * w_inv;
   const float exp_beta = expf(-mat->beta * nu);
   const float exp_alpha = expf(-mat->alpha * nu * nu);
-  float P_c, P_e, c_sq_c, c_sq_e, c_sq;
 
   // Condensed or cold
-  P_c =
+  float P_c =
       (mat->a + mat->b * w_inv) * density * u + mat->A * mu + mat->B * mu * mu;
   if (eta < mat->eta_zero) {
     P_c = 0.f;
   } else if (eta < mat->eta_min) {
     P_c *= (eta - mat->eta_zero) / (mat->eta_min - mat->eta_zero);
   }
-  c_sq_c = P_c * rho_inv * (1.f + mat->a + mat->b * w_inv) +
-           mat->b * (w - 1.f) * w_inv_sq * (2.f * u - P_c * rho_inv) +
-           rho_inv * (mat->A + mat->B * (eta_sq - 1.f));
+  float c_sq_c = P_c * rho_inv * (1.f + mat->a + mat->b * w_inv) +
+                 mat->b * (w - 1.f) * w_inv_sq * (2.f * u - P_c * rho_inv) +
+                 rho_inv * (mat->A + mat->B * (eta_sq - 1.f));
 
   // Expanded and hot
-  P_e = mat->a * density * u +
-        (mat->b * density * u * w_inv + mat->A * mu * exp_beta) * exp_alpha;
+  float P_e =
+      mat->a * density * u +
+      (mat->b * density * u * w_inv + mat->A * mu * exp_beta) * exp_alpha;
 
-  c_sq_e =
+  float c_sq_e =
       P_e * rho_inv * (1.f + mat->a + mat->b * w_inv * exp_alpha) +
       (mat->b * density * u * w_inv_sq / eta_sq *
            (rho_inv / mat->u_0 * (2.f * u - P_e * rho_inv) +
@@ -402,6 +402,7 @@ INLINE static float Til_soundspeed_from_internal_energy(
           exp_alpha;
 
   // Condensed or cold state
+  float c_sq;
   if ((1.f < eta) || (u < mat->u_iv)) {
     c_sq = c_sq_c;
   }
@@ -432,14 +433,12 @@ INLINE static float Til_soundspeed_from_pressure(float density, float P,
 // Compute u cold
 INLINE static float compute_u_cold(float density, struct Til_params *mat,
                                    enum eos_planetary_material_id mat_id) {
-  float rho_0, x, u_cold, drho;
-  int N = 10000;
+  const int N = 10000;
+  const float rho_0 = mat->rho_0;
+  const float drho = (density - rho_0) / N;
 
-  rho_0 = mat->rho_0;
-  drho = (density - rho_0) / N;
-  x = rho_0;
-  u_cold = 1e-9;
-
+  float x = rho_0;
+  float u_cold = 1e-9;
   for (int i = 0; i < N; i++) {
     x += drho;
     u_cold +=
@@ -453,16 +452,15 @@ INLINE static float compute_u_cold(float density, struct Til_params *mat,
 INLINE static void set_Til_u_cold(struct Til_params *mat,
                                   enum eos_planetary_material_id mat_id) {
 
-  int N = 10000;
-  float rho_min = 100.f;
-  float rho_max = 100000.f;
-  float rho, drho;
+  const int N = 10000;
+  const float rho_min = 100.f;
+  const float rho_max = 100000.f;
 
   // Allocate table memory
   mat->A1_u_cold = (float *)malloc(N * sizeof(float));
 
-  rho = rho_min;
-  drho = (rho_max - rho_min) / (N - 1);
+  float rho = rho_min;
+  const float drho = (rho_max - rho_min) / (N - 1);
 
   for (int i = 0; i < N; i++) {
     mat->A1_u_cold[i] = compute_u_cold(rho, mat, mat_id);
@@ -474,17 +472,16 @@ INLINE static void set_Til_u_cold(struct Til_params *mat,
 INLINE static float compute_fast_u_cold(float density,
                                         const struct Til_params *mat) {
 
-  int N = 10000;
-  float rho_min = mat->rho_cold_min;
-  float rho_max = mat->rho_cold_max;
-  float drho, u_cold;
-  int a, b;
+  const int N = 10000;
+  const float rho_min = mat->rho_cold_min;
+  const float rho_max = mat->rho_cold_max;
 
-  drho = (rho_max - rho_min) / (N - 1);
+  const float drho = (rho_max - rho_min) / (N - 1);
 
-  a = (int)((density - rho_min) / drho);
-  b = a + 1;
+  const int a = (int)((density - rho_min) / drho);
+  const int b = a + 1;
 
+  float u_cold;
   if (a >= 0 && a < (N - 1)) {
     u_cold = mat->A1_u_cold[a];
     u_cold += ((mat->A1_u_cold[b] - mat->A1_u_cold[a]) / drho) *
@@ -503,11 +500,9 @@ INLINE static float compute_fast_u_cold(float density,
 INLINE static float Til_temperature_from_internal_energy(
     float density, float u, const struct Til_params *mat) {
 
-  float u_cold, T;
+  const float u_cold = compute_fast_u_cold(density, mat);
 
-  u_cold = compute_fast_u_cold(density, mat);
-
-  T = (u - u_cold) / (mat->C_V);
+  float T = (u - u_cold) / (mat->C_V);
   if (T < 0.f) {
     T = 0.f;
   }
@@ -519,10 +514,8 @@ INLINE static float Til_temperature_from_internal_energy(
 INLINE static float Til_pressure_from_temperature(
     float density, float T, const struct Til_params *mat) {
 
-  float u, P;
-
-  u = compute_fast_u_cold(density, mat) + mat->C_V * T;
-  P = Til_pressure_from_internal_energy(density, u, mat);
+  const float u = compute_fast_u_cold(density, mat) + mat->C_V * T;
+  const float P = Til_pressure_from_internal_energy(density, u, mat);
 
   return P;
 }
@@ -534,29 +527,27 @@ INLINE static float Til_density_from_pressure_and_temperature(
   float rho_min = mat->rho_min;
   float rho_max = mat->rho_max;
   float rho_mid = (rho_min + rho_max) / 2.f;
-  float P_min, P_mid, P_max;
-  float P_des;
-  float tolerance = 0.001 * rho_min;
-  int counter = 0;
-  int max_counter = 200;
-  float f0, f2;
 
   // Check for P == 0 or T == 0
+  float P_des;
   if (P <= mat->P_min) {
     P_des = mat->P_min;
   } else {
     P_des = P;
   }
 
-  P_min = Til_pressure_from_temperature(rho_min, T, mat);
-  P_mid = Til_pressure_from_temperature(rho_mid, T, mat);
-  P_max = Til_pressure_from_temperature(rho_max, T, mat);
+  float P_min = Til_pressure_from_temperature(rho_min, T, mat);
+  float P_mid = Til_pressure_from_temperature(rho_mid, T, mat);
+  float P_max = Til_pressure_from_temperature(rho_max, T, mat);
 
   // quick fix?
   if (P_des < P_min) {
     P_des = P_min;
   }
 
+  const float tolerance = 0.001 * rho_min;
+  int counter = 0;
+  const int max_counter = 200;
   if (P_des >= P_min && P_des <= P_max) {
     while ((rho_max - rho_min) > tolerance && counter < max_counter) {
 
@@ -564,8 +555,8 @@ INLINE static float Til_density_from_pressure_and_temperature(
       P_mid = Til_pressure_from_temperature(rho_mid, T, mat);
       P_max = Til_pressure_from_temperature(rho_max, T, mat);
 
-      f0 = P_des - P_min;
-      f2 = P_des - P_mid;
+      const float f0 = P_des - P_min;
+      const float f2 = P_des - P_mid;
 
       if ((f0 * f2) > 0) {
         rho_min = rho_mid;
@@ -592,23 +583,6 @@ INLINE static float Til_density_from_pressure_and_internal_energy(
     return rho_sph;
   }
 
-  // These are needed in root finding iteration
-  float eta_iter;
-  float eta_iter_sq;
-  float mu_iter;
-  float nu_iter;
-  float w_iter;
-  float w_iter_inv;
-  float exp1;
-  float exp2;
-
-  // Derivatives
-  float dw_inv_drho_iter;
-  float dmu_drho_iter;
-  float dmu_sq_drho_iter;
-  float dexp1_drho_iter;
-  float dexp2_drho_iter;
-
   // We start search on the same curve as rho_ref, since this is most likely
   // curve to find rho on
   float eta_ref = rho_ref / mat->rho_0;
@@ -626,7 +600,7 @@ INLINE static float Til_density_from_pressure_and_internal_energy(
       eta < eta_min:           cold_min
       eta_min < eta:           cold
 
- u REGION 2 (u_iv < u < u_cv):
+  u REGION 2 (u_iv < u < u_cv):
       eta < eta_min:           hybrid_min
       eta_min < eta < 1:       hybrid
       1 < eta:                 cold
@@ -636,56 +610,62 @@ INLINE static float Til_density_from_pressure_and_internal_energy(
       1 < eta:                 cold
 
   NOTE: for a lot of EoS, eta_min = 0, so search this region last if given the
- option to save time for most EoS
+  option to save time for most EoS
   */
+  enum Til_region {
+    Til_region_none = 0,
+    Til_region_cold_min = 1,
+    Til_region_cold = 2,
+    Til_region_hybrid_min = 3,
+    Til_region_hybrid = 4,
+    Til_region_hot = 5,
+  };
 
   // Based on our u region, what possible curves can rho be on? Ordered based on
-  // order we search for roots . Numbers correspond to curves in order given
+  // order we search for roots. Numbers correspond to curves in order given
   // above. 0 is a dummy which breaks the loop.
-  // int possible_curves[3];
-  int possible_curves[3];
+  enum Til_region possible_curves[3];
   // u REGION 1
   if (u <= mat->u_iv) {
     if (eta_ref <= mat->eta_min) {
-      possible_curves[0] = 1;
-      possible_curves[1] = 2;
-      possible_curves[2] = 0;
+      possible_curves[0] = Til_region_cold_min;
+      possible_curves[1] = Til_region_cold;
+      possible_curves[2] = Til_region_none;
     } else {
-      possible_curves[0] = 2;
-      possible_curves[1] = 1;
-      possible_curves[2] = 0;
+      possible_curves[0] = Til_region_cold;
+      possible_curves[1] = Til_region_cold_min;
+      possible_curves[2] = Til_region_none;
     }
     // u REGION 2
   } else if (u <= mat->u_cv) {
     if (eta_ref <= mat->eta_min) {
-      possible_curves[0] = 3;
-      possible_curves[1] = 4;
-      possible_curves[2] = 2;
+      possible_curves[0] = Til_region_hybrid_min;
+      possible_curves[1] = Til_region_hybrid;
+      possible_curves[2] = Til_region_cold;
     } else if (eta_ref <= 1) {
-      possible_curves[0] = 4;
-      possible_curves[1] = 2;
-      possible_curves[2] = 3;
+      possible_curves[0] = Til_region_hybrid;
+      possible_curves[1] = Til_region_cold;
+      possible_curves[2] = Til_region_hybrid_min;
     } else {
-      possible_curves[0] = 2;
-      possible_curves[1] = 4;
-      possible_curves[2] = 3;
+      possible_curves[0] = Til_region_cold;
+      possible_curves[1] = Til_region_hybrid;
+      possible_curves[2] = Til_region_hybrid_min;
     }
-
-    // u REGION 1
+    // u REGION 3
   } else {
     if (eta_ref <= 1) {
-      possible_curves[0] = 5;
-      possible_curves[1] = 2;
-      possible_curves[2] = 0;
+      possible_curves[0] = Til_region_hot;
+      possible_curves[1] = Til_region_cold;
+      possible_curves[2] = Til_region_none;
     } else {
-      possible_curves[0] = 2;
-      possible_curves[1] = 5;
-      possible_curves[2] = 0;
+      possible_curves[0] = Til_region_cold;
+      possible_curves[1] = Til_region_hot;
+      possible_curves[2] = Til_region_none;
     }
   }
   // Newton-Raphson
-  int max_iter = 10;
-  float tol = 1e-5;
+  const int max_iter = 10;
+  const float tol = 1e-5;
 
   // loops over possible curves
   for (int i = 0; i < 3; i++) {
@@ -762,26 +742,27 @@ INLINE static float Til_density_from_pressure_and_internal_energy(
     // Now iterate
     for (int j = 0; j < max_iter; j++) {
 
-      eta_iter = rho_iter / mat->rho_0;
-      eta_iter_sq = eta_iter * eta_iter;
-      mu_iter = eta_iter - 1.0f;
-      nu_iter = 1.0f / eta_iter - 1.0f;
-      w_iter = u / (mat->u_0 * eta_iter_sq) + 1.0f;
-      w_iter_inv = 1.0f / w_iter;
-      exp1 = expf(-mat->beta * nu_iter);
-      exp2 = expf(-mat->alpha * nu_iter * nu_iter);
+      const float eta_iter = rho_iter / mat->rho_0;
+      const float eta_iter_sq = eta_iter * eta_iter;
+      const float mu_iter = eta_iter - 1.0f;
+      const float nu_iter = 1.0f / eta_iter - 1.0f;
+      const float w_iter = u / (mat->u_0 * eta_iter_sq) + 1.0f;
+      const float w_iter_inv = 1.0f / w_iter;
+      const float exp1 = expf(-mat->beta * nu_iter);
+      const float exp2 = expf(-mat->alpha * nu_iter * nu_iter);
 
       // Derivatives
-      dw_inv_drho_iter =
+      const float dw_inv_drho_iter =
           (2.f * mat->u_0 * u * eta_iter / mat->rho_0) /
           ((u + mat->u_0 * eta_iter_sq) * (u + mat->u_0 * eta_iter_sq));
-      dmu_drho_iter = 1.f / mat->rho_0;
-      dmu_sq_drho_iter =
+      const float dmu_drho_iter = 1.f / mat->rho_0;
+      const float dmu_sq_drho_iter =
           2.f * rho_iter / (mat->rho_0 * mat->rho_0) - 2.f / mat->rho_0;
-      dexp1_drho_iter = mat->beta * mat->rho_0 * exp1 / (rho_iter * rho_iter);
-      dexp2_drho_iter = 2.f * mat->alpha * mat->rho_0 *
-                        (mat->rho_0 - rho_iter) * exp2 /
-                        (rho_iter * rho_iter * rho_iter);
+      const float dexp1_drho_iter =
+          mat->beta * mat->rho_0 * exp1 / (rho_iter * rho_iter);
+      const float dexp2_drho_iter = 2.f * mat->alpha * mat->rho_0 *
+                                    (mat->rho_0 - rho_iter) * exp2 /
+                                    (rho_iter * rho_iter * rho_iter);
 
       // Use P_fraction to determine whether we've converged on a root
       float P_fraction;
@@ -860,12 +841,12 @@ INLINE static float Til_density_from_pressure_and_internal_energy(
       // If we are on a hybrid or hybrid_min curve, we combie hot and cold
       // curves
       if (curve == 3 || curve == 4) {
-        float P_hybrid_iter =
+        const float P_hybrid_iter =
             ((u - mat->u_iv) * P_h_iter + (mat->u_cv - u) * P_c_iter) /
             (mat->u_cv - mat->u_iv);
-        float dP_hybrid_drho_iter = ((u - mat->u_iv) * dP_h_drho_iter +
-                                     (mat->u_cv - u) * dP_c_drho_iter) /
-                                    (mat->u_cv - mat->u_iv);
+        const float dP_hybrid_drho_iter = ((u - mat->u_iv) * dP_h_drho_iter +
+                                           (mat->u_cv - u) * dP_c_drho_iter) /
+                                          (mat->u_cv - mat->u_iv);
         rho_iter -= P_hybrid_iter / dP_hybrid_drho_iter;
         P_fraction = P_hybrid_iter / P;
       }
