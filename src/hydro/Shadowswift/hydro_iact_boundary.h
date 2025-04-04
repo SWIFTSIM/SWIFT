@@ -394,7 +394,7 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
 
 #ifdef SHADOWSWIFT_EXACT_GRAV_WORK
   double shift[3] = {0., 0., 0.};
-  hydro_grav_work_from_half_state(p, p_boundary, shift, Whalf, vij, centroid,
+  hydro_grav_work_from_half_state(p, p_boundary, shift, WL, vij, centroid,
                                   n_unit, surface_area, p->flux.dt);
 #else
   hydro_grav_work_from_mass_flux(p, p_boundary, dx, totflux[0], p->flux.dt);

@@ -68,6 +68,19 @@ hydro_gravity_mass_update_term(const float mass_flux, const float dt) {
 /**
  * @brief Applies the gravitational work term at the face between pi and pj to
  * both particles.
+ *
+ * @param pi, pj The particles
+ * @param shift Shift to appie to pj's coordinates, if wrapping
+ * around simulation box
+ * @param Whalf The state of primitive vectors at the interface (output from
+ * riemann solver, in reference frame of interface)
+ * @param vij Interface velocity
+ * @param cij Interface centroid
+ * @param n_unit Interface normal. Note that this is also the direction from
+ * pi->x to pj->x (voronoi faces are perpendicular to the corresponding Delaunay
+ * edges).
+ * @param area Interface area
+ * @param dt the timestep over which fluxes are exchanged. (currently unused)
  */
 __attribute__((always_inline)) INLINE static void
 hydro_grav_work_from_half_state(struct part* pi, struct part* pj,

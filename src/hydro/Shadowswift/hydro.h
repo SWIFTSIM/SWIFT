@@ -396,12 +396,6 @@ hydro_convert_conserved_to_primitive(
 
   /* Check for vacuum (or near limits of floating point precision), which give
    * rise to precision errors resulting in NaNs... */
-#ifdef SWIFT_DEBUG_CHECKS
-  if (Q[0] < 0. || Q[4] < 0.)
-    warning(
-        "Negative mass or energy after applying fluxes! Q[0] = %E, Q[4] = %E",
-        Q[0], Q[4]);
-#endif
   const double epsilon = 16. * FLT_MIN;
   if (Q[0] < epsilon || Q[4] < epsilon) {
     for (int k = 0; k < 6; k++) {
@@ -620,6 +614,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   if (p->timestepvars.last_kick == KICK1) {
     /* I.e. we are in kick2 (end of timestep), since the dt_therm > 0. */
 
+    float Q[6];
+    hydro_part_get_conserved_variables(p, Q);
+    float dE_springel;
     /* Add gravity. We only do this if we have gravity activated. */
     if (p->gpart) {
       /* Retrieve the current value of the gravitational acceleration from the
@@ -640,9 +637,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       /* apply both half kicks to the momentum */
       /* Note that this also affects the particle movement, as the velocity for
          the particles is set after this. */
-      p->conserved.momentum[0] += grav_kick[0];
-      p->conserved.momentum[1] += grav_kick[1];
-      p->conserved.momentum[2] += grav_kick[2];
+      Q[1] += grav_kick[0];
+      Q[2] += grav_kick[1];
+      Q[3] += grav_kick[2];
 
       /* Extra hydrodynamic energy due to gravity kick, see eq. 94 in Springel
        * (2010) or eq. 62 in theory/Cosmology/cosmology.pdf. */
@@ -655,19 +652,17 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
         dt_grav_corr1 = p->gravity.dt;
         dt_grav_corr2 = dt_grav;
       }
-      float dE_springel = hydro_gravity_energy_update_term(
+      dE_springel = hydro_gravity_energy_update_term(
           dt_grav_corr1, dt_grav_corr2, xp->a_grav, a_grav, p->gravity.mflux,
           p->v_part_full, grav_kick);
 
-      p->conserved.energy += dE_springel;
+      Q[4] += dE_springel;
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
     assert(p->flux.dt >= 0.0f);
 #endif
 
-    float Q[6];
-    hydro_part_get_conserved_variables(p, Q);
     if (p->flux.dt > 0.0f) {
       /* Apply the fluxes */
       /* We are in kick2 of a normal timestep (not the very beginning of the
@@ -705,6 +700,20 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
                    p->v[2] * p->gradients.P[2]);
 #endif
     }
+
+    #ifdef SHADOWSWIFT_WARNINGS
+    if (Q[0] < 0. || Q[4] < 0.)
+      warning(
+          "Negative mass or energy after applying fluxes! "
+          "\n\tupdated mass = %E, updated energy = %E, "
+          "\n\told mass = %E, old energy = %E, "
+          "\n\tmflux = %E, energyflux = %E, dE_grav = %E"
+          "\n\tdensity = %E, pressure = %E"
+          "\n\tp->x = (%E, %E, %E), p->v = (%E, %E, %E)",
+          Q[0], Q[4], p->conserved.mass, p->conserved.energy, p->flux.mass,
+          p->flux.energy, dE_springel, p->rho, p->P, p->x[0], p->x[1], p->x[2],
+          p->v[0], p->v[1], p->v[2]);
+    #endif
 
     /* Compute primitive quantities. Note that this may also modify the vector
      * of conserved quantities (e.g. for cold flows).
