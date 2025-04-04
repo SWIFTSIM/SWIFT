@@ -29,7 +29,6 @@
 #include "stellar_evolution_struct.h"
 #include "supernovae_ia.h"
 #include "supernovae_ii.h"
-#include "exp10.h"
 
 #include <math.h>
 #include <stddef.h>
