@@ -340,11 +340,12 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
   const float m_end_step, const float m_init) {
 
   /* Limit the mass within the imf limits */
+  //TODO verify imf.mass_max gives solar masses
   const float m_beg_lim = min(m_beg_step, sm->imf.mass_max);
   const float m_end_lim = max(m_end_step, sm->imf.mass_min);
 
   /* Compute the average mass */
-  const float m_avg = 0.5 * (m_beg_lim + m_end_lim);// * phys_const->const_solar_mass;
+  const float m_avg = 0.5 * (m_beg_lim + m_end_lim);
   message("The solar mass considered is %g", m_avg);
   const float log_m_avg = log10(m_avg);
 
@@ -354,8 +355,11 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
   if (fabs(metallicity) < 1e-10){
     log_metallicity = -8;
   }else {
+    // TODO The solar metallicity should not be hard coded
     log_metallicity = log10(metallicity / 0.02);
   }
+
+  message("The log metallicity in solar metallicity is : %f", log_metallicity);
 
   /* If the star particle the calculation is straight forward */
   if (sp->star_type == single_star) {
@@ -391,13 +395,15 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
        */
     float dM = imf_m / 10 ; 
 
-    float energy_dot = 0;
+    double energy_dot = 0;
 
     float log_m = 0;  
     int N_star_m = 0; 
       
     float mass_loss =0; 
     float v_infty = 0; 
+
+    message("The imf star has an imf mass of %e; The m_end_lim is %e;", imf_m, m_end_lim);
 
     /* Calculate the part of the imf which is not considered yet for supernovae*/
     while (imf_m + dM < m_end_lim){
@@ -462,8 +468,7 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
     }
 
     sp->feedback_data.preSN.energy_ejected = energy_dot;
-    
-
+    message("The energy ejected of imf star = %e     (in erg)", energy_dot);
   }
 }
 
@@ -574,6 +579,8 @@ void stellar_evolution_evolve_spart(
     sp->feedback_data.is_dead = 1;
     return;
   }
+
+  message("Is this even called ???");
 
   /* TODO: Pre-SN feedback */
   /* Note: You can update the function parameters as needed. */
@@ -1220,14 +1227,21 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
   sp->feedback_data.preSN.energy_ejected = 0;
 
   /* The duration of the preSN feedback in Myr*/
-  const float feedback_duration_yr = (star_age_end_step_myr - star_age_beg_step_myr) * conversion_to_myr;
+  const float feedback_duration_yr = (star_age_end_step_myr - star_age_beg_step_myr) * 1e6;
   /*  Compute the preSN properties */ 
   stellar_evolution_compute_preSN_properties(sp, sm, phys_const,m_beg_step, m_end_step, m_init);
   /* stellar_update_spart_from_ejected_mass() inside stellar_evolution_compute_discrete_preSN_properties() ? */
 
   sp->feedback_data.preSN.energy_ejected *= feedback_duration_yr;
 
-  message("The energy amount to eject is : %f", sp->feedback_data.preSN.energy_ejected);
+  message("The energy amount to eject is : %lf  (in ergs)", sp->feedback_data.preSN.energy_ejected);
+
+  /* convert to internal units */
+  sp->feedback_data.preSN.mass_loss *= phys_const->const_solar_mass;
+  sp->feedback_data.preSN.energy_ejected /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+  message("The conversion factor for energy : %e   (in internal units)", units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
+  message("The energy amount to eject is : %e   (in internal units)", sp->feedback_data.preSN.energy_ejected);
+
   /* maybe we want to consider also the radiation contribution */
 
 }
@@ -1289,6 +1303,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
   m_end_step = max(m_end_step, sm->imf.mass_min);
   m_beg_step = min(m_beg_step, sm->imf.mass_max);
 
+  message("The m_end_step is : %e      and the m_beg_step is : %e    (in ? units)",m_end_step,m_beg_step);
+
   /* Here we are outside the IMF, i.e., both masses are too large or too small */
   if (m_end_step >= m_beg_step) return;
 
@@ -1302,8 +1318,10 @@ void stellar_evolution_compute_preSN_feedback_spart(
   if (sp->star_type == star_population_continuous_IMF) {
     /* If it's not time yet for feedback, exit. Notice that both masses are in
       solar mass. */
+      message("The minimal imf discret mass is %e     (in Msun)",sm->imf.minimal_discrete_mass_Msun);
       if (m_end_step > sm->imf.minimal_discrete_mass_Msun) {
-        return;
+        //absolutely not, star provide stellar wind before exploding, no need to check that.
+        //return;
       }
   
       /* If we are in a case where
@@ -1327,8 +1345,15 @@ void stellar_evolution_compute_preSN_feedback_spart(
   sp->feedback_data.preSN.energy_ejected = 0;
 
   stellar_evolution_compute_preSN_properties(sp, sm, phys_const,m_beg_step, m_end_step, m_init);
-  sp->feedback_data.preSN.energy_ejected *= dt;
+  sp->feedback_data.preSN.energy_ejected *= dt / phys_const->const_year;
 
+  message("The energy amount to eject is : %e  (in ergs)", sp->feedback_data.preSN.energy_ejected);
+
+  /* convert to internal units */
+  sp->feedback_data.preSN.mass_loss *= phys_const->const_solar_mass;
+  sp->feedback_data.preSN.energy_ejected /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+  message("The conversion factor for energy : %e   (in internal units)", units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
+  message("The energy amount to eject is : %e   (in internal units)", sp->feedback_data.preSN.energy_ejected);
   //TODO the same thought than for individual stars
     
 }

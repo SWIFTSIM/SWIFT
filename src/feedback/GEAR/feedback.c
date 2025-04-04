@@ -74,7 +74,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
      WARNING: Do not comment out this line, because it will mess-up with
      SF/sinks. (I think it injects something that it should not...) */
   /* Did the particle receive a supernovae */
-  if (xp->feedback_data.delta_mass == 0) return;
+  if (xp->feedback_data.delta_u == 0) return;
 
   const struct cosmology* cosmo = e->cosmology;
   const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
@@ -101,6 +101,8 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   const float u =
       hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
   const float u_new = u + xp->feedback_data.delta_u;
+
+  message("The particle %lld has a new energy : %lf   compared to the old energy : %lf", p->id, u_new, u);
 
   hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
   hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
@@ -205,6 +207,7 @@ void feedback_will_do_feedback(
 
   /* Zero the energy of supernovae */
   sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.preSN.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
 
   /* quit if the birth_scale_factor or birth_time is negative */
@@ -269,6 +272,7 @@ void feedback_will_do_feedback(
 
   /* TODO: Do we want to multiply pre-SN energy by the efficiency? */
   sp->feedback_data.preSN.energy_ejected *= feedback_props->preSN_efficiency;
+  message("Energy of preSN ejected with efficiency coefficient = %e     (in internal units)", sp->feedback_data.preSN.energy_ejected);
 
   /* TODO: See if we need to add something about pre-SN */
   /* Set the particle as doing some feedback */

@@ -96,7 +96,7 @@ runner_iact_nonsym_feedback_apply(
   const double e_sn = si->feedback_data.energy_ejected;
   const double e_preSN = si->feedback_data.preSN.energy_ejected;
 
-  message("The preSN energy of the particle %lli is : %lf",si->id,e_preSN);
+  //message("The preSN energy of the particle %lli is : %lf",si->id,e_preSN);
 
   const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);
@@ -142,7 +142,7 @@ runner_iact_nonsym_feedback_apply(
   /* TODO: Distribute pre-SN */
   if (e_preSN != 0.0) {
     /* Energy received */
-    const double du = (e_preSN) * weight / new_mass;
+    const double du = (e_preSN) * weight;
     message("the received energy of particle %lld is : %e",pj->id,du);
     xpj->feedback_data.delta_u += du;
   }
