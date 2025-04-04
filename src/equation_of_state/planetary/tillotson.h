@@ -618,12 +618,12 @@ INLINE static float Til_density_from_pressure_and_internal_energy(
   option to save time for most EoS
   */
   enum Til_region {
-    Til_region_none = 0,
-    Til_region_cold_min = 1,
-    Til_region_cold = 2,
-    Til_region_hybrid_min = 3,
-    Til_region_hybrid = 4,
-    Til_region_hot = 5,
+    Til_region_none,
+    Til_region_cold_min,
+    Til_region_cold,
+    Til_region_hybrid_min,
+    Til_region_hybrid,
+    Til_region_hot
   };
 
   // Based on our u region, what possible curves can rho be on? Ordered based on
@@ -909,7 +909,7 @@ INLINE static float Til_density_from_pressure_and_internal_energy(
       }
 
       // Either we've converged ...
-      if (fabs(P_fraction) < tol) {
+      if (fabsf(P_fraction) < tol) {
         return rho_iter;
 
         // ... or we're stuck at the boundary ...
