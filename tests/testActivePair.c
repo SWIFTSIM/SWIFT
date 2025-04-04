@@ -134,6 +134,17 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         struct xpart dummy_xp;
         hydro_first_init_part(part, &dummy_xp);
 #endif
+#ifdef PLANETARY_SPH
+        set_idg_def(&eos.idg_def, 0);
+        part->mat_id = 0;
+        part->u = 1.f;
+#endif /* PLANETARY_SPH */
+#if defined(REMIX_SPH)
+        set_idg_def(&eos.idg_def, 0);
+        part->mat_id = 0;
+        part->u = 1.f;
+        part->rho_evol = 1.f;
+#endif /* REMIX_SPH */
 
         /* Set the time-bin */
         if (random_uniform(0, 1.f) < fraction_active) {
@@ -282,9 +293,18 @@ void zero_particle_fields_force(
     }
     p->geometry.volume = 1.0f;
 #endif
+#ifdef PLANETARY_SPH
+    p->rho = 1.f;
+    p->density.rho_dh = 0.f;
+    p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
+    p->density.wcount_dh = 0.f;
+    p->density.rot_v[0] = 0.f;
+    p->density.rot_v[1] = 0.f;
+    p->density.rot_v[2] = 0.f;
+    p->density.div_v = 0.f;
+#endif /* PLANETARY_SPH */
 #if defined(REMIX_SPH)
     p->rho = 1.f;
-    p->rho_evol = 1.f;
     p->m0 = 1.f;
     p->density.rho_dh = 0.f;
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
