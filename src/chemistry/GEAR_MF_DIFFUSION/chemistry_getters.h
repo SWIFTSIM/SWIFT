@@ -245,11 +245,8 @@ __attribute__((always_inline)) INLINE static double
 chemistry_compute_diffusion_coefficient(
     struct part* restrict p, const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo) {
-
-  float rho = p->chemistry_data.filtered.rho;
-
   /* Convert density to physical units. */
-  rho *= cosmo->a3_inv;
+  const float rho = p->chemistry_data.filtered.rho * cosmo->a3_inv;
 
   /* Convert smoothing length to physical units */
   const double h2_p = cosmo->a * cosmo->a * p->h * p->h;
