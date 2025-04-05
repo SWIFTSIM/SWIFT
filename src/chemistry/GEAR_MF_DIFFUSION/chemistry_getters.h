@@ -344,6 +344,10 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
 /**
  * @brief Get the physical hyperbolic diffusion soundspeed.
  *
+ * Note: The units are
+ *         - Isotropic constant: U_L / U_T^{1/2}
+ *         - Smagorinsky and Gradient: [ U_M * U_L^{-1} * U_T^{-1} ]^{1/2}
+ *
  * @param p Particle.
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The current cosmological model.
@@ -367,6 +371,8 @@ chemistry_get_physical_hyperbolic_soundspeed(
 
 /**
  * @brief Get the physical diffusion speed.
+ *
+ * Note: The units are always U_L/U_T.
  *
  * @param p Particle.
  * @param chem_data The global properties of the chemistry scheme.

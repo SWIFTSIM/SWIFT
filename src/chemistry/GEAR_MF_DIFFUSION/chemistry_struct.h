@@ -148,7 +148,7 @@ struct chemistry_part_data {
 
   /*! Isotropic diffusion coefficient. The matrix K is proportional to kappa.
    Note about units:
-   - For the isotropic constat case, the units are : U_L^2/U_T
+   - For the isotropic constant case, the units are : U_L^2/U_T
    - Smagorinsky/Gradient, units are : U_M/(U_L*U_T) */
   double kappa;
 
