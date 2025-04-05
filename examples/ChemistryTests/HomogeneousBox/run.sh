@@ -10,14 +10,19 @@ rho=${rho:=0.1} # Gas density
 run_name=${run_name:=""}
 with_cosmo=${with_cosmo:=0}
 
+
+# Remove the ICs
+if [ -e ICs_homogeneous_box.hdf5 ]
+then
+    rm ICs_homogeneous_box.hdf5
+fi
+
 #Create the ICs if they do not exist
 if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
     python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 \
 	    --lJ $jeans_length --rho $rho
-else
-    rm ICs_homogeneous_box.hdf5
 fi
 
 # Get the Grackle cooling table
