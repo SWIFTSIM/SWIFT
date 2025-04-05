@@ -208,15 +208,11 @@ struct part {
     /*! Time derivative of smoothing length  */
     float h_dt;
 
-    /*! Balsara switch */
-    float balsara;
-
     /*! Maximal alpha (viscosity) over neighbours */
     float alpha_visc_max_ngb;
 
   } force;
-  //};
-
+  
   /*! Additional data used for adaptive softening */
   struct adaptive_softening_part_data adaptive_softening_data;
 
