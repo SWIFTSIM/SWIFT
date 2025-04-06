@@ -95,7 +95,7 @@ Supernova energy injection
 
 When a star goes into a supernova (type II and Ia), the stellar evolution determines how much energy (``GEARFeedback:supernovae_energy_erg`` TO BE CHECKED), mass and metals are released during the explosion. The energy can be ditributed as internal/thermal energy or as momentum. Thus, we need to distribute internal energy, momentum, mass and metals to the gas particles.  We will group all these in the “fluxes” term. 
 
-We have two models for the distribution of these fluxes and the subgrid modelling of the supernovae : GEAR model and GEAR mechanical model. We describe the two schemes in the  :ref:`sn_feedback_GEAR_model` page. 
+We have two models for the distribution of these fluxes and the subgrid modelling of the supernovae : GEAR model and GEAR mechanical model. We describe the two schemes in the  :ref:`gear_sn_feedback_models` page.
 
 
 Generating a new table
