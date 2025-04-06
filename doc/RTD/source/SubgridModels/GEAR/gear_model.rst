@@ -87,9 +87,8 @@ and ``grackle_3`` (the numbers correspond to the value of
 methods and UV background (on/off with ``GrackleCooling:with_UV_background``).  In order to use the Grackle cooling, you will need
 to provide a HDF5 table computed by Cloudy (``GrackleCooling:cloudy_table``).
 
-
-When starting a simulation without providing the different element fractions in the non equilibrium mode, the code supposes an equilibrium and computes them automatically.
-The code uses an iterative method in order to find the correct initial composition and this method can be tuned with two parameters. ``GrackleCooling:max_steps`` defines the maximal number of steps to reach the convergence and ``GrackleCooling:convergence_limit`` defines the tolerance in the relative error.
+Configuring and compiling SWIFT with Grackle
+++++++++++++++++++++++++++++++++++++++++++++
 
 In order to compile SWIFT with Grackle, you need to provide the options ``with-chemistry=GEAR`` and ``with-grackle=$GRACKLE_ROOT``
 where ``$GRACKLE_ROOT`` is the root of the install directory (not the ``lib``). 
@@ -104,7 +103,6 @@ where ``$GRACKLE_ROOT`` is the root of the install directory (not the ``lib``).
     Additionally, that repository hosts files necessary to install that specific 
     version of grackle with spack.
 
-
 To compile it, run
 the following commands from the root directory of Grackle:
 ``./configure; cd src/clib``.
@@ -117,12 +115,23 @@ If you encounter any problem, you can look at the `Grackle documentation <https:
 
 You can now provide the path given for ``MACH_INSTALL_PREFIX`` to ``with-grackle``.
 
+Parameters
+++++++++++
+
+When starting a simulation without providing the different element fractions in the non equilibrium mode, the code supposes an equilibrium and computes them automatically.
+The code uses an iterative method in order to find the correct initial composition and this method can be tuned with two parameters. ``GrackleCooling:max_steps`` defines the maximal number of steps to reach the convergence and ``GrackleCooling:convergence_limit`` defines the tolerance in the relative error.
+
 In the parameters file, a few different parameters are available.
-``GrackleCooling:redshift`` defines the redshift to use for the UV background (for cosmological simulation, it must be set to -1 in order to use the simulation's redshift) and ``GrackleCooling:provide_*_heating_rates`` can enable the computation of user provided heating rates (such as with the radiative transfer) in either volumetric or specific units.
 
-For the feedback, it can be made more efficient by turning off the cooling during a few Myr (``GrackleCooling:thermal_time_myr``) for the particles touched by a supernovae.
+- ``GrackleCooling:redshift`` defines the redshift to use for the UV background (for cosmological simulation, it must be set to -1 in order to use the simulation's redshift).
 
-The self shielding method is defined by ``GrackleCooling:self_shielding_method`` where 0 means no self shielding, > 0 means a method defined in Grackle (see Grackle documentation for more information) and -1 means GEAR's self shielding that simply turn off the UV background when reaching a given density (``GrackleCooling:self_shielding_threshold_atom_per_cm3``).
+- ``GrackleCooling:provide_*_heating_rates`` can enable the computation of user provided heating rates (such as with the radiative transfer) in either volumetric or specific units.
+
+- Feedback can be made more efficient by turning off the cooling during a few Myr (``GrackleCooling:thermal_time_myr``) for the particles touched by a supernovae.
+
+- The self shielding method is defined by ``GrackleCooling:self_shielding_method`` where 0 means no self shielding, > 0 means a method defined in Grackle (see Grackle documentation for more information) and -1 means GEAR's self shielding that simply turn off the UV background when reaching a given density (``GrackleCooling:self_shielding_threshold_atom_per_cm3``).
+
+- The initial elemental abundances can be specified with ``initial_nX_to_nY_ratio``, e.g. if you want to specify an initial HII to H abundance. A negative value ignores the parameter. The complete list can be found below.
 
 A maximal (physical) density must be set with the ``GrackleCooling:maximal_density_Hpcm3 parameter``. The density passed to Grackle is *the minimum of this density and the gas particle (physical) density*. A negative value (:math:`< 0`) deactivates the maximal density, i.e. there is no maximal density limit.
 The purpose of this parameter is the following. The Cloudy tables provided by Grackle are limited in density (typically to  :math:`10^4 \; \mathrm{hydrogen \; atoms/cm}^3`). In high-resolution simulations, particles can have densities higher than :math:`10^4 \; \mathrm{hydrogen \; atoms/cm}^3`. This maximal density ensures that we pass a density within the interpolation ranges of the table, should the density exceed it.
@@ -142,6 +151,10 @@ It can be a solution to some of the following errors (with a translation of what
 .. note::
    This problem is particularly relevant with metal cooling enabled. Another solution is to modify the tables. But one is not exempted from exceeding the table maximal density value, since Grackle does not check if the particle density is larger than the table maximal density.
 
+
+Complete parameter list
+-----------------------
+
 Here is the complete section in the parameter file:
 
 .. code:: YAML
@@ -158,25 +171,34 @@ Here is the complete section in the parameter file:
     thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
     self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
     self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
-    maximal_density_Hpcm3:         1e4                 # Maximal density (in atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+    maximal_density_Hpcm3:   1e4                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
     HydrogenFractionByMass : 1.                  # Hydrogen fraction by mass (default is 0.76)
+
     use_radiative_transfer : 1                   # Arrays of ionization and heating rates are provided
-    RT_heating_rate_cgs    : 0                   # heating         rate in units of / nHI_cgs
+    RT_heating_rate_cgs    : 0                   # heating         rate in units of / nHI_cgs 
     RT_HI_ionization_rate_cgs  : 0               # HI ionization   rate in cgs [1/s]
     RT_HeI_ionization_rate_cgs : 0               # HeI ionization  rate in cgs [1/s]
     RT_HeII_ionization_rate_cgs: 0               # HeII ionization rate in cgs [1/s]
     RT_H2_dissociation_rate_cgs: 0               # H2 dissociation rate in cgs [1/s]
+
     volumetric_heating_rates_cgs: 0              # Volumetric heating rate in cgs  [erg/s/cm3]
     specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]
     H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
     H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
+    H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
+    local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value). 
     cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
 
-Initial Conditions
-~~~~~~~~~~~~~~~~~~
+    initial_nHII_to_nH_ratio:    -1              # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
+    initial_nHeI_to_nH_ratio:    -1              # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.
+    initial_nHeII_to_nH_ratio:   -1              # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
+    initial_nHeIII_to_nH_ratio:  -1              # initial nHeIII to nH ratio (number density ratio). Value is ignored if set to -1.
+    initial_nDI_to_nH_ratio:     -1              # initial nDI    to nH ratio (number density ratio). Value is ignored if set to -1.
+    initial_nDII_to_nH_ratio:    -1              # initial nDII   to nH ratio (number density ratio). Value is ignored if set to -1.
+    initial_nHM_to_nH_ratio:     -1              # initial nHM    to nH ratio (number density ratio). Value is ignored if set to -1.
+    initial_nH2I_to_nH_ratio:    -1              # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
+    initial_nH2II_to_nH_ratio:   -1              # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
+    initial_nHDI_to_nH_ratio:    -1              # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
 
-Note that if in the initial conditions, the time of formation of a stellar particle is given (``BirthTime``)
-and set to a negative value, the stellar particle will provide no feedback.
-A similar behavior will be obtained if the parameter ``overwrite_birth_time`` is set to 1 and
-``birth_time`` to -1. 
-
+.. note::
+   A simple example running SWIFT with Grackle can be find in ``examples/Cooling/CoolingBox``. A more advanced example combining heating and cooling (with heating and ionization sources) is given in ``examples/Cooling/CoolingHeatingBox``. ``examples/Cooling/CoolingWithPrimordialElements/`` runs a uniform cosmological box with imposed abundances and let them evolve down to redshift 0.
