@@ -890,6 +890,8 @@ void cooling_apply_self_shielding(
     return;
   }
 
+  /* Disable self-shielding if the particle is flagged for photoionization */
+
   /* Are we in a self shielding regime? */
   const float rho = hydro_get_physical_density(p, cosmo);
   if (rho > cooling->self_shielding_threshold) {
