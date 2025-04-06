@@ -66,6 +66,12 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
 
   /* The normalization by 1 / h^d is done in feedback.h */
   si->feedback_data.enrichment_weight += mj * wi;
+
+
+
+  /* Radiation */
+  /* Compute the culumn density with the sobolev approx: here we need to compute rho
+     and | grad rho | at the star location using the gas particles. */
 }
 
 /**
@@ -135,6 +141,69 @@ runner_iact_nonsym_feedback_apply(
   }
 
   /* TODO: Distribute pre-SN */
+  /* 1. Here we know
+     - Get Column density Sigma: eq E3
+     - Get tau_nu = kappa * Simga (eq E1)
+     - The emitted luminosity in each band */
+
+  /* 2. Local extinction around the star: L_abs_nu = (1 - exp(-tau_nu)) L_nu
+                                          L_emitted_nu = exp(-tau_nu) L_nu
+        For the IR band, we have:
+	        L_IR = Sum_{nu=FUR, UV, Opt} L_abs_nu
+
+      	For the ioninzing band, we do not do the local extinction. We treat it
+	separately.
+
+     3. Photoionization - HII region:
+        From step 1 we know N_dot_ion = L_ion / (h nu_ion) . We will use a 
+        simple stromgren sphere approximation. For each particle:
+	a) Test if the particle is already ionized : T > 10^4 or particle was
+        flagged to be in an ionized region.
+	b) If it is not ionized, compute the ioninzing rate needed to fully
+        ionize:
+	         \Delta N_dot_j = N(H)_j beta n_e_j
+		 N(H)_j = X_H m_part / (mu m_proton) (the number of H atoms)
+	with beta = 3e-13 cm^3 / s is the recombination coefficient, n_e_j the
+        electron number density assuming full ionization, X_H is the hydrogen
+        mass fraction and mu the molecular weight.
+	c) If \Delta N_dot_j <= N_dot_ion:
+	     tag the particle as being in a HII region
+	     consume the photons: N_ion -= Delta N_dot_j
+	
+	   else:
+	      determine randomly if the particle is ionized by computing the
+	      proba p = N_dot_io / \Delta N_dot_j
+
+	 d) For the particles tagged as ionized: 
+	 set the temperature (internal energy) to the
+	       min(current temperature + heat added from the energy of the ionisation,
+	       equilibrium HII region tem from collisional cooling)
+	       Set the incident rad and FUV flux to the stromgren value --> to
+	 compute the inonizing
+
+	 Concretely,
+	 u_new = min(u + delta U, U_collisional),
+	 delta U = N_H * E_ion / m_gas,
+	 E_ion = 13.6 eV = 2.18e-11 erg
+	 Gamma = \Delta N_dot_j / N_H
+
+	 Idea: In the original algorithm, Hopkins sort the particles but here
+	 we do not. Maybe add a proba such that the closest particles have a
+	 higer chances of being ionized.
+
+     4. Radiation pressure:
+             p_rad_tot = Delta t / c * Sum_nu L_abs_nu
+
+	Which bands? Onlyt the IR I guess.
+
+     5. Transport the emergent FUV radiation. And then compute the
+     photohelectric heating. We assume that the effect is only local and so we
+     do not transport radiation. 
+
+
+
+  */
+  
 
   /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);

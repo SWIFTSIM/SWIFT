@@ -29,6 +29,7 @@
 #include "stellar_evolution_struct.h"
 #include "supernovae_ia.h"
 #include "supernovae_ii.h"
+#include "radiation.h"
 #include "exp10.h"
 
 #include <math.h>
@@ -974,6 +975,24 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
     const struct phys_const* phys_const, const integertime_t ti_begin,
 							   const double star_age_beg_step, const double dt) {
   /* TODO */
+
+  /* Bands:
+     - ionizing : photo ionisation
+     - FUV : photoelectric heating
+     - NUV : single scattering --> radiation pressure
+     - optical/near-IR: single scattering --> radiation pressure
+     - mid/far-IR : reserved for light re-radiated by dust
+     
+  /* Get the tabulated luminosities for the five broad bands: ionizing,
+     far-UV, near-UV, optical/near-IR, mid/far-IR. Look at Fire-3 updated fits */
+
+  /* For the ionizing band, get the number of photons produced. This assumes a
+     spectral shape in this region. For now, assume a constant shape. */
+
+  /* Maybe compute kappa_nu for each band (E2) */
+
+
+  
 }
 
 /**
