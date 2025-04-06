@@ -32,6 +32,44 @@ Here the :math:`x, y` are simple weights that should never have the pressure flo
     jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
 
 
+.. _gear_star_formation:
+
+
+Star formation
+~~~~~~~~~~~~~~
+
+The star formation is done in two steps: first we check if a particle is in the star forming regime and then we use a stochastic approach to transform the gas particles into stars.
+
+A particle is in the star forming regime if:
+ - The velocity divergence is negative (:math:`\nabla\cdot v < 0`),
+ - The temperature is lower than a threshold (:math:`T < T_t` where :math:`T_t` is defined with ``GEARStarFormation:maximal_temperature_K``),
+ - The gas density is higher than a threshold (:math:`\rho > \rho_t` where :math:`\rho_t` is defined with ``GEARStarFormation:density_threshold_Hpcm3``)
+ - The particle reaches the pressure floor (:math:`\rho > \frac{\pi}{4 G N_\textrm{Jeans}^{2/3} h^2}\frac{\gamma k_B T}{\mu m_p}` where :math:`N_\textrm{Jeans}` is defined in the pressure floor).
+
+If ``GEARStarFormation:star_formation_mode`` is set to ``agora``, the condition on the pressure floor is ignored. Its default value is ``default``.
+
+A star will be able to form if a randomly drawn number is below :math:`\frac{m_g}{m_\star}\left(1 - \exp\left(-c_\star \Delta t / t_\textrm{ff}\right)\right)` where :math:`t_\textrm{ff}` is the free fall time, :math:`\Delta t` is the time step of the particle and :math:`c_\star` is the star formation coefficient (``GEARStarFormation:star_formation_efficiency``), :math:`m_g` the mass of the gas particle and :math:`m_\star` the mass of the possible future star. The mass of the star is computed from the average gas mass in the initial conditions divided by the number of possible stars formed per gas particle (``GEARStarFormation:n_stars_per_particle``). When we cannot have enough mass to form a second star (defined with the fraction of mass ``GEARStarFormation:min_mass_frac``), we fully convert the gas particle into a stellar particle. Once the star is formed, we move it a bit in a random direction and fraction of the smoothing length in order to avoid any division by 0.
+
+Currently, only the following hydro schemes are compatible: SPHENIX, Gadget2, minimal SPH, Gasoline-2 and Pressure-Energy.
+Implementing the other hydro schemes is not complicated but requires some careful thinking about the cosmological terms in the definition of the velocity divergence (comoving vs non comoving coordinates and if the Hubble flow is included or not).
+
+.. code:: YAML
+
+  GEARStarFormation:
+    star_formation_efficiency: 0.01   # star formation efficiency (c_*)
+    maximal_temperature_K:  3e4       # Upper limit to the temperature of a star forming particle
+    density_threshold_Hpcm3:   10     # Density threshold (Hydrogen atoms/cm^3) for star formation
+    n_stars_per_particle: 4           # Number of stars that an hydro particle can generate
+    min_mass_frac: 0.5                # Minimal mass for a stellar particle as a fraction of the average mass for the stellar particles.
+
+Initial Conditions
+++++++++++++++++++
+
+Note that if in the initial conditions, the time of formation of a stellar particle is given (``BirthTime``)
+and set to a negative value, the stellar particle will provide no feedback.
+A similar behavior will be obtained if the parameter ``Stars:overwrite_birth_time`` is set to 1 and
+``Stars:birth_time`` to -1.
+
 
 .. _gear_grackle_cooling:
 
@@ -133,50 +171,6 @@ Here is the complete section in the parameter file:
     H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
     H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
     cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
-  
-.. note::
-   A simple example running SWIFT with Grackle can be find in ``examples/Cooling/CoolingBox``. A more advanced example combining heating and cooling (with heating and ionization sources) is given in ``examples/Cooling/CoolingHeatingBox``.
-
-
-.. _gear_star_formation:
-
-Star formation
-~~~~~~~~~~~~~~
-
-The star formation is done in two steps: first we check if a particle is in the star forming regime and then we use a stochastic approach to transform the gas particles into stars.
-
-A particle is in the star forming regime if:
- - The velocity divergence is negative (:math:`\nabla\cdot v < 0`),
- - The temperature is lower than a threshold (:math:`T < T_t` where :math:`T_t` is defined with ``GEARStarFormation:maximal_temperature_K``),
- - The gas density is higher than a threshold (:math:`\rho > \rho_t` where :math:`\rho_t` is defined with ``GEARStarFormation:density_threshold_Hpcm3``)
- - The particle reaches the pressure floor (:math:`\rho > \frac{\pi}{4 G N_\textrm{Jeans}^{2/3} h^2}\frac{\gamma k_B T}{\mu m_p}` where :math:`N_\textrm{Jeans}` is defined in the pressure floor).
-
-If ``GEARStarFormation:star_formation_mode`` is set to ``agora``, the condition on the pressure floor is ignored. Its default value is ``default``.
-
-A star will be able to form if a randomly drawn number is below :math:`\frac{m_g}{m_\star}\left(1 - \exp\left(-c_\star \Delta t / t_\textrm{ff}\right)\right)` where :math:`t_\textrm{ff}` is the free fall time, :math:`\Delta t` is the time step of the particle and :math:`c_\star` is the star formation coefficient (``GEARStarFormation:star_formation_efficiency``), :math:`m_g` the mass of the gas particle and :math:`m_\star` the mass of the possible future star. The mass of the star is computed from the average gas mass in the initial conditions divided by the number of possible stars formed per gas particle (``GEARStarFormation:n_stars_per_particle``). When we cannot have enough mass to form a second star (defined with the fraction of mass ``GEARStarFormation:min_mass_frac``), we fully convert the gas particle into a stellar particle. Once the star is formed, we move it a bit in a random direction and fraction of the smoothing length in order to avoid any division by 0.
-
-Currently, only the following hydro schemes are compatible: SPHENIX and Gadget2.
-Implementing the other hydro schemes is not complicated but requires some careful thinking about the cosmological terms in the definition of the velocity divergence (comoving vs non comoving coordinates and if the Hubble flow is included or not).
-
-.. code:: YAML
-
-  GEARStarFormation:
-    star_formation_efficiency: 0.01   # star formation efficiency (c_*)
-    maximal_temperature_K:  3e4       # Upper limit to the temperature of a star forming particle
-    density_threshold_Hpcm3:   10     # Density threshold (Hydrogen atoms/cm^3) for star formation
-    n_stars_per_particle: 4           # Number of stars that an hydro particle can generate
-    min_mass_frac: 0.5                # Minimal mass for a stellar particle as a fraction of the average mass for the stellar particles.
-
-Chemistry
-~~~~~~~~~
-
-In the chemistry, we are using the smoothed metallicity scheme that consists in using the SPH to smooth the metallicity of each particle over the neighbors. It is worth to point the fact that we are not exchanging any metals but only smoothing it. The parameter ``GEARChemistry:initial_metallicity`` set the (non smoothed) initial mass fraction of each element for all the particles and ``GEARChemistry:scale_initial_metallicity`` use the feedback table to scale the initial metallicity of each element according the Sun's composition. If ``GEARChemistry:initial_metallicity`` is negative, then the metallicities are read from the initial conditions.
-
-.. code:: YAML
-
-   GEARChemistry:
-    initial_metallicity: 1         # Initial metallicity of the gas (mass fraction)
-    scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
 
 Initial Conditions
 ~~~~~~~~~~~~~~~~~~
