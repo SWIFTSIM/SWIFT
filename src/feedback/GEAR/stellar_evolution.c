@@ -339,15 +339,19 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
   const struct phys_const* phys_const, const float m_beg_step,
   const float m_end_step, const float m_init) {
 
-  /* Limit the mass within the imf limits */
+  /* the end/beg step mass are already limited to the imf if SSP or continuous IMF stars */
   //TODO verify imf.mass_max gives solar masses
-  const float m_beg_lim = min(m_beg_step, sm->imf.mass_max);
-  const float m_end_lim = max(m_end_step, sm->imf.mass_min);
+  const float m_beg_lim = m_beg_step;
+  float m_end_lim = m_end_step;
 
-  /* Compute the average mass */
-  const float m_avg = 0.5 * (m_beg_lim + m_end_lim);
-  message("The solar mass considered is %g", m_avg);
-  const float log_m_avg = log10(m_avg);
+  /* Here, for SSP and continuous part of IMF stars, 
+   it means the part of stars that explode is behind the IMF considered.
+   Thus we do not take into account this part.
+   */
+  if (m_beg_lim < m_end_lim){
+    m_end_lim = m_beg_lim;
+  }
+
 
   /* TODO implement either a function to get solar metal mass-fraction either directly the normalised metallicity*/
   const float metallicity = chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
@@ -363,12 +367,15 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
 
   /* If the star particle the calculation is straight forward */
   if (sp->star_type == single_star) {
+    /* If single star, only the mass of the star to consider */
+    const float log_m = log10(m_beg_lim);
+    message("The solar mass considered is %g", m_beg_lim);
     /* Stellar winds */
     /* Compute the mass-loss */
-    sp->feedback_data.preSN.mass_loss = stellar_wind_get_ejected_mass(log_metallicity, log_m_avg);
+    sp->feedback_data.preSN.mass_loss = stellar_wind_get_ejected_mass(log_metallicity, log_m);
 
     /* Compute the stellar winds terminal velocity (needed to calculate the winds kinetic energy)*/
-    const float v_infinity = stellar_wind_get_wind_velocity(log_metallicity, log_m_avg);
+    const float v_infinity = stellar_wind_get_wind_velocity(log_metallicity, log_m);
   
     /* Stellar winds contribution */
     sp->feedback_data.preSN.energy_ejected = stellar_wind_get_energy_dot(sp->feedback_data.preSN.mass_loss,v_infinity); 
@@ -1296,6 +1303,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
   const float log_m_end_step = lifetime_get_log_mass_from_lifetime(
       &sm->lifetime, log10(star_age_beg_step_myr + dt_myr), metallicity);
 
+  /* TODO Verify because only 101 Msun is considered, so what about 300 Msun ? maybe not use comparison for float... */
   float m_beg_step = star_age_beg_step == 0. ? FLT_MAX : exp10(log_m_beg_step);
   float m_end_step = exp10(log_m_end_step);
 
@@ -1305,8 +1313,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
   message("The m_end_step is : %e      and the m_beg_step is : %e    (in ? units)",m_end_step,m_beg_step);
 
-  /* Here we are outside the IMF, i.e., both masses are too large or too small */
-  if (m_end_step >= m_beg_step) return;
+  /* considering only the "alive" part of the IMF, i.e., we stop only if we are currently below the IMF */
+  if (m_beg_step < sm->imf.mass_min) return;
 
   /* Star particles representing only the continuous part of the IMF need a
   special treatment. They do not contain stars above the mass that separate the
@@ -1319,20 +1327,14 @@ void stellar_evolution_compute_preSN_feedback_spart(
     /* If it's not time yet for feedback, exit. Notice that both masses are in
       solar mass. */
       message("The minimal imf discret mass is %e     (in Msun)",sm->imf.minimal_discrete_mass_Msun);
-      if (m_end_step > sm->imf.minimal_discrete_mass_Msun) {
-        //absolutely not, star provide stellar wind before exploding, no need to check that.
-        //return;
-      }
   
       /* If we are in a case where
-         m_beg_step > minimal_discrete_mass_Msun > m_end_step,
+         m_beg_step and/or m_end_step > minimal_discrete_mass_Msun,
          then we need to be careful. We don't want feedback from the discrete
-         part, only the continuous part. Hence, we need to update m_beg_step.
+         part, only the continuous part. Hence, we need to limit the masses to the limit of discrete mass.
       */
-      if (m_beg_step > sm->imf.minimal_discrete_mass_Msun) {
-        m_beg_step = sm->imf.minimal_discrete_mass_Msun;
-      }
-  
+      m_beg_step = min(m_beg_step, sm->imf.minimal_discrete_mass_Msun);
+      //m_end_step = min(m_end_step, sm->imf.minimal_discrete_mass_Msun);
   }
 
   //TODO Rearrange here
