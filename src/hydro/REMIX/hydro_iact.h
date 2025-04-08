@@ -244,6 +244,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
+  const float rhoi_inv = 1.f / rhoi;
+  const float rhoj_inv = 1.f / rhoj;
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
 
@@ -262,10 +264,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Linear-order reproducing kernel gradient term (Sandnes+2025 Eqn. 28) */
   float Gj[3], Gi[3], G_mean[3];
   hydro_set_Gi_Gj_forceloop(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
-  for (int i = 0; i < 3; i++) {
-    /* Antisymmetric kernel grad term for conservation of momentum and energy */
-    G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
-  }
+
+  /* Antisymmetric kernel grad term for conservation of momentum and energy */
+  G_mean[0] = 0.5f * (Gi[0] - Gj[0]);
+  G_mean[1] = 0.5f * (Gi[1] - Gj[1]);
+  G_mean[2] = 0.5f * (Gi[2] - Gj[2]);
 
   /* Viscous pressures (Sandnes+2025 Eqn. 41) */
   float Qi, Qj;
@@ -274,18 +277,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                   pj, dx);
 
   /* Pressure terms to be used in evolution equations */
-  const float P_i_term = pressurei / (pi->rho * pj->rho);
-  const float P_j_term = pressurej / (pi->rho * pj->rho);
-  const float Q_i_term = Qi / (pi->rho * pj->rho);
-  const float Q_j_term = Qj / (pi->rho * pj->rho);
+  const float P_i_term = pressurei * rhoi_inv * rhoj_inv;
+  const float P_j_term = pressurej * rhoi_inv * rhoj_inv;
+  const float Q_i_term = Qi * rhoi_inv * rhoj_inv;
+  const float Q_j_term = Qj * rhoi_inv * rhoj_inv;
 
   /* Use the force Luke! */
-  for (int i = 0; i < 3; i++) {
-    pi->a_hydro[i] -=
-        mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
-    pj->a_hydro[i] +=
-        mi * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
-  }
+  pi->a_hydro[0] -=
+      mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[0];
+  pi->a_hydro[1] -=
+      mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[1];
+  pi->a_hydro[2] -=
+      mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[2];
+
+  pj->a_hydro[0] +=
+      mi * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[0];
+  pj->a_hydro[1] +=
+      mi * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[1];
+  pj->a_hydro[2] +=
+      mi * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[2];
 
   /* v_ij dot kernel gradient term */
   const float dvdotG = (pi->v[0] - pj->v[0]) * G_mean[0] +
@@ -297,12 +307,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->u_dt += mi * (P_j_term + Q_j_term) * dvdotG;
 
   /* Density time derivative */
-  pi->drho_dt += mj * (pi->rho / pj->rho) * dvdotG;
-  pj->drho_dt += mi * (pj->rho / pi->rho) * dvdotG;
+  pi->drho_dt += mj * (rhoi * rhoj_inv) * dvdotG;
+  pj->drho_dt += mi * (rhoj * rhoi_inv) * dvdotG;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdotG / rhoj;
-  pj->force.h_dt -= mi * dvdotG / rhoi;
+  pi->force.h_dt -= mj * dvdotG * rhoj_inv;
+  pj->force.h_dt -= mi * dvdotG * rhoi_inv;
 
   const float v_sig = visc_signal_velocity;
 
@@ -317,7 +327,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   }
 
   /* Calculate some quantities */
-  const float mean_rho = 0.5f * (pi->rho + pj->rho);
+  const float mean_rho = 0.5f * (rhoi + rhoj);
+  const float mean_rho_inv = 1.f / mean_rho;
   const float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
   const float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
                             G_mean[2] * G_mean[2]);
@@ -327,12 +338,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
   const float alpha_norm = const_remix_norm_alpha;
-  float drho_dt_norm_and_difn_i =
-      alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
-      (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
-  float drho_dt_norm_and_difn_j =
-      alpha_norm * mi * v_sig_norm * pj->force.vac_switch *
-      (pj->m0 * pj->rho_evol - pj->rho_evol) * mod_G / mean_rho;
+  float drho_dt_norm_and_difn_i = alpha_norm * mj * v_sig_norm *
+                                  pi->force.vac_switch *
+                                  (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
+  float drho_dt_norm_and_difn_j = alpha_norm * mi * v_sig_norm *
+                                  pj->force.vac_switch *
+                                  (pj->m0 * rhoj - rhoj) * mod_G * mean_rho_inv;
 
   /* Only include diffusion for same-material particle pair */
   if (pi->mat_id == pj->mat_id) {
@@ -350,11 +361,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     /* Calculate artificial diffusion of internal energy (Sandnes+2025 Eqn. 42)
      */
     const float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
-                               v_sig_difn * (utilde_i - utilde_j) * mod_G /
-                               mean_rho;
+                               v_sig_difn * (utilde_i - utilde_j) * mod_G *
+                               mean_rho_inv;
     const float du_dt_difn_j = -(a_difn_u + b_difn_u * mean_balsara) * mi *
-                               v_sig_difn * (utilde_j - utilde_i) * mod_G /
-                               mean_rho;
+                               v_sig_difn * (utilde_j - utilde_i) * mod_G *
+                               mean_rho_inv;
 
     /* Add artificial diffusion to evolution of internal energy */
     pi->u_dt += du_dt_difn_i;
@@ -362,11 +373,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
     /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
     drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
-                               (pi->rho / pj->rho) * v_sig_difn *
-                               (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
+                               (rhoi * rhoj_inv) * v_sig_difn *
+                               (rhotilde_i - rhotilde_j) * mod_G * mean_rho_inv;
     drho_dt_norm_and_difn_j += -(a_difn_rho + b_difn_rho * mean_balsara) * mi *
-                               (pj->rho / pi->rho) * v_sig_difn *
-                               (rhotilde_j - rhotilde_i) * mod_G / mean_rho;
+                               (rhoj * rhoi_inv) * v_sig_difn *
+                               (rhotilde_j - rhotilde_i) * mod_G * mean_rho_inv;
   }
 
   /* Add normalising term and artificial diffusion to evolution of density */
@@ -403,7 +414,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Recover some data */
   const float mj = pj->mass;
+  const float rhoi = pi->rho;
   const float rhoj = pj->rho;
+  const float rhoi_inv = 1.f / rhoi;
+  const float rhoj_inv = 1.f / rhoj;
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
 
@@ -422,10 +436,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Linear-order reproducing kernel gradient term (Sandnes+2025 Eqn. 28) */
   float Gj[3], Gi[3], G_mean[3];
   hydro_set_Gi_Gj_forceloop(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
-  for (int i = 0; i < 3; i++) {
-    /* Antisymmetric kernel grad term for conservation of momentum and energy */
-    G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
-  }
+
+  /* Antisymmetric kernel grad term for conservation of momentum and energy */
+  G_mean[0] = 0.5f * (Gi[0] - Gj[0]);
+  G_mean[1] = 0.5f * (Gi[1] - Gj[1]);
+  G_mean[2] = 0.5f * (Gi[2] - Gj[2]);
 
   /* Viscous pressures (Sandnes+2025 Eqn. 41) */
   float Qi, Qj;
@@ -434,16 +449,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                   pj, dx);
 
   /* Pressure terms to be used in evolution equations */
-  const float P_i_term = pressurei / (pi->rho * pj->rho);
-  const float P_j_term = pressurej / (pi->rho * pj->rho);
-  const float Q_i_term = Qi / (pi->rho * pj->rho);
-  const float Q_j_term = Qj / (pi->rho * pj->rho);
+  const float P_i_term = pressurei * rhoi_inv * rhoj_inv;
+  const float P_j_term = pressurej * rhoi_inv * rhoj_inv;
+  const float Q_i_term = Qi * rhoi_inv * rhoj_inv;
+  const float Q_j_term = Qj * rhoi_inv * rhoj_inv;
 
   /* Use the force Luke! */
-  for (int i = 0; i < 3; i++) {
-    pi->a_hydro[i] -=
-        mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
-  }
+  pi->a_hydro[0] -=
+      mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[0];
+  pi->a_hydro[1] -=
+      mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[1];
+  pi->a_hydro[2] -=
+      mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[2];
 
   /* v_ij dot kernel gradient term */
   const float dvdotG = (pi->v[0] - pj->v[0]) * G_mean[0] +
@@ -454,10 +471,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->u_dt += mj * (P_i_term + Q_i_term) * dvdotG;
 
   /* Density time derivative */
-  pi->drho_dt += mj * (pi->rho / pj->rho) * dvdotG;
+  pi->drho_dt += mj * (rhoi * rhoj_inv) * dvdotG;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdotG / rhoj;
+  pi->force.h_dt -= mj * dvdotG * rhoj_inv;
 
   const float v_sig = visc_signal_velocity;
 
@@ -471,7 +488,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   }
 
   /* Calculate some quantities */
-  const float mean_rho = 0.5f * (pi->rho + pj->rho);
+  const float mean_rho = 0.5f * (rhoi + rhoj);
+  const float mean_rho_inv = 1.f / mean_rho;
   const float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
   const float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
                             G_mean[2] * G_mean[2]);
@@ -482,9 +500,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
   const float alpha_norm = const_remix_norm_alpha;
-  float drho_dt_norm_and_difn_i =
-      alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
-      (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
+  float drho_dt_norm_and_difn_i = alpha_norm * mj * v_sig_norm *
+                                  pi->force.vac_switch *
+                                  (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
 
   /* Only include diffusion for same-material particle pair */
   if (pi->mat_id == pj->mat_id) {
@@ -502,16 +520,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     /* Calculate artificial diffusion of internal energy (Sandnes+2025 Eqn. 42)
      */
     const float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
-                               v_sig_difn * (utilde_i - utilde_j) * mod_G /
-                               mean_rho;
+                               v_sig_difn * (utilde_i - utilde_j) * mod_G *
+                               mean_rho_inv;
 
     /* Add artificial diffusion to evolution of internal energy */
     pi->u_dt += du_dt_difn_i;
 
     /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
     drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
-                               (pi->rho / pj->rho) * v_sig_difn *
-                               (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
+                               (rhoi * rhoj_inv) * v_sig_difn *
+                               (rhotilde_i - rhotilde_j) * mod_G * mean_rho_inv;
   }
 
   /* Add normalising term and artificial diffusion to evolution of density */

@@ -65,17 +65,16 @@ hydro_runner_iact_density_extra_kernel(struct part *restrict pi,
   /* Get r and 1/r. */
   const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const float r_inv = r ? 1.0f / r : 0.0f;
+  const float volume_i = pi->mass / pi->rho_evol;
+  const float volume_j = pj->mass / pj->rho_evol;
 
   /* Geometric moments and gradients that use an unmodified kernel (Sandnes+2025
    * Eqn. 50 and its gradient). Used in the normalising term (Eqn. 51) and in
    * gradient estimates (using Eqn. 30) that are used for the calculation of
    * grad-h terms (Eqn. 31) and in the artificial viscosity (Eqn. 35) and
    * diffusion (Eqns. 46 and 47) schemes */
-  pi->m0 += pj->mass * wi / pj->rho_evol;
-  pj->m0 += pi->mass * wj / pi->rho_evol;
-
-  const float volume_i = pi->mass / pi->rho_evol;
-  const float volume_j = pj->mass / pj->rho_evol;
+  pi->m0 += wi * volume_j;
+  pj->m0 += wj * volume_i;
 
   pi->grad_m0[0] += dx[0] * wi_dx * r_inv * volume_j;
   pi->grad_m0[1] += dx[1] * wi_dx * r_inv * volume_j;
@@ -104,15 +103,14 @@ hydro_runner_iact_nonsym_density_extra_kernel(struct part *restrict pi,
   /* Get r and 1/r. */
   const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const float r_inv = r ? 1.0f / r : 0.0f;
+  const float volume_j = pj->mass / pj->rho_evol;
 
   /* Geometric moments and gradients that use an unmodified kernel (Sandnes+2025
    * Eqn. 50 and its gradient). Used in the normalising term (Eqn. 51) and in
    * gradient estimates (using Eqn. 30) that are used for the calculation of
    * grad-h terms (Eqn. 31) and in the artificial viscosity (Eqn. 35) and
    * diffusion (Eqns. 46 and 47) schemes */
-  pi->m0 += pj->mass * wi / pj->rho_evol;
-
-  const float volume_j = pj->mass / pj->rho_evol;
+  pi->m0 += wi * volume_j;
 
   pi->grad_m0[0] += dx[0] * wi_dx * r_inv * volume_j;
   pi->grad_m0[1] += dx[1] * wi_dx * r_inv * volume_j;
@@ -221,10 +219,12 @@ hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
   wj_dx_term[2] = -wi_dx_term[2];
 
   /* Grad-h term, dW/dh */
-  const float wi_dx_gradhterm =
-      -0.5f * (hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one;
-  const float wj_dx_gradhterm =
-      -0.5f * (hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one;
+  const float wi_dx_gradhterm = -0.5f *
+                                (hydro_dimension * wi + (r * hi_inv) * wi_dx) *
+                                hi_inv_dim_plus_one;
+  const float wj_dx_gradhterm = -0.5f *
+                                (hydro_dimension * wj + (r * hj_inv) * wj_dx) *
+                                hj_inv_dim_plus_one;
 
   /* Geometric moments m_0, m_1, and m_2 (Sandnes+2025 Eqns. 24--26), their
    * gradients (Sandnes+2025 Eqns. B.10--B.12, initially we only construct the
@@ -317,8 +317,9 @@ hydro_runner_iact_nonsym_gradient_extra_kernel(
   wi_dx_term[2] = dx[2] * r_inv * mean_dw_dr;
 
   /* Grad-h term, dW/dh */
-  const float wi_dx_gradhterm =
-      -0.5f * (hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one;
+  const float wi_dx_gradhterm = -0.5f *
+                                (hydro_dimension * wi + (r * hi_inv) * wi_dx) *
+                                hi_inv_dim_plus_one;
 
   /* Geometric moments m_0, m_1, and m_2 (Sandnes+2025 Eqns. 24--26), their
    * gradients (Sandnes+2025 Eqns. B.10--B.12, initially we only construct the
@@ -598,9 +599,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
     wi_dx_term[i] = dx[i] * r_inv * mean_dw_dr;
     wj_dx_term[i] = -wi_dx_term[i];
 
-    wi_dx_term[i] += -0.5f * (hydro_dimension * wi + (r / pi->h) * wi_dx) *
+    wi_dx_term[i] += -0.5f * (hydro_dimension * wi + (r * hi_inv) * wi_dx) *
                      hi_inv_dim_plus_one * pi->dh_norm_kernel[i];
-    wj_dx_term[i] += -0.5f * (hydro_dimension * wj + (r / pj->h) * wj_dx) *
+    wj_dx_term[i] += -0.5f * (hydro_dimension * wj + (r * hj_inv) * wj_dx) *
                      hj_inv_dim_plus_one * pj->dh_norm_kernel[i];
 
     /* Assemble Sandnes+2025 Eqn. 28 */
@@ -625,9 +626,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
     wi_dx_term_vac[i] = dx[i] * r_inv * wi_dx * hi_inv_dim_plus_one;
     wj_dx_term_vac[i] = -dx[i] * r_inv * wj_dx * hj_inv_dim_plus_one;
 
-    wi_dx_term_vac[i] += -(hydro_dimension * wi + (r / pi->h) * wi_dx) *
+    wi_dx_term_vac[i] += -(hydro_dimension * wi + (r * hi_inv) * wi_dx) *
                          hi_inv_dim_plus_one * pi->dh_norm_kernel[i];
-    wj_dx_term_vac[i] += -(hydro_dimension * wj + (r / pj->h) * wj_dx) *
+    wj_dx_term_vac[i] += -(hydro_dimension * wj + (r * hj_inv) * wj_dx) *
                          hj_inv_dim_plus_one * pj->dh_norm_kernel[i];
   }
 
