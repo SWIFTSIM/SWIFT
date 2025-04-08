@@ -24,6 +24,8 @@
 #include "hydro.h"
 #include "random.h"
 #include "timestep_sync_part.h"
+#include "radiation.h"
+#include "random.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -147,62 +149,96 @@ runner_iact_nonsym_feedback_apply(
      - The emitted luminosity in each band */
 
   /* 2. Local extinction around the star: L_abs_nu = (1 - exp(-tau_nu)) L_nu
-                                          L_emitted_nu = exp(-tau_nu) L_nu
-        For the IR band, we have:
-	        L_IR = Sum_{nu=FUR, UV, Opt} L_abs_nu
+     L_emitted_nu = exp(-tau_nu) L_nu
+     For the IR band, we have:
+     L_IR = Sum_{nu=FUR, UV, Opt} L_abs_nu
 
-      	For the ioninzing band, we do not do the local extinction. We treat it
-	separately.
+     For the ioninzing band, we do not do the local extinction. We treat it
+     separately.
 
      3. Photoionization - HII region:
-        From step 1 we know N_dot_ion = L_ion / (h nu_ion) . We will use a 
-        simple stromgren sphere approximation. For each particle:
-	a) Test if the particle is already ionized : T > 10^4 or particle was
-        flagged to be in an ionized region.
-	b) If it is not ionized, compute the ioninzing rate needed to fully
-        ionize:
-	         \Delta N_dot_j = N(H)_j beta n_e_j
-		 N(H)_j = X_H m_part / (mu m_proton) (the number of H atoms)
-	with beta = 3e-13 cm^3 / s is the recombination coefficient, n_e_j the
-        electron number density assuming full ionization, X_H is the hydrogen
-        mass fraction and mu the molecular weight.
-	c) If \Delta N_dot_j <= N_dot_ion:
-	     tag the particle as being in a HII region
-	     consume the photons: N_ion -= Delta N_dot_j
+     From step 1 we know N_dot_ion = L_ion / (h nu_ion) . We will use a 
+     simple stromgren sphere approximation. For each particle:
+     a) Test if the particle is already ionized : T > 10^4 or particle was
+     flagged to be in an ionized region.
+     b) If it is not ionized, compute the ioninzing rate needed to fully
+     ionize:
+     \Delta N_dot_j = N(H)_j beta n_e_j
+     N(H)_j = X_H m_part / (mu m_proton) (the number of H atoms)
+     with beta = 3e-13 cm^3 / s is the recombination coefficient, n_e_j the
+     electron number density assuming full ionization, X_H is the hydrogen
+     mass fraction and mu the molecular weight.
+     c) If \Delta N_dot_j <= N_dot_ion:
+     tag the particle as being in a HII region
+     consume the photons: N_ion -= Delta N_dot_j
 	
-	   else:
-	      determine randomly if the particle is ionized by computing the
-	      proba p = N_dot_io / \Delta N_dot_j
+     else:
+     determine randomly if the particle is ionized by computing the
+     proba p = N_dot_io / \Delta N_dot_j
+     If rand_number <= proba :
+     tag the particle as being in a HII region
+     consume the photons: N_ion -= Delta N_dot_j
 
-	 d) For the particles tagged as ionized: 
-	 set the temperature (internal energy) to the
-	       min(current temperature + heat added from the energy of the ionisation,
-	       equilibrium HII region tem from collisional cooling)
-	       Set the incident rad and FUV flux to the stromgren value --> to
-	 compute the inonizing
+     d) For the particles tagged as ionized: 
+     set the temperature (internal energy) to the
+     min(current temperature + heat added from the energy of the ionisation,
+     equilibrium HII region tem from collisional cooling)
+     Set the incident rad and FUV flux to the stromgren value --> to
+     compute the inonizing
 
-	 Concretely,
-	 u_new = min(u + delta U, U_collisional),
-	 delta U = N_H * E_ion / m_gas,
-	 E_ion = 13.6 eV = 2.18e-11 erg
-	 Gamma = \Delta N_dot_j / N_H
+     Concretely,
+     u_new = min(u + delta U, U_collisional),
+     delta U = N_H * E_ion / m_gas,
+     E_ion = 13.6 eV = 2.18e-11 erg
+     Gamma = \Delta N_dot_j / N_H
 
-	 Idea: In the original algorithm, Hopkins sort the particles but here
-	 we do not. Maybe add a proba such that the closest particles have a
-	 higer chances of being ionized.
+     Idea: In the original algorithm, Hopkins sort the particles but here
+     we do not. Maybe add a proba such that the closest particles have a
+     higer chances of being ionized.
 
      4. Radiation pressure:
-             p_rad_tot = Delta t / c * Sum_nu L_abs_nu
+     p_rad_tot = Delta t / c * Sum_nu L_abs_nu
 
-	Which bands? Onlyt the IR I guess.
+     Which bands? Onlyt the IR I guess.
 
      5. Transport the emergent FUV radiation. And then compute the
      photohelectric heating. We assume that the effect is only local and so we
      do not transport radiation. 
-
-
-
   */
+
+  /* Here we must choose the model according to the metallicity to distinguish
+     pop III fomr pop II */
+  /* const struct radiation* radiation = &fb_props->stellar_model.radiation; */
+
+  /* 3. Photoionization */
+  /* NOTE: Probalby create a fct to store the computations so that we only have
+     to call the functions for the mech fbk */
+  /* Is pj already ionized ? If yes, there is nothing to do here. */
+  if (!radiation_is_part_ionized(pj, xpj)) {
+    const float dot_N_ion = radiation_get_star_ionisation_rate(si);
+    const float Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(pj, xpj);
+
+    /* Compute a probability to determine if we fully ionize pj or not and
+       draw the random number. */
+    const float proba = dot_N_ion / Delta_dot_N_ion;
+
+    /* TODO : modify this */
+    const float random_number = random_unit_interval(si->id, ti_current, random_number_HII_regions);
+  const int do_ionization = (dot_N_ion <= Delta_dot_N_ion) ? 1 : (random_number <= proba);
+
+  if (do_ionization) {
+    /* Tag the particle */
+    radiation_tag_part_as_ionized(pj, xpj);
+
+    radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+  }
+}
+
+  /* 4. Compute radiation pressure */
+  /* const float p_rad = radiation_compute_radiation_pressure(sj); */
+  /* const float delta_p_rad = weight * p_rad; */
+
+  /* Add the radiation pressure radially outwards from the star */
   
 
   /* Impose maximal viscosity */

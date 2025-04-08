@@ -19,3 +19,28 @@
 
 /* Include header */
 #include "radiation.h"
+
+float radiation_get_star_ionisation_rate(const struct spart* sp) {
+
+
+  return 0.0;
+}
+
+float radiation_get_part_rate_to_fully_ionize(const struct part* p, const struct xpart* xp) {
+
+  return 0.0;
+}
+
+
+float radiation_tag_part_as_ionized(struct part* p, struct xpart* xpj) {
+
+  return 0.0;
+}
+
+float radiation_consume_ionizing_photons(struct spart* sp, float Delta_dot_N_ion) {
+  return 0.0;
+}
+
+int radiation_is_part_ionized(const struct part* p, const struct xpart* xpj) {
+  return 0;
+}

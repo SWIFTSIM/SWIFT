@@ -981,7 +981,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
      - FUV : photoelectric heating
      - NUV : single scattering --> radiation pressure
      - optical/near-IR: single scattering --> radiation pressure
-     - mid/far-IR : reserved for light re-radiated by dust
+     - mid/far-IR : reserved for light re-radiated by dust */
      
   /* Get the tabulated luminosities for the five broad bands: ionizing,
      far-UV, near-UV, optical/near-IR, mid/far-IR. Look at Fire-3 updated fits */
