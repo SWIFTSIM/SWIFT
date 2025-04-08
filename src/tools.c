@@ -349,10 +349,18 @@ void pairs_all_gradient(struct runner *r, struct cell *ci, struct cell *cj) {
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Hit or miss? */
-      if (r2 < hig2 && !part_is_inhibited(pj, e)) {
-
-        /* Interact */
-        runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, a, H);
+      if (!part_is_inhibited(pj, e)) {
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+        if (r2 < hig2 || r2 < hjg2) {
+          /* Interact */
+          runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, a, H);
+        }
+#else
+        if (r2 < hig2) {
+          /* Interact */
+          runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, a, H);
+        }
+#endif /* EXTRA_HYDRO_LOOP_TYPE2 */
       }
     }
   }
@@ -388,10 +396,18 @@ void pairs_all_gradient(struct runner *r, struct cell *ci, struct cell *cj) {
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Hit or miss? */
-      if (r2 < hjg2 && !part_is_inhibited(pi, e)) {
-
-        /* Interact */
-        runner_iact_nonsym_gradient(r2, dx, hj, pi->h, pj, pi, a, H);
+      if (!part_is_inhibited(pi, e)) {
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+        if (r2 < hig2 || r2 < hjg2) {
+          /* Interact */
+          runner_iact_nonsym_gradient(r2, dx, hj, pi->h, pj, pi, a, H);
+        }
+#else
+        if (r2 < hjg2) {
+          /* Interact */
+          runner_iact_nonsym_gradient(r2, dx, hj, pi->h, pj, pi, a, H);
+        }
+#endif /* EXTRA_HYDRO_LOOP_TYPE2 */
       }
     }
   }
@@ -666,21 +682,38 @@ void self_all_gradient(struct runner *r, struct cell *ci) {
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Hit or miss? */
-      if (r2 < hig2 && part_is_active(pi, e) && !part_is_inhibited(pj, e)) {
-
-        /* Interact */
-        runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, a, H);
+      if (part_is_active(pi, e) && !part_is_inhibited(pj, e)) {
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+        if (r2 < hig2 || r2 < hjg2) {
+          /* Interact */
+          runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, a, H);
+        }
+#else
+        if (r2 < hig2) {
+          /* Interact */
+          runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, a, H);
+        }
+#endif /* EXTRA_HYDRO_LOOP_TYPE2 */
       }
 
       /* Hit or miss? */
-      if (r2 < hjg2 && part_is_active(pj, e) && !part_is_inhibited(pi, e)) {
+      if (part_is_active(pj, e) && !part_is_inhibited(pi, e)) {
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];
         dx[2] = -dx[2];
 
-        /* Interact */
-        runner_iact_nonsym_gradient(r2, dx, hj, hi, pj, pi, a, H);
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+        if (r2 < hig2 || r2 < hjg2) {
+          /* Interact */
+          runner_iact_nonsym_gradient(r2, dx, hj, hi, pj, pi, a, H);
+        }
+#else
+        if (r2 < hjg2) {
+          /* Interact */
+          runner_iact_nonsym_gradient(r2, dx, hj, hi, pj, pi, a, H);
+        }
+#endif /* EXTRA_HYDRO_LOOP_TYPE2 */
       }
     }
   }

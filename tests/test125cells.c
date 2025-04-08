@@ -452,11 +452,19 @@ void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
 void runner_doself1_branch_density(struct runner *r, struct cell *ci,
                                    int limit_h_min, int limit_h_max);
 #ifdef EXTRA_HYDRO_LOOP
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+void runner_dopair2_branch_gradient(struct runner *r, struct cell *ci,
+                                    struct cell *cj, int limit_h_min,
+                                    int limit_h_max);
+void runner_doself2_branch_gradient(struct runner *r, struct cell *ci,
+                                    int limit_h_min, int limit_h_max);
+#else
 void runner_dopair1_branch_gradient(struct runner *r, struct cell *ci,
                                     struct cell *cj, int limit_h_min,
                                     int limit_h_max);
 void runner_doself1_branch_gradient(struct runner *r, struct cell *ci,
                                     int limit_h_min, int limit_h_max);
+#endif /* EXTRA_HYDRO_LOOP_TYPE2 */
 #endif /* EXTRA_HYDRO LOOP */
 void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
                                  struct cell *cj, int limit_h_min,
@@ -760,9 +768,15 @@ int main(int argc, char *argv[]) {
 
                 struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
 
-                if (cj > ci)
+                if (cj > ci) {
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+                  runner_dopair2_branch_gradient(
+                      &runner, ci, cj, /*limit_h_min=*/0, /*limit_h_max=*/0);
+#else
                   runner_dopair1_branch_gradient(
                       &runner, ci, cj, /*limit_h_min=*/0, /*limit_h_max=*/0);
+#endif
+                }
               }
             }
           }
@@ -771,9 +785,15 @@ int main(int argc, char *argv[]) {
     }
 
     /* And now the self-interaction for the central cells */
-    for (int j = 0; j < 27; ++j)
+    for (int j = 0; j < 27; ++j) {
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+      runner_doself2_branch_gradient(&runner, inner_cells[j], /*limit_h_min=*/0,
+                                     /*limit_h_max=*/0);
+#else
       runner_doself1_branch_gradient(&runner, inner_cells[j], /*limit_h_min=*/0,
                                      /*limit_h_max=*/0);
+#endif
+    }
 
     /* Extra ghost to finish everything on the central cells */
     for (int j = 0; j < 27; ++j)
