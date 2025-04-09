@@ -678,7 +678,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       /* Store for use in flux limiter */
       p->gravity.dE_prev = dE_springel;
 
-      /* Add potential gravitational energy change to energy variable */
+      /* Add potential gravitational energy change to conserved energy */
       p->conserved.energy += dE_springel;
 
     }
