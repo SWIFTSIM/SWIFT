@@ -838,9 +838,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float pressure = hydro_get_comoving_pressure(p);
   const float pressure_including_floor =
       pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
-  const float soundspeed_physical =
-      gas_soundspeed_from_pressure(p->rho, pressure_including_floor) *
-      cosmo->a_factor_sound_speed;
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
+  const float soundspeed_physical = soundspeed * cosmo->a_factor_sound_speed;
   const float fac_B = cosmo->a_factor_Balsara_eps;
   
   const float sound_crossing_time_inverse =
@@ -853,14 +853,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the norm of div v */
   const float abs_div_v = fabsf(p->viscosity.div_v);
-
-  /* Compute the sound speed  */
-  const float pressure = hydro_get_comoving_pressure(p);
-  const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
-  const float soundspeed =
-      gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
-
+  
   /* Get the squares of the quantities necessary for the Balsara-like switch */
   const float fac_B_2 = fac_B * fac_B;
   const float curl_v_2 = curl_v * curl_v;
