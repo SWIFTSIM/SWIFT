@@ -689,6 +689,53 @@ void stellar_evolution_read_elements(struct stellar_model* sm,
   }
 }
 
+
+/**
+ * @brief Read the solar abundances.
+ *
+ * @param parameter_file The parsed parameter file.
+ * @param data The properties to initialise.
+ */
+static INLINE void stellar_evolution_read_solar_abundances(
+                                     struct stellar_model* sm,
+                                     struct swift_params* params) {
+                                                           
+#if defined(HAVE_HDF5)
+
+  /* Get the yields table */
+  char filename[DESCRIPTION_BUFFER_SIZE];
+  parser_get_param_string(params, "GEARFeedback:yields_table",
+                          filename);
+
+  /* Open file. */
+  hid_t file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+  if (file_id < 0) error("unable to open file %s.\n", filename);
+
+  /* Open group. */
+  hid_t group_id = H5Gopen(file_id, "Data", H5P_DEFAULT);
+  if (group_id < 0) error("unable to open group Data.\n");
+
+  /* Read the data */
+  io_read_array_attribute(group_id, "SolarMassAbundances", FLOAT,
+                          sm->solar_abundances, GEAR_CHEMISTRY_ELEMENT_COUNT);
+
+  /* Close group */
+  hid_t status = H5Gclose(group_id);
+  if (status < 0) error("error closing group.");
+
+  /* Close file */
+  status = H5Fclose(file_id);
+  if (status < 0) error("error closing file.");
+
+#else
+  message("Cannot read the solar abundances without HDF5");
+#endif
+}
+
+
+
+
+
 /**
  * @brief Initialize the global properties of the stellar evolution scheme.
  *
