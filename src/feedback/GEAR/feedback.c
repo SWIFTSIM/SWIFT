@@ -190,7 +190,7 @@ void feedback_will_do_feedback(
   const struct stellar_model* model =
       is_first_star ? &feedback_props->stellar_model_first_stars
                     : &feedback_props->stellar_model;
-
+  
   /* Compute the times */
   double star_age_beg_step = 0;
   double dt_enrichment = 0;
