@@ -160,7 +160,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   /* Calculate OWAR */
 
   float OW;
-  OW = 2.0f;
+  OW = 1.0f;
 
   float absBi;
   absBi = sqrtf(Bi[0]*Bi[0]+Bi[1]*Bi[1]+Bi[2]*Bi[2]);
@@ -309,7 +309,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Calculate OWAR */
 
   float OW;
-  OW = 2.0f;
+  OW = 1.0f;
 
   float absBj;
   absBj = sqrtf(Bj[0]*Bj[0]+Bj[1]*Bj[1]+Bj[2]*Bj[2]);
@@ -662,8 +662,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float dvr = -(dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]);
 
   for (int i = 0; i < 3; i++) {
-  dB_dt_adv_i[i] =  -over_rho2_i*(Bj[i]/over_rho2_j+Bi[i]/over_rho2_i) * dvr;
-  dB_dt_adv_j[i] =  -over_rho2_j*(Bi[i]/over_rho2_i+Bj[i]/over_rho2_j) * dvr;
+  dB_dt_adv_i[i] =  (Bj[i]*over_rho2_j+Bi[i]*over_rho2_i) * dvr / over_rho2_i;
+  dB_dt_adv_j[i] =  (Bi[i]*over_rho2_i+Bj[i]*over_rho2_j) * dvr / over_rho2_j;
   }
  
   for (int i = 0; i < 3; i++) {
@@ -932,7 +932,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float dvr = -(dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]);
 
   for (int i = 0; i < 3; i++) {
-  dB_dt_adv_i[i] = -over_rho2_i*(Bj[i]/over_rho2_j+Bi[i]/over_rho2_i) * dvr;
+  dB_dt_adv_i[i] = ( Bj[i]*over_rho2_j+Bi[i]*over_rho2_i ) * dvr / over_rho2_i;
   }
  
   for (int i = 0; i < 3; i++) {
