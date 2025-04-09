@@ -662,8 +662,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float dvr = -(dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]);
 
   for (int i = 0; i < 3; i++) {
-  dB_dt_adv_i[i] =  rhoi*(Bj[i]/rhoj-Bi[i]/rhoi) * dvr;
-  dB_dt_adv_j[i] =  rhoj*(Bi[i]/rhoi-Bj[i]/rhoj) * dvr;
+  dB_dt_adv_i[i] =  over_rho2_i*(Bj[i]/over_rho2_j+Bi[i]/over_rho2_i) * dvr;
+  dB_dt_adv_j[i] =  over_rho2_j*(Bi[i]/over_rho2_i+Bj[i]/over_rho2_j) * dvr;
   }
  
   for (int i = 0; i < 3; i++) {
@@ -932,7 +932,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float dvr = -(dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]);
 
   for (int i = 0; i < 3; i++) {
-  dB_dt_adv_i[i] = rhoi*(Bj[i]/rhoj-Bi[i]/rhoi) * dvr;
+  dB_dt_adv_i[i] = over_rho2_i*(Bj[i]/over_rho2_j+Bi[i]/over_rho2_i) * dvr;
   }
  
   for (int i = 0; i < 3; i++) {
