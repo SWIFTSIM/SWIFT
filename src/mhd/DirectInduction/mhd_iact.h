@@ -654,10 +654,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   const float dB_dt_pref_Lap_i = 2.0f * r_inv / rhoj;
   const float dB_dt_pref_Lap_j = 2.0f * r_inv / rhoi;
+ 
+  const float dB_dt_adv_i[3];
+  const float dB_dt_adv_j[3];
+  
+  /* dv dot r. */
+  const float dvr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
 
   for (int i = 0; i < 3; i++) {
+  dB_dt_adv_i[i] =  - rhoi*(Bi[i]/rhoi-Bj[i]/rhoj) * dvr;
+  dB_dt_adv_j[i] =  - rhoj*(Bj[i]/rhoj-Bi[i]/rhoi) * dvr;
+  }
+ 
+  for (int i = 0; i < 3; i++) {
     pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
-    pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
+    pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i]; 
+
+    pi->mhd_data.Adv_B_source[i] -= mj * dB_dt_pref_i * dB_dt_adv_i[i];
+    pj->mhd_data.Adv_B_source[i] -= mi * dB_dt_pref_j * dB_dt_adv_j[i]; 
+
     pi->mhd_data.Adv_B_source[i] -= mj * grad_psi_i * dx[i];
     pj->mhd_data.Adv_B_source[i] -= mi * grad_psi_j * dx[i];
     pi->mhd_data.Diff_B_source[i] += mj * dB_dt_pref_PR_i * wi_dr * dB[i];
@@ -911,8 +926,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Save induction sources */
   const float dB_dt_pref_Lap = 2.0f * r_inv / rhoj;
 
+  const float dB_dt_adv_i[3];
+  
+  /* dv dot r. */
+  const float dvr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+  for (int i = 0; i < 3; i++) {
+  dB_dt_adv_i[i] =  - rhoi*(Bi[i]/rhoi-Bj[i]/rhoj) * dvr;
+  }
+ 
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
+
+    pi->mhd_data.Adv_B_source[i] -= mj * dB_dt_pref_i * dB_dt_adv_i[i];
+
     pi->mhd_data.Adv_B_source[i] -= mj * grad_psi_i * dx[i];
     pi->mhd_data.Diff_B_source[i] += mj * dB_dt_pref_PR * wi_dr * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
