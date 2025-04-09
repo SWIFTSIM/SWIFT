@@ -36,7 +36,10 @@ hydro_gravity_energy_update_term(const float dt_kick_corr1,
                                  const float dt_kick_corr2,
                                  const float* a_grav1, const float* a_grav2,
                                  const float* mflux, const float* v_full,
-                                 const float* grav_kick) {
+                                 const float* grav_kick,
+                                 const float* conserved_momentum2,
+                                 const float energy_flux,
+                                 const float conserved_energy) {
 
   /* Gravitational work term due to mass fluxes */
   float grav_work[3] = {
@@ -50,6 +53,49 @@ hydro_gravity_energy_update_term(const float dt_kick_corr1,
   /* Gravitational kick at generator */
   dE += v_full[0] * grav_kick[0] + v_full[1] * grav_kick[1] +
         v_full[2] * grav_kick[2];
+
+  /* Default onto simpler calculation if dE springel fails.
+   * Seen in Uttenhove PhD thesis Eq 161 */
+  if (dE + conserved_energy < 0.) {
+
+    /* Corresponds to momentum p^n,
+     * rather than p^n+1 as is passed into function*/
+    float conserved_momentum1[3] = {
+    conserved_momentum2[0] - grav_kick[0],
+    conserved_momentum2[1] - grav_kick[1],
+    conserved_momentum2[2] - grav_kick[2],
+    };
+
+    float grav_work_simple[3] = {
+      0.5 * dt_kick_corr1 * conserved_momentum1[0] +
+        0.5 * dt_kick_corr2 * conserved_momentum2[0],
+      0.5 * dt_kick_corr1 * conserved_momentum1[1] +
+        0.5 * dt_kick_corr2 * conserved_momentum2[1],
+      0.5 * dt_kick_corr1 * conserved_momentum1[2] +
+        0.5 * dt_kick_corr2 * conserved_momentum2[2],
+  };
+
+    // float dE_simple =  - energy_flux - (grav_work_simple[0] +
+    //   grav_work_simple[1] * grav_work_simple[2]);
+
+    /* We do not add energy flux, it is added after dE in hydro.h */
+    /* Notice signs, factor -1 accounted for later */
+    float dE_simple = grav_work_simple[0] +
+      grav_work_simple[1] * grav_work_simple[2];
+
+    message("Springel dE failed, using simple approach! dE_springel = %e, "
+            "dE_simple = %e", dE, dE_simple);
+
+    message("dE_springel + energy = %e, dE_simple + energy = %e",
+      dE + conserved_energy, dE_simple + conserved_energy);
+
+    /* Reset to 0, change to new simpler contribution */
+    dE = 0.;
+    dE += dE_simple;
+
+  }
+
+
   return dE;
 }
 

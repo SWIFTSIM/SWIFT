@@ -322,6 +322,9 @@ struct part {
       /*! Current value of the mass flux vector. */
       float mflux[3];
 
+      /* Previous dE in hydro_kick_extra */
+      float dE_prev;
+
     } gravity;
 
     /* Unused in the ShadowSWIFT scheme, put in union to save space */

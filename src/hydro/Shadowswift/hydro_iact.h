@@ -257,6 +257,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   hydro_grav_work_from_half_state(pi, pj, shift, Whalf, vij, centroid, n_unit,
                                   surface_area, min_dt);
 #else
+  /* Get flux and limit flux to positivity */
   float mach_number =
       hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, totflux);
   hydro_part_positivity_limiter_fluxes(pi, pj, n_unit, vij, surface_area,
@@ -272,15 +273,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
         fmaxf(pj->timestepvars.mach_number, mach_number);
   }
 
-  /* Prevent fluxes from exceeding total mass */
-  if (totflux[0] > pi->conserved.mass || -totflux[0] > pj->conserved.mass) {
-    totflux[0] = 0.;
-    totflux[1] = 0.;
-    totflux[2] = 0.;
-    totflux[3] = 0.;
-    totflux[4] = 0.;
-    totflux[5] = 0.;
-  }
 
   /* If we're working with RT, we need to pay additional attention to the
    * individual mass fractions of ionizing species. */

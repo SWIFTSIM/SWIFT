@@ -401,7 +401,10 @@ hydro_convert_conserved_to_primitive(
     warning("Negative mass or energy after applying fluxes! Q[0] = %E, Q[4] = %E", Q[0], Q[4]);
 #endif
   const double epsilon = 16. * FLT_MIN;
-  if (Q[0] < epsilon || Q[4] < epsilon) {
+  if (fabs(Q[0]) < epsilon || fabs(Q[4]) < epsilon) {
+    message("Float Minimum is = %e", epsilon);
+    message("Resetting Q and W to 0! Q[0] = Mass = %e", Q[0]);
+    message("Resetting Q and W to 0! Q[4] = Energy = %e", Q[4]);
     for (int k = 0; k < 6; k++) {
       Q[k] = 0.f;
       W[k] = 0.f;
@@ -585,6 +588,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
+  float dE_springel;
+
   if (dt_therm < 0.0f) {
     /* We are reversing a kick1 due to the timestep limiter */
     /* Note on the fluxes: Since a particle can only receive time integrated
@@ -649,15 +654,33 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
        * differ for cosmological simulations). */
       float dt_grav_corr1 = 0.f;
       float dt_grav_corr2 = 0.f;
+      float flux_for_gravity[6];
+
       if (p->flux.dt > 0.) {
         dt_grav_corr1 = p->gravity.dt;
         dt_grav_corr2 = dt_grav;
-      }
-      float dE_springel = hydro_gravity_energy_update_term(
-          dt_grav_corr1, dt_grav_corr2, xp->a_grav, a_grav, p->gravity.mflux,
-          p->v_part_full, grav_kick);
 
+        /* Grab previous fluxes */
+        hydro_part_get_fluxes(p, flux_for_gravity);
+      } else {
+        /* If no flux exchange set to 0 */
+        for (int k = 0; k < 6; ++k) {
+          flux_for_gravity[k] = 0.f;
+        }
+      }
+      dE_springel = hydro_gravity_energy_update_term(
+          dt_grav_corr1, dt_grav_corr2, xp->a_grav,
+          a_grav, p->gravity.mflux, p->v_part_full,
+          grav_kick, p->conserved.momentum, flux_for_gravity[4],
+          p->conserved.energy);
+
+
+      /* Store for use in flux limiter */
+      p->gravity.dE_prev = dE_springel;
+
+      /* Add potential gravitational energy change to energy variable */
       p->conserved.energy += dE_springel;
+
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -678,6 +701,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       Q[1] += flux[1];
       Q[2] += flux[2];
       Q[3] += flux[3];
+
 #if defined(EOS_ISOTHERMAL_GAS)
       /* We use the EoS equation in a sneaky way here just to get the constant
        * internal energy */

@@ -94,8 +94,10 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
 
   double V_inv_i = 1. / pi->geometry.volume;
   double V_inv_j = 1. / pi->geometry.volume;
-  double flux_fac_i = (1. + 1e-5) * pi->geometry.nface * pi->flux.dt;
-  double flux_fac_j = (1. + 1e-5) * pj->geometry.nface * pj->flux.dt;
+  double flux_fac_i =  pi->flux.dt * pi->geometry.nface;
+  double flux_fac_j =  pj->flux.dt * pj->geometry.nface;
+  //double flux_fac_i = (1. + 1e-5) * pi->geometry.area / Anorm * pi->flux.dt;
+  //double flux_fac_j = (1. + 1e-5) * pj->geometry.area / Anorm * pj->flux.dt;
   double m_dagger_i = pi->conserved.mass - flux_fac_i * fluxes[0];
   double m_dagger_j = pj->conserved.mass + flux_fac_j * fluxes[0];
   double rho_i = m_dagger_i * V_inv_i;
@@ -131,7 +133,10 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
 
   float Qi[6], Qj[6];
   hydro_part_get_conserved_variables(pi, Qi);
+  Qi[4] += pi->gravity.dE_prev;
   hydro_part_get_conserved_variables(pj, Qj);
+  Qj[4] += pj->gravity.dE_prev;
+
   for (int k = 0; k < 6; ++k) {
     Qi[k] -= flux_fac_i * fluxes[k];
     Qj[k] += flux_fac_j * fluxes[k];
@@ -152,6 +157,8 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
   if (Pi < epsilon_P) {
     float Q_lo[6];
     hydro_part_get_conserved_variables(pi, Q_lo);
+    Q_lo[4] += pi->gravity.dE_prev;
+
     for (int k = 0; k < 6; ++k) {
       Q_lo[k] -= flux_fac_i * fluxes_lo[k];
     }
@@ -167,9 +174,12 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
   if (Pj < epsilon_P) {
     float Q_lo[6];
     hydro_part_get_conserved_variables(pj, Q_lo);
+    Q_lo[4] += pj->gravity.dE_prev;
+
     for (int k = 0; k < 6; ++k) {
       Q_lo[k] += flux_fac_j * fluxes_lo[k];
     }
+
     double m_inv = 1. / Q_lo[0];
     double u_lo =
         (Q_lo[4] -
@@ -187,29 +197,31 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
   /* As an absolute last resort, just rescale fluxes if necessary */
   double theta = 1.;
   if (pi->conserved.mass <
-      flux_fac_i * fluxes[0]) {
+      pi->geometry.area / Anorm * pi->flux.dt * fluxes[0]) {
     theta = fmin(theta, pi->conserved.mass / (flux_fac_i * fluxes[0]));
   }
   if (pj->conserved.mass <
-      -flux_fac_j * fluxes[0]) {
+      -pj->geometry.area / Anorm * pj->flux.dt * fluxes[0]) {
     theta = fmin(theta, pj->conserved.mass / (-flux_fac_j * fluxes[0]));
   }
-  if (pi->conserved.energy <
+  if (pi->conserved.energy + pi->gravity.dE_prev <
       flux_fac_i * fluxes[4]) {
-    theta = fmin(theta, pi->conserved.energy / (flux_fac_i * fluxes[4]));
+    theta = fmin(theta, (pi->conserved.energy + pi->gravity.dE_prev) /
+      (flux_fac_i * fluxes[4]));
   }
-  if (pj->conserved.energy <
+  if (pj->conserved.energy + pj->gravity.dE_prev<
       -flux_fac_j * fluxes[4]) {
-    theta = fmin(theta, pj->conserved.energy / (-flux_fac_j * fluxes[4]));
+    theta = fmin(theta, (pj->conserved.energy + pj->gravity.dE_prev) /
+      (-flux_fac_j * fluxes[4]));
   }
   theta = fmax(0., theta);
   if (theta < 1.) {
 #ifdef SHADOWSWIFT_WARNINGS
     warning(
-        "Positivity flux limiter failed! Discarding fluxes");
+        "Positivity flux limiter failed! Falling back to guaranteed positivity");
 #endif
     for (int k = 0; k < 6; ++k) {
-      fluxes[k] *= 0.;
+      fluxes[k] = fluxes_lo[k];
     }
   }
 }
