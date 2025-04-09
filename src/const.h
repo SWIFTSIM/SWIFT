@@ -144,7 +144,7 @@
 #ifdef SHADOWSWIFT_STEER_MOTION
 /*! @brief More agressive cell steering for cold flows, where the other
  * criterion might become ineffective. */
-// #define SHADOWSWIFT_STEERING_COLD_FLOWS
+#define SHADOWSWIFT_STEERING_COLD_FLOWS
 #endif
 #endif
 /* Options controlling thermal energy evolution */
@@ -173,7 +173,7 @@
 #define OPEN_BC 2
 #define INFLOW_BC 3
 #define RADIAL_INFLOW_BC 4
-#define SHADOWSWIFT_BC REFLECTIVE_BC
+#define SHADOWSWIFT_BC OPEN_BC
 
 /* Options controlling behaviour of the code when unphysical situations are
  * encountered */
