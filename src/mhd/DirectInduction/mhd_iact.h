@@ -926,7 +926,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Save induction sources */
   const float dB_dt_pref_Lap = 2.0f * r_inv / rhoj;
 
-  const float dB_dt_adv_i[3];
+  float dB_dt_adv_i[3];
   
   /* dv dot r. */
   const float dvr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
