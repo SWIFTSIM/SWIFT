@@ -100,7 +100,7 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float dx[3],
  * @param rt_props Properties of the RT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
-    const float r2, float dx[3], const float hi, const float hj,
+    const float r2, const float dx[3], const float hi, const float hj,
     struct spart *restrict si, struct part *restrict pj, const float a,
     const float H, const struct rt_props *rt_props) {
 
