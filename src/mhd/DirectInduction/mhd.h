@@ -348,7 +348,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   B[2] = p->mhd_data.B_over_rho[2] * rho;
 
   float OW;
-  OW = 1.0f;
+  OW = 2.0f;
 
   float absB;
   absB = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
