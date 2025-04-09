@@ -655,8 +655,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float dB_dt_pref_Lap_i = 2.0f * r_inv / rhoj;
   const float dB_dt_pref_Lap_j = 2.0f * r_inv / rhoi;
  
-  const float dB_dt_adv_i[3];
-  const float dB_dt_adv_j[3];
+  float dB_dt_adv_i[3];
+  float dB_dt_adv_j[3];
   
   /* dv dot r. */
   const float dvr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
