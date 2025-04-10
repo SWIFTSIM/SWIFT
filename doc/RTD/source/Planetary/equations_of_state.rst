@@ -36,6 +36,8 @@ planetary initial conditions, `WoMa  <https://github.com/srbonilla/WoMa>`_:
     + Granite: ``101``
     + Water: ``102``
     + Basalt: ``103``
+    + Ice: ``104``
+    + Custom user-provided parameters: ``190``, ``191``, ..., ``199``
 + Hubbard \& MacFarlane (1980): ``2``
     + Hydrogen-helium atmosphere: ``200``
     + Ice H20-CH4-NH3 mix: ``201``
@@ -45,6 +47,10 @@ planetary initial conditions, `WoMa  <https://github.com/srbonilla/WoMa>`_:
     + Basalt (7530): ``301``
     + Water (7154): ``302``
     + Senft \& Stewart (2008) water: ``303``
+    + AQUA, Haldemann, J. et al. (2020) water: ``304``
+    + Chabrier, G. et al. (2019) Hydrogen: ``305``
+    + Chabrier, G. et al. (2019) Helium: ``306``
+    + Chabrier & Debras (2021) H/He mixture Y=0.245 (Jupiter): ``307``
 + ANEOS (in SESAME-style tables): ``4``
     + Forsterite (Stewart et al. 2019): ``400``
     + Iron (Stewart, zenodo.org/record/3866507): ``401``
@@ -56,7 +62,7 @@ The data files for the tabulated EoS can be downloaded using
 the ``examples/Planetary/EoSTables/get_eos_tables.sh`` script.
 
 To enable one or multiple EoS, the corresponding ``planetary_use_*:``
-flag(s) must be set to ``1`` in the parameter file for a simulation,
+flag(s) must be set from ``0`` to ``1`` in the parameter file for a simulation,
 along with the path to any table files, which are set by the
 ``planetary_*_table_file:`` parameters,
 as detailed in :ref:`Parameters_eos` and ``examples/parameter_example.yml``.
