@@ -12,6 +12,7 @@ from swiftsimio.visualisation.volume_render import render_gas
 argparser = argparse.ArgumentParser()
 argparser.add_argument("input")
 argparser.add_argument("output")
+argparser.add_argument("resolution")
 args = argparser.parse_args()
 
 # Load snapshot
@@ -49,8 +50,10 @@ data.gas.mass_weighted_Bx = data.gas.masses * B[:,0]
 data.gas.mass_weighted_By = data.gas.masses * B[:,1]
 data.gas.mass_weighted_Bz = data.gas.masses * B[:,2]
 
+res = int(args.resolution)
+
 common_arguments = dict(
-    data=data, resolution=128, parallel=True,periodic=True,
+    data=data, resolution=res, parallel=True,periodic=True,
 )
 
 
@@ -72,7 +75,7 @@ Bx_cube = mass_weighted_Bx_cube/mass_cube
 By_cube = mass_weighted_By_cube/mass_cube
 Bz_cube = mass_weighted_Bz_cube/mass_cube
 
-def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx):
+def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx,nbins=res):
     # Grid size
     Nx, Ny, Nz = Qx.shape
 
@@ -98,7 +101,7 @@ def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx):
     Q_power_flat = Q_power_k.flatten()
 
     # Define k bins (you can tweak bin size)
-    k_bins = np.linspace(0, np.max(k_mag), num=100)
+    k_bins = np.linspace(0, np.max(k_mag), num=nbins)
     k_bin_centers = 0.5 * (k_bins[1:] + k_bins[:-1])
 
     # Bin the power spectrum
@@ -111,14 +114,31 @@ def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx):
     return k_bin_centers, power_spectrum
 
 
-ks, Pb = compute_magnetic_power_spectrum(Bx_cube.value,By_cube.value,Bz_cube.value, dx = Lbox[0].value/128 )
-ks, Pv = compute_magnetic_power_spectrum(vx_cube.value,vy_cube.value,vz_cube.value, dx = Lbox[0].value/128 )
-plt.plot(ks,Pb,color='red',linestyle='dashed')
-plt.plot(ks,Pv,color='blue')
+ks, Pb = compute_magnetic_power_spectrum(Bx_cube.value,By_cube.value,Bz_cube.value, dx = Lbox[0].value/(res) )
+ks, Pv = compute_magnetic_power_spectrum(vx_cube.value,vy_cube.value,vz_cube.value, dx = Lbox[0].value/(res) )
+
+
+plt.plot(ks,Pb,color='red',linestyle='dashed',label='$P_B(k)$')
+plt.plot(ks,Pv,color='blue',label='$P_v(k)$')
+
+# plot spectral lines
+ksmock = np.logspace(1,2,10)
+p = -5/3
+plt.plot(ksmock,1e10*ksmock**(p),color='black',linestyle='dashed',label = '$k^{-5/3}$')
+
+# plot spectral lines
+ksmock = np.logspace(-0.5,0.5,10)
+p = 3/2
+plt.plot(ksmock,1e6*ksmock**(p),color='black',linestyle='dashed',label = '$k^{3/2}$')
+
+
 plt.yscale('log')
+plt.xscale('log')
 plt.xlabel('k')
 plt.ylabel('P(k)')
-plt.xlim([0,15])
+plt.grid()
+plt.legend()
+#plt.xlim([0,15])
 plt.savefig(args.output)
 
 
