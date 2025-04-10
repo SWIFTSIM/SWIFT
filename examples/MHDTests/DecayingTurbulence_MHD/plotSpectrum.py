@@ -19,8 +19,8 @@ args = argparser.parse_args()
 filename = args.input
 data = load(filename)
 
-time = data.metadata.time
-print("Plotting at %" % round(time,2))
+time = np.round(data.metadata.time,2)
+print("Plotting at ", time)
 
 Lbox = data.metadata.boxsize
 
@@ -141,7 +141,6 @@ plt.xlabel('k')
 plt.ylabel('P(k)')
 plt.grid()
 plt.legend()
-#plt.xlim([0,15])
 plt.savefig(args.output)
 
 
