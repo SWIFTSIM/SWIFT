@@ -630,6 +630,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
                          hi_inv_dim_plus_one * pi->dh_norm_kernel[i];
     wj_dx_term_vac[i] += -(hydro_dimension * wj + (r * hj_inv) * wj_dx) *
                          hj_inv_dim_plus_one * pj->dh_norm_kernel[i];
+
+    wi_dx_term_vac[i] *= (1.f / pi->m0);
+    wj_dx_term_vac[i] *= (1.f / pj->m0);
   }
 
   /* Gradients, including vacuum boundary switch (Sandnes+2025 Eqn. 32) */

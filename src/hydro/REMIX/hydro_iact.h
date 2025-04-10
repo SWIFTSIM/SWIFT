@@ -277,10 +277,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                   pj, dx);
 
   /* Pressure terms to be used in evolution equations */
-  const float P_i_term = pressurei * rhoi_inv * rhoj_inv;
-  const float P_j_term = pressurej * rhoi_inv * rhoj_inv;
-  const float Q_i_term = Qi * rhoi_inv * rhoj_inv;
-  const float Q_j_term = Qj * rhoi_inv * rhoj_inv;
+  // const float min_vac_switch = min(pi->force.vac_switch,
+  // pj->force.vac_switch);
+  const float free_function_i =
+      rhoi;  // min_vac_switch * rhoi + (1.f - min_vac_switch) * 0.5f * (rhoi +
+             // rhoj);
+  const float free_function_j =
+      rhoj;  // min_vac_switch * rhoj + (1.f - min_vac_switch) * 0.5f * (rhoi +
+             // rhoj);
+  const float P_i_term =
+      pressurei * (free_function_i / free_function_j) * rhoi_inv * rhoi_inv;
+  const float P_j_term =
+      pressurej * (free_function_j / free_function_i) * rhoj_inv * rhoj_inv;
+  const float Q_i_term =
+      Qi * (free_function_i / free_function_j) * rhoi_inv * rhoi_inv;
+  const float Q_j_term =
+      Qj * (free_function_j / free_function_i) * rhoj_inv * rhoj_inv;
 
   /* Use the force Luke! */
   pi->a_hydro[0] -=
@@ -307,8 +319,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->u_dt += mi * (P_j_term + Q_j_term) * dvdotG;
 
   /* Density time derivative */
-  pi->drho_dt += mj * (rhoi * rhoj_inv) * dvdotG;
-  pj->drho_dt += mi * (rhoj * rhoi_inv) * dvdotG;
+  pi->drho_dt += mj * (free_function_i / free_function_j) * dvdotG;
+  pj->drho_dt += mi * (free_function_j / free_function_i) * dvdotG;
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdotG * rhoj_inv;
@@ -449,10 +461,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                   pj, dx);
 
   /* Pressure terms to be used in evolution equations */
-  const float P_i_term = pressurei * rhoi_inv * rhoj_inv;
-  const float P_j_term = pressurej * rhoi_inv * rhoj_inv;
-  const float Q_i_term = Qi * rhoi_inv * rhoj_inv;
-  const float Q_j_term = Qj * rhoi_inv * rhoj_inv;
+  // const float min_vac_switch = min(pi->force.vac_switch,
+  // pj->force.vac_switch);
+  const float free_function_i =
+      rhoi;  // min_vac_switch * rhoi + (1.f - min_vac_switch) * 0.5f * (rhoi +
+             // rhoj);
+  const float free_function_j =
+      rhoj;  // min_vac_switch * rhoj + (1.f - min_vac_switch) * 0.5f * (rhoi +
+             // rhoj);
+  const float P_i_term =
+      pressurei * (free_function_i / free_function_j) * rhoi_inv * rhoi_inv;
+  const float P_j_term =
+      pressurej * (free_function_j / free_function_i) * rhoj_inv * rhoj_inv;
+  const float Q_i_term =
+      Qi * (free_function_i / free_function_j) * rhoi_inv * rhoi_inv;
+  const float Q_j_term =
+      Qj * (free_function_j / free_function_i) * rhoj_inv * rhoj_inv;
 
   /* Use the force Luke! */
   pi->a_hydro[0] -=
@@ -471,7 +495,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->u_dt += mj * (P_i_term + Q_i_term) * dvdotG;
 
   /* Density time derivative */
-  pi->drho_dt += mj * (rhoi * rhoj_inv) * dvdotG;
+  pi->drho_dt += mj * (free_function_i / free_function_j) * dvdotG;
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdotG * rhoj_inv;
