@@ -20,8 +20,7 @@ filename = args.input
 data = load(filename)
 
 time = data.metadata.time
-time.convert_to_units(unyt.Gyr)
-print("Plotting at %2f Gyr" % time)
+print("Plotting at %" % round(time,2))
 
 Lbox = data.metadata.boxsize
 
@@ -40,6 +39,8 @@ neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"]
 # Retrieve particle attributes of interest
 v = data.gas.velocities
 B = data.gas.magnetic_flux_densities
+h = data.gas.smoothing_lengths
+minh = np.min(h.value)
 
 # Generate mass weighted maps of quantities of interest
 data.gas.mass_weighted_vx = data.gas.masses * v[:,0]
@@ -113,8 +114,9 @@ def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx,nbins=res):
 
     return k_bin_centers, power_spectrum
 
-
+# plot magnetic field spectrum
 ks, Pb = compute_magnetic_power_spectrum(Bx_cube.value,By_cube.value,Bz_cube.value, dx = Lbox[0].value/(res) )
+# plot velocity spectrum
 ks, Pv = compute_magnetic_power_spectrum(vx_cube.value,vy_cube.value,vz_cube.value, dx = Lbox[0].value/(res) )
 
 
@@ -131,6 +133,7 @@ ksmock = np.logspace(-0.5,0.5,10)
 p = 3/2
 plt.plot(ksmock,1e6*ksmock**(p),color='black',linestyle='dashed',label = '$k^{3/2}$')
 
+plt.axvline(x=2*np.pi/minh, color='gray',linestyle='dashed',label = '$k_{res}$')
 
 plt.yscale('log')
 plt.xscale('log')

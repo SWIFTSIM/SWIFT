@@ -31,7 +31,7 @@ cs2 = 3025.0
 gamma = 5.0 / 3.0
 u0 = cs2 / (gamma * (gamma - 1))
 vrms = 1
-Brms = 1
+Brms = 1e-4
 
 
 # smoothing kernel optimized for numpy Price 1012.1885 (6)
@@ -72,7 +72,7 @@ def add_other_particle_properties(
 
     # seeding magnetic field (helical)
     B0 = Brms
-    kb0 = 2*np.pi/L*1
+    kb0 = 2*np.pi/L*10
 
     B[:, 0] += -(np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1]))
     B[:, 1] += -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         "-P",
         "--IA_path",
         help="path to particle itinial arrangement file",
-        default="./IAfiles/glassCube_32.hdf5",
+        default="./IAfiles/glassCube_16.hdf5",
         type=str,
     )
  
