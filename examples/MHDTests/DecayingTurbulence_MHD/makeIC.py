@@ -63,7 +63,7 @@ def add_other_particle_properties(
 
     # seeding turbulence (helical)
     v0 = vrms
-    kv0 = 2*np.pi/L*2
+    kv0 = 2*np.pi/L*10
 
     v[:, 0] += -(np.sin(kv0 * pos[:, 2]) - np.cos(kv0 * pos[:, 1]))
     v[:, 1] += -(np.cos(kv0 * pos[:, 0]) - np.cos(kv0 * pos[:, 2]))
@@ -72,7 +72,7 @@ def add_other_particle_properties(
 
     # seeding magnetic field (helical)
     B0 = Brms
-    kb0 = 2*np.pi/L*2
+    kb0 = 2*np.pi/L*1
 
     B[:, 0] += -(np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1]))
     B[:, 1] += -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         "-P",
         "--IA_path",
         help="path to particle itinial arrangement file",
-        default="./IAfiles/glassCube_16.hdf5",
+        default="./IAfiles/glassCube_32.hdf5",
         type=str,
     )
  
