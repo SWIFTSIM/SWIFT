@@ -660,7 +660,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
         dt_grav_corr1 = p->gravity.dt;
         dt_grav_corr2 = dt_grav;
 
-        /* Grab previous fluxes */
+        /* Grab current fluxes */
         hydro_part_get_fluxes(p, flux_for_gravity);
       } else {
         /* If no flux exchange set to 0 */
@@ -671,7 +671,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       dE_springel = hydro_gravity_energy_update_term(
           dt_grav_corr1, dt_grav_corr2, xp->a_grav,
           a_grav, p->gravity.mflux, p->v_part_full,
-          grav_kick, p->conserved.momentum, flux_for_gravity[4],
+          grav_kick, p->conserved.momentum, flux_for_gravity,
           p->conserved.energy);
 
 
