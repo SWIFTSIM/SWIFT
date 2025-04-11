@@ -126,14 +126,16 @@ plt.plot(ks,Pv,color='blue',label='$P_v(k)$')
 # plot spectral lines
 ksmock = np.logspace(1,2,10)
 p = -5/3
-plt.plot(ksmock,1e10*ksmock**(p),color='black',linestyle='dashed',label = '$k^{-5/3}$')
+P0 = 1e6
+plt.plot(ksmock,P0*(ksmock/10)**(p),color='black',linestyle='dashed',label = '$k^{-5/3}$')
 
 # plot spectral lines
 ksmock = np.logspace(-0.5,0.5,10)
 p = 3/2
-plt.plot(ksmock,1e6*ksmock**(p),color='black',linestyle='dashed',label = '$k^{3/2}$')
+P0 = 1e-1
+plt.plot(ksmock,P0*(ksmock/10**0.5)**(p),color='black',linestyle='dashdot',label = '$k^{3/2}$')
 
-plt.axvline(x=2*np.pi/minh, color='gray',linestyle='dashed',label = '$k_{res}$')
+plt.axvline(x=2*np.pi/minh, color='black',linestyle='solid',label = '$k_{\mathrm{res}}$')
 
 plt.yscale('log')
 plt.xscale('log')
