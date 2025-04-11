@@ -47,7 +47,7 @@ divB = data.gas.magnetic_divergences
 minh = np.min(h.value)
 
 # Renormalize quantities
-mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s ** 2 * unyt.A ** 2)
+mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s ** 2 * unyt.statA ** 2)
 v = v * (rho[:, None]/2)**0.5
 B = B / np.sqrt(2*mu0)
 
