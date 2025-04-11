@@ -74,6 +74,9 @@ CGS. Entries in the file look like:
     SmoothingLengths_Gas: on  # Co-moving smoothing lengths (FWHM of the kernel) of the particles : a U_L  [ cm ]
     ...
 
+This can also be used to set the outputs produced by the 
+:ref:`fof_stand_alone_label`.
+
 For cosmological simulations, users can optionally add the ``--cosmology`` flag
 to generate the field names appropriate for such a run.
 
