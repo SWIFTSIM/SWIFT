@@ -76,7 +76,7 @@ Bx_cube = mass_weighted_Bx_cube/mass_cube
 By_cube = mass_weighted_By_cube/mass_cube
 Bz_cube = mass_weighted_Bz_cube/mass_cube
 
-def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx,nbins=res):
+def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx, nbins):
     # Grid size
     Nx, Ny, Nz = Qx.shape
 
@@ -102,7 +102,13 @@ def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx,nbins=res):
     Q_power_flat = Q_power_k.flatten()
 
     # Define k bins (you can tweak bin size)
-    k_bins = np.linspace(0, np.max(k_mag), num=nbins)
+    k_bins = np.linspace(0, np.max(2*np.pi/minh), num=nbins)
+
+    # exclude 0th mode:
+    k_bins = k_bins[1:]
+    k_mag_flat = k_mag_flat[1:]
+    Q_power_flat = Q_power_flat[1:]
+
     k_bin_centers = 0.5 * (k_bins[1:] + k_bins[:-1])
 
     # Bin the power spectrum
@@ -115,9 +121,9 @@ def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx,nbins=res):
     return k_bin_centers, power_spectrum
 
 # plot magnetic field spectrum
-ks, Pb = compute_magnetic_power_spectrum(Bx_cube.value,By_cube.value,Bz_cube.value, dx = Lbox[0].value/(res) )
+ks, Pb = compute_magnetic_power_spectrum(Bx_cube.value,By_cube.value,Bz_cube.value, dx = Lbox[0].value/(res), nbins=res-1 )
 # plot velocity spectrum
-ks, Pv = compute_magnetic_power_spectrum(vx_cube.value,vy_cube.value,vz_cube.value, dx = Lbox[0].value/(res) )
+ks, Pv = compute_magnetic_power_spectrum(vx_cube.value,vy_cube.value,vz_cube.value, dx = Lbox[0].value/(res), nbins=res-1 )
 
 
 plt.plot(ks,Pb,color='red',linestyle='dashed',label='$P_B(k)$')
