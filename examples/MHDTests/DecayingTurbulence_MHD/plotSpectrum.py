@@ -78,6 +78,18 @@ Bx_cube = mass_weighted_Bx_cube/mass_cube
 By_cube = mass_weighted_By_cube/mass_cube
 Bz_cube = mass_weighted_Bz_cube/mass_cube
 
+
+unit_velocity = unyt.cm/unyt.s
+unit_magnetic_field = 1e-1 * unyt.g * unyt.statA ** (-1) * unyt.s ** (-2)
+
+vx_cube.convert_to_units(unit_velocity)
+vy_cube.convert_to_units(unit_velocity)
+vz_cube.convert_to_units(unit_velocity)
+
+Bx_cube.convert_to_units(unit_magnetic_field)
+By_cube.convert_to_units(unit_magnetic_field)
+Bz_cube.convert_to_units(unit_magnetic_field)
+
 def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx, nbins):
     # Grid size
     Nx, Ny, Nz = Qx.shape
