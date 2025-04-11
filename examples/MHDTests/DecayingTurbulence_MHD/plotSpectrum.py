@@ -40,6 +40,8 @@ neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"]
 v = data.gas.velocities
 B = data.gas.magnetic_flux_densities
 h = data.gas.smoothing_lengths
+normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
+divB = data.gas.magnetic_divergences
 minh = np.min(h.value)
 Npside = int(len(h)**(1/3))+1
 
@@ -51,6 +53,8 @@ data.gas.mass_weighted_vz = data.gas.masses * v[:,2]
 data.gas.mass_weighted_Bx = data.gas.masses * B[:,0]
 data.gas.mass_weighted_By = data.gas.masses * B[:,1]
 data.gas.mass_weighted_Bz = data.gas.masses * B[:,2]
+
+data.gas.mass_weighted_error = data.gas.masses * np.maximum(h * abs(divB) / (normB + 0.01 * np.max(normB)), 1e-6)
 
 res = Npside #int(args.resolution)
 
@@ -80,6 +84,9 @@ mass_weighted_Bx_cube = render_gas(**common_arguments, project="mass_weighted_Bx
 mass_weighted_By_cube = render_gas(**common_arguments, project="mass_weighted_By")
 mass_weighted_Bz_cube = render_gas(**common_arguments, project="mass_weighted_Bz")
 
+mass_weighted_error_cube = render_gas(**common_arguments, project="mass_weighted_error")
+
+
 vx_cube = mass_weighted_vx_cube/mass_cube
 vy_cube = mass_weighted_vy_cube/mass_cube
 vz_cube = mass_weighted_vz_cube/mass_cube
@@ -88,6 +95,7 @@ Bx_cube = mass_weighted_Bx_cube/mass_cube
 By_cube = mass_weighted_By_cube/mass_cube
 Bz_cube = mass_weighted_Bz_cube/mass_cube
 
+error_cube = mass_weighted_error_cube/mass_cube 
 
 unit_velocity = unyt.cm/unyt.s
 unit_magnetic_field = 1e-1 * unyt.g * unyt.statA ** (-1) * unyt.s ** (-2)
@@ -101,7 +109,50 @@ Bx_cube.convert_to_units(unit_magnetic_field)
 By_cube.convert_to_units(unit_magnetic_field)
 Bz_cube.convert_to_units(unit_magnetic_field)
 
-def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx, nbins):
+def compute_power_spectrum_scal(Q, dx, nbins):
+    # Grid size
+    Nx, Ny, Nz = Q.shape
+
+    # Compute Fourier transforms
+    Q_k = np.fft.fftn(Q)
+
+    # Compute power spectrum (squared magnitude of Fourier components)
+    Q_power_k = np.abs(Q_k)**2
+
+    # Compute the corresponding wavenumbers
+    kx = np.fft.fftfreq(Nx, d=dx) * 2 * np.pi
+    ky = np.fft.fftfreq(Ny, d=dx) * 2 * np.pi
+    kz = np.fft.fftfreq(Nz, d=dx) * 2 * np.pi
+
+    # Create 3D arrays of wavevectors
+    KX, KY, KZ = np.meshgrid(kx, ky, kz, indexing='ij')
+    k_mag = np.sqrt(KX**2 + KY**2 + KZ**2)
+
+    # Flatten arrays for binning
+    k_mag_flat = k_mag.flatten()
+    Q_power_flat = Q_power_k.flatten()
+
+    # Define k bins (you can tweak bin size)
+    k_bins = np.linspace(0, np.max(2*np.pi/minh), num=nbins)
+
+    # exclude 0th mode:
+    k_bins = k_bins[1:]
+    k_mag_flat = k_mag_flat[1:]
+    Q_power_flat = Q_power_flat[1:]
+
+    k_bin_centers = 0.5 * (k_bins[1:] + k_bins[:-1])
+
+    # Bin the power spectrum
+    power_spectrum, _ = np.histogram(k_mag_flat, bins=k_bins, weights=Q_power_flat)
+    counts, _ = np.histogram(k_mag_flat, bins=k_bins)
+    
+    # Avoid division by zero
+    power_spectrum = np.where(counts > 0, power_spectrum / counts, 0)
+
+    return k_bin_centers, power_spectrum
+
+
+def compute_power_spectrum_vec(Qx, Qy, Qz, dx, nbins):
     # Grid size
     Nx, Ny, Nz = Qx.shape
 
@@ -148,14 +199,18 @@ def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx, nbins):
 dx = (Lbox[0].to(unit_length)).value/(res)
 
 # plot magnetic field spectrum
-ks, Pb = compute_magnetic_power_spectrum(Bx_cube.value,By_cube.value,Bz_cube.value, dx = dx, nbins=res-1 )
+ks, Pb = compute_power_spectrum_vec(Bx_cube.value,By_cube.value,Bz_cube.value, dx = dx, nbins=res-1 )
 # plot velocity spectrum
-ks, Pv = compute_magnetic_power_spectrum(vx_cube.value,vy_cube.value,vz_cube.value, dx = dx, nbins=res-1 )
+ks, Pv = compute_power_spectrum_vec(vx_cube.value,vy_cube.value,vz_cube.value, dx = dx, nbins=res-1 )
+# plot divergence error spectrum
+ks, Perr = compute_power_spectrum_scal(error_cube.value, dx = dx, nbins=res-1 )
+
 
 fig, ax = plt.subplots(figsize=(10, 6.2))
 
 ax.plot(ks,Pb,color='red',linestyle='solid',label='$P_B(k)$')
 ax.plot(ks,Pv,color='blue',label='$P_v(k)$')
+ax.plot(ks,Perr,color='purple',label='$P_{R_{0}}(k)$')
 
 # plot spectral lines
 ksmock = np.logspace(0,1,10)
