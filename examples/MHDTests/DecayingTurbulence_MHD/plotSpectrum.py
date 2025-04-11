@@ -81,6 +81,7 @@ Bz_cube = mass_weighted_Bz_cube/mass_cube
 
 unit_velocity = unyt.cm/unyt.s
 unit_magnetic_field = 1e-1 * unyt.g * unyt.statA ** (-1) * unyt.s ** (-2)
+unit_length = unyt.cm
 
 vx_cube.convert_to_units(unit_velocity)
 vy_cube.convert_to_units(unit_velocity)
@@ -134,12 +135,14 @@ def compute_magnetic_power_spectrum(Qx, Qy, Qz, dx, nbins):
 
     return k_bin_centers, power_spectrum
 
-# plot magnetic field spectrum
-ks, Pb = compute_magnetic_power_spectrum(Bx_cube.value,By_cube.value,Bz_cube.value, dx = Lbox[0].value/(res), nbins=res-1 )
-# plot velocity spectrum
-ks, Pv = compute_magnetic_power_spectrum(vx_cube.value,vy_cube.value,vz_cube.value, dx = Lbox[0].value/(res), nbins=res-1 )
+dx = (Lbox[0].to(unit_length)).value/(res)
 
-fig, ax = plt.subplots(figsize=(6.8,5))
+# plot magnetic field spectrum
+ks, Pb = compute_magnetic_power_spectrum(Bx_cube.value,By_cube.value,Bz_cube.value, dx = dx, nbins=res-1 )
+# plot velocity spectrum
+ks, Pv = compute_magnetic_power_spectrum(vx_cube.value,vy_cube.value,vz_cube.value, dx = dx, nbins=res-1 )
+
+fig, ax = plt.subplots(figsize=(10, 6.2))
 
 ax.plot(ks,Pb,color='red',linestyle='dashed',label='$P_B(k)$')
 ax.plot(ks,Pv,color='blue',label='$P_v(k)$')
@@ -160,9 +163,11 @@ ax.axvline(x=2*np.pi/minh, color='black',linestyle='solid',label = r'$k_{\mathrm
 
 ax.set_yscale('log')
 ax.set_xscale('log')
-ax.set_xlabel('k')
-ax.set_ylabel('P(k)')
-ax.grid()
+ax.set_xlabel('k', fontsize=30)
+ax.set_ylabel('P(k)', fontsize=30)
+ax.tick_params(axis='both', labelsize=20)
+#ax.grid()
 ax.legend()
+fig.tight_layout()
 plt.savefig(args.output)
 
