@@ -127,32 +127,30 @@ ks, Pb = compute_magnetic_power_spectrum(Bx_cube.value,By_cube.value,Bz_cube.val
 # plot velocity spectrum
 ks, Pv = compute_magnetic_power_spectrum(vx_cube.value,vy_cube.value,vz_cube.value, dx = Lbox[0].value/(res), nbins=res-1 )
 
+fig, ax = plt.subplots(figsize=(6.8,5))
 
-plt.plot(ks,Pb,color='red',linestyle='dashed',label='$P_B(k)$')
-plt.plot(ks,Pv,color='blue',label='$P_v(k)$')
+ax.plot(ks,Pb,color='red',linestyle='dashed',label='$P_B(k)$')
+ax.plot(ks,Pv,color='blue',label='$P_v(k)$')
 
 # plot spectral lines
 ksmock = np.logspace(0,1,10)
 p = -5/3
-P0 = 1e6
-plt.plot(ksmock,P0*(ksmock/10)**(p),color='black',linestyle='dashed',label = '$k^{-5/3}$')
+P0 = 1e5
+ax.plot(ksmock,P0*(ksmock/10)**(p),color='black',linestyle='dashed',label = '$k^{-5/3}$')
 
 # plot spectral lines
 ksmock = np.logspace(0,1,10)
 p = 3/2
 P0 = 1e-1
-plt.plot(ksmock,P0*(ksmock)**(p),color='black',linestyle='dashdot',label = '$k^{3/2}$')
+ax.plot(ksmock,P0*(ksmock)**(p),color='black',linestyle='dashdot',label = '$k^{3/2}$')
 
-plt.axvline(x=2*np.pi/minh, color='black',linestyle='solid',label = '$k_{\mathrm{res}}$')
+ax.axvline(x=2*np.pi/minh, color='black',linestyle='solid',label = r'$k_{\mathrm{res}}$')
 
-plt.yscale('log')
-plt.xscale('log')
-plt.xlabel('k')
-plt.ylabel('P(k)')
-plt.grid()
-plt.legend()
+ax.set_yscale('log')
+ax.set_xscale('log')
+ax.set_xlabel('k')
+ax.set_ylabel('P(k)')
+ax.grid()
+ax.legend()
 plt.savefig(args.output)
-
-
-
 
