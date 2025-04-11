@@ -63,7 +63,7 @@ def add_other_particle_properties(
 
     # seeding turbulence (helical) at large scales
     v0 = vrms
-    kv0 = 2*np.pi/L
+    kv0 = 2*np.pi/L*3
 
     v[:, 0] += -(np.sin(kv0 * pos[:, 2]) - np.cos(kv0 * pos[:, 1]))
     v[:, 1] += -(np.cos(kv0 * pos[:, 0]) - np.cos(kv0 * pos[:, 2]))
@@ -72,7 +72,7 @@ def add_other_particle_properties(
 
     # seeding magnetic field (helical) at small scales
     B0 = Brms
-    kb0 = 2*np.pi/L * int(L/(4*np.max(h)))
+    kb0 = 2*np.pi/L * int(L/(4*np.max(h))+1)
 
     B[:, 0] += -(np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1]))
     B[:, 1] += -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
