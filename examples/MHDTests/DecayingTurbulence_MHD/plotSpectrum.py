@@ -154,7 +154,7 @@ ks, Pv = compute_magnetic_power_spectrum(vx_cube.value,vy_cube.value,vz_cube.val
 
 fig, ax = plt.subplots(figsize=(10, 6.2))
 
-ax.plot(ks,Pb,color='red',linestyle='dashed',label='$P_B(k)$')
+ax.plot(ks,Pb,color='red',linestyle='solid',label='$P_B(k)$')
 ax.plot(ks,Pv,color='blue',label='$P_v(k)$')
 
 # plot spectral lines
@@ -167,7 +167,7 @@ ax.plot(ksmock,P0*(ksmock/10)**(p),color='black',linestyle='dashed',label = '$k^
 ksmock = np.logspace(0,1,10)
 p = 3/2
 P0 = 1e-1
-ax.plot(ksmock,P0*(ksmock)**(p),color='black',linestyle='dashdot',label = '$k^{3/2}$')
+ax.plot(ksmock,P0*(ksmock)**(p),color='black',linestyle='dotted',label = '$k^{3/2}$')
 
 ax.axvline(x=2*np.pi/minh, color='black',linestyle='solid',label = r'$k_{\mathrm{res}}$')
 
