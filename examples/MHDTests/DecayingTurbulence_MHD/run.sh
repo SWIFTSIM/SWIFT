@@ -11,4 +11,4 @@ fi
 ../../../swift --hydro --threads=4 DecayingTurbulence.yml 2>&1 | tee output.log
 
 # Plot the calculated solution at time t=0.1
-python3 plotSpectrum.py DecayingTurbulence_0011.hdf5 DecayingTurbulence_0011.png 128	
+python3 plotSpectrum.py DecayingTurbulence_0011.hdf5 DecayingTurbulence_0011.png

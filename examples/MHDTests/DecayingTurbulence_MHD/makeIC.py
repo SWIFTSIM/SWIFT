@@ -105,7 +105,7 @@ if __name__ == "__main__":
         "-P",
         "--IA_path",
         help="path to particle itinial arrangement file",
-        default="./IAfiles/glassCube_32.hdf5",
+        default="./IAfiles/glassCube_64.hdf5",
         type=str,
     )
  

@@ -12,7 +12,7 @@ from swiftsimio.visualisation.volume_render import render_gas
 argparser = argparse.ArgumentParser()
 argparser.add_argument("input")
 argparser.add_argument("output")
-argparser.add_argument("resolution")
+#argparser.add_argument("resolution")
 args = argparser.parse_args()
 
 # Load snapshot
@@ -41,6 +41,7 @@ v = data.gas.velocities
 B = data.gas.magnetic_flux_densities
 h = data.gas.smoothing_lengths
 minh = np.min(h.value)
+Npside = int(len(h)**(1/3))+1
 
 # Generate mass weighted maps of quantities of interest
 data.gas.mass_weighted_vx = data.gas.masses * v[:,0]
@@ -51,7 +52,8 @@ data.gas.mass_weighted_Bx = data.gas.masses * B[:,0]
 data.gas.mass_weighted_By = data.gas.masses * B[:,1]
 data.gas.mass_weighted_Bz = data.gas.masses * B[:,2]
 
-res = int(args.resolution)
+res = Npside #int(args.resolution) 
+print(res)
 
 common_arguments = dict(
     data=data, resolution=res, parallel=True,periodic=True,
