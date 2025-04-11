@@ -52,11 +52,21 @@ data.gas.mass_weighted_Bx = data.gas.masses * B[:,0]
 data.gas.mass_weighted_By = data.gas.masses * B[:,1]
 data.gas.mass_weighted_Bz = data.gas.masses * B[:,2]
 
-res = Npside #int(args.resolution) 
-print(res)
+res = Npside #int(args.resolution)
+
+#Lslice = 0.5*Lbox
+#center = Lbox/2
+#visualise_region = [
+#    center[0] - Lslice,
+#    center[0] + Lslice,
+#    center[1] - Lslice,
+#    center[1] + Lslice,
+#    center[2] - Lslice,
+#    center[2] + Lslice,
+#]
 
 common_arguments = dict(
-    data=data, resolution=res, parallel=True,periodic=True,
+    data=data, resolution=res, parallel=True,periodic=True,#region=visualise_region,
 )
 
 
