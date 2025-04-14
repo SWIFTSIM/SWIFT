@@ -1083,6 +1083,10 @@ void runner_do_fof_search_pair(struct runner *r, struct cell *ci,
   const struct gpart *const gparts = s->gparts;
   const double search_r2 = e->fof_properties->l_x2;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != cj->nodeID) error("Searching foreign cells!");
+#endif
+
   rec_fof_search_pair(e->fof_properties, dim, search_r2, periodic, gparts, ci,
                       cj);
 
