@@ -112,7 +112,7 @@ print("G=", const_G)
 
 # Parameters
 periodic = 1  # 1 For periodic box
-boxSize = 4.0
+boxSize = 2.0 # 4.0
 G = const_G
 N = int(sys.argv[1])  # Number of particles
 IAsource = "IAfile"
@@ -397,11 +397,17 @@ print("j_sp =", j_sp)
 # is proportional to j/r^2
 
 # define specific angular momentum distribution
-def j(r_value, j_max, s, f_b, M_200_cgs, r_200_cgs, c_200):
-    return (
-        j_max
-        * (Mgas_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200) / (M_200_cgs * f_b)) ** s
-    )
+def j(r_value, j_max, s, f_b, M_200_cgs, r_200_cgs, c_200, angular_momentum_profile="M(r)"):
+    if angular_momentum_profile == "M(r)":
+        return (
+            j_max
+            * (Mgas_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200) / (M_200_cgs * f_b)) ** s
+        )
+    elif angular_momentum_profile=="r^s": # for rigid body rotation use r^2
+        return (
+            j_max
+            * r_value**s
+        )
 
 
 omega = np.zeros((N, 3))
@@ -419,6 +425,7 @@ for i in range(N):
 mask_r_200 = radius <= 1
 Lp_tot = np.sum(l[mask_r_200], axis=0)
 Lp_tot_abs = np.linalg.norm(Lp_tot)
+jsp = Lp_tot_abs/f_b
 normV = np.linalg.norm(v, axis=1)
 
 if spin_lambda_choice == "Peebles":
@@ -437,10 +444,13 @@ if spin_lambda_choice == "Peebles":
     l *= spin_lambda / calc_spin_par_P
 elif spin_lambda_choice == "Bullock":
     # Normalize to Bullock
-    jp_sp = Lp_tot_abs / (gas_particle_mass * np.sum(mask_r_200))
-    calc_spin_par_B = jp_sp / (np.sqrt(2) * 1 * v_200)
-    v *= spin_lambda / calc_spin_par_B
-    l *= spin_lambda / calc_spin_par_B
+    jsp_B = (np.sqrt(2) * v_200 )*spin_lambda
+    v *= jsp_B/jsp
+
+   # jp_sp = Lp_tot_abs / (gas_particle_mass * np.sum(mask_r_200))
+   # calc_spin_par_B = jp_sp / (np.sqrt(2) * 1 * v_200)
+   # v *= spin_lambda / calc_spin_par_B
+   # l *= spin_lambda / calc_spin_par_B
 
 # Draw velocity distribution
 if plot_v_distribution:
