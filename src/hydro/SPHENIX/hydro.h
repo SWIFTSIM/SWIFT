@@ -569,11 +569,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
 
-  p->density.rot_v[0] = 0.f;
-  p->density.rot_v[1] = 0.f;
-  p->density.rot_v[2] = 0.f;
-
-  p->viscosity.div_v = 0.f;
   p->diffusion.laplace_u = 0.f;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
@@ -631,21 +626,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
 
-  const float rho_inv = 1.f / p->rho;
-  const float a_inv2 = cosmo->a2_inv;
-
-  /* Finish calculation of the velocity curl components */
-  p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-  p->density.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-  p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-
-  /* Finish calculation of the velocity divergence */
-  p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
-  p->viscosity.div_v += cosmo->H * hydro_dimension;
-
   /* Finish matrix and volume computations for FVPM Radiative Transfer */
   fvpm_compute_volume_and_matrix(p, h_inv_dim);
-
+  
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_density += kernel_root;
   p->n_density *= h_inv_dim;
@@ -673,26 +656,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
-  const float fac_B = cosmo->a_factor_Balsara_eps;
-
-  /* Compute the norm of the curl */
-  const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
-                             p->density.rot_v[1] * p->density.rot_v[1] +
-                             p->density.rot_v[2] * p->density.rot_v[2]);
-
-  /* Compute the norm of div v */
-  const float abs_div_v = fabsf(p->viscosity.div_v);
-
   /* Compute the sound speed  */
   const float pressure = hydro_get_comoving_pressure(p);
   const float pressure_including_floor =
       pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
-
-  /* Compute the Balsara switch */
-  const float balsara =
-      abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed * fac_B / p->h);
 
   /* Compute the "grad h" term  - Note here that we have \tilde{x}
    * as 1 as we use the local number density to find neighbours. This
@@ -725,12 +694,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
       grad_h_term = common_factor * p->density.rho_dh / (1.f + grad_W_term);
     }
   }
-
+  
   /* Update variables. */
   p->force.f = grad_h_term;
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
-  p->force.balsara = balsara;
 }
 
 /**
@@ -745,6 +713,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
+  p->viscosity.rot_v[0] = 0.f;
+  p->viscosity.rot_v[1] = 0.f;
+  p->viscosity.rot_v[2] = 0.f;
+
+  p->viscosity.div_v = 0.f;
+  
   p->viscosity.v_sig = 2.f * p->force.soundspeed;
   p->force.alpha_visc_max_ngb = p->viscosity.alpha;
 }
@@ -760,18 +734,30 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
-    struct part *p) {
+    struct part *p, const struct cosmology *cosmo, const struct pressure_floor_props *pressure_floor) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float h_inv = 1.0f / h;                       /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+  
+  const float rho_inv = 1.f / p->rho;
+  const float a_inv2 = cosmo->a2_inv;
 
+  /* Finish calculation of the velocity curl components */
+  p->viscosity.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->viscosity.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->viscosity.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+
+  /* Finish calculation of the velocity divergence */
+  p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
+  p->viscosity.div_v += cosmo->H * hydro_dimension;
+  
   /* Include the extra factors in the del^2 u */
 
   p->diffusion.laplace_u *= 2.f * h_inv_dim_plus_one;
-
+  
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_gradient += kernel_root;
 #endif
@@ -809,9 +795,9 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
 
-  p->density.rot_v[0] = 0.f;
-  p->density.rot_v[1] = 0.f;
-  p->density.rot_v[2] = 0.f;
+  p->viscosity.rot_v[0] = 0.f;
+  p->viscosity.rot_v[1] = 0.f;
+  p->viscosity.rot_v[2] = 0.f;
 
   /* Probably not shocking, so this is safe to do */
   p->viscosity.div_v = 0.f;
@@ -852,16 +838,35 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float pressure = hydro_get_comoving_pressure(p);
   const float pressure_including_floor =
       pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
-  const float soundspeed_physical =
-      gas_soundspeed_from_pressure(p->rho, pressure_including_floor) *
-      cosmo->a_factor_sound_speed;
-
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
+  const float soundspeed_physical = soundspeed * cosmo->a_factor_sound_speed;
+  const float fac_B = cosmo->a_factor_Balsara_eps;
+  
   const float sound_crossing_time_inverse =
       soundspeed_physical * kernel_support_physical_inv;
 
+  /* Compute the norm of the curl */
+  const float curl_v = sqrtf(p->viscosity.rot_v[0] * p->viscosity.rot_v[0] +
+                             p->viscosity.rot_v[1] * p->viscosity.rot_v[1] +
+                             p->viscosity.rot_v[2] * p->viscosity.rot_v[2]);
+
+  /* Compute the norm of div v */
+  const float abs_div_v = fabsf(p->viscosity.div_v);
+  
+  /* Get the squares of the quantities necessary for the Balsara-like switch */
+  const float fac_B_2 = fac_B * fac_B;
+  const float curl_v_2 = curl_v * curl_v;
+  const float abs_div_v_2 = abs_div_v * abs_div_v;
+  const float soundspeed_2 = soundspeed * soundspeed;
+  const float h_2 = p->h * p->h;
+  
+  /* Compute the Balsara-like switch (Price et a. (2018), eq. 47; a simplified version of eq. 18 in Cullen & Dehnen (2012)) */
+  const float balsara =
+      abs_div_v_2 / (abs_div_v_2 + curl_v_2 + 0.0001f * soundspeed_2 * fac_B_2 / h_2);
+  
   /* Construct time differential of div.v implicitly following the ANARCHY spec
    */
-
   const float div_v_dt =
       dt_alpha == 0.f
           ? 0.f
@@ -872,7 +877,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Source term is only activated if flow is converging (i.e. in the pre-
    * shock region) */
   const float S = p->viscosity.div_v < 0.f
-                      ? kernel_support_physical * kernel_support_physical *
+                      ? balsara * kernel_support_physical * kernel_support_physical *
                             max(0.f, -1.f * div_v_dt)
                       : 0.f;
 
