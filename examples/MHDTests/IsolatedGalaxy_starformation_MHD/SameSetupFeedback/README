@@ -1,0 +1,12 @@
+This is the same setup as IsolatedGalaxy_starformation but with feedback added
+
+
+Compilation
+-----------
+for runs with EAGLE cooling+chemistry+entropy floor+feedback
+./configure --with-cooling=EAGLE --with-chemistry=EAGLE --with-entropy-floor=EAGLE --with-ext-potential=hernquist --with-stars=EAGLE --with-star-formation=EAGLE --with-feedback=EAGLE --with-tracers=EAGLE --with-kernel=wendland-C2 --with-spmhd=direct-induction
+
+Running
+-------
+
+../../../swift --threads=16 --feedback --external-gravity --self-gravity --stars --star-formation --cooling --hydro --limiter --sync isolated_galaxy.yml 2>&1 | tee output.log
