@@ -37,6 +37,13 @@ struct phys_const;
 struct black_holes_props;
 struct cosmology;
 
+/* Store group size and offset into array. */
+struct group_length {
+
+  size_t index, size;
+
+} SWIFT_STRUCT_ALIGN;
+
 struct fof_props {
 
   /*! Whether we're doing periodic FoF calls to seed black holes. */
@@ -80,6 +87,9 @@ struct fof_props {
   /*! Number of groups */
   long long num_groups;
 
+  /*! Number of groups whose root is local */
+  size_t num_groups_local;
+
   /*! Number of local black holes that belong to groups whose roots are on a
    * different node. */
   int extra_bh_seed_count;
@@ -102,6 +112,9 @@ struct fof_props {
   /*! Size of the group a given gpart belongs to. */
   size_t *group_size;
 
+  /*! Size of the local groups a given gpart belongs to. */
+  struct group_length *high_group_sizes;
+
   /*! Final size of the group a given gpart belongs to. */
   long long *final_group_size;
 
@@ -120,6 +133,15 @@ struct fof_props {
   /*! Maximal density of all parts of each group. */
   float *max_part_density;
 
+  /* Number of groups on each node */
+  size_t *num_on_node;
+
+  /* First group on each node */
+  size_t *first_on_node;
+
+  /* Total number of groups on lower numbered MPI ranks */
+  size_t num_groups_prev;
+
   /* ------------ MPI-related arrays --------------- */
 
   /*! The number of links between pairs of particles on this node and
@@ -133,13 +155,6 @@ struct fof_props {
    * node */
   struct fof_mpi *group_links;
 };
-
-/* Store group size and offset into array. */
-struct group_length {
-
-  size_t index, size;
-
-} SWIFT_STRUCT_ALIGN;
 
 #ifdef WITH_MPI
 
@@ -199,10 +214,11 @@ void fof_compute_local_sizes(struct fof_props *props, struct space *s);
 void fof_search_foreign_cells(struct fof_props *props, const struct space *s);
 void fof_link_attachable_particles(struct fof_props *props,
                                    const struct space *s);
-void fof_finalise_attachables(struct fof_props *props, const struct space *s);
+void fof_finalise_attachables(struct fof_props *props, struct space *s);
 void fof_link_foreign_fragments(struct fof_props *props, const struct space *s);
 void fof_build_list_of_purely_local_groups(struct fof_props *props,
                                            const struct space *s);
+void fof_assign_group_ids(struct fof_props *props, struct space *s);
 void fof_compute_group_props(struct fof_props *props,
                              const struct black_holes_props *bh_props,
                              const struct phys_const *constants,
