@@ -120,7 +120,7 @@ runner_iact_nonsym_feedback_apply(
   const double dm = m_ej * weight;
   const double new_mass = mj + dm;
 
-  if (false) { //e_sn != 0.0) {
+  if (e_sn != 0.0) {
     /* Energy received */
     const double du = (e_sn) * weight / new_mass;
 
