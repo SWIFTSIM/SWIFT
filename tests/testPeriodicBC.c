@@ -139,6 +139,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 #else
         part->mass = density * volume / count;
 #endif
+#if defined(REMIX_SPH)
+        part->rho_evol = density;
+#endif
 
 #if defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;

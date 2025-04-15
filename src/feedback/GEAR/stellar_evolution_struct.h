@@ -191,6 +191,9 @@ struct stellar_model {
   /*! Name of the different elements */
   char elements_name[GEAR_CHEMISTRY_ELEMENT_COUNT * GEAR_LABELS_SIZE];
 
+  /* Solar mass abundances read from the chemistry table */
+  float solar_abundances[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
   /*! The initial mass function */
   struct initial_mass_function imf;
 

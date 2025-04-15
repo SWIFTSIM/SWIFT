@@ -1,0 +1,41 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1   # Grams
+  UnitLength_in_cgs:   1   # Centimeters
+  UnitVelocity_in_cgs: 1   # Centimeters per second
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+  
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.0    # The starting time of the simulation (in internal units).
+  time_end:   2.625  # The end time of the simulation (in internal units). Corresponding to 2 \tau_{KH}.
+  dt_min:     1e-9   # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2   # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            kelvin_helmholtz  # Common part of the name of output files
+  time_first:          0.                # Time of the first output (in internal units)
+  delta_time:          0.106             # Time difference between consecutive outputs (in internal units). Corresponding to 0.1 \tau_{KH}.
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          0.105 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.487    # Target smoothing length in units of the mean inter-particle separation (1.487 == 100Ngbs with the Wendland C2 kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./kelvin_helmholtz.hdf5     # The file to read
+  periodic:   1
+  
+Scheduler:
+    max_top_level_cells:      40         # Maximal number of top-level cells in any dimension.
+    
+# Parameters related to the equation of state
+EoS:
+    planetary_use_idg_def:    1     # Default ideal gas, material ID 0

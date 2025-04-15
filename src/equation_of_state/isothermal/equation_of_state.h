@@ -50,7 +50,7 @@ struct eos_parameters {
  * @param entropy The entropy \f$S\f$.
  */
 __attribute__((always_inline)) INLINE static float
-gas_internal_energy_from_entropy(float density, float entropy) {
+gas_internal_energy_from_entropy(const float density, const float entropy) {
 
   return eos.isothermal_internal_energy;
 }
@@ -65,7 +65,7 @@ gas_internal_energy_from_entropy(float density, float entropy) {
  * @param entropy The entropy \f$S\f$.
  */
 __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
-    float density, float entropy) {
+    const float density, const float entropy) {
 
   return hydro_gamma_minus_one * eos.isothermal_internal_energy * density;
 }
@@ -81,7 +81,7 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
  * @return The entropy \f$A\f$.
  */
 __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
-    float density, float pressure) {
+    const float density, const float pressure) {
 
   return hydro_gamma_minus_one * eos.isothermal_internal_energy *
          pow_minus_gamma_minus_one(density);
@@ -98,7 +98,7 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
  * @param entropy The entropy \f$S\f$.
  */
 __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
-    float density, float entropy) {
+    const float density, const float entropy) {
 
   return sqrtf(eos.isothermal_internal_energy * hydro_gamma *
                hydro_gamma_minus_one);
@@ -114,7 +114,7 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
  * @param u The internal energy \f$u\f$
  */
 __attribute__((always_inline)) INLINE static float
-gas_entropy_from_internal_energy(float density, float u) {
+gas_entropy_from_internal_energy(const float density, const float u) {
 
   return hydro_gamma_minus_one * eos.isothermal_internal_energy *
          pow_minus_gamma_minus_one(density);
@@ -130,7 +130,7 @@ gas_entropy_from_internal_energy(float density, float u) {
  * @param u The internal energy \f$u\f$
  */
 __attribute__((always_inline)) INLINE static float
-gas_pressure_from_internal_energy(float density, float u) {
+gas_pressure_from_internal_energy(const float density, const float u) {
 
   return hydro_gamma_minus_one * eos.isothermal_internal_energy * density;
 }
@@ -145,7 +145,7 @@ gas_pressure_from_internal_energy(float density, float u) {
  * @return The internal energy \f$u\f$ (which is constant).
  */
 __attribute__((always_inline)) INLINE static float
-gas_internal_energy_from_pressure(float density, float pressure) {
+gas_internal_energy_from_pressure(const float density, const float pressure) {
   return eos.isothermal_internal_energy;
 }
 
@@ -160,7 +160,7 @@ gas_internal_energy_from_pressure(float density, float pressure) {
  * @param u The internal energy \f$u\f$
  */
 __attribute__((always_inline)) INLINE static float
-gas_soundspeed_from_internal_energy(float density, float u) {
+gas_soundspeed_from_internal_energy(const float density, const float u) {
 
   return sqrtf(eos.isothermal_internal_energy * hydro_gamma *
                hydro_gamma_minus_one);
@@ -177,7 +177,7 @@ gas_soundspeed_from_internal_energy(float density, float u) {
  * @param P The pressure \f$P\f$
  */
 __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
-    float density, float P) {
+    const float density, const float P) {
 
   return sqrtf(eos.isothermal_internal_energy * hydro_gamma *
                hydro_gamma_minus_one);

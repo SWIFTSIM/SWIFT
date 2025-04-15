@@ -18,6 +18,8 @@
  ******************************************************************************/
 #include <config.h>
 
+#if !defined(RIEMANN_SOLVER_NONE)
+
 /* Local headers. */
 #include <string.h>
 
@@ -326,3 +328,7 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
+
+#else
+int main(int argc, char* argv[]) { return 0; }
+#endif /* !RIEMANN_SOLVER_NONE */
