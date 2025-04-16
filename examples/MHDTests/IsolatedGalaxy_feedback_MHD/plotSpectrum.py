@@ -286,6 +286,8 @@ ax.plot(ks,Ev.value,color='blue',label='$E_v(k)$')
 ax.plot(ks,Eb.value,color='red',linestyle='solid',label='$E_B(k)$')
 ax.plot(ks,Eb_div.value,color='purple',linestyle='solid',label='$E_{B_{mon}}(k)$')
 #ax.plot(ks,Perr,color='purple',label='$P_{R_{0}}(k)$')
+ax.set_ylim([1e56,1e61])
+ax.set_xlim([1e-1,1e3])
 
 # resolution line
 ax.axvline(x=k_res, color='brown',linestyle='solid',label = r'$k_{\mathrm{res}}$')

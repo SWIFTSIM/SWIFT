@@ -47,7 +47,9 @@ divB = data.gas.magnetic_divergences
 minh = np.min(h.value)
 
 # Renormalize quantities
-mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s ** 2 * unyt.statA ** 2)
+mu0 = 1.25663706127e-6 * unyt.kg * unyt.m / (unyt.s ** 2 * unyt.statA ** 2)
+# note that older swiftsimio version is using statA even if swift has MF as A
+#mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s ** 2 * unyt.statA ** 2)
 v = v * (rho[:, None]/2)**0.5
 B = B / np.sqrt(2*mu0)
 
@@ -76,7 +78,7 @@ k_res = np.max(2*np.pi/h)
 res = int((2*Lslice/np.min(h)).value) #Npside #int(args.resolution)
 
 # resolution limiter
-resmax=512
+resmax= 512
 print('Suggested maximal resoluiton: ',res)
 res = min([res,resmax])
 
@@ -211,9 +213,17 @@ def compute_power_spectrum_vec(Qx, Qy, Qz, dx,nbins):
     KX, KY, KZ = np.meshgrid(kx, ky, kz, indexing='ij')
     k_mag = np.sqrt(KX**2 + KY**2 + KZ**2)
 
+    # Calculate monopole component
+    Q_dot_k = Qx_k * KX + Qy_k * KY + Qz_k * KZ
+    Qx_k_div = KX * Q_dot_k / k_mag**2
+    Qy_k_div = KY * Q_dot_k / k_mag**2
+    Qz_k_div = KZ * Q_dot_k / k_mag**2
+    Pk_div = (np.abs(Qx_k_div)**2 + np.abs(Qy_k_div)**2 + np.abs(Qz_k_div)**2)#.to(unyt.g/(unyt.s**2)*unyt.cm**5)  # or appropriate units
+
     # Flatten and bin
     k_flat = k_mag.flatten() #.to('1/cm')
     Pk_flat = Pk.flatten() #.to(unyt.g/(unyt.s**2)*unyt.cm**5)  # this should be correct after unit reduction
+    Pk_div_flat = Pk_div.flatten()
 
     # Bin in k-space
     k_min_log = np.log10(np.min(k_flat.value[k_flat.value!=0]))
@@ -224,40 +234,48 @@ def compute_power_spectrum_vec(Qx, Qy, Qz, dx,nbins):
     k_bins = k_bins[1:]
     k_flat = k_flat[1:]
     Pk_flat = Pk_flat[1:]
+    Pk_div_flat = Pk_div_flat[1:]
 
     # converting to Energy per unit wavevector
     Ek_flat = 4*np.pi * k_flat**2 * Pk_flat
+    Ek_div_flat = 4*np.pi * k_flat**2 * Pk_div_flat
 
     k_bin_centers = 0.5 * (k_bins[1:] + k_bins[:-1])
 
     power_spectrum = np.zeros(len(k_bin_centers)) * Ek_flat.units
+    power_spectrum_div = np.zeros(len(k_bin_centers)) * Ek_div_flat.units
     counts = np.zeros(len(k_bin_centers))
    
     for i in range(len(k_bin_centers)):
         in_bin = (k_flat >= k_bins[i]) & (k_flat < k_bins[i+1])
         power_spectrum[i] = Ek_flat[in_bin].sum()
+        power_spectrum_div[i] = Ek_div_flat[in_bin].sum()
         counts[i] = in_bin.sum()
 
     # Normalize per mode (optional)
     power_spectrum = np.where(counts > 0, power_spectrum / counts, 0 * power_spectrum.units)
+    power_spectrum_div = np.where(counts > 0, power_spectrum_div / counts, 0 * power_spectrum_div.units)
 
     # mask non-zero
     mask_zeros = power_spectrum==0
     k_bin_centers = k_bin_centers[~mask_zeros]
     power_spectrum = power_spectrum[~mask_zeros]
+    power_spectrum_div = power_spectrum_div[~mask_zeros]
 
-    return k_bin_centers, power_spectrum
+    return k_bin_centers, power_spectrum, power_spectrum_div
 
 dx = 2*Lslice.to(unit_length)/(res)
 
 # plot magnetic field spectrum
-ks, Eb = compute_power_spectrum_vec(Bx_cube,By_cube,Bz_cube, dx = dx, nbins=res-1 )
+ks, Eb, Eb_div = compute_power_spectrum_vec(Bx_cube,By_cube,Bz_cube, dx = dx, nbins=res-1 )
 # plot velocity spectrum
-ks, Ev = compute_power_spectrum_vec(vx_cube,vy_cube,vz_cube, dx = dx, nbins=res-1 )
+ks, Ev, _ = compute_power_spectrum_vec(vx_cube,vy_cube,vz_cube, dx = dx, nbins=res-1 )
 # plot divergence error spectrum
 #ks, Perr = compute_power_spectrum_scal(error_cube, dx = dx, nbins=res-1 )
 
 Eb.convert_to_units(unyt.erg*(1e3*unyt.pc))
+Eb_div.convert_to_units(unyt.erg*(1e3*unyt.pc))
+
 Ev.convert_to_units(unyt.erg*(1e3*unyt.pc))
 ks.convert_to_units(1e-3/unyt.pc)
 
@@ -266,7 +284,10 @@ fig, ax = plt.subplots(figsize=(10, 6.2))
 
 ax.plot(ks,Ev.value,color='blue',label='$E_v(k)$')
 ax.plot(ks,Eb.value,color='red',linestyle='solid',label='$E_B(k)$')
+ax.plot(ks,Eb_div.value,color='purple',linestyle='solid',label='$E_{B_{mon}}(k)$')
 #ax.plot(ks,Perr,color='purple',label='$P_{R_{0}}(k)$')
+ax.set_ylim([1e56,1e61])
+ax.set_xlim([1e-1,1e3])
 
 # resolution line
 ax.axvline(x=k_res, color='brown',linestyle='solid',label = r'$k_{\mathrm{res}}$')
