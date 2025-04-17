@@ -50,22 +50,10 @@ nH = rho.to(unyt.g / unyt.cm ** 3) / (1.67e-24 * unyt.g)
 h = data.gas.smoothing_lengths
 v = data.gas.velocities
 P = data.gas.pressures
-B = data.gas.magnetic_flux_densities
 T = data.gas.temperatures
 
-R0 = data.gas.r0
-R1 = data.gas.r1
-R2 = data.gas.r2
-R3 = data.gas.r3
-
-normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
 
 # Retrieve some information about the simulation run
-artDiffusion = data.metadata.hydro_scheme["Artificial Diffusion Constant"]
-dedHyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"]
-dedHypDivv = data.metadata.hydro_scheme["Dedner Hyperbolic div(v) Constant"]
-dedPar = data.metadata.hydro_scheme["Dedner Parabolic Constant"]
-eta = data.metadata.hydro_scheme["Resistive Eta"]
 git = data.metadata.code["Git Revision"]
 gitBranch = data.metadata.code["Git Branch"]
 hydroScheme = data.metadata.hydro_scheme["Scheme"]
@@ -224,18 +212,7 @@ def plot_histogram_density_plot(quantity_x, quantity_y, qname_x, qname_y, Nbins=
         kernel.decode("utf-8") + " with $%.2f$ neighbours" % (neighbours),
         **text_common_args,
     )
-    ax[1].text(
-        0.5, 0.3, "Artificial diffusion: $%.2f$ " % (artDiffusion), **text_common_args
-    )
-    ax[1].text(
-        0.5,
-        0.2,
-        "Dedner Hyp, Hyp_div(v), Par: $%.2f,%.2f,%.2f$ " % (dedHyp, dedHypDivv, dedPar),
-        **text_common_args,
-    )
-    ax[1].text(
-        0.5, 0.1, "Physical resistivity $\eta$: $%.2f$ " % (eta), **text_common_args
-    )
+    
     ax[1].text(
         0.5, 0.0, "Number of particles $N_p$: $%.0f$ " % (Np), **text_common_args
     )

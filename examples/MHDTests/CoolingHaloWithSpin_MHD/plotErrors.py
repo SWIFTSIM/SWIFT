@@ -55,11 +55,16 @@ R0 = data.gas.r0
 R1 = data.gas.r1
 R2 = data.gas.r2
 OW = data.gas.owtriggers
+etaeff = data.gas.total_effective_resistivities
+#etaeff.convert_to_units(unyt.cm**2 / unyt.s)
+
+print(max(etaeff),min(etaeff))
+
 mean_OW = np.mean(OW)
 min_OW = np.min(OW)
 print("Mean OW is ", np.round(mean_OW, 1))
 print("Min OW is ", np.round(min_OW, 1))
-OW = OW / mean_OW
+#OW = OW / mean_OW
 
 # Normalize errors
 R0[R0 < 1e-2] = 1e-2
@@ -77,6 +82,7 @@ data.gas.mass_weighted_R0 = data.gas.masses * R0
 data.gas.mass_weighted_R1 = data.gas.masses * R1
 data.gas.mass_weighted_R2 = data.gas.masses * R2
 data.gas.mass_weighted_OW = data.gas.masses * OW
+data.gas.mass_weighted_etaeff = data.gas.masses * etaeff
 
 
 """
@@ -133,24 +139,32 @@ mass_weighted_R0_map_xy = slice_gas(**common_arguments_xy, project="mass_weighte
 mass_weighted_R1_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_R1")
 mass_weighted_R2_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_R2")
 mass_weighted_OW_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_OW")
+mass_weighted_etaeff_map_xy = slice_gas(**common_arguments_xy, project="mass_weighted_etaeff")
 mass_weighted_R0_map = slice_gas(**common_arguments, project="mass_weighted_R0")
 mass_weighted_R1_map = slice_gas(**common_arguments, project="mass_weighted_R1")
 mass_weighted_R2_map = slice_gas(**common_arguments, project="mass_weighted_R2")
 mass_weighted_OW_map = slice_gas(**common_arguments, project="mass_weighted_OW")
+mass_weighted_etaeff_map = slice_gas(**common_arguments, project="mass_weighted_etaeff")
 
 # mass_weighted_J_map = slice_gas(**common_arguments, project="mass_weighted_J")
 R0_map_xy = mass_weighted_R0_map_xy / mass_map_xy
 R1_map_xy = mass_weighted_R1_map_xy / mass_map_xy
 R2_map_xy = mass_weighted_R2_map_xy / mass_map_xy
 OW_map_xy = mass_weighted_OW_map_xy / mass_map_xy
+etaeff_map_xy = mass_weighted_etaeff_map_xy / mass_map_xy
 
 R0_map = mass_weighted_R0_map / mass_map
 R1_map = mass_weighted_R1_map / mass_map
 R2_map = mass_weighted_R2_map / mass_map
 OW_map = mass_weighted_OW_map / mass_map
+etaeff_map = mass_weighted_etaeff_map / mass_map
+
+
+etaeff_map_xy.convert_to_units(unyt.cm**2 / unyt.s)
+etaeff_map.convert_to_units(unyt.cm**2 / unyt.s)
 
 nx = 2
-ny = 5
+ny = 6
 fig, ax = plt.subplots(ny, nx, sharey=True, figsize=(5 * nx, 5 * ny))
 
 # fig.suptitle("Plotting at %.3f free fall times" % toplot)
@@ -208,6 +222,20 @@ a31 = ax[3, 1].contourf(
     extend="both",
     levels=np.linspace(-1, 1, 100),
 )
+a40 = ax[4, 0].contourf(
+    np.log10(etaeff_map.value),
+    cmap="jet",  # "viridis", #"nipy_spectral_r",
+    extend="both",
+    levels=np.linspace(24,30, 100),
+)
+
+a41 = ax[4, 1].contourf(
+    np.log10(etaeff_map_xy.value).T,
+    cmap="jet",  # "viridis", #"nipy_spectral_r",
+    extend="both",
+    levels=np.linspace(24,30, 100),
+)
+
 
 locs = [512 / 4, 512 / 2, 3 * 512 / 4]
 locs = [512 / 4, 512 / 2, 3 * 512 / 4]
@@ -249,12 +277,21 @@ cbar6.set_label(r"$\mathrm{log}_{10} R_2 \;$")
 
 ticksOW = [-1, 0, 1]
 cbar7 = plt.colorbar(a30, ax=ax[3, 0], fraction=0.046, pad=0.04, ticks=ticksOW)
-cbar7.set_label(r"$\mathrm{log}_{10} OW/\langle OW \rangle \;$")
+cbar7.set_label(r"$\mathrm{log}_{10} OW \;$")
 
 cbar8 = plt.colorbar(a31, ax=ax[3, 1], fraction=0.046, pad=0.04, ticks=ticksOW)
-cbar8.set_label(r"$\mathrm{log}_{10} OW/\langle OW \rangle \;$")
+cbar8.set_label(r"$\mathrm{log}_{10} OW \;$")
 
-Ninfo = 4
+tickseta = [24,25,26,27,28,29,30]#np.arange(24,30,2)
+cbar9 = plt.colorbar(a40, ax=ax[4, 0], fraction=0.046, pad=0.04, ticks=tickseta)
+cbar9.set_label(r"$\mathrm{log}_{10} \eta \;$ $[cm^2/s]$")
+
+cbar10 = plt.colorbar(a41, ax=ax[4, 1], fraction=0.046, pad=0.04, ticks=tickseta)
+cbar10.set_label(r"$\mathrm{log}_{10} \eta \;$ $[cm^2/s]$")
+
+
+
+Ninfo = 5
 
 # add panel with infromation about the run
 text_common_args = dict(
@@ -299,4 +336,4 @@ ax[Ninfo, 1].axis("off")
 
 fig.tight_layout()
 
-plt.savefig(sys.argv[2], dpi=220)
+plt.savefig(sys.argv[2],dpi=220)

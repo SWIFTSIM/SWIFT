@@ -120,6 +120,9 @@ def extract_variables_of_interest(data):
     velocities = velocities.to(units_dict["velocity"])
     momentums = momentums.to(units_dict["momentum"])
     pressures = pressures.to(units_dict["pressure"])
+    magnetic_flux_densities = magnetic_flux_densities.to(
+        units_dict["magneticfield"]
+    )
     magnetic_flux_densitiesdt = magnetic_flux_densitiesdt.to(
         units_dict["magneticfieldpertime"]
     )
@@ -151,6 +154,7 @@ def extract_variables_of_interest(data):
         "magnetic_flux_densities": magnetic_flux_densities,
         "CM_frame_coordinates": CM_frame_coordinates,
         "CM_frame_z": CM_frame_z,
+        "magnetic_divergences":magnetic_divergences,
         "magnetic_flux_densities_norm": magnetic_flux_densities_norm,
         "magnetic_pressures": magnetic_pressures,
         "dynamic_pressures": dynamic_pressures,
@@ -314,7 +318,7 @@ def plot_quatities_for_particle_vs_time(
         else:
             ax[i].plot(times, quantity, color="black", marker=".")
         ax[i].set_ylabel(quantity_list[i], fontsize=20)
-        ax[i].set_xlabel("$t/t_{ff}$", fontsize=20)
+        ax[i].set_xlabel("$time$", fontsize=20)
         if logscale:
             ax[i].set_yscale("log")
         ax[i].tick_params(axis="both", labelsize=20)
@@ -348,11 +352,20 @@ def plot_quantity_vs_time(
         # total_quantity = np.sum(quantity_values,axis=0)
         # rms_quantity = np.sqrt(np.mean(quantity_values[:,0]**2+quantity_values[:,1]**2+quantity_values[:,2]**2))
         print(len(quantity_values))
+        #if region_cut:
+        #    z = snap["values"]["CM_frame_coordinates"][:, 2]
+        #    y = snap["values"]["CM_frame_coordinates"][:, 1]
+        #    x = snap["values"]["CM_frame_coordinates"][:, 0]
+        #    mask = (np.abs(z) <= Lcut) & (np.abs(y) <= Lcut) & (np.abs(x) <= Lcut)
+        rcut = 15
+        zcut = 0.5
         if region_cut:
-            z = snap["values"]["CM_frame_coordinates"][:, 2]
-            y = snap["values"]["CM_frame_coordinates"][:, 1]
-            x = snap["values"]["CM_frame_coordinates"][:, 0]
-            mask = (np.abs(z) <= Lcut) & (np.abs(y) <= Lcut) & (np.abs(x) <= Lcut)
+            z = snap["values"]["CM_frame_coordinates"][:, 2] * units_dict["length"]
+            y = snap["values"]["CM_frame_coordinates"][:, 1] * units_dict["length"]
+            x = snap["values"]["CM_frame_coordinates"][:, 0] * units_dict["length"]
+            r = np.sqrt(x ** 2 + y ** 2)
+            mask = (r <= rcut) & (np.abs(z) <= zcut)
+         
             quantity_values = quantity_values[mask]
 
         total_quantity = np.sum(quantity_values, axis=0)
@@ -423,12 +436,12 @@ def plot_quantity_vs_time(
 
     ax[0].legend()
     ax[0].grid()
-    # ax[0].set_yscale('log')
+    ax[0].set_yscale('log')
     ax[0].set_ylabel("$|B|$, [$\mu G$]", fontsize=20)
     ax[0].set_xlabel("$time [Gyr]$", fontsize=20)
-    ax[0].set_ylim([0, 10.0])
-    ax[0].set_xlim([0, 3.0])
-    # ax[0].set_ylim([1e-8,1e-4])
+    #ax[0].set_ylim([0, 10.0])
+    #ax[0].set_xlim([0, 3.0])
+    ax[0].set_ylim([1e-6,1e2])
 
     ax[1].plot(times_array, npart_array, color="black", marker=".")
     ax[1].grid()
@@ -438,7 +451,7 @@ def plot_quantity_vs_time(
     )  # , Lcut = {Lcut} A.U.',fontsize=20)
     ax[1].set_xlabel("$time [Gyr]$", fontsize=20)
     ax[1].set_ylim([1e1, 1e5])
-    ax[1].set_xlim([0, 3.0])
+    #ax[1].set_xlim([0, 3.0])
 
     # add panel with infromation about the run
     text_common_args = dict(
@@ -584,7 +597,7 @@ def plot_pressure_vs_time(
     ax[0].set_ylabel("$P$, [$ 10^{10}$ $M_{sol}$ $kpc^{-1}$ $Gyr^{-2}$]", fontsize=20)
     ax[0].set_xlabel("time $[Gyr]$", fontsize=20)
     ax[0].set_ylim([1e-4, 1e2])
-    ax[0].set_xlim([0, 4.0])
+    #ax[0].set_xlim([0, 4.0])
     # ax[0].set_ylim([1e-8,1e-4])
 
     ax[1].plot(times_array, npart_array, color="black", marker=".")
@@ -593,7 +606,7 @@ def plot_pressure_vs_time(
     ax[1].set_ylabel(r"$N_p^{cut}$", fontsize=20)  # , Lcut = {Lcut} A.U.',fontsize=20)
     ax[1].set_xlabel("time $[Gyr]$", fontsize=20)
     ax[1].set_ylim([1e1, 1e5])
-    ax[1].set_xlim([0, 4.0])
+    #ax[1].set_xlim([0, 4.0])
 
     # add panel with infromation about the run
     text_common_args = dict(
@@ -632,13 +645,14 @@ def plot_pressure_vs_time(
 
 
 def plot_B_vs_time(
-    all_snapshots, outputfileaddr, isvec=False, region_cut=True, label="", rcut=15
+    all_snapshots, outputfileaddr, isvec=False, region_cut=True, label="", rcut=15, zcut=0.5
 ):
     magnetic_flux_densities_array = []
     times_array = []
     npart_array = []
     total_mass_array = []
     rcut *= units_dict["length"]
+    zcut *= units_dict["length"]
     for snap in all_snapshots:
         magnetic_flux_densities_values = (
             snap["values"]["magnetic_flux_densities"] * units_dict["magneticfield"]
@@ -649,13 +663,13 @@ def plot_B_vs_time(
         densities_values = snap["values"]["densities"] * units_dict["density"]
         masses_values = snap["values"]["masses"] * units_dict["mass"]
         Np = len(masses_values)
-
+ 
         if region_cut:
             z = snap["values"]["CM_frame_coordinates"][:, 2] * units_dict["length"]
             y = snap["values"]["CM_frame_coordinates"][:, 1] * units_dict["length"]
             x = snap["values"]["CM_frame_coordinates"][:, 0] * units_dict["length"]
-            r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
-            mask = r <= rcut
+            r = np.sqrt(x ** 2 + y ** 2)
+            mask = (r <= rcut) & (np.abs(z) <= zcut)
             magnetic_flux_densities_values_sq = magnetic_flux_densities_values_sq[mask]
             densities_values = densities_values[mask]
             masses_values = masses_values[mask]
@@ -698,23 +712,23 @@ def plot_B_vs_time(
 
     fig, ax = plt.subplots(1, 4, figsize=(5.5 * 4, 5))
     ax[0].plot(times_array, magnetic_flux_densities_array, color="black", marker=".")
-
+    print(magnetic_flux_densities_array)
     # ax[0].legend()
     ax[0].grid()
-    # ax[0].set_yscale('log')
-    ax[0].set_ylabel("$B_{rms}$, [$[\mu G]$]", fontsize=20)
+    ax[0].set_yscale('log')
+    ax[0].set_ylabel("$B_{rms}$, $[\mu G]$", fontsize=20)
     ax[0].set_xlabel("time $[Gyr]$", fontsize=20)
-    ax[0].set_ylim([0, 3.5])
-    ax[0].set_xlim([0, 3.0])
-    # ax[0].set_ylim([1e-8,1e-4])
+    #ax[0].set_ylim([0, 3.5])
+    #ax[0].set_xlim([0, 3.0])
+    ax[0].set_ylim([1e-4,1e1])
 
     ax[1].plot(times_array, npart_array, color="black", marker=".")
     ax[1].grid()
     ax[1].set_yscale("log")
     ax[1].set_ylabel(r"$N_p^{cut}$", fontsize=20)  # , Lcut = {Lcut} A.U.',fontsize=20)
     ax[1].set_xlabel("time $[Gyr]$", fontsize=20)
-    ax[1].set_ylim([1e1, 1e5])
-    ax[1].set_xlim([0, 3.0])
+    ax[1].set_ylim([1e1, 1e6])
+    #ax[1].set_xlim([0, 3.0])
 
     ax[2].plot(times_array, total_mass_array, color="black", marker=".")
     ax[2].grid()
@@ -764,7 +778,7 @@ def plot_B_vs_time(
 
 # 34013
 
-folder = "./gb099172f_1e6p_hyp=0.1_corr_mass_prof"
+folder = "./MHD_eta=1.595_noB_antisym_fd"
 
 snapshots_history, snapshot_names = updoad_shapshots_data_from_folder(folder)
 
@@ -785,5 +799,26 @@ plot_B_vs_time(
     isvec=True,
     region_cut=True,
     rcut=15,
+    zcut=1.0,
     label=f" $Lbox=${2*Lcut} kPc",
 )
+
+#fast_particles = identify_largest_quantity_particles(
+#    snapshots_history, "velocities", isvec=False, region_cut=True
+#)
+#print('Fast particles: ',fast_particles)
+
+#particle_history = upload_particle_history(snapshots_history,38770)
+
+#plot_quatities_for_particle_vs_time(
+#    particle_history,
+#    ["CM_frame_coordinates","CM_frame_z","velocities","magnetic_flux_densities","magnetic_divergences"],
+#    outputfileaddr=folder+"/quantities.png",
+#    time_var="time",
+#    timeinterval=[0, 1],
+#    title="quantities vs time",
+#    customtimeinterval=False,
+#    customquantityinterval=False,
+#    quantityinterval=[1e-1, 1e1],
+#    logscale=True,
+#)

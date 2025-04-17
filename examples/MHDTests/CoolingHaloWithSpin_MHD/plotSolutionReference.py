@@ -44,11 +44,36 @@ B = data.gas.magnetic_flux_densities
 # B = v.value * 0.0 * 1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s)
 # J = data.gas.magnetic_flux_curl
 normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
+print(normB.to(1e-7 * unyt.g / (unyt.statA * unyt.s * unyt.s)))
 # normJ = np.sqrt(J[:, 0] ** 2 + J[:, 1] ** 2 + J[:, 2] ** 2)
 divB = data.gas.magnetic_divergences
 # divB = norm_r.value * 0.0 * 1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s* unyt.cm)
 h = data.gas.smoothing_lengths
 rho = data.gas.densities
+ids = data.gas.particle_ids
+
+
+center_on_particle=False
+if center_on_particle:
+# Look at specific particle
+    #print(np.argwhere(ids == 38770))
+    index = np.min(np.argwhere(ids == 38770))#np.argmax(normv)
+    #print(index)
+    vpart = normv[index]
+    rpart = r[index]
+    Bpart = normB[index]
+    Berr = np.maximum(h * abs(divB) / normB, 1e-6)
+    Berrpart = Berr[index]
+    hpart = h[index]
+    vpart.convert_to_units(unyt.km / unyt.s)
+    rpart.convert_to_units(3.08e18 * 1e3 * unyt.cm)
+    hpart.convert_to_units(3.08e18 * 1e3 * unyt.cm)
+    Bpart.convert_to_units(1e-7 * unyt.g / (unyt.statA * unyt.s * unyt.s))
+    print(
+        f"Particle {index}, \nwith maximal velocity {vpart.value} km/s, \nmagnetic field {Bpart.value} muG, \nwith error level {Berrpart.value}, \nwith smoothing length {hpart.value} kPc, \nlocated at {rpart.value} kPc"
+    )
+    center = center + rpart
+
 Np = len(h)
 print("Number of particles %E" % len(data.gas.masses))
 print("Total mass %E Msol" % np.sum(data.gas.masses.to(unyt.Msun).value))
@@ -204,7 +229,7 @@ fig, ax = plt.subplots(ny, nx, sharey=True, figsize=(5 * nx, 5 * ny))
 a00 = ax[0, 0].contourf(
     np.log10(nH_map.value),
     # np.log10(density_map.value),
-    cmap="jet",  # "plasma",#"gist_stern",#"RdBu",
+    cmap="plasma",  # "plasma",#"gist_stern",#"RdBu",
     extend="both",
     levels=np.linspace(-4, 2, 100),
     # levels=np.linspace(-7, -1, 100),
@@ -213,7 +238,7 @@ a00 = ax[0, 0].contourf(
 a01 = ax[0, 1].contourf(
     np.log10(nH_map_xy.value).T,
     # np.log10(density_map_xy.value).T,
-    cmap="jet",  # "plasma",#"gist_stern", #"RdBu",
+    cmap="plasma",  # "plasma",#"gist_stern", #"RdBu",
     extend="both",
     levels=np.linspace(-4, 2, 100),
     # levels=np.linspace(-7, -1, 100),
@@ -236,13 +261,13 @@ a01 = ax[0, 1].contourf(
 # )
 a10 = ax[1, 0].contourf(
     np.maximum(np.log10(normB_map.value), -6),
-    cmap="jet",  # "viridis", #"nipy_spectral_r",
+    cmap="viridis",  # "viridis", #"nipy_spectral_r",
     extend="both",
     levels=np.linspace(-2, 2, 100),
 )
 a11 = ax[1, 1].contourf(
     np.maximum(np.log10(normB_map_xy.value), -6).T,
-    cmap="jet",  # "viridis", #"nipy_spectral_r",
+    cmap="viridis",  # "viridis", #"nipy_spectral_r",
     extend="both",
     levels=np.linspace(-2, 2, 100),
 )
@@ -463,24 +488,51 @@ ax[1, 0].quiver(
 )
 
 
-index = np.argmax(normv)
-vpart = normv[index]
-rpart = r[index]
-Bpart = normB[index]
-Berr = np.maximum(h * abs(divB) / normB, 1e-6)
-Berrpart = Berr[index]
-hpart = h[index]
-vpart.convert_to_units(unyt.km / unyt.s)
-rpart.convert_to_units(3.08e18 * 1e3 * unyt.cm)
-hpart.convert_to_units(3.08e18 * 1e3 * unyt.cm)
-Bpart.convert_to_units(1e-7 * unyt.g / (unyt.statA * unyt.s * unyt.s))
-print(
-    f"Particle {index}, \nwith maximal velocity {vpart.value} km/s, \nmagnetic field {Bpart.value} muG, \nwith error level {Berrpart.value}, \nwith smoothing length {hpart.value} kPc, \nlocated at {rpart.value} kPc"
-)
+# Look at specific particle
+#print(np.argwhere(ids == 38770))
+#index = np.min(np.argwhere(ids == 38770))#np.argmax(normv)
+#print(index)
+#vpart = normv[index]
+#rpart = r[index]
+#Bpart = normB[index]
+#Berr = np.maximum(h * abs(divB) / normB, 1e-6)
+#Berrpart = Berr[index]
+#hpart = h[index]
+#vpart.convert_to_units(unyt.km / unyt.s)
+#rpart *= 0.0
+#rpart.convert_to_units(3.08e18 * 1e3 * unyt.cm)
+#hpart.convert_to_units(3.08e18 * 1e3 * unyt.cm)
+#Bpart.convert_to_units(1e-7 * unyt.g / (unyt.statA * unyt.s * unyt.s))
+#print(
+#    f"Particle {index}, \nwith maximal velocity {vpart.value} km/s, \nmagnetic field {Bpart.value} muG, \nwith error level {Berrpart.value}, \nwith smoothing length {hpart.value} kPc, \nlocated at {rpart.value} kPc"
+#)
 
-part_pixel_coords = 512 / 2 * (1 + rpart.value / Lslice_kPc)
+if center_on_particle:
+    part_pixel_coords = 512 / 2 * (1 + rpart.value / Lslice_kPc)
 
-# ax[1,0].scatter(part_pixel_coords[0],part_pixel_coords[2],color='red',marker='x')
+    # draw particle ceneter
+    ax[0,0].scatter(512/2,512/2,color='black',s=0.5)
+    ax[0,1].scatter(512/2,512/2,color='black',s=0.5)
+    ax[1,0].scatter(512/2,512/2,color='black',s=0.5)
+    ax[1,1].scatter(512/2,512/2,color='black',s=0.5)
+    ax[2,0].scatter(512/2,512/2,color='black',s=0.5)
+    ax[2,1].scatter(512/2,512/2,color='black',s=0.5)
+
+    from matplotlib.patches import Circle
+    # Create a dashed circle
+    circle = Circle(xy=[512/2,512/2], radius=hpart.value/Lslice_kPc*512/2, edgecolor='black', facecolor='none', linestyle='--', linewidth=2)
+    ax[0,0].add_patch(circle)
+    circle = Circle(xy=[512/2,512/2], radius=hpart.value/Lslice_kPc*512/2, edgecolor='black', facecolor='none', linestyle='--', linewidth=2)
+    ax[0,1].add_patch(circle)
+    circle = Circle(xy=[512/2,512/2], radius=hpart.value/Lslice_kPc*512/2, edgecolor='black', facecolor='none', linestyle='--', linewidth=2)
+    ax[1,0].add_patch(circle)
+    circle = Circle(xy=[512/2,512/2], radius=hpart.value/Lslice_kPc*512/2, edgecolor='black', facecolor='none', linestyle='--', linewidth=2)
+    ax[1,1].add_patch(circle)
+    circle = Circle(xy=[512/2,512/2], radius=hpart.value/Lslice_kPc*512/2, edgecolor='black', facecolor='none', linestyle='--', linewidth=2)
+    ax[2,0].add_patch(circle)
+    circle = Circle(xy=[512/2,512/2], radius=hpart.value/Lslice_kPc*512/2, edgecolor='black', facecolor='none', linestyle='--', linewidth=2)
+    ax[2,1].add_patch(circle)
+
 
 
 # add panel with infromation about the run
@@ -520,4 +572,4 @@ ax[3, 1].axis("off")
 
 fig.tight_layout()
 
-plt.savefig(sys.argv[2], dpi=220)
+plt.savefig(sys.argv[2],dpi=220)
