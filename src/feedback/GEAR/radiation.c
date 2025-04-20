@@ -31,10 +31,30 @@ float radiation_get_part_rate_to_fully_ionize(const struct part* p, const struct
   return 0.0;
 }
 
+void radiation_consume_ionizing_photons(struct spart* sp, float Delta_dot_N_ion) {
+  sp->feedback_data.radiation.dot_N_ion -= Delta_dot_N_ion;
+  return;
+}
 
-float radiation_tag_part_as_ionized(struct part* p, struct xpart* xpj) {
+void radiation_tag_part_as_ionized(struct part* p, struct xpart* xpj) {
+  xpj->feedback_data.radiation.is_ionized = 1;
+  return;
+}
 
-  return 0.0;
+int radiation_is_part_ionized(const struct phys_const* phys_const,
+                              const struct hydro_props* hydro_props,
+                              const struct unit_system* us,
+                              const struct cosmology* cosmo,
+                              const struct cooling_function_data* cooling,
+                              const struct part* p, const struct xpart* xp) {
+
+  /* Is T > 10^4 K ? */
+  const float T =  cooling_get_temperature(phys_const, hydro_props, us,
+					   cosmo, cooling, p, xp);
+  const float ten_to_four_kelvin = 1e4 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+  /* Is the particle ionized ? */
+  return (T > ten_to_four_kelvin || xp->feedback_data.radiation.is_ionized);
 }
 
 float radiation_consume_ionizing_photons(struct spart* sp, float Delta_dot_N_ion) {
