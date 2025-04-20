@@ -38,6 +38,11 @@ struct feedback_xpart_data {
 
   /*! Momemtum received from a supernovae */
   float delta_p[3];
+
+  /*! Radiation struct */
+  struct {
+    int is_ionized;
+  } radiation;
 };
 
 /**
@@ -73,7 +78,10 @@ struct feedback_spart_data {
   /*! Pre-SN data struct */
   struct {
 
-  } preSN;
+    /*! Number of inonizing photons per unit time */
+    float dot_N_ion;
+
+  } radiation;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */
