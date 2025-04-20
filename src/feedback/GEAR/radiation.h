@@ -24,11 +24,87 @@
 #include "interpolation.h"
 #include "stellar_evolution_struct.h"
 
+#include "cooling.h"
+#include "physical_constants.h"
+#include "units.h"
+
+#define BB_NU_INTEGRATION_STEPS 500
+#define RADIATION_N_IONIZATION_STEPS 1000
+
+/**
+ * @brief Return the specific intensity of the blackbody spectrum
+ *
+ * @param nu frequency at which to compute specific intensity
+ * @param T temperature characterizing the spectrum
+ * @param kB Boltzmann constant
+ * @param h_planck Planck's constant
+ * @param c speed of light
+ */
+__attribute__((always_inline)) INLINE double radiation_blackbody_spectrum_intensity(
+    const double nu, const double T, const double kB, const double h_planck,
+    const double c) {
+
+  const double hnu = h_planck * nu;
+  const double kT = kB * T;
+  const double nu2 = nu * nu;
+  double temp;
+  if (hnu / kT < 1e-6) {
+    /* prevent division by zero, use Taylor approximation */
+    temp = kT;
+  } else if (hnu / kT > 700.) {
+    /* prevent infs */
+    temp = 0.;
+  } else {
+    temp = 1. / (exp(hnu / kT) - 1.);
+  }
+  return 2. * hnu * nu2 / (c * c) * temp;
+}
+
+/**
+ * Return the blackbody spectrum energy density
+ *
+ * @param nu frequency at which to compute specific intensity
+ * @param T temperature characterizing the spectrum
+ * @param kB Boltzmann constant
+ * @param h_planck Planck's constant
+ * @param c speed of light
+ */
+__attribute__((always_inline)) INLINE double radiation_blackbody_spectrum_energy_density(
+    const double nu, const double T, const double kB, const double h_planck,
+    const double c) {
+  return 4. * M_PI / c * radiation_blackbody_spectrum_intensity(nu, T, kB, h_planck, c);
+}
+
+float radiation_get_blackbody_luminosity_band(
+    const float nu_min, const float nu_max, const float T, const float R,
+    const float kB, const float h, const float c);
+
+float radiation_get_ionizing_photon_emission_rate(const float nu_min, const float nu_max,
+						  const float T, const float R,
+						  const float kB, const float h, const float c);
+
 float radiation_get_star_ionisation_rate(const struct spart* sp);
 float radiation_get_part_rate_to_fully_ionize(const struct part* p, const struct xpart* xp);
-float radiation_tag_part_as_ionized(struct part* p, struct xpart* xpj);
-float radiation_consume_ionizing_photons(struct spart* sp, float Delta_dot_N_ion);
+void radiation_tag_part_as_ionized(struct part* p, struct xpart* xpj);
+void radiation_consume_ionizing_photons(struct spart* sp, float Delta_dot_N_ion);
 
-int radiation_is_part_ionized(const struct part* p, const struct xpart* xpj);
+int radiation_is_part_ionized(const struct phys_const* phys_const,
+                              const struct hydro_props* hydro_props,
+                              const struct unit_system* us,
+                              const struct cosmology* cosmo,
+                              const struct cooling_function_data* cooling,
+                              const struct part* p, const struct xpart* xp);
+
+float radiation_get_individual_star_radius(const struct spart* sp,
+					   const struct unit_system* us,
+					   const struct phys_const* phys_const);
+float radiation_get_individual_star_temperature(
+    const struct spart* sp, const struct unit_system* us,
+    const struct phys_const* phys_const);
+
+float radiation_get_individual_star_luminosity(
+    const struct spart* sp,
+    const struct unit_system* us,
+    const struct phys_const* phys_const);
 
 #endif /* SWIFT_RADIATION_GEAR_H */

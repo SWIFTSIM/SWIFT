@@ -20,10 +20,56 @@
 /* Include header */
 #include "radiation.h"
 
+
+/* TODO: Check unit... similaru in radiation_blackbody_etc */
+float radiation_get_blackbody_luminosity_band(
+    const float nu_min, const float nu_max, const float T, const float R,
+    const float kB, const float h, const float c) {
+
+  const float dnu = (nu_max - nu_min) / BB_NU_INTEGRATION_STEPS;
+  float luminosity = 0.f;
+
+  for (int i = 0; i < BB_NU_INTEGRATION_STEPS; ++i) {
+    const float nu = nu_min + (i + 0.5f) * dnu;
+    const float intensity = radiation_blackbody_spectrum_intensity(nu, T, kB, h, c);
+
+    // Calculate the luminosity contribution from the band
+    const float dL = 4.f * M_PI * R * R * intensity * dnu;
+
+    luminosity += dL;
+  }
+  return luminosity;
+}
+
+/* TODO: Check unit... similaru in radiation_blackbody_etc */
+float radiation_get_ionizing_photon_emission_rate(const float nu_min, const float nu_max,
+                                  const float T, const float R,
+                                  const float kB, const float h, const float c) {
+
+  const float dnu = (nu_max - nu_min) / RADIATION_N_IONIZATION_STEPS;
+  float integral = 0.f;
+
+  for (int i = 0; i < RADIATION_N_IONIZATION_STEPS; i++) {
+    const float nu1 = nu_min + i * dnu;
+    const float nu2 = nu1 + dnu;
+
+    const float B1 = radiation_blackbody_spectrum_intensity(nu1, T, kB, h, c);
+    const float B2 = radiation_blackbody_spectrum_intensity(nu2, T, kB, h, c);
+
+    const float integrand1 = B1 / (h * nu1);
+    const float integrand2 = B2 / (h * nu2);
+
+    integral += 0.5f * (integrand1 + integrand2) * dnu;
+  }
+
+  const float surface_area = 4.f * M_PI * R * R;
+
+  return surface_area * integral; // [photons / second]
+}
+
+
 float radiation_get_star_ionisation_rate(const struct spart* sp) {
-
-
-  return 0.0;
+  return sp->feedback_data.radiation.dot_N_ion ;
 }
 
 float radiation_get_part_rate_to_fully_ionize(const struct part* p, const struct xpart* xp) {
