@@ -97,7 +97,9 @@ runner_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
     struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct feedback_props *fb_props, const integertime_t ti_current) {
+    const struct feedback_props *fb_props,  const struct phys_const* phys_const,
+    const struct unit_system* us, const struct cooling_function_data* cooling,
+    const integertime_t ti_current) {
 
   const double e_sn = si->feedback_data.energy_ejected;
 
@@ -214,7 +216,8 @@ runner_iact_nonsym_feedback_apply(
   /* NOTE: Probalby create a fct to store the computations so that we only have
      to call the functions for the mech fbk */
   /* Is pj already ionized ? If yes, there is nothing to do here. */
-  if (!radiation_is_part_ionized(pj, xpj)) {
+
+  if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo, cooling, pj, xpj)) {
     const float dot_N_ion = radiation_get_star_ionisation_rate(si);
     const float Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(pj, xpj);
 
