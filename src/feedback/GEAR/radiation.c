@@ -57,10 +57,87 @@ int radiation_is_part_ionized(const struct phys_const* phys_const,
   return (T > ten_to_four_kelvin || xp->feedback_data.radiation.is_ionized);
 }
 
-float radiation_consume_ionizing_photons(struct spart* sp, float Delta_dot_N_ion) {
-  return 0.0;
+float radiation_get_individual_star_radius(const struct spart* sp,
+					   const struct unit_system* us,
+					   const struct phys_const* phys_const) {
+
+  const float R_sun = phys_const->const_solar_radius; /* In internal units */
+  const float M_solar = phys_const->const_solar_mass;
+
+  const float M = sp->mass; /* In internal units */
+  const float M_in_solar = M / M_solar; /* In solar masses */
+
+  /* TODO: Correct unit conversion */
+  if (M_in_solar < 1.f) {
+    return R_sun * powf(M, 0.8f);
+  } else if (M_in_solar < 8.f) {
+    return R_sun * powf(M, 0.57f);
+  } else {
+    return R_sun * powf(M, 0.5f);
+  }
 }
 
-int radiation_is_part_ionized(const struct part* p, const struct xpart* xpj) {
-  return 0;
+float radiation_get_individual_star_temperature(const struct spart* sp,
+						const struct unit_system* us,
+						const struct phys_const* phys_const) {
+
+  const float M_solar = phys_const->const_solar_mass;
+  const float M = sp->mass; /* In internal units */
+  const float M_in_solar = M / M_solar; /* In solar masses */
+
+  float T_K = 0.0;
+
+  if (M_in_solar < 1.f) {
+    T_K = 3500.f * powf(M_in_solar, 0.5f);
+  } else if (M_in_solar < 8.f) {
+    T_K = 5800.f * powf(M_in_solar, 0.5f);
+  } else {
+    T_K = 25000.f * powf(M_in_solar / 20.f, 0.1f);
+  }
+
+  /* Convert from Kelvin to internal units using unit_system_temperature_in_cgs */
+  const float T_internal = T_K /  units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+  return T_internal;
+}
+
+/**
+ * Return the bolometric luminosity of a single star from empirical
+ * mass-luminosity relations.
+ *
+ * Uses a piecewise power-law approximation:
+ * - L ∝ M^2 for M < 0.43 Msun
+ * - L ∝ M^4 for 0.43 ≤ M < 2.0 Msun
+ * - L ∝ M^3.5 for 2.0 ≤ M < 54 Msun
+ * - L ∝ 32000 M for M ≥ 54 Msun
+ *
+ * Returns luminosity in code units.
+ *
+ * @param sp Pointer to star particle.
+ * @param us Unit system.
+ * @param phys_const Physical constants.
+ * @return Luminosity in code units.
+ */
+float radiation_get_individual_star_luminosity(
+					       const struct spart* sp,
+					       const struct unit_system* us,
+					       const struct phys_const* phys_const) {
+
+  /* Convert mass to solar masses */
+  const float M_in_solar = sp->mass / phys_const->const_solar_mass;
+
+  /* Piecewise empirical mass-luminosity relation */
+  float lum_sol;
+  if (M_in_solar < 0.43f) {
+    lum_sol = 0.185f *  M_in_solar *  M_in_solar;
+  } else if ( M_in_solar < 2.0f) {
+    lum_sol =  M_in_solar *  M_in_solar *  M_in_solar *  M_in_solar;
+  } else if ( M_in_solar < 54.0f) {
+    lum_sol = 1.5f *  M_in_solar *  M_in_solar *  M_in_solar * sqrtf( M_in_solar);
+  } else {
+    lum_sol = 32000.0f *  M_in_solar;
+  }
+
+  /* Convert from solar luminosities to code units */
+  const float luminosity = lum_sol * phys_const->const_solar_luminosity;
+  return luminosity;
 }
