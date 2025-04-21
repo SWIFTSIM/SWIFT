@@ -219,7 +219,7 @@ runner_iact_nonsym_feedback_apply(
   /* Is pj already ionized ? If yes, there is nothing to do here. */
 
   if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo, cooling, pj, xpj)) {
-    const double dot_N_ion = radiation_get_star_ionisation_rate(si);
+    const double dot_N_ion = radiation_get_star_ionization_rate(si);
     const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
 
     /* message("dot_N_ion = %e, Delta_N_dot_ion = %e", dot_N_ion, Delta_dot_N_ion); */
@@ -227,7 +227,7 @@ runner_iact_nonsym_feedback_apply(
     /* Compute a probability to determine if we fully ionize pj or not and
        draw the random number. */
     /* Note: In the current version we distribute in a weighted manner the
-       ionisation */
+       ionization */
     const float proba = weight * dot_N_ion / Delta_dot_N_ion;
     const float random_number = random_unit_interval(si->id, ti_current, random_number_HII_regions);
     /* For later when we compute the stromgren radius on the fly
