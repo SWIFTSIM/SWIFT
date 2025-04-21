@@ -27,6 +27,14 @@
 #include "cooling_properties.h"
 #include "chemistry.h"
 
+/**
+ * Compute the gas hydrogen mass fraction.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Hydrogen mass fraction.
+ */
 __attribute__((always_inline)) INLINE static float cooling_get_hydrogen_mass_fraction(
 										      const struct cooling_function_data* cooling,
 										      const struct part* p, const struct xpart* xp) {
@@ -51,6 +59,18 @@ __attribute__((always_inline)) INLINE static float cooling_get_hydrogen_mass_fra
 #endif
 }
 
+/**
+ * Compute gas mean molecular weight.
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param hydro_properties The #hydro_props.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Mean molecular weight.
+ */
 __attribute__((always_inline)) INLINE static double cooling_get_mean_molecular_weight(const struct phys_const* phys_const, const struct unit_system* us,   const struct cosmology* cosmo,  const struct hydro_props* hydro_props,
 const struct cooling_function_data* cooling, const struct part* p, const struct xpart *xp) {
 
@@ -174,35 +194,32 @@ const struct cooling_function_data* cooling, const struct part* p, const struct 
 }
 
 /**
- * @brief compute the (physical) specific internal energy
- * of an ideal gas for given temperature and mean molecular
- * weight.
+ * @brief compute the (physical) specific internal energy of an ideal gas for
+ * given temperature and mean molecular weight.
  *
- * @param u specific internal energy of the gas
- * @param mu mean molecular weight of the gas
- * @param kB Boltzmann constant
- * @param mp proton mass
+ * @param T Temperature of the gas.
+ * @param mu Mean molecular weight of the gas.
+ * @param kB Boltzmann constant.
+ * @param mp Proton mass.
  * */
 __attribute__((always_inline)) INLINE static float cooling_internal_energy_from_T(
     const double T, const double mu,
     const double kB, const double mp) {
-
   return kB * T * hydro_one_over_gamma_minus_one / (mu * mp);
 }
 
 /**
- * @brief compute the temperature of an ideal gas for a given
- * specific internal energy and mean molecular weight
+ * @brief compute the temperature of an ideal gas for a given specific internal
+ * energy and mean molecular weight.
  *
- * @param u specific internal energy of the gas
- * @param mu mean molecular weight of the gas
- * @param kB Boltzmann constant
- * @param mp proton mass
+ * @param u Specific internal energy of the gas.
+ * @param mu Mean molecular weight of the gas.
+ * @param kB Boltzmann constant.
+ * @param mp Proton mass.
  * */
 __attribute__((always_inline)) INLINE static float cooling_temperature_from_internal_energy(
     const double u, const double mu,
     const double kB, const double mp) {
-
   return u * hydro_gamma_minus_one * mu * mp / kB;
 }
 #endif /* SWIFT_COOLING_GRACKLE_COOLING_UTILS_H */
