@@ -24,6 +24,7 @@
 #include "interpolation.h"
 #include "stellar_evolution_struct.h"
 
+#include "hydro.h"
 #include "cooling.h"
 #include "physical_constants.h"
 #include "units.h"
@@ -83,8 +84,18 @@ float radiation_get_ionizing_photon_emission_rate(const float nu_min, const floa
 						  const float T, const float R,
 						  const float kB, const float h, const float c);
 
-float radiation_get_star_ionisation_rate(const struct spart* sp);
-float radiation_get_part_rate_to_fully_ionize(const struct part* p, const struct xpart* xp);
+double radiation_get_star_ionisation_rate(const struct spart* sp);
+
+double radiation_get_part_number_hydrogen_atoms(
+    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
+    const struct unit_system* us, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling, const struct part* p,  const struct xpart* xp);
+
+double radiation_get_part_rate_to_fully_ionize(
+    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
+    const struct unit_system* us, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling, const struct part* p,  const struct xpart* xp);
+
 void radiation_tag_part_as_ionized(struct part* p, struct xpart* xpj);
 void radiation_consume_ionizing_photons(struct spart* sp, float Delta_dot_N_ion);
 
@@ -95,6 +106,9 @@ int radiation_is_part_ionized(const struct phys_const* phys_const,
                               const struct cooling_function_data* cooling,
                               const struct part* p, const struct xpart* xp);
 
+int radiation_is_part_tagged_as_ionized(struct part* p, struct xpart* xpj);
+
+
 float radiation_get_individual_star_radius(const struct spart* sp,
 					   const struct unit_system* us,
 					   const struct phys_const* phys_const);
@@ -103,8 +117,11 @@ float radiation_get_individual_star_temperature(
     const struct phys_const* phys_const);
 
 float radiation_get_individual_star_luminosity(
-    const struct spart* sp,
-    const struct unit_system* us,
+    const struct spart* sp, const struct unit_system* us,
     const struct phys_const* phys_const);
+
+double radiation_get_individual_star_ionizing_photon_emission_rate_fit(const struct spart* sp,
+								      const struct unit_system* us,
+								      const struct phys_const* phys_const);
 
 #endif /* SWIFT_RADIATION_GEAR_H */

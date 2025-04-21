@@ -20,7 +20,6 @@
 /* Include header */
 #include "radiation.h"
 
-
 /* TODO: Check unit... similaru in radiation_blackbody_etc */
 float radiation_get_blackbody_luminosity_band(
     const float nu_min, const float nu_max, const float T, const float R,
@@ -67,8 +66,7 @@ float radiation_get_ionizing_photon_emission_rate(const float nu_min, const floa
   return surface_area * integral; // [photons / second]
 }
 
-
-float radiation_get_star_ionisation_rate(const struct spart* sp) {
+double radiation_get_star_ionisation_rate(const struct spart* sp) {
   return sp->feedback_data.radiation.dot_N_ion ;
 }
 
@@ -82,9 +80,13 @@ void radiation_consume_ionizing_photons(struct spart* sp, float Delta_dot_N_ion)
   return;
 }
 
-void radiation_tag_part_as_ionized(struct part* p, struct xpart* xpj) {
-  xpj->feedback_data.radiation.is_ionized = 1;
+void radiation_tag_part_as_ionized(struct part* p, struct xpart* xp) {
+  xp->feedback_data.radiation.is_ionized = 1;
   return;
+}
+
+int radiation_is_part_tagged_as_ionized(struct part* p, struct xpart* xp) {
+  return xp->feedback_data.radiation.is_ionized;
 }
 
 int radiation_is_part_ionized(const struct phys_const* phys_const,
