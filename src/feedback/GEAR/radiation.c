@@ -229,3 +229,47 @@ float radiation_get_individual_star_luminosity(
   const float luminosity = lum_sol * phys_const->const_solar_luminosity;
   return luminosity;
 }
+
+double radiation_get_individual_star_ionizing_photon_emission_rate_fit(const struct spart* sp,
+								      const struct unit_system* us,
+								      const struct phys_const* phys_const) {
+
+  /* Get star properties in internal units */
+  /* const float T = radiation_get_individual_star_temperature(sp, us, phys_const); */
+  const float R = radiation_get_individual_star_radius(sp, us, phys_const);
+  const float L = radiation_get_individual_star_luminosity(sp, us, phys_const);
+
+  const float R_in_R_sun = R / phys_const->const_solar_radius;
+  const float L_in_L_sun = L / phys_const->const_solar_luminosity;
+
+  if (R <= 0.f || L <= 0.f) {
+    // TODO: print a warning or an error
+    return 0.f;
+  }
+
+  /* Get the Blackbody effective temperature in K */
+  const double T_K = 5780 * powf((L_in_L_sun)/(R_in_R_sun*R_in_R_sun), 0.25) /  units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+  /* Compute dimensionless photon cutoff x_0 = h*nu / kT for 13.6 eV. Note :
+     13.6 eV = 2.17872e-11 erg to be converted to internal unit */
+  const double x_0 = (2.17872e-11 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY)) / (phys_const->const_boltzmann_k * T_K);
+
+  /* Fit for fraction of ionizing luminosity */
+  if (x_0 < 30.f) {
+    const double q = 18.0 / (x_0 * x_0) + 1.0 / (8.0 + x_0 + 20.0 * expf(-x_0 / 10.0));
+    const double f_ion = expf(-1.0 / q);
+
+    /* Ionizing luminosity in internal units */
+    const double L_ion = f_ion * L ;//* units_cgs_conversion_factor(us, UNIT_CONV_POWER);
+
+    /* Assume average ionizing photon energy ~ 20 eV = 20 * 1.60218e-12 erg */
+    const double photon_energy_cgs = 20.0 * 1.60218e-12;
+    const double photon_energy_internal = photon_energy_cgs / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+
+    const double N_dot_ion = L_ion/photon_energy_internal;
+
+    return N_dot_ion;
+  } else {
+    return 0.0;
+  }
+}
