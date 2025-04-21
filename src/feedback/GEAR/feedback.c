@@ -28,7 +28,9 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "physical_constants.h"
 #include "stellar_evolution.h"
+#include "radiation.h"
 #include "units.h"
 
 #include <strings.h>
@@ -69,52 +71,89 @@ float feedback_compute_spart_timestep(
  */
 void feedback_update_part(struct part* p, struct xpart* xp,
                           const struct engine* e) {
+  const struct cosmology* cosmo = e->cosmology;
+  const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
 
   /* TODO: Treat the pre-SN case
      WARNING: Do not comment out this line, because it will mess-up with
      SF/sinks. (I think it injects something that it should not...) */
   /* Did the particle receive a supernovae */
-  if (xp->feedback_data.delta_mass == 0) return;
+  if (xp->feedback_data.delta_mass != 0) {
 
-  const struct cosmology* cosmo = e->cosmology;
-  const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
 
-  /* Turn off the cooling */
-  cooling_set_part_time_cooling_off(p, xp, e->time);
+    /* Turn off the cooling */
+    cooling_set_part_time_cooling_off(p, xp, e->time);
 
-  /* Update mass */
-  const float old_mass = hydro_get_mass(p);
-  const float new_mass = old_mass + xp->feedback_data.delta_mass;
+    /* Update mass */
+    const float old_mass = hydro_get_mass(p);
+    const float new_mass = old_mass + xp->feedback_data.delta_mass;
 
-  if (xp->feedback_data.delta_mass < 0.) {
-    error("Delta mass smaller than 0");
+    if (xp->feedback_data.delta_mass < 0.) {
+      error("Delta mass smaller than 0");
+    }
+
+    hydro_set_mass(p, new_mass);
+
+    xp->feedback_data.delta_mass = 0;
+
+    /* Update the density */
+    p->rho *= new_mass / old_mass;
+
+    /* Update internal energy */
+    const float u =
+      hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
+    const float u_new = u + xp->feedback_data.delta_u;
+
+    hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
+
+    xp->feedback_data.delta_u = 0.;
+
+    /* Update the velocities */
+    for (int i = 0; i < 3; i++) {
+      const float dv = xp->feedback_data.delta_p[i] / new_mass;
+
+      xp->v_full[i] += dv;
+      p->v[i] += dv;
+
+      xp->feedback_data.delta_p[i] = 0;
+    }
   }
 
-  hydro_set_mass(p, new_mass);
+  /* Treat ionisation */
+  if (radiation_is_part_tagged_as_ionized(p, xp)) {
+    const struct unit_system* us = e->internal_units;
+    const struct phys_const* phys_const = e->physical_constants;
+    const struct hydro_props* hydro_props = e->hydro_properties;
+    const struct cooling_function_data* cooling = e->cooling_func;
+    const double m_p = phys_const->const_proton_mass;
+    const double k_B = phys_const->const_boltzmann_k;
 
-  xp->feedback_data.delta_mass = 0;
+    /* Get the current internal energy */
+    const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
 
-  /* Update the density */
-  p->rho *= new_mass / old_mass;
+    /* Get the internal energy increase to ionization */
+    const double N_H = radiation_get_part_number_hydrogen_atoms(phys_const, hydro_props, us , cosmo, cooling, p, xp);
+    const double E_ion = 2.17872e-11 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+    const double Delta_u_ionized = N_H*E_ion/hydro_get_mass(p);
 
-  /* Update internal energy */
-  const float u =
-      hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
-  const float u_new = u + xp->feedback_data.delta_u;
+    /* Get internal energy due to collisions */
+    const double Z = chemistry_get_total_metal_mass_fraction_for_feedback(p);
+    const double Z_sun = 0.02;
+    const double mu = cooling_get_mean_molecular_weight(phys_const, us,  cosmo, hydro_props, cooling,  p, xp);
 
-  hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
-  hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
+    /* Here we need to treat the cases Z << Z_sun otherwise we have T<0*/
+    const double ten_to_four_K = 1e4 * units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+    const double tmp = 0.86 / (1 + 0.22 * log(Z/Z_sun));
+    const double T_collisional =  ten_to_four_K * min(6.62, tmp);
+    const double u_collisional = cooling_internal_energy_from_T(T_collisional, mu, k_B, m_p);
 
-  xp->feedback_data.delta_u = 0.;
+    const float u_new = min(u + Delta_u_ionized, u_collisional);
 
-  /* Update the velocities */
-  for (int i = 0; i < 3; i++) {
-    const float dv = xp->feedback_data.delta_p[i] / new_mass;
+    message("u = %e, Delta_u_ionized = %e, u_coll = %e, T_col = %e, tmp = %e", u, Delta_u_ionized, u_collisional, T_collisional, tmp);
 
-    xp->v_full[i] += dv;
-    p->v[i] += dv;
-
-    xp->feedback_data.delta_p[i] = 0;
+    hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
   }
 }
 
