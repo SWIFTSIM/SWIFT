@@ -155,11 +155,13 @@ float radiation_get_individual_star_radius(const struct spart* sp,
 
   /* TODO: Correct unit conversion */
   if (M_in_solar < 1.f) {
-    return R_sun * powf(M, 0.8f);
+    return R_sun * powf(M_in_solar, 0.8f);
   } else if (M_in_solar < 8.f) {
-    return R_sun * powf(M, 0.57f);
+    return R_sun * powf(M_in_solar, 0.57f);
   } else {
-    return R_sun * powf(M, 0.5f);
+
+    /* message("R_sun = %e, R = %e, pow = %e, M = %e, M_in_solar = %e", R_sun,  R_sun * powf(M_in_solar, 0.5f), powf(M_in_solar, 0.5f), M, M_in_solar); */
+    return R_sun * powf(M_in_solar, 0.5f);
   }
 }
 
