@@ -988,11 +988,10 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
 
   /* For the ionizing band, get the number of photons produced. This assumes a
      spectral shape in this region. For now, assume a constant shape. */
+  sp->feedback_data.radiation.dot_N_ion = radiation_get_individual_star_ionizing_photon_emission_rate_fit(sp, us, phys_const);
+  message("N_dot_ion = %e", sp->feedback_data.radiation.dot_N_ion);
 
   /* Maybe compute kappa_nu for each band (E2) */
-
-
-  
 }
 
 /**
