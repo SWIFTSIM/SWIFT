@@ -70,9 +70,47 @@ double radiation_get_star_ionisation_rate(const struct spart* sp) {
   return sp->feedback_data.radiation.dot_N_ion ;
 }
 
-float radiation_get_part_rate_to_fully_ionize(const struct part* p, const struct xpart* xp) {
+double radiation_get_part_number_hydrogen_atoms(
+    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
+    const struct unit_system* us, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling, const struct part* p,  const struct xpart* xp) {
 
-  return 0.0;
+  const float m = hydro_get_mass(p);
+  const double m_p = phys_const->const_proton_mass;
+  const float X_H = cooling_get_hydrogen_mass_fraction(cooling, p, xp);
+  const float mu = cooling_get_mean_molecular_weight(phys_const, us,  cosmo, hydro_props, cooling,  p, xp);
+
+  /* Number of hydrogen atoms in b */
+  const double N_H = (X_H * m) / (mu * m_p);
+
+  return N_H;
+}
+
+
+double radiation_get_part_rate_to_fully_ionize(
+    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
+    const struct unit_system* us, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling, const struct part* p,  const struct xpart* xp) {
+
+  /* const float m = hydro_get_mass(p); */
+  const float rho = hydro_get_physical_density(p, cosmo);
+  const double beta = phys_const->const_caseb_recomb;
+  const double m_e = phys_const->const_electron_mass;
+  const float X_H = cooling_get_hydrogen_mass_fraction(cooling, p, xp);
+  const float mu = cooling_get_mean_molecular_weight(phys_const, us,  cosmo, hydro_props, cooling,  p, xp);
+
+  /* Number of hydrogen atoms in b */
+  const double N_H = radiation_get_part_number_hydrogen_atoms(phys_const, hydro_props, us, cosmo, cooling, p, xp);
+
+  /* Electron density assuming full ionization */
+  const double n_e = (X_H * rho) / (mu * m_e);
+
+  /* Required ionizing rate in [photons / internal time unit] */
+  const double Delta_N_dot = N_H * beta * n_e;
+
+  /* message("Delta_N_dot = %e, N_H = %e, N_e = %e", Delta_N_dot, N_H, n_e); */
+
+  return Delta_N_dot;
 }
 
 void radiation_consume_ionizing_photons(struct spart* sp, float Delta_dot_N_ion) {
