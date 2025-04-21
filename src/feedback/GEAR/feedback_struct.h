@@ -78,8 +78,9 @@ struct feedback_spart_data {
   /*! Pre-SN data struct */
   struct {
 
-    /*! Number of inonizing photons per unit time */
-    float dot_N_ion;
+    /*! Number of inonizing photons per unit time (this is a HUGE number, so
+        must be a double) */
+    double dot_N_ion;
 
   } radiation;
 };
