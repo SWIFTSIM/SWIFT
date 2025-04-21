@@ -66,14 +66,22 @@ float radiation_get_ionizing_photon_emission_rate(const float nu_min, const floa
   return surface_area * integral; // [photons / second]
 }
 
-double radiation_get_star_ionisation_rate(const struct spart* sp) {
-  return sp->feedback_data.radiation.dot_N_ion ;
-}
-
+/**
+ * Get the gas number of hydrogen atoms.
+ *
+ * @param phys_const Physical constants.
+ * @param hydro_properties The #hydro_props.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Number of hydrogen atoms.
+ */
 double radiation_get_part_number_hydrogen_atoms(
     const struct phys_const* phys_const, const struct hydro_props* hydro_props,
     const struct unit_system* us, const struct cosmology* cosmo,
-    const struct cooling_function_data* cooling, const struct part* p,  const struct xpart* xp) {
+    const struct cooling_function_data* cooling, const struct part* p, const struct xpart* xp) {
 
   const float m = hydro_get_mass(p);
   const double m_p = phys_const->const_proton_mass;
@@ -86,7 +94,18 @@ double radiation_get_part_number_hydrogen_atoms(
   return N_H;
 }
 
-
+/**
+ * Get the gas ionizing rate needed to fully ionize the #part.
+ *
+ * @param phys_const Physical constants.
+ * @param hydro_properties The #hydro_props.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Ionizing photon rate to ionize this #part.
+ */
 double radiation_get_part_rate_to_fully_ionize(
     const struct phys_const* phys_const, const struct hydro_props* hydro_props,
     const struct unit_system* us, const struct cosmology* cosmo,
@@ -113,20 +132,62 @@ double radiation_get_part_rate_to_fully_ionize(
   return Delta_N_dot;
 }
 
+/**
+ * Get the #spart ionization photon emission rate.
+ *
+ * @param sp The star.
+ * @return Ionizing photon rate.
+ */
+double radiation_get_star_ionization_rate(const struct spart* sp) {
+  return sp->feedback_data.radiation.dot_N_ion ;
+}
+
+/**
+ * Consume the #spart ionizing photon budget.
+ *
+ * @param sp The star.
+ * @param Delta_dot_N_ion The ionizing photon rate to remove.
+ */
 void radiation_consume_ionizing_photons(struct spart* sp, float Delta_dot_N_ion) {
   sp->feedback_data.radiation.dot_N_ion -= Delta_dot_N_ion;
   return;
 }
 
+/**
+ * Tag the #part as ionized to be ionized in feedback_update_part().
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ */
 void radiation_tag_part_as_ionized(struct part* p, struct xpart* xp) {
   xp->feedback_data.radiation.is_ionized = 1;
   return;
 }
 
+/**
+ * Is this #part *tagged* as ionized ?
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Is the particle *tagged* ionized?
+ */
 int radiation_is_part_tagged_as_ionized(struct part* p, struct xpart* xp) {
   return xp->feedback_data.radiation.is_ionized;
 }
 
+/**
+ * Compute the temperature of a single star from empirical mass-temperature
+ * relations.
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param hydro_properties The #hydro_props.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Is the particle ionized?
+ */
 int radiation_is_part_ionized(const struct phys_const* phys_const,
                               const struct hydro_props* hydro_props,
                               const struct unit_system* us,
@@ -143,28 +204,48 @@ int radiation_is_part_ionized(const struct phys_const* phys_const,
   return (T > ten_to_four_kelvin || xp->feedback_data.radiation.is_ionized);
 }
 
+/**
+ * Compute the radius of a single star from empirical mass-radius relations.
+ *
+ * This function get the value for an individual star. For a SSP, this function is
+ * used to compute and IMF-average.
+ *
+ * @param sp Pointer to star particle.
+ * @param us Unit system.
+ * @param phys_const Physical constants.
+ * @return Radius in code units.
+ */
 float radiation_get_individual_star_radius(const struct spart* sp,
 					   const struct unit_system* us,
 					   const struct phys_const* phys_const) {
 
-  const float R_sun = phys_const->const_solar_radius; /* In internal units */
+  /* Perform some units conversions */
+  const float R_sun = phys_const->const_solar_radius;
   const float M_solar = phys_const->const_solar_mass;
+  const float M = sp->mass;
+  const float M_in_solar = M / M_solar;
 
-  const float M = sp->mass; /* In internal units */
-  const float M_in_solar = M / M_solar; /* In solar masses */
-
-  /* TODO: Correct unit conversion */
   if (M_in_solar < 1.f) {
     return R_sun * powf(M_in_solar, 0.8f);
   } else if (M_in_solar < 8.f) {
     return R_sun * powf(M_in_solar, 0.57f);
   } else {
-
-    /* message("R_sun = %e, R = %e, pow = %e, M = %e, M_in_solar = %e", R_sun,  R_sun * powf(M_in_solar, 0.5f), powf(M_in_solar, 0.5f), M, M_in_solar); */
     return R_sun * powf(M_in_solar, 0.5f);
   }
 }
 
+/**
+ * Compute the temperature of a single star from empirical mass-temperature
+ * relations.
+ *
+ * This function get the value for an individual star. For a SSP, this function is
+ * used to compute and IMF-average.
+ *
+ * @param sp Pointer to star particle.
+ * @param us Unit system.
+ * @param phys_const Physical constants.
+ * @return Temperature in code units.
+ */
 float radiation_get_individual_star_temperature(const struct spart* sp,
 						const struct unit_system* us,
 						const struct phys_const* phys_const) {
@@ -189,16 +270,11 @@ float radiation_get_individual_star_temperature(const struct spart* sp,
 }
 
 /**
- * Return the bolometric luminosity of a single star from empirical
+ * Computes the bolometric luminosity of a single star from empirical
  * mass-luminosity relations.
  *
- * Uses a piecewise power-law approximation:
- * - L ∝ M^2 for M < 0.43 Msun
- * - L ∝ M^4 for 0.43 ≤ M < 2.0 Msun
- * - L ∝ M^3.5 for 2.0 ≤ M < 54 Msun
- * - L ∝ 32000 M for M ≥ 54 Msun
- *
- * Returns luminosity in code units.
+ * This function get the value for an individual star. For a SSP, this function is
+ * used to compute and IMF-average.
  *
  * @param sp Pointer to star particle.
  * @param us Unit system.
@@ -230,6 +306,19 @@ float radiation_get_individual_star_luminosity(
   return luminosity;
 }
 
+
+/**
+ * @brief Get the #spart ionizing photon emission rate using a fit on the
+ * Blackbody spectrum (from Gizmo).
+ *
+ * This function get the value for an individual star. For a SSP, this function is
+ * used to compute and IMF-average.
+ *
+ * @param sp The #spart to consider.
+ * @param us The unit system.
+ * @param phys_const The #phys_const.
+ * @return N_dot_ion The ionizing photon emission rate in code units [photons/U_T].
+ */
 double radiation_get_individual_star_ionizing_photon_emission_rate_fit(const struct spart* sp,
 								      const struct unit_system* us,
 								      const struct phys_const* phys_const) {

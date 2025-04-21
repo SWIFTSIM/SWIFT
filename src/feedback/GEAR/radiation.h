@@ -84,7 +84,7 @@ float radiation_get_ionizing_photon_emission_rate(const float nu_min, const floa
 						  const float T, const float R,
 						  const float kB, const float h, const float c);
 
-double radiation_get_star_ionisation_rate(const struct spart* sp);
+double radiation_get_star_ionization_rate(const struct spart* sp);
 
 double radiation_get_part_number_hydrogen_atoms(
     const struct phys_const* phys_const, const struct hydro_props* hydro_props,
