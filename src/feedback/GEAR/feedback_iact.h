@@ -64,8 +64,8 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;
   const float ui = r * hi_inv;
-  float wi;
-  kernel_eval(ui, &wi);
+  float wi, wi_dx;
+  kernel_deval(ui, &wi, &wi_dx);
 
   /* Add contribution of pj to normalisation of density weighted fraction
    * which determines how much mass to distribute to neighbouring
@@ -80,6 +80,27 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   /* Radiation */
   /* Compute the column density with the sobolev approx: here we need to compute rho
      and | grad rho | at the star location using the gas particles. */
+  si->feedback_data.rho_star += mj * wi;
+
+  /* Unit vector pointing to pj */
+  float dx_unit[3];
+  for (int k = 0; k < 3; ++k) {
+    dx_unit[k] = dx[k] / r;
+  }
+
+  /* Gradient of the kernel */
+  float gradW[3];
+  for (int k = 0; k < 3; ++k) {
+    gradW[k] = wi_dx * dx_unit[k];
+  }
+
+  /* Gradient of the density */
+  for (int k = 0; k < 3; ++k) {
+    si->feedback_data.grad_rho_star[k] += mj * gradW[k];
+  }
+
+  /* Metallicity at the star location */
+  si->feedback_data.Z_star += pj->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT-1] * wi;
 
   /* Gather neighbours data for HII ionization */
   if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo, cooling, pj, xpj)) {

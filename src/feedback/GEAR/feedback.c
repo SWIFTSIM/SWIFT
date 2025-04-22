@@ -417,6 +417,13 @@ void feedback_init_spart(struct spart* sp) {
 
   sp->feedback_data.enrichment_weight = 0.f;
 
+  sp->feedback_data.rho_star = 0.0;
+  sp->feedback_data.grad_rho_star[0] = 0.0;
+  sp->feedback_data.grad_rho_star[1] = 0.0;
+  sp->feedback_data.grad_rho_star[2] = 0.0;
+
+  sp->feedback_data.Z_star = 0.0;
+
   /* Radiation fields */
   sp->feedback_data.num_ngbs = 0;
   stromgren_shell_init(sp->feedback_data.radiation.stromgren_sphere, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
@@ -524,7 +531,25 @@ void feedback_prepare_feedback(struct spart* restrict sp,
   /* Add missing h factor */
   const float hi_inv = 1.f / sp->h;
   const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
+  const float hi_inv_dim_plus_one = hi_inv_dim * hi_inv; /* 1/h^(d+1) */
   sp->feedback_data.enrichment_weight *= hi_inv_dim;
+
+  sp->feedback_data.rho_star *= hi_inv;
+  sp->feedback_data.grad_rho_star[0] *= hi_inv_dim_plus_one;
+  sp->feedback_data.grad_rho_star[1] *= hi_inv_dim_plus_one;
+  sp->feedback_data.grad_rho_star[2] *= hi_inv_dim_plus_one;
+
+  sp->feedback_data.Z_star *= hi_inv / sp->feedback_data.rho_star;
+
+
+  const float Sigma_gas = radiation_get_star_gas_column_density(sp);
+  const float kappa_IR = radiation_get_IR_opacity(sp, us, phys_const);
+  const float tau_IR = radiation_get_IR_optical_depth(sp, us, phys_const);
+
+  message("rho_star = %e, Grad rho = (%e %e %e), Z = %e, Sigma_gas = %e, kappa_IR = %e, tau_IR = %e",
+	  sp->feedback_data.rho_star, sp->feedback_data.grad_rho_star[0],
+	  sp->feedback_data.grad_rho_star[1], sp->feedback_data.grad_rho_star[2],
+	  sp->feedback_data.Z_star, Sigma_gas, kappa_IR, tau_IR);
 
   /*----------------------------------------*/
   /* Do the HII ionization */

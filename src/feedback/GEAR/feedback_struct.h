@@ -78,7 +78,15 @@ struct feedback_spart_data {
   /*! Integer number of neighbours */
   int num_ngbs;
 
-  /* TODO: Add you data in this struct (For clarity purposes :) */
+  /*! Gas density at the star location */
+  float rho_star;
+
+  /*! Gas density gradient at the star location */
+  float grad_rho_star[3];
+
+  /*! Gas metallicity at the star location */
+  float Z_star;
+
   /*! Pre-SN data struct */
   struct {
 
@@ -89,7 +97,7 @@ struct feedback_spart_data {
     /*! Strömgren sphere radius */
     float R_stromgren;
 
-    /* Strömgren sphere data */
+    /*! Strömgren sphere data */
     struct stromgren_shell_data stromgren_sphere[GEAR_STROMGREN_NUMBER_NEIGHBOURS];
 
   } radiation;
