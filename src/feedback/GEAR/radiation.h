@@ -97,7 +97,7 @@ double radiation_get_part_rate_to_fully_ionize(
     const struct cooling_function_data* cooling, const struct part* p,  const struct xpart* xp);
 
 void radiation_tag_part_as_ionized(struct part* p, struct xpart* xpj);
-void radiation_consume_ionizing_photons(struct spart* sp, float Delta_dot_N_ion);
+void radiation_consume_ionizing_photons(struct spart* sp, double Delta_dot_N_ion);
 
 int radiation_is_part_ionized(const struct phys_const* phys_const,
                               const struct hydro_props* hydro_props,

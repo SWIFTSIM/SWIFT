@@ -148,7 +148,7 @@ double radiation_get_star_ionization_rate(const struct spart* sp) {
  * @param sp The star.
  * @param Delta_dot_N_ion The ionizing photon rate to remove.
  */
-void radiation_consume_ionizing_photons(struct spart* sp, float Delta_dot_N_ion) {
+void radiation_consume_ionizing_photons(struct spart* sp, double Delta_dot_N_ion) {
   sp->feedback_data.radiation.dot_N_ion -= Delta_dot_N_ion;
   return;
 }
