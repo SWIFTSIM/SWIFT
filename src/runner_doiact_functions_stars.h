@@ -166,7 +166,7 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
                                           e->hydro_properties,
                                           e->feedback_props, e->physical_constants,
 					  e->internal_units, e->cooling_func,
-					  ti_current);
+					  ti_current, e->time_base);
 #endif
       }
       if (r2 < hig2 && with_rt) {
@@ -336,7 +336,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
                                           e->hydro_properties,
                                           e->feedback_props, e->physical_constants,
 					  e->internal_units, e->cooling_func,
-					  ti_current);
+					  ti_current, e->time_base);
 #endif
       }
       if (r2 < hig2 && with_rt) {
@@ -568,7 +568,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
                                             e->hydro_properties,
                                             e->feedback_props, e->physical_constants,
 					    e->internal_units, e->cooling_func,
-					    ti_current);
+					    ti_current, e->time_base);
 #endif
         }
         if (r2 < hig2 && with_rt) {
@@ -737,7 +737,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
                                             e->hydro_properties,
                                             e->feedback_props, e->physical_constants,
 					    e->internal_units, e->cooling_func,
-					    ti_current);
+					    ti_current, e->time_base);
 #endif
         }
         if (r2 < hjg2 && with_rt) {
