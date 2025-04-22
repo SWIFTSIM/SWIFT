@@ -150,12 +150,19 @@ void feedback_update_part(struct part* p, struct xpart* xp,
     const double T_collisional =  ten_to_four_K * min(6.62, tmp);
     const double u_collisional = cooling_internal_energy_from_T(T_collisional, mu, k_B, m_p);
 
-    const float u_new = min(u + Delta_u_ionized, u_collisional);
+    const float u_new = min(Delta_u_ionized, u_collisional);
 
     message("u = %e, Delta_u_ionized = %e, u_coll = %e, T_col = %e, tmp = %e", u, Delta_u_ionized, u_collisional, T_collisional, tmp);
 
     hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
     hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
+
+#if COOLING_GRACKLE_MODE > 0
+    /* If we have the non-equilibrium cooling, we can also set these values and
+       let grackle solve the network. */
+    xp->cooling_data.HI_frac = 0;
+    xp->cooling_data.HII_frac = 1;
+#endif
 
     /* Reset the ionization tag */
     radiation_reset_part_ionized_tag(p, xp);
