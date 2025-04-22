@@ -25,6 +25,7 @@
 #include "cosmology.h"
 #include "engine.h"
 #include "error.h"
+#include "stromgren_sphere.h"
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
@@ -154,6 +155,9 @@ void feedback_update_part(struct part* p, struct xpart* xp,
 
     hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
     hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
+
+    /* Reset the ionization tag */
+    radiation_reset_part_ionized_tag(p, xp);
   }
 }
 
@@ -324,6 +328,8 @@ int feedback_is_active(const struct spart* sp, const struct engine* e) {
 
   /* the particle is inactive if its birth_scale_factor or birth_time is
    * negative */
+
+  /* If the spart is dead, don't do anything */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
 
   return sp->feedback_data.will_do_feedback;
@@ -414,6 +420,9 @@ void feedback_first_init_spart(struct spart* sp,
 
   /* Activate the feedback loop for the first step */
   sp->feedback_data.will_do_feedback = 1;
+
+  /* The spart is dead if its birth_time is negative */
+  sp->feedback_data.is_dead = (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0);
 }
 
 /**
