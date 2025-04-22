@@ -38,11 +38,17 @@ struct feedback_props {
   /*! The stellar model for first stars */
   struct stellar_model stellar_model_first_stars;
 
-  /* Metallicity limits for the first stars */
+  /*! Metallicity limits for the first stars */
   float metallicity_max_first_stars;
 
-  /* Metallicity [Fe/H] transition for the first stars */
+  /*! Metallicity [Fe/H] transition for the first stars */
   float imf_transition_metallicity;
+
+  /*! Do we want the ionization effect (Strömgren sphere)? */
+  int do_photoionization;
+
+  /*! Radiation pressure momentum effectively injected */
+  float radiation_pressure_efficiency;
 };
 
 /**
@@ -90,6 +96,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     message("Metallicity max for the first stars (in mass fraction) = %g",
             feedback_props->metallicity_max_first_stars);
   }
+
+  message("Photoionization                    =  %i", feedback_props->do_photoionization);
+  message("Radiation pressure efficiency:     =  %.2g", feedback_props->radiation_pressure_efficiency);
 }
 
 /**
@@ -155,6 +164,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,
                                  params, cosmo);
   }
+
+  /* Radiation fields */
+  fp->do_photoionization = parser_get_opt_param_int(params, "GEARFeedback:do_photoionization", 0);
+  fp->radiation_pressure_efficiency = parser_get_opt_param_float(params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
 
   /* Print the stellar properties */
   feedback_props_print(fp);

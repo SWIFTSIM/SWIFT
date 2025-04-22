@@ -42,7 +42,12 @@ struct feedback_xpart_data {
 
   /*! Radiation struct */
   struct {
+
+    /*! Tag to ionize the part */
     int is_ionized;
+
+    /*! Momemtum received from a radiation_pressure */
+    float delta_p[3];
   } radiation;
 };
 

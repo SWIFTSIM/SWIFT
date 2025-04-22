@@ -209,6 +209,20 @@ void feedback_update_part(struct part* p, struct xpart* xp,
     /* Reset the ionization tag */
     radiation_reset_part_ionized_tag(p, xp);
   }
+
+  /*----------------------------------------*/
+  /* Radiation pressure */
+
+  if (e->feedback_props->radiation_pressure_efficiency != 0.0) {
+    for (int i = 0; i < 3; i++) {
+      const float dv = xp->feedback_data.radiation.delta_p[i] / hydro_get_mass(p);
+      xp->v_full[i] += dv;
+      p->v[i] += dv;
+
+      /* Reset */
+      xp->feedback_data.radiation.delta_p[i] = 0;
+    }
+  }
 }
 
 /**
