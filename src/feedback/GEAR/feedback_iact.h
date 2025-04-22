@@ -238,38 +238,12 @@ runner_iact_nonsym_feedback_apply(
   /* const struct radiation* radiation = &fb_props->stellar_model.radiation; */
 
   /* 3. Photoionization */
-  /* NOTE: Probalby create a fct to store the computations so that we only have
-     to call the functions for the mech fbk */
-  /* Is pj already ionized ? If yes, there is nothing to do here. */
-
-  if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo, cooling, pj, xpj)) {
-    const double dot_N_ion = radiation_get_star_ionization_rate(si);
-    const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
-
-    /* message("dot_N_ion = %e, Delta_N_dot_ion = %e", dot_N_ion, Delta_dot_N_ion); */
-
-    /* Compute a probability to determine if we fully ionize pj or not and
-       draw the random number. */
-    /* Note: In the current version we distribute in a weighted manner the
-       ionization */
-    const float proba = weight * dot_N_ion / Delta_dot_N_ion;
-    const float random_number = random_unit_interval(si->id, ti_current, random_number_HII_regions);
-    /* For later when we compute the stromgren radius on the fly
-      const int do_ionization = (dot_N_ion <= Delta_dot_N_ion) ? 1 :
-      (random_number <= proba);
-    */
-    const int do_ionization = (random_number <= proba);
-
-    /* message("proba = %e, do_ionization = %d", proba, do_ionization); */
-
-  if (do_ionization) {
+  const float R_stromgren = si->feedback_data.radiation.R_stromgren;
+  if (r <= R_stromgren) {
+    message("Found particle to ionize ! r= %e, id = %lld", r, pj->id);
     /* Tag the particle */
     radiation_tag_part_as_ionized(pj, xpj);
-
-    /* For on-the-fly stromgren sphere */
-    /* radiation_consume_ionizing_photons(si, Delta_dot_N_ion); */
   }
-}
 
   /* 4. Compute radiation pressure */
   /* const float p_rad = radiation_compute_radiation_pressure(sj); */
