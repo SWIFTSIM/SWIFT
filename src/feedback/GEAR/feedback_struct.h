@@ -20,6 +20,7 @@
 #define SWIFT_FEEDBACK_STRUCT_GEAR_H
 
 #include "chemistry_struct.h"
+#include "stromgren_sphere.h"
 
 /**
  * @brief Feedback fields carried by each hydro particles
@@ -74,6 +75,9 @@ struct feedback_spart_data {
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
 
+  /*! Integer number of neighbours */
+  int num_ngbs;
+
   /* TODO: Add you data in this struct (For clarity purposes :) */
   /*! Pre-SN data struct */
   struct {
@@ -81,6 +85,12 @@ struct feedback_spart_data {
     /*! Number of inonizing photons per unit time (this is a HUGE number, so
         must be a double) */
     double dot_N_ion;
+
+    /*! Strömgren sphere radius */
+    float R_stromgren;
+
+    /* Strömgren sphere data */
+    struct stromgren_shell_data stromgren_sphere[GEAR_STROMGREN_NUMBER_NEIGHBOURS];
 
   } radiation;
 };
