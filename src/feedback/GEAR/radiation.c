@@ -165,6 +165,17 @@ void radiation_tag_part_as_ionized(struct part* p, struct xpart* xp) {
 }
 
 /**
+ * Reset the #part ionization tag.
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ */
+void radiation_reset_part_ionized_tag(struct part* p, struct xpart* xp) {
+  xp->feedback_data.radiation.is_ionized = 0;
+  return;
+}
+
+/**
  * Is this #part *tagged* as ionized ?
  *
  * @param p The particle.
