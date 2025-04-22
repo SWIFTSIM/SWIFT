@@ -196,7 +196,7 @@ void feedback_reset_part(struct part* p, struct xpart* xp) {}
  * @param time_base The time base.
  * @param time The current time (in double)
  */
-void compute_time(struct spart* sp, const int with_cosmology,
+void compute_time(const struct spart* sp, const int with_cosmology,
                   const struct cosmology* cosmo, double* star_age_beg_of_step,
                   double* dt_enrichment, integertime_t* ti_begin_star,
                   const integertime_t ti_current, const double time_base,
