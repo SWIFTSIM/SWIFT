@@ -475,6 +475,51 @@ void feedback_prepare_feedback(struct spart* restrict sp,
   const float hi_inv = 1.f / sp->h;
   const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
   sp->feedback_data.enrichment_weight *= hi_inv_dim;
+
+  /*----------------------------------------*/
+  /* Do the HII ionization */
+  const struct stromgren_shell_data* stromgren = sp->feedback_data.radiation.stromgren_sphere;
+  const int num_ngb = min(sp->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
+
+  /* Loop over the sorted gas neighbours */
+  for (int i = 0; i < num_ngb; i++) {
+    /* This is recomputed at each iteration */
+    const double dot_N_ion = radiation_get_star_ionization_rate(sp);
+
+    if (dot_N_ion <= 0.0) {
+      message("we reached the end of the ionized region! r = %e, i = %d, R_s = %e",
+	      stromgren[i].distance, i, sp->feedback_data.radiation.R_stromgren);
+      break;
+    }
+
+    const double Delta_dot_N_ion = stromgren[i].Delta_N_dot;
+    message("i = %d, dot_N_ion = %e, Delta_N_dot_ion = %e, r = %e, R_s = %e",
+	    i, dot_N_ion, Delta_dot_N_ion, stromgren[i].distance,
+	    sp->feedback_data.radiation.R_stromgren);
+
+    if (Delta_dot_N_ion <= dot_N_ion) {
+      /* We can fully ionize this particle */
+      /* Update the Stromgren sphere radius */
+      sp->feedback_data.radiation.R_stromgren = stromgren[i].distance;
+
+      /* Consume the photons */
+      radiation_consume_ionizing_photons(sp, Delta_dot_N_ion);
+    } else {
+      /* If we cannot fully ionize, compute a probability to determine if we
+	 fully ionize pj or not and draw the random number.  */
+      const float proba = dot_N_ion / Delta_dot_N_ion;
+      const float random_number = random_unit_interval(sp->id, ti_begin, random_number_HII_regions);
+
+      if (random_number <= proba) {
+	/* Update the Stromgren sphere radius */
+	sp->feedback_data.radiation.R_stromgren = stromgren[i].distance;
+	message("BINGO, R_s = %e", sp->feedback_data.radiation.R_stromgren);
+      }
+
+      /* Consume the photons in all cases */
+      radiation_consume_ionizing_photons(sp, Delta_dot_N_ion);
+    }
+  }
 }
 
 /**
