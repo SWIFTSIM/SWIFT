@@ -358,11 +358,18 @@ double feedback_get_enrichment_timestep(const struct spart* sp,
 /**
  * @brief Prepares a s-particle for its feedback interactions
  *
+ * Note: In GEAR, this function must not reset the data as the are computed
+ * at the end of the tasks by the stellar_evolution functions.
+ *
  * @param sp The particle to act upon
  */
 void feedback_init_spart(struct spart* sp) {
 
   sp->feedback_data.enrichment_weight = 0.f;
+
+  /* Radiation fields */
+  sp->feedback_data.num_ngbs = 0;
+  stromgren_shell_init(sp->feedback_data.radiation.stromgren_sphere, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
 }
 
 /**
