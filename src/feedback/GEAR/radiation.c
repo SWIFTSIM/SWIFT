@@ -19,6 +19,8 @@
 
 /* Include header */
 #include "radiation.h"
+#include "kernel_hydro.h"
+#include "units.h"
 
 /* TODO: Check unit... similaru in radiation_blackbody_etc */
 float radiation_get_blackbody_luminosity_band(
@@ -213,6 +215,42 @@ int radiation_is_part_ionized(const struct phys_const* phys_const,
 
   /* Is the particle ionized ? */
   return (T > ten_to_four_kelvin || xp->feedback_data.radiation.is_ionized);
+}
+
+float radiation_get_star_gas_column_density(const struct spart* sp) {
+  const float rho_gas = sp->feedback_data.rho_star;
+  const float grad_rho[3] = {sp->feedback_data.grad_rho_star[0], sp->feedback_data.grad_rho_star[1], sp->feedback_data.grad_rho_star[2]};
+  const float norm_grad_rho = sqrtf(grad_rho[0]*grad_rho[0] + grad_rho[1]*grad_rho[1] + grad_rho[2]*grad_rho[2]);
+
+  const float length_gas = sp->h*kernel_gamma + rho_gas/norm_grad_rho;
+  return length_gas * rho_gas;
+}
+
+float radiation_get_IR_opacity(const struct spart* sp,  const struct unit_system* us,
+					   const struct phys_const* phys_const) {
+  const float Z_gas = sp->feedback_data.Z_star;
+  const float Z_sun = 0.02;
+  const float value = 10 * units_cgs_conversion_factor(us, UNIT_CONV_AREA) / units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  return value * Z_gas/Z_sun;
+}
+
+float radiation_get_IR_optical_depth(const struct spart* sp,  const struct unit_system* us,
+				     const struct phys_const* phys_const) {
+  const float Sigma_gas =  radiation_get_star_gas_column_density(sp);
+  const float kappa_IR = radiation_get_IR_opacity(sp, us, phys_const);
+  return kappa_IR * Sigma_gas;
+}
+
+float radiation_get_star_radiation_pressure(const struct spart* sp,
+					    const float Delta_t,
+					    const struct unit_system* us,
+					    const struct phys_const* phys_const) {
+
+  const float tau_IR = radiation_get_IR_optical_depth(sp, us, phys_const);
+  const float L_bol = radiation_get_individual_star_luminosity(sp, us, phys_const);
+  const float c = phys_const->const_speed_light_c;
+
+  return Delta_t * L_bol / c * (1 + tau_IR);
 }
 
 /**

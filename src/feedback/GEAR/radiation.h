@@ -99,7 +99,21 @@ double radiation_get_part_rate_to_fully_ionize(
 void radiation_tag_part_as_ionized(struct part* p, struct xpart* xpj);
 void radiation_reset_part_ionized_tag(struct part* p, struct xpart* xpj);
 int radiation_is_part_tagged_as_ionized(struct part* p, struct xpart* xpj);
-void radiation_consume_ionizing_photons(struct spart* sp, double Delta_dot_N_ion);
+void radiation_consume_ionizing_photons(struct spart* sp,
+                                        double Delta_dot_N_ion);
+float radiation_get_star_gas_column_density(const struct spart* sp);
+
+float radiation_get_IR_opacity(const struct spart* sp,  const struct unit_system* us,
+			       const struct phys_const* phys_const) ;
+
+float radiation_get_IR_optical_depth(const struct spart* sp,
+                                     const struct unit_system* us,
+                                     const struct phys_const* phys_const);
+
+float radiation_get_star_radiation_pressure(const struct spart* sp,
+					    const float Delta_t,
+					    const struct unit_system* us,
+					    const struct phys_const* phys_const);
 
 int radiation_is_part_ionized(const struct phys_const* phys_const,
                               const struct hydro_props* hydro_props,
