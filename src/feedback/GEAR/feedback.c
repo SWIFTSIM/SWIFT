@@ -25,6 +25,7 @@
 #include "cosmology.h"
 #include "engine.h"
 #include "error.h"
+#include "hydro.h"
 #include "stromgren_sphere.h"
 #include "feedback_properties.h"
 #include "hydro_properties.h"
@@ -50,15 +51,56 @@
 float feedback_compute_spart_timestep(
     const struct spart* const sp, const struct feedback_props* feedback_props,
     const struct phys_const* phys_const,
-    const int with_cosmology, const struct cosmology* cosmo) {
+    const struct unit_system* us,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const integertime_t ti_current, const double time, const double time_base) {
 
   /* TODO: Compute timestep for feedback */
-  const float dt = FLT_MAX;
+  float dt = FLT_MAX;
+
+  /*----------------------------------------*/
+  /* Timestep based on the evolutionnary stage */
+  /* Pick the correct table. (if only one table, threshold is < 0) */
+  const float metallicity = chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
+  const float threshold = feedback_props->metallicity_max_first_stars;
+
+  /* If metal < threshold, then  sp is a first star particle. */
+  const int is_first_star = metallicity < threshold;
+  const struct stellar_model* sm =
+      is_first_star ? &feedback_props->stellar_model_first_stars
+                    : &feedback_props->stellar_model;
+
+  /* Compute the times */
+  double star_age_beg_step = 0;
+  double dt_enrichment = 0;
+  integertime_t ti_begin = 0;
+  compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
+               &ti_begin, ti_current, time_base, time);
+
+  const float log_mass = (sp->star_type == single_star) ?  log10(sp->sf_data.birth_mass / phys_const->const_solar_mass) : log10(sm->imf.mass_min / phys_const->const_solar_mass);
+
+  const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(&sm->lifetime, log_mass, metallicity));
+  const float lifetime = lifetime_myr*1e6*phys_const->const_year;
+
+  float factor = 0.0;
+
+  if (lifetime_myr >= 100) {
+    factor = 1;
+  } else if (lifetime_myr < 100 && lifetime_myr >= 50) {
+    factor = 20;
+  } else {
+    factor = 300;
+  }
+
+  float dt_evolution = (star_age_beg_step == 0) ? FLT_MAX : star_age_beg_step/(factor*lifetime);
+
+  /*----------------------------------------*/
 
   /* If the star is dead, do not limit its timestep */
   if (sp->feedback_data.is_dead) {
     return FLT_MAX;
   } else {
+    dt = min(dt, dt_evolution);
     return dt;
   }
 }
