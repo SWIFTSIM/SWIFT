@@ -729,6 +729,10 @@ GEARFeedback:
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
   discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
 
+  # Radiation parameters
+  do_photoionization:         0                            # Whether to fo run the subgrid photoionization model to mimick Strömgren sphere. 1: Do photoionization, 0: do not. (Default: 0)
+  radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
+
 # AGORA feedback model
 AGORAFeedback:
   energy_in_erg_per_CCSN: 1e51
