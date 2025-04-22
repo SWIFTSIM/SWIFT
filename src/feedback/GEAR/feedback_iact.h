@@ -49,6 +49,10 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const struct xpart *xpj,
                                     const struct cosmology *cosmo,
                                     const struct feedback_props *fb_props,
+				    const struct hydro_props *hydro_props,
+				    const struct phys_const* phys_const,
+				    const struct unit_system* us,
+				    const struct cooling_function_data* cooling,
                                     const integertime_t ti_current) {
 
   /* Get the gas mass. */
@@ -70,11 +74,31 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   /* The normalization by 1 / h^d is done in feedback.h */
   si->feedback_data.enrichment_weight += mj * wi;
 
-
+  /* Contribution to the number of neighbours */
+  si->feedback_data.num_ngbs += 1;
 
   /* Radiation */
-  /* Compute the culumn density with the sobolev approx: here we need to compute rho
+  /* Compute the column density with the sobolev approx: here we need to compute rho
      and | grad rho | at the star location using the gas particles. */
+
+  /* Gather neighbours data for HII ionization */
+  if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo, cooling, pj, xpj)) {
+    /* If a particle is already ionized, it won't be able to ionize again so do
+       not gather its data. */
+    const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+
+    /* Compute the size of the array that we want to sort. If the current
+     * function is called for the first time (at this time-step for this star),
+     * then si->num_ngbs = 1 and there is nothing to sort. Note that the
+     * maximum size of the sorted array cannot be larger then the maximum
+     * number of rays. */
+    const int arr_size = min(si->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
+
+    /* Minimise separation between the gas particles and the BH. The rays
+     * structs with smaller ids in the ray array will refer to the particles
+     * with smaller distances to the BH. */
+    stromgren_sort_distance(r, si->feedback_data.radiation.stromgren_sphere, arr_size, Delta_dot_N_ion);
+  }
 }
 
 /**
