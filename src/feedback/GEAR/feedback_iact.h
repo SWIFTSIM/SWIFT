@@ -255,11 +255,13 @@ runner_iact_nonsym_feedback_apply(
   /* const struct radiation* radiation = &fb_props->stellar_model.radiation; */
 
   /* 3. Photoionization */
-  const float R_stromgren = si->feedback_data.radiation.R_stromgren;
-  if (r <= R_stromgren) {
-    message("Found particle to ionize ! r= %e, id = %lld", r, pj->id);
-    /* Tag the particle */
-    radiation_tag_part_as_ionized(pj, xpj);
+  if (fb_props->do_photoionization) {
+    const float R_stromgren = si->feedback_data.radiation.R_stromgren;
+    if (r <= R_stromgren) {
+      /* message("Found particle to ionize ! r= %e, id = %lld", r, pj->id); */
+      /* Tag the particle */
+      radiation_tag_part_as_ionized(pj, xpj);
+    }
   }
 
   /* 4. Compute radiation pressure */
