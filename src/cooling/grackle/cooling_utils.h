@@ -39,9 +39,9 @@ __attribute__((always_inline)) INLINE static float cooling_get_hydrogen_mass_fra
 										      const struct cooling_function_data* cooling,
 										      const struct part* p, const struct xpart* xp) {
 
+#if COOLING_GRACKLE_MODE == 0
   const float Z = chemistry_get_total_metal_mass_fraction_for_cooling(p);
 
-#if COOLING_GRACKLE_MODE == 0
   /* Approximation that takes into account metals */
   return cooling->HydrogenFractionByMass - Z;
 #else
@@ -75,10 +75,10 @@ __attribute__((always_inline)) INLINE static double cooling_get_mean_molecular_w
 const struct cooling_function_data* cooling, const struct part* p, const struct xpart *xp) {
 
   const double m_H = phys_const->const_proton_mass;
-  const double k_B = phys_const->const_boltzmann_k;
   
   /* Grackle mode 0: Use temperature-based molecular weight calculation */
 #if COOLING_GRACKLE_MODE == 0
+  const double k_B = phys_const->const_boltzmann_k;
   const double H_frac = cooling->HydrogenFractionByMass;  // Hydrogen fraction from metadata
     
   /* Internal energy and temperature-to-mean molecular weight calculation for mode 0 */
@@ -130,7 +130,7 @@ const struct cooling_function_data* cooling, const struct part* p, const struct 
   return mu;
 
   /* Grackle mode 2: Add species like H2I and H2II to the molecular weight calculation */
-#elif COOLING_GRACKLE_MODE == 2;
+#elif COOLING_GRACKLE_MODE == 2
   const double XHeI   = cool_data->HeI_frac;
   const double XHeII  = cool_data->HeII_frac;
   const double XHeIII = cool_data->HeIII_frac;
@@ -159,6 +159,8 @@ const struct cooling_function_data* cooling, const struct part* p, const struct 
 
   /* Grackle mode 3: Add species like H2I, H2II, HDI, and electrons to the molecular weight calculation */
 #elif COOLING_GRACKLE_MODE == 3
+  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
+  const double rho = hydro_get_physical_density(p, cosmo);
   const double XHeI   = cool_data->HeI_frac;
   const double XHeII  = cool_data->HeII_frac;
   const double XHeIII = cool_data->HeIII_frac;
