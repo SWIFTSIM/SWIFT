@@ -121,6 +121,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
     }
   }
 
+  /*----------------------------------------*/
   /* Treat ionisation */
   if (radiation_is_part_tagged_as_ionized(p, xp)) {
     const struct unit_system* us = e->internal_units;
@@ -487,9 +488,9 @@ void feedback_prepare_feedback(struct spart* restrict sp,
     const double dot_N_ion = radiation_get_star_ionization_rate(sp);
 
     if (dot_N_ion <= 0.0) {
-      message("we reached the end of the ionized region! r = %e, i = %d, R_s = %e",
-	      stromgren[i].distance, i, sp->feedback_data.radiation.R_stromgren);
-      break;
+      /* message("we reached the end of the ionized region! r = %e, i = %d, R_s = %e", */
+      /* 	      stromgren[i].distance, i, sp->feedback_data.radiation.R_stromgren); */
+      /* break; */
     }
 
     const double Delta_dot_N_ion = stromgren[i].Delta_N_dot;
@@ -513,7 +514,6 @@ void feedback_prepare_feedback(struct spart* restrict sp,
       if (random_number <= proba) {
 	/* Update the Stromgren sphere radius */
 	sp->feedback_data.radiation.R_stromgren = stromgren[i].distance;
-	message("BINGO, R_s = %e", sp->feedback_data.radiation.R_stromgren);
       }
 
       /* Consume the photons in all cases */
