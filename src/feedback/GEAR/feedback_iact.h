@@ -145,7 +145,7 @@ runner_iact_nonsym_feedback_apply(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props,  const struct phys_const* phys_const,
     const struct unit_system* us, const struct cooling_function_data* cooling,
-    const integertime_t ti_current) {
+    const integertime_t ti_current, const double time_base) {
 
   const double e_sn = si->feedback_data.energy_ejected;
 
@@ -238,11 +238,7 @@ runner_iact_nonsym_feedback_apply(
      u_new = min(u + delta U, U_collisional),
      delta U = N_H * E_ion / m_gas,
      E_ion = 13.6 eV = 2.18e-11 erg
-     Gamma = \Delta N_dot_j / N_H
-
-     Idea: In the original algorithm, Hopkins sort the particles but here
-     we do not. Maybe add a proba such that the closest particles have a
-     higer chances of being ionized.
+     Gamma = \Delta N_dot_j / N_H.
 
      4. Radiation pressure:
      p_rad_tot = Delta t / c * Sum_nu L_abs_nu
@@ -267,11 +263,18 @@ runner_iact_nonsym_feedback_apply(
   }
 
   /* 4. Compute radiation pressure */
-  /* const float p_rad = radiation_compute_radiation_pressure(sj); */
-  /* const float delta_p_rad = weight * p_rad; */
+  /* TODO: DO we want to compute it here or at the same locations than SN
+     feedback? */
+  if (fb_props->radiation_pressure_efficiency != 0) {
+    const float Delta_t = get_timestep(si->time_bin, time_base);
+    const float p_rad = fb_props->radiation_pressure_efficiency * radiation_get_star_radiation_pressure(si, Delta_t, us, phys_const);
+    const float delta_p_rad = weight * p_rad;
 
-  /* Add the radiation pressure radially outwards from the star */
-  
+    /* Add the radiation pressure radially outwards from the star */
+    for (int i = 0; i < 3; i++) {
+      xpj->feedback_data.radiation.delta_p[i] -= delta_p_rad * dx[i] / r;
+    }
+  }
 
   /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);
