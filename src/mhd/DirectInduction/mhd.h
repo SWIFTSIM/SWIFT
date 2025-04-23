@@ -257,7 +257,9 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_init_part(
-    struct part *p) {}
+    struct part *p) {
+    p->mhd_data.Nneigh = 0;
+    }
 
 /**
  * @brief Finishes the density calculation.
