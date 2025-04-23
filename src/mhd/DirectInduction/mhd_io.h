@@ -468,7 +468,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
   list[16] = io_make_output_field(
-      "Nneigh", FLOAT, 1, UNIT_CONV_NO_UNIT,0, parts, mhd_data.Nneigh,
+      "Nneigh", FLOAT, 1, UNIT_CONV_NO_UNITS,0, parts, mhd_data.Nneigh,
       "Number of neighbours for each particle");
 
   return 17;
