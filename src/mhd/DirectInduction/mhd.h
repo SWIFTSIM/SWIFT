@@ -275,7 +275,17 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_density(
-    struct part *p, const struct cosmology *cosmo) {}
+    struct part *p, const struct cosmology *cosmo) {
+    // if a particle has too little neighbors show id
+    int pid;
+    pid = p->id;
+    const int Nneightrig = 10;
+
+    if (p->mhd_data.Nneigh<=Nneightrig){
+        message("Particle id : %i has Nneigh: %i",
+          pid, p->mhd_data.Nneigh);
+    }
+    }
 
 /**
  * @brief Prepare a particle for the gradient calculation.
