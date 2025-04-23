@@ -25,12 +25,11 @@
 #include "hdf5_functions.h"
 #include "initial_mass_function.h"
 #include "lifetime.h"
+#include "radiation.h"
 #include "random.h"
 #include "stellar_evolution_struct.h"
 #include "supernovae_ia.h"
 #include "supernovae_ii.h"
-#include "radiation.h"
-#include "exp10.h"
 
 #include <math.h>
 #include <stddef.h>
@@ -358,7 +357,8 @@ void stellar_evolution_evolve_individual_star(
   const float metallicity =
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
 
-  const float log_mass = log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
+  const float log_mass =
+      log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
   const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
                                          &sm->lifetime, log_mass, metallicity));
 
@@ -374,17 +374,16 @@ void stellar_evolution_evolve_individual_star(
   /* You can use this to help debugging */
   /* const float mass_Msun = sp->mass / phys_const->const_solar_mass; */
   /* message("mass = %e, star_age_beg_step_myr = %e, lifetime = %e", */
-	  /* mass_Msun, star_age_beg_step_myr, lifetime_myr); */
+  /* mass_Msun, star_age_beg_step_myr, lifetime_myr); */
 
   /* TODO: Pre-SN feedback (do it until the star is dead) */
   /* Note: You can update the function parameters as needed. */
-  stellar_evolution_compute_preSN_feedback_individual_star(sp, sm, cosmo, us, phys_const, ti_begin,
-						 star_age_beg_step, dt);
+  stellar_evolution_compute_preSN_feedback_individual_star(
+      sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
 
   /* Supernova feedback */
-  stellar_evolution_compute_SN_feedback_individual_star(sp, sm, cosmo, us, phys_const,
-							ti_begin, star_age_beg_step,
-							dt);
+  stellar_evolution_compute_SN_feedback_individual_star(
+      sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
 }
 
 /**
@@ -430,13 +429,12 @@ void stellar_evolution_evolve_spart(
 
   /* TODO: Pre-SN feedback */
   /* Note: You can update the function parameters as needed. */
-  stellar_evolution_compute_preSN_feedback_spart(sp, sm, cosmo, us, phys_const, ti_begin,
-						 star_age_beg_step, dt);
+  stellar_evolution_compute_preSN_feedback_spart(
+      sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
 
   /* Supernova feedback */
-  stellar_evolution_compute_SN_feedback_spart(sp, sm, cosmo, us, phys_const, ti_begin,
-					      star_age_beg_step, dt);
-
+  stellar_evolution_compute_SN_feedback_spart(sp, sm, cosmo, us, phys_const,
+                                              ti_begin, star_age_beg_step, dt);
 }
 
 /**
@@ -705,71 +703,71 @@ void stellar_evolution_compute_SN_feedback_individual_star(
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
   const double star_age_end_step_myr =
-    (star_age_beg_step + dt) / conversion_to_myr;
+      (star_age_beg_step + dt) / conversion_to_myr;
   const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
 
   /* Get the metallicity */
   const float metallicity =
-    chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
 
-  const float log_mass = log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
+  const float log_mass =
+      log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
   const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
-									 &sm->lifetime, log_mass, metallicity));
+                                         &sm->lifetime, log_mass, metallicity));
 
   /* If the star has not reached its death time, don't start the firework */
   if (lifetime_myr > star_age_end_step_myr) return;
 
-    message(
-	    "(%lld) lifetime_myr=%g %g star_age_beg_step=%g star_age_end_step=%g "
-	    "(%g)",
-	    sp->id, lifetime_myr, lifetime_myr * conversion_to_myr,
-	    star_age_beg_step_myr, star_age_end_step_myr,
-	    sp->mass / phys_const->const_solar_mass);
+  message(
+      "(%lld) lifetime_myr=%g %g star_age_beg_step=%g star_age_end_step=%g "
+      "(%g)",
+      sp->id, lifetime_myr, lifetime_myr * conversion_to_myr,
+      star_age_beg_step_myr, star_age_end_step_myr,
+      sp->mass / phys_const->const_solar_mass);
 
-    /* This is needed by stellar_evolution_compute_discrete_feedback_properties(),
-       but this is not used inside the function. */
-    const float m_init = 0;
+  /* This is needed by stellar_evolution_compute_discrete_feedback_properties(),
+     but this is not used inside the function. */
+  const float m_init = 0;
 
-    /* Get the integer number of supernovae */
-    const int number_snia = 0;
-    const int number_snii = 1;
+  /* Get the integer number of supernovae */
+  const int number_snia = 0;
+  const int number_snii = 1;
 
-    /* Save the number of supernovae */
-    sp->feedback_data.number_snia = 0;
-    sp->feedback_data.number_snii = number_snii;
+  /* Save the number of supernovae */
+  sp->feedback_data.number_snia = 0;
+  sp->feedback_data.number_snii = number_snii;
 
-    /* this is needed for  stellar_evolution_compute_discrete_feedback_properties
-     */
-    const float m_beg_step = sp->mass / phys_const->const_solar_mass;
-    const float m_end_step = sp->mass / phys_const->const_solar_mass;
-    const float m_avg = 0.5 * (m_beg_step + m_end_step);
+  /* this is needed for  stellar_evolution_compute_discrete_feedback_properties
+   */
+  const float m_beg_step = sp->mass / phys_const->const_solar_mass;
+  const float m_end_step = sp->mass / phys_const->const_solar_mass;
+  const float m_avg = 0.5 * (m_beg_step + m_end_step);
 
-    /* Compute the yields */
-    stellar_evolution_compute_discrete_feedback_properties(
-							   sp, sm, phys_const, m_beg_step, m_end_step, m_init, number_snia,
-							   number_snii);
+  /* Compute the yields */
+  stellar_evolution_compute_discrete_feedback_properties(
+      sp, sm, phys_const, m_beg_step, m_end_step, m_init, number_snia,
+      number_snii);
 
-    /* Compute the supernovae energy associated to the stellar particle */
+  /* Compute the supernovae energy associated to the stellar particle */
 
-    const float energy_conversion =
+  const float energy_conversion =
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) / 1e51;
 
-    /* initialize */
-    sp->feedback_data.energy_ejected = 0;
+  /* initialize */
+  sp->feedback_data.energy_ejected = 0;
 
-    /* snia contribution */
-    const float snia_energy = sm->snia.energy_per_supernovae;
-    sp->feedback_data.energy_ejected +=
+  /* snia contribution */
+  const float snia_energy = sm->snia.energy_per_supernovae;
+  sp->feedback_data.energy_ejected +=
       sp->feedback_data.number_snia * snia_energy;
 
-    /* snii contribution */
-    const float snii_energy =
+  /* snii contribution */
+  const float snii_energy =
       supernovae_ii_get_energy_from_progenitor_mass(&sm->snii, m_avg) /
       energy_conversion;
-    sp->feedback_data.energy_ejected +=
+  sp->feedback_data.energy_ejected +=
       sp->feedback_data.number_snii * snii_energy;
 }
-
 
 /**
  * @brief Compute the supernova feedback for a SSP/continuous-IMF #spart.
@@ -809,7 +807,7 @@ void stellar_evolution_compute_SN_feedback_spart(
         "populations!");
   }
 
-    /* Convert the inputs */
+  /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
   const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
   const double dt_myr = dt / conversion_to_myr;
@@ -839,9 +837,9 @@ void stellar_evolution_compute_SN_feedback_spart(
   if (m_end_step >= m_beg_step) return;
 
   /* Star particles representing only the continuous part of the IMF need a
-     special treatment. They do not contain stars above the mass that separate the
-     IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
-     module). So, if m_end_step > minimal_discrete_mass_Msun, you don't do
+     special treatment. They do not contain stars above the mass that separate
+     the IMF into two parts (variable called minimal_discrete_mass_Msun in the
+     sink module). So, if m_end_step > minimal_discrete_mass_Msun, you don't do
      feedback. Note that the sm structure contains different information for the
      'first stars' and the 'late stars'. The right sm data is passed to this
      function so we do not need any special treatment here. */
@@ -970,10 +968,11 @@ void stellar_evolution_compute_SN_feedback_spart(
  * internal units.
  * @param dt The time-step size of this star in internal units.
  */
-void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* restrict sp, const struct stellar_model* sm,
+void stellar_evolution_compute_preSN_feedback_individual_star(
+    struct spart* restrict sp, const struct stellar_model* sm,
     const struct cosmology* cosmo, const struct unit_system* us,
     const struct phys_const* phys_const, const integertime_t ti_begin,
-							   const double star_age_beg_step, const double dt) {
+    const double star_age_beg_step, const double dt) {
   /* TODO */
 
   /* Bands:
@@ -982,13 +981,16 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
      - NUV : single scattering --> radiation pressure
      - optical/near-IR: single scattering --> radiation pressure
      - mid/far-IR : reserved for light re-radiated by dust */
-     
+
   /* Get the tabulated luminosities for the five broad bands: ionizing,
-     far-UV, near-UV, optical/near-IR, mid/far-IR. Look at Fire-3 updated fits */
+     far-UV, near-UV, optical/near-IR, mid/far-IR. Look at Fire-3 updated fits
+   */
 
   /* For the ionizing band, get the number of photons produced. This assumes a
      spectral shape in this region. For now, assume a constant shape. */
-  sp->feedback_data.radiation.dot_N_ion = radiation_get_individual_star_ionizing_photon_emission_rate_fit(sp, us, phys_const);
+  sp->feedback_data.radiation.dot_N_ion =
+      radiation_get_individual_star_ionizing_photon_emission_rate_fit(
+          sp, us, phys_const);
   message("N_dot_ion = %e", sp->feedback_data.radiation.dot_N_ion);
 
   /* Maybe compute kappa_nu for each band (E2) */

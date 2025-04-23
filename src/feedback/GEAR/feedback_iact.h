@@ -23,10 +23,9 @@
 #include "error.h"
 #include "feedback.h"
 #include "hydro.h"
-#include "random.h"
-#include "timestep_sync_part.h"
 #include "radiation.h"
 #include "random.h"
+#include "timestep_sync_part.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -43,17 +42,13 @@
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
-                                    const float hi, const float hj,
-                                    struct spart *si, const struct part *pj,
-                                    const struct xpart *xpj,
-                                    const struct cosmology *cosmo,
-                                    const struct feedback_props *fb_props,
-				    const struct hydro_props *hydro_props,
-				    const struct phys_const* phys_const,
-				    const struct unit_system* us,
-				    const struct cooling_function_data* cooling,
-                                    const integertime_t ti_current) {
+runner_iact_nonsym_feedback_density(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *si, const struct part *pj, const struct xpart *xpj,
+    const struct cosmology *cosmo, const struct feedback_props *fb_props,
+    const struct hydro_props *hydro_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current) {
 
   /* Get the gas mass. */
   const float mj = hydro_get_mass(pj);
@@ -77,9 +72,10 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   /* Contribution to the number of neighbours */
   si->feedback_data.num_ngbs += 1;
 
+  /*****************************************/
   /* Radiation */
-  /* Compute the column density with the sobolev approx: here we need to compute rho
-     and | grad rho | at the star location using the gas particles. */
+  /* Gather data to compute the column density with the sobolev approximation.
+   */
   si->feedback_data.rho_star += mj * wi;
 
   /* Unit vector pointing to pj */
@@ -100,25 +96,30 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   }
 
   /* Metallicity at the star location */
-  si->feedback_data.Z_star += pj->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT-1] * wi;
+  si->feedback_data.Z_star +=
+      pj->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] * wi;
 
   /* Gather neighbours data for HII ionization */
-  if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo, cooling, pj, xpj)) {
+  if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo, cooling,
+                                 pj, xpj)) {
     /* If a particle is already ionized, it won't be able to ionize again so do
        not gather its data. */
-    const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+    const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(
+        phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
 
     /* Compute the size of the array that we want to sort. If the current
      * function is called for the first time (at this time-step for this star),
      * then si->num_ngbs = 1 and there is nothing to sort. Note that the
      * maximum size of the sorted array cannot be larger then the maximum
      * number of rays. */
-    const int arr_size = min(si->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
+    const int arr_size =
+        min(si->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
 
     /* Minimise separation between the gas particles and the BH. The rays
      * structs with smaller ids in the ray array will refer to the particles
      * with smaller distances to the BH. */
-    stromgren_sort_distance(r, si->feedback_data.radiation.stromgren_sphere, arr_size, Delta_dot_N_ion);
+    stromgren_sort_distance(r, si->feedback_data.radiation.stromgren_sphere,
+                            arr_size, Delta_dot_N_ion);
   }
 }
 
@@ -143,8 +144,8 @@ runner_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
     struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct feedback_props *fb_props,  const struct phys_const* phys_const,
-    const struct unit_system* us, const struct cooling_function_data* cooling,
+    const struct feedback_props *fb_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling,
     const integertime_t ti_current, const double time_base) {
 
   const double e_sn = si->feedback_data.energy_ejected;
@@ -186,26 +187,13 @@ runner_iact_nonsym_feedback_apply(
     /* Add the metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
       pj->chemistry_data.metal_mass[i] +=
-        weight * si->feedback_data.metal_mass_ejected[i];
+          weight * si->feedback_data.metal_mass_ejected[i];
     }
   }
 
-  /* TODO: Distribute pre-SN */
-  /* 1. Here we know
-     - Get Column density Sigma: eq E3
-     - Get tau_nu = kappa * Simga (eq E1)
-     - The emitted luminosity in each band */
-
-  /* 2. Local extinction around the star: L_abs_nu = (1 - exp(-tau_nu)) L_nu
-     L_emitted_nu = exp(-tau_nu) L_nu
-     For the IR band, we have:
-     L_IR = Sum_{nu=FUR, UV, Opt} L_abs_nu
-
-     For the ioninzing band, we do not do the local extinction. We treat it
-     separately.
-
+  /*
      3. Photoionization - HII region:
-     From step 1 we know N_dot_ion = L_ion / (h nu_ion) . We will use a 
+     From step 1 we know N_dot_ion = L_ion / (h nu_ion) . We will use a
      simple stromgren sphere approximation. For each particle:
      a) Test if the particle is already ionized : T > 10^4 or particle was
      flagged to be in an ionized region.
@@ -219,7 +207,7 @@ runner_iact_nonsym_feedback_apply(
      c) If \Delta N_dot_j <= N_dot_ion:
      tag the particle as being in a HII region
      consume the photons: N_ion -= Delta N_dot_j
-	
+
      else:
      determine randomly if the particle is ionized by computing the
      proba p = N_dot_io / \Delta N_dot_j
@@ -227,7 +215,7 @@ runner_iact_nonsym_feedback_apply(
      tag the particle as being in a HII region
      consume the photons: N_ion -= Delta N_dot_j
 
-     d) For the particles tagged as ionized: 
+     d) For the particles tagged as ionized:
      set the temperature (internal energy) to the
      min(current temperature + heat added from the energy of the ionisation,
      equilibrium HII region tem from collisional cooling)
@@ -247,14 +235,10 @@ runner_iact_nonsym_feedback_apply(
 
      5. Transport the emergent FUV radiation. And then compute the
      photohelectric heating. We assume that the effect is only local and so we
-     do not transport radiation. 
+     do not transport radiation.
   */
 
-  /* Here we must choose the model according to the metallicity to distinguish
-     pop III fomr pop II */
-  /* const struct radiation* radiation = &fb_props->stellar_model.radiation; */
-
-  /* 3. Photoionization */
+  /* Photoionization */
   if (fb_props->do_photoionization) {
     const float R_stromgren = si->feedback_data.radiation.R_stromgren;
     if (r <= R_stromgren) {
@@ -264,12 +248,12 @@ runner_iact_nonsym_feedback_apply(
     }
   }
 
-  /* 4. Compute radiation pressure */
-  /* TODO: DO we want to compute it here or at the same locations than SN
-     feedback? */
+  /* Compute radiation pressure */
   if (fb_props->radiation_pressure_efficiency != 0) {
     const float Delta_t = get_timestep(si->time_bin, time_base);
-    const float p_rad = fb_props->radiation_pressure_efficiency * radiation_get_star_radiation_pressure(si, Delta_t, us, phys_const);
+    const float p_rad =
+        fb_props->radiation_pressure_efficiency *
+        radiation_get_star_radiation_pressure(si, Delta_t, us, phys_const);
     const float delta_p_rad = weight * p_rad;
 
     /* Add the radiation pressure radially outwards from the star */

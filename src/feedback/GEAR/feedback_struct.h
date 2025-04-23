@@ -103,7 +103,8 @@ struct feedback_spart_data {
     float R_stromgren;
 
     /*! Strömgren sphere data */
-    struct stromgren_shell_data stromgren_sphere[GEAR_STROMGREN_NUMBER_NEIGHBOURS];
+    struct stromgren_shell_data
+        stromgren_sphere[GEAR_STROMGREN_NUMBER_NEIGHBOURS];
 
   } radiation;
 };

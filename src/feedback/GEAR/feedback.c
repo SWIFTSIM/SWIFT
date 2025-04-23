@@ -25,14 +25,14 @@
 #include "cosmology.h"
 #include "engine.h"
 #include "error.h"
-#include "hydro.h"
-#include "stromgren_sphere.h"
 #include "feedback_properties.h"
+#include "hydro.h"
 #include "hydro_properties.h"
 #include "part.h"
 #include "physical_constants.h"
-#include "stellar_evolution.h"
 #include "radiation.h"
+#include "stellar_evolution.h"
+#include "stromgren_sphere.h"
 #include "units.h"
 
 #include <strings.h>
@@ -50,8 +50,7 @@
  */
 float feedback_compute_spart_timestep(
     const struct spart* const sp, const struct feedback_props* feedback_props,
-    const struct phys_const* phys_const,
-    const struct unit_system* us,
+    const struct phys_const* phys_const, const struct unit_system* us,
     const int with_cosmology, const struct cosmology* cosmo,
     const integertime_t ti_current, const double time, const double time_base) {
 
@@ -61,7 +60,8 @@ float feedback_compute_spart_timestep(
   /*----------------------------------------*/
   /* Timestep based on the evolutionnary stage */
   /* Pick the correct table. (if only one table, threshold is < 0) */
-  const float metallicity = chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
+  const float metallicity =
+      chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
   const float threshold = feedback_props->metallicity_max_first_stars;
 
   /* If metal < threshold, then  sp is a first star particle. */
@@ -77,10 +77,14 @@ float feedback_compute_spart_timestep(
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
                &ti_begin, ti_current, time_base, time);
 
-  const float log_mass = (sp->star_type == single_star) ?  log10(sp->sf_data.birth_mass / phys_const->const_solar_mass) : log10(sm->imf.mass_min / phys_const->const_solar_mass);
+  const float log_mass =
+      (sp->star_type == single_star)
+          ? log10(sp->sf_data.birth_mass / phys_const->const_solar_mass)
+          : log10(sm->imf.mass_min / phys_const->const_solar_mass);
 
-  const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(&sm->lifetime, log_mass, metallicity));
-  const float lifetime = lifetime_myr*1e6*phys_const->const_year;
+  const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
+                                         &sm->lifetime, log_mass, metallicity));
+  const float lifetime = lifetime_myr * 1e6 * phys_const->const_year;
 
   float factor = 0.0;
 
@@ -92,7 +96,9 @@ float feedback_compute_spart_timestep(
     factor = 300;
   }
 
-  float dt_evolution = (star_age_beg_step == 0) ? FLT_MAX : star_age_beg_step/(factor*lifetime);
+  float dt_evolution = (star_age_beg_step == 0)
+                           ? FLT_MAX
+                           : star_age_beg_step / (factor * lifetime);
 
   /*----------------------------------------*/
 
@@ -123,7 +129,6 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   /* Did the particle receive a supernovae */
   if (xp->feedback_data.delta_mass != 0) {
 
-
     /* Turn off the cooling */
     cooling_set_part_time_cooling_off(p, xp, e->time);
 
@@ -144,7 +149,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
 
     /* Update internal energy */
     const float u =
-      hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
+        hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
     const float u_new = u + xp->feedback_data.delta_u;
 
     hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
@@ -177,24 +182,30 @@ void feedback_update_part(struct part* p, struct xpart* xp,
     const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
 
     /* Get the internal energy increase to ionization */
-    const double N_H = radiation_get_part_number_hydrogen_atoms(phys_const, hydro_props, us , cosmo, cooling, p, xp);
-    const double E_ion = 2.17872e-11 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
-    const double Delta_u_ionized = N_H*E_ion/hydro_get_mass(p);
+    const double N_H = radiation_get_part_number_hydrogen_atoms(
+        phys_const, hydro_props, us, cosmo, cooling, p, xp);
+    const double E_ion =
+        2.17872e-11 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+    const double Delta_u_ionized = N_H * E_ion / hydro_get_mass(p);
 
     /* Get internal energy due to collisions */
     const double Z = chemistry_get_total_metal_mass_fraction_for_feedback(p);
     const double Z_sun = 0.02;
-    const double mu = cooling_get_mean_molecular_weight(phys_const, us,  cosmo, hydro_props, cooling,  p, xp);
+    const double mu = cooling_get_mean_molecular_weight(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp);
 
     /* Here we need to treat the cases Z << Z_sun otherwise we have T<0*/
-    const double ten_to_four_K = 1e4 * units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-    const double tmp = 0.86 / (1 + 0.22 * log(Z/Z_sun));
-    const double T_collisional =  ten_to_four_K * min(6.62, tmp);
-    const double u_collisional = cooling_internal_energy_from_T(T_collisional, mu, k_B, m_p);
+    const double ten_to_four_K =
+        1e4 * units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+    const double tmp = 0.86 / (1 + 0.22 * log(Z / Z_sun));
+    const double T_collisional = ten_to_four_K * min(6.62, tmp);
+    const double u_collisional =
+        cooling_internal_energy_from_T(T_collisional, mu, k_B, m_p);
 
     const float u_new = min(Delta_u_ionized, u_collisional);
 
-    message("u = %e, Delta_u_ionized = %e, u_coll = %e, T_col = %e, tmp = %e", u, Delta_u_ionized, u_collisional, T_collisional, tmp);
+    message("u = %e, Delta_u_ionized = %e, u_coll = %e, T_col = %e, tmp = %e",
+            u, Delta_u_ionized, u_collisional, T_collisional, tmp);
 
     hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
     hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
@@ -215,7 +226,8 @@ void feedback_update_part(struct part* p, struct xpart* xp,
 
   if (e->feedback_props->radiation_pressure_efficiency != 0.0) {
     for (int i = 0; i < 3; i++) {
-      const float dv = xp->feedback_data.radiation.delta_p[i] / hydro_get_mass(p);
+      const float dv =
+          xp->feedback_data.radiation.delta_p[i] / hydro_get_mass(p);
       xp->v_full[i] += dv;
       p->v[i] += dv;
 
@@ -376,8 +388,8 @@ void feedback_will_do_feedback(
 
   /* TODO: See if we need to add something about pre-SN */
   /* Set the particle as doing some feedback */
-  sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.
-                                       || !sp->feedback_data.is_dead;
+  sp->feedback_data.will_do_feedback =
+      sp->feedback_data.energy_ejected != 0. || !sp->feedback_data.is_dead;
 
   /* TODO: Do we want to multiply pre-SN energy bu the efficiency? */
 }
@@ -440,7 +452,8 @@ void feedback_init_spart(struct spart* sp) {
 
   /* Radiation fields */
   sp->feedback_data.num_ngbs = 0;
-  stromgren_shell_init(sp->feedback_data.radiation.stromgren_sphere, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
+  stromgren_shell_init(sp->feedback_data.radiation.stromgren_sphere,
+                       GEAR_STROMGREN_NUMBER_NEIGHBOURS);
 }
 
 /**
@@ -500,7 +513,8 @@ void feedback_first_init_spart(struct spart* sp,
   sp->feedback_data.will_do_feedback = 1;
 
   /* The spart is dead if its birth_time is negative */
-  sp->feedback_data.is_dead = (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0);
+  sp->feedback_data.is_dead =
+      (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0);
 }
 
 /**
@@ -544,7 +558,7 @@ void feedback_prepare_feedback(struct spart* restrict sp,
                                const int with_cosmology) {
   /* Add missing h factor */
   const float hi_inv = 1.f / sp->h;
-  const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
+  const float hi_inv_dim = pow_dimension(hi_inv);        /* 1/h^d */
   const float hi_inv_dim_plus_one = hi_inv_dim * hi_inv; /* 1/h^(d+1) */
   sp->feedback_data.enrichment_weight *= hi_inv_dim;
 
@@ -555,22 +569,25 @@ void feedback_prepare_feedback(struct spart* restrict sp,
 
   sp->feedback_data.Z_star *= hi_inv / sp->feedback_data.rho_star;
 
-
   const float Sigma_gas = radiation_get_star_gas_column_density(sp);
   const float kappa_IR = radiation_get_IR_opacity(sp, us, phys_const);
   const float tau_IR = radiation_get_IR_optical_depth(sp, us, phys_const);
 
-  message("rho_star = %e, Grad rho = (%e %e %e), Z = %e, Sigma_gas = %e, kappa_IR = %e, tau_IR = %e",
-	  sp->feedback_data.rho_star, sp->feedback_data.grad_rho_star[0],
-	  sp->feedback_data.grad_rho_star[1], sp->feedback_data.grad_rho_star[2],
-	  sp->feedback_data.Z_star, Sigma_gas, kappa_IR, tau_IR);
+  message(
+      "rho_star = %e, Grad rho = (%e %e %e), Z = %e, Sigma_gas = %e, kappa_IR "
+      "= %e, tau_IR = %e",
+      sp->feedback_data.rho_star, sp->feedback_data.grad_rho_star[0],
+      sp->feedback_data.grad_rho_star[1], sp->feedback_data.grad_rho_star[2],
+      sp->feedback_data.Z_star, Sigma_gas, kappa_IR, tau_IR);
 
   /*----------------------------------------*/
   /* Do the HII ionization */
 
   if (feedback_props->do_photoionization) {
-    const struct stromgren_shell_data* stromgren = sp->feedback_data.radiation.stromgren_sphere;
-    const int num_ngb = min(sp->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
+    const struct stromgren_shell_data* stromgren =
+        sp->feedback_data.radiation.stromgren_sphere;
+    const int num_ngb =
+        min(sp->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
 
     /* Loop over the sorted gas neighbours */
     for (int i = 0; i < num_ngb; i++) {
@@ -578,33 +595,34 @@ void feedback_prepare_feedback(struct spart* restrict sp,
       const double dot_N_ion = radiation_get_star_ionization_rate(sp);
 
       if (dot_N_ion <= 0.0) {
-	sp->feedback_data.radiation.dot_N_ion = 0.0;
-	break;
+        sp->feedback_data.radiation.dot_N_ion = 0.0;
+        break;
       }
 
       const double Delta_dot_N_ion = stromgren[i].Delta_N_dot;
 
       if (Delta_dot_N_ion <= dot_N_ion) {
-	/* We can fully ionize this particle */
-	/* Update the Stromgren sphere radius */
-	sp->feedback_data.radiation.R_stromgren = stromgren[i].distance;
+        /* We can fully ionize this particle */
+        /* Update the Stromgren sphere radius */
+        sp->feedback_data.radiation.R_stromgren = stromgren[i].distance;
 
-	/* Consume the photons */
-	radiation_consume_ionizing_photons(sp, Delta_dot_N_ion);
+        /* Consume the photons */
+        radiation_consume_ionizing_photons(sp, Delta_dot_N_ion);
       } else {
-	/* If we cannot fully ionize, compute a probability to determine if we
-	   fully ionize pj or not and draw the random number.  */
-	const float proba = dot_N_ion / Delta_dot_N_ion;
-	const float random_number = random_unit_interval(sp->id, ti_begin, random_number_HII_regions);
+        /* If we cannot fully ionize, compute a probability to determine if we
+           fully ionize pj or not and draw the random number.  */
+        const float proba = dot_N_ion / Delta_dot_N_ion;
+        const float random_number =
+            random_unit_interval(sp->id, ti_begin, random_number_HII_regions);
 
-	/* If we are lucky or we are the first particle, do the ionization */
-	if (random_number <= proba || i == 0) {
-	  /* Update the Stromgren sphere radius */
-	  sp->feedback_data.radiation.R_stromgren = stromgren[i].distance;
-	}
+        /* If we are lucky or we are the first particle, do the ionization */
+        if (random_number <= proba || i == 0) {
+          /* Update the Stromgren sphere radius */
+          sp->feedback_data.radiation.R_stromgren = stromgren[i].distance;
+        }
 
-	/* Consume the photons in all cases */
-	radiation_consume_ionizing_photons(sp, Delta_dot_N_ion);
+        /* Consume the photons in all cases */
+        radiation_consume_ionizing_photons(sp, Delta_dot_N_ion);
       }
     }
   }

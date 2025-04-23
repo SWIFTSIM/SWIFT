@@ -19,9 +19,9 @@
 #ifndef SWIFT_STROMGREN_SPHERE_GEAR_H
 #define SWIFT_STROMGREN_SPHERE_GEAR_H
 
-#include <float.h>
-
 #include "inline.h"
+
+#include <float.h>
 
 #define GEAR_STROMGREN_NUMBER_NEIGHBOURS 50
 
@@ -37,7 +37,6 @@ struct stromgren_shell_data {
      --> float is not enough */
   double Delta_N_dot;
 };
-
 
 /**
  * @brief For a given feedback scheme, sets all fields in the stromgren_shell
@@ -70,8 +69,8 @@ __attribute__((always_inline)) INLINE static void stromgren_shell_init(
  * @param m Gas particle mass
  */
 __attribute__((always_inline)) INLINE static void stromgren_sort_distance(
-    const float r, struct stromgren_shell_data* stromgren, const int N_shell_arr,
-    const double Delta_N_dot) {
+    const float r, struct stromgren_shell_data* stromgren,
+    const int N_shell_arr, const double Delta_N_dot) {
 
   int insert_index = -1;
 

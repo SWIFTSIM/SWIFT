@@ -97,8 +97,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
             feedback_props->metallicity_max_first_stars);
   }
 
-  message("Photoionization                    =  %i", feedback_props->do_photoionization);
-  message("Radiation pressure efficiency:     =  %.2g", feedback_props->radiation_pressure_efficiency);
+  message("Photoionization                    =  %i",
+          feedback_props->do_photoionization);
+  message("Radiation pressure efficiency:     =  %.2g",
+          feedback_props->radiation_pressure_efficiency);
 }
 
 /**
@@ -166,8 +168,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   }
 
   /* Radiation fields */
-  fp->do_photoionization = parser_get_opt_param_int(params, "GEARFeedback:do_photoionization", 0);
-  fp->radiation_pressure_efficiency = parser_get_opt_param_float(params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
+  fp->do_photoionization =
+      parser_get_opt_param_int(params, "GEARFeedback:do_photoionization", 0);
+  fp->radiation_pressure_efficiency = parser_get_opt_param_float(
+      params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
 
   /* Print the stellar properties */
   feedback_props_print(fp);

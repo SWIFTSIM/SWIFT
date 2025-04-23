@@ -41,7 +41,6 @@ void feedback_update_part(struct part* p, struct xpart* xp,
 
 void feedback_reset_part(struct part* p, struct xpart* xp);
 
-
 void compute_time(const struct spart* sp, const int with_cosmology,
                   const struct cosmology* cosmo, double* star_age_beg_of_step,
                   double* dt_enrichment, integertime_t* ti_begin_star,

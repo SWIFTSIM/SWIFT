@@ -189,7 +189,6 @@ struct supernovae_ii {
 struct radiation {
   /* (Lower) frequency bin edges for photon groups */
   float photon_groups[5];
-
 };
 
 /**

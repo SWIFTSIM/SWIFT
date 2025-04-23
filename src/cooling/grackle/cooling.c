@@ -1174,7 +1174,8 @@ float cooling_get_temperature(const struct phys_const* phys_const,
     return T_transition;
 
 #else
-  const double mu = cooling_get_mean_molecular_weight(phys_const, us,  cosmo, hydro_props, cooling,  p, xp);
+  const double mu = cooling_get_mean_molecular_weight(
+      phys_const, us, cosmo, hydro_props, cooling, p, xp);
   return cooling_temperature_from_internal_energy(u, mu, k_B, m_H);
 #endif
 }
