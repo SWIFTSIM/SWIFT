@@ -1,7 +1,7 @@
 # Intro
 This example consists of a homogeneous and periodic box filled with gas particles of equal mass. An individual star particle lies at the center.
 
-This example tests the Taylor-Sedov blastwave for different feedback implementations. It also serves to test the convergence of the different feedback schemes.
+This example tests the Taylor-Sedov blastwave for different feedback implementations. It also serves to test different feedback schemes at different resolutions, initial gas metallicities and gas densities.
 
 # Configure
 To run this example with the GEAR model,
@@ -26,5 +26,3 @@ The run.sh script calls the `makeIC.py' script with default values. You can expe
 
 # Run
 Type run.sh, and let's go!
-
-# Convergence test

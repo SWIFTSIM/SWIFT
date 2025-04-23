@@ -177,7 +177,7 @@ print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 
 
 #####################
-# Now, take care of the star
+# Now, take care of the stars
 #####################
 N_star = opt.n_star
 m_star = opt.star_mass * units.M_sun
