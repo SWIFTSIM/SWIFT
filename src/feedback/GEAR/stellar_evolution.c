@@ -1004,9 +1004,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
       radiation_get_individual_star_ionizing_photon_emission_rate_fit(
           sp->mass, us, phys_const);
 
-   message("[%lld, %d, %e] N_dot_ion = %e, L_bol = %e",
-	   sp->id, sp->star_type, sp->mass,
-	  sp->feedback_data.radiation.dot_N_ion, sp->feedback_data.radiation.L_bol);
+   /* message("[%lld, %d, %e] N_dot_ion = %e, L_bol = %e", */
+   /* 	   sp->id, sp->star_type, sp->mass, */
+   /* 	  sp->feedback_data.radiation.dot_N_ion, sp->feedback_data.radiation.L_bol); */
 }
 
 /**
@@ -1101,8 +1101,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
   /* Convert to total ionizing emission rate */
   sp->feedback_data.radiation.dot_N_ion = dot_N_ion * sp->sf_data.birth_mass;
 
-  message("[%lld, %d, %e] N_dot_ion = %e, L_bol = %e",
-	   sp->id, sp->star_type, sp->mass,
-	  sp->feedback_data.radiation.dot_N_ion, sp->feedback_data.radiation.L_bol);
-
+  /* message("[%lld, %d, %e] N_dot_ion = %e, L_bol = %e", */
+  /* 	   sp->id, sp->star_type, sp->mass, */
+  /* 	  sp->feedback_data.radiation.dot_N_ion, sp->feedback_data.radiation.L_bol); */
 }
