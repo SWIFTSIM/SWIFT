@@ -184,14 +184,6 @@ struct supernovae_ii {
 };
 
 /**
- * @brief Model for radiation.
- */
-struct radiation {
-  /* (Lower) frequency bin edges for photon groups */
-  float photon_groups[5];
-};
-
-/**
  * @brief The complete stellar model.
  */
 struct stellar_model {
@@ -210,9 +202,6 @@ struct stellar_model {
 
   /*! The supernovae type II */
   struct supernovae_ii snii;
-
-  /*! The radiation model */
-  struct radiation radiation;
 
   /*! Use a discrete yields approach */
   char discrete_yields;
