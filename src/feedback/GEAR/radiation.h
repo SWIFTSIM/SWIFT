@@ -113,19 +113,21 @@ void radiation_reset_part_ionized_tag(struct part* p, struct xpart* xpj);
 int radiation_is_part_tagged_as_ionized(struct part* p, struct xpart* xpj);
 void radiation_consume_ionizing_photons(struct spart* sp,
                                         double Delta_dot_N_ion);
-float radiation_get_star_gas_column_density(const struct spart* sp);
+float radiation_get_comoving_gas_column_density_at_star(const struct spart* sp);
 
-float radiation_get_IR_opacity(const struct spart* sp,
+float radiation_get_physical_IR_opacity(const struct spart* sp,
                                const struct unit_system* us,
-                               const struct phys_const* phys_const);
+					const struct phys_const* phys_const,
+					const struct cosmology* cosmo);
 
-float radiation_get_IR_optical_depth(const struct spart* sp,
-                                     const struct unit_system* us,
-                                     const struct phys_const* phys_const);
+float radiation_get_physical_IR_optical_depth(const struct spart* sp,
+					      const struct unit_system* us,
+					      const struct phys_const* phys_const,
+					      const struct cosmology* cosmo);
 
-float radiation_get_star_radiation_pressure(
+float radiation_get_star_physical_radiation_pressure(
     const struct spart* sp, const float Delta_t, const struct unit_system* us,
-    const struct phys_const* phys_const);
+    const struct phys_const* phys_const,const struct cosmology* cosmo);
 
 int radiation_is_part_ionized(const struct phys_const* phys_const,
                               const struct hydro_props* hydro_props,

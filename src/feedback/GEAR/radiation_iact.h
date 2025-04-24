@@ -154,9 +154,9 @@ void feedback_prepare_radiation_feedback(struct spart* restrict sp,
 
   sp->feedback_data.Z_star *= hi_inv / sp->feedback_data.rho_star;
 
-  const float Sigma_gas = radiation_get_star_gas_column_density(sp);
-  const float kappa_IR = radiation_get_IR_opacity(sp, us, phys_const);
-  const float tau_IR = radiation_get_IR_optical_depth(sp, us, phys_const);
+  const float Sigma_gas = radiation_get_comoving_gas_column_density_at_star(sp);
+  const float kappa_IR = radiation_get_physical_IR_opacity(sp, us, phys_const, cosmo);
+  const float tau_IR = radiation_get_physical_IR_optical_depth(sp, us, phys_const, cosmo);
 
   message(
       "rho_star = %e, Grad rho = (%e %e %e), Z = %e, Sigma_gas = %e, kappa_IR "
@@ -319,7 +319,7 @@ radiation_iact_nonsym_feedback_apply(
     const float Delta_t = get_timestep(si->time_bin, time_base);
     const float p_rad =
         fb_props->radiation_pressure_efficiency *
-        radiation_get_star_radiation_pressure(si, Delta_t, us, phys_const);
+      radiation_get_star_physical_radiation_pressure(si, Delta_t, us, phys_const, cosmo);
     const float delta_p_rad = weight * p_rad;
 
     /* Add the radiation pressure radially outwards from the star. Notice the

@@ -233,7 +233,7 @@ int radiation_is_part_ionized(const struct phys_const* phys_const,
 }
 
 // TODO: DO converstion to physical? Or to comoving?
-float radiation_get_star_gas_column_density(const struct spart* sp) {
+float radiation_get_comoving_gas_column_density_at_star(const struct spart* sp) {
   const float rho_gas = sp->feedback_data.rho_star;
   const float grad_rho[3] = {sp->feedback_data.grad_rho_star[0],
                              sp->feedback_data.grad_rho_star[1],
@@ -246,30 +246,33 @@ float radiation_get_star_gas_column_density(const struct spart* sp) {
   return length_gas * rho_gas;
 }
 
-float radiation_get_IR_opacity(const struct spart* sp,
+float radiation_get_physical_IR_opacity(const struct spart* sp,
                                const struct unit_system* us,
-                               const struct phys_const* phys_const) {
+                               const struct phys_const* phys_const,
+			       const struct cosmology* cosmo) {
   const float Z_gas = sp->feedback_data.Z_star;
   const float Z_sun = 0.02;
-  const float value = 10 * units_cgs_conversion_factor(us, UNIT_CONV_AREA) /
+  const float value = 10.0 * units_cgs_conversion_factor(us, UNIT_CONV_AREA) /
                       units_cgs_conversion_factor(us, UNIT_CONV_MASS);
   return value * Z_gas / Z_sun;
 }
 
-float radiation_get_IR_optical_depth(const struct spart* sp,
-                                     const struct unit_system* us,
-                                     const struct phys_const* phys_const) {
-  const float Sigma_gas = radiation_get_star_gas_column_density(sp);
-  const float kappa_IR = radiation_get_IR_opacity(sp, us, phys_const);
-  return kappa_IR * Sigma_gas;
+float radiation_get_physical_IR_optical_depth(const struct spart* sp,
+					      const struct unit_system* us,
+					      const struct phys_const* phys_const,
+					      const struct cosmology* cosmo) {
+  const float Sigma_gas_c = radiation_get_comoving_gas_column_density_at_star(sp);
+  const float Sigma_gas_p = Sigma_gas_c * cosmo->a2_inv;
+  const float kappa_IR = radiation_get_physical_IR_opacity(sp, us, phys_const, cosmo);
+  return kappa_IR * Sigma_gas_p;
 }
 
-float radiation_get_star_radiation_pressure(
+float radiation_get_star_physical_radiation_pressure(
     const struct spart* sp, const float Delta_t, const struct unit_system* us,
-    const struct phys_const* phys_const) {
+    const struct phys_const* phys_const, const struct cosmology* cosmo) {
 
-  const float tau_IR = radiation_get_IR_optical_depth(sp, us, phys_const);
-  const float L_bol = sp->feedback_data.radiation.L_bol;
+  const float tau_IR = radiation_get_physical_IR_optical_depth(sp, us, phys_const, cosmo);
+  const float L_bol = sp->feedback_data.radiation.L_bol; /* In physical units */
   const float c = phys_const->const_speed_light_c;
 
   return Delta_t * L_bol / c * (1 + tau_IR);
