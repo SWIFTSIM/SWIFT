@@ -428,7 +428,6 @@ void stellar_evolution_evolve_spart(
     return;
   }
 
-  /* TODO: Pre-SN feedback */
   /* Note: You can update the function parameters as needed. */
   stellar_evolution_compute_preSN_feedback_spart(
       sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
