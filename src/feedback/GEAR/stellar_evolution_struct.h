@@ -184,6 +184,45 @@ struct supernovae_ii {
 };
 
 /**
+ * @brief Model for radiation.
+ */
+struct radiation {
+
+  /*! Yields not integrated */
+  struct {
+    /*! Bolometric luminosity emitted. */
+    struct interpolation_1d luminosities;
+
+    /*! Ionization emission rate. */
+    struct interpolation_1d_double dot_N_ion;
+  } raw;
+
+  /*! Yields integrated */
+  struct {
+    /*! Bolometric luminosity emitted. */
+    struct interpolation_1d luminosities;
+
+    /*! Ionization emission rate. */
+    struct interpolation_1d_double dot_N_ion;
+  } integrated;
+
+  /* /\*! Minimal mass for a SNII *\/ */
+  /* float mass_min; */
+
+  /* /\*! Maximal mass for a SNII *\/ */
+  /* float mass_max; */
+
+  /* /\*! exponent of the IMF *\/ */
+  /* float exponent; */
+
+  /* /\*! coefficient of the IMF over the exponent *\/ */
+  /* float coef_exp; */
+
+  /*! Number of element in the interpolation array */
+  int interpolation_size;
+};
+
+/**
  * @brief The complete stellar model.
  */
 struct stellar_model {
@@ -202,6 +241,9 @@ struct stellar_model {
 
   /*! The supernovae type II */
   struct supernovae_ii snii;
+
+  /*! The stellar radiation */
+  struct radiation rad;
 
   /*! Use a discrete yields approach */
   char discrete_yields;
