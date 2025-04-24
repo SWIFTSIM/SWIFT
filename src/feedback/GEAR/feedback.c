@@ -81,14 +81,15 @@ float feedback_compute_spart_timestep(
   const float log_mass =
       (sp->star_type == single_star)
           ? log10(sp->sf_data.birth_mass / phys_const->const_solar_mass)
-          : log10(sm->imf.mass_min / phys_const->const_solar_mass);
+    : log10(2.0/phys_const->const_solar_mass);
 
   const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
                                          &sm->lifetime, log_mass, metallicity));
   const float lifetime = lifetime_myr * 1e6 * phys_const->const_year;
 
+  /* Adapt the factor depending on the star lifetime to provide adequate timesteps
+     for different star liftimes. */
   float factor = 0.0;
-
   if (lifetime_myr >= 100) {
     factor = 1;
   } else if (lifetime_myr < 100 && lifetime_myr >= 50) {
@@ -97,7 +98,7 @@ float feedback_compute_spart_timestep(
     factor = 300;
   }
 
-  float dt_evolution = (star_age_beg_step == 0)
+  float dt_evolution = (star_age_beg_step <= 0)
                            ? FLT_MAX
                            : star_age_beg_step / (factor * lifetime);
 
