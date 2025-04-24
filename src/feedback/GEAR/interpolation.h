@@ -36,8 +36,13 @@ enum interpolate_boundary_condition {
   boundary_condition_const,
 };
 
+
+/*****************************************************************************/
+/* Interpolation for float data */
+/*****************************************************************************/
+
 /**
- * @brief Structure for the interpolation.
+ * @brief Structure for the interpolation, float version.
  */
 struct interpolation_1d {
   /* Data to interpolate */
@@ -217,5 +222,193 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_free(
   free(interp->data);
   interp->data = NULL;
 }
+
+/*****************************************************************************/
+/* Interpolation for double data */
+/*****************************************************************************/
+/**
+ * @brief Structure for the interpolation, double version.
+ */
+struct interpolation_1d_double {
+  /* Data to interpolate */
+  double *data;
+
+  /* Minimal x */
+  double xmin;
+
+  /* Step size between x points */
+  double dx;
+
+  /* Number of element in the data */
+  int N;
+
+  /* Type of boundary conditions. */
+  enum interpolate_boundary_condition boundary_condition;
+};
+
+/**
+ * @brief Initialize the #interpolation_1d_double.
+ *
+ * @param interp The #interpolation_1d.
+ * @param xmin Minimal value of x (in log).
+ * @param xmax Maximal value of x (in log).
+ * @param N Requested number of values.
+ * @param log_data_xmin The minimal value of the data (in log).
+ * @param step_size The size of the x steps (in log).
+ * @param N_data The number of element in the data.
+ * @param data The data to interpolate (y).
+ * @param N The number of element in data.
+ * @param boundary_condition The type of #interpolate_boundary_condition.
+ */
+__attribute__((always_inline)) static INLINE void interpolate_1d_double_init(
+    struct interpolation_1d_double *interp, double xmin, double xmax, int N,
+    double log_data_xmin, double step_size, int N_data, const double *data,
+    enum interpolate_boundary_condition boundary_condition) {
+
+  /* Save the variables */
+  interp->N = N;
+  interp->xmin = xmin;
+  interp->dx = (xmax - xmin) / (N - 1.f);
+  interp->boundary_condition = boundary_condition;
+
+  /* Allocate the memory */
+  interp->data = malloc(sizeof(double) * N);
+  if (interp->data == NULL)
+    error("Failed to allocate memory for the interpolation");
+
+  /* Interpolate the data */
+  for (int i = 0; i < N; i++) {
+    const double log_x = xmin + i * interp->dx;
+    const double x_j = (log_x - log_data_xmin) / step_size;
+
+    /* Check boundaries */
+    if (x_j < 0) {
+      switch (boundary_condition) {
+        case boundary_condition_error:
+          error("Cannot extrapolate");
+          break;
+        case boundary_condition_zero:
+          interp->data[i] = 0;
+          break;
+        case boundary_condition_zero_const:
+          interp->data[i] = 0;
+          break;
+        case boundary_condition_const:
+          interp->data[i] = data[0];
+          break;
+        default:
+          error("Interpolation type not implemented");
+      }
+      continue;
+    } else if (x_j >= N_data) {
+      switch (boundary_condition) {
+        case boundary_condition_error:
+          error("Cannot extrapolate");
+          break;
+        case boundary_condition_zero:
+          interp->data[i] = 0;
+          break;
+        case boundary_condition_zero_const:
+        case boundary_condition_const:
+          interp->data[i] = interp->data[i - 1];
+          break;
+        default:
+          error("Interpolation type not implemented");
+      }
+      continue;
+    }
+
+    /* Interpolate i */
+    const int j = x_j;
+    const double f = x_j - j;
+    interp->data[i] = (1. - f) * data[j] + f * data[j + 1];
+  }
+}
+
+/**
+ * @brief Interpolate the data with double precision.
+ *
+ * @param interp The #interpolation_1d_double.
+ * @param x The x value where to interpolate.
+ *
+ * @return The interpolated value y.
+ */
+__attribute__((always_inline)) static INLINE double interpolate_1d_double(
+    const struct interpolation_1d_double *interp, double x) {
+
+  /* Find indice */
+  const double i = (x - interp->xmin) / interp->dx;
+  const int idx = i;
+  const double dx = i - idx;
+
+  /* Should we extrapolate? */
+  if (i < 0) {
+    switch (interp->boundary_condition) {
+      case boundary_condition_error:
+        error("Cannot extrapolate");
+        break;
+      case boundary_condition_zero:
+      case boundary_condition_zero_const:
+        return 0;
+      case boundary_condition_const:
+        return interp->data[0];
+      default:
+        error("Interpolation type not implemented");
+    }
+  } else if (i >= interp->N - 1) {
+    switch (interp->boundary_condition) {
+      case boundary_condition_error:
+        error("Cannot extrapolate");
+        break;
+      case boundary_condition_zero:
+        return 0;
+      case boundary_condition_zero_const:
+      case boundary_condition_const:
+        return interp->data[interp->N - 1];
+      default:
+        error("Interpolation type not implemented");
+    }
+  }
+
+  /* interpolate */
+  return interp->data[idx] * (1. - dx) + interp->data[idx + 1] * dx;
+}
+
+/**
+ * @brief Print the data.
+ *
+ * @param interp The #interpolation_1d.
+ */
+__attribute__((always_inline)) static INLINE void interpolate_1d_double_print(
+    const struct interpolation_1d_double *interp) {
+
+  message("Interpolation between %g and %g", interp->xmin,
+          interp->xmin + interp->dx * interp->N);
+
+  message("Contains %i values and use the boundary condition %i", interp->N,
+          interp->boundary_condition);
+
+  /* Print values */
+  for (int i = 0; i < interp->N; i++) {
+    double x = interp->xmin + i * interp->dx;
+    message("%.2g: %g", x, interp->data[i]);
+  }
+}
+
+/**
+ * @brief Cleanup the #interpolation_1d_double structure.
+ *
+ * @param interp The #interpolation_1d_double.
+ */
+__attribute__((always_inline)) static INLINE void interpolate_1d_double_free(
+    struct interpolation_1d_double *interp) {
+
+  /* Free the allocated memory */
+  free(interp->data);
+  interp->data = NULL;
+}
+
+
+
 
 #endif  // SWIFT_GEAR_INTERPOLATION_H
