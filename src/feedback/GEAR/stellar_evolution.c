@@ -30,6 +30,7 @@
 #include "stellar_evolution_struct.h"
 #include "supernovae_ia.h"
 #include "supernovae_ii.h"
+#include "radiation.h"
 
 #include <math.h>
 #include <stddef.h>
@@ -554,6 +555,9 @@ void stellar_evolution_props_init(struct stellar_model* sm,
   /* Initialize the supernovae II model */
   supernovae_ii_init(&sm->snii, params, sm, us);
 
+  /* Initialize the radiation model */
+  radiation_init(&sm->rad, params, sm, us, phys_const);
+
   /* Initialize the minimal gravity mass for the stars */
   /* const float default_star_minimal_gravity_mass_Msun = 1e-1; */
   sm->discrete_star_minimal_gravity_mass = parser_get_opt_param_float(
@@ -592,6 +596,9 @@ void stellar_evolution_dump(const struct stellar_model* sm, FILE* stream) {
 
   /* Dump the supernovae II model */
   supernovae_ii_dump(&sm->snii, stream, sm);
+
+  /* Dump the supernovae II model */
+  radiation_dump(&sm->rad, stream, sm);
 }
 
 /**
@@ -617,6 +624,9 @@ void stellar_evolution_restore(struct stellar_model* sm, FILE* stream) {
 
   /* Restore the supernovae II model */
   supernovae_ii_restore(&sm->snii, stream, sm);
+
+  /* Restore the radiation model */
+  radiation_restore(&sm->rad, stream, sm);
 }
 
 /**
@@ -630,6 +640,7 @@ void stellar_evolution_clean(struct stellar_model* sm) {
   lifetime_clean(&sm->lifetime);
   supernovae_ia_clean(&sm->snia);
   supernovae_ii_clean(&sm->snii);
+  radiation_clean(&sm->rad);
 }
 
 /**

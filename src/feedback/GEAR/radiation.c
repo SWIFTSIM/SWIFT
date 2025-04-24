@@ -25,6 +25,9 @@
 /* Include header */
 #include "radiation.h"
 
+#include "interpolation.h"
+#include "stellar_evolution.h"
+#include "stellar_evolution_struct.h"
 #include "kernel_hydro.h"
 #include "units.h"
 
@@ -439,3 +442,290 @@ double radiation_get_individual_star_ionizing_photon_emission_rate_fit(
     return 0.0;
   }
 }
+
+
+/******************************************************************************/
+/* Functions to deal with integrated data over an IMF. These functions read,
+   interpolate and integrate. */
+/******************************************************************************/
+
+/**
+ * @brief Print the radiation model.
+ *
+ * @param rad The #radiation.
+ */
+void radiation_print(const struct radiation *rad) {
+
+  /* Only the master print */
+  if (engine_rank != 0) {
+    return;
+  }
+
+  /* message("Mass range for RAD = [%g, %g]", rad->mass_min, rad->mass_max); */
+}
+
+/**
+ * @brief Initialize the #radiation structure.
+ *
+ * @param rad The #radiation model.
+ * @param params The simulation parameters.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_init(struct radiation *rad, struct swift_params *params,
+		    const struct stellar_model *sm,
+		    const struct unit_system *us,
+		    const struct phys_const* phys_const) {
+
+  /* Read the data */
+  radiation_read_data(rad, params, sm, us, phys_const, /* restart */ 0);
+}
+
+/**
+ * @brief Write a radiation struct to the given FILE as a stream of bytes.
+ *
+ * Here we are only writing the arrays, everything else has been copied in the
+ * feedback.
+ *
+ * @param rad the struct
+ * @param stream the file stream
+ * @param sm The #stellar_model.
+ */
+void radiation_dump(const struct radiation *rad, FILE *stream,
+                        const struct stellar_model *sm) {}
+
+/**
+ * @brief Restore a radiation struct from the given FILE as a stream of
+ * bytes.
+ *
+ * Here we are only writing the arrays, everything else has been copied in the
+ * feedback.
+ *
+ * @param rad the struct
+ * @param stream the file stream
+ * @param sm The #stellar_model.
+ */
+void radiation_restore(struct radiation *rad, FILE *stream,
+		       const struct stellar_model *sm) {
+
+  /* TODO */
+  /* Dump the content in dump and read the content from here. See how
+     this works */
+}
+
+/**
+ * @brief Clean the allocated memory.
+ *
+ * @param rad the #radiation.
+ */
+void radiation_clean(struct radiation *rad) {
+
+  interpolate_1d_free(&rad->integrated.luminosities);
+  interpolate_1d_free(&rad->raw.luminosities);
+  interpolate_1d_double_free(&rad->integrated.dot_N_ion);
+  interpolate_1d_double_free(&rad->raw.dot_N_ion);
+}
+
+/**
+ * @brief Get the luminosities per mass.
+ *
+ * @param rad The #radiation model.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @param yields The elements ejected (needs to be allocated).
+ */
+float radiation_get_luminosities_from_integral(const struct radiation *rad,
+					      float log_m1, float log_m2) {
+
+    float luminosity_1 = interpolate_1d(&rad->integrated.luminosities, log_m1);
+    float luminosity_2 = interpolate_1d(&rad->integrated.luminosities, log_m2);
+    return luminosity_2 - luminosity_1;
+};
+
+/**
+ * @brief Get the luminosities per mass.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @param yields The elements ejected (needs to be allocated).
+ */
+float radiation_get_luminosities_from_raw(const struct radiation *rad,
+                                       float log_m) {
+    return interpolate_1d(&rad->raw.luminosities, log_m);
+};
+
+
+/**
+ * @brief Get the luminosities per mass.
+ *
+ * @param rad The #radiation model.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @param yields The elements ejected (needs to be allocated).
+ */
+double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
+					      float log_m1, float log_m2) {
+
+    float dot_N_ion_1 = interpolate_1d(&rad->integrated.luminosities, log_m1);
+    float dot_N_ion_2 = interpolate_1d(&rad->integrated.luminosities, log_m2);
+    return dot_N_ion_2 - dot_N_ion_1;
+};
+
+/**
+ * @brief Get the luminosities per mass.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @param yields The elements ejected (needs to be allocated).
+ */
+double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
+					      float log_m) {
+    return interpolate_1d(&rad->raw.luminosities, log_m);
+};
+
+
+/**
+ * @brief Read an array of luminosities data from the table.
+ *
+ * @param rad The #radiation model.
+ * @param interp_raw Interpolation data to initialize (raw).
+ * @param interp_int Interpolation data to initialize (integrated).
+ * @param sm * The #stellar_model.
+ * @param previous_count Number of element in the previous array read.
+ * @param interpolation_size Number of element to keep in the interpolation
+ * data.
+ */
+void radiation_read_luminosities_array(
+    struct radiation *rad, struct interpolation_1d *interp_raw,
+    struct interpolation_1d *interp_int, const struct stellar_model *sm,
+    int interpolation_size, const struct unit_system *us,
+    const struct phys_const* phys_const) {
+
+  /* Allocate the memory */
+  const int count = 500;
+  float *data = (float *)malloc(sizeof(float) * count);
+  if (data == NULL)
+    error("Failed to allocate the RAD yields for luminosities.");
+
+  const float mass_min = sm->imf.mass_min;
+  const float mass_max = sm->imf.mass_max;
+  const float log_mass_min = log10f(mass_min);
+  const float log_mass_max = log10f(mass_max);
+  const float step_size = (log_mass_max - log_mass_min) / (count - 1);
+
+  /* Fill the table */
+  for (size_t j = 0; j < count; j++) {
+    /* Compute the log-mass and mass */
+    const float log_mass = log_mass_min + j * step_size;
+    const float mass = exp10(log_mass) * phys_const->const_solar_mass;
+
+    /* Get bolometric luminosity for this mass, in internal units */
+    data[j] = radiation_get_individual_star_luminosity(mass, us, phys_const);
+  }
+
+  /* Initialize the raw interpolation */
+  interpolate_1d_init(interp_raw, log_mass_min, log_mass_max,
+                      interpolation_size, log_mass_min, step_size, count, data,
+                      boundary_condition_error);
+
+  initial_mass_function_integrate(&sm->imf, data, count, log_mass_min,
+                                  step_size);
+  // TODO: decrease count in order to keep the same distance between points
+
+  /* Initialize the integrated interpolation */
+  interpolate_1d_init(interp_int, log_mass_min, log_mass_max,
+                      interpolation_size, log_mass_min, step_size, count, data,
+                      boundary_condition_const);
+
+  /* Cleanup the memory */
+  free(data);
+}
+
+/**
+ * @brief Read an array of ionizing emission rates data from the table.
+ *
+ * @param rad The #radiation model.
+ * @param interp_raw Interpolation data to initialize (raw).
+ * @param interp_int Interpolation data to initialize (integrated).
+ * @param sm * The #stellar_model.
+ * @param previous_count Number of element in the previous array read.
+ * @param interpolation_size Number of element to keep in the interpolation
+ * data.
+ */
+void radiation_read_ionization_rate_array(
+    struct radiation *rad, struct interpolation_1d_double *interp_raw,
+    struct interpolation_1d_double *interp_int, const struct stellar_model *sm,
+    int interpolation_size, const struct unit_system *us, const struct phys_const* phys_const) {
+
+  /* Allocate the memory */
+  const int count = 500;
+  double *data = (double *)malloc(sizeof(double) * count);
+  if (data == NULL)
+    error("Failed to allocate the RAD yields for luminosities.");
+
+  const float mass_min = sm->imf.mass_min;
+  const float mass_max = sm->imf.mass_max;
+  const float log_mass_min = log10f(mass_min);
+  const float log_mass_max = log10f(mass_max);
+  const float step_size = (log_mass_max - log_mass_min) / (count - 1);
+
+  /* Fill the table */
+  for (size_t j = 0; j < count; j++) {
+    /* Compute the log-mass and mass */
+    const float log_mass = log_mass_min + j * step_size;
+    const float mass = exp10(log_mass) * phys_const->const_solar_mass;
+
+    /* Get bolometric luminosity for this mass, in internal units */
+    data[j] = radiation_get_individual_star_ionizing_photon_emission_rate_fit(mass, us, phys_const);
+  }
+
+  /* Initialize the raw interpolation */
+  interpolate_1d_double_init(interp_raw, log_mass_min, log_mass_max,
+                      interpolation_size, log_mass_min, step_size, count, data,
+                      boundary_condition_error);
+
+  initial_mass_function_integrate_double(&sm->imf, data, count, log_mass_min,
+                                  step_size);
+  // TODO: decrease count in order to keep the same distance between points
+
+  /* Initialize the integrated interpolation */
+  interpolate_1d_double_init(interp_int, log_mass_min, log_mass_max,
+                      interpolation_size, log_mass_min, step_size, count, data,
+                      boundary_condition_const);
+
+  /* Cleanup the memory */
+  free(data);
+}
+
+/**
+ * @brief Read the RAD yields from the table.
+ *
+ * The tables are in internal units at the end of this function.
+ *
+ * @param rad The #radiation model.
+ * @param params The simulation parameters.
+ * @param sm The #stellar_model.
+ * @param restart Are we restarting the simulation? (Is params NULL?)
+ */
+void radiation_read_data(struct radiation *rad, struct swift_params *params,
+			 const struct stellar_model *sm,
+			 const struct unit_system *us,
+			 const struct phys_const* phys_const,
+			 const int restart) {
+
+  if (!restart) {
+    /* TODO: Maybe update this */
+    rad->interpolation_size = parser_get_opt_param_int(
+        params, "GEARSupernovaeII:interpolation_size", 200);
+  }
+
+  /* Read the luminosities */
+  radiation_read_luminosities_array(rad, &rad->raw.luminosities,
+				    &rad->integrated.luminosities, sm,
+				    rad->interpolation_size, us, phys_const);
+
+  /* Read the ionization emission rates */
+  radiation_read_ionization_rate_array(rad, &rad->raw.dot_N_ion,
+				       &rad->integrated.dot_N_ion,
+				       sm, rad->interpolation_size, us, phys_const);
+};
