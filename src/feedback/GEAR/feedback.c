@@ -78,10 +78,10 @@ float feedback_compute_spart_timestep(
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
                &ti_begin, ti_current, time_base, time);
 
-  const float log_mass =
-      (sp->star_type == single_star)
-          ? log10(sp->sf_data.birth_mass / phys_const->const_solar_mass)
-    : log10(2.0/phys_const->const_solar_mass);
+  /* Convert mass to M_sun. The lifetime function assumes solar masses */
+  const float log_mass = (sp->star_type == single_star)
+    ? log10(sp->sf_data.birth_mass / phys_const->const_solar_mass)
+    : log10(1.0);
 
   const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
                                          &sm->lifetime, log_mass, metallicity));
