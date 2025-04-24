@@ -973,7 +973,6 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
     const struct cosmology* cosmo, const struct unit_system* us,
     const struct phys_const* phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
-  /* TODO */
 
   /* Bands:
      - ionizing : photo ionisation
@@ -982,18 +981,15 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
      - optical/near-IR: single scattering --> radiation pressure
      - mid/far-IR : reserved for light re-radiated by dust */
 
-  /* Get the tabulated luminosities for the five broad bands: ionizing,
-     far-UV, near-UV, optical/near-IR, mid/far-IR. Look at Fire-3 updated fits
-   */
+  /* Get the bolometric luminosity */
+  sp->feedback_data.radiation.L_bol = radiation_get_individual_star_luminosity(sp, us, phys_const);
 
-  /* For the ionizing band, get the number of photons produced. This assumes a
-     spectral shape in this region. For now, assume a constant shape. */
+  /* For the ionizing band, get the number of photons produced. */
   sp->feedback_data.radiation.dot_N_ion =
       radiation_get_individual_star_ionizing_photon_emission_rate_fit(
           sp, us, phys_const);
-  message("N_dot_ion = %e", sp->feedback_data.radiation.dot_N_ion);
-
-  /* Maybe compute kappa_nu for each band (E2) */
+  message("N_dot_ion = %e, L_bol = %e",
+	  sp->feedback_data.radiation.dot_N_ion, sp->feedback_data.radiation.L_bol);
 }
 
 /**

@@ -268,10 +268,8 @@ float radiation_get_star_radiation_pressure(
     const struct spart* sp, const float Delta_t, const struct unit_system* us,
     const struct phys_const* phys_const) {
 
-  /* TODO: Compute L_bol and store it in stellar evolution */
   const float tau_IR = radiation_get_IR_optical_depth(sp, us, phys_const);
-  const float L_bol =
-      radiation_get_individual_star_luminosity(sp, us, phys_const);
+  const float L_bol = sp->feedback_data.radiation.L_bol;
   const float c = phys_const->const_speed_light_c;
 
   return Delta_t * L_bol / c * (1 + tau_IR);

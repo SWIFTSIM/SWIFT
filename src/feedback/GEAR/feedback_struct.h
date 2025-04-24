@@ -95,11 +95,14 @@ struct feedback_spart_data {
   /*! Pre-SN data struct */
   struct {
 
+    /*! Bolometric luminosity (physical units) */
+    double L_bol;
+
     /*! Number of inonizing photons per unit time (this is a HUGE number, so
-        must be a double) */
+        must be a double) (physical units) */
     double dot_N_ion;
 
-    /*! Strömgren sphere radius */
+    /*! Strömgren sphere radius (comoving units) */
     float R_stromgren;
 
     /*! Strömgren sphere data */
