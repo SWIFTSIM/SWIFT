@@ -31,6 +31,7 @@
 #include "part.h"
 #include "physical_constants.h"
 #include "radiation.h"
+#include "radiation_iact.h"
 #include "stellar_evolution.h"
 #include "stromgren_sphere.h"
 #include "units.h"
@@ -559,73 +560,12 @@ void feedback_prepare_feedback(struct spart* restrict sp,
   /* Add missing h factor */
   const float hi_inv = 1.f / sp->h;
   const float hi_inv_dim = pow_dimension(hi_inv);        /* 1/h^d */
-  const float hi_inv_dim_plus_one = hi_inv_dim * hi_inv; /* 1/h^(d+1) */
   sp->feedback_data.enrichment_weight *= hi_inv_dim;
 
-  sp->feedback_data.rho_star *= hi_inv;
-  sp->feedback_data.grad_rho_star[0] *= hi_inv_dim_plus_one;
-  sp->feedback_data.grad_rho_star[1] *= hi_inv_dim_plus_one;
-  sp->feedback_data.grad_rho_star[2] *= hi_inv_dim_plus_one;
-
-  sp->feedback_data.Z_star *= hi_inv / sp->feedback_data.rho_star;
-
-  const float Sigma_gas = radiation_get_star_gas_column_density(sp);
-  const float kappa_IR = radiation_get_IR_opacity(sp, us, phys_const);
-  const float tau_IR = radiation_get_IR_optical_depth(sp, us, phys_const);
-
-  message(
-      "rho_star = %e, Grad rho = (%e %e %e), Z = %e, Sigma_gas = %e, kappa_IR "
-      "= %e, tau_IR = %e",
-      sp->feedback_data.rho_star, sp->feedback_data.grad_rho_star[0],
-      sp->feedback_data.grad_rho_star[1], sp->feedback_data.grad_rho_star[2],
-      sp->feedback_data.Z_star, Sigma_gas, kappa_IR, tau_IR);
-
-  /*----------------------------------------*/
-  /* Do the HII ionization */
-
-  if (feedback_props->do_photoionization) {
-    const struct stromgren_shell_data* stromgren =
-        sp->feedback_data.radiation.stromgren_sphere;
-    const int num_ngb =
-        min(sp->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
-
-    /* Loop over the sorted gas neighbours */
-    for (int i = 0; i < num_ngb; i++) {
-      /* This is recomputed at each iteration */
-      const double dot_N_ion = radiation_get_star_ionization_rate(sp);
-
-      if (dot_N_ion <= 0.0) {
-        sp->feedback_data.radiation.dot_N_ion = 0.0;
-        break;
-      }
-
-      const double Delta_dot_N_ion = stromgren[i].Delta_N_dot;
-
-      if (Delta_dot_N_ion <= dot_N_ion) {
-        /* We can fully ionize this particle */
-        /* Update the Stromgren sphere radius */
-        sp->feedback_data.radiation.R_stromgren = stromgren[i].distance;
-
-        /* Consume the photons */
-        radiation_consume_ionizing_photons(sp, Delta_dot_N_ion);
-      } else {
-        /* If we cannot fully ionize, compute a probability to determine if we
-           fully ionize pj or not and draw the random number.  */
-        const float proba = dot_N_ion / Delta_dot_N_ion;
-        const float random_number =
-            random_unit_interval(sp->id, ti_begin, random_number_HII_regions);
-
-        /* If we are lucky or we are the first particle, do the ionization */
-        if (random_number <= proba || i == 0) {
-          /* Update the Stromgren sphere radius */
-          sp->feedback_data.radiation.R_stromgren = stromgren[i].distance;
-        }
-
-        /* Consume the photons in all cases */
-        radiation_consume_ionizing_photons(sp, Delta_dot_N_ion);
-      }
-    }
-  }
+  /* Do radiation feedback */
+  feedback_prepare_radiation_feedback(sp, feedback_props, cosmo, us, phys_const,
+				      star_age_beg_step, dt, time, ti_begin,
+				      with_cosmology);
 }
 
 /**

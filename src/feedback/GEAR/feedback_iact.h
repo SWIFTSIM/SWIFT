@@ -20,11 +20,8 @@
 #define SWIFT_GEAR_FEEDBACK_IACT_H
 
 /* Local includes */
-#include "error.h"
 #include "feedback.h"
-#include "hydro.h"
-#include "radiation.h"
-#include "random.h"
+#include "radiation_iact.h"
 #include "timestep_sync_part.h"
 
 /**
@@ -59,8 +56,8 @@ runner_iact_nonsym_feedback_density(
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;
   const float ui = r * hi_inv;
-  float wi, wi_dx;
-  kernel_deval(ui, &wi, &wi_dx);
+  float wi;
+  kernel_eval(ui, &wi);
 
   /* Add contribution of pj to normalisation of density weighted fraction
    * which determines how much mass to distribute to neighbouring
@@ -74,53 +71,9 @@ runner_iact_nonsym_feedback_density(
 
   /*****************************************/
   /* Radiation */
-  /* Gather data to compute the column density with the sobolev approximation.
-   */
-  si->feedback_data.rho_star += mj * wi;
-
-  /* Unit vector pointing to pj */
-  float dx_unit[3];
-  for (int k = 0; k < 3; ++k) {
-    dx_unit[k] = dx[k] / r;
-  }
-
-  /* Gradient of the kernel */
-  float gradW[3];
-  for (int k = 0; k < 3; ++k) {
-    gradW[k] = wi_dx * dx_unit[k];
-  }
-
-  /* Gradient of the density */
-  for (int k = 0; k < 3; ++k) {
-    si->feedback_data.grad_rho_star[k] += mj * gradW[k];
-  }
-
-  /* Metallicity at the star location */
-  si->feedback_data.Z_star +=
-      pj->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] * wi;
-
-  /* Gather neighbours data for HII ionization */
-  if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo, cooling,
-                                 pj, xpj)) {
-    /* If a particle is already ionized, it won't be able to ionize again so do
-       not gather its data. */
-    const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(
-        phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
-
-    /* Compute the size of the array that we want to sort. If the current
-     * function is called for the first time (at this time-step for this star),
-     * then si->num_ngbs = 1 and there is nothing to sort. Note that the
-     * maximum size of the sorted array cannot be larger then the maximum
-     * number of rays. */
-    const int arr_size =
-        min(si->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
-
-    /* Minimise separation between the gas particles and the BH. The rays
-     * structs with smaller ids in the ray array will refer to the particles
-     * with smaller distances to the BH. */
-    stromgren_sort_distance(r, si->feedback_data.radiation.stromgren_sphere,
-                            arr_size, Delta_dot_N_ion);
-  }
+  radiation_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, xpj, cosmo,
+					 fb_props, hydro_props, phys_const, us,
+					 cooling, ti_current);
 }
 
 /**
@@ -191,76 +144,12 @@ runner_iact_nonsym_feedback_apply(
     }
   }
 
-  /*
-     3. Photoionization - HII region:
-     From step 1 we know N_dot_ion = L_ion / (h nu_ion) . We will use a
-     simple stromgren sphere approximation. For each particle:
-     a) Test if the particle is already ionized : T > 10^4 or particle was
-     flagged to be in an ionized region.
-     b) If it is not ionized, compute the ioninzing rate needed to fully
-     ionize:
-     \Delta N_dot_j = N(H)_j beta n_e_j
-     N(H)_j = X_H m_part / (mu m_proton) (the number of H atoms)
-     with beta = 3e-13 cm^3 / s is the recombination coefficient, n_e_j the
-     electron number density assuming full ionization, X_H is the hydrogen
-     mass fraction and mu the molecular weight.
-     c) If \Delta N_dot_j <= N_dot_ion:
-     tag the particle as being in a HII region
-     consume the photons: N_ion -= Delta N_dot_j
-
-     else:
-     determine randomly if the particle is ionized by computing the
-     proba p = N_dot_io / \Delta N_dot_j
-     If rand_number <= proba :
-     tag the particle as being in a HII region
-     consume the photons: N_ion -= Delta N_dot_j
-
-     d) For the particles tagged as ionized:
-     set the temperature (internal energy) to the
-     min(current temperature + heat added from the energy of the ionisation,
-     equilibrium HII region tem from collisional cooling)
-     Set the incident rad and FUV flux to the stromgren value --> to
-     compute the inonizing
-
-     Concretely,
-     u_new = min(u + delta U, U_collisional),
-     delta U = N_H * E_ion / m_gas,
-     E_ion = 13.6 eV = 2.18e-11 erg
-     Gamma = \Delta N_dot_j / N_H.
-
-     4. Radiation pressure:
-     p_rad_tot = Delta t / c * Sum_nu L_abs_nu
-
-     Which bands? Onlyt the IR I guess.
-
-     5. Transport the emergent FUV radiation. And then compute the
-     photohelectric heating. We assume that the effect is only local and so we
-     do not transport radiation.
-  */
-
-  /* Photoionization */
-  if (fb_props->do_photoionization) {
-    const float R_stromgren = si->feedback_data.radiation.R_stromgren;
-    if (r <= R_stromgren) {
-      /* message("Found particle to ionize ! r= %e, id = %lld", r, pj->id); */
-      /* Tag the particle */
-      radiation_tag_part_as_ionized(pj, xpj);
-    }
-  }
-
-  /* Compute radiation pressure */
-  if (fb_props->radiation_pressure_efficiency != 0) {
-    const float Delta_t = get_timestep(si->time_bin, time_base);
-    const float p_rad =
-        fb_props->radiation_pressure_efficiency *
-        radiation_get_star_radiation_pressure(si, Delta_t, us, phys_const);
-    const float delta_p_rad = weight * p_rad;
-
-    /* Add the radiation pressure radially outwards from the star */
-    for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.radiation.delta_p[i] -= delta_p_rad * dx[i] / r;
-    }
-  }
+  /*****************************************/
+  /* Radiation */
+  radiation_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
+				       hydro_props, fb_props, phys_const, us,
+				       cooling, ti_current, time_base);
+  /*****************************************/
 
   /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);

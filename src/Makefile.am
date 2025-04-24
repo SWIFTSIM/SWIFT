@@ -478,6 +478,7 @@ nobase_noinst_HEADERS += feedback/GEAR/feedback.h feedback/GEAR/feedback_iact.h
 nobase_noinst_HEADERS += feedback/GEAR/feedback_properties.h feedback/GEAR/feedback_struct.h
 nobase_noinst_HEADERS += feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h
 nobase_noinst_HEADERS += feedback/GEAR/radiation.h feedback/GEAR/stromgren_sphere.h
+nobase_noinst_HEADERS += feedback/GEAR/radiation_iact.h
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h
 nobase_noinst_HEADERS += feedback/GEAR/feedback_debug.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h
