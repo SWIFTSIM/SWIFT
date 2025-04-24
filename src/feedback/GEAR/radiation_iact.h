@@ -155,16 +155,16 @@ void feedback_prepare_radiation_feedback(struct spart* restrict sp,
 
   sp->feedback_data.Z_star *= hi_inv / sp->feedback_data.rho_star;
 
-  const float Sigma_gas = radiation_get_comoving_gas_column_density_at_star(sp);
-  const float kappa_IR = radiation_get_physical_IR_opacity(sp, us, phys_const, cosmo);
-  const float tau_IR = radiation_get_physical_IR_optical_depth(sp, us, phys_const, cosmo);
+  /* const float Sigma_gas = radiation_get_comoving_gas_column_density_at_star(sp); */
+  /* const float kappa_IR = radiation_get_physical_IR_opacity(sp, us, phys_const, cosmo); */
+  /* const float tau_IR = radiation_get_physical_IR_optical_depth(sp, us, phys_const, cosmo); */
 
-  message(
-      "rho_star = %e, Grad rho = (%e %e %e), Z = %e, Sigma_gas = %e, kappa_IR "
-      "= %e, tau_IR = %e",
-      sp->feedback_data.rho_star, sp->feedback_data.grad_rho_star[0],
-      sp->feedback_data.grad_rho_star[1], sp->feedback_data.grad_rho_star[2],
-      sp->feedback_data.Z_star, Sigma_gas, kappa_IR, tau_IR);
+  /* message( */
+  /*     "rho_star = %e, Grad rho = (%e %e %e), Z = %e, Sigma_gas = %e, kappa_IR " */
+  /*     "= %e, tau_IR = %e", */
+  /*     sp->feedback_data.rho_star, sp->feedback_data.grad_rho_star[0], */
+  /*     sp->feedback_data.grad_rho_star[1], sp->feedback_data.grad_rho_star[2], */
+  /*     sp->feedback_data.Z_star, Sigma_gas, kappa_IR, tau_IR); */
 
   /*----------------------------------------*/
   /* Do the HII ionization */
@@ -352,9 +352,6 @@ feedback_update_part_radiation(struct part* p, struct xpart* xp,
   if (radiation_is_part_tagged_as_ionized(p, xp)) {
     const double m_p = phys_const->const_proton_mass;
     const double k_B = phys_const->const_boltzmann_k;
-
-    /* Get the current physical internal energy */
-    const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
 
     /* Get the internal energy increase to ionization */
     const double N_H = radiation_get_part_number_hydrogen_atoms(
