@@ -191,6 +191,91 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
 }
 
 /**
+ * @brief Integrate the #interpolation_1d_double data with the initial mass function.
+ *
+ * The x are supposed to be linear in log.
+ *
+ * @param imf The #initial_mass_function.
+ * @param data The data to integrate.
+ * @param count The number of element in data.
+ * @param log_mass_min The value of the first element.
+ * @param step_size The distance between two points.
+ */
+void initial_mass_function_integrate_double(const struct initial_mass_function *imf,
+					    double *data, size_t count,
+					    float log_mass_min, float step_size) {
+
+  /* Index in the data */
+  size_t j = 1;
+  const float mass_min = exp10(log_mass_min);
+  const float mass_max = exp10(log_mass_min + (count - 1) * step_size);
+
+  float m = mass_min;
+
+  double *tmp = (double *)malloc(sizeof(double) * count);
+
+  /* Set lower limit */
+  tmp[0] = 0.0;
+  for (int i = 0; i < imf->n_parts; i++) {
+
+    /* Check if already in the correct part */
+    if (mass_min > imf->mass_limits[i + 1]) {
+      continue;
+    }
+
+    /* Check if already above the maximal mass */
+    if (mass_max < imf->mass_limits[i]) {
+      break;
+    }
+
+    /* Integrate the data */
+    while ((m < imf->mass_limits[i + 1] || i == imf->n_parts - 1) &&
+           j < count) {
+
+      /* Compute the masses */
+      const float log_m1 = log_mass_min + (j - 1) * step_size;
+      const float m1 = exp10(log_m1);
+      const float log_m2 = log_mass_min + j * step_size;
+      float m2 = exp10(log_m2);
+
+      /* Ensure that we stay within the limits */
+      if (m2 > imf->mass_max) {
+        m2 = imf->mass_max;
+      }
+
+      const float dm = m2 - m1;
+      const double imf_1 = imf->coef[i] * pow(m1, imf->exp[i]);
+
+      /* Get the imf of the upper limit  */
+      double imf_2;
+      if (m2 > imf->mass_limits[i + 1]) {
+        imf_2 = imf->coef[i + 1] * pow(m2, imf->exp[i + 1]);
+      } else {
+        imf_2 = imf->coef[i] * pow(m2, imf->exp[i]);
+      }
+
+      /* Compute the integral */
+      tmp[j] = tmp[j - 1] + 0.5 * (imf_1 * data[j - 1] + imf_2 * data[j]) * dm;
+
+      /* Update j and m */
+      j += 1;
+      m = m2;
+    }
+  }
+
+  /* The rest is extrapolated with 0 */
+  for (size_t k = j; k < count; k++) {
+    tmp[k] = tmp[k - 1];
+  }
+
+  /* Copy temporary array */
+  memcpy(data, tmp, count * sizeof(double));
+
+  /* clean everything */
+  free(tmp);
+}
+
+/**
  * @brief Get the IMF coefficient in between mass_min and mass_max.
  *
  * @param imf The #initial_mass_function.
