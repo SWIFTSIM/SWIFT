@@ -28,56 +28,6 @@
 #include "kernel_hydro.h"
 #include "units.h"
 
-/* TODO: Check unit... similaru in radiation_blackbody_etc */
-float radiation_get_blackbody_luminosity_band(const float nu_min,
-                                              const float nu_max, const float T,
-                                              const float R, const float kB,
-                                              const float h, const float c) {
-
-  const float dnu = (nu_max - nu_min) / BB_NU_INTEGRATION_STEPS;
-  float luminosity = 0.f;
-
-  for (int i = 0; i < BB_NU_INTEGRATION_STEPS; ++i) {
-    const float nu = nu_min + (i + 0.5f) * dnu;
-    const float intensity =
-        radiation_blackbody_spectrum_intensity(nu, T, kB, h, c);
-
-    // Calculate the luminosity contribution from the band
-    const float dL = 4.f * M_PI * R * R * intensity * dnu;
-
-    luminosity += dL;
-  }
-  return luminosity;
-}
-
-/* TODO: Check unit... similaru in radiation_blackbody_etc */
-float radiation_get_ionizing_photon_emission_rate(const float nu_min,
-                                                  const float nu_max,
-                                                  const float T, const float R,
-                                                  const float kB, const float h,
-                                                  const float c) {
-
-  const float dnu = (nu_max - nu_min) / RADIATION_N_IONIZATION_STEPS;
-  float integral = 0.f;
-
-  for (int i = 0; i < RADIATION_N_IONIZATION_STEPS; i++) {
-    const float nu1 = nu_min + i * dnu;
-    const float nu2 = nu1 + dnu;
-
-    const float B1 = radiation_blackbody_spectrum_intensity(nu1, T, kB, h, c);
-    const float B2 = radiation_blackbody_spectrum_intensity(nu2, T, kB, h, c);
-
-    const float integrand1 = B1 / (h * nu1);
-    const float integrand2 = B2 / (h * nu2);
-
-    integral += 0.5f * (integrand1 + integrand2) * dnu;
-  }
-
-  const float surface_area = 4.f * M_PI * R * R;
-
-  return surface_area * integral;  // [photons / second]
-}
-
 /**
  * Get the gas number of hydrogen atoms.
  *
@@ -90,6 +40,7 @@ float radiation_get_ionizing_photon_emission_rate(const float nu_min,
  * @param xp The extended data of the particle.
  * @return Number of hydrogen atoms.
  */
+__attribute__((always_inline)) INLINE
 double radiation_get_part_number_hydrogen_atoms(
     const struct phys_const* phys_const, const struct hydro_props* hydro_props,
     const struct unit_system* us, const struct cosmology* cosmo,
@@ -120,6 +71,7 @@ double radiation_get_part_number_hydrogen_atoms(
  * @param xp The extended data of the particle.
  * @return Ionizing photon rate to ionize this #part (physical units).
  */
+__attribute__((always_inline)) INLINE
 double radiation_get_part_rate_to_fully_ionize(
     const struct phys_const* phys_const, const struct hydro_props* hydro_props,
     const struct unit_system* us, const struct cosmology* cosmo,
@@ -153,6 +105,7 @@ double radiation_get_part_rate_to_fully_ionize(
  * @param sp The star.
  * @return Ionizing photon rate.
  */
+__attribute__((always_inline)) INLINE
 double radiation_get_star_ionization_rate(const struct spart* sp) {
   return sp->feedback_data.radiation.dot_N_ion;
 }
@@ -163,6 +116,7 @@ double radiation_get_star_ionization_rate(const struct spart* sp) {
  * @param sp The star.
  * @param Delta_dot_N_ion The ionizing photon rate to remove.
  */
+__attribute__((always_inline)) INLINE
 void radiation_consume_ionizing_photons(struct spart* sp,
                                         double Delta_dot_N_ion) {
   sp->feedback_data.radiation.dot_N_ion -= Delta_dot_N_ion;
@@ -175,6 +129,7 @@ void radiation_consume_ionizing_photons(struct spart* sp,
  * @param p The particle.
  * @param xp The extended data of the particle.
  */
+__attribute__((always_inline)) INLINE
 void radiation_tag_part_as_ionized(struct part* p, struct xpart* xp) {
   xp->feedback_data.radiation.is_ionized = 1;
   return;
@@ -186,6 +141,7 @@ void radiation_tag_part_as_ionized(struct part* p, struct xpart* xp) {
  * @param p The particle.
  * @param xp The extended data of the particle.
  */
+__attribute__((always_inline)) INLINE
 void radiation_reset_part_ionized_tag(struct part* p, struct xpart* xp) {
   xp->feedback_data.radiation.is_ionized = 0;
   return;
@@ -198,13 +154,14 @@ void radiation_reset_part_ionized_tag(struct part* p, struct xpart* xp) {
  * @param xp The extended data of the particle.
  * @return Is the particle *tagged* ionized?
  */
+__attribute__((always_inline)) INLINE
 int radiation_is_part_tagged_as_ionized(struct part* p, struct xpart* xp) {
   return xp->feedback_data.radiation.is_ionized;
 }
 
 /**
- * Compute the temperature of a single star from empirical mass-temperature
- * relations.
+ * Determines whether a gas #part is ionized or not based on its
+ * thermodynamical properties.
  *
  * @param phys_const Physical constants.
  * @param us Unit system.
@@ -215,6 +172,7 @@ int radiation_is_part_tagged_as_ionized(struct part* p, struct xpart* xp) {
  * @param xp The extended data of the particle.
  * @return Is the particle ionized?
  */
+__attribute__((always_inline)) INLINE
 int radiation_is_part_ionized(const struct phys_const* phys_const,
                               const struct hydro_props* hydro_props,
                               const struct unit_system* us,
@@ -232,7 +190,14 @@ int radiation_is_part_ionized(const struct phys_const* phys_const,
   return (T > ten_to_four_kelvin || xp->feedback_data.radiation.is_ionized);
 }
 
-// TODO: DO converstion to physical? Or to comoving?
+/**
+ * Compute the gas comoving column density at the star's location using the
+ * Sobolev approximation.
+ *
+ * @param sp The #spart.
+ * @return Comoving gas column density at the star's location.
+ */
+__attribute__((always_inline)) INLINE
 float radiation_get_comoving_gas_column_density_at_star(const struct spart* sp) {
   const float rho_gas = sp->feedback_data.rho_star;
   const float grad_rho[3] = {sp->feedback_data.grad_rho_star[0],
@@ -246,6 +211,16 @@ float radiation_get_comoving_gas_column_density_at_star(const struct spart* sp) 
   return length_gas * rho_gas;
 }
 
+/**
+ * Compute the physical infrared opacity around a star.
+ *
+ * @param sp The #spart.
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @return Infrared gas opacity around the star.
+ */
+__attribute__((always_inline)) INLINE
 float radiation_get_physical_IR_opacity(const struct spart* sp,
                                const struct unit_system* us,
                                const struct phys_const* phys_const,
@@ -257,6 +232,16 @@ float radiation_get_physical_IR_opacity(const struct spart* sp,
   return value * Z_gas / Z_sun;
 }
 
+/**
+ * Compute the physical infrared optical depth around a star.
+ *
+ * @param sp The #spart.
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @return Infrared gas optical depth around the star.
+ */
+__attribute__((always_inline)) INLINE
 float radiation_get_physical_IR_optical_depth(const struct spart* sp,
 					      const struct unit_system* us,
 					      const struct phys_const* phys_const,
@@ -267,9 +252,20 @@ float radiation_get_physical_IR_optical_depth(const struct spart* sp,
   return kappa_IR * Sigma_gas_p;
 }
 
+/**
+ * Compute the physical radiation pressure emitted by the star.
+ *
+ * @param sp The #spart.
+ * @param Delta_t The current #spart timestep.
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @return Radiation pressure emittied by the star.
+ */
+__attribute__((always_inline)) INLINE
 float radiation_get_star_physical_radiation_pressure(
-    const struct spart* sp, const float Delta_t, const struct unit_system* us,
-    const struct phys_const* phys_const, const struct cosmology* cosmo) {
+    const struct spart* sp, const float Delta_t, const struct phys_const* phys_const,
+    const struct unit_system* us, const struct cosmology* cosmo) {
 
   const float tau_IR = radiation_get_physical_IR_optical_depth(sp, us, phys_const, cosmo);
   const float L_bol = sp->feedback_data.radiation.L_bol; /* In physical units */

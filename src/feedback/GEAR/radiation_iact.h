@@ -65,7 +65,7 @@ radiation_iact_nonsym_feedback_density(
   float wi, wi_dx;
   kernel_deval(ui, &wi, &wi_dx);
 
-  /* Gather data to compute the column density with the sobolev approximation.
+  /* Gather data to compute the column density with the Sobolev approximation.
    */
   si->feedback_data.rho_star += mj * wi;
 
@@ -294,14 +294,6 @@ radiation_iact_nonsym_feedback_apply(
      E_ion = 13.6 eV = 2.18e-11 erg
      Gamma = \Delta N_dot_j / N_H.
 
-     4. Radiation pressure:
-     p_rad_tot = Delta t / c * Sum_nu L_abs_nu
-
-     Which bands? Onlyt the IR I guess.
-
-     5. Transport the emergent FUV radiation. And then compute the
-     photohelectric heating. We assume that the effect is only local and so we
-     do not transport radiation.
   */
 
   /* Photoionization */
@@ -319,7 +311,7 @@ radiation_iact_nonsym_feedback_apply(
     const float Delta_t = get_timestep(si->time_bin, time_base);
     const float p_rad =
         fb_props->radiation_pressure_efficiency *
-      radiation_get_star_physical_radiation_pressure(si, Delta_t, us, phys_const, cosmo);
+      radiation_get_star_physical_radiation_pressure(si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
 
     /* Add the radiation pressure radially outwards from the star. Notice the
@@ -328,6 +320,12 @@ radiation_iact_nonsym_feedback_apply(
       xpj->feedback_data.radiation.delta_p[i] -= delta_p_rad * dx[i] / r * cosmo->a;
     }
   }
+
+  /*
+     5. Transport the emergent FUV radiation. And then compute the
+     photohelectric heating. We assume that the effect is only local and so we
+     do not transport radiation.
+  */
 }
 
 #endif /* SWIFT_RADIATION_IACT_GEAR_H */

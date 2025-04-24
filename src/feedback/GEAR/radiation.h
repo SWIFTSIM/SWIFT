@@ -35,65 +35,6 @@
 #define BB_NU_INTEGRATION_STEPS 500
 #define RADIATION_N_IONIZATION_STEPS 1000
 
-/**
- * @brief Return the specific intensity of the blackbody spectrum
- *
- * @param nu frequency at which to compute specific intensity
- * @param T temperature characterizing the spectrum
- * @param kB Boltzmann constant
- * @param h_planck Planck's constant
- * @param c speed of light
- */
-__attribute__((always_inline)) INLINE double
-radiation_blackbody_spectrum_intensity(const double nu, const double T,
-                                       const double kB, const double h_planck,
-                                       const double c) {
-
-  const double hnu = h_planck * nu;
-  const double kT = kB * T;
-  const double nu2 = nu * nu;
-  double temp;
-  if (hnu / kT < 1e-6) {
-    /* prevent division by zero, use Taylor approximation */
-    temp = kT;
-  } else if (hnu / kT > 700.) {
-    /* prevent infs */
-    temp = 0.;
-  } else {
-    temp = 1. / (exp(hnu / kT) - 1.);
-  }
-  return 2. * hnu * nu2 / (c * c) * temp;
-}
-
-/**
- * Return the blackbody spectrum energy density
- *
- * @param nu frequency at which to compute specific intensity
- * @param T temperature characterizing the spectrum
- * @param kB Boltzmann constant
- * @param h_planck Planck's constant
- * @param c speed of light
- */
-__attribute__((always_inline)) INLINE double
-radiation_blackbody_spectrum_energy_density(const double nu, const double T,
-                                            const double kB,
-                                            const double h_planck,
-                                            const double c) {
-  return 4. * M_PI / c *
-         radiation_blackbody_spectrum_intensity(nu, T, kB, h_planck, c);
-}
-
-float radiation_get_blackbody_luminosity_band(const float nu_min,
-                                              const float nu_max, const float T,
-                                              const float R, const float kB,
-                                              const float h, const float c);
-
-float radiation_get_ionizing_photon_emission_rate(const float nu_min,
-                                                  const float nu_max,
-                                                  const float T, const float R,
-                                                  const float kB, const float h,
-                                                  const float c);
-
 double radiation_get_star_ionization_rate(const struct spart* sp);
 
 double radiation_get_part_number_hydrogen_atoms(
@@ -125,9 +66,11 @@ float radiation_get_physical_IR_optical_depth(const struct spart* sp,
 					      const struct phys_const* phys_const,
 					      const struct cosmology* cosmo);
 
-float radiation_get_star_physical_radiation_pressure(
-    const struct spart* sp, const float Delta_t, const struct unit_system* us,
-    const struct phys_const* phys_const,const struct cosmology* cosmo);
+float radiation_get_star_physical_radiation_pressure(const struct spart* sp,
+						     const float Delta_t,
+						     const struct phys_const* phys_const,
+						     const struct unit_system* us,
+						     const struct cosmology* cosmo);
 
 int radiation_is_part_ionized(const struct phys_const* phys_const,
                               const struct hydro_props* hydro_props,
