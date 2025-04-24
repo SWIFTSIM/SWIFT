@@ -79,19 +79,19 @@ int radiation_is_part_ionized(const struct phys_const* phys_const,
                               const struct cooling_function_data* cooling,
                               const struct part* p, const struct xpart* xp);
 
-float radiation_get_individual_star_radius(const struct spart* sp,
+float radiation_get_individual_star_radius(const float mass,
                                            const struct unit_system* us,
                                            const struct phys_const* phys_const);
 float radiation_get_individual_star_temperature(
-    const struct spart* sp, const struct unit_system* us,
+    const float mass, const struct unit_system* us,
     const struct phys_const* phys_const);
 
 float radiation_get_individual_star_luminosity(
-    const struct spart* sp, const struct unit_system* us,
+    const float mass, const struct unit_system* us,
     const struct phys_const* phys_const);
 
 double radiation_get_individual_star_ionizing_photon_emission_rate_fit(
-    const struct spart* sp, const struct unit_system* us,
+    const float mass, const struct unit_system* us,
     const struct phys_const* phys_const);
 
 #endif /* SWIFT_RADIATION_GEAR_H */

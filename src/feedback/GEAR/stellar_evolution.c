@@ -695,7 +695,7 @@ void stellar_evolution_compute_SN_feedback_individual_star(
     const struct phys_const* phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
-  /* Check that this function is called for individual starsv*/
+  /* Check that this function is called for individual stars */
   if (sp->star_type != single_star) {
     error("This function can only be called for single/individual star!");
   }
@@ -974,6 +974,11 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
     const struct phys_const* phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
+  /* Check that this function is called for individual stars */
+  if (sp->star_type != single_star) {
+    error("This function can only be called for single/individual stars!");
+  }
+
   /* Bands:
      - ionizing : photo ionisation
      - FUV : photoelectric heating
@@ -982,13 +987,15 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
      - mid/far-IR : reserved for light re-radiated by dust */
 
   /* Get the bolometric luminosity */
-  sp->feedback_data.radiation.L_bol = radiation_get_individual_star_luminosity(sp, us, phys_const);
+  sp->feedback_data.radiation.L_bol = radiation_get_individual_star_luminosity(sp->mass, us, phys_const);
 
   /* For the ionizing band, get the number of photons produced. */
   sp->feedback_data.radiation.dot_N_ion =
       radiation_get_individual_star_ionizing_photon_emission_rate_fit(
-          sp, us, phys_const);
-  message("N_dot_ion = %e, L_bol = %e",
+          sp->mass, us, phys_const);
+
+   message("[%lld, %d, %e] N_dot_ion = %e, L_bol = %e",
+	   sp->id, sp->star_type, sp->mass,
 	  sp->feedback_data.radiation.dot_N_ion, sp->feedback_data.radiation.L_bol);
 }
 

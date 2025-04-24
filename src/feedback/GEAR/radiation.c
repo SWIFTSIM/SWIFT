@@ -286,14 +286,13 @@ float radiation_get_star_physical_radiation_pressure(
  * @return Radius in code units.
  */
 float radiation_get_individual_star_radius(
-    const struct spart* sp, const struct unit_system* us,
+    const float mass, const struct unit_system* us,
     const struct phys_const* phys_const) {
 
   /* Perform some units conversions */
   const float R_sun = phys_const->const_solar_radius;
   const float M_solar = phys_const->const_solar_mass;
-  const float M = sp->mass;
-  const float M_in_solar = M / M_solar;
+  const float M_in_solar = mass / M_solar;
 
   if (M_in_solar < 1.f) {
     return R_sun * powf(M_in_solar, 0.8f);
@@ -317,12 +316,11 @@ float radiation_get_individual_star_radius(
  * @return Temperature in code units.
  */
 float radiation_get_individual_star_temperature(
-    const struct spart* sp, const struct unit_system* us,
+    const float mass, const struct unit_system* us,
     const struct phys_const* phys_const) {
 
   const float M_solar = phys_const->const_solar_mass;
-  const float M = sp->mass;             /* In internal units */
-  const float M_in_solar = M / M_solar; /* In solar masses */
+  const float M_in_solar = mass / M_solar; /* In solar masses */
 
   float T_K = 0.0;
 
@@ -354,11 +352,11 @@ float radiation_get_individual_star_temperature(
  * @return Luminosity in code units.
  */
 float radiation_get_individual_star_luminosity(
-    const struct spart* sp, const struct unit_system* us,
+    const float mass, const struct unit_system* us,
     const struct phys_const* phys_const) {
 
   /* Convert mass to solar masses */
-  const float M_in_solar = sp->mass / phys_const->const_solar_mass;
+  const float M_in_solar = mass / phys_const->const_solar_mass;
 
   /* Piecewise empirical mass-luminosity relation */
   float lum_sol;
@@ -391,14 +389,14 @@ float radiation_get_individual_star_luminosity(
  * [photons/U_T].
  */
 double radiation_get_individual_star_ionizing_photon_emission_rate_fit(
-    const struct spart* sp, const struct unit_system* us,
+    const float mass, const struct unit_system* us,
     const struct phys_const* phys_const) {
 
   /* Get star properties in internal units */
   /* const float T = radiation_get_individual_star_temperature(sp, us,
    * phys_const); */
-  const float R = radiation_get_individual_star_radius(sp, us, phys_const);
-  const float L = radiation_get_individual_star_luminosity(sp, us, phys_const);
+  const float R = radiation_get_individual_star_radius(mass, us, phys_const);
+  const float L = radiation_get_individual_star_luminosity(mass, us, phys_const);
 
   const float R_in_R_sun = R / phys_const->const_solar_radius;
   const float L_in_L_sun = L / phys_const->const_solar_luminosity;
