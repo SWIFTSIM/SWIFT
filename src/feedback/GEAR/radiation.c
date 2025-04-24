@@ -16,6 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+/**
+ * @file src/feedback/GEAR/radiation.c
+ * @brief Subgrid radiation feedback for GEAR. This files contains functions to
+ * compute quantities for the radiation feedback.
+ */
 
 /* Include header */
 #include "radiation.h"

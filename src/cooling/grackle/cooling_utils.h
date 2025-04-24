@@ -19,8 +19,8 @@
 #ifndef SWIFT_COOLING_GRACKLE_COOLING_UTILS_H
 #define SWIFT_COOLING_GRACKLE_COOLING_UTILS_H
 /**
- * @file src/cooling/grackle/cooling.c
- * @brief Cooling using the GRACKLE 3.1.1 library.
+ * @file src/cooling/grackle/cooling_utils.h
+ * @brief Cooling utilities functions for grackle.
  */
 
 #include "chemistry.h"

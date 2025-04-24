@@ -19,10 +19,14 @@
 #ifndef SWIFT_RADIATION_GEAR_H
 #define SWIFT_RADIATION_GEAR_H
 
+/**
+ * @file src/feedback/GEAR/radiation.h
+ * @brief Subgrid radiation feedback for GEAR. This files contains functions to
+ * compute quantities for the radiation feedback.
+ */
+
 #include "cooling.h"
-#include "hdf5_functions.h"
 #include "hydro.h"
-#include "interpolation.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "stellar_evolution_struct.h"
