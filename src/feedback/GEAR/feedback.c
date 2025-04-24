@@ -180,7 +180,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
     const double m_p = phys_const->const_proton_mass;
     const double k_B = phys_const->const_boltzmann_k;
 
-    /* Get the current internal energy */
+    /* Get the current physical internal energy */
     const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
 
     /* Get the internal energy increase to ionization */
@@ -196,19 +196,29 @@ void feedback_update_part(struct part* p, struct xpart* xp,
     const double mu = cooling_get_mean_molecular_weight(
         phys_const, us, cosmo, hydro_props, cooling, p, xp);
 
-    /* Here we need to treat the cases Z << Z_sun otherwise we have T<0*/
+    /* Here we need to treat the cases Z << Z_sun otherwise we have T < 0 */
     const double ten_to_four_K =
         1e4 * units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-    const double tmp = 0.86 / (1 + 0.22 * log(Z / Z_sun));
-    const double T_collisional = ten_to_four_K * min(6.62, tmp);
+    double T_collisional;
+    if (Z >= Z_sun * 1e-3) {
+      const double tmp = 0.86 / (1 + 0.22 * log(Z / Z_sun));
+      T_collisional = ten_to_four_K * min(6.62, tmp);
+    } else {
+      T_collisional = 6.62*ten_to_four_K;  // High-temp asymptote
+    }
+
+    /* Convert T to internal energy */
     const double u_collisional =
         cooling_internal_energy_from_T(T_collisional, mu, k_B, m_p);
 
+    /* The internal engergy is the min of the energy required to fully ionize
+       and the equilibrium temperature in HII regions */
     const float u_new = min(Delta_u_ionized, u_collisional);
 
-    message("u = %e, Delta_u_ionized = %e, u_coll = %e, T_col = %e, tmp = %e",
-            u, Delta_u_ionized, u_collisional, T_collisional, tmp);
+    message("u = %e, Delta_u_ionized = %e, u_coll = %e, T_col = %e",
+            u, Delta_u_ionized, u_collisional, T_collisional);
 
+    /* Now update the gas internal energy state */
     hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
     hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
 
