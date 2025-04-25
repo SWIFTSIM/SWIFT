@@ -227,30 +227,43 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
   const double m_ej = si->feedback_data.mass_ejected;
   const double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
 
-  /* Accumulate */
+  /* Accumulate (pay attention to the conversions to physical units) */
   const double v_ij[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
                           pj->v[2] - si->v[2]};
-  const double v_ij_norm_2 =
-      v_ij[0] * v_ij[0] + v_ij[1] * v_ij[1] + v_ij[2] * v_ij[2];
+
+  /* Calculate the velocity with the Hubble flow */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+  const float a2H = a * a * H;
+  const float v_ij_plus_H_flow[3] = {a2H * dx[0] + v_ij[0], a2H * dx[1] + v_ij[1],
+				     a2H * dx[2] + v_ij[2]};
+
+  /* Compute the _physical_ relative velocity between the particles */
+  const float v_ij_p[3] = {v_ij_plus_H_flow[0] * cosmo->a_inv,
+			   v_ij_plus_H_flow[1] * cosmo->a_inv,
+			   v_ij_plus_H_flow[2] * cosmo->a_inv};
+
+  const double v_ij_p_norm_2 =
+      v_ij_p[0] * v_ij_p[0] + v_ij_p[1] * v_ij_p[1] + v_ij_p[2] * v_ij_p[2];
 
   /* w_j_bar_hat refers to w_j_bar/|w_j_bar| */
-  const double v_ij_times_w_j_bar_hat =
-      (v_ij[0] * w_j_bar[0] + v_ij[1] * w_j_bar[1] + v_ij[2] * w_j_bar[2]) /
+  const double v_ij_p_times_w_j_bar_hat =
+      (v_ij_p[0] * w_j_bar[0] + v_ij_p[1] * w_j_bar[1] + v_ij_p[2] * w_j_bar[2]) /
       w_j_bar_norm;
   const double w_prime_ij = w_j_bar_norm / (1 + dm / mj);
 
   /* Notice that we will multiply by 0.5*m_ej later on */
-  si->feedback_data.accumulator.E_total += w_prime_ij * v_ij_norm_2;
+  si->feedback_data.accumulator.E_total += w_prime_ij * v_ij_p_norm_2;
 
   /* Notice that we need the small epsilon (total available kinetic energy) to
      finish the computation of this. The small epsilon is determined by E_tot */
-  si->feedback_data.accumulator.beta_1 += w_prime_ij * v_ij_times_w_j_bar_hat;
+  si->feedback_data.accumulator.beta_1 += w_prime_ij * v_ij_p_times_w_j_bar_hat;
 
   /* Notice that we will multiply by m_ej later on */
   si->feedback_data.accumulator.beta_2 += w_prime_ij * w_j_bar_norm / mj;
 
-  /* Compute the weigthed average of the gas properties around the star with
-     our isotropic weighting scheme. */
+  /* Compute the comoving weigthed average of the gas properties around the star
+     with our isotropic weighting scheme. */
   si->feedback_data.weighted_gas_density += w_j_bar_norm * pj->rho;
   si->feedback_data.weighted_gas_metallicity +=
       w_j_bar_norm * chemistry_get_total_metal_mass_fraction_for_feedback(pj);
@@ -360,7 +373,8 @@ runner_iact_nonsym_feedback_apply(
     return;
   }
 
-  /* Here just get the feedback properties we want to distribute */
+  /* Here just get the feedback properties we want to distribute (in physical
+     units) */
   const double E_ej = si->feedback_data.energy_ejected;
   const float mj = hydro_get_mass(pj);
   const double m_ej = si->feedback_data.mass_ejected;
@@ -379,18 +393,37 @@ runner_iact_nonsym_feedback_apply(
   /****************************************************************************
    * Now we treat the other fluxes distribution differently for each mode
    ****************************************************************************/
+  /* Calculate the velocity with the Hubble flow */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+  const float a2H = a * a * H;
+  const float vi_plus_H_flow[3] = {a2H * si->x[0] + si->v[0], a2H * si->x[1] + si->v[1],
+				   a2H * si->x[2] + si->v[2]};
+  const float vj_plus_H_flow[3] = {a2H * pj->x[0] + xpj->v_full[0],
+				   a2H * pj->x[1] + xpj->v_full[1],
+				   a2H * pj->x[2] + xpj->v_full[2]};
+
+  /* Compute the _physical_ relative velocity between the particles */
+  const float v_i_p[3] = {vi_plus_H_flow[0] * cosmo->a_inv,
+			  vi_plus_H_flow[1] * cosmo->a_inv,
+			  vi_plus_H_flow[2] * cosmo->a_inv};
+
+  const float v_j_p[3] = {vj_plus_H_flow[0] * cosmo->a_inv,
+			  vj_plus_H_flow[1] * cosmo->a_inv,
+			  vj_plus_H_flow[2] * cosmo->a_inv};
+
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 1
   const float internal_energy_snowplow_exponent = -6.5;
 
-  /* ... momentum */
+  /* ... physical momentum */
   const double p_ej = sqrt(2 * m_ej * E_ej);
   const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
                         w_j_bar[2] * p_ej};
   const double dE = w_j_bar_norm * E_ej;
 
   /* Now boost to the 'laboratory' frame */
-  double dp_prime[3] = {dp[0] + dm * si->v[0], dp[1] + dm * si->v[1],
-                        dp[2] + dm * si->v[2]};
+  double dp_prime[3] = {dp[0] + dm * v_i_p[0], dp[1] + dm * v_i_p[1],
+                        dp[2] + dm * v_i_p[2]};
 
   /* ... Total energy */
   const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
@@ -399,15 +432,14 @@ runner_iact_nonsym_feedback_apply(
                                  dp_prime[2] * dp_prime[2];
   const double dE_prime = dE + 1.0 / (2.0 * dm) * (dp_prime_norm_2 - dp_norm_2);
 
-  /* ... internal energy */
+  /* ... physical internal energy */
   /* Compute kinetic energy difference before and after SN */
   const double p_old_norm_2 =
       mj * mj *
-      (xpj->v_full[0] * xpj->v_full[0] + xpj->v_full[1] * xpj->v_full[1] +
-       xpj->v_full[2] * xpj->v_full[2]);
-  const double p_new[3] = {mj * xpj->v_full[0] + dp_prime[0],
-                           mj * xpj->v_full[1] + dp_prime[1],
-                           mj * xpj->v_full[2] + dp_prime[2]};
+      (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
+  const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
+                           mj * v_j_p[1] + dp_prime[1],
+                           mj * v_j_p[2] + dp_prime[2]};
   const double p_new_norm_2 =
       p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
 
@@ -415,7 +447,7 @@ runner_iact_nonsym_feedback_apply(
   const double E_kin_new = p_new_norm_2 / (2.0 * new_mass);
   const double dKE = E_kin_new - E_kin_old;
 
-  const double U_old = xpj->u_full * mj;
+  const double U_old = hydro_get_physical_internal_energy(pj, xpj, cosmo);
   const double E_old = U_old + E_kin_old;
   const double E_new = E_old + dE_prime;
   const double U_new = E_new - E_kin_new;
@@ -428,7 +460,7 @@ runner_iact_nonsym_feedback_apply(
 
   const double PdV_work_fraction = sqrt(1 + mj / dm);
   const double p_terminal =
-      feedback_get_SN_terminal_momentum(si, pj, xpj, phys_const, us);
+    feedback_get_physical_SN_terminal_momentum(si, pj, xpj, phys_const, us, cosmo);
 
   /* If we can resolve the Taylor Sedov, then we give the right coupled
      momentum (which is by definition <= p_terminal). If we cannot resolve it,
@@ -441,8 +473,8 @@ runner_iact_nonsym_feedback_apply(
   dp_prime[1] *= p_factor;
   dp_prime[2] *= p_factor;
 
-  /* Compute the cooling radius */
-  const double r_cool = feedback_get_SN_cooling_radius(si, p_ej, p_terminal);
+  /* Compute the comoving cooling radius */
+  const double r_cool = cosmo->a_inv * feedback_get_physical_SN_cooling_radius(si, p_ej, p_terminal, cosmo);
 
   /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
   if (r2 > r_cool * r_cool) {
@@ -475,7 +507,7 @@ runner_iact_nonsym_feedback_apply(
      cooling. */
   const double p_available = sqrt(2.0 * epsilon * m_ej);
   const double p_terminal =
-      feedback_get_SN_terminal_momentum(si, pj, xpj, phys_const, us);
+    feedback_get_physical_SN_terminal_momentum(si, pj, xpj, phys_const, us, cosmo);
   const double xsi = min(1, p_terminal / (psi * p_available));
 
   /* Finally, the ejected velocity is */
@@ -486,31 +518,29 @@ runner_iact_nonsym_feedback_apply(
                         w_j_bar[2] * p_ej};
 
   /* Now boost to the 'laboratory' frame */
-  double dp_prime[3] = {dp[0] + dm * si->v[0], dp[1] + dm * si->v[1],
-                        dp[2] + dm * si->v[2]};
+  double dp_prime[3] = {dp[0] + dm * v_i_p[0], dp[1] + dm * v_i_p[1],
+                        dp[2] + dm * v_i_p[2]};
 
-  /* ... internal energy */
+  /* ... physical internal energy */
   const double factor =
       (psi * psi * xsi * xsi) * beta_2 + 2.0 * (psi * xsi) * beta_1;
   const double f_therm = 1.0 - factor * epsilon / E_tot;
   const double U_tot = f_therm * E_tot;
   const double dU = w_j_bar_norm * U_tot;
 
+  /* HERE */
   /* Compute kinetic energy difference before and after SN */
   const double p_old_norm_2 =
-      mj * mj *
-      (xpj->v_full[0] * xpj->v_full[0] + xpj->v_full[1] * xpj->v_full[1] +
-       xpj->v_full[2] * xpj->v_full[2]);
-  const double p_new[3] = {mj * xpj->v_full[0] + dp_prime[0],
-                           mj * xpj->v_full[1] + dp_prime[1],
-                           mj * xpj->v_full[2] + dp_prime[2]};
+      mj * mj * (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
+  const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
+                           mj * v_j_p[1] + dp_prime[1],
+                           mj * v_j_p[2] + dp_prime[2]};
   const double p_new_norm_2 =
       p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
 
   const double E_kin_old = p_old_norm_2 / (2.0 * mj);
   const double E_kin_new = p_new_norm_2 / (2.0 * new_mass);
   const double dKE = E_kin_new - E_kin_old;
-
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
@@ -526,13 +556,14 @@ runner_iact_nonsym_feedback_apply(
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 #endif /* FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
 
-  /* Now we can give momentum, thermal and kinetic energy to the xpart. */
-#if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
-  /* Do not give momentum for the isotropy check test. Momentum pushes
+  /* Now we can give momentum, thermal and kinetic energy to the xpart.
+     Note: Do not give momentum for the isotropy check test. Momentum pushes
      particles too efficiently and then the python face area computations are
-     not exacly the same as what SWIFT. */
+     not exacly the same as SWIFT. */
+#if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
+  /* Convert to comoving units */
   for (int i = 0; i < 3; i++) {
-    xpj->feedback_data.delta_p[i] += dp_prime[i];
+    xpj->feedback_data.delta_p[i] += dp_prime[i] * cosmo->a;
   }
 #endif /* not defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
