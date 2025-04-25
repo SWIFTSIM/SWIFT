@@ -110,14 +110,16 @@ void feedback_compute_vector_weight_normalized(const float r2, const float* dx,
                                                const struct part* restrict pj,
                                                double* w_j_bar);
 
-double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
+double feedback_get_physical_SN_terminal_momentum(const struct spart* restrict sp,
                                          const struct part* restrict p,
                                          const struct xpart* restrict xp,
                                          const struct phys_const* phys_const,
-                                         const struct unit_system* us);
+						  const struct unit_system* us,
+						  const struct cosmology *cosmo);
 
-double feedback_get_SN_cooling_radius(const struct spart* restrict sp,
-                                      double p_SN_initial, double p_terminal);
+double feedback_get_physical_SN_cooling_radius(const struct spart* restrict sp,
+					       double p_SN_initial, double p_terminal,
+					       const struct cosmology *cosmo);
 
 double feedback_compute_momentum_correction_factor_for_multiple_sn_events(
     struct part* p, struct xpart* xp, double old_mass, double new_mass);

@@ -584,9 +584,10 @@ void feedback_clean(struct feedback_props* feedback) {
  * @brief Compute the scalar weight for the feedback. This scalar weight is
  * used to compute the vector weight.
  *
- * This function need to be called in loop 1.
+ * This function needs to be called in loop 1.
  *
  * Note: i = star, j = gas.
+ * Note 2: This is scale-factor free --> no conversion needed from/to comoving.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -622,7 +623,7 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
   dW_ij_dr_j = fabsf(dW_ij_dr_j);
   dW_jj_dr_j = fabsf(dW_jj_dr_j);
 
-  /* Compute the projection vectors */
+  /* Compute the projection vectors (scale-factors cancel out) */
   dx_ij_plus[0] = max(dx[0], 0.0) / r;
   dx_ij_plus[1] = max(dx[1], 0.0) / r;
   dx_ij_plus[2] = max(dx[2], 0.0) / r;
@@ -631,7 +632,7 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
   dx_ij_minus[1] = min(dx[1], 0.0) / r;
   dx_ij_minus[2] = min(dx[2], 0.0) / r;
 
-  /* This is simply dx/r, i.e the unit vector of dx */
+  /* This is simply dx/r, i.e the unit vector of dx (scale-factors cancel out) */
   const double dx_ij_hat[3] = {(dx_ij_plus[0] + dx_ij_minus[0]),
                                (dx_ij_plus[1] + dx_ij_minus[1]),
                                (dx_ij_plus[2] + dx_ij_minus[2])};
@@ -653,7 +654,9 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
       (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j) * dx_ij_hat[1],
       (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j) * dx_ij_hat[2]};
 
-  /* Prepare the computation of the scalar weight */
+  /* Prepare the computation of the scalar weight.
+     Notice that the scale factors cancel out between number_1 (a^2) and
+     number_2 (a^2). */
   const double number_1 =
       A_j[0] * dx_ij_hat[0] + A_j[1] * dx_ij_hat[1] + A_j[2] * dx_ij_hat[2];
   const double number_2 = M_PI * r2;
@@ -667,9 +670,11 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
 /**
  * @brief Compute the non-normalized vector weight for the feedback.
  *
- * This function need to be called after loop 1 (in loop 2 and final feedback
+ * This function needs to be called after loop 1 (in loop 2 and final feedback
  * computations), i.e. it needs the accumulation of scalar weights to properly
  * compute the vector weights.
+ *
+ * Note: This is scale-factor free --> no conversion needed from/to comoving.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -770,6 +775,8 @@ feedback_compute_vector_weight_non_normalized(const float r2, const float* dx,
  * of f_plus and f_minus numerator and denominator to properly compute the
  * noramlized vector weights.
  *
+ * This is scale-factor free --> no conversion needed from/to comoving.
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -797,8 +804,8 @@ feedback_compute_vector_weight_normalized(const float r2, const float* dx,
 }
 
 /**
- * @brief Compute the terminal momentum of a SN explosion. This is the momentum
- * the blastwave can give to the gas after the energy-conserving phase.
+ * @brief Compute the physical terminal momentum of a SN explosion. This is the
+ *  momentum the blastwave can give to the gas after the energy-conserving phase.
  *
  * This function is used if we do not resolve the enery-conserving phase.
  *
@@ -811,10 +818,10 @@ feedback_compute_vector_weight_normalized(const float r2, const float* dx,
  * @param phys_const The #phys_const.
  * @param us The #unit_system.
  */
-__attribute__((always_inline)) INLINE double feedback_get_SN_terminal_momentum(
+__attribute__((always_inline)) INLINE double feedback_get_physical_SN_terminal_momentum(
     const struct spart* restrict sp, const struct part* restrict p,
     const struct xpart* restrict xp, const struct phys_const* phys_const,
-    const struct unit_system* us) {
+    const struct unit_system* us, const struct cosmology *cosmo) {
 
   /* Terminal momentum 0 (in internal units). Note the 1e-5 term since we want
      it in km and not cm. */
@@ -847,7 +854,7 @@ __attribute__((always_inline)) INLINE double feedback_get_SN_terminal_momentum(
   const double m_p_cgs = phys_const->const_proton_mass *
                          units_cgs_conversion_factor(us, UNIT_CONV_MASS);
   const double density_mean =
-      sp->feedback_data.weighted_gas_density *
+      sp->feedback_data.weighted_gas_density * cosmo->a3_inv *
       units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) / m_p_cgs;
 
   double density_factor = 0.0;
@@ -879,11 +886,14 @@ __attribute__((always_inline)) INLINE double feedback_get_SN_terminal_momentum(
  * @param phys_const The #phys_const.
  * @param us The #unit_system.
  */
-__attribute__((always_inline)) INLINE double feedback_get_SN_cooling_radius(
-    const struct spart* restrict sp, double p_SN_initial, double p_terminal) {
+__attribute__((always_inline)) INLINE double feedback_get_physical_SN_cooling_radius(
+										     const struct spart* restrict sp, double p_SN_initial, double p_terminal,
+										     const struct cosmology *cosmo) {
 
   const double m_ej = sp->feedback_data.mass_ejected;
-  const double mean_density = sp->feedback_data.weighted_gas_density;
+
+  /* Convert to physical units */
+  const double mean_density = sp->feedback_data.weighted_gas_density*cosmo->a3_inv;
 
   /* Compute the cooling radius */
   const double second_part =
