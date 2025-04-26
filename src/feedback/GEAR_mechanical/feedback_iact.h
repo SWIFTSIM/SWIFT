@@ -528,7 +528,6 @@ runner_iact_nonsym_feedback_apply(
   const double U_tot = f_therm * E_tot;
   const double dU = w_j_bar_norm * U_tot;
 
-  /* HERE */
   /* Compute kinetic energy difference before and after SN */
   const double p_old_norm_2 =
       mj * mj * (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
