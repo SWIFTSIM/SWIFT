@@ -1087,7 +1087,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
      'star_population_continuous_IMF'. The function call treats both cases. */
   /* const float m_init =  stellar_evolution_compute_initial_mass(sp, sm, phys_const); */
 
-  /* Now get the IMF averaged quantities per unit mass */
+  /* Now get the IMF averaged quantities per unit mass _in M_sun_ */
   const float L_bol = radiation_get_luminosities_from_integral(&sm->rad, log10f(m_min), log10f(m_max_current));
   const double dot_N_ion = radiation_get_ionization_rate_from_integral(&sm->rad, log10f(m_min), log10f(m_max_current));
 
@@ -1096,12 +1096,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
      Or by the current particle mass (sp->mass) ?*/
 
   /* Convert to total luminosities */
-  sp->feedback_data.radiation.L_bol = L_bol * sp->sf_data.birth_mass;
+  sp->feedback_data.radiation.L_bol = L_bol * sp->sf_data.birth_mass / phys_const->const_solar_mass;
 
   /* Convert to total ionizing emission rate */
-  sp->feedback_data.radiation.dot_N_ion = dot_N_ion * sp->sf_data.birth_mass;
-
-  /* message("[%lld, %d, %e] N_dot_ion = %e, L_bol = %e", */
-  /* 	   sp->id, sp->star_type, sp->mass, */
-  /* 	  sp->feedback_data.radiation.dot_N_ion, sp->feedback_data.radiation.L_bol); */
+  sp->feedback_data.radiation.dot_N_ion = dot_N_ion * sp->sf_data.birth_mass / phys_const->const_solar_mass;
 }
