@@ -527,12 +527,12 @@ void radiation_clean(struct radiation *rad) {
 }
 
 /**
- * @brief Get the luminosities per mass.
+ * @brief Get the IMF-averaged nolometric luminosity per mass.
  *
  * @param rad The #radiation model.
  * @param log_m1 The lower mass in log.
  * @param log_m2 The upper mass in log.
- * @param yields The elements ejected (needs to be allocated).
+ * @param The bolometric luminosity.
  */
 float radiation_get_luminosities_from_integral(const struct radiation *rad,
 					      float log_m1, float log_m2) {
@@ -543,11 +543,11 @@ float radiation_get_luminosities_from_integral(const struct radiation *rad,
 };
 
 /**
- * @brief Get the luminosities per mass.
+ * @brief Get the IMF-averaged bolometric luminosity per mass.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
- * @param yields The elements ejected (needs to be allocated).
+ * @param The bolometric luminosity.
  */
 float radiation_get_luminosities_from_raw(const struct radiation *rad,
                                        float log_m) {
