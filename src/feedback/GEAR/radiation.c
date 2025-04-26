@@ -492,7 +492,13 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
  * @param sm The #stellar_model.
  */
 void radiation_dump(const struct radiation *rad, FILE *stream,
-                        const struct stellar_model *sm) {}
+                        const struct stellar_model *sm) {
+
+  restart_write_blocks((void*)rad,
+                       sizeof(struct radiation), 1, stream,
+                       "radiation", "radiation");
+  message("Dumping GEAR radiation...");
+}
 
 /**
  * @brief Restore a radiation struct from the given FILE as a stream of
@@ -508,9 +514,10 @@ void radiation_dump(const struct radiation *rad, FILE *stream,
 void radiation_restore(struct radiation *rad, FILE *stream,
 		       const struct stellar_model *sm) {
 
-  /* TODO */
-  /* Dump the content in dump and read the content from here. See how
-     this works */
+  restart_read_blocks((void*)rad,
+                      sizeof(struct radiation), 1, stream, NULL,
+                      "radiation");
+  message("Restoring GEAR radiation struct...");
 }
 
 /**
