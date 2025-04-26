@@ -556,31 +556,31 @@ float radiation_get_luminosities_from_raw(const struct radiation *rad,
 
 
 /**
- * @brief Get the luminosities per mass.
+ * @brief Get the IMF-averaged ionization rate per mass.
  *
  * @param rad The #radiation model.
  * @param log_m1 The lower mass in log.
  * @param log_m2 The upper mass in log.
- * @param yields The elements ejected (needs to be allocated).
+ * @param The ionization rate;
  */
 double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
 					      float log_m1, float log_m2) {
 
-    float dot_N_ion_1 = interpolate_1d(&rad->integrated.luminosities, log_m1);
-    float dot_N_ion_2 = interpolate_1d(&rad->integrated.luminosities, log_m2);
+    double dot_N_ion_1 = interpolate_1d_double(&rad->integrated.dot_N_ion, log_m1);
+    double dot_N_ion_2 = interpolate_1d_double(&rad->integrated.dot_N_ion, log_m2);
     return dot_N_ion_2 - dot_N_ion_1;
 };
 
 /**
- * @brief Get the luminosities per mass.
+ * @brief Get the non-IMF-integrated ionization rate per mass.
  *
  * @param rad The #radiation model.
  * @param log_m The mass in log.
- * @param yields The elements ejected (needs to be allocated).
+ * @param The ionization rate;
  */
 double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
 					      float log_m) {
-    return interpolate_1d(&rad->raw.luminosities, log_m);
+    return interpolate_1d_double(&rad->raw.dot_N_ion, log_m);
 };
 
 
