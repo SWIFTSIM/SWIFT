@@ -736,8 +736,8 @@ __attribute__((always_inline)) INLINE static size_t fof_find(
 
   /* Only perform path compression on trees with a depth of
    * FOF_COMPRESS_PATHS_MIN_LENGTH or higher. */
-  if (tree_depth >= FOF_COMPRESS_PATHS_MIN_LENGTH)
-    atomic_cas(&group_index[i], group_index[i], root);
+  // if (tree_depth >= FOF_COMPRESS_PATHS_MIN_LENGTH)
+  //   atomic_cas(&group_index[i], group_index[i], root);
 
   return root;
 }
@@ -3717,127 +3717,191 @@ void fof_link_foreign_fragments(struct fof_props *props,
 
   tic = getticks();
 
-  /* Transform the group IDs to a local list going from 0-group_count so a
-   * union-find can be performed.
-   * Each member of a link is stored separately --> Need 2x as many entries */
+  if (e->nodeID != 0) {
+    swift_free("fof_global_group_links", global_group_links);
+  }
+
+  int group_count = 0;
   size_t *global_group_index = NULL, *global_group_id = NULL,
          *global_group_size = NULL;
   const int global_group_list_size = 2 * global_group_link_count;
-
-  if (swift_memalign("fof_global_group_index", (void **)&global_group_index,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     global_group_list_size * sizeof(size_t)) != 0)
-    error(
-        "Error while allocating memory for the displacement in memory for the "
-        "global group link list");
-
-  if (swift_memalign("fof_global_group_id", (void **)&global_group_id,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     global_group_list_size * sizeof(size_t)) != 0)
-    error(
-        "Error while allocating memory for the displacement in memory for the "
-        "global group link list");
-
-  if (swift_memalign("fof_global_group_size", (void **)&global_group_size,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     global_group_list_size * sizeof(size_t)) != 0)
-    error(
-        "Error while allocating memory for the displacement in memory for the "
-        "global group link list");
-
-  bzero(global_group_size, global_group_list_size * sizeof(size_t));
-
-  /* Create hash table. */
-  hashmap_t map;
-  hashmap_init(&map);
-
-  /* Store each group ID and its properties. */
-  int group_count = 0;
-  for (int k = 0; k < global_group_link_count; k++) {
-
-    const size_t group_i = global_group_links[k].group_i;
-    const size_t group_j = global_group_links[k].group_j;
-
-    global_group_size[group_count] += global_group_links[k].group_i_size;
-    global_group_id[group_count] = group_i;
-    hashmap_add_group(group_i, group_count, &map);
-    group_count++;
-
-    global_group_size[group_count] += global_group_links[k].group_j_size;
-    global_group_id[group_count] = group_j;
-    hashmap_add_group(group_j, group_count, &map);
-    group_count++;
-  }
-
-  if (verbose)
-    message("Global list compression took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  tic = getticks();
-
-  /* Create a global_group_index list of groups across MPI domains so that you
-   * can perform a union-find locally on each node.
-   * The value of which is an offset into global_group_id, which is the actual
-   * root. */
-  for (int i = 0; i < group_count; i++) global_group_index[i] = i;
-
-  /* Store the original group size before incrementing in the Union-Find. */
   size_t *orig_global_group_size = NULL;
 
-  if (swift_memalign("fof_orig_global_group_size",
-                     (void **)&orig_global_group_size, SWIFT_STRUCT_ALIGNMENT,
-                     group_count * sizeof(size_t)) != 0)
-    error(
-        "Error while allocating memory for the displacement in memory for the "
-        "global group link list");
+  if (e->nodeID == 0) {
 
-  memcpy(orig_global_group_size, global_group_size,
-         group_count * sizeof(size_t));
+    /* Transform the group IDs to a local list going from 0-group_count so a
+     * union-find can be performed.
+     * Each member of a link is stored separately --> Need 2x as many entries */
 
-  /* Perform a union-find on the group links. */
-  for (int k = 0; k < global_group_link_count; k++) {
+    if (swift_memalign("fof_global_group_index", (void **)&global_group_index,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       global_group_list_size * sizeof(size_t)) != 0)
+      error(
+          "Error while allocating memory for the displacement in memory for "
+          "the "
+          "global group link list");
 
-    /* Use the hash table to find the group offsets in the index array. */
-    const size_t find_i =
-        hashmap_find_group_offset(global_group_links[k].group_i, &map);
-    const size_t find_j =
-        hashmap_find_group_offset(global_group_links[k].group_j, &map);
+    if (swift_memalign("fof_global_group_id", (void **)&global_group_id,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       global_group_list_size * sizeof(size_t)) != 0)
+      error(
+          "Error while allocating memory for the displacement in memory for "
+          "the "
+          "global group link list");
 
-    /* Use the offset to find the group's root. */
-    const size_t root_i = fof_find(find_i, global_group_index);
-    const size_t root_j = fof_find(find_j, global_group_index);
+    if (swift_memalign("fof_global_group_size", (void **)&global_group_size,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       global_group_list_size * sizeof(size_t)) != 0)
+      error(
+          "Error while allocating memory for the displacement in memory for "
+          "the "
+          "global group link list");
 
-    const size_t group_i = global_group_id[root_i];
-    const size_t group_j = global_group_id[root_j];
+    bzero(global_group_size, global_group_list_size * sizeof(size_t));
 
-    if (group_i == group_j) continue;
+    /* Create hash table. */
+    hashmap_t map;
+    hashmap_init(&map);
 
-    /* Update roots accordingly. */
-    const size_t size_i = global_group_size[root_i];
-    const size_t size_j = global_group_size[root_j];
+    /* Store each group ID and its properties. */
+    for (int k = 0; k < global_group_link_count; k++) {
+
+      const size_t group_i = global_group_links[k].group_i;
+      const size_t group_j = global_group_links[k].group_j;
+
+      global_group_size[group_count] += global_group_links[k].group_i_size;
+      global_group_id[group_count] = group_i;
+      hashmap_add_group(group_i, group_count, &map);
+      group_count++;
+
+      global_group_size[group_count] += global_group_links[k].group_j_size;
+      global_group_id[group_count] = group_j;
+      hashmap_add_group(group_j, group_count, &map);
+      group_count++;
+    }
+
+    if (verbose)
+      message("Global list compression took: %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    tic = getticks();
+
+    /* Create a global_group_index list of groups across MPI domains so that you
+     * can perform a union-find locally on each node.
+     * The value of which is an offset into global_group_id, which is the actual
+     * root. */
+    for (int i = 0; i < group_count; i++) global_group_index[i] = i;
+
+    /* Store the original group size before incrementing in the Union-Find. */
+    if (swift_memalign("fof_orig_global_group_size",
+                       (void **)&orig_global_group_size, SWIFT_STRUCT_ALIGNMENT,
+                       group_count * sizeof(size_t)) != 0)
+      error(
+          "Error while allocating memory for the displacement in memory for "
+          "the "
+          "global group link list");
+
+    memcpy(orig_global_group_size, global_group_size,
+           group_count * sizeof(size_t));
+
+    /* Perform a union-find on the group links. */
+    for (int k = 0; k < global_group_link_count; k++) {
+
+      /* Use the hash table to find the group offsets in the index array. */
+      const size_t find_i =
+          hashmap_find_group_offset(global_group_links[k].group_i, &map);
+      const size_t find_j =
+          hashmap_find_group_offset(global_group_links[k].group_j, &map);
+
+      /* Use the offset to find the group's root. */
+      const size_t root_i = fof_find(find_i, global_group_index);
+      const size_t root_j = fof_find(find_j, global_group_index);
+
+      const size_t group_i = global_group_id[root_i];
+      const size_t group_j = global_group_id[root_j];
+
+      if (group_i == group_j) continue;
+
+      /* Update roots accordingly. */
+      const size_t size_i = global_group_size[root_i];
+      const size_t size_j = global_group_size[root_j];
 #ifdef UNION_BY_SIZE_OVER_MPI
-    if (size_i < size_j) {
-      global_group_index[root_i] = root_j;
-      global_group_size[root_j] += size_i;
-    } else {
-      global_group_index[root_j] = root_i;
-      global_group_size[root_i] += size_j;
-    }
+      if (size_i < size_j) {
+        global_group_index[root_i] = root_j;
+        global_group_size[root_j] += size_i;
+      } else {
+        global_group_index[root_j] = root_i;
+        global_group_size[root_i] += size_j;
+      }
 #else
-    if (group_j < group_i) {
-      global_group_index[root_i] = root_j;
-      global_group_size[root_j] += size_i;
-    } else {
-      global_group_index[root_j] = root_i;
-      global_group_size[root_i] += size_j;
-    }
+      if (group_j < group_i) {
+        global_group_index[root_i] = root_j;
+        global_group_size[root_j] += size_i;
+      } else {
+        global_group_index[root_j] = root_i;
+        global_group_size[root_i] += size_j;
+      }
 #endif
+    }
+
+    hashmap_free(&map);
+
+    if (verbose)
+      message("global_group_index construction took: %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+  } /* e->nodeID == 0 */
+
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  /* Share what rank 0 computed with everyone */
+  MPI_Bcast(&group_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  if (e->nodeID != 0) {
+
+    if (swift_memalign("fof_global_group_index", (void **)&global_group_index,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       global_group_list_size * sizeof(size_t)) != 0)
+      error(
+          "Error while allocating memory for the displacement in memory for "
+          "the "
+          "global group link list");
+
+    if (swift_memalign("fof_global_group_id", (void **)&global_group_id,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       global_group_list_size * sizeof(size_t)) != 0)
+      error(
+          "Error while allocating memory for the displacement in memory for "
+          "the "
+          "global group link list");
+
+    if (swift_memalign("fof_orig_global_group_size",
+                       (void **)&orig_global_group_size, SWIFT_STRUCT_ALIGNMENT,
+                       group_count * sizeof(size_t)) != 0)
+      error(
+          "Error while allocating memory for the displacement in memory for "
+          "the "
+          "global group link list");
+
+    bzero(global_group_index, global_group_list_size * sizeof(size_t));
+    bzero(global_group_id, global_group_list_size * sizeof(size_t));
+    bzero(orig_global_group_size, group_count * sizeof(size_t));
   }
 
-  hashmap_free(&map);
-
+  MPI_Barrier(MPI_COMM_WORLD);
   if (verbose)
-    message("global_group_index construction took: %.3f %s.",
+    message("Allocation on other ranks took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  MPI_Bcast(global_group_index, global_group_list_size, MPI_UNSIGNED_LONG_LONG,
+            0, MPI_COMM_WORLD);
+  MPI_Bcast(global_group_id, global_group_list_size, MPI_UNSIGNED_LONG_LONG, 0,
+            MPI_COMM_WORLD);
+  MPI_Bcast(orig_global_group_size, group_count, MPI_UNSIGNED_LONG_LONG, 0,
+            MPI_COMM_WORLD);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  if (verbose)
+    message("Data sharing to other ranks took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
@@ -3869,9 +3933,9 @@ void fof_link_foreign_fragments(struct fof_props *props,
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Clean up memory. */
-  swift_free("fof_global_group_links", global_group_links);
+  if (e->nodeID == 0) swift_free("fof_global_group_links", global_group_links);
   swift_free("fof_global_group_index", global_group_index);
-  swift_free("fof_global_group_size", global_group_size);
+  if (e->nodeID == 0) swift_free("fof_global_group_size", global_group_size);
   swift_free("fof_global_group_id", global_group_id);
   swift_free("fof_orig_global_group_size", orig_global_group_size);
 
