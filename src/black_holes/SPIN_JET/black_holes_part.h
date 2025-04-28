@@ -167,6 +167,9 @@ struct bpart {
    * lower potential than all eligible neighbours) */
   int number_of_reposition_attempts;
 
+  /* Velocity of most recent reposition jump */
+  float last_repos_vel;
+
   /*! Total number of time steps in which the black hole was active. */
   int number_of_time_steps;
 

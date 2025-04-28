@@ -128,6 +128,15 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->entropy_one_over_gamma = 1.f;
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
         part->conserved.energy = 1.f;
+#elif defined(PLANETARY_SPH)
+        set_idg_def(&eos.idg_def, 0);
+        part->mat_id = 0;
+        part->u = 1.f;
+#elif defined(REMIX_SPH)
+        set_idg_def(&eos.idg_def, 0);
+        part->mat_id = 0;
+        part->u = 1.f;
+        part->rho_evol = 1.f;
 #endif
 
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
@@ -282,6 +291,44 @@ void zero_particle_fields_force(
     }
     p->geometry.volume = 1.0f;
 #endif
+#ifdef PLANETARY_SPH
+    p->rho = 1.f;
+    p->density.rho_dh = 0.f;
+    p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
+    p->density.wcount_dh = 0.f;
+    p->density.rot_v[0] = 0.f;
+    p->density.rot_v[1] = 0.f;
+    p->density.rot_v[2] = 0.f;
+    p->density.div_v = 0.f;
+#endif /* PLANETARY_SPH */
+#if defined(REMIX_SPH)
+    p->rho = 1.f;
+    p->m0 = 1.f;
+    p->density.rho_dh = 0.f;
+    p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
+    p->density.wcount_dh = 0.f;
+    p->gradient.m0_bar = 1.f;
+    p->gradient.grad_m0_bar_gradhterm = 0.f;
+    memset(p->grad_m0, 0.f, 3 * sizeof(float));
+    memset(p->dv_norm_kernel, 0.f, 3 * 3 * sizeof(float));
+    memset(p->du_norm_kernel, 0.f, 3 * sizeof(float));
+    memset(p->drho_norm_kernel, 0.f, 3 * sizeof(float));
+    memset(p->dh_norm_kernel, 0.f, 3 * sizeof(float));
+    memset(p->gradient.grad_m0_bar, 0.f, 3 * sizeof(float));
+    memset(p->gradient.m1_bar, 0.f, 3 * sizeof(float));
+    memset(p->gradient.grad_m1_bar, 0.f, 3 * 3 * sizeof(float));
+    memset(p->gradient.grad_m1_bar_gradhterm, 0.f, 3 * sizeof(float));
+    p->gradient.m2_bar.xx = 1.f;
+    p->gradient.m2_bar.yy = 1.f;
+    p->gradient.m2_bar.zz = 1.f;
+    p->gradient.m2_bar.xy = 0.f;
+    p->gradient.m2_bar.xz = 0.f;
+    p->gradient.m2_bar.yz = 0.f;
+    zero_sym_matrix(&p->gradient.grad_m2_bar[0]);
+    zero_sym_matrix(&p->gradient.grad_m2_bar[1]);
+    zero_sym_matrix(&p->gradient.grad_m2_bar[2]);
+    zero_sym_matrix(&p->gradient.grad_m2_bar_gradhterm);
+#endif /* REMIX_SPH */
 
     /* And prepare for a round of force tasks. */
     hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor, 0., 0.);

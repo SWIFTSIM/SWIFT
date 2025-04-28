@@ -314,6 +314,17 @@ EoS:
   planetary_use_Til_granite:    1           # Tillotson granite, material ID 101
   planetary_use_Til_water:      0           # Tillotson water, material ID 102
   planetary_use_Til_basalt:     0           # Tillotson basalt, material ID 103
+  planetary_use_Til_ice:        0           # Tillotson ice, material ID 104
+  planetary_use_Til_custom_0:   0           # Tillotson generic user-provided parameters, material IDs 19[0-9]
+  planetary_use_Til_custom_1:   0
+  planetary_use_Til_custom_2:   0
+  planetary_use_Til_custom_3:   0
+  planetary_use_Til_custom_4:   0
+  planetary_use_Til_custom_5:   0
+  planetary_use_Til_custom_6:   0
+  planetary_use_Til_custom_7:   0
+  planetary_use_Til_custom_8:   0
+  planetary_use_Til_custom_9:   0
   planetary_use_HM80_HHe:   0               # Hubbard & MacFarlane (1980) hydrogen-helium atmosphere, material ID 200
   planetary_use_HM80_ice:   0               # Hubbard & MacFarlane (1980) H20-CH4-NH3 ice mix, material ID 201
   planetary_use_HM80_rock:  0               # Hubbard & MacFarlane (1980) SiO2-MgO-FeS-FeO rock mix, material ID 202
@@ -321,6 +332,10 @@ EoS:
   planetary_use_SESAME_basalt:  0           # SESAME basalt 7530, material ID 301
   planetary_use_SESAME_water:   0           # SESAME water 7154, material ID 302
   planetary_use_SS08_water:     0           # Senft & Stewart (2008) SESAME-like water, material ID 303
+  planetary_use_AQUA:           0           # Haldemann, J. et al. (2020) water, material ID 304
+  planetary_use_CMS19_H:        0           # Chabrier, G. et al. (2019) Hydrogen, material ID 305
+  planetary_use_CMS19_He:       0           # Chabrier, G. et al. (2019) Hydrogen, material ID 306
+  planetary_use_CD21_HHe:       0           # Chabrier & Debras (2021) H/He mixture Y=0.245 (Jupiter), material ID 307
   planetary_use_ANEOS_forsterite:   0       # ANEOS forsterite (Stewart et al. 2019), material ID 400
   planetary_use_ANEOS_iron:         0       # ANEOS iron (Stewart 2020), material ID 401
   planetary_use_ANEOS_Fe85Si15:     0       # ANEOS Fe85Si15 (Stewart 2020), material ID 402
@@ -335,6 +350,16 @@ EoS:
   planetary_use_custom_8:   0
   planetary_use_custom_9:   0
   # Tablulated EoS file paths.
+  planetary_Til_custom_0_param_file:    ./EoSTables/Til_custom_0.txt
+  planetary_Til_custom_1_param_file:    ./EoSTables/Til_custom_1.txt
+  planetary_Til_custom_2_param_file:    ./EoSTables/Til_custom_2.txt
+  planetary_Til_custom_3_param_file:    ./EoSTables/Til_custom_3.txt
+  planetary_Til_custom_4_param_file:    ./EoSTables/Til_custom_4.txt
+  planetary_Til_custom_5_param_file:    ./EoSTables/Til_custom_5.txt
+  planetary_Til_custom_6_param_file:    ./EoSTables/Til_custom_6.txt
+  planetary_Til_custom_7_param_file:    ./EoSTables/Til_custom_7.txt
+  planetary_Til_custom_8_param_file:    ./EoSTables/Til_custom_8.txt
+  planetary_Til_custom_9_param_file:    ./EoSTables/Til_custom_9.txt
   planetary_HM80_HHe_table_file:    ./EoSTables/HM80_HHe.txt
   planetary_HM80_ice_table_file:    ./EoSTables/HM80_ice.txt
   planetary_HM80_rock_table_file:   ./EoSTables/HM80_rock.txt

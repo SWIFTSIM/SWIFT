@@ -1494,6 +1494,7 @@ __attribute__((always_inline)) INLINE static void black_holes_end_reposition(
          * actual potential minimum. */
         if (repos_frac > 1) repos_frac = 1.;
 
+        bp->last_repos_vel = (float)repos_vel;
         bp->reposition.delta_x[0] *= repos_frac;
         bp->reposition.delta_x[1] *= repos_frac;
         bp->reposition.delta_x[2] *= repos_frac;
