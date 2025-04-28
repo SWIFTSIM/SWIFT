@@ -31,7 +31,9 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "active.h"
 #include "engine.h"
+#include "feedback.h"
 #include "timers.h"
 
 /**
@@ -225,10 +227,11 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
 
 #ifdef WITH_MPI
 
+  const struct engine *e = r->e;
+  const int with_rt = (e->policy & engine_policy_rt);
+  const integertime_t ti_current = e->ti_current;
   struct spart *restrict sparts = c->stars.parts;
   const size_t nr_sparts = c->stars.count;
-  const integertime_t ti_current = r->e->ti_current;
-  const timebin_t max_active_bin = r->e->max_active_bin;
 
   TIMER_TIC;
 
@@ -258,7 +261,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
       time_bin_max = max(time_bin_max, sparts[k].time_bin);
       h_max = max(h_max, sparts[k].h);
       sparts[k].gpart = NULL;
-      if (sparts[k].time_bin <= max_active_bin)
+      if (spart_is_active(&sparts[k], e) &&
+          (feedback_is_active(&sparts[k], e) || with_rt))
         h_max_active = max(h_max_active, sparts[k].h);
     }
 
