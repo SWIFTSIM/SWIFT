@@ -25,6 +25,7 @@
 #include <config.h>
 
 /* Local includes. */
+#include "gravity.h"
 #include "lock.h"
 #include "timeline.h"
 
