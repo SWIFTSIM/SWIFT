@@ -123,8 +123,11 @@ struct statistics {
   /*! Total Magnetic Energy */
   double E_mag;
 
-  /*! Total divB error */
+  /*! Mean divB error */
   double divB_error;
+
+  /*! Maximal divB error */
+  double divB_error_max;
 
   /*! Total Cross Helicity */
   double H_cross;
