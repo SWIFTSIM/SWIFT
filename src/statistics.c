@@ -103,7 +103,7 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->gas_He_mass += b->gas_He_mass;
   a->E_mag += b->E_mag;
   a->divB_error += b->divB_error;
-  a->divB_error_max += b->divB_error_max;
+  a->divB_error_max = fmaxf(a->divB_error_max, b->divB_error_max);
   a->H_cross += b->H_cross;
   a->H_mag += b->H_mag;
   a->Brms += b->Brms;
