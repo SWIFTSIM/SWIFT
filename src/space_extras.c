@@ -363,6 +363,7 @@ void space_allocate_extras(struct space *s, int verbose) {
       bzero(&s->sinks[i], sizeof(struct sink));
       s->sinks[i].time_bin = time_bin_not_created;
       s->sinks[i].id = -42;
+      sink_mark_sink_as_not_swallowed(&s->sinks[i].merger_data);
     }
 
     /* Put the spare particles in their correct cell */

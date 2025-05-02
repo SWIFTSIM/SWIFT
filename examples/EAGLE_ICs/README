@@ -99,7 +99,8 @@ run the EAGLE model. Plotting scripts are also provided
 for basic quantities.
 
 To use the cooling model based on the Wiersma+09 tables, replace
-EAGLE-XL by EAGLE in the configuration command line.
+EAGLE-XL by EAGLE in the configuration command line. The tables
+can then be loaded using the getEagleCoolingTable.sh script.
 
 VELOCIraptor can be run on the output. The code is compiled
 using

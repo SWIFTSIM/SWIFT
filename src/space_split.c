@@ -74,18 +74,14 @@ void space_split_recursive(struct space *s, struct cell *c,
   float black_holes_h_max_active = 0.f;
   float sinks_h_max = 0.f;
   float sinks_h_max_active = 0.f;
-  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
-                ti_hydro_beg_max = 0;
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_rt_min_step_size = max_nr_timesteps;
-  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
-                ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
-                ti_stars_beg_max = 0;
-  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_end_max = 0,
-                ti_sinks_beg_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
+  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
-                ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
+                ti_black_holes_beg_max = 0;
   struct part *parts = c->hydro.parts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
@@ -94,6 +90,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct sink *sinks = c->sinks.parts;
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
+  const int with_rt = e->policy & engine_policy_rt;
 
   /* Set the top level cell tpid. Doing it here ensures top level cells
    * have the same tpid as their progeny. */
@@ -230,6 +227,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->width[1] = c->width[1] / 2;
       cp->width[2] = c->width[2] / 2;
       cp->dmin = c->dmin / 2;
+      cp->h_min_allowed = cp->dmin * 0.5 * (1. / kernel_gamma);
+      cp->h_max_allowed = cp->dmin * (1. / kernel_gamma);
       if (k & 4) cp->loc[0] += cp->width[0];
       if (k & 2) cp->loc[1] += cp->width[1];
       if (k & 1) cp->loc[2] += cp->width[2];
@@ -243,8 +242,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.h_max_active = 0.f;
       cp->stars.dx_max_part = 0.f;
       cp->stars.dx_max_sort = 0.f;
-      cp->sinks.r_cut_max = 0.f;
-      cp->sinks.r_cut_max_active = 0.f;
+      cp->sinks.h_max = 0.f;
+      cp->sinks.h_max_active = 0.f;
       cp->sinks.dx_max_part = 0.f;
       cp->black_holes.h_max = 0.f;
       cp->black_holes.h_max_active = 0.f;
@@ -308,9 +307,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
         black_holes_h_max_active =
             max(black_holes_h_max_active, cp->black_holes.h_max_active);
-        sinks_h_max = max(sinks_h_max, cp->sinks.r_cut_max);
-        sinks_h_max_active =
-            max(sinks_h_max_active, cp->sinks.r_cut_max_active);
+        sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
+        sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -442,7 +440,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       gravity_multipole_compute_power(&c->grav.multipole->m_pole);
 
     } /* Deal with gravity */
-  }   /* Split or let it be? */
+  } /* Split or let it be? */
 
   /* Otherwise, collect the data from the particles this cell. */
   else {
@@ -453,20 +451,20 @@ void space_split_recursive(struct space *s, struct cell *c,
     maxdepth = c->depth;
 
     ti_hydro_end_min = max_nr_timesteps;
-    ti_hydro_end_max = 0;
     ti_hydro_beg_max = 0;
 
     ti_gravity_end_min = max_nr_timesteps;
-    ti_gravity_end_max = 0;
     ti_gravity_beg_max = 0;
 
     ti_stars_end_min = max_nr_timesteps;
-    ti_stars_end_max = 0;
     ti_stars_beg_max = 0;
 
     ti_black_holes_end_min = max_nr_timesteps;
-    ti_black_holes_end_max = 0;
     ti_black_holes_beg_max = 0;
+
+    ti_rt_end_min = max_nr_timesteps;
+    ti_rt_beg_max = 0;
+    ti_rt_min_step_size = max_nr_timesteps;
 
     /* parts: Get dt_min/dt_max and h_max. */
     for (int k = 0; k < count; k++) {
@@ -482,24 +480,32 @@ void space_split_recursive(struct space *s, struct cell *c,
       const timebin_t time_bin_rt = parts[k].rt_time_data.time_bin;
       const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
-      const integertime_t ti_rt_end =
-          get_integer_time_end(ti_current, time_bin_rt);
-      const integertime_t ti_rt_beg =
-          get_integer_time_begin(ti_current, time_bin_rt);
-      const integertime_t ti_rt_step = get_integer_timestep(time_bin_rt);
 
       ti_hydro_end_min = min(ti_hydro_end_min, ti_end);
-      ti_hydro_end_max = max(ti_hydro_end_max, ti_end);
       ti_hydro_beg_max = max(ti_hydro_beg_max, ti_beg);
 
-      ti_rt_end_min = min(ti_rt_end_min, ti_rt_end);
-      ti_rt_beg_max = max(ti_rt_beg_max, ti_rt_beg);
-      ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
+      if (with_rt) {
+        /* Contrary to other physics, RT doesn't have its own particle type.
+         * So collect time step data from particles only when we're running
+         * with RT. Otherwise, we may find cells which are active or in
+         * impossible timezones. Skipping this check results in cells having
+         * RT times = max_nr_timesteps or zero, respecively. */
+        const integertime_t ti_rt_end =
+            get_integer_time_end(ti_current, time_bin_rt);
+        const integertime_t ti_rt_beg =
+            get_integer_time_begin(ti_current, time_bin_rt);
+        const integertime_t ti_rt_step = get_integer_timestep(time_bin_rt);
+        ti_rt_end_min = min(ti_rt_end_min, ti_rt_end);
+        ti_rt_beg_max = max(ti_rt_beg_max, ti_rt_beg);
+        ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
+      }
 
       h_max = max(h_max, parts[k].h);
 
       if (part_is_active(&parts[k], e))
         h_max_active = max(h_max_active, parts[k].h);
+
+      cell_set_part_h_depth(&parts[k], c);
 
       /* Collect SFR from the particles after rebuilt */
       star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
@@ -528,7 +534,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
 
       ti_gravity_end_min = min(ti_gravity_end_min, ti_end);
-      ti_gravity_end_max = max(ti_gravity_end_max, ti_end);
       ti_gravity_beg_max = max(ti_gravity_beg_max, ti_beg);
     }
 
@@ -547,13 +552,14 @@ void space_split_recursive(struct space *s, struct cell *c,
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
 
       ti_stars_end_min = min(ti_stars_end_min, ti_end);
-      ti_stars_end_max = max(ti_stars_end_max, ti_end);
       ti_stars_beg_max = max(ti_stars_beg_max, ti_beg);
 
       stars_h_max = max(stars_h_max, sparts[k].h);
 
       if (spart_is_active(&sparts[k], e))
         stars_h_max_active = max(stars_h_max_active, sparts[k].h);
+
+      cell_set_spart_h_depth(&sparts[k], c);
 
       /* Reset x_diff */
       sparts[k].x_diff[0] = 0.f;
@@ -576,13 +582,14 @@ void space_split_recursive(struct space *s, struct cell *c,
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
 
       ti_sinks_end_min = min(ti_sinks_end_min, ti_end);
-      ti_sinks_end_max = max(ti_sinks_end_max, ti_end);
       ti_sinks_beg_max = max(ti_sinks_beg_max, ti_beg);
 
-      sinks_h_max = max(sinks_h_max, sinks[k].r_cut);
+      sinks_h_max = max(sinks_h_max, sinks[k].h);
 
       if (sink_is_active(&sinks[k], e))
-        sinks_h_max_active = max(sinks_h_max_active, sinks[k].r_cut);
+        sinks_h_max_active = max(sinks_h_max_active, sinks[k].h);
+
+      cell_set_sink_h_depth(&sinks[k], c);
 
       /* Reset x_diff */
       sinks[k].x_diff[0] = 0.f;
@@ -605,13 +612,14 @@ void space_split_recursive(struct space *s, struct cell *c,
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
 
       ti_black_holes_end_min = min(ti_black_holes_end_min, ti_end);
-      ti_black_holes_end_max = max(ti_black_holes_end_max, ti_end);
       ti_black_holes_beg_max = max(ti_black_holes_beg_max, ti_beg);
 
       black_holes_h_max = max(black_holes_h_max, bparts[k].h);
 
       if (bpart_is_active(&bparts[k], e))
         black_holes_h_max_active = max(black_holes_h_max_active, bparts[k].h);
+
+      cell_set_bpart_h_depth(&bparts[k], c);
 
       /* Reset x_diff */
       bparts[k].x_diff[0] = 0.f;
@@ -667,8 +675,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->stars.h_max_active = stars_h_max_active;
   c->sinks.ti_end_min = ti_sinks_end_min;
   c->sinks.ti_beg_max = ti_sinks_beg_max;
-  c->sinks.r_cut_max = sinks_h_max;
-  c->sinks.r_cut_max_active = sinks_h_max_active;
+  c->sinks.h_max = sinks_h_max;
+  c->sinks.h_max_active = sinks_h_max_active;
   c->black_holes.ti_end_min = ti_black_holes_end_min;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.h_max = black_holes_h_max;

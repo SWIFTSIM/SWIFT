@@ -364,7 +364,7 @@ struct counts_mapper_data {
       if (cid < lcid) lcid = cid;                                              \
     }                                                                          \
     int nused = ucid - lcid + 1;                                               \
-    if ((lcounts = (double *)calloc(sizeof(double), nused)) == NULL)           \
+    if ((lcounts = (double *)calloc(nused, sizeof(double))) == NULL)           \
       error("Failed to allocate counts thread-specific buffer");               \
     for (int k = 0; k < num_elements; k++) {                                   \
       const int cid =                                                          \
@@ -1417,13 +1417,17 @@ void partition_gather_weights(void *map_data, int num_elements,
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
-    for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
-      ;
-    if (t->cj != NULL)
-      for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
-        ;
-    else
+    for (ci = t->ci; ci->parent != NULL; ci = ci->parent) {
+      /* Nothing to do here. */
+    }
+
+    if (t->cj != NULL) {
+      for (cj = t->cj; cj->parent != NULL; cj = cj->parent) {
+        /* Nothing to do here. */
+      }
+    } else {
       cj = NULL;
+    }
 
     /* Get the cell IDs. */
     int cid = ci - cells;
@@ -2063,7 +2067,7 @@ void partition_init(struct partition *partition,
 
 #ifdef WITH_MPI
 
-/* Defaults make use of METIS if available */
+  /* Defaults make use of METIS if available */
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
   const char *default_repart = "fullcosts";
   const char *default_part = "edgememory";
@@ -2078,6 +2082,10 @@ void partition_init(struct partition *partition,
          &partition->grid[2]);
   factor(partition->grid[0] * partition->grid[1], &partition->grid[1],
          &partition->grid[0]);
+
+  /* Initialise the repartition celllist. */
+  repartition->ncelllist = 0;
+  repartition->celllist = NULL;
 
   /* Now let's check what the user wants as an initial domain. */
   char part_type[20];
@@ -2187,10 +2195,6 @@ void partition_init(struct partition *partition,
   repartition->itr =
       parser_get_opt_param_float(params, "DomainDecomposition:itr", 100.0f);
 
-  /* Clear the celllist for use. */
-  repartition->ncelllist = 0;
-  repartition->celllist = NULL;
-
   /* Do we have fixed costs available? These can be used to force
    * repartitioning at any time. Not required if not repartitioning.*/
   repartition->use_fixed_costs = parser_get_opt_param_int(
@@ -2216,6 +2220,24 @@ void partition_init(struct partition *partition,
 
 #else
   error("SWIFT was not compiled with MPI support");
+#endif
+}
+
+/**
+ * @brief Clean up any allocated resources.
+ *
+ * @param partition The #partition
+ * @param repartition The #repartition
+ */
+void partition_clean(struct partition *partition,
+                     struct repartition *repartition) {
+#ifdef WITH_MPI
+  /* Only the celllist is dynamic. */
+  if (repartition->celllist != NULL) free(repartition->celllist);
+
+  /* Zero structs for reuse. */
+  bzero(partition, sizeof(struct partition));
+  bzero(repartition, sizeof(struct repartition));
 #endif
 }
 
@@ -2346,13 +2368,16 @@ static void check_weights(struct task *tasks, int nr_tasks,
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
-    for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
-      ;
-    if (t->cj != NULL)
-      for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
-        ;
-    else
+    for (ci = t->ci; ci->parent != NULL; ci = ci->parent) {
+      /* Nothing to do here */
+    }
+    if (t->cj != NULL) {
+      for (cj = t->cj; cj->parent != NULL; cj = cj->parent) {
+        /* Nothing to do here */
+      }
+    } else {
       cj = NULL;
+    }
 
     /* Get the cell IDs. */
     int cid = ci - cells;

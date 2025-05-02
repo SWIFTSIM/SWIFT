@@ -41,6 +41,25 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
 #define memuse_log_allocation(label, ptr, allocated, size)
 #endif
 
+#ifdef HAVE_LSAN_IGNORE_OBJECT
+#include <sanitizer/lsan_interface.h>
+/**
+ * @brief if allocated memory is intended to leak, mark it to be
+ *        ignored in any leak reports.
+ *        Currently only works for the GCC/clang address sanitizer.
+ *
+ * @param memptr pointer to the memory that will leak.
+ */
+__attribute__((always_inline)) inline void swift_ignore_leak(
+    const void *memptr) {
+  __lsan_ignore_object(memptr);
+}
+#else
+
+/* No-op when not checking for leaks. */
+#define swift_ignore_leak(memptr)
+#endif
+
 /**
  * @brief allocate aligned memory. The use and results are the same as the
  *        posix_memalign function. This function should be used for any

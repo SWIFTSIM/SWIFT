@@ -29,14 +29,6 @@
 #include "rays_struct.h"
 #include "timeline.h"
 
-/*! The possible accretion modes every black hole can take. */
-enum BH_accretion_modes {
-  BH_thick_disc = 0,       /* At low Eddington ratios */
-  BH_thin_disc,            /* At moderate Eddington ratios */
-  BH_slim_disc,            /* Super-Eddington accretion */
-  BH_accretion_modes_count /* Number of possible accretion modes */
-};
-
 /**
  * @brief Particle fields for the black hole particles.
  *
@@ -70,6 +62,9 @@ struct bpart {
 
   /*! Particle time bin */
   timebin_t time_bin;
+
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
 
   struct {
 
@@ -107,8 +102,19 @@ struct bpart {
   /*! Density of the gas surrounding the black hole. */
   float rho_gas;
 
+  /*! Density of the gas surrounding the black hole, taking account of only the
+   *  hot particles. */
+  float rho_gas_hot;
+
+  /*! Internal energy of the gas surrounding the black hole. */
+  float internal_energy_gas;
+
   /*! Smoothed sound speed of the gas surrounding the black hole. */
   float sound_speed_gas;
+
+  /*! Smoothed sound speed of the gas surrounding the black hole, taking
+   * account of only the hot particles. */
+  float sound_speed_gas_hot;
 
   /*! Smoothed velocity of the gas surrounding the black hole,
    * in the frame of the black hole (internal units) */
@@ -161,6 +167,9 @@ struct bpart {
    * lower potential than all eligible neighbours) */
   int number_of_reposition_attempts;
 
+  /* Velocity of most recent reposition jump */
+  float last_repos_vel;
+
   /*! Total number of time steps in which the black hole was active. */
   int number_of_time_steps;
 
@@ -170,18 +179,18 @@ struct bpart {
   /*! Total (physical) angular momentum accumulated from subgrid accretion */
   float accreted_angular_momentum[3];
 
-  /*! Integer (cumulative) number of energy injections in AGN feedback. At a
-   * given time-step, an AGN-active BH may produce multiple energy injections.
-   * The number of energy injections is equal to or more than the number of
-   * particles heated by the BH during this time-step. */
+  /*! Integer (cumulative) number of thermal energy injections in AGN feedback.
+   * At a given time-step, an AGN-active BH may produce multiple energy
+   * injections. The number of energy injections is equal to or more than the
+   * number of particles heated by the BH during this time-step. */
   int AGN_number_of_energy_injections;
 
-  /*! Integer (cumulative) number of AGN events. If a BH does feedback at a
-   * given time-step, the number of its AGN events is incremented by 1. Each
-   * AGN event may have multiple energy injections. */
+  /*! Integer (cumulative) number of thermal AGN events. If a BH does feedback
+   * at a given time-step, the number of its AGN events is incremented by 1.
+   * Each AGN event may have multiple energy injections. */
   int AGN_number_of_AGN_events;
 
-  /* Total energy injected into the gas in AGN feedback by this BH */
+  /* Total thermal energy injected into the gas in AGN feedback by this BH */
   float AGN_cumulative_energy;
 
   /*! Union for the last AGN event time and the last AGN event scale factor */
@@ -194,8 +203,14 @@ struct bpart {
     float last_AGN_event_scale_factor;
   };
 
+  /*! Current heating temperature of the BH */
+  float delta_T;
+
   /*! BH accretion-limited time-step */
   float dt_heat;
+
+  /*! Accretion boost factor */
+  float accretion_boost_factor;
 
   /*! Eddington fraction */
   float eddington_fraction;
@@ -206,6 +221,9 @@ struct bpart {
   /*! The normalized spin/angular momentum vector of the BH */
   float angular_momentum_direction[3];
 
+  /* The current jet direction. */
+  float jet_direction[3];
+
   /*! The jet efficiency */
   float jet_efficiency;
 
@@ -215,9 +233,6 @@ struct bpart {
   /*! Cosine of the angle between the spin vector and the angular momentum
       of the gas in the smoothing kernel */
   float accretion_disk_angle;
-
-  /*! Aspect ratio of the subgrid accretion disk */
-  float aspect_ratio;
 
   /*! Which type is the subgrid accretion disk (thick, thin or slim) */
   enum BH_accretion_modes accretion_mode;
@@ -231,26 +246,37 @@ struct bpart {
   /*! The current jet kick velocity to be applied */
   float v_jet;
 
-  /*! The energ in the jet reservoir */
+  /*! The energy in the jet reservoir */
   float jet_reservoir;
 
   /*! Total jet energy launched so far */
   float total_jet_energy;
+
+  /*! Efficiency of wind launching */
+  float wind_efficiency;
+
+  /*! Energy launched into radiation */
+  float radiated_energy;
+
+  /*! Energy launched as winds */
+  float wind_energy;
+
+  /*! Accretion efficiency of this BH */
+  float accretion_efficiency;
 
   /*! Total accreted masses, radiated energies and jet energies launched
       by BHs, split by accretion mode */
   float accreted_mass_by_mode[BH_accretion_modes_count];
   float thermal_energy_by_mode[BH_accretion_modes_count];
   float jet_energy_by_mode[BH_accretion_modes_count];
+  float wind_energy_by_mode[BH_accretion_modes_count];
+  float radiated_energy_by_mode[BH_accretion_modes_count];
 
   /*! Total number of jet kicks */
   int AGN_number_of_jet_injections;
 
   /*! Total number of jet kicking events */
   int AGN_number_of_AGN_jet_events;
-
-  /*! Halo mass the black hole is assigned to */
-  float group_mass;
 
   union {
 
@@ -294,16 +320,17 @@ struct bpart {
   /*! Properties used in the feedback loop to distribute to gas neighbours. */
   struct {
 
-    /*! Energy per unit mass in a single AGN energy-injection event */
+    /*! Thermal energy per unit mass in a single thermal AGN */
+    /* energy-injection event. */
     float AGN_delta_u;
 
-    /*! Number of energy injections per time-step */
+    /*! Number of thermal energy injections per time-step */
     int AGN_number_of_energy_injections;
 
-    /*! Number of energy injections per time-step */
+    /*! Number of thermal energy injections per time-step */
     int AGN_number_of_jet_injections;
 
-    /*! Change in energy from SNII feedback energy injection */
+    /*! Change in energy from thermal AGN energy injection */
     float AGN_delta_u_jet;
 
   } to_distribute;

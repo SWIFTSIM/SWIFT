@@ -152,18 +152,16 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
           part->h = size * h / (float)n;
         h_max = fmaxf(h_max, part->h);
         part->id = ++(*partId);
+        part->depth_h = 0;
 
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
         part->conserved.mass = density * volume / count;
-
-#ifdef SHADOWFAX_SPH
-        double anchor[3] = {0., 0., 0.};
-        double side[3] = {1., 1., 1.};
-        voronoi_cell_init(&part->cell, part->x, anchor, side);
-#endif
 
 #else
         part->mass = density * volume / count;
+#endif
+#if defined(REMIX_SPH)
+        part->rho_evol = density;
 #endif
 
 #if defined(HOPKINS_PE_SPH)
@@ -185,6 +183,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   /* Cell properties */
   cell->split = 0;
+  cell->depth = 0;
   cell->hydro.h_max = h_max;
   cell->hydro.h_max_active = h_max;
   cell->hydro.count = count;
@@ -193,9 +192,12 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
+  cell->dmin = size;
   cell->loc[0] = offset[0];
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
+  cell->h_min_allowed = cell->dmin * 0.5 * (1. / kernel_gamma);
+  cell->h_max_allowed = cell->dmin * (1. / kernel_gamma);
 
   cell->hydro.super = cell;
   cell->hydro.ti_old_part = 8;
@@ -220,29 +222,25 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields(struct cell *c) {
-#ifdef SHADOWFAX_SPH
-  struct hydro_space hs;
-  hs.anchor[0] = 0.;
-  hs.anchor[1] = 0.;
-  hs.anchor[2] = 0.;
-  hs.side[0] = 1.;
-  hs.side[1] = 1.;
-  hs.side[2] = 1.;
-  struct hydro_space *hspointer = &hs;
-#else
   struct hydro_space *hspointer = NULL;
-#endif
+
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_init_part(&c->hydro.parts[pid], hspointer);
+    adaptive_softening_init_part(&c->hydro.parts[pid]);
+    mhd_init_part(&c->hydro.parts[pid]);
   }
 }
 
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c, const struct cosmology *cosmo) {
+void end_calculation(struct cell *c, const struct cosmology *cosmo,
+                     const struct gravity_props *gravity_props) {
+
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_end_density(&c->hydro.parts[pid], cosmo);
+    adaptive_softening_end_density(&c->hydro.parts[pid], gravity_props);
+    mhd_end_density(&c->hydro.parts[pid], cosmo);
 
     /* Recover the common "Neighbour number" definition */
     c->hydro.parts[pid].density.wcount *= pow_dimension(c->hydro.parts[pid].h);
@@ -276,7 +274,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2],
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
             0.f,
 #elif defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
     defined(ANARCHY_PU_SPH)
@@ -325,7 +323,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               cj->hydro.parts[pjd].v[0], cj->hydro.parts[pjd].v[1],
               cj->hydro.parts[pjd].v[2],
               hydro_get_comoving_density(&cj->hydro.parts[pjd]),
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
               0.f,
 #else
               main_cell->hydro.parts[pjd].density.rho_dh,
@@ -356,8 +354,10 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
 /* Just a forward declaration... */
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj);
-void runner_doself1_branch_density(struct runner *r, struct cell *c);
+                                   struct cell *cj, int limit_h_min,
+                                   int limit_h_max);
+void runner_doself1_branch_density(struct runner *r, struct cell *c,
+                                   int limit_h_min, int limit_h_max);
 void runner_dopair_subset_branch_density(struct runner *r,
                                          struct cell *restrict ci,
                                          struct part *restrict parts_i,
@@ -495,6 +495,14 @@ int main(int argc, char *argv[]) {
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
 
+  struct gravity_props gravity_props;
+  bzero(&gravity_props, sizeof(struct gravity_props));
+  gravity_props.G_Newton = 1.;
+
+  struct sink_props sink_props;
+  bzero(&sink_props, sizeof(struct sink_props));
+  engine.sink_properties = &sink_props;
+
   struct runner runner;
   runner.e = &engine;
 
@@ -519,7 +527,7 @@ int main(int argc, char *argv[]) {
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 
-        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0,
+        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0, 0,
                              0);
       }
     }
@@ -566,7 +574,8 @@ int main(int argc, char *argv[]) {
         DOPAIR1_SUBSET(&runner, main_cell, main_cell->hydro.parts, pid, count,
                        cells[j]);
 #else
-        DOPAIR1(&runner, main_cell, cells[j]);
+        DOPAIR1(&runner, main_cell, cells[j], /*limit_h_min=*/0,
+                /*limit_h_max=*/0);
 #endif
 
         timings[j] += getticks() - sub_tic;
@@ -579,7 +588,7 @@ int main(int argc, char *argv[]) {
 #ifdef TEST_DOSELF_SUBSET
     DOSELF1_SUBSET(&runner, main_cell, main_cell->hydro.parts, pid, count);
 #else
-    DOSELF1(&runner, main_cell);
+    DOSELF1(&runner, main_cell, /*limit_h_min=*/0, /*limit_h_max=*/0);
 #endif
 
     timings[13] += getticks() - self_tic;
@@ -588,7 +597,7 @@ int main(int argc, char *argv[]) {
     time += toc - tic;
 
     /* Let's get physical ! */
-    end_calculation(main_cell, &cosmo);
+    end_calculation(main_cell, &cosmo, &gravity_props);
 
     /* Dump if necessary */
     if (i % 50 == 0) {
@@ -639,7 +648,7 @@ int main(int argc, char *argv[]) {
   const ticks toc = getticks();
 
   /* Let's get physical ! */
-  end_calculation(main_cell, &cosmo);
+  end_calculation(main_cell, &cosmo, &gravity_props);
 
   /* Dump */
   sprintf(outputFileName, "brute_force_27_%.150s.dat", outputFileNameExtension);

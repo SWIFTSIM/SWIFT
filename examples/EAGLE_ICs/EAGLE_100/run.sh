@@ -14,10 +14,10 @@ then
     ../getEagleYieldtable.sh
 fi
 
-if [ ! -e coolingtables ]
+if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ]
 then
-    echo "Fetching EAGLE cooling tables..."
-    ../getEagleCoolingTable.sh
+    echo "Fetching EAGLE-XL cooling tables..."
+    ../getPS2020CoolingTables.sh
 fi
 
 if [ ! -e photometry ]

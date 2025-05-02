@@ -101,6 +101,8 @@ hid_t io_hdf5_type(enum IO_DATA_TYPE type) {
       return H5T_NATIVE_DOUBLE;
     case CHAR:
       return H5T_NATIVE_CHAR;
+    case BOOL:
+      return H5T_NATIVE_HBOOL;
     default:
       error("Unknown type");
       return 0;
@@ -471,6 +473,16 @@ void io_write_attribute_i(hid_t grp, const char* name, int data) {
 }
 
 /**
+ * @brief Writes a bool value (passed as an int) as an attribute
+ * @param grp The group in which to write
+ * @param name The name of the attribute
+ * @param data The value to write
+ */
+void io_write_attribute_b(hid_t grp, const char* name, int data) {
+  io_write_attribute(grp, name, BOOL, &data, 1);
+}
+
+/**
  * @brief Writes a long value as an attribute
  * @param grp The group in which to write
  * @param name The name of the attribute
@@ -507,10 +519,12 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
  * @param e The #engine containing the meta-data.
  * @param internal_units The system of units used internally.
  * @param snapshot_units The system of units used in snapshots.
+ * @param fof Is this a FOF output? If so don't write subgrid info.
  */
 void io_write_meta_data(hid_t h_file, const struct engine* e,
                         const struct unit_system* internal_units,
-                        const struct unit_system* snapshot_units) {
+                        const struct unit_system* snapshot_units,
+                        const int fof) {
 
   hid_t h_grp;
 
@@ -523,53 +537,56 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
   /* Print the physical constants */
   phys_const_print_snapshot(h_file, e->physical_constants);
 
-  /* Print the SPH parameters */
-  if (e->policy & engine_policy_hydro) {
-    h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
+  if (!fof) {
+
+    /* Print the SPH parameters */
+    if (e->policy & engine_policy_hydro) {
+      h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
+                        H5P_DEFAULT);
+      if (h_grp < 0) error("Error while creating SPH group");
+      hydro_props_print_snapshot(h_grp, e->hydro_properties);
+      hydro_write_flavour(h_grp);
+      mhd_write_flavour(h_grp);
+      H5Gclose(h_grp);
+    }
+
+    /* Print the subgrid parameters */
+    h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
                       H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating SPH group");
-    hydro_props_print_snapshot(h_grp, e->hydro_properties);
-    hydro_write_flavour(h_grp);
-    mhd_write_flavour(h_grp);
+    if (h_grp < 0) error("Error while creating subgrid group");
+    hid_t h_grp_columns =
+        H5Gcreate(h_grp, "NamedColumns", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_grp_columns < 0) error("Error while creating named columns group");
+    entropy_floor_write_flavour(h_grp);
+    extra_io_write_flavour(h_grp, h_grp_columns);
+    cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
+    chemistry_write_flavour(h_grp, h_grp_columns, e);
+    tracers_write_flavour(h_grp);
+    feedback_write_flavour(e->feedback_props, h_grp);
+    rt_write_flavour(h_grp, h_grp_columns, e, internal_units, snapshot_units,
+                     e->rt_props);
     H5Gclose(h_grp);
+
+    /* Print the gravity parameters */
+    if (e->policy & engine_policy_self_gravity) {
+      h_grp = H5Gcreate(h_file, "/GravityScheme", H5P_DEFAULT, H5P_DEFAULT,
+                        H5P_DEFAULT);
+      if (h_grp < 0) error("Error while creating gravity group");
+      gravity_props_print_snapshot(h_grp, e->gravity_properties);
+      H5Gclose(h_grp);
+    }
+
+    /* Print the stellar parameters */
+    if (e->policy & engine_policy_stars) {
+      h_grp = H5Gcreate(h_file, "/StarsScheme", H5P_DEFAULT, H5P_DEFAULT,
+                        H5P_DEFAULT);
+      if (h_grp < 0) error("Error while creating stars group");
+      stars_props_print_snapshot(h_grp, h_grp_columns, e->stars_properties);
+      H5Gclose(h_grp);
+    }
+
+    H5Gclose(h_grp_columns);
   }
-
-  /* Print the subgrid parameters */
-  h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
-                    H5P_DEFAULT);
-  if (h_grp < 0) error("Error while creating subgrid group");
-  hid_t h_grp_columns =
-      H5Gcreate(h_grp, "NamedColumns", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_grp_columns < 0) error("Error while creating named columns group");
-  entropy_floor_write_flavour(h_grp);
-  extra_io_write_flavour(h_grp, h_grp_columns);
-  cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
-  chemistry_write_flavour(h_grp, h_grp_columns, e);
-  tracers_write_flavour(h_grp);
-  feedback_write_flavour(e->feedback_props, h_grp);
-  rt_write_flavour(h_grp, h_grp_columns, e, internal_units, snapshot_units,
-                   e->rt_props);
-  H5Gclose(h_grp);
-
-  /* Print the gravity parameters */
-  if (e->policy & engine_policy_self_gravity) {
-    h_grp = H5Gcreate(h_file, "/GravityScheme", H5P_DEFAULT, H5P_DEFAULT,
-                      H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating gravity group");
-    gravity_props_print_snapshot(h_grp, e->gravity_properties);
-    H5Gclose(h_grp);
-  }
-
-  /* Print the stellar parameters */
-  if (e->policy & engine_policy_stars) {
-    h_grp = H5Gcreate(h_file, "/StarsScheme", H5P_DEFAULT, H5P_DEFAULT,
-                      H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating stars group");
-    stars_props_print_snapshot(h_grp, h_grp_columns, e->stars_properties);
-    H5Gclose(h_grp);
-  }
-
-  H5Gclose(h_grp_columns);
 
   /* Print the cosmological model  */
   h_grp =
@@ -1610,7 +1627,7 @@ void io_collect_gparts_neutrino_to_write(
  */
 void io_make_snapshot_subdir(const char* dirname) {
 
-  if (strcmp(dirname, ".") != 0 && strnlen(dirname, PARSER_MAX_LINE_SIZE) > 0) {
+  if (strcmp(dirname, ".") != 0 && strnlen(dirname, FILENAME_BUFFER_SIZE) > 0) {
     safe_checkdir(dirname, /*create=*/1);
   }
 }
@@ -1795,6 +1812,7 @@ void io_select_sink_fields(const struct sink* const sinks,
                            int* const num_fields, struct io_props* const list) {
 
   sink_write_particles(sinks, list, num_fields, with_cosmology);
+  *num_fields += chemistry_write_sinkparticles(sinks, list + *num_fields);
 }
 
 /**

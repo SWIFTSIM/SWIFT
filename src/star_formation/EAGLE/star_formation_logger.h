@@ -218,7 +218,7 @@ INLINE static void star_formation_logger_init_log_file(
       " (5)            (6)            (7)\n");
   fprintf(
       fp,
-      "#            Time             a            z        total M_stars  SFR "
+      "# Step       Time             a            z        total M_stars  SFR "
       "(active)  SFR*dt (active)  SFR (total)\n");
 }
 

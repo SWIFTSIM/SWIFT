@@ -33,6 +33,7 @@
  * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
+#include "adaptive_softening_struct.h"
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
@@ -188,6 +189,9 @@ struct part {
     } force;
   };
 
+  /*! Additional data used for adaptive softening */
+  struct adaptive_softening_part_data adaptive_softening_data;
+
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
 
@@ -215,6 +219,9 @@ struct part {
   /*! Time-step length */
   timebin_t time_bin;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
   /*! Time-step limiter information */
   struct timestep_limiter_data limiter_data;
 
@@ -226,6 +233,54 @@ struct part {
   /* Time of the last kick */
   integertime_t ti_kick;
 
+#endif
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+
+  /* Integer number of neighbours in the density loop */
+  int N_density;
+
+  /* Exact integer number of neighbours in the density loop */
+  int N_density_exact;
+
+  /* Integer number of neighbours in the gradient loop */
+  int N_gradient;
+
+  /* Exact integer number of neighbours in the gradient loop */
+  int N_gradient_exact;
+
+  /* Integer number of neighbours in the force loop */
+  int N_force;
+
+  /* Exact integer number of neighbours in the force loop */
+  int N_force_exact;
+
+  /*! Exact value of the density field obtained via brute-force loop */
+  float rho_exact;
+
+  /*! Weighted numer of neighbours in the density loop */
+  float n_density;
+
+  /*! Exact value of the weighted numer of neighbours in the density loop */
+  float n_density_exact;
+
+  /*! Weighted numer of neighbours in the gradient loop */
+  float n_gradient;
+
+  /*! Exact value of the weighted numer of neighbours in the gradient loop */
+  float n_gradient_exact;
+
+  /*! Weighted numer of neighbours in the force loop */
+  float n_force;
+
+  /*! Exact value of the weighted numer of neighbours in the force loop */
+  float n_force_exact;
+
+  /*! Has this particle interacted with any unhibited neighbour? */
+  char inhibited_exact;
+
+  /*! Has this particle been woken up by the limiter? */
+  char limited_part;
 #endif
 
 #ifdef PLANETARY_FIXED_ENTROPY

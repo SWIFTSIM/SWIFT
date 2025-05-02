@@ -160,12 +160,6 @@ static void engine_do_unskip_black_holes(struct cell *c, struct engine *e) {
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
-  /* Ignore empty cells. */
-  if (c->black_holes.count == 0) return;
-
-  /* Skip inactive cells. */
-  if (!cell_is_active_black_holes(c, e)) return;
-
   /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
@@ -428,12 +422,6 @@ void engine_unskip(struct engine *e) {
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
       num_active_cells += 1;
     }
-
-    /* Activate the top-level timestep exchange */
-#ifdef WITH_MPI
-    scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
-    scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
-#endif
   }
 
   /* What kind of tasks do we have? */

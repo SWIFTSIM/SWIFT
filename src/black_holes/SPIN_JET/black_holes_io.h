@@ -22,6 +22,7 @@
 
 #include "adiabatic_index.h"
 #include "black_holes_part.h"
+#include "black_holes_properties.h"
 #include "io_properties.h"
 
 /**
@@ -162,6 +163,18 @@ INLINE static void convert_bpart_gas_velocity_curl(const struct engine* e,
   ret[2] = bp->curl_v_gas[2] * cosmo->a2_inv;
 }
 
+INLINE static void convert_bpart_gas_temperatures(const struct engine* e,
+                                                  const struct bpart* bp,
+                                                  float* ret) {
+
+  const struct black_holes_props* props = e->black_holes_properties;
+  const struct cosmology* cosmo = e->cosmology;
+
+  /* Conversion from specific internal energy to temperature */
+  ret[0] = bp->internal_energy_gas * cosmo->a_factor_internal_energy /
+           props->temp_to_u_factor;
+}
+
 /**
  * @brief Specifies which b-particle fields to write to a dataset
  *
@@ -176,7 +189,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 56;
+  *num_fields = 63;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -192,9 +205,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       io_make_output_field("DynamicalMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
                            bparts, mass, "Dynamical masses of the particles");
 
-  list[3] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           bparts, id, "Unique ID of the particles");
+  list[3] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts, id,
+      /*can convert to comoving=*/0, "Unique ID of the particles");
 
   list[4] = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, bparts, h,
@@ -205,9 +218,10 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                  "Subgrid masses of the particles");
 
   if (with_cosmology) {
-    list[6] = io_make_output_field(
+    list[6] = io_make_physical_output_field(
         "FormationScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-        formation_scale_factor, "Scale-factors at which the BHs were formed");
+        formation_scale_factor, /*can convert to comoving=*/0,
+        "Scale-factors at which the BHs were formed");
   } else {
     list[6] = io_make_output_field("FormationTimes", FLOAT, 1, UNIT_CONV_TIME,
                                    0.f, bparts, formation_time,
@@ -223,9 +237,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       -1.5f * hydro_gamma_minus_one, bparts, sound_speed_gas,
       "Co-moving sound-speeds of the gas around the particles");
 
-  list[9] = io_make_output_field(
+  list[9] = io_make_physical_output_field(
       "EnergyReservoirs", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
-      energy_reservoir,
+      energy_reservoir, /*can convert to comoving=*/0,
       "Physcial energy contained in the feedback reservoir of the particles");
 
   list[10] = io_make_output_field(
@@ -240,22 +254,23 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "birth. This does not include any mass accreted onto any merged black "
       "holes.");
 
-  list[12] = io_make_output_field(
+  list[12] = io_make_physical_output_field(
       "CumulativeNumberOfSeeds", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      cumulative_number_seeds,
+      cumulative_number_seeds, /*can convert to comoving=*/1,
       "Total number of BH seeds that have merged into this black hole");
 
-  list[13] =
-      io_make_output_field("NumberOfMergers", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           bparts, number_of_mergers,
-                           "Number of mergers the black holes went through. "
-                           "This does not include the number of mergers "
-                           "accumulated by any merged black hole.");
+  list[13] = io_make_physical_output_field(
+      "NumberOfMergers", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      number_of_mergers, /*can convert to comoving=*/1,
+      "Number of mergers the black holes went through. "
+      "This does not include the number of mergers "
+      "accumulated by any merged black hole.");
 
   if (with_cosmology) {
-    list[14] = io_make_output_field(
+    list[14] = io_make_physical_output_field(
         "LastHighEddingtonFractionScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS,
         0.f, bparts, last_high_Eddington_fraction_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the black holes last reached a large Eddington "
         "ratio. -1 if never reached.");
   } else {
@@ -267,32 +282,32 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   }
 
   if (with_cosmology) {
-    list[15] = io_make_output_field(
+    list[15] = io_make_physical_output_field(
         "LastMinorMergerScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-        bparts, last_minor_merger_scale_factor,
+        bparts, last_minor_merger_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the black holes last had a minor merger.");
   } else {
     list[15] = io_make_output_field(
-        "LastMinorMergerScaleTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        "LastMinorMergerTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
         last_minor_merger_time,
         "Times at which the black holes last had a minor merger.");
   }
 
   if (with_cosmology) {
-    list[16] = io_make_output_field(
+    list[16] = io_make_physical_output_field(
         "LastMajorMergerScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-        bparts, last_major_merger_scale_factor,
+        bparts, last_major_merger_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the black holes last had a major merger.");
   } else {
     list[16] = io_make_output_field(
-        "LastMajorMergerScaleTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        "LastMajorMergerTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
         last_major_merger_time,
         "Times at which the black holes last had a major merger.");
   }
 
-  list[17] = io_make_output_field(
+  list[17] = io_make_physical_output_field(
       "SwallowedAngularMomenta", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
-      bparts, swallowed_angular_momentum,
+      bparts, swallowed_angular_momentum, /*can convert to comoving=*/0,
       "Physical angular momenta that the black holes have accumulated by "
       "swallowing gas particles.");
 
@@ -315,30 +330,30 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       io_make_output_field("TimeBins", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
                            time_bin, "Time-bins of the particles");
 
-  list[21] = io_make_output_field(
+  list[21] = io_make_physical_output_field(
       "NumberOfSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      number_of_gas_swallows,
+      number_of_gas_swallows, /*can convert to comoving=*/1,
       "Number of gas particles the black holes have swallowed. "
       "This includes the particles swallowed by any of the black holes that "
       "merged into this one.");
 
-  list[22] = io_make_output_field(
+  list[22] = io_make_physical_output_field(
       "NumberOfDirectSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      number_of_direct_gas_swallows,
+      number_of_direct_gas_swallows, /*can convert to comoving=*/1,
       "Number of gas particles the black holes have swallowed. "
       "This does not include any particles swallowed by any of the black holes "
       "that merged into this one.");
 
-  list[23] = io_make_output_field(
+  list[23] = io_make_physical_output_field(
       "NumberOfRepositions", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      number_of_repositions,
+      number_of_repositions, /*can convert to comoving=*/1,
       "Number of repositioning events the black holes went through. This does "
       "not include the number of reposition events accumulated by any merged "
       "black holes.");
 
-  list[24] = io_make_output_field(
+  list[24] = io_make_physical_output_field(
       "NumberOfRepositionAttempts", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      number_of_reposition_attempts,
+      number_of_reposition_attempts, /*can convert to comoving=*/1,
       "Number of time steps in which the black holes had an eligible particle "
       "to reposition to. They may or may not have ended up moving there, "
       "depending on their subgrid mass and on whether these particles were at "
@@ -346,9 +361,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "not include attempted repositioning events accumulated by any merged "
       "black holes.");
 
-  list[25] = io_make_output_field(
+  list[25] = io_make_physical_output_field(
       "NumberOfTimeSteps", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      number_of_time_steps,
+      number_of_time_steps, /*can convert to comoving=*/1,
       "Total number of time steps at which the black holes were active.");
 
   list[26] = io_make_output_field(
@@ -369,36 +384,37 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       convert_bpart_gas_velocity_curl,
       "Velocity curl (3D) of the gas particles around the black holes.");
 
-  list[29] = io_make_output_field(
+  list[29] = io_make_physical_output_field(
       "AccretedAngularMomenta", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
-      bparts, accreted_angular_momentum,
+      bparts, accreted_angular_momentum, /*can convert to comoving=*/0,
       "Physical angular momenta that the black holes have accumulated through "
       "subgrid accretion.");
 
-  list[30] = io_make_output_field(
+  list[30] = io_make_physical_output_field(
       "NumberOfGasNeighbours", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      num_ngbs,
+      num_ngbs, /*can convert to comoving=*/1,
       "Integer number of gas neighbour particles within the black hole "
       "kernels.");
 
-  list[31] = io_make_output_field(
+  list[31] = io_make_physical_output_field(
       "NumberOfHeatingEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      AGN_number_of_energy_injections,
+      AGN_number_of_energy_injections, /*can convert to comoving=*/1,
       "Integer number of (thermal) energy injections the black hole has had "
       "so far. This counts each heated gas particle separately, and so can "
       "increase by more than one during a single time step.");
 
-  list[32] = io_make_output_field(
+  list[32] = io_make_physical_output_field(
       "NumberOfAGNEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      AGN_number_of_AGN_events,
-      "Integer number of AGN events the black hole has had so far"
-      " (the number of time steps the BH did AGN feedback)");
+      AGN_number_of_AGN_events, /*can convert to comoving=*/1,
+      "Integer number of heating AGN events the black hole has had so far"
+      " (the number of time steps the BH did thermal AGN feedback)");
 
   if (with_cosmology) {
-    list[33] = io_make_output_field(
+    list[33] = io_make_physical_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-        bparts, last_AGN_event_scale_factor,
-        "Scale-factors at which the black holes last had an AGN event.");
+        bparts, last_AGN_event_scale_factor, /*can convert to comoving=*/0,
+        "Scale-factors at which the black holes last had a thermal AGN "
+        "event.");
   } else {
     list[33] = io_make_output_field(
         "LastAGNFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
@@ -412,11 +428,11 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Accretion-limited time steps of black holes. The actual time step of "
       "the particles may differ due to the minimum allowed value.");
 
-  list[35] = io_make_output_field(
+  list[35] = io_make_physical_output_field(
       "AGNTotalInjectedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
-      AGN_cumulative_energy,
+      AGN_cumulative_energy, /*can convert to comoving=*/0,
       "Total (cumulative) physical energies injected into gas particles "
-      "in AGN feedback.");
+      "in AGN feedback, including the effects of both radiation and winds.");
 
   list[36] = io_make_output_field_convert_bpart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
@@ -424,8 +440,8 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
 
   list[37] = io_make_output_field(
       "Spins", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts, spin,
-      "Dimensionless spins of the black holes. "
-      "Negative values indicate retrograde accretion.");
+      "Dimensionless spins of the black holes. Negative values indicate "
+      "retrograde accretion.");
 
   list[38] = io_make_output_field(
       "AngularMomentumDirections", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.f, bparts,
@@ -433,101 +449,152 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Direction of the black hole spin vector, normalised to unity.");
 
   list[39] = io_make_output_field(
-      "AccretionDiscAspectRatios", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      aspect_ratio,
-      "The aspect ratio, h/r, of the subgrid accretion disc "
-      "around the black hole.");
-
-  list[40] = io_make_output_field(
       "JetEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       jet_efficiency, "Jet power divided by accretion rate.");
 
-  list[41] = io_make_output_field(
+  list[40] = io_make_output_field(
       "RadiativeEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       radiative_efficiency, "AGN luminosity divided by accretion rate.");
 
-  list[42] = io_make_output_field("CosAccretionDiskAngle", FLOAT, 1,
+  list[41] = io_make_output_field("CosAccretionDiskAngle", FLOAT, 1,
                                   UNIT_CONV_NO_UNITS, 0.f, bparts,
                                   accretion_disk_angle,
                                   "Cosine of the angle between the spin vector "
                                   "and the accreting gas angular momentum.");
 
-  list[43] = io_make_output_field(
+  list[42] = io_make_output_field(
       "AccretionModes", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts, accretion_mode,
       "Accretion flow regime. 0 - Thick disk, 1 - Thin disk, 2 - Slim disk");
 
-  list[44] = io_make_output_field(
+  list[43] = io_make_output_field(
       "JetReservoir", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts, jet_reservoir,
       "Total jet energy waiting to be released (once it "
       "grows large enough to kick a single particle).");
 
-  list[45] = io_make_output_field(
+  list[44] = io_make_physical_output_field(
       "InjectedJetEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
-      total_jet_energy, "Total jet energy injected into AGN surroundings.");
+      total_jet_energy, /*can convert to comoving=*/0,
+      "Total jet energy injected into AGN surroundings.");
 
-  list[46] = io_make_output_field(
+  list[45] = io_make_output_field(
       "JetTimeSteps", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts, dt_jet,
       "Jet-launching-limited time-steps of black holes.");
 
-  list[47] = io_make_output_field(
+  list[46] = io_make_physical_output_field(
       "NumberOfJetParticlesLaunched", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      AGN_number_of_jet_injections,
+      AGN_number_of_jet_injections, /*can convert to comoving=*/1,
       "Integer number of (kinetic) energy injections the black hole has had "
       "so far");
 
-  list[48] = io_make_output_field(
+  list[47] = io_make_physical_output_field(
       "NumberOfAGNJetEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      AGN_number_of_AGN_jet_events,
+      AGN_number_of_AGN_jet_events, /*can convert to comoving=*/1,
       "Integer number of AGN jet launching events the black hole has had"
       " (the number of times the BH did AGN jet feedback)");
 
   if (with_cosmology) {
-    list[49] = io_make_output_field(
+    list[48] = io_make_physical_output_field(
         "LastAGNJetScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-        last_AGN_jet_event_scale_factor,
+        last_AGN_jet_event_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the black holes last had an AGN jet event.");
   } else {
-    list[49] = io_make_output_field(
+    list[48] = io_make_output_field(
         "LastAGNJetTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
         last_AGN_jet_event_time,
         "Times at which the black holes last had an AGN jet event.");
   }
 
-  list[50] = io_make_output_field(
+  list[49] = io_make_output_field(
       "EddingtonFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       eddington_fraction,
       "Accretion rates of black holes in units of their Eddington rates. "
       "This is based on the unlimited accretion rates, so these fractions "
       "can be above the limiting fEdd.");
 
-  list[51] = io_make_output_field(
-      "FOFGroupMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts, group_mass,
-      "Parent halo masses of the black holes, as determined from the FOF  "
-      "algorithm.");
-
-  list[52] =
+  list[50] =
       io_make_output_field("JetVelocities", FLOAT, 1, UNIT_CONV_VELOCITY, 0.f,
                            bparts, v_jet, "The current jet velocities.");
 
-  list[53] = io_make_output_field(
-      "TotalAccretedMassesByMode", FLOAT, 3, UNIT_CONV_MASS, 0.f, bparts,
-      accreted_mass_by_mode,
+  list[51] = io_make_output_field(
+      "TotalAccretedMassesByMode", FLOAT, BH_accretion_modes_count,
+      UNIT_CONV_MASS, 0.f, bparts, accreted_mass_by_mode,
       "The total accreted mass in each accretion mode. The components to the "
       "mass accreted in the thick, thin and slim disc modes, respectively.");
 
-  list[54] = io_make_output_field(
-      "AGNTotalInjectedEnergiesByMode", FLOAT, 3, UNIT_CONV_ENERGY, 0.f, bparts,
-      thermal_energy_by_mode,
-      "The total energy injected in the thermal AGN feedback mode, split by "
+  list[52] = io_make_physical_output_field(
+      "AGNTotalInjectedEnergiesByMode", FLOAT, BH_accretion_modes_count,
+      UNIT_CONV_ENERGY, 0.f, bparts, thermal_energy_by_mode,
+      /*can convert to comoving=*/0,
+      "The total energy injected in the thermal AGN feedback mode, including "
+      "the contributions of both radiation and wind feedback, split by "
       "accretion mode. The components correspond to the thermal energy dumped "
       "in the thick, thin and slim disc modes, respectively.");
 
-  list[55] = io_make_output_field(
-      "InjectedJetEnergiesByMode", FLOAT, 3, UNIT_CONV_ENERGY, 0.f, bparts,
-      jet_energy_by_mode,
+  list[53] = io_make_physical_output_field(
+      "InjectedJetEnergiesByMode", FLOAT, BH_accretion_modes_count,
+      UNIT_CONV_ENERGY, 0.f, bparts, jet_energy_by_mode,
+      /*can convert to comoving=*/0,
       "The total energy injected in the kinetic jet AGN feedback mode, split "
-      "by accretion mode. The components correspond to the thermal energy "
+      "by accretion mode. The components correspond to the jet energy "
       "dumped in the thick, thin and slim disc modes, respectively.");
+
+  list[54] = io_make_output_field(
+      "WindEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      wind_efficiency, "The wind efficiencies of the black holes.");
+
+  list[55] = io_make_physical_output_field(
+      "TotalRadiatedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
+      radiated_energy, /*can convert to comoving=*/0,
+      "The total energy launched into radiation by the black holes, "
+      "in all accretion modes. ");
+
+  list[56] = io_make_physical_output_field(
+      "RadiatedEnergiesByMode", FLOAT, BH_accretion_modes_count,
+      UNIT_CONV_ENERGY, 0.f, bparts, radiated_energy_by_mode,
+      /*can convert to comoving=*/0,
+      "The total energy launched into radiation by the black holes, split "
+      "by accretion mode. The components correspond to the radiative energy "
+      "dumped in the thick, thin and slim disc modes, respectively.");
+
+  list[57] = io_make_physical_output_field(
+      "TotalWindEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts, wind_energy,
+      /*can convert to comoving=*/0,
+      "The total energy launched into accretion disc winds by the black holes, "
+      "in all accretion modes. ");
+
+  list[58] = io_make_physical_output_field(
+      "WindEnergiesByMode", FLOAT, BH_accretion_modes_count, UNIT_CONV_ENERGY,
+      0.f, bparts, wind_energy_by_mode, /*can convert to comoving=*/0,
+      "The total energy launched into accretion disc winds by the black "
+      "holes, split by accretion mode. The components correspond to the "
+      "radiative energy dumped in the thick, thin and slim disc modes, "
+      "respectively.");
+
+  list[59] = io_make_output_field(
+      "AccretionBoostFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      accretion_boost_factor,
+      "Multiplicative factors by which the Bondi-Hoyle-Lyttleton accretion "
+      "rates have been increased by the density-dependent Booth & Schaye "
+      "(2009) accretion model.");
+
+  list[60] = io_make_output_field_convert_bpart(
+      "GasTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, bparts,
+      convert_bpart_gas_temperatures,
+      "Temperature of the gas surrounding the black holes.");
+
+  list[61] = io_make_physical_output_field(
+      "LastRepositionVelocities", FLOAT, 1, UNIT_CONV_SPEED, 0.f, bparts,
+      last_repos_vel, /*can convert to comoving=*/0,
+      "Physical speeds at which the black holes repositioned most recently. "
+      "This is 0 for black holes that have never repositioned, or if the "
+      "simulation has been run without prescribed repositioning speed.");
+
+  list[62] = io_make_output_field(
+      "AccretionEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      accretion_efficiency,
+      "The accretion efficiencies of black holes. These are used to convert "
+      "from the large-scale accretion rate onto an accretion disc (the raw "
+      "Bondi-like accretion rate) to the accretion rate onto the BH itself.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

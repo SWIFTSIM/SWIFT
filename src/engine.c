@@ -70,6 +70,7 @@
 #include "extra_io.h"
 #include "feedback.h"
 #include "fof.h"
+#include "forcing.h"
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
@@ -133,7 +134,9 @@ const char *engine_policy_names[] = {"none",
                                      "line of sight",
                                      "sink",
                                      "rt",
-                                     "power spectra"};
+                                     "power spectra",
+                                     "moving mesh",
+                                     "moving mesh hydro"};
 
 const int engine_default_snapshot_subsample[swift_type_count] = {0};
 
@@ -321,7 +324,7 @@ void engine_repartition_trigger(struct engine *e) {
           e->usertime_last_step, e->systime_last_step, (double)resident,
           e->local_deadtime / (e->nr_threads * e->wallclock_time)};
       double timemems[e->nr_nodes * 4];
-      MPI_Gather(&timemem, 4, MPI_DOUBLE, timemems, 4, MPI_DOUBLE, 0,
+      MPI_Gather(timemem, 4, MPI_DOUBLE, timemems, 4, MPI_DOUBLE, 0,
                  MPI_COMM_WORLD);
       if (e->nodeID == 0) {
 
@@ -480,6 +483,34 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Exchange the cell structure with neighbouring ranks. */
   proxy_cells_exchange(e->proxies, e->nr_proxies, e->s, with_gravity);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Exchange extra information for the grid construction with other nodes.
+ *
+ * @param e The #engine.
+ */
+void engine_exchange_grid_extra(struct engine *e) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!(e->policy & engine_policy_grid))
+    error("Not running with grid, but trying to exchange grid information!");
+#endif
+
+  const ticks tic = getticks();
+
+  /* Exchange the grid info with neighbouring ranks. */
+  proxy_grid_extra_exchange(e->proxies, e->nr_proxies, e->s);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -746,16 +777,18 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 #ifdef WITH_MPI
 
   const int nr_proxies = e->nr_proxies;
-  const int with_hydro = e->policy & engine_policy_hydro;
+  const int with_hydro =
+      e->policy & (engine_policy_hydro | engine_policy_grid_hydro);
   const int with_stars = e->policy & engine_policy_stars;
   const int with_black_holes = e->policy & engine_policy_black_holes;
+  const int with_sinks = e->policy & engine_policy_sinks;
   struct space *s = e->s;
   ticks tic = getticks();
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
   size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0,
-         count_bparts_in = 0;
+         count_bparts_in = 0, count_sinks_in = 0;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -774,18 +807,17 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
       /* For black holes, we just use the numbers in the top-level cells */
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
+
+      /* For sinks, we just use the numbers in the top-level cells + some
+         extra space */
+      count_sinks_in +=
+          e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks;
     }
   }
 
   if (!with_hydro && count_parts_in)
     error(
         "Not running with hydro but about to receive gas particles in "
-        "proxies!");
-  if (!with_stars && count_sparts_in)
-    error("Not running with stars but about to receive stars in proxies!");
-  if (!with_black_holes && count_bparts_in)
-    error(
-        "Not running with black holes but about to receive black holes in "
         "proxies!");
 
   if (e->verbose)
@@ -826,11 +858,15 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
                        spart_align,
                        sizeof(struct spart) * s->size_sparts_foreign) != 0)
       error("Failed to allocate foreign spart data.");
+
+#ifdef SWIFT_DEBUG_CHECKS
     bzero(s->sparts_foreign, s->size_sparts_foreign * sizeof(struct spart));
+
     for (size_t i = 0; i < s->size_sparts_foreign; ++i) {
       s->sparts_foreign[i].time_bin = time_bin_not_created;
       s->sparts_foreign[i].id = -43;
     }
+#endif
   }
 
   /* Allocate space for the foreign particles we will receive */
@@ -845,28 +881,52 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       error("Failed to allocate foreign bpart data.");
   }
 
+  /* Allocate space for the foreign particles we will receive */
+  size_t old_size_sinks_foreign = s->size_sinks_foreign;
+  if (!fof && count_sinks_in > s->size_sinks_foreign) {
+    if (s->sinks_foreign != NULL) swift_free("sinks_foreign", s->sinks_foreign);
+    s->size_sinks_foreign = engine_foreign_alloc_margin * count_sinks_in;
+    if (swift_memalign("sinks_foreign", (void **)&s->sinks_foreign, sink_align,
+                       sizeof(struct sink) * s->size_sinks_foreign) != 0)
+      error("Failed to allocate foreign sink data.");
+
+#ifdef SWIFT_DEBUG_CHECKS
+    bzero(s->sinks_foreign, s->size_sinks_foreign * sizeof(struct sink));
+
+    /* Note: If you ever see a sink particle with id = -666, the following
+       lines is the ones that sets the ID to this value. */
+    for (size_t i = 0; i < s->size_sinks_foreign; ++i) {
+      s->sinks_foreign[i].time_bin = time_bin_not_created;
+      s->sinks_foreign[i].id = -666;
+    }
+#endif
+  }
+
   if (e->verbose) {
     message(
-        "Allocating %zd/%zd/%zd/%zd foreign part/gpart/spart/bpart "
-        "(%zd/%zd/%zd/%zd MB)",
+        "Allocating %zd/%zd/%zd/%zd/%zd foreign part/gpart/spart/bpart/sink "
+        "(%zd/%zd/%zd/%zd/%zd MB)",
         s->size_parts_foreign, s->size_gparts_foreign, s->size_sparts_foreign,
-        s->size_bparts_foreign,
+        s->size_bparts_foreign, s->size_sinks_foreign,
         s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
         s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
         s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
-        s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024));
+        s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024),
+        s->size_sinks_foreign * sizeof(struct sink) / (1024 * 1024));
 
     if ((s->size_parts_foreign - old_size_parts_foreign) > 0 ||
         (s->size_gparts_foreign - old_size_gparts_foreign) > 0 ||
         (s->size_sparts_foreign - old_size_sparts_foreign) > 0 ||
-        (s->size_bparts_foreign - old_size_bparts_foreign) > 0) {
+        (s->size_bparts_foreign - old_size_bparts_foreign) > 0 ||
+        (s->size_sinks_foreign - old_size_sinks_foreign) > 0) {
       message(
-          "Re-allocations %zd/%zd/%zd/%zd part/gpart/spart/bpart "
-          "(%zd/%zd/%zd/%zd MB)",
+          "Re-allocations %zd/%zd/%zd/%zd/%zd part/gpart/spart/bpart/sink "
+          "(%zd/%zd/%zd/%zd/%zd MB)",
           (s->size_parts_foreign - old_size_parts_foreign),
           (s->size_gparts_foreign - old_size_gparts_foreign),
           (s->size_sparts_foreign - old_size_sparts_foreign),
           (s->size_bparts_foreign - old_size_bparts_foreign),
+          (s->size_sinks_foreign - old_size_sinks_foreign),
           (s->size_parts_foreign - old_size_parts_foreign) *
               sizeof(struct part) / (1024 * 1024),
           (s->size_gparts_foreign - old_size_gparts_foreign) *
@@ -874,15 +934,24 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
           (s->size_sparts_foreign - old_size_sparts_foreign) *
               sizeof(struct spart) / (1024 * 1024),
           (s->size_bparts_foreign - old_size_bparts_foreign) *
-              sizeof(struct bpart) / (1024 * 1024));
+              sizeof(struct bpart) / (1024 * 1024),
+          (s->size_sinks_foreign - old_size_sinks_foreign) *
+              sizeof(struct sink) / (1024 * 1024));
     }
   }
+
+  if (e->verbose)
+    message("Allocating and zeroing arrays took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
   struct gpart *gparts = s->gparts_foreign;
   struct spart *sparts = s->sparts_foreign;
   struct bpart *bparts = s->bparts_foreign;
+  struct sink *sinks = s->sinks_foreign;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -914,6 +983,14 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
         cell_link_bparts(e->proxies[k].cells_in[j], bparts);
         bparts = &bparts[e->proxies[k].cells_in[j]->black_holes.count];
       }
+
+      if (!fof && with_sinks) {
+
+        /* For sinks, we just use the numbers in the top-level cells */
+        cell_link_sinks(e->proxies[k].cells_in[j], sinks);
+        sinks =
+            &sinks[e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks];
+      }
     }
   }
 
@@ -922,6 +999,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   s->nr_gparts_foreign = gparts - s->gparts_foreign;
   s->nr_sparts_foreign = sparts - s->sparts_foreign;
   s->nr_bparts_foreign = bparts - s->bparts_foreign;
+  s->nr_sinks_foreign = sinks - s->sinks_foreign;
 
   if (e->verbose)
     message("Recursively linking foreign arrays took %.3f %s.",
@@ -1021,6 +1099,19 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_sparts = %zu.", e->s->nr_sparts);
   message("nr_bparts = %zu.", e->s->nr_bparts);
 
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
+  if (e->verbose == 2) {
+    /* check that the global number of sends matches the global number of
+       recvs */
+    int global_counts[2] = {counts[task_type_send], counts[task_type_recv]};
+    MPI_Allreduce(MPI_IN_PLACE, global_counts, 2, MPI_INT, MPI_SUM,
+                  MPI_COMM_WORLD);
+    if (global_counts[0] != global_counts[1])
+      error("Missing communications (%i sends, %i recvs)!", global_counts[0],
+            global_counts[1]);
+  }
+#endif
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -1109,8 +1200,15 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_sinks) {
-    /* 1 drift, 2 kicks, 1 time-step, 1 sink formation */
-    n1 += 5;
+    /* 1 drift, 2 kicks, 1 time-step, 1 sink formation     | 5
+       density: 1 self + 13 pairs                          | 14
+       swallow: 1 self + 13 pairs                          | 14
+       do_gas_swallow: 1 self + 13 pairs                   | 14
+       do_sink_swallow: 1 self + 13 pairs                  | 14
+       ghosts: density_ghost, sink_ghost_1, sink_ghost_2   | 3
+       implicit: sink_in,  sink_out                        | 2 */
+    n1 += 66;
+    n2 += 3;
     if (e->policy & engine_policy_stars) {
       /* 1 star formation */
       n1 += 1;
@@ -1137,6 +1235,35 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     n1 += 2;
 #endif
   }
+  if (e->policy & engine_policy_grid) {
+    /* Grid construction: 1 self + 26 (asymmetric) pairs + 1 ghost + 1 sort */
+    n1 += 29;
+    n2 += 3;
+#ifdef WITH_MPI
+    n1 += 3;
+#endif
+  }
+  if (e->policy & engine_policy_grid_hydro) {
+    /* slope estimate: 1 self + 13 pairs (on average)       |   14
+     * others: 1 ghosts, 2 kicks, 1 drift, 1 timestep       | +  7
+     * Total:                                               =   21 */
+    n1 += 21;
+    n2 += 2;
+#ifdef EXTRA_HYDRO_LOOP
+    /* slope limiter: 1 self + 13 pairs                     | + 14
+     * flux: 1 self + 13 pairs                              | + 14
+     * others: 2 ghost.                                     | +  2
+     * Total:                                               =   30  */
+    n1 += 30;
+    n2 += 3;
+#endif
+#ifdef WITH_MPI
+    n1 += 1;
+#ifdef EXTRA_HYDRO_LOOP
+    n1 += 1;
+#endif
+#endif
+  }
 
 #ifdef WITH_MPI
 
@@ -1150,7 +1277,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     struct cell *c = &e->s->cells_top[k];
 
     /* Any cells with particles will have tasks (local & foreign). */
-    int nparts = c->hydro.count + c->grav.count + c->stars.count;
+    int nparts = c->hydro.count + c->grav.count + c->stars.count +
+                 c->black_holes.count + c->sinks.count;
     if (nparts > 0) {
       ntop++;
       ncells++;
@@ -1286,7 +1414,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
                 MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &e->s->max_softening, 1, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &e->s->max_mpole_power,
+  MPI_Allreduce(MPI_IN_PLACE, e->s->max_mpole_power,
                 SELF_GRAVITY_MULTIPOLE_ORDER + 1, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
 #endif
@@ -1312,6 +1440,12 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Initial cleaning up session ? */
   if (clean_smoothing_length_values) space_sanitize(e->s);
 
+  /* Set the initial completeness flag for the moving mesh (before exchange) */
+  if (e->policy & engine_policy_grid) {
+    cell_grid_set_self_completeness_mapper(e->s->cells_top, e->s->nr_cells,
+                                           NULL);
+  }
+
 /* If in parallel, exchange the cell structure, top-level and neighbouring
  * multipoles. To achieve this, free the foreign particle buffers first. */
 #ifdef WITH_MPI
@@ -1335,7 +1469,26 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     if (counter != e->total_nr_gparts)
       error("Total particles in multipoles inconsistent with engine");
   }
+  if (e->policy & engine_policy_grid) {
+    for (int i = 0; i < e->s->nr_cells; i++) {
+      const struct cell *ci = &e->s->cells_top[i];
+      if (ci->hydro.count > 0 && !(ci->grid.self_completeness == grid_complete))
+        error("Encountered incomplete top level cell!");
+    }
+  }
 #endif
+
+  /* Set the grid construction level, is needed before splitting the tasks */
+  if (e->policy & engine_policy_grid) {
+    /* Set the completeness and construction level */
+    threadpool_map(&e->threadpool, cell_set_grid_completeness_mapper, NULL,
+                   e->s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    threadpool_map(&e->threadpool, cell_set_grid_construction_level_mapper,
+                   NULL, e->s->nr_cells, 1, threadpool_auto_chunk_size, e);
+#ifdef WITH_MPI
+    engine_exchange_grid_extra(e);
+#endif
+  }
 
   /* Re-build the tasks. */
   engine_maketasks(e);
@@ -1367,9 +1520,9 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   space_check_unskip_flags(e->s);
 #endif
 
-  /* Run through the tasks and mark as skip or not. */
-  if (engine_marktasks(e))
-    error("engine_marktasks failed after space_rebuild.");
+  /* Run through the cells, and their tasks to mark as unskipped. */
+  engine_unskip(e);
+  if (e->forcerebuild) error("engine_unskip faled after a rebuild!");
 
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
@@ -1648,6 +1801,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_part_prep1 ||
         t->subtype == task_subtype_spart_prep2 ||
         t->subtype == task_subtype_sf_counts ||
+        t->subtype == task_subtype_grav_counts ||
         t->subtype == task_subtype_rt_gradient ||
         t->subtype == task_subtype_rt_transport)
       t->skip = 1;
@@ -1731,6 +1885,10 @@ void engine_launch(struct engine *e, const char *call) {
   e->sched.deadtime.active_ticks += active_time;
   e->sched.deadtime.waiting_ticks += getticks() - tic;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  e->sched.last_successful_task_fetch = 0LL;
+#endif
+
   if (e->verbose)
     message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -1773,6 +1931,47 @@ void engine_get_max_ids(struct engine *e) {
 }
 
 /**
+ * @brief Gather the information about the top-level cells whose time-step has
+ * changed and activate the communications required to synchonize the
+ * time-steps.
+ *
+ * @param e The #engine.
+ */
+void engine_synchronize_times(struct engine *e) {
+
+#ifdef WITH_MPI
+
+  const ticks tic = getticks();
+
+  /* Collect which top-level cells have been updated */
+  MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR,
+                MPI_SUM, MPI_COMM_WORLD);
+
+  /* Activate tend communications involving the cells that have changed. */
+  for (int i = 0; i < e->s->nr_cells; ++i) {
+
+    if (e->s->cells_top_updated[i]) {
+
+      struct cell *c = &e->s->cells_top[i];
+      scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
+      scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
+    }
+  }
+
+  if (e->verbose)
+    message("Gathering and activating tend took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  TIMER_TIC;
+  engine_launch(e, "tend");
+  TIMER_TOC(timer_runners);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Run the radiative transfer sub-cycles outside the
  * regular time-steps.
  *
@@ -1782,6 +1981,11 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   /* Do we have work to do? */
   if (!(e->policy & engine_policy_rt)) return;
+
+  /* Note that if running without sub-cycles, no RT-specific timestep data will
+   * be written to screen or to the RT subcycles timestep data file. It's
+   * meaningless to do so, as all data will already be contained in the normal
+   * timesteps file. */
   if (e->max_nr_rt_subcycles <= 1) return;
 
   /* Get the subcycling step */
@@ -1816,20 +2020,47 @@ void engine_run_rt_sub_cycles(struct engine *e) {
   /* Get some time variables for printouts. Don't update the ones in the
    * engine like in the regular step, or the outputs in the regular steps
    * will be wrong. */
-  /* think cosmology one day: needs adapting here */
-  if (e->policy & engine_policy_cosmology)
-    error("Can't run RT subcycling with cosmology yet");
-  const double dt_subcycle = rt_step_size * e->time_base;
-  double time = e->ti_current_subcycle * e->time_base + e->time_begin;
+  double dt_subcycle;
+  if (e->policy & engine_policy_cosmology) {
+    dt_subcycle =
+        cosmology_get_delta_time(e->cosmology, e->ti_current, e->ti_rt_end_min);
+  } else {
+    dt_subcycle = rt_step_size * e->time_base;
+  }
+  double time = e->time;
+
+  /* Keep track and accumulate the deadtime over all sub-cycles. */
+  /* We need to manually put this back in the engine struct when
+   * the sub-cycling is completed. */
+  double global_deadtime_acc = e->global_deadtime;
 
   /* Collect and print info before it's gone */
   engine_collect_end_of_sub_cycle(e);
+
   if (e->nodeID == 0) {
+
     printf(
-        "  %6d cycle   0 (during regular tasks) dt=%14e "
-        "min/max active bin=%2d/%2d rt_updates=%18lld\n",
-        e->step, dt_subcycle, e->min_active_bin_subcycle,
-        e->max_active_bin_subcycle, e->rt_updates);
+        " [rt-sc] %-4d %12e %11.6f %11.6f %13e %4d %4d %12lld %12s %12s "
+        "%12s %12s %21s %6s %17s\n",
+        0, e->time, e->cosmology->a, e->cosmology->z, dt_subcycle,
+        e->min_active_bin_subcycle, e->max_active_bin_subcycle, e->rt_updates,
+        /*g, s, sink, bh updates=*/"-", "-", "-", "-", /*wallclock_time=*/"-",
+        /*props=*/"-", /*dead_time=*/"-");
+#ifdef SWIFT_DEBUG_CHECKS
+    fflush(stdout);
+#endif
+
+    if (!e->restarting) {
+      fprintf(
+          e->file_rt_subcycles,
+          "  %6d %9d %14e %12.7f %12.7f %14e %4d %4d %12lld %21.3f %17.3f\n",
+          e->step, 0, time, e->cosmology->a, e->cosmology->z, dt_subcycle,
+          e->min_active_bin_subcycle, e->max_active_bin_subcycle, e->rt_updates,
+          /*wall-clock time=*/-1.f, /*deadtime=*/-1.f);
+    }
+#ifdef SWIFT_DEBUG_CHECKS
+    fflush(e->file_rt_subcycles);
+#endif
   }
 
   /* Take note of the (integer) time until which the radiative transfer
@@ -1841,32 +2072,87 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   for (int sub_cycle = 1; sub_cycle < nr_rt_cycles; ++sub_cycle) {
 
+    /* Keep track of the wall-clock time of each additional sub-cycle. */
+    struct clocks_time time1, time2;
+    clocks_gettime(&time1);
+
+    /* reset the deadtime information in the scheduler */
+    e->sched.deadtime.active_ticks = 0;
+    e->sched.deadtime.waiting_ticks = 0;
+
+    /* Set and re-set times, bins, etc. */
     e->rt_updates = 0ll;
     integertime_t ti_subcycle_old = e->ti_current_subcycle;
     e->ti_current_subcycle = e->ti_current + sub_cycle * rt_step_size;
     e->max_active_bin_subcycle = get_max_active_bin(e->ti_current_subcycle);
     e->min_active_bin_subcycle =
         get_min_active_bin(e->ti_current_subcycle, ti_subcycle_old);
-    /* think cosmology one day: needs adapting here */
-    if (e->policy & engine_policy_cosmology)
-      error("Can't run RT subcycling with cosmology yet");
-    time = e->ti_current_subcycle * e->time_base + e->time_begin;
+
+    /* Update rt properties */
+    rt_props_update(e->rt_props, e->internal_units, e->cosmology);
+
+    if (e->policy & engine_policy_cosmology) {
+      double time_old = time;
+      cosmology_update(
+          e->cosmology, e->physical_constants,
+          e->ti_current_subcycle);  // Update cosmological parameters
+      time = e->cosmology->time;    // Grab new cosmology time
+      dt_subcycle = time - time_old;
+    } else {
+      time = e->ti_current_subcycle * e->time_base + e->time_begin;
+    }
 
     /* Do the actual work now. */
     engine_unskip_rt_sub_cycle(e);
+    TIMER_TIC;
     engine_launch(e, "cycles");
+    TIMER_TOC(timer_runners);
+
+    /* Compute the local accumulated deadtime. */
+    const ticks deadticks = (e->nr_threads * e->sched.deadtime.waiting_ticks) -
+                            e->sched.deadtime.active_ticks;
+    e->local_deadtime = clocks_from_ticks(deadticks);
 
     /* Collect number of updates and print */
     engine_collect_end_of_sub_cycle(e);
 
+    /* Add our sub-cycling deadtime. */
+    global_deadtime_acc += e->global_deadtime;
+
+    /* Keep track how far we have integrated over. */
     rt_integration_end += rt_step_size;
 
     if (e->nodeID == 0) {
+
+      const double dead_time =
+          e->global_deadtime / (e->nr_nodes * e->nr_threads);
+
+      /* engine_step() stores the wallclock time in the engine struct.
+       * Don't do that here - we want the full step to include the full
+       * duration of the step, which includes all sub-cycles. (Also it
+       * would be overwritten anyway.) */
+      clocks_gettime(&time2);
+      const float wallclock_time = (float)clocks_diff(&time1, &time2);
+
       printf(
-          "  %6d cycle %3d time=%13.6e     dt=%14e "
-          "min/max active bin=%2d/%2d rt_updates=%18lld\n",
-          e->step, sub_cycle, time, dt_subcycle, e->min_active_bin_subcycle,
-          e->max_active_bin_subcycle, e->rt_updates);
+          " [rt-sc] %-4d %12e %11.6f %11.6f %13e %4d %4d %12lld %12s %12s "
+          "%12s %12s %21.3f %6s %17.3f\n",
+          sub_cycle, time, e->cosmology->a, e->cosmology->z, dt_subcycle,
+          e->min_active_bin_subcycle, e->max_active_bin_subcycle, e->rt_updates,
+          /*g, s, sink, bh updates=*/"-", "-", "-", "-", wallclock_time,
+          /*props=*/"-", dead_time);
+#ifdef SWIFT_DEBUG_CHECKS
+      fflush(stdout);
+#endif
+      fprintf(
+          e->file_rt_subcycles,
+          "  %6d %9d %14e %12.7f %12.7f %14e %4d %4d %12lld %21.3f %17.3f\n",
+          e->step, sub_cycle, time, e->cosmology->a, e->cosmology->z,
+          dt_subcycle, e->min_active_bin_subcycle, e->max_active_bin_subcycle,
+          e->rt_updates, wallclock_time, dead_time);
+#ifdef SWIFT_DEBUG_CHECKS
+      fflush(e->file_rt_subcycles);
+#endif
     }
   }
 
@@ -1879,6 +2165,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   /* Once we're done, clean up after ourselves */
   e->rt_updates = 0ll;
+  e->global_deadtime = global_deadtime_acc;
 }
 
 /**
@@ -1915,6 +2202,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->nodeID == 0) message("Setting particles to a valid state...");
   engine_first_init_particles(e);
 
+  /* Initialise the particle splitting mechanism */
+  if (e->hydro_properties->particle_splitting)
+    engine_init_split_gas_particles(e);
+
   if (e->nodeID == 0)
     message("Computing initial gas densities and approximate gravity.");
 
@@ -1949,8 +2240,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->pressure_floor_props, e->cooling_func,
-                   e->s);
+    cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
+                   e->cooling_func, e->s, e->time);
+
+  if (e->policy & engine_policy_rt)
+    rt_props_update(e->rt_props, e->internal_units, e->cosmology);
 
 #ifdef WITH_CSDS
   if (e->policy & engine_policy_csds) {
@@ -1968,6 +2262,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     csds_write_description(e->csds, e);
   }
 #endif
+
+  /* Zero the list of cells that have had their time-step updated */
+  bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
 
   /* Now, launch the calculation */
   TIMER_TIC;
@@ -1993,11 +2290,14 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
     /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */
     if (hydro_need_extra_init_loop) {
-      engine_marktasks(e);
+      engine_unskip(e);
       engine_skip_force_and_kick(e);
       engine_launch(e, "tasks");
     }
   }
+
+  /* Do some post initialisations */
+  space_post_init_parts(e->s, e->verbose);
 
   /* Apply some RT conversions (e.g. energy -> energy density) */
   if (e->policy & engine_policy_rt)
@@ -2054,10 +2354,18 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
+  /* Zero the list of cells that have had their time-step updated */
+  bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
+
   /* Run the 0th time-step */
   TIMER_TIC2;
   engine_launch(e, "tasks");
   TIMER_TOC2(timer_runners);
+
+  /* When running over MPI, synchronize top-level cells */
+#ifdef WITH_MPI
+  engine_synchronize_times(e);
+#endif
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
@@ -2076,6 +2384,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Check the accuracy of the stars calculation */
   if (e->policy & engine_policy_stars)
     stars_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
+#endif
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  /* Run the brute-force sink calculation for some sinks */
+  if (e->policy & engine_policy_sinks) sink_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the sink calculation */
+  if (e->policy & engine_policy_sinks)
+    sink_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -2190,12 +2507,12 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     for (int i = 0; i < s->nr_cells; i++) {
       struct cell *c = &s->cells_top[i];
       if (c->nodeID == engine_rank && c->sinks.count > 0) {
-        float sink_h_max = c->sinks.parts[0].r_cut;
+        float sink_h_max = c->sinks.parts[0].h;
         for (int k = 1; k < c->sinks.count; k++) {
-          if (c->sinks.parts[k].r_cut > sink_h_max)
-            sink_h_max = c->sinks.parts[k].r_cut;
+          if (c->sinks.parts[k].h > sink_h_max)
+            sink_h_max = c->sinks.parts[k].h;
         }
-        c->sinks.r_cut_max = max(sink_h_max, c->sinks.r_cut_max);
+        c->sinks.h_max = max(sink_h_max, c->sinks.h_max);
       }
     }
   }
@@ -2370,8 +2687,8 @@ int engine_step(struct engine *e) {
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->pressure_floor_props, e->cooling_func,
-                   e->s);
+    cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
+                   e->cooling_func, e->s, e->time);
 
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)
@@ -2381,6 +2698,10 @@ int engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  /* Update the rt properties */
+  if (e->policy & engine_policy_rt)
+    rt_props_update(e->rt_props, e->internal_units, e->cosmology);
 
   /* Check for any snapshot triggers */
   engine_io_check_snapshot_triggers(e);
@@ -2579,10 +2900,18 @@ int engine_step(struct engine *e) {
      want to lose the data from the tasks) */
   space_reset_ghost_histograms(e->s);
 
+  /* Zero the list of cells that have had their time-step updated */
+  bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
+
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
+
+  /* When running over MPI, synchronize top-level cells */
+#ifdef WITH_MPI
+  engine_synchronize_times(e);
+#endif
 
   /* Now record the CPU times used by the tasks. */
 #ifdef WITH_MPI
@@ -2610,6 +2939,15 @@ int engine_step(struct engine *e) {
   /* Check the accuracy of the stars calculation */
   if (e->policy & engine_policy_stars)
     stars_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
+#endif
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  /* Run the brute-force sink calculation for some sinks */
+  if (e->policy & engine_policy_sinks) sink_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the sink calculation */
+  if (e->policy & engine_policy_sinks)
+    sink_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -2920,8 +3258,9 @@ void engine_pin(void) {
   threadpool_set_affinity_mask(entry_affinity);
 
   int pin;
-  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin)
-    ;
+  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin) {
+    /* Nothing to do here */
+  }
 
   cpu_set_t affinity;
   CPU_ZERO(&affinity);
@@ -3058,6 +3397,7 @@ void engine_init(
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
+    const struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -3137,8 +3477,12 @@ void engine_init(
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
   e->snapshot_distributed =
       parser_get_opt_param_int(params, "Snapshots:distributed", 0);
-  e->snapshot_lustre_OST_count =
-      parser_get_opt_param_int(params, "Snapshots:lustre_OST_count", 0);
+  e->snapshot_lustre_OST_checks =
+      parser_get_opt_param_int(params, "Snapshots:lustre_OST_checks", 0);
+  e->snapshot_lustre_OST_free =
+      parser_get_opt_param_int(params, "Snapshots:lustre_OST_free", 0);
+  e->snapshot_lustre_OST_test =
+      parser_get_opt_param_int(params, "Snapshots:lustre_OST_test", 0);
   e->snapshot_invoke_stf =
       parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
   e->snapshot_invoke_fof =
@@ -3198,6 +3542,7 @@ void engine_init(
   e->mesh = mesh;
   e->power_data = pow_data;
   e->external_potential = potential;
+  e->forcing_terms = forcing_terms;
   e->cooling_func = cooling_func;
   e->star_formation = starform;
   e->feedback_props = feedback;
@@ -3506,6 +3851,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
     /* Apply the dimensionless factor */
     e->dt_max_RMS_displacement = dt * e->max_RMS_displacement_factor;
+    if (e->dt_max_RMS_displacement == 0.f) {
+      error("Setting dt_max_RMS_displacement to 0!");
+    }
 
     if (e->verbose)
       message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
@@ -3618,7 +3966,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   stats_free_mpi_type();
   proxy_free_mpi_type();
   task_free_mpi_comms();
-  mpicollect_free_MPI_type();
+  if (!fof) mpicollect_free_MPI_type();
 #endif
 
   /* Close files */
@@ -3629,6 +3977,10 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     if (e->policy & engine_policy_star_formation) {
       fclose(e->sfh_logger);
     }
+
+#ifndef RT_NONE
+    fclose(e->file_rt_subcycles);
+#endif
   }
 
   /* If the run was restarted, we should also free the memory allocated
@@ -3637,6 +3989,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->parameter_file);
     free((void *)e->output_options);
     free((void *)e->external_potential);
+    free((void *)e->forcing_terms);
     free((void *)e->black_holes_properties);
     free((void *)e->pressure_floor_props);
     free((void *)e->rt_props);
@@ -3711,6 +4064,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   pm_mesh_struct_dump(e->mesh, stream);
   power_spectrum_struct_dump(e->power_data, stream);
   potential_struct_dump(e->external_potential, stream);
+  forcing_terms_struct_dump(e->forcing_terms, stream);
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
   feedback_struct_dump(e->feedback_props, stream);
@@ -3826,6 +4180,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   potential_struct_restore(external_potential, stream);
   e->external_potential = external_potential;
 
+  struct forcing_terms *forcing_terms =
+      (struct forcing_terms *)malloc(sizeof(struct forcing_terms));
+  forcing_terms_struct_restore(forcing_terms, stream);
+  e->forcing_terms = forcing_terms;
+
   struct cooling_function_data *cooling_func =
       (struct cooling_function_data *)malloc(
           sizeof(struct cooling_function_data));
@@ -3851,7 +4210,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   struct rt_props *rt_properties =
       (struct rt_props *)malloc(sizeof(struct rt_props));
   rt_struct_restore(rt_properties, stream, e->physical_constants,
-                    e->internal_units);
+                    e->internal_units, cosmo);
   e->rt_props = rt_properties;
 
   struct black_holes_props *black_holes_properties =

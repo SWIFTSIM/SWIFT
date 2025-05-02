@@ -44,7 +44,6 @@
 #include "cycle.h"
 #include "engine.h"
 #include "error.h"
-#include "intrinsics.h"
 #include "kernel_hydro.h"
 #include "memuse.h"
 #include "mpiuse.h"
@@ -52,6 +51,7 @@
 #include "sort_part.h"
 #include "space.h"
 #include "space_getsid.h"
+#include "swift_intrinsics.h"
 #include "task.h"
 #include "threadpool.h"
 #include "timers.h"
@@ -77,8 +77,9 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
     error("Failed to re-allocate unlocks.");
 
   /* Wait for all writes to the old buffer to complete. */
-  while (s->completed_unlock_writes < s->size_unlocks)
-    ;
+  while (s->completed_unlock_writes < s->size_unlocks) {
+    /* Nothing to do here. */
+  }
 
   /* Copy the buffers. */
   memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->size_unlocks);
@@ -119,8 +120,9 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 #endif
 
   /* Wait for there to actually be space at my index. */
-  while (ind > s->size_unlocks)
-    ;
+  while (ind > s->size_unlocks) {
+    /* Nothing to do here. */
+  }
 
   /* Guard against case when more than (old) s->size_unlocks unlocks
    * are now pending. */
@@ -1277,10 +1279,10 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         break;
       }
 
-      /* Get the sort ID, use space_getsid and not t->flags
+      /* Get the sort ID, use space_getsid_and_swap_cells and not t->flags
          to make sure we get ci and cj swapped if needed. */
       double shift[3];
-      const int sid = space_getsid(s->space, &ci, &cj, shift);
+      const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (sid != t->flags)
@@ -1370,11 +1372,12 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                     scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
                                       ci->progeny[j], cj->progeny[k]);
                 scheduler_splittask_hydro(tl, s);
-                tl->flags = space_getsid(s->space, &t->ci, &t->cj, shift);
+                tl->flags = space_getsid_and_swap_cells(s->space, &t->ci,
+                                                        &t->cj, shift);
               }
       }
     } /* pair interaction? */
-  }   /* iterate over the current task. */
+  } /* iterate over the current task. */
 }
 
 /**
@@ -1449,9 +1452,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                         s);
 
           } /* Self-gravity only */
-        }   /* Make tasks explicitly */
-      }     /* Cell is split */
-    }       /* Self interaction */
+        } /* Make tasks explicitly */
+      } /* Cell is split */
+    } /* Self interaction */
 
     /* Pair interaction? */
     else if (t->type == task_type_pair) {
@@ -1524,7 +1527,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         } /* Split the pair */
       }
     } /* pair interaction? */
-  }   /* iterate over the current task. */
+  } /* iterate over the current task. */
 }
 
 /**
@@ -1746,33 +1749,92 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   return t;
 }
 
-/**
- * @brief Set the unlock pointers in each task.
- *
- * @param s The #scheduler.
- */
-void scheduler_set_unlocks(struct scheduler *s) {
-  /* Store the counts for each task. */
+struct unlock_extra_data {
+  struct scheduler *s;
   int *counts;
-  if ((counts = (int *)swift_malloc("counts", sizeof(int) * s->nr_tasks)) ==
-      NULL)
-    error("Failed to allocate temporary counts array.");
-  bzero(counts, sizeof(int) * s->nr_tasks);
-  for (int k = 0; k < s->nr_unlocks; k++) {
-    counts[s->unlock_ind[k]] += 1;
+  int *offsets;
+  struct task **unlocks;
+  struct task **scheduler_unlocks;
+};
+
+/**
+ * @brief Cound the number of tasks unlocking each task
+ *
+ * @param map_data the index of unlocks in this pool thread.
+ * @param num_elements the number of indexes in this pool thread
+ * @param extra_data The scheduler and the count array.
+ */
+void scheduler_set_unlock_counts_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
+
+  struct unlock_extra_data *data = (struct unlock_extra_data *)extra_data;
+  int *counts = (int *)data->counts;
+  struct scheduler *s = data->s;
+  int *volatile unlock_ind = (int *)map_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    atomic_inc(&counts[unlock_ind[k]]);
 
     /* Check that we are not overflowing */
-    if (counts[s->unlock_ind[k]] < 0)
+    if (counts[unlock_ind[k]] < 0)
       error(
           "Task (type=%s/%s) unlocking more than %lld other tasks!\n"
           "This likely a result of having tasks at vastly different levels"
           "in the tree.\nYou may want to play with the 'Scheduler' "
           "parameters to modify the task splitting strategy and reduce"
           "the difference in task depths.",
-          taskID_names[s->tasks[s->unlock_ind[k]].type],
-          subtaskID_names[s->tasks[s->unlock_ind[k]].subtype],
+          taskID_names[s->tasks[unlock_ind[k]].type],
+          subtaskID_names[s->tasks[unlock_ind[k]].subtype],
           (1LL << (8 * sizeof(int) - 1)) - 1);
   }
+}
+
+/**
+ * @brief Cound the number of tasks unlocking each task
+ *
+ * @param map_data the index of unlocks in this pool thread.
+ * @param num_elements the number of indexes in this pool thread
+ * @param extra_data The scheduler and the list of offsets
+ */
+void scheduler_set_unlock_sorts_mapper(void *map_data, int num_elements,
+                                       void *extra_data) {
+
+  struct unlock_extra_data *data = (struct unlock_extra_data *)extra_data;
+  const struct scheduler *s = data->s;
+  struct task **unlocks = data->unlocks;
+  int *volatile offsets = data->offsets;
+  int *unlock_ind = (int *)map_data;
+  const size_t delta = unlock_ind - s->unlock_ind;
+
+  for (int k = 0; k < num_elements; k++) {
+    const int ind = unlock_ind[k];
+    unlocks[atomic_inc(&offsets[ind])] = s->unlocks[k + delta];
+  }
+}
+
+/**
+ * @brief Set the unlock pointers in each task.
+ *
+ * @param s The #scheduler.
+ * @param tp the #threadpool.
+ */
+void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp) {
+
+  /* Temporary extra data for the threadpool */
+  struct unlock_extra_data extra_data;
+
+  /* Store the counts for each task. */
+  int *counts;
+  if ((counts = (int *)swift_malloc("counts", sizeof(int) * s->nr_tasks)) ==
+      NULL)
+    error("Failed to allocate temporary counts array.");
+  bzero(counts, sizeof(int) * s->nr_tasks);
+
+  extra_data.s = s;
+  extra_data.counts = counts;
+  threadpool_map(tp, scheduler_set_unlock_counts_mapper, s->unlock_ind,
+                 s->nr_unlocks, sizeof(int), threadpool_auto_chunk_size,
+                 &extra_data);
 
   /* Compute the offset for each unlock block. */
   int *offsets;
@@ -1794,11 +1856,12 @@ void scheduler_set_unlocks(struct scheduler *s) {
   if ((unlocks = (struct task **)swift_malloc(
            "unlocks", sizeof(struct task *) * s->size_unlocks)) == NULL)
     error("Failed to allocate temporary unlocks array.");
-  for (int k = 0; k < s->nr_unlocks; k++) {
-    const int ind = s->unlock_ind[k];
-    unlocks[offsets[ind]] = s->unlocks[k];
-    offsets[ind] += 1;
-  }
+
+  extra_data.offsets = offsets;
+  extra_data.unlocks = unlocks;
+  threadpool_map(tp, scheduler_set_unlock_sorts_mapper, s->unlock_ind,
+                 s->nr_unlocks, sizeof(int), threadpool_auto_chunk_size,
+                 &extra_data);
 
   /* Swap the unlocks. */
   swift_free("unlocks", s->unlocks);
@@ -2001,7 +2064,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                  t->subtype == task_subtype_stars_prep2 ||
                  t->subtype == task_subtype_stars_feedback)
           cost = 1.f * wscale * scount_i * count_i;
-        else if (t->subtype == task_subtype_sink_swallow ||
+        else if (t->subtype == task_subtype_sink_density ||
+                 t->subtype == task_subtype_sink_swallow ||
                  t->subtype == task_subtype_sink_do_gas_swallow)
           cost = 1.f * wscale * count_i * sink_count_i;
         else if (t->subtype == task_subtype_sink_do_sink_swallow)
@@ -2047,7 +2111,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
                    sid_scale[t->flags];
 
-        } else if (t->subtype == task_subtype_sink_swallow ||
+        } else if (t->subtype == task_subtype_sink_density ||
+                   t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_do_gas_swallow) {
           if (t->ci->nodeID != nodeID)
             cost = 3.f * wscale * count_i * sink_count_j * sid_scale[t->flags];
@@ -2123,7 +2188,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
           }
 
-        } else if (t->subtype == task_subtype_sink_swallow ||
+        } else if (t->subtype == task_subtype_sink_density ||
+                   t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_do_gas_swallow) {
           if (t->ci->nodeID != nodeID) {
             cost =
@@ -2192,7 +2258,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             t->subtype == task_subtype_stars_prep2 ||
             t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
-        } else if (t->subtype == task_subtype_sink_swallow ||
+        } else if (t->subtype == task_subtype_sink_density ||
+                   t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_do_gas_swallow) {
           cost = 1.f * (wscale * sink_count_i) * count_i;
         } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
@@ -2233,6 +2300,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_bh_swallow_ghost2:
         if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
+        break;
+      case task_type_sink_density_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * sink_count_i;
         break;
       case task_type_drift_part:
         cost = wscale * count_i;
@@ -2581,7 +2651,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
-          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
+          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
+          buff = t->buff = malloc(count);
+
+        } else if (t->subtype == task_subtype_grav_counts) {
+
+          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
           buff = t->buff = malloc(count);
 
         } else {
@@ -2677,9 +2752,15 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
-          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
+          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
           buff = t->buff = malloc(size);
-          cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
+          cell_pack_sf_counts(t->ci, (struct pcell_sf_stars *)t->buff);
+
+        } else if (t->subtype == task_subtype_grav_counts) {
+
+          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
+          buff = t->buff = malloc(size);
+          cell_pack_grav_counts(t->ci, (struct pcell_sf_grav *)t->buff);
 
         } else {
           error("Unknown communication sub-type");
@@ -2812,6 +2893,77 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
 }
 
 /**
+ * Take note of the time at which a task was successfully fetched from the
+ * queue.
+ *
+ * @param s The #scheduler.
+ */
+void scheduler_mark_last_fetch(struct scheduler *s) {
+
+#if defined(SWIFT_DEBUG_CHECKS)
+  if (s->deadlock_waiting_time_ms <= 0.f) return;
+
+  ticks now = getticks();
+  ticks last = s->last_successful_task_fetch;
+  while (atomic_cas(&s->last_successful_task_fetch, last, now) != last) {
+    now = getticks();
+    last = s->last_successful_task_fetch;
+  }
+#endif
+}
+
+/**
+ * Abort the run if you're stuck doing nothing for too long.
+ * This function is intended to abort the mission if you're
+ * deadlocked somewhere and somehow. You might get core dumps
+ * this way. Alternatively, you might manually set a breakpoint
+ * with gdb when this function is called.
+ *
+ * @param s The #scheduler.
+ */
+void scheduler_check_deadlock(struct scheduler *s) {
+
+#if defined(SWIFT_DEBUG_CHECKS)
+  if (s->deadlock_waiting_time_ms <= 0.f) return;
+
+  /* lock_lock(&s->last_task_fetch_lock); */
+  ticks now = getticks();
+  ticks last = s->last_successful_task_fetch;
+
+  if (last == 0LL) {
+    /* Ensure that the first check each engine_launch doesn't fail. There is no
+     * guarantee how long it will take from the point where
+     * last_successful_task_fetch was reset to get to this point. A poorly
+     * chosen scheduler->deadlock_waiting_time_ms may abort a big run in places
+     * where there is no deadlock. Better safe than sorry, so at start-up, the
+     * last successful task fetch time is marked as 0. So we just exit without
+     * checking the time. */
+    while (atomic_cas(&s->last_successful_task_fetch, last, now) != last) {
+      now = getticks();
+      last = s->last_successful_task_fetch;
+    }
+    return;
+  }
+
+  /* ticks on different CPUs may disagree a bit. So we may end up
+   * with last > now, and consequently negative idle time, which
+   * then overflows unsigned long longs and gives false positives. */
+  const ticks big = max(now, last);
+  const ticks small = min(now, last);
+  const double idle_time = clocks_diff_ticks(big, small);
+
+  if (idle_time > s->deadlock_waiting_time_ms) {
+    message(
+        "Detected what looks like a deadlock after %g ms of no new task being "
+        "fetched from queues. Dumping diagnostic data.",
+        idle_time);
+    engine_dump_diagnostic_data(s->e);
+    error("Aborting now.");
+  }
+#endif
+}
+
+/**
  * @brief Get a task, preferably from the given queue.
  *
  * @param s The #scheduler.
@@ -2854,10 +3006,11 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
           TIMER_TIC
           res = queue_gettask(&s->queues[qids[ind]], prev, 0);
           TIMER_TOC(timer_qsteal);
-          if (res != NULL)
+          if (res != NULL) {
             break;
-          else
+          } else {
             qids[ind] = qids[--count];
+          }
         }
         if (res != NULL) break;
       }
@@ -2877,10 +3030,13 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       }
       pthread_mutex_unlock(&s->sleep_mutex);
     }
+
+    scheduler_check_deadlock(s);
   }
 
-  /* Start the timer on this task, if we got one. */
   if (res != NULL) {
+    scheduler_mark_last_fetch(s);
+    /* Start the timer on this task, if we got one. */
     res->tic = getticks();
 #ifdef SWIFT_DEBUG_TASKS
     res->rid = qid;
@@ -2943,6 +3099,11 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->tasks = NULL;
   s->tasks_ind = NULL;
   scheduler_reset(s, nr_tasks);
+
+#if defined(SWIFT_DEBUG_CHECKS)
+  s->e = space->e;
+  s->last_successful_task_fetch = 0LL;
+#endif
 }
 
 /**

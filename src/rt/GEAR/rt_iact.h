@@ -19,6 +19,7 @@
 #ifndef SWIFT_RT_IACT_GEAR_H
 #define SWIFT_RT_IACT_GEAR_H
 
+#include "fvpm_geometry.h"
 #include "rt_debugging.h"
 #include "rt_flux.h"
 #include "rt_gradients.h"
@@ -44,7 +45,7 @@
  */
 
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
+runner_iact_nonsym_rt_injection_prep(const float r2, const float dx[3],
                                      const float hi, const float hj,
                                      struct spart *si, const struct part *pj,
                                      const struct cosmology *cosmo,
@@ -96,9 +97,9 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
  * @param rt_props Properties of the RT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
-    const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H,
-    const struct rt_props *rt_props) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *restrict si, struct part *restrict pj, const float a,
+    const float H, const struct rt_props *rt_props) {
 
   /* If the star doesn't have any neighbours, we
    * have nothing to do here. */
@@ -206,8 +207,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
  * @param mode 0 if non-symmetric interaction, 1 if symmetric
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H, int mode) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, int mode) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   const char *func_name = (mode == 1) ? "sym flux iact" : "nonsym flux iact";
@@ -254,8 +256,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
   /* eqn. (7) */
   float Anorm2 = 0.0f;
   float A[3];
-  if (hydro_part_geometry_well_behaved(pi) &&
-      hydro_part_geometry_well_behaved(pj)) {
+  if (fvpm_part_geometry_well_behaved(pi) &&
+      fvpm_part_geometry_well_behaved(pj)) {
     /* in principle, we use Vi and Vj as weights for the left and right
      * contributions to the generalized surface vector.
      * However, if Vi and Vj are very different (because they have very
@@ -387,8 +389,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   runner_iact_rt_flux_common(r2, dx, hi, hj, pi, pj, a, H, 1);
 }
@@ -410,9 +413,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_rt_transport(float r2, const float *dx, float hi, float hj,
+runner_iact_nonsym_rt_transport(const float r2, const float dx[3],
+                                const float hi, const float hj,
                                 struct part *restrict pi,
-                                struct part *restrict pj, float a, float H) {
+                                struct part *restrict pj, const float a,
+                                const float H) {
 
   runner_iact_rt_flux_common(r2, dx, hi, hj, pi, pj, a, H, 0);
 }
@@ -434,8 +439,9 @@ runner_iact_nonsym_rt_transport(float r2, const float *dx, float hi, float hj,
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   rt_gradients_collect(r2, dx, hi, hj, pi, pj);
 }
@@ -458,9 +464,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_rt_gradient(float r2, const float *dx, float hi, float hj,
+runner_iact_nonsym_rt_gradient(const float r2, const float dx[3],
+                               const float hi, const float hj,
                                struct part *restrict pi,
-                               struct part *restrict pj, float a, float H) {
+                               struct part *restrict pj, const float a,
+                               const float H) {
 
   rt_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
 }

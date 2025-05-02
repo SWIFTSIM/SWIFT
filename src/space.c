@@ -72,6 +72,19 @@ int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
+int space_grid_split_threshold = space_grid_split_threshold_default;
+
+/* Recursion sizes */
+int space_recurse_size_self_hydro = space_recurse_size_self_hydro_default;
+int space_recurse_size_pair_hydro = space_recurse_size_pair_hydro_default;
+int space_recurse_size_self_stars = space_recurse_size_self_stars_default;
+int space_recurse_size_pair_stars = space_recurse_size_pair_stars_default;
+int space_recurse_size_self_black_holes =
+    space_recurse_size_self_black_holes_default;
+int space_recurse_size_pair_black_holes =
+    space_recurse_size_pair_black_holes_default;
+int space_recurse_size_self_sinks = space_recurse_size_self_sinks_default;
+int space_recurse_size_pair_sinks = space_recurse_size_pair_sinks_default;
 
 /*! Number of extra #part we allocate memory for per top-level cell */
 int space_extra_parts = space_extra_parts_default;
@@ -149,6 +162,11 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
     s->size_bparts_foreign = 0;
     s->bparts_foreign = NULL;
   }
+  if (s->sinks_foreign != NULL) {
+    swift_free("sinks_foreign", s->sinks_foreign);
+    s->size_sinks_foreign = 0;
+    s->sinks_foreign = NULL;
+  }
   if (clear_cell_pointers) {
     for (int k = 0; k < s->e->nr_proxies; k++) {
       for (int j = 0; j < s->e->proxies[k].nr_cells_in; j++) {
@@ -180,7 +198,7 @@ void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
 
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells[ind]];
-    cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks);
+    cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks, s->bparts);
   }
 }
 
@@ -455,6 +473,9 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
 
+      /* This allocation is never correctly freed, that is ok. */
+      swift_ignore_leak(s->cells_sub[tpid]);
+
       /* Clear the newly-allocated cells. */
       bzero(s->cells_sub[tpid], sizeof(struct cell) * space_cellallocchunk);
 
@@ -503,6 +524,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     cells[j]->nodeID = -1;
     cells[j]->tpid = tpid;
     if (lock_init(&cells[j]->hydro.lock) != 0 ||
+        lock_init(&cells[j]->hydro.extra_sort_lock) != 0 ||
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||
@@ -844,6 +866,58 @@ void space_convert_rt_quantities(struct space *s, int verbose) {
             clocks_getunit());
 }
 
+void space_post_init_parts_mapper(void *restrict map_data, int count,
+                                  void *restrict extra_data) {
+  struct space *s = (struct space *)extra_data;
+  const struct engine *restrict e = s->e;
+
+  const struct hydro_props *restrict hydro_props = e->hydro_properties;
+  const struct phys_const *restrict phys_const = e->physical_constants;
+  const struct unit_system *us = s->e->internal_units;
+  const struct cosmology *restrict cosmo = e->cosmology;
+  const struct cooling_function_data *cool_func = e->cooling_func;
+
+  struct part *restrict p = (struct part *)map_data;
+  const ptrdiff_t delta = p - s->parts;
+  struct xpart *restrict xp = s->xparts + delta;
+
+  /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
+   * creation
+   * Here we can initialize the cooling properties of the (x-)particles
+   * using quantities (like the density) defined only after the neighbour loop.
+   *
+   * */
+
+  for (int k = 0; k < count; k++) {
+    cooling_post_init_part(phys_const, us, hydro_props, cosmo, cool_func, &p[k],
+                           &xp[k]);
+  }
+}
+
+/**
+ * @brief Calls the #part post-initialisation function on all particles in the
+ * space.
+ * Here we can initialize the cooling properties of the (x-)particles
+ * using quantities (like the density) defined only after the initial neighbour
+ * loop.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_post_init_parts(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  if (s->nr_parts > 0)
+    threadpool_map(&s->e->threadpool, space_post_init_parts_mapper, s->parts,
+                   s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                   s);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
 void space_collect_sum_part_mass(void *restrict map_data, int count,
                                  void *restrict extra_data) {
 
@@ -943,7 +1017,7 @@ void space_collect_sum_bpart_mass(void *restrict map_data, int count,
 }
 
 /**
- * @breif Collect the mean mass of each particle type in the #space.
+ * @brief Collect the mean mass of each particle type in the #space.
  */
 void space_collect_mean_masses(struct space *s, int verbose) {
 
@@ -1191,9 +1265,37 @@ void space_init(struct space *s, struct swift_params *params,
                                space_subsize_self_grav_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
+  space_grid_split_threshold = parser_get_opt_param_int(
+      params, "Scheduler:grid_split_threshold", space_grid_split_threshold);
   space_subdepth_diff_grav =
       parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                space_subdepth_diff_grav_default);
+
+  space_recurse_size_self_hydro =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_self_hydro",
+                               space_recurse_size_self_hydro_default);
+  space_recurse_size_pair_hydro =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_pair_hydro",
+                               space_recurse_size_pair_hydro_default);
+  space_recurse_size_self_stars =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_self_stars",
+                               space_recurse_size_self_stars_default);
+  space_recurse_size_pair_stars =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_pair_stars",
+                               space_recurse_size_pair_stars_default);
+  space_recurse_size_self_black_holes = parser_get_opt_param_int(
+      params, "Scheduler:cell_recurse_size_self_black_holes",
+      space_recurse_size_self_black_holes_default);
+  space_recurse_size_pair_black_holes = parser_get_opt_param_int(
+      params, "Scheduler:cell_recurse_size_pair_black_holes",
+      space_recurse_size_pair_black_holes_default);
+  space_recurse_size_self_sinks =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_self_sinks",
+                               space_recurse_size_self_sinks_default);
+  space_recurse_size_pair_sinks =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_pair_sinks",
+                               space_recurse_size_pair_sinks_default);
+
   space_extra_parts = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_parts", space_extra_parts_default);
   space_extra_sparts = parser_get_opt_param_int(
@@ -1614,8 +1716,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 
   if (verbose) message("Remapping all the IDs");
 
-  size_t local_nr_dm_background = 0;
-  size_t local_nr_nuparts = 0;
+  long long local_nr_dm_background = 0;
+  long long local_nr_nuparts = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     if (s->gparts[i].type == swift_type_neutrino)
       local_nr_nuparts++;
@@ -1624,17 +1726,17 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   }
 
   /* Get the current local number of particles */
-  const size_t local_nr_parts = s->nr_parts;
-  const size_t local_nr_sinks = s->nr_sinks;
-  const size_t local_nr_gparts = s->nr_gparts;
-  const size_t local_nr_sparts = s->nr_sparts;
-  const size_t local_nr_bparts = s->nr_bparts;
-  const size_t local_nr_baryons =
+  long long local_nr_parts = s->nr_parts;
+  long long local_nr_sinks = s->nr_sinks;
+  long long local_nr_gparts = s->nr_gparts;
+  long long local_nr_sparts = s->nr_sparts;
+  long long local_nr_bparts = s->nr_bparts;
+  long long local_nr_baryons =
       local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
-  const size_t local_nr_dm = local_nr_gparts > 0
-                                 ? local_nr_gparts - local_nr_baryons -
-                                       local_nr_nuparts - local_nr_dm_background
-                                 : 0;
+  long long local_nr_dm = local_nr_gparts > 0
+                              ? local_nr_gparts - local_nr_baryons -
+                                    local_nr_nuparts - local_nr_dm_background
+                              : 0;
 
   /* Get the global offsets */
   long long offset_parts = 0;
@@ -1700,21 +1802,21 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
                 total_bparts + total_nuparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
-  for (size_t i = 0; i < local_nr_parts; ++i) {
+  for (long long i = 0; i < local_nr_parts; ++i) {
     s->parts[i].id = offset_parts + i;
   }
-  for (size_t i = 0; i < local_nr_sinks; ++i) {
+  for (long long i = 0; i < local_nr_sinks; ++i) {
     s->sinks[i].id = offset_sinks + i;
   }
-  for (size_t i = 0; i < local_nr_sparts; ++i) {
+  for (long long i = 0; i < local_nr_sparts; ++i) {
     s->sparts[i].id = offset_sparts + i;
   }
-  for (size_t i = 0; i < local_nr_bparts; ++i) {
+  for (long long i = 0; i < local_nr_bparts; ++i) {
     s->bparts[i].id = offset_bparts + i;
   }
-  size_t count_dm = 0;
-  size_t count_dm_background = 0;
-  size_t count_nu = 0;
+  long long count_dm = 0;
+  long long count_dm_background = 0;
+  long long count_nu = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     if (s->gparts[i].type == swift_type_dark_matter) {
       s->gparts[i].id_or_neg_offset = offset_dm + count_dm;
@@ -2122,6 +2224,8 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
   space_map_cells_pre(s, 1, cell_check_part_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_gpart_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_spart_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_bpart_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_sink_drift_point, &ti_drift);
   if (multipole)
     space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
 #else
@@ -2269,6 +2373,55 @@ void space_check_bpart_swallow_mapper(void *map_data, int nr_bparts,
 }
 
 /**
+ * @brief #threadpool mapper function for the swallow debugging check
+ */
+void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
+                                          void *extra_data) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Unpack the data */
+  struct part *restrict parts = (struct part *)map_data;
+
+  /* Verify that all particles have been swallowed or are untouched */
+  for (int k = 0; k < nr_parts; k++) {
+
+    if (parts[k].time_bin == time_bin_inhibited) continue;
+
+    const long long swallow_id = sink_get_part_swallow_id(&parts[k].sink_data);
+
+    if (swallow_id != -1)
+      error("Particle has not been swallowed! id=%lld", parts[k].id);
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief #threadpool mapper function for the swallow debugging check
+ */
+void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
+                                          void *extra_data) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Unpack the data */
+  struct sink *restrict sinks = (struct sink *)map_data;
+
+  /* Verify that all particles have been swallowed or are untouched */
+  for (int k = 0; k < nr_sinks; k++) {
+
+    if (sinks[k].time_bin == time_bin_inhibited) continue;
+
+    const long long swallow_id =
+        sink_get_sink_swallow_id(&sinks[k].merger_data);
+
+    if (swallow_id != -1)
+      error("Sink particle has not been swallowed! id=%lld", sinks[k].id);
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
  * @brief Checks that all particles have their swallow flag in a "no swallow"
  * state.
  *
@@ -2285,6 +2438,16 @@ void space_check_swallow(struct space *s) {
 
   threadpool_map(&s->e->threadpool, space_check_bpart_swallow_mapper, s->bparts,
                  s->nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
+                 /*extra_data=*/NULL);
+
+  threadpool_map(&s->e->threadpool, space_check_part_sink_swallow_mapper,
+                 s->parts, s->nr_parts, sizeof(struct part),
+                 threadpool_auto_chunk_size,
+                 /*extra_data=*/NULL);
+
+  threadpool_map(&s->e->threadpool, space_check_sink_sink_swallow_mapper,
+                 s->sinks, s->nr_sinks, sizeof(struct sink),
+                 threadpool_auto_chunk_size,
                  /*extra_data=*/NULL);
 #else
   error("Calling debugging code without debugging flag activated.");
@@ -2361,12 +2524,30 @@ void space_after_snap_tracer(struct space *s, int verbose) {
 }
 
 /**
+ * @brief Marks a top-level cell as having been updated by one of the
+ * time-step updating tasks.
+ */
+void space_mark_cell_as_updated(struct space *s, const struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c != c->top) error("Function can only be called at the top level!");
+#endif
+
+  /* Get the offest into the top-level cell array */
+  const size_t delta = c - s->cells_top;
+
+  /* Mark as updated */
+  atomic_inc(&s->cells_top_updated[delta]);
+}
+
+/**
  * @brief Frees up the memory allocated for this #space
  */
 void space_clean(struct space *s) {
 
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
   swift_free("cells_top", s->cells_top);
+  swift_free("cells_top_updated", s->cells_top_updated);
   swift_free("multipoles_top", s->multipoles_top);
   swift_free("local_cells_top", s->local_cells_top);
   swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
@@ -2384,6 +2565,7 @@ void space_clean(struct space *s) {
   swift_free("sparts_foreign", s->sparts_foreign);
   swift_free("gparts_foreign", s->gparts_foreign);
   swift_free("bparts_foreign", s->bparts_foreign);
+  swift_free("sinks_foreign", s->sinks_foreign);
 #endif
   free(s->cells_sub);
   free(s->multipoles_sub);
@@ -2409,6 +2591,9 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "space_splitsize", "space_splitsize");
   restart_write_blocks(&space_maxsize, sizeof(int), 1, stream, "space_maxsize",
                        "space_maxsize");
+  restart_write_blocks(&space_grid_split_threshold, sizeof(int), 1, stream,
+                       "space_grid_split_threshold",
+                       "space_grid_split_threshold");
   restart_write_blocks(&space_subsize_pair_hydro, sizeof(int), 1, stream,
                        "space_subsize_pair_hydro", "space_subsize_pair_hydro");
   restart_write_blocks(&space_subsize_self_hydro, sizeof(int), 1, stream,
@@ -2433,6 +2618,30 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "space_extra_sparts", "space_extra_sparts");
   restart_write_blocks(&space_extra_bparts, sizeof(int), 1, stream,
                        "space_extra_bparts", "space_extra_bparts");
+  restart_write_blocks(&space_recurse_size_self_hydro, sizeof(int), 1, stream,
+                       "space_recurse_size_self_hydro",
+                       "space_recurse_size_self_hydro");
+  restart_write_blocks(&space_recurse_size_pair_hydro, sizeof(int), 1, stream,
+                       "space_recurse_size_pair_hydro",
+                       "space_recurse_size_pair_hydro");
+  restart_write_blocks(&space_recurse_size_self_stars, sizeof(int), 1, stream,
+                       "space_recurse_size_self_stars",
+                       "space_recurse_size_self_stars");
+  restart_write_blocks(&space_recurse_size_pair_stars, sizeof(int), 1, stream,
+                       "space_recurse_size_pair_stars",
+                       "space_recurse_size_pair_stars");
+  restart_write_blocks(&space_recurse_size_self_black_holes, sizeof(int), 1,
+                       stream, "space_recurse_size_self_black_holes",
+                       "space_recurse_size_self_black_holes");
+  restart_write_blocks(&space_recurse_size_pair_black_holes, sizeof(int), 1,
+                       stream, "space_recurse_size_pair_black_holes",
+                       "space_recurse_size_pair_black_holes");
+  restart_write_blocks(&space_recurse_size_self_sinks, sizeof(int), 1, stream,
+                       "space_recurse_size_self_sinks",
+                       "space_recurse_size_self_sinks");
+  restart_write_blocks(&space_recurse_size_pair_sinks, sizeof(int), 1, stream,
+                       "space_recurse_size_pair_sinks",
+                       "space_recurse_size_pair_sinks");
   restart_write_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                        "space_expected_max_nr_strays",
                        "space_expected_max_nr_strays");
@@ -2494,6 +2703,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_splitsize");
   restart_read_blocks(&space_maxsize, sizeof(int), 1, stream, NULL,
                       "space_maxsize");
+  restart_read_blocks(&space_grid_split_threshold, sizeof(int), 1, stream, NULL,
+                      "space_grid_split_threshold");
   restart_read_blocks(&space_subsize_pair_hydro, sizeof(int), 1, stream, NULL,
                       "space_subsize_pair_hydro");
   restart_read_blocks(&space_subsize_self_hydro, sizeof(int), 1, stream, NULL,
@@ -2518,6 +2729,22 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_extra_sparts");
   restart_read_blocks(&space_extra_bparts, sizeof(int), 1, stream, NULL,
                       "space_extra_bparts");
+  restart_read_blocks(&space_recurse_size_self_hydro, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_self_hydro");
+  restart_read_blocks(&space_recurse_size_pair_hydro, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_pair_hydro");
+  restart_read_blocks(&space_recurse_size_self_stars, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_self_stars");
+  restart_read_blocks(&space_recurse_size_pair_stars, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_pair_stars");
+  restart_read_blocks(&space_recurse_size_self_black_holes, sizeof(int), 1,
+                      stream, NULL, "space_recurse_size_self_black_holes");
+  restart_read_blocks(&space_recurse_size_pair_black_holes, sizeof(int), 1,
+                      stream, NULL, "space_recurse_size_pair_black_holes");
+  restart_read_blocks(&space_recurse_size_self_sinks, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_self_sinks");
+  restart_read_blocks(&space_recurse_size_pair_sinks, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_pair_sinks");
   restart_read_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                       NULL, "space_expected_max_nr_strays");
   restart_read_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream, NULL,
@@ -2535,6 +2762,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;
+  s->cells_top_updated = NULL;
   s->cells_sub = NULL;
   s->multipoles_top = NULL;
   s->multipoles_sub = NULL;
@@ -2553,6 +2781,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->size_sparts_foreign = 0;
   s->bparts_foreign = NULL;
   s->size_bparts_foreign = 0;
+  s->sinks_foreign = NULL;
+  s->size_sinks_foreign = 0;
 #endif
 
   /* More things to read. */
@@ -2669,9 +2899,10 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
 
   /* Write line for current cell */
   fprintf(f, "%lld,%lld,%i,", c->cellID, parent, c->nodeID);
-  fprintf(f, "%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
-          c->stars.count, c->grav.count, superID, hydro_superID, c->loc[0],
-          c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
+  fprintf(f, "%i,%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
+          c->stars.count, c->grav.count, c->sinks.count, superID, hydro_superID,
+          c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
+          c->width[2]);
   fprintf(f, "%g, %g, %i, %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
           c->maxdepth);
 
@@ -2703,7 +2934,7 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
   if (engine_rank == 0) {
     fprintf(f, "name,parent,mpi_rank,");
     fprintf(f,
-            "hydro_count,stars_count,gpart_count,super,hydro_super,"
+            "hydro_count,stars_count,gpart_count,sinks_count,super,hydro_super,"
             "loc1,loc2,loc3,width1,width2,width3,");
     fprintf(f, "hydro_h_max,stars_h_max,depth,maxdepth\n");
 

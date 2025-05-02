@@ -15,11 +15,14 @@ different resolution and different central temperatures.
 
 The code should be configured using a NFW profile and the desired subgrid
 models:
-./configure --with-ext-potential=nfw --enable-fixed-boundary-particles=2
+./configure --with-subgrid=x --with-ext-potential=nfw 
+--enable-fixed-boundary-particles=2
+where x is EAGLE if the desired subgrid model is similar to that used in
+Nobels et al. (2022) and SPIN_JET_EAGLE for the model used in Husko et al. 
+(2022), which has jet AGN feedback instead of thermal isotropic feedback.
 
-The first argument sets the external potential to an NFW profile and the 
-second argument pins the supermassive BH of the simulation to the centre
-of the halo.
+The remaining arguments set the external potential to an NFW profile and pin
+the supermassive BH of the simulation to the centre of the halo.
 
 These ICs are ideal for testing galaxy formation subgrid model 
 implementation.

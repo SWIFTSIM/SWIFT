@@ -405,14 +405,30 @@ void engine_collect_end_of_sub_cycle(struct engine *e) {
                  s->local_cells_top, s->nr_local_cells, sizeof(int),
                  threadpool_auto_chunk_size, e);
 
-  /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI
+
+  /* Aggregate collective data from the different nodes for this step. */
+  int test;
   long long rt_updates_tot = 0ll;
-  int test = MPI_Reduce(&e->rt_updates, &rt_updates_tot, 1, MPI_LONG_LONG,
-                        MPI_SUM, 0, MPI_COMM_WORLD);
+  test = MPI_Reduce(&e->rt_updates, &rt_updates_tot, 1, MPI_LONG_LONG, MPI_SUM,
+                    0, MPI_COMM_WORLD);
   if (test != MPI_SUCCESS) error("MPI reduce failed");
+
+  double global_deadtime = 0.;
+  test = MPI_Reduce(&e->local_deadtime, &global_deadtime, 1, MPI_DOUBLE,
+                    MPI_SUM, 0, MPI_COMM_WORLD);
+  if (test != MPI_SUCCESS) error("MPI reduce failed");
+
   /* Overwrite only on rank 0. */
-  if (e->nodeID == 0) e->rt_updates = rt_updates_tot;
+  if (e->nodeID == 0) {
+    e->rt_updates = rt_updates_tot;
+    e->global_deadtime = global_deadtime;
+  }
+
+#else
+
+  e->global_deadtime = e->local_deadtime;
+
 #endif
 
   if (e->verbose)
