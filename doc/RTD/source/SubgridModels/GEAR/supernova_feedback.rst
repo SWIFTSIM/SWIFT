@@ -144,99 +144,150 @@ Those expressions are evaluated in two new neighbour loops. Physically, the norm
 `Hopkins et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H/abstract>`_ provides a complete discussion of those properties and detailed comparisons within the Fire-1 and Fire-2 simulations. 
 
 Consider now that the supernova explosion must distribute scalar fluxes :math:`X_{\text{ej}}` such as the mass :math:`m_{\text{ej}}`, the metals :math:`m_{Z, \text{ej}}`, the total energy :math:`E_{\text{ej}}`, as well as vector norm fluxes :math:`Y_{\text{ej}}` such as the momentum :math:`p_{\text{ej}}`. The fluxes distributed to the gas particles are defined as:
-%
-\begin{align}
-  &\Delta X_j = \norm{\vec{\bar{w}}_j} X_{\text{ej}} \\
-  &\Delta \vec{Y}_j = \vec{\bar{w}}_j Y_{\text{ej}} \; .
-\end{align}
-%
+
+.. math::
+
+   \Delta X_j = \lVert \vec{\bar{w}}_j \rVert \, X_{\text{ej}}
+
+.. math::
+
+   \Delta \vec{Y}_j = \vec{\bar{w}}_j \, Y_{\text{ej}} \; .
+
 The machine-accurate conservation means:
-%
-\begin{align}
-  &\sum \Delta X_j = X_{\text{ej}} \\
-  &\sum \norm{\Delta \vec{Y}_j} = Y_{\text{ej}} \\
-  &\sum \Delta \vec{Y}_j = \vec{0} \; .
-\end{align}
-%
 
-Until now, we implicitly worked in the reference frame of the star, i.e. :math:`\vec{x}_s = \vec{0}`, :math:`\vec{v}_s \equiv \diff{\vec{x}_s}{{t}} = \vec{0}`. The distribution of flux is isotropic in the reference frame of the stars. However, we need to consider the star motion and thus boost the fluxes in the laboratory frame to obtain the fluxes :math:`\Delta X_j'`. For the mass, metals and momentum, this is trivial:
-%
-\begin{align}
-  \Delta m_j' &\equiv \Delta m_j = \norm{\vec{\bar{w}}_j} m_{\text{ej}} \;, \quad \Delta m_{Z, j}' \equiv \Delta m_{Z, j} = \norm{\vec{\bar{w}}_j} m_{Z, \text{ej}} \\
-  \Delta \vec{p}_{js} ' &\equiv \Delta \vec{p}_{js} + \Delta m_j \vec{v}_s
-\end{align}
-%
-For the energy, this depends on the implementation. The main differences are that we ignore the star-gas motion in GEAR mechanical 1, while in GEAR mechanical 2, we consider this motion. This also changes :math:`p_{\text{ej}}`.\\
+.. math::
+
+   \sum \Delta X_j = X_{\text{ej}}
+
+.. math::
+
+   \sum \lVert \Delta \vec{Y}_j \rVert = Y_{\text{ej}}
+
+.. math::
+
+   \sum \Delta \vec{Y}_j = \vec{0} \; .
+
+
+Until now, we implicitly worked in the reference frame of the star, i.e. :math:`\vec{x}_s = \vec{0}`, :math:`\vec{v}_s \equiv \frac{d\vec{x}_s}{dt} = \vec{0}`. The distribution of flux is isotropic in the reference frame of the stars. However, we need to consider the star motion and thus boost the fluxes in the laboratory frame to obtain the fluxes :math:`\Delta X_j'`. For the mass, metals and momentum, this is trivial:
+
+.. math::
+
+   \Delta m_j' \equiv \Delta m_j = \lVert \vec{\bar{w}}_j \rVert \, m_{\text{ej}} \;, \quad 
+   \Delta m_{Z, j}' \equiv \Delta m_{Z, j} = \lVert \vec{\bar{w}}_j \rVert \, m_{Z, \text{ej}}
+
+.. math::
+
+   \Delta \vec{p}_{js}' \equiv \Delta \vec{p}_{js} + \Delta m_j \vec{v}_s
+
+For the energy, this depends on the implementation. The main differences are that we ignore the star-gas motion in GEAR mechanical 1, while in GEAR mechanical 2, we consider this motion. This also changes :math:`p_{\text{ej}}`.
+
 In both implementation, we verify whether we resolve the Sedov-Taylor phase and inject the correct energy, internal energy and mometum into the surrounding gas. The algorithm depends on whether we include the star-gas motion and thus depends on the implementations. Let us write:
-%
-\begin{equation}
-    \Delta \vec{p}_{js} \equiv \vec{\bar{w}}_{j} p_{0, s} \; ,
-\end{equation}
-% 
-where :math:` p_{0, s}` depends on the particular treatment of the star-gas motion and is not simply :math:`p_{\text{ej}}`. 
 
-\subsubsection{GEAR mechanical 1}
+.. math::
+
+   \Delta \vec{p}_{js} \equiv \vec{\bar{w}}_{j} \, p_{0, s}
+
+
+where :math:`p_{0, s}` depends on the particular treatment of the star-gas motion and is not simply :math:`p_{\text{ej}}`. 
+
+GEAR mechanical 1
++++++++++++++++++
 
 In GEAR mechanical 1, we have the following fluxes to distribute: :math:`m_{\text{ej}}`, :math:`m_{Z, \text{ej}}` and :math:`E_{\text{ej}}`. The momentum flux is :math:`p_{\text{ej}} = \sqrt{2 m_{\text{ej}} E_{\text{ej}}}`. The fluxes are given to the gas particle :math:`j` as:
-%
-\begin{align}
-  m_j^{\text{new}} &= m_j +  \Delta m_j' = m_j + \norm{\vec{\bar{w}}_j} m_{\text{ej}} \label{eq:gear_m_1_flux_m}\\
-  m_{Z, j}^{\text{new}} &= m_{Z, j} +  \Delta m_{Z, j}' = m_{Z, j} + \norm{\vec{\bar{w}}_j} m_{\text{ej}} \label{eq:gear_m_1_flux_Z} \\
-  E_j^{\text{new}} &= E_{\text{kin}}^{\text{new}} +  U_{\text{int}}^{\text{new}} =  E_{\text{kin}} +  U_{\text{int}} + \norm{\vec{\bar{w}}_j} E_{\text{ej}} + \frac{1}{2 \Delta m_j} ( \norm{\Delta \vec{p}_{js}'}^2 - \norm{\Delta \vec{p}_{js}}^2 ) \label{eq:gear_m_1_flux_E}\\ 
-  U_{\text{int}}^{\text{new}} &= U_{\text{int}} + \Delta U \, , \quad \Delta U = (E_j^{\text{new}} - E_{\text{kin}}^{\text{new}}) - U_{\text{int}} \label{eq:gear_m_1_flux_U} \\
-  \vec{p}_j^{\text{new}} &= \vec{p}_j + \Delta m_j \vec{v}_s +  \vec{\bar{w}}_{j} p_{0, s} \label{eq:gear_m_1_flux_p} \; .
-\end{align}
-%
-Now, we need to define :math:`p_{0, s}`. In high-density regions and/or in low-resolution simulations, we may not be able to resolve the Sedov-Taylor expansion phase. As we explained above, during the latter, the blastwave sweeps the gas and does some :math:`P \dd V` work on the gas. This work converts energy into momentum until reaching the end of the phase, when the cooling becomes efficient at some cooling radius :math:`R_{\text{cool}}`. If we do not resolve the Taylor-Sedov phase, we may give an incorrect amount of momentum and energy into the \ac{ISM}. At the beginning of the snowplough phase, the momentum of a supernova reaches some terminal value :math:`p_t`. It can be written as:
-%
-\begin{equation}
-    p_t = p_{t, 0} \; \mathcal{F}_{E}(E) \mathcal{F}_{n}(n)  \mathcal{F}_{Z}(Z)  \mathcal{F}_{\vec{v}} (\vec{v}) \;, \label{eq:p_terminal}
-\end{equation}
-%
-where :math:`\mathcal{F}_{k}` are functions depending on the total \ac{SN}-frame ejecta energy :math:`E`, the gas density :math:`n`, metallicity :math:`Z` and velocity field :math:`\vec{v}`. We use the same parametrisation than \citet{hopkins_2024}, i.e.
-%
-\begin{align}
-  p_{t, 0} &= \qty{200}{\Msun \km \per \second}, \qquad \mathcal{F}_E = \frac{E}{10^{51} \unit{erg}} \; , \qquad  \mathcal{F}_{\vec{v}} = 1 \\
-  \mathcal{F}_n &= 2.63, \; \tilde{n} < 10^{-3} \text{ and } \mathcal{F}_n = \tilde{n}^{-0.143}, \; \tilde{n} \geq 10^{-3}, \qquad \tilde{n} \equiv  \frac{n}{\unit{\per \cm^3}} \label{eq:terminal_momentum_density_dependence} \\
-  \mathcal{F}_Z &= 2, \; \text{ if } \tilde{z} < 10^{-2} \text{ , } \mathcal{F}_Z = \tilde{z}^{-0.18}, \; \text{ if } 10^{-2}\leq  \tilde{z} \leq 1 \text{ and } \mathcal{F}_Z = \tilde{z}^{-0.12}, \; \text{ if } \tilde{z} > 1,  \quad \tilde{z} \equiv  \frac{Z}{Z_{\odot}}
-\end{align}
-%
-Also, we use :math:`\mathcal{F}_{\vec{v}} = 1` advised by \citet{hopkins_2024}. \\
-To account for the potentially unresolved Taylor-Sedov phase, we first calculate the momentum that would be coupled to the gas particle if the blastwave were energy-conserving throughout this single element. This momentum is:
-%
-\begin{align*}
-  & \Rightarrow p_{j, \text{final}} = \sqrt{1 + \frac{m_j}{\Delta m_j}} \Delta p_j \, , \; \Delta p_j =  \norm{\vec{\bar{w}}_j} p_{\text{ej}} \; .
-\end{align*}
-%
-Then, we compare this momentum to the terminal momentum :math:`p_t` and assign the momentum to be:
-%
-\begin{equation}
-  p_{0,s} = p_{\text{ej}} \min \left(\sqrt{1 + \frac{m_j}{\Delta m_j}}, \; \frac{p_t}{p_{\text{ej}}} \right) \; .
-\end{equation}
-%
-The last thing to do is to couple the correct internal energy when the cooling radius :math:`R_{\text{cool}}` is unresolved. The cooling radius is determined by the value of :math:`p_t` since, at the end of the Sedov-Taylor phase, we have :math:`R_{\text{cool}} = R_{\text{Shock, SN}}` and by conservation of energy, :math:`E_{\text{ej}} = p_{\text{ej}}^2 / (2 m_{\text{ej}}) = p_t^2 / (2 (m_{\text{ej}} + m_{\text{swept}}(R_{\text{cool}}))) = E_{\text{End}}`. After some algebra, we find:
-%
-\begin{equation}
-    R_{\text{cool}} = \left( \frac{3 m_{\text{ej}}}{4 \pi \rho} \right)^{1/3} \left(\frac{p_t^2}{p_{\text{ej}}^2} - 1 \right)^{1/3} \; ,
-\label{eq:cooling_radius}
-\end{equation}
-%
-where :math:`\rho` is the density. \\
-As the internal energy outside :math:`R_{\text{cool}}` decays :math:`\propto (r/R_{\text{cool}})^{-6.5}` \citep{thornton_1998}, if :math:`r_j \equiv \norm{\vec{x}_{js}} > R_{\text{cool}}`, we reduce the internal energy as :math:`\Delta U \leftarrow \Delta U (r_j/R_{\text{cool}})^{-6.5}`. Otherwise, we leave :math:`\Delta U` unchanged. 
 
-This concludes this part on the implementation of GEAR mechanical 1 feedback. \\
+.. math::
+
+   m_j^{\text{new}} = m_j + \Delta m_j' = m_j + \lVert \vec{\bar{w}}_j \rVert \, m_{\text{ej}}
+
+.. math::
+
+   m_{Z, j}^{\text{new}} = m_{Z, j} + \Delta m_{Z, j}' = m_{Z, j} + \lVert \vec{\bar{w}}_j \rVert \, m_{\text{ej}}
+
+.. math::
+
+   E_j^{\text{new}} = E_{\text{kin}}^{\text{new}} + U_{\text{int}}^{\text{new}} = 
+   E_{\text{kin}} + U_{\text{int}} + \lVert \vec{\bar{w}}_j \rVert \, E_{\text{ej}} 
+   + \frac{1}{2 \, \Delta m_j} 
+   \left( \lVert \Delta \vec{p}_{js}' \rVert^2 - \lVert \Delta \vec{p}_{js} \rVert^2 \right)
+
+.. math::
+
+   U_{\text{int}}^{\text{new}} = U_{\text{int}} + \Delta U \, , \quad 
+   \Delta U = \left( E_j^{\text{new}} - E_{\text{kin}}^{\text{new}} \right) - U_{\text{int}}
+
+.. math::
+
+   \vec{p}_j^{\text{new}} = \vec{p}_j + \Delta m_j \vec{v}_s + \vec{\bar{w}}_j \, p_{0, s}
+
+Now, we need to define :math:`p_{0, s}`. In high-density regions and/or in low-resolution simulations, we may not be able to resolve the Sedov-Taylor expansion phase. As we explained above, during the latter, the blastwave sweeps the gas and does some :math:`P \mathcal{d} V` work on the gas. This work converts energy into momentum until reaching the end of the phase, when the cooling becomes efficient at some cooling radius :math:`R_{\text{cool}}`. If we do not resolve the Taylor-Sedov phase, we may give an incorrect amount of momentum and energy into the ISM. At the beginning of the snowplough phase, the momentum of a supernova reaches some terminal value :math:`p_t`. It can be written as:
+
+.. math::
+    p_t = p_{t, 0} \; \mathcal{F}_{E}(E) \mathcal{F}_{n}(n)  \mathcal{F}_{Z}(Z)  \mathcal{F}_{\vec{v}} (\vec{v}) \;,
+
+where :math:`\mathcal{F}_{k}` are functions depending on the total SN-frame ejecta energy :math:`E`, the gas density :math:`n`, metallicity :math:`Z` and velocity field :math:`\vec{v}`. We use the same parametrisation than `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_, i.e.
+
+.. math::
+
+   p_{t, 0} = 200\, \mathrm{M_\odot\, km\, s^{-1}}, \qquad 
+   \mathcal{F}_E = \frac{E}{10^{51}\, \mathrm{erg}}, \qquad 
+   \mathcal{F}_{\vec{v}} = 1
+
+.. math::
+
+   \mathcal{F}_n =
+   \begin{cases}
+     2.63, & \tilde{n} < 10^{-3} \\
+     \tilde{n}^{-0.143}, & \tilde{n} \geq 10^{-3}
+   \end{cases}
+   \qquad \tilde{n} \equiv \frac{n}{\mathrm{cm^{-3}}}
+
+.. math::
+
+   \mathcal{F}_Z =
+   \begin{cases}
+     2, & \tilde{z} < 10^{-2} \\
+     \tilde{z}^{-0.18}, & 10^{-2} \leq \tilde{z} \leq 1 \\
+     \tilde{z}^{-0.12}, & \tilde{z} > 1
+   \end{cases}
+   \qquad \tilde{z} \equiv \frac{Z}{Z_\odot}
+
+Also, we use :math:`\mathcal{F}_{\vec{v}} = 1` advised by `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_.
+
+To account for the potentially unresolved Taylor-Sedov phase, we first calculate the momentum that would be coupled to the gas particle if the blastwave were energy-conserving throughout this single element. This momentum is:
+
+.. math::
+
+   p_{j, \text{final}} = \sqrt{1 + \frac{m_j}{\Delta m_j}} \, \Delta p_j, 
+   \qquad \Delta p_j = \lVert \vec{\bar{w}}_j \rVert \, p_{\text{ej}}
+
+Then, we compare this momentum to the terminal momentum :math:`p_t` and assign the momentum to be:
+
+.. math::
+  p_{0,s} = p_{\text{ej}} \min \left(\sqrt{1 + \frac{m_j}{\Delta m_j}}, \; \frac{p_t}{p_{\text{ej}}} \right) \; .
+
+The last thing to do is to couple the correct internal energy when the cooling radius :math:`R_{\text{cool}}` is unresolved. The cooling radius is determined by the value of :math:`p_t` since, at the end of the Sedov-Taylor phase, we have :math:`R_{\text{cool}} = R_{\text{Shock, SN}}`. After some algebra, we find:
+
+.. math::
+    R_{\text{cool}} = \left( \frac{3 m_{\text{ej}}}{4 \pi \rho} \right)^{1/3} \left(\frac{p_t^2}{p_{\text{ej}}^2} - 1 \right)^{1/3} \; ,
+
+where :math:`\rho` is the density.
+
+As the internal energy outside :math:`R_{\text{cool}}` decays :math:`\propto (r/R_{\text{cool}})^{-6.5}` `Thornton et al. 1998 <https://iopscience.iop.org/article/10.1086/305704>`_ , if :math:`r_j \equiv \| \vec{x}_{js} \| > R_{\text{cool}}`, we reduce the internal energy as :math:`\Delta U \leftarrow \Delta U (r_j/R_{\text{cool}})^{-6.5}`. Otherwise, we leave :math:`\Delta U` unchanged. 
+
+
 
 
 TO READ———————————————
 
 
-\subsubsection{GEAR mechanical 2}
 
+GEAR mechanical 2
++++++++++++++++++
 
+In GEAR mechanical 2, we have the following fluxes to distribute: :math:`m_{\text{ej}}`, :math:`m_{Z, \text{ej}}` and :math:`E_{\text{ej}}`. These fluxes are the same as in GEAR mechanical 1. However, the differences come from how we couple energy and momentum as we now consider the star-gas motion.
 
+The reason for considering the star-gas motion is that once the first \ac{SN} explodes, the gas moves outwards. In clustered star formation locations, multiple \ac{SN} will occur at close times, justifying the inclusion of the star-gas motion.
 
-In GEAR mechanical 2, we have the following fluxes to distribute: :math:`m_{\text{ej}}`, :math:`m_{Z, \text{ej}}` and :math:`E_{\text{ej}}`. These fluxes are the same as in GEAR mechanical 1. However, the differences come from how we couple energy and momentum as we now consider the star-gas motion. \\
-The reason for considering the star-gas motion is that once the first \ac{SN} explodes, the gas moves outwards. In clustered star formation locations, multiple \ac{SN} will occur at close times, justifying the inclusion of the star-gas motion. \\
 Thus, the fluxes are given to the gas particle :math:`j` as:
 %
 \begin{align}
@@ -246,7 +297,8 @@ Thus, the fluxes are given to the gas particle :math:`j` as:
   \vec{p}_j^{\text{new}} &= \vec{p}_j + \Delta m_j \vec{v}_s +  \vec{\bar{w}}_{j} p_{0, s} \; .
 \end{align}
 %
-Notice the differences with GEAR mechanical in equation~\eqref{eq:gear_m_1_flux_m} - \ref{eq:gear_m_1_flux_U}: we have to define :math:`p_{0,s}` and :math:`\mathcal{U}_s`, which depend on the star-gas motion. In the following, we will define :math:`p_{0,s}` through :math:`\mathcal{E}_s` the total energy available at the \ac{SN} explosion and deal with the star-gas motion. The subtle details are that the gas can recede towards or away from the star, changing :math:`\mathcal{E}_s` and thus the coupled momentum and internal energy. \\
+Notice the differences with GEAR mechanical in equation~\eqref{eq:gear_m_1_flux_m} - \ref{eq:gear_m_1_flux_U}: we have to define :math:`p_{0,s}` and :math:`\mathcal{U}_s`, which depend on the star-gas motion. In the following, we will define :math:`p_{0,s}` through :math:`\mathcal{E}_s` the total energy available at the \ac{SN} explosion and deal with the star-gas motion. The subtle details are that the gas can recede towards or away from the star, changing :math:`\mathcal{E}_s` and thus the coupled momentum and internal energy.
+
 The total available energy :math:`\mathcal{E}_s` is:
 %
 \begin{align}
@@ -260,18 +312,20 @@ Now, we define the effective kinetic energy:
   \mathcal{\varepsilon}_s \equiv f_{\text{kin}}^0 \mathcal{E}_s  \equiv (1 -  f_{\text{U}}^0) \mathcal{E}_s \; ,
 \end{equation}
 %
-where :math:` f_{\text{U}}^0` and :math:`f_{\text{kin}}^0` are the fractions of the total energy in thermal or kinetic energy. Those fractions are fixed to their values for e.g. an ideal Sedov solution in a homogeneous medium, i.e.  :math:`f_{\text{kin}}^0 = 0.28` \citet{hopkins_2024}. \\
+where :math:`f_{\text{U}}^0` and :math:`f_{\text{kin}}^0` are the fractions of the total energy in thermal or kinetic energy. Those fractions are fixed to their values for e.g. an ideal Sedov solution in a homogeneous medium, i.e.  :math:`f_{\text{kin}}^0 = 0.28` `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_.
+
 Then, we define the coupled momentum :math:`p_{0, s}` as:
 %
 \begin{equation}
   p_{0, s} \equiv \psi_s \chi_s \sqrt{2 m_{\text{ej}} \varepsilon_s} \; ,
 \end{equation}
 %
-where :math:`\psi_s` takes into account the star-gas motion and :math:`\chi_s` accounts for the unresolved Taylor-Sedov phase. Notice the difference with GEAR mechanical 1 definition of :math:`p_{\text{ej}} = \sqrt{2 m_{\text{ej}} E_{\text{ej}}}`. If the :math:`\norm{\vec{v}_{js}} = 0`, i.e. the gas is at rest with respect to the star, we have the same :math:`p_{\text{ej}}` than GEAR mechanical 1. \\
+where :math:`\psi_s` takes into account the star-gas motion and :math:`\chi_s` accounts for the unresolved Taylor-Sedov phase. Notice the difference with GEAR mechanical 1 definition of :math:`p_{\text{ej}} = \sqrt{2 m_{\text{ej}} E_{\text{ej}}}`. If the :math:`\norm{\vec{v}_{js}} = 0`, i.e. the gas is at rest with respect to the star, we have the same :math:`p_{\text{ej}}` than GEAR mechanical 1. 
+
 Let us define :math:`\psi_s`:
 %
 \begin{align}
-  &\beta_{1, s} \equiv \left( \frac{m_{\text{ej}}}{2 \varepsilon_s} \right)^{1/2}   \sum_j w_{j}' \, \vec{v}_{js} \cdot \hat{w}_{j} \\
+  &\beta_{1, s} \equiv \left( \frac{m_{\text{ej}}}{2 \varepsilon_s} \right)^{1/2}   \sum_j w_{j}' \, \vec{v}_{js} \cdot \hat{w}_{j}
   &\beta_{2, s} \equiv m_{\text{ej}} \, \sum_j \frac{w_{j}' \norm{\vec{\bar{w}}_{j}}}{m_j} \\
   &\psi_s \equiv \frac{\sqrt{\beta_{2, s} + \beta_{1, s}^2} - \beta_{1, s}}{\beta_{2, s}} \;.
 \end{align}
@@ -283,7 +337,8 @@ Then, :math:`\chi_s` is simply defined by:
 \end{equation}
 %
 where :math:`p_t` is the terminal momentum. We use the same equation \eqref{eq:p_terminal} as GEAR mechanical 1. 
-:math:`\chi_s` represents the cases with less momentum coupled and thus more energy going to thermal form. \\
+:math:`\chi_s` represents the cases with less momentum coupled and thus more energy going to thermal form.
+
 Finally, we can define :math:`f_U` the fraction of energy in non-kinetic form and :math:`\mathcal{U}_s` the internal energy associated to the \ac{SN}:
 %
 \begin{align}
@@ -291,12 +346,21 @@ Finally, we can define :math:`f_U` the fraction of energy in non-kinetic form an
   & \mathcal{U}_s \equiv f_U \mathcal{E}_s \; .
 \end{align}
 %
-Those formulas are demonstrated in \citet{hopkins_2024} appendix A and in \citet{hopkins_sn_2018} appendix E. Thus, we do ne provide further demonstration here. To get a better physical interpretation, we kindly ask the reader to refer to \citet{hopkins_2024} appendix A.3 since rewriting the same interpretations would provide little to our work. However, understanding the physics behind those formulas is important to feel the working of the feedback. Notice that Fire-3 \citep{hopkins_fire-3_2023} initially implemented a more complicated version of those formulas, where the physics is hidden in complex mathematical formulas. \\
-Note that this new feedback uses one more neighbour loop to consider the star-gas motion. This new loop can be expensive, but simple simulations showed that it is not slower than the GEAR mechanical 1 and does not appear to be significantly slower than GEAR thermal. 
+Those formulas are demonstrated in `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_ appendix A and in `Hopkins et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H/abstract>`_ appendix E. Thus, we do ne provide further demonstration here. To get a better physical interpretation, we kindly ask the reader to refer to `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_ appendix A.3 since rewriting the same interpretations would provide little to our work. However, understanding the physics behind those formulas is important to feel the working of the feedback.
+
+.. note::
+
+   Note that this new feedback uses one more neighbour loop to consider the star-gas motion. This new loop can be expensive, but simple simulations showed that it is not slower than the GEAR mechanical 1 and does not appear to be significantly slower than GEAR thermal. 
 
 
 References
 ----------
+
+- `Revaz and Jablonka 2012 <https://ui.adsabs.harvard.edu/abs/2012A%26A...538A..82R/abstract>`_
+
+- `Haid et al. 2016 <https://ui.adsabs.harvard.edu/abs/2016MNRAS.460.2962H/abstract>`_
+
+- `Thornton et al. 1998 <https://iopscience.iop.org/article/10.1086/305704>`_ 
 
 - `Hopkins et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H/abstract>`_
 
