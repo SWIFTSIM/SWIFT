@@ -499,7 +499,7 @@ void *threadpool_memcpy(struct threadpool *tp, void *dest, void *src,
   /* Need a number of pages per thread to be worth while. See:
    *   https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/merge_requests/1661
    */
-  if ((n < 8 * 4096 * tp->num_threads) || tp->num_threads < 8) {
+  if ((n < (size_t)(8 * 4096 * tp->num_threads)) || (tp->num_threads < 8)) {
     memcpy(dest, src, n);
   } else {
     /* Also we see most of the gains (80%) using less than the total number of

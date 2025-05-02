@@ -1231,7 +1231,7 @@ void engine_redistribute(struct engine *e) {
   s->size_bparts = engine_redistribute_alloc_margin * nr_bparts_new;
 
   /* Sink particles. */
-  new_parts = engine_do_redistribute(
+  new_parts = engine_do_redistribute(e,
       "sinks", sink_counts, (char *)s->sinks, nr_sinks_new, sizeof(struct sink),
       sink_align, sink_mpi_type, nr_nodes, nodeID, e->syncredist);
   swift_free("sinks", s->sinks);
