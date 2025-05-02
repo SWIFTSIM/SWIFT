@@ -439,8 +439,8 @@ int cell_link_foreign_gparts(struct cell *c,
 #endif
     return counts;
   } else {
-    c->grav.parts_foreign = NULL;
-    c->grav.parts_foreign_rebuild = NULL;
+    c->grav.parts_foreign = gparts_foreign;
+    c->grav.parts_foreign_rebuild = gparts_foreign;
   }
 
   /* Go deeper to find the level where the tasks are */
@@ -492,8 +492,8 @@ int cell_link_foreign_fof_gparts(struct cell *c,
 #endif
     return counts;
   } else {
-    c->grav.parts_fof_foreign = NULL;
-    c->grav.parts_fof_foreign_rebuild = NULL;
+    c->grav.parts_fof_foreign = garts_fof_foreign;
+    c->grav.parts_fof_foreign_rebuild = gparts_fof_foreign;
   }
 
   /* Go deeper to find the level where the tasks are */
