@@ -492,7 +492,7 @@ int cell_link_foreign_fof_gparts(struct cell *c,
 #endif
     return counts;
   } else {
-    c->grav.parts_fof_foreign = garts_fof_foreign;
+    c->grav.parts_fof_foreign = gparts_fof_foreign;
     c->grav.parts_fof_foreign_rebuild = gparts_fof_foreign;
   }
 
