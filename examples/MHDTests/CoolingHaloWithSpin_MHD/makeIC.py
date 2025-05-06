@@ -47,7 +47,6 @@ H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # DM halo parameters
 spin_lambda = 0.05  # spin parameter
-spin_lambda_choice = "Bullock"  # which definition of spin parameter to use
 f_b = 0.17  # baryon fraction
 c_200 = 7.2  # concentration parameter
 
@@ -60,10 +59,13 @@ eta = 1.3663  # kernel smoothing
 
 # Additional options
 spin_lambda_choice = (
-    "Bullock"
+    "Bullock" #"Peebles"
 )  # which definition of spin parameter to use (Peebles or Bullock)
 save_to_vtk = False
 plot_v_distribution = False
+
+AMP = "r^s" # sets angular momentum profile to be a function of M(r) or r^s 
+AMPs = 2 # power in agnular momentum profile
 
 # From this we can find the virial radius, the radius within which the average density of the halo is
 # 200. * the mean matter density
@@ -416,7 +418,7 @@ radius_vect = np.zeros((N, 3))
 l = np.zeros((N, 3))
 for i in range(N):
     radius_vect[i, :] = coords[i, :] - boxSize / 2.0
-    omega[i, 2] = j(radius[i], 1, 1, f_b, M_200_cgs, r_200_cgs, c_200) / radius[i] ** 2
+    omega[i, 2] = j(radius[i], 1, AMPs, f_b, M_200_cgs, r_200_cgs, c_200,AMP) / radius[i] ** 2
     v[i, :] = np.cross(omega[i, :], radius_vect[i, :])
     B[i, 0] = B0_cgs / const_unit_magnetic_field_in_cgs
     l[i, :] = gas_particle_mass * np.cross(radius_vect[i, :], v[i, :])
@@ -441,7 +443,7 @@ if spin_lambda_choice == "Peebles":
         Lp_tot_abs * np.sqrt(np.abs(Ep_tot)) / const_G / (f_b * 1) ** (5 / 2)
     )
     v *= spin_lambda / calc_spin_par_P
-    l *= spin_lambda / calc_spin_par_P
+
 elif spin_lambda_choice == "Bullock":
     # Normalize to Bullock
     jsp_B = (np.sqrt(2) * v_200 )*spin_lambda
