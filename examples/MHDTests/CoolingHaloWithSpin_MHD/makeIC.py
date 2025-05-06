@@ -192,10 +192,10 @@ coords -= 0.5
 # cut a sphere
 r_uni = np.linalg.norm(coords, axis=1)
 coords = coords[r_uni <= 0.5]
-coords *= boxSize * np.sqrt(3)
+coords *= boxSize #boxSize * np.sqrt(3)
 
 # calculate max distance from the center (units of r_200)
-R_max = np.sqrt(3) * (boxSize / 2)
+R_max = boxSize/2 #np.sqrt(3) * (boxSize / 2)
 r_s = 1 / c_200
 # calculate distances to the center
 r_uni = np.linalg.norm(coords, axis=1)
