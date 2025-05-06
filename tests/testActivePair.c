@@ -29,10 +29,13 @@
 /* Local headers. */
 #include "swift.h"
 
-#define NODE_ID 1
+#define NODE_ID 0
 
 /* Typdef function pointer for interaction function. */
-typedef void (*interaction_func)(struct runner *, struct cell *, struct cell *);
+typedef void (*serial_interaction_func)(struct runner *, struct cell *,
+                                        struct cell *);
+typedef void (*interaction_func)(struct runner *, struct cell *, struct cell *,
+                                 int, int);
 typedef void (*init_func)(struct cell *, const struct cosmology *,
                           const struct hydro_props *,
                           const struct pressure_floor_props *);
@@ -62,6 +65,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
+  float h_max_active = 0.f;
   struct cell *cell = NULL;
   if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
     error("Couldn't allocate the cell");
@@ -103,6 +107,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
           part->h = size * h / (float)n;
         h_max = fmaxf(h_max, part->h);
         part->id = ++(*partId);
+        part->depth_h = 0;
 
 /* Set the mass */
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
@@ -123,6 +128,15 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->entropy_one_over_gamma = 1.f;
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
         part->conserved.energy = 1.f;
+#elif defined(PLANETARY_SPH)
+        set_idg_def(&eos.idg_def, 0);
+        part->mat_id = 0;
+        part->u = 1.f;
+#elif defined(REMIX_SPH)
+        set_idg_def(&eos.idg_def, 0);
+        part->mat_id = 0;
+        part->u = 1.f;
+        part->rho_evol = 1.f;
 #endif
 
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
@@ -131,10 +145,12 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 #endif
 
         /* Set the time-bin */
-        if (random_uniform(0, 1.f) < fraction_active)
+        if (random_uniform(0, 1.f) < fraction_active) {
           part->time_bin = 1;
-        else
+          h_max_active = fmaxf(h_max_active, part->h);
+        } else {
           part->time_bin = num_time_bins + 1;
+        }
 
 #ifdef SWIFT_DEBUG_CHECKS
         part->ti_drift = 8;
@@ -148,16 +164,21 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   /* Cell properties */
   cell->split = 0;
+  cell->depth = 0;
   cell->hydro.h_max = h_max;
+  cell->hydro.h_max_active = h_max_active;
   cell->hydro.count = count;
   cell->hydro.dx_max_part = 0.;
   cell->hydro.dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
+  cell->dmin = size;
   cell->loc[0] = offset[0];
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
+  cell->h_min_allowed = cell->dmin * 0.5 * (1. / kernel_gamma);
+  cell->h_max_allowed = cell->dmin * (1. / kernel_gamma);
 
   cell->hydro.super = cell;
   cell->hydro.ti_old_part = 8;
@@ -270,6 +291,44 @@ void zero_particle_fields_force(
     }
     p->geometry.volume = 1.0f;
 #endif
+#ifdef PLANETARY_SPH
+    p->rho = 1.f;
+    p->density.rho_dh = 0.f;
+    p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
+    p->density.wcount_dh = 0.f;
+    p->density.rot_v[0] = 0.f;
+    p->density.rot_v[1] = 0.f;
+    p->density.rot_v[2] = 0.f;
+    p->density.div_v = 0.f;
+#endif /* PLANETARY_SPH */
+#if defined(REMIX_SPH)
+    p->rho = 1.f;
+    p->m0 = 1.f;
+    p->density.rho_dh = 0.f;
+    p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
+    p->density.wcount_dh = 0.f;
+    p->gradient.m0_bar = 1.f;
+    p->gradient.grad_m0_bar_gradhterm = 0.f;
+    memset(p->grad_m0, 0.f, 3 * sizeof(float));
+    memset(p->dv_norm_kernel, 0.f, 3 * 3 * sizeof(float));
+    memset(p->du_norm_kernel, 0.f, 3 * sizeof(float));
+    memset(p->drho_norm_kernel, 0.f, 3 * sizeof(float));
+    memset(p->dh_norm_kernel, 0.f, 3 * sizeof(float));
+    memset(p->gradient.grad_m0_bar, 0.f, 3 * sizeof(float));
+    memset(p->gradient.m1_bar, 0.f, 3 * sizeof(float));
+    memset(p->gradient.grad_m1_bar, 0.f, 3 * 3 * sizeof(float));
+    memset(p->gradient.grad_m1_bar_gradhterm, 0.f, 3 * sizeof(float));
+    p->gradient.m2_bar.xx = 1.f;
+    p->gradient.m2_bar.yy = 1.f;
+    p->gradient.m2_bar.zz = 1.f;
+    p->gradient.m2_bar.xy = 0.f;
+    p->gradient.m2_bar.xz = 0.f;
+    p->gradient.m2_bar.yz = 0.f;
+    zero_sym_matrix(&p->gradient.grad_m2_bar[0]);
+    zero_sym_matrix(&p->gradient.grad_m2_bar[1]);
+    zero_sym_matrix(&p->gradient.grad_m2_bar[2]);
+    zero_sym_matrix(&p->gradient.grad_m2_bar_gradhterm);
+#endif /* REMIX_SPH */
 
     /* And prepare for a round of force tasks. */
     hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor, 0., 0.);
@@ -340,14 +399,15 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 }
 
 /* Just a forward declaration... */
-void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
                               struct cell *cj);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj);
+                                   struct cell *cj, int limit_h_min,
+                                   int limit_h_max);
 void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
-                                 struct cell *cj);
+                                 struct cell *cj, int limit_h_min,
+                                 int limit_h_max);
 
 /**
  * @brief Computes the pair interactions of two cells using SWIFT and a brute
@@ -356,7 +416,7 @@ void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
 void test_pair_interactions(struct runner *runner, struct cell **ci,
                             struct cell **cj, char *swiftOutputFileName,
                             char *bruteForceOutputFileName,
-                            interaction_func serial_interaction,
+                            serial_interaction_func serial_interaction,
                             interaction_func vec_interaction, init_func init,
                             finalise_func finalise) {
 
@@ -370,7 +430,7 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
   init(*cj, e->cosmology, e->hydro_properties, e->pressure_floor_props);
 
   /* Run the test */
-  vec_interaction(runner, *ci, *cj);
+  vec_interaction(runner, *ci, *cj, 0, 0);
 
   /* Let's get physical ! */
   finalise(*ci, e->cosmology, e->gravity_properties);
@@ -402,8 +462,8 @@ void test_all_pair_interactions(
     struct runner *runner, double *offset2, size_t particles, double size,
     double h, double rho, long long *partId, double perturbation, double h_pert,
     char *swiftOutputFileName, char *bruteForceOutputFileName,
-    interaction_func serial_interaction, interaction_func vec_interaction,
-    init_func init, finalise_func finalise) {
+    serial_interaction_func serial_interaction,
+    interaction_func vec_interaction, init_func init, finalise_func finalise) {
 
   double offset1[3] = {0, 0, 0};
   struct cell *ci, *cj;
@@ -681,7 +741,7 @@ int main(int argc, char *argv[]) {
   double offset[3] = {1., 0., 0.};
 
   /* Define which interactions to call */
-  interaction_func serial_inter_func = &pairs_all_density;
+  serial_interaction_func serial_inter_func = &pairs_all_density;
   interaction_func vec_inter_func = &runner_dopair1_branch_density;
   init_func init = &zero_particle_fields_density;
   finalise_func finalise = &end_calculation_density;

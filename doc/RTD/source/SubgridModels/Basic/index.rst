@@ -6,7 +6,7 @@ Basic model (others)
 ====================
 
 Sinks: Simple Bondi-Hoyle accretion
-~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 
 The ``Basic`` sink model provides a foundation on which new sink implementations could be built. It includes a prescription for Bondi-Hoyle gas accretion, and a method for sink-sink mergers that is a slightly simplified version of the implementation used in GEAR.
 

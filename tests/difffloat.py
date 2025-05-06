@@ -17,9 +17,7 @@
 #
 ##############################################################################
 
-from numpy import *
-
-del min
+import numpy as np
 import sys
 
 abs_tol = 1e-7
@@ -50,20 +48,20 @@ with open(file1, "r") as f:
     if "ID" in line:
         part_props = line.split()[1:]
 
-data1 = loadtxt(file1)
-data2 = loadtxt(file2)
+data1 = np.loadtxt(file1)
+data2 = np.loadtxt(file2)
 if fileTol != "":
-    dataTol = loadtxt(fileTol)
-    n_linesTol = shape(dataTol)[0]
-    n_columnsTol = shape(dataTol)[1]
+    dataTol = np.loadtxt(fileTol)
+    n_linesTol = np.shape(dataTol)[0]
+    n_columnsTol = np.shape(dataTol)[1]
 
 
-if shape(data1) != shape(data2):
+if np.shape(data1) != np.shape(data2):
     print("Non-matching array sizes in the files", file1, "and", file2, ".")
     sys.exit(1)
 
-n_lines = shape(data1)[0]
-n_columns = shape(data1)[1]
+n_lines = np.shape(data1)[0]
+n_columns = np.shape(data1)[1]
 
 if fileTol != "":
     if n_linesTol != 3:
@@ -74,9 +72,9 @@ if fileTol != "":
 if fileTol == "":
     print("Absolute difference tolerance:", abs_tol)
     print("Relative difference tolerance:", rel_tol)
-    absTol = ones(n_columns) * abs_tol
-    relTol = ones(n_columns) * rel_tol
-    limTol = zeros(n_columns)
+    absTol = np.ones(n_columns) * abs_tol
+    relTol = np.ones(n_columns) * rel_tol
+    limTol = np.zeros(n_columns)
 else:
     print("Tolerances read from file")
     absTol = dataTol[0, :]

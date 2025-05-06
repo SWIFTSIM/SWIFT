@@ -1,0 +1,28 @@
+# Context
+
+This example tests the dynamical friction implemented in the MWPotential2014.
+It compares the orbit predicted by SWIFT with an orbit computed with pNbody, using:
+
+`orbits_integration_MW --t_forward 10 --position 0.1 0.1 100 --velocity 80 0 0 --dynamical_friction -o orbit.csv`
+
+# How to run this example
+
+In a terminal at the root of the "swiftsim" directory, type:
+
+`./autogen.sh`
+
+Then, configure swift to take into account external potentials. Type:
+
+`./configure --with-ext-potential=MWPotential2014`
+
+Feel free to adapt other configurations parameters depending on your system. Then, build the code by typing:
+
+`make`
+
+Finally, to run this example, open a terminal in the present directory and type:
+
+`./run.sh`
+
+In this last command run Swift run on two different parameter files, params_unit_1.yml and params_unit_2.yml.
+Those two sets of parameters only differ by the choice of the internal units. This allow to test the correct 
+units conversion of all parameters involved.

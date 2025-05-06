@@ -170,9 +170,9 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              tolerance_27_normal.dat tolerance_27_perturbed.dat tolerance_27_perturbed_h.dat tolerance_27_perturbed_h2.dat \
              tolerance_testInteractions.dat tolerance_pair_active.dat tolerance_pair_force_active.dat \
              fft_params.yml tolerance_periodic_BC_normal.dat tolerance_periodic_BC_perturbed.dat \
-             testEOS.sh testEOS_plot.sh testSelectOutput.sh selectOutput.yml \
+             testEOS_plot.sh testSelectOutput.sh selectOutput.yml \
              output_list_params.yml output_list_time.txt output_list_redshift.txt \
-             output_list_scale_factor.txt testEOS.sh testEOS_plot.sh \
+             output_list_scale_factor.txt testEOS_plot.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh
