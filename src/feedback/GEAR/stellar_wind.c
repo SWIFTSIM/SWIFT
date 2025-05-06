@@ -97,7 +97,7 @@ float stellar_wind_get_wind_velocity(const float log_Z,const float log_m){
     /* If the star is lower than a limit mass, calculate the function*/
     if(log_m < stellar_wind_x0){
         for (int i=0; i < 4; i++){
-            message("Inside wind velocity, calculate parameter %i is = %f", i, calculate_b_parameter(log_Z,coeffs[i]));
+            //message("Inside wind velocity, calculate parameter %i is = %f", i, calculate_b_parameter(log_Z,coeffs[i]));
             wind_velocity += calculate_b_parameter(log_Z,coeffs[i]) * pow(log_m,i);
         }
     /*  Else, the function will be only a linear relation between the initial mass and the function calculated for the limit mass */
@@ -107,7 +107,7 @@ float stellar_wind_get_wind_velocity(const float log_Z,const float log_m){
 
         for (int i=0; i < 4; i++){
             A0 += calculate_b_parameter(log_Z,coeffs[i]) * pow(stellar_wind_x0,i);
-            message("Inside wind velocity, calculate parameter %i is = %f", i, calculate_b_parameter(log_Z,coeffs[i]));
+            //message("Inside wind velocity, calculate parameter %i is = %f", i, calculate_b_parameter(log_Z,coeffs[i]));
             // The derivative take one less step in the loop
             if (i == 0){
                 continue;
@@ -118,7 +118,7 @@ float stellar_wind_get_wind_velocity(const float log_Z,const float log_m){
         wind_velocity += A0 + dLogA0 * (log_m - stellar_wind_x0);
     }
 
-    message("Inside wind velocity computation : V_infty = %f", wind_velocity);
+    //message("Inside wind velocity computation : V_infty = %f", wind_velocity);
 
     return exp10(wind_velocity);
 }

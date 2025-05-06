@@ -363,13 +363,13 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
     log_metallicity = log10(metallicity / 0.02);
   }
 
-  message("The log metallicity in solar metallicity is : %f", log_metallicity);
+  //message("The log metallicity in solar metallicity is : %f", log_metallicity);
 
   /* If the star particle the calculation is straight forward */
   if (sp->star_type == single_star) {
     /* If single star, only the mass of the star to consider */
     const float log_m = log10(m_beg_lim);
-    message("The solar mass considered is %g", m_beg_lim);
+    //message("The solar mass considered is %g", m_beg_lim);
     /* Stellar winds */
     /* Compute the mass-loss */
     sp->feedback_data.preSN.mass_loss = stellar_wind_get_ejected_mass(log_metallicity, log_m);
@@ -380,10 +380,10 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
     /* Stellar winds contribution */
     sp->feedback_data.preSN.energy_ejected = stellar_wind_get_energy_dot(sp->feedback_data.preSN.mass_loss,v_infinity); 
 
-    message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
-      sp->feedback_data.preSN.mass_loss,
-      v_infinity,
-      sp->feedback_data.preSN.energy_ejected);
+    // message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
+    //   sp->feedback_data.preSN.mass_loss,
+    //   v_infinity,
+    //   sp->feedback_data.preSN.energy_ejected);
     
     /* Radiation ? */
 
@@ -410,7 +410,7 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
     float mass_loss =0; 
     float v_infty = 0; 
 
-    message("The imf star has an imf mass of %e; The m_end_lim is %e;", imf_m, m_end_lim);
+    //message("The imf star has an imf mass of %e; The m_end_lim is %e;", imf_m, m_end_lim);
 
     /* Calculate the part of the imf which is not considered yet for supernovae*/
     while (imf_m + dM < m_end_lim){
@@ -423,10 +423,10 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
       energy_dot += stellar_wind_get_energy_dot(mass_loss, v_infty) * N_star_m;
       imf_m = imf_m + dM;
       dM = imf_m / 10;
-      message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
-        mass_loss,
-        v_infty,
-        energy_dot);
+      // message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
+      //   mass_loss,
+      //   v_infty,
+      //   energy_dot);
     }
     if (imf_m < m_end_lim){
       log_m = log10((imf_m + m_end_lim) / 2);
@@ -436,10 +436,10 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
       v_infty = stellar_wind_get_wind_velocity(log_metallicity, log_m);
       sp->feedback_data.preSN.mass_loss += mass_loss * N_star_m;
       energy_dot += stellar_wind_get_energy_dot(mass_loss, v_infty) * N_star_m;
-      message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
-        mass_loss,
-        v_infty,
-        energy_dot);
+      // message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
+      //   mass_loss,
+      //   v_infty,
+      //   energy_dot);
     }
 
     /* Then consider the imf part which could provoke supernovae*/ 
@@ -455,10 +455,10 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
       energy_dot += stellar_wind_get_energy_dot(mass_loss, v_infty) * N_star_m;
       imf_m = imf_m + dM;
       dM = imf_m / 10;
-      message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
-        mass_loss,
-        v_infty,
-        energy_dot);
+      // message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
+      //   mass_loss,
+      //   v_infty,
+      //   energy_dot);
     }
     if (imf_m < m_beg_lim){
       log_m = log10((imf_m + m_beg_lim) / 2);
@@ -468,14 +468,14 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
       v_infty = stellar_wind_get_wind_velocity(log_metallicity, log_m);
       sp->feedback_data.preSN.mass_loss += mass_loss * N_star_m;
       energy_dot += stellar_wind_get_energy_dot(mass_loss, v_infty) * N_star_m;
-      message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
-        mass_loss,
-        v_infty,
-        energy_dot);
+      // message("The Mass-Loss = %e;    The wind velocity = %e;     The energy_dot = %e",
+      //   mass_loss,
+      //   v_infty,
+      //   energy_dot);
     }
 
     sp->feedback_data.preSN.energy_ejected = energy_dot;
-    message("The energy ejected of imf star = %e     (in erg)", energy_dot);
+    //message("The energy ejected of imf star = %e     (in erg)", energy_dot);
   }
 }
 
@@ -586,8 +586,6 @@ void stellar_evolution_evolve_spart(
     sp->feedback_data.is_dead = 1;
     return;
   }
-
-  message("Is this even called ???");
 
   /* TODO: Pre-SN feedback */
   /* Note: You can update the function parameters as needed. */
@@ -1196,7 +1194,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
 							   const double star_age_beg_step, const double dt) {
   /* TODO */
   /* TODO erase this debug line*/
-  message("Computing individual preSN feedback for stellar particle : %lld", sp->id);
+  //message("Computing individual preSN feedback for stellar particle : %lld", sp->id);
 
   /* Check that this function is called for individual stars (REDUNDANT) */
   if (sp->star_type != single_star) {
@@ -1241,13 +1239,13 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
 
   sp->feedback_data.preSN.energy_ejected *= feedback_duration_yr;
 
-  message("The energy amount to eject is : %lf  (in ergs)", sp->feedback_data.preSN.energy_ejected);
+  //message("The energy amount to eject is : %lf  (in ergs)", sp->feedback_data.preSN.energy_ejected);
 
   /* convert to internal units */
   sp->feedback_data.preSN.mass_loss *= phys_const->const_solar_mass;
   sp->feedback_data.preSN.energy_ejected /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
-  message("The conversion factor for energy : %e   (in internal units)", units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
-  message("The energy amount to eject is : %e   (in internal units)", sp->feedback_data.preSN.energy_ejected);
+  //message("The conversion factor for energy : %e   (in internal units)", units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
+  //message("The energy amount to eject is : %e   (in internal units)", sp->feedback_data.preSN.energy_ejected);
 
   /* maybe we want to consider also the radiation contribution */
 
@@ -1311,7 +1309,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
   m_end_step = max(m_end_step, sm->imf.mass_min);
   m_beg_step = min(m_beg_step, sm->imf.mass_max);
 
-  message("The m_end_step is : %e      and the m_beg_step is : %e    (in ? units)",m_end_step,m_beg_step);
+  // message("The m_end_step is : %e      and the m_beg_step is : %e    (in ? units)",m_end_step,m_beg_step);
 
   /* considering only the "alive" part of the IMF, i.e., we stop only if we are currently below the IMF */
   if (m_beg_step < sm->imf.mass_min) return;
@@ -1326,7 +1324,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
   if (sp->star_type == star_population_continuous_IMF) {
     /* If it's not time yet for feedback, exit. Notice that both masses are in
       solar mass. */
-      message("The minimal imf discret mass is %e     (in Msun)",sm->imf.minimal_discrete_mass_Msun);
+      //message("The minimal imf discret mass is %e     (in Msun)",sm->imf.minimal_discrete_mass_Msun);
   
       /* If we are in a case where
          m_beg_step and/or m_end_step > minimal_discrete_mass_Msun,
@@ -1349,13 +1347,13 @@ void stellar_evolution_compute_preSN_feedback_spart(
   stellar_evolution_compute_preSN_properties(sp, sm, phys_const,m_beg_step, m_end_step, m_init);
   sp->feedback_data.preSN.energy_ejected *= dt / phys_const->const_year;
 
-  message("The energy amount to eject is : %e  (in ergs)", sp->feedback_data.preSN.energy_ejected);
+  //message("The energy amount to eject is : %e  (in ergs)", sp->feedback_data.preSN.energy_ejected);
 
   /* convert to internal units */
   sp->feedback_data.preSN.mass_loss *= phys_const->const_solar_mass;
   sp->feedback_data.preSN.energy_ejected /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
-  message("The conversion factor for energy : %e   (in internal units)", units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
-  message("The energy amount to eject is : %e   (in internal units)", sp->feedback_data.preSN.energy_ejected);
+  //message("The conversion factor for energy : %e   (in internal units)", units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
+  //message("The energy amount to eject is : %e   (in internal units)", sp->feedback_data.preSN.energy_ejected);
   //TODO the same thought than for individual stars
     
 }
