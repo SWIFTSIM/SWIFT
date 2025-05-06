@@ -121,6 +121,9 @@ struct fof_props {
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
 
+  /*! Does the group have a black hole? */
+  char *has_black_hole;
+  
   /*! Centre of mass of the group a given gpart belongs to. */
   double *group_centre_of_mass;
 
