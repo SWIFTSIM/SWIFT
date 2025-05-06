@@ -212,9 +212,6 @@ void engine_fof(struct engine *e, const int dump_results,
   
 #endif
   
-  /* Finish the operations attaching the attachables to their groups */
-  fof_finalise_attachables(e->fof_properties, e->s);
-
   /* Compute group properties and act on the results
    * (seed BHs, dump catalogues..) */
   fof_compute_group_props(e->fof_properties, e->black_holes_properties,
