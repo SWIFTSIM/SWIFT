@@ -181,7 +181,7 @@ void engine_fof(struct engine *e, const int dump_results,
   fof_search_foreign_cells(e->fof_properties, e->s);
 
   /* Make a list of purely local groups to speed up the attaching */
-  //fof_build_list_of_purely_local_groups(e->fof_properties, e->s);
+  // fof_build_list_of_purely_local_groups(e->fof_properties, e->s);
 
   /* Link the foreign fragments and finalise global group list (nothing to do
    * without MPI) */
@@ -196,22 +196,22 @@ void engine_fof(struct engine *e, const int dump_results,
 
   /* Activate the tasks exchanging all the required gparts */
   engine_activate_gpart_comms(e);
-  
+
   /* Perform send and receive tasks. */
   engine_launch(e, "fof comms");
-  
+
 #endif
-  
+
   /* Compute the attachable->linkable links */
   fof_link_attachable_particles(e->fof_properties, e->s);
 
 #ifdef WITH_MPI
 
-    /* Free the foreign particles */
+  /* Free the foreign particles */
   space_free_foreign_parts(e->s, /*clear pointers=*/1);
-  
+
 #endif
-  
+
   /* Compute group properties and act on the results
    * (seed BHs, dump catalogues..) */
   fof_compute_group_props(e->fof_properties, e->black_holes_properties,

@@ -361,8 +361,8 @@ void fof_set_initial_group_id_mapper(void *map_data, int num_elements,
  */
 void fof_allocate(const struct space *s, struct fof_props *props) {
 
-  my_s = (struct space*) s;
-  
+  my_s = (struct space *)s;
+
   const int verbose = s->e->verbose;
   const ticks total_tic = getticks();
 
@@ -1568,9 +1568,10 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
   /* Make a list of particle offsets into the global gparts array. */
   /* size_t *const group_index = props->group_index; */
-/* #ifndef WITH_MPI */
-/*   size_t *const index_offset = group_index + (ptrdiff_t)(gparts - space_gparts); */
-/* #endif */
+  /* #ifndef WITH_MPI */
+  /*   size_t *const index_offset = group_index + (ptrdiff_t)(gparts -
+   * space_gparts); */
+  /* #endif */
 
   /* size_t *const attach_index = props->attach_index; */
   /* size_t *const attach_offset = */
@@ -1609,13 +1610,14 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
     const double piy = pi->x[1];
     const double piz = pi->x[2];
 
-/*     /\* Find the root of pi. *\/ */
-/* #ifdef WITH_MPI */
-/*     const size_t root_i = fof_find_global( */
-/*         i + (ptrdiff_t)(gparts - space_gparts), group_index, nr_gparts); */
-/* #else */
-/*     const size_t root_i = fof_find(index_offset[i], group_index); */
-/* #endif */
+    /*     /\* Find the root of pi. *\/ */
+    /* #ifdef WITH_MPI */
+    /*     const size_t root_i = fof_find_global( */
+    /*         i + (ptrdiff_t)(gparts - space_gparts), group_index, nr_gparts);
+     */
+    /* #else */
+    /*     const size_t root_i = fof_find(index_offset[i], group_index); */
+    /* #endif */
 
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
@@ -1654,13 +1656,14 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
         error("Running FOF on an un-drifted particle!");
 #endif
 
-/*         /\* Find the root of pi. *\/ */
-/* #ifdef WITH_MPI */
-/*       const size_t root_j = fof_find_global( */
-/*           j + (ptrdiff_t)(gparts - space_gparts), group_index, nr_gparts); */
-/* #else */
-/*       const size_t root_j = fof_find(index_offset[j], group_index); */
-/* #endif */
+      /*         /\* Find the root of pi. *\/ */
+      /* #ifdef WITH_MPI */
+      /*       const size_t root_j = fof_find_global( */
+      /*           j + (ptrdiff_t)(gparts - space_gparts), group_index,
+       * nr_gparts); */
+      /* #else */
+      /*       const size_t root_j = fof_find(index_offset[j], group_index); */
+      /* #endif */
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -1697,9 +1700,10 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
             offset_dist[j] = dist;
 
             /* Store the current best root */
-	    pj->fof_data.group_id = pi->fof_data.group_id;
-	    if (pj->type == swift_type_gas && my_s->parts[-pj->id_or_neg_offset].id == ICHECK)
-	      message("Linking self 1");
+            pj->fof_data.group_id = pi->fof_data.group_id;
+            if (pj->type == swift_type_gas &&
+                my_s->parts[-pj->id_or_neg_offset].id == ICHECK)
+              message("Linking self 1");
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1715,9 +1719,10 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
             offset_dist[i] = dist;
 
             /* Store the current best root */
-	    pi->fof_data.group_id = pj->fof_data.group_id;
-	    if (pi->type == swift_type_gas && my_s->parts[-pi->id_or_neg_offset].id == ICHECK) 
-	      message("Linking self 2");
+            pi->fof_data.group_id = pj->fof_data.group_id;
+            if (pi->type == swift_type_gas &&
+                my_s->parts[-pi->id_or_neg_offset].id == ICHECK)
+              message("Linking self 2");
           }
 
         } else {
@@ -1827,18 +1832,19 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
 
-/*     /\* Find the root of pi. *\/ */
-/* #ifdef WITH_MPI */
-/*     size_t root_i; */
-/*     if (ci_local) { */
-/*       root_i = fof_find_global(index_offset_i[i] - node_offset, group_index, */
-/*                                nr_gparts); */
-/*     } else { */
-/*       root_i = pi->fof_data.group_id; */
-/*     } */
-/* #else */
-/*     const size_t root_i = fof_find(index_offset_i[i], group_index); */
-/* #endif */
+    /*     /\* Find the root of pi. *\/ */
+    /* #ifdef WITH_MPI */
+    /*     size_t root_i; */
+    /*     if (ci_local) { */
+    /*       root_i = fof_find_global(index_offset_i[i] - node_offset,
+     * group_index, */
+    /*                                nr_gparts); */
+    /*     } else { */
+    /*       root_i = pi->fof_data.group_id; */
+    /*     } */
+    /* #else */
+    /*     const size_t root_i = fof_find(index_offset_i[i], group_index); */
+    /* #endif */
 
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
@@ -1877,18 +1883,20 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
         error("Running FOF on an un-drifted particle!");
 #endif
 
-/*         /\* Find the root of pj. *\/ */
-/* #ifdef WITH_MPI */
-/*       size_t root_j; */
-/*       if (cj_local) { */
-/*         root_j = fof_find_global(index_offset_j[j] - node_offset, group_index, */
-/*                                  nr_gparts); */
-/*       } else { */
-/*         root_j = pj->fof_data.group_id; */
-/*       } */
-/* #else */
-/*       const size_t root_j = fof_find(index_offset_j[j], group_index); */
-/* #endif */
+      /*         /\* Find the root of pj. *\/ */
+      /* #ifdef WITH_MPI */
+      /*       size_t root_j; */
+      /*       if (cj_local) { */
+      /*         root_j = fof_find_global(index_offset_j[j] - node_offset,
+       * group_index, */
+      /*                                  nr_gparts); */
+      /*       } else { */
+      /*         root_j = pj->fof_data.group_id; */
+      /*       } */
+      /* #else */
+      /*       const size_t root_j = fof_find(index_offset_j[j], group_index);
+       */
+      /* #endif */
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -1931,10 +1939,10 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
               offset_dist_j[j] = dist;
 
               /* Store the current best root */
-	      pj->fof_data.group_id = pi->fof_data.group_id;
-	      if (pj->type == swift_type_gas && my_s->parts[-pj->id_or_neg_offset].id == ICHECK)
-		message("Linking pair 1 ci-local=%d", ci_local);
-
+              pj->fof_data.group_id = pi->fof_data.group_id;
+              if (pj->type == swift_type_gas &&
+                  my_s->parts[-pj->id_or_neg_offset].id == ICHECK)
+                message("Linking pair 1 ci-local=%d", ci_local);
             }
           }
 
@@ -1954,10 +1962,11 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
               offset_dist_i[i] = dist;
 
               /* Store the current best root */
-	      pi->fof_data.group_id = pj->fof_data.group_id;
-	      if (pi->type == swift_type_gas && my_s->parts[-pi->id_or_neg_offset].id == ICHECK)
-		message("Linking pair 2 cj-Local=%d cj->nodeID=%d", cj_local, cj->nodeID);
-
+              pi->fof_data.group_id = pj->fof_data.group_id;
+              if (pi->type == swift_type_gas &&
+                  my_s->parts[-pi->id_or_neg_offset].id == ICHECK)
+                message("Linking pair 2 cj-Local=%d cj->nodeID=%d", cj_local,
+                        cj->nodeID);
             }
           }
 
@@ -2237,7 +2246,7 @@ void fof_unpack_group_mass_mapper(hashmap_key_t key, hashmap_value_t *value,
 #endif /* WITH_MPI */
 
 void fof_calc_group_mass(struct fof_props *props, const struct space *s,
-			 const int seed_black_holes) {
+                         const int seed_black_holes) {
 
   const size_t nr_gparts = s->nr_gparts;
   const struct gpart *gparts = s->gparts;
@@ -2245,7 +2254,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   const size_t group_id_default = props->group_id_default;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  
+
   /* Direct pointers to the arrays */
   long long *final_group_size = props->final_group_size;
   double *group_mass = props->group_mass;
@@ -2255,13 +2264,11 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
   /* Temporary arrays to help with the CoMs */
   float *max_positions, *min_positions;
-  if (swift_memalign("fof_group_max_position",
-		     (void **)&max_positions, 32,
-		     props->num_groups * 3 * sizeof(double)) != 0)
+  if (swift_memalign("fof_group_max_position", (void **)&max_positions, 32,
+                     props->num_groups * 3 * sizeof(double)) != 0)
     error("Unable to allocate memory for the max positions");
-  if (swift_memalign("fof_group_min_position",
-		     (void **)&min_positions, 32,
-		     props->num_groups * 3 * sizeof(double)) != 0)
+  if (swift_memalign("fof_group_min_position", (void **)&min_positions, 32,
+                     props->num_groups * 3 * sizeof(double)) != 0)
     error("Unable to allocate memory for the min positions");
 
   /* Initialise the min/max arrays to the limits */
@@ -2269,7 +2276,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     min_positions[i] = DBL_MAX;
     max_positions[i] = -DBL_MAX;
   }
-  
+
   /* Collect information about the local particles and update the array of
    * properties. Recall the array is as big as all the haloes accross
    * all domains */
@@ -2286,7 +2293,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
     if (gparts[i].fof_data.group_id > (size_t)props->num_groups)
       error("Found an invalid group ID!");
-    
+
     /* Entry into the global list of group properties */
     const size_t index = gparts[i].fof_data.group_id - 1;
 
@@ -2301,13 +2308,19 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     group_mass[index] += gparts[i].mass;
 
     /* Get the min/max position along each axis */
-    min_positions[index * 3 + 0] = fmin(min_positions[index * 3 + 0], gparts[i].x[0]);
-    min_positions[index * 3 + 1] = fmin(min_positions[index * 3 + 1], gparts[i].x[1]);
-    min_positions[index * 3 + 2] = fmin(min_positions[index * 3 + 2], gparts[i].x[2]);
-    max_positions[index * 3 + 0] = fmax(max_positions[index * 3 + 0], gparts[i].x[0]);
-    max_positions[index * 3 + 1] = fmax(max_positions[index * 3 + 1], gparts[i].x[1]);
-    max_positions[index * 3 + 2] = fmax(max_positions[index * 3 + 2], gparts[i].x[2]);
-    
+    min_positions[index * 3 + 0] =
+        fmin(min_positions[index * 3 + 0], gparts[i].x[0]);
+    min_positions[index * 3 + 1] =
+        fmin(min_positions[index * 3 + 1], gparts[i].x[1]);
+    min_positions[index * 3 + 2] =
+        fmin(min_positions[index * 3 + 2], gparts[i].x[2]);
+    max_positions[index * 3 + 0] =
+        fmax(max_positions[index * 3 + 0], gparts[i].x[0]);
+    max_positions[index * 3 + 1] =
+        fmax(max_positions[index * 3 + 1], gparts[i].x[1]);
+    max_positions[index * 3 + 2] =
+        fmax(max_positions[index * 3 + 2], gparts[i].x[2]);
+
     /* Check whether there is a black hole */
     if (gparts[i].type == swift_type_black_hole) {
       has_black_hole[index] = 1;
@@ -2317,23 +2330,29 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].type == swift_type_gas) {
       const size_t gas_index = -gparts[i].id_or_neg_offset;
       const float rho_com = hydro_get_comoving_density(&parts[gas_index]);
-      max_part_density[index] = fmaxf(rho_com, max_part_density[index]);					   
-    }    
+      max_part_density[index] = fmaxf(rho_com, max_part_density[index]);
+    }
   }
 
 #ifdef WITH_MPI
   /* Now all-reduce the local fragments so that everyone has a full catalog */
-  MPI_Allreduce(MPI_IN_PLACE, final_group_size, props->num_groups, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, group_mass, props->num_groups, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, min_positions, 3 * props->num_groups, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, max_positions, 3 * props->num_groups, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, has_black_hole, props->num_groups, MPI_CHAR, MPI_MAX, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, max_part_density, props->num_groups, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);  
+  MPI_Allreduce(MPI_IN_PLACE, final_group_size, props->num_groups,
+                MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, group_mass, props->num_groups, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, min_positions, 3 * props->num_groups, MPI_DOUBLE,
+                MPI_MIN, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, max_positions, 3 * props->num_groups, MPI_DOUBLE,
+                MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, has_black_hole, props->num_groups, MPI_CHAR,
+                MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, max_part_density, props->num_groups, MPI_FLOAT,
+                MPI_MAX, MPI_COMM_WORLD);
 #endif
-  
+
   /* We can now do a second pass to compute the centre of mass
-   * Because of periodic BCs, we need to shift the positions in cases where the (max-min) is
-   * larger than 1/2 of the box size */
+   * Because of periodic BCs, we need to shift the positions in cases where the
+   * (max-min) is larger than 1/2 of the box size */
   for (size_t i = 0; i < nr_gparts; i++) {
 
     /* Ignore inhibited particles */
@@ -2347,13 +2366,14 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
     /* Entry into the global list of group properties */
     const size_t index = gparts[i].fof_data.group_id - 1;
-    
+
     double x[3] = {gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]};
     if (periodic) {
       for (int k = 0; k < 3; k++) {
-	if (max_positions[index * 3 + k] - min_positions[index * 3 + k] > 0.5 * dim[k]) {
-	  x[k] = box_wrap(x[k] + 0.5 * dim[k], 0., dim[k]);
-	}
+        if (max_positions[index * 3 + k] - min_positions[index * 3 + k] >
+            0.5 * dim[k]) {
+          x[k] = box_wrap(x[k] + 0.5 * dim[k], 0., dim[k]);
+        }
       }
     }
 
@@ -2365,44 +2385,45 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
 #ifdef WITH_MPI
   /* Now all-reduce the CoMs so that everyone has a full catalog */
-  MPI_Allreduce(MPI_IN_PLACE, centre_of_mass, 3 * props->num_groups, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, centre_of_mass, 3 * props->num_groups, MPI_DOUBLE,
+                MPI_MAX, MPI_COMM_WORLD);
 #endif
 
-  /* Finalise the operations on the group catalog */  
+  /* Finalise the operations on the group catalog */
   for (size_t i = 0; i < (size_t)props->num_groups; ++i) {
 
     centre_of_mass[i * 3 + 0] /= group_mass[i];
     centre_of_mass[i * 3 + 1] /= group_mass[i];
     centre_of_mass[i * 3 + 2] /= group_mass[i];
-    
+
     /* Undo the half-box periodic shift */
     if (periodic) {
       for (int k = 0; k < 3; k++) {
-	if (max_positions[i * 3 + k] - min_positions[i * 3 + k] > 0.5 * dim[k]) {
-	  centre_of_mass[i * 3 + k] -= 0.5 * dim[k];
-	}
+        if (max_positions[i * 3 + k] - min_positions[i * 3 + k] >
+            0.5 * dim[k]) {
+          centre_of_mass[i * 3 + k] -= 0.5 * dim[k];
+        }
       }
-    }    
+    }
   }
 
   /* Free temporary arrays */
   swift_free("max_positions", max_positions);
   swift_free("min_positions", min_positions);
 }
-  
 
 /**
  * @brief Calculates the total mass and CoM of each group above min_group_size
  * and finds the densest particle for black hole seeding.
  */
 void fof_calc_group_mass_old(struct fof_props *props, const struct space *s,
-			     const int seed_black_holes,
-			     const size_t num_groups_local,
-			     const size_t num_groups_prev,
-			     size_t *restrict num_on_node,
-			     size_t *restrict first_on_node,
-			     double *restrict group_mass) {
-  
+                             const int seed_black_holes,
+                             const size_t num_groups_local,
+                             const size_t num_groups_prev,
+                             size_t *restrict num_on_node,
+                             size_t *restrict first_on_node,
+                             double *restrict group_mass) {
+
   const size_t nr_gparts = s->nr_gparts;
   struct gpart *gparts = s->gparts;
   const struct part *parts = s->parts;
@@ -2436,7 +2457,7 @@ void fof_calc_group_mass_old(struct fof_props *props, const struct space *s,
 
     /* Check whether we ignore this particle type altogether */
     if (gpart_is_ignorable(&gparts[i])) continue;
-    
+
     /* Check if the particle is in a group above the threshold. */
     if (gparts[i].fof_data.group_id != group_id_default) {
 
@@ -2449,9 +2470,10 @@ void fof_calc_group_mass_old(struct fof_props *props, const struct space *s,
         const size_t index =
             gparts[i].fof_data.group_id - group_id_offset - num_groups_prev;
 
-	if (index >= props->num_groups_local && my_s->parts[-gparts[i].id_or_neg_offset].id == ICHECK)
-	  error("aaa id=%lld", my_s->parts[-gparts[i].id_or_neg_offset].id);
-	
+        if (index >= props->num_groups_local &&
+            my_s->parts[-gparts[i].id_or_neg_offset].id == ICHECK)
+          error("aaa id=%lld", my_s->parts[-gparts[i].id_or_neg_offset].id);
+
         /* Update group mass */
         group_mass[index] += gparts[i].mass;
 
@@ -2599,13 +2621,13 @@ void fof_calc_group_mass_old(struct fof_props *props, const struct space *s,
   for (size_t i = 0; i < nr_gparts; i++) {
 
     continue;
-    
+
     /* Ignore inhibited particles */
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
     if (gpart_is_ignorable(&gparts[i])) continue;
-    
+
     /* Only check groups above the minimum mass threshold. */
     if (gparts[i].fof_data.group_id != group_id_default) {
 
@@ -2732,7 +2754,7 @@ void fof_calc_group_mass_old(struct fof_props *props, const struct space *s,
   for (size_t i = 0; i < nrecv; i++) {
 
     continue;
-    
+
 #ifdef SWIFT_DEBUG_CHECKS
     if ((fof_mass_recv[i].global_root < node_offset) ||
         (fof_mass_recv[i].global_root >= node_offset + nr_gparts)) {
@@ -2771,7 +2793,7 @@ void fof_calc_group_mass_old(struct fof_props *props, const struct space *s,
   for (size_t i = 0; i < nsend; i++) {
 
     continue;
-    
+
     /* Only add the index if:
      * 1) there is not already a black hole in the group
      * AND
@@ -3021,7 +3043,7 @@ void fof_finalise_group_data(struct fof_props *props,
                              const double dim[3], const int num_groups) {
 
   return;
-  
+
   size_t *group_size =
       (size_t *)swift_malloc("fof_group_size", num_groups * sizeof(size_t));
   size_t *group_index =
@@ -3250,15 +3272,15 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
       for (int i = 0; i < num_groups; i++) {
 
         /* const long long part_id = props->max_part_density_index[i] >= 0 */
-        /*                               ? parts[max_part_density_index[i]].id */
+        /*                               ? parts[max_part_density_index[i]].id
+         */
         /*                               : -1; */
-        fprintf(file, "  %8zu %12lld %12e %12e %12e %12e %12e %24lld %24lld\n",
-                group_index[i], final_group_size[i], group_mass[i],
-                group_centre_of_mass[i * 3 + 0],
-                group_centre_of_mass[i * 3 + 1],
-                group_centre_of_mass[i * 3 + 2], max_part_density[i],
-		-1ll, -1ll);
-                //max_part_density_index[i], part_id);
+        fprintf(
+            file, "  %8zu %12lld %12e %12e %12e %12e %12e %24lld %24lld\n",
+            group_index[i], final_group_size[i], group_mass[i],
+            group_centre_of_mass[i * 3 + 0], group_centre_of_mass[i * 3 + 1],
+            group_centre_of_mass[i * 3 + 2], max_part_density[i], -1ll, -1ll);
+        // max_part_density_index[i], part_id);
       }
 
       /* Dump the extra black hole seeds. */
@@ -4139,7 +4161,7 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
   props->num_groups_local = num_groups_local;
 
   message("num_groups_local=%zd", num_groups_local);
-  
+
   /* Find number of groups on lower numbered MPI ranks */
 #ifdef WITH_MPI
   long long nglocal = num_groups_local;
@@ -4294,32 +4316,31 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
 #endif /* WITH_MPI */
 
   size_t max_id = 0;
-  
+
   /* Assign every particle the group_id of its local root. */
   for (size_t i = 0; i < nr_gparts; i++) {
 
     if (gpart_is_ignorable(&gparts[i])) continue;
     if (gpart_is_attachable(&gparts[i])) continue;
-    
+
     const size_t root = fof_find_local(i, nr_gparts, group_index);
     gparts[i].fof_data.group_id = gparts[root].fof_data.group_id;
 
-    if( gparts[i].fof_data.group_id != fof_props_default_group_id)
+    if (gparts[i].fof_data.group_id != fof_props_default_group_id)
       max_id = max(max_id, gparts[i].fof_data.group_id);
   }
 
   /* Give some info */
-  //if (engine_rank == 0) {
-    message(
-        "No. of groups: %lld. No. of particles in groups: %lld. No. of "
-        "particles not in groups: %lld.",
-        num_groups, num_parts_in_groups,
-        s->e->total_nr_gparts - num_parts_in_groups);
-    message("Largest group (linkables only) by size: %lld", max_group_size);
-    //}
-    message("max_id=%zd", max_id);
-  
-  
+  // if (engine_rank == 0) {
+  message(
+      "No. of groups: %lld. No. of particles in groups: %lld. No. of "
+      "particles not in groups: %lld.",
+      num_groups, num_parts_in_groups,
+      s->e->total_nr_gparts - num_parts_in_groups);
+  message("Largest group (linkables only) by size: %lld", max_group_size);
+  //}
+  message("max_id=%zd", max_id);
+
   if (verbose)
     message("took: %.3f %s.", clocks_from_ticks(getticks() - tic_total),
             clocks_getunit());
@@ -4379,22 +4400,22 @@ void fof_compute_group_props(struct fof_props *props,
   const ticks tic_seeding = getticks();
 
   fof_calc_group_mass(props, s, seed_black_holes);
-  
-/* #ifdef WITH_MPI */
-/*   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, */
-/*                       props->num_groups_prev, props->num_on_node, */
-/*                       props->first_on_node, props->group_mass); */
-/*   free(props->num_on_node); */
-/*   free(props->first_on_node); */
-/* #else */
-/*   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, */
-/*                       /\*num_groups_prev=*\/0, /\*num_on_node=*\/NULL, */
-/*                       /\*first_on_node=*\/NULL, props->group_mass); */
-/* #endif */
+
+  /* #ifdef WITH_MPI */
+  /*   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, */
+  /*                       props->num_groups_prev, props->num_on_node, */
+  /*                       props->first_on_node, props->group_mass); */
+  /*   free(props->num_on_node); */
+  /*   free(props->first_on_node); */
+  /* #else */
+  /*   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, */
+  /*                       /\*num_groups_prev=*\/0, /\*num_on_node=*\/NULL, */
+  /*                       /\*first_on_node=*\/NULL, props->group_mass); */
+  /* #endif */
 
   /* Finalise the group data before dump */
-  //fof_finalise_group_data(props, props->high_group_sizes, s->gparts,
-  //                        s->periodic, s->dim, num_groups);
+  // fof_finalise_group_data(props, props->high_group_sizes, s->gparts,
+  //                         s->periodic, s->dim, num_groups);
 
   if (verbose)
     message("Computing group properties took: %.3f %s.",
@@ -4409,7 +4430,7 @@ void fof_compute_group_props(struct fof_props *props,
 #endif
   }
 
-  //if (dump_debug_results) {
+  // if (dump_debug_results) {
   if (1) {
 
     char output_file_name[PARSER_MAX_LINE_SIZE];
@@ -4428,8 +4449,7 @@ void fof_compute_group_props(struct fof_props *props,
 
   /* Seed black holes */
   if (seed_black_holes) {
-    fof_seed_black_holes(props, bh_props, constants, cosmo, s,
-                         num_groups);
+    fof_seed_black_holes(props, bh_props, constants, cosmo, s, num_groups);
   }
 
   /* Free the left-overs */

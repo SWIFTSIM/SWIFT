@@ -65,7 +65,7 @@ extern int engine_rank;
             ##__VA_ARGS__);                                                \
     memdump(engine_rank);                                                  \
     fflush(stderr);                                                        \
-    swift_abort(1);							   \
+    swift_abort(1);                                                        \
   })
 #else
 extern int engine_rank;
