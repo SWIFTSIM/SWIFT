@@ -99,7 +99,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Running value of the maximal smoothing length */
   float h_max = c->stars.h_max;
-  float h_max_active = c->stars.h_max_active;
+  float h_max_active = 0.f;
 
   TIMER_TIC;
 
@@ -295,6 +295,13 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               rt_compute_stellar_emission_rate(sp, e->time,
                                                star_age_end_of_step, dt_star,
                                                rt_props, phys_const, us);
+            }
+
+            if (feedback_is_active(sp, e) || with_rt) {
+
+              /* Check if h_max has increased */
+              h_max = max(h_max, sp->h);
+              h_max_active = max(h_max_active, sp->h);
             }
 
             /* Ok, we are done with this particle */
@@ -561,7 +568,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
     if (h > c->stars.h_max)
       error("Particle has h larger than h_max (id=%lld)", sp->id);
-    if (spart_is_active(sp, e) && h > c->stars.h_max_active)
+
+    if (spart_is_active(sp, e) && (feedback_is_active(sp, e) || with_rt) &&
+        (h > c->stars.h_max_active))
       error("Active particle has h larger than h_max_active (id=%lld)", sp->id);
   }
 #endif
@@ -602,7 +611,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
   /* Running value of the maximal smoothing length */
   float h_max = c->black_holes.h_max;
-  float h_max_active = c->black_holes.h_max_active;
+  float h_max_active = 0.f;
 
   TIMER_TIC;
 
@@ -720,6 +729,10 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
               ((bp->h <= black_holes_h_min) && (f > 0.f))) {
 
             black_holes_reset_feedback(bp);
+
+            /* Check if h_max has increased */
+            h_max = max(h_max, bp->h);
+            h_max_active = max(h_max_active, bp->h);
 
             /* Ok, we are done with this particle */
             continue;
@@ -1127,7 +1140,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Running value of the maximal smoothing length */
   float h_max = c->hydro.h_max;
-  float h_max_active = c->hydro.h_max_active;
+  float h_max_active = 0.f;
 
   TIMER_TIC;
 
@@ -1330,6 +1343,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
               rt_reset_part(p, cosmo);
             }
+
+            /* Check if h_max has increased */
+            h_max = max(h_max, p->h);
+            h_max_active = max(h_max_active, p->h);
 
             /* Ok, we are done with this particle */
             continue;
@@ -1754,7 +1771,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
   /* Running value of the maximal smoothing length */
   float h_max = c->sinks.h_max;
-  float h_max_active = c->sinks.h_max_active;
+  float h_max_active = 0.f;
 
   TIMER_TIC;
 
@@ -1891,6 +1908,10 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
             /* Same if we are below h_min */
             if (((sp->h >= sinks_h_max) && (f < 0.f)) ||
                 ((sp->h <= sinks_h_min) && (f > 0.f))) {
+
+              /* Check if h_max has increased */
+              h_max = max(h_max, sp->h);
+              h_max_active = max(h_max_active, sp->h);
 
               /* Ok, we are done with this particle */
               continue;
