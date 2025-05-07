@@ -599,8 +599,7 @@ INLINE static void star_formation_copy_properties(
     const struct cosmology* cosmo, const int with_cosmology,
     const struct phys_const* phys_const, const struct hydro_props* hydro_props,
     const struct unit_system* us, const struct cooling_function_data* cooling,
-    const struct chemistry_global_data* chem_data,
-    const int convert_part) {
+    const struct chemistry_global_data* chem_data, const int convert_part) {
 
   /* Store the current mass */
   sp->mass = hydro_get_mass(p) / starform->num_stars_per_gas_particle;

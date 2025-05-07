@@ -48,8 +48,9 @@
  * @param cosmo The current cosmological model.
  */
 INLINE static void chemistry_copy_star_formation_properties(
-							    struct part* p, const struct xpart* xp, struct spart* sp,
-							    const struct chemistry_global_data* chem_data, const struct cosmology* cosmo) {
+    struct part* p, const struct xpart* xp, struct spart* sp,
+    const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo) {
 
   /* gas mass after update */
   float mass = hydro_get_mass(p);

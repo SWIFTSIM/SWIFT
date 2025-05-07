@@ -386,7 +386,6 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
   return FLT_MAX;
 }
 
-
 /**
  * @brief Initialise the chemistry properties of a black hole with
  * the chemistry properties of the gas it is born from.

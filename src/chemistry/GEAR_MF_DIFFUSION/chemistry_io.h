@@ -61,14 +61,14 @@ INLINE static void convert_gas_metals(const struct engine* e,
     double Zi = chemistry_get_metal_mass_fraction(p, i);
     /* When debugging, do not correct the values to check metal mass
        conservation. */
-/* #if !defined(SWIFT_CHEMISTRY_DEBUG_CHECKS) */
+    /* #if !defined(SWIFT_CHEMISTRY_DEBUG_CHECKS) */
     if (Zi >= GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE) {
       /* We tolerate a small deviation around 0 due to flux exchanges. But
-	 the true physical value is 0.0 */
+         the true physical value is 0.0 */
       Zi = max(0.0, Zi);
       mi = max(0.0, mi);
     } /* Do not correct negative values, this helps debugging */
-/* #endif */
+    /* #endif */
     ret[i] = Zi;
     m_Z += mi;
   }

@@ -74,7 +74,8 @@ chemistry_get_physical_metal_density(const struct part* restrict p, int metal,
  * @param metal Index of metal specie
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_get_part_corrected_metal_mass(const struct part* restrict p, int metal) {
+chemistry_get_part_corrected_metal_mass(const struct part* restrict p,
+                                        int metal) {
   double mZi = p->chemistry_data.metal_mass[metal];
   double Zi = chemistry_get_metal_mass_fraction(p, metal);
   if (Zi >= GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE) {
@@ -383,7 +384,7 @@ chemistry_get_physical_diffusion_speed(
     const struct part* restrict p,
     const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo) {
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION) 
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   if (chem_data->relaxation_time_mode == constant_mode) {
     /* Compute diffusion matrix K */
     double K[3][3];
@@ -399,10 +400,11 @@ chemistry_get_physical_diffusion_speed(
     } else {
       /* ||K|| is in units of U_M/(U_L*U_T) => v_diff = c_Hyp / sqrt(rho) */
       /* Use the filtered.rho for consistency with the philosophy of considering
-	 the fluctuations at larger scale than the smoothing length. */
+         the fluctuations at larger scale than the smoothing length. */
       const double rho = p->chemistry_data.filtered.rho * cosmo->a3_inv;
-      const double c_hyp = chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
-      return c_hyp / sqrt(rho) ;
+      const double c_hyp =
+          chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
+      return c_hyp / sqrt(rho);
     }
   } else {
     /* We assume that the diffusion cannot be faster than the gas sound speed */
@@ -412,7 +414,7 @@ chemistry_get_physical_diffusion_speed(
   /* For the parabolic diffusion, we can estimate the diffusion speed with
                 v_diff ~ ||K|| * || Grad q || / ||U||.
      See apendix D in Hopkins 2017 (https://arxiv.org/abs/1602.07703). */
-  const struct chemistry_part_data *chd = &p->chemistry_data;
+  const struct chemistry_part_data* chd = &p->chemistry_data;
 
   /* Compute diffusion matrix K */
   double K[3][3];
@@ -460,7 +462,8 @@ chemistry_compute_physical_tau(const struct part* restrict p,
                                const struct cosmology* cosmo) {
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   if (chem_data->relaxation_time_mode == constant_mode) {
-    /* Tau is constant and chosen in the parameter file. Hence return this value. */
+    /* Tau is constant and chosen in the parameter file. Hence return this
+     * value. */
     return chem_data->tau;
   } else {
     /* Tau is proportional to the sound speed => tau varies per particle */
@@ -471,17 +474,18 @@ chemistry_compute_physical_tau(const struct part* restrict p,
 
     if (chem_data->diffusion_mode != isotropic_constant) {
       /* Use the filtered.rho for consistency with the philosophy of considering
-	 the fluctuations at larger scale than the smoothing length.
-	 Note: it will cancel out with the one inside ||K||. */
+         the fluctuations at larger scale than the smoothing length.
+         Note: it will cancel out with the one inside ||K||. */
       const double rho = p->chemistry_data.filtered.rho * cosmo->a3_inv;
 
       /* Get the particle physical diffusion speed */
       const double v_diff =
-        chemistry_get_physical_diffusion_speed(p, chem_data, cosmo);
+          chemistry_get_physical_diffusion_speed(p, chem_data, cosmo);
       return norm_matrix_K / (v_diff * v_diff * rho);
     } else {
-       /* Get the particle physical diffusion speed */
-      const double v_diff = chemistry_get_physical_diffusion_speed(p, chem_data, cosmo);
+      /* Get the particle physical diffusion speed */
+      const double v_diff =
+          chemistry_get_physical_diffusion_speed(p, chem_data, cosmo);
       return norm_matrix_K / (v_diff * v_diff);
     }
   }

@@ -39,8 +39,8 @@ enum chemistry_diffusion_mode {
  * @brief The relaxation time mode
  */
 enum chemistry_relaxation_time_mode {
-  constant_mode,    /* Constant */
-  soundspeed_mode,  /* Based on the gas soundspeed: tau = ||K||/(c_s^2 rho) */
+  constant_mode,   /* Constant */
+  soundspeed_mode, /* Based on the gas soundspeed: tau = ||K||/(c_s^2 rho) */
 };
 
 /**
@@ -75,7 +75,8 @@ struct chemistry_global_data {
   float diffusion_coefficient;
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  /*! Relaxation time for the constant relaxation time case. In physical units. */
+  /*! Relaxation time for the constant relaxation time case. In physical units.
+   */
   double tau;
 
   /*! Relaxation time mode. 0: constant, 1: . */

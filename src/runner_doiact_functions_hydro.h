@@ -325,13 +325,14 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
-          runner_iact_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                     t_current, cosmo, with_cosmology, chem_data);
+                                     t_current, cosmo, with_cosmology,
+                                     chem_data);
 #endif
       }
       if (doj) {
@@ -353,13 +354,14 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
-          runner_iact_nonsym_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                     t_current, cosmo, with_cosmology, chem_data);
+                                     t_current, cosmo, with_cosmology,
+                                     chem_data);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -2488,7 +2490,7 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
-            runner_iact_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -2513,13 +2515,14 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
-            runner_iact_nonsym_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_nonsym_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                       t_current, cosmo, with_cosmology, chem_data);
+                                       t_current, cosmo, with_cosmology,
+                                       chem_data);
 #endif
         } else if (doj) {
 
@@ -2542,13 +2545,14 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
-            runner_iact_nonsym_gradient_diffusion(r2, dx, hj, hi, pj, pi, a, H);
+          runner_iact_nonsym_gradient_diffusion(r2, dx, hj, hi, pj, pi, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                       t_current, cosmo, with_cosmology, chem_data);
+                                       t_current, cosmo, with_cosmology,
+                                       chem_data);
 #endif
         } /* Hit or miss */
       } /* loop over all other particles. */
@@ -2811,7 +2815,7 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
-            runner_iact_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -2837,13 +2841,14 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
-            runner_iact_nonsym_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_nonsym_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                       t_current, cosmo, with_cosmology, chem_data);
+                                       t_current, cosmo, with_cosmology,
+                                       chem_data);
 #endif
         } else if (doj) {
 

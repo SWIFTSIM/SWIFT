@@ -126,7 +126,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
     qL = chemistry_get_physical_metal_density(pi, m, cosmo);
     qR = chemistry_get_physical_metal_density(pj, m, cosmo);
 
-    const float r = sqrtf(dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]);
+    const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
     const float xfac = -pi->h / (pi->h + pj->h);
     const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
     chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, &qL, &qR);
@@ -149,8 +149,10 @@ chemistry_riemann_solver_hopkins2017_HLL(
     chemistry_get_metal_density_gradients(pi, m, grad_q_L);
     chemistry_get_metal_density_gradients(pj, m, grad_q_R);
 
-    /* Convert to physical units: multiply by a^-4 (a^-3 for density and a^-1 for gradient) */
-    const double a_inv_4 = cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
+    /* Convert to physical units: multiply by a^-4 (a^-3 for density and a^-1
+     * for gradient) */
+    const double a_inv_4 =
+        cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
     grad_q_L[0] *= a_inv_4;
     grad_q_L[1] *= a_inv_4;
     grad_q_L[2] *= a_inv_4;
@@ -173,7 +175,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
     grad_q_R[2] *= cosmo->a_inv;
   }
   double grad_q_star[3] = {0.5 * (grad_q_L[0] + grad_q_R[0]),
-			   0.5 * (grad_q_L[1] + grad_q_R[1]),
+                           0.5 * (grad_q_L[1] + grad_q_R[1]),
                            0.5 * (grad_q_L[2] + grad_q_R[2])};
 
   /* Define some convenient variables. Convert to physical: add a for the norm

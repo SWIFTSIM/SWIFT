@@ -339,7 +339,8 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
 
   char temp2[PARSER_MAX_LINE_SIZE];
-  parser_get_param_string(parameter_file, "GEARChemistry:relaxation_time_mode", temp2);
+  parser_get_param_string(parameter_file, "GEARChemistry:relaxation_time_mode",
+                          temp2);
   if (strcmp(temp2, "Constant") == 0)
     data->relaxation_time_mode = constant_mode;
   else if (strcmp(temp2, "Soundspeed") == 0)
@@ -896,14 +897,17 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_sink(
  * @param cosmo The current cosmological model.
  */
 INLINE static void chemistry_copy_star_formation_properties(
-							    struct part* p, const struct xpart* xp, struct spart* sp, const struct chemistry_global_data* chem_data, const struct cosmology* cosmo) {
+    struct part* p, const struct xpart* xp, struct spart* sp,
+    const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo) {
 
   /* gas mass after update */
   float mass = hydro_get_mass(p);
 
   /* Store the chemistry struct in the star particle */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    const double part_metal_mass = chemistry_get_part_corrected_metal_mass(p, i);
+    const double part_metal_mass =
+        chemistry_get_part_corrected_metal_mass(p, i);
     sp->chemistry_data.metal_mass_fraction[i] = part_metal_mass / mass;
 
     /* Remove the metals taken by the star. */
@@ -950,8 +954,10 @@ INLINE static void chemistry_copy_sink_properties(const struct part* p,
 
   /* Store the chemistry struct in the star particle */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    const double part_metal_mass = chemistry_get_part_corrected_metal_mass(p, i);
-    sink->chemistry_data.metal_mass_fraction[i] = part_metal_mass / hydro_get_mass(p);
+    const double part_metal_mass =
+        chemistry_get_part_corrected_metal_mass(p, i);
+    sink->chemistry_data.metal_mass_fraction[i] =
+        part_metal_mass / hydro_get_mass(p);
   }
 }
 
@@ -983,8 +989,10 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
     struct sink* s, const struct part* p, const double ms_old) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    const double part_metal_mass = chemistry_get_part_corrected_metal_mass(p, i);
-    const double mi = s->chemistry_data.metal_mass_fraction[i] * ms_old + part_metal_mass;
+    const double part_metal_mass =
+        chemistry_get_part_corrected_metal_mass(p, i);
+    const double mi =
+        s->chemistry_data.metal_mass_fraction[i] * ms_old + part_metal_mass;
 
     s->chemistry_data.metal_mass_fraction[i] = mi / s->mass;
   }

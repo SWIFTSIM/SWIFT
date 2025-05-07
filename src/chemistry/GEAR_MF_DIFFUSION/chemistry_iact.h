@@ -461,7 +461,8 @@ runner_iact_chemistry_fluxes_common(
        artificially make masses positive, then we have metal mass creation. */
     double metal_mass_flux = totflux * mindt;
 
-    /* Use the updated metal masses to ensure that the final result won't be negative */
+    /* Use the updated metal masses to ensure that the final result won't be
+     * negative */
     const double m_Z_i =
         chi->metal_mass[m] + chi->diffused_metal_mass_fluxes[m];
     const double m_Z_j =
@@ -469,10 +470,12 @@ runner_iact_chemistry_fluxes_common(
     /* This one seemed to work for a certain time */
     const double upwind_mass = (metal_mass_flux > 0) ? m_Z_i : m_Z_j;
 
-    /* choose upwind mass to determine a stability bound on the maximum allowed mass exchange,
-     (we do this to prevent negative masses under all circumstances) */
-    if (fabs(metal_mass_flux) > 0.0 && fabs(metal_mass_flux) > 0.9*upwind_mass) {
-      const double factor = 0.9*upwind_mass / fabs(metal_mass_flux);
+    /* choose upwind mass to determine a stability bound on the maximum allowed
+     mass exchange, (we do this to prevent negative masses under all
+     circumstances) */
+    if (fabs(metal_mass_flux) > 0.0 &&
+        fabs(metal_mass_flux) > 0.9 * upwind_mass) {
+      const double factor = 0.9 * upwind_mass / fabs(metal_mass_flux);
       metal_mass_flux *= factor;
     }
 

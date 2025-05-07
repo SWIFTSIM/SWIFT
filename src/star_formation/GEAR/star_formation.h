@@ -343,8 +343,7 @@ INLINE static void star_formation_copy_properties(
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
     const struct cooling_function_data* restrict cooling,
-    const struct chemistry_global_data* chem_data,
-    const int convert_part) {
+    const struct chemistry_global_data* chem_data, const int convert_part) {
 
   /* Initialize the feedback */
   feedback_init_after_star_formation(sp, e->feedback_props, star_population);
