@@ -31,9 +31,9 @@ float initial_mass_function_sample(const struct initial_mass_function *imf,
 void initial_mass_function_integrate(const struct initial_mass_function *imf,
                                      float *data, size_t count,
                                      float log_mass_min, float step_size);
-void initial_mass_function_integrate_double(const struct initial_mass_function *imf,
-                                     double *data, size_t count,
-                                     float log_mass_min, float step_size);
+void initial_mass_function_integrate_double(
+    const struct initial_mass_function *imf, double *data, size_t count,
+    float log_mass_min, float step_size);
 float initial_mass_function_get_coefficient(
     const struct initial_mass_function *imf, float mass_min, float mass_max);
 float initial_mass_function_get_integral_xi(

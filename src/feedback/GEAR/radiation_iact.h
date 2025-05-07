@@ -29,8 +29,8 @@
  */
 
 #include "engine.h"
-#include "feedback.h"
 #include "error.h"
+#include "feedback.h"
 #include "radiation.h"
 #include "random.h"
 
@@ -89,7 +89,7 @@ radiation_iact_nonsym_feedback_density(
 
   /* Metallicity at the star location */
   si->feedback_data.Z_star +=
-    pj->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] * wi;
+      pj->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] * wi;
 
   /* Gather neighbours data for HII ionization */
   if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo, cooling,
@@ -97,7 +97,7 @@ radiation_iact_nonsym_feedback_density(
     /* If a particle is already ionized, it won't be able to ionize again so do
        not gather its data. */
     const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(
-									   phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+        phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
 
     /* Compute the size of the array that we want to sort. If the current
      * function is called for the first time (at this time-step for this star),
@@ -105,7 +105,7 @@ radiation_iact_nonsym_feedback_density(
      * maximum size of the sorted array cannot be larger then the maximum
      * number of rays. */
     const int arr_size =
-      min(si->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
+        min(si->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
 
     /* Minimise separation between the gas particles and the BH. The rays
      * structs with smaller ids in the ray array will refer to the particles
@@ -134,16 +134,14 @@ radiation_iact_nonsym_feedback_density(
  * @param ti_begin The integer time at the beginning of the step.
  * @param with_cosmology Are we running with cosmology on?
  */
-__attribute__((always_inline)) INLINE static
-void feedback_prepare_radiation_feedback(struct spart* restrict sp,
-                               const struct feedback_props* feedback_props,
-                               const struct cosmology* cosmo,
-                               const struct unit_system* us,
-                               const struct phys_const* phys_const,
-                               const double star_age_beg_step, const double dt,
-                               const double time, const integertime_t ti_begin,
-                               const int with_cosmology) {
-   /* Add missing h factor */
+__attribute__((always_inline)) INLINE static void
+feedback_prepare_radiation_feedback(
+    struct spart *restrict sp, const struct feedback_props *feedback_props,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const double star_age_beg_step,
+    const double dt, const double time, const integertime_t ti_begin,
+    const int with_cosmology) {
+  /* Add missing h factor */
   const float hi_inv = 1.f / sp->h;
   const float hi_inv_dim = pow_dimension(hi_inv);        /* 1/h^d */
   const float hi_inv_dim_plus_one = hi_inv_dim * hi_inv; /* 1/h^(d+1) */
@@ -155,22 +153,27 @@ void feedback_prepare_radiation_feedback(struct spart* restrict sp,
 
   sp->feedback_data.Z_star *= hi_inv / sp->feedback_data.rho_star;
 
-  /* const float Sigma_gas = radiation_get_comoving_gas_column_density_at_star(sp); */
-  /* const float kappa_IR = radiation_get_physical_IR_opacity(sp, us, phys_const, cosmo); */
-  /* const float tau_IR = radiation_get_physical_IR_optical_depth(sp, us, phys_const, cosmo); */
+  /* const float Sigma_gas =
+   * radiation_get_comoving_gas_column_density_at_star(sp); */
+  /* const float kappa_IR = radiation_get_physical_IR_opacity(sp, us,
+   * phys_const, cosmo); */
+  /* const float tau_IR = radiation_get_physical_IR_optical_depth(sp, us,
+   * phys_const, cosmo); */
 
   /* message( */
-  /*     "rho_star = %e, Grad rho = (%e %e %e), Z = %e, Sigma_gas = %e, kappa_IR " */
+  /*     "rho_star = %e, Grad rho = (%e %e %e), Z = %e, Sigma_gas = %e, kappa_IR
+   * " */
   /*     "= %e, tau_IR = %e", */
   /*     sp->feedback_data.rho_star, sp->feedback_data.grad_rho_star[0], */
-  /*     sp->feedback_data.grad_rho_star[1], sp->feedback_data.grad_rho_star[2], */
+  /*     sp->feedback_data.grad_rho_star[1], sp->feedback_data.grad_rho_star[2],
+   */
   /*     sp->feedback_data.Z_star, Sigma_gas, kappa_IR, tau_IR); */
 
   /*----------------------------------------*/
   /* Do the HII ionization */
 
   if (feedback_props->do_photoionization) {
-    const struct stromgren_shell_data* stromgren =
+    const struct stromgren_shell_data *stromgren =
         sp->feedback_data.radiation.stromgren_sphere;
     const int num_ngb =
         min(sp->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
@@ -219,7 +222,7 @@ void feedback_prepare_radiation_feedback(struct spart* restrict sp,
  * (non-symmetric). Used for updating properties of gas particles neighbouring
  * a star particle.
  *
- * Here we tag particles within HII regions and apply radiation pressure. 
+ * Here we tag particles within HII regions and apply radiation pressure.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -310,15 +313,16 @@ radiation_iact_nonsym_feedback_apply(
   /* Compute radiation pressure */
   if (fb_props->radiation_pressure_efficiency != 0) {
     const float Delta_t = get_timestep(si->time_bin, time_base);
-    const float p_rad =
-        fb_props->radiation_pressure_efficiency *
-      radiation_get_star_physical_radiation_pressure(si, Delta_t, phys_const, us, cosmo);
+    const float p_rad = fb_props->radiation_pressure_efficiency *
+                        radiation_get_star_physical_radiation_pressure(
+                            si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
 
     /* Add the radiation pressure radially outwards from the star. Notice the
        conversion to comoving units. */
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.radiation.delta_p[i] -= delta_p_rad * dx[i] / r * cosmo->a;
+      xpj->feedback_data.radiation.delta_p[i] -=
+          delta_p_rad * dx[i] / r * cosmo->a;
     }
   }
 
@@ -337,15 +341,15 @@ radiation_iact_nonsym_feedback_apply(
  * @param e The #engine.
  */
 __attribute__((always_inline)) INLINE static void
-feedback_update_part_radiation(struct part* p, struct xpart* xp,
-                          const struct engine* e) {
+feedback_update_part_radiation(struct part *p, struct xpart *xp,
+                               const struct engine *e) {
 
-  const struct cosmology* cosmo = e->cosmology;
-  const struct unit_system* us = e->internal_units;
-  const struct phys_const* phys_const = e->physical_constants;
-  const struct hydro_props* hydro_props = e->hydro_properties;
-  const struct cooling_function_data* cooling = e->cooling_func;
-  const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct unit_system *us = e->internal_units;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct cooling_function_data *cooling = e->cooling_func;
+  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
 
   /*----------------------------------------*/
   /* Treat ionisation */
@@ -374,7 +378,7 @@ feedback_update_part_radiation(struct part* p, struct xpart* xp,
       const double tmp = 0.86 / (1 + 0.22 * log(Z / Z_sun));
       T_collisional = ten_to_four_K * min(6.62, tmp);
     } else {
-      T_collisional = 6.62*ten_to_four_K;  // High-temp asymptote
+      T_collisional = 6.62 * ten_to_four_K;  // High-temp asymptote
     }
 
     /* Convert T to internal energy */

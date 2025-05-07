@@ -191,7 +191,8 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
 }
 
 /**
- * @brief Integrate the #interpolation_1d_double data with the initial mass function.
+ * @brief Integrate the #interpolation_1d_double data with the initial mass
+ * function.
  *
  * The x are supposed to be linear in log.
  *
@@ -201,9 +202,9 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
  * @param log_mass_min The value of the first element.
  * @param step_size The distance between two points.
  */
-void initial_mass_function_integrate_double(const struct initial_mass_function *imf,
-					    double *data, size_t count,
-					    float log_mass_min, float step_size) {
+void initial_mass_function_integrate_double(
+    const struct initial_mass_function *imf, double *data, size_t count,
+    float log_mass_min, float step_size) {
 
   /* Index in the data */
   size_t j = 1;

@@ -57,20 +57,18 @@ void radiation_consume_ionizing_photons(struct spart* sp,
 float radiation_get_comoving_gas_column_density_at_star(const struct spart* sp);
 
 float radiation_get_physical_IR_opacity(const struct spart* sp,
-                               const struct unit_system* us,
-					const struct phys_const* phys_const,
-					const struct cosmology* cosmo);
+                                        const struct unit_system* us,
+                                        const struct phys_const* phys_const,
+                                        const struct cosmology* cosmo);
 
-float radiation_get_physical_IR_optical_depth(const struct spart* sp,
-					      const struct unit_system* us,
-					      const struct phys_const* phys_const,
-					      const struct cosmology* cosmo);
+float radiation_get_physical_IR_optical_depth(
+    const struct spart* sp, const struct unit_system* us,
+    const struct phys_const* phys_const, const struct cosmology* cosmo);
 
-float radiation_get_star_physical_radiation_pressure(const struct spart* sp,
-						     const float Delta_t,
-						     const struct phys_const* phys_const,
-						     const struct unit_system* us,
-						     const struct cosmology* cosmo);
+float radiation_get_star_physical_radiation_pressure(
+    const struct spart* sp, const float Delta_t,
+    const struct phys_const* phys_const, const struct unit_system* us,
+    const struct cosmology* cosmo);
 
 int radiation_is_part_ionized(const struct phys_const* phys_const,
                               const struct hydro_props* hydro_props,
@@ -94,34 +92,46 @@ double radiation_get_individual_star_ionizing_photon_emission_rate_fit(
     const float mass, const struct unit_system* us,
     const struct phys_const* phys_const);
 
-
 /******************************************************************************/
 /* Functions to deal with integrated data over an IMF. These functions read,
    interpolate and integrate. */
 /******************************************************************************/
-void radiation_print(const struct radiation *rad);
-void radiation_init(struct radiation *rad, struct swift_params *params,
-		    const struct stellar_model *sm,  const struct unit_system *us,
-		    const struct phys_const* phys_const);
-void radiation_dump(const struct radiation *rad, FILE *stream,  const struct stellar_model *sm);
-void radiation_restore(struct radiation *rad, FILE *stream, const struct stellar_model *sm);
+void radiation_print(const struct radiation* rad);
+void radiation_init(struct radiation* rad, struct swift_params* params,
+                    const struct stellar_model* sm,
+                    const struct unit_system* us,
+                    const struct phys_const* phys_const);
+void radiation_dump(const struct radiation* rad, FILE* stream,
+                    const struct stellar_model* sm);
+void radiation_restore(struct radiation* rad, FILE* stream,
+                       const struct stellar_model* sm);
 void radiation_clean(struct radiation* rad);
 
-float radiation_get_luminosities_from_integral(const struct radiation* rad,float log_m1, float log_m2);
-float radiation_get_luminosities_from_raw(const struct radiation* rad, float log_m);
-double radiation_get_ionization_rate_from_integral( const struct radiation* rad, float log_m1, float log_m2);
-double radiation_get_ionization_rate_from_raw(const struct radiation* rad, float log_m);
+float radiation_get_luminosities_from_integral(const struct radiation* rad,
+                                               float log_m1, float log_m2);
+float radiation_get_luminosities_from_raw(const struct radiation* rad,
+                                          float log_m);
+double radiation_get_ionization_rate_from_integral(const struct radiation* rad,
+                                                   float log_m1, float log_m2);
+double radiation_get_ionization_rate_from_raw(const struct radiation* rad,
+                                              float log_m);
 
-void radiation_read_data(struct radiation* rad,	 struct swift_params* params,
-			 const struct stellar_model* sm,  const struct unit_system *us,
-			 const struct phys_const* phys_const,  const int restart);
-void radiation_read_luminosities_array(
-    struct radiation* rad, struct interpolation_1d* interp_raw,
-    struct interpolation_1d* interp_int, const struct stellar_model* sm,
-    int interpolation_size, const struct unit_system *us, const struct phys_const* phys_const);
+void radiation_read_data(struct radiation* rad, struct swift_params* params,
+                         const struct stellar_model* sm,
+                         const struct unit_system* us,
+                         const struct phys_const* phys_const,
+                         const int restart);
+void radiation_read_luminosities_array(struct radiation* rad,
+                                       struct interpolation_1d* interp_raw,
+                                       struct interpolation_1d* interp_int,
+                                       const struct stellar_model* sm,
+                                       int interpolation_size,
+                                       const struct unit_system* us,
+                                       const struct phys_const* phys_const);
 void radiation_read_ionization_rate_array(
-    struct radiation *rad, struct interpolation_1d_double *interp_raw,
-    struct interpolation_1d_double *interp_int, const struct stellar_model *sm,
-    int interpolation_size, const struct unit_system *us, const struct phys_const* phys_const);
+    struct radiation* rad, struct interpolation_1d_double* interp_raw,
+    struct interpolation_1d_double* interp_int, const struct stellar_model* sm,
+    int interpolation_size, const struct unit_system* us,
+    const struct phys_const* phys_const);
 
 #endif /* SWIFT_RADIATION_GEAR_H */

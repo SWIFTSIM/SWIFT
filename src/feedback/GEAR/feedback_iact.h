@@ -72,8 +72,8 @@ runner_iact_nonsym_feedback_density(
   /*****************************************/
   /* Radiation */
   radiation_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, xpj, cosmo,
-					 fb_props, hydro_props, phys_const, us,
-					 cooling, ti_current);
+                                         fb_props, hydro_props, phys_const, us,
+                                         cooling, ti_current);
 }
 
 /**
@@ -147,8 +147,8 @@ runner_iact_nonsym_feedback_apply(
   /*****************************************/
   /* Radiation */
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
-				       hydro_props, fb_props, phys_const, us,
-				       cooling, ti_current, time_base);
+                                       hydro_props, fb_props, phys_const, us,
+                                       cooling, ti_current, time_base);
   /*****************************************/
 
   /* Impose maximal viscosity */

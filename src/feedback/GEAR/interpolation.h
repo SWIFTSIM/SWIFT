@@ -36,7 +36,6 @@ enum interpolate_boundary_condition {
   boundary_condition_const,
 };
 
-
 /*****************************************************************************/
 /* Interpolation for float data */
 /*****************************************************************************/
@@ -407,8 +406,5 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_double_free(
   free(interp->data);
   interp->data = NULL;
 }
-
-
-
 
 #endif  // SWIFT_GEAR_INTERPOLATION_H

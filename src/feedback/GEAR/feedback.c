@@ -79,16 +79,17 @@ float feedback_compute_spart_timestep(
                &ti_begin, ti_current, time_base, time);
 
   /* Convert mass to M_sun. The lifetime function assumes solar masses */
-  const float log_mass = (sp->star_type == single_star)
-    ? log10(sp->sf_data.birth_mass / phys_const->const_solar_mass)
-    : log10(1.0);
+  const float log_mass =
+      (sp->star_type == single_star)
+          ? log10(sp->sf_data.birth_mass / phys_const->const_solar_mass)
+          : log10(1.0);
 
   const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
                                          &sm->lifetime, log_mass, metallicity));
   const float lifetime = lifetime_myr * 1e6 * phys_const->const_year;
 
-  /* Adapt the factor depending on the star lifetime to provide adequate timesteps
-     for different star liftimes. */
+  /* Adapt the factor depending on the star lifetime to provide adequate
+     timesteps for different star liftimes. */
   float factor = 0.0;
   if (lifetime_myr >= 100) {
     factor = 1;
@@ -496,13 +497,13 @@ void feedback_prepare_feedback(struct spart* restrict sp,
                                const int with_cosmology) {
   /* Add missing h factor */
   const float hi_inv = 1.f / sp->h;
-  const float hi_inv_dim = pow_dimension(hi_inv);        /* 1/h^d */
+  const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
   sp->feedback_data.enrichment_weight *= hi_inv_dim;
 
   /* Do radiation feedback */
   feedback_prepare_radiation_feedback(sp, feedback_props, cosmo, us, phys_const,
-				      star_age_beg_step, dt, time, ti_begin,
-				      with_cosmology);
+                                      star_age_beg_step, dt, time, ti_begin,
+                                      with_cosmology);
 }
 
 /**

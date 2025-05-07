@@ -30,7 +30,6 @@
 #include "stellar_evolution_struct.h"
 #include "supernovae_ia.h"
 #include "supernovae_ii.h"
-#include "radiation.h"
 
 #include <math.h>
 #include <stddef.h>
@@ -1055,16 +1054,18 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
      - mid/far-IR : reserved for light re-radiated by dust */
 
   /* Get the bolometric luminosity */
-  sp->feedback_data.radiation.L_bol = radiation_get_individual_star_luminosity(sp->mass, us, phys_const);
+  sp->feedback_data.radiation.L_bol =
+      radiation_get_individual_star_luminosity(sp->mass, us, phys_const);
 
   /* For the ionizing band, get the number of photons produced. */
   sp->feedback_data.radiation.dot_N_ion =
       radiation_get_individual_star_ionizing_photon_emission_rate_fit(
           sp->mass, us, phys_const);
 
-   /* message("[%lld, %d, %e] N_dot_ion = %e, L_bol = %e", */
-   /* 	   sp->id, sp->star_type, sp->mass, */
-   /* 	  sp->feedback_data.radiation.dot_N_ion, sp->feedback_data.radiation.L_bol); */
+  /* message("[%lld, %d, %e] N_dot_ion = %e, L_bol = %e", */
+  /* 	   sp->id, sp->star_type, sp->mass, */
+  /* 	  sp->feedback_data.radiation.dot_N_ion,
+   * sp->feedback_data.radiation.L_bol); */
 }
 
 /**
@@ -1107,7 +1108,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
      the IMF into two parts (variable called minimal_discrete_mass_Msun in the
      sink module). */
   if (sp->star_type == star_population_continuous_IMF) {
-      m_max_current = sm->imf.minimal_discrete_mass_Msun;
+    m_max_current = sm->imf.minimal_discrete_mass_Msun;
   } else {
     /* Convert the inputs */
     const double conversion_to_myr = phys_const->const_year * 1e6;
@@ -1116,18 +1117,19 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
     /* Get the metallicity */
     const float metallicity =
-      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+        chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
 
     /* Compute masses range */
     const float log_m_beg_step =
-      star_age_beg_step == 0.
-      ? FLT_MAX
-      : lifetime_get_log_mass_from_lifetime(
-					    &sm->lifetime, log10(star_age_beg_step_myr), metallicity);
+        star_age_beg_step == 0.
+            ? FLT_MAX
+            : lifetime_get_log_mass_from_lifetime(
+                  &sm->lifetime, log10(star_age_beg_step_myr), metallicity);
     /* const float log_m_end_step = lifetime_get_log_mass_from_lifetime( */
-								     /* &sm->lifetime, log10(star_age_beg_step_myr + dt_myr), metallicity); */
+    /* &sm->lifetime, log10(star_age_beg_step_myr + dt_myr), metallicity); */
 
-    float m_beg_step = star_age_beg_step == 0. ? FLT_MAX : exp10(log_m_beg_step);
+    float m_beg_step =
+        star_age_beg_step == 0. ? FLT_MAX : exp10(log_m_beg_step);
     /* float m_end_step = exp10(log_m_end_step); */
 
     /* Limit the mass interval to the IMF boundaries */
@@ -1143,19 +1145,24 @@ void stellar_evolution_compute_preSN_feedback_spart(
   /* Compute the initial mass. The initial mass is different if the star
      particle is of type 'star_population' or
      'star_population_continuous_IMF'. The function call treats both cases. */
-  /* const float m_init =  stellar_evolution_compute_initial_mass(sp, sm, phys_const); */
+  /* const float m_init =  stellar_evolution_compute_initial_mass(sp, sm,
+   * phys_const); */
 
   /* Now get the IMF averaged quantities per unit mass _in M_sun_ */
-  const float L_bol = radiation_get_luminosities_from_integral(&sm->rad, log10f(m_min), log10f(m_max_current));
-  const double dot_N_ion = radiation_get_ionization_rate_from_integral(&sm->rad, log10f(m_min), log10f(m_max_current));
+  const float L_bol = radiation_get_luminosities_from_integral(
+      &sm->rad, log10f(m_min), log10f(m_max_current));
+  const double dot_N_ion = radiation_get_ionization_rate_from_integral(
+      &sm->rad, log10f(m_min), log10f(m_max_current));
 
   /* TODO: Should we multiply by birth_mass or m_init ?
      For the SN feedback, we use birth_mass... maybe it's wrong there as well.
      Or by the current particle mass (sp->mass) ?*/
 
   /* Convert to total luminosities */
-  sp->feedback_data.radiation.L_bol = L_bol * sp->sf_data.birth_mass / phys_const->const_solar_mass;
+  sp->feedback_data.radiation.L_bol =
+      L_bol * sp->sf_data.birth_mass / phys_const->const_solar_mass;
 
   /* Convert to total ionizing emission rate */
-  sp->feedback_data.radiation.dot_N_ion = dot_N_ion * sp->sf_data.birth_mass / phys_const->const_solar_mass;
+  sp->feedback_data.radiation.dot_N_ion =
+      dot_N_ion * sp->sf_data.birth_mass / phys_const->const_solar_mass;
 }
