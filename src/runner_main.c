@@ -230,8 +230,13 @@ void *runner_main(void *data) {
                                           /*limit_h_max=*/0);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+            runner_doself2_branch_gradient(r, ci, /*limit_h_min=*/0,
+                                           /*limit_h_max=*/0);
+#else
             runner_doself1_branch_gradient(r, ci, /*limit_h_min=*/0,
                                            /*limit_h_max=*/0);
+#endif
 #endif
           else if (t->subtype == task_subtype_force)
             runner_doself2_branch_force(r, ci, /*limit_h_min=*/0,
@@ -298,8 +303,13 @@ void *runner_main(void *data) {
                                           /*limit_h_max=*/0);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+            runner_dopair2_branch_gradient(r, ci, cj, /*limit_h_min=*/0,
+                                           /*limit_h_max=*/0);
+#else
             runner_dopair1_branch_gradient(r, ci, cj, /*limit_h_min=*/0,
                                            /*limit_h_max=*/0);
+#endif
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dopair2_branch_force(r, ci, cj, /*limit_h_min=*/0,
@@ -363,7 +373,11 @@ void *runner_main(void *data) {
             runner_dosub_self1_density(r, ci, /*below_h_max=*/0, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+            runner_dosub_self2_gradient(r, ci, /*below_h_max=*/0, 1);
+#else
             runner_dosub_self1_gradient(r, ci, /*below_h_max=*/0, 1);
+#endif
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, /*below_h_max=*/0, 1);
@@ -417,7 +431,11 @@ void *runner_main(void *data) {
             runner_dosub_pair1_density(r, ci, cj, /*below_h_max=*/0, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+            runner_dosub_pair2_gradient(r, ci, cj, /*below_h_max=*/0, 1);
+#else
             runner_dosub_pair1_gradient(r, ci, cj, /*below_h_max=*/0, 1);
+#endif
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, /*below_h_max=*/0, 1);
