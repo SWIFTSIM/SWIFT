@@ -201,8 +201,8 @@ void feedback_prepare_radiation_feedback(struct spart* restrict sp,
         const float random_number =
             random_unit_interval(sp->id, ti_begin, random_number_HII_regions);
 
-        /* If we are lucky or we are the first particle, do the ionization */
-        if (random_number <= proba || i == 0) {
+        /* If we are lucky, do the ionization */
+        if (random_number <= proba) {
           /* Update the Stromgren sphere radius */
           sp->feedback_data.radiation.R_stromgren = stromgren[i].distance;
         }
