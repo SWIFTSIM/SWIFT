@@ -2243,6 +2243,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   const struct gpart *gparts = s->gparts;
   const struct part *parts = s->parts;
   const size_t group_id_default = props->group_id_default;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   
   /* Direct pointers to the arrays */
   long long *final_group_size = props->final_group_size;
@@ -2250,6 +2252,23 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   double *centre_of_mass = props->group_centre_of_mass;
   char *has_black_hole = props->has_black_hole;
   float *max_part_density = props->max_part_density;
+
+  /* Temporary arrays to help with the CoMs */
+  float *max_positions, *min_positions;
+  if (swift_memalign("fof_group_max_position",
+		     (void **)&max_positions, 32,
+		     props->num_groups * 3 * sizeof(double)) != 0)
+    error("Unable to allocate memory for the max positions");
+  if (swift_memalign("fof_group_min_position",
+		     (void **)&min_positions, 32,
+		     props->num_groups * 3 * sizeof(double)) != 0)
+    error("Unable to allocate memory for the min positions");
+
+  /* Initialise the min/max arrays to the limits */
+  for (size_t i = 0; i < 3 * (size_t)props->num_groups; ++i) {
+    min_positions[i] = DBL_MAX;
+    max_positions[i] = -DBL_MAX;
+  }
   
   /* Collect information about the local particles and update the array of
    * properties. Recall the array is as big as all the haloes accross
@@ -2271,41 +2290,104 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     /* Entry into the global list of group properties */
     const size_t index = gparts[i].fof_data.group_id - 1;
 
-    /* Now accumulate info */
+    /********************
+     * We know in which group this particle is: compute props
+     ********************/
+
+    /* Count the number of particles */
     final_group_size[index]++;
 
+    /* Add to the total mass */
     group_mass[index] += gparts[i].mass;
 
-    centre_of_mass[index * 3 + 0] += gparts[i].mass * gparts[i].x[0];
-    centre_of_mass[index * 3 + 1] += gparts[i].mass * gparts[i].x[1];
-    centre_of_mass[index * 3 + 2] += gparts[i].mass * gparts[i].x[2];
+    /* Get the min/max position along each axis */
+    min_positions[index * 3 + 0] = fmin(min_positions[index * 3 + 0], gparts[i].x[0]);
+    min_positions[index * 3 + 1] = fmin(min_positions[index * 3 + 1], gparts[i].x[1]);
+    min_positions[index * 3 + 2] = fmin(min_positions[index * 3 + 2], gparts[i].x[2]);
+    max_positions[index * 3 + 0] = fmax(max_positions[index * 3 + 0], gparts[i].x[0]);
+    max_positions[index * 3 + 1] = fmax(max_positions[index * 3 + 1], gparts[i].x[1]);
+    max_positions[index * 3 + 2] = fmax(max_positions[index * 3 + 2], gparts[i].x[2]);
     
+    /* Check whether there is a black hole */
     if (gparts[i].type == swift_type_black_hole) {
       has_black_hole[index] = 1;
     }
 
+    /* Idntify the densest gas particle in the group */
     if (gparts[i].type == swift_type_gas) {
       const size_t gas_index = -gparts[i].id_or_neg_offset;
       const float rho_com = hydro_get_comoving_density(&parts[gas_index]);
       max_part_density[index] = fmaxf(rho_com, max_part_density[index]);					   
-    }
-    
+    }    
   }
 
 #ifdef WITH_MPI
   /* Now all-reduce the local fragments so that everyone has a full catalog */
   MPI_Allreduce(MPI_IN_PLACE, final_group_size, props->num_groups, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, group_mass, props->num_groups, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, centre_of_mass, props->num_groups * 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, min_positions, 3 * props->num_groups, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, max_positions, 3 * props->num_groups, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, has_black_hole, props->num_groups, MPI_CHAR, MPI_MAX, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, max_part_density, props->num_groups, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);  
 #endif
+  
+  /* We can now do a second pass to compute the centre of mass
+   * Because of periodic BCs, we need to shift the positions in cases where the (max-min) is
+   * larger than 1/2 of the box size */
+  for (size_t i = 0; i < nr_gparts; i++) {
 
-  for (long long i = 0; i < props->num_groups; ++i) {
+    /* Ignore inhibited particles */
+    if (gparts[i].time_bin >= time_bin_inhibited) continue;
+
+    /* Check whether we ignore this particle type altogether */
+    if (gpart_is_ignorable(&gparts[i])) continue;
+
+    /* Ignore particles not in groups */
+    if (gparts[i].fof_data.group_id == group_id_default) continue;
+
+    /* Entry into the global list of group properties */
+    const size_t index = gparts[i].fof_data.group_id - 1;
+    
+    double x[3] = {gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]};
+    if (periodic) {
+      for (int k = 0; k < 3; k++) {
+	if (max_positions[index * 3 + k] - min_positions[index * 3 + k] > 0.5 * dim[k]) {
+	  x[k] = box_wrap(x[k] + 0.5 * dim[k], 0., dim[k]);
+	}
+      }
+    }
+
+    /* Centre of mass */
+    centre_of_mass[index * 3 + 0] += gparts[i].mass * x[0];
+    centre_of_mass[index * 3 + 1] += gparts[i].mass * x[1];
+    centre_of_mass[index * 3 + 2] += gparts[i].mass * x[2];
+  }
+
+#ifdef WITH_MPI
+  /* Now all-reduce the CoMs so that everyone has a full catalog */
+  MPI_Allreduce(MPI_IN_PLACE, centre_of_mass, 3 * props->num_groups, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+#endif
+
+  /* Finalise the operations on the group catalog */  
+  for (size_t i = 0; i < (size_t)props->num_groups; ++i) {
+
     centre_of_mass[i * 3 + 0] /= group_mass[i];
     centre_of_mass[i * 3 + 1] /= group_mass[i];
     centre_of_mass[i * 3 + 2] /= group_mass[i];
+    
+    /* Undo the half-box periodic shift */
+    if (periodic) {
+      for (int k = 0; k < 3; k++) {
+	if (max_positions[i * 3 + k] - min_positions[i * 3 + k] > 0.5 * dim[k]) {
+	  centre_of_mass[i * 3 + k] -= 0.5 * dim[k];
+	}
+      }
+    }    
   }
+
+  /* Free temporary arrays */
+  swift_free("max_positions", max_positions);
+  swift_free("min_positions", min_positions);
 }
   
 
