@@ -1566,21 +1566,6 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
   const size_t count = c->grav.count;
   struct gpart *gparts = (struct gpart *)c->grav.parts;
 
-  /* Make a list of particle offsets into the global gparts array. */
-  /* size_t *const group_index = props->group_index; */
-  /* #ifndef WITH_MPI */
-  /*   size_t *const index_offset = group_index + (ptrdiff_t)(gparts -
-   * space_gparts); */
-  /* #endif */
-
-  /* size_t *const attach_index = props->attach_index; */
-  /* size_t *const attach_offset = */
-  /*     attach_index + (ptrdiff_t)(gparts - space_gparts); */
-
-  /* char *const found_attach_index = props->found_attachable_link; */
-  /* char *const found_attach_offset = */
-  /*     found_attach_index + (ptrdiff_t)(gparts - space_gparts); */
-
   /* Distances of particles in the global list */
   float *const offset_dist =
       props->distance_to_link + (ptrdiff_t)(gparts - space_gparts);
@@ -1609,15 +1594,6 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
     const double pix = pi->x[0];
     const double piy = pi->x[1];
     const double piz = pi->x[2];
-
-    /*     /\* Find the root of pi. *\/ */
-    /* #ifdef WITH_MPI */
-    /*     const size_t root_i = fof_find_global( */
-    /*         i + (ptrdiff_t)(gparts - space_gparts), group_index, nr_gparts);
-     */
-    /* #else */
-    /*     const size_t root_i = fof_find(index_offset[i], group_index); */
-    /* #endif */
 
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
@@ -1655,15 +1631,6 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
       if (pj->ti_drift != ti_current)
         error("Running FOF on an un-drifted particle!");
 #endif
-
-      /*         /\* Find the root of pi. *\/ */
-      /* #ifdef WITH_MPI */
-      /*       const size_t root_j = fof_find_global( */
-      /*           j + (ptrdiff_t)(gparts - space_gparts), group_index,
-       * nr_gparts); */
-      /* #else */
-      /*       const size_t root_j = fof_find(index_offset[j], group_index); */
-      /* #endif */
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -1771,16 +1738,6 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
   size_t *const index_offset_j =
       group_index + (ptrdiff_t)(gparts_j - space_gparts);
 
-  /* size_t *const attach_offset_i = */
-  /*     props->attach_index + (ptrdiff_t)(gparts_i - space_gparts); */
-  /* size_t *const attach_offset_j = */
-  /*     props->attach_index + (ptrdiff_t)(gparts_j - space_gparts); */
-
-  /* char *const found_attach_offset_i = */
-  /*     props->found_attachable_link + (ptrdiff_t)(gparts_i - space_gparts); */
-  /* char *const found_attach_offset_j = */
-  /*     props->found_attachable_link + (ptrdiff_t)(gparts_j - space_gparts); */
-
   /* Distances of particles in the global list */
   float *const offset_dist_i =
       props->distance_to_link + (ptrdiff_t)(gparts_i - space_gparts);
@@ -1832,20 +1789,6 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
 
-    /*     /\* Find the root of pi. *\/ */
-    /* #ifdef WITH_MPI */
-    /*     size_t root_i; */
-    /*     if (ci_local) { */
-    /*       root_i = fof_find_global(index_offset_i[i] - node_offset,
-     * group_index, */
-    /*                                nr_gparts); */
-    /*     } else { */
-    /*       root_i = pi->fof_data.group_id; */
-    /*     } */
-    /* #else */
-    /*     const size_t root_i = fof_find(index_offset_i[i], group_index); */
-    /* #endif */
-
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
     const int is_attach_i = gpart_is_attachable(pi);
@@ -1882,21 +1825,6 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
       if (pj->ti_drift != ti_current)
         error("Running FOF on an un-drifted particle!");
 #endif
-
-      /*         /\* Find the root of pj. *\/ */
-      /* #ifdef WITH_MPI */
-      /*       size_t root_j; */
-      /*       if (cj_local) { */
-      /*         root_j = fof_find_global(index_offset_j[j] - node_offset,
-       * group_index, */
-      /*                                  nr_gparts); */
-      /*       } else { */
-      /*         root_j = pj->fof_data.group_id; */
-      /*       } */
-      /* #else */
-      /*       const size_t root_j = fof_find(index_offset_j[j], group_index);
-       */
-      /* #endif */
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
