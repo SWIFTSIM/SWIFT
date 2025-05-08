@@ -180,9 +180,6 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Compute the local<->foreign group links (nothing to do without MPI)*/
   fof_search_foreign_cells(e->fof_properties, e->s);
 
-  /* Make a list of purely local groups to speed up the attaching */
-  // fof_build_list_of_purely_local_groups(e->fof_properties, e->s);
-
   /* Link the foreign fragments and finalise global group list (nothing to do
    * without MPI) */
   fof_link_foreign_fragments(e->fof_properties, e->s);
