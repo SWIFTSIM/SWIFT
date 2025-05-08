@@ -2245,8 +2245,21 @@ void fof_unpack_group_mass_mapper(hashmap_key_t key, hashmap_value_t *value,
 
 #endif /* WITH_MPI */
 
-void fof_calc_group_mass(struct fof_props *props, const struct space *s,
-                         const int seed_black_holes) {
+/**
+ * @brief Compute the group properties for all groups.
+ *
+ * At the end of the process, all MPI ranks have all the information
+ * about every group. We compute:
+ * - Group size,
+ * - Group total mass,
+ * - Group centre of mass,
+ * - Maximal gas particle density,
+ * - Whether a group has a BH particle or not.
+ *
+ * TODO: Possible improvement is to delay the allocation of the CoM array
+ * until after the min/max density arrays have played their role.
+ */
+void fof_calc_group_mass(struct fof_props *props, const struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
   const struct gpart *gparts = s->gparts;
@@ -2367,11 +2380,17 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     /* Entry into the global list of group properties */
     const size_t index = gparts[i].fof_data.group_id - 1;
 
+    const int halo_is_on_edge[3] = {
+      max_positions[index * 3 + 0] - min_positions[index * 3 + 0] > 0.5 * dim[0],
+      max_positions[index * 3 + 1] - min_positions[index * 3 + 1] > 0.5 * dim[1],
+      max_positions[index * 3 + 2] - min_positions[index * 3 + 2] > 0.5 * dim[2]
+    };
+
+    /* Get particle position, including necessary wrapping */
     double x[3] = {gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]};
     if (periodic) {
       for (int k = 0; k < 3; k++) {
-        if (max_positions[index * 3 + k] - min_positions[index * 3 + k] >
-            0.5 * dim[k]) {
+        if (halo_is_on_edge[k]) {
           x[k] = box_wrap(x[k] + 0.5 * dim[k], 0., dim[k]);
         }
       }
@@ -2396,11 +2415,16 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     centre_of_mass[i * 3 + 1] /= group_mass[i];
     centre_of_mass[i * 3 + 2] /= group_mass[i];
 
+    const int halo_is_on_edge[3] = {
+      max_positions[i * 3 + 0] - min_positions[i * 3 + 0] > 0.5 * dim[0],
+      max_positions[i * 3 + 1] - min_positions[i * 3 + 1] > 0.5 * dim[1],
+      max_positions[i * 3 + 2] - min_positions[i * 3 + 2] > 0.5 * dim[2]
+    };
+    
     /* Undo the half-box periodic shift */
     if (periodic) {
       for (int k = 0; k < 3; k++) {
-        if (max_positions[i * 3 + k] - min_positions[i * 3 + k] >
-            0.5 * dim[k]) {
+        if (halo_is_on_edge[k]) {
           centre_of_mass[i * 3 + k] -= 0.5 * dim[k];
         }
       }
@@ -4399,7 +4423,7 @@ void fof_compute_group_props(struct fof_props *props,
 
   const ticks tic_seeding = getticks();
 
-  fof_calc_group_mass(props, s, seed_black_holes);
+  fof_calc_group_mass(props, s);
 
   /* #ifdef WITH_MPI */
   /*   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, */
