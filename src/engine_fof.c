@@ -213,7 +213,7 @@ void engine_fof(struct engine *e, const int dump_results,
    * (seed BHs, dump catalogues..) */
   fof_compute_group_props(e->fof_properties, e->black_holes_properties,
                           e->physical_constants, e->cosmology, e->s,
-                          dump_results, dump_debug_results, seed_black_holes);
+                          dump_results, dump_debug_results, /*seed_black_holes=*/1);
 
   /* Reset flag. */
   e->run_fof = 0;

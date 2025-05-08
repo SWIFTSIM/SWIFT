@@ -2197,8 +2197,8 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
  * until after the min/max density arrays have played their role.
  */
 void fof_calc_group_mass(struct fof_props *props, const struct space *s,
-                         int *number_of_local_seeds,
-                         int *number_of_global_seeds) {
+                         int *restrict number_of_local_seeds,
+                         int *restrict number_of_global_seeds) {
 
   const size_t nr_gparts = s->nr_gparts;
   const struct gpart *gparts = s->gparts;
@@ -2408,41 +2408,25 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
  * @param constants The physical constants.
  * @param cosmo The cosmological model.
  * @param s The @space we act on.
- * @param num_groups_local The number of groups on the current MPI rank.
- * @param group_sizes List of groups sorted in size order.
+ * @param number_of_local_seeds Number of BHs to create on this rank.
+ * @param number_of_global_seeds Number of BHs to create in total.
  */
 void fof_seed_black_holes(const struct fof_props *props,
                           const struct black_holes_props *bh_props,
                           const struct phys_const *constants,
                           const struct cosmology *cosmo, struct space *s,
-                          const int num_groups_local) {
-
-  const long long *max_part_density_index = props->max_part_density_index;
-
-  /* Count the number of black holes to seed */
-  int num_seed_black_holes = 0;
-  for (int i = 0; i < num_groups_local + props->extra_bh_seed_count; i++) {
-    if (max_part_density_index[i] >= 0) ++num_seed_black_holes;
-  }
-
-#ifdef WITH_MPI
-  int total_num_seed_black_holes = 0;
-  /* Sum the total number of black holes over each MPI rank. */
-  MPI_Reduce(&num_seed_black_holes, &total_num_seed_black_holes, 1, MPI_INT,
-             MPI_SUM, 0, MPI_COMM_WORLD);
-#else
-  int total_num_seed_black_holes = num_seed_black_holes;
-#endif
+                          const int number_of_local_seeds,
+                          const int number_of_global_seeds) {
 
   if (engine_rank == 0)
-    message("Seeding %d black hole(s)", total_num_seed_black_holes);
+    message("Seeding %d black hole(s)", number_of_global_seeds);
 
   /* Anything to do this time on this rank? */
-  if (num_seed_black_holes == 0) return;
+  if (number_of_local_seeds == 0) return;
 
   /* Do we need to reallocate the black hole array for the new particles? */
-  if (s->nr_bparts + num_seed_black_holes > s->size_bparts) {
-    const size_t nr_bparts_new = s->nr_bparts + num_seed_black_holes;
+  if (s->nr_bparts + number_of_local_seeds > s->size_bparts) {
+    const size_t nr_bparts_new = s->nr_bparts + number_of_local_seeds;
 
     s->size_bparts = engine_parts_size_grow * nr_bparts_new;
 
@@ -2456,73 +2440,111 @@ void fof_seed_black_holes(const struct fof_props *props,
     s->bparts = bparts_new;
   }
 
-  int k = s->nr_bparts;
+  const size_t nr_gparts = s->nr_gparts;
+  struct gpart *gparts = s->gparts;
+  struct part *parts = s->parts;
+  struct xpart *xparts = s->xparts;
+  struct bpart *bparts = s->bparts;
+  const size_t group_id_default = props->group_id_default;
+  const double seed_halo_mass = props->seed_halo_mass;
 
-  /* Loop over the local groups */
-  for (int i = 0; i < num_groups_local + props->extra_bh_seed_count; i++) {
+  /* Direct pointers to the arrays */
+  double *group_mass = props->group_mass;
+  char *has_black_hole = props->has_black_hole;
+  float *max_part_density = props->max_part_density;
 
-    const long long part_index = max_part_density_index[i];
+  size_t k = s->nr_bparts;
 
-    /* Should we seed? */
-    if (part_index >= 0) {
+  for (size_t i = 0; i < nr_gparts; i++) {
 
-      /* Handle on the particle to convert */
-      struct part *p = &s->parts[part_index];
-      struct xpart *xp = &s->xparts[part_index];
-      struct gpart *gp = p->gpart;
+    /* Check whether this is a gas particle */
+    if (gparts[i].type != swift_type_gas) continue;
 
-      /* Let's destroy the gas particle */
-      p->time_bin = time_bin_inhibited;
-      p->gpart = NULL;
+    /* Ignore inhibited particles */
+    if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
-      /* Mark the gpart as black hole */
-      gp->type = swift_type_black_hole;
+    /* Ignore particles not in groups */
+    if (gparts[i].fof_data.group_id == group_id_default) continue;
 
-      /* Basic properties of the black hole */
-      struct bpart *bp = &s->bparts[k];
-      bzero(bp, sizeof(struct bpart));
-      bp->time_bin = gp->time_bin;
+    if (gparts[i].fof_data.group_id > (size_t)props->num_groups)
+      error("Found an invalid group ID!");
 
-      /* Re-link things */
-      bp->gpart = gp;
-      gp->id_or_neg_offset = -(bp - s->bparts);
+    /* Get the density of this particle */
+    const size_t gas_index = -gparts[i].id_or_neg_offset;
+    const float rho_com = hydro_get_comoving_density(&parts[gas_index]);
 
-      /* Synchronize masses, positions and velocities */
-      bp->mass = gp->mass;
-      bp->x[0] = gp->x[0];
-      bp->x[1] = gp->x[1];
-      bp->x[2] = gp->x[2];
-      bp->v[0] = gp->v_full[0];
-      bp->v[1] = gp->v_full[1];
-      bp->v[2] = gp->v_full[2];
+    /* Entry into the global list of group properties of this particle */
+    const size_t index = gparts[i].fof_data.group_id - 1;
 
-      /* Set a smoothing length */
-      bp->h = p->h;
+    /* Should we seed a BH in this group? */
+    if (!has_black_hole[index] && group_mass[index] > seed_halo_mass) {
 
-      /* Save the ID */
-      bp->id = p->id;
+      /* Does it match the max density for this group?
+       * (i.e. is it the particle we identified as the one to convert?) */
+      if (rho_com == max_part_density[index]) {
 
-      /* Save the tree depth */
-      bp->depth_h = p->depth_h;
+        /* Handle on the particle to convert */
+        struct part *p = &parts[gas_index];
+        struct xpart *xp = &xparts[gas_index];
+        struct gpart *gp = p->gpart;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      bp->ti_kick = p->ti_kick;
-      bp->ti_drift = p->ti_drift;
+        if (gp != &gparts[i]) error("Weird gas<->gpart linking error!");
 #endif
 
-      /* Copy over all the gas properties that we want */
-      black_holes_create_from_gas(bp, bh_props, constants, cosmo, p, xp,
-                                  s->e->ti_current);
-      tracers_first_init_bpart(bp, s->e->internal_units,
-                               s->e->physical_constants, cosmo);
+        /* Let's destroy the gas particle */
+        p->time_bin = time_bin_inhibited;
+        p->gpart = NULL;
 
-      /* Move to the next BH slot */
-      k++;
+        /* Mark the gpart as black hole */
+        gp->type = swift_type_black_hole;
+
+        /* Basic properties of the black hole */
+        struct bpart *bp = &bparts[k];
+        bzero(bp, sizeof(struct bpart));
+        bp->time_bin = gp->time_bin;
+
+        /* Re-link things */
+        bp->gpart = gp;
+        gp->id_or_neg_offset = -(bp - s->bparts);
+
+        /* Synchronize masses, positions and velocities */
+        bp->mass = gp->mass;
+        bp->x[0] = gp->x[0];
+        bp->x[1] = gp->x[1];
+        bp->x[2] = gp->x[2];
+        bp->v[0] = gp->v_full[0];
+        bp->v[1] = gp->v_full[1];
+        bp->v[2] = gp->v_full[2];
+
+        /* Set a smoothing length */
+        bp->h = p->h;
+
+        /* Save the ID */
+        bp->id = p->id;
+
+        /* Save the tree depth */
+        bp->depth_h = p->depth_h;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        bp->ti_kick = p->ti_kick;
+        bp->ti_drift = p->ti_drift;
+#endif
+
+        /* Copy over all the gas properties that we want */
+        black_holes_create_from_gas(bp, bh_props, constants, cosmo, p, xp,
+                                    s->e->ti_current);
+        tracers_first_init_bpart(bp, s->e->internal_units,
+                                 s->e->physical_constants, cosmo);
+
+        /* Move to the next BH slot */
+        k++;
+      }
     }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if ((int)(s->nr_bparts) + num_seed_black_holes != k) {
+  if (s->nr_bparts + number_of_local_seeds != k) {
     error("Seeded the wrong number of black holes!");
   }
 #endif
@@ -2538,13 +2560,10 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
 
   FILE *file = NULL;
 
-  struct part *parts = s->parts;
   long long *final_group_size = props->final_group_size;
   size_t *group_index = props->group_index;
   double *group_mass = props->group_mass;
   double *group_centre_of_mass = props->group_centre_of_mass;
-  const long long *max_part_density_index = props->max_part_density_index;
-  const float *max_part_density = props->max_part_density;
 
   for (int rank = 0; rank < nr_nodes; ++rank) {
 
@@ -2583,24 +2602,13 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
         /*                               ? parts[max_part_density_index[i]].id
          */
         /*                               : -1; */
-        fprintf(
-            file, "  %8zu %12lld %12e %12e %12e %12e %12e %24lld %24lld\n",
-            group_index[i], final_group_size[i], group_mass[i],
-            group_centre_of_mass[i * 3 + 0], group_centre_of_mass[i * 3 + 1],
-            group_centre_of_mass[i * 3 + 2], max_part_density[i], -1ll, -1ll);
+        fprintf(file, "  %8zu %12lld %12e %12e %12e %12e %12e %24lld %24lld\n",
+                group_index[i], final_group_size[i], group_mass[i],
+                group_centre_of_mass[i * 3 + 0],
+                group_centre_of_mass[i * 3 + 1],
+                group_centre_of_mass[i * 3 + 2], 0., -1ll, -1ll);
         // max_part_density_index[i], part_id);
       }
-
-      /* Dump the extra black hole seeds. */
-      for (int i = num_groups; i < num_groups + props->extra_bh_seed_count;
-           i++) {
-        const long long part_id = max_part_density_index[i] >= 0
-                                      ? parts[max_part_density_index[i]].id
-                                      : -1;
-        fprintf(file, "  %8zu %12zu %12e %12e %12e %12e %12e %24lld %24lld\n",
-                0UL, 0UL, 0., 0., 0., 0., 0., 0LL, part_id);
-      }
-
       fclose(file);
     }
   }
@@ -3350,8 +3358,6 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
 #endif /* WITH_MPI */
 
   props->num_groups = num_groups;
-  props->num_groups_local = num_groups_local;
-
   message("num_groups_local=%zd", num_groups_local);
 
   /* Find number of groups on lower numbered MPI ranks */
@@ -3631,7 +3637,8 @@ void fof_compute_group_props(struct fof_props *props,
 
   /* Seed black holes */
   if (seed_black_holes) {
-    fof_seed_black_holes(props, bh_props, constants, cosmo, s, num_groups);
+    fof_seed_black_holes(props, bh_props, constants, cosmo, s,
+                         number_of_local_seeds, number_of_global_seeds);
   }
 
   /* Free the left-overs */
