@@ -2386,7 +2386,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 #ifdef WITH_MPI
   /* Now all-reduce the CoMs so that everyone has a full catalog */
   MPI_Allreduce(MPI_IN_PLACE, centre_of_mass, 3 * props->num_groups, MPI_DOUBLE,
-                MPI_MAX, MPI_COMM_WORLD);
+                MPI_SUM, MPI_COMM_WORLD);
 #endif
 
   /* Finalise the operations on the group catalog */
