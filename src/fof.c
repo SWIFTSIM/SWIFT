@@ -2061,17 +2061,6 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
   hashmap_free(&map);
 }
 
-/* Mapper function to atomically update the group mass array. */
-static INLINE void fof_update_group_mass_iterator(hashmap_key_t key,
-                                                  hashmap_value_t *value,
-                                                  void *data) {
-
-  double *group_mass = (double *)data;
-
-  /* Use key to index into group mass array. */
-  atomic_add_d(&group_mass[key], value->value_dbl);
-}
-
 /* Mapper function to atomically update the group size array. */
 static INLINE void fof_update_group_size_iterator(hashmap_key_t key,
                                                   hashmap_value_t *value,
@@ -2081,55 +2070,116 @@ static INLINE void fof_update_group_size_iterator(hashmap_key_t key,
   /* Use key to index into group mass array. */
   atomic_add(&group_size[key], value->value_st);
 }
-
 /**
- * @brief Mapper function to calculate the group masses.
+ * @brief Mapper function to perform FOF search.
  *
- * @param map_data An array of #gpart%s.
+ * @param map_data An array of #cell pair indices.
  * @param num_elements Chunk size.
  * @param extra_data Pointer to a #space.
  */
-void fof_calc_group_mass_mapper(void *map_data, int num_elements,
-                                void *extra_data) {
+void fof_find_foreign_links_mapper(void *map_data, int num_elements,
+                                   void *extra_data) {
+
+#ifdef WITH_MPI
 
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
-  struct gpart *gparts = (struct gpart *)map_data;
-  double *group_mass = s->e->fof_properties->group_mass;
-  long long *group_size = s->e->fof_properties->final_group_size;
-  const size_t group_id_default = s->e->fof_properties->group_id_default;
-  const size_t group_id_offset = s->e->fof_properties->group_id_offset;
+  const int periodic = s->periodic;
+  const size_t nr_gparts = s->nr_gparts;
+  const struct gpart *const gparts = s->gparts;
+  const struct engine *e = s->e;
+  struct fof_props *props = e->fof_properties;
+  struct cell_pair_indices *cell_pairs = (struct cell_pair_indices *)map_data;
 
-  /* Create hash table. */
-  hashmap_t map;
-  hashmap_init(&map);
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double search_r2 = props->l_x2;
 
-  /* Loop over particles and increment the group mass for groups above
-   * min_group_size. */
+  /* Store links in an array local to this thread. */
+  int local_link_count = 0;
+  int local_group_links_size = props->group_links_size / e->nr_threads;
+
+  /* Init the local group links buffer. */
+  struct fof_mpi *local_group_links = (struct fof_mpi *)swift_calloc(
+      "fof_local_group_links", sizeof(struct fof_mpi), local_group_links_size);
+  if (local_group_links == NULL)
+    error("Failed to allocate temporary group links buffer.");
+
+  /* Loop over all pairs of local and foreign cells, recurse then perform a
+   * FOF search. */
   for (int ind = 0; ind < num_elements; ind++) {
 
-    /* Only check groups above the minimum size. */
-    if (gparts[ind].fof_data.group_id != group_id_default) {
+    /* Get the local and foreign cells to recurse on. */
+    const struct cell *restrict local_cell = cell_pairs[ind].local;
+    const struct cell *restrict foreign_cell = cell_pairs[ind].foreign;
 
-      hashmap_key_t index = gparts[ind].fof_data.group_id - group_id_offset;
-      hashmap_value_t *data = hashmap_get(&map, index);
+    rec_fof_search_pair_foreign(props, dim, search_r2, periodic, gparts,
+                                nr_gparts, local_cell, foreign_cell,
+                                &local_link_count, &local_group_links,
+                                &local_group_links_size);
+  }
 
-      /* Update group mass */
-      if (data != NULL) {
-        (*data).value_dbl += gparts[ind].mass;
-        (*data).value_st += 1;
-      } else
-        error("Couldn't find key (%zu) or create new one.", index);
+  /* Add links found by this thread to the global link list. */
+  /* Lock to prevent race conditions while adding to the global link list.*/
+  if (lock_lock(&s->lock) == 0) {
+
+    /* Get pointers to global arrays. */
+    int *restrict group_links_size = &props->group_links_size;
+    int *restrict group_link_count = &props->group_link_count;
+    struct fof_mpi **group_links = &props->group_links;
+
+    /* If the global group_links array is not big enough re-allocate it. */
+    if (*group_link_count + local_link_count > *group_links_size) {
+
+      const int old_size = *group_links_size;
+      const int new_size =
+          max(*group_link_count + local_link_count, 2 * old_size);
+
+      (*group_links) = (struct fof_mpi *)realloc(
+          *group_links, new_size * sizeof(struct fof_mpi));
+
+      *group_links_size = new_size;
+
+      message("Re-allocating global group links from %d to %d elements.",
+              old_size, new_size);
+    }
+
+    /* Copy the local links to the global list. */
+    for (int i = 0; i < local_link_count; i++) {
+
+      int found = 0;
+
+      /* Check that the links have not already been added to the list by another
+       * thread. */
+      for (int l = 0; l < *group_link_count; l++) {
+        if ((*group_links)[l].group_i == local_group_links[i].group_i &&
+            (*group_links)[l].group_j == local_group_links[i].group_j) {
+          found = 1;
+          break;
+        }
+      }
+
+      if (!found) {
+
+        (*group_links)[*group_link_count].group_i =
+            local_group_links[i].group_i;
+        (*group_links)[*group_link_count].group_i_size =
+            local_group_links[i].group_i_size;
+
+        (*group_links)[*group_link_count].group_j =
+            local_group_links[i].group_j;
+        (*group_links)[*group_link_count].group_j_size =
+            local_group_links[i].group_j_size;
+
+        (*group_link_count) = (*group_link_count) + 1;
+      }
     }
   }
 
-  /* Update the group mass array. */
-  if (map.size > 0)
-    hashmap_iterate(&map, fof_update_group_mass_iterator, group_mass);
-  if (map.size > 0)
-    hashmap_iterate(&map, fof_update_group_size_iterator, group_size);
+  /* Release lock. */
+  if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
 
-  hashmap_free(&map);
+  swift_free("fof_local_group_links", local_group_links);
+#endif
 }
 
 /**
@@ -2347,118 +2397,6 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   /* Free temporary arrays */
   swift_free("max_positions", max_positions);
   swift_free("min_positions", min_positions);
-}
-
-/**
- * @brief Mapper function to perform FOF search.
- *
- * @param map_data An array of #cell pair indices.
- * @param num_elements Chunk size.
- * @param extra_data Pointer to a #space.
- */
-void fof_find_foreign_links_mapper(void *map_data, int num_elements,
-                                   void *extra_data) {
-
-#ifdef WITH_MPI
-
-  /* Retrieve mapped data. */
-  struct space *s = (struct space *)extra_data;
-  const int periodic = s->periodic;
-  const size_t nr_gparts = s->nr_gparts;
-  const struct gpart *const gparts = s->gparts;
-  const struct engine *e = s->e;
-  struct fof_props *props = e->fof_properties;
-  struct cell_pair_indices *cell_pairs = (struct cell_pair_indices *)map_data;
-
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double search_r2 = props->l_x2;
-
-  /* Store links in an array local to this thread. */
-  int local_link_count = 0;
-  int local_group_links_size = props->group_links_size / e->nr_threads;
-
-  /* Init the local group links buffer. */
-  struct fof_mpi *local_group_links = (struct fof_mpi *)swift_calloc(
-      "fof_local_group_links", sizeof(struct fof_mpi), local_group_links_size);
-  if (local_group_links == NULL)
-    error("Failed to allocate temporary group links buffer.");
-
-  /* Loop over all pairs of local and foreign cells, recurse then perform a
-   * FOF search. */
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    /* Get the local and foreign cells to recurse on. */
-    const struct cell *restrict local_cell = cell_pairs[ind].local;
-    const struct cell *restrict foreign_cell = cell_pairs[ind].foreign;
-
-    rec_fof_search_pair_foreign(props, dim, search_r2, periodic, gparts,
-                                nr_gparts, local_cell, foreign_cell,
-                                &local_link_count, &local_group_links,
-                                &local_group_links_size);
-  }
-
-  /* Add links found by this thread to the global link list. */
-  /* Lock to prevent race conditions while adding to the global link list.*/
-  if (lock_lock(&s->lock) == 0) {
-
-    /* Get pointers to global arrays. */
-    int *restrict group_links_size = &props->group_links_size;
-    int *restrict group_link_count = &props->group_link_count;
-    struct fof_mpi **group_links = &props->group_links;
-
-    /* If the global group_links array is not big enough re-allocate it. */
-    if (*group_link_count + local_link_count > *group_links_size) {
-
-      const int old_size = *group_links_size;
-      const int new_size =
-          max(*group_link_count + local_link_count, 2 * old_size);
-
-      (*group_links) = (struct fof_mpi *)realloc(
-          *group_links, new_size * sizeof(struct fof_mpi));
-
-      *group_links_size = new_size;
-
-      message("Re-allocating global group links from %d to %d elements.",
-              old_size, new_size);
-    }
-
-    /* Copy the local links to the global list. */
-    for (int i = 0; i < local_link_count; i++) {
-
-      int found = 0;
-
-      /* Check that the links have not already been added to the list by another
-       * thread. */
-      for (int l = 0; l < *group_link_count; l++) {
-        if ((*group_links)[l].group_i == local_group_links[i].group_i &&
-            (*group_links)[l].group_j == local_group_links[i].group_j) {
-          found = 1;
-          break;
-        }
-      }
-
-      if (!found) {
-
-        (*group_links)[*group_link_count].group_i =
-            local_group_links[i].group_i;
-        (*group_links)[*group_link_count].group_i_size =
-            local_group_links[i].group_i_size;
-
-        (*group_links)[*group_link_count].group_j =
-            local_group_links[i].group_j;
-        (*group_links)[*group_link_count].group_j_size =
-            local_group_links[i].group_j_size;
-
-        (*group_link_count) = (*group_link_count) + 1;
-      }
-    }
-  }
-
-  /* Release lock. */
-  if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
-
-  swift_free("fof_local_group_links", local_group_links);
-#endif
 }
 
 /**
