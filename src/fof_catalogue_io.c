@@ -64,9 +64,6 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   /* We write rank 0's hostname so that it is uniform across all files. */
   char systemname[256] = {0};
   if (e->nodeID == 0) sprintf(systemname, "%s", hostname());
-#ifdef WITH_MPI
-  if (!virtual_file) MPI_Bcast(systemname, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
-#endif
   io_write_attribute_s(h_grp, "System", systemname);
   io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
 
@@ -115,8 +112,8 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   flagEntropy[0] = writeEntropyFlag();
   io_write_attribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy,
                      swift_type_count);
-  io_write_attribute_i(h_grp, "NumFilesPerSnapshot", e->nr_nodes);
-  io_write_attribute_i(h_grp, "ThisFile", e->nodeID);
+  io_write_attribute_i(h_grp, "NumFilesPerSnapshot", 1);
+  io_write_attribute_i(h_grp, "ThisFile", 0);
   io_write_attribute_s(h_grp, "SelectOutput", "Default");
   io_write_attribute_i(h_grp, "Virtual", virtual_file);
   const int to_write[swift_type_count] = {0};
@@ -524,21 +521,11 @@ void write_fof_hdf5_array(
 }
 
 void write_fof_hdf5_catalogue(const struct fof_props* props,
-                              long long num_groups, const struct engine* e) {
+                              const struct engine* e) {
 
   char file_name[512];
-#ifdef WITH_MPI
-  char subdir_name[265];
-  sprintf(subdir_name, "%s_%04i", props->base_name, e->snapshot_output_count);
-  if (e->nodeID == 0) safe_checkdir(subdir_name, /*create=*/1);
-  MPI_Barrier(MPI_COMM_WORLD);
-
-  const char* base = basename(subdir_name);
-  sprintf(file_name, "%s/%s.%d.hdf5", subdir_name, base, e->nodeID);
-#else
   sprintf(file_name, "%s_%04i.hdf5", props->base_name,
           e->snapshot_output_count);
-#endif
 
   /* Set the minimal API version to avoid issues with advanced features */
   hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
@@ -550,17 +537,8 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   if (h_file < 0) error("Error while opening file '%s'.", file_name);
 
   /* Compute the number of groups */
-  long long num_groups_local = num_groups;
-  long long num_groups_total = num_groups;
-#ifdef WITH_MPI
-  MPI_Allreduce(&num_groups, &num_groups_total, 1, MPI_LONG_LONG, MPI_SUM,
-                MPI_COMM_WORLD);
-
-  /* Rank 0 collects the number of groups written by each rank */
-  long long* N_counts = (long long*)malloc(e->nr_nodes * sizeof(long long));
-  MPI_Gather(&num_groups_local, 1, MPI_LONG_LONG_INT, N_counts, 1,
-             MPI_LONG_LONG_INT, 0, MPI_COMM_WORLD);
-#endif
+  long long num_groups_local = props->num_groups;
+  long long num_groups_total = props->num_groups;
 
   /* Start by writing the header */
   write_fof_hdf5_header(h_file, e, num_groups_total, num_groups_local, props,
@@ -607,20 +585,6 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   H5Gclose(h_grp);
   H5Fclose(h_file);
   H5Pclose(h_props);
-
-#ifdef WITH_MPI
-#if H5_VERSION_GE(1, 10, 0)
-
-  /* Write the virtual meta-file */
-  if (e->nodeID == 0)
-    write_fof_virtual_file(props, num_groups_total, N_counts, e);
-#endif
-
-  /* Free the counts-per-rank array */
-  free(N_counts);
-
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
 }
 
 #endif /* HAVE_HDF5 */

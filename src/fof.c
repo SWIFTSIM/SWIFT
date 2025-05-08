@@ -2390,8 +2390,13 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         if (halo_is_on_edge[k]) {
           centre_of_mass[i * 3 + k] -= 0.5 * dim[k];
         }
+        centre_of_mass[i * 3 + k] =
+            box_wrap(centre_of_mass[i * 3 + k], 0., dim[k]);
       }
     }
+
+    /* Relabel the group ids */
+    props->group_index[i] = i + 1;
   }
 
   /* Free temporary arrays */
@@ -2567,10 +2572,6 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
 
   for (int rank = 0; rank < nr_nodes; ++rank) {
 
-#ifdef WITH_MPI
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
     if (rank == 0) {
 
       const char *mode;
@@ -2598,16 +2599,11 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
 
       for (int i = 0; i < num_groups; i++) {
 
-        /* const long long part_id = props->max_part_density_index[i] >= 0 */
-        /*                               ? parts[max_part_density_index[i]].id
-         */
-        /*                               : -1; */
         fprintf(file, "  %8zu %12lld %12e %12e %12e %12e %12e %24lld %24lld\n",
                 group_index[i], final_group_size[i], group_mass[i],
                 group_centre_of_mass[i * 3 + 0],
                 group_centre_of_mass[i * 3 + 1],
                 group_centre_of_mass[i * 3 + 2], 0., -1ll, -1ll);
-        // max_part_density_index[i], part_id);
       }
       fclose(file);
     }
@@ -3341,12 +3337,6 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
 #ifdef WITH_MPI
   MPI_Allreduce(&num_groups_local, &num_groups, 1, MPI_LONG_LONG_INT, MPI_SUM,
                 MPI_COMM_WORLD);
-
-  if (verbose)
-    message("Finding the total no. of groups took: (FOF SCALING): %.3f %s.",
-            clocks_from_ticks(getticks() - tic_num_groups_calc),
-            clocks_getunit());
-
   MPI_Reduce(&num_parts_in_groups_local, &num_parts_in_groups, 1,
              MPI_LONG_LONG_INT, MPI_SUM, 0, MPI_COMM_WORLD);
   MPI_Reduce(&max_group_size_local, &max_group_size, 1, MPI_LONG_LONG_INT,
@@ -3358,7 +3348,7 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
 #endif /* WITH_MPI */
 
   props->num_groups = num_groups;
-  message("num_groups_local=%zd", num_groups_local);
+  // message("num_groups_local=%zd", num_groups_local);
 
   /* Find number of groups on lower numbered MPI ranks */
 #ifdef WITH_MPI
@@ -3529,15 +3519,14 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
   }
 
   /* Give some info */
-  // if (engine_rank == 0) {
-  message(
-      "No. of groups: %lld. No. of particles in groups: %lld. No. of "
-      "particles not in groups: %lld.",
-      num_groups, num_parts_in_groups,
-      s->e->total_nr_gparts - num_parts_in_groups);
-  message("Largest group (linkables only) by size: %lld", max_group_size);
-  //}
-  message("max_id=%zd", max_id);
+  if (engine_rank == 0) {
+    message(
+        "No. of groups: %lld. No. of particles in groups: %lld. No. of "
+        "particles not in groups: %lld.",
+        num_groups, num_parts_in_groups,
+        s->e->total_nr_gparts - num_parts_in_groups);
+    message("Largest group (linkables only) by size: %lld", max_group_size);
+  }
 
   if (verbose)
     message("took: %.3f %s.", clocks_from_ticks(getticks() - tic_total),
@@ -3609,17 +3598,16 @@ void fof_compute_group_props(struct fof_props *props,
   /* All MPI ranks now have information about all haloes, even
    * the ones where there are no local particles in. */
 
-  /* Dump group data. */
-  if (0 && dump_results) {
+  /* Dump group data (only rank 0 since everyone has everything anyway). */
+  if (dump_results && engine_rank == 0) {
 #ifdef HAVE_HDF5
-    write_fof_hdf5_catalogue(props, (long long)num_groups, s->e);
+    write_fof_hdf5_catalogue(props, s->e);
 #else
     error("Can't dump hdf5 catalogues with hdf5 switched off!");
 #endif
   }
 
-  // if (dump_debug_results) {
-  if (1) {
+  if (dump_debug_results && engine_rank == 0) {
 
     char output_file_name[PARSER_MAX_LINE_SIZE];
     snprintf(output_file_name, PARSER_MAX_LINE_SIZE, "%s", props->base_name);
