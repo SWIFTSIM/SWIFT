@@ -465,6 +465,10 @@ if plot_v_distribution:
     ax.set_ylim(0, 100)
     plt.savefig("v_distribution.png")
 
+# set up smoothing length
+l = (gas_particle_mass*M_200_cgs/rho_r(radius, f_b, M_200_cgs, r_200_cgs, c_200))**(1/3)/r_200_cgs 
+print(l)
+
 # Header
 grp = file.create_group("/Header")
 grp.attrs["BoxSize"] = boxSize
@@ -500,9 +504,6 @@ ds[()] = m
 m = np.zeros(1)
 
 # Smoothing lengths
-l = (4.0 * np.pi * radius ** 2 / N) ** (
-    1.0 / 3.0
-)  # local mean inter-particle separation
 h = np.full((N,), eta * l)
 ds = grp.create_dataset("SmoothingLength", (N,), "f")
 ds[()] = h
