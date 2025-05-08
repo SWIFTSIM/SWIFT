@@ -1668,9 +1668,6 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
             /* Store the current best root */
             pj->fof_data.group_id = pi->fof_data.group_id;
-            if (pj->type == swift_type_gas &&
-                my_s->parts[-pj->id_or_neg_offset].id == ICHECK)
-              message("Linking self 1");
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1687,9 +1684,6 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
             /* Store the current best root */
             pi->fof_data.group_id = pj->fof_data.group_id;
-            if (pi->type == swift_type_gas &&
-                my_s->parts[-pi->id_or_neg_offset].id == ICHECK)
-              message("Linking self 2");
           }
 
         } else {
@@ -1868,9 +1862,6 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
               /* Store the current best root */
               pj->fof_data.group_id = pi->fof_data.group_id;
-              if (pj->type == swift_type_gas &&
-                  my_s->parts[-pj->id_or_neg_offset].id == ICHECK)
-                message("Linking pair 1 ci-local=%d", ci_local);
             }
           }
 
@@ -1891,10 +1882,6 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
               /* Store the current best root */
               pi->fof_data.group_id = pj->fof_data.group_id;
-              if (pi->type == swift_type_gas &&
-                  my_s->parts[-pi->id_or_neg_offset].id == ICHECK)
-                message("Linking pair 2 cj-Local=%d cj->nodeID=%d", cj_local,
-                        cj->nodeID);
             }
           }
 
