@@ -2187,7 +2187,9 @@ void fof_unpack_group_mass_mapper(hashmap_key_t key, hashmap_value_t *value,
  * TODO: Possible improvement is to delay the allocation of the CoM array
  * until after the min/max density arrays have played their role.
  */
-void fof_calc_group_mass(struct fof_props *props, const struct space *s) {
+void fof_calc_group_mass(struct fof_props *props, const struct space *s,
+                         int *number_of_local_seeds,
+                         int *number_of_global_seeds) {
 
   const size_t nr_gparts = s->nr_gparts;
   const struct gpart *gparts = s->gparts;
@@ -2195,6 +2197,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s) {
   const size_t group_id_default = props->group_id_default;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double seed_halo_mass = props->seed_halo_mass;
 
   /* Direct pointers to the arrays */
   long long *final_group_size = props->final_group_size;
@@ -2291,6 +2294,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s) {
                 MPI_MAX, MPI_COMM_WORLD);
 #endif
 
+  *number_of_local_seeds = 0;
+  *number_of_global_seeds = 0;
+
   /* We can now do a second pass to compute the centre of mass
    * Because of periodic BCs, we need to shift the positions in cases where the
    * (max-min) is larger than 1/2 of the box size */
@@ -2330,12 +2336,31 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s) {
     centre_of_mass[index * 3 + 0] += gparts[i].mass * x[0];
     centre_of_mass[index * 3 + 1] += gparts[i].mass * x[1];
     centre_of_mass[index * 3 + 2] += gparts[i].mass * x[2];
+
+    /* Should we seed a BH in this group? */
+    if (!has_black_hole[index] && group_mass[index] > seed_halo_mass) {
+
+      /* Is this a gas particle? */
+      if (gparts[i].type == swift_type_gas) {
+        const size_t gas_index = -gparts[i].id_or_neg_offset;
+        const float rho_com = hydro_get_comoving_density(&parts[gas_index]);
+
+        /* Is this the gas paricle which is the densest? */
+        if (rho_com == max_part_density[index]) {
+          (*number_of_local_seeds)++;
+        }
+      }
+    }
   }
 
 #ifdef WITH_MPI
   /* Now all-reduce the CoMs so that everyone has a full catalog */
   MPI_Allreduce(MPI_IN_PLACE, centre_of_mass, 3 * props->num_groups, MPI_DOUBLE,
                 MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(number_of_local_seeds, number_of_global_seeds, 1, MPI_INT,
+                MPI_SUM, MPI_COMM_WORLD);
+#else
+  *number_of_global_seeds = *number_of_local_seeds;
 #endif
 
   /* Finalise the operations on the group catalog */
@@ -2475,60 +2500,6 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 
   swift_free("fof_local_group_links", local_group_links);
 #endif
-}
-
-void fof_finalise_group_data(struct fof_props *props,
-                             const struct group_length *group_sizes,
-                             const struct gpart *gparts, const int periodic,
-                             const double dim[3], const int num_groups) {
-
-  return;
-
-  size_t *group_size =
-      (size_t *)swift_malloc("fof_group_size", num_groups * sizeof(size_t));
-  size_t *group_index =
-      (size_t *)swift_malloc("fof_group_index", num_groups * sizeof(size_t));
-  double *group_centre_of_mass = (double *)swift_malloc(
-      "fof_group_centre_of_mass", 3 * num_groups * sizeof(double));
-
-  for (int i = 0; i < num_groups; i++) {
-
-    const size_t group_offset = group_sizes[i].index;
-
-    /* Centre of mass, including possible box wrapping */
-    double CoM[3] = {
-        props->group_centre_of_mass[i * 3 + 0] / props->group_mass[i],
-        props->group_centre_of_mass[i * 3 + 1] / props->group_mass[i],
-        props->group_centre_of_mass[i * 3 + 2] / props->group_mass[i]};
-    if (periodic) {
-      CoM[0] =
-          box_wrap(CoM[0] + props->group_first_position[i * 3 + 0], 0., dim[0]);
-      CoM[1] =
-          box_wrap(CoM[1] + props->group_first_position[i * 3 + 1], 0., dim[1]);
-      CoM[2] =
-          box_wrap(CoM[2] + props->group_first_position[i * 3 + 2], 0., dim[2]);
-    }
-
-#ifdef WITH_MPI
-    group_index[i] = gparts[group_offset - node_offset].fof_data.group_id;
-    group_size[i] = props->group_size[group_offset - node_offset];
-#else
-    group_index[i] = gparts[group_offset].fof_data.group_id;
-    group_size[i] = props->group_size[group_offset];
-#endif
-
-    group_centre_of_mass[i * 3 + 0] = CoM[0];
-    group_centre_of_mass[i * 3 + 1] = CoM[1];
-    group_centre_of_mass[i * 3 + 2] = CoM[2];
-  }
-
-  swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
-  swift_free("fof_group_size", props->group_size);
-  swift_free("fof_group_index", props->group_index);
-
-  props->group_centre_of_mass = group_centre_of_mass;
-  props->group_size = group_size;
-  props->group_index = group_index;
 }
 
 /**
@@ -3048,122 +3019,6 @@ void fof_link_attachable_particles(struct fof_props *props,
   if (s->e->verbose)
     message("fof_link_attachable_particles() took (FOF SCALING): %.3f %s.",
             clocks_from_ticks(getticks() - tic_total), clocks_getunit());
-}
-
-/**
- * @brief Construct an array indicating whether a given root does not appear
- * in the global list of fragments to link.
- *
- * Nothing to do here if not running with MPI or if there are no attacheables.
- *
- * @param props The properties fof the FOF scheme.
- * @param s The #space we work with.
- */
-void fof_build_list_of_purely_local_groups(struct fof_props *props,
-                                           const struct space *s) {
-
-  /* Is there anything to attach?
-   * (The array we construct here is only useful with attacheables)*/
-  if (!current_fof_attach_type) return;
-
-#ifdef WITH_MPI
-
-  struct engine *e = s->e;
-
-  /* Abort if only one node */
-  if (e->nr_nodes == 1) return;
-
-  /* Local copy of the variable set in the mapper */
-  const size_t nr_gparts = s->nr_gparts;
-  size_t *restrict group_index = props->group_index;
-  const int group_link_count = props->group_link_count;
-
-  /* Sum the total number of links across MPI domains over each MPI rank. */
-  int global_group_link_count = 0;
-  MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
-                MPI_SUM, MPI_COMM_WORLD);
-
-  if (global_group_link_count < 0)
-    error("Overflow of the size of the global list of foregin links");
-
-  struct fof_mpi *global_group_links = NULL;
-  int *displ = NULL, *group_link_counts = NULL;
-
-  if (swift_memalign("fof_global_group_links", (void **)&global_group_links,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     global_group_link_count * sizeof(struct fof_mpi)) != 0)
-    error("Error while allocating memory for the global list of group links");
-
-  if (posix_memalign((void **)&group_link_counts, SWIFT_STRUCT_ALIGNMENT,
-                     e->nr_nodes * sizeof(int)) != 0)
-    error(
-        "Error while allocating memory for the number of group links on each "
-        "MPI rank");
-
-  if (posix_memalign((void **)&displ, SWIFT_STRUCT_ALIGNMENT,
-                     e->nr_nodes * sizeof(int)) != 0)
-    error(
-        "Error while allocating memory for the displacement in memory for the "
-        "global group link list");
-
-  /* Gather the total number of links on each rank. */
-  MPI_Allgather(&group_link_count, 1, MPI_INT, group_link_counts, 1, MPI_INT,
-                MPI_COMM_WORLD);
-
-  /* Set the displacements into the global link list using the link counts from
-   * each rank */
-  displ[0] = 0;
-  for (int i = 1; i < e->nr_nodes; i++) {
-    displ[i] = displ[i - 1] + group_link_counts[i - 1];
-    if (displ[i] < 0) error("Number of group links overflowing!");
-  }
-
-  /* Gather the global link list on all ranks. */
-  MPI_Allgatherv(props->group_links, group_link_count, fof_mpi_type,
-                 global_group_links, group_link_counts, displ, fof_mpi_type,
-                 MPI_COMM_WORLD);
-
-  /* Clean up memory. */
-  free(group_link_counts);
-  free(displ);
-
-  /* We now have a list of all the fragment connections.
-   * We can iterate over the *local* groups to identify the ones which
-   * are *not* appearing in the list */
-
-  if (posix_memalign((void **)&props->is_purely_local, SWIFT_STRUCT_ALIGNMENT,
-                     nr_gparts * sizeof(char)) != 0)
-    error("Error while allocating memory for the list of purely local groups");
-
-  /* Start by pretending every group is purely local */
-  for (size_t i = 0; i < nr_gparts; ++i) props->is_purely_local[i] = 1;
-
-  /* Now loop over the list of inter-rank connections and flag each halo present
-   * in the list */
-  for (int k = 0; k < global_group_link_count; ++k) {
-
-    const size_t group_i = global_group_links[k].group_i;
-    const size_t group_j = global_group_links[k].group_j;
-
-    const size_t root_i =
-        fof_find_global(group_i - node_offset, group_index, nr_gparts);
-    const size_t root_j =
-        fof_find_global(group_j - node_offset, group_index, nr_gparts);
-
-    if (is_local(root_i, nr_gparts)) {
-      const size_t local_root = root_i - node_offset;
-      props->is_purely_local[local_root] = 0;
-    }
-
-    if (is_local(root_j, nr_gparts)) {
-      const size_t local_root = root_j - node_offset;
-      props->is_purely_local[local_root] = 0;
-    }
-  }
-
-  /* Clean up the last allocated array */
-  swift_free("fof_global_group_links", global_group_links);
-#endif
 }
 
 /**
@@ -3837,29 +3692,19 @@ void fof_compute_group_props(struct fof_props *props,
   bzero(props->group_centre_of_mass, num_groups * 3 * sizeof(double));
   bzero(props->max_part_density, num_groups * sizeof(float));
 
-  const ticks tic_seeding = getticks();
+  const ticks tic_props = getticks();
 
-  fof_calc_group_mass(props, s);
-
-  /* #ifdef WITH_MPI */
-  /*   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, */
-  /*                       props->num_groups_prev, props->num_on_node, */
-  /*                       props->first_on_node, props->group_mass); */
-  /*   free(props->num_on_node); */
-  /*   free(props->first_on_node); */
-  /* #else */
-  /*   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, */
-  /*                       /\*num_groups_prev=*\/0, /\*num_on_node=*\/NULL, */
-  /*                       /\*first_on_node=*\/NULL, props->group_mass); */
-  /* #endif */
-
-  /* Finalise the group data before dump */
-  // fof_finalise_group_data(props, props->high_group_sizes, s->gparts,
-  //                         s->periodic, s->dim, num_groups);
+  /* Now, compute all things */
+  int number_of_local_seeds = 0, number_of_global_seeds = 0;
+  fof_calc_group_mass(props, s, &number_of_local_seeds,
+                      &number_of_global_seeds);
 
   if (verbose)
     message("Computing group properties took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
+            clocks_from_ticks(getticks() - tic_props), clocks_getunit());
+
+  /* All MPI ranks now have information about all haloes, even
+   * the ones where there are no local particles in. */
 
   /* Dump group data. */
   if (0 && dump_results) {
