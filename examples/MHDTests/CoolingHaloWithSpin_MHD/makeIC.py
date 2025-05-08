@@ -55,7 +55,7 @@ B0_Gaussian_Units = 1e-9  # 1e-6  # 1 micro Gauss
 B0_cgs = np.sqrt(CONST_MU0_CGS / (4.0 * np.pi)) * B0_Gaussian_Units
 
 # SPH
-eta = 1.3663  # kernel smoothing
+eta = 1.595  # kernel smoothing
 
 # Additional options
 spin_lambda_choice = (
@@ -66,6 +66,10 @@ plot_v_distribution = False
 
 AMP = "r^s" # sets angular momentum profile to be a function of M(r) or r^s 
 AMPs = 2 # power in agnular momentum profile
+
+with_noise = True # add gaussian uncertainty for particle positions
+noise_sigma = 0.5
+noise_mean = 0.0
 
 # From this we can find the virial radius, the radius within which the average density of the halo is
 # 200. * the mean matter density
@@ -303,6 +307,18 @@ r = np.logspace(
     round(10 * N ** (1 / 3)),
 )
 
+# Add noise
+if with_noise:
+    radius = np.sqrt(
+        (coords[:, 0]) ** 2
+        + (coords[:, 1]) ** 2
+        + (coords[:, 2]) ** 2
+    )
+    l = (gas_particle_mass*M_200_cgs/rho_r(radius, f_b, M_200_cgs, r_200_cgs, c_200))**(1/3)/r_200_cgs 
+    random_amps = noise_sigma * np.random.randn(len(coords),3) + noise_mean
+    coords += random_amps * l[:,None]
+
+
 # shift to centre of box
 coords += np.full(coords.shape, boxSize / 2.0)
 print("x range = (%f,%f)" % (np.min(coords[:, 0]), np.max(coords[:, 0])))
@@ -465,10 +481,6 @@ if plot_v_distribution:
     ax.set_ylim(0, 100)
     plt.savefig("v_distribution.png")
 
-# set up smoothing length
-l = (gas_particle_mass*M_200_cgs/rho_r(radius, f_b, M_200_cgs, r_200_cgs, c_200))**(1/3)/r_200_cgs 
-print(l)
-
 # Header
 grp = file.create_group("/Header")
 grp.attrs["BoxSize"] = boxSize
@@ -504,6 +516,8 @@ ds[()] = m
 m = np.zeros(1)
 
 # Smoothing lengths
+
+l = (gas_particle_mass*M_200_cgs/rho_r(radius, f_b, M_200_cgs, r_200_cgs, c_200))**(1/3)/r_200_cgs 
 h = np.full((N,), eta * l)
 ds = grp.create_dataset("SmoothingLength", (N,), "f")
 ds[()] = h
