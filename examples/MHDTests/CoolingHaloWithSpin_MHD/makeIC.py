@@ -51,7 +51,7 @@ f_b = 0.17  # baryon fraction
 c_200 = 7.2  # concentration parameter
 
 # Set the magnitude of the uniform seed magnetic field
-B0_Gaussian_Units = 1e-9  # 1e-6  # 1 micro Gauss
+B0_Gaussian_Units = 0.0 #1e-9  # 1e-6  # 1 micro Gauss
 B0_cgs = np.sqrt(CONST_MU0_CGS / (4.0 * np.pi)) * B0_Gaussian_Units
 
 # SPH
@@ -59,7 +59,7 @@ eta = 1.595  # kernel smoothing
 
 # Additional options
 spin_lambda_choice = (
-    "Bullock" #"Peebles"
+    "Peebles"
 )  # which definition of spin parameter to use (Peebles or Bullock)
 save_to_vtk = False
 plot_v_distribution = False
@@ -196,10 +196,10 @@ coords -= 0.5
 # cut a sphere
 r_uni = np.linalg.norm(coords, axis=1)
 coords = coords[r_uni <= 0.5]
-coords *= boxSize #boxSize * np.sqrt(3)
+coords *= boxSize/10 #boxSize * np.sqrt(3)
 
 # calculate max distance from the center (units of r_200)
-R_max = boxSize/2 #np.sqrt(3) * (boxSize / 2)
+R_max = boxSize/20 #boxSize/2 #np.sqrt(3) * (boxSize / 2)
 r_s = 1 / c_200
 # calculate distances to the center
 r_uni = np.linalg.norm(coords, axis=1)
@@ -442,8 +442,8 @@ for i in range(N):
 # select particles inside R_200
 mask_r_200 = radius <= 1
 Lp_tot = np.sum(l[mask_r_200], axis=0)
-Lp_tot_abs = np.linalg.norm(Lp_tot)
-jsp = Lp_tot_abs/f_b
+Lp_tot_abs = np.linalg.norm(Lp_tot) 
+jsp = Lp_tot_abs/gas_mass
 normV = np.linalg.norm(v, axis=1)
 
 if spin_lambda_choice == "Peebles":
@@ -455,10 +455,10 @@ if spin_lambda_choice == "Peebles":
         / (const_unit_velocity_in_cgs ** 2)
     )
     Ep_tot = np.sum(Ep_kin[mask_r_200] + Ep_pot[mask_r_200])
-    calc_spin_par_P = (
-        Lp_tot_abs * np.sqrt(np.abs(Ep_tot)) / const_G / (f_b * 1) ** (5 / 2)
+    jsp_P = (
+        const_G * (gas_mass) ** (3 / 2) / np.sqrt(np.abs(Ep_tot))
     )
-    v *= spin_lambda / calc_spin_par_P
+    v *= jsp_P/jsp
 
 elif spin_lambda_choice == "Bullock":
     # Normalize to Bullock
