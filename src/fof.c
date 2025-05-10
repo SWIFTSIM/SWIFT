@@ -2061,15 +2061,6 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
   hashmap_free(&map);
 }
 
-/* Mapper function to atomically update the group size array. */
-static INLINE void fof_update_group_size_iterator(hashmap_key_t key,
-                                                  hashmap_value_t *value,
-                                                  void *data) {
-  long long *group_size = (long long *)data;
-
-  /* Use key to index into group mass array. */
-  atomic_add(&group_size[key], value->value_st);
-}
 /**
  * @brief Mapper function to perform FOF search.
  *
