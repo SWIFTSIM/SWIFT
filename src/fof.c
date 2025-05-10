@@ -89,8 +89,6 @@ MPI_Datatype fof_final_mass_type;
 size_t node_offset;
 #endif
 
-struct space *my_s;
-
 #ifdef SWIFT_DEBUG_CHECKS
 static integertime_t ti_current;
 #endif
@@ -360,8 +358,6 @@ void fof_set_initial_group_id_mapper(void *map_data, int num_elements,
  * @param props The properties of the FOF structure.
  */
 void fof_allocate(const struct space *s, struct fof_props *props) {
-
-  my_s = (struct space *)s;
 
   const int verbose = s->e->verbose;
   const ticks total_tic = getticks();
