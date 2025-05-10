@@ -28,7 +28,10 @@ Snapshots:
   basename:            CoolingHalo  # Common part of the name of output files
   time_first:          0.               # Time of the first output (in internal units)
   delta_time:          0.1 #0.1             # Time difference between consecutive outputs (in internal units)
-
+  compression: 4           # Compress the snapshots
+  recording_triggers_part: [-1, -1]   # Not recording as we have many snapshots
+  recording_triggers_bpart: [-1, -1]  # Not recording as we have many snapshots 
+ 
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.595     # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
