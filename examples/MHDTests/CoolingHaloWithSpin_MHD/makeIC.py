@@ -51,21 +51,25 @@ f_b = 0.17  # baryon fraction
 c_200 = 7.2  # concentration parameter
 
 # Set the magnitude of the uniform seed magnetic field
-B0_Gaussian_Units = 1e-9  # 1e-6  # 1 micro Gauss
+B0_Gaussian_Units = 1e-9 # 1e-3 micro Gauss
 B0_cgs = np.sqrt(CONST_MU0_CGS / (4.0 * np.pi)) * B0_Gaussian_Units
 
 # SPH
-eta = 1.3663  # kernel smoothing
+eta = 1.595  # kernel smoothing
 
 # Additional options
 spin_lambda_choice = (
-    "Bullock" #"Peebles"
+    "Peebles"
 )  # which definition of spin parameter to use (Peebles or Bullock)
 save_to_vtk = False
 plot_v_distribution = False
 
 AMP = "r^s" # sets angular momentum profile to be a function of M(r) or r^s 
 AMPs = 2 # power in agnular momentum profile
+
+with_noise = True # add gaussian uncertainty for particle positions
+noise_sigma = 0.5
+noise_mean = 0.0
 
 # From this we can find the virial radius, the radius within which the average density of the halo is
 # 200. * the mean matter density
@@ -114,9 +118,11 @@ print("G=", const_G)
 
 # Parameters
 periodic = 1  # 1 For periodic box
-boxSize = 2.0 # 4.0
+boxSize = 2.0 # in units of r_200 
+R_max = boxSize/6 #boxSize/6 # set maximal halo radius (we simulate only part of a halo) 
 G = const_G
 N = int(sys.argv[1])  # Number of particles
+N = int(N*6/np.pi)   # renormalize number of particles to get required N after cutting a sphere
 IAsource = "IAfile"
 
 # Create the file
@@ -192,10 +198,9 @@ coords -= 0.5
 # cut a sphere
 r_uni = np.linalg.norm(coords, axis=1)
 coords = coords[r_uni <= 0.5]
-coords *= boxSize #boxSize * np.sqrt(3)
+coords *= 2*R_max
 
 # calculate max distance from the center (units of r_200)
-R_max = boxSize/2 #np.sqrt(3) * (boxSize / 2)
 r_s = 1 / c_200
 # calculate distances to the center
 r_uni = np.linalg.norm(coords, axis=1)
@@ -302,6 +307,18 @@ r = np.logspace(
     np.log10(boxSize * np.sqrt(3.0) / 2.0),
     round(10 * N ** (1 / 3)),
 )
+
+# Add noise
+if with_noise:
+    radius = np.sqrt(
+        (coords[:, 0]) ** 2
+        + (coords[:, 1]) ** 2
+        + (coords[:, 2]) ** 2
+    )
+    l = (gas_particle_mass*M_200_cgs/rho_r(radius, f_b, M_200_cgs, r_200_cgs, c_200))**(1/3)/r_200_cgs 
+    random_amps = noise_sigma * np.random.randn(len(coords),3) + noise_mean
+    coords += random_amps * l[:,None]
+
 
 # shift to centre of box
 coords += np.full(coords.shape, boxSize / 2.0)
@@ -426,8 +443,8 @@ for i in range(N):
 # select particles inside R_200
 mask_r_200 = radius <= 1
 Lp_tot = np.sum(l[mask_r_200], axis=0)
-Lp_tot_abs = np.linalg.norm(Lp_tot)
-jsp = Lp_tot_abs/f_b
+Lp_tot_abs = np.linalg.norm(Lp_tot) 
+jsp = Lp_tot_abs/gas_mass
 normV = np.linalg.norm(v, axis=1)
 
 if spin_lambda_choice == "Peebles":
@@ -439,20 +456,15 @@ if spin_lambda_choice == "Peebles":
         / (const_unit_velocity_in_cgs ** 2)
     )
     Ep_tot = np.sum(Ep_kin[mask_r_200] + Ep_pot[mask_r_200])
-    calc_spin_par_P = (
-        Lp_tot_abs * np.sqrt(np.abs(Ep_tot)) / const_G / (f_b * 1) ** (5 / 2)
+    jsp_P = (
+        const_G * (gas_mass) ** (3 / 2) / np.sqrt(np.abs(Ep_tot))
     )
-    v *= spin_lambda / calc_spin_par_P
+    v *= jsp_P/jsp
 
 elif spin_lambda_choice == "Bullock":
     # Normalize to Bullock
     jsp_B = (np.sqrt(2) * v_200 )*spin_lambda
     v *= jsp_B/jsp
-
-   # jp_sp = Lp_tot_abs / (gas_particle_mass * np.sum(mask_r_200))
-   # calc_spin_par_B = jp_sp / (np.sqrt(2) * 1 * v_200)
-   # v *= spin_lambda / calc_spin_par_B
-   # l *= spin_lambda / calc_spin_par_B
 
 # Draw velocity distribution
 if plot_v_distribution:
@@ -500,9 +512,8 @@ ds[()] = m
 m = np.zeros(1)
 
 # Smoothing lengths
-l = (4.0 * np.pi * radius ** 2 / N) ** (
-    1.0 / 3.0
-)  # local mean inter-particle separation
+
+l = (gas_particle_mass*M_200_cgs/rho_r(radius, f_b, M_200_cgs, r_200_cgs, c_200))**(1/3)/r_200_cgs 
 h = np.full((N,), eta * l)
 ds = grp.create_dataset("SmoothingLength", (N,), "f")
 ds[()] = h
