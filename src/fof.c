@@ -1723,15 +1723,6 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
   struct gpart *gparts_i = (struct gpart *)ci->grav.parts;
   struct gpart *gparts_j = (struct gpart *)cj->grav.parts;
 
-  /* Index of particles in the global group list */
-  size_t *const group_index = props->group_index;
-
-  /* Make a list of particle offsets into the global gparts array. */
-  size_t *const index_offset_i =
-      group_index + (ptrdiff_t)(gparts_i - space_gparts);
-  size_t *const index_offset_j =
-      group_index + (ptrdiff_t)(gparts_j - space_gparts);
-
   /* Distances of particles in the global list */
   float *const offset_dist_i =
       props->distance_to_link + (ptrdiff_t)(gparts_i - space_gparts);
