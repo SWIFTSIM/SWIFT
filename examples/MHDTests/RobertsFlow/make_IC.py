@@ -278,6 +278,26 @@ def add_other_particle_properties(
 
     return pos, h, v, B, A, ids, m, u
 
+def stack_boxes(pos,h,npar,nperp):
+    h_stack = np.array([])
+    pos_stack = np.array([])
+    if npar>1:
+        for i in range(npar):
+            for j in range(npar):
+                dx = i
+                dy = j
+                np.append(pos_stack,pos[:]+np.array([i,j,0])[None,:]) 
+                np.append(h_stack,h[:])
+    if nperp>1:
+        for i in range(nperp):
+            dz = i
+            np.append(pos_stack,pos[:]+np.array([0,0,i])[None,:])
+            np.append(h_stack,h[:]) 
+    if ~((npar>1) | (nperp>1)):
+        h_stack = h
+        pos_stack = pos
+    return pos_stack, h_stack
+            
 
 if __name__ == "__main__":
 
@@ -341,8 +361,32 @@ if __name__ == "__main__":
         default=1,
         type=int,
     )
+    parser.add_argument(
+        "-npar",
+        "--npar_box",
+        help="number of boxes in xy plane in linear direction",
+        default=1,
+        type=int,
+    )
+    parser.add_argument(
+        "-nperp",
+        "--nperp_box",
+        help="number of boxes in z plane in linear direction",
+        default=1,
+        type=int,
+    )
+
+
     args = parser.parse_args()
     pos, h = open_IAfile(args.IA_path)
+
+    pos, h = stack_boxes(
+        pos,
+        h,
+        args.npar_box,
+        args.nperp_box,
+    )
+
     pos, h, v, B, A, ids, m, u = add_other_particle_properties(
         pos,
         h,
