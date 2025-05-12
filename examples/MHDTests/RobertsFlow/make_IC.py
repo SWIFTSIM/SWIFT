@@ -278,17 +278,37 @@ def add_other_particle_properties(
 
     return pos, h, v, B, A, ids, m, u
 
-def stack_boxes(pos,h,npar,nperp):
+def stack_boxes(pos,h,npar,nper):
     h_stack = []
     pos_stack = []
     for i in range(npar):
         for j in range(npar):
-            for k in range(nperp):
+            for k in range(nper):
                 h_stack.append(h[:])
                 pos_stack.append(pos[:]+np.array([i,j,k])[None,:]) 
 
     pos_stack = np.concatenate(pos_stack)
     h_stack = np.concatenate(h_stack)
+
+   # N = len(h)
+
+    #cx, cy, cz = npar, npar, nper
+
+    #pos_stack = np.zeros((int(N * cx * cy * cz), 3))
+   # h_stack = np.zeros(int(N * cx * cy * cz))
+   # N_stack = N * cx * cy * cz
+
+    #c0 = 0
+    #c1 = N
+    #for i in range(cx):
+    #    for j in range(cy):
+    #        for k in range(cz):
+    #            pos_stack[c0:c1, 0] = pos[:, 0] + i
+    #            pos_stack[c0:c1, 1] = pos[:, 1] + j
+    #            pos_stack[c0:c1, 2] = pos[:, 2] + k
+    #            h_stack[c0:c1] = h[:]
+    #            c0 += N
+    #            c1 += N
 
     return pos_stack, h_stack
 
@@ -411,6 +431,8 @@ if __name__ == "__main__":
         args.nper_box,
     )
 
+    print(pos, h)
+
     pos, h = deform_boxes(
         pos,
         h,
@@ -438,7 +460,11 @@ if __name__ == "__main__":
         args.field_type,
         args.flow_kind,
     )
+
     L = args.boxsize
+    cpar = args.npar_box*args.lparmultiplier
+    cper = args.nper_box*args.lpermultiplier
+    Lbox = [L*cpar, L*cpar, L*cper]
     N = len(h)
     # File
     try:
@@ -446,7 +472,7 @@ if __name__ == "__main__":
         print("Wrinting ICs ...")
         # Header
         grp = fileOutput.create_group("/Header")
-        grp.attrs["BoxSize"] = [L, L, L]  #####
+        grp.attrs["BoxSize"] = Lbox  #####
         grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
         grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
         grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
