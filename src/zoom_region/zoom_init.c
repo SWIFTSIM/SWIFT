@@ -559,6 +559,11 @@ void zoom_props_init(struct swift_params *params, struct space *s,
  */
 void zoom_region_init(struct space *s, const int verbose) {
 
+  /* Nothing to do if we are restarting. */ 
+  if (s->e != NULL && s->e->restarting) {
+    return;
+  }
+
   /* Update the neighbour distance in case the gravity props have changed. */
   if (s->e != NULL) {
     s->zoom_props->neighbour_distance =
