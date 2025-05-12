@@ -279,23 +279,17 @@ def add_other_particle_properties(
     return pos, h, v, B, A, ids, m, u
 
 def stack_boxes(pos,h,npar,nperp):
-    h_stack = np.array([])
-    pos_stack = np.array([])
-    if npar>1:
-        for i in range(npar):
-            for j in range(npar):
-                dx = i
-                dy = j
-                np.append(pos_stack,pos[:]+np.array([i,j,0])[None,:]) 
-                np.append(h_stack,h[:])
-    if nperp>1:
-        for i in range(nperp):
-            dz = i
-            np.append(pos_stack,pos[:]+np.array([0,0,i])[None,:])
-            np.append(h_stack,h[:]) 
-    if ~((npar>1) | (nperp>1)):
-        h_stack = h
-        pos_stack = pos
+    h_stack = []
+    pos_stack = []
+    for i in range(npar):
+        for j in range(npar):
+            for k in range(nperp):
+                h_stack.append(h[:])
+                pos_stack.append(pos[:]+np.array([i,j,k])[None,:]) 
+
+    pos_stack = np.concatenate(pos_stack)
+    h_stack = np.concatenate(h_stack)
+
     return pos_stack, h_stack
             
 
@@ -316,7 +310,7 @@ if __name__ == "__main__":
         "-P",
         "--IA_path",
         help="path to particle itinial arrangement file",
-        default="./IAfiles/glassCube_32.hdf5",
+        default="./IAfiles/glassCube_16.hdf5",
         type=str,
     )
     parser.add_argument(
@@ -375,6 +369,14 @@ if __name__ == "__main__":
         default=1,
         type=int,
     )
+    parser.add_argument(
+        "-vtk",
+        "--to_vtk",
+        help="wether to save result to .vtk file, 1 or 0",
+        default=0,
+        type=int,
+    )
+
 
 
     args = parser.parse_args()
@@ -438,3 +440,19 @@ if __name__ == "__main__":
         print("... done")
     except Exception as e:
         print("Error: " + str(e))
+
+    # Save particle arrangement to .vtk file to open with paraview
+    if args.to_vtk==1:
+        import vtk
+
+        vtk_points = vtk.vtkPoints()
+        for x, y, z in pos:
+            vtk_points.InsertNextPoint(x, y, z)
+        poly_data = vtk.vtkPolyData()
+        poly_data.SetPoints(vtk_points)
+        writer = vtk.vtkPolyDataWriter()
+        writer.SetFileName("output.vtk")
+        writer.SetInputData(poly_data)
+        writer.Write()  # one can use paraview to watch how particles are arranged
+
+
