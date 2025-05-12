@@ -12,7 +12,7 @@ rho0 = 1.0
 cs2 = 3025.0
 gamma = 5.0 / 3.0
 u0 = cs2 / (gamma * (gamma - 1))
-Bi_fraction = 1e-4
+Bi_fraction = 1e-1 #1e-4
 
 # output file
 fileOutputName = "RobertsFlow.hdf5"

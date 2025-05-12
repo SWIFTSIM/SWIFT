@@ -86,8 +86,9 @@ def process_info(run_data, the_key, toplot=True, tosave=True):
             + "/statistics.txt"
         )
         the_statistics = np.transpose(np.loadtxt(the_addr))
+        print(the_statistics)
         Time = np.array(the_statistics[1])
-        B = np.array(the_statistics[38])
+        B = np.array(the_statistics[39])
         B = B / B[0]
         divB = np.abs(np.array(the_statistics[35]))
 

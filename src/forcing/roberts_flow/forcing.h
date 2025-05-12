@@ -143,6 +143,12 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   xp->v_full[0] = v_Rob[0];
   xp->v_full[1] = v_Rob[1];
   xp->v_full[2] = v_Rob[2] * Vz_factor;
+
+  /* Update the accelerations */ // delete lorentz force contribution
+  p->a_hydro[0] -= p->mhd_data.tot_mag_F[0]; //* (v_Rob[0]-xp->v_full[0]);
+  p->a_hydro[1] -= p->mhd_data.tot_mag_F[1]; //* (v_Rob[1]-xp->v_full[1]);
+  p->a_hydro[2] -= p->mhd_data.tot_mag_F[2]; //* (v_Rob[2] * Vz_factor-xp->v_full[2]);
+
 }
 
 /**

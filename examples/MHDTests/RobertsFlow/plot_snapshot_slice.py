@@ -16,7 +16,7 @@ prefered_color = "magma"  # "CMRmap"#"magma"
 cpts = 100  # 14
 
 
-to_plot = "B"  # 'B' or 'A' or 'errors'
+to_plot = "v"  # 'B' or 'A' or 'errors'
 
 with h5py.File(filename, "r") as handle:
     gamma = handle["HydroScheme"].attrs["Adiabatic index"][0]
@@ -452,6 +452,103 @@ if to_plot == "B":
 #        linewidth=0.5,
 #        arrowsize=0.8,
 #    )
+# Plot magnetic fields
+
+if to_plot == "v":
+    vabs = abs_vec(v)
+    vmean = np.mean(vabs)
+    vmax = np.max(vabs)
+    vx = v[:, 0] / vrms
+    vy = v[:, 1] / vrms
+    vz = v[:, 2] / vrms
+
+    fig, ax = plt.subplots(1, 3, figsize=(16, 5), constrained_layout=True)
+    make_density_plot(
+        vx.reshape((dimx, dimy)),
+        -1.0,
+        1.0,
+        0,
+        0,
+        "$v_x$/$v_{rms}$",
+        c_res=cpts,
+        log_sc=False,
+        cmap=prefered_color,
+        draw_cbar=False,
+        cmapnorm="dim-less",
+    )
+    make_density_plot(
+        vy.reshape((dimx, dimy)),
+        -1.0,
+        1.0,
+        0,
+        1,
+        "$v_y$/$v_{rms}$",
+        c_res=cpts,
+        log_sc=False,
+        cmap=prefered_color,
+        draw_cbar=False,
+        cmapnorm="dim-less",
+    )
+    make_density_plot(
+        vz.reshape((dimx, dimy)),
+        -1.0,
+        1.0,
+        0,
+        2,
+        "$v_z$/$v_{rms}$",
+        c_res=cpts,
+        log_sc=False,
+        cmap=prefered_color,
+        draw_cbar=True,
+        cmapnorm="dim-less",
+    )
+
+    #    vx = v[:, 0] / vrms
+    #    vy = v[:, 1] / vrms
+    #    vz = v[:, 2] / vrms
+
+    #    make_density_plot(
+    #        vz.reshape((dimx, dimy)),
+    #        -1.0,
+    #        1.0,
+    #        0,
+    #        3,
+    #        "$v_z$/$v_{rms}$",
+    #        c_res=cpts,
+    #        log_sc=False,
+    #        cmap=prefered_color,
+    #        cmapnorm='dim-less',
+    #    )
+    ax[0].streamplot(
+        new_x,
+        new_y,
+        np.transpose(vx.reshape((dimx, dimy))),
+        np.transpose(vy.reshape((dimx, dimy))),
+        color="w",
+        density=3.0,  # 2.0
+        linewidth=0.25,  # 0.5
+        arrowsize=0.4,  # 0.8
+    )
+    ax[1].streamplot(
+        new_x,
+        new_y,
+        np.transpose(vx.reshape((dimx, dimy))),
+        np.transpose(vy.reshape((dimx, dimy))),
+        color="w",
+        density=3.0,
+        linewidth=0.25,
+        arrowsize=0.4,
+    )
+    ax[2].streamplot(
+        new_x,
+        new_y,
+        np.transpose(vx.reshape((dimx, dimy))),
+        np.transpose(vy.reshape((dimx, dimy))),
+        color="w",
+        density=3.0,
+        linewidth=0.25,
+        arrowsize=0.4,
+    )
 
 if to_plot == "errors":
 
