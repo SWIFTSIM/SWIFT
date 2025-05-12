@@ -550,7 +550,8 @@ void space_regrid(struct space *s, int verbose) {
 
   /* When running a zoom region if this is our first regrid then we need to get
    * the zoom region geometry before moving on. */
-  if (s->with_zoom_region && s->cells_top == NULL && !s->e->restarting) {
+  if (s->with_zoom_region && s->cells_top == NULL && s->e != NULL &&
+      !s->e->restarting) {
     zoom_region_init(s, verbose);
   }
 
