@@ -566,7 +566,7 @@ void zoom_region_init(struct space *s, const int verbose) {
 
   /* Nothing to do if we are restarting, just report geometry and move on. */
   if (s->e != NULL && s->e->restarting) {
-    zoom_report_cell_properties(s);
+    if (verbose) zoom_report_cell_properties(s);
     return;
   }
 
@@ -709,5 +709,7 @@ void zoom_region_init(struct space *s, const int verbose) {
                                    s->zoom_props->buffer_cdim[2];
 
   /* Report what we have done */
-  zoom_report_cell_properties(s);
+  if (verbose) {
+    zoom_report_cell_properties(s);
+  }
 }
