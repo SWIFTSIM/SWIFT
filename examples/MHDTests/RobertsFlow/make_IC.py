@@ -291,7 +291,14 @@ def stack_boxes(pos,h,npar,nperp):
     h_stack = np.concatenate(h_stack)
 
     return pos_stack, h_stack
-            
+
+
+def deform_boxes(pos,h,Lparmul,Lpermul):
+    pos[:,0]*=Lparmul
+    pos[:,1]*=Lparmul
+    pos[:,2]*=Lpermul
+    h[:]*= np.sqrt(2*Lparmul**2+Lpermul**2)
+    return pos,h 
 
 if __name__ == "__main__":
 
@@ -358,17 +365,32 @@ if __name__ == "__main__":
     parser.add_argument(
         "-npar",
         "--npar_box",
-        help="number of boxes in xy plane in linear direction",
+        help="number of boxes in xy plane",
         default=1,
         type=int,
     )
     parser.add_argument(
         "-nperp",
         "--nperp_box",
-        help="number of boxes in z plane in linear direction",
+        help="number of boxes in z direction",
         default=1,
         type=int,
     )
+    parser.add_argument(
+        "-lparmul",
+        "--lparmultiplier",
+        help="multiply boxsize in xy plane by this amount",
+        default=1,
+        type=float,
+    )
+    parser.add_argument(
+        "-lpermul",
+        "--lpermultiplier",
+        help="number of boxes in z plane by this amount",
+        default=1,
+        type=float,
+    )
+
     parser.add_argument(
         "-vtk",
         "--to_vtk",
@@ -387,6 +409,13 @@ if __name__ == "__main__":
         h,
         args.npar_box,
         args.nperp_box,
+    )
+
+    pos, h = deform_boxes(
+        pos,
+        h,
+        args.lparmultiplier,
+        args.lpermultiplier
     )
 
     pos, h, v, B, A, ids, m, u = add_other_particle_properties(
