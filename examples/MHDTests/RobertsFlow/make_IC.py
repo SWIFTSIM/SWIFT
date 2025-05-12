@@ -415,7 +415,7 @@ if __name__ == "__main__":
         "-vtk",
         "--to_vtk",
         help="wether to save result to .vtk file, 1 or 0",
-        default=1,
+        default=0,
         type=int,
     )
 
