@@ -52,6 +52,9 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   /* Get the cell pointers. */
   struct cell *cells = s->cells_top;
 
+  /* Zero the void cell count. */
+  zoom_props->nr_void_cells = 0;
+
   /* Get the offset and the number of cells we're dealing with. */
   int offset = zoom_props->bkg_cell_offset;
   int ncells = zoom_props->nr_bkg_cells;
