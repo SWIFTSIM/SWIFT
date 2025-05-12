@@ -395,7 +395,7 @@ if __name__ == "__main__":
         "-vtk",
         "--to_vtk",
         help="wether to save result to .vtk file, 1 or 0",
-        default=0,
+        default=1,
         type=int,
     )
 
@@ -417,6 +417,15 @@ if __name__ == "__main__":
         args.lparmultiplier,
         args.lpermultiplier
     )
+
+    # Find unique rows and their counts
+    unique_pos, counts = np.unique(pos, axis=0, return_counts=True)
+
+    # Filter positions that appear more than once
+    repeating_pos = unique_pos[counts > 1]
+
+    print("Repeating positions:")
+    print(repeating_pos)
 
     pos, h, v, B, A, ids, m, u = add_other_particle_properties(
         pos,
