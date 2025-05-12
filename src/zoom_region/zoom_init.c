@@ -442,7 +442,7 @@ void zoom_report_cell_properties(const struct space *s) {
    * region. */
   int void_cdim[3];
   for (int i = 0; i < 3; i++) {
-    void_cdim[i] = ceil((int)floor(s->zoom_props->void_dim[i] / s->width[i]));
+    void_cdim[i] = (int)ceil(s->zoom_props->void_dim[i] * s->iwidth[i]);
   }
 
   /* Cdims */
