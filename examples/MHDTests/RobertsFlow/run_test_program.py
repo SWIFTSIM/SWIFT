@@ -174,6 +174,13 @@ def make_IC(phys_parameters, IAfile):
         Lbox = " --boxsize=" + str(phys_parameters["Lbox"].values[0])
         path = " --IA_path=" + "./IAfiles/" + IAfile
         Flow_kind = " --flow_kind=" + str(int(phys_parameters["Flow_kind"].values[0]))
+
+        Npar = " --npar_box" + str(phys_parameters["Npar"].values[0])
+        Nper = " --nper_box" + str(phys_parameters["Nper"].values[0])
+        LparMul = " --lparmultiplier" + str(phys_parameters["LparMul"].values[0])
+        LperMul = " --lpermultiplier" + str(phys_parameters["LperMul"].values[0])
+        
+
         # Construct command to make ICs with selected parameters
         command = (
             " python3 "
@@ -185,6 +192,10 @@ def make_IC(phys_parameters, IAfile):
             + Lbox
             + Vz_factor
             + Flow_kind
+            + Npar
+            + Npar
+            + LparMul
+            + LperMul
         )
     else:
         command = " python3 " + "make_IC.py"

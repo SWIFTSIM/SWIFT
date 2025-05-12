@@ -370,8 +370,8 @@ if __name__ == "__main__":
         type=int,
     )
     parser.add_argument(
-        "-nperp",
-        "--nperp_box",
+        "-nper",
+        "--nper_box",
         help="number of boxes in z direction",
         default=1,
         type=int,
@@ -408,7 +408,7 @@ if __name__ == "__main__":
         pos,
         h,
         args.npar_box,
-        args.nperp_box,
+        args.nper_box,
     )
 
     pos, h = deform_boxes(

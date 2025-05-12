@@ -1,2 +1,2 @@
-Run #	v0	Vz_factor	eta	kv	kb	Lbox	Flow_kind	Scheme	IAfile	monopole_subtraction	artificial_diffusion	hyperbolic_dedner	hyperbolic_dedner_divv	parabolic_dedner	t_max	max_dt	Forcing_kind	viscosity_alpha	Status	Comment
-example_run	1	1	0.1	1	1	6.2831853	1	FDI	g32			1	0.5	1	100	1e-2	v			Example run. Fill the table with parameters and run run_test_program.py script. The runs with Status = done will be ignored.
+Run +ACM-	v0	Vz+AF8-factor	eta	kv	kb	Lbox	Flow+AF8-kind	Scheme	IAfile	Npar	Nper	LparMul	LperMul	monopole+AF8-subtraction	artificial+AF8-diffusion	hyperbolic+AF8-dedner	hyperbolic+AF8-dedner+AF8-divv	parabolic+AF8-dedner	t+AF8-max	max+AF8-dt	Forcing+AF8-kind	viscosity+AF8-alpha	Status	Comment
+example+AF8-run	1	1	0.1	1	1	6.2831853	1	FDI	g32	1	1	1	1			1	0.5	1	100	0.01	v			Example run. Fill the table with parameters and run run+AF8-test+AF8-program.py script. The runs with Status +AD0- done will be ignored.
