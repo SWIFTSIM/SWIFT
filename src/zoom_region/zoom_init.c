@@ -559,8 +559,9 @@ void zoom_props_init(struct swift_params *params, struct space *s,
  */
 void zoom_region_init(struct space *s, const int verbose) {
 
-  /* Nothing to do if we are restarting. */ 
+  /* Nothing to do if we are restarting, just report geometry and move on. */
   if (s->e != NULL && s->e->restarting) {
+    zoom_report_cell_properties(s);
     return;
   }
 
