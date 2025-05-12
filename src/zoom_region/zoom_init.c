@@ -76,6 +76,8 @@ void zoom_parse_params(struct swift_params *params,
   props->region_pad_factor =
       parser_get_opt_param_float(params, "ZoomRegion:region_pad_factor", 1.1);
 
+  message("Zoom region pad factor is %f.", props->region_pad_factor);
+
   /* Extract the depth we'll split neighbour cells to. */
   props->neighbour_max_tree_depth = parser_get_opt_param_int(
       params, "ZoomRegion:neighbour_max_tree_depth", -1);
