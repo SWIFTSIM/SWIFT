@@ -1,2 +1,4 @@
 Run #	v0	Vz_factor	eta	kv	kb	Lbox	Flow_kind	Scheme	IAfile	Npar	Nper	LparMul	LperMul	monopole_subtraction	artificial_diffusion	hyperbolic_dedner	hyperbolic_dedner_divv	parabolic_dedner	t_max	max_dt	Forcing_kind	viscosity_alpha	Status	Comment
-example	1	1	0.1	1	1	6.2831853	2	ODI	g32	1	1	2	1			1	0.5	1	100	0.01	v			Example run. Fill the table with parameters and run run+AF8-test+AF8-program.py script. The runs with Status +AD0- done will be ignored.
+RF1_std	1	1	0.1	1	1	6.2831853	1	ODI	g32	1	1	1	1			0	0	0	100	0.01	v			Standard Roberts flow 1 example run. Fill the table with parameters and run run_test_program.py script. The runs with Status = done will be ignored.
+RF2_2Lper	1	1	0.1	1	1	6.2831853	2	ODI	g32	2	1	1	1			0	0	0	100	0.01	v			Flow 2 box deformed to sustain dynamo
+RF1_2Lper	1	1	0.1	1	1	6.2831853	1	ODI	g32	2	1	1	1			0	0	0	100	0.01	v			Flow 1 box deformed same way as flow 2.
