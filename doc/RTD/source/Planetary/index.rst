@@ -22,11 +22,19 @@ and ``DemoImpact/``. Check out their `README.md` files for more info.
 The tabulated equation of state files can be downloaded there using
 ``EoSTables/get_eos_tables.sh``.
 
-To run planetary or similar simulations, SWIFT should be configured to use
-the planetary hydrodynamics scheme and equations of state:
-``--with-hydro=planetary`` and ``--with-equation-of-state=planetary``.
-These allow for multiple materials to be used,
-chosen from the several available equations of state.
+To run planetary or similar simulations with a traditional SPH formulation,
+SWIFT should be configured to use the planetary hydrodynamics scheme and
+equations of state: ``--with-hydro=planetary`` and
+``--with-equation-of-state=planetary``. These allow for multiple materials to be
+used, chosen from the several available equations of state. Planetary
+simulations can also be carried out using the more advanced :ref:`remix_sph` scheme,
+which improves the treatment of mixing and material interfaces
+(Sandnes et al. 2025). To configure within REMIX, use ``--with-hydro=remix`` and
+``--with-equation-of-state=planetary``. Note that REMIX simulations require
+initial particle densities in the initial conditions. We also recommend
+configuring with ``--with-kernel=wendland-C2`` and with ``resolution_eta: 1.487``
+in the parameter file for improved hydrodynamic behaviour and since this is the
+configuration used for the validation simulations of Sandnes et al. (2025).
 
 .. toctree::
    :maxdepth: 1
