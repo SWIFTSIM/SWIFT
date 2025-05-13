@@ -133,7 +133,7 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
     // count += parts[k].icount;
     rho += parts[k].density.wcount;
     rho_min = fmin(parts[k].density.wcount, rho_min);
-    rho_min = fmax(parts[k].density.wcount, rho_max);
+    rho_max = fmax(parts[k].density.wcount, rho_max);
   }
 
   /* Dump the result. */
