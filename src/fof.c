@@ -3609,7 +3609,6 @@ void fof_compute_group_props(struct fof_props *props,
   props->group_mass = NULL;
   props->final_group_size = NULL;
   props->group_centre_of_mass = NULL;
-  props->max_part_density_index = NULL;
   props->max_part_density = NULL;
   props->has_black_hole = NULL;
 
@@ -3641,7 +3640,6 @@ void fof_struct_dump(const struct fof_props *props, FILE *stream) {
   temp.group_mass = NULL;
   temp.final_group_size = NULL;
   temp.group_centre_of_mass = NULL;
-  temp.max_part_density_index = NULL;
   temp.max_part_density = NULL;
   temp.group_links = NULL;
 
