@@ -3402,10 +3402,12 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
         compare_fof_final_index_global_root);
 
   /* Determine range of global indexes (i.e. particles) on each node */
-  props->num_on_node = (size_t *)malloc(nr_nodes * sizeof(size_t));
+  props->num_on_node =
+      (size_t *)swift_malloc("fof_num_on_node", nr_nodes * sizeof(size_t));
   MPI_Allgather(&nr_gparts, sizeof(size_t), MPI_BYTE, props->num_on_node,
                 sizeof(size_t), MPI_BYTE, MPI_COMM_WORLD);
-  props->first_on_node = (size_t *)malloc(nr_nodes * sizeof(size_t));
+  props->first_on_node =
+      (size_t *)swift_malloc("fof_first_on_node", nr_nodes * sizeof(size_t));
   props->first_on_node[0] = 0;
   for (int i = 1; i < nr_nodes; i++)
     props->first_on_node[i] =
@@ -3599,33 +3601,40 @@ void fof_compute_group_props(struct fof_props *props,
                          number_of_local_seeds, number_of_global_seeds);
   }
 
-  /* Free the left-overs */
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),
+            clocks_getunit());
+}
+
+/**
+ * @brief Free all the arrays we allocated on the way
+ */
+void fof_free_arrays(struct fof_props *props) {
+
   swift_free("fof_high_group_sizes", props->high_group_sizes);
   swift_free("fof_group_mass", props->group_mass);
   swift_free("fof_group_size", props->final_group_size);
   swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
   swift_free("fof_max_part_density", props->max_part_density);
   swift_free("fof_has_black_hole", props->has_black_hole);
-  props->group_mass = NULL;
-  props->final_group_size = NULL;
-  props->group_centre_of_mass = NULL;
-  props->max_part_density = NULL;
-  props->has_black_hole = NULL;
-
   swift_free("fof_distance", props->distance_to_link);
   swift_free("fof_group_index", props->group_index);
   swift_free("fof_attach_index", props->attach_index);
   swift_free("fof_found_attach", props->found_attachable_link);
   swift_free("fof_group_size", props->group_size);
+  props->group_mass = NULL;
+  props->final_group_size = NULL;
+  props->group_centre_of_mass = NULL;
+  props->max_part_density = NULL;
+  props->has_black_hole = NULL;
   props->group_index = NULL;
   props->group_size = NULL;
 
-  if (verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),
-            clocks_getunit());
-
 #ifdef WITH_MPI
-  MPI_Barrier(MPI_COMM_WORLD);
+  swift_free("fof_num_on_node", props->num_on_node);
+  swift_free("fof_first_on_node", props->first_on_node);
+  props->num_on_node = NULL;
+  props->first_on_node = NULL;
 #endif
 }
 

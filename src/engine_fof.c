@@ -224,6 +224,13 @@ void engine_fof(struct engine *e, const int dump_results,
   /* ... and find the next FOF time */
   if (seed_black_holes) engine_compute_next_fof_time(e);
 
+  /* Free everything we allocated */
+  fof_free_arrays(e->fof_properties);
+
+#ifdef WITH_MPI
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
   /* Restore the foreign buffers as they were*/
   if (foreign_buffers_allocated) {
 #ifdef WITH_MPI

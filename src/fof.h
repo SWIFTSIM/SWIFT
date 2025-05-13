@@ -229,6 +229,7 @@ void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
                          const size_t nr_gparts, struct cell *restrict ci,
                          struct cell *restrict cj, const int ci_local,
                          const int cj_local);
+void fof_free_arrays(struct fof_props *props);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
 
