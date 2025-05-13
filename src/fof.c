@@ -2164,6 +2164,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
  *
  * TODO: Possible improvement is to delay the allocation of the CoM array
  * until after the min/max density arrays have played their role.
+ * TODO: Can the loop over particles be threadpoolized?
  */
 void fof_calc_group_mass(struct fof_props *props, const struct space *s,
                          int *restrict number_of_local_seeds,
@@ -3603,8 +3604,6 @@ void fof_compute_group_props(struct fof_props *props,
   swift_free("fof_group_mass", props->group_mass);
   swift_free("fof_group_size", props->final_group_size);
   swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
-  swift_free("fof_group_first_position", props->group_first_position);
-  swift_free("fof_max_part_density_index", props->max_part_density_index);
   swift_free("fof_max_part_density", props->max_part_density);
   swift_free("fof_has_black_hole", props->has_black_hole);
   props->group_mass = NULL;
