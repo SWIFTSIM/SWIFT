@@ -8,7 +8,7 @@ python3 makeIC.py 100000
 #../../../swift --external-gravity --self-gravity --hydro --cooling --stars --star-formation --threads=4 cooling_halo.yml 2>&1 | tee output.log
 
 # Run SWIFT with external potential, cooling, self-gravity and star formation
-../../../swift --external-gravity --self-gravity --hydro --cooling --stars --star-formation --threads=4 cooling_halo.yml 2>&1 | tee output.log
+#../../../swift --external-gravity --self-gravity --hydro --cooling --stars --star-formation --threads=4 cooling_halo.yml 2>&1 | tee output.log
 
 # Run SWIFT with external potential, cooling, self-gravity, star formation and feedback
-#../../../swift --external-gravity --self-gravity --hydro --cooling --stars --star-formation --feedback --sync --threads=4 cooling_halo.yml 2>&1 | tee output.log
+../../../swift --external-gravity --self-gravity --hydro --cooling --stars --star-formation --feedback --sync --threads=4 cooling_halo.yml 2>&1 | tee output.log
