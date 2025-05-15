@@ -60,7 +60,7 @@ NFWPotential:
     h:               0.704          # reduced Hubble constant (using FLAMINGO cosmology) (value does not specify the used units!)
     concentration:   7.2            # concentration of the Halo
     timestep_mult:   0.01           # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
-    epsilon:         0.2             # Softening size (internal units)
+    epsilon:         0.7             # Softening size (internal units)
 
 # Parameters for the self-gravity scheme
 Gravity:
@@ -68,8 +68,8 @@ Gravity:
   MAC:          adaptive
   theta_cr:     0.6                 # Opening angle (Multipole acceptance criterion).
   epsilon_fmm:            0.001
-  max_physical_DM_softening:     0.2  # Physical softening length (in internal units).
-  max_physical_baryon_softening: 0.2  # Physical softening length (in internal units).
+  max_physical_DM_softening:     0.7  # Physical softening length (in internal units).
+  max_physical_baryon_softening: 0.7  # Physical softening length (in internal units).
 
 # Parameters for the stars
 Stars:

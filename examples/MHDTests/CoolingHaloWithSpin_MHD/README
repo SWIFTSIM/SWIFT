@@ -38,7 +38,8 @@ Note: when running with self gravity but without feedback excessive clumping wil
 
 Setup
 -----
-We follow R. Pakmor, V. Springel, 1212.1452
+IC generation similar to R. Pakmor, V. Springel, 1212.1452
+Run parameters for EAGLE model mostly follow run L025N0376 from J. Schaye et al. 1407.7040  
 
 Snapshot slices
 ---------------
