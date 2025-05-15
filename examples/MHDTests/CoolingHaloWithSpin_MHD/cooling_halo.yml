@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   2.   # The end time of the simulation (in internal units).
+  time_end:   3.   # The end time of the simulation (in internal units).
   dt_min:     1e-12 #1e-8  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-1  # The maximal time-step size of the simulation (in internal units).
 
@@ -20,14 +20,11 @@ Statistics:
   recording_triggers_part: [-1, -1]   # Not recording as we have many snapshots
   recording_triggers_bpart: [-1, -1]  # Not recording as we have many snapshots 
 
-#Scheduler: # yet to be done, there is poor cpu utilization at large particle count 
-#  tasks_per_cell:      200
-
 # Parameters governing the snapshots
 Snapshots:
   basename:            CoolingHalo  # Common part of the name of output files
-  time_first:          0.               # Time of the first output (in internal units)
-  delta_time:          0.1 #0.1             # Time difference between consecutive outputs (in internal units)
+  time_first:          0.           # Time of the first output (in internal units)
+  delta_time:          0.01023      # Time difference between consecutive outputs (in internal units)
   compression: 4           # Compress the snapshots
   recording_triggers_part: [-1, -1]   # Not recording as we have many snapshots
   recording_triggers_bpart: [-1, -1]  # Not recording as we have many snapshots 
@@ -38,7 +35,6 @@ SPH:
   CFL_condition:         0.05      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   1e2       # Kelvin
   h_tolerance: 1e-6               # smoothing length accuracy
-  h_min_ratio:           0.1      # Minimal smoothing in units of softening.
   h_max:                 10.
  
 # Parameters for MHD schemes
@@ -69,9 +65,9 @@ NFWPotential:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025                 # Constant dimensionless multiplier for time integration.
-  MAC:          geometric
-  theta_cr:     0.7                 # Opening angle (Multipole acceptance criterion).
-  use_tree_below_softening:  1
+  MAC:          adaptive
+  theta_cr:     0.6                 # Opening angle (Multipole acceptance criterion).
+  epsilon_fmm:            0.001
   max_physical_DM_softening:     0.2  # Physical softening length (in internal units).
   max_physical_baryon_softening: 0.2  # Physical softening length (in internal units).
 
