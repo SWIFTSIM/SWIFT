@@ -34,6 +34,8 @@ for runs with EAGLE cooling+chemistry+entropy floor+star formation
 for runs with lambda cooling
 ./configure --with-spmhd=direct-induction --with-cooling=const-lambda --with-ext-potential=nfw --with-kernel=quintic-spline --disable-hand-vec --disable-compiler-warnings --disable-doxygen-doc
 
+Note: when running with self gravity but without feedback excessive clumping will happen. Since there is no density limiter, the clumps collapse until they reach sizes ~ softening length. Rotation can dilute and destabilize these clums, so adding more angular momentum might help in this case.
+
 Setup
 -----
 We follow R. Pakmor, V. Springel, 1212.1452
