@@ -1457,9 +1457,9 @@ void partition_gather_weights(void *map_data, int num_elements,
 
     /* Self interaction? */
     else if (t->type == task_type_self && ci->nodeID == nodeID) {
-        /* Self interactions add only to vertex weight. */
-        if (vweights) atomic_add_d(&weights_v[cid], w);
-      }
+      /* Self interactions add only to vertex weight. */
+      if (vweights) atomic_add_d(&weights_v[cid], w);
+    }
 
     /* Pair? */
     else if (t->type == task_type_pair) {
