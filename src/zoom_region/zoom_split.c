@@ -131,16 +131,15 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
 #endif
 
   /* If we are above regular buffer cells we need to ensure this bottom level
-   * isn't treated like a normal split cell since it's linked into top level
-   * "progeny". */
+   * isn't treated like a void cell which have already been split elsewhere. */
   if (!zoom_cell_overlaps_zoom_region(c, s)) {
-    c->split = 0;
+    return;
   }
 
   /* Loop over the 8 progeny cells which are now the nested top level cells. */
   for (int k = 0; k < 8; k++) {
 
-    /* Establish the location of the fake progeny cell. */
+    /* Establish the location of the progeny cell. */
     double loc[3] = {c->loc[0] + (c->width[0] / 4),
                      c->loc[1] + (c->width[1] / 4),
                      c->loc[2] + (c->width[2] / 4)};
@@ -154,7 +153,7 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
                                    loc[1], loc[2], s->zoom_props->buffer_iwidth,
                                    s->zoom_props->buffer_cell_offset);
 
-    /* Get the zoom cell. */
+    /* Get the buffer cell. */
     struct cell *buffer_cell = &s->cells_top[cid];
 
     /* Link this nested cell into the void cell hierarchy. */
@@ -163,8 +162,11 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     /* Flag this void cell "progeny" as the cell's void cell parent. */
     buffer_cell->void_parent = c;
 
-    /* If we're in a void cell continue the void tree depth. */
-    if (buffer_cell->subtype == cell_subtype_void) {
+    /* Does this cell overlap the zoom region? */
+    if (zoom_cell_overlaps_zoom_region(buffer_cell, s)) {
+
+      /* If it does, we need to set the cell type and subtype. */
+      buffer_cell->subtype = cell_subtype_void;
       buffer_cell->depth = c->depth + 1;
     }
   }
