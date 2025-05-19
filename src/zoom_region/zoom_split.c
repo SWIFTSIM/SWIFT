@@ -176,7 +176,7 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
 
       /* If it does, we need to set the cell subtype. */
       buffer_cell->subtype = cell_subtype_void;
-      // buffer_cell->depth = c->depth + 1;
+      buffer_cell->depth = c->depth + 1;
     }
   }
 }
@@ -261,14 +261,14 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     /* Skip if we don't have a progeny cell. */
     if (cp == NULL) continue;
 
-    message(
-        "Recursing into progeny %d of void cell (type=%s, "
-        "subtype=%s, depth=%d)",
-        k, cellID_names[cp->type], subcellID_names[cp->subtype], cp->depth);
-
     /* If the progeny is a void cell, we need to recurse. */
     if (cp->subtype == cell_subtype_void) {
 
+      message(
+          "Recursing into progeny (%s/%s) at depth %d of void cell (%s/%s) "
+          "at depth %d",
+          cellID_names[cp->type], subcellID_names[cp->subtype], cp->depth,
+          cellID_names[c->type], subcellID_names[c->subtype], c->depth);
       /* Recurse */
       zoom_void_split_recursive(s, cp, tpid);
 
