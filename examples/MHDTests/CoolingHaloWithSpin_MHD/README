@@ -24,15 +24,22 @@ collapse into a spinning disc.
 
 Compilation
 -----------
-for runs with EAGLE cooling+chemistry+entropy floor
+
+for runs with EAGLE cooling+chemistry+entropy floor+star formation + feedback
+./configure --with-spmhd=direct-induction --with-cooling=EAGLE --with-chemistry=EAGLE --with-entropy-floor=EAGLE --with-ext-potential=nfw --with-kernel=quintic-spline --disable-hand-vec --disable-compiler-warnings --disable-doxygen-doc --with-stars=EAGLE --with-star-formation=EAGLE --with-tracers=EAGLE --with-feedback=EAGLE
+
+for runs with EAGLE cooling+chemistry+entropy floor+star formation
 ./configure --with-spmhd=direct-induction --with-cooling=EAGLE --with-chemistry=EAGLE --with-entropy-floor=EAGLE --with-ext-potential=nfw --with-kernel=quintic-spline --disable-hand-vec --disable-compiler-warnings --disable-doxygen-doc --with-stars=EAGLE --with-star-formation=EAGLE
 
 for runs with lambda cooling
 ./configure --with-spmhd=direct-induction --with-cooling=const-lambda --with-ext-potential=nfw --with-kernel=quintic-spline --disable-hand-vec --disable-compiler-warnings --disable-doxygen-doc
 
+Note: when running with self gravity but without feedback excessive clumping will happen. Since there is no density limiter, the clumps collapse until they reach sizes ~ softening length. Rotation can dilute and destabilize these clums, so adding more angular momentum might help in this case.
+
 Setup
 -----
-We follow R. Pakmor, V. Springel, 1212.1452
+IC generation similar to R. Pakmor, V. Springel, 1212.1452
+Run parameters for EAGLE model mostly follow run L025N0376 from J. Schaye et al. 1407.7040  
 
 Snapshot slices
 ---------------

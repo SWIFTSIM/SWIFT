@@ -51,7 +51,7 @@ f_b = 0.17  # baryon fraction
 c_200 = 7.2  # concentration parameter
 
 # Set the magnitude of the uniform seed magnetic field
-B0_Gaussian_Units = 0.0 #1e-9  # 1e-6  # 1 micro Gauss
+B0_Gaussian_Units = 1e-9 # 1e-3 micro Gauss
 B0_cgs = np.sqrt(CONST_MU0_CGS / (4.0 * np.pi)) * B0_Gaussian_Units
 
 # SPH
@@ -118,9 +118,11 @@ print("G=", const_G)
 
 # Parameters
 periodic = 1  # 1 For periodic box
-boxSize = 2.0 # 4.0
+boxSize = 2.0 # in units of r_200 
+R_max = boxSize/6 #boxSize/6 # set maximal halo radius (we simulate only part of a halo) 
 G = const_G
 N = int(sys.argv[1])  # Number of particles
+N = int(N*6/np.pi)   # renormalize number of particles to get required N after cutting a sphere
 IAsource = "IAfile"
 
 # Create the file
@@ -196,10 +198,9 @@ coords -= 0.5
 # cut a sphere
 r_uni = np.linalg.norm(coords, axis=1)
 coords = coords[r_uni <= 0.5]
-coords *= boxSize/3 #boxSize * np.sqrt(3)
+coords *= 2*R_max
 
 # calculate max distance from the center (units of r_200)
-R_max = boxSize/6 #boxSize/2 #np.sqrt(3) * (boxSize / 2)
 r_s = 1 / c_200
 # calculate distances to the center
 r_uni = np.linalg.norm(coords, axis=1)
@@ -464,11 +465,6 @@ elif spin_lambda_choice == "Bullock":
     # Normalize to Bullock
     jsp_B = (np.sqrt(2) * v_200 )*spin_lambda
     v *= jsp_B/jsp
-
-   # jp_sp = Lp_tot_abs / (gas_particle_mass * np.sum(mask_r_200))
-   # calc_spin_par_B = jp_sp / (np.sqrt(2) * 1 * v_200)
-   # v *= spin_lambda / calc_spin_par_B
-   # l *= spin_lambda / calc_spin_par_B
 
 # Draw velocity distribution
 if plot_v_distribution:
