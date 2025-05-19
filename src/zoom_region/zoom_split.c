@@ -69,7 +69,7 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
   c->split = 0;
 
   /* Loop over the 8 progeny cells which are now the nested top level cells. */
-  for (int k = 0; k < 8; k++) {
+  zoom for (int k = 0; k < 8; k++) {
 
     /* Establish the location of the fake progeny cell. */
     double loc[3] = {c->loc[0] + (c->width[0] / 4),
@@ -228,7 +228,12 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
   /* If we're above the buffer level we need to link in the buffer cells. */
   else if (c->depth == s->zoom_props->buffer_cell_depth - 1) {
-    message("Linking in the buffer cells at depth %d", c->depth);
+    message(
+        "Linking in the buffer cells at depth %d (buffer_cell_depth=%d, "
+        "zoom_cell_depth=%d, cell_type=%s, cell_subtype=%s)",
+        c->depth, s->zoom_props->buffer_cell_depth,
+        s->zoom_props->zoom_cell_depth, cellID_names[c->type],
+        subcellID_names[c->subtype]);
     zoom_link_void_buffer_leaves(s, c);
   }
 
