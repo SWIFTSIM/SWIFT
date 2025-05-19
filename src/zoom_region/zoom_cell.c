@@ -37,9 +37,14 @@
  * A void cell is a low resolution cell above the zoom region (or part
  * of it).
  *
- * A void cell is always in the cell grid directly above the zoom cells, i.e. if
- * there are buffer cells, the void cells are the buffer cells, if there are no
- * buffer cells, the void cells are the background cells.
+ * The void cell hierarchy is built from the top down, we can therefore have
+ * background void cells which contain buffer void cells which contain zoom
+ * void cells, or just background void cells which contain zoom void cells if
+ * no buffer cells are used.
+ *
+ * This function will label the void cells in both the buffer and background
+ * regions, and will also store pointers to the top level void cells in the
+ * background cells for quick access to the top level of the void tree.
  *
  * @param s The space.
  * @param verbose Are we talking?
@@ -55,11 +60,11 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   /* Zero the void cell count. */
   zoom_props->nr_void_cells = 0;
 
-  /* Get the offset and the number of cells we're dealing with. */
+  /* Get the background offset and the number of cells we're dealing with. */
   int offset = zoom_props->bkg_cell_offset;
   int ncells = zoom_props->nr_bkg_cells;
 
-  /* Work out how many void cells we should have. */
+  /* Work out how many void cells we should have in the background cells. */
   int void_cdim = s->zoom_props->void_dim[0] * s->iwidth[0] * 1.0001;
   int target_void_count = void_cdim * void_cdim * void_cdim;
 
@@ -103,6 +108,28 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
       error("Void cell is not inside the zoom region (cid=%d)", cid);
   }
 #endif
+
+  /* Ok, we've got the background, now we need to just label the buffer void
+   * cells. We do this labelling here to ensure particles aren't given to the
+   * buffer void cells during particle assignment with cell_getid which
+   * uses the void label to know when to recurse. */
+
+  /* Get the buffer offset and the number of cells we're dealing with. */
+  int buffer_offset = zoom_props->buffer_cell_offset;
+  int buffer_ncells = zoom_props->nr_buffer_cells;
+
+  /* Loop over the buffer cells and label any in the void region as void. */
+  for (int cid = buffer_offset; cid < buffer_offset + buffer_ncells; cid++) {
+
+    /* Get the cell */
+    struct cell *c = &cells[cid];
+
+    /* Label this cell if it contains the zoom region. */
+    if (zoom_cell_overlaps_zoom_region(c, s)) {
+      c->subtype = cell_subtype_void;
+      zoom_props->void_cell_indices[zoom_props->nr_void_cells++] = cid;
+    }
+  }
 }
 
 /**
