@@ -69,7 +69,7 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
   c->split = 0;
 
   /* Loop over the 8 progeny cells which are now the nested top level cells. */
-  zoom for (int k = 0; k < 8; k++) {
+  for (int k = 0; k < 8; k++) {
 
     /* Establish the location of the fake progeny cell. */
     double loc[3] = {c->loc[0] + (c->width[0] / 4),
