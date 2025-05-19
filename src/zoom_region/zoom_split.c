@@ -164,6 +164,13 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     /* Flag this void cell "progeny" as the cell's void cell parent. */
     buffer_cell->void_parent = c;
 
+    message(
+        "Linking in buffer cell (%s/%s) at depth %d to parent (%s/%s) at "
+        "depth %d",
+        cellID_names[buffer_cell->type], subcellID_names[buffer_cell->subtype],
+        buffer_cell->depth, cellID_names[c->type], subcellID_names[c->subtype],
+        c->depth);
+
     /* Does this cell overlap the zoom region? */
     if (zoom_cell_overlaps_zoom_region(buffer_cell, s)) {
 
