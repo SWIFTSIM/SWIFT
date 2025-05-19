@@ -135,6 +135,10 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
    * above the buffer cells, is not treated as a split cell. */
   if (!zoom_cell_overlaps_zoom_region(c, s)) {
     c->split = 0;
+    message(
+        "Found a buffer cell above a real void cell (%s/%s) at "
+        "depth %d",
+        cellID_names[c->type], subcellID_names[c->subtype], c->depth);
     return;
   }
 
