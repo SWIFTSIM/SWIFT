@@ -2187,6 +2187,15 @@ __attribute__((always_inline)) INLINE static int zoom_cell_overlaps_zoom_region(
   const double overlap_z =
       fmin(cell_max[2], zoom_max[2]) - fmax(cell_min[2], zoom_min[2]);
 
+  message(
+      "Cell %llu overlaps zoom region: "
+      "cell_min=(%g, %g, %g) cell_max=(%g, %g, %g) "
+      "zoom_min=(%g, %g, %g) zoom_max=(%g, %g, %g) "
+      "overlap=(%g, %g, %g)",
+      c->cellID, cell_min[0], cell_min[1], cell_min[2], cell_max[0],
+      cell_max[1], cell_max[2], zoom_min[0], zoom_min[1], zoom_min[2],
+      zoom_max[0], zoom_max[1], zoom_max[2], overlap_x, overlap_y, overlap_z);
+
   /* Check if overlap lengths are positive */
   return (overlap_x > 0.0 && overlap_y > 0.0 && overlap_z > 0.0);
 }
