@@ -176,7 +176,7 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
 
       /* If it does, we need to set the cell subtype. */
       buffer_cell->subtype = cell_subtype_void;
-      buffer_cell->depth = c->depth + 1;
+      // buffer_cell->depth = c->depth + 1;
     }
   }
 }
