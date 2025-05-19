@@ -119,6 +119,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   int buffer_ncells = zoom_props->nr_buffer_cells;
 
   /* Loop over the buffer cells and label any in the void region as void. */
+  int buffer_void_count = 0;
   for (int cid = buffer_offset; cid < buffer_offset + buffer_ncells; cid++) {
 
     /* Get the cell */
@@ -129,6 +130,10 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
       c->subtype = cell_subtype_void;
       zoom_props->void_cell_indices[zoom_props->nr_void_cells++] = cid;
     }
+  }
+
+  if (verbose) {
+    message("Found %d void cells in the buffer region", buffer_void_count);
   }
 }
 
