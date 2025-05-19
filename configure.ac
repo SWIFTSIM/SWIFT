@@ -1448,7 +1448,7 @@ if test "x$with_lustreapi" != "xno"; then
       LUSTREAPI_LIBS="-llustreapi"
       LUSTREAPI_INCS=""
    fi
-   AC_CHECK_LIB([lustreapi], [llapi_obd_statfs], [have_lustreapi="yes"], 
+   AC_CHECK_LIB([lustreapi], [llapi_obd_statfs], [have_lustreapi="yes"],
                 [have_lustreapi="no"],[$LUSTREAPI_LIBS])
 
    if test "$have_lustreapi" = "yes"; then
@@ -1870,14 +1870,12 @@ if test "$have_armv7apmccntr"x = "yes"x; then
 fi
 
 # Check if we have native exp10 and exp10f functions. If not fallback to our
-# implementations. On Apple/CLANG we have __exp10, so also check for that
+# implementations. On Apple/CLANG/Homebrew gcc we have __exp10, so also check for that
 # if the compiler is clang.
 AC_CHECK_LIB([m],[exp10], [AC_DEFINE([HAVE_EXP10],1,[The exp10 function is present.])])
 AC_CHECK_LIB([m],[exp10f], [AC_DEFINE([HAVE_EXP10F],1,[The exp10f function is present.])])
-if test "$ax_cv_c_compiler_vendor" = "clang"; then
-      AC_CHECK_LIB([m],[__exp10], [AC_DEFINE([HAVE___EXP10],1,[The __exp10 function is present.])])
-      AC_CHECK_LIB([m],[__exp10f], [AC_DEFINE([HAVE___EXP10F],1,[The __exp10f function is present.])])
-fi
+AC_CHECK_LIB([m],[__exp10], [AC_DEFINE([HAVE___EXP10],1,[The __exp10 function is present.])])
+AC_CHECK_LIB([m],[__exp10f], [AC_DEFINE([HAVE___EXP10F],1,[The __exp10f function is present.])])
 
 # Check if we have native sincos and sincosf functions. If not fallback to our
 # implementations. On Apple/CLANG we have __sincos, so also check for that
@@ -1888,7 +1886,15 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincos], [AC_DEFINE([HAVE___SINCOS],1,[The __sincos function is present.])])
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
 fi
- 
+
+# On Apple (CLANG or Homebrew gcc), check for __sincos and __sincosf inline functions in the headers.
+AC_CHECK_HEADERS([math.h], [
+  AC_CHECK_DECLS([__sincos, __sincosf], [
+    AC_DEFINE([HAVE___SINCOS], 1, [The __sincos function is present.])
+    AC_DEFINE([HAVE___SINCOSF], 1, [The __sincosf function is present.])
+  ], [], [#include <math.h>])
+])
+
 # The aocc compiler has optimized maths libraries that we should use. Check
 # any clang for this support. Note do this after the basic check for maths
 # as we need to make sure -lm follows. Also note needs -Ofast or -ffast-math
@@ -2216,7 +2222,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -2262,6 +2268,9 @@ case "$with_hydro" in
    ;;
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
+   ;;
+   remix)
+      AC_DEFINE([REMIX_SPH], [1], [REMIX SPH])
    ;;
    sphenix)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
