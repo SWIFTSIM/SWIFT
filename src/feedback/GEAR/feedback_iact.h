@@ -143,7 +143,7 @@ runner_iact_nonsym_feedback_apply(
   if (e_preSN != 0.0) {
     /* Energy received */
     const double du = (e_preSN) * weight / new_mass;
-    message("the received energy of particle %lld is : %e",pj->id,du);
+    // message("the received energy of particle %lld is : %e",pj->id,du);
     xpj->feedback_data.delta_u += du;
   }
 
