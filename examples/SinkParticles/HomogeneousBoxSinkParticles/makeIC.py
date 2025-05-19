@@ -18,11 +18,11 @@
 #
 ################################################################################
 
+import argparse
+
 import h5py
 import numpy as np
-import argparse
-from astropy import units
-from astropy import constants
+from astropy import constants, units
 
 
 class store_as_array(argparse._StoreAction):
@@ -34,7 +34,6 @@ class store_as_array(argparse._StoreAction):
 
 
 def parse_options():
-
     usage = "usage: %prog [options] file"
     parser = argparse.ArgumentParser(description=usage)
 
@@ -143,11 +142,11 @@ UnitVelocity = UnitVelocity_in_cgs * units.cm / units.s
 np.random.seed(1)
 
 # Number of particles
-N = (2 ** opt.level) ** 3  # number of particles
+N = (2**opt.level) ** 3  # number of particles
 
 # Mean density
 rho = opt.rho  # atom/cc
-rho = rho * constants.m_p / units.cm ** 3
+rho = rho * constants.m_p / units.cm**3
 
 # Gas particle mass
 m = opt.mass  # in solar mass
@@ -179,14 +178,14 @@ print("Equivalent velocity dispertion        : {}".format(sigma.to(units.m / uni
 # Convert to code units
 m = m.to(UnitMass).value
 L = L.to(UnitLength).value
-rho = rho.to(UnitMass / UnitLength ** 3).value
+rho = rho.to(UnitMass / UnitLength**3).value
 sigma = sigma.to(UnitVelocity).value
 
 # Generate the particles
 pos = np.random.random([N, 3]) * np.array([L, L, L])
 vel = np.zeros([N, 3])
 mass = np.ones(N) * m
-u = np.ones(N) * sigma ** 2
+u = np.ones(N) * sigma**2
 ids = np.arange(N)
 h = np.ones(N) * 3 * L / N ** (1 / 3.0)
 rho = np.ones(N) * rho
@@ -214,7 +213,7 @@ else:
     np.zeros([N_sink, 3])
 
 mass_sink = np.ones(N_sink) * m_sink
-h_sink =  np.ones(N_sink) * 3 * L / (N + N_sink) ** (1 / 3.0)
+h_sink = np.ones(N_sink) * 3 * L / (N + N_sink) ** (1 / 3.0)
 ids_sink = np.arange(N, N + N_sink)
 
 #####################
