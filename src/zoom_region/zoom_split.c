@@ -135,10 +135,6 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
    * above the buffer cells, is not treated as a split cell. */
   if (!zoom_cell_overlaps_zoom_region(c, s)) {
     c->split = 0;
-    message(
-        "Found a buffer cell above a real void cell (%s/%s) at "
-        "depth %d",
-        cellID_names[c->type], subcellID_names[c->subtype], c->depth);
   }
 
   /* Loop over the 8 progeny cells which are now the nested top level cells. */
@@ -177,13 +173,6 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
       /* Otherwise, we need to set the cell subtype. */
       buffer_cell->subtype = cell_subtype_regular;
     }
-
-    message(
-        "Linking in buffer cell (%s/%s) at depth %d to parent (%s/%s) at "
-        "depth %d",
-        cellID_names[buffer_cell->type], subcellID_names[buffer_cell->subtype],
-        buffer_cell->depth, cellID_names[c->type], subcellID_names[c->subtype],
-        c->depth);
   }
 }
 
@@ -239,18 +228,11 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
   /* If we're above the zoom level we need to link in the zoom cells. */
   if (c->depth == s->zoom_props->zoom_cell_depth - 1) {
-    message("Linking in the zoom cells at depth %d", c->depth);
     zoom_link_void_zoom_leaves(s, c);
   }
 
   /* If we're above the buffer level we need to link in the buffer cells. */
   else if (c->depth == s->zoom_props->buffer_cell_depth - 1) {
-    message(
-        "Linking in the buffer cells at depth %d (buffer_cell_depth=%d, "
-        "zoom_cell_depth=%d, cell_type=%s, cell_subtype=%s)",
-        c->depth, s->zoom_props->buffer_cell_depth,
-        s->zoom_props->zoom_cell_depth, cellID_names[c->type],
-        subcellID_names[c->subtype]);
     zoom_link_void_buffer_leaves(s, c);
   }
 
@@ -270,11 +252,6 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     /* If the progeny is a void cell, we need to recurse. */
     if (cp->subtype == cell_subtype_void) {
 
-      message(
-          "Recursing into progeny (%s/%s) at depth %d of void cell (%s/%s) "
-          "at depth %d",
-          cellID_names[cp->type], subcellID_names[cp->subtype], cp->depth,
-          cellID_names[c->type], subcellID_names[c->subtype], c->depth);
       /* Recurse */
       zoom_void_split_recursive(s, cp, tpid);
 
