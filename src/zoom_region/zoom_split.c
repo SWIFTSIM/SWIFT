@@ -139,7 +139,6 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
         "Found a buffer cell above a real void cell (%s/%s) at "
         "depth %d",
         cellID_names[c->type], subcellID_names[c->subtype], c->depth);
-    return;
   }
 
   /* Loop over the 8 progeny cells which are now the nested top level cells. */
@@ -181,6 +180,9 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
       /* If it does, we need to set the cell subtype. */
       buffer_cell->subtype = cell_subtype_void;
       buffer_cell->depth = c->depth + 1;
+    } else {
+      /* Otherwise, we need to set the cell subtype. */
+      buffer_cell->subtype = cell_subtype_regular;
     }
   }
 }
