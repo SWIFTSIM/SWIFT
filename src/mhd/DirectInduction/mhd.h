@@ -439,8 +439,10 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     }
   }
 
+  const float alpha_AR_max = p->mhd_data.art_diff_beta;
+  
   p->mhd_data.alpha_AR =
-      normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+      normB ? fminf(alpha_AR_max, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
 }
 
 /**
