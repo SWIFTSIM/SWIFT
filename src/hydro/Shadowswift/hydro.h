@@ -347,6 +347,21 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   float W[6];
   hydro_part_get_primitive_variables(p, W);
   hydro_gradients_extrapolate_in_time(p, W, dt_therm, p->dW_time);
+
+  float new_internal_energy;
+  float old_internal_energy;
+  old_internal_energy = gas_internal_energy_from_pressure(W[0], W[4]);
+  new_internal_energy = old_internal_energy + p->cool_du_dt_prev * dt_therm / 2;
+
+  /* Limit internal energy decrease to max 1/2 of internal energy */
+  new_internal_energy = max(new_internal_energy, 0.5 * old_internal_energy);
+
+  float new_pressure;
+  new_pressure = gas_pressure_from_internal_energy(W[0], new_internal_energy);
+
+  W[4] = new_pressure;
+
+  hydro_part_set_primitive_variables(p, W);
 #endif
 
   /* Reset the delaunay flags after a particle has been drifted */
@@ -726,6 +741,18 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
           Pcorr * (p->v[0] * p->gradients.P[0] + p->v[1] * p->gradients.P[1] +
                    p->v[2] * p->gradients.P[2]);
 #endif
+
+      /* Kick energy using cool_du_dt (* dt_therm), use updated mass to do energy kick */
+      Q[4] += p->cool_du_dt_prev * Q[0] * dt_therm;
+
+      /* Also add entropy changes */
+      float rho = Q[0] / p->geometry.volume;
+      float entropy_dt = gas_entropy_from_internal_energy(rho,
+        p->cool_du_dt_prev);
+      Q[5] += Q[0] * entropy_dt * dt_therm;
+
+      /* Cool XP as well */
+      xp->u_full += p->cool_du_dt_prev * dt_therm;
     }
 
     /* Compute primitive quantities. Note that this may also modify the vector
@@ -790,6 +817,34 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->gravity.dt = dt_grav;
     p->gravity.dt_corr = dt_kick_corr;
 
+    /* Add cooling from previous timestep calculation */
+    p->conserved.energy += p->conserved.mass * p->cool_du_dt_prev * dt_therm;
+
+    p->conserved.entropy += p->conserved.mass
+    * gas_entropy_from_internal_energy(p->rho, p->cool_du_dt_prev)
+    * dt_therm;
+
+    /* Cool XP as well */
+    xp->u_full += p->cool_du_dt_prev * dt_therm;
+
+
+
+    // /* Add changes to internal energy and entropy from cooling */
+    // float Q[6];
+    // hydro_part_get_conserved_variables(p, Q);
+    //
+    // /* Kick energy using cool_du_dt (* dt_therm), use updated mass to do energy kick */
+    // Q[4] += p->cool_du_dt_prev * Q[0] * dt_therm;
+    //
+    // /* Also add entropy changes from cooling */
+    // float rho = Q[0] / p->geometry.volume;
+    // float entropy_dt = gas_entropy_from_internal_energy(rho,
+    //   p->cool_du_dt_prev);
+    // Q[5] += Q[0] * entropy_dt * dt_therm;
+    //
+    // /* Update particle with cooled conserved variables */
+    // hydro_part_set_conserved_variables(p, Q);
+
     /* Signal we just did a restore */
     p->timestepvars.last_kick = RESTORE_AFTER_ROLLBACK;
 
@@ -811,6 +866,18 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
     hydro_velocities_set(p, xp, hydro_props, p->flux.dt);
+
+    // do a kick using cool_du_dt *(dt_therm, can be negative so no subtract)
+    //p->conserved.energy += mass * cool_du_dt * dt_therm;
+    /* Add cooling from previous timestep calculation */
+    p->conserved.energy += p->conserved.mass * p->cool_du_dt_prev * dt_therm;
+
+    p->conserved.entropy += p->conserved.mass
+    * gas_entropy_from_internal_energy(p->rho, p->cool_du_dt_prev)
+    * dt_therm;
+
+    /* Cool XP as well */
+    xp->u_full += p->cool_du_dt_prev * dt_therm;
 
     /* Signal we just did a kick1 */
     p->timestepvars.last_kick = KICK1;
@@ -836,6 +903,18 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
     hydro_velocities_set(p, xp, hydro_props, p->flux.dt);
+
+    // do a kick using cool_du_dt *(dt_therm, can be negative so no subtract)
+    //p->conserved.energy += mass * cool_du_dt * dt_therm;
+    /* Add cooling from previous timestep calculation */
+    p->conserved.energy += p->conserved.mass * p->cool_du_dt_prev * dt_therm;
+
+    p->conserved.entropy += p->conserved.mass
+    * gas_entropy_from_internal_energy(p->rho, p->cool_du_dt_prev)
+    * dt_therm;
+
+    /* Cool XP as well */
+    xp->u_full += p->cool_du_dt_prev * dt_therm;
 
     /* Signal we just did a kick1 */
     p->timestepvars.last_kick = KICK1;

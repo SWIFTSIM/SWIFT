@@ -351,29 +351,43 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
   float W[6];
   hydro_part_get_primitive_variables(p, W);
 
-  if (W[0] <= 0.0f) {
-    return 0.0f;
+  float m_inv_1;
+  float m_inv_2;
+  float ekin_1;
+  float ekin_2;
+  float internal_energy_1;
+  float internal_energy_2;
+  float du_dt;
+
+  // Do we need to catch old mass?
+  m_inv_1 = 1.f / p->conserved.mass;
+  if (p->conserved.mass < 0.) {
+    warning("Mass 1 is < 0!");
   }
 
-  const float rho_inv = 1.f / W[0];
-
-  float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3], gradA[3];
-  hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP, gradA);
-
-  const float divv = gradvx[0] + gradvy[1] + gradvz[2];
-
-  float gradu[3] = {0.f, 0.f, 0.f};
-  for (int i = 0; i < 3; i++) {
-    gradu[i] = hydro_one_over_gamma_minus_one * rho_inv *
-               (gradP[i] - rho_inv * W[4] * gradrho[i]);
+  if ((p->conserved.mass + p->flux.mass) > 0.) {
+    m_inv_2 = 1.f / (p->conserved.mass + p->flux.mass);
+  } else {
+    warning("Mass 2 is < 0!");
+    return 0.;
   }
 
-  const float du_dt =
-      -(p->v_rel_full[0] * gradu[0] + p->v_rel_full[1] * gradu[1] +
-        p->v_rel_full[2] * gradu[2]) -
-      rho_inv * W[4] * divv;
+  ekin_1 = 0.5 * (p->conserved.momentum[0] * p->conserved.momentum[0]
+          + p->conserved.momentum[1] * p->conserved.momentum[1]
+          + p->conserved.momentum[2] * p->conserved.momentum[2]) * m_inv_1;
+
+  ekin_2 = 0.5 * ((p->conserved.momentum[0] + p->flux.momentum[0]) * (p->conserved.momentum[0] + p->flux.momentum[0]) +
+            (p->conserved.momentum[1] + p->flux.momentum[1]) * (p->conserved.momentum[1] + p->flux.momentum[1]) +
+            (p->conserved.momentum[2] + p->flux.momentum[2]) * (p->conserved.momentum[2] + p->flux.momentum[2])) *
+              m_inv_2;
+
+  internal_energy_1 = (p->conserved.energy - ekin_1) * m_inv_1;
+  internal_energy_2 = (p->conserved.energy + p->flux.energy - ekin_2) * m_inv_2;
+
+  du_dt = (internal_energy_2 - internal_energy_1) / p->flux.dt;
 
   return du_dt;
+ return du_dt;
 }
 
 /**

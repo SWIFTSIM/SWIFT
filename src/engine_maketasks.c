@@ -2001,7 +2001,8 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e, struct cell *c,
 
 
   if (with_rt || with_sinks || with_black_holes || with_star_formation_sink)
-    error("Only cooling is supported with the moving mesh hydro scheme!");
+    error("Only cooling, feedback, and star formation is supported with the "
+          "moving mesh hydro scheme!");
 
   /* Anything to do here? Leave at top, not worth continuing if no*/
   if (c->hydro.count == 0) return;
@@ -5621,6 +5622,12 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
 
         /* Add dependencies*/
         if (with_feedback){
+
+          if (with_cooling) {
+            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                t_star_density);
+          }
+
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                               t_star_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,

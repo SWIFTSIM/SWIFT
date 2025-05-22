@@ -163,7 +163,7 @@
 
 /*! @brief This option enables a (more) exact gravitational work term */
 #ifndef RIEMANN_SOLVER_HLLC
-// #define SHADOWSWIFT_EXACT_GRAV_WORK
+#define SHADOWSWIFT_EXACT_GRAV_WORK
 #endif
 
 /*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT

@@ -353,6 +353,9 @@ struct part {
   /*! Cooling information */
   struct cooling_part_data cooling_data;
 
+  /*! Cool_du_dt of previous time step */
+  float cool_du_dt_prev;
+
   /*! Additional data used by the feedback */
   struct feedback_part_data feedback_data;
 

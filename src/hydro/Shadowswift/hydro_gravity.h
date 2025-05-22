@@ -43,10 +43,10 @@ hydro_gravity_energy_update_term(const float dt_kick_corr1,
 
   /* Gravitational work term due to mass fluxes */
   float grav_work[3] = {
-      dt_kick_corr1 * a_grav1[0] + dt_kick_corr2 * a_grav2[0],
-      dt_kick_corr1 * a_grav1[1] + dt_kick_corr2 * a_grav2[1],
-      dt_kick_corr1 * a_grav1[2] + dt_kick_corr2 * a_grav2[2],
-  };
+    dt_kick_corr1 * a_grav1[0] + dt_kick_corr2 * a_grav2[0],
+    dt_kick_corr1 * a_grav1[1] + dt_kick_corr2 * a_grav2[1],
+    dt_kick_corr1 * a_grav1[2] + dt_kick_corr2 * a_grav2[2],
+};
   float dE = mflux[0] * grav_work[0] + mflux[1] * grav_work[1] +
              mflux[2] * grav_work[2];
 
@@ -77,12 +77,12 @@ hydro_gravity_energy_update_term(const float dt_kick_corr1,
       };
 
     float grav_work_simple[3] = {
-      0.5 * dt_kick_corr1 * conserved_momentum1[0] * a_grav1[0] +
-        0.5 * dt_kick_corr2 * conserved_momentum2[0] * a_grav2[0],
-      0.5 * dt_kick_corr1 * conserved_momentum1[1] * a_grav1[1] +
-        0.5 * dt_kick_corr2 * conserved_momentum2[1] * a_grav2[1],
-      0.5 * dt_kick_corr1 * conserved_momentum1[2] * a_grav1[2] +
-        0.5 * dt_kick_corr2 * conserved_momentum2[2] * a_grav2[2],
+      dt_kick_corr1 * conserved_momentum1[0] * a_grav1[0] +
+        dt_kick_corr2 * conserved_momentum2[0] * a_grav2[0],
+      dt_kick_corr1 * conserved_momentum1[1] * a_grav1[1] +
+       dt_kick_corr2 * conserved_momentum2[1] * a_grav2[1],
+      dt_kick_corr1 * conserved_momentum1[2] * a_grav1[2] +
+        dt_kick_corr2 * conserved_momentum2[2] * a_grav2[2],
   };
 
     // float dE_simple =  - energy_flux - (grav_work_simple[0] +

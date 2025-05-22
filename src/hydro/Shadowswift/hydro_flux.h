@@ -149,8 +149,8 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
   }
 
   /* dE acts on entire cell, should not be multiplied by flux_fac */
-  Qi[4] -= pi->gravity.dE_prev;
-  Qj[4] -= pj->gravity.dE_prev;
+  //Qi[4] -= pi->gravity.dE_prev;
+  //Qj[4] -= pj->gravity.dE_prev;
 
   double mi_inv = 1. / Qi[0];
   double mj_inv = 1. / Qj[0];
@@ -173,13 +173,12 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
 
     float Q_lo[6];
     hydro_part_get_conserved_variables(pi, Q_lo);
-    Q_lo[4] += pi->gravity.dE_prev;
 
     for (int k = 0; k < 6; ++k) {
       Q_lo[k] -= flux_fac_i * fluxes_lo[k];
     }
     /* dE acts on entire cell, should not be multiplied by flux_fac */
-    Q_lo[4] -= pi->gravity.dE_prev;
+    //Q_lo[4] -= pi->gravity.dE_prev;
 
     double m_inv = 1. / Q_lo[0];
     double u_lo =
@@ -195,14 +194,13 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
 
     float Q_lo[6];
     hydro_part_get_conserved_variables(pj, Q_lo);
-    Q_lo[4] += pj->gravity.dE_prev;
 
     for (int k = 0; k < 6; ++k) {
       Q_lo[k] += flux_fac_j * fluxes_lo[k];
     }
 
     /* dE acts on entire cell, should not be multiplied by flux_fac */
-    Q_lo[4] -= pj->gravity.dE_prev;
+    //Q_lo[4] -= pj->gravity.dE_prev;
 
     double m_inv = 1. / Q_lo[0];
     double u_lo =
@@ -232,14 +230,14 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
       -pj->geometry.area / Anorm * pj->flux.dt * fluxes[0]) {
     theta = fmin(theta, pj->conserved.mass / (-flux_fac_j * fluxes[0]));
   }
-  if (pi->conserved.energy - pi->gravity.dE_prev <
+  if (pi->conserved.energy <
       flux_fac_i * fluxes[4]) {
-    theta = fmin(theta, (pi->conserved.energy + pi->gravity.dE_prev) /
+    theta = fmin(theta, (pi->conserved.energy) /
       (flux_fac_i * fluxes[4]));
   }
-  if (pj->conserved.energy - pj->gravity.dE_prev<
+  if (pj->conserved.energy <
       -flux_fac_j * fluxes[4]) {
-    theta = fmin(theta, (pj->conserved.energy + pj->gravity.dE_prev) /
+    theta = fmin(theta, (pj->conserved.energy) /
       (-flux_fac_j * fluxes[4]));
   }
   theta = fmax(0., theta);
