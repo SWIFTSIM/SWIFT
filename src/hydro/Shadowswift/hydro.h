@@ -413,11 +413,11 @@ hydro_convert_conserved_to_primitive(
 
   /* Calculate the updated internal energy and entropic function A.
    * NOTE: This may violate energy conservation. */
+  double Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
   double u;
 #ifdef EOS_ISOTHERMAL_GAS
   u = gas_internal_energy_from_pressure(0.f, 0.f);
 #else
-  double Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
   double thermal_energy = Q[4] - Ekin;
 #if SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_NONE
   u = thermal_energy * m_inv;
@@ -676,15 +676,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       Q[2] += flux[2];
       Q[3] += flux[3];
 #if defined(EOS_ISOTHERMAL_GAS)
-      /* We use the EoS equation in a sneaky way here just to get the constant
-       * internal energy */
-      float u = gas_internal_energy_from_entropy(0.0f, 0.0f);
-      float rho = Q[0] / p->geometry.volume;
-      p->thermal_energy = p->conserved.mass * u;
-      float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
-      Q[4] = p->thermal_energy +
-             0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
-      Q[5] = Q[0] * gas_entropy_from_internal_energy(rho, u);
+      /* Nothing to do here. We will use the EoS equation to set the energy and
+       * entropy using the updated kinetic energy and constant internal energy
+       * when converting from conserved to primitive quantities below. */
 #else
       Q[4] += flux[4];
       Q[5] += flux[5];
