@@ -86,6 +86,7 @@
 /* If disabled, no gradients are used (first order scheme) */
 #define SHADOWSWIFT_MESHLESS_GRADIENTS
 #ifndef SHADOWSWIFT_MESHLESS_GRADIENTS
+#error "Unimplemented (since switch to fully recursive hydro interactions)"
 #define SHADOWSWIFT_GRADIENTS
 #endif
 /* Always activate the slope limiters if we use gradients (the scheme becomes
