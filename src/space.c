@@ -794,33 +794,13 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
 
   /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
    * creation */
-#ifdef SWIFT_DEBUG_CHECKS
-  int count_low_rho = 0;
-  int count_low_P = 0;
-#endif
   for (int k = 0; k < count; k++) {
     if (parts[k].time_bin <= num_time_bins) {
       hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props,
                                floor);
       mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
-#ifdef SWIFT_DEBUG_CHECKS
-      if (parts[k].rho < hydro_props->epsilon_rho) count_low_rho++;
-      if (parts[k].P < hydro_props->epsilon_P) count_low_P++;
-#endif
     }
   }
-#ifdef SWIFT_DEBUG_CHECKS
-  if (count_low_rho > 0)
-    warning(
-        "Encountered %d particles with initial densities lower than "
-        "SPH:epsilon_rho (%E)! Is this intentional?",
-        count_low_rho, hydro_props->epsilon_rho);
-  if (count_low_P > 0)
-    warning(
-        "Encountered %d particles with initial pressures lower than "
-        "SPH:epsilon_P (%E)! Is this intentional?",
-        count_low_P, hydro_props->epsilon_P);
-#endif
 }
 
 /**
@@ -838,6 +818,27 @@ void space_convert_quantities(struct space *s, int verbose) {
     threadpool_map(&s->e->threadpool, space_convert_quantities_mapper, s->parts,
                    s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
                    s);
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined(SHADOWSWIFT)
+  // Check that the ICs do not contain values considered infinitesimal for rho
+  // or P.
+  int count_low_rho = 0;
+  int count_low_P = 0;
+  for (int k = 0; k < count; k++) {
+      if (parts[k].rho < hydro_props->epsilon_rho) count_low_rho++;
+      if (parts[k].P < hydro_props->epsilon_P) count_low_P++;
+  }
+  if (count_low_rho > 0)
+    warning(
+        "Encountered %d particles with initial densities lower than "
+        "SPH:epsilon_rho (%E)! Is this intentional?",
+        count_low_rho, hydro_props->epsilon_rho);
+  if (count_low_P > 0)
+    warning(
+        "Encountered %d particles with initial pressures lower than "
+        "SPH:epsilon_P (%E)! Is this intentional?",
+        count_low_P, hydro_props->epsilon_P);
+#endif
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
