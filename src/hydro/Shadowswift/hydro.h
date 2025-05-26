@@ -616,7 +616,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     float Q[6];
     hydro_part_get_conserved_variables(p, Q);
-    float dE_springel;
+    float dE_grav = 0.f;
     /* Add gravity. We only do this if we have gravity activated. */
     if (p->gpart) {
       /* Retrieve the current value of the gravitational acceleration from the
@@ -652,11 +652,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
         dt_grav_corr1 = p->gravity.dt;
         dt_grav_corr2 = dt_grav;
       }
-      dE_springel = hydro_gravity_energy_update_term(
+      dE_grav = hydro_gravity_energy_update_term(
           dt_grav_corr1, dt_grav_corr2, xp->a_grav, a_grav, p->gravity.mflux,
           p->v_part_full, grav_kick);
 
-      Q[4] += dE_springel;
+      Q[4] += dE_grav;
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -705,7 +705,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
           "\n\tdensity = %E, pressure = %E"
           "\n\tp->x = (%E, %E, %E), p->v = (%E, %E, %E)",
           Q[0], Q[4], p->conserved.mass, p->conserved.energy, p->flux.mass,
-          p->flux.energy, dE_springel, p->rho, p->P, p->x[0], p->x[1], p->x[2],
+          p->flux.energy, dE_grav, p->rho, p->P, p->x[0], p->x[1], p->x[2],
           p->v[0], p->v[1], p->v[2]);
     #endif
 

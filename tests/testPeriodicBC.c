@@ -32,20 +32,6 @@
 
 #define ACC_THRESHOLD 1e-5
 
-#ifdef MOVING_MESH_HYDRO
-
-#ifndef DOSELF1
-#define DOSELF1 runner_doself1_branch_gradient
-#define DOSELF1_NAME "runner_doself1_gradient"
-#endif
-
-#ifndef DOPAIR1
-#define DOPAIR1 runner_dopair1_branch_gradient
-#define DOPAIR1_NAME "runner_dopair1_gradient"
-#endif
-
-#else
-
 #if defined(WITH_VECTORIZATION)
 #define DOSELF1 runner_doself1_branch_density
 #define DOPAIR1 runner_dopair1_branch_density
@@ -61,8 +47,6 @@
 #ifndef DOPAIR1
 #define DOPAIR1 runner_dopair1_branch_density
 #define DOPAIR1_NAME "runner_dopair1_density"
-#endif
-
 #endif
 
 #define NODE_ID 0
@@ -147,12 +131,16 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->h = size * h / (float)n;
         h_max = fmax(h_max, part->h);
         part->id = ++(*partId);
+        part->depth_h = 0;
 
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
         part->conserved.mass = density * volume / count;
 
 #else
         part->mass = density * volume / count;
+#endif
+#if defined(REMIX_SPH)
+        part->rho_evol = density;
 #endif
 
 #if defined(HOPKINS_PE_SPH)
@@ -174,16 +162,21 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   /* Cell properties */
   cell->split = 0;
+  cell->depth = 0;
   cell->hydro.h_max = h_max;
+  cell->hydro.h_max_active = h_max;
   cell->hydro.count = count;
   cell->hydro.dx_max_part = 0.;
   cell->hydro.dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
+  cell->dmin = size;
   cell->loc[0] = offset[0];
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
+  cell->h_min_allowed = cell->dmin * 0.5 * (1. / kernel_gamma);
+  cell->h_max_allowed = cell->dmin * (1. / kernel_gamma);
 
   cell->hydro.super = cell;
   cell->hydro.ti_old_part = 8;
@@ -220,19 +213,12 @@ void zero_particle_fields(struct cell *c) {
  */
 void end_calculation(struct cell *c, const struct cosmology *cosmo,
                      const struct gravity_props *gravity_props) {
-#ifdef MOVING_MESH_HYDRO
-  for (int pid = 0; pid < c->hydro.count; pid++) {
-    hydro_end_gradient(&c->hydro.parts[pid]);
-    mhd_end_gradient(&c->hydro.parts[pid]);
-  }
 
-#else
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_end_density(&c->hydro.parts[pid], cosmo);
     adaptive_softening_end_density(&c->hydro.parts[pid], gravity_props);
     mhd_end_density(&c->hydro.parts[pid], cosmo);
   }
-#endif
 }
 
 /**
@@ -262,7 +248,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2],
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
             0.f,
 #else
             main_cell->hydro.parts[pid].density.rho_dh,
@@ -309,19 +295,12 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
 }
 
 /* Just a forward declaration... */
-#ifdef MOVING_MESH_HYDRO
-void runner_doself1_gradient(struct runner *r, struct cell *ci);
-void runner_doself1_gradient_vec(struct runner *r, struct cell *ci);
-void runner_dopair1_branch_gradient(struct runner *r, struct cell *ci,
-                                    struct cell *cj);
-void runner_doself1_branch_gradient(struct runner *r, struct cell *c);
-#else
-void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj);
-void runner_doself1_branch_density(struct runner *r, struct cell *c);
-#endif
+                                   struct cell *cj, int limit_h_min,
+                                   int limit_h_max);
+void runner_doself1_branch_density(struct runner *r, struct cell *c,
+                                   int limit_h_min, int limit_h_max);
 
 void test_boundary_conditions(struct cell **cells, struct runner *runner,
                               const int loc_i, const int loc_j, const int loc_k,
@@ -357,14 +336,17 @@ void test_boundary_conditions(struct cell **cells, struct runner *runner,
         /* Get the neighbouring cell */
         struct cell *cj = cells[iii * (dim * dim) + jjj * dim + kkk];
 
-        if (cj != main_cell) DOPAIR1(runner, main_cell, cj);
+        if (cj != main_cell)
+          DOPAIR1(runner, main_cell, cj, /*limit_h_min=*/0,
+                  /*limit_h_max=*/0);
       }
     }
   }
 
   /* And now the self-interaction */
 
-  DOSELF1(runner, main_cell);
+  DOSELF1(runner, main_cell, /*limit_h_min=*/0,
+          /*limit_h_max=*/0);
 
   /* Let's get physical ! */
   end_calculation(main_cell, runner->e->cosmology,
@@ -392,21 +374,14 @@ void test_boundary_conditions(struct cell **cells, struct runner *runner,
 
         /* Get the neighbouring cell */
         struct cell *cj = cells[iii * (dim * dim) + jjj * dim + kkk];
-#ifdef MOVING_MESH_HYDRO
-        if (cj != main_cell) pairs_all_gradient(runner, main_cell, cj);
-#else
+
         if (cj != main_cell) pairs_all_density(runner, main_cell, cj);
-#endif
       }
     }
   }
 
   /* And now the self-interaction */
-#ifdef MOVING_MESH_HYDRO
-  self_all_gradient(runner, main_cell);
-#else
   self_all_density(runner, main_cell);
-#endif
 
   /* Let's get physical ! */
   end_calculation(main_cell, runner->e->cosmology,

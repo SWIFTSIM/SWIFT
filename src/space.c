@@ -822,11 +822,12 @@ void space_convert_quantities(struct space *s, int verbose) {
 #if defined(SWIFT_DEBUG_CHECKS) && defined(SHADOWSWIFT)
   // Check that the ICs do not contain values considered infinitesimal for rho
   // or P.
+  const struct hydro_props *hydro_props = s->e->hydro_properties;
   int count_low_rho = 0;
   int count_low_P = 0;
-  for (int k = 0; k < count; k++) {
-      if (parts[k].rho < hydro_props->epsilon_rho) count_low_rho++;
-      if (parts[k].P < hydro_props->epsilon_P) count_low_P++;
+  for (size_t k = 0; k < s->nr_parts; k++) {
+      if (s->parts[k].rho < hydro_props->epsilon_rho) count_low_rho++;
+      if (s->parts[k].P < hydro_props->epsilon_P) count_low_P++;
   }
   if (count_low_rho > 0)
     warning(
