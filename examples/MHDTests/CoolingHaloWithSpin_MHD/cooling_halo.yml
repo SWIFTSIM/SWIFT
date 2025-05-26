@@ -3,7 +3,7 @@ InternalUnitSystem:
   UnitMass_in_cgs:     1.9891E43   # 10^10 solar masses 
   UnitLength_in_cgs:   3.08567758E21   # 1 kpc 
   UnitVelocity_in_cgs: 1E5   # km/s
-  UnitCurrent_in_cgs:  2.088431e13    # Amperes
+  UnitCurrent_in_cgs:  2.088431e20   # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
 # Parameters governing the time integration
