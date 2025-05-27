@@ -51,7 +51,7 @@ f_b = 0.17  # baryon fraction
 c_200 = 7.2  # concentration parameter
 
 # Set the magnitude of the uniform seed magnetic field
-B0_Gaussian_Units = 1e-9 # 1e-3 micro Gauss
+B0_Gaussian_Units = 0#1e-9 # 1e-3 micro Gauss
 B0_cgs = np.sqrt(CONST_MU0_CGS / (4.0 * np.pi)) * B0_Gaussian_Units
 
 # SPH
@@ -59,13 +59,13 @@ eta = 1.595  # kernel smoothing
 
 # Additional options
 spin_lambda_choice = (
-    "Peebles"
+    "Bullock"
 )  # which definition of spin parameter to use (Peebles or Bullock)
 save_to_vtk = False
 plot_v_distribution = False
 
-AMP = "r^s" # sets angular momentum profile to be a function of M(r) or r^s 
-AMPs = 2 # power in agnular momentum profile
+AMP = "M(r)" #"r^s" # sets angular momentum profile to be a function of M(r) or r^s 
+AMPs = 1 #2 # power in agnular momentum profile
 
 with_noise = True # add gaussian uncertainty for particle positions
 noise_sigma = 0.5
@@ -442,10 +442,23 @@ for i in range(N):
 
 # select particles inside R_200
 mask_r_200 = radius <= 1
-Lp_tot = np.sum(l[mask_r_200], axis=0)
-Lp_tot_abs = np.linalg.norm(Lp_tot) 
-jsp = Lp_tot_abs/gas_mass
+#Lp_tot = np.sum(l[mask_r_200], axis=0)
+#Lp_tot_abs = np.linalg.norm(Lp_tot) 
+#jsp = Lp_tot_abs/gas_mass
 normV = np.linalg.norm(v, axis=1)
+
+r_analytic = np.logspace(np.log10(1e-6*R_max),np.log10(1),1000)
+rho_analytic = rho_r(r_analytic, f_b, M_200_cgs, r_200_cgs, c_200)
+j_1_analytic = j(r_analytic, 1, AMPs, f_b, M_200_cgs, r_200_cgs, c_200,AMP)
+
+int_dOmega = 8*np.pi/3 # integral over angles from axial distance squared: int Sin^2 (theta)dphi d Cos (theta)  
+
+jsp_1_analytic = (np.sum(j_1_analytic[:-1] * rho_analytic[:-1] * int_dOmega * r_analytic[:-1]**2*np.diff(r_analytic)))/(np.sum(rho_analytic[:-1] * 4 * np.pi * r_analytic[:-1]**2*np.diff(r_analytic)))
+
+print(jsp_1_analytic)
+jsp = jsp_1_analytic
+
+
 
 if spin_lambda_choice == "Peebles":
     # Normalize to Peebles spin parameter
