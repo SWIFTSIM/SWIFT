@@ -1354,16 +1354,16 @@ void fof_search_pair_cells_foreign(
 
     for (size_t j = 0; j < count_j; j++) {
 
-      const struct gpart *pj = &gparts_j[j];
+      const struct gpart_fof_foreign *pj = &gparts_j[j];
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
 
       /* Check whether we ignore this particle type altogether */
-      if (gpart_is_ignorable(pj)) continue;
+      if (gpart_foreign_is_ignorable(pj)) continue;
 
       /* Get the nature of the linking */
-      const int is_link_j = gpart_is_linkable(pj);
+      const int is_link_j = gpart_foreign_is_linkable(pj);
 
       /* Only consider linkable<->linkable pairs */
       if (!(is_link_i && is_link_j)) continue;
