@@ -26,5 +26,6 @@ REMIX SPH
 
 REMIX is an SPH scheme designed to alleviate effects that typically suppress
 mixing and instability growth at density discontinuities in SPH simulations
-(Sandnes et al. 2025). For more information on what is included in the REMIX
+(Sandnes et al. 2025), and also includes the multiple EoS options as the base 
+Planetary scheme. For more information on what is included in the REMIX
 scheme and how to configure SWIFT to use REMIX, see: :ref:`remix_sph`.

@@ -26,7 +26,7 @@ interfaces between dissimilar materials. The scheme combines:
 + Linear-order reproducing kernels with grad-h terms and a vacuum interface
   treatment;
 + A "kernel normalising term" to avoid potential accumulation of error in
-  the evolved density estimate, such that densities would be no longer
+  the evolved density estimate, such that densities are ensured to remain 
   representative of the distribution of particle masses in the simulation volume;
 + Advanced artificial viscosity and diffusion schemes with linear reconstruction
   of quantities to particle midpoints, and a set of novel improvements to
@@ -71,11 +71,11 @@ configuration used for the validation simulations of Sandnes et al. (2025).
 
 
 The current implementation of the REMIX hydro scheme has been validated for
-planetary applications and in hydrodynamic test cases and does not include all
-necessary functionality for e.g. cosmological simulations.
+planetary applications and various hydrodynamic test cases, and does not include 
+all necessary functionality for e.g. cosmological simulations.
 
 Default parameters used in the artificial viscosity and diffusion schemes and the
-normalising term are:
+normalising term (see Sandnes et al. 2025) are:
 
 .. code-block:: c
 
