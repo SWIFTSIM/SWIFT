@@ -47,8 +47,6 @@ enum task_types {
   task_type_sort,
   task_type_self,
   task_type_pair,
-  task_type_sub_self,
-  task_type_sub_pair,
   task_type_init_grav,
   task_type_init_grav_out, /* Implicit */
   task_type_ghost_in,      /* Implicit */

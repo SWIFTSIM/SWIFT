@@ -108,6 +108,9 @@ struct fof_props {
   /*! Final size of the group a given gpart belongs to. */
   long long *final_group_size;
 
+  /*! Final index of the group a given gpart belongs to. */
+  long long *final_group_index;
+
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
 

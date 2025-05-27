@@ -1456,16 +1456,13 @@ void partition_gather_weights(void *map_data, int num_elements,
     }
 
     /* Self interaction? */
-    else if ((t->type == task_type_self && ci->nodeID == nodeID) ||
-             (t->type == task_type_sub_self && cj == NULL &&
-              ci->nodeID == nodeID)) {
+    else if (t->type == task_type_self && ci->nodeID == nodeID) {
       /* Self interactions add only to vertex weight. */
       if (vweights) atomic_add_d(&weights_v[cid], w);
-
     }
 
     /* Pair? */
-    else if (t->type == task_type_pair || (t->type == task_type_sub_pair)) {
+    else if (t->type == task_type_pair) {
 
       /* In-cell pair? */
       if (ci == cj) {
@@ -2406,16 +2403,14 @@ static void check_weights(struct task *tasks, int nr_tasks,
     }
 
     /* Self interaction? */
-    else if ((t->type == task_type_self && ci->nodeID == nodeID) ||
-             (t->type == task_type_sub_self && cj == NULL &&
-              ci->nodeID == nodeID)) {
+    else if (t->type == task_type_self && ci->nodeID == nodeID) {
       /* Self interactions add only to vertex weight. */
       if (vweights) weights_v[cid] += w;
 
     }
 
     /* Pair? */
-    else if (t->type == task_type_pair || (t->type == task_type_sub_pair)) {
+    else if (t->type == task_type_pair) {
       /* In-cell pair? */
       if (ci == cj) {
         /* Add weight to vertex for ci. */

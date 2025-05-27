@@ -1354,16 +1354,16 @@ void fof_search_pair_cells_foreign(
 
     for (size_t j = 0; j < count_j; j++) {
 
-      const struct gpart_fof_foreign *pj = &gparts_j[j];
+      const struct gpart *pj = &gparts_j[j];
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
 
       /* Check whether we ignore this particle type altogether */
-      if (gpart_foreign_is_ignorable(pj)) continue;
+      if (gpart_is_ignorable(pj)) continue;
 
       /* Get the nature of the linking */
-      const int is_link_j = gpart_foreign_is_linkable(pj);
+      const int is_link_j = gpart_is_linkable(pj);
 
       /* Only consider linkable<->linkable pairs */
       if (!(is_link_i && is_link_j)) continue;
@@ -2709,7 +2709,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     }
 
     /* Relabel the group ids */
-    props->group_index[i] = i + 1;
+    props->final_group_index[i] = i + 1;
   }
 
   /* Free temporary arrays */
@@ -2879,7 +2879,7 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
   FILE *file = NULL;
 
   long long *final_group_size = props->final_group_size;
-  size_t *group_index = props->group_index;
+  long long *group_index = props->final_group_index;
   double *group_mass = props->group_mass;
   double *group_centre_of_mass = props->group_centre_of_mass;
 
@@ -2912,7 +2912,7 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
 
       for (int i = 0; i < num_groups; i++) {
 
-        fprintf(file, "  %8zu %12lld %12e %12e %12e %12e %12e %24lld %24lld\n",
+        fprintf(file, "  %8lld %12lld %12e %12e %12e %12e %12e %24lld %24lld\n",
                 group_index[i], final_group_size[i], group_mass[i],
                 group_centre_of_mass[i * 3 + 0],
                 group_centre_of_mass[i * 3 + 1],
@@ -3843,6 +3843,10 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
     message("Largest group (linkables only) by size: %lld", max_group_size);
   }
 
+  /* Free data we are done with */
+  swift_free("fof_group_index", props->group_index);
+  props->group_index = NULL;
+
   if (verbose)
     message("took: %.3f %s.", clocks_from_ticks(getticks() - tic_total),
             clocks_getunit());
@@ -3882,6 +3886,9 @@ void fof_compute_group_props(struct fof_props *props,
   if (swift_memalign("fof_group_size", (void **)&props->final_group_size, 32,
                      num_groups * sizeof(long long)) != 0)
     error("Failed to allocate list of group masses for FOF search.");
+  if (swift_memalign("fof_group_index", (void **)&props->final_group_index, 32,
+                     num_groups * sizeof(long long)) != 0)
+    error("Failed to allocate list of group masses for FOF search.");
   if (swift_memalign("fof_has_black_hole", (void **)&props->has_black_hole, 32,
                      num_groups * sizeof(char)) != 0)
     error("Failed to allocate list of black holes for FOF search.");
@@ -3895,6 +3902,7 @@ void fof_compute_group_props(struct fof_props *props,
 
   bzero(props->group_mass, num_groups * sizeof(double));
   bzero(props->final_group_size, num_groups * sizeof(long long));
+  bzero(props->final_group_index, num_groups * sizeof(long long));
   bzero(props->has_black_hole, num_groups * sizeof(char));
   bzero(props->group_centre_of_mass, num_groups * 3 * sizeof(double));
   bzero(props->max_part_density, num_groups * sizeof(float));
@@ -3957,20 +3965,20 @@ void fof_free_arrays(struct fof_props *props) {
   swift_free("fof_high_group_sizes", props->high_group_sizes);
   swift_free("fof_group_mass", props->group_mass);
   swift_free("fof_group_size", props->final_group_size);
+  swift_free("fof_group_index", props->final_group_index);
   swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
   swift_free("fof_max_part_density", props->max_part_density);
   swift_free("fof_has_black_hole", props->has_black_hole);
   swift_free("fof_distance", props->distance_to_link);
-  swift_free("fof_group_index", props->group_index);
   swift_free("fof_attach_index", props->attach_index);
   swift_free("fof_found_attach", props->found_attachable_link);
   swift_free("fof_group_size", props->group_size);
   props->group_mass = NULL;
   props->final_group_size = NULL;
+  props->final_group_index = NULL;
   props->group_centre_of_mass = NULL;
   props->max_part_density = NULL;
   props->has_black_hole = NULL;
-  props->group_index = NULL;
   props->group_size = NULL;
 
 #ifdef WITH_MPI

@@ -338,7 +338,7 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                        e->internal_units, e->snapshot_units);
   output_prop =
       io_make_output_field_("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                            (char*)props->group_index, sizeof(size_t),
+                            (char*)props->final_group_index, sizeof(long long),
                             "FOF group IDs", /*physical=*/1,
                             /*convertible_to_comoving=*/0);
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
