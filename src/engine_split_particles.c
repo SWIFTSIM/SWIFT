@@ -194,34 +194,47 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
         global_gparts[k_gparts].id_or_neg_offset = -k_parts;
       }
 
-      /* Displacement unit vector */
-      const double delta_x = random_unit_interval(p->id, e->ti_current,
-                                                  (enum random_number_type)0);
-      const double delta_y = random_unit_interval(p->id, e->ti_current,
-                                                  (enum random_number_type)1);
-      const double delta_z = random_unit_interval(p->id, e->ti_current,
-                                                  (enum random_number_type)2);
+      /* Random displacement vector in unit sphere */
+      double displacement[3] = {
+          random_unit_interval(p->id, e->ti_current,
+                               (enum random_number_type)0),
+          random_unit_interval(p->id, e->ti_current,
+                               (enum random_number_type)1),
+          random_unit_interval(p->id, e->ti_current,
+                               (enum random_number_type)2),
+      };
+#ifdef HYDRO_DIMENSION_1D
+      displacement[1] = 0.;
+      displacement[2] = 0.;
+#elif defined(HYDRO_DIMENSION_2D)
+      displacement[2] = 0.;
+#endif
+      hydro_split_part_displacement(p, xp, displacement);
 
       /* Displace the old particle */
-      p->x[0] += delta_x * displacement_factor * h;
-      p->x[1] += delta_y * displacement_factor * h;
-      p->x[2] += delta_z * displacement_factor * h;
-
-      if (with_gravity) {
-        gp->x[0] += delta_x * displacement_factor * h;
-        gp->x[1] += delta_y * displacement_factor * h;
-        gp->x[2] += delta_z * displacement_factor * h;
-      }
+      p->x[0] += displacement[0] * displacement_factor * h;
+      p->x[1] += displacement[1] * displacement_factor * h;
+      p->x[2] += displacement[2] * displacement_factor * h;
 
       /* Displace the new particle */
-      global_parts[k_parts].x[0] -= delta_x * displacement_factor * h;
-      global_parts[k_parts].x[1] -= delta_y * displacement_factor * h;
-      global_parts[k_parts].x[2] -= delta_z * displacement_factor * h;
+      global_parts[k_parts].x[0] -= displacement[0] * displacement_factor * h;
+      global_parts[k_parts].x[1] -= displacement[1] * displacement_factor * h;
+      global_parts[k_parts].x[2] -= displacement[2] * displacement_factor * h;
 
-      if (with_gravity) {
-        global_gparts[k_gparts].x[0] -= delta_x * displacement_factor * h;
-        global_gparts[k_gparts].x[1] -= delta_y * displacement_factor * h;
-        global_gparts[k_gparts].x[2] -= delta_z * displacement_factor * h;
+      if (!s->periodic) {
+        /* Clamp the new positions to the box */
+        const double dim_x = s->dim[0];
+        const double dim_y = s->dim[1];
+        const double dim_z = s->dim[2];
+        p->x[0] = fmin(dim_x, fmax(0., p->x[0]));
+        p->x[1] = fmin(dim_y, fmax(0., p->x[1]));
+        p->x[2] = fmin(dim_z, fmax(0., p->x[2]));
+        global_parts[k_parts].x[0] =
+            fmin(dim_x, fmax(0., global_parts[k_parts].x[0]));
+        global_parts[k_parts].x[1] =
+            fmin(dim_y, fmax(0., global_parts[k_parts].x[1]));
+        global_parts[k_parts].x[2] =
+            fmin(dim_z, fmax(0., global_parts[k_parts].x[2]));
       }
 
       /* Divide the mass */
@@ -230,9 +243,21 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       hydro_set_mass(&global_parts[k_parts], new_mass);
 
       if (with_gravity) {
+        /* Apply new masses and positions to gparts */
         gp->mass = new_mass;
         global_gparts[k_gparts].mass = new_mass;
+        gp->x[0] = p->x[0];
+        gp->x[1] = p->x[1];
+        gp->x[2] = p->x[2];
+        global_gparts[k_gparts].x[0] = global_parts[k_parts].x[0];
+        global_gparts[k_gparts].x[1] = global_parts[k_parts].x[1];
+        global_gparts[k_gparts].x[2] = global_parts[k_parts].x[2];
       }
+
+      /* Split other hydro quantities */
+      hydro_split_part(p, xp, particle_split_factor);
+      hydro_split_part(&global_parts[k_parts], &global_xparts[k_parts],
+                       particle_split_factor);
 
       /* Split the chemistry fields */
       chemistry_split_part(p, particle_split_factor);
@@ -429,7 +454,7 @@ void engine_split_gas_particles(struct engine *e) {
    * links */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
                     s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, e->verbose);
+                    s->nr_bparts, e->s->dim, e->s->periodic, e->verbose);
 #endif
 
   /* We now have enough memory in the part array to accomodate the new

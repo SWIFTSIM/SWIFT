@@ -725,6 +725,21 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
+    if (s->with_self_gravity) {
+#ifdef MOVING_MESH_HYDRO
+      /* Temporarily reset the gpart positions to the generator positions of
+       * their corresponding hydro particle. We need to do this in order to not
+       * mess up the splitting of this cell (gparts should go with their hydro
+       * parts). */
+      for (int i = 0; i < c->hydro.count; i++) {
+        struct part *part = &c->hydro.parts[i];
+        struct gpart *gpart = part->gpart;
+        gpart->x[0] = part->x[0];
+        gpart->x[1] = part->x[1];
+        gpart->x[2] = part->x[2];
+      }
+#endif
+    }
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
 
     if (s->with_self_gravity) {
@@ -736,6 +751,19 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
       for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
         max_mpole_power[n] =
             max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
+
+#ifdef MOVING_MESH_HYDRO
+      /* Now the cell is split and all particles are at the correct location,
+       * we can set the gpart position to the position of the *centroid* of the
+       * hydro parts again. */
+      for (int i = 0; i < c->hydro.count; i++) {
+        struct part *part = &c->hydro.parts[i];
+        struct gpart *gpart = part->gpart;
+        gpart->x[0] += part->geometry.centroid[0];
+        gpart->x[1] += part->geometry.centroid[1];
+        gpart->x[2] += part->geometry.centroid[2];
+      }
+#endif
     }
   }
 
