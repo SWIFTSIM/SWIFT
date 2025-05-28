@@ -376,7 +376,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   /* Compute Dedner cleaning speed. */
   const float ch = 0.5f * p->viscosity.v_sig;
 
-  /* Compute Dedner cleaning scalar time derivative. */
+  /* Retrieve some data */
   const float hyp = hydro_props->mhd.hyp_dedner;
   const float hyp_divv = hydro_props->mhd.hyp_dedner_divv;
   const float par = hydro_props->mhd.par_dedner;
@@ -385,9 +385,21 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float div_v = a * a * hydro_get_div_v(p) - 3.0f * a * a * H;
   const float psi_over_ch = p->mhd_data.psi_over_ch;
 
-  const float cp = ch;
+  /* Compute parabolic decay speed */
+  const float cs = hydro_get_comoving_soundspeed(p);
+  const float cs2 = cs * cs;
+  const float vA = p->mhd_data.Alfven_speed;
+  const float vA2 = vA * vA;
+  const float psi_over_ch2 = psi_over_ch * psi_over_ch;
+  
+  const float vpsi = sqrtf(cs2 + vA2 + psi_over_ch2);
+  
+  const float cp = fmaxf(ch, vpsi);
+
+  /* Compute parabolic decay timescale */
   const float tau_inv = par * cp * h_inv; 
 
+  /* Compute Dedner cleaning scalar time derivative. */
   const float hyperbolic_term =
       -hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * div_B;
   const float hyperbolic_divv_term = -hyp_divv * psi_over_ch * div_v;
