@@ -162,21 +162,30 @@ args, files = parse_option()
 r_min = args.r_min
 r_max = args.r_max
 n_bins = args.n_bins
-kappa = args.kappa
 epsilon = args.epsilon
 log = args.log
 
 figsize = (6.4, 4.8)
 
+# Read kappa from the parameter file
+data_init = sw.load(files[0])
+try:
+    kappa = float(data_init.metadata.parameters["GEARChemistry:diffusion_coefficient"])
+except:
+    kappa = args.kappa
+
+print(f"Using kappa = {kappa:.3e}")
+
+# Read tau from the parameter file
+try:
+    tau = float(data.metadata.parameters["GEARChemistry:tau"])
+except:
+    tau = 0.001
+
 for filename in tqdm(files):
     snapshot_number = int(filename.split('_')[1].split('.')[0])
     output_name = "metal_profile" + str(snapshot_number)
     data = sw.load(filename)
-
-    try:
-        tau = float(data.metadata.parameters["GEARChemistry:tau"])
-    except:
-        tau = 0.001
 
     if log:
         output_name = "log_" + output_name
@@ -194,7 +203,6 @@ for filename in tqdm(files):
     # r_0 = np.linalg.norm(nb.boxsize/2)
     r_0 = 0.6
 
-    print(r_0)
     r_sol = np.linspace(r_min, r_max, 100)
 
     # Perform the fit on all the data
