@@ -75,7 +75,7 @@ if [ "$with_hydro_MFM" -eq 1 ]; then
     ~/swiftsim/swift --hydro --external-gravity --stars \
 		     --threads=$n_threads params.yml 2>&1 | tee output.log
 else
-    # ./configure --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening=yes --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks
+    # ./configure --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks
     echo "Running with SPH hydro solver"
     ~/swiftsim/swift --hydro --external-gravity --stars --feedback \
 		     --threads=$n_threads params.yml 2>&1 | tee output.log
@@ -100,5 +100,6 @@ else
 	mv unused_parameters.yml $run_name
 	mv used_parameters.yml $run_name
 	mv *.png $run_name
+	mv output.log $run_name
     fi
 fi

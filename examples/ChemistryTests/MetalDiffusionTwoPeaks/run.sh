@@ -75,7 +75,7 @@ if [ "$with_hydro_MFM" -eq 1 ]; then
     ~/swiftsim/swift --hydro --external-gravity --stars \
 		     --threads=$n_threads params.yml 2>&1 | tee output.log
 else
-    # ./configure --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening=yes --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks
+    # ./configure --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks
     echo "Running with SPH hydro solver"
     ~/swiftsim/swift --hydro --external-gravity --stars --feedback \
 		     --threads=$n_threads params.yml 2>&1 | tee output.log
@@ -83,9 +83,9 @@ fi
 
 #Do some data analysis to show what's in this box
 python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5
-python3 compare_num_to_sol.py snap/snapshot_*0.hdf5 --x_min 0 --x_max 1 --y_min 0 --y_max 1
 python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max=1.1
 python3 metal_projection.py snap/snapshot_*0.hdf5 --log
+python3 metal_projection.py snap/snapshot_*0.hdf5
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
@@ -100,5 +100,6 @@ else
 	mv unused_parameters.yml $run_name
 	mv used_parameters.yml $run_name
 	mv *.png $run_name
+    mv output.log $run_name
     fi
 fi

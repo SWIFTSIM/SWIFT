@@ -1,10 +1,7 @@
 # Intro
-This example is a non cosmological hydro-only homogeneous box with gas. A gas particle is initialized with a non null metallicity, while the other particles are metal-free. *This example is used to test _constant istotropic_ metal diffusion with the GEAR diffusion chemistry models.*
-
-This example is a modified version of the HomogeneousBox in SWIFT that allows to add metallicy to a gas particle in the box.
+This example is a non cosmological hydro-only homogeneous box with gas. A gas particle at the center of the box is initialized with non null metallicity, while the other particles are metal-free. *This example is used to test _constant istotropic_ metal diffusion with the GEAR diffusion chemistry models.*
 
 The default level is 5 (N_particle = 2^(3*level)). It is quick. If you want to try the example with higher levels, we recommend using HPC facilities.
-
 
 # Configure
 To run this example with GEAR model,
@@ -25,8 +22,6 @@ make -j
 
 # ICs
 The run.sh script calls `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
-
-Notice that changing the `jeans_length` affects the velocity of the gas particles, their smoothing length and thus the chemistry diffusion. Larger `jeans_length` gives lower gas velocities, quicker diffusion and more isotropic diffusion.
 
 # Run
 Type run.sh and let's go!

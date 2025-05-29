@@ -191,7 +191,10 @@ for filename in tqdm(files):
 
     # Get data to compute the analytical solution
     t = nb.atime
-    r_0 = np.linalg.norm(nb.boxsize/2)
+    # r_0 = np.linalg.norm(nb.boxsize/2)
+    r_0 = 0.6
+
+    print(r_0)
     r_sol = np.linspace(r_min, r_max, 100)
 
     # Perform the fit on all the data
