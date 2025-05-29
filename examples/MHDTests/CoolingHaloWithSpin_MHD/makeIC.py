@@ -64,8 +64,8 @@ spin_lambda_choice = (
 save_to_vtk = False
 plot_v_distribution = False
 
-AMP = "M(r)" #"r^s" # sets angular momentum profile to be a function of M(r) or r^s 
-AMPs = 1 #2 # power in agnular momentum profile
+AMP = "r^s" #"r^s" # sets angular momentum profile to be a function of M(r) or r^s 
+AMPs = 2 #2 # power in agnular momentum profile
 
 with_noise = True # add gaussian uncertainty for particle positions
 noise_sigma = 0.5
@@ -119,7 +119,7 @@ print("G=", const_G)
 # Parameters
 periodic = 1  # 1 For periodic box
 boxSize = 2.0 # in units of r_200 
-R_max = boxSize/6 #boxSize/6 # set maximal halo radius (we simulate only part of a halo) 
+R_max = boxSize/2 #boxSize/6 # set maximal halo radius (we simulate only part of a halo) 
 G = const_G
 N = int(sys.argv[1])  # Number of particles
 N = int(N*6/np.pi)   # renormalize number of particles to get required N after cutting a sphere
