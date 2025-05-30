@@ -17,7 +17,8 @@ rhoL=${rhoL=1}   # Density on the rightleft on the discontinuity
 with_shear=${with_shear:=0} # Add a velocity shearing effect
 with_hydro_MFM=${with_hydro_MFM:=0}
 random_positions=${random_positions:=0} # Use random positions instead of regular grid?
-run_name=${run_name:=""}
+run_name=${run_name:=""} # Name of the run to store in a dedicated folder when the simulation is completed
+dimension=${dimension:=3} # Dimensionality of the problem.
 
 # Remove the ICs
 if [ -e ICs_homogeneous_box.hdf5 ]
@@ -41,6 +42,7 @@ then
     fi
 
     python3 makeIC.py \
+        --dimension "$dimension" \
         --level "$level" \
         --mass "$box_mass" \
         --velocity "$vx" "$vy" "$vz" \
@@ -89,11 +91,12 @@ if [ "$with_hydro_MFM" -eq 1 ]; then
 else
     # ./configure --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening=yes --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks
     echo "Running with SPH hydro solver"
-    ~/swiftsim/swift --hydro --external-gravity --stars --feedback
-    \ --threads=$n_threads params.yml 2>&1 | tee output.log
+    ~/swiftsim/swift --hydro --external-gravity --stars --feedback \
+            --threads=$n_threads params.yml 2>&1 | tee output.log
 fi
 
 #Do some data analysis to show what's in this box
+python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --x_min 1e-1 --x_max=10
 python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5
 python3 metal_projection.py snap/snapshot_*0.hdf5 --log
 
@@ -110,5 +113,6 @@ else
 	mv unused_parameters.yml $run_name
 	mv used_parameters.yml $run_name
 	mv *.png $run_name
+	mv output.log $run_name
     fi
 fi
