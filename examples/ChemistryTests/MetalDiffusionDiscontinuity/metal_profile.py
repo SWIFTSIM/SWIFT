@@ -1,240 +1,148 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Aug 21 11:17:37 2024
-
-@author: darwinr
-"""
+################################################################################
+# This file is part of SWIFT.
+# Copyright (c)  2025 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+################################################################################
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from pNbody import *
 from scipy.optimize import curve_fit
-from scipy.special import iv as modified_bessel
+from scipy.special import erf
 import argparse
 from tqdm import tqdm
 import swiftsimio as sw
 
 # %%
+def x_profile(value, x, x_min=None, x_max=None, n_bins=30):
+    if x_min is None:
+        x_min = x.min()
+    if x_max is None:
+        x_max = x.max()
 
-
-def radial_profile(value, r, r_min=None, r_max=None, n_bins=30):
-    # Handle default r_min and r_max
-    if r_min is None:
-        r_min = r.min()
-    if r_max is None:
-        r_max = r.max()
-
-    # Create logarithmic bin edges
-    r_bins = np.logspace(np.log10(r_min), np.log10(r_max), n_bins + 1)
-
-    # Get bin indices for each radius
-    bin_indices = np.digitize(r, bins=r_bins) - 1
-
-    # Handle edge cases where radius might fall outside the range
+    x_bins = np.linspace(x_min, x_max, n_bins + 1)
+    bin_indices = np.digitize(x, bins=x_bins) - 1
     bin_indices = np.clip(bin_indices, 0, n_bins - 1)
+    x_centers = 0.5 * (x_bins[:-1] + x_bins[1:])
 
-    # Calculate the centers of the bins for plotting
-    r_centers = 0.5 * (r_bins[:-1] + r_bins[1:])
-
-    # Initialize temperature array
     values = np.zeros(n_bins)
-
-    # Loop through each bin and accumulate temperatures
     for i in range(n_bins):
         in_bin = (bin_indices == i)
-        if np.any(in_bin):  # Ensure there are values in the bin
-            values[i] = np.mean(value[in_bin])  # Average temperature in bin
+        if np.any(in_bin):
+            values[i] = np.mean(value[in_bin])
 
-    return r_centers, values
+    return x_centers, values
 
-
-def gaussian(r, t, q_0, r_0, kappa, epsilon):
-    return q_0*(2*np.pi)**(-1.5) / (epsilon**2 + 2*kappa*t)**1.5 * np.exp(-0.5*((r-r_0)**2)/(epsilon**2 + 2*kappa*t))
-
-def hyperbolic_diffusion_solution(x, t, q_0, x_0, tau, kappa):
-    """
-    Compute the solution u(x, t) of the hyperbolic diffusion equation.
-
-    Parameters:
-        x (array): Spatial positions.
-        t (float): Time.
-        tau (float): Relaxation time constant.
-        kappa (float): Diffusion coefficient.
-
-    Returns:
-        u (array): Solution values at positions x and time t.
-    """
-    # Wave speed
-    c = np.sqrt(kappa / tau)
-
-    Delta_x = x - x_0
-
-    # Exponential decay factor
-    decay_factor = q_0*np.exp(-c**2 * t / (2 * kappa))
-
-    # Compute radial term and modified Bessel functions for valid x values
-    within_causal_region = np.abs(Delta_x) <= c * t
-    radial_term = np.zeros_like(Delta_x)
-    radial_term[within_causal_region] = np.sqrt(c**2 * t**2 - Delta_x[within_causal_region]**2)
-
-    I0 = modified_bessel(0, (c / (2 * kappa)) * radial_term[within_causal_region])
-    I1 = modified_bessel(1, (c / (2 * kappa)) * radial_term[within_causal_region])
-
-    # Compute the solution
-    u = np.zeros_like(Delta_x)
-    if t > 0:
-        u[within_causal_region] = 0.5 * decay_factor * (
-            (c / (2 * kappa)) * I0 +
-            (c**2 / (2 * kappa)) * t * I1 / radial_term[within_causal_region]
-        )
-
-    return u
+# Error function diffusion profile
+def diffusion_erf_profile(x, t, qR, qL, kappa, x0):
+    return 0.5 * (qR + qL) + 0.5 * (qR - qL) * erf((x - x0) / np.sqrt(4 * kappa * t))
 
 # %%
-
-
 def parse_option():
-    description = """"
-Plot the Fe 1D density profile
-    """
-    epilog = """
-Examples:
---------
-python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 1.1
-python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 1.1 --log
-"""
-    parser = argparse.ArgumentParser(description=description, epilog=epilog)
+    parser = argparse.ArgumentParser(description="Plot the Fe 1D x-density profile")
 
-    parser.add_argument("files",
-                        nargs="+",
-                        type=str,
-                        help="File name(s).")
+    parser.add_argument("files", nargs="+", type=str, help="File name(s).")
+    parser.add_argument("--n_bins", type=int, default=40, help="Number of bins")
+    parser.add_argument("--x_min", type=float, default=-1.0, help="Minimum x [kpc]")
+    parser.add_argument("--x_max", type=float, default=1.0, help="Maximum x [kpc]")
+    parser.add_argument("--log", default=False, action="store_true", help="Log scale")
 
-    parser.add_argument("--kappa",
-                        action="store",
-                        type=float,
-                        default=2.516846e-03,
-                        help="Diffusion coefficient")
-
-    parser.add_argument("--epsilon",
-                        action="store",
-                        type=float,
-                        default=0.00,
-                        help="Size of the initial homogeneous sphere seeded with metals")
-
-    parser.add_argument("--n_bins",
-                        action="store",
-                        type=int,
-                        default=40,
-                        help="Number bins")
-
-    parser.add_argument("--r_min",
-                        action="store",
-                        type=float,
-                        default=1e-1,
-                        help="Minimal r.")
-
-    parser.add_argument("--r_max",
-                        action="store",
-                        type=float,
-                        default=1.6,
-                        help="Maximal r.")
-
-    parser.add_argument('--log', default=False, action="store_true",
-                        help="Density plot in log.")
-
-    parser.parse_args()
     args = parser.parse_args()
-    files = args.files
 
-    for f in files:
+    for f in args.files:
         if not os.path.exists(f):
-            raise FileNotFoundError("You need to provide one file")
+            raise FileNotFoundError(f"File not found: {f}")
 
-    return args, files
-
+    return args, args.files
 
 # %%
-# Parse the arguments
 args, files = parse_option()
-
-r_min = args.r_min
-r_max = args.r_max
+x_min = args.x_min
+x_max = args.x_max
 n_bins = args.n_bins
-kappa = args.kappa
-epsilon = args.epsilon
 log = args.log
-
 figsize = (6.4, 4.8)
+
+#####################
+# Calcule qR et qL une fois à partir du premier fichier
+print("Reading initial conditions from:", files[0])
+nb_init = Nbody(files[0], ptypes=[0])
+fe_init = nb_init.metals[:, 0] * nb_init.Mass(units="Msol")
+x_init = nb_init.pos[:, 0]
+
+# Domaine total
+x_domain = x_init.max() - x_init.min()
+x_mid = 0.5 * (x_init.min() + x_init.max())
+
+qR = np.max(fe_init[x_init >= x_mid])
+qL = np.max(fe_init[x_init < x_mid])
+print(f"Initial qL = {qL:.3e}, qR = {qR:.3e}")
+
+# Chargement de kappa depuis le premier fichier également
+data_init = sw.load(files[0])
+try:
+    kappa = float(data_init.metadata.parameters["GEARChemistry:diffusion_coefficient"])
+except:
+    kappa = 2.516846e-03  # Default fallback
+print(f"Using kappa = {kappa:.3e}")
+
+# Get the middle of the domain
+L = data_init.metadata.boxsize[0].value
+x_0 = L/2
+
+#####################
 
 for filename in tqdm(files):
     snapshot_number = int(filename.split('_')[1].split('.')[0])
-    output_name = "metal_profile" + str(snapshot_number)
+    output_name = f"metal_x_profile{snapshot_number}"
     data = sw.load(filename)
-
-    try:
-        tau = float(data.metadata.parameters["GEARChemistry:tau"])
-    except:
-        tau = 0.001
 
     if log:
         output_name = "log_" + output_name
 
-    # Get the numerical data
     nb = Nbody(filename, ptypes=[0])
-    fe = nb.metals[:, 0]*nb.Mass(units="Msol")
-    r = nb.rxyz()
+    fe = nb.metals[:, 0] * nb.Mass(units="Msol")
+    x = nb.pos[:, 0]  # Get x positions
 
-    # Compute the radial profile
-    r_centers, fe_bin = radial_profile(fe, r, r_min, r_max, n_bins=n_bins)
+    x_centers, fe_bin = x_profile(fe, x, x_min, x_max, n_bins=n_bins)
 
-    # Get data to compute the analytical solution
-    t = nb.atime
-    r_0 = np.linalg.norm(nb.boxsize/2)
-    r_sol = np.linspace(r_min, r_max, 100)
+    t = nb.atime  # Time of the snapshot (scale factor)
 
-    # Perform the fit on all the data
-    def fit_q_0(r, q_0):
-        return gaussian(r, t, q_0, r_0, kappa, epsilon)
+    # Fit using the error function solution
+    # def fit_func(x, qL, qR):
+    #     return diffusion_erf_profile(x, t, qR, qL, kappa, x_0)
 
-    initial_guess_q_0 = 1e1
-    popt, pcov = curve_fit(fit_q_0, r, fe, p0=initial_guess_q_0)
+    # popt, pcov = curve_fit(fit_func, x_centers, fe_bin, p0=(qL, qR))
+    # qR, qL = popt
 
-    # Extract the fitted q_0 value
-    q_0 = popt[0]
+    x_sol = np.linspace(x_min, x_max, 1000)
+    fe_sol = diffusion_erf_profile(x_sol, t, qR, qL, kappa, x_0)
 
-    # Compute the analytical solution
-    fe_sol = gaussian(r_sol, t, q_0, r_0, kappa, epsilon)
-
-    #########
-
-    def fit_q_0_hyperbolic(r, q_0):
-        return hyperbolic_diffusion_solution(r, t, q_0, r_0, tau, kappa)
-
-    popt2, pcov2 = curve_fit(fit_q_0_hyperbolic, r, fe, p0=initial_guess_q_0)
-
-    # Extract the fitted q_0 value
-    q_0_hyperbolic = popt2[0]
-
-    # Compute the analytical solution
-    fe_sol_hyperbolic = hyperbolic_diffusion_solution(r_sol, t, q_0_hyperbolic, r_0, tau, kappa)
-
-    ###########
-    # Now plot
-    fig, ax = plt.subplots(num=1, nrows=1, ncols=1,
-                           figsize=figsize, layout="tight")
-    ax.clear()
-    ax.plot(r_centers, fe_bin, label='Fe mass profile')
-    ax.plot(r_sol, fe_sol, label='Analytical solution')
-    ax.plot(r_sol, fe_sol_hyperbolic, label='Analytical solution')
-    ax.set_xlabel("$r$ [kpc]")
+    # Plotting
+    fig, ax = plt.subplots(figsize=figsize, layout="tight")
+    ax.plot(x_centers, fe_bin, label='Fe mass profile')
+    ax.plot(x_sol, fe_sol, label='Diffusion fit (erf)', linestyle='--')
+    ax.set_xlabel("$x$ [kpc]")
     ax.set_ylabel("$Fe$ [M$_\odot$]")
     ax.legend()
 
     if log:
         ax.set_yscale("log")
 
-    plt.savefig(output_name+".png", format='png',
-                bbox_inches='tight', dpi=300)
+    plt.savefig(output_name + ".png", format='png', bbox_inches='tight', dpi=300)
     plt.close()
