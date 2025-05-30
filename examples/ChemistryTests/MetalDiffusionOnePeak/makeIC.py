@@ -166,12 +166,15 @@ m = m.to(UnitMass).value
 L = L.to(UnitLength).value
 rho = rho.to(UnitMass / UnitLength ** 3).value
 
+#####################
 # Generate the particles
+#####################
 
 if random_positions:
-    print("Sampling random positions in the box")
+    print("Sampling random positions in the box.")
     pos = np.random.random([N, 3]) * np.array([L, L, L])
 else:
+    print("Generating carthesian grid in the box.")
     points = np.linspace(0, L, 2**level, endpoint=False)
 
     # Create a meshgrid of these points
@@ -180,7 +183,6 @@ else:
     # Reshape the grids into a list of particle positions
     pos = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
 
-print(pos.shape)
 vel = np.tile(velocity, (N, 1))
 mass = np.ones(N) * m
 u = np.zeros(N)
