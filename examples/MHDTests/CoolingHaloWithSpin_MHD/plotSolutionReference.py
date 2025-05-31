@@ -382,8 +382,8 @@ step = 20
 ax[0, 0].quiver(
     new_x[::step],
     new_y[::step],
-    np.transpose(vx_map.reshape((dimx, dimy)))[::step, ::step],
-    np.transpose(vz_map.reshape((dimx, dimy)))[::step, ::step],
+    vx_map.reshape((dimx, dimy))[::step, ::step],
+    vz_map.reshape((dimx, dimy))[::step, ::step],
     color="black",
     scale=1.5 / step,
     scale_units="xy",  # Fixes the arrow length in data coordinates
@@ -451,8 +451,8 @@ step = 20
 ax[1, 0].quiver(
     new_x[::step],
     new_y[::step],
-    np.transpose(Bx_map.reshape((dimx, dimy)))[::step, ::step],
-    np.transpose(Bz_map.reshape((dimx, dimy)))[::step, ::step],
+    Bx_map.reshape((dimx, dimy))[::step, ::step],
+    Bz_map.reshape((dimx, dimy))[::step, ::step],
     color="black",
     scale=1.5 / step,
     scale_units="xy",  # Fixes the arrow length in data coordinates
@@ -482,41 +482,41 @@ part_pixel_coords = 512 / 2 * (1 + rpart.value / Lslice_kPc)
 
 # ax[1,0].scatter(part_pixel_coords[0],part_pixel_coords[2],color='red',marker='x')
 
-
+yinfo = 3
 # add panel with infromation about the run
 text_common_args = dict(
-    fontsize=10, ha="center", va="center", transform=ax[3, 1].transAxes
+    fontsize=10, ha="center", va="center", transform=ax[yinfo, 1].transAxes
 )
 
-ax[3, 1].text(
+ax[yinfo, 1].text(
     0.5,
     0.8,
     "Cooling halo with spin at time $t=%.2f$ Gyr" % data.metadata.time,
     **text_common_args,
 )
-ax[3, 1].text(0.5, 0.7, "swift %s" % git.decode("utf-8"), **text_common_args)
-ax[3, 1].text(0.5, 0.6, "Branch %s" % gitBranch.decode("utf-8"), **text_common_args)
-ax[3, 1].text(0.5, 0.5, hydroScheme.decode("utf-8"), **text_common_args)
-ax[3, 1].text(
+ax[yinfo, 1].text(0.5, 0.7, "swift %s" % git.decode("utf-8"), **text_common_args)
+ax[yinfo, 1].text(0.5, 0.6, "Branch %s" % gitBranch.decode("utf-8"), **text_common_args)
+ax[yinfo, 1].text(0.5, 0.5, hydroScheme.decode("utf-8"), **text_common_args)
+ax[yinfo, 1].text(
     0.5,
     0.4,
     kernel.decode("utf-8") + " with $%.2f$ neighbours" % (neighbours),
     **text_common_args,
 )
-ax[3, 1].text(
+ax[yinfo, 1].text(
     0.5, 0.3, "Artificial diffusion: $%.2f$ " % (artDiffusion), **text_common_args
 )
-ax[3, 1].text(
+ax[yinfo, 1].text(
     0.5,
     0.2,
     "Dedner Hyp, Hyp_div(v), Par: $%.2f,%.2f,%.2f$ " % (dedHyp, dedHypDivv, dedPar),
     **text_common_args,
 )
-ax[3, 1].text(
+ax[yinfo, 1].text(
     0.5, 0.1, "Physical resistivity $\eta$: $%.2f$ " % (eta), **text_common_args
 )
-ax[3, 1].text(0.5, 0.0, "Number of particles $N_p$: $%.0f$ " % (Np), **text_common_args)
-ax[3, 1].axis("off")
+ax[yinfo, 1].text(0.5, 0.0, "Number of particles $N_p$: $%.0f$ " % (Np), **text_common_args)
+ax[yinfo, 1].axis("off")
 
 fig.tight_layout()
 
