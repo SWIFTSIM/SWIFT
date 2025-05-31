@@ -1,6 +1,6 @@
 ###############################################################################
 # This file is part of SWIFT.
-# Copyright (c) 2016 Stefan Arridge (stefan.arridge@durham.ac.uk)
+# Copyright (c) 2025 Nikyta Shchutskyi, Orestis Karapiperis, Matthieu Schaller
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -17,7 +17,8 @@
 #
 ##############################################################################
 
-# Halo parameters similar to R. Pakmor, V. Springel, 1212.1452
+# Based on the script from CoolingHalo example, 2016 Stefan Arridge (stefan.arridge@durham.ac.uk)
+# Halo parameters similar to R. Pakmor, V. Springel (see references below)
 
 import h5py
 import sys
@@ -25,7 +26,7 @@ import numpy as np
 import math
 import random
 
-# Generates N particles in a spherically symmetric distribution with density profile ~r^(-2)
+# Generates N particles in a spherically symmetric distribution with NFW density profile
 # usage: python3 makeIC.py 1000: generate 1000 particles
 
 # Some constants cgs
@@ -64,8 +65,8 @@ spin_lambda_choice = (
 save_to_vtk = False
 plot_v_distribution = False
 
-AMP = "r^s" #"r^s" # sets angular momentum profile to be a function of M(r) or r^s 
-AMPs = 2 #2 # power in agnular momentum profile
+AMP = "Bullock" # sets angular momentum profile to be a function of M(r) or r^s or the one from Bullock et al.
+AMPs = 1.3 # angular momentum profile parameter
 
 with_noise = True # add gaussian uncertainty for particle positions
 noise_sigma = 0.5
@@ -119,7 +120,7 @@ print("G=", const_G)
 # Parameters
 periodic = 1  # 1 For periodic box
 boxSize = 2.0 # in units of r_200 
-R_max = boxSize/2 #boxSize/6 # set maximal halo radius (we simulate only part of a halo) 
+R_max = boxSize/2 # set maximal halo radius (we simulate only part of a halo) 
 G = const_G
 N = int(sys.argv[1])  # Number of particles
 N = int(N*6/np.pi)   # renormalize number of particles to get required N after cutting a sphere
@@ -417,15 +418,21 @@ print("j_sp =", j_sp)
 
 # define specific angular momentum distribution
 def j(r_value, j_max, s, f_b, M_200_cgs, r_200_cgs, c_200, angular_momentum_profile="M(r)"):
+    mass_ratio = (Mgas_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200) / (M_200_cgs * f_b))
     if angular_momentum_profile == "M(r)":
         return (
             j_max
-            * (Mgas_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200) / (M_200_cgs * f_b)) ** s
+            * mass_ratio ** s
         )
     elif angular_momentum_profile=="r^s": # for rigid body rotation use r^2
         return (
             j_max
             * r_value**s
+        )
+    elif angular_momentum_profile=="Bullock": # following 
+        return (
+            j_max
+            * mass_ratio/(s-mass_ratio) 
         )
 
 
@@ -447,18 +454,13 @@ mask_r_200 = radius <= 1
 #jsp = Lp_tot_abs/gas_mass
 normV = np.linalg.norm(v, axis=1)
 
+# normalize to full halo
 r_analytic = np.logspace(np.log10(1e-6*R_max),np.log10(1),1000)
 rho_analytic = rho_r(r_analytic, f_b, M_200_cgs, r_200_cgs, c_200)
 j_1_analytic = j(r_analytic, 1, AMPs, f_b, M_200_cgs, r_200_cgs, c_200,AMP)
-
-int_dOmega = 8*np.pi/3 # integral over angles from axial distance squared: int Sin^2 (theta)dphi d Cos (theta)  
-
+int_dOmega = 8*np.pi/3 # integral over angles from axial distance square
 jsp_1_analytic = (np.sum(j_1_analytic[:-1] * rho_analytic[:-1] * int_dOmega * r_analytic[:-1]**2*np.diff(r_analytic)))/(np.sum(rho_analytic[:-1] * 4 * np.pi * r_analytic[:-1]**2*np.diff(r_analytic)))
-
-print(jsp_1_analytic)
 jsp = jsp_1_analytic
-
-
 
 if spin_lambda_choice == "Peebles":
     # Normalize to Peebles spin parameter
@@ -525,7 +527,6 @@ ds[()] = m
 m = np.zeros(1)
 
 # Smoothing lengths
-
 l = (gas_particle_mass*M_200_cgs/rho_r(radius, f_b, M_200_cgs, r_200_cgs, c_200))**(1/3)/r_200_cgs 
 h = np.full((N,), eta * l)
 ds = grp.create_dataset("SmoothingLength", (N,), "f")
@@ -555,3 +556,8 @@ ds = grp.create_dataset("ParticleIDs", (N,), "L")
 ds[()] = ids
 
 file.close()
+
+
+# References:
+# Rüdiger Pakmor, Volker Springel, Simulations of magnetic fields in isolated disc galaxies, Monthly Notices of the Royal Astronomical Society, Volume 432, Issue 1, 11 June 2013, Pages 176–193
+# Bullock, J. S., Dekel, A., Kolatt, T. S., et al. 2001, ApJ, 555, 240
