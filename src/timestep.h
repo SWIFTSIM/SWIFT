@@ -203,6 +203,10 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   new_dt *= e->cosmology->time_step_factor;
 
   /* Limit timestep within the allowed range */
+  if (new_dt >= dt_max):
+      printf("part (id=%lld) has a time-step (%e) above dt_max (%e)", p->id,
+          new_dt, dt_max);
+
   new_dt = min(new_dt, e->dt_max);
 
   /* if (new_dt < e->dt_min) { */
@@ -245,7 +249,10 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     }
   }
 
-  return new_dti;
+  // Multiply timestep, testing
+  dtmul = 0.1f;
+
+  return new_dti*dtmul;
 }
 
 /**
