@@ -16,8 +16,10 @@ and which EoS it should use.
 The Balsara viscosity switch is used by default, but can be disabled by
 compiling SWIFT with ``make CFLAGS=-DPLANETARY_SPH_NO_BALSARA``.
 
-Note: the boundary-improvement method presented in Ruiz-Bonilla+2022 can be
-accessed on the ``planetary_imbalance_RB22`` git branch.
+Note: to access the boundary-improvement method presented in Ruiz-Bonilla+2022,
+use the ``planetary_imbalance_RB22`` git branch and compile with
+``--with-hydro=planetary-gdf``. However, we instead recommend using the REMIX
+SPH scheme, as it has effectively replaced this method.
 
 .. _planetary_remix_hydro:
 
