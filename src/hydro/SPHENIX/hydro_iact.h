@@ -173,7 +173,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
    * and all of it's neighbours */
 
   float dv[3], curlvr[3];
-  
+
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
@@ -188,11 +188,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   kernel_deval(ui, &wi, &wi_dx);
   kernel_deval(uj, &wj, &wj_dx);
-  
+
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
-  
+
   /* Cosmology terms for the signal velocity */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
@@ -201,8 +201,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
   dv[2] = pi->v[2] - pj->v[2];
-  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];  
-  
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
   /* Add Hubble flow */
 
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
@@ -213,7 +213,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   /* Signal velocity */
   const float new_v_sig =
       signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
-  
+
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
   pj->viscosity.v_sig = max(pj->viscosity.v_sig, new_v_sig);
@@ -238,7 +238,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pj->viscosity.rot_v[0] += facj * curlvr[0];
   pj->viscosity.rot_v[1] += facj * curlvr[1];
   pj->viscosity.rot_v[2] += facj * curlvr[2];
-  
+
   /* Calculate Del^2 u for the thermal diffusion coefficient. */
   const float delta_u_factor = (pi->u - pj->u) * r_inv;
   pi->diffusion.laplace_u += pj->mass * delta_u_factor * wi_dx / pj->rho;
@@ -297,12 +297,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   float wi, wi_dx;
 
   const float ui = r / hi;
-  
+
   kernel_deval(ui, &wi, &wi_dx);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
-  
+
   /* Cosmology terms for the signal velocity */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
@@ -312,7 +312,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   dv[1] = pi->v[1] - pj->v[1];
   dv[2] = pi->v[2] - pj->v[2];
   const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
-  
+
   /* Add Hubble flow */
 
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
@@ -340,7 +340,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->viscosity.rot_v[0] += faci * curlvr[0];
   pi->viscosity.rot_v[1] += faci * curlvr[1];
   pi->viscosity.rot_v[2] += faci * curlvr[2];
-  
+
   /* Calculate Del^2 u for the thermal diffusion coefficient. */
   const float delta_u_factor = (pi->u - pj->u) * r_inv;
   pi->diffusion.laplace_u += pj->mass * delta_u_factor * wi_dx / pj->rho;
@@ -431,8 +431,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
   const float alpha = pi->viscosity.alpha + pj->viscosity.alpha;
-  const float visc =
-      -0.5f * alpha * v_sig * mu_ij / rho_ij;
+  const float visc = -0.5f * alpha * v_sig * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term =
@@ -579,8 +578,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
   const float alpha = pi->viscosity.alpha + pj->viscosity.alpha;
-  const float visc =
-      -0.5f * alpha * v_sig * mu_ij / rho_ij;
+  const float visc = -0.5f * alpha * v_sig * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term =

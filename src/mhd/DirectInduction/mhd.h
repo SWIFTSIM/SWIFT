@@ -291,7 +291,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     const float mu_0) {
 
   p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
-
 }
 
 /**
