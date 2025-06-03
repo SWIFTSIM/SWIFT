@@ -327,7 +327,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
   const float dBdr = Bri - Brj;
-  
+
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
   const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
@@ -338,7 +338,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   const float asym_grad_term_i = f_ij * wi_dr * r_inv / rhoi;
   const float asym_grad_term_j = f_ji * wj_dr * r_inv / rhoj;
-  
+
   const float divB_i = dBdr * asym_grad_term_i;
   const float divB_j = dBdr * asym_grad_term_j;
 
@@ -484,22 +484,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float resistive_eta_j = pj->mhd_data.resistive_eta;
 
   const float rho_term_PR = 1.0f / (rhoi * rhoj);
-  const float grad_term_PR = f_ij * wi_dr + f_ji * wj_dr; 
+  const float grad_term_PR = f_ij * wi_dr + f_ji * wj_dr;
 
   const float dB_dt_pref_PR = rho_term_PR * grad_term_PR * r_inv;
 
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.B_over_rho_dt[k] += resistive_eta_i * mj * dB_dt_pref_PR * dB[k];
-    pj->mhd_data.B_over_rho_dt[k] -= resistive_eta_j * mi * dB_dt_pref_PR * dB[k];
+    pi->mhd_data.B_over_rho_dt[k] +=
+        resistive_eta_i * mj * dB_dt_pref_PR * dB[k];
+    pj->mhd_data.B_over_rho_dt[k] -=
+        resistive_eta_j * mi * dB_dt_pref_PR * dB[k];
   }
 
-  pi->u_dt -= 0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;  
-  pj->u_dt -= 0.5f * permeability_inv * resistive_eta_j * mi * dB_dt_pref_PR * dB_2;  
+  pi->u_dt -=
+      0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;
+  pj->u_dt -=
+      0.5f * permeability_inv * resistive_eta_j * mi * dB_dt_pref_PR * dB_2;
 
   /* Artificial resistivity */
   const float alpha_AR = 0.5f * (pi->mhd_data.alpha_AR + pj->mhd_data.alpha_AR);
 
-  const float vsig_AR = 0.5f * (pi->mhd_data.Alfven_speed + pj->mhd_data.Alfven_speed);
+  const float vsig_AR =
+      0.5f * (pi->mhd_data.Alfven_speed + pj->mhd_data.Alfven_speed);
 
   const float rhoij = 0.5f * (rhoi + rhoj);
   const float rhoij2 = rhoij * rhoij;
@@ -508,7 +513,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float grad_term = 0.5f * (f_ij * wi_dr + f_ji * wj_dr);
 
   const float art_diff_pref = alpha_AR * vsig_AR * rhoij2_inv * grad_term;
-  
+
   pi->mhd_data.B_over_rho_dt[0] += mj * art_diff_pref * dB[0];
   pi->mhd_data.B_over_rho_dt[1] += mj * art_diff_pref * dB[1];
   pi->mhd_data.B_over_rho_dt[2] += mj * art_diff_pref * dB[2];
@@ -519,7 +524,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   pi->u_dt -= 0.5f * mj * permeability_inv * art_diff_pref * dB_2;
   pj->u_dt -= 0.5f * mi * permeability_inv * art_diff_pref * dB_2;
-    
+
   /* Store AR terms */
   pi->mhd_data.B_over_rho_dt_AR[0] += mj * art_diff_pref * dB[0];
   pi->mhd_data.B_over_rho_dt_AR[1] += mj * art_diff_pref * dB[1];
@@ -556,8 +561,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
     pi->mhd_data.Adv_B_source[i] -= mj * grad_psi * dx[i];
     pj->mhd_data.Adv_B_source[i] += mi * grad_psi * dx[i];
-    pi->mhd_data.Diff_B_source[i] += mj * resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
-    pj->mhd_data.Diff_B_source[i] -= mi * resistive_eta_j * mi * dB_dt_pref_PR * dB[i];
+    pi->mhd_data.Diff_B_source[i] +=
+        mj * resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
+    pj->mhd_data.Diff_B_source[i] -=
+        mi * resistive_eta_j * mi * dB_dt_pref_PR * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
     pj->mhd_data.Diff_B_source[i] -= mi * art_diff_pref * dB[i];
     pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap_i * wi_dr * dB[i];
@@ -647,7 +654,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
   const float dBdr = Bri - Brj;
-  
+
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
   const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
@@ -657,7 +664,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float grad_term_j = over_rho2_j * wj_dr * r_inv;
 
   const float asym_grad_term_i = f_ij * wi_dr * r_inv / rhoi;
-  
+
   const float divB_i = dBdr * asym_grad_term_i;
 
   pi->mhd_data.divB -= mj * divB_i;
@@ -758,20 +765,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float resistive_eta_i = pi->mhd_data.resistive_eta;
 
   const float rho_term_PR = 1.0f / (rhoi * rhoj);
-  const float grad_term_PR = f_ij * wi_dr + f_ji * wj_dr; 
+  const float grad_term_PR = f_ij * wi_dr + f_ji * wj_dr;
 
   const float dB_dt_pref_PR = rho_term_PR * grad_term_PR * r_inv;
 
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.B_over_rho_dt[k] += resistive_eta_i * mj * dB_dt_pref_PR * dB[k];
+    pi->mhd_data.B_over_rho_dt[k] +=
+        resistive_eta_i * mj * dB_dt_pref_PR * dB[k];
   }
 
-  pi->u_dt -= 0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;  
+  pi->u_dt -=
+      0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;
 
   /* Artificial resistivity */
   const float alpha_AR = 0.5f * (pi->mhd_data.alpha_AR + pj->mhd_data.alpha_AR);
 
-  const float vsig_AR = 0.5f * (pi->mhd_data.Alfven_speed + pj->mhd_data.Alfven_speed);
+  const float vsig_AR =
+      0.5f * (pi->mhd_data.Alfven_speed + pj->mhd_data.Alfven_speed);
 
   const float rhoij = 0.5f * (rhoi + rhoj);
   const float rhoij2 = rhoij * rhoij;
@@ -780,13 +790,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float grad_term = 0.5f * (f_ij * wi_dr + f_ji * wj_dr);
 
   const float art_diff_pref = alpha_AR * vsig_AR * rhoij2_inv * grad_term;
- 
+
   pi->mhd_data.B_over_rho_dt[0] += mj * art_diff_pref * dB[0];
   pi->mhd_data.B_over_rho_dt[1] += mj * art_diff_pref * dB[1];
   pi->mhd_data.B_over_rho_dt[2] += mj * art_diff_pref * dB[2];
 
   pi->u_dt -= 0.5f * mj * permeability_inv * art_diff_pref * dB_2;
-    
+
   /* Store AR terms */
   pi->mhd_data.B_over_rho_dt_AR[0] += mj * art_diff_pref * dB[0];
   pi->mhd_data.B_over_rho_dt_AR[1] += mj * art_diff_pref * dB[1];
@@ -811,7 +821,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
     pi->mhd_data.Adv_B_source[i] -= mj * grad_psi * dx[i];
-    pi->mhd_data.Diff_B_source[i] += resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
+    pi->mhd_data.Diff_B_source[i] +=
+        resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
     pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap * wi_dr * dB[i];
   }

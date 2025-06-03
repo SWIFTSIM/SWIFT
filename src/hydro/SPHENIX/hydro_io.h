@@ -235,8 +235,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
 
   list[9] = io_make_output_field_convert_part(
       "ViscosityParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
-      convert_viscosity,
-      "Visosity coefficient (alpha_visc) of the particles");
+      convert_viscosity, "Visosity coefficient (alpha_visc) of the particles");
 
   list[10] = io_make_output_field_convert_part(
       "DiffusionParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,

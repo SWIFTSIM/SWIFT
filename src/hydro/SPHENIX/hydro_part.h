@@ -141,7 +141,7 @@ struct part {
 
     /*! Particle velocity curl. */
     float rot_v[3];
-    
+
     /*! Particle velocity divergence from previous step */
     float div_v_previous_step;
 
@@ -212,7 +212,7 @@ struct part {
     float alpha_visc_max_ngb;
 
   } force;
-  
+
   /*! Additional data used for adaptive softening */
   struct adaptive_softening_part_data adaptive_softening_data;
 

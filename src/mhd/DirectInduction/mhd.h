@@ -291,7 +291,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     const float mu_0) {
 
   p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
-
 }
 
 /**
@@ -386,13 +385,13 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float psi_over_ch = p->mhd_data.psi_over_ch;
 
   const float cp = ch;
-  const float tau_inv = par * cp * h_inv; 
+  const float tau_inv = par * cp * h_inv;
 
   const float hyperbolic_term =
       -hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * div_B;
   const float hyperbolic_divv_term = -hyp_divv * psi_over_ch * div_v;
   const float parabolic_term =
-    - a * a_factor_sound_speed * psi_over_ch * tau_inv;
+      -a * a_factor_sound_speed * psi_over_ch * tau_inv;
   const float Hubble_term = a * a * H * psi_over_ch;
 
   return hyperbolic_term + hyperbolic_divv_term + parabolic_term + Hubble_term;
@@ -440,7 +439,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   }
 
   const float alpha_AR_max = p->mhd_data.art_diff_beta;
-  
+
   p->mhd_data.alpha_AR =
       normB ? fminf(alpha_AR_max, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
 }
