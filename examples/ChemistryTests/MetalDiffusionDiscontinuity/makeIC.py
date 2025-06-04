@@ -117,7 +117,7 @@ def parse_options():
         "--L",
         action="store",
         type=float,
-        default=10.0,
+        default=1.0,
         help="Boxsize in kpc",
     )
 
@@ -208,13 +208,17 @@ print("Number of particles                   : {}".format(N))
 m = m.to(UnitMass).value
 L = L.to(UnitLength).value
 
+#####################
+# Generate the particles
+#####################
+
 #%% Generate particles positions
 
 if random_positions:
     print("Sampling random positions in the box")
     pos = np.random.random([N, dimension]) * L
 else:
-    print("Generating carthesian grid in the box.")
+    print("Generating carthesian grid in the box")
     points = np.linspace(0, L, 2**level, endpoint=False)
 
     if dimension == 1:
@@ -273,8 +277,8 @@ else:
     rho = rho_L  # atom/cc
 
 # Unit conversion (Do we need to change to dimension ?)
-rho = rho * constants.m_p / units.cm ** 3
-rho = rho.to(UnitMass / UnitLength ** 3).value # Code units
+rho = rho * constants.m_p / units.cm ** dimension
+rho = rho.to(UnitMass / UnitLength ** dimension).value # Code units
 
 print("Density of the particles (code unit)   : {}".format(rho))
 
