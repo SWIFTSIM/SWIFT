@@ -1,10 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Aug 21 11:17:37 2024
-
-@author: darwinr
-"""
+################################################################################
+# This file is part of SWIFT.
+# Copyright (c)  2025 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+################################################################################
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -52,6 +65,7 @@ def radial_profile(value, r, r_min=None, r_max=None, n_bins=30):
 def gaussian(r, t, q_0, r_0, kappa, epsilon):
     return q_0*(2*np.pi)**(-1.5) / (epsilon**2 + 2*kappa*t)**1.5 * np.exp(-0.5*((r-r_0)**2)/(epsilon**2 + 2*kappa*t))
 
+
 def hyperbolic_diffusion_solution(x, t, q_0, x_0, tau, kappa):
     """
     Compute the solution u(x, t) of the hyperbolic diffusion equation.
@@ -76,10 +90,13 @@ def hyperbolic_diffusion_solution(x, t, q_0, x_0, tau, kappa):
     # Compute radial term and modified Bessel functions for valid x values
     within_causal_region = np.abs(Delta_x) <= c * t
     radial_term = np.zeros_like(Delta_x)
-    radial_term[within_causal_region] = np.sqrt(c**2 * t**2 - Delta_x[within_causal_region]**2)
+    radial_term[within_causal_region] = np.sqrt(
+        c**2 * t**2 - Delta_x[within_causal_region]**2)
 
-    I0 = modified_bessel(0, (c / (2 * kappa)) * radial_term[within_causal_region])
-    I1 = modified_bessel(1, (c / (2 * kappa)) * radial_term[within_causal_region])
+    I0 = modified_bessel(0, (c / (2 * kappa)) *
+                         radial_term[within_causal_region])
+    I1 = modified_bessel(1, (c / (2 * kappa)) *
+                         radial_term[within_causal_region])
 
     # Compute the solution
     u = np.zeros_like(Delta_x)
@@ -120,7 +137,7 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 
     parser.add_argument("--epsilon",
                         action="store",
                         type=float,
-                        default=0.00,
+                        default=0.02,
                         help="Size of the initial homogeneous sphere seeded with metals")
 
     parser.add_argument("--n_bins",
@@ -170,7 +187,8 @@ figsize = (6.4, 4.8)
 # Read kappa from the parameter file
 data_init = sw.load(files[0])
 try:
-    kappa = float(data_init.metadata.parameters["GEARChemistry:diffusion_coefficient"])
+    kappa = float(
+        data_init.metadata.parameters["GEARChemistry:diffusion_coefficient"])
 except:
     kappa = args.kappa
 
@@ -178,7 +196,7 @@ print(f"Using kappa = {kappa:.3e}")
 
 # Read tau from the parameter file
 try:
-    tau = float(data.metadata.parameters["GEARChemistry:tau"])
+    tau = float(data_init.metadata.parameters["GEARChemistry:tau"])
 except:
     tau = 0.001
 
@@ -229,7 +247,8 @@ for filename in tqdm(files):
     q_0_hyperbolic = popt2[0]
 
     # Compute the analytical solution
-    fe_sol_hyperbolic = hyperbolic_diffusion_solution(r_sol, t, q_0_hyperbolic, r_0, tau, kappa)
+    fe_sol_hyperbolic = hyperbolic_diffusion_solution(
+        r_sol, t, q_0_hyperbolic, r_0, tau, kappa)
 
     ###########
     # Now plot

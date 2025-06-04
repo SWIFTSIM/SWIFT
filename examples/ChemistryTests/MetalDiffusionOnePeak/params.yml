@@ -39,7 +39,7 @@ InitialConditions:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 57Ngbs with the Wendland C2 kernel).
+  resolution_eta:        2 #1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 57Ngbs with the Wendland C2 kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   1
 

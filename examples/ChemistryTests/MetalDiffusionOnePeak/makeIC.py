@@ -65,12 +65,13 @@ def parse_options():
         help="Resolution level: N = (2**l)**3",
     )
 
-    parser.add_argument("--velocity",
-                        action=store_as_array,
-                        nargs=3,
-                        type=float,
-                        default=np.zeros(0),
-                        help="Velocity boost to all particles")
+    parser.add_argument(
+        "--velocity",
+        action=store_as_array,
+        nargs=3,
+        type=float,
+        default=np.zeros(0),
+        help="Velocity boost to all particles")
 
     parser.add_argument(
         "--metal_mass_fraction",
@@ -97,6 +98,14 @@ def parse_options():
     )
 
     parser.add_argument(
+        "--dimension",
+        action="store",
+        type=int,
+        default=3,
+        help="Dimensionality of the problem",
+    )
+
+    parser.add_argument(
         "-o",
         action="store",
         dest="outputfilename",
@@ -105,8 +114,11 @@ def parse_options():
         help="output filename",
     )
 
-    parser.add_argument('--random_positions', default=False, action="store_true",
-                        help="Place the particles randomly in the box.")
+    parser.add_argument(
+        '--random_positions',
+        default=False,
+        action="store_true",
+        help="Place the particles randomly in the box.")
 
     options = parser.parse_args()
     return options
@@ -123,8 +135,9 @@ epsilon = opt.epsilon
 random_positions = opt.random_positions
 level = opt.level
 velocity = opt.velocity
+dimension = opt.dimension
 
-# define standard units
+# Define standard units
 UnitMass_in_cgs = 1.988409870698051e43  # 10^10 M_sun in grams
 UnitLength_in_cgs = 3.0856775814913673e21  # kpc in centimeters
 UnitVelocity_in_cgs = 1e5  # km/s in centimeters per second
@@ -140,7 +153,14 @@ UnitVelocity = UnitVelocity_in_cgs * units.cm / units.s
 np.random.seed(1)
 
 # Number of particles
-N = (2 ** level) ** 3  # number of particles
+if dimension == 1:
+    N = 2**level
+elif dimension == 2:
+    N = (2**level)**2
+elif dimension == 3:
+    N = (2**level)**3
+else:
+    raise ValueError("Only dimensions 1, 2, or 3 are supported.")
 
 # Mean density
 rho = opt.rho  # atom/cc
@@ -153,11 +173,12 @@ M = opt.mass * units.Msun  # in solar mass
 m = M / N
 
 # Size of the box
-L = (M / rho) ** (1 / 3.0)
+L = (M / rho) ** (1.0 / 3.0)
 
 # Gravitational constant
 G = constants.G
 
+print("Dimension                             : {}".format(dimension))
 print("Boxsize                               : {}".format(L.to(units.kpc)))
 print("Number of particles                   : {}".format(N))
 
@@ -170,24 +191,36 @@ rho = rho.to(UnitMass / UnitLength ** 3).value
 # Generate the particles
 #####################
 
+# Generate particles positions
 if random_positions:
-    print("Sampling random positions in the box.")
-    pos = np.random.random([N, 3]) * np.array([L, L, L])
+    print("Sampling random positions in the box")
+    pos = np.random.random([N, dimension]) * L
 else:
-    print("Generating carthesian grid in the box.")
+    print("Generating carthesian grid in the box")
     points = np.linspace(0, L, 2**level, endpoint=False)
 
-    # Create a meshgrid of these points
-    x, y, z = np.meshgrid(points, points, points)
+    if dimension == 1:
+        x = points
+        pos = np.stack([x, np.zeros_like(x), np.zeros_like(x)], axis=1)
 
-    # Reshape the grids into a list of particle positions
-    pos = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
+    elif dimension == 2:
+        x, y = np.meshgrid(points, points, indexing='ij')
+        pos = np.stack(
+            [x.ravel(), y.ravel(), np.zeros_like(x.ravel())], axis=1)
 
+    elif dimension == 3:
+        x, y, z = np.meshgrid(points, points, points, indexing='ij')
+        pos = np.stack([x.ravel(), y.ravel(), z.ravel()], axis=1)
+
+    else:
+        raise ValueError("Only dimensions 1, 2, or 3 are supported.")
+
+# Other properties
 vel = np.tile(velocity, (N, 1))
 mass = np.ones(N) * m
 u = np.zeros(N)
 ids = np.arange(N)
-h = np.ones(N) * 3 * L / N ** (1 / 3.0)
+h = np.ones(N) * dimension * L / N ** (1 / dimension)
 rho = np.ones(N) * rho
 
 print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
@@ -195,14 +228,21 @@ print("Density of the particles (code unit)   : {}".format(rho))
 
 
 #####################
-# Now, take care of the gas particle with the given metallicity
+# Now, take care of the gas particles with the given metallicity
 #####################
 
 metallicity = opt.metal_mass_fraction
 
 # Get the particles in a sphere of radius epsilon centered at the box center
-box_center = np.array([L/2, L/2, L/2])
-r = np.linalg.norm(pos-box_center, axis=1)
+box_center = np.full(dimension, L / 2)
+if dimension == 1:
+    x = pos[:, 0]
+    r = np.abs(x-box_center)
+elif dimension == 2:
+    print("not implemented yet")
+else:
+    r = np.linalg.norm(pos-box_center, axis=1)
+
 I = np.argwhere(r < epsilon).flatten()
 
 print("Number of particles with given initial metallicity: {}".format(len(I)))
@@ -221,7 +261,7 @@ print("{} saved.".format(opt.outputfilename))
 
 # Header
 grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [L, L, L]
+grp.attrs["BoxSize"] = [L] * dimension
 grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
@@ -229,7 +269,7 @@ grp.attrs["Time"] = 0.0
 grp.attrs["NumFileOutputsPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
+grp.attrs["Dimension"] = dimension
 
 
 # Units

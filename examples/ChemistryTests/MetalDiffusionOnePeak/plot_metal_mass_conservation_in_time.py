@@ -1,11 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Sep 27 10:39:41 2024
-
-@author: darwinr
-"""
-
+################################################################################
+# This file is part of SWIFT.
+# Copyright (c)  2025 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+################################################################################
 import argparse
 import os
 import swiftsimio as sw
@@ -13,7 +25,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import unyt
 from tqdm import tqdm
-
 
 
 # %%
@@ -24,7 +35,7 @@ Plot the Fe mass time evolution. This script ensure metal mass conservation in i
     epilog = """
 Examples:
 --------
-python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5 
+python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5
 """
     parser = argparse.ArgumentParser(description=description, epilog=epilog)
 
@@ -46,7 +57,8 @@ python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5
 
     return args, files
 
-#%%
+# %%
+
 
 args, files = parse_option()
 log = args.log
