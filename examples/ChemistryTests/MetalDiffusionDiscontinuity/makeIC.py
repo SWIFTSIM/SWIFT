@@ -149,10 +149,11 @@ def parse_options():
     options = parser.parse_args()
     return options
 
-#%%
+# %%
 ########################################
 # main
 ########################################
+
 
 opt = parse_options()
 
@@ -212,7 +213,7 @@ L = L.to(UnitLength).value
 # Generate the particles
 #####################
 
-#%% Generate particles positions
+# %% Generate particles positions
 
 if random_positions:
     print("Sampling random positions in the box")
@@ -227,7 +228,8 @@ else:
 
     elif dimension == 2:
         x, y = np.meshgrid(points, points, indexing='ij')
-        pos = np.stack([x.ravel(), y.ravel(), np.zeros_like(x.ravel())], axis=1)
+        pos = np.stack(
+            [x.ravel(), y.ravel(), np.zeros_like(x.ravel())], axis=1)
 
     elif dimension == 3:
         x, y, z = np.meshgrid(points, points, points, indexing='ij')
@@ -238,7 +240,7 @@ else:
 
 print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 
-#%% Velocity
+# %% Velocity
 
 # Ensure 'x' exists and is the 0-th axis of pos
 x = pos[:, 0]
@@ -263,10 +265,10 @@ if add_shear:
     # Sum contributions
     vel = vel + v_shear
 
-#%% Add density jump
+# %% Add density jump
 rho_L = opt.rho_L
 rho_R = opt.rho_R
-rho = np.zeros(N) # Init rho
+rho = np.zeros(N)  # Init rho
 
 if rho_L != rho_R:
     I_L = np.argwhere(x < xmid).flatten()
@@ -278,20 +280,20 @@ else:
 
 # Unit conversion (Do we need to change to dimension ?)
 rho = rho * constants.m_p / units.cm ** dimension
-rho = rho.to(UnitMass / UnitLength ** dimension).value # Code units
+rho = rho.to(UnitMass / UnitLength ** dimension).value  # Code units
 
 print("Density of the particles (code unit)   : {}".format(rho))
 
-#%% Init the rest of the variables
+# %% Init the rest of the variables
 mass = np.ones(N) * m
 u = np.zeros(N)
 ids = np.arange(N)
 h = np.ones(N) * dimension * L / N ** (1 / dimension)
 
-#%% Add metallicity
+# %% Add metallicity
 Z_L = opt.Z_L
 Z_R = opt.Z_R
-metal_mass_fraction = np.zeros([N, N_metal]) # Init Fe metal mass fraction
+metal_mass_fraction = np.zeros([N, N_metal])  # Init Fe metal mass fraction
 
 # Get the particles with x >= xmid
 I_R = np.argwhere(x >= xmid).flatten()
@@ -300,7 +302,8 @@ I_L = np.argwhere(x < xmid).flatten()
 metal_mass_fraction[I_L, 0] = Z_L
 metal_mass_fraction[I_R, 0] = Z_R
 
-print(f"Particles with x>= {xmid} are given a Z_Fe = {Z_R} and particle with z < {xmid} are given Z_Fe = {Z_L}")
+print(f"Particles with x>= {xmid} are given a Z_Fe = {
+      Z_R} and particle with z < {xmid} are given Z_Fe = {Z_L}")
 
 #####################
 # Finally write the ICs in the file

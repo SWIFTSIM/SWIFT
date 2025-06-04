@@ -11,7 +11,7 @@ vx=${vx:=0.0}  # Default velocity x-component
 vy=${vy:=0.0}  # Default velocity y-component
 vz=${vz:=0.0}  # Default velocity z-component
 ZR=${ZR=0.0001}  # Metalicity on the right on the discontinuity
-ZL=${ZL=0}       # Metalicity on the left on the discontinuity
+ZL=${ZL=0.000000001}       # Metallicity on the left on the discontinuity
 rhoR=${rhoR=1}   # Density on the right on the discontinuity
 rhoL=${rhoL=1}   # Density on the rightleft on the discontinuity
 with_shear=${with_shear:=0} # Add a velocity shearing effect
@@ -96,9 +96,10 @@ else
 fi
 
 #Do some data analysis to show what's in this box
-python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --x_min 1e-1 --x_max=10
 python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5
-python3 metal_projection.py snap/snapshot_*0.hdf5 --log
+python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 64 --x_min 1e-1 --x_max=1
+python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 64 --x_min 1e-1 --x_max=1 --log
+python3 metal_projection.py snap/snapshot_*0.hdf5 --log --vmin -11 --vmax -6
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."

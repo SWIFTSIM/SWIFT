@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.    # The starting time of the simulation (in internal units).
-  time_end:          1 #0.1    # The end time of the simulation (in internal units).
+  time_end:          0.05  # The end time of the simulation (in internal units).
   dt_min:            1e-15 # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
 
@@ -19,7 +19,7 @@ Snapshots:
   basename:   snapshot      # Common part of the name of output files
   time_first: 0.            # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   # delta_time: 1e-5        # Time difference between consecutive outputs (in internal units)
-  delta_time: 2.5e-3          # Time difference between consecutive outputs (in internal units)
+  delta_time: 1e-3          # Time difference between consecutive outputs (in internal units)
 
 Scheduler:
   cell_extra_gparts: 100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
@@ -42,12 +42,11 @@ InitialConditions:
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 57Ngbs with the Wendland C2 kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  h_max:                 5
   minimal_temperature:   1
 
 GEARChemistry:
   initial_metallicity: -1
-  diffusion_coefficient : 2.516849e-01   # (Optional, GEAR (MF) diffusion only) Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). Default: 1
+  diffusion_coefficient : 2.516849e-1   # (Optional, GEAR (MF) diffusion only) Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). Default: 1
   diffusion_mode:  Isotropic_constant    # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
 
   hll_riemann_solver_epsilon: 0.5        # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.5
@@ -56,7 +55,7 @@ GEARChemistry:
   relaxation_time_mode:  Constant        # Relaxation time mode. Constant = constant relaxation time ; Soundspeed = relaxation time based on gas soundspeed.
   tau: 1e-1                              # (Optional, hyperbolic diffusion only) Relaxation time for the Isotropic_constant diffusion mode.
   riemann_solver: HLL_hyperbolic_H17     # (Hyperbolic diffusion only) Riemann solver to use: HLL, HLL_parabolic_H17 or HLL_hyperbolic_H17
-  C_CFL_chemistry: 0.8                   # (Optional) Courant-Friedrich-Levy condition for time integration of the supertimestep/hyperbolic diffusion.
+  C_CFL_chemistry: 0.1                   # (Optional) Courant-Friedrich-Levy condition for time integration of the supertimestep/hyperbolic diffusion.
 
   # Supertimestepping parameters
   use_supertimestepping: 0               # (Optional, parabolic diffusion only) Do we want to use supertimestepping? Supertimestepping can accelerate simulations. (Default: 0)
