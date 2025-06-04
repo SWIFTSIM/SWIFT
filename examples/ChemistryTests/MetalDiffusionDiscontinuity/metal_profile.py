@@ -29,6 +29,8 @@ from tqdm import tqdm
 import swiftsimio as sw
 
 # %%
+
+
 def x_profile(value, x, x_min=None, x_max=None, n_bins=30):
     if x_min is None:
         x_min = x.min()
@@ -49,18 +51,27 @@ def x_profile(value, x, x_min=None, x_max=None, n_bins=30):
     return x_centers, values
 
 # Error function diffusion profile
+
+
 def diffusion_erf_profile(x, t, qR, qL, kappa, x0):
     return 0.5 * (qR + qL) + 0.5 * (qR - qL) * erf((x - x0) / np.sqrt(4 * kappa * t))
 
 # %%
+
+
 def parse_option():
-    parser = argparse.ArgumentParser(description="Plot the Fe 1D x-density profile")
+    parser = argparse.ArgumentParser(
+        description="Plot the Fe 1D x-density profile")
 
     parser.add_argument("files", nargs="+", type=str, help="File name(s).")
-    parser.add_argument("--n_bins", type=int, default=40, help="Number of bins")
-    parser.add_argument("--x_min", type=float, default=-1.0, help="Minimum x [kpc]")
-    parser.add_argument("--x_max", type=float, default=1.0, help="Maximum x [kpc]")
-    parser.add_argument("--log", default=False, action="store_true", help="Log scale")
+    parser.add_argument("--n_bins", type=int, default=40,
+                        help="Number of bins")
+    parser.add_argument("--x_min", type=float, default=-
+                        1.0, help="Minimum x [kpc]")
+    parser.add_argument("--x_max", type=float, default=1.0,
+                        help="Maximum x [kpc]")
+    parser.add_argument("--log", default=False,
+                        action="store_true", help="Log scale")
 
     args = parser.parse_args()
 
@@ -69,6 +80,7 @@ def parse_option():
             raise FileNotFoundError(f"File not found: {f}")
 
     return args, args.files
+
 
 # %%
 args, files = parse_option()
@@ -89,14 +101,16 @@ x_init = nb_init.pos[:, 0]
 x_domain = x_init.max() - x_init.min()
 x_mid = 0.5 * (x_init.min() + x_init.max())
 
-qR = np.max(fe_init[x_init >= x_mid])
-qL = np.max(fe_init[x_init < x_mid])
+# Get the values. Here we assume the the min is left and max is right.
+qR = np.max(fe_init)
+qL = np.min(fe_init)
 print(f"Initial qL = {qL:.3e}, qR = {qR:.3e}")
 
 # Chargement de kappa depuis le premier fichier également
 data_init = sw.load(files[0])
 try:
-    kappa = float(data_init.metadata.parameters["GEARChemistry:diffusion_coefficient"])
+    kappa = float(
+        data_init.metadata.parameters["GEARChemistry:diffusion_coefficient"])
 except:
     kappa = 2.516846e-03  # Default fallback
 print(f"Using kappa = {kappa:.3e}")
@@ -144,5 +158,6 @@ for filename in tqdm(files):
     if log:
         ax.set_yscale("log")
 
-    plt.savefig(output_name + ".png", format='png', bbox_inches='tight', dpi=300)
+    plt.savefig(output_name + ".png", format='png',
+                bbox_inches='tight', dpi=300)
     plt.close()
