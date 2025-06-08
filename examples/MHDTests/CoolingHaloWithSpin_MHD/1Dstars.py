@@ -19,7 +19,7 @@ GYR_IN_CGS = 3.1536e16  # gigayear
 # First set unit velocity and then the circular velocity parameter for the isothermal potential
 const_unit_velocity_in_cgs = 1.0e5  # kms^-1
 
-h_dim = 0.704 #0.681  # 0.67777  # hubble parameter
+h_dim = 0.704  # 0.681  # 0.67777  # hubble parameter
 H_0_cgs = 100.0 * h_dim * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # From this we can find the virial radius, the radius within which the average density of the halo is
@@ -80,21 +80,25 @@ n_gas = data.metadata.n_stars
 m = data.stars.masses
 coords = data.stars.coordinates
 coords_center = coords - data.metadata.boxsize / 2
-radius = np.linalg.norm(coords_center,axis=1)
+radius = np.linalg.norm(coords_center, axis=1)
 velocities = data.stars.velocities
 
 # calculate specific angular momentum j(r)
-rotation_axis = np.array([0,0,1])
-e_phi = np.cross(rotation_axis[None,:],coords_center)
-e_phi = e_phi/np.linalg.norm(e_phi,axis=1)[:,None]
-v_phi = velocities[:,0]*e_phi[:,0]+velocities[:,1]*e_phi[:,1]+velocities[:,2]*e_phi[:,2]
+rotation_axis = np.array([0, 0, 1])
+e_phi = np.cross(rotation_axis[None, :], coords_center)
+e_phi = e_phi / np.linalg.norm(e_phi, axis=1)[:, None]
+v_phi = (
+    velocities[:, 0] * e_phi[:, 0]
+    + velocities[:, 1] * e_phi[:, 1]
+    + velocities[:, 2] * e_phi[:, 2]
+)
 
 r_units = 1e3 * PARSEC_IN_CGS * unyt.cm
-v_units = (1e5 * unyt.cm/unyt.s)
+v_units = 1e5 * unyt.cm / unyt.s
 
 v_phi = v_phi.to(v_units).value
 
-radius = np.linalg.norm(coords_center,axis=1)
+radius = np.linalg.norm(coords_center, axis=1)
 radius = radius.to(r_units).value
 
 # Plot maps
@@ -106,8 +110,8 @@ fig, axs = plt.subplots(ny, nx, figsize=((10 * nx, 5 * ny)))
 fig.subplots_adjust(hspace=0.1)
 
 # plot velocity
-axs[0].scatter(radius, v_phi, s=0.1, color='black', label='particles')
-#axs[0].set_yscale("log")
+axs[0].scatter(radius, v_phi, s=0.1, color="black", label="particles")
+# axs[0].set_yscale("log")
 
 # plot mean, and 1 sigma interval
 num_bins = 100
@@ -115,17 +119,21 @@ bins = np.linspace(np.min(radius), np.max(radius), num_bins + 1)
 bin_centers = 0.5 * (bins[1:] + bins[:-1])
 
 # Compute binned statistics
-mean_vals, _, _ = binned_statistic(radius, v_phi, statistic='mean', bins=bins)
-std_vals, _, _ = binned_statistic(radius, v_phi, statistic='std', bins=bins)
+mean_vals, _, _ = binned_statistic(radius, v_phi, statistic="mean", bins=bins)
+std_vals, _, _ = binned_statistic(radius, v_phi, statistic="std", bins=bins)
 
 # Plot binned mean and ±2σ
-axs[0].plot(bin_centers, mean_vals, color='red', label='Mean $v_\\phi$')
-axs[0].plot(bin_centers, mean_vals + 2 * std_vals, color='red', linestyle=':', label='+2σ')
-axs[0].plot(bin_centers, mean_vals - 2 * std_vals, color='red', linestyle=':', label='-2σ')
+axs[0].plot(bin_centers, mean_vals, color="red", label="Mean $v_\\phi$")
+axs[0].plot(
+    bin_centers, mean_vals + 2 * std_vals, color="red", linestyle=":", label="+2σ"
+)
+axs[0].plot(
+    bin_centers, mean_vals - 2 * std_vals, color="red", linestyle=":", label="-2σ"
+)
 
 # limits
 axs[0].set_ylim(0, 350)
-axs[0].set_yticks([50,100,150,200,250,300,350])
+axs[0].set_yticks([50, 100, 150, 200, 250, 300, 350])
 
 axs[0].set_xlim(1e-2, 2e1)
 
@@ -137,7 +145,7 @@ axs[0].set_xlabel(r"$r$ $[kpc]$")
 axs[0].legend()
 
 # vertical lines
-axs[0].axvline(x=(r_200_cgs*unyt.cm).to(r_units),color='gray',label=r'$R_{200}$')
+axs[0].axvline(x=(r_200_cgs * unyt.cm).to(r_units), color="gray", label=r"$R_{200}$")
 
 Ninfo = 1
 text_common_args = dict(
@@ -145,10 +153,7 @@ text_common_args = dict(
 )
 
 axs[Ninfo].text(
-    0.5,
-    0.8,
-    r"Cooling Halo with Spin, IC quality check.",
-    **text_common_args,
+    0.5, 0.8, r"Cooling Halo with Spin, IC quality check.", **text_common_args
 )
 axs[Ninfo].text(0.5, 0.7, r"SWIFT %s" % git.decode("utf-8"), **text_common_args)
 axs[Ninfo].text(0.5, 0.6, r"Branch %s" % gitBranch.decode("utf-8"), **text_common_args)

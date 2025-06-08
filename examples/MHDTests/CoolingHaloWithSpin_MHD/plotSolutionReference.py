@@ -204,7 +204,7 @@ fig, ax = plt.subplots(ny, nx, sharey=True, figsize=(5 * nx, 5 * ny))
 a00 = ax[0, 0].contourf(
     np.log10(nH_map.value),
     # np.log10(density_map.value),
-    cmap="plasma", 
+    cmap="plasma",
     extend="both",
     levels=np.linspace(-4, 2, 100),
     # levels=np.linspace(-7, -1, 100),
@@ -213,7 +213,7 @@ a00 = ax[0, 0].contourf(
 a01 = ax[0, 1].contourf(
     np.log10(nH_map_xy.value).T,
     # np.log10(density_map_xy.value).T,
-    cmap="plasma",  
+    cmap="plasma",
     extend="both",
     levels=np.linspace(-4, 2, 100),
     # levels=np.linspace(-7, -1, 100),
@@ -236,13 +236,13 @@ a01 = ax[0, 1].contourf(
 # )
 a10 = ax[1, 0].contourf(
     np.maximum(np.log10(normB_map.value), -6),
-    cmap="viridis", 
+    cmap="viridis",
     extend="both",
     levels=np.linspace(-2, 2, 100),
 )
 a11 = ax[1, 1].contourf(
     np.maximum(np.log10(normB_map_xy.value), -6).T,
-    cmap="viridis", 
+    cmap="viridis",
     extend="both",
     levels=np.linspace(-2, 2, 100),
 )
@@ -515,7 +515,9 @@ ax[yinfo, 1].text(
 ax[yinfo, 1].text(
     0.5, 0.1, "Physical resistivity $\eta$: $%.2f$ " % (eta), **text_common_args
 )
-ax[yinfo, 1].text(0.5, 0.0, "Number of particles $N_p$: $%.0f$ " % (Np), **text_common_args)
+ax[yinfo, 1].text(
+    0.5, 0.0, "Number of particles $N_p$: $%.0f$ " % (Np), **text_common_args
+)
 ax[yinfo, 1].axis("off")
 
 fig.tight_layout()
