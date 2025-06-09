@@ -278,6 +278,8 @@ void space_regrid(struct space *s, int verbose) {
     for (int k = 0; k < s->nr_cells; k++) {
       if (lock_init(&s->cells_top[k].hydro.lock) != 0)
         error("Failed to init spinlock for hydro.");
+      if (lock_init(&s->cells_top[k].hydro.extra_sort_lock) != 0)
+        error("Failed to init spinlock for hydro extra sort.");
       if (lock_init(&s->cells_top[k].grav.plock) != 0)
         error("Failed to init spinlock for gravity.");
       if (lock_init(&s->cells_top[k].grav.mlock) != 0)
@@ -309,6 +311,8 @@ void space_regrid(struct space *s, int verbose) {
           c->width[1] = s->width[1];
           c->width[2] = s->width[2];
           c->dmin = dmin;
+          c->h_min_allowed = c->dmin * 0.5 * (1. / kernel_gamma);
+          c->h_max_allowed = c->dmin * (1. / kernel_gamma);
           c->depth = 0;
           c->split = 0;
           c->hydro.count = 0;

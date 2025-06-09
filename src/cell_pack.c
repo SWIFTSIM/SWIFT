@@ -311,6 +311,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->width[1] = c->width[1] / 2;
       temp->width[2] = c->width[2] / 2;
       temp->dmin = c->dmin / 2;
+      temp->h_min_allowed = temp->dmin * 0.5 * (1. / kernel_gamma);
+      temp->h_max_allowed = temp->dmin * (1. / kernel_gamma);
       if (k & 4) temp->loc[0] += temp->width[0];
       if (k & 2) temp->loc[1] += temp->width[1];
       if (k & 1) temp->loc[2] += temp->width[2];
@@ -436,7 +438,7 @@ int cell_unpack_grid_extra(const enum grid_construction_level *info,
  * @brief Pack the cell information about time-step sizes and displacements
  * of a cell hierarchy.
  *
- * @param c The #cells to pack.
+ * @param c The #cell's to pack.
  * @param pcells the packed cell structures to pack into.
  *
  * @return The number of cells that were packed.
@@ -482,7 +484,7 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
  * @brief Unpack the cell information about time-step sizes and displacements
  * of a cell hierarchy.
  *
- * @param c The #cells to unpack into.
+ * @param c The #cell's to unpack into.
  * @param pcells the packed cell structures to unpack from.
  *
  * @return The number of cells that were packed.

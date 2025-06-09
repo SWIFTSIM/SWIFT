@@ -557,7 +557,7 @@ nb3.set_tpe("stars_1")  # position expected by swift
 nb4 = nb.select("gas")
 
 if hydro == 0:
-    nb4.set_tpe("bndry")
+    nb4.set_tpe("stars_1")
 
 nb = nb1 + nb2 + nb3 + nb4
 

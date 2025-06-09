@@ -22,7 +22,7 @@ Note that, for standard SPH hydro schemes, especially at low resolution, the
 standard issues that arise at discontinuities in material and density lead the
 SPH particles to settle at slightly different densities near discontinuties.
 For more info and to explore ways to resolve these issues, check out e.g.
-Sandnes et al. (2024), Ruiz-Bonilla el al. (2022), and Kegerreis et al. (2019).
+Sandnes et al. (2025), Ruiz-Bonilla el al. (2022), and Kegerreis et al. (2019).
 The overall profile of the settled SPH planet should still align with the input.
 """
 

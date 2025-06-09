@@ -477,6 +477,14 @@ struct cell {
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
 
+  /*! When walking the tree and running loops at different level, this is
+   * the minimal h that can be processed at this level */
+  float h_min_allowed;
+
+  /*! When walking the tree and running loops at different level, this is
+   * the maximal h that can be processed at this level */
+  float h_max_allowed;
+
   /*! ID of the previous owner, e.g. runner. */
   short int owner;
 
@@ -485,9 +493,6 @@ struct cell {
 
   /*! ID of the node this cell lives on. */
   int nodeID;
-
-  /*! Number of tasks that are associated with this cell. */
-  short int nr_tasks;
 
   /*! The depth of this cell in the tree. */
   char depth;
@@ -504,6 +509,9 @@ struct cell {
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
+
+  /*! Number of tasks that are associated with this cell. */
+  short int nr_tasks;
 
   /*! The list of tasks that have been executed on this cell */
   char tasks_executed[task_type_count];
@@ -587,6 +595,7 @@ void cell_clean(struct cell *c);
 void cell_check_part_drift_point(struct cell *c, void *data);
 void cell_check_gpart_drift_point(struct cell *c, void *data);
 void cell_check_spart_drift_point(struct cell *c, void *data);
+void cell_check_bpart_drift_point(struct cell *c, void *data);
 void cell_check_sink_drift_point(struct cell *c, void *data);
 void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
@@ -801,6 +810,36 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subpair_hydro_task(const struct cell *c) {
+
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  return ((kernel_gamma * c->hydro.h_max_active + c->hydro.dx_max_part_old) <
+          0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-pair hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subpair2_hydro_task(const struct cell *c) {
+
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  return ((kernel_gamma * c->hydro.h_max + c->hydro.dx_max_part) <
+          0.5f * c->dmin);
+}
+
+/**
  * @brief Can a sub-self hydro task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -814,6 +853,32 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-self hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subself_hydro_task(const struct cell *c) {
+
+  /* Is the cell not smaller than the smoothing length? */
+  return (kernel_gamma * c->hydro.h_max_active < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subself2_hydro_task(const struct cell *c) {
+
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split && (kernel_gamma * c->hydro.h_max < 0.5f * c->dmin);
+}
+
+/**
  * @brief Can a sub-pair star task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -821,18 +886,29 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
  * @param cj The #cell with hydro parts.
  */
 __attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_pair_stars_task(const struct cell *ci,
-                                    const struct cell *cj) {
+cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
-  return ci->split && cj->split &&
-         ((kernel_gamma * ci->stars.h_max_old + ci->stars.dx_max_part_old) <
-          0.5f * ci->dmin) &&
-         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
-          0.5f * cj->dmin);
+  return c->split && ((kernel_gamma * c->stars.h_max_old +
+                       c->stars.dx_max_part_old) < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-pair stars task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subpair_stars_task(const struct cell *c) {
+
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  return ((kernel_gamma * c->stars.h_max_active + c->stars.dx_max_part_old) <
+          0.5f * c->dmin);
 }
 
 /**
@@ -847,6 +923,19 @@ cell_can_recurse_in_self_stars_task(const struct cell *c) {
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin) &&
          (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-self stars task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subself_stars_task(const struct cell *c) {
+
+  /* Is the cell not smaller than the smoothing length? */
+  return (kernel_gamma * c->stars.h_max_active < 0.5f * c->dmin);
 }
 
 /**
@@ -1026,7 +1115,7 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 
 /**
  * @brief Have gas particles in a pair of cells moved too much, invalidating the
- * completeness criterion for #ci?
+ * completeness criterion for ci?
  *
  * This function returns true the grid completeness criterion from the
  * perspective of ci (the #cell for which the grid will be constructed) is no
@@ -1040,7 +1129,7 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
  * constructed.
  * @param cj The second #cell. This is the neighbouring cell whose particles are
  * used as ghost particles.
- * @return Whether completeness of #ci is invalidated by the pair (#ci, #cj).
+ * @return Whether completeness of ci is invalidated by the pair (ci, cj).
  */
 __attribute__((always_inline, nonnull)) INLINE static int
 cell_grid_pair_invalidates_completeness(struct cell *ci, struct cell *cj) {
@@ -1550,6 +1639,147 @@ __attribute__((always_inline)) INLINE void cell_assign_cell_index(
     c->cellID = child_id;
   }
 
+#endif
+}
+
+/**
+ * @brief Set the depth_h field of a #part.
+ *
+ * @param p The #part.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_part_h_depth(
+    struct part *p, const struct cell *leaf_cell) {
+
+  const float h = p->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    p->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      p->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
+}
+
+/**
+ * @brief Set the depth_h field of a #sink.
+ *
+ * @param sp The #sink.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_sink_h_depth(
+    struct sink *sp, const struct cell *leaf_cell) {
+
+  const float h = sp->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    sp->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      sp->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
+}
+
+/**
+ * @brief Set the depth_h field of a #spart.
+ *
+ * @param sp The #spart.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_spart_h_depth(
+    struct spart *sp, const struct cell *leaf_cell) {
+
+  const float h = sp->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    sp->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      sp->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
+}
+
+/**
+ * @brief Set the depth_h field of a #bpart.
+ *
+ * @param bp The #bpart.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_bpart_h_depth(
+    struct bpart *bp, const struct cell *leaf_cell) {
+
+  const float h = bp->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    bp->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      bp->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
 #endif
 }
 
