@@ -710,6 +710,33 @@ __attribute__((always_inline)) INLINE static int gpart_is_ignorable(
 }
 
 /**
+ * @brief Returns whether a foreign #gpart is of the 'attachable' kind.
+ */
+__attribute__((always_inline)) INLINE static int gpart_foreign_is_attachable(
+    const struct gpart_fof_foreign *gp) {
+
+  return current_fof_attach_type & (1 << (gp->type + 1));
+}
+
+/**
+ * @brief Returns whether a foreign #gpart is of the 'linkable' kind.
+ */
+__attribute__((always_inline)) INLINE static int gpart_foreign_is_linkable(
+    const struct gpart_fof_foreign *gp) {
+
+  return current_fof_linking_type & (1 << (gp->type + 1));
+}
+
+/**
+ * @brief Returns whether a foreign #gpart is to be ignored by FOF.
+ */
+__attribute__((always_inline)) INLINE static int gpart_foreign_is_ignorable(
+    const struct gpart_fof_foreign *gp) {
+
+  return current_fof_ignore_type & (1 << (gp->type + 1));
+}
+
+/**
  * @brief Finds the local root ID of the group a particle exists in.
  *
  * We follow the group_index array until reaching the root of the group.
@@ -1252,7 +1279,7 @@ void fof_search_pair_cells_foreign(
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
   const struct gpart *gparts_i = ci->grav.parts;
-  const struct gpart *gparts_j = cj->grav.parts;
+  const struct gpart_fof_foreign *gparts_j = cj->grav.parts_fof_foreign;
 
   /* Get local pointers */
   const size_t *restrict group_index = props->group_index;
@@ -1278,7 +1305,10 @@ void fof_search_pair_cells_foreign(
         "cells.");
 
   if (!ci_local) {
-    error("Cell ci, is not local.");
+    error("Cell ci is not local!");
+  }
+  if (cj_local) {
+    error("Cell cj is local!");
   }
 #endif
 
@@ -1324,16 +1354,16 @@ void fof_search_pair_cells_foreign(
 
     for (size_t j = 0; j < count_j; j++) {
 
-      const struct gpart *pj = &gparts_j[j];
+      const struct gpart_fof_foreign *pj = &gparts_j[j];
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
 
       /* Check whether we ignore this particle type altogether */
-      if (gpart_is_ignorable(pj)) continue;
+      if (gpart_foreign_is_ignorable(pj)) continue;
 
       /* Get the nature of the linking */
-      const int is_link_j = gpart_is_linkable(pj);
+      const int is_link_j = gpart_foreign_is_linkable(pj);
 
       /* Only consider linkable<->linkable pairs */
       if (!(is_link_i && is_link_j)) continue;
@@ -1703,16 +1733,19 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
  * @param nr_gparts The number of #gpart in the local #space structure.
  * @param ci The first #cell in which to perform FOF.
  * @param cj The second #cell in which to perform FOF.
- * @param ci_local Is the #cell ci on the local MPI rank?
- * @param cj_local Is the #cell cj on the local MPI rank?
  */
-void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
-                           const double l_x2, const int periodic,
-                           const struct gpart *const space_gparts,
-                           const size_t nr_gparts,
-                           const struct cell *restrict ci,
-                           const struct cell *restrict cj, const int ci_local,
-                           const int cj_local) {
+void fof_attach_pair_cells_both_local(const struct fof_props *props,
+                                      const double dim[3], const double l_x2,
+                                      const int periodic,
+                                      const struct gpart *const space_gparts,
+                                      const size_t nr_gparts,
+                                      const struct cell *restrict ci,
+                                      const struct cell *restrict cj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != engine_rank) error("ci not local!");
+  if (cj->nodeID != engine_rank) error("cj not local!");
+#endif
 
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
@@ -1829,18 +1862,15 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
            * See whether it is closer and if so re-link.
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
-          if (cj_local) {
+          const float dist = sqrtf(r2);
 
-            const float dist = sqrtf(r2);
+          if (dist < offset_dist_j[j]) {
 
-            if (dist < offset_dist_j[j]) {
+            /* Store the new min dist */
+            offset_dist_j[j] = dist;
 
-              /* Store the new min dist */
-              offset_dist_j[j] = dist;
-
-              /* Store the current best root */
-              pj->fof_data.group_id = pi->fof_data.group_id;
-            }
+            /* Store the current best root */
+            pj->fof_data.group_id = pi->fof_data.group_id;
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1849,19 +1879,320 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
            * See whether it is closer and if so re-link.
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
-          if (ci_local) {
+          const float dist = sqrtf(r2);
 
-            const float dist = sqrtf(r2);
+          if (dist < offset_dist_i[i]) {
 
-            if (dist < offset_dist_i[i]) {
+            /* Store the new min dist */
+            offset_dist_i[i] = dist;
 
-              /* Store the new min dist */
-              offset_dist_i[i] = dist;
-
-              /* Store the current best root */
-              pi->fof_data.group_id = pj->fof_data.group_id;
-            }
+            /* Store the current best root */
+            pi->fof_data.group_id = pj->fof_data.group_id;
           }
+
+        } else {
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Fundamental logic error!");
+#endif
+        }
+      }
+    }
+  }
+}
+
+void fof_attach_pair_cells_ci_local(const struct fof_props *props,
+                                    const double dim[3], const double l_x2,
+                                    const int periodic,
+                                    const struct gpart *const space_gparts,
+                                    const size_t nr_gparts,
+                                    const struct cell *restrict ci,
+                                    const struct cell *restrict cj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != engine_rank) error("ci not local!");
+  if (cj->nodeID == engine_rank) error("cj local!");
+#endif
+
+  const size_t count_i = ci->grav.count;
+  const size_t count_j = cj->grav.count;
+  struct gpart *gparts_i = ci->grav.parts;
+  struct gpart_fof_foreign *gparts_j = cj->grav.parts_fof_foreign;
+
+  /* Distances of particles in the global list */
+  float *const offset_dist_i =
+      props->distance_to_link + (ptrdiff_t)(gparts_i - space_gparts);
+
+  /* Account for boundary conditions.*/
+  double shift[3] = {0.0, 0.0, 0.0};
+
+  /* Get the relative distance between the pairs, wrapping. */
+  double diff[3];
+  for (int k = 0; k < 3; k++) {
+    diff[k] = cj->loc[k] - ci->loc[k];
+    if (periodic && diff[k] < -dim[k] * 0.5)
+      shift[k] = dim[k];
+    else if (periodic && diff[k] > dim[k] * 0.5)
+      shift[k] = -dim[k];
+    else
+      shift[k] = 0.0;
+    diff[k] += shift[k];
+  }
+
+  /* Loop over particles and find which particles belong in the same group. */
+  for (size_t i = 0; i < count_i; i++) {
+
+    struct gpart *restrict pi = &gparts_i[i];
+
+    /* Ignore inhibited particles */
+    if (pi->time_bin >= time_bin_inhibited) continue;
+
+    /* Check whether we ignore this particle type altogether */
+    if (gpart_is_ignorable(pi)) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (pi->ti_drift != ti_current)
+      error("Running FOF on an un-drifted particle!");
+#endif
+
+    const double pix = pi->x[0] - shift[0];
+    const double piy = pi->x[1] - shift[1];
+    const double piz = pi->x[2] - shift[2];
+
+    /* Get the nature of the linking */
+    const int is_link_i = gpart_is_linkable(pi);
+    const int is_attach_i = gpart_is_attachable(pi);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (is_link_i && is_attach_i)
+      error("Particle cannot be both linkable and attachable!");
+#endif
+
+    for (size_t j = 0; j < count_j; j++) {
+
+      struct gpart_fof_foreign *restrict pj = &gparts_j[j];
+
+      /* Ignore inhibited particles */
+      if (pj->time_bin >= time_bin_inhibited) continue;
+
+      /* Check whether we ignore this particle type altogether */
+      if (gpart_foreign_is_ignorable(pj)) continue;
+
+      /* Get the nature of the linking */
+      const int is_link_j = gpart_foreign_is_linkable(pj);
+      const int is_attach_j = gpart_foreign_is_attachable(pj);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (is_link_j && is_attach_j)
+        error("Particle cannot be both linkable and attachable!");
+#endif
+
+      /* We only want link<->attach pairs */
+      if (is_attach_i && is_attach_j) continue;
+      if (is_link_i && is_link_j) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (pj->ti_drift != ti_current)
+        error("Running FOF on an un-drifted particle!");
+#endif
+
+      const double pjx = pj->x[0];
+      const double pjy = pj->x[1];
+      const double pjz = pj->x[2];
+
+      /* Compute pairwise distance (periodic BCs were accounted
+       for by the shift vector) */
+      float dx[3], r2 = 0.0f;
+      dx[0] = pix - pjx;
+      dx[1] = piy - pjy;
+      dx[2] = piz - pjz;
+
+      for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
+
+      /* Hit or miss? */
+      if (r2 < l_x2) {
+
+        /* Now that we are within the linking length,
+         * decide what to do based on linking types */
+
+        if (is_link_i && is_link_j) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Fundamental logic error!");
+#endif
+
+        } else if (is_link_i && is_attach_j) {
+
+          /* Nothing to do here. The reverse action will be done
+             in the converse call on the other node. */
+
+        } else if (is_link_j && is_attach_i) {
+
+          /* We got a linkable and an attachable.
+           * See whether it is closer and if so re-link.
+           * This is safe to do as the attachables are never roots and
+           * nothing is attached to them */
+          const float dist = sqrtf(r2);
+
+          if (dist < offset_dist_i[i]) {
+
+            /* Store the new min dist */
+            offset_dist_i[i] = dist;
+
+            /* Store the current best root */
+            pi->fof_data.group_id = pj->fof_data.group_id;
+          }
+        } else {
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Fundamental logic error!");
+#endif
+        }
+      }
+    }
+  }
+}
+
+void fof_attach_pair_cells_cj_local(const struct fof_props *props,
+                                    const double dim[3], const double l_x2,
+                                    const int periodic,
+                                    const struct gpart *const space_gparts,
+                                    const size_t nr_gparts,
+                                    const struct cell *restrict ci,
+                                    const struct cell *restrict cj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID == engine_rank) error("ci local!");
+  if (cj->nodeID != engine_rank) error("cj not local!");
+#endif
+
+  const size_t count_i = ci->grav.count;
+  const size_t count_j = cj->grav.count;
+  struct gpart_fof_foreign *gparts_i = ci->grav.parts_fof_foreign;
+  struct gpart *gparts_j = cj->grav.parts;
+
+  /* Distances of particles in the global list */
+  float *const offset_dist_j =
+      props->distance_to_link + (ptrdiff_t)(gparts_j - space_gparts);
+
+  /* Account for boundary conditions.*/
+  double shift[3] = {0.0, 0.0, 0.0};
+
+  /* Get the relative distance between the pairs, wrapping. */
+  double diff[3];
+  for (int k = 0; k < 3; k++) {
+    diff[k] = cj->loc[k] - ci->loc[k];
+    if (periodic && diff[k] < -dim[k] * 0.5)
+      shift[k] = dim[k];
+    else if (periodic && diff[k] > dim[k] * 0.5)
+      shift[k] = -dim[k];
+    else
+      shift[k] = 0.0;
+    diff[k] += shift[k];
+  }
+
+  /* Loop over particles and find which particles belong in the same group. */
+  for (size_t i = 0; i < count_i; i++) {
+
+    struct gpart_fof_foreign *restrict pi = &gparts_i[i];
+
+    /* Ignore inhibited particles */
+    if (pi->time_bin >= time_bin_inhibited) continue;
+
+    /* Check whether we ignore this particle type altogether */
+    if (gpart_foreign_is_ignorable(pi)) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (pi->ti_drift != ti_current)
+      error("Running FOF on an un-drifted particle!");
+#endif
+
+    const double pix = pi->x[0] - shift[0];
+    const double piy = pi->x[1] - shift[1];
+    const double piz = pi->x[2] - shift[2];
+
+    /* Get the nature of the linking */
+    const int is_link_i = gpart_foreign_is_linkable(pi);
+    const int is_attach_i = gpart_foreign_is_attachable(pi);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (is_link_i && is_attach_i)
+      error("Particle cannot be both linkable and attachable!");
+#endif
+
+    for (size_t j = 0; j < count_j; j++) {
+
+      struct gpart *restrict pj = &gparts_j[j];
+
+      /* Ignore inhibited particles */
+      if (pj->time_bin >= time_bin_inhibited) continue;
+
+      /* Check whether we ignore this particle type altogether */
+      if (gpart_is_ignorable(pj)) continue;
+
+      /* Get the nature of the linking */
+      const int is_link_j = gpart_is_linkable(pj);
+      const int is_attach_j = gpart_is_attachable(pj);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (is_link_j && is_attach_j)
+        error("Particle cannot be both linkable and attachable!");
+#endif
+
+      /* We only want link<->attach pairs */
+      if (is_attach_i && is_attach_j) continue;
+      if (is_link_i && is_link_j) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (pj->ti_drift != ti_current)
+        error("Running FOF on an un-drifted particle!");
+#endif
+
+      const double pjx = pj->x[0];
+      const double pjy = pj->x[1];
+      const double pjz = pj->x[2];
+
+      /* Compute pairwise distance (periodic BCs were accounted
+       for by the shift vector) */
+      float dx[3], r2 = 0.0f;
+      dx[0] = pix - pjx;
+      dx[1] = piy - pjy;
+      dx[2] = piz - pjz;
+
+      for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
+
+      /* Hit or miss? */
+      if (r2 < l_x2) {
+
+        /* Now that we are within the linking length,
+         * decide what to do based on linking types */
+
+        if (is_link_i && is_link_j) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Fundamental logic error!");
+#endif
+
+        } else if (is_link_i && is_attach_j) {
+
+          /* We got a linkable and an attachable.
+           * See whether it is closer and if so re-link.
+           * This is safe to do as the attachables are never roots and
+           * nothing is attached to them */
+
+          const float dist = sqrtf(r2);
+
+          if (dist < offset_dist_j[j]) {
+
+            /* Store the new min dist */
+            offset_dist_j[j] = dist;
+
+            /* Store the current best root */
+            pj->fof_data.group_id = pi->fof_data.group_id;
+          }
+
+        } else if (is_link_j && is_attach_i) {
+
+          /* Nothing to do here. The reverse action will be done
+             in the converse call on the other node. */
 
         } else {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1934,8 +2265,20 @@ void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
   } else {
     /* Perform FOF attach between pairs of cells that are within the linking
      * length and not the same cell. */
-    fof_attach_pair_cells(props, dim, attach_r2, periodic, space_gparts,
-                          nr_gparts, ci, cj, ci_local, cj_local);
+    if (ci_local && cj_local) {
+
+      fof_attach_pair_cells_both_local(props, dim, attach_r2, periodic,
+                                       space_gparts, nr_gparts, ci, cj);
+    } else if (ci_local && !cj_local) {
+      fof_attach_pair_cells_ci_local(props, dim, attach_r2, periodic,
+                                     space_gparts, nr_gparts, ci, cj);
+
+    } else if (!ci_local && cj_local) {
+      fof_attach_pair_cells_cj_local(props, dim, attach_r2, periodic,
+                                     space_gparts, nr_gparts, ci, cj);
+    } else {
+      error("Error in the recursion logic");
+    }
   }
 }
 

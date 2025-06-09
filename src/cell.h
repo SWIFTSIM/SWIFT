@@ -568,6 +568,9 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcell);
 int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcell);
 void cell_pack_timebin(const struct cell *const c, timebin_t *const t);
 void cell_unpack_timebin(struct cell *const c, timebin_t *const t);
+void cell_pack_gpart(const struct cell *const c, struct gpart_foreign *const b);
+void cell_pack_fof_gpart(const struct cell *const c,
+                         struct gpart_fof_foreign *const b);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
@@ -576,12 +579,14 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
 int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
-int cell_link_gparts(struct cell *c, struct gpart *gparts);
+int cell_link_gparts(struct cell *c, struct gpart_foreign *gparts);
 int cell_link_sparts(struct cell *c, struct spart *sparts);
 int cell_link_bparts(struct cell *c, struct bpart *bparts);
 int cell_link_sinks(struct cell *c, struct sink *sinks);
 int cell_link_foreign_parts(struct cell *c, struct part *parts);
-int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts);
+int cell_link_foreign_gparts(struct cell *c, struct gpart_foreign *gparts);
+int cell_link_foreign_fof_gparts(struct cell *c,
+                                 struct gpart_fof_foreign *gparts);
 void cell_unlink_foreign_particles(struct cell *c);
 int cell_count_parts_for_tasks(const struct cell *c);
 int cell_count_gparts_for_tasks(const struct cell *c);
