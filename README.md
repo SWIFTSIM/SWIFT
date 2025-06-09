@@ -55,7 +55,7 @@ experimentation with various values is highly encouraged. Each problem will
 likely require different values and the sensitivity to the details of the
 physical model is something left to the users to explore.
 
-Acknowledgment & Citation
+Acknowledgement & Citation
 -------------------------
 
 The SWIFT code was last described in this paper:
@@ -66,7 +66,7 @@ their results.
 
 In order to keep track of usage and measure the impact of the software, we
 kindly ask users publishing scientific results using SWIFT to add the following
-sentence to the acknowledgment section of their papers:
+sentence to the acknowledgement section of their papers:
 
 "The research in this paper made use of the SWIFT open-source
 simulation code (http://www.swiftsim.com, Schaller et al. 2018)
