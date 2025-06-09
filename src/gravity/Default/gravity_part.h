@@ -168,5 +168,4 @@ struct gpart_fof_foreign {
 #endif
 };
 
-
 #endif /* SWIFT_DEFAULT_GRAVITY_PART_H */
