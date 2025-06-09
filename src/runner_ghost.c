@@ -99,7 +99,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Running value of the maximal smoothing length */
   float h_max = c->stars.h_max;
-  float h_max_active = c->stars.h_max_active;
+  float h_max_active = 0.f;
 
   TIMER_TIC;
 
@@ -297,6 +297,13 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
                                                rt_props, phys_const, us);
             }
 
+            if (feedback_is_active(sp, e) || with_rt) {
+
+              /* Check if h_max has increased */
+              h_max = max(h_max, sp->h);
+              h_max_active = max(h_max_active, sp->h);
+            }
+
             /* Ok, we are done with this particle */
             continue;
           }
@@ -491,38 +498,26 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               error("Density task should have been run.");
 #endif
 
-            /* Self-interaction? */
-            if (l->t->type == task_type_self)
-              runner_doself_subset_branch_stars_density(r, finger, sparts, sid,
-                                                        scount);
+            /* Self interaction? */
+            if (l->t->type == task_type_self) {
+              runner_dosub_self_subset_stars_density(r, finger, sparts, sid,
+                                                     scount, 1);
+            }
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dopair_subset_branch_stars_density(
-                    r, finger, sparts, sid, scount, l->t->cj);
+                runner_dosub_pair_subset_stars_density(r, finger, sparts, sid,
+                                                       scount, l->t->cj, 1);
               else
-                runner_dopair_subset_branch_stars_density(
-                    r, finger, sparts, sid, scount, l->t->ci);
-            }
-
-            /* Otherwise, sub-self interaction? */
-            else if (l->t->type == task_type_sub_self)
-              runner_dosub_subset_stars_density(r, finger, sparts, sid, scount,
-                                                NULL, 1);
-
-            /* Otherwise, sub-pair interaction? */
-            else if (l->t->type == task_type_sub_pair) {
-
-              /* Left or right? */
-              if (l->t->ci == finger)
-                runner_dosub_subset_stars_density(r, finger, sparts, sid,
-                                                  scount, l->t->cj, 1);
-              else
-                runner_dosub_subset_stars_density(r, finger, sparts, sid,
-                                                  scount, l->t->ci, 1);
+                runner_dosub_pair_subset_stars_density(r, finger, sparts, sid,
+                                                       scount, l->t->ci, 1);
+            } else {
+#ifdef SWIFT_DEBUG_CHECKS
+              error("Invalid sub-type!");
+#endif
             }
           }
         }
@@ -561,7 +556,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
     if (h > c->stars.h_max)
       error("Particle has h larger than h_max (id=%lld)", sp->id);
-    if (spart_is_active(sp, e) && h > c->stars.h_max_active)
+
+    if (spart_is_active(sp, e) && (feedback_is_active(sp, e) || with_rt) &&
+        (h > c->stars.h_max_active))
       error("Active particle has h larger than h_max_active (id=%lld)", sp->id);
   }
 #endif
@@ -602,7 +599,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
   /* Running value of the maximal smoothing length */
   float h_max = c->black_holes.h_max;
-  float h_max_active = c->black_holes.h_max_active;
+  float h_max_active = 0.f;
 
   TIMER_TIC;
 
@@ -720,6 +717,10 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
               ((bp->h <= black_holes_h_min) && (f > 0.f))) {
 
             black_holes_reset_feedback(bp);
+
+            /* Check if h_max has increased */
+            h_max = max(h_max, bp->h);
+            h_max_active = max(h_max_active, bp->h);
 
             /* Ok, we are done with this particle */
             continue;
@@ -843,29 +844,13 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 #endif
 
             /* Self-interaction? */
-            if (l->t->type == task_type_self)
-              runner_doself_subset_branch_bh_density(r, finger, bparts, sid,
-                                                     bcount);
+            if (l->t->type == task_type_self) {
+              runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
+                                             NULL, 1);
+            }
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
-
-              /* Left or right? */
-              if (l->t->ci == finger)
-                runner_dopair_subset_branch_bh_density(r, finger, bparts, sid,
-                                                       bcount, l->t->cj);
-              else
-                runner_dopair_subset_branch_bh_density(r, finger, bparts, sid,
-                                                       bcount, l->t->ci);
-            }
-
-            /* Otherwise, sub-self interaction? */
-            else if (l->t->type == task_type_sub_self)
-              runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
-                                             NULL, 1);
-
-            /* Otherwise, sub-pair interaction? */
-            else if (l->t->type == task_type_sub_pair) {
 
               /* Left or right? */
               if (l->t->ci == finger)
@@ -874,6 +859,10 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
               else
                 runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
                                                l->t->ci, 1);
+            } else {
+#ifdef SWIFT_DEBUG_CHECKS
+              error("Invalid sub-type!");
+#endif
             }
           }
         }
@@ -1127,7 +1116,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Running value of the maximal smoothing length */
   float h_max = c->hydro.h_max;
-  float h_max_active = c->hydro.h_max_active;
+  float h_max_active = 0.f;
 
   TIMER_TIC;
 
@@ -1328,6 +1317,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
               rt_reset_part(p, cosmo);
             }
+
+            /* Check if h_max has increased */
+            h_max = max(h_max, p->h);
+            h_max_active = max(h_max_active, p->h);
 
             /* Ok, we are done with this particle */
             continue;
@@ -1537,36 +1530,24 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
             /* Self-interaction? */
-            if (l->t->type == task_type_self)
-              runner_doself_subset_branch_density(r, finger, parts, pid, count);
+            if (l->t->type == task_type_self) {
+              runner_dosub_self_subset_density(r, finger, parts, pid, count, 1);
+            }
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dopair_subset_branch_density(r, finger, parts, pid,
-                                                    count, l->t->cj);
+                runner_dosub_pair_subset_density(r, finger, parts, pid, count,
+                                                 l->t->cj, 1);
               else
-                runner_dopair_subset_branch_density(r, finger, parts, pid,
-                                                    count, l->t->ci);
-            }
-
-            /* Otherwise, sub-self interaction? */
-            else if (l->t->type == task_type_sub_self)
-              runner_dosub_subset_density(r, finger, parts, pid, count, NULL,
-                                          1);
-
-            /* Otherwise, sub-pair interaction? */
-            else if (l->t->type == task_type_sub_pair) {
-
-              /* Left or right? */
-              if (l->t->ci == finger)
-                runner_dosub_subset_density(r, finger, parts, pid, count,
-                                            l->t->cj, 1);
-              else
-                runner_dosub_subset_density(r, finger, parts, pid, count,
-                                            l->t->ci, 1);
+                runner_dosub_pair_subset_density(r, finger, parts, pid, count,
+                                                 l->t->ci, 1);
+            } else {
+#ifdef SWIFT_DEBUG_CHECKS
+              error("Invalid sub-type!");
+#endif
             }
           }
         }
@@ -1752,7 +1733,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
   /* Running value of the maximal smoothing length */
   float h_max = c->sinks.h_max;
-  float h_max_active = c->sinks.h_max_active;
+  float h_max_active = 0.f;
 
   TIMER_TIC;
 
@@ -1890,6 +1871,10 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
             if (((sp->h >= sinks_h_max) && (f < 0.f)) ||
                 ((sp->h <= sinks_h_min) && (f > 0.f))) {
 
+              /* Check if h_max has increased */
+              h_max = max(h_max, sp->h);
+              h_max_active = max(h_max_active, sp->h);
+
               /* Ok, we are done with this particle */
               continue;
             }
@@ -2008,29 +1993,13 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 #endif
 
               /* Self-interaction? */
-              if (l->t->type == task_type_self)
-                runner_doself_subset_branch_sinks_density(r, finger, sinks, sid,
-                                                          scount);
+              if (l->t->type == task_type_self) {
+                runner_dosub_subset_sinks_density(r, finger, sinks, sid, scount,
+                                                  NULL, 1);
+              }
 
               /* Otherwise, pair interaction? */
               else if (l->t->type == task_type_pair) {
-
-                /* Left or right? */
-                if (l->t->ci == finger)
-                  runner_dopair_subset_branch_sinks_density(
-                      r, finger, sinks, sid, scount, l->t->cj);
-                else
-                  runner_dopair_subset_branch_sinks_density(
-                      r, finger, sinks, sid, scount, l->t->ci);
-              }
-
-              /* Otherwise, sub-self interaction? */
-              else if (l->t->type == task_type_sub_self)
-                runner_dosub_subset_sinks_density(r, finger, sinks, sid, scount,
-                                                  NULL, 1);
-
-              /* Otherwise, sub-pair interaction? */
-              else if (l->t->type == task_type_sub_pair) {
 
                 /* Left or right? */
                 if (l->t->ci == finger)
@@ -2039,6 +2008,10 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
                 else
                   runner_dosub_subset_sinks_density(r, finger, sinks, sid,
                                                     scount, l->t->ci, 1);
+              } else {
+#ifdef SWIFT_DEBUG_CHECKS
+                error("Invalid sub-type!");
+#endif
               }
             }
           }
