@@ -37,9 +37,11 @@ struct pressure_floor_props;
 struct space;
 struct phys_const;
 
-void cooling_update(const struct cosmology *cosmo,
+void cooling_update(const struct phys_const *phys_const,
+                    const struct cosmology *cosmo,
                     const struct pressure_floor_props *pressure_floor,
-                    struct cooling_function_data *cooling, struct space *s);
+                    struct cooling_function_data *cooling, struct space *s,
+                    const double time);
 
 void cooling_cool_part(const struct phys_const *phys_const,
                        const struct unit_system *us,
@@ -58,6 +60,14 @@ float cooling_timestep(const struct cooling_function_data *cooling,
                        const struct hydro_props *hydro_props,
                        const struct part *p, const struct xpart *xp);
 
+double cooling_get_electron_density(const struct phys_const *phys_const,
+                                    const struct hydro_props *hydro_props,
+                                    const struct unit_system *us,
+                                    const struct cosmology *cosmo,
+                                    const struct cooling_function_data *cooling,
+                                    const struct part *p,
+                                    const struct xpart *xp);
+
 double cooling_get_electron_pressure(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
@@ -72,6 +82,27 @@ double cooling_get_ycompton(const struct phys_const *phys_const,
                             const struct part *p, const struct xpart *xp);
 
 void cooling_first_init_part(
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us,
+    const struct hydro_props *hydro_props,
+    const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct part *restrict p, struct xpart *restrict xp);
+
+/**
+ * @brief Sets the cooling properties of the (x-)particles to a valid start
+ * state. The function requires the density to be defined and thus must
+ * be called after its computation.
+ *
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
+ * @param hydro_props The #hydro_props.
+ * @param cosmo The #cosmology.
+ * @param cooling The properties of the cooling function.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+void cooling_post_init_part(
     const struct phys_const *restrict phys_const,
     const struct unit_system *restrict us,
     const struct hydro_props *hydro_props,
@@ -146,8 +177,5 @@ void cooling_init_backend(struct swift_params *parameter_file,
 void cooling_print_backend(const struct cooling_function_data *cooling);
 
 void cooling_clean(struct cooling_function_data *data);
-
-/*! Stub defined to let the BH model compile */
-#define colibre_cooling_N_elementtypes 1
 
 #endif /* SWIFT_COOLING_EAGLE_H */

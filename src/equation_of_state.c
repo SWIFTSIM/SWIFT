@@ -35,6 +35,9 @@
 struct eos_parameters eos = {.Til_iron.rho_0 = -1.f};
 #elif defined(EOS_ISOTHERMAL_GAS)
 struct eos_parameters eos = {.isothermal_internal_energy = -1.};
+#elif defined(EOS_BAROTROPIC_GAS)
+struct eos_parameters eos = {.vacuum_sound_speed2 = -1.,
+                             .inverse_core_density = -1.};
 #else
 struct eos_parameters eos;
 #endif

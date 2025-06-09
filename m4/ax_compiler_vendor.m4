@@ -71,6 +71,7 @@ AC_DEFUN([AX_COMPILER_VENDOR], [dnl
 
 	vendors="
 		intel:		__ICC,__ECC,__INTEL_COMPILER
+                oneapi:         __INTEL_LLVM_COMPILER
 		ibm:		__xlc__,__xlC__,__IBMC__,__IBMCPP__,__ibmxl__
 		pathscale:	__PATHCC__,__PATHSCALE__
 		clang:		__clang__

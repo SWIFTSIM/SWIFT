@@ -19,6 +19,7 @@
 #ifndef SWIFT_NONE_MHD_IO_H
 #define SWIFT_NONE_MHD_IO_H
 
+#include "io_properties.h"
 #include "statistics.h"
 
 /**
@@ -53,6 +54,9 @@ INLINE static int mhd_write_particles(const struct part* parts,
  * @brief Writes the current model of MHD to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-INLINE static void mhd_write_flavour(hid_t h_grpsph) {}
+INLINE static void mhd_write_flavour(hid_t h_grpsph) {
+
+  io_write_attribute_s(h_grpsph, "MHD Flavour", "No MHD");
+}
 
 #endif /* SWIFT_NONE_MHD_IO_H */

@@ -147,7 +147,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "The metallicity threshold for the first stars is in mass fraction. "
           "It cannot be lower than 0.");
     }
-    message("Reading the stellar model for the first stars");
+    if (engine_rank == 0) {
+      message("Reading the stellar model for the first stars");
+    }
     parser_get_param_string(params, "GEARFeedback:yields_table_first_stars",
                             fp->stellar_model_first_stars.yields_table);
     stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,

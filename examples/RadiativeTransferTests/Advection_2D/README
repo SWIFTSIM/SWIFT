@@ -16,8 +16,14 @@ There are no stars to act as sources. Also make sure that you choose your
 photon frequencies in a way that doesn't interact with gas!
 
 The ICs are created to be compatible with GEAR_RT. Recommended configuration:
+
+GEAR_RT (with gizmo-mfv solver):
     --with-rt=GEAR_4 --with-rt-riemann-solver=GLF --with-hydro-dimension=2 --with-hydro=gizmo-mfv \
      --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
+
+GEAR_RT (with sphenix SPH solver):
+    --with-rt=GEAR_3 --with-rt-riemann-solver=GLF --with-hydro-dimension=2 --with-hydro=sphenix  
+     --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
 
 SPHM1RT:
     --with-rt=SPHM1RT_4 --with-hydro-dimension=2 --with-stars=basic   --with-sundials=$SUNDIALS_ROOT

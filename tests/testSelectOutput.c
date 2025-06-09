@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
 
   /* write output file */
   message("Writing output.");
-  write_output_single(&e, &us, &us);
+  write_output_single(&e, &us, &us, /*fof=*/0);
 
   /* Clean-up */
   message("Cleaning memory.");

@@ -1,0 +1,69 @@
+MetaData:
+  run_name: cosmo_RT_advection-2D
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98841586e+33 # 1 M_Sol
+  UnitLength_in_cgs:   3.08567758e21 # kpc in cm
+  UnitVelocity_in_cgs: 1.e5 # km/s
+  UnitCurrent_in_cgs:  1.
+  UnitTemp_in_cgs:     1. # K
+
+# Parameters governing the time integration
+TimeIntegration:
+  max_nr_rt_subcycles: 1
+  dt_min:     1.e-17  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1.e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            output_high_redshift # Common part of the name of output files
+  output_list_on:      1
+  output_list:         snapshot_times_high_redshift
+  scale_factor_first:  0.00990099  # Time of the first output (in internal units)
+  delta_time:          1.06
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  scale_factor_first:  0.00990099
+  delta_time:          1.06   # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.6      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   10.      # Kelvin
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./advection_2D.hdf5  # The file to read
+  periodic:   1                     # periodic ICs
+
+Restarts:
+  delta_hours:        72        # (Optional) decimal hours between dumps of restart files.
+
+GEARRT:
+  f_reduce_c: 1.                                  # reduce the speed of light for the RT solver by multiplying c with this factor
+  f_limit_cooling_time: 0.0                       # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
+  CFL_condition: 0.99                             # CFL condition for RT, independent of hydro
+  photon_groups_Hz: [1., 2., 3., 4.]              # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
+  stellar_luminosity_model: const                 # Which model to use to determine the stellar luminosities.
+  const_stellar_luminosities_LSol: [1e-32, 1e-32, 1e-32, 1e-32]   # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
+  hydrogen_mass_fraction:  0.76                   # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
+  stellar_spectrum_type: 0                        # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
+  stellar_spectrum_const_max_frequency_Hz: 1.e17  # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
+  set_initial_ionization_mass_fractions: 1        # (Optional) manually overwrite initial mass fraction of each species (using the values you set below)
+  mass_fraction_HI: 0.76                          # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HI mass fractions to this value
+  mass_fraction_HII: 0.                           # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HII mass fractions to this value
+  mass_fraction_HeI: 0.24                         # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeI mass fractions to this value
+  mass_fraction_HeII: 0.                          # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeII mass fractions to this value
+  mass_fraction_HeIII: 0.                         # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeIII mass fractions to this value
+  skip_thermochemistry: 1                         # Skip thermochemsitry.
+
+Cosmology:        # Planck13 (EAGLE flavour)
+  a_begin:        0.00990099  # z~100
+  a_end:          0.01408451  # z~70
+  h:              0.6777
+  Omega_cdm:      0.2587481
+  Omega_lambda:   0.693
+  Omega_b:        0.0482519

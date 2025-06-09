@@ -83,14 +83,15 @@ GrackleCooling:
   max_steps: 1000
   convergence_limit: 1e-2
   thermal_time_myr: 0
+  maximal_density_Hpcm3: -1 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
 
 
 GEARStarFormation:
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
-  maximal_temperature:  1e10         # Upper limit to the temperature of a star forming particle
+  maximal_temperature_K:     1e10   # Upper limit to the temperature of a star forming particle
+  density_threshold_Hpcm3:   10     # Density threshold in Hydrogen atoms/cm3
   n_stars_per_particle: 1
   min_mass_frac: 0.5
-  density_threshold:   1.67e-23   # Density threashold in g/cm3
 
 
 GEARPressureFloor:

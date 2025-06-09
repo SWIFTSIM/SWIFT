@@ -54,8 +54,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 void write_output_serial(struct engine* e,
                          const struct unit_system* internal_units,
                          const struct unit_system* snapshot_units,
-                         const int mpi_rank, const int mpi_size, MPI_Comm comm,
-                         MPI_Info info);
+                         const int fof, const int mpi_rank, const int mpi_size,
+                         MPI_Comm comm, MPI_Info info);
 
 #endif /* HAVE_HDF5 && WITH_MPI && !HAVE_PARALLEL_HDF5 */
 

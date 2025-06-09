@@ -31,6 +31,9 @@
 #include "engine.h"
 #include "timers.h"
 
+/*! The size of the sorting stack used at the leaf level */
+const int sort_stack_size = 10;
+
 /**
  * @brief Sorts again all the stars in a given cell hierarchy.
  *
@@ -65,16 +68,15 @@ void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer) {
  * @param N The number of entries.
  */
 void runner_do_sort_ascending(struct sort_entry *sort, int N) {
-  const int stack_size = 10;
 
   struct {
     short int lo, hi;
-  } qstack[stack_size];
+  } qstack[sort_stack_size];
   int qpos, i, j, lo, hi, imin;
   struct sort_entry temp;
   float pivot;
 
-  if (N >= (1LL << stack_size)) {
+  if (N >= (1LL << sort_stack_size)) {
     error(
         "The stack size for sorting is too small."
         "Either increase it or reduce the number of parts per cell.");
@@ -199,7 +201,8 @@ RUNNER_CHECK_SORTS(stars)
  *      for recursive calls.
  */
 void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
-                          int cleanup, int rt_requests_sort, int clock) {
+                          const int cleanup, const int lock,
+                          const int rt_requests_sort, const int clock) {
 
   struct sort_entry *fingers[8];
   const int count = c->hydro.count;
@@ -213,6 +216,9 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   if (c->hydro.super == NULL) error("Task called above the super level!!!");
 #endif
 
+  /* Should we lock the cell once more? */
+  if (lock) lock_lock(&c->hydro.extra_sort_lock);
+
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->hydro.do_sort;
   if (cleanup) {
@@ -221,8 +227,14 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
     flags &= ~c->hydro.sorted;
   }
   if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort) &&
-      !cell_get_flag(c, cell_flag_do_rt_sub_sort))
+      !cell_get_flag(c, cell_flag_do_rt_sub_sort)) {
+
+    /* Unlock before returning */
+    if (lock && lock_unlock(&c->hydro.extra_sort_lock) != 0)
+      error("Impossible to unlock the cell!");
+
     return;
+  }
 
   /* Check that the particles have been moved to the current time */
   if (flags && !cell_are_part_drifted(c, r->e)) {
@@ -266,7 +278,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
               r, c->progeny[k], flags,
               cleanup && (c->progeny[k]->hydro.dx_max_sort_old >
                           space_maxreldx * c->progeny[k]->dmin),
-              rt_requests_sort, 0);
+              lock, rt_requests_sort, /*clock=*/0);
           dx_max_sort = max(dx_max_sort, c->progeny[k]->hydro.dx_max_sort);
           dx_max_sort_old =
               max(dx_max_sort_old, c->progeny[k]->hydro.dx_max_sort_old);
@@ -426,6 +438,10 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   cell_clear_flag(c, cell_flag_do_rt_sub_sort);
   cell_clear_flag(c, cell_flag_rt_requests_sort);
   c->hydro.requires_sorts = 0;
+
+  /* Make sure we unlock if necessary */
+  if (lock && lock_unlock(&c->hydro.extra_sort_lock) != 0)
+    error("Impossible to unlock the cell!");
 
   if (clock) TIMER_TOC(timer_dosort);
 }
@@ -682,8 +698,8 @@ void runner_do_all_hydro_sort(struct runner *r, struct cell *c) {
   if (c->hydro.super == c) {
 
     /* Sort everything */
-    runner_do_hydro_sort(r, c, 0x1FFF, /*cleanup=*/0, /*rt_requests_sort=*/0,
-                         /*timer=*/0);
+    runner_do_hydro_sort(r, c, 0x1FFF, /*cleanup=*/0, /* lock=*/0,
+                         /*rt_requests_sort=*/0, /*timer=*/0);
 
   } else {
 

@@ -31,13 +31,12 @@ import swiftsimio
 from matplotlib import pyplot as plt
 from matplotlib.colors import SymLogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import argparse
 
 # Parameters users should/may tweak
 
 # plot all groups and all photon quantities
 plot_all_data = True
-# snapshot basename
-snapshot_base = "output"
 # fancy up the plots a bit?
 fancy = True
 
@@ -49,15 +48,20 @@ projection_kwargs = {"resolution": 512, "parallel": True}
 
 # -----------------------------------------------------------------------
 
-
+mpl.rcParams["text.usetex"] = True
 # Read in cmdline arg: Are we plotting only one snapshot, or all?
 plot_all = False
-try:
-    snapnr = int(sys.argv[1])
-except IndexError:
-    plot_all = True
 
-mpl.rcParams["text.usetex"] = True
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-n", "--snapshot-number", help="Number of snapshot to plot", type=int
+    )
+    parser.add_argument("-b", "--basename", help="Snapshot basename", default="output")
+
+    args = parser.parse_args()
+    return args
 
 
 def get_snapshot_list(snapshot_basename="output"):
@@ -75,6 +79,9 @@ def get_snapshot_list(snapshot_basename="output"):
                 snaplist.append(f)
 
         snaplist = sorted(snaplist)
+        if len(snaplist) == 0:
+            print(f"No snapshots with base '{snapshot_basename}' found")
+            sys.exit(1)
 
     else:
         fname = snapshot_basename + "_" + str(snapnr).zfill(4) + ".hdf5"
@@ -224,7 +231,16 @@ def plot_ionization(filename):
 
 
 if __name__ == "__main__":
+    # Get command line arguments
+    args = parse_args()
 
+    if args.snapshot_number:
+        plot_all = False
+        snapnr = int(args.snapshot_numbeR)
+    else:
+        plot_all = True
+
+    snapshot_base = args.basename
     snaplist = get_snapshot_list(snapshot_base)
 
     for f in snaplist:

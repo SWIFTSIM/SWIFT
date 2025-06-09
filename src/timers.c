@@ -61,6 +61,7 @@ const char* timers_names[timer_count] = {
     "doself_bh_swallow",
     "doself_bh_feedback",
     "doself_grav_pp",
+    "doself_sink_density",
     "doself_sink_swallow",
     "dopair_density",
     "dopair_gradient",
@@ -73,6 +74,7 @@ const char* timers_names[timer_count] = {
     "dopair_bh_feedback",
     "dopair_grav_mm",
     "dopair_grav_pp",
+    "dopair_sink_density",
     "dopair_sink_swallow",
     "dograv_external",
     "dograv_down",
@@ -89,6 +91,7 @@ const char* timers_names[timer_count] = {
     "dosub_self_bh_swallow",
     "dosub_self_bh_feedback",
     "dosub_self_grav",
+    "dosub_self_sink_density",
     "dosub_self_sink_swallow",
     "dosub_pair_density",
     "dosub_pair_gradient",
@@ -100,6 +103,7 @@ const char* timers_names[timer_count] = {
     "dosub_pair_bh_swallow",
     "dosub_pair_bh_feedback",
     "dosub_pair_grav",
+    "dosub_pair_sink_density",
     "dosub_pair_sink_swallow",
     "doself_subset",
     "dopair_subset",
@@ -109,6 +113,7 @@ const char* timers_names[timer_count] = {
     "do_extra_ghost",
     "do_stars_ghost",
     "do_black_holes_ghost",
+    "do_sinks_ghost",
     "dorecv_part",
     "dorecv_gpart",
     "dorecv_spart",
@@ -142,6 +147,8 @@ const char* timers_names[timer_count] = {
     "rt_tchem",
     "rt_advance_cell_time",
     "rt_collect_times",
+    "do_sync",
+    "neutrino_weighting",
 };
 
 /* File to store the timers */

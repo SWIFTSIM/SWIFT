@@ -26,6 +26,7 @@
  *        with added Gasoline physics (Wadsley+ 2017) (particle definition)
  */
 
+#include "adaptive_softening_struct.h"
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
@@ -213,6 +214,9 @@ struct part {
     } force;
   };
 
+  /*! Additional data used for adaptive softening */
+  struct adaptive_softening_part_data adaptive_softening_data;
+
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
 
@@ -242,6 +246,9 @@ struct part {
 
   /*! Time-step length */
   timebin_t time_bin;
+
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
 
   /*! Time-step limiter information */
   struct timestep_limiter_data limiter_data;

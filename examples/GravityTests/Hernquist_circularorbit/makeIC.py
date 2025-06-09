@@ -16,9 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ################################################################################
-from galpy.potential import NFWPotential
-from galpy.orbit import Orbit
-from galpy.util import bovy_conversion
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy import units
@@ -27,7 +24,7 @@ import h5py as h5
 C = 8.0
 M_200 = 2.0
 N_PARTICLES = 3
-print("Initial conditions written to 'test_nfw.hdf5'")
+print("Initial conditions written to 'circularorbitshernquist.hdf5'")
 
 pos = np.zeros((3, 3))
 pos[0, 2] = 50.0

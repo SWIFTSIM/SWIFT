@@ -1,4 +1,4 @@
-#!bash
+#!/bin/bash
 
 if [ ! -e particleSplitting.hdf5 ]
 then
