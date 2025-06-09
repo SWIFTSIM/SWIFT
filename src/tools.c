@@ -661,6 +661,7 @@ void self_all_gradient(struct runner *r, struct cell *ci) {
   struct part *pi, *pj;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
