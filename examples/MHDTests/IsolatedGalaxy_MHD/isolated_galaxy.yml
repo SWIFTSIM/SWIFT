@@ -24,7 +24,7 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:   output      # Common part of the name of output files
+  basename:   IsolatedGalaxy      # Common part of the name of output files
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time:  0.01023    # Time difference between consecutive outputs (in internal units)  0.001023 TU = 1 Myr
   compression: 4           # Compress the snapshots
