@@ -629,7 +629,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   /* Count the number of mesh interactions if using the mesh. */
   if (periodic && s->with_zoom_region) {
     runner_count_mesh_interactions_zoom(r, ci, top);
-  } else if (periodic && !s->with_zoom_region) {
+  } else if (periodic) {
     runner_count_mesh_interactions_uniform(r, ci, top);
   }
 #endif
