@@ -196,7 +196,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_rt_active(
-    struct cell *c, const struct engine *e) {
+    const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->rt.ti_rt_end_min < e->ti_current_subcycle) {
@@ -301,6 +301,9 @@ __attribute__((always_inline)) INLINE static int cell_is_active_sinks(
  *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
+ * @param with_star_formation Are we running with standard star formation?
+ * @param with_star_formation_sink Are we running with star formation from
+ * sinks?
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_need_activating_stars(

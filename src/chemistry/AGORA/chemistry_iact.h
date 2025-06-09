@@ -103,7 +103,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 }
 
 /**
- * @brief do metal diffusion computation in the <FORCE LOOP>
+ * @brief do metal diffusion computation in the force loop
  * (symmetric version)
  *
  * @param r2 Comoving square distance between the two particles.
@@ -122,13 +122,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
  *
  */
 __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, const float a, const float H,
-    const float time_base, const integertime_t t_current,
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology) {}
 
 /**
- * @brief do metal diffusion computation in the <FORCE LOOP>
+ * @brief do metal diffusion computation in the force loop
  * (nonsymmetric version)
  *
  * @param r2 Comoving square distance between the two particles.
@@ -147,9 +147,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
  *
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, const float a, const float H,
-    const float time_base, const integertime_t t_current,
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology) {}
 
 #endif /* SWIFT_AGORA_CHEMISTRY_IACT_H */

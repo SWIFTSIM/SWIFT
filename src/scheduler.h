@@ -54,10 +54,6 @@
 #define scheduler_flag_none 0
 #define scheduler_flag_steal (1 << 1)
 
-#ifdef SWIFT_DEBUG_CHECKS
-extern int activate_by_unskip;
-#endif
-
 /* Data of a scheduler. */
 struct scheduler {
   /* Scheduler flags. */
@@ -159,12 +155,6 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
     int ind = atomic_inc(&s->active_count);
     s->tid_active[ind] = t - s->tasks;
   }
-#ifdef SWIFT_DEBUG_CHECKS
-  if (activate_by_unskip)
-    t->activated_by_unskip = 1;
-  else
-    t->activated_by_marktask = 1;
-#endif
 }
 
 /**
@@ -311,7 +301,7 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
 struct task *scheduler_done(struct scheduler *s, struct task *t);
 struct task *scheduler_unlock(struct scheduler *s, struct task *t);
 void scheduler_addunlock(struct scheduler *s, struct task *ta, struct task *tb);
-void scheduler_set_unlocks(struct scheduler *s);
+void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp);
 void scheduler_dump_queue(struct scheduler *s);
 void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
 void scheduler_clean(struct scheduler *s);

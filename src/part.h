@@ -80,6 +80,11 @@ struct threadpool;
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#elif defined(REMIX_SPH)
+#include "./hydro/REMIX/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
+#define EXTRA_HYDRO_LOOP_TYPE2
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_part.h"
 #define hydro_need_extra_init_loop 0
@@ -132,6 +137,8 @@ struct threadpool;
 /* Import the right sink particle definition */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink_part.h"
+#elif defined(SINK_BASIC)
+#include "./sink/Basic/sink_part.h"
 #elif defined(SINK_GEAR)
 #include "./sink/GEAR/sink_part.h"
 #else
@@ -171,6 +178,7 @@ extern MPI_Datatype xpart_mpi_type;
 extern MPI_Datatype gpart_mpi_type;
 extern MPI_Datatype spart_mpi_type;
 extern MPI_Datatype bpart_mpi_type;
+extern MPI_Datatype sink_mpi_type;
 
 void part_create_mpi_types(void);
 void part_free_mpi_types(void);

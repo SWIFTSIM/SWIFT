@@ -210,6 +210,9 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c,
                                       int timer) {
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
@@ -230,6 +233,9 @@ void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c,
  */
 void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
                                       struct cell *cj, int timer) {
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
   const struct engine *e = r->e;
 
@@ -399,6 +405,9 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
                                        int timer) {
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
@@ -419,6 +428,9 @@ void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
  */
 void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
                                        struct cell *cj, int timer) {
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
   const struct engine *e = r->e;
 
@@ -435,20 +447,21 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
 
 /**
  * @brief Compute the energies (kinetic, potential, etc ) of the gas particle
- * #p and all quantities required for the formation of a sink.
+ * p and all quantities required for the formation of a sink.
  *
  * Note: This function iterates over gas particles and sink particles.
  *
  * @param e The #engine.
  * @param c The #cell.
  * @param p The #part.
- * @param xp The #xpart data of the particle #p.
+ * @param xp The #xpart data of the particle p.
  */
 void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
                                            struct part *restrict p,
                                            struct xpart *restrict xp) {
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct sink_props *sink_props = e->sink_properties;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -478,8 +491,8 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
     struct sink *restrict si = &sinks[i];
 
     /* Compute the quantities required to later decide to form a sink or not. */
-    sink_prepare_part_sink_formation_sink_criteria(e, p, xp, si, cosmo,
-                                                   sink_props);
+    sink_prepare_part_sink_formation_sink_criteria(e, p, xp, si, with_cosmology,
+                                                   cosmo, sink_props, e->time);
 
   } /* End of sink neighbour loop */
 }

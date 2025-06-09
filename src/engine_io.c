@@ -565,7 +565,7 @@ void engine_io(struct engine *e) {
 #endif
 
         /* ... and find the next output time */
-        engine_compute_next_snapshot_time(e);
+        engine_compute_next_snapshot_time(e, /*restart=*/0);
         break;
 
       case output_statistics:
@@ -752,15 +752,19 @@ void engine_set_and_verify_snapshot_triggers(struct engine *e) {
  * @brief Computes the next time (on the time line) for a dump
  *
  * @param e The #engine.
+ * @param restart Are we calling this upon a restart event?
  */
-void engine_compute_next_snapshot_time(struct engine *e) {
+void engine_compute_next_snapshot_time(struct engine *e, const int restart) {
 
   /* Do output_list file case */
   if (e->output_list_snapshots) {
     output_list_read_next_time(e->output_list_snapshots, e, "snapshots",
                                &e->ti_next_snapshot);
 
-    engine_set_and_verify_snapshot_triggers(e);
+    /* Unless we are restarting, check the allowed recording trigger time */
+    if (!restart) engine_set_and_verify_snapshot_triggers(e);
+
+    /* All done in the list case */
     return;
   }
 
@@ -818,8 +822,9 @@ void engine_compute_next_snapshot_time(struct engine *e) {
         message("Next snapshot time set to t=%e.", next_snapshot_time);
     }
 
-    /* Set the recording triggers accordingly for the next output */
-    engine_set_and_verify_snapshot_triggers(e);
+    /* Unless we are restarting, set the recording triggers accordingly for the
+     * next output */
+    if (!restart) engine_set_and_verify_snapshot_triggers(e);
   }
 }
 
@@ -1184,7 +1189,7 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
     if (e->output_list_snapshots->select_output_on)
       output_list_check_selection(e->output_list_snapshots, output_options);
 
-    engine_compute_next_snapshot_time(e);
+    engine_compute_next_snapshot_time(e, /*restart=*/0);
 
     if (e->policy & engine_policy_cosmology)
       e->a_first_snapshot =
