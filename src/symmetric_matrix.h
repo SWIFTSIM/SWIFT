@@ -20,6 +20,7 @@
 #define SWIFT_SYMMETRIC_MATRIX_H
 
 /* Local includes */
+#include "dimension.h"
 #include "error.h"
 
 /**
@@ -97,6 +98,39 @@ __attribute__((always_inline)) INLINE static void sym_matrix_multiply_by_vector(
 }
 
 /**
+ * @brief Multiply two symmetric matrices in two operations, ABA.
+ */
+__attribute__((always_inline)) INLINE static void sym_matrix_multiplication_ABA(
+    struct sym_matrix *M_out, const struct sym_matrix *A,
+    const struct sym_matrix *B) {
+
+  float BA_array[3][3] = {0};
+  float A_array[3][3], B_array[3][3];
+  get_matrix_from_sym_matrix(A_array, A);
+  get_matrix_from_sym_matrix(B_array, B);
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      for (int k = 0; k < 3; k++) {
+        BA_array[i][j] += B_array[i][k] * A_array[k][j];
+      }
+    }
+  }
+
+  M_out->xx = (A->xx * BA_array[0][0] + A->xy * BA_array[1][0] +
+               A->xz * BA_array[2][0]);
+  M_out->yy = (A->xy * BA_array[0][1] + A->yy * BA_array[1][1] +
+               A->yz * BA_array[2][1]);
+  M_out->zz = (A->xz * BA_array[0][2] + A->yz * BA_array[1][2] +
+               A->zz * BA_array[2][2]);
+  M_out->xy = (A->xy * BA_array[0][0] + A->yy * BA_array[1][0] +
+               A->yz * BA_array[2][0]);
+  M_out->xz = (A->xz * BA_array[0][0] + A->yz * BA_array[1][0] +
+               A->zz * BA_array[2][0]);
+  M_out->yz = (A->xz * BA_array[0][1] + A->yz * BA_array[1][1] +
+               A->zz * BA_array[2][1]);
+}
+
+/**
  * @brief Print a symmetric matrix.
  */
 __attribute__((always_inline)) INLINE static void sym_matrix_print(
@@ -104,6 +138,30 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
   message("|%.4f %.4f %.4f|", M->xx, M->xy, M->xz);
   message("|%.4f %.4f %.4f|", M->xy, M->yy, M->yz);
   message("|%.4f %.4f %.4f|", M->xz, M->yz, M->zz);
+}
+
+/**
+ * @brief Compute the inverse of a symmetric matrix and a vector.
+ *
+ * Returned as a symmetric matrix
+ */
+__attribute__((always_inline)) INLINE static void sym_matrix_invert(
+    struct sym_matrix *M_inv, const struct sym_matrix *M) {
+
+  float M_inv_matrix[3][3];
+  get_matrix_from_sym_matrix(M_inv_matrix, M);
+  int res = invert_dimension_by_dimension_matrix(M_inv_matrix);
+  if (res) {
+    sym_matrix_print(M);
+    error("Error inverting matrix");
+  }
+
+  M_inv->xx = M_inv_matrix[0][0];
+  M_inv->yy = M_inv_matrix[1][1];
+  M_inv->zz = M_inv_matrix[2][2];
+  M_inv->xy = M_inv_matrix[0][1];
+  M_inv->xz = M_inv_matrix[0][2];
+  M_inv->yz = M_inv_matrix[1][2];
 }
 
 #endif /* SWIFT_SYMMETRIC_MATRIX_H */

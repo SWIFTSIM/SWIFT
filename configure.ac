@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[1.0.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[2025.04],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 AC_COPYRIGHT
@@ -343,7 +343,7 @@ if test "$enable_cell_graph" = "yes"; then
    AC_DEFINE([SWIFT_CELL_GRAPH],1,[Enable cell graph])
 fi
 
-# Check if using our custom icbrtf is enalbled.
+# Check if using our custom icbrtf is enabled.
 AC_ARG_ENABLE([custom-icbrtf],
    [AS_HELP_STRING([--enable-custom-icbrtf],
      [Use SWIFT's custom icbrtf function instead of the system cbrtf @<:@yes/no@:>@]
@@ -431,6 +431,20 @@ if test "$stars_density_checks" = "yes"; then
    AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-stars-density-checks!)
 elif test "$stars_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_STARS_DENSITY_CHECKS], [$enableval] ,[Enable stars density brute-force checks])
+fi
+
+# Check if sink density checks are on for some particles.
+AC_ARG_ENABLE([sink-density-checks],
+   [AS_HELP_STRING([--enable-sink-density-checks],
+     [Activate expensive brute-force sink density checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [sink_density_checks="$enableval"],
+   [sink_density_checks="no"]
+)
+if test "$sink_density_checks" = "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-sink-density-checks!)
+elif test "$sink_density_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_SINK_DENSITY_CHECKS], [$enableval] ,[Enable sink density brute-force checks])
 fi
 
 # Check if ghost statistics are enabled
@@ -1417,6 +1431,38 @@ if test "$with_hdf5" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
 
+# Check for lustre support. Attempted by default.
+have_lustreapi="no"
+AC_ARG_WITH([lustreapi],
+   [AS_HELP_STRING([--with-lustreapi=PATH],
+      [use the lustre api library for some striping control @<:@yes/no@:>@]
+   )],
+   [with_lustreapi="$withval"],
+   [with_lustreapi="yes"]
+)
+
+if test "x$with_lustreapi" != "xno"; then
+   if test "x$with_lustreapi" != "xyes" -a "x$with_lustreapi" != "x"; then
+      LUSTREAPI_LIBS="-L$with_lustreapi -llustreapi"
+      LUSTREAPI_INCS="-I$with_lustreapi/include"
+   else
+      LUSTREAPI_LIBS="-llustreapi"
+      LUSTREAPI_INCS=""
+   fi
+   AC_CHECK_LIB([lustreapi], [llapi_obd_statfs], [have_lustreapi="yes"],
+                [have_lustreapi="no"],[$LUSTREAPI_LIBS])
+
+   if test "$have_lustreapi" = "yes"; then
+      AC_DEFINE([HAVE_LUSTREAPI],1,[The lustre API library appears to be present.])
+   else
+      LUSTREAPI_LIBS=""
+   fi
+fi
+AC_SUBST([LUSTREAPI_LIBS])
+AC_SUBST([LUSTREAPI_INCS])
+AM_CONDITIONAL([HAVELUSTREAPI],[test -n "$LUSTREAPI_LIBS"])
+
+
 # Check for grackle.
 have_grackle="no"
 AC_ARG_WITH([grackle],
@@ -1824,17 +1870,15 @@ if test "$have_armv7apmccntr"x = "yes"x; then
       AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
 fi
 
-# Check if we have native exp10 and exp10f functions. If not failback to our
-# implementations. On Apple/CLANG we have __exp10, so also check for that
+# Check if we have native exp10 and exp10f functions. If not fallback to our
+# implementations. On Apple/CLANG/Homebrew gcc we have __exp10, so also check for that
 # if the compiler is clang.
 AC_CHECK_LIB([m],[exp10], [AC_DEFINE([HAVE_EXP10],1,[The exp10 function is present.])])
 AC_CHECK_LIB([m],[exp10f], [AC_DEFINE([HAVE_EXP10F],1,[The exp10f function is present.])])
-if test "$ax_cv_c_compiler_vendor" = "clang"; then
-      AC_CHECK_LIB([m],[__exp10], [AC_DEFINE([HAVE___EXP10],1,[The __exp10 function is present.])])
-      AC_CHECK_LIB([m],[__exp10f], [AC_DEFINE([HAVE___EXP10F],1,[The __exp10f function is present.])])
-fi
+AC_CHECK_LIB([m],[__exp10], [AC_DEFINE([HAVE___EXP10],1,[The __exp10 function is present.])])
+AC_CHECK_LIB([m],[__exp10f], [AC_DEFINE([HAVE___EXP10F],1,[The __exp10f function is present.])])
 
-# Check if we have native sincos and sincosf functions. If not failback to our
+# Check if we have native sincos and sincosf functions. If not fallback to our
 # implementations. On Apple/CLANG we have __sincos, so also check for that
 # if the compiler is clang.
 AC_CHECK_LIB([m],[sincos], [AC_DEFINE([HAVE_SINCOS],1,[The sincos function is present.])])
@@ -1843,7 +1887,15 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincos], [AC_DEFINE([HAVE___SINCOS],1,[The __sincos function is present.])])
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
 fi
- 
+
+# On Apple (CLANG or Homebrew gcc), check for __sincos and __sincosf inline functions in the headers.
+AC_CHECK_HEADERS([math.h], [
+  AC_CHECK_DECLS([__sincos, __sincosf], [
+    AC_DEFINE([HAVE___SINCOS], 1, [The __sincos function is present.])
+    AC_DEFINE([HAVE___SINCOSF], 1, [The __sincosf function is present.])
+  ], [], [#include <math.h>])
+])
+
 # The aocc compiler has optimized maths libraries that we should use. Check
 # any clang for this support. Note do this after the basic check for maths
 # as we need to make sure -lm follows. Also note needs -Ofast or -ffast-math
@@ -1963,7 +2015,8 @@ AC_SUBST([SUNDIALS_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should
+		start here. Options are: @<:@none, GEAR, GEAR-G3, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1990,12 +2043,24 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_pressure_floor=GEAR
+	with_subgrid_stars=GEAR
+	with_subgrid_star_formation=GEAR
+	with_subgrid_feedback=GEAR
+	with_subgrid_black_holes=none
+	with_subgrid_sink=GEAR
+	with_subgrid_extra_io=none
+	enable_fof=no
+   ;;
+   GEAR-G3)
+	with_subgrid_cooling=grackle_3
+	with_subgrid_chemistry=GEAR_10
 	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=GEAR
 	with_subgrid_black_holes=none
-	with_subgrid_sink=none
+	with_subgrid_sink=GEAR
 	with_subgrid_extra_io=none
 	enable_fof=no
    ;;
@@ -2064,6 +2129,19 @@ case "$with_subgrid" in
    ;;
    SPIN_JET_EAGLE)
 	with_subgrid_cooling=EAGLE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+	with_subgrid_feedback=EAGLE
+	with_subgrid_black_holes=SPIN_JET
+	with_subgrid_sink=none
+	with_subgrid_extra_io=none
+	enable_fof=yes
+   ;;
+  SPIN_JET_EAGLE-XL)
+	with_subgrid_cooling=PS2020
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=EAGLE
@@ -2145,7 +2223,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, sphenix, gasoline, anarchy-pu, magma2 default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu, magma2 default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -2191,6 +2269,9 @@ case "$with_hydro" in
    ;;
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
+   ;;
+   remix)
+      AC_DEFINE([REMIX_SPH], [1], [REMIX SPH])
    ;;
    sphenix)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
@@ -2842,6 +2923,9 @@ case "$with_sink" in
    none)
       AC_DEFINE([SINK_NONE], [1], [No sink particle model])
    ;;
+   Basic)
+    AC_DEFINE([SINK_BASIC], [1], [Simple, self-contained sink model with only Bondi-Hoyle accretion and no SF.])
+    ;;
    GEAR)
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     ;;
@@ -3278,6 +3362,7 @@ AC_MSG_RESULT([
    MPI enabled          : $enable_mpi
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5
+   LUSTRE API enabled   : $have_lustreapi
    METIS/ParMETIS       : $have_metis / $have_parmetis
    FFTW3 enabled        : $have_fftw
     - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw

@@ -10,7 +10,7 @@ be downloaded when launching the run script (see below).
 
 To run this example with the GEAR model, SWIFT must be configured with the following options:
 
-./configure --with-chemistry=GEAR_10  --with-cooling=grackle_0 --with-pressure-floor=GEAR  --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-grackle=${GRACKLE_ROOT}
+./configure --with-subgrid=GEAR --with-grackle=${GRACKLE_ROOT}
 
 To start the simulation with the GEAR model:
 
@@ -18,7 +18,7 @@ To start the simulation with the GEAR model:
 
 # Sink particles
 
-To configure this example with GEAR model + GEAR sink particles, add --with-sink=GEAR.
+Sink particles are already included in the option `--with-subgrid=GEAR`.
 
 To start the simulation with the sink particles, type:
 

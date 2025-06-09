@@ -196,7 +196,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_rt_active(
-    struct cell *c, const struct engine *e) {
+    const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->rt.ti_rt_end_min < e->ti_current_subcycle) {
@@ -301,6 +301,9 @@ __attribute__((always_inline)) INLINE static int cell_is_active_sinks(
  *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
+ * @param with_star_formation Are we running with standard star formation?
+ * @param with_star_formation_sink Are we running with star formation from
+ * sinks?
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_need_activating_stars(
@@ -526,6 +529,18 @@ __attribute__((always_inline)) INLINE static int part_is_inhibited(
  */
 __attribute__((always_inline)) INLINE static int gpart_is_inhibited(
     const struct gpart *gp, const struct engine *e) {
+  return gp->time_bin == time_bin_inhibited;
+}
+
+/**
+ * @brief Has this foreign gravity particle been inhibited?
+ *
+ * @param gp The #gpart_part.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #gpart_foreign is inhibited, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int gpart_foreign_is_inhibited(
+    const struct gpart_foreign *gp, const struct engine *e) {
   return gp->time_bin == time_bin_inhibited;
 }
 

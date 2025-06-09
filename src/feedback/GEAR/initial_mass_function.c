@@ -20,6 +20,7 @@
 /* local headers */
 #include "initial_mass_function.h"
 
+#include "exp10.h"
 #include "hdf5_functions.h"
 #include "stellar_evolution_struct.h"
 
@@ -64,6 +65,10 @@ float initial_mass_function_get_exponent(
 
 /** @brief Print the initial mass function */
 void initial_mass_function_print(const struct initial_mass_function *imf) {
+
+  if (engine_rank != 0) {
+    return;
+  }
 
   message("Number of parts: %i", imf->n_parts);
   message("Number of stars per mass units: %g", imf->N_tot);
@@ -642,7 +647,7 @@ INLINE double initial_mass_function_sample_power_law(double min_mass,
  * first stars or not. You need to verify this before this function and pass the
  * correct values to 'minimal_discrete_mass_Msun' and 'stellar_particle_mass'.
  *
- * Note 2: This function implicitiely assumes M_sun since the IMF data
+ * Note 2: This function implicitly assumes M_sun since the IMF data
  * structures handles the masses in M_sun.
  *
  * @param imf The #initial_mass_function.
