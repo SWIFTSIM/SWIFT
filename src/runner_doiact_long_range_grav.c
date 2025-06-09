@@ -268,10 +268,8 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
                                  /*periodic boundaries*/ s->periodic,
                                  /*use_mesh*/ s->periodic)) {
 
-          /* Call the PM interaction function on the active sub-cells of ci
-           */
+          /* Call the PM interaction function on the active sub-cells of ci */
           runner_dopair_grav_mm_nonsym(r, ci, cj);
-          // runner_dopair_recursive_grav_pm(r, ci, cj);
 
           /* Record that this multipole received a contribution */
           multi_i->pot.interacted = 1;
@@ -408,42 +406,67 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-  /* Get the multipole of the cell we are interacting. */
+  /* Get the mutlipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
-  /* Loop over all background cells. */
-  for (int n = 0; n < s->zoom_props->nr_bkg_cells; n++) {
+  /* Get the (i,j,k) location of the top-level cell in the grid. */
+  int top_i = top->loc[0] * s->iwidth[0];
+  int top_j = top->loc[1] * s->iwidth[1];
+  int top_k = top->loc[2] * s->iwidth[2];
 
-    /* Handle on the top-level cell and it's gravity business*/
-    struct cell *cj = &bkg_cells[n];
-    struct gravity_tensors *const multi_j = cj->grav.multipole;
+  /* Maximal distance any interaction can take place before the mesh kicks in,
+   * rounded up to the next integer */
+  int d =
+      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
 
-    /* Avoid self contributions */
-    if (top == cj) continue;
+  /* Loop over plausibly useful cells */
+  for (int ii = top_i - d; ii <= top_i + d; ++ii) {
+    for (int jj = top_j - d; jj <= top_j + d; ++jj) {
+      for (int kk = top_k - d; kk <= top_k + d; ++kk) {
 
-    /* Skip empty cells */
-    if (multi_j->m_pole.M_000 == 0.f) continue;
+        /* Box wrap */
+        const int iii = (ii + s->cdim[0]) % s->cdim[0];
+        const int jjj = (jj + s->cdim[1]) % s->cdim[1];
+        const int kkk = (kk + s->cdim[2]) % s->cdim[2];
 
-    /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
+        /* Get the cell */
+        const int cell_index = cell_getid(s->cdim, iii, jjj, kkk);
 
-    /* Are we beyond the distance where the truncated forces are 0 ?*/
-    if (min_radius2 > max_distance2) {
+        /* Handle on the top-level cell */
+        struct cell *cj = &bkg_cells[cell_index];
+
+        /* Avoid self contributions  */
+        if (top == cj) continue;
+
+        /* Handle on the top-level cell's gravity business*/
+        const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+        /* Skip empty cells */
+        if (multi_j->m_pole.M_000 == 0.f) continue;
+
+        /* Minimal distance between any pair of particles */
+        const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
+
+        /* Are we beyond the distance where the truncated forces are 0 ?*/
+        if (min_radius2 > max_distance2) {
 #ifdef SWIFT_DEBUG_CHECKS
-      /* Need to account for the interactions we missed */
-      accumulate_add_ll(&multi_i->pot.num_interacted,
-                        multi_j->m_pole.num_gpart);
+          /* Need to account for the interactions we missed */
+          accumulate_add_ll(&multi_i->pot.num_interacted,
+                            multi_j->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-      /* Need to account for the interactions we missed */
-      accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                        multi_j->m_pole.num_gpart);
+          /* Need to account for the interactions we missed */
+          accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                            multi_j->m_pole.num_gpart);
 #endif
-      /* Record that this multipole received a contribution */
-      multi_i->pot.interacted = 1;
-    }
-  }
+          /* Record that this multipole received a contribution */
+          multi_i->pot.interacted = 1;
+        }
+      } /* Loop over relevant top-level cells (k) */
+    } /* Loop over relevant top-level cells (j) */
+  } /* Loop over relevant top-level cells (i) */
+
 #else
   error(
       "This function should not be called without debugging checks or "
