@@ -2276,9 +2276,6 @@ case "$with_hydro" in
    sphenix)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
    ;;
-   magma2)
-      AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
-   ;;
    gasoline)
       AC_DEFINE([GASOLINE_SPH], [1], [Gasoline SPH])
    ;;

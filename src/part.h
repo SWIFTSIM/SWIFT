@@ -1,4 +1,4 @@
-/*******************************************************************************
+ /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
@@ -87,10 +87,6 @@ struct threadpool;
 #define EXTRA_HYDRO_LOOP_TYPE2
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_part.h"
-#define hydro_need_extra_init_loop 0
-#define EXTRA_HYDRO_LOOP
-#elif defined(MAGMA_SPH)
-#include "./hydro/MAGMA/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
 #elif defined(GASOLINE_SPH)
