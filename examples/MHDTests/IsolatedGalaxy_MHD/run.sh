@@ -30,10 +30,12 @@ then
     ../getEaglePhotometryTable.sh
 fi
 
-../../../swift --threads=60 --external-gravity --self-gravity --stars --star-formation --cooling --hydro isolated_galaxy.yml 2>&1 | tee output.log
+# Adding magnetic fields.
+echo "Adding magnetic fields..."
+python3 makeIC.py fid.hdf5 fid_B.hdf5 
 
-# Kennicutt-Schmidt law plot
-python3 plotSolution.py
+# Run SWIFT with external potential, cooling, self-gravity and star formation
+#../../../swift --external-gravity --self-gravity --hydro --cooling --stars --star-formation --threads=4 isolated_galaxy.yml 2>&1 | tee output.log
 
-# Plot that the random star formation matches the expected SFH
-python3 SFH.py
+# Run SWIFT with external potential, cooling, self-gravity, star formation and feedback
+../../../swift --external-gravity --self-gravity --hydro --cooling --stars --star-formation --feedback --sync --threads=4 isolated_galaxy.yml 2>&1 | tee output.log
