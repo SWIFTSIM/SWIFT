@@ -164,11 +164,11 @@ void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
 
     /* A top level cell can be empty in 1D and 2D simulations, just skip it */
     if (c->hydro.count == 0) {
-      continue;
 #ifdef SWIFT_DEBUG_CHECKS
       if (hydro_dimension == 3)
         error("Found empty top-level cell while running in 3D!");
 #endif
+      continue;
     }
     if (c->nodeID != nodeID) continue;
 

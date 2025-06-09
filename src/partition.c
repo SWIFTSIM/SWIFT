@@ -2260,9 +2260,9 @@ static int repart_init_fixed_costs(void) {
 
 #include <partition_fixed_costs.h>
   return HAVE_FIXED_COSTS;
-#endif
-
+#else
   return 0;
+#endif
 }
 #endif /* WITH_MPI */
 

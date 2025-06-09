@@ -229,18 +229,14 @@ int xmf_precision(enum IO_DATA_TYPE type) {
     case INT:
     case FLOAT:
       return 4;
-      break;
     case DOUBLE:
       return 8;
-      break;
     case ULONGLONG:
     case LONGLONG:
       return 8;
-      break;
     case UINT8:
     case CHAR:
       return 1;
-      break;
     default:
       error("Unsupported type");
   }
@@ -255,16 +251,13 @@ const char* xmf_type(enum IO_DATA_TYPE type) {
     case FLOAT:
     case DOUBLE:
       return "Float";
-      break;
     case INT:
     case ULONGLONG:
     case LONGLONG:
       return "Int";
-      break;
     case UINT8:
     case CHAR:
       return "Char";
-      break;
     default:
       error("Unsupported type");
   }

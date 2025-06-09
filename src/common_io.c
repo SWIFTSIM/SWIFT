@@ -832,8 +832,8 @@ void io_write_part_type_names(hid_t h_grp) {
   io_write_attribute_i(h_grp, "NumPartTypes", swift_type_count);
 
   /* Create an array of partcle type names */
+  char names[swift_type_count][128];
   const int name_length = 128;
-  char names[swift_type_count][name_length];
   for (int i = 0; i < swift_type_count; ++i)
     strcpy(names[i], part_type_names[i]);
 

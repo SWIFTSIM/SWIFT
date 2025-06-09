@@ -38,6 +38,9 @@
 #include "error.h"
 #include "memswap.h"
 
+/* Keep the nvhpc compiler happy. Note cannot be const! */
+static int minusone = -1;
+
 /**
  * @brief Push the task at the given index up the heap until it is either at the
  * top or smaller than its parent.
@@ -119,7 +122,7 @@ void queue_get_incoming(struct queue *q) {
     if (q->tid_incoming[ind] < 0) break;
 
     /* Get the next offset off the DEQ. */
-    const int offset = atomic_swap(&q->tid_incoming[ind], -1);
+    const int offset = atomic_swap(&q->tid_incoming[ind], minusone);
     atomic_inc(&q->first_incoming);
 
     /* Does the queue need to be grown? */
@@ -163,7 +166,7 @@ void queue_insert(struct queue *q, struct task *t) {
   const int ind = atomic_inc(&q->last_incoming) % queue_incoming_size;
 
   /* Spin until the new offset can be stored. */
-  while (atomic_cas(&q->tid_incoming[ind], -1, t - q->tasks) != -1) {
+  while (atomic_cas(&q->tid_incoming[ind], minusone, t - q->tasks) != minusone) {
 
     /* Try to get the queue lock, non-blocking, ensures that at
        least somebody is working on this queue. */
@@ -211,7 +214,7 @@ void queue_init(struct queue *q, struct task *tasks) {
       NULL)
     error("Failed to allocate queue incoming buffer.");
   for (int k = 0; k < queue_incoming_size; k++) {
-    q->tid_incoming[k] = -1;
+    q->tid_incoming[k] = minusone;
   }
   q->first_incoming = 0;
   q->last_incoming = 0;

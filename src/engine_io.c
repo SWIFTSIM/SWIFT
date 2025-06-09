@@ -391,8 +391,8 @@ void engine_run_on_dump(struct engine *e) {
     /* Generate a string containing (optionally) the snapshot number.
      * Note that -1 is used because snapshot_output_count was just
      * increased when the write_output_* functions are called. */
+    char dump_command_buf[PARSER_MAX_LINE_SIZE * 3];
     const int buf_size = PARSER_MAX_LINE_SIZE * 3;
-    char dump_command_buf[buf_size];
     snprintf(dump_command_buf, buf_size, "%s %s %04d", e->snapshot_dump_command,
              e->snapshot_base_name, e->snapshot_output_count - 1);
 

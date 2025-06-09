@@ -64,7 +64,8 @@
 #include "xmf.h"
 
 /* Max number of entries that can be written for a given particle type */
-static const int io_max_size_output_list = 100;
+//static const int io_max_size_output_list = 100;
+#define io_max_size_output_list 100
 
 /**
  * @brief Reads a data array from a given HDF5 group.

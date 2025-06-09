@@ -66,7 +66,7 @@
 // #define IO_SPEED_MEASUREMENT
 
 /* Max number of entries that can be written for a given particle type */
-static const int io_max_size_output_list = 100;
+#define io_max_size_output_list 100
 
 /**
  * @brief Writes a data array in given HDF5 group.
