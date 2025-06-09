@@ -210,7 +210,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 
   /* Cosmological factors entering the EoMs */
-  //const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  // const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
   /* Get r and 1/r. */
@@ -254,8 +254,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
-  
-  /* Compute signal velocity (eq. 36) modified to add dimension on the denominator */
+
+  /* Compute signal velocity (eq. 36) modified to add dimension on the
+   * denominator */
   const float mu_tilde_i = hi * omega_ij / (r * r + 0.0001f * hi * hi);
 
   /* De-dimentionalised distances (eq. 16, recall dx = xi - xj)*/
@@ -355,10 +356,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_j = fminf(0.f, vel_rel_j / (eta_square_j + eps_squared));
 
   /* Eq. 14 */
-  const float Qi =
-    rhoi * (-const_viscosity_alpha * ci * mu_i + const_viscosity_beta * mu_i * mu_i);
-  const float Qj =
-    rhoj * (-const_viscosity_alpha * cj * mu_j + const_viscosity_beta * mu_j * mu_j);
+  const float Qi = rhoi * (-const_viscosity_alpha * ci * mu_i +
+                           const_viscosity_beta * mu_i * mu_i);
+  const float Qj = rhoj * (-const_viscosity_alpha * cj * mu_j +
+                           const_viscosity_beta * mu_j * mu_j);
 
   /* Construct the gradient functions (eq. 4 and 5) */
   float G_i[3], G_j[3];
@@ -429,7 +430,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float u_rec_j = pj->u;
 
 #ifndef USE_ZEROTH_ORDER_VELOCITIES
- 
+
   /* Mid-point reconstruction, first order (eq. 17) */
   u_rec_i += pi->force.gradient_u[0] * delta_i[0];
   u_rec_i += pi->force.gradient_u[1] * delta_i[1];
@@ -444,7 +445,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       (pi->u < pj->u && u_rec_i > u_rec_j)) {
     u_rec_i = u_rec_j = 0.5f * (pi->u + pj->u);
   }
-  
+
 #endif
 
   /* Difference in internal energy */

@@ -427,15 +427,18 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct cosmology *restrict cosmo) {
 
   const float CFL_condition = hydro_properties->CFL_condition;
-  
+
   /* Criterion based on acceleration (eq. 35) */
-  const float norm_a = p->a_hydro[0] * p->a_hydro[0] + p->a_hydro[1] * p->a_hydro[1] + p->a_hydro[2] * p->a_hydro[2];
+  const float norm_a = p->a_hydro[0] * p->a_hydro[0] +
+                       p->a_hydro[1] * p->a_hydro[1] +
+                       p->a_hydro[2] * p->a_hydro[2];
   const float dt_acc = sqrtf(p->h / sqrtf(norm_a));
 
   /* Criterion based on acceleration (eq. 35) */
   const float c = p->force.soundspeed;
-  const float dt_Courant = p->h / (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde));
-  
+  const float dt_Courant =
+      p->h / (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde));
+
   return CFL_condition * fminf(dt_acc, dt_Courant);
 }
 
