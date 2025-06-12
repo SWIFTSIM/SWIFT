@@ -569,6 +569,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.Diff_B_source[i] -= mi * art_diff_pref * dB[i];
     pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap_i * wi_dr * dB[i];
     pj->mhd_data.Delta_B[i] -= mi * dB_dt_pref_Lap_j * wj_dr * dB[i];
+    pi->mhd_data.Sdedner[i] -= mj * grad_psi * dx[i];
+    pj->mhd_data.Sdedner[i] += mj * grad_psi * dx[i];
   }
 }
 
@@ -825,6 +827,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
         resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
     pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap * wi_dr * dB[i];
+    pi->mhd_data.Sdedner[i] -= mj * grad_psi * dx[i];
   }
 }
 

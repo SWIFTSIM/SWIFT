@@ -86,6 +86,9 @@ struct mhd_part_data {
 
   /* Laplacian B */
   float Delta_B[3];
+
+  /* Dedner source term from induction equation*/
+  float Sdedner[3];
 };
 
 /**

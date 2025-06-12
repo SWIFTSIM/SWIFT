@@ -139,7 +139,11 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
                                  p->mhd_data.resistive_eta
                            : FLT_MAX;
 
-  return dt_eta;
+  const float B_over_rho = sqrtf( p->mhd_data.B_over_rho[0]*p->mhd_data.B_over_rho[0] + p->mhd_data.B_over_rho[1]*p->mhd_data.B_over_rho[1] + p->mhd_data.B_over_rho[2]*p->mhd_data.B_over_rho[2] );
+  const float Sdedner = sqrtf( p->mhd_data.Sdedner[0]*p->mhd_data.Sdedner[0] + p->mhd_data.Sdedner[1]*p->mhd_data.Sdedner[1] + p->mhd_data.Sdedner[2]*p->mhd_data.Sdedner[2] );
+  const float dt_dedner = 0.1f * B_over_rho/Sdedner;
+
+  return min(dt_eta,dt_dedner);
 }
 
 /**
@@ -477,6 +481,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     p->mhd_data.Adv_B_source[k] = 0.0f;
     p->mhd_data.Diff_B_source[k] = 0.0f;
     p->mhd_data.Delta_B[k] = 0.0f;
+    p->mhd_data.Sdedner[k] = 0.0f;
   }
 }
 
