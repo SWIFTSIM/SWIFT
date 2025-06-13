@@ -13,6 +13,7 @@ for runs with EAGLE cooling+chemistry+entropy floor+star formation + feedback
 Adding magnetic fields
 ----------------------
 python3 make_IC.py fid.hdf5 fid_B.hdf5
+By default the script adds B = 1e-3 microGauss in x direction
 
 
 Snapshot slices
