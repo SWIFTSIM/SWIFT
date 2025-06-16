@@ -457,8 +457,10 @@ runner_iact_chemistry_fluxes_common(
                            chem_data, cosmo, &totflux);
 
     /* Flux limiter*******************************/
-    /* First check that we won't have negative masses. If then we need to
-       artificially make masses positive, then we have metal mass creation. */
+    /* First check that we won't have negative masses. If so, we have a check
+       that will ensure masses are not negative and if so, it we set them to be
+       positive. Then, we have metal mass creation. If this correction happen
+       a lot, we will create a lot of metal mass. */
     double metal_mass_flux = totflux * mindt;
 
     /* Use the updated metal masses to ensure that the final result won't be
