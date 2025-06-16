@@ -30,6 +30,15 @@ import swiftsimio as sw
 # %%
 
 
+def get_fe_metal_mass(data):
+    """Get the Fe metal mass (in code units) from swiftsimio data"""
+    # Get the metal mass
+    if hasattr(data.gas.metal_mass_fractions, 'fe'):
+        m_fe = data.gas.metal_mass_fractions.fe * data.gas.masses
+    else: # This case happens when we run the simulation without --feedback
+        m_fe = data.gas.metal_mass_fractions[:, 0] * data.gas.masses
+    return m_fe
+
 def radial_profile(value, r, r_min=None, r_max=None, n_bins=30):
     # Handle default r_min and r_max
     if r_min is None:
@@ -127,12 +136,6 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 
                         type=str,
                         help="File name(s).")
 
-    parser.add_argument("--kappa",
-                        action="store",
-                        type=float,
-                        default=2.516846e-03,
-                        help="Diffusion coefficient")
-
     parser.add_argument("--epsilon",
                         action="store",
                         type=float,
@@ -213,16 +216,9 @@ for filename in tqdm(files):
     if log:
         output_name = "log_" + output_name
 
-    # Get the metal mass
-    if hasattr(data.gas.metal_mass_fractions, 'fe'):
-        m_fe = data.gas.metal_mass_fractions.fe * data.gas.masses
-    else: # This case happens when we run the simulation without --feedback
-        m_fe = data.gas.metal_mass_fractions[:, 0] * data.gas.masses
-
-    # Get the radii
+    # Get data
+    m_fe = get_fe_metal_mass(data)
     r = np.linalg.norm(data.gas.coordinates, axis=1)
-
-    # Get the simulation time
     t = data.metadata.time.value
 
     # Compute the radial profile
@@ -269,7 +265,7 @@ for filename in tqdm(files):
     ax.plot(r_sol, fe_sol, label='Parabolic diffusion solution')
     ax.plot(r_sol, fe_sol_hyperbolic, label='Hyperbolic diffusion solution')
     ax.set_xlabel("$r$ [kpc]")
-    ax.set_ylabel("$Fe$ [M$_\odot$]")
+    ax.set_ylabel(r"$Fe$ [M$_\odot$]")
     ax.legend()
 
     if log:

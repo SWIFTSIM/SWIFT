@@ -91,7 +91,7 @@ def make_plot(boxsize, metal_density, output_name, log=False, vmin=None, vmax=No
     # Add a colorbar for all subplots
     cbar_ax = fig.add_axes([0.125, 0.9, 0.775, 0.05])
     cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal')
-    label = '$\log_{10}(\Sigma$ [g/cm$^2$]$)$' if log else '$\Sigma$ [g/cm$^2$]'
+    label = r'$\log_{10}(\Sigma$ [g/cm$^2$]$)$' if log else r'$\Sigma$ [g/cm$^2$]'
     cbar.set_label(label, labelpad=1)
     cbar.ax.xaxis.set_label_position('top')
     cbar.ax.xaxis.set_ticks_position('top')
