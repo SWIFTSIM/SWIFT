@@ -8,13 +8,21 @@ Created on Wed Aug 21 11:17:37 2024
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from pNbody import *
 from scipy.optimize import curve_fit
 import argparse
 from tqdm import tqdm
+import swiftsimio as sw
 
 # %%
 
+def get_fe_metal_mass(data):
+    """Get the Fe metal mass (in code units) from swiftsimio data"""
+    # Get the metal mass
+    if hasattr(data.gas.metal_mass_fractions, 'fe'):
+        m_fe = data.gas.metal_mass_fractions.fe * data.gas.masses
+    else: # This case happens when we run the simulation without --feedback
+        m_fe = data.gas.metal_mass_fractions[:, 0] * data.gas.masses
+    return m_fe
 
 def radial_profile(value, r, r_min=None, r_max=None, n_bins=30):
     # Handle default r_min and r_max
@@ -70,12 +78,6 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 
                         type=str,
                         help="File name(s).")
 
-    parser.add_argument("--kappa",
-                        action="store",
-                        type=float,
-                        default=2.516846e-03,
-                        help="Diffusion coefficient")
-
     parser.add_argument("--epsilon",
                         action="store",
                         type=float,
@@ -117,35 +119,47 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 
 # %%
 # Parse the arguments
 args, files = parse_option()
-
 r_min = args.r_min
 r_max = args.r_max
 n_bins = args.n_bins
-kappa = args.kappa
 epsilon = args.epsilon
 log = args.log
 
+# Define the figure size
 figsize = (6.4, 4.8)
+
+# Open the data in the first snapshot to grab some information
+data_init = sw.load(files[0])
+boxsize = data_init.metadata.boxsize
+
+# Read kappa from the parameter file
+try:
+    kappa = float(
+        data_init.metadata.parameters["GEARChemistry:diffusion_coefficient"])
+except KeyError:
+    kappa = args.kappa
+
+print(f"Using kappa = {kappa:.3e}")
 
 for filename in tqdm(files):
     snapshot_number = int(filename.split('_')[1].split('.')[0])
     output_name = "metal_profile" + str(snapshot_number)
+    data = sw.load(filename)
 
     if log:
         output_name = "log_" + output_name
 
-    # Get the numerical data
-    nb = Nbody(filename, ptypes=[0])
-    fe = nb.metals[:, 0]*nb.Mass(units="Msol")
-    r = nb.rxyz()
+    # Get data
+    m_fe = get_fe_metal_mass(data)
+    r = np.linalg.norm(data.gas.coordinates, axis=1)
+    t = data.metadata.time.value
 
     # Compute the radial profile
-    r_centers, fe_bin = radial_profile(fe, r, r_min, r_max, n_bins=n_bins)
+    r_centers, fe_bin = radial_profile(m_fe, r, r_min, r_max, n_bins=n_bins)
 
-    # Get data to compute the analytical solution
-    t = nb.atime
-
-    # These values were set by hand to match the positions because this scripts does not set the referential in the middle of the boxsize. Changing the referential shows only one peak...
+    # These values were set by hand to match the positions because this scripts
+    #does not set the referential in the middle of the boxsize. Changing the
+    # referential shows only one peak...
     r_1 = 0.54
     r_2 = 0.8
     r_sol = np.linspace(r_min, r_max, 100)
@@ -156,12 +170,11 @@ for filename in tqdm(files):
 
     initial_guess_q_1 = 1e1
     initial_guess_q_2 = 1e1
-    popt, pcov = curve_fit(fit_q, r, fe, p0=[initial_guess_q_1, initial_guess_q_2])
+    popt, pcov = curve_fit(fit_q, r, m_fe, p0=[initial_guess_q_1, initial_guess_q_2])
 
     # Extract the fitted q_0 value
     q_1 = popt[0]
     q_2 = popt[1]
-    # # q_0 = 1e-4
 
     # Compute the analytical solution
     fe_1 = gaussian(r_sol, t, q_1, r_1, kappa, epsilon)
@@ -173,9 +186,9 @@ for filename in tqdm(files):
                            figsize=figsize, layout="tight")
     ax.clear()
     ax.plot(r_centers, fe_bin, label='Fe mass profile')
-    ax.plot(r_sol, fe_sol, label='Analytical solution')
+    ax.plot(r_sol, fe_sol, label='Parabolic diffusion solution')
     ax.set_xlabel("$r$ [kpc]")
-    ax.set_ylabel("$Fe$ [M$_\odot$]")
+    ax.set_ylabel(r"$Fe$ [M$_\odot$]")
     ax.legend()
 
     if log:
@@ -184,4 +197,3 @@ for filename in tqdm(files):
     plt.savefig(output_name+".png", format='png',
                 bbox_inches='tight', dpi=300)
     plt.close()
-
