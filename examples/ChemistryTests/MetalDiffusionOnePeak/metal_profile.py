@@ -21,7 +21,6 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from pNbody import *
 from scipy.optimize import curve_fit
 from scipy.special import iv as modified_bessel
 import argparse
@@ -175,21 +174,24 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 
 # %%
 # Parse the arguments
 args, files = parse_option()
-
 r_min = args.r_min
 r_max = args.r_max
 n_bins = args.n_bins
 epsilon = args.epsilon
 log = args.log
 
+# Define the figure size
 figsize = (6.4, 4.8)
 
-# Read kappa from the parameter file
+# Open the data in the first snapshot to grab some information
 data_init = sw.load(files[0])
+boxsize = data_init.metadata.boxsize
+
+# Read kappa from the parameter file
 try:
     kappa = float(
         data_init.metadata.parameters["GEARChemistry:diffusion_coefficient"])
-except:
+except KeyError:
     kappa = args.kappa
 
 print(f"Using kappa = {kappa:.3e}")
@@ -197,9 +199,12 @@ print(f"Using kappa = {kappa:.3e}")
 # Read tau from the parameter file
 try:
     tau = float(data_init.metadata.parameters["GEARChemistry:tau"])
-except:
+except KeyError:
     tau = 0.001
 
+print(f"Using tau = {tau:.3e}")
+
+# Now that we have all we need, do the work on everyone!
 for filename in tqdm(files):
     snapshot_number = int(filename.split('_')[1].split('.')[0])
     output_name = "metal_profile" + str(snapshot_number)
@@ -208,32 +213,37 @@ for filename in tqdm(files):
     if log:
         output_name = "log_" + output_name
 
-    # Get the numerical data
-    nb = Nbody(filename, ptypes=[0])
-    fe = nb.metals[:, 0]*nb.Mass(units="Msol")
-    r = nb.rxyz()
+    # Get the metal mass
+    if hasattr(data.gas.metal_mass_fractions, 'fe'):
+        m_fe = data.gas.metal_mass_fractions.fe * data.gas.masses
+    else: # This case happens when we run the simulation without --feedback
+        m_fe = data.gas.metal_mass_fractions[:, 0] * data.gas.masses
+
+    # Get the radii
+    r = np.linalg.norm(data.gas.coordinates, axis=1)
+
+    # Get the simulation time
+    t = data.metadata.time.value
 
     # Compute the radial profile
-    r_centers, fe_bin = radial_profile(fe, r, r_min, r_max, n_bins=n_bins)
+    r_centers, fe_bin = radial_profile(m_fe, r, r_min, r_max, n_bins=n_bins)
 
-    # Get data to compute the analytical solution
-    t = nb.atime
+    # Estimate the 1D location of the metal mass peak in the ICs
     # r_0 = np.linalg.norm(nb.boxsize/2)
-    r_0 = 0.6
-
-    r_sol = np.linspace(r_min, r_max, 100)
+    r_0 = 0.6 # More precise somehow...
 
     # Perform the fit on all the data
     def fit_q_0(r, q_0):
         return gaussian(r, t, q_0, r_0, kappa, epsilon)
 
     initial_guess_q_0 = 1e1
-    popt, pcov = curve_fit(fit_q_0, r, fe, p0=initial_guess_q_0)
+    popt, pcov = curve_fit(fit_q_0, r, m_fe, p0=initial_guess_q_0)
 
     # Extract the fitted q_0 value
     q_0 = popt[0]
 
     # Compute the analytical solution
+    r_sol = np.linspace(r_min, r_max, 100)
     fe_sol = gaussian(r_sol, t, q_0, r_0, kappa, epsilon)
 
     #########
@@ -241,7 +251,7 @@ for filename in tqdm(files):
     def fit_q_0_hyperbolic(r, q_0):
         return hyperbolic_diffusion_solution(r, t, q_0, r_0, tau, kappa)
 
-    popt2, pcov2 = curve_fit(fit_q_0_hyperbolic, r, fe, p0=initial_guess_q_0)
+    popt2, pcov2 = curve_fit(fit_q_0_hyperbolic, r, m_fe, p0=initial_guess_q_0)
 
     # Extract the fitted q_0 value
     q_0_hyperbolic = popt2[0]
