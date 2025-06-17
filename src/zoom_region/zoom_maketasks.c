@@ -160,7 +160,8 @@ void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
   struct scheduler *s = &e->sched;
 
   /* Nothing to do if there's no gravity. */
-  if (!(e->policy & engine_policy_self_gravity)) return;
+  if (!(e->policy & engine_policy_self_gravity))
+    return;
 
   /* At the super level we have a few different tasks to make. (We don't need
    * any tasks above the super level) */
@@ -173,6 +174,7 @@ void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
     /* Gravity recursive down-pass */
     c->grav.down = scheduler_addtask(s, task_type_grav_down, task_subtype_none,
                                      0, 0, c, NULL);
+    message("Adding gravity tasks for void cell at depth %d", c->depth);
 
     /* Implicit tasks for the up and down passes */
     c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
