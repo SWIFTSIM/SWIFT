@@ -241,13 +241,6 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   if (!cell_is_active_gravity(c, e))
     return;
 
-  if (c->subtype == cell_subtype_void) {
-    message("Unskipping gravity tasks in a void cell at depth %d", c->depth);
-    if (cell_is_above_diff_grav_depth(c)) {
-      message("This is a void cell above the differential gravity depth.");
-    }
-  }
-
   /* Recurse */
   if ((c->split || c->subtype == cell_subtype_void) &&
       cell_is_above_diff_grav_depth(c)) {
