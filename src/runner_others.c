@@ -812,7 +812,7 @@ int count_expected_interactions(const struct engine *e, const struct cell *c) {
 
     /* Only count pairs, selfs, and mms */
     if (t->type == task_type_self && t->subtype == task_subtype_grav) {
-      // count += c->grav.count;
+      count += c->grav.count;
     }
 
     else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
