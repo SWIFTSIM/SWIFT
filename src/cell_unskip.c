@@ -1618,6 +1618,132 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
 }
 
 /**
+ * @brief Will a gravity pair task acting on two cells access any #gpart?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param e The #engine.
+ *
+ * @return >0 if the pair action will require access to some #gpart.
+ */
+int cell_grav_pair_will_act_on_gpart(const struct cell *restrict ci,
+                                     const struct cell *restrict cj,
+                                     const struct engine *e) {
+
+  const int nodeID = e->nodeID;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID == cj->nodeID) error("Acting on two local cells");
+#endif
+
+  /* Is there anything to do here? */
+  const int do_ci = cell_is_active_gravity(ci, e) && ci->nodeID == nodeID;
+  const int do_cj = cell_is_active_gravity(cj, e) && cj->nodeID == nodeID;
+  if (!do_ci && !do_cj) return 0;
+  if (ci->grav.count == 0 || cj->grav.count == 0) return 0;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!cell_is_multipole_drifted(ci, e)) error("Multipole ci is not drifted");
+  if (!cell_is_multipole_drifted(cj, e)) error("Multipole cj is not drifted");
+#endif
+
+  /* Can we use multipoles ? */
+  if (cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/0,
+                           /*is_tree_walk=*/1)) {
+
+    /* Ok, no particle will be touched. */
+    return 0;
+  }
+
+  /* Otherwise, if we are at the bottom, some particle info will be needed */
+  else if (!ci->split && !cj->split) {
+    return 1;
+  }
+
+  /* And if we can recurse on one side only */
+  else {
+
+    /* Recover the multipole information */
+    const struct gravity_tensors *const multi_i = ci->grav.multipole;
+    const struct gravity_tensors *const multi_j = cj->grav.multipole;
+    const double ri_max = multi_i->r_max;
+    const double rj_max = multi_j->r_max;
+
+    if (ri_max > rj_max) {
+
+      if (ci->split) {
+
+        /* Does any of the lower-level interactions require the gpart? */
+        for (int k = 0; k < 8; k++) {
+          if (ci->progeny[k] != NULL) {
+            if (cell_grav_pair_will_act_on_gpart(ci->progeny[k], cj, e)) {
+              return 1;
+            }
+          }
+        }
+
+        return 0;
+
+      } else if (cj->split) {
+
+        /* Does any of the lower-level interactions require the gpart? */
+        for (int k = 0; k < 8; k++) {
+          if (cj->progeny[k] != NULL) {
+            if (cell_grav_pair_will_act_on_gpart(ci, cj->progeny[k], e)) {
+              return 1;
+            }
+          }
+        }
+
+        return 0;
+
+      } else {
+#ifdef SWIFT_DEBUG_CHECKS
+        error("Fundamental error in the logic");
+#endif
+      }
+    } else if (rj_max >= ri_max) {
+
+      if (cj->split) {
+
+        /* Does any of the lower-level interactions require the gpart? */
+        for (int k = 0; k < 8; k++) {
+          if (cj->progeny[k] != NULL) {
+            if (cell_grav_pair_will_act_on_gpart(ci, cj->progeny[k], e)) {
+              return 1;
+            }
+          }
+        }
+
+        return 0;
+
+      } else if (ci->split) {
+
+        /* Does any of the lower-level interactions require the gpart? */
+        for (int k = 0; k < 8; k++) {
+          if (ci->progeny[k] != NULL) {
+            if (cell_grav_pair_will_act_on_gpart(ci->progeny[k], cj, e)) {
+              return 1;
+            }
+          }
+        }
+
+        return 0;
+
+      } else {
+#ifdef SWIFT_DEBUG_CHECKS
+        error("Fundamental error in the logic");
+#endif
+      }
+    }
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Fundamental error in the logic");
+#endif
+  return -1;
+}
+
+/**
  * @brief Un-skips all the hydro tasks associated with a given cell and checks
  * if the space needs to be rebuilt.
  *
@@ -2010,8 +2136,19 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
     if (t->type == task_type_pair) {
 #ifdef WITH_MPI
+
+      /* Verify whether the pair will actually involve any particle
+       * interaction.
+       * Note that we are only interested in the case where the pair
+       * goes over domain boundaries */
+      int pair_will_act_on_particles = 0;
+      if ((ci_nodeID != nodeID) || (cj_nodeID != nodeID)) {
+        pair_will_act_on_particles =
+            cell_grav_pair_will_act_on_gpart(ci, cj, e);
+      }
+
       /* Activate the send/recv tasks. */
-      if (ci_nodeID != nodeID) {
+      if (ci_nodeID != nodeID && pair_will_act_on_particles) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active)
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
@@ -2042,7 +2179,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
-      } else if (cj_nodeID != nodeID) {
+      } else if (cj_nodeID != nodeID && pair_will_act_on_particles) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active)
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);

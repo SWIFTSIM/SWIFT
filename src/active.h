@@ -144,6 +144,20 @@ __attribute__((always_inline)) INLINE static int cell_are_bpart_drifted(
   return (c->black_holes.ti_old_part == e->ti_current);
 }
 
+__attribute__((always_inline)) INLINE static int cell_is_multipole_drifted(
+    const struct cell *c, const struct engine *e) {
+
+  if (c->grav.ti_old_multipole > e->ti_current)
+    error(
+        "Multipole has been drifted too far forward in time! c->ti_old=%lld "
+        "(t=%e) "
+        "and e->ti_current=%lld (t=%e)",
+        c->grav.ti_old_multipole, c->grav.ti_old_multipole * e->time_base,
+        e->ti_current, e->ti_current * e->time_base);
+
+  return (c->grav.ti_old_multipole == e->ti_current);
+}
+
 /**
  * @brief Check that the #part in a #cell have been drifted to the current time.
  * This is just a prototype function to keep the iact functions clean. As we
