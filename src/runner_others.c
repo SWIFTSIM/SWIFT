@@ -780,70 +780,6 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Count the expected interactions in this cell based on tasks.
- *
- * This function counts the number of expected interactions in a cell
- * based on the tasks that are present in the cell's gravity list.
- *
- * @param e The #engine.
- * @param c The #cell.
- * @return The count of expected interactions.
- */
-int count_expected_interactions(const struct engine *e, const struct cell *c) {
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Count the expected interactions in this cell */
-  int count = 0;
-
-  /* Recurse? */
-  for (int k = 0; k < 8; k++) {
-    if (c->progeny[k] != NULL) {
-      count += count_expected_interactions(e, c->progeny[k]);
-    }
-  }
-  if (count > 0)
-    message("Counting expected interactions %d at depth %d (%s/%s)", count,
-            c->depth, cellID_names[c->type], subcellID_names[c->subtype]);
-
-  /* Loop over the gravity tasks in this cell. */
-  for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    // struct cell *ci = t->ci;
-    // struct cell *cj = t->cj;
-
-    /* Only count pairs, selfs, and mms */
-    if (t->type == task_type_self && t->subtype == task_subtype_grav) {
-      count += c->grav.count;
-    }
-
-    else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
-      // if (ci == c) {
-      //   count += cj->grav.count;
-      // } else if (cj == c) {
-      //   count += ci->grav.count;
-      // }
-    }
-  }
-
-  /* Loop over the MM tasks. */
-  for (struct link *l = c->grav.mm; l != NULL; l = l->next) {
-    // struct task *t = l->t;
-    // struct cell *ci = t->ci;
-    // struct cell *cj = t->cj;
-    //
-    // if (ci == c) {
-    //   count += cj->grav.count;
-    // } else if (cj == c) {
-    //   count += ci->grav.count;
-    // }
-  }
-
-  return count;
-#else
-  error("This function should only be used in debug mode.");
-#endif
-}
-
-/**
  * @brief End the gravity force calculation of all active particles in a cell
  * by multiplying the acccelerations by the relevant constants
  *
@@ -968,26 +904,17 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                     gp->num_interacted, e->total_nr_gparts);
 #endif
 
-            /* Loop over the cells gravity tasks and count how many interactions
-             * we expected from our tasks. */
-            struct cell *top = c->top;
-            while (top->void_parent != NULL) {
-              top = top->void_parent->top;
-            }
-            int expected_interactions = count_expected_interactions(e, top);
-
-            error(
-                "g-particle (id=%lld, type=%s) did not interact "
-                "gravitationally with all other gparts "
-                "gp->num_interacted=%lld, total_gparts=%lld (local "
-                "num_gparts=%zd inhibited_gparts=%lld, "
-                "(total - gp->num_interacted)=%lld, c->type=%s,"
-                " c->subtype=%s, c->depth=%d, expected_interactions "
-                "(from tasks)=%d)",
-                my_id, part_type_names[gp->type], gp->num_interacted,
-                e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts,
-                e->total_nr_gparts - gp->num_interacted, cellID_names[c->type],
-                subcellID_names[c->subtype], c->depth, expected_interactions);
+            error("g-particle (id=%lld, type=%s) did not interact "
+                  "gravitationally with all other gparts "
+                  "gp->num_interacted=%lld, total_gparts=%lld (local "
+                  "num_gparts=%zd inhibited_gparts=%lld, "
+                  "(total - gp->num_interacted)=%lld, c->type=%s,"
+                  " c->subtype=%s, c->depth=%d)",
+                  my_id, part_type_names[gp->type], gp->num_interacted,
+                  e->total_nr_gparts, e->s->nr_gparts,
+                  e->count_inhibited_gparts,
+                  e->total_nr_gparts - gp->num_interacted,
+                  cellID_names[c->type], subcellID_names[c->subtype], c->depth);
           }
         }
 #endif
