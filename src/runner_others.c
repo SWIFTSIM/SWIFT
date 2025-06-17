@@ -967,7 +967,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
             while (top->void_parent != NULL) {
               top = top->void_parent->top;
             }
-            int expected_interactions = count_expected_interactions(e, c);
+            int expected_interactions = count_expected_interactions(e, top);
 
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
