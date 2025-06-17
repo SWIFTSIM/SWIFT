@@ -83,6 +83,10 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
    * void cells are always split. */
   if (c->split || c->subtype == cell_subtype_void) {
 
+    if (c->subtype == cell_subtype_void) {
+      message("Running down from a void cell at depth %d", c->depth);
+    }
+
     /* Node case */
 
     /* Add the field-tensor to all the 8 progenitors */
@@ -90,7 +94,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
       struct cell *cp = c->progeny[k];
 
       /* Do we have a progenitor with any active g-particles ? */
-      if (cp != NULL) {
+      if (cp != NULL && cell_is_active_gravity(cp, e)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cp->grav.ti_old_multipole != e->ti_current)
@@ -121,10 +125,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
         if (cp->grav.super != cp) {
           runner_do_grav_down(r, cp, 0);
         } else {
-          /* If we are at the super level, we need to clear the flags
-           * so that the multipole is not recomputed. */
-          runner_clear_grav_flags(cp, e);
-          message("Found a super in the down call");
+          message("Reached the super level, not recursing further down.");
         }
       }
     }
