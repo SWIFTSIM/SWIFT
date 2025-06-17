@@ -800,8 +800,9 @@ int count_expected_interactions(const struct engine *e, const struct cell *c) {
       count += count_expected_interactions(e, c->progeny[k]);
     }
   }
-  message("Counting expected interactions %d at depth %d (%s/%s)", count,
-          c->depth, cellID_names[c->type], subcellID_names[c->subtype]);
+  if (count > 0)
+    message("Counting expected interactions %d at depth %d (%s/%s)", count,
+            c->depth, cellID_names[c->type], subcellID_names[c->subtype]);
 
   /* Loop over the gravity tasks in this cell. */
   for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
