@@ -1416,8 +1416,6 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
       c->grav.end_force = scheduler_addtask(s, task_type_end_grav_force,
                                             task_subtype_none, 0, 0, c, NULL);
-      message("Made an end force task for a %s/%s cell", cellID_names[c->type],
-              subcellID_names[c->subtype]);
 
       scheduler_addunlock(s, c->grav.end_force, c->super->kick2);
 
