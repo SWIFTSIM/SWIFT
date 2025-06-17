@@ -229,9 +229,9 @@ static void engine_do_unskip_sinks(struct cell *c, struct engine *e) {
  */
 static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
 
-  // /* Early abort (are we below the level where tasks are)? */
-  // if (!cell_get_flag(c, cell_flag_has_tasks))
-  //   return;
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks))
+    return;
 
   /* Ignore empty cells but not void cells (in zoom land). */
   if (c->grav.count == 0 && c->subtype != cell_subtype_void)
@@ -436,6 +436,10 @@ void engine_unskip(struct engine *e) {
   int num_active_cells = 0;
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
+
+    if (c->subtype == cell_subtype_void) {
+      message("Found a void cell... skipping it for now.");
+    }
 
     if (cell_is_empty(c) && !(c->subtype == cell_subtype_void))
       continue;
