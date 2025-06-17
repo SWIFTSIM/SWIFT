@@ -76,9 +76,6 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   if (c->grav.multipole->pot.ti_init != e->ti_current)
     error("c->field tensor not initialised");
 #endif
-  if (c->subtype == cell_subtype_void) {
-    message("Running down from a void cell at depth %d", c->depth);
-  }
 
   /* Is the cell not a leaf? */
   /* Note: In zoom land we have void cells whose leaves have split = 0 to
@@ -123,8 +120,6 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
          * void->zoom cell tree can have two super levels.  */
         if (cp->grav.super != cp) {
           runner_do_grav_down(r, cp, 0);
-        } else {
-          message("Reached the super level, not recursing further down.");
         }
       }
     }

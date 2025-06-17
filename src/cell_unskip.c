@@ -2109,12 +2109,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
-  if (c->subtype == cell_subtype_void) {
-    message("Unskipping gravity tasks for void cell at depth %d in "
-            "cell_unskip_gravity_tasks()",
-            c->depth);
-  }
-
 #ifdef WITH_MPI
   const int with_star_formation = e->policy & engine_policy_star_formation;
 #endif
