@@ -800,6 +800,8 @@ int count_expected_interactions(const struct engine *e, const struct cell *c) {
       count += count_expected_interactions(e, c->progeny[k]);
     }
   }
+  message("Counting expected interactions %d at depth %d (%s/%s)", count,
+          c->depth, cellID_names[c->type], subcellID_names[c->subtype]);
 
   /* Loop over the gravity tasks in this cell. */
   for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
@@ -819,14 +821,18 @@ int count_expected_interactions(const struct engine *e, const struct cell *c) {
         count += ci->grav.count;
       }
     }
+  }
 
-    /* Count the multipole interactions */
-    else if (t->type == task_type_grav_mm) {
-      if (ci == c) {
-        count += cj->grav.count;
-      } else if (cj == c) {
-        count += ci->grav.count;
-      }
+  /* Loop over the MM tasks. */
+  for (struct link *l = c->grav.mm; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+
+    if (ci == c) {
+      count += cj->grav.count;
+    } else if (cj == c) {
+      count += ci->grav.count;
     }
   }
 
