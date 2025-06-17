@@ -816,11 +816,11 @@ int count_expected_interactions(const struct engine *e, const struct cell *c) {
     }
 
     else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
-      if (ci == c) {
-        count += cj->grav.count;
-      } else if (cj == c) {
-        count += ci->grav.count;
-      }
+      // if (ci == c) {
+      //   count += cj->grav.count;
+      // } else if (cj == c) {
+      //   count += ci->grav.count;
+      // }
     }
   }
 
