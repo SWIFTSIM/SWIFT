@@ -826,15 +826,15 @@ int count_expected_interactions(const struct engine *e, const struct cell *c) {
 
   /* Loop over the MM tasks. */
   for (struct link *l = c->grav.mm; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
-
-    if (ci == c) {
-      count += cj->grav.count;
-    } else if (cj == c) {
-      count += ci->grav.count;
-    }
+    // struct task *t = l->t;
+    // struct cell *ci = t->ci;
+    // struct cell *cj = t->cj;
+    //
+    // if (ci == c) {
+    //   count += cj->grav.count;
+    // } else if (cj == c) {
+    //   count += ci->grav.count;
+    // }
   }
 
   return count;
