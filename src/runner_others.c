@@ -807,8 +807,8 @@ int count_expected_interactions(const struct engine *e, const struct cell *c) {
   /* Loop over the gravity tasks in this cell. */
   for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
     struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+    // struct cell *ci = t->ci;
+    // struct cell *cj = t->cj;
 
     /* Only count pairs, selfs, and mms */
     if (t->type == task_type_self && t->subtype == task_subtype_grav) {
