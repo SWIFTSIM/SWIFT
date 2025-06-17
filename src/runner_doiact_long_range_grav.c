@@ -567,8 +567,6 @@ void runner_count_mesh_interactions_uniform(struct runner *r, struct cell *ci,
 void runner_do_grav_long_range(struct runner *r, struct cell *ci,
                                const int timer) {
 
-  return;
-
   TIMER_TIC;
 
   struct space *s = r->e->s;
