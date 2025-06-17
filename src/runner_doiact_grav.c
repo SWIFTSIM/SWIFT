@@ -76,16 +76,15 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   if (c->grav.multipole->pot.ti_init != e->ti_current)
     error("c->field tensor not initialised");
 #endif
+  if (c->subtype == cell_subtype_void) {
+    message("Running down from a void cell at depth %d", c->depth);
+  }
 
   /* Is the cell not a leaf? */
   /* Note: In zoom land we have void cells whose leaves have split = 0 to
    * differentiate them from the zoom cell tree they link in to. Despite this
    * void cells are always split. */
   if (c->split || c->subtype == cell_subtype_void) {
-
-    if (c->subtype == cell_subtype_void) {
-      message("Running down from a void cell at depth %d", c->depth);
-    }
 
     /* Node case */
 
