@@ -437,10 +437,6 @@ void engine_unskip(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
-    if (c->subtype == cell_subtype_void) {
-      message("Found a void cell... skipping it for now.");
-    }
-
     if (cell_is_empty(c) && !(c->subtype == cell_subtype_void))
       continue;
 
