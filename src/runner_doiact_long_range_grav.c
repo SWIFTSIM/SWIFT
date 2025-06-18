@@ -226,7 +226,7 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
   /* Maximal distance any interaction can take place before the mesh kicks in,
    * rounded up to the next integer */
   int d =
-      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
+      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 2;
 
   /* Loop over plausibly useful cells */
   for (int ii = top_i - d; ii <= top_i + d; ++ii) {
@@ -263,16 +263,13 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
 
           /* Record that this multipole received a contribution */
           multi_i->pot.interacted = 1;
-
-          /* We are done here. */
-          continue;
         }
 
         /* Shall we interact with this cell? */
-        if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/0,
-                                 /*periodic boundaries*/ s->periodic,
-                                 /*use_mesh*/ s->periodic)) {
+        else if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                                      /*is_tree_walk=*/0,
+                                      /*periodic boundaries*/ s->periodic,
+                                      /*use_mesh*/ s->periodic)) {
 
           /* Call the PM interaction function on the active sub-cells of ci */
           runner_dopair_grav_mm_nonsym(r, ci, cj);
