@@ -223,7 +223,8 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
    * we will attach those existing cells rather than grab new ones. */
 
   /* If we're above the zoom level we need to link in the zoom cells. */
-  if (c->depth == s->zoom_props->zoom_cell_depth - 1) {
+  if (c->depth + s->zoom_props->buffer_cell_depth ==
+      s->zoom_props->zoom_cell_depth - 1) {
     message("Linking zoom cells to void cell at depth %d", c->depth);
     zoom_link_void_zoom_leaves(s, c);
   }
