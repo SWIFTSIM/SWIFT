@@ -211,9 +211,12 @@ void space_construct_progeny(struct space *s, struct cell *c,
     cp->dmin = c->dmin / 2;
     cp->h_min_allowed = cp->dmin * 0.5 * (1. / kernel_gamma);
     cp->h_max_allowed = cp->dmin * (1. / kernel_gamma);
-    if (k & 4) cp->loc[0] += cp->width[0];
-    if (k & 2) cp->loc[1] += cp->width[1];
-    if (k & 1) cp->loc[2] += cp->width[2];
+    if (k & 4)
+      cp->loc[0] += cp->width[0];
+    if (k & 2)
+      cp->loc[1] += cp->width[1];
+    if (k & 1)
+      cp->loc[2] += cp->width[2];
     cp->depth = c->depth + 1;
     cp->split = 0;
     cp->hydro.h_max = 0.f;
@@ -242,7 +245,7 @@ void space_construct_progeny(struct space *s, struct cell *c,
     star_formation_logger_init(&cp->stars.sfh);
 #ifdef WITH_MPI
     cp->mpi.tag = -1;
-#endif  // WITH_MPI
+#endif // WITH_MPI
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     cell_assign_cell_index(cp, c);
 
@@ -359,7 +362,9 @@ void space_populate_multipole(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Double check we have correctly assigned the multipole */
   if (c->grav.multipole->m_pole.num_gpart == 0 && c->grav.count > 0)
-    error("We have a multipole with no particles but the cell does!!");
+    error("We have a multipole with no particles but the cell does!! "
+          "(multi->num_gpart=%d, cell->grav.count=%d)",
+          c->grav.multipole->m_pole.num_gpart, c->grav.count);
 #endif
 }
 
@@ -684,13 +689,12 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
-    error(
-        "Exceeded maximum depth (%d) when splitting cells, aborting. This is "
-        "most likely due to having too many particles at the exact same "
-        "position, making the construction of a tree impossible. (gcount=%d,"
-        " c->type=%d, c->subtype=%d, gparts[0].x=%.3f, gparts[1].x=%.3f)",
-        space_cell_maxdepth, gcount, c->type, c->subtype, c->grav.parts[0].x[0],
-        c->grav.parts[1].x[0]);
+    error("Exceeded maximum depth (%d) when splitting cells, aborting. This is "
+          "most likely due to having too many particles at the exact same "
+          "position, making the construction of a tree impossible. (gcount=%d,"
+          " c->type=%d, c->subtype=%d, gparts[0].x=%.3f, gparts[1].x=%.3f)",
+          space_cell_maxdepth, gcount, c->type, c->subtype,
+          c->grav.parts[0].x[0], c->grav.parts[1].x[0]);
   }
 
   /* Split or let it be? (When running a zoom we split neighbour cells to better
@@ -853,7 +857,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->owner = -1;
 
   /* Store the global max depth */
-  if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
+  if (c->depth == 0)
+    atomic_max(&s->maxdepth, maxdepth);
 }
 
 /**
@@ -898,11 +903,16 @@ static void space_split_mapper(void *map_data, int num_cells,
     space_split_recursive(s, c, buff, sbuff, bbuff, gbuff, sink_buff, tpid);
 
     /* Free the particle buffers. */
-    if (buff != NULL) swift_free("tempbuff", buff);
-    if (gbuff != NULL) swift_free("tempgbuff", gbuff);
-    if (sbuff != NULL) swift_free("tempsbuff", sbuff);
-    if (bbuff != NULL) swift_free("tempbbuff", bbuff);
-    if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
+    if (buff != NULL)
+      swift_free("tempbuff", buff);
+    if (gbuff != NULL)
+      swift_free("tempgbuff", gbuff);
+    if (sbuff != NULL)
+      swift_free("tempsbuff", sbuff);
+    if (bbuff != NULL)
+      swift_free("tempbbuff", bbuff);
+    if (sink_buff != NULL)
+      swift_free("temp_sink_buff", sink_buff);
 
     /* Collect the max multipole power from this cell. */
     if (s->with_self_gravity) {
@@ -922,7 +932,8 @@ static void space_split_mapper(void *map_data, int num_cells,
   for (int ind = 0; ind < num_cells; ind++) {
     int depth = 0;
     const struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
+    if (!checkCellhdxmax(c, &depth))
+      message("    at cell depth %d", depth);
   }
 #endif
 
