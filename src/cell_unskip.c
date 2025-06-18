@@ -2170,13 +2170,15 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       }
 
       /* Activate the send/recv tasks. */
-      if (ci_nodeID != nodeID && pair_will_act_on_particles) {
+      if (ci_nodeID != nodeID) {
+
         /* If the local cell is active, receive data from the foreign cell. */
-        if (cj_active)
+        if (cj_active && pair_will_act_on_particles) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
+        }
 
         /* Is the foreign cell active and will need stuff from us? */
-        if (ci_active) {
+        if (ci_active && pair_will_act_on_particles) {
 
           scheduler_activate_pack(s, cj->mpi.pack, task_subtype_gpart,
                                   ci_nodeID);
@@ -2201,13 +2203,15 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
-      } else if (cj_nodeID != nodeID && pair_will_act_on_particles) {
+      } else if (cj_nodeID != nodeID) {
+
         /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active)
+        if (ci_active && pair_will_act_on_particles) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
+        }
 
         /* Is the foreign cell active and will need stuff from us? */
-        if (cj_active) {
+        if (cj_active && pair_will_act_on_particles) {
 
           scheduler_activate_pack(s, ci->mpi.pack, task_subtype_gpart,
                                   cj_nodeID);
