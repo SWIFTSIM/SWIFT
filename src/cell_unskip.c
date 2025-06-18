@@ -1630,17 +1630,39 @@ int cell_grav_pair_will_act_on_gpart(const struct cell *restrict ci,
                                      const struct cell *restrict cj,
                                      const struct engine *e) {
 
-  const int nodeID = e->nodeID;
-
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID == cj->nodeID) error("Acting on two local cells");
 #endif
 
   /* Is there anything to do here? */
-  const int do_ci = cell_is_active_gravity(ci, e) && ci->nodeID == nodeID;
-  const int do_cj = cell_is_active_gravity(cj, e) && cj->nodeID == nodeID;
+  const int do_ci = cell_is_active_gravity(ci, e);
+  const int do_cj = cell_is_active_gravity(cj, e);
   if (!do_ci && !do_cj) return 0;
   if (ci->grav.count == 0 || cj->grav.count == 0) return 0;
+
+  const int nodeID = e->nodeID;
+  const int ci_local = ci->nodeID == nodeID;
+  const int cj_local = cj->nodeID == nodeID;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (do_ci && ci_local && !cell_is_multipole_drifted(ci, e))
+    error("Multipole ci is not drifted");
+  if (do_cj && cj_local && !cell_is_multipole_drifted(cj, e))
+    error("Multipole cj is not drifted");
+#endif
+
+  /* Drift the mutlipoles that haven't drifted yet before
+   * making any decision */
+  if (!(do_ci && ci_local)) {
+    lock_lock(&ci->grav.mlock);
+    if (ci->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
+    if (lock_unlock(&ci->grav.mlock) != 0) error("Impossible to unlock m-pole");
+  }
+  if (!(do_cj && cj_local)) {
+    lock_lock(&cj->grav.mlock);
+    if (cj->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
+    if (lock_unlock(&cj->grav.mlock) != 0) error("Impossible to unlock m-pole");
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!cell_is_multipole_drifted(ci, e)) error("Multipole ci is not drifted");
