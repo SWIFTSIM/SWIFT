@@ -371,7 +371,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
 
   /* Deal with the multipole */
-  if (s->with_self_gravity) {
+  if (s->with_self_gravity && c->subtype == cell_subtype_void) {
     space_populate_multipole(c);
   }
 }
