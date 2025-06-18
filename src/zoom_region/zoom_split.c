@@ -199,13 +199,11 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
   /* If we're above the zoom level we need to link in the zoom cells. */
   if (c->depth == s->zoom_props->zoom_cell_depth - 1) {
-    message("Linking zoom cells to void cell at depth %d", c->depth);
     zoom_link_void_zoom_leaves(s, c);
   }
 
   /* If we're above the buffer level we need to link in the buffer cells. */
   else if (c->depth == s->zoom_props->buffer_cell_depth - 1) {
-    message("Linking buffer cells to void cell at depth %d", c->depth);
     zoom_link_void_buffer_leaves(s, c);
   }
 
