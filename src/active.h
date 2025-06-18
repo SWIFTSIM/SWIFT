@@ -147,6 +147,7 @@ __attribute__((always_inline)) INLINE static int cell_are_bpart_drifted(
 __attribute__((always_inline)) INLINE static int cell_is_multipole_drifted(
     const struct cell *c, const struct engine *e) {
 
+#ifdef SWIFT_DEBUG_CHECKS
   if (c->grav.ti_old_multipole > e->ti_current)
     error(
         "Multipole has been drifted too far forward in time! c->ti_old=%lld "
@@ -154,6 +155,7 @@ __attribute__((always_inline)) INLINE static int cell_is_multipole_drifted(
         "and e->ti_current=%lld (t=%e)",
         c->grav.ti_old_multipole, c->grav.ti_old_multipole * e->time_base,
         e->ti_current, e->ti_current * e->time_base);
+#endif
 
   return (c->grav.ti_old_multipole == e->ti_current);
 }
