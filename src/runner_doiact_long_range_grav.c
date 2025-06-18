@@ -70,12 +70,10 @@ void runner_do_grav_long_range_uniform_non_periodic(struct runner *r,
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
     /* Avoid self contributions */
-    if (top == cj)
-      continue;
+    if (top == cj) continue;
 
     /* Skip empty cells */
-    if (multi_j->m_pole.M_000 == 0.f)
-      continue;
+    if (multi_j->m_pole.M_000 == 0.f) continue;
 
     if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                              /*is_tree_walk=*/0,
@@ -137,16 +135,14 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
     /* Skip empty cells */
-    if (multi_j->m_pole.M_000 == 0.f)
-      continue;
+    if (multi_j->m_pole.M_000 == 0.f) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     tested_gparts += multi_j->m_pole.num_gpart;
 #endif
 
     /* Avoid self contributions */
-    if (top == cj)
-      continue;
+    if (top == cj) continue;
 
     if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                              /*is_tree_walk=*/0,
@@ -245,15 +241,13 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
         struct cell *cj = &bkg_cells[cell_index];
 
         /* Avoid self contributions  */
-        if (top == cj)
-          continue;
+        if (top == cj) continue;
 
         /* Handle on the top-level cell's gravity business*/
         const struct gravity_tensors *multi_j = cj->grav.multipole;
 
         /* Skip empty cells */
-        if (multi_j->m_pole.M_000 == 0.f)
-          continue;
+        if (multi_j->m_pole.M_000 == 0.f) continue;
 
         /* Minimal distance between any pair of particles */
         const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
@@ -346,15 +340,13 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
         struct cell *cj = &cells[cell_index];
 
         /* Avoid self contributions  */
-        if (top == cj)
-          continue;
+        if (top == cj) continue;
 
         /* Handle on the top-level cell's gravity business*/
         const struct gravity_tensors *multi_j = cj->grav.multipole;
 
         /* Skip empty cells */
-        if (multi_j->m_pole.M_000 == 0.f)
-          continue;
+        if (multi_j->m_pole.M_000 == 0.f) continue;
 
         /* Minimal distance between any pair of particles */
         const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
@@ -422,8 +414,7 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 
     /* Skip void cells to avoid double counting their top level progeny
      * in the zoom (and buffer) cell grids. */
-    if (cells[n].subtype == cell_subtype_void)
-      continue;
+    if (cells[n].subtype == cell_subtype_void) continue;
 
     /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[n];
@@ -431,16 +422,13 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 
     /* Get the top level cell of the current cj */
     struct cell *top_j = cj;
-    while (top_j->void_parent != NULL)
-      top_j = top_j->void_parent->top;
+    while (top_j->void_parent != NULL) top_j = top_j->void_parent->top;
 
     /* Avoid self contributions */
-    if (top == top_j)
-      continue;
+    if (top == top_j) continue;
 
     /* Skip empty cells */
-    if (multi_j->m_pole.M_000 == 0.f)
-      continue;
+    if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 = cell_min_dist2(top, top_j, periodic, dim);
@@ -463,8 +451,9 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
     }
   }
 #else
-  error("This function should not be called without debugging checks or "
-        "force checks enabled!");
+  error(
+      "This function should not be called without debugging checks or "
+      "force checks enabled!");
 #endif
 }
 
@@ -504,12 +493,10 @@ void runner_count_mesh_interactions_uniform(struct runner *r, struct cell *ci,
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
     /* Avoid self contributions */
-    if (top == cj)
-      continue;
+    if (top == cj) continue;
 
     /* Skip empty cells */
-    if (multi_j->m_pole.M_000 == 0.f)
-      continue;
+    if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
@@ -532,8 +519,9 @@ void runner_count_mesh_interactions_uniform(struct runner *r, struct cell *ci,
     }
   }
 #else
-  error("This function should not be called without debugging checks or "
-        "force checks enabled!");
+  error(
+      "This function should not be called without debugging checks or "
+      "force checks enabled!");
 #endif
 }
 
@@ -560,8 +548,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   const int periodic = s->periodic;
 
   /* Anything to do here? */
-  if (!cell_is_active_gravity(ci, r->e))
-    return;
+  if (!cell_is_active_gravity(ci, r->e)) return;
 
   if (ci->nodeID != engine_rank)
     error("Non-local cell in long-range gravity task!");
@@ -572,54 +559,52 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   /* Find this cell's top-level (great-)parent */
   struct cell *top = ci;
-  while (top->parent != NULL)
-    top = top->parent;
+  while (top->parent != NULL) top = top->parent;
 
   /* If we have a nested cell the true top level cell where we defined the
    * interactions is the background void parent cell. */
   /* TODO: This is a bit of a hack, we should actually have the top pointers set
    * properly during void tree splitting. */
-  while (top->void_parent != NULL)
-    top = top->void_parent->top;
+  while (top->void_parent != NULL) top = top->void_parent->top;
 
   /* Call the appropriate interaction function based on the type of the
    * cell in question. */
   if (periodic) {
     switch (ci->type) {
 
-    case cell_type_regular:
-      runner_do_grav_long_range_uniform_periodic(r, ci, top);
-      break;
-    case cell_type_zoom:
-      runner_do_grav_long_range_zoom_periodic(r, ci, top);
-      break;
-    case cell_type_buffer:
-      runner_do_grav_long_range_zoom_periodic(r, ci, top);
-      break;
-    case cell_type_bkg:
-      runner_do_grav_long_range_zoom_periodic(r, ci, top);
-      break;
-    default:
-      error("Unknown cell type in long-range gravity task!");
+      case cell_type_regular:
+        runner_do_grav_long_range_uniform_periodic(r, ci, top);
+        break;
+      case cell_type_zoom:
+        runner_do_grav_long_range_zoom_periodic(r, ci, top);
+        break;
+      case cell_type_buffer:
+        runner_do_grav_long_range_zoom_periodic(r, ci, top);
+        break;
+      case cell_type_bkg:
+        runner_do_grav_long_range_zoom_periodic(r, ci, top);
+        break;
+      default:
+        error("Unknown cell type in long-range gravity task!");
     }
   } else {
 
     switch (ci->type) {
 
-    case cell_type_regular:
-      runner_do_grav_long_range_uniform_non_periodic(r, ci, top);
-      break;
-    case cell_type_zoom:
-      runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
-      break;
-    case cell_type_buffer:
-      runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
-      break;
-    case cell_type_bkg:
-      runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
-      break;
-    default:
-      error("Unknown cell type in long-range gravity task!");
+      case cell_type_regular:
+        runner_do_grav_long_range_uniform_non_periodic(r, ci, top);
+        break;
+      case cell_type_zoom:
+        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
+        break;
+      case cell_type_buffer:
+        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
+        break;
+      case cell_type_bkg:
+        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
+        break;
+      default:
+        error("Unknown cell type in long-range gravity task!");
     }
   }
 
@@ -632,6 +617,5 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   }
 #endif
 
-  if (timer)
-    TIMER_TOC(timer_dograv_long_range);
+  if (timer) TIMER_TOC(timer_dograv_long_range);
 }

@@ -46,8 +46,7 @@ static INLINE void runner_clear_grav_flags(struct cell *c,
 
   if ((!cell_is_active_gravity(c, e) || c->nodeID != e->nodeID) && c->split) {
     for (int k = 0; k < 8; ++k)
-      if (c->progeny[k] != NULL)
-        runner_clear_grav_flags(c->progeny[k], e);
+      if (c->progeny[k] != NULL) runner_clear_grav_flags(c->progeny[k], e);
   }
 
   /* Remove the unskip flags. */
@@ -129,11 +128,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     /* Leaf case */
 
     /* We can abort early if no interactions via multipole happened */
-    if (!c->grav.multipole->pot.interacted)
-      return;
+    if (!c->grav.multipole->pot.interacted) return;
 
-    if (!cell_are_gpart_drifted(c, e))
-      error("Un-drifted gparts");
+    if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     /* Lock the cell for the particle updates */
@@ -164,8 +161,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           error("c->field tensor not initialised");
 
         /* Check that we are not updated an inhibited particle */
-        if (gpart_is_inhibited(gp, e))
-          error("Updating an inhibited particle!");
+        if (gpart_is_inhibited(gp, e)) error("Updating an inhibited particle!");
 
         /* Check that the particle was initialised */
         if (gp->initialised == 0)
@@ -178,13 +174,11 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     /* All done -> unlock the cell */
-    if (lock_unlock(&c->grav.plock) != 0)
-      error("Error unlocking cell");
+    if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
 #endif
   }
 
-  if (timer)
-    TIMER_TOC(timer_dograv_down);
+  if (timer) TIMER_TOC(timer_dograv_down);
 }
 
 /**
@@ -217,8 +211,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
   gravity_cache_zero_output(cache_i, gcount_padded_i);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->split)
-    error("Using function above leaf level!");
+  if (ci->split) error("Using function above leaf level!");
 #endif
 
   /* Loop over sink particles */
@@ -227,8 +220,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     struct gpart *gpi = &gparts_i[i];
 
     /* Ignore inactive particles */
-    if (!gpart_is_active(gpi, e))
-      continue;
+    if (!gpart_is_active(gpi, e)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that particles have been drifted to the current time */
@@ -299,8 +291,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
         const struct gpart *gpj = &gparts_j[j];
 
         /* Ignore inhibited particles */
-        if (gpart_is_inhibited(gpj, e))
-          continue;
+        if (gpart_is_inhibited(gpj, e)) continue;
 
         /* Get info about j */
         const float x_j = gpj->x[0];
@@ -375,8 +366,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #endif
   gravity_cache_write_back(cache_i, ci->grav.parts, gcount_i);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-  if (lock_unlock(&ci->grav.plock) != 0)
-    error("Error unlocking cell");
+  if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 #endif
 }
 
@@ -408,8 +398,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
   if (!e->s->periodic)
     error("Calling truncated PP function in non-periodic setup.");
 
-  if (ci->split)
-    error("Using function above leaf level!");
+  if (ci->split) error("Using function above leaf level!");
 #endif
 
   const float r_s_inv = grav_props->r_s_inv;
@@ -426,8 +415,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     struct gpart *gpi = &gparts_i[i];
 
     /* Ignore inactive particles */
-    if (!gpart_is_active(gpi, e))
-      continue;
+    if (!gpart_is_active(gpi, e)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that particles have been drifted to the current time */
@@ -503,8 +491,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
         const struct gpart *gpj = &gparts_j[j];
 
         /* Ignore inhibited particles */
-        if (gpart_is_inhibited(gpj, e))
-          continue;
+        if (gpart_is_inhibited(gpj, e)) continue;
 
         /* Get info about j */
         const float x_j = gpj->x[0];
@@ -585,8 +572,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #endif
   gravity_cache_write_back(cache_i, ci->grav.parts, gcount_i);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-  if (lock_unlock(&ci->grav.plock) != 0)
-    error("Error unlocking cell");
+  if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 #endif
 }
 
@@ -622,12 +608,10 @@ static INLINE void runner_dopair_grav_pp_full(
   for (int pid = 0; pid < gcount_i; pid++) {
 
     /* Skip inactive particles */
-    if (!ci_cache->active[pid])
-      continue;
+    if (!ci_cache->active[pid]) continue;
 
     /* Skip particle that can use the multipole */
-    if (ci_cache->use_mpole[pid])
-      continue;
+    if (ci_cache->use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!gpart_is_active(&gparts_i[pid], e))
@@ -791,12 +775,10 @@ static INLINE void runner_dopair_grav_pp_truncated(
   for (int pid = 0; pid < gcount_i; pid++) {
 
     /* Skip inactive particles */
-    if (!ci_cache->active[pid])
-      continue;
+    if (!ci_cache->active[pid]) continue;
 
     /* Skip particle that can use the multipole */
-    if (ci_cache->use_mpole[pid])
-      continue;
+    if (ci_cache->use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!gpart_is_active(&gparts_i[pid], e))
@@ -968,19 +950,17 @@ static INLINE void runner_dopair_grav_pm_full(
   const float multi_epsilon = multi_j->max_softening;
 
   /* Loop over all particles in ci... */
-#if !defined(SWIFT_DEBUG_CHECKS) && !defined(SWIFT_GRAVITY_FORCE_CHECKS) &&    \
+#if !defined(SWIFT_DEBUG_CHECKS) && !defined(SWIFT_GRAVITY_FORCE_CHECKS) && \
     _OPENMP >= 201307
 #pragma omp simd
 #endif
   for (int pid = 0; pid < gcount_padded_i; pid++) {
 
     /* Skip inactive particles */
-    if (!active[pid])
-      continue;
+    if (!active[pid]) continue;
 
     /* Skip particle that cannot use the multipole */
-    if (!use_mpole[pid])
-      continue;
+    if (!use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* The gravity_cache are sometimes allocated with more
@@ -1005,8 +985,7 @@ static INLINE void runner_dopair_grav_pm_full(
     if (gparts_i[pid].initialised == 0)
       error("Adding forces to an un-initialised gpart.");
 
-    if (pid >= gcount_i)
-      error("Adding forces to padded particle");
+    if (pid >= gcount_i) error("Adding forces to padded particle");
 #endif
 
     const float x_i = x[pid];
@@ -1122,19 +1101,17 @@ static INLINE void runner_dopair_grav_pm_truncated(
   const float multi_epsilon = multi_j->max_softening;
 
   /* Loop over all particles in ci... */
-#if !defined(SWIFT_DEBUG_CHECKS) && !defined(SWIFT_GRAVITY_FORCE_CHECKS) &&    \
+#if !defined(SWIFT_DEBUG_CHECKS) && !defined(SWIFT_GRAVITY_FORCE_CHECKS) && \
     _OPENMP >= 201307
 #pragma omp simd
 #endif
   for (int pid = 0; pid < gcount_padded_i; pid++) {
 
     /* Skip inactive particles */
-    if (!active[pid])
-      continue;
+    if (!active[pid]) continue;
 
     /* Skip particle that cannot use the multipole */
-    if (!use_mpole[pid])
-      continue;
+    if (!use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* The gravity_cache are sometimes allocated with more
@@ -1159,8 +1136,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
     if (gparts_i[pid].initialised == 0)
       error("Adding forces to an un-initialised gpart.");
 
-    if (pid >= gcount_i)
-      error("Adding forces to padded particle");
+    if (pid >= gcount_i) error("Adding forces to padded particle");
 #endif
 
     const float x_i = x[pid];
@@ -1259,21 +1235,16 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       cell_is_active_gravity(cj, e) && (cj->nodeID == e->nodeID);
 
   /* Anything to do here? */
-  if (!ci_active && !cj_active)
-    return;
-  if (!ci_active && !symmetric)
-    return;
+  if (!ci_active && !cj_active) return;
+  if (!ci_active && !symmetric) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we are not doing something stupid */
-  if (ci->split || cj->split)
-    error("Running P-P on splitable cells");
+  if (ci->split || cj->split) error("Running P-P on splitable cells");
 
   /* Let's start by checking things are drifted */
-  if (!cell_are_gpart_drifted(ci, e))
-    error("Un-drifted gparts");
-  if (!cell_are_gpart_drifted(cj, e))
-    error("Un-drifted gparts");
+  if (!cell_are_gpart_drifted(ci, e)) error("Un-drifted gparts");
+  if (!cell_are_gpart_drifted(cj, e)) error("Un-drifted gparts");
   if (cj_active && ci->grav.ti_old_multipole != e->ti_current)
     error("Un-drifted multipole");
   if (ci_active && cj->grav.ti_old_multipole != e->ti_current)
@@ -1443,8 +1414,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
     gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-    if (lock_unlock(&ci->grav.plock) != 0)
-      error("Error unlocking cell");
+    if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 #endif
   }
 
@@ -1455,8 +1425,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
     gravity_cache_write_back(cj_cache, cj->grav.parts, gcount_j);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-    if (lock_unlock(&cj->grav.plock) != 0)
-      error("Error unlocking cell");
+    if (lock_unlock(&cj->grav.plock) != 0) error("Error unlocking cell");
 #endif
   }
 
@@ -1490,10 +1459,8 @@ void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
       cell_is_active_gravity(ci, e) && (ci->nodeID == e->nodeID);
 
   /* Anything to do here? */
-  if (!ci_active)
-    return;
-  if (ci->grav.count == 0 || cj->grav.count == 0)
-    return;
+  if (!ci_active) return;
+  if (ci->grav.count == 0 || cj->grav.count == 0) return;
 
   /* Recurse? */
   if (ci->split) {
@@ -1538,17 +1505,15 @@ void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
  * @param e The #engine (for debugging checks only).
  * @param gparts The #gpart in the cell (for debugging checks only).
  */
-static INLINE void
-runner_doself_grav_pp_full(struct gravity_cache *restrict ci_cache,
-                           const int gcount, const int gcount_padded,
-                           const struct engine *e, struct gpart *gparts) {
+static INLINE void runner_doself_grav_pp_full(
+    struct gravity_cache *restrict ci_cache, const int gcount,
+    const int gcount_padded, const struct engine *e, struct gpart *gparts) {
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount; pid++) {
 
     /* Skip inactive particles */
-    if (!ci_cache->active[pid])
-      continue;
+    if (!ci_cache->active[pid]) continue;
 
     const float x_i = ci_cache->x[pid];
     const float y_i = ci_cache->y[pid];
@@ -1570,8 +1535,7 @@ runner_doself_grav_pp_full(struct gravity_cache *restrict ci_cache,
     for (int pjd = 0; pjd < gcount_padded; pjd++) {
 
       /* No self interaction */
-      if (pid == pjd)
-        continue;
+      if (pid == pjd) continue;
 
       /* Get info about j */
       const float x_j = ci_cache->x[pjd];
@@ -1683,11 +1647,10 @@ runner_doself_grav_pp_full(struct gravity_cache *restrict ci_cache,
  * @param e The #engine (for debugging checks only).
  * @param gparts The #gpart in the cell (for debugging checks only).
  */
-static INLINE void
-runner_doself_grav_pp_truncated(struct gravity_cache *restrict ci_cache,
-                                const int gcount, const int gcount_padded,
-                                const float r_s_inv, const struct engine *e,
-                                struct gpart *gparts) {
+static INLINE void runner_doself_grav_pp_truncated(
+    struct gravity_cache *restrict ci_cache, const int gcount,
+    const int gcount_padded, const float r_s_inv, const struct engine *e,
+    struct gpart *gparts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -1698,8 +1661,7 @@ runner_doself_grav_pp_truncated(struct gravity_cache *restrict ci_cache,
   for (int pid = 0; pid < gcount; pid++) {
 
     /* Skip inactive particles */
-    if (!ci_cache->active[pid])
-      continue;
+    if (!ci_cache->active[pid]) continue;
 
     const float x_i = ci_cache->x[pid];
     const float y_i = ci_cache->y[pid];
@@ -1721,8 +1683,7 @@ runner_doself_grav_pp_truncated(struct gravity_cache *restrict ci_cache,
     for (int pjd = 0; pjd < gcount_padded; pjd++) {
 
       /* No self interaction */
-      if (pid == pjd)
-        continue;
+      if (pid == pjd) continue;
 
       /* Get info about j */
       const float x_j = ci_cache->x[pjd];
@@ -1843,21 +1804,17 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grav.count == 0)
-    error("Doing self gravity on an empty cell !");
+  if (c->grav.count == 0) error("Doing self gravity on an empty cell !");
 #endif
 
   /* Anything to do here? */
-  if (!cell_is_active_gravity(c, e))
-    return;
+  if (!cell_is_active_gravity(c, e)) return;
 
   /* Check that we are not doing something stupid */
-  if (c->split)
-    error("Running P-P on a splitable cell");
+  if (c->split) error("Running P-P on a splitable cell");
 
   /* Do we need to start by drifting things ? */
-  if (!cell_are_gpart_drifted(c, e))
-    error("Un-drifted gparts");
+  if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
   /* Start by constructing a cache for the particles */
   struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
@@ -1909,8 +1866,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 #endif
   gravity_cache_write_back(ci_cache, c->grav.parts, gcount);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-  if (lock_unlock(&c->grav.plock) != 0)
-    error("Error unlocking cell");
+  if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
 #endif
 
   TIMER_TOC(timer_doself_grav_pp);
@@ -1947,8 +1903,7 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
   const struct multipole *multi_j = &cj->grav.multipole->m_pole;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci == cj)
-    error("Interacting a cell with itself using M2L");
+  if (ci == cj) error("Interacting a cell with itself using M2L");
 
   if (multi_i->num_gpart == 0)
     error("Multipole i does not seem to have been set.");
@@ -1963,14 +1918,16 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
     error("cj->grav tensor not initialised.");
 
   if (ci->grav.ti_old_multipole != e->ti_current)
-    error("Undrifted multipole ci->grav.ti_old_multipole=%lld ci->nodeID=%d "
-          "cj->nodeID=%d e->ti_current=%lld",
-          ci->grav.ti_old_multipole, ci->nodeID, cj->nodeID, e->ti_current);
+    error(
+        "Undrifted multipole ci->grav.ti_old_multipole=%lld ci->nodeID=%d "
+        "cj->nodeID=%d e->ti_current=%lld",
+        ci->grav.ti_old_multipole, ci->nodeID, cj->nodeID, e->ti_current);
 
   if (cj->grav.ti_old_multipole != e->ti_current)
-    error("Undrifted multipole cj->grav.ti_old_multipole=%lld cj->nodeID=%d "
-          "ci->nodeID=%d e->ti_current=%lld",
-          cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
+    error(
+        "Undrifted multipole cj->grav.ti_old_multipole=%lld cj->nodeID=%d "
+        "ci->nodeID=%d e->ti_current=%lld",
+        cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 #endif
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
@@ -1992,10 +1949,8 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   /* Unlock the multipoles */
-  if (lock_unlock(&ci->grav.mlock) != 0)
-    error("Failed to unlock multipole");
-  if (lock_unlock(&cj->grav.mlock) != 0)
-    error("Failed to unlock multipole");
+  if (lock_unlock(&ci->grav.mlock) != 0) error("Failed to unlock multipole");
+  if (lock_unlock(&cj->grav.mlock) != 0) error("Failed to unlock multipole");
 #endif
 
   TIMER_TOC(timer_dopair_grav_mm);
@@ -2020,10 +1975,8 @@ void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
       cell_is_active_gravity_mm(cj, e) && (cj->nodeID == e->nodeID);
 
   /* Do we need drifting first? */
-  if (ci->grav.ti_old_multipole < e->ti_current)
-    cell_drift_multipole(ci, e);
-  if (cj->grav.ti_old_multipole < e->ti_current)
-    cell_drift_multipole(cj, e);
+  if (ci->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
+  if (cj->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
 
   /* Interact! */
   if (do_i && do_j)
@@ -2066,8 +2019,7 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
           const int flag = i * 8 + j;
 
           /* Did we agree to use an M-M interaction here at the last rebuild? */
-          if (flags & (1ULL << flag))
-            runner_dopair_grav_mm(r, cpi, cpj);
+          if (flags & (1ULL << flag)) runner_dopair_grav_mm(r, cpi, cpj);
         }
       }
     }
@@ -2089,8 +2041,7 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
   const float r_s_inv = e->mesh->r_s_inv;
 
   /* Anything to do here? */
-  if (!(cell_is_active_gravity(ci, e) && ci->nodeID == e->nodeID))
-    return;
+  if (!(cell_is_active_gravity(ci, e) && ci->nodeID == e->nodeID)) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Early abort? */
@@ -2098,8 +2049,7 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
     error("Doing pair gravity on an empty cell !");
 
   /* Sanity check */
-  if (ci == cj)
-    error("Pair interaction between a cell and itself.");
+  if (ci == cj) error("Pair interaction between a cell and itself.");
 
   if (cj->grav.ti_old_multipole != e->ti_current)
     error("cj->grav.multipole not drifted.");
@@ -2162,8 +2112,7 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 #endif
     gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-    if (lock_unlock(&ci->grav.plock) != 0)
-      error("Error unlocking cell");
+    if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 #endif
   }
 }
@@ -2213,8 +2162,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     error("Doing pair gravity on an empty cell !");
 
   /* Sanity check */
-  if (ci == cj)
-    error("Pair interaction between a cell and itself.");
+  if (ci == cj) error("Pair interaction between a cell and itself.");
 
   if (cell_is_active_gravity(ci, e) &&
       ci->grav.ti_old_multipole != e->ti_current)
@@ -2349,8 +2297,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     }
   }
 
-  if (gettimer)
-    TIMER_TOC(timer_dosub_pair_grav);
+  if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
 }
 
 /**
@@ -2374,15 +2321,13 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Early abort? */
-  if (c->grav.count == 0)
-    error("Doing self gravity on an empty cell !");
+  if (c->grav.count == 0) error("Doing self gravity on an empty cell !");
 #endif
 
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_gravity(c, e))
-    return;
+  if (!cell_is_active_gravity(c, e)) return;
 
   /* If the cell is split, interact each progeny with itself, and with
      each of its siblings. */
@@ -2409,6 +2354,5 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
     runner_doself_grav_pp(r, c);
   }
 
-  if (gettimer)
-    TIMER_TOC(timer_dosub_self_grav);
+  if (gettimer) TIMER_TOC(timer_dosub_self_grav);
 }

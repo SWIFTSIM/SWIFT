@@ -81,15 +81,15 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   const int nodeID = cj->nodeID;
 
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(ci, cell_flag_has_tasks))
-    return;
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   if (t_grav_counts == NULL && with_star_formation && ci->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
-      error("Attaching a grav_count task at a non-top level c->depth=%d "
-            "c->count=%d",
-            ci->depth, ci->hydro.count);
+      error(
+          "Attaching a grav_count task at a non-top level c->depth=%d "
+          "c->count=%d",
+          ci->depth, ci->hydro.count);
 #endif
     t_grav_counts = scheduler_addtask(
         s, task_type_send, task_subtype_grav_counts, ci->mpi.tag, 0, ci, cj);
@@ -182,8 +182,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
   const int nodeID = cj->nodeID;
 
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(ci, cell_flag_has_tasks))
-    return;
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->hydro.density; l != NULL; l = l->next)
@@ -328,8 +327,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       engine_addlink(e, &ci->mpi.pack, t_pack_limiter);
     }
 #ifdef EXTRA_STAR_LOOPS
-    if (with_feedback)
-      engine_addlink(e, &ci->mpi.send, t_prep1);
+    if (with_feedback) engine_addlink(e, &ci->mpi.send, t_prep1);
 #endif
 
     if (with_rt) {
@@ -380,15 +378,15 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   const int nodeID = cj->nodeID;
 
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(ci, cell_flag_has_tasks))
-    return;
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   if (t_sf_counts == NULL && with_star_formation && ci->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
-      error("Attaching a sf_count task at a non-top level c->depth=%d "
-            "c->count=%d",
-            ci->depth, ci->hydro.count);
+      error(
+          "Attaching a sf_count task at a non-top level c->depth=%d "
+          "c->count=%d",
+          ci->depth, ci->hydro.count);
 #endif
     t_sf_counts = scheduler_addtask(s, task_type_send, task_subtype_sf_counts,
                                     ci->mpi.tag, 0, ci, cj);
@@ -495,8 +493,7 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
   const int nodeID = cj->nodeID;
 
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(ci, cell_flag_has_tasks))
-    return;
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->black_holes.density; l != NULL; l = l->next)
@@ -607,16 +604,14 @@ void engine_addtasks_recv_hydro(
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(c, cell_flag_has_tasks))
-    return;
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Have we reached a level where there are any hydro tasks ? */
   if (t_xv == NULL && c->hydro.density != NULL) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
-    if (c->mpi.tag < 0)
-      error("Trying to receive from untagged cell.");
+    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
     /* Create the tasks. */
@@ -723,8 +718,7 @@ void engine_addtasks_recv_hydro(
       engine_addlink(e, &c->mpi.unpack, t_unpack_limiter);
     }
 #ifdef EXTRA_STAR_LOOPS
-    if (with_feedback)
-      engine_addlink(e, &c->mpi.recv, t_prep1);
+    if (with_feedback) engine_addlink(e, &c->mpi.recv, t_prep1);
 #endif
 
     /* Add dependencies. */
@@ -864,8 +858,7 @@ void engine_addtasks_recv_rt_advance_cell_time(struct engine *e, struct cell *c,
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(c, cell_flag_has_tasks))
-    return;
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Have we reached the super level? */
   if (c->super == c) {
@@ -933,15 +926,15 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(c, cell_flag_has_tasks))
-    return;
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   if (t_sf_counts == NULL && with_star_formation && c->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->depth != 0)
-      error("Attaching a sf_count task at a non-top level c->depth=%d "
-            "c->count=%d",
-            c->depth, c->hydro.count);
+      error(
+          "Attaching a sf_count task at a non-top level c->depth=%d "
+          "c->count=%d",
+          c->depth, c->hydro.count);
 #endif
     t_sf_counts = scheduler_addtask(s, task_type_recv, task_subtype_sf_counts,
                                     c->mpi.tag, 0, c, NULL);
@@ -952,9 +945,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
-    if (c->mpi.tag < 0)
-      error("Trying to receive from untagged cell.");
-#endif // SWIFT_DEBUG_CHECKS
+    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
     t_density = scheduler_addtask(s, task_type_recv, task_subtype_spart_density,
@@ -985,8 +977,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->nodeID == e->nodeID)
-      error("Local cell!");
+    if (c->nodeID == e->nodeID) error("Local cell!");
 #endif
     if (c->stars.sorts != NULL) {
       scheduler_addunlock(s, t_density, c->stars.sorts);
@@ -1061,17 +1052,15 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(c, cell_flag_has_tasks))
-    return;
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Have we reached a level where there are any black_holes tasks ? */
   if (t_rho == NULL && c->black_holes.density != NULL) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
-    if (c->mpi.tag < 0)
-      error("Trying to receive from untagged cell.");
-#endif // SWIFT_DEBUG_CHECKS
+    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_bpart_rho,
@@ -1094,8 +1083,7 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
     engine_addlink(e, &c->mpi.recv, t_feedback);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->nodeID == e->nodeID)
-      error("Local cell!");
+    if (c->nodeID == e->nodeID) error("Local cell!");
 #endif
 
     for (struct link *l = c->black_holes.density; l != NULL; l = l->next) {
@@ -1155,15 +1143,15 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(c, cell_flag_has_tasks))
-    return;
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   if (t_grav_counts == NULL && with_star_formation && c->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->depth != 0)
-      error("Attaching a grav_count task at a non-top level c->depth=%d "
-            "c->count=%d",
-            c->depth, c->hydro.count);
+      error(
+          "Attaching a grav_count task at a non-top level c->depth=%d "
+          "c->count=%d",
+          c->depth, c->hydro.count);
 #endif
 
     t_grav_counts = scheduler_addtask(
@@ -1175,16 +1163,14 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
-    if (c->mpi.tag < 0)
-      error("Trying to receive from untagged cell.");
-#endif // SWIFT_DEBUG_CHECKS
+    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                c->mpi.tag, 0, c, NULL);
 
-    if (t_grav_counts != NULL)
-      scheduler_addunlock(s, t_grav, t_grav_counts);
+    if (t_grav_counts != NULL) scheduler_addunlock(s, t_grav, t_grav_counts);
   }
 
   /* If we have tasks, link them. */
@@ -1514,8 +1500,7 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
                        struct task *ghost_out) {
 
   /* Abort as there are no hydro particles here? */
-  if (c->hydro.count_total == 0)
-    return;
+  if (c->hydro.count_total == 0) return;
 
   /* If we have reached the leaf OR have to few particles to play with*/
   if (!c->split || c->hydro.count_total < engine_max_parts_per_ghost) {
@@ -1542,8 +1527,7 @@ void engine_add_cooling(struct engine *e, struct cell *c,
                         struct task *cooling_in, struct task *cooling_out) {
 
   /* Abort as there are no hydro particles here? */
-  if (c->hydro.count_total == 0)
-    return;
+  if (c->hydro.count_total == 0) return;
 
   /* If we have reached the leaf OR have to few particles to play with*/
   if (!c->split || c->hydro.count_total < engine_max_parts_per_cooling) {
@@ -1991,8 +1975,7 @@ int engine_gravity_need_cell_pair_task(struct engine *e, struct cell *ci,
   const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
   /* Are we beyond the distance where the truncated forces are 0 ?*/
-  if (use_mesh && min_radius2 > max_distance2)
-    return 0;
+  if (use_mesh && min_radius2 > max_distance2) return 0;
 
   /* Are the cells too close for a MM interaction ? */
   return !cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/1,
@@ -2037,9 +2020,10 @@ void engine_make_pair_gravity_task(struct engine *e, struct scheduler *sched,
         break;
       }
     if (n == p->nr_cells_in)
-      error("Cell %d not found in the proxy but trying to construct "
-            "grav task!",
-            cjd);
+      error(
+          "Cell %d not found in the proxy but trying to construct "
+          "grav task!",
+          cjd);
   } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
 
     /* Find the proxy for this node */
@@ -2056,9 +2040,10 @@ void engine_make_pair_gravity_task(struct engine *e, struct scheduler *sched,
         break;
       }
     if (n == p->nr_cells_in)
-      error("Cell %d not found in the proxy but trying to construct "
-            "grav task!",
-            cid);
+      error(
+          "Cell %d not found in the proxy but trying to construct "
+          "grav task!",
+          cid);
   }
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
@@ -2099,8 +2084,7 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
   struct cell *ci = &cells[cid];
 
   /* Skip cells without gravity particles unless they are void cells. */
-  if (ci->grav.count == 0 && ci->subtype != cell_subtype_void)
-    return;
+  if (ci->grav.count == 0 && ci->subtype != cell_subtype_void) return;
 
   /* If the cell is local build a self-interaction */
   if (ci->nodeID == nodeID) {
@@ -2111,20 +2095,17 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
   for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
     /* Escape if non-periodic and beyond range */
-    if (!periodic && (ii < 0 || ii >= cdim[0]))
-      continue;
+    if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
 
     for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
 
       /* Escape if non-periodic and beyond range */
-      if (!periodic && (jj < 0 || jj >= cdim[1]))
-        continue;
+      if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
 
       for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
 
         /* Escape if non-periodic and beyond range */
-        if (!periodic && (kk < 0 || kk >= cdim[2]))
-          continue;
+        if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
         /* Apply periodic BC (not harmful if not using periodic BC) */
         const int iii = (ii + cdim[0]) % cdim[0];
@@ -2138,19 +2119,18 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
 #ifdef SWIFT_DEBUG_CHECKS
         /* Ensure both cells are the same type of cells */
         if (ci->type != cj->type) {
-          error("Cell %d and cell %d are not the same cell type! "
-                "(ci->type=%s, cj->type=%s)",
-                cid, cjd, cellID_names[ci->type], cellID_names[cj->type]);
+          error(
+              "Cell %d and cell %d are not the same cell type! "
+              "(ci->type=%s, cj->type=%s)",
+              cid, cjd, cellID_names[ci->type], cellID_names[cj->type]);
         }
 #endif
 
         /* Avoid duplicates. */
-        if (cid >= cjd)
-          continue;
+        if (cid >= cjd) continue;
 
         /* Avoid empty cells (except voids). */
-        if (cj->grav.count == 0 && cj->subtype != cell_subtype_void)
-          continue;
+        if (cj->grav.count == 0 && cj->subtype != cell_subtype_void) continue;
 
         /* Completely foreign pairs also get the Nigel treatment (AKA are kicked
          * out of the union/we skip them). Unless they are void cells, Nigels a
@@ -2253,12 +2233,10 @@ void engine_make_external_gravity_tasks(struct engine *e) {
     struct cell *ci = &cells[cid];
 
     /* Skip cells without gravity particles */
-    if (ci->grav.count == 0)
-      continue;
+    if (ci->grav.count == 0) continue;
 
     /* Is that neighbour local ? */
-    if (ci->nodeID != nodeID)
-      continue;
+    if (ci->nodeID != nodeID) continue;
 
     /* If the cell is local, build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_external_grav, 0, 0,
@@ -2416,8 +2394,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     /* Get a pointer to the task. */
     struct task *t = &tasks[k];
 
-    if (t->type == task_type_none)
-      continue;
+    if (t->type == task_type_none) continue;
 
     /* Get the cells we act on */
     struct cell *restrict ci = t->ci;
@@ -2452,8 +2429,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     if (t_type == task_type_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID)
-        error("Non-local self task");
+      if (ci_nodeID != nodeID) error("Non-local self task");
 #endif
 
       /* drift ---+-> gravity --> grav_down */
@@ -2468,8 +2444,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
              t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID)
-        error("Non-local self task");
+      if (ci_nodeID != nodeID) error("Non-local self task");
 #endif
 
       /* drift -----> gravity --> end_gravity_force */
@@ -2504,8 +2479,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     else if (t_type == task_type_sub_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID)
-        error("Non-local sub-self task");
+      if (ci_nodeID != nodeID) error("Non-local sub-self task");
 #endif
       /* drift ---+-> gravity --> grav_down */
       /* init  --/    */
@@ -2519,8 +2493,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
              t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID)
-        error("Non-local sub-self task");
+      if (ci_nodeID != nodeID) error("Non-local sub-self task");
 #endif
 
       /* drift -----> gravity --> end_force */
@@ -2681,16 +2654,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     struct cell *const cj = t->cj;
 
     /* Escape early */
-    if (t->type == task_type_none)
-      continue;
-    if (t->type == task_type_stars_resort)
-      continue;
-    if (t->type == task_type_star_formation)
-      continue;
-    if (t->type == task_type_star_formation_sink)
-      continue;
-    if (t->type == task_type_sink_formation)
-      continue;
+    if (t->type == task_type_none) continue;
+    if (t->type == task_type_stars_resort) continue;
+    if (t->type == task_type_star_formation) continue;
+    if (t->type == task_type_star_formation_sink) continue;
+    if (t->type == task_type_sink_formation) continue;
 
     /* Sort tasks depend on the drift of the cell (gas version). */
     if (t_type == task_type_sort && ci->nodeID == nodeID) {
@@ -4424,18 +4392,15 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
       int iii = i + ii;
-      if (!periodic && (iii < 0 || iii >= cdim[0]))
-        continue;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
       iii = (iii + cdim[0]) % cdim[0];
       for (int jj = -1; jj < 2; jj++) {
         int jjj = j + jj;
-        if (!periodic && (jjj < 0 || jjj >= cdim[1]))
-          continue;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
         jjj = (jjj + cdim[1]) % cdim[1];
         for (int kk = -1; kk < 2; kk++) {
           int kkk = k + kk;
-          if (!periodic && (kkk < 0 || kkk >= cdim[2]))
-            continue;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
           kkk = (kkk + cdim[2]) % cdim[2];
 
           /* Get the neighbouring cell */
@@ -4484,12 +4449,12 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
             /* Check whether the cell exists in the proxy */
             int n = 0;
             for (n = 0; n < p->nr_cells_in; n++)
-              if (p->cells_in[n] == cj)
-                break;
+              if (p->cells_in[n] == cj) break;
             if (n == p->nr_cells_in)
-              error("Cell %d not found in the proxy but trying to construct "
-                    "hydro task!",
-                    cjd);
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cjd);
           } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
 
             /* Find the proxy for this node */
@@ -4502,12 +4467,12 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
             /* Check whether the cell exists in the proxy */
             int n = 0;
             for (n = 0; n < p->nr_cells_in; n++)
-              if (p->cells_in[n] == ci)
-                break;
+              if (p->cells_in[n] == ci) break;
             if (n == p->nr_cells_in)
-              error("Cell %d not found in the proxy but trying to construct "
-                    "hydro task!",
-                    cid);
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cid);
           }
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
@@ -4546,10 +4511,8 @@ void engine_addunlock_rt_advance_cell_time_tend(struct cell *c,
                                                 struct engine *e) {
 
   /* safety measure */
-  if (!cell_get_flag(c, cell_flag_has_tasks))
-    return;
-  if (cell_is_empty(c))
-    return;
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+  if (cell_is_empty(c)) return;
 
   if (c->super == c) {
     /* Found the super level cell. Add dependency from rt_advance_cell_time,
@@ -4685,8 +4648,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
        * end of the step. So we create them now. */
       if (with_rt) {
 #ifdef SWIFT_RT_DEBUG_CHECKS
-        if (ci->top == NULL)
-          error("Working on a cell with top == NULL??");
+        if (ci->top == NULL) error("Working on a cell with top == NULL??");
 #endif
 
         /* Create the RT collect times task at the top level, if it hasn't
@@ -4788,8 +4750,7 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
     struct cell *ci = &cells[cid];
 
     /* Skip cells without gravity particles */
-    if (ci->grav.count == 0)
-      continue;
+    if (ci->grav.count == 0) continue;
 
     /* If the cells is local build a self-interaction */
     if (ci->nodeID == nodeID) {
@@ -4802,18 +4763,15 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
       int iii = i + ii;
-      if (!periodic && (iii < 0 || iii >= cdim[0]))
-        continue;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
       iii = (iii + cdim[0]) % cdim[0];
       for (int jj = -1; jj < 2; jj++) {
         int jjj = j + jj;
-        if (!periodic && (jjj < 0 || jjj >= cdim[1]))
-          continue;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
         jjj = (jjj + cdim[1]) % cdim[1];
         for (int kk = -1; kk < 2; kk++) {
           int kkk = k + kk;
-          if (!periodic && (kkk < 0 || kkk >= cdim[2]))
-            continue;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
           kkk = (kkk + cdim[2]) % cdim[2];
 
           /* Get the neighbouring cell */
@@ -4824,15 +4782,15 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
           /* Ensure we only have zoom cells in the zoom case. */
           if (s->with_zoom_region &&
               (ci->type != cell_type_zoom || cj->type != cell_type_zoom)) {
-            error("Trying to make FOF tasks for non-zoom cells while running a "
-                  "zoom! (ci->type=%s, cj->type=%s)",
-                  cellID_names[ci->type], cellID_names[cj->type]);
+            error(
+                "Trying to make FOF tasks for non-zoom cells while running a "
+                "zoom! (ci->type=%s, cj->type=%s)",
+                cellID_names[ci->type], cellID_names[cj->type]);
           }
 #endif
 
           /* Does that neighbour have particles ? */
-          if (cid >= cjd || cj->grav.count == 0)
-            continue;
+          if (cid >= cjd || cj->grav.count == 0) continue;
 
           /* Construct the pair search task only for fully local pairs */
           if (ci->nodeID == nodeID && cj->nodeID == nodeID)
@@ -4898,8 +4856,7 @@ void engine_make_fof_tasks(struct engine *e) {
   /* Verify that we are not left with invalid tasks */
   for (int i = 0; i < e->sched.nr_tasks; ++i) {
     const struct task *t = &e->sched.tasks[i];
-    if (t->ci == NULL && t->cj != NULL && !t->skip)
-      error("Invalid task");
+    if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
   }
 #endif
 
@@ -4988,14 +4945,12 @@ void engine_maketasks(struct engine *e) {
   /* Verify that we are not left with invalid tasks */
   for (int i = 0; i < e->sched.nr_tasks; ++i) {
     const struct task *t = &e->sched.tasks[i];
-    if (t->ci == NULL && t->cj != NULL && !t->skip)
-      error("Invalid task");
+    if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
   }
 #endif
 
   /* Free the old list of cell-task links. */
-  if (e->links != NULL)
-    swift_free("links", e->links);
+  if (e->links != NULL) swift_free("links", e->links);
   e->size_links = e->sched.nr_tasks * e->links_per_tasks;
 
   /* Make sure that we have space for more links than last time. */
@@ -5183,11 +5138,11 @@ void engine_maketasks(struct engine *e) {
 
   /* Report the number of links we actually used */
   if (e->verbose)
-    message("Nr. of links: %zd allocated links: %zd ratio: %f memory use: %zd "
-            "MB.",
-            e->nr_links, e->size_links,
-            (float)e->nr_links / (float)e->size_links,
-            e->size_links * sizeof(struct link) / (1024 * 1024));
+    message(
+        "Nr. of links: %zd allocated links: %zd ratio: %f memory use: %zd "
+        "MB.",
+        e->nr_links, e->size_links, (float)e->nr_links / (float)e->size_links,
+        e->size_links * sizeof(struct link) / (1024 * 1024));
 
   /* Report the values that could have been used */
   if (e->verbose)

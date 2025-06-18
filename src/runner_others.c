@@ -84,14 +84,12 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_gravity(c, e))
-    return;
+  if (!cell_is_active_gravity(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        runner_do_grav_external(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_grav_external(r, c->progeny[k], 0);
   } else {
 
     /* Loop over the gparts in this cell. */
@@ -112,8 +110,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer)
-    TIMER_TOC(timer_dograv_external);
+  if (timer) TIMER_TOC(timer_dograv_external);
 }
 
 /**
@@ -152,8 +149,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        runner_do_cooling(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_cooling(r, c->progeny[k], 0);
   } else {
 
     /* Loop over the parts in this cell. */
@@ -190,8 +186,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer)
-    TIMER_TOC(timer_do_cooling);
+  if (timer) TIMER_TOC(timer_do_cooling);
 }
 
 /**
@@ -314,8 +309,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
     cell_set_star_resort_flag(c);
   }
 
-  if (timer)
-    TIMER_TOC(timer_do_star_formation);
+  if (timer) TIMER_TOC(timer_do_star_formation);
 }
 
 /**
@@ -565,8 +559,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
     cell_set_star_resort_flag(c);
   }
 
-  if (timer)
-    TIMER_TOC(timer_do_star_formation);
+  if (timer) TIMER_TOC(timer_do_star_formation);
 }
 
 /**
@@ -703,14 +696,12 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e))
-    return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        runner_do_end_hydro_force(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_end_hydro_force(r, c->progeny[k], 0);
   } else {
 
     const struct cosmology *cosmo = e->cosmology;
@@ -775,8 +766,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer)
-    TIMER_TOC(timer_end_hydro_force);
+  if (timer) TIMER_TOC(timer_end_hydro_force);
 }
 
 /**
@@ -797,14 +787,12 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_gravity(c, e))
-    return;
+  if (!cell_is_active_gravity(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        runner_do_end_grav_force(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_end_grav_force(r, c->progeny[k], 0);
   } else {
 
     const struct space *s = e->s;
@@ -895,26 +883,27 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
               my_id = gp->id_or_neg_offset;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-            message("Interaction breakdown: num_interacted_m2p=%lld "
-                    "num_interacted_m2l=%lld num_interacted_pm=%lld "
-                    "num_interacted_p2p=%lld num_interacted=%lld "
-                    "total_nr_gparts=%lld",
-                    gp->num_interacted_m2p, gp->num_interacted_m2l,
-                    gp->num_interacted_pm, gp->num_interacted_p2p,
-                    gp->num_interacted, e->total_nr_gparts);
+            message(
+                "Interaction breakdown: num_interacted_m2p=%lld "
+                "num_interacted_m2l=%lld num_interacted_pm=%lld "
+                "num_interacted_p2p=%lld num_interacted=%lld "
+                "total_nr_gparts=%lld",
+                gp->num_interacted_m2p, gp->num_interacted_m2l,
+                gp->num_interacted_pm, gp->num_interacted_p2p,
+                gp->num_interacted, e->total_nr_gparts);
 #endif
 
-            error("g-particle (id=%lld, type=%s) did not interact "
-                  "gravitationally with all other gparts "
-                  "gp->num_interacted=%lld, total_gparts=%lld (local "
-                  "num_gparts=%zd inhibited_gparts=%lld, "
-                  "(total - gp->num_interacted)=%lld, c->type=%s,"
-                  " c->subtype=%s, c->depth=%d)",
-                  my_id, part_type_names[gp->type], gp->num_interacted,
-                  e->total_nr_gparts, e->s->nr_gparts,
-                  e->count_inhibited_gparts,
-                  e->total_nr_gparts - gp->num_interacted,
-                  cellID_names[c->type], subcellID_names[c->subtype], c->depth);
+            error(
+                "g-particle (id=%lld, type=%s) did not interact "
+                "gravitationally with all other gparts "
+                "gp->num_interacted=%lld, total_gparts=%lld (local "
+                "num_gparts=%zd inhibited_gparts=%lld, "
+                "(total - gp->num_interacted)=%lld, c->type=%s,"
+                " c->subtype=%s, c->depth=%d)",
+                my_id, part_type_names[gp->type], gp->num_interacted,
+                e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts,
+                e->total_nr_gparts - gp->num_interacted, cellID_names[c->type],
+                subcellID_names[c->subtype], c->depth);
           }
         }
 #endif
@@ -938,8 +927,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
       }
     }
   }
-  if (timer)
-    TIMER_TOC(timer_end_grav_force);
+  if (timer) TIMER_TOC(timer_end_grav_force);
 }
 
 /**
@@ -978,8 +966,7 @@ void runner_do_csds(struct runner *r, struct cell *c, int timer) {
   /* Recurse? Avoid spending too much time in useless cells. */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        runner_do_csds(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_csds(r, c->progeny[k], 0);
   } else {
 
     /* Loop over the parts in this cell. */
@@ -1050,8 +1037,7 @@ void runner_do_csds(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer)
-    TIMER_TOC(timer_csds);
+  if (timer) TIMER_TOC(timer_csds);
 
 #else
   error("CSDS disabled, please enable it during configuration");
@@ -1080,8 +1066,7 @@ void runner_do_fof_search_self(struct runner *r, struct cell *c, int timer) {
 
   rec_fof_search_self(e->fof_properties, dim, search_r2, periodic, gparts, c);
 
-  if (timer)
-    TIMER_TOC(timer_fof_self);
+  if (timer) TIMER_TOC(timer_fof_self);
 
 #else
   error("SWIFT was not compiled with FOF enabled!");
@@ -1104,8 +1089,7 @@ void runner_do_fof_search_pair(struct runner *r, struct cell *ci,
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->nodeID != cj->nodeID)
-    error("Searching foreign cells!");
+  if (ci->nodeID != cj->nodeID) error("Searching foreign cells!");
 #endif
 
   const struct engine *e = r->e;
@@ -1118,8 +1102,7 @@ void runner_do_fof_search_pair(struct runner *r, struct cell *ci,
   rec_fof_search_pair(e->fof_properties, dim, search_r2, periodic, gparts, ci,
                       cj);
 
-  if (timer)
-    TIMER_TOC(timer_fof_pair);
+  if (timer) TIMER_TOC(timer_fof_pair);
 #else
   error("SWIFT was not compiled with FOF enabled!");
 #endif
@@ -1148,8 +1131,7 @@ void runner_do_fof_attach_self(struct runner *r, struct cell *c, int timer) {
   rec_fof_attach_self(e->fof_properties, dim, attach_r2, periodic, gparts,
                       s->nr_gparts, c);
 
-  if (timer)
-    TIMER_TOC(timer_fof_self);
+  if (timer) TIMER_TOC(timer_fof_self);
 
 #else
   error("SWIFT was not compiled with FOF enabled!");
@@ -1182,8 +1164,7 @@ void runner_do_fof_attach_pair(struct runner *r, struct cell *ci,
                       s->nr_gparts, ci, cj, e->nodeID == ci->nodeID,
                       e->nodeID == cj->nodeID);
 
-  if (timer)
-    TIMER_TOC(timer_fof_pair);
+  if (timer) TIMER_TOC(timer_fof_pair);
 #else
   error("SWIFT was not compiled with FOF enabled!");
 #endif
@@ -1209,18 +1190,15 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
   const struct unit_system *us = e->internal_units;
 
   /* Anything to do here? */
-  if (count == 0)
-    return;
-  if (!cell_is_rt_active(c, e))
-    return;
+  if (count == 0) return;
+  if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        runner_do_rt_tchem(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_rt_tchem(r, c->progeny[k], 0);
   } else {
 
     struct part *restrict parts = c->hydro.parts;
@@ -1234,12 +1212,10 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
       struct xpart *restrict xp = &xparts[k];
 
       /* Skip inhibited parts */
-      if (part_is_inhibited(p, e))
-        continue;
+      if (part_is_inhibited(p, e)) continue;
 
       /* Skip inactive parts */
-      if (!part_is_rt_active(p, e))
-        continue;
+      if (!part_is_rt_active(p, e)) continue;
 
       /* Finish the force loop */
       const integertime_t ti_current_subcycle = e->ti_current_subcycle;
@@ -1253,10 +1229,11 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
           rt_part_dt(ti_begin, ti_end, e->time_base, with_cosmology, cosmo);
 #ifdef SWIFT_DEBUG_CHECKS
       if (ti_begin != ti_current_subcycle)
-        error("Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
-              "ti_step=%lld time_bin=%d wakeup=%d ti_current=%lld",
-              ti_end, ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
-              ti_current_subcycle);
+        error(
+            "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+            "ti_step=%lld time_bin=%d wakeup=%d ti_current=%lld",
+            ti_end, ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
+            ti_current_subcycle);
       if (dt < 0.)
         error("Got part with negative time-step: %lld, %.6g", p->id, dt);
 #endif
@@ -1268,6 +1245,5 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer)
-    TIMER_TOC(timer_do_rt_tchem);
+  if (timer) TIMER_TOC(timer_do_rt_tchem);
 }
