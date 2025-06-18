@@ -1627,7 +1627,7 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
  * @param cj The second #cell.
  * @param e The #engine.
  *
- * @return >0 if the pair action will require access to some #gpart.
+ * @return 1 if the pair action will require access to some #gpart, 0 otherwise.
  */
 int cell_grav_pair_will_act_on_gpart(struct cell *restrict ci,
                                      struct cell *restrict cj,
@@ -2153,6 +2153,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
       /* Verify whether the pair will actually involve any particle
        * interaction.
+       * If not, the pair involves multipoles only, which don't need comms.
        * Note that we are only interested in the case where the pair
        * goes over domain boundaries */
       int pair_will_act_on_particles = 0;
