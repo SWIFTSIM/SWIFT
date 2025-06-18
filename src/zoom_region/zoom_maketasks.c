@@ -75,7 +75,7 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  /* NOTE: The 2 in the max below may not be necessary but does insure some
+  /* NOTE: The 2 in the max below may not be necessary but does ensure some
    * safety buffer. */
   const int delta = max((int)(sqrt(3) * distance / cells[0].width[0]) + 1, 2);
   int delta_m = delta;
