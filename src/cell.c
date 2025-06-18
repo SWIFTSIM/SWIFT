@@ -1345,7 +1345,9 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 int cell_has_tasks(struct cell *c) {
 
   /* TODO: We should have a better measure than always considering void cells
-   * as having tasks... though the reality is that they almost always do. */
+   * as having tasks... though the reality is that they almost always do.
+   * We can't employ the same timestep_collect check as below since we
+   * currently do the void timestep_collect outside the tasking. */
   if (c->subtype == cell_subtype_void)
     return 1;
 #ifdef WITH_MPI
