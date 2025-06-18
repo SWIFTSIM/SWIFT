@@ -181,13 +181,14 @@ void zoom_construct_void_progeny(struct space *s, struct cell *c,
 
     /* If the progeny cell doesn't exist, create it. */
     if (cp == NULL) {
-      message("Creating void progeny at depth %d (%s/%s)", c->depth + 1,
-              cellID_names[c->type], subcellID_names[c->subtype]);
+      message("Creating void progeny at depth %d (%s/%s) ind=%d", c->depth + 1,
+              cellID_names[c->type], subcellID_names[c->subtype], k);
       space_getcells(s, 1, &c->progeny[k], tpid);
     } else {
       /* Nothing to do if the progeny cell already exists. */
-      message("Reusing existing void progeny at depth %d (%s/%s)", c->depth + 1,
-              cellID_names[c->type], subcellID_names[c->subtype]);
+      message("Reusing existing void progeny at depth %d (%s/%s) ind=%d",
+              c->depth + 1, cellID_names[c->type], subcellID_names[c->subtype],
+              k);
       continue;
     }
 
