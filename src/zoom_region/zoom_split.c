@@ -183,14 +183,6 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   if (depth == 0)
     c->tpid = tpid;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure we haven't found a void cell with particles. */
-  if (c->subtype == cell_subtype_void && c->grav.count > 0)
-    error("Trying to split a Void with particles! "
-          "(c->type=%s, c->subtype=%s)",
-          cellID_names[c->type], subcellID_names[c->subtype]);
-#endif
-
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
     error(
