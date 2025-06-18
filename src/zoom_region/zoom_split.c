@@ -101,11 +101,6 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
  * This function sets the progeny of the highest res void cell to be the top
  * level cell it contains (either zoom or buffer cells).
  *
- * NOTE: The void cells with top level progeny are not treated as split cells
- * since they are linked into the top level "progeny". We don't want to
- * accidentally treat them as split cells and recurse from void cells straight
- * through to the zoom cells unless explictly desired.
- *
  * @param s The space.
  * @param c The void cell progeny to link
  */
@@ -128,10 +123,6 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
           c->width[0] / 2, s->zoom_props->width[0]);
 
 #endif
-
-  /* We need to ensure this bottom level isn't treated like a
-   * normal split cell since it's linked into top level "progeny". */
-  c->split = 0;
 
   /* Loop over the 8 progeny cells which are now the nested top level cells. */
   for (int k = 0; k < 8; k++) {
@@ -161,13 +152,6 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
 
     /* Flag this void cell "progeny" as the cell's void cell parent. */
     buffer_cell->void_parent = c;
-
-    /* If we are above the zoom region then we need to label this buffer cell
-     * as a void cell and continue the void hierarchy. */
-    if (zoom_cell_overlaps_zoom_region(buffer_cell, s)) {
-      buffer_cell->subtype = cell_subtype_void;
-      buffer_cell->depth = c->depth + 1;
-    }
   }
 }
 
@@ -183,9 +167,6 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
   const int depth = c->depth;
   int maxdepth = 0;
-
-  if (c->type == cell_type_buffer)
-    message("Splitting buffer cell at depth %d", depth);
 
   /* Initialise the timestep information we need to collect. */
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
@@ -246,8 +227,13 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     /* Get the progenitor */
     struct cell *cp = c->progeny[k];
 
-    /* If the progeny is a void cell, we need to recurse. */
-    if (cp->subtype == cell_subtype_void) {
+    /* If the progeny is above the zoom region then we need to
+     * label it as a void cell and continue the void hierarchy. */
+    if (zoom_cell_overlaps_zoom_region(cp, s)) {
+
+      /* Label as a void cell. */
+      cp->subtype = cell_subtype_void;
+      cp->depth = c->depth + 1;
 
       /* Recurse */
       zoom_void_split_recursive(s, cp, tpid);
