@@ -24,6 +24,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "space.h"
+#include "star_formation_logger.h"
 #include "threadpool.h"
 #include "zoom.h"
 
