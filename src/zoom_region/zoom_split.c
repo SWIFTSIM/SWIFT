@@ -180,7 +180,7 @@ void zoom_construct_void_progeny(struct space *s, struct cell *c,
 
     /* If the progeny cell doesn't exist, create it. */
     if (cp == NULL) {
-      space_getcells(s, 1, c->progeny[k], tpid);
+      space_getcells(s, 1, &c->progeny[k], tpid);
       c->progeny[k] = cp;
     } else {
       /* Nothing to do if the progeny cell already exists. */
