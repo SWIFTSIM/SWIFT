@@ -212,168 +212,170 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   /* Otherwise, we're in the void tree and need to construct new progeny. */
   else {
     space_construct_progeny(s, c, tpid);
-  }
 
-  for (int k = 0; k < 8; k++) {
+    for (int k = 0; k < 8; k++) {
 
-    /* Get the progenitor */
-    struct cell *cp = c->progeny[k];
+      /* Get the progenitor */
+      struct cell *cp = c->progeny[k];
 
-    /* If the progeny is above the zoom region then we need to
-     * label it as a void cell and continue the void hierarchy. */
-    if (zoom_cell_overlaps_zoom_region(cp, s)) {
+      /* If the progeny is above the zoom region then we need to
+       * label it as a void cell and continue the void hierarchy. */
+      if (zoom_cell_overlaps_zoom_region(cp, s) && c->type != cell_type_zoom) {
 
-      /* Label as a void cell. */
-      cp->subtype = cell_subtype_void;
-      cp->depth = c->depth + 1;
+        /* Label as a void cell. */
+        cp->subtype = cell_subtype_void;
+        cp->depth = c->depth + 1;
 
-      /* Recurse */
-      zoom_void_split_recursive(s, cp, tpid);
+        /* Recurse */
+        zoom_void_split_recursive(s, cp, tpid);
 
-      /* Increase the depth */
-      maxdepth = max(maxdepth, cp->maxdepth);
+        /* Increase the depth */
+        maxdepth = max(maxdepth, cp->maxdepth);
+      }
+
+      /* Update the timestep information. */
+      ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
+      ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+      ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
+      ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
+      ti_rt_min_step_size =
+          min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
+      ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
+      ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
+      ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+      ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
+      ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
+      ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
+      ti_black_holes_end_min =
+          min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
+      ti_black_holes_beg_max =
+          max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
     }
 
-    /* Update the timestep information. */
-    ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
-    ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
-    ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
-    ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
-    ti_rt_min_step_size = min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
-    ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
-    ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
-    ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-    ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
-    ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
-    ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
-    ti_black_holes_end_min =
-        min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
-    ti_black_holes_beg_max =
-        max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+    /* Update the properties of the void cell. */
+    c->maxdepth = maxdepth;
+    c->hydro.ti_end_min = ti_hydro_end_min;
+    c->hydro.ti_beg_max = ti_hydro_beg_max;
+    c->rt.ti_rt_end_min = ti_rt_end_min;
+    c->rt.ti_rt_beg_max = ti_rt_beg_max;
+    c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
+    c->grav.ti_end_min = ti_gravity_end_min;
+    c->grav.ti_beg_max = ti_gravity_beg_max;
+    c->stars.ti_end_min = ti_stars_end_min;
+    c->stars.ti_beg_max = ti_stars_beg_max;
+    c->sinks.ti_end_min = ti_sinks_end_min;
+    c->sinks.ti_beg_max = ti_sinks_beg_max;
+    c->black_holes.ti_end_min = ti_black_holes_end_min;
+    c->black_holes.ti_beg_max = ti_black_holes_beg_max;
+
+    /* Deal with the multipole */
+    if (s->with_self_gravity) {
+      space_populate_multipole(c);
+    }
   }
 
-  /* Update the properties of the void cell. */
-  c->maxdepth = maxdepth;
-  c->hydro.ti_end_min = ti_hydro_end_min;
-  c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->rt.ti_rt_end_min = ti_rt_end_min;
-  c->rt.ti_rt_beg_max = ti_rt_beg_max;
-  c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
-  c->grav.ti_end_min = ti_gravity_end_min;
-  c->grav.ti_beg_max = ti_gravity_beg_max;
-  c->stars.ti_end_min = ti_stars_end_min;
-  c->stars.ti_beg_max = ti_stars_beg_max;
-  c->sinks.ti_end_min = ti_sinks_end_min;
-  c->sinks.ti_beg_max = ti_sinks_beg_max;
-  c->black_holes.ti_end_min = ti_black_holes_end_min;
-  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
-
-  /* Deal with the multipole */
-  if (s->with_self_gravity) {
-    space_populate_multipole(c);
-  }
-}
-
-/**
- * @brief Split particles between cells of the void cell hierarchy.
- *
- * This has to be done after proxy exchange to ensure we have all the
- * foreign multipoles, so is separated from all other splitting done in the
- * usual space_split.
- *
- *
- * @param s The #space.
- * @param verbose Are we talkative?
- */
-void zoom_void_space_split(struct space *s, int verbose) {
+  /**
+   * @brief Split particles between cells of the void cell hierarchy.
+   *
+   * This has to be done after proxy exchange to ensure we have all the
+   * foreign multipoles, so is separated from all other splitting done in the
+   * usual space_split.
+   *
+   *
+   * @param s The #space.
+   * @param verbose Are we talkative?
+   */
+  void zoom_void_space_split(struct space * s, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* We should never get here when not running with a zoom region. */
-  if (!s->with_zoom_region) {
-    error("zoom_void_space_split called when running without a zoom region.");
-  }
+    /* We should never get here when not running with a zoom region. */
+    if (!s->with_zoom_region) {
+      error("zoom_void_space_split called when running without a zoom region.");
+    }
 #endif
 
-  const ticks tic = getticks();
+    const ticks tic = getticks();
 
-  /* Unpack some useful information. */
-  struct cell *cells_top = s->cells_top;
-  int *void_cell_indices = s->zoom_props->void_cell_indices;
-  int nr_void_cells = s->zoom_props->nr_void_cells;
+    /* Unpack some useful information. */
+    struct cell *cells_top = s->cells_top;
+    int *void_cell_indices = s->zoom_props->void_cell_indices;
+    int nr_void_cells = s->zoom_props->nr_void_cells;
 
-  /* Create the void cell trees and populate their multipoles. This is only
-   * a handful of cells so no threadpool. */
+    /* Create the void cell trees and populate their multipoles. This is only
+     * a handful of cells so no threadpool. */
 
-  /* Loop over the void cells */
-  for (int ind = 0; ind < nr_void_cells; ind++) {
-    struct cell *c = &cells_top[void_cell_indices[ind]];
-    zoom_void_split_recursive(s, c, /*tpid*/ 0);
-  }
+    /* Loop over the void cells */
+    for (int ind = 0; ind < nr_void_cells; ind++) {
+      struct cell *c = &cells_top[void_cell_indices[ind]];
+      zoom_void_split_recursive(s, c, /*tpid*/ 0);
+    }
 
-  if (verbose)
-    message("Void cell tree and multipole construction took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    if (verbose)
+      message("Void cell tree and multipole construction took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-  /* Ensure all buffer cells are linked into the tree. */
-  int notlinked = 0;
-  if (s->zoom_props->with_buffer_cells) {
-    for (int k = s->zoom_props->buffer_cell_offset;
-         k < s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
-         k++) {
-      if (cells_top[k].void_parent == NULL)
-        notlinked++;
-    }
-    if (notlinked > 0)
-      error("%d buffer cells are not linked into a void cell tree!", notlinked);
-  }
-
-  /* Ensure all zoom cells are linked into the tree. */
-  notlinked = 0;
-  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-    if (cells_top[k].void_parent == NULL)
-      notlinked++;
-  }
-  if (notlinked > 0)
-    error("%d zoom cells are not linked into a void cell tree!", notlinked);
-
-  if (s->with_self_gravity) {
-    /* Collect the number of particles in the void multipoles. */
-    int nr_gparts_in_void = 0;
-    for (int i = 0; i < nr_void_cells; i++) {
-      nr_gparts_in_void +=
-          s->multipoles_top[s->zoom_props->void_cell_indices[i]]
-              .m_pole.num_gpart;
-    }
-
-    /* Collect the number of particles in the buffer multipoles. */
-    int nr_gparts = 0;
+    /* Ensure all buffer cells are linked into the tree. */
+    int notlinked = 0;
     if (s->zoom_props->with_buffer_cells) {
       for (int k = s->zoom_props->buffer_cell_offset;
            k <
            s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
            k++) {
+        if (cells_top[k].void_parent == NULL)
+          notlinked++;
+      }
+      if (notlinked > 0)
+        error("%d buffer cells are not linked into a void cell tree!",
+              notlinked);
+    }
+
+    /* Ensure all zoom cells are linked into the tree. */
+    notlinked = 0;
+    for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+      if (cells_top[k].void_parent == NULL)
+        notlinked++;
+    }
+    if (notlinked > 0)
+      error("%d zoom cells are not linked into a void cell tree!", notlinked);
+
+    if (s->with_self_gravity) {
+      /* Collect the number of particles in the void multipoles. */
+      int nr_gparts_in_void = 0;
+      for (int i = 0; i < nr_void_cells; i++) {
+        nr_gparts_in_void +=
+            s->multipoles_top[s->zoom_props->void_cell_indices[i]]
+                .m_pole.num_gpart;
+      }
+
+      /* Collect the number of particles in the buffer multipoles. */
+      int nr_gparts = 0;
+      if (s->zoom_props->with_buffer_cells) {
+        for (int k = s->zoom_props->buffer_cell_offset;
+             k <
+             s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
+             k++) {
+          nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
+        }
+      }
+
+      /* Check the number of gparts is consistent. */
+      if (s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
+        error("Number of gparts is inconsistent between buffer cells and "
+              "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
+              nr_gparts_in_void, nr_gparts);
+
+      /* Collect the number of particles in the zoom multipoles. */
+      for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
         nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
       }
+
+      /* Check the number of particles in the void cells. */
+      if (!s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
+        error("Number of gparts is inconsistent between zoom cells and "
+              "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
+              nr_gparts_in_void, nr_gparts);
     }
-
-    /* Check the number of gparts is consistent. */
-    if (s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
-      error("Number of gparts is inconsistent between buffer cells and "
-            "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
-            nr_gparts_in_void, nr_gparts);
-
-    /* Collect the number of particles in the zoom multipoles. */
-    for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-      nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
-    }
-
-    /* Check the number of particles in the void cells. */
-    if (!s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
-      error("Number of gparts is inconsistent between zoom cells and "
-            "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
-            nr_gparts_in_void, nr_gparts);
-  }
 #endif
-}
+  }
