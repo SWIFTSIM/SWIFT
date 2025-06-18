@@ -185,6 +185,9 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
 
+  if (c->type == cell_type_buffer)
+    message("Splitting buffer cell at depth %d", depth);
+
   /* Initialise the timestep information we need to collect. */
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
