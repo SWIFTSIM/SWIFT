@@ -417,19 +417,24 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
-  /* Get the background cell count and offset */
-  const int nr_bkg_cells = s->zoom_props->nr_bkg_cells;
-  const int bkg_offset = s->zoom_props->bkg_cell_offset;
+  /* Loop over all cells. */
+  for (int n = 0; n < s->nr_cells; n++) {
 
-  /* Loop over all background cells (this is where we originally made tasks) */
-  for (int n = bkg_offset; n < nr_bkg_cells; n++) {
+    /* Skip void cells */
+    if (cells[n].subtype == cell_subtype_void)
+      continue;
 
     /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[n];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
+    /* Get the top level cell of the current cell */
+    struct cell *top_j = cj;
+    while (top_j->void_parent != NULL)
+      top_j = top_j->void_parent->top;
+
     /* Avoid self contributions */
-    if (top == cj)
+    if (top == top_j)
       continue;
 
     /* Skip empty cells */
@@ -437,7 +442,7 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
       continue;
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
+    const double min_radius2 = cell_min_dist2(top, top_j, periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
