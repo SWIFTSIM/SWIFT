@@ -420,7 +420,8 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
   /* Loop over all cells. */
   for (int n = 0; n < s->nr_cells; n++) {
 
-    /* Skip void cells */
+    /* Skip void cells to avoid double counting their top level progeny
+     * in the zoom (and buffer) cell grids. */
     if (cells[n].subtype == cell_subtype_void)
       continue;
 
@@ -428,7 +429,7 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
     struct cell *cj = &cells[n];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
-    /* Get the top level cell of the current cell */
+    /* Get the top level cell of the current cj */
     struct cell *top_j = cj;
     while (top_j->void_parent != NULL)
       top_j = top_j->void_parent->top;
