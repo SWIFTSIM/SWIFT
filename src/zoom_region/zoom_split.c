@@ -221,6 +221,9 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     /* Recurse further if we are in a void cell. */
     if (cp->subtype == cell_subtype_void) {
 
+      /* Ensure the depth is correct. */
+      cp->depth = c->depth + 1;
+
       /* Recurse */
       zoom_void_split_recursive(s, cp, tpid);
 
