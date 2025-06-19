@@ -69,9 +69,11 @@ void runner_do_init_grav(struct runner *r, struct cell *c, const int timer) {
   gravity_field_tensors_init(&c->grav.multipole->pot, e->ti_current);
 
   /* Recurse? */
-  if (c->split) {
+  if (c->split || c->subtype == cell_subtype_void) {
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL)
+      if (c->progeny[k] != NULL &&
+          !(c->subtype == cell_subtype_void &&
+            c->progeny[k]->subtype != cell_subtype_void))
         runner_do_init_grav(r, c->progeny[k], /*timer=*/0);
     }
   }
