@@ -218,13 +218,8 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     /* Get the progenitor */
     struct cell *cp = c->progeny[k];
 
-    /* If the progeny is above the zoom region then we need to
-     * label it as a void cell and continue the void hierarchy. */
-    if (zoom_cell_overlaps_zoom_region(cp, s) && cp->type != cell_type_zoom) {
-
-      /* Label as a void cell. */
-      cp->subtype = cell_subtype_void;
-      cp->depth = c->depth + 1;
+    /* Recurse further if we are in a void cell. */
+    if (cp->subtype == cell_subtype_void) {
 
       /* Recurse */
       zoom_void_split_recursive(s, cp, tpid);
