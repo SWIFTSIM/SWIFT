@@ -58,12 +58,10 @@ void runner_do_init_grav(struct runner *r, struct cell *c, const int timer) {
 #endif
 
   /* Anything to do here? */
-  if (!cell_is_active_gravity(c, e))
-    return;
+  if (!cell_is_active_gravity(c, e)) return;
 
   /* Does the multipole need drifting? */
-  if (c->grav.ti_old_multipole < e->ti_current)
-    cell_drift_multipole(c, e);
+  if (c->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(c, e);
 
   /* Reset the gravity acceleration tensors */
   gravity_field_tensors_init(&c->grav.multipole->pot, e->ti_current);
@@ -78,8 +76,7 @@ void runner_do_init_grav(struct runner *r, struct cell *c, const int timer) {
     }
   }
 
-  if (timer)
-    TIMER_TOC(timer_init_grav);
+  if (timer) TIMER_TOC(timer_init_grav);
 }
 
 /**
@@ -122,8 +119,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        runner_do_kick1(r, c->progeny[k], /*timer=*/0);
+      if (c->progeny[k] != NULL) runner_do_kick1(r, c->progeny[k], /*timer=*/0);
   } else {
 
     integertime_t ti_begin_mesh = -1;
@@ -165,10 +161,11 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (ti_begin != ti_current)
-          error("Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
-                "ti_step=%lld time_bin=%d wakeup=%d ti_current=%lld",
-                ti_end, ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
-                ti_current);
+          error(
+              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d wakeup=%d ti_current=%lld",
+              ti_end, ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
+              ti_current);
 #endif
 
         /* Time intervals for this half-kick */
@@ -205,8 +202,9 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (ti_begin_mesh != -1 && !gpart_is_starting(gp, e) &&
           !gpart_is_inhibited(gp, e)) {
-        error("Particle on a time-step longer than the mesh synchronization "
-              "step!");
+        error(
+            "Particle on a time-step longer than the mesh synchronization "
+            "step!");
       }
 #endif
 
@@ -226,9 +224,10 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
             get_integer_time_end(ti_current + 1, gp->time_bin);
 
         if (ti_begin != ti_current)
-          error("G-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
-                "ti_step=%lld time_bin=%d ti_current=%lld",
-                ti_end_check, ti_begin, ti_step, gp->time_bin, ti_current);
+          error(
+              "G-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end_check, ti_begin, ti_step, gp->time_bin, ti_current);
 #endif
 
         /* Time interval for this gravity half-kick */
@@ -260,9 +259,10 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
             get_integer_time_end(ti_current + 1, sp->time_bin);
 
         if (ti_begin != ti_current)
-          error("S-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
-                "ti_step=%lld time_bin=%d ti_current=%lld",
-                ti_end_check, ti_begin, ti_step, sp->time_bin, ti_current);
+          error(
+              "S-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end_check, ti_begin, ti_step, sp->time_bin, ti_current);
 #endif
 
         /* Time interval for this gravity half-kick */
@@ -294,9 +294,10 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
             get_integer_time_end(ti_current + 1, sink->time_bin);
 
         if (ti_begin != ti_current)
-          error("Sink-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
-                "ti_step=%lld time_bin=%d ti_current=%lld",
-                ti_end_check, ti_begin, ti_step, sink->time_bin, ti_current);
+          error(
+              "Sink-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end_check, ti_begin, ti_step, sink->time_bin, ti_current);
 #endif
 
         /* Time interval for this gravity half-kick */
@@ -328,9 +329,10 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
             get_integer_time_end(ti_current + 1, bp->time_bin);
 
         if (ti_begin != ti_current)
-          error("B-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
-                "ti_step=%lld time_bin=%d ti_current=%lld",
-                ti_end_check, ti_begin, ti_step, bp->time_bin, ti_current);
+          error(
+              "B-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end_check, ti_begin, ti_step, bp->time_bin, ti_current);
 #endif
 
         /* Time interval for this gravity half-kick */
@@ -344,8 +346,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
     }
   }
 
-  if (timer)
-    TIMER_TOC(timer_kick1);
+  if (timer) TIMER_TOC(timer_kick1);
 }
 
 /**
@@ -391,8 +392,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        runner_do_kick2(r, c->progeny[k], /*timer=*/0);
+      if (c->progeny[k] != NULL) runner_do_kick2(r, c->progeny[k], /*timer=*/0);
   } else {
 
     integertime_t ti_begin_mesh = -1;
@@ -434,10 +434,11 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (ti_end != ti_current)
-          error("Particle in wrong time-bin, ti_begin=%lld, ti_step=%lld "
-                "time_bin=%d wakeup=%d ti_current=%lld",
-                ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
-                ti_current);
+          error(
+              "Particle in wrong time-bin, ti_begin=%lld, ti_step=%lld "
+              "time_bin=%d wakeup=%d ti_current=%lld",
+              ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
+              ti_current);
 #endif
 
         /* Time intervals for this half-kick */
@@ -457,8 +458,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
-        if (p->ti_drift != p->ti_kick)
-          error("Error integrating part in time.");
+        if (p->ti_drift != p->ti_kick) error("Error integrating part in time.");
 #endif
 
         /* Prepare the values to be drifted */
@@ -474,8 +474,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (ti_begin_mesh != -1 && !gpart_is_active(gp, e)) {
-        error("Particle on a time-step longer than the mesh synchronization "
-              "step!");
+        error(
+            "Particle on a time-step longer than the mesh synchronization "
+            "step!");
       }
 #endif
 
@@ -491,8 +492,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
         const integertime_t ti_end = ti_begin + ti_step / 2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (ti_end != ti_current)
-          error("Particle in wrong time-bin");
+        if (ti_end != ti_current) error("Particle in wrong time-bin");
 #endif
 
         /* Time interval for this gravity half-kick */
@@ -529,8 +529,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
         const integertime_t ti_end = ti_begin + ti_step / 2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (ti_end != ti_current)
-          error("Particle in wrong time-bin");
+        if (ti_end != ti_current) error("Particle in wrong time-bin");
 #endif
 
         /* Time interval for this gravity half-kick */
@@ -567,8 +566,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
         const integertime_t ti_end = ti_begin + ti_step / 2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (ti_end != ti_current)
-          error("Particle in wrong time-bin");
+        if (ti_end != ti_current) error("Particle in wrong time-bin");
 #endif
 
         /* Time interval for this gravity half-kick */
@@ -605,8 +603,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
         const integertime_t ti_end = ti_begin + ti_step / 2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (ti_end != ti_current)
-          error("Particle in wrong time-bin");
+        if (ti_end != ti_current) error("Particle in wrong time-bin");
 #endif
 
         /* Time interval for this gravity half-kick */
@@ -628,8 +625,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
       }
     }
   }
-  if (timer)
-    TIMER_TOC(timer_kick2);
+  if (timer) TIMER_TOC(timer_kick2);
 }
 
 /**
@@ -750,8 +746,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
-        if (p->gpart != NULL)
-          p->gpart->time_bin = p->time_bin;
+        if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
 
         /* Update the tracers properties */
         tracers_after_timestep_part(
@@ -761,8 +756,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* Number of updated particles */
         updated++;
-        if (p->gpart != NULL)
-          g_updated++;
+        if (p->gpart != NULL) g_updated++;
 
         /* What is the next sync-point ? */
         ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);
@@ -1151,8 +1145,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   }
 
   /* Flag something may have changed */
-  if (c->top == c)
-    space_mark_cell_as_updated(r->e->s, c);
+  if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
   /* Store the values. */
   c->hydro.updated = updated;
@@ -1206,8 +1199,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
     error("Cell %lld End of next RT step is current time!", c->cellID);
 #endif
 
-  if (timer)
-    TIMER_TOC(timer_timestep);
+  if (timer) TIMER_TOC(timer_timestep);
 }
 
 /**
@@ -1223,8 +1215,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
 
   /* Early stop if we are at the super level.
    * The time-step task would have set things at this level already */
-  if (c->super == c)
-    return;
+  if (c->super == c) return;
 
   /* Counters for the different quantities. */
   size_t h_updated = 0;
@@ -1284,8 +1275,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   }
 
   /* Flag something may have changed */
-  if (c->top == c)
-    space_mark_cell_as_updated(r->e->s, c);
+  if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
   /* Store the collected values in the cell. */
   c->hydro.ti_end_min = ti_hydro_end_min;
@@ -1330,8 +1320,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only limit local cells. */
-  if (c->nodeID != engine_rank)
-    error("Limiting dt of a foreign cell is nope.");
+  if (c->nodeID != engine_rank) error("Limiting dt of a foreign cell is nope.");
 #endif
 
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
@@ -1344,8 +1333,8 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
   if (c->hydro.count == 0) {
 
     /* Clear the limiter flags. */
-    cell_clear_flag(c, cell_flag_do_hydro_limiter |
-                           cell_flag_do_hydro_sub_limiter);
+    cell_clear_flag(
+        c, cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
     return;
   }
 
@@ -1367,8 +1356,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
     }
 
     /* Flag something may have changed */
-    if (c->top == c)
-      space_mark_cell_as_updated(r->e->s, c);
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1401,16 +1389,16 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
 #endif
 
       /* Avoid inhibited particles */
-      if (part_is_inhibited(p, e))
-        continue;
+      if (part_is_inhibited(p, e)) continue;
 
       /* Bip, bip, bip... wake-up time */
       if (p->limiter_data.wakeup != time_bin_not_awake) {
 
         if (!part_is_active(p, e) && p->limiter_data.to_be_synchronized) {
-          warning("Not limiting particle with id %lld because it needs to be "
-                  "synced.",
-                  p->id);
+          warning(
+              "Not limiting particle with id %lld because it needs to be "
+              "synced.",
+              p->id);
           continue;
         }
 
@@ -1451,8 +1439,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
     }
 
     /* Flag something may have changed */
-    if (c->top == c)
-      space_mark_cell_as_updated(r->e->s, c);
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1465,8 +1452,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
   cell_clear_flag(c,
                   cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 
-  if (timer)
-    TIMER_TOC(timer_do_limiter);
+  if (timer) TIMER_TOC(timer_do_limiter);
 }
 
 /**
@@ -1493,8 +1479,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only sync local cells. */
-  if (c->nodeID != engine_rank)
-    error("Syncing of a foreign cell is nope.");
+  if (c->nodeID != engine_rank) error("Syncing of a foreign cell is nope.");
 #endif
 
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
@@ -1529,8 +1514,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
     }
 
     /* Flag something may have changed */
-    if (c->top == c)
-      space_mark_cell_as_updated(r->e->s, c);
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1553,8 +1537,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
       struct xpart *restrict xp = &xparts[k];
 
       /* Avoid inhibited particles */
-      if (part_is_inhibited(p, e))
-        continue;
+      if (part_is_inhibited(p, e)) continue;
 
       /* If the particle is active no need to sync it */
       if (part_is_active(p, e) && p->limiter_data.to_be_synchronized) {
@@ -1599,8 +1582,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
 
         /* Update particle */
         p->time_bin = new_time_bin;
-        if (p->gpart != NULL)
-          p->gpart->time_bin = new_time_bin;
+        if (p->gpart != NULL) p->gpart->time_bin = new_time_bin;
 
         /* Update the tracers properties */
         tracers_after_timestep_part(
@@ -1635,8 +1617,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
     }
 
     /* Flag something may have changed */
-    if (c->top == c)
-      space_mark_cell_as_updated(r->e->s, c);
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1648,8 +1629,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
   /* Clear the sync flags. */
   cell_clear_flag(c, cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
 
-  if (timer)
-    TIMER_TOC(timer_do_sync);
+  if (timer) TIMER_TOC(timer_do_sync);
 }
 
 /**
@@ -1671,15 +1651,12 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
   c->rt.updated = 0;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (c->super == c)
-    c->rt.advanced_time = 1;
+  if (c->super == c) c->rt.advanced_time = 1;
 #endif
 
   /* Anything to do here? */
-  if (count == 0)
-    return;
-  if (!cell_is_rt_active(c, e))
-    return;
+  if (count == 0) return;
+  if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
 
@@ -1710,12 +1687,10 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
         struct part *restrict p = &parts[i];
 
         /* Skip inhibited parts */
-        if (part_is_inhibited(p, e))
-          continue;
+        if (part_is_inhibited(p, e)) continue;
 
         /* Skip inactive parts */
-        if (!part_is_rt_active(p, e))
-          continue;
+        if (!part_is_rt_active(p, e)) continue;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
         /* Run checks. */
@@ -1735,8 +1710,7 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
    * We only update the cell's own time after it's been active. */
   c->rt.ti_rt_end_min += c->rt.ti_rt_min_step_size;
 
-  if (timer)
-    TIMER_TOC(timer_do_rt_advance_cell_time);
+  if (timer) TIMER_TOC(timer_do_rt_advance_cell_time);
 }
 
 /**
@@ -1775,8 +1749,7 @@ void runner_do_collect_rt_times(struct runner *r, struct cell *c,
      * Otherwise, rt_advance_cell_time will not have run, yet the
      * rt_collect_cell_times call may still be executed if the top
      * level cell is above the super level cell. */
-    if (!cell_is_rt_active(c, e))
-      return;
+    if (!cell_is_rt_active(c, e)) return;
     if (e->ti_current_subcycle - c->rt.ti_rt_end_min == e->ti_current) {
       /* This is the first subcycle */
       if (c->rt.advanced_time != 2)
@@ -1817,6 +1790,5 @@ void runner_do_collect_rt_times(struct runner *r, struct cell *c,
   c->rt.ti_rt_beg_max = ti_rt_beg_max;
   c->rt.updated = rt_updated;
 
-  if (timer)
-    TIMER_TOC(timer_do_rt_collect_times);
+  if (timer) TIMER_TOC(timer_do_rt_collect_times);
 }

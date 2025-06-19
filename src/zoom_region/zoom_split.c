@@ -48,18 +48,20 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have the right kind of cell. */
   if (c->subtype != cell_subtype_void) {
-    error("Trying to split cell which isn't a void cell! (c->type=%s, "
-          "c->subtype=%s)",
-          cellID_names[c->type], subcellID_names[c->subtype]);
+    error(
+        "Trying to split cell which isn't a void cell! (c->type=%s, "
+        "c->subtype=%s)",
+        cellID_names[c->type], subcellID_names[c->subtype]);
   }
 
   /* Check that the widths are right. */
   if (fabs((c->width[0] / 2) - s->zoom_props->width[0]) >
       (0.001 * s->zoom_props->width[0]))
-    error("The width of the zoom cell is not half the width of the void "
-          "cell were about to link to! (c->width[0]=%f, "
-          "s->zoom_props->width[0]=%f)",
-          c->width[0] / 2, s->zoom_props->width[0]);
+    error(
+        "The width of the zoom cell is not half the width of the void "
+        "cell were about to link to! (c->width[0]=%f, "
+        "s->zoom_props->width[0]=%f)",
+        c->width[0] / 2, s->zoom_props->width[0]);
 
 #endif
 
@@ -74,12 +76,9 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
     double loc[3] = {c->loc[0] + (c->width[0] / 4),
                      c->loc[1] + (c->width[1] / 4),
                      c->loc[2] + (c->width[2] / 4)};
-    if (k & 4)
-      loc[0] += c->width[0] / 2;
-    if (k & 2)
-      loc[1] += c->width[1] / 2;
-    if (k & 1)
-      loc[2] += c->width[2] / 2;
+    if (k & 4) loc[0] += c->width[0] / 2;
+    if (k & 2) loc[1] += c->width[1] / 2;
+    if (k & 1) loc[2] += c->width[2] / 2;
 
     /* Which cell are we in? */
     int cid = cell_getid_from_pos(s, loc[0], loc[1], loc[2]);
@@ -110,18 +109,20 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have the right kind of cell. */
   if (c->subtype != cell_subtype_void) {
-    error("Trying to split cell which isn't a void cell! (c->type=%s, "
-          "c->subtype=%s)",
-          cellID_names[c->type], subcellID_names[c->subtype]);
+    error(
+        "Trying to split cell which isn't a void cell! (c->type=%s, "
+        "c->subtype=%s)",
+        cellID_names[c->type], subcellID_names[c->subtype]);
   }
 
   /* Check that the widths are right. */
   if (fabs((c->width[0] / 2) - s->zoom_props->buffer_width[0]) >
       (0.001 * s->zoom_props->buffer_width[0]))
-    error("The width of the buffer cell is not half the width of the void "
-          "cell were about to link to! (c->width[0]=%f, "
-          "s->zoom_props->buffer_width[0]=%f)",
-          c->width[0] / 2, s->zoom_props->buffer_width[0]);
+    error(
+        "The width of the buffer cell is not half the width of the void "
+        "cell were about to link to! (c->width[0]=%f, "
+        "s->zoom_props->buffer_width[0]=%f)",
+        c->width[0] / 2, s->zoom_props->buffer_width[0]);
 
 #endif
 
@@ -132,12 +133,9 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     double loc[3] = {c->loc[0] + (c->width[0] / 4),
                      c->loc[1] + (c->width[1] / 4),
                      c->loc[2] + (c->width[2] / 4)};
-    if (k & 4)
-      loc[0] += c->width[0] / 2;
-    if (k & 2)
-      loc[1] += c->width[1] / 2;
-    if (k & 1)
-      loc[2] += c->width[2] / 2;
+    if (k & 4) loc[0] += c->width[0] / 2;
+    if (k & 2) loc[1] += c->width[1] / 2;
+    if (k & 1) loc[2] += c->width[2] / 2;
 
     /* Which cell are we in? */
     int cid = cell_getid_below_bkg(s->zoom_props->buffer_cdim,
@@ -184,8 +182,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
   /* Set the top level void cell tpid. Doing it here ensures top level void
    * cells have the same tpid as their progeny. */
-  if (depth == 0)
-    c->tpid = tpid;
+  if (depth == 0) c->tpid = tpid;
 
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
@@ -322,8 +319,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
     for (int k = s->zoom_props->buffer_cell_offset;
          k < s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
          k++) {
-      if (cells_top[k].void_parent == NULL)
-        notlinked++;
+      if (cells_top[k].void_parent == NULL) notlinked++;
     }
     if (notlinked > 0)
       error("%d buffer cells are not linked into a void cell tree!", notlinked);
@@ -332,8 +328,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   /* Ensure all zoom cells are linked into the tree. */
   notlinked = 0;
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-    if (cells_top[k].void_parent == NULL)
-      notlinked++;
+    if (cells_top[k].void_parent == NULL) notlinked++;
   }
   if (notlinked > 0)
     error("%d zoom cells are not linked into a void cell tree!", notlinked);
@@ -360,9 +355,10 @@ void zoom_void_space_split(struct space *s, int verbose) {
 
     /* Check the number of gparts is consistent. */
     if (s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
-      error("Number of gparts is inconsistent between buffer cells and "
-            "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
-            nr_gparts_in_void, nr_gparts);
+      error(
+          "Number of gparts is inconsistent between buffer cells and "
+          "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
+          nr_gparts_in_void, nr_gparts);
 
     /* Collect the number of particles in the zoom multipoles. */
     for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
@@ -371,9 +367,10 @@ void zoom_void_space_split(struct space *s, int verbose) {
 
     /* Check the number of particles in the void cells. */
     if (!s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
-      error("Number of gparts is inconsistent between zoom cells and "
-            "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
-            nr_gparts_in_void, nr_gparts);
+      error(
+          "Number of gparts is inconsistent between zoom cells and "
+          "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
+          nr_gparts_in_void, nr_gparts);
   }
 #endif
 }
