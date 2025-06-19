@@ -155,8 +155,8 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     /* Link this nested cell into the void cell hierarchy. */
     c->progeny[k] = buffer_cell;
 
-    /* Flag this void cell "progeny" as the cell's void cell parent. */
-    buffer_cell->void_parent = c;
+    /* Set the parent of the buffer cell to be the void cell. */
+    buffer_cell->parent = c;
   }
 }
 
