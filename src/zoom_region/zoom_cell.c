@@ -85,12 +85,12 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   }
 
   if (target_void_count != zoom_props->nr_void_cells)
-    error(
-        "Not all void cells were found and labelled! (target_void_count=%d, "
-        "found_void_count=%d)",
-        target_void_count, zoom_props->nr_void_cells);
+    error("Not all void cells were found and labelled! (target_void_count=%d, "
+          "found_void_count=%d)",
+          target_void_count, zoom_props->nr_void_cells);
 
-  if (verbose) message("Found %d void cells", zoom_props->nr_void_cells);
+  if (verbose)
+    message("Found %d void cells", zoom_props->nr_void_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check the void cells are in the right place. */
@@ -103,6 +103,31 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
       error("Void cell is not inside the zoom region (cid=%d)", cid);
   }
 #endif
+
+  /* We also need to label the buffer cells as void cells if they
+   * are within the zoom region. */
+  int nr_buffer_void;
+  if (zoom_props->with_buffer_cells) {
+    offset = zoom_props->buffer_cell_offset;
+    ncells = zoom_props->nr_buffer_cells;
+
+    /* Loop over the buffer cells and find cells containing
+     * the zoom region. */
+    for (int cid = offset; cid < offset + ncells; cid++) {
+
+      /* Get the cell */
+      struct cell *c = &cells[cid];
+
+      /* Label this cell if it contains the zoom region. */
+      if (zoom_cell_overlaps_zoom_region(c, s)) {
+        c->subtype = cell_subtype_void;
+        nr_buffer_void++;
+      }
+    }
+
+    if (verbose)
+      message("Found %d void cells in the buffer region", nr_buffer_void);
+  }
 }
 
 /**
@@ -177,12 +202,11 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
 
   /* Let's be verbose about this choice */
   if (verbose)
-    message(
-        "Looking for neighbouring background cells up to %d background "
-        "top-level "
-        "cells away from the zoom region (delta_m=%d "
-        "delta_p=%d)",
-        delta_cells, delta_m, delta_p);
+    message("Looking for neighbouring background cells up to %d background "
+            "top-level "
+            "cells away from the zoom region (delta_m=%d "
+            "delta_p=%d)",
+            delta_cells, delta_m, delta_p);
 
   /* Allocate the indices of neighbour background cells. */
   /* We don't know how many we will need at this point so have
@@ -207,23 +231,27 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
         struct cell *ci = &cells[cid];
 
         /* Skip non-void cells, we only want to walk out. */
-        if (ci->subtype != cell_subtype_void) continue;
+        if (ci->subtype != cell_subtype_void)
+          continue;
 
         /* Loop over every other cell within (Manhattan) range delta */
         for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
           /* Escape beyond range */
-          if (ii < 0 || ii >= cdim[0]) continue;
+          if (ii < 0 || ii >= cdim[0])
+            continue;
 
           for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
 
             /* Escape beyond range */
-            if (jj < 0 || jj >= cdim[1]) continue;
+            if (jj < 0 || jj >= cdim[1])
+              continue;
 
             for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
 
               /* Escape beyond range */
-              if (kk < 0 || kk >= cdim[2]) continue;
+              if (kk < 0 || kk >= cdim[2])
+                continue;
 
               /* Get this cell. */
               const int cjd = cell_getid_offset(cdim, offset, ii, jj, kk);
@@ -271,41 +299,37 @@ void zoom_verify_cell_type(struct space *s) {
 
     /* Check cell type */
     if (cid < bkg_cell_offset && cells[cid].type != cell_type_zoom)
-      error(
-          "Cell has the wrong cell type for it's array position (cid=%d, "
-          "c->type=%s, "
-          "s->zoom_props->bkg_cell_offset=%d)",
-          cid, cellID_names[cells[cid].type], bkg_cell_offset);
+      error("Cell has the wrong cell type for it's array position (cid=%d, "
+            "c->type=%s, "
+            "s->zoom_props->bkg_cell_offset=%d)",
+            cid, cellID_names[cells[cid].type], bkg_cell_offset);
     if (cid >= bkg_cell_offset && cells[cid].type == cell_type_zoom)
-      error(
-          "Cell has the wrong cell type for it's array position (cid=%d, "
-          "c->type=%s, "
-          "s->zoom_props->bkg_cell_offset=%d)",
-          cid, cellID_names[cells[cid].type], bkg_cell_offset);
+      error("Cell has the wrong cell type for it's array position (cid=%d, "
+            "c->type=%s, "
+            "s->zoom_props->bkg_cell_offset=%d)",
+            cid, cellID_names[cells[cid].type], bkg_cell_offset);
 
     /* Check cell widths */
     for (int i = 0; i < 3; i++) {
       if (cid < bkg_cell_offset && cells[cid].width[i] != zoom_width[i])
-        error(
-            "Cell has the wrong cell width for it's array position (cid=%d, "
-            "c->type=%s, "
-            "s->zoom_props->bkg_cell_offset=%d, c->width=[%f %f %f], "
-            "s->zoom_props->width=[%f %f %f])",
-            cid, cellID_names[cells[cid].type], bkg_cell_offset,
-            cells[cid].width[0], cells[cid].width[1], cells[cid].width[2],
-            s->zoom_props->width[0], s->zoom_props->width[1],
-            s->zoom_props->width[2]);
+        error("Cell has the wrong cell width for it's array position (cid=%d, "
+              "c->type=%s, "
+              "s->zoom_props->bkg_cell_offset=%d, c->width=[%f %f %f], "
+              "s->zoom_props->width=[%f %f %f])",
+              cid, cellID_names[cells[cid].type], bkg_cell_offset,
+              cells[cid].width[0], cells[cid].width[1], cells[cid].width[2],
+              s->zoom_props->width[0], s->zoom_props->width[1],
+              s->zoom_props->width[2]);
       if ((cid >= bkg_cell_offset && cid < buffer_offset) &&
           cells[cid].width[i] != width[i])
-        error(
-            "Cell has the wrong cell width for it's array position (cid=%d, "
-            "c->type=%s, "
-            "s->zoom_props->bkg_cell_offset=%d, c->width=[%f %f %f], "
-            "s->zoom_props->width=[%f %f %f])",
-            cid, cellID_names[cells[cid].type], bkg_cell_offset,
-            cells[cid].width[0], cells[cid].width[1], cells[cid].width[2],
-            s->zoom_props->width[0], s->zoom_props->width[1],
-            s->zoom_props->width[2]);
+        error("Cell has the wrong cell width for it's array position (cid=%d, "
+              "c->type=%s, "
+              "s->zoom_props->bkg_cell_offset=%d, c->width=[%f %f %f], "
+              "s->zoom_props->width=[%f %f %f])",
+              cid, cellID_names[cells[cid].type], bkg_cell_offset,
+              cells[cid].width[0], cells[cid].width[1], cells[cid].width[2],
+              s->zoom_props->width[0], s->zoom_props->width[1],
+              s->zoom_props->width[2]);
     }
   }
 
@@ -483,7 +507,8 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         c->width[0] = zoom_props->width[0];
         c->width[1] = zoom_props->width[1];
         c->width[2] = zoom_props->width[2];
-        if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
+        if (s->with_self_gravity)
+          c->grav.multipole = &s->multipoles_top[cid];
         c->type = cell_type_zoom;
         c->subtype = cell_subtype_regular;
         c->dmin = dmin_zoom;
@@ -541,7 +566,8 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         c->width[1] = s->width[1];
         c->width[2] = s->width[2];
         c->dmin = dmin;
-        if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
+        if (s->with_self_gravity)
+          c->grav.multipole = &s->multipoles_top[cid];
         c->type = cell_type_bkg;
         c->subtype = cell_subtype_regular;
         c->depth = 0;
@@ -608,7 +634,8 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
           c->width[1] = zoom_props->buffer_width[1];
           c->width[2] = zoom_props->buffer_width[2];
           c->dmin = dmin_buffer;
-          if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
+          if (s->with_self_gravity)
+            c->grav.multipole = &s->multipoles_top[cid];
           c->type = cell_type_buffer;
           c->subtype = cell_subtype_regular;
           c->depth = 0;
@@ -687,10 +714,9 @@ static void zoom_void_timestep_collect_recursive(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have the right kind of cell. */
   if (c->subtype != cell_subtype_void) {
-    error(
-        "Trying to update timesteps on cell which isn't a void cell! "
-        "(c->type=%s, c->subtype=%s)",
-        cellID_names[c->type], subcellID_names[c->subtype]);
+    error("Trying to update timesteps on cell which isn't a void cell! "
+          "(c->type=%s, c->subtype=%s)",
+          cellID_names[c->type], subcellID_names[c->subtype]);
   }
 #endif
 
