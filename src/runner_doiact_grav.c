@@ -96,8 +96,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
         if (cp->grav.ti_old_multipole != e->ti_current)
           error("cp->multipole not drifted.");
         if (cp->grav.multipole->pot.ti_init != e->ti_current)
-          error("cp->field tensor not initialised (%s/%s)",
-                cellID_names[c->type], subcellID_names[c->subtype]);
+          error("cp->field tensor not initialised (%s/%s) at depth %d",
+                cellID_names[cp->type], subcellID_names[cp->subtype],
+                cp->depth);
 #endif
         /* If the tensor received any contribution, push it down */
         if (c->grav.multipole->pot.interacted) {
