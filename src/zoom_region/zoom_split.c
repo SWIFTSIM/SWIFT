@@ -207,8 +207,8 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   else if (c->depth == s->zoom_props->buffer_cell_depth - 1) {
     zoom_link_void_buffer_leaves(s, c);
     message("Linked buffer cells to void cell at depth %d (c->split=%d, "
-            "cp->split=%d)" c->depth,
-            c->split, c->progeny[0]->split);
+            "cp->split=%d)",
+            c->depth, c->split, c->progeny[0]->split);
   }
 
   /* Otherwise, we actually need to construct the progeny. */
