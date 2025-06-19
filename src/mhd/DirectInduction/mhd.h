@@ -133,13 +133,17 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
+  const float CFL_condition = hydro_properties->CFL_condition;
+  const float dt_psi = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
+                       (cosmo->a_factor_sound_speed * p->mhd_data.v_sig_psi);
+  
   const float dt_eta = p->mhd_data.resistive_eta != 0.f
                            ? hydro_properties->CFL_condition * cosmo->a *
                                  cosmo->a * p->h * p->h /
                                  p->mhd_data.resistive_eta
                            : FLT_MAX;
 
-  return dt_eta;
+  return fminf(dt_psi, dt_eta);
 }
 
 /**
@@ -183,6 +187,26 @@ mhd_get_comoving_magnetosonic_speed(const struct part *restrict p) {
 }
 
 /**
+ * @brief Compute magnetosonic speed
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_comoving_augmented_magnetosonic_speed(const struct part *restrict p, const float mu_0) {
+
+  /* Compute square of fast magnetosonic speed */
+  const float cs = hydro_get_comoving_soundspeed(p);
+  const float cs2 = cs * cs;
+
+  const float vA = p->mhd_data.Alfven_speed;
+  const float vA2 = vA * vA;
+
+  const float epsi = p->mhd_data.psi_over_ch * p->mhd_data.psi_over_ch / p->rho / mu_0;
+  
+  const float cmsa2 = cs2 + vA2 + epsi;
+
+  return sqrtf(cmsa2);
+}
+
+/**
  * @brief Compute fast magnetosonic wave phase veolcity
  */
 __attribute__((always_inline)) INLINE static float
@@ -220,6 +244,14 @@ mhd_get_comoving_fast_magnetosonic_wave_phase_velocity(
   return sqrtf(v_fmsw2);
 }
 
+__attribute__((always_inline)) INLINE static void
+mhd_set_drifted_physical_internal_energy(
+    struct part *p, const float mu_0) {
+
+  const float cmsa = mhd_get_comoving_augmented_magnetosonic_speed(p, mu_0);
+  p->mhd_data.v_sig_psi = max(p->viscosity.v_sig, 2.f * cmsa);
+}
+
 /**
  * @brief Compute the MHD signal velocity between two gas particles
  *
@@ -245,6 +277,33 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   const float v_sig = v_sigi + v_sigj - beta * mu_ij;
 
   return v_sig;
+}
+
+/**
+ * @brief Compute the MHD signal velocity between two gas particles
+ *
+ * This is eq. (131) of Price D., JCoPh, 2012, Vol. 231, Issue 3
+ *
+ * Warning ONLY to be called just after preparation of the force loop.
+ *
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @brief pi The first #part.
+ * @brief pj The second #part.
+ * @brief mu_ij The velocity on the axis linking the particles, or zero if the
+ * particles are moving away from each other,
+ * @brief beta The non-linear viscosity constant.
+ */
+__attribute__((always_inline)) INLINE static float mhd_signal_velocity_psi(
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const float mu_ij, const float beta,
+    const float a, const float mu_0) {
+  
+  const float v_sig_psii = mhd_get_comoving_augmented_magnetosonic_speed(pi, mu_0);
+  const float v_sig_psij = mhd_get_comoving_augmented_magnetosonic_speed(pj, mu_0);
+
+  const float v_sig_psi = v_sig_psii + v_sig_psij - beta * mu_ij;
+
+  return v_sig_psi;
 }
 
 /**
@@ -303,7 +362,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
-    struct part *p) {
+    struct part *p, const float mu_0) {
 
   /* Zero the fields updated by the mhd gradient loop */
   p->mhd_data.curl_B[0] = 0.0f;
@@ -316,6 +375,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     }
   }
 
+  p->mhd_data.v_sig_psi = 2.f * mhd_get_comoving_augmented_magnetosonic_speed(p, mu_0);
+  
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
   for (int k = 0; k < 3; k++) {
@@ -356,6 +417,8 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
   p->mhd_data.curl_B[0] = 0.0f;
   p->mhd_data.curl_B[1] = 0.0f;
   p->mhd_data.curl_B[2] = 0.0f;
+
+  p->mhd_data.v_sig_psi = 0.0f;
 }
 
 /**
@@ -500,6 +563,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
   p->mhd_data.psi_over_ch = xp->mhd_data.psi_over_ch_full;
 
   p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+
+  const float cmsa = mhd_get_comoving_augmented_magnetosonic_speed(p, mu_0);
+  p->mhd_data.v_sig_psi = fmaxf(p->mhd_data.v_sig_psi, 2.f * cmsa);
 }
 
 /**
@@ -531,6 +597,9 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.psi_over_ch += p->mhd_data.psi_over_ch_dt * dt_therm;
 
   p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+
+  const	float cmsa = mhd_get_comoving_augmented_magnetosonic_speed(p, mu_0);
+  p->mhd_data.v_sig_psi = fmaxf(p->mhd_data.v_sig_psi, 2.f * cmsa);
 }
 
 /**

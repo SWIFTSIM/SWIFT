@@ -146,7 +146,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
           mi * over_rho_j * wj_dr * r_inv * dB[i] * dx[j];
     }
   }
-
+  
   /* Calculate SPH error */
   pi->mhd_data.mean_SPH_err += mj * wi;
   pj->mhd_data.mean_SPH_err += mi * wj;
@@ -235,7 +235,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
           mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
     }
   }
-
+  
   /* Calculate SPH error */
   pi->mhd_data.mean_SPH_err += mj * wi;
   for (int k = 0; k < 3; k++) {
@@ -323,6 +323,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
+  /* Cosmology terms for the signal velocity */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
+
+  /* Compute dv dot r */
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+  /* Add Hubble flow */
+  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
+
+  /* Are the particles moving towards each others ? */
+  const float omega_ij = fminf(dvdr_Hubble, 0.f);
+  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+  
+  /* Dedner signal velocity */
+  const float new_v_sig_psi =
+      mhd_signal_velocity_psi(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
+
+  /* Update if we need to */
+  pi->mhd_data.v_sig_psi = fmaxf(pi->mhd_data.v_sig_psi, new_v_sig_psi);
+  pj->mhd_data.v_sig_psi = fmaxf(pj->mhd_data.v_sig_psi, new_v_sig_psi);
+  
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
@@ -650,6 +672,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
+  /* Cosmology terms for the signal velocity */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
+
+  /* Compute dv dot r */
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+  /* Add Hubble flow */
+  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
+
+  /* Are the particles moving towards each others ? */
+  const float omega_ij = fminf(dvdr_Hubble, 0.f);
+  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+
+  /* Dedner signal velocity */
+  const float new_v_sig_psi =
+      mhd_signal_velocity_psi(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
+
+  /* Update if we need to */
+  pi->mhd_data.v_sig_psi = fmaxf(pi->mhd_data.v_sig_psi, new_v_sig_psi);
+  
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];

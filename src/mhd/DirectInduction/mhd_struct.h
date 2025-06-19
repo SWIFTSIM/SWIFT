@@ -69,6 +69,8 @@ struct mhd_part_data {
   /* Time derivative of Dedner scalar over divergence cleaning speed */
   float psi_over_ch_dt;
 
+  float v_sig_psi;
+  
   /* SPH <1> error */
   float mean_SPH_err;
 
