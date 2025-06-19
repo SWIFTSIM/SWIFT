@@ -157,6 +157,9 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
 
     /* Set the parent of the buffer cell to be the void cell. */
     buffer_cell->parent = c;
+
+    /* And also point the void parent to the parent cell. */
+    buffer_cell->void_parent = c;
   }
 }
 
