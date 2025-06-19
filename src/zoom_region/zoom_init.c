@@ -132,18 +132,12 @@ double zoom_get_region_dim_and_shift(struct space *s) {
     }
 
     /* Ammend boundaries for this particle. */
-    if (x > max_bounds[0])
-      max_bounds[0] = x;
-    if (y > max_bounds[1])
-      max_bounds[1] = y;
-    if (z > max_bounds[2])
-      max_bounds[2] = z;
-    if (x < min_bounds[0])
-      min_bounds[0] = x;
-    if (y < min_bounds[1])
-      min_bounds[1] = y;
-    if (z < min_bounds[2])
-      min_bounds[2] = z;
+    if (x > max_bounds[0]) max_bounds[0] = x;
+    if (y > max_bounds[1]) max_bounds[1] = y;
+    if (z > max_bounds[2]) max_bounds[2] = z;
+    if (x < min_bounds[0]) min_bounds[0] = x;
+    if (y < min_bounds[1]) min_bounds[1] = y;
+    if (z < min_bounds[2]) min_bounds[2] = z;
 
     /* Total up mass and position for COM. */
     mtot += s->gparts[k].mass;
@@ -196,12 +190,13 @@ double zoom_get_region_dim_and_shift(struct space *s) {
   if (!s->periodic) {
     for (int i = 0; i < 3; i++) {
       if (fabs(s->zoom_props->zoom_shift[i]) > 0.01 * s->dim[i]) {
-        error("Cannot shift the zoom region to the centre of the box "
-              "when the box is not periodic. Centre the CoM of the high "
-              "resolution particles in the box. (shift=[%f, %f, %f], dim=[%f, "
-              "%f, %f])",
-              s->zoom_props->zoom_shift[0], s->zoom_props->zoom_shift[1],
-              s->zoom_props->zoom_shift[2], s->dim[0], s->dim[1], s->dim[2]);
+        error(
+            "Cannot shift the zoom region to the centre of the box "
+            "when the box is not periodic. Centre the CoM of the high "
+            "resolution particles in the box. (shift=[%f, %f, %f], dim=[%f, "
+            "%f, %f])",
+            s->zoom_props->zoom_shift[0], s->zoom_props->zoom_shift[1],
+            s->zoom_props->zoom_shift[2], s->dim[0], s->dim[1], s->dim[2]);
       }
     }
   }
@@ -571,8 +566,7 @@ void zoom_region_init(struct space *s, const int verbose) {
 
   /* Nothing to do if we are restarting, just report geometry and move on. */
   if (s->e != NULL && s->e->restarting) {
-    if (verbose)
-      zoom_report_cell_properties(s);
+    if (verbose) zoom_report_cell_properties(s);
     return;
   }
 
@@ -633,17 +627,19 @@ void zoom_region_init(struct space *s, const int verbose) {
    * regions is too high we will have to set up a unworkable number of buffer
    * cells. */
   if (nr_zoom_regions >= 64) {
-    error("Background cell size is too large relative to the zoom region! "
-          "Increase ZoomRegion:bkg_top_level_cells (would have needed %d zoom "
-          "cells in the void region).",
-          nr_zoom_regions);
+    error(
+        "Background cell size is too large relative to the zoom region! "
+        "Increase ZoomRegion:bkg_top_level_cells (would have needed %d zoom "
+        "cells in the void region).",
+        nr_zoom_regions);
   }
 
   /* If its alot but not silly just warn the user. */
   if (nr_zoom_regions >= 16) {
-    warning("Background cell size is large relative to the zoom region! "
-            "(we'll need at least %d buffer cells which may be slow). ",
-            nr_zoom_regions);
+    warning(
+        "Background cell size is large relative to the zoom region! "
+        "(we'll need at least %d buffer cells which may be slow). ",
+        nr_zoom_regions);
   }
 
   if (verbose) {
@@ -669,9 +665,10 @@ void zoom_region_init(struct space *s, const int verbose) {
   /* Ensure we haven't got a zoom region smaller than the high resolution
    * particle distribution. */
   if (s->zoom_props->dim[0] < ini_dim) {
-    error("Found a zoom region smaller than the high resolution particle "
-          "distribution! Adjust the cell structure "
-          "(ZoomRegion:bkg_top_level_cells, ZoomRegion:zoom_top_level_cells)");
+    error(
+        "Found a zoom region smaller than the high resolution particle "
+        "distribution! Adjust the cell structure "
+        "(ZoomRegion:bkg_top_level_cells, ZoomRegion:zoom_top_level_cells)");
   }
 
   /* Let's be safe and warn if we have drastically changed the size of the
