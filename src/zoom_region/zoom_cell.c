@@ -76,8 +76,6 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     target_void_count = bkg_target_void_count + buffer_target_void_count;
   }
 
-  /* If we have buffer cells
-
   /* Allocate the indices of void cells */
   if (swift_memalign(
           "void_cell_indices", (void **)&s->zoom_props->void_cell_indices,
