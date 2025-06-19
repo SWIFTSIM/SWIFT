@@ -107,10 +107,6 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
  */
 void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
 
-  /* Flag that this cells is split (we want to recurse through the
-   * void buffer cells down to the zoom cells). */
-  c->split = 1;
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have the right kind of cell. */
   if (c->subtype != cell_subtype_void) {
