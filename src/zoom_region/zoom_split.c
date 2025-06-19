@@ -148,11 +148,16 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     /* Link this nested cell into the void cell hierarchy. */
     c->progeny[k] = buffer_cell;
 
+    /* Flag this void cell "progeny" as the cell's void cell parent. */
+    buffer_cell->void_parent = c;
+
     /* Set the parent of the buffer cell to be the void cell. */
     buffer_cell->parent = c;
 
-    /* And also point the void parent to the parent cell. */
-    buffer_cell->void_parent = c;
+    /* If we're in a void cell continue the void tree depth. */
+    if (buffer_cell->subtype == cell_subtype_void) {
+      buffer_cell->depth = c->depth + 1;
+    }
   }
 }
 
@@ -182,6 +187,15 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   /* Set the top level void cell tpid. Doing it here ensures top level void
    * cells have the same tpid as their progeny. */
   if (depth == 0) c->tpid = tpid;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we haven't found a void cell with particles. */
+  if (c->subtype == cell_subtype_void && c->grav.count > 0)
+    error(
+        "Trying to split a Void with particles! "
+        "(c->type=%s, c->subtype=%s)",
+        cellID_names[c->type], subcellID_names[c->subtype]);
+#endif
 
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
@@ -219,9 +233,6 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
     /* If the progeny is a void cell, we need to recurse. */
     if (cp->subtype == cell_subtype_void) {
-
-      /* Ensure the depth is correct. */
-      cp->depth = c->depth + 1;
 
       /* Recurse */
       zoom_void_split_recursive(s, cp, tpid);
