@@ -184,6 +184,7 @@ void zoom_construct_void_progeny(struct space *s, struct cell *c,
       message("Creating void progeny at depth %d (%s/%s) ind=%d", c->depth + 1,
               cellID_names[c->type], subcellID_names[c->subtype], k);
       space_getcells(s, 1, &c->progeny[k], tpid);
+      cp = c->progeny[k]; /* Get the progeny cell again after allocation. */
     } else {
       /* Nothing to do if the progeny cell already exists. */
       message(
