@@ -106,7 +106,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
 
   /* We also need to label the buffer cells as void cells if they
    * are within the zoom region. */
-  int nr_buffer_void;
+  int nr_buffer_void = 0;
   if (zoom_props->with_buffer_cells) {
     offset = zoom_props->buffer_cell_offset;
     ncells = zoom_props->nr_buffer_cells;
