@@ -24,7 +24,6 @@
 #include "cell.h"
 #include "engine.h"
 #include "space.h"
-#include "star_formation_logger.h"
 #include "threadpool.h"
 #include "zoom.h"
 
@@ -208,7 +207,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     zoom_link_void_buffer_leaves(s, c);
   }
 
-  /* Otherwise, we actually need to construct the progeny. */
+  /* Otherwise, we're in the void tree and need to construct new progeny. */
   else {
     space_construct_progeny(s, c, tpid);
   }
@@ -218,7 +217,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     /* Get the progenitor */
     struct cell *cp = c->progeny[k];
 
-    /* Recurse further if we are in a void cell. */
+    /* If the progeny is a void cell, we need to recurse. */
     if (cp->subtype == cell_subtype_void) {
 
       /* Ensure the depth is correct. */

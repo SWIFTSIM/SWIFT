@@ -359,11 +359,7 @@ void space_populate_multipole(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Double check we have correctly assigned the multipole */
   if (c->grav.multipole->m_pole.num_gpart == 0 && c->grav.count > 0)
-    error(
-        "We have a multipole with no particles but the cell does!! "
-        "(multi->num_gpart=%lld, cell->grav.count=%d, %s/%s at depth %d)",
-        c->grav.multipole->m_pole.num_gpart, c->grav.count,
-        cellID_names[c->type], subcellID_names[c->subtype], c->depth);
+    error("We have a multipole with no particles but the cell does!!");
 #endif
 }
 
