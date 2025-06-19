@@ -61,20 +61,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
 
   /* Work out how many void cells we should have. */
   int void_cdim = s->zoom_props->void_dim[0] * s->iwidth[0] * 1.0001;
-  int bkg_target_void_count = void_cdim * void_cdim * void_cdim;
-  int target_void_count = bkg_target_void_count;
-
-  /* If we have buffer cells, we need to use the buffer cell count. */
-  int buffer_target_void_count = 0;
-  if (zoom_props->with_buffer_cells) {
-    int buffer_void_cdim =
-        zoom_props->void_dim[0] * zoom_props->buffer_iwidth[0] * 1.0001;
-    buffer_target_void_count =
-        buffer_void_cdim * buffer_void_cdim * buffer_void_cdim;
-
-    /* Include the buffer cells in the target count. */
-    target_void_count = bkg_target_void_count + buffer_target_void_count;
-  }
+  int target_void_count = void_cdim * void_cdim * void_cdim;
 
   /* Allocate the indices of void cells */
   if (swift_memalign(
@@ -97,13 +84,13 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     }
   }
 
-  if (bkg_target_void_count != zoom_props->nr_void_cells)
+  if (target_void_count != zoom_props->nr_void_cells)
     error("Not all void cells were found and labelled! (target_void_count=%d, "
           "found_void_count=%d)",
-          bkg_target_void_count, zoom_props->nr_void_cells);
+          target_void_count, zoom_props->nr_void_cells);
 
   if (verbose)
-    message("Found %d background void cells", zoom_props->nr_void_cells);
+    message("Found %d void cells", zoom_props->nr_void_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check the void cells are in the right place. */
@@ -134,20 +121,9 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
       /* Label this cell if it contains the zoom region. */
       if (zoom_cell_overlaps_zoom_region(c, s)) {
         c->subtype = cell_subtype_void;
-        zoom_props->void_cell_indices[zoom_props->nr_void_cells++] = cid;
         nr_buffer_void++;
       }
     }
-
-    if (buffer_target_void_count != nr_buffer_void)
-      error("Not all buffer void cells were found and labelled! "
-            "(target_void_count=%d, found_void_count=%d)",
-            buffer_target_void_count, nr_buffer_void);
-
-    if (target_void_count != zoom_props->nr_void_cells)
-      error("Not all void cells were found and labelled! "
-            "(target_void_count=%d, found_void_count=%d)",
-            target_void_count, zoom_props->nr_void_cells);
 
     if (verbose)
       message("Found %d void cells in the buffer region", nr_buffer_void);
