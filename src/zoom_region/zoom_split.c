@@ -120,8 +120,8 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
       (0.001 * s->zoom_props->buffer_width[0]))
     error("The width of the buffer cell is not half the width of the void "
           "cell were about to link to! (c->width[0]=%f, "
-          "s->zoom_props->width[0]=%f)",
-          c->width[0] / 2, s->zoom_props->width[0]);
+          "s->zoom_props->buffer_width[0]=%f)",
+          c->width[0] / 2, s->zoom_props->buffer_width[0]);
 
 #endif
 
