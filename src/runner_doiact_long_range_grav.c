@@ -421,8 +421,20 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
     /* Get the top level cell of the current cj */
-    struct cell *top_j = cj;
-    while (top_j->void_parent != NULL) top_j = top_j->void_parent->top;
+    struct cell *top_j = cj->top;
+
+    /* If we are in a zoom cell we need to jump up the void hierarchy
+     * to get the top level cell. */
+    if (top_j->void_parent != NULL) {
+      top_j = cj->void_parent->top;
+    }
+
+    /* If we had buffer cells then we may need an extra jump since the
+     * top-level for a zoom cell is at:
+     * zoom->top->void_parent->top->void_parent->top. */
+    if (top_j->void_parent != NULL) {
+      top_j = top_j->void_parent->top;
+    }
 
     /* Avoid self contributions */
     if (top == top_j) continue;
