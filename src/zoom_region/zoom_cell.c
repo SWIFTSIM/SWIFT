@@ -103,6 +103,31 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
       error("Void cell is not inside the zoom region (cid=%d)", cid);
   }
 #endif
+
+  /* We also need to label the buffer cells as void cells if they
+   * are within the zoom region. */
+  int nr_buffer_void = 0;
+  if (zoom_props->with_buffer_cells) {
+    offset = zoom_props->buffer_cell_offset;
+    ncells = zoom_props->nr_buffer_cells;
+
+    /* Loop over the buffer cells and find cells containing
+     * the zoom region. */
+    for (int cid = offset; cid < offset + ncells; cid++) {
+
+      /* Get the cell */
+      struct cell *c = &cells[cid];
+
+      /* Label this cell if it contains the zoom region. */
+      if (zoom_cell_overlaps_zoom_region(c, s)) {
+        c->subtype = cell_subtype_void;
+        nr_buffer_void++;
+      }
+    }
+
+    if (verbose)
+      message("Found %d void cells in the buffer region", nr_buffer_void);
+  }
 }
 
 /**

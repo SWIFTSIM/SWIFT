@@ -395,7 +395,7 @@ void zoom_get_geometry_with_buffer_cells(struct space *s) {
     s->zoom_props->region_upper_bounds[i] = region_upper_bounds[i];
   }
 
-  /* Compute the void region dimensions. */
+  /* Compute the zoom region dimensions. */
   for (int i = 0; i < 3; i++) {
     s->zoom_props->dim[i] = region_upper_bounds[i] - region_lower_bounds[i];
   }
