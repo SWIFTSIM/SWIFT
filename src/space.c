@@ -294,8 +294,7 @@ void space_sanitize_mapper(void *map_data, int num_cells, void *extra_data) {
  */
 void space_sanitize(struct space *s) {
 
-  if (s->e->nodeID == 0)
-    message("Cleaning up unreasonable values of h");
+  if (s->e->nodeID == 0) message("Cleaning up unreasonable values of h");
 
   threadpool_map(&s->e->threadpool, space_sanitize_mapper, s->cells_top,
                  s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
@@ -324,14 +323,12 @@ static void rec_map_parts(struct cell *c,
                           void *data) {
   /* No progeny? */
   if (!c->split)
-    for (int k = 0; k < c->hydro.count; k++)
-      fun(&c->hydro.parts[k], c, data);
+    for (int k = 0; k < c->hydro.count; k++) fun(&c->hydro.parts[k], c, data);
 
   /* Otherwise, recurse. */
   else
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        rec_map_parts(c->progeny[k], fun, data);
+      if (c->progeny[k] != NULL) rec_map_parts(c->progeny[k], fun, data);
 }
 
 /**
@@ -368,8 +365,7 @@ static void rec_map_parts_xparts(struct cell *c,
   /* Otherwise, recurse. */
   else
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        rec_map_parts_xparts(c->progeny[k], fun);
+      if (c->progeny[k] != NULL) rec_map_parts_xparts(c->progeny[k], fun);
 }
 
 /**
@@ -405,8 +401,7 @@ static void rec_map_cells_post(struct cell *c, int full,
         rec_map_cells_post(c->progeny[k], full, fun, data);
 
   /* No progeny? */
-  if (full || !c->split)
-    fun(c, data);
+  if (full || !c->split) fun(c, data);
 }
 
 /**
@@ -430,8 +425,7 @@ static void rec_map_cells_pre(struct cell *c, int full,
                               void *data) {
 
   /* No progeny? */
-  if (full || !c->split)
-    fun(c, data);
+  if (full || !c->split) fun(c, data);
 
   /* Recurse. */
   if (c->split)
@@ -494,10 +488,10 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
 
     /* Is the multipole buffer empty? */
     if (s->with_self_gravity && s->multipoles_sub[tpid] == NULL) {
-      if (swift_memalign("multipoles_sub", (void **)&s->multipoles_sub[tpid],
-                         multipole_align,
-                         space_cellallocchunk *
-                             sizeof(struct gravity_tensors)) != 0)
+      if (swift_memalign(
+              "multipoles_sub", (void **)&s->multipoles_sub[tpid],
+              multipole_align,
+              space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
 
       /* Constructed a linked list */
@@ -628,8 +622,7 @@ void space_synchronize_part_positions_mapper(void *map_data, int nr_parts,
     struct gpart *gp = p->gpart;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (gp == NULL)
-      error("Unlinked particle!");
+    if (gp == NULL) error("Unlinked particle!");
 #endif
 
     /* Synchronize positions, velocities and masses */
@@ -664,8 +657,7 @@ void space_synchronize_spart_positions_mapper(void *map_data, int nr_sparts,
     struct gpart *gp = sp->gpart;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (gp == NULL)
-      error("Unlinked particle!");
+    if (gp == NULL) error("Unlinked particle!");
 #endif
 
     /* Synchronize positions, velocities and masses */
@@ -700,8 +692,7 @@ void space_synchronize_bpart_positions_mapper(void *map_data, int nr_bparts,
     struct gpart *gp = bp->gpart;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (gp == NULL)
-      error("Unlinked particle!");
+    if (gp == NULL) error("Unlinked particle!");
 #endif
 
     /* Synchronize positions, velocities and masses */
@@ -736,8 +727,7 @@ void space_synchronize_sink_positions_mapper(void *map_data, int nr_sinks,
     struct gpart *gp = sink->gpart;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (gp == NULL)
-      error("Unlinked particle!");
+    if (gp == NULL) error("Unlinked particle!");
 #endif
 
     /* Synchronize positions, velocities and masses */
@@ -837,8 +827,7 @@ void space_convert_rt_quantities_mapper(void *restrict map_data, int count,
   struct space *s = (struct space *)extra_data;
   const struct engine *restrict e = s->e;
   const int with_rt = (e->policy & engine_policy_rt);
-  if (!with_rt)
-    return;
+  if (!with_rt) return;
 
   const struct rt_props *restrict rt_props = e->rt_props;
   const struct hydro_props *restrict hydro_props = e->hydro_properties;
@@ -938,8 +927,7 @@ void space_collect_sum_part_mass(void *restrict map_data, int count,
 
   /* Local collection */
   double sum = 0.;
-  for (int i = 0; i < count; ++i)
-    sum += hydro_get_mass(&parts[i]);
+  for (int i = 0; i < count; ++i) sum += hydro_get_mass(&parts[i]);
 
   /* Store back */
   atomic_add_d(&s->initial_mean_mass_particles[0], sum);
@@ -992,8 +980,7 @@ void space_collect_sum_sink_mass(void *restrict map_data, int count,
 
   /* Local collection */
   double sum = 0.;
-  for (int i = 0; i < count; ++i)
-    sum += sinks[i].mass;
+  for (int i = 0; i < count; ++i) sum += sinks[i].mass;
 
   /* Store back */
   atomic_add_d(&s->initial_mean_mass_particles[3], sum);
@@ -1008,8 +995,7 @@ void space_collect_sum_spart_mass(void *restrict map_data, int count,
 
   /* Local collection */
   double sum = 0.;
-  for (int i = 0; i < count; ++i)
-    sum += sparts[i].mass;
+  for (int i = 0; i < count; ++i) sum += sparts[i].mass;
 
   /* Store back */
   atomic_add_d(&s->initial_mean_mass_particles[4], sum);
@@ -1024,8 +1010,7 @@ void space_collect_sum_bpart_mass(void *restrict map_data, int count,
 
   /* Local collection */
   double sum = 0.;
-  for (int i = 0; i < count; ++i)
-    sum += bparts[i].mass;
+  for (int i = 0; i < count; ++i) sum += bparts[i].mass;
 
   /* Store back */
   atomic_add_d(&s->initial_mean_mass_particles[5], sum);
@@ -1040,8 +1025,7 @@ void space_collect_mean_masses(struct space *s, int verbose) {
   /* Init counters */
   for (int i = 0; i < swift_type_count; ++i)
     s->initial_mean_mass_particles[i] = 0.;
-  for (int i = 0; i < swift_type_count; ++i)
-    s->initial_count_particles[i] = 0;
+  for (int i = 0; i < swift_type_count; ++i) s->initial_count_particles[i] = 0;
 
   /* Collect each particle type */
   threadpool_map(&s->e->threadpool, space_collect_sum_part_mass, s->parts,
@@ -1185,8 +1169,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* do a quick check that the box size has valid values */
 #if defined HYDRO_DIMENSION_1D
-  if (dim[0] <= 0.)
-    error("Invalid box size: [%f]", dim[0]);
+  if (dim[0] <= 0.) error("Invalid box size: [%f]", dim[0]);
 #elif defined HYDRO_DIMENSION_2D
   if (dim[0] <= 0. || dim[1] <= 0.)
     error("Invalid box size: [%f, %f]", dim[0], dim[1]);
@@ -1256,9 +1239,10 @@ void space_init(struct space *s, struct swift_params *params,
   const double dmin = min3(s->dim[0], s->dim[1], s->dim[2]);
   int needtcells = 3 * dmax / dmin;
   if (maxtcells < needtcells)
-    error("Scheduler:max_top_level_cells is too small %d, needs to be at "
-          "least %d",
-          maxtcells, needtcells);
+    error(
+        "Scheduler:max_top_level_cells is too small %d, needs to be at "
+        "least %d",
+        maxtcells, needtcells);
 
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
@@ -1359,8 +1343,7 @@ void space_init(struct space *s, struct swift_params *params,
       params, "InitialConditions:smoothing_length_scaling", 1.0);
   if (scaling != 1.0 && !dry_run) {
     message("Re-scaling smoothing lengths by a factor %e", scaling);
-    for (size_t k = 0; k < Npart; k++)
-      parts[k].h *= scaling;
+    for (size_t k = 0; k < Npart; k++) parts[k].h *= scaling;
   }
 
   /* Read in imposed star smoothing length */
@@ -1423,10 +1406,8 @@ void space_init(struct space *s, struct swift_params *params,
     if (periodic) {
       for (size_t k = 0; k < Npart; k++)
         for (int j = 0; j < 3; j++) {
-          while (parts[k].x[j] < 0)
-            parts[k].x[j] += s->dim[j];
-          while (parts[k].x[j] >= s->dim[j])
-            parts[k].x[j] -= s->dim[j];
+          while (parts[k].x[j] < 0) parts[k].x[j] += s->dim[j];
+          while (parts[k].x[j] >= s->dim[j]) parts[k].x[j] -= s->dim[j];
         }
     } else {
       for (size_t k = 0; k < Npart; k++)
@@ -1439,10 +1420,8 @@ void space_init(struct space *s, struct swift_params *params,
     if (periodic) {
       for (size_t k = 0; k < Ngpart; k++)
         for (int j = 0; j < 3; j++) {
-          while (gparts[k].x[j] < 0)
-            gparts[k].x[j] += s->dim[j];
-          while (gparts[k].x[j] >= s->dim[j])
-            gparts[k].x[j] -= s->dim[j];
+          while (gparts[k].x[j] < 0) gparts[k].x[j] += s->dim[j];
+          while (gparts[k].x[j] >= s->dim[j]) gparts[k].x[j] -= s->dim[j];
         }
     } else {
       for (size_t k = 0; k < Ngpart; k++)
@@ -1455,10 +1434,8 @@ void space_init(struct space *s, struct swift_params *params,
     if (periodic) {
       for (size_t k = 0; k < Nspart; k++)
         for (int j = 0; j < 3; j++) {
-          while (sparts[k].x[j] < 0)
-            sparts[k].x[j] += s->dim[j];
-          while (sparts[k].x[j] >= s->dim[j])
-            sparts[k].x[j] -= s->dim[j];
+          while (sparts[k].x[j] < 0) sparts[k].x[j] += s->dim[j];
+          while (sparts[k].x[j] >= s->dim[j]) sparts[k].x[j] -= s->dim[j];
         }
     } else {
       for (size_t k = 0; k < Nspart; k++)
@@ -1471,10 +1448,8 @@ void space_init(struct space *s, struct swift_params *params,
     if (periodic) {
       for (size_t k = 0; k < Nbpart; k++)
         for (int j = 0; j < 3; j++) {
-          while (bparts[k].x[j] < 0)
-            bparts[k].x[j] += s->dim[j];
-          while (bparts[k].x[j] >= s->dim[j])
-            bparts[k].x[j] -= s->dim[j];
+          while (bparts[k].x[j] < 0) bparts[k].x[j] += s->dim[j];
+          while (bparts[k].x[j] >= s->dim[j]) bparts[k].x[j] -= s->dim[j];
         }
     } else {
       for (size_t k = 0; k < Nbpart; k++)
@@ -1487,10 +1462,8 @@ void space_init(struct space *s, struct swift_params *params,
     if (periodic) {
       for (size_t k = 0; k < Nsink; k++)
         for (int j = 0; j < 3; j++) {
-          while (sinks[k].x[j] < 0)
-            sinks[k].x[j] += s->dim[j];
-          while (sinks[k].x[j] >= s->dim[j])
-            sinks[k].x[j] -= s->dim[j];
+          while (sinks[k].x[j] < 0) sinks[k].x[j] += s->dim[j];
+          while (sinks[k].x[j] >= s->dim[j]) sinks[k].x[j] -= s->dim[j];
         }
     } else {
       for (size_t k = 0; k < Nsink; k++)
@@ -1511,8 +1484,7 @@ void space_init(struct space *s, struct swift_params *params,
   hydro_space_init(&s->hs, s);
 
   /* Init the space lock. */
-  if (lock_init(&s->lock) != 0)
-    error("Failed to create space spin-lock.");
+  if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   last_cell_id = 1ULL;
@@ -1531,8 +1503,9 @@ void space_init(struct space *s, struct swift_params *params,
   const int create_sparts =
       (star_formation && swift_star_formation_model_creates_stars) || with_sink;
   if (create_sparts && space_extra_sparts == 0) {
-    error("Running with star formation but without spare star particles. "
-          "Increase 'Scheduler:cell_extra_sparts'.");
+    error(
+        "Running with star formation but without spare star particles. "
+        "Increase 'Scheduler:cell_extra_sparts'.");
   }
 
   if (with_sink && space_extra_gparts == 0) {
@@ -1541,14 +1514,14 @@ void space_init(struct space *s, struct swift_params *params,
         "Increase 'Scheduler:cell_extra_gparts'.");
   }
   if (with_sink && space_extra_sinks == 0) {
-    error("Running with star formation from sink but without spare "
-          "sink-particles. "
-          "Increase 'Scheduler:cell_extra_sinks'.");
+    error(
+        "Running with star formation from sink but without spare "
+        "sink-particles. "
+        "Increase 'Scheduler:cell_extra_sinks'.");
   }
 
   /* Build the cells recursively. */
-  if (!dry_run)
-    space_regrid(s, verbose);
+  if (!dry_run) space_regrid(s, verbose);
 
   /* Compute the max id for the generation of unique id. */
   if (create_sparts) {
@@ -1567,8 +1540,7 @@ void space_init(struct space *s, struct swift_params *params,
  */
 void space_replicate(struct space *s, int replicate, int verbose) {
 
-  if (replicate < 1)
-    error("Invalid replicate value: %d", replicate);
+  if (replicate < 1) error("Invalid replicate value: %d", replicate);
 
   if (verbose)
     message("Replicating space %d times along each axis.", replicate);
@@ -1746,8 +1718,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
  */
 void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 
-  if (verbose)
-    message("Remapping all the IDs");
+  if (verbose) message("Remapping all the IDs");
 
   long long local_nr_dm_background = 0;
   long long local_nr_nuparts = 0;
@@ -1892,9 +1863,10 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
   /* Check that this is a sensible ting to do */
   if (!s->with_hydro)
-    error("Cannot generate gas from ICs if we are running without "
-          "hydrodynamics. Need to run with -s and the corresponding "
-          "hydrodynamics parameters in the YAML file.");
+    error(
+        "Cannot generate gas from ICs if we are running without "
+        "hydrodynamics. Need to run with -s and the corresponding "
+        "hydrodynamics parameters in the YAML file.");
 
   if (hydro_properties->initial_internal_energy == 0.)
     error(
@@ -1904,8 +1876,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   if (cosmo->Omega_b == 0.)
     error("Cannot generate gas from ICs if Omega_b is set to 0.");
 
-  if (verbose)
-    message("Generating gas particles from gparts");
+  if (verbose) message("Generating gas particles from gparts");
 
   /* Store the current values */
   const size_t current_nr_parts = s->nr_parts;
@@ -1939,8 +1910,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   }
   if (with_neutrinos) {
     for (size_t i = 0; i < current_nr_gparts; ++i)
-      if (s->gparts[i].type == swift_type_neutrino)
-        ++nr_neutrino_gparts;
+      if (s->gparts[i].type == swift_type_neutrino) ++nr_neutrino_gparts;
   }
   const size_t nr_zoom_gparts =
       current_nr_gparts - nr_background_gparts - nr_neutrino_gparts;
@@ -2014,8 +1984,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
         error("DM particle ID overflowd (DM id=%lld gas id=%lld)",
               gp_dm->id_or_neg_offset, p->id);
 
-      if (p->id < 0)
-        error("gas particle ID overflowd (id=%lld)", p->id);
+      if (p->id < 0) error("gas particle ID overflowd (id=%lld)", p->id);
 
       /* Set the links correctly */
       p->gpart = gp_gas;
@@ -2108,25 +2077,24 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
   for (size_t i = 0; i < nr_gparts; ++i) {
 
     /* Skip extra particles */
-    if (gparts[i].time_bin == time_bin_not_created)
-      continue;
+    if (gparts[i].time_bin == time_bin_not_created) continue;
 
     switch (gparts[i].type) {
-    case swift_type_dark_matter:
-    case swift_type_dark_matter_background:
-      mass_cdm += gparts[i].mass;
-      break;
-    case swift_type_neutrino:
-      mass_nu += gparts[i].mass;
-      break;
-    case swift_type_gas:
-    case swift_type_stars:
-    case swift_type_black_hole:
-    case swift_type_sink:
-      mass_b += gparts[i].mass;
-      break;
-    default:
-      error("Invalid particle type");
+      case swift_type_dark_matter:
+      case swift_type_dark_matter_background:
+        mass_cdm += gparts[i].mass;
+        break;
+      case swift_type_neutrino:
+        mass_nu += gparts[i].mass;
+        break;
+      case swift_type_gas:
+      case swift_type_stars:
+      case swift_type_black_hole:
+      case swift_type_sink:
+        mass_b += gparts[i].mass;
+        break;
+      default:
+        error("Invalid particle type");
     }
 
     if (gparts[i].type == swift_type_dark_matter_background)
@@ -2174,30 +2142,34 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
 
     if (with_hydro && !has_background_particles &&
         fabs(Omega_particles_cdm - cosmo->Omega_cdm) > 1e-3)
-      error("The cold dark matter content of the simulation does not match the "
-            "cosmology in the parameter file: cosmo.Omega_cdm = %e particles "
-            "Omega_cdm = %e",
-            cosmo->Omega_cdm, Omega_particles_cdm);
+      error(
+          "The cold dark matter content of the simulation does not match the "
+          "cosmology in the parameter file: cosmo.Omega_cdm = %e particles "
+          "Omega_cdm = %e",
+          cosmo->Omega_cdm, Omega_particles_cdm);
 
     if (with_hydro && !has_background_particles &&
         fabs(Omega_particles_b - cosmo->Omega_b) > 1e-3)
-      error("The baryon content of the simulation does not match the cosmology "
-            "in the parameter file: cosmo.Omega_b = %e particles Omega_b = %e",
-            cosmo->Omega_b, Omega_particles_b);
+      error(
+          "The baryon content of the simulation does not match the cosmology "
+          "in the parameter file: cosmo.Omega_b = %e particles Omega_b = %e",
+          cosmo->Omega_b, Omega_particles_b);
 
     if (check_neutrinos && fabs(Omega_particles_nu - cosmo->Omega_nu_0) > 1e-3)
-      error("The massive neutrino content of the simulation does not match the "
-            "cosmology in the parameter file: cosmo.Omega_nu = %e particles "
-            "Omega_nu = %e",
-            cosmo->Omega_nu_0, Omega_particles_nu);
+      error(
+          "The massive neutrino content of the simulation does not match the "
+          "cosmology in the parameter file: cosmo.Omega_nu = %e particles "
+          "Omega_nu = %e",
+          cosmo->Omega_nu_0, Omega_particles_nu);
 
     if (fabs(Omega_particles_m - Omega_m) > 1e-3)
-      error("The total matter content of the simulation does not match the "
-            "cosmology in the parameter file: cosmo.Omega_m = %e particles "
-            "Omega_m = %e \n cosmo: Omega_b=%e Omega_cdm=%e \n "
-            "particles: Omega_b=%e Omega_cdm=%e",
-            Omega_m, Omega_particles_m, cosmo->Omega_b, cosmo->Omega_cdm,
-            Omega_particles_b, Omega_particles_cdm);
+      error(
+          "The total matter content of the simulation does not match the "
+          "cosmology in the parameter file: cosmo.Omega_m = %e particles "
+          "Omega_m = %e \n cosmo: Omega_b=%e Omega_cdm=%e \n "
+          "particles: Omega_b=%e Omega_cdm=%e",
+          Omega_m, Omega_particles_m, cosmo->Omega_b, cosmo->Omega_cdm,
+          Omega_particles_b, Omega_particles_cdm);
   }
 }
 
@@ -2212,10 +2184,8 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
 long long space_get_max_parts_id(struct space *s) {
 
   long long max_id = -1;
-  for (size_t i = 0; i < s->nr_parts; ++i)
-    max_id = max(max_id, s->parts[i].id);
-  for (size_t i = 0; i < s->nr_sinks; ++i)
-    max_id = max(max_id, s->sinks[i].id);
+  for (size_t i = 0; i < s->nr_parts; ++i) max_id = max(max_id, s->parts[i].id);
+  for (size_t i = 0; i < s->nr_sinks; ++i) max_id = max(max_id, s->sinks[i].id);
   for (size_t i = 0; i < s->nr_sparts; ++i)
     max_id = max(max_id, s->sparts[i].id);
   for (size_t i = 0; i < s->nr_bparts; ++i)
@@ -2314,11 +2284,9 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
   /* Verify that all limited particles have been treated */
   for (int k = 0; k < nr_parts; k++) {
 
-    if (parts[k].time_bin == time_bin_inhibited)
-      continue;
+    if (parts[k].time_bin == time_bin_inhibited) continue;
 
-    if (parts[k].time_bin < 0)
-      error("Particle has negative time-bin!");
+    if (parts[k].time_bin < 0) error("Particle has negative time-bin!");
 
     if (with_timestep_limiter &&
         parts[k].limiter_data.wakeup != time_bin_not_awake)
@@ -2370,8 +2338,7 @@ void space_check_part_swallow_mapper(void *map_data, int nr_parts,
   /* Verify that all particles have been swallowed or are untouched */
   for (int k = 0; k < nr_parts; k++) {
 
-    if (parts[k].time_bin == time_bin_inhibited)
-      continue;
+    if (parts[k].time_bin == time_bin_inhibited) continue;
 
     const long long swallow_id =
         black_holes_get_part_swallow_id(&parts[k].black_holes_data);
@@ -2396,8 +2363,7 @@ void space_check_bpart_swallow_mapper(void *map_data, int nr_bparts,
   /* Verify that all particles have been swallowed or are untouched */
   for (int k = 0; k < nr_bparts; k++) {
 
-    if (bparts[k].time_bin == time_bin_inhibited)
-      continue;
+    if (bparts[k].time_bin == time_bin_inhibited) continue;
 
     const long long swallow_id =
         black_holes_get_bpart_swallow_id(&bparts[k].merger_data);
@@ -2422,8 +2388,7 @@ void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
   /* Verify that all particles have been swallowed or are untouched */
   for (int k = 0; k < nr_parts; k++) {
 
-    if (parts[k].time_bin == time_bin_inhibited)
-      continue;
+    if (parts[k].time_bin == time_bin_inhibited) continue;
 
     const long long swallow_id = sink_get_part_swallow_id(&parts[k].sink_data);
 
@@ -2447,8 +2412,7 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
   /* Verify that all particles have been swallowed or are untouched */
   for (int k = 0; k < nr_sinks; k++) {
 
-    if (sinks[k].time_bin == time_bin_inhibited)
-      continue;
+    if (sinks[k].time_bin == time_bin_inhibited) continue;
 
     const long long swallow_id =
         sink_get_sink_swallow_id(&sinks[k].merger_data);
@@ -2570,8 +2534,7 @@ void space_after_snap_tracer(struct space *s, int verbose) {
 void space_mark_cell_as_updated(struct space *s, const struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c != c->top)
-    error("Function can only be called at the top level!");
+  if (c != c->top) error("Function can only be called at the top level!");
 #endif
 
   /* Get the offest into the top-level cell array */
@@ -2586,8 +2549,7 @@ void space_mark_cell_as_updated(struct space *s, const struct cell *c) {
  */
 void space_clean(struct space *s) {
 
-  for (int i = 0; i < s->nr_cells; ++i)
-    cell_clean(&s->cells_top[i]);
+  for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
   swift_free("cells_top", s->cells_top);
   swift_free("cells_top_updated", s->cells_top_updated);
   swift_free("multipoles_top", s->multipoles_top);
@@ -2975,18 +2937,15 @@ void space_struct_restore(struct space *s, FILE *stream) {
 void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
 #ifdef SWIFT_CELL_GRAPH
 
-  if (c == NULL)
-    return;
+  if (c == NULL) return;
 
   /* Get parent ID */
   long long parent = root_cell_id;
-  if (c->parent != NULL)
-    parent = c->parent->cellID;
+  if (c->parent != NULL) parent = c->parent->cellID;
 
   /* Get super ID */
   char superID[100] = "";
-  if (c->super != NULL)
-    sprintf(superID, "%lld", c->super->cellID);
+  if (c->super != NULL) sprintf(superID, "%lld", c->super->cellID);
 
   /* Get hydro super ID */
   char hydro_superID[100] = "";
@@ -3023,8 +2982,7 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
   char filename[200];
   sprintf(filename, "cell_hierarchy_%04i_%04i.csv", j, engine_rank);
   FILE *f = fopen(filename, "w");
-  if (f == NULL)
-    error("Error opening task level file.");
+  if (f == NULL) error("Error opening task level file.");
 
   const int root_id = root_cell_id;
   /* Write header */
@@ -3045,8 +3003,7 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
   /* Write all the top level cells (and their children) */
   for (int i = 0; i < s->nr_cells; i++) {
     struct cell *c = &s->cells_top[i];
-    if (c->nodeID == engine_rank)
-      space_write_cell(s, f, c);
+    if (c->nodeID == engine_rank) space_write_cell(s, f, c);
   }
 
   /* Cleanup */
@@ -3065,20 +3022,21 @@ void space_recurse_check_unskip_flag(const struct cell *c) {
 
   /* Check the current cell. */
   if (cell_get_flag(c, cell_flag_unskip_self_grav_processed)) {
-    error("A cell is still containing a self unskip flag for the gravity "
-          "depth=%d node=%d cellID=%lld",
-          c->depth, c->nodeID, c->cellID);
+    error(
+        "A cell is still containing a self unskip flag for the gravity "
+        "depth=%d node=%d cellID=%lld",
+        c->depth, c->nodeID, c->cellID);
   }
   if (cell_get_flag(c, cell_flag_unskip_pair_grav_processed)) {
-    error("A cell is still containing a pair unskip flag for the gravity "
-          "depth=%d node=%d cellID=%lld",
-          c->depth, c->nodeID, c->cellID);
+    error(
+        "A cell is still containing a pair unskip flag for the gravity "
+        "depth=%d node=%d cellID=%lld",
+        c->depth, c->nodeID, c->cellID);
   }
 
   /* Recurse */
   for (int i = 0; i < 8; i++) {
-    if (c->progeny[i] != NULL)
-      space_recurse_check_unskip_flag(c->progeny[i]);
+    if (c->progeny[i] != NULL) space_recurse_check_unskip_flag(c->progeny[i]);
   }
 #endif
 }

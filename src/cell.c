@@ -171,8 +171,7 @@ int cell_get_tree_size(struct cell *c) {
   /* Sum up the progeny if split. */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        count += cell_get_tree_size(c->progeny[k]);
+      if (c->progeny[k] != NULL) count += cell_get_tree_size(c->progeny[k]);
 
   /* Return the final count. */
   return count;
@@ -602,8 +601,7 @@ void cell_sanitize(struct cell *c, int treated) {
     }
   } else {
     /* Get the new value of h_max (note all particles are active) */
-    for (int i = 0; i < count; ++i)
-      h_max = max(h_max, parts[i].h);
+    for (int i = 0; i < count; ++i) h_max = max(h_max, parts[i].h);
     for (int i = 0; i < count; ++i)
       h_max_active = max(h_max_active, parts[i].h);
     for (int i = 0; i < scount; ++i)
@@ -664,12 +662,10 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
   const integertime_t ti_drift = *(integertime_t *)data;
 
   /* Only check local cells */
-  if (c->nodeID != engine_rank)
-    return;
+  if (c->nodeID != engine_rank) return;
 
   /* Only check cells with content */
-  if (c->hydro.count == 0)
-    return;
+  if (c->hydro.count == 0) return;
 
   if (c->hydro.ti_old_part != ti_drift)
     error("Cell in an incorrect time-zone! c->hydro.ti_old=%lld ti_drift=%lld",
@@ -712,17 +708,16 @@ void cell_check_gpart_drift_point(struct cell *c, void *data) {
   const integertime_t ti_drift = *(integertime_t *)data;
 
   /* Only check local cells */
-  if (c->nodeID != engine_rank)
-    return;
+  if (c->nodeID != engine_rank) return;
 
   /* Only check cells with content */
-  if (c->grav.count == 0)
-    return;
+  if (c->grav.count == 0) return;
 
   if (c->grav.ti_old_part != ti_drift)
-    error("Cell in an incorrect time-zone! c->grav.ti_old_part=%lld "
-          "ti_drift=%lld",
-          c->grav.ti_old_part, ti_drift);
+    error(
+        "Cell in an incorrect time-zone! c->grav.ti_old_part=%lld "
+        "ti_drift=%lld",
+        c->grav.ti_old_part, ti_drift);
 
   for (int i = 0; i < c->grav.count; ++i)
     if (c->grav.parts[i].ti_drift != ti_drift &&
@@ -749,24 +744,24 @@ void cell_check_sink_drift_point(struct cell *c, void *data) {
   const integertime_t ti_drift = *(integertime_t *)data;
 
   /* Only check local cells */
-  if (c->nodeID != engine_rank)
-    return;
+  if (c->nodeID != engine_rank) return;
 
   /* Only check cells with content */
-  if (c->sinks.count == 0)
-    return;
+  if (c->sinks.count == 0) return;
 
   if (c->sinks.ti_old_part != ti_drift)
-    error("Cell in an incorrect time-zone! c->sinks.ti_old_part=%lld "
-          "ti_drift=%lld",
-          c->sinks.ti_old_part, ti_drift);
+    error(
+        "Cell in an incorrect time-zone! c->sinks.ti_old_part=%lld "
+        "ti_drift=%lld",
+        c->sinks.ti_old_part, ti_drift);
 
   for (int i = 0; i < c->sinks.count; ++i)
     if (c->sinks.parts[i].ti_drift != ti_drift &&
         c->sinks.parts[i].time_bin != time_bin_inhibited)
-      error("sink-part in an incorrect time-zone! sink->ti_drift=%lld "
-            "ti_drift=%lld",
-            c->sinks.parts[i].ti_drift, ti_drift);
+      error(
+          "sink-part in an incorrect time-zone! sink->ti_drift=%lld "
+          "ti_drift=%lld",
+          c->sinks.parts[i].ti_drift, ti_drift);
 
   for (int i = 0; i < c->sinks.count; ++i) {
     const struct sink *sp = &c->sinks.parts[i];
@@ -801,17 +796,16 @@ void cell_check_spart_drift_point(struct cell *c, void *data) {
   const integertime_t ti_drift = *(integertime_t *)data;
 
   /* Only check local cells */
-  if (c->nodeID != engine_rank)
-    return;
+  if (c->nodeID != engine_rank) return;
 
   /* Only check cells with content */
-  if (c->stars.count == 0)
-    return;
+  if (c->stars.count == 0) return;
 
   if (c->stars.ti_old_part != ti_drift)
-    error("Cell in an incorrect time-zone! c->stars.ti_old_part=%lld "
-          "ti_drift=%lld",
-          c->stars.ti_old_part, ti_drift);
+    error(
+        "Cell in an incorrect time-zone! c->stars.ti_old_part=%lld "
+        "ti_drift=%lld",
+        c->stars.ti_old_part, ti_drift);
 
   for (int i = 0; i < c->stars.count; ++i)
     if (c->stars.parts[i].ti_drift != ti_drift &&
@@ -850,17 +844,16 @@ void cell_check_bpart_drift_point(struct cell *c, void *data) {
   const integertime_t ti_drift = *(integertime_t *)data;
 
   /* Only check local cells */
-  if (c->nodeID != engine_rank)
-    return;
+  if (c->nodeID != engine_rank) return;
 
   /* Only check cells with content */
-  if (c->black_holes.count == 0)
-    return;
+  if (c->black_holes.count == 0) return;
 
   if (c->black_holes.ti_old_part != ti_drift)
-    error("Cell in an incorrect time-zone! c->black_holes.ti_old_part=%lld "
-          "ti_drift=%lld",
-          c->black_holes.ti_old_part, ti_drift);
+    error(
+        "Cell in an incorrect time-zone! c->black_holes.ti_old_part=%lld "
+        "ti_drift=%lld",
+        c->black_holes.ti_old_part, ti_drift);
 
   for (int i = 0; i < c->black_holes.count; ++i)
     if (c->black_holes.parts[i].ti_drift != ti_drift &&
@@ -899,18 +892,17 @@ void cell_check_multipole_drift_point(struct cell *c, void *data) {
   const integertime_t ti_drift = *(integertime_t *)data;
 
   /* Only check local cells */
-  if (c->nodeID != engine_rank)
-    return;
+  if (c->nodeID != engine_rank) return;
 
   /* Only check cells with content */
-  if (c->grav.count == 0)
-    return;
+  if (c->grav.count == 0) return;
 
   if (c->grav.ti_old_multipole != ti_drift)
-    error("Cell multipole in an incorrect time-zone! "
-          "c->grav.ti_old_multipole=%lld "
-          "ti_drift=%lld (depth=%d, node=%d)",
-          c->grav.ti_old_multipole, ti_drift, c->depth, c->nodeID);
+    error(
+        "Cell multipole in an incorrect time-zone! "
+        "c->grav.ti_old_multipole=%lld "
+        "ti_drift=%lld (depth=%d, node=%d)",
+        c->grav.ti_old_multipole, ti_drift, c->depth, c->nodeID);
 
 #else
   error("Calling debugging code without debugging flag activated.");
@@ -926,13 +918,10 @@ void cell_check_multipole_drift_point(struct cell *c, void *data) {
  */
 void cell_reset_task_counters(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
-  for (int t = 0; t < task_type_count; ++t)
-    c->tasks_executed[t] = 0;
-  for (int t = 0; t < task_subtype_count; ++t)
-    c->subtasks_executed[t] = 0;
+  for (int t = 0; t < task_type_count; ++t) c->tasks_executed[t] = 0;
+  for (int t = 0; t < task_subtype_count; ++t) c->subtasks_executed[t] = 0;
   for (int k = 0; k < 8; ++k)
-    if (c->progeny[k] != NULL)
-      cell_reset_task_counters(c->progeny[k]);
+    if (c->progeny[k] != NULL) cell_reset_task_counters(c->progeny[k]);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -1139,8 +1128,7 @@ void cell_check_multipole(struct cell *c,
    * bottom up from the zoom cells. The void cell tree itself is tested
    * elsewhere (NOTE: This issue and these cell types only appear when running
    * with a zoom region). */
-  if (c->subtype == cell_subtype_void)
-    return;
+  if (c->subtype == cell_subtype_void) return;
 
   /* First recurse */
   if (c->split)
@@ -1196,8 +1184,7 @@ void cell_clean(struct cell *c) {
 
   /* Recurse */
   for (int k = 0; k < 8; k++)
-    if (c->progeny[k])
-      cell_clean(c->progeny[k]);
+    if (c->progeny[k]) cell_clean(c->progeny[k]);
 }
 
 /**
@@ -1255,8 +1242,7 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
  */
 void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_hydro == NULL && c->hydro.density != NULL)
-    super_hydro = c;
+  if (super_hydro == NULL && c->hydro.density != NULL) super_hydro = c;
 
   /* Set the super-cell */
   c->hydro.super = super_hydro;
@@ -1319,12 +1305,10 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 #endif
 
     /* Super-pointer for hydro */
-    if (with_hydro)
-      cell_set_super_hydro(c, NULL);
+    if (with_hydro) cell_set_super_hydro(c, NULL);
 
     /* Super-pointer for gravity */
-    if (with_grav)
-      cell_set_super_gravity(c, NULL);
+    if (with_grav) cell_set_super_gravity(c, NULL);
 
     /* Super-pointer for common operations */
     cell_set_super(c, NULL, with_hydro, with_grav);
@@ -1441,8 +1425,7 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
   }
 
   /* Other checks not relevent when starting-up */
-  if (ti_current == 0)
-    return;
+  if (ti_current == 0) return;
 
   integertime_t ti_end_min = max_nr_timesteps;
   integertime_t ti_beg_max = 0;
@@ -1452,10 +1435,8 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
   for (int i = 0; i < c->hydro.count; ++i) {
 
     const struct part *p = &c->hydro.parts[i];
-    if (p->time_bin == time_bin_inhibited)
-      continue;
-    if (p->time_bin == time_bin_not_created)
-      continue;
+    if (p->time_bin == time_bin_inhibited) continue;
+    if (p->time_bin == time_bin_not_created) continue;
 
     ++count;
 
@@ -1483,21 +1464,24 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
          might have been swallowed. This means we will run this cell with
          0 active particles but that's not wrong */
       if (ti_end_min < c->hydro.ti_end_min)
-        error("Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
-              "depth=%d",
-              c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
+        error(
+            "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
+            "depth=%d",
+            c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
 
     } else /* Normal case: nothing was swallowed/converted */ {
       if (ti_end_min != c->hydro.ti_end_min)
-        error("Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
-              "depth=%d",
-              c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
+        error(
+            "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
+            "depth=%d",
+            c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
     }
 
     if (ti_beg_max != c->hydro.ti_beg_max)
-      error("Non-matching ti_beg_max. Cell=%lld true=%lld ti_current=%lld "
-            "depth=%d",
-            c->hydro.ti_beg_max, ti_beg_max, ti_current, c->depth);
+      error(
+          "Non-matching ti_beg_max. Cell=%lld true=%lld ti_current=%lld "
+          "depth=%d",
+          c->hydro.ti_beg_max, ti_beg_max, ti_current, c->depth);
   }
 
 #else
@@ -1570,8 +1554,7 @@ void cell_check_sort_flags(const struct cell *c) {
 
   if (c->split) {
     for (int k = 0; k < 8; ++k) {
-      if (c->progeny[k] != NULL)
-        cell_check_sort_flags(c->progeny[k]);
+      if (c->progeny[k] != NULL) cell_check_sort_flags(c->progeny[k]);
     }
   }
 #endif
@@ -1601,10 +1584,8 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   /* Check for trivial cases */
-  if (is_tree_walk && ci->grav.count <= 1)
-    return 0;
-  if (is_tree_walk && cj->grav.count <= 1)
-    return 0;
+  if (is_tree_walk && ci->grav.count <= 1) return 0;
+  if (is_tree_walk && cj->grav.count <= 1) return 0;
 
   /* Recover the multipole information */
   const struct gravity_tensors *restrict multi_i = ci->grav.multipole;
