@@ -12,8 +12,6 @@ from scipy.interpolate import interp1d
 
 
 # Files to read from and write to
-#fileInputName = sys.argv[1]
-#fileOutputName = sys.argv[2]
 
 
 
@@ -29,7 +27,8 @@ def open_snapshot(fileName):
     head = infile["/Header"]
     units = infile["/Units"]
     BoxSize = head.attrs["BoxSize"]
-    N_in = head.attrs["NumPart_Total"][0]
+    NumPart_Total = head.attrs["NumPart_Total"]
+    NumPart_ThisFile = head.attrs["NumPart_ThisFile"]
 
     UI = units.attrs['Unit current in cgs (U_I)']
     UL = units.attrs['Unit length in cgs (U_L)']
@@ -69,8 +68,8 @@ def open_snapshot(fileName):
         },
 
         'BoxSize': BoxSize,
-        'N_in': N_in,
-        
+        'NumPart_Total':NumPart_Total,
+        'NumPart_ThisFile':NumPart_ThisFile,
     }
 
     return data
@@ -93,7 +92,7 @@ def add_atmospere_particles(data,
     #BoxSize = data['BoxSize'][0]  # Assuming BoxSize is a 1D array
 
     # Estimate required number of particles
-    Natm = estimate_Natm(pars, mp, R_max)
+    Natm = estimate_Natm(pars['density'], mp, R_max)
     print('Estimated number of atmosphere particles:', Natm)
     if Natm > 1e6:
         print('Warning: Number of atmosphere particles is very high')
@@ -138,7 +137,7 @@ def add_atmospere_particles(data,
 
     # Rescale particle positions to match the required density profile
     pos *= 2*R_max # Scale positions to make sphere with radius = Rmax
-    rtab, Ftab = tabulate_F_function(pars, R_max) 
+    rtab, Ftab = tabulate_F_function(pars['density'], R_max) 
     F_rho = interp1d(rtab, Ftab, kind='linear', bounds_error=False, fill_value=(Ftab[0], Ftab[-1]))  # Build CDF function for the selected density
     r_uni = np.linalg.norm(pos, axis=1)
     F_uni = r_uni**3 / R_max**3 # data['BoxSize'][0]**3
@@ -146,14 +145,44 @@ def add_atmospere_particles(data,
     pos *= (r_target / r_uni)[:, np.newaxis] # Rescale coordinates
     pos += data['BoxSize'] / 2  # Shift positions to be centered at BoxSize/2
 
-    # adding atmosphere particles to the data
+    # write particle positions
     data['PartType0']['pos'] = np.concatenate((data['PartType0']['pos'], pos), axis=0)
+
+    # write particle smoothing lengths
+    h = 1.595*(mp/rho(r_uni,pars['density']))**(1/3)
+    data['PartType0']['h'] = np.concatenate((h, data['PartType0']['h']), axis=0)
+
+    # write particle masses
+    m = mp*np.ones(pos.shape[0])
+    data['PartType0']['m'] = np.concatenate((m, data['PartType0']['m']), axis=0)
+
+    # write particle indexes
+    idsmax = np.max(data['PartType0']['ids'])
+    ids = np.arange(idsmax+1,idsmax+1+pos.shape[0])
+    data['PartType0']['ids'] = np.concatenate((ids, data['PartType0']['ids']), axis=0)
+    
+    # write particle energies
+    umin = np.min( data['PartType0']['u'] )
+    u = umin*np.ones(pos.shape[0])
+    data['PartType0']['u'] = np.concatenate((u, data['PartType0']['u']), axis=0)
+
+    # write particle velocities
+    v = np.zeros(pos.shape)
+    data['PartType0']['vel'] = np.concatenate((v, data['PartType0']['vel']), axis=0)
+
+    # update particle count
+    data['NumPart_Total'][0] = data['PartType0']['pos'].shape[0]
+    data['NumPart_ThisFile'][0] = data['PartType0']['pos'].shape[0]
 
     return data
 
 
 
 def open_IAfile(path_to_file):
+    """ Open initial particle arrangement file (used for atmosphere generation)
+    param: path_to_file - path to .hdf5
+    return: positions and smoothing lengths of particles
+    """
     IAfile = h5py.File(path_to_file, "r")
     pos = IAfile["/PartType0/Coordinates"][:, :]
     h = IAfile["/PartType0/SmoothingLength"][:]
@@ -303,46 +332,85 @@ def print_to_vtk(data, fileName):
     return
 
 
-def makeIC(fileInputName, fileOutputName):
+def makeIC(fileInputName, fileOutputName, PrintToVTK = False):
 
+    # Load snapshot
     data = open_snapshot(fileInputName)   
 
-    # Atmosphere parameter setup
-    #m_H = 1.6726219e-24 / data['Units']['UM']  # Hydrogen mass in snapshot units
-    #n0 = 1e-4 / (data['Units']['UL']**(-3))  # Example number density in snapshot units
-    #rho0 = n0 * m_H  # Convert number density to mass density
-
+    # Atmosphere parameter setup. Profile follows U. P. Steinwandel et al. 2019
     rho_units_snapshot = data['Units']['UM'] * data['Units']['UL']**(-3)
     rho0 = 5e-26 / rho_units_snapshot  
-
-    R_max = 50 # maximal radius
-    pars = {'profile': 'beta', 'rho0': rho0, 'r0':0.33, 'beta': 2/3 }  # form parameter dict
+    R_max = 50 # maximal radius in kpc
+    pars = {'density':{'profile': 'beta', 'rho0': rho0, 'r0': 0.33, 'beta': 2/3 },
+            'temperature':{'profile': 'constant', 'T0': 1e4 }
+            }  # form parameter dict
 
     # Add atmosphere
     data = add_atmospere_particles(data, pars, R_max=R_max)
 
-    # Debug: save atmosphere to .vtk
-    #print('Atmosphere particles added:', posatm)
-    print_to_vtk(data, 'fid.vtk')
+    # Debug: save particle positions to .vtk
+    if PrintToVTK:
+        print_to_vtk(data, 'fid.vtk')
 
     # Add magnetic fields
-    # data = add_magnetic_fields(data,
-    #                            B0_Gaussian_Units=1e-3,  # micro Gauss        
-    #                            )
+    data = add_magnetic_fields(data,
+                               B0_Gaussian_Units=1e-3,  # micro Gauss        
+                               )
 
+
+    # Generate and open output file
     os.system("cp " + fileInputName + " " + fileOutputName)
-
-    # File
     fileOutput = h5py.File(fileOutputName, "a")
 
     # Particle group
     grp = fileOutput.require_group("/PartType0")
-    #grp.create_dataset("MagneticFluxDensities", data=data['PartType0']['B'], dtype="f")
+
+    Ntot = len(data['PartType0']['pos'])
+    write_or_replace_dataset(grp, "Coordinates", data['PartType0']['pos'], size=(Ntot,3), dtype="d")
+    write_or_replace_dataset(grp, "Velocities", data['PartType0']['vel'], size=(Ntot,3), dtype="f")
+    write_or_replace_dataset(grp, "InternalEnergy", data['PartType0']['u'], size=(Ntot,), dtype="f")
+    write_or_replace_dataset(grp, "SmoothingLength", data['PartType0']['h'], size=(Ntot,), dtype="f")
+    write_or_replace_dataset(grp, "ParticleIDs", data['PartType0']['ids'], size=(Ntot,), dtype="L")
+    write_or_replace_dataset(grp, "Masses", data['PartType0']['m'], size=(Ntot,), dtype="f")
+    write_or_replace_dataset(grp, "MagneticFluxDensities", data['PartType0']['B'], size=(Ntot,3), dtype="f")
+    write_or_replace_dataset(grp, "MagneticVectorPotentials", data['PartType0']['A'], size=(Ntot,3), dtype="f")
+
+   # grp.create_dataset("MagneticFluxDensities", data=data['PartType0']['B'], dtype="f")
     #grp.create_dataset("MagneticVectorPotentials", data=data['PartType0']['A'], dtype="f")
+
+    # Update gas particle properties
 
     # Change current unit to something more resonable
     unitSystem = fileOutput["/Units"]
+    unitSystem.attrs.modify("Unit current in cgs (U_t)", data['Units']['UTM'])
+    unitSystem.attrs.modify("Unit current in cgs (U_L)", data['Units']['UL'])
+    unitSystem.attrs.modify("Unit current in cgs (U_M)", data['Units']['UM'])
+    unitSystem.attrs.modify("Unit current in cgs (U_T)", data['Units']['UT'])
     unitSystem.attrs.modify("Unit current in cgs (U_I)", data['Units']['UI'])
+
+
+    grp = fileOutput.require_group("/Header")
+    grp.attrs.modify("NumPart_Total", data['NumPart_Total'])
+    grp.attrs.modify("NumPart_ThisFile", data['NumPart_ThisFile'])
+
+
     fileOutput.close()
 
+def write_or_replace_dataset(group, name, datai, size, dtype):
+    if name in group:
+        del group[name]
+    ds = group.create_dataset(name, size, dtype=dtype)
+    ds[()] = datai
+
+#fileInputName = sys.argv[1]
+#fileOutputName = sys.argv[2]
+
 makeIC('fid.hdf5', 'fid_B.hdf5')
+#makeIC(fileInputName,fileOutputName)
+
+
+# References:
+# 1. U P Steinwandel, M C Beck, A Arth, K Dolag, B P Moster, P Nielaba, 
+#    Magnetic buoyancy in simulated galactic discs with a realistic circumgalactic medium, 
+#    Monthly Notices of the Royal Astronomical Society, Volume 483, Issue 1, February 2019, Pages 1008–1028, 
+#    https://doi.org/10.1093/mnras/sty3083
