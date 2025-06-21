@@ -147,7 +147,7 @@ def add_atmospere_particles(data,
     pos += data['BoxSize'] / 2  # Shift positions to be centered at BoxSize/2
 
     # adding atmosphere particles to the data
-    data['PartType0']['pos'] = np.concatenate((data['PartType0']['pos'], posatm), axis=0)
+    data['PartType0']['pos'] = np.concatenate((data['PartType0']['pos'], pos), axis=0)
 
     return data
 
@@ -203,7 +203,7 @@ def rho(r, pars):
         rho0 = pars['rho0']
         r0 = pars['r0']
         beta = pars['beta']
-        density = rho0 / (1 + (r/r0)**2)**(3 * beta / 2)
+        density = rho0 * (1 + (r/r0)**2)**( - 3 * beta / 2)
    
     return density
 
@@ -308,18 +308,21 @@ def makeIC(fileInputName, fileOutputName):
     data = open_snapshot(fileInputName)   
 
     # Atmosphere parameter setup
-    m_H = 1.6726219e-24 / data['Units']['UM']  # Hydrogen mass in snapshot units
-    n0 = 1e-4 / (data['Units']['UL']**(-3))  # Example number density in snapshot units
-    rho0 = n0 * m_H  # Convert number density to mass density
+    #m_H = 1.6726219e-24 / data['Units']['UM']  # Hydrogen mass in snapshot units
+    #n0 = 1e-4 / (data['Units']['UL']**(-3))  # Example number density in snapshot units
+    #rho0 = n0 * m_H  # Convert number density to mass density
 
-    R_max = 60 # maximal radius
-    pars = {'profile': 'isothermal', 'rho0': rho0, 'r0':10 }  # form parameter dict
+    rho_units_snapshot = data['Units']['UM'] * data['Units']['UL']**(-3)
+    rho0 = 5e-26 / rho_units_snapshot  
+
+    R_max = 50 # maximal radius
+    pars = {'profile': 'beta', 'rho0': rho0, 'r0':0.33, 'beta': 2/3 }  # form parameter dict
 
     # Add atmosphere
     data = add_atmospere_particles(data, pars, R_max=R_max)
 
     # Debug: save atmosphere to .vtk
-    print('Atmosphere particles added:', posatm)
+    #print('Atmosphere particles added:', posatm)
     print_to_vtk(data, 'fid.vtk')
 
     # Add magnetic fields
