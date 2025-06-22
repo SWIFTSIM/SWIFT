@@ -9,6 +9,7 @@ import os
 from scipy import integrate, optimize
 import numpy as np
 from scipy.interpolate import interp1d
+import vtk
 
 
 # Files to read from and write to
@@ -145,30 +146,39 @@ def add_atmospere_particles(data,
     pos *= (r_target / r_uni)[:, np.newaxis] # Rescale coordinates
     pos += data['BoxSize'] / 2  # Shift positions to be centered at BoxSize/2
 
+
+    # cut atmosphere particles close to the galactic disk
+    pos = cut_disk_region_from_atmosphere( data, pos)
+
+    # Debug: printing the positions of the particles
+    #print(pos[mask_cut])
+    print(len(pos))
+
     # write particle positions
     data['PartType0']['pos'] = np.concatenate((data['PartType0']['pos'], pos), axis=0)
 
     # write particle smoothing lengths
+    r_uni = np.linalg.norm(pos, axis=1)
     h = 1.595*(mp/rho(r_uni,pars['density']))**(1/3)
-    data['PartType0']['h'] = np.concatenate((h, data['PartType0']['h']), axis=0)
+    data['PartType0']['h'] = np.concatenate((data['PartType0']['h'], h), axis=0)
 
     # write particle masses
     m = mp*np.ones(pos.shape[0])
-    data['PartType0']['m'] = np.concatenate((m, data['PartType0']['m']), axis=0)
+    data['PartType0']['m'] = np.concatenate((data['PartType0']['m'],m), axis=0)
 
     # write particle indexes
     idsmax = np.max(data['PartType0']['ids'])
     ids = np.arange(idsmax+1,idsmax+1+pos.shape[0])
-    data['PartType0']['ids'] = np.concatenate((ids, data['PartType0']['ids']), axis=0)
+    data['PartType0']['ids'] = np.concatenate((data['PartType0']['ids'], ids), axis=0)
     
     # write particle energies
     umin = np.min( data['PartType0']['u'] )
     u = umin*np.ones(pos.shape[0])
-    data['PartType0']['u'] = np.concatenate((u, data['PartType0']['u']), axis=0)
+    data['PartType0']['u'] = np.concatenate((data['PartType0']['u'], u), axis=0)
 
     # write particle velocities
     v = np.zeros(pos.shape)
-    data['PartType0']['vel'] = np.concatenate((v, data['PartType0']['vel']), axis=0)
+    data['PartType0']['vel'] = np.concatenate((data['PartType0']['vel'], v), axis=0)
 
     # update particle count
     data['NumPart_Total'][0] = data['PartType0']['pos'].shape[0]
@@ -178,8 +188,42 @@ def add_atmospere_particles(data,
 
 
 
+import numpy as np
+from scipy.spatial import cKDTree
+
+def cut_disk_region_from_atmosphere(data, pos_atm):
+
+    """ 
+    Cut atmosphere particles which lie inside the disk
+    param: pos_disk - positions of the disk particles
+    param: h_disk - smoothing lengths of the disk particles
+    param: pos_atm - positions of the atmosphere particles
+    return: positions outside the disk
+    """
+
+    # read atmosphere particles positions
+    pos_disk = data['PartType0']['pos']
+    h_disk  = data['PartType0']['h']
+
+    # Build KDTree from disk positions
+    tree_disk = cKDTree(pos_disk)
+
+    # Query the closest disk particle for each atmosphere particle
+    distances, indices = tree_disk.query(pos_atm, k=1)  # Nearest neighbor
+
+    # Compare distance to h_disk of that disk particle
+    inside_disk = distances < 3*h_disk[indices]  # Boolean mask
+
+    # Mask atmosphere particles outside disk region
+    pos_atm_outside_disk = pos_atm[~inside_disk]
+
+    return pos_atm_outside_disk 
+
+
+
 def open_IAfile(path_to_file):
-    """ Open initial particle arrangement file (used for atmosphere generation)
+    """ 
+    Open initial particle arrangement file (used for atmosphere generation)
     param: path_to_file - path to .hdf5
     return: positions and smoothing lengths of particles
     """
@@ -191,7 +235,8 @@ def open_IAfile(path_to_file):
 
 
 def estimate_Natm(pars, mp, R_max):
-    """ Estimate number of atmosphere particles given particle mass and atmosphere radius
+    """ 
+    Estimate number of atmosphere particles given particle mass and atmosphere radius
     param: pars - parameters for density profile in snapshot units
     param: mp - particle mass in snapshot units
     param: R_max - atmosphere radius in snapshot units
@@ -209,7 +254,8 @@ def estimate_Natm(pars, mp, R_max):
 
 
 def rho(r, pars):
-    """ Calculate the density profile at given positions
+    """ 
+    Calculate the density profile at given positions
     param: r - distance to the center
     param: pars - parameter dict for density profile.
         pars['profile'] - name of the profile
@@ -238,7 +284,8 @@ def rho(r, pars):
 
 
 def tabulate_F_function(pars, R_max, N_points=1000):
-    """ Tabulate the mass function for a given density profile
+    """ 
+    Tabulate the mass function for a given density profile
     param: pars - parameters of the density profile
     param: R_max - maximum radius for the mass function
     param: N_points - number of points to sample in the mass function
@@ -270,7 +317,8 @@ def add_magnetic_fields(data,
                         B0_Gaussian_Units=1e-3,  # micro Gauss
                         type="uniform",
                         ):
-    """ Add magnetic fields to the data dictionary
+    """ 
+    Add magnetic fields to the data dictionary
     param: data - the dictionary containing BoxSize, afact, N_in, and pos_in
     param: B0_Gaussian_Units - the magnitude of the uniform seed magnetic field in Gaussian units
     param: type - the type of magnetic field to add (default is "uniform")
@@ -311,11 +359,11 @@ def add_magnetic_fields(data,
 
 
 def print_to_vtk(data, fileName):
-    """ Print the data dictionary to a VTK file
+    """ 
+    Print the data dictionary to a VTK file
     param: data - the dictionary containing BoxSize, afact, N_in, and pos_in
     param: fileName - the name of the output VTK file
     """
-    import vtk
 
     vtk_points = vtk.vtkPoints()
     for x, y, z in data['PartType0']['pos'] - data['BoxSize'] / 2:
@@ -332,7 +380,15 @@ def print_to_vtk(data, fileName):
     return
 
 
-def makeIC(fileInputName, fileOutputName, PrintToVTK = False):
+def makeIC(fileInputName, fileOutputName, PrintToVTK = True):
+
+    """
+    Make a new file from an input snapshot file
+    param: fileInputName - the name of the snapshot to be read
+    param: fileOutputName - the name of the output snapshot file
+    param: PrintToVTK - whether to print the particles to a VTK file
+    return: None
+    """
 
     # Load snapshot
     data = open_snapshot(fileInputName)   
@@ -364,6 +420,7 @@ def makeIC(fileInputName, fileOutputName, PrintToVTK = False):
 
     # Particle group
     grp = fileOutput.require_group("/PartType0")
+
 
     Ntot = len(data['PartType0']['pos'])
     write_or_replace_dataset(grp, "Coordinates", data['PartType0']['pos'], size=(Ntot,3), dtype="d")
@@ -397,6 +454,16 @@ def makeIC(fileInputName, fileOutputName, PrintToVTK = False):
     fileOutput.close()
 
 def write_or_replace_dataset(group, name, datai, size, dtype):
+
+    """ Write or replace a field in .hdf5
+    param: group - group to write dataset into
+    param: name - name of dataset
+    param: datai - data to write
+    param: size - size of dataset
+    param: dtype - data type of dataset
+    return: None
+    """
+
     if name in group:
         del group[name]
     ds = group.create_dataset(name, size, dtype=dtype)
@@ -407,6 +474,7 @@ def write_or_replace_dataset(group, name, datai, size, dtype):
 
 makeIC('fid.hdf5', 'fid_B.hdf5')
 #makeIC(fileInputName,fileOutputName)
+
 
 
 # References:
