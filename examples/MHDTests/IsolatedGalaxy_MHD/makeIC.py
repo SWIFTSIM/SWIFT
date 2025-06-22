@@ -171,14 +171,32 @@ def add_atmospere_particles(data,
     ids = np.arange(idsmax+1,idsmax+1+pos.shape[0])
     data['PartType0']['ids'] = np.concatenate((data['PartType0']['ids'], ids), axis=0)
     
-    # write particle energies
-    umin = np.min( data['PartType0']['u'] )
-    u = umin*np.ones(pos.shape[0])
+    # write particle energies TODO: add temperature equalization
+    #umin = np.min( data['PartType0']['u'] )
+    units = data['Units']
+    T0 = 1e4 #/ units['UT']
+    R = 8.3 #/ (units['UM'] * units['UL']**2/units['UTM']**2)
+    gamma = 5/3
+    f = 2/(gamma-1)
+    u0 = f/2 * R * T0
+    u = u0*np.ones(pos.shape[0])
+    print(u)
     data['PartType0']['u'] = np.concatenate((data['PartType0']['u'], u), axis=0)
 
     # write particle velocities
     v = np.zeros(pos.shape)
     data['PartType0']['vel'] = np.concatenate((data['PartType0']['vel'], v), axis=0)
+
+    # add B and A
+    B = np.zeros(pos.shape)
+    A = np.zeros(pos.shape)
+    B0 = data['PartType0']['B'][0]
+    A0 = data['PartType0']['A'][0]
+    B += 1e-3 * B0
+    A += 1e-3 * A0
+    data['PartType0']['B'] = np.concatenate((data['PartType0']['B'], B), axis=0)
+    data['PartType0']['A'] = np.concatenate((data['PartType0']['A'], A), axis=0)
+
 
     # update particle count
     data['NumPart_Total'][0] = data['PartType0']['pos'].shape[0]
@@ -195,8 +213,7 @@ def cut_disk_region_from_atmosphere(data, pos_atm):
 
     """ 
     Cut atmosphere particles which lie inside the disk
-    param: pos_disk - positions of the disk particles
-    param: h_disk - smoothing lengths of the disk particles
+    param: data - data of the disk particles
     param: pos_atm - positions of the atmosphere particles
     return: positions outside the disk
     """
@@ -212,7 +229,7 @@ def cut_disk_region_from_atmosphere(data, pos_atm):
     distances, indices = tree_disk.query(pos_atm, k=1)  # Nearest neighbor
 
     # Compare distance to h_disk of that disk particle
-    inside_disk = distances < 3*h_disk[indices]  # Boolean mask
+    inside_disk = distances < 1*h_disk[indices]  # Boolean mask
 
     # Mask atmosphere particles outside disk region
     pos_atm_outside_disk = pos_atm[~inside_disk]
@@ -393,6 +410,11 @@ def makeIC(fileInputName, fileOutputName, PrintToVTK = True):
     # Load snapshot
     data = open_snapshot(fileInputName)   
 
+    # Add magnetic fields
+    data = add_magnetic_fields(data,
+                               B0_Gaussian_Units=1e-3,  # micro Gauss        
+                               )
+
     # Atmosphere parameter setup. Profile follows U. P. Steinwandel et al. 2019
     rho_units_snapshot = data['Units']['UM'] * data['Units']['UL']**(-3)
     rho0 = 5e-26 / rho_units_snapshot  
@@ -407,11 +429,6 @@ def makeIC(fileInputName, fileOutputName, PrintToVTK = True):
     # Debug: save particle positions to .vtk
     if PrintToVTK:
         print_to_vtk(data, 'fid.vtk')
-
-    # Add magnetic fields
-    data = add_magnetic_fields(data,
-                               B0_Gaussian_Units=1e-3,  # micro Gauss        
-                               )
 
 
     # Generate and open output file
