@@ -100,11 +100,6 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
  * This function sets the progeny of the highest res void cell to be the top
  * level cell it contains (either zoom or buffer cells).
  *
- * NOTE: The void cells with top level progeny are not treated as split cells
- * since they are linked into the top level "progeny". We don't want to
- * accidentally treat them as split cells and recurse from void cells straight
- * through to the zoom cells unless explictly desired.
- *
  * @param s The space.
  * @param c The void cell progeny to link
  */
@@ -125,17 +120,10 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     error(
         "The width of the buffer cell is not half the width of the void "
         "cell were about to link to! (c->width[0]=%f, "
-        "s->zoom_props->width[0]=%f)",
-        c->width[0] / 2, s->zoom_props->width[0]);
+        "s->zoom_props->buffer_width[0]=%f)",
+        c->width[0] / 2, s->zoom_props->buffer_width[0]);
 
 #endif
-
-  /* If we are above regular buffer cells we need to ensure this bottom level
-   * isn't treated like a normal split cell since it's linked into top level
-   * "progeny". */
-  if (!zoom_cell_overlaps_zoom_region(c, s)) {
-    c->split = 0;
-  }
 
   /* Loop over the 8 progeny cells which are now the nested top level cells. */
   for (int k = 0; k < 8; k++) {
@@ -162,6 +150,9 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
 
     /* Flag this void cell "progeny" as the cell's void cell parent. */
     buffer_cell->void_parent = c;
+
+    /* Set the parent of the buffer cell to be the void cell. */
+    buffer_cell->parent = c;
 
     /* If we're in a void cell continue the void tree depth. */
     if (buffer_cell->subtype == cell_subtype_void) {
