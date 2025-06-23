@@ -138,12 +138,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
                                  cosmo->a * p->h * p->h /
                                  p->mhd_data.resistive_eta
                            : FLT_MAX;
-
-  const float B_over_rho = sqrtf( p->mhd_data.B_over_rho[0]*p->mhd_data.B_over_rho[0] + p->mhd_data.B_over_rho[1]*p->mhd_data.B_over_rho[1] + p->mhd_data.B_over_rho[2]*p->mhd_data.B_over_rho[2] );
-  const float Sdedner = sqrtf( p->mhd_data.Sdedner[0]*p->mhd_data.Sdedner[0] + p->mhd_data.Sdedner[1]*p->mhd_data.Sdedner[1] + p->mhd_data.Sdedner[2]*p->mhd_data.Sdedner[2] );
-  const float dt_dedner = 0.1f * B_over_rho/Sdedner;
-
-  return min(dt_eta,dt_dedner);
+  return dt_eta;
 }
 
 /**
