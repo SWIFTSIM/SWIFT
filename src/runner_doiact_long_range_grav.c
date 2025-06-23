@@ -268,10 +268,8 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
                                  /*periodic boundaries*/ s->periodic,
                                  /*use_mesh*/ s->periodic)) {
 
-          /* Call the PM interaction function on the active sub-cells of ci
-           */
+          /* Call the PM interaction function on the active sub-cells of ci */
           runner_dopair_grav_mm_nonsym(r, ci, cj);
-          // runner_dopair_recursive_grav_pm(r, ci, cj);
 
           /* Record that this multipole received a contribution */
           multi_i->pot.interacted = 1;
@@ -400,7 +398,7 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 
   struct engine *e = r->e;
   struct space *s = e->s;
-  struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
+  struct cell *cells = s->cells_top;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
 
@@ -411,21 +409,41 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
-  /* Loop over all background cells. */
-  for (int n = 0; n < s->zoom_props->nr_bkg_cells; n++) {
+  /* Loop over all cells. */
+  for (int n = 0; n < s->nr_cells; n++) {
+
+    /* Skip void cells to avoid double counting their top level progeny
+     * in the zoom (and buffer) cell grids. */
+    if (cells[n].subtype == cell_subtype_void) continue;
 
     /* Handle on the top-level cell and it's gravity business*/
-    struct cell *cj = &bkg_cells[n];
+    struct cell *cj = &cells[n];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
+    /* Get the top level cell of the current cj */
+    struct cell *top_j = cj->top;
+
+    /* If we are in a zoom cell we need to jump up the void hierarchy
+     * to get the top level cell. */
+    if (top_j->void_parent != NULL) {
+      top_j = cj->void_parent->top;
+    }
+
+    /* If we had buffer cells then we may need an extra jump since the
+     * top-level for a zoom cell is at:
+     * zoom->top->void_parent->top->void_parent->top. */
+    if (top_j->void_parent != NULL) {
+      top_j = top_j->void_parent->top;
+    }
+
     /* Avoid self contributions */
-    if (top == cj) continue;
+    if (top == top_j) continue;
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
+    const double min_radius2 = cell_min_dist2(top, top_j, periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
@@ -606,7 +624,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   /* Count the number of mesh interactions if using the mesh. */
   if (periodic && s->with_zoom_region) {
     runner_count_mesh_interactions_zoom(r, ci, top);
-  } else if (periodic && !s->with_zoom_region) {
+  } else if (periodic) {
     runner_count_mesh_interactions_uniform(r, ci, top);
   }
 #endif

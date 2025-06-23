@@ -67,9 +67,19 @@ void runner_do_init_grav(struct runner *r, struct cell *c, const int timer) {
   gravity_field_tensors_init(&c->grav.multipole->pot, e->ti_current);
 
   /* Recurse? */
-  if (c->split) {
+  /* Note: when running a zoom we always recurse on void cells expect at the
+   * interface between void and zoom cells. This is because we have both zoom
+   * and void cell inits which are above the zoom cells in the cell hierarchy.
+   * This causes a headache when we recurse here, because we don't want to
+   * recurse from the void cell tree into the zoom cells and possibly
+   * re-initialize the zoom cells that may have already run their grav_init
+   * task.
+   * TL;DR: we never recurse from a void cell to a zoom cell here! */
+  if (c->split || c->subtype == cell_subtype_void) {
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL)
+      if (c->progeny[k] != NULL &&
+          !(c->subtype == cell_subtype_void &&
+            c->progeny[k]->subtype != cell_subtype_void))
         runner_do_init_grav(r, c->progeny[k], /*timer=*/0);
     }
   }

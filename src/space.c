@@ -572,7 +572,12 @@ void space_list_useful_top_level_cells(struct space *s) {
   for (int i = 0; i < s->nr_cells; ++i) {
     struct cell *c = &s->cells_top[i];
 
-    if (cell_has_tasks(c)) {
+    /* Record local cells with tasks. */
+    /* Note that void cells are always local and will almost always have tasks
+     * somewhere in their hierarchy, though if they don't this is not harmful.
+     * Void cell inclusion in this set of pointers is mainly to ensure the void
+     * tasks get activated. */
+    if (cell_has_tasks(c) || c->subtype == cell_subtype_void) {
       s->local_cells_with_tasks_top[s->nr_local_cells_with_tasks] = i;
       s->nr_local_cells_with_tasks++;
     }
