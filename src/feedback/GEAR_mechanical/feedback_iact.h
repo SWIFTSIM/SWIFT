@@ -520,6 +520,9 @@ runner_iact_nonsym_feedback_apply(
   /* Now boost to the 'laboratory' frame */
   double dp_prime[3] = {dp[0] + dm * v_i_p[0], dp[1] + dm * v_i_p[1],
                         dp[2] + dm * v_i_p[2]};
+  const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
+                                 dp_prime[1] * dp_prime[1] +
+                                 dp_prime[2] * dp_prime[2];
 
   /* ... physical internal energy */
   const double factor =
@@ -564,11 +567,17 @@ runner_iact_nonsym_feedback_apply(
   for (int i = 0; i < 3; i++) {
     xpj->feedback_data.delta_p[i] += dp_prime[i] * cosmo->a;
   }
-#endif /* not defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
+#endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
   xpj->feedback_data.delta_u += dU / new_mass;
   xpj->feedback_data.delta_E_kin += dKE;
   xpj->feedback_data.number_SN += 1;
+
+  /* Update the signal velocity of gas particles that receive a kick. From
+     Chaikin et al. (2023) (also implemented in EAGLE_kinetic) */
+  const float dp_prime_norm = sqrt(dp_prime_norm_2);
+  const float dv_phys = dp_prime_norm / new_mass;
+  hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
 
   /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);
