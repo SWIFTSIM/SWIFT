@@ -147,7 +147,7 @@ latex_documents = [
     (
         master_doc,
         "SWIFT-user-manual.tex",
-        "SWIFT user \& developer documentation",
+        "SWIFT user & developer documentation",
         "SWIFT Collaboration",
         "manual",
     )
