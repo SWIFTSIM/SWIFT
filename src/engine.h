@@ -705,6 +705,7 @@ void engine_unskip(struct engine *e);
 void engine_unskip_rt_sub_cycle(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
+void engine_drift_all_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_allocate_foreign_particles(struct engine *e, const int fof);
 void engine_print_stats(struct engine *e);
