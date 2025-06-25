@@ -33,9 +33,6 @@
 
 extern int engine_star_resort_task_depth;
 
-long long total_comms_running;
-long long total_comms_skipped;
-
 /**
  * @brief Recursively clear the stars_resort flag in a cell hierarchy.
  *
@@ -1343,16 +1340,12 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
     if (ci->grav.count == 0 || cj->grav.count == 0) return 0;
 
     /* Atomically drift the multipole in ci */
-    //lock_lock(&ci->grav.mlock);
-    //if (ci->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
-    //if (lock_unlock(&ci->grav.mlock) != 0) error("Impossible to unlock m-pole");
-    if (ci->grav.ti_old_multipole < e->ti_current) error("Multipole not drifted!");
-    
+    if (ci->grav.ti_old_multipole < e->ti_current)
+      error("Multipole not drifted!");
+
     /* Atomically drift the multipole in cj */
-    //lock_lock(&cj->grav.mlock);
-    //if (cj->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
-    //if (lock_unlock(&cj->grav.mlock) != 0) error("Impossible to unlock m-pole");
-    if (ci->grav.ti_old_multipole < e->ti_current) error("Multipole not drifted!");
+    if (ci->grav.ti_old_multipole < e->ti_current)
+      error("Multipole not drifted!");
 
     /* Can we use multipoles ? */
     if (cell_can_use_pair_mm(ci, cj, e, sp, /*use_rebuild_data=*/0,
@@ -1650,21 +1643,10 @@ int cell_grav_pair_will_act_on_gpart(struct cell *restrict ci,
 
   /* Drift the mutlipoles that haven't drifted yet before
    * making any decision */
-  //if (!cell_is_multipole_drifted(ci, e)) {  
-  //  lock_lock(&ci->grav.mlock);
-  //  if (ci->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
-  //  if (lock_unlock(&ci->grav.mlock) != 0) error("Impossible to unlock m-pole");
-  // }
-  //if (!cell_is_multipole_drifted(cj, e)) {
-  //  lock_lock(&cj->grav.mlock);
-  //  if (cj->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
-  //  if (lock_unlock(&cj->grav.mlock) != 0) error("Impossible to unlock m-pole");
-  // }
-
-  //#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   if (!cell_is_multipole_drifted(ci, e)) error("Multipole ci is not drifted");
   if (!cell_is_multipole_drifted(cj, e)) error("Multipole cj is not drifted");
-  //#endif
+#endif
 
   /* Can we use multipoles ? */
   if (cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/0,
@@ -2165,29 +2147,15 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       if ((ci_nodeID != nodeID) || (cj_nodeID != nodeID)) {
         pair_will_act_on_particles =
             cell_grav_pair_will_act_on_gpart(ci, cj, e);
-
-#ifdef SWIFT_DEBUG_CHECKS
-	int reverse_check =
-	  cell_grav_pair_will_act_on_gpart(cj, ci, e);
-	
-	if (pair_will_act_on_particles != reverse_check)
-	  error("Decision making is not symmetric for cell %lld (node %d) and cell %lld (node %d) will be skipped", ci->cellID, ci->nodeID, cj->cellID, cj->nodeID);
-#endif
-	
-	if (pair_will_act_on_particles)
-	  atomic_inc(&total_comms_running);
-	else
-	  atomic_inc(&total_comms_skipped);
-
       }
 
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
-	
+
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active && pair_will_act_on_particles) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
-	}
+        }
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active && pair_will_act_on_particles) {
@@ -2216,11 +2184,11 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         }
 
       } else if (cj_nodeID != nodeID) {
-	
+
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active && pair_will_act_on_particles) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
-	}
+        }
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active && pair_will_act_on_particles) {

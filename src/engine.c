@@ -146,10 +146,6 @@ int engine_rank;
 /** The current step of the engine as a global variable (for messages). */
 int engine_current_step;
 
-extern long long total_comms_running;
-extern long long total_comms_skipped;
-
-
 /**
  * @brief Link a density/force task to a cell.
  *
@@ -1428,9 +1424,6 @@ void engine_rebuild(struct engine *e, const int repartitioned,
       (long long)(e->s->nr_sinks - e->s->nr_extra_sinks),
       (long long)(e->s->nr_bparts - e->s->nr_extra_bparts)};
 
-  message("Grav comms run: %lld Grav comms skipped: %lld",
-	  total_comms_running, total_comms_skipped);
-  
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, num_particles, 5, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -1593,7 +1586,7 @@ int engine_prepare(struct engine *e) {
       (e->policy & engine_policy_self_gravity)) {
     engine_drift_all_multipoles(e);
   }
-  
+
   /* Unskip active tasks and check for rebuild */
   if (!e->forcerebuild && !e->forcerepart && !e->restarting) engine_unskip(e);
 
@@ -3444,9 +3437,6 @@ void engine_init(
     struct lightcone_array_props *lightcone_array_properties,
     struct ic_info *ics_metadata) {
 
-  total_comms_running = 0;
-  total_comms_skipped = 0;
-  
   struct clocks_time tic, toc;
   if (engine_rank == 0) clocks_gettime(&tic);
 

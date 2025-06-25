@@ -497,20 +497,18 @@ void engine_drift_all_multipoles(struct engine *e) {
 
   if (!e->restarting) {
 
-      threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
-                     e->s->local_cells_with_tasks_top,
-                     e->s->nr_local_cells_with_tasks, sizeof(int),
-                     threadpool_auto_chunk_size, e);
+    threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
+                   e->s->local_cells_with_tasks_top,
+                   e->s->nr_local_cells_with_tasks, sizeof(int),
+                   threadpool_auto_chunk_size, e);
   } else {
 
-      threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
-                     e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     threadpool_auto_chunk_size, e);    
+    threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
+                   e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
+                   threadpool_auto_chunk_size, e);
   }
 
-    
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
-  
 }
