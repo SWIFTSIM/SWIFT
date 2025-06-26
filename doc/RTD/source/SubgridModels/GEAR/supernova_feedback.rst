@@ -272,98 +272,110 @@ The last thing to do is to couple the correct internal energy when the cooling r
 
 where :math:`\rho` is the density.
 
-As the internal energy outside :math:`R_{\text{cool}}` decays :math:`\propto (r/R_{\text{cool}})^{-6.5}` `Thornton et al. 1998 <https://iopscience.iop.org/article/10.1086/305704>`_ , if :math:`r_j \equiv \| \vec{x}_{js} \| > R_{\text{cool}}`, we reduce the internal energy as :math:`\Delta U \leftarrow \Delta U (r_j/R_{\text{cool}})^{-6.5}`. Otherwise, we leave :math:`\Delta U` unchanged. 
-
-
-
-
-TO READ———————————————
-
-
+As the internal energy outside :math:`R_{\text{cool}}` decays :math:`\propto (r/R_{\text{cool}})^{-6.5}` (`Thornton et al. 1998 <https://iopscience.iop.org/article/10.1086/305704>`_) , if :math:`r_j \equiv \| \vec{x}_{js} \| > R_{\text{cool}}`, we reduce the internal energy as :math:`\Delta U \leftarrow \Delta U (r_j/R_{\text{cool}})^{-6.5}`. Otherwise, we leave :math:`\Delta U` unchanged. 
 
 GEAR mechanical 2
 +++++++++++++++++
 
 In GEAR mechanical 2, we have the following fluxes to distribute: :math:`m_{\text{ej}}`, :math:`m_{Z, \text{ej}}` and :math:`E_{\text{ej}}`. These fluxes are the same as in GEAR mechanical 1. However, the differences come from how we couple energy and momentum as we now consider the star-gas motion.
 
-The reason for considering the star-gas motion is that once the first \ac{SN} explodes, the gas moves outwards. In clustered star formation locations, multiple \ac{SN} will occur at close times, justifying the inclusion of the star-gas motion.
+The reason for considering the star-gas motion is that once the first supernova explodes, the gas moves outwards. In clustered star formation locations, multiple SN will occur at close times, provoking a motion of the surrounding gas relative to the stars and thus justifying the inclusion of the star-gas motion.
 
 Thus, the fluxes are given to the gas particle :math:`j` as:
-%
-\begin{align}
-  m_j^{\text{new}} &= m_j +  \Delta m_j' = m_j + \norm{\vec{\bar{w}}_j} m_{\text{ej}} \\
-  m_{Z, j}^{\text{new}} &= m_{Z, j} +  \Delta m_{Z, j}' = m_{Z, j} + \norm{\vec{\bar{w}}_j} m_{\text{ej}} \\
-    U_{\text{int}}^{\text{new}} &= U_{\text{int}} + \Delta U = U_{\text{int}} + \norm{\vec{\bar{w}}_{j}} \mathcal{U}_s \\
-  \vec{p}_j^{\text{new}} &= \vec{p}_j + \Delta m_j \vec{v}_s +  \vec{\bar{w}}_{j} p_{0, s} \; .
-\end{align}
-%
-Notice the differences with GEAR mechanical in equation~\eqref{eq:gear_m_1_flux_m} - \ref{eq:gear_m_1_flux_U}: we have to define :math:`p_{0,s}` and :math:`\mathcal{U}_s`, which depend on the star-gas motion. In the following, we will define :math:`p_{0,s}` through :math:`\mathcal{E}_s` the total energy available at the \ac{SN} explosion and deal with the star-gas motion. The subtle details are that the gas can recede towards or away from the star, changing :math:`\mathcal{E}_s` and thus the coupled momentum and internal energy.
+
+.. math::
+   \begin{align}
+   m_j^{\text{new}} &= m_j +  \Delta m_j' = m_j +  \lVert \vec{\bar{w}}_j \rVert m_{\text{ej}} \\
+   m_{Z, j}^{\text{new}} &= m_{Z, j} +  \Delta m_{Z, j}' = m_{Z, j} + \lVert \vec{\bar{w}}_j \rVert m_{\text{ej}} \\
+   U_{\text{int}}^{\text{new}} &= U_{\text{int}} + \Delta U = U_{\text{int}} + \lVert \vec{\bar{w}}_{j} \rVert \mathcal{U}_s \\
+   \vec{p}_j^{\text{new}} &= \vec{p}_j + \Delta m_j \vec{v}_s +  \vec{\bar{w}}_{j} p_{0, s} \; .
+  \end{align}
+
+In these equations, we have to define :math:`p_{0,s}` and :math:`\mathcal{U}_s`, which depend on the star-gas motion. In the following, we will define :math:`p_{0,s}` through :math:`\mathcal{E}_s` the total energy available at the SN explosion and deal with the star-gas motion. The subtle detail is that the gas can recede towards or away from the star, changing :math:`\mathcal{E}_s` and thus the coupled momentum and internal energy.
 
 The total available energy :math:`\mathcal{E}_s` is:
-%
-\begin{align}
-  & \mathcal{E}_s \equiv E_{\text{ej}} + \frac{1}{2} \sum_j m_{\text{ej}} w_{j}' \norm{\vec{v}_{js}}^2 \\
-  & w_{j}' \equiv \frac{\norm{\vec{\bar{w}}_{j}}}{1 + \Delta m_j / m_j} \; .
-\end{align}
-%
+
+.. math::
+   \begin{align}
+   & \mathcal{E}_s \equiv E_{\text{ej}} + \frac{1}{2} \sum_j m_{\text{ej}} w_{j}' \lVert\vec{v}_{js} \rVert^2 \\
+   & w_{j}' \equiv \frac{\lVert \vec{\bar{w}}_{j} \rVert}{1 + \Delta m_j / m_j} \; .
+  \end{align}
+
+
 Now, we define the effective kinetic energy:
-%
-\begin{equation}
-  \mathcal{\varepsilon}_s \equiv f_{\text{kin}}^0 \mathcal{E}_s  \equiv (1 -  f_{\text{U}}^0) \mathcal{E}_s \; ,
-\end{equation}
-%
-where :math:`f_{\text{U}}^0` and :math:`f_{\text{kin}}^0` are the fractions of the total energy in thermal or kinetic energy. Those fractions are fixed to their values for e.g. an ideal Sedov solution in a homogeneous medium, i.e.  :math:`f_{\text{kin}}^0 = 0.28` `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_.
+
+.. math::
+   \mathcal{\varepsilon}_s \equiv f_{\text{kin}}^0 \mathcal{E}_s  \equiv (1 -  f_{\text{U}}^0) \mathcal{E}_s \; ,
+
+where :math:`f_{\text{U}}^0` and :math:`f_{\text{kin}}^0` are the fractions of the total energy in thermal or kinetic energy. Those fractions are fixed to their values for e.g. an ideal Sedov solution in a homogeneous medium, i.e.  :math:`f_{\text{kin}}^0 = 0.28` (`Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_).
 
 Then, we define the coupled momentum :math:`p_{0, s}` as:
-%
-\begin{equation}
-  p_{0, s} \equiv \psi_s \chi_s \sqrt{2 m_{\text{ej}} \varepsilon_s} \; ,
-\end{equation}
-%
-where :math:`\psi_s` takes into account the star-gas motion and :math:`\chi_s` accounts for the unresolved Taylor-Sedov phase. Notice the difference with GEAR mechanical 1 definition of :math:`p_{\text{ej}} = \sqrt{2 m_{\text{ej}} E_{\text{ej}}}`. If the :math:`\norm{\vec{v}_{js}} = 0`, i.e. the gas is at rest with respect to the star, we have the same :math:`p_{\text{ej}}` than GEAR mechanical 1. 
+
+.. math::
+   \begin{equation}
+   p_{0, s} \equiv \psi_s \chi_s \sqrt{2 m_{\text{ej}} \varepsilon_s} \; ,
+   \end{equation}
+
+where :math:`\psi_s` takes into account the star-gas motion and :math:`\chi_s` accounts for the unresolved Taylor-Sedov phase. Notice the difference with GEAR mechanical 1 definition of :math:`p_{\text{ej}} = \sqrt{2 m_{\text{ej}} E_{\text{ej}}}`. If the :math:`\lVert \vec{v}_{js} \rVert = 0`, i.e. the gas is at rest with respect to the star, we have the same :math:`p_{\text{ej}}` than GEAR mechanical 1. 
 
 Let us define :math:`\psi_s`:
-%
-\begin{align}
-  &\beta_{1, s} \equiv \left( \frac{m_{\text{ej}}}{2 \varepsilon_s} \right)^{1/2}   \sum_j w_{j}' \, \vec{v}_{js} \cdot \hat{w}_{j}
-  &\beta_{2, s} \equiv m_{\text{ej}} \, \sum_j \frac{w_{j}' \norm{\vec{\bar{w}}_{j}}}{m_j} \\
-  &\psi_s \equiv \frac{\sqrt{\beta_{2, s} + \beta_{1, s}^2} - \beta_{1, s}}{\beta_{2, s}} \;.
-\end{align}
-%
+
+.. math::
+   \begin{align}
+   &\beta_{1, s} \equiv \left( \frac{m_{\text{ej}}}{2 \varepsilon_s} \right)^{1/2}   \sum_j w_{j}' \, \vec{v}_{js} \cdot \hat{w}_{j}
+   &\beta_{2, s} \equiv m_{\text{ej}} \, \sum_j \frac{w_{j}' \lVert \vec{\bar{w}}_{j} \rVert}{m_j} \\
+   &\psi_s \equiv \frac{\sqrt{\beta_{2, s} + \beta_{1, s}^2} - \beta_{1, s}}{\beta_{2, s}} \;.
+   \end{align}
+
 Then, :math:`\chi_s` is simply defined by:
-%
-\begin{equation}
-  \chi_s \equiv \min \left(  1  , \; \frac{p_t}{\psi_s \sqrt{2 m_{\text{ej}} \varepsilon_s}}\right)\; ,
-\end{equation}
-%
-where :math:`p_t` is the terminal momentum. We use the same equation \eqref{eq:p_terminal} as GEAR mechanical 1. 
+
+.. math::
+   \begin{equation}
+   \chi_s \equiv \min \left(  1  , \; \frac{p_t}{\psi_s \sqrt{2 m_{\text{ej}} \varepsilon_s}}\right)\; ,
+   \end{equation}
+
+where :math:`p_t` is the terminal momentum, where we use the same equation as GEAR mechanical 1. 
 :math:`\chi_s` represents the cases with less momentum coupled and thus more energy going to thermal form.
 
-Finally, we can define :math:`f_U` the fraction of energy in non-kinetic form and :math:`\mathcal{U}_s` the internal energy associated to the \ac{SN}:
-%
-\begin{align}
-  &f_U \equiv 1 - \left((\psi_s \chi_s)^2\beta_{2, s} + 2 (\psi_s \chi_s) \beta_{1, s} \right) \cdot \frac{\varepsilon_s}{\mathcal{E}_s} \\
-  & \mathcal{U}_s \equiv f_U \mathcal{E}_s \; .
-\end{align}
-%
-Those formulas are demonstrated in `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_ appendix A and in `Hopkins et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H/abstract>`_ appendix E. Thus, we do ne provide further demonstration here. To get a better physical interpretation, we kindly ask the reader to refer to `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_ appendix A.3 since rewriting the same interpretations would provide little to our work. However, understanding the physics behind those formulas is important to feel the working of the feedback.
+Finally, we can define :math:`f_U` the fraction of energy in non-kinetic form and :math:`\mathcal{U}_s` the internal energy associated to the SN:
+
+.. math::
+   \begin{align}
+   &f_U \equiv 1 - \left((\psi_s \chi_s)^2\beta_{2, s} + 2 (\psi_s \chi_s) \beta_{1, s} \right) \cdot \frac{\varepsilon_s}{\mathcal{E}_s} \\
+   & \mathcal{U}_s \equiv f_U \mathcal{E}_s \; .
+   \end{align}
+
+Those formulas are demonstrated in `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_ appendix A and in `Hopkins et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H/abstract>`_ appendix E. To get a better physical interpretation, we kindly ask the reader to refer to `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_ appendix A.3 since rewriting the same interpretations would provide little to this documentation.
 
 .. note::
 
    Note that this new feedback uses one more neighbour loop to consider the star-gas motion. This new loop can be expensive, but simple simulations showed that it is not slower than the GEAR mechanical 1 and does not appear to be significantly slower than GEAR thermal. 
 
+Timestep criteria
++++++++++++++++++
+
+Since the mechanical feedback kicks the gas particles, we update the gas signal velocity. The signal velocity is linked to the CFL condition, hence the particle's timestep is also updated. This update ensures the gas does not travel too far before becoming active and thus the feedback effect remains local. We use the same timestep as `Chaikin et al. (2023) <https://ui.adsabs.harvard.edu/abs/2023MNRAS.523.3709C/abstract>`_ :
+
+.. math::
+   v_\text{sig, new, j} = \mathrm{max} \left( 2 c_{s, j}, \, v_\text{sig, old, j} + \beta_V \Delta v    \right) \, ,
+
+where :math:`v_\text{sig, new, j}` and :math:`v_\text{sig, old, j}` are the particle's signal velocity immediately before and after the kick, :math:`c_{s, j}` is the particle's speed of sound, :math:`\Delta v` is the norm of the momentum kick and :math:`\beta_V` is a dimensionless constant which in `Borrow et al. (2022) <https://ui.adsabs.harvard.edu/abs/2022MNRAS.511.2367B/abstract>`_ is equal to 3. 
 
 References
 ----------
 
-- `Revaz and Jablonka 2012 <https://ui.adsabs.harvard.edu/abs/2012A%26A...538A..82R/abstract>`_
+- `Revaz and Jablonka (2012) <https://ui.adsabs.harvard.edu/abs/2012A%26A...538A..82R/abstract>`_
 
-- `Haid et al. 2016 <https://ui.adsabs.harvard.edu/abs/2016MNRAS.460.2962H/abstract>`_
+- `Haid et al. (2016) <https://ui.adsabs.harvard.edu/abs/2016MNRAS.460.2962H/abstract>`_
 
-- `Thornton et al. 1998 <https://iopscience.iop.org/article/10.1086/305704>`_ 
+- `Thornton et al. (1998) <https://iopscience.iop.org/article/10.1086/305704>`_ 
 
-- `Hopkins et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H/abstract>`_
+- `Hopkins et al. (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H/abstract>`_
 
-- `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_
+- `Hopkins (2024) <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_
+
+- `Chaikin (2023) <https://ui.adsabs.harvard.edu/abs/2023MNRAS.523.3709C/abstract>`_
+
+- `Borrow et al. (2022) <https://ui.adsabs.harvard.edu/abs/2022MNRAS.511.2367B/abstract>`_
 
 - Darwin Roduit's master thesis, 2024, EPFL (compléter la référence)
