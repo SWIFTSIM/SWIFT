@@ -175,6 +175,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
+  float cell_h_max_active_rt = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_hydro_drift));
@@ -224,6 +225,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
         dx_max_sort = max(dx_max_sort, cp->hydro.dx_max_sort);
         cell_h_max = max(cell_h_max, cp->hydro.h_max);
         cell_h_max_active = max(cell_h_max_active, cp->hydro.h_max_active);
+        cell_h_max_active_rt = max(cell_h_max_active_rt, cp->rt.h_max_active);
       }
     }
 
@@ -232,6 +234,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
     c->hydro.h_max_active = cell_h_max_active;
     c->hydro.dx_max_part = dx_max;
     c->hydro.dx_max_sort = dx_max_sort;
+    c->rt.h_max_active = cell_h_max_active_rt;
 
     /* Update the time of the last drift */
     c->hydro.ti_old_part = ti_current;
@@ -374,6 +377,10 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
         /* Update the maximal active smoothing length in the cell */
         cell_h_max_active = max(cell_h_max_active, p->h);
       }
+#ifndef RT_NONE
+      if (part_is_rt_active(p, e))
+        cell_h_max_active_rt = max(cell_h_max_active_rt, p->h);
+#endif
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
       p->limiter_data.n_limiter = 0.f;
@@ -393,6 +400,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 
     /* Update the time of the last drift */
     c->hydro.ti_old_part = ti_current;
+
+    c->rt.h_max_active = cell_h_max_active_rt;
   }
 
 #ifdef WITH_LIGHTCONE
