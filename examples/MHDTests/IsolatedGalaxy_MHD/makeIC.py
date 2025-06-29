@@ -174,13 +174,8 @@ def add_atmospere_particles(data,
     # write particle energies TODO: add temperature equalization
     #umin = np.min( data['PartType0']['u'] )
     units = data['Units']
-    T0 = 1e4 #/ units['UT']
-    R = 8.3 #/ (units['UM'] * units['UL']**2/units['UTM']**2)
-    gamma = 5/3
-    f = 2/(gamma-1)
-    u0 = f/2 * R * T0
-    u = u0*np.ones(pos.shape[0])
-    print(u)
+    u = add_internal_energy_profile(pars['temperature'], pos, units)
+    #print(u)
     data['PartType0']['u'] = np.concatenate((data['PartType0']['u'], u), axis=0)
 
     # write particle velocities
@@ -203,6 +198,34 @@ def add_atmospere_particles(data,
     data['NumPart_ThisFile'][0] = data['PartType0']['pos'].shape[0]
 
     return data
+
+
+def add_internal_energy_profile(pars, pos, units):
+
+    """ 
+    Assign temperature profile to the particles.
+    param: data - data object with particle information 
+    param: pars - parameters of the profile
+    """
+
+    u = np.zeros(pos.shape[0])
+
+    if pars['profile'] == 'uniform':
+        unit_energy_density = (units['UL']/units['UTM'])**2
+        mu = pars['mu'] # molecular weight
+        T0 = pars['T0']
+        R_cgs = 8.3e7 
+        gamma = 5/3
+        f = 2/(gamma-1)
+        u0 = f/2 * 1/mu * R_cgs * T0 / unit_energy_density
+        u = u0*np.ones(pos.shape[0])
+    elif pars['profile'] == 'equilibrium':
+        print('no profile yet')
+    
+    return u
+
+    
+
 
 
 
@@ -420,7 +443,7 @@ def makeIC(fileInputName, fileOutputName, PrintToVTK = True):
     rho0 = 5e-26 / rho_units_snapshot  
     R_max = 50 # maximal radius in kpc
     pars = {'density':{'profile': 'beta', 'rho0': rho0, 'r0': 0.33, 'beta': 2/3 },
-            'temperature':{'profile': 'constant', 'T0': 1e4 }
+            'temperature':{'profile': 'uniform', 'T0': 1e4, 'mu': 0.59 }
             }  # form parameter dict
 
     # Add atmosphere
