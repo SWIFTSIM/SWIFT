@@ -577,7 +577,7 @@ struct engine {
 
   /* The output selection options */
   struct output_options *output_options;
-
+  
   /* Temporary struct to hold a group of deferable properties (in MPI mode
    * these are reduced together, but may not be required just yet). */
   struct collectgroup1 collect_group1;
@@ -705,7 +705,7 @@ void engine_unskip(struct engine *e);
 void engine_unskip_rt_sub_cycle(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
-void engine_drift_all_multipoles(struct engine *e);
+void engine_drift_boundary_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_allocate_foreign_particles(struct engine *e, const int fof);
 void engine_print_stats(struct engine *e);

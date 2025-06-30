@@ -1584,7 +1584,7 @@ int engine_prepare(struct engine *e) {
 
   if (!e->forcerebuild && !e->forcerepart && !e->restarting &&
       (e->policy & engine_policy_self_gravity)) {
-    engine_drift_all_multipoles(e);
+    engine_drift_boundary_multipoles(e);
   }
 
   /* Unskip active tasks and check for rebuild */

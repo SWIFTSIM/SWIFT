@@ -80,5 +80,5 @@ labels = [
     ["csds_init:", 0],
     ["Applying lightcone map updates", 0],
     ["Flushing particle buffers", 0],
-    ["engine_drift_all_multipoles:", 0],
+    ["engine_drift_all_boundary_multipoles:", 0],
 ]
