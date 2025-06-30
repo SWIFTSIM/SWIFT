@@ -16,7 +16,8 @@ import vtk
 
 
 
-def open_snapshot(fileName):
+def open_snapshot(fileName:str,
+                  ):
     
     """ Open the input file and read the header and particle positions 
     param: fileName - the name of the input file
@@ -77,10 +78,10 @@ def open_snapshot(fileName):
 
 
 
-def add_atmospere_particles(data,
-                            pars,
-                            R_max,  # Maximum radius of the atmosphere in BoxSize units
-                            IAsource='IAfile',  # Source of atmosphere particles, e.g., 'grid' or 'random',
+def add_atmospere_particles(data:dict,
+                            pars:dict,
+                            R_max:float,  # Maximum radius of the atmosphere in BoxSize units
+                            IAsource:str='IAfile',  # Source of atmosphere particles, e.g., 'grid' or 'random',
                             ):
     """ Add atmosphere particles to the data dictionary
     param: data - the dictionary containing BoxSize, afact, N_in, and pos_in
@@ -93,7 +94,7 @@ def add_atmospere_particles(data,
     #BoxSize = data['BoxSize'][0]  # Assuming BoxSize is a 1D array
 
     # Estimate required number of particles
-    Natm = estimate_Natm(pars['density'], mp, R_max)
+    Natm = estimate_Natm(pars, mp, R_max)
     print('Estimated number of atmosphere particles:', Natm)
     if Natm > 1e6:
         print('Warning: Number of atmosphere particles is very high')
@@ -138,7 +139,7 @@ def add_atmospere_particles(data,
 
     # Rescale particle positions to match the required density profile
     pos *= 2*R_max # Scale positions to make sphere with radius = Rmax
-    rtab, Ftab = tabulate_F_function(pars['density'], R_max) 
+    rtab, Ftab = tabulate_F_function(pars, R_max) 
     F_rho = interp1d(rtab, Ftab, kind='linear', bounds_error=False, fill_value=(Ftab[0], Ftab[-1]))  # Build CDF function for the selected density
     r_uni = np.linalg.norm(pos, axis=1)
     F_uni = r_uni**3 / R_max**3 # data['BoxSize'][0]**3
@@ -159,7 +160,7 @@ def add_atmospere_particles(data,
 
     # write particle smoothing lengths
     r_uni = np.linalg.norm(pos, axis=1)
-    h = 1.595*(mp/rho(r_uni,pars['density']))**(1/3)
+    h = 1.595*(mp/rho(r_uni,pars))**(1/3)
     data['PartType0']['h'] = np.concatenate((data['PartType0']['h'], h), axis=0)
 
     # write particle masses
@@ -174,8 +175,8 @@ def add_atmospere_particles(data,
     # write particle energies TODO: add temperature equalization
     #umin = np.min( data['PartType0']['u'] )
     units = data['Units']
-    u = add_internal_energy_profile(pars['temperature'], pos, units)
-    #print(u)
+    u = add_internal_energy_profile(pars, pos-data['BoxSize'] / 2, units)
+    print(u)
     data['PartType0']['u'] = np.concatenate((data['PartType0']['u'], u), axis=0)
 
     # write particle velocities
@@ -200,7 +201,10 @@ def add_atmospere_particles(data,
     return data
 
 
-def add_internal_energy_profile(pars, pos, units):
+def add_internal_energy_profile(pars:dict,
+                                pos_center:np.ndarray, 
+                                units:dict,
+                                ):
 
     """ 
     Assign temperature profile to the particles.
@@ -208,31 +212,93 @@ def add_internal_energy_profile(pars, pos, units):
     param: pars - parameters of the profile
     """
 
-    u = np.zeros(pos.shape[0])
+    parsT = pars['temperature']
 
-    if pars['profile'] == 'uniform':
+    u = np.zeros(pos_center.shape[0])
+
+    if parsT['profile'] == 'uniform':
         unit_energy_density = (units['UL']/units['UTM'])**2
-        mu = pars['mu'] # molecular weight
-        T0 = pars['T0']
+        mu = parsT['mu'] # molecular weight
+        T0 = parsT['T0']
         R_cgs = 8.3e7 
         gamma = 5/3
         f = 2/(gamma-1)
         u0 = f/2 * 1/mu * R_cgs * T0 / unit_energy_density
-        u = u0*np.ones(pos.shape[0])
-    elif pars['profile'] == 'equilibrium':
+        u = u0*np.ones(pos_center.shape[0])
+    elif parsT['profile'] == 'equilibrium':
+        r = np.linalg.norm(pos_center, axis=1)
+        rmax = np.max(r)
+        N_points = 1000
+        CONST_G_CGS = 6.672e-8 
+        GUNIT = units['UL']**3/(units['UM']*units['UTM']**2)
+        rtab, M_atm_DM = tabulate_Mtot_function(pars,rmax, N_points=N_points)
+        dr = np.abs((np.max(rtab) - np.min(rtab)) / N_points )
+        integrands = M_atm_DM * rho(rtab, pars) / rtab**2 
+
+        def u_vs_r(r_value):
+            mask = ((r_value<rtab) & (rtab<rmax))
+            integral = np.sum(integrands[mask]*dr)
+            return CONST_G_CGS / rho(r_value,pars) * integral
+        
+        for i in range(len(r)):
+            u[i]+=u_vs_r(r[i])/GUNIT
+    else:
         print('no profile yet')
     
     return u
 
-    
+
+#def u_eq_vs_r(pars, r, units):
+
+# def M_tab(r:np.ndarray,
+#           pars:dict,
+#           ):
 
 
+def tabulate_Mtot_function(pars:dict,
+                           R_max:float,
+                           N_points:int=1000):
+    """ 
+    Tabulate the DM + gas halo mass function
+    param: pars - parameters of the density profile
+    param: R_max - maximum radius for the mass function
+    param: N_points - number of points to sample in the mass function
+    return: a function that computes the cumulative mass distribution
+    """
+    r = np.linspace(1e-6*R_max, R_max, N_points)
+    M = np.array([integrate.quad(lambda s: (rho(s, pars)+rho_DM(s, pars)) * s**2, 0, ri)[0] for ri in r])
+
+    return r, M
+
+def rho_DM(r:np.ndarray,
+           pars:dict,
+           ):
+    """ 
+    Compute: DM density profile of Hernquist galaxy
+    param: pars - parameters of the profile
+    param: r - radius of the profile
+    return: density
+    """
+    # Read parameters of the profile
+
+    pars = pars['gravity']
+
+    if pars['profile']=='hernquist':
+        M = pars['M']
+        a = pars['a']
+        DM_density = M/(2*np.pi)*a/(r*(r+a)**3) # rho_s * ((r/r_s)*(1+(r/r_s))**3)
+    else:
+        print('not implemented')
+
+    return DM_density
 
 
 import numpy as np
 from scipy.spatial import cKDTree
 
-def cut_disk_region_from_atmosphere(data, pos_atm):
+def cut_disk_region_from_atmosphere(data:dict,
+                                    pos_atm:np.ndarray,
+                                    ):
 
     """ 
     Cut atmosphere particles which lie inside the disk
@@ -261,7 +327,8 @@ def cut_disk_region_from_atmosphere(data, pos_atm):
 
 
 
-def open_IAfile(path_to_file):
+def open_IAfile(path_to_file:str,
+                ):
     """ 
     Open initial particle arrangement file (used for atmosphere generation)
     param: path_to_file - path to .hdf5
@@ -274,7 +341,9 @@ def open_IAfile(path_to_file):
 
 
 
-def estimate_Natm(pars, mp, R_max):
+def estimate_Natm(pars:dict,
+                  mp:float,
+                  R_max:float):
     """ 
     Estimate number of atmosphere particles given particle mass and atmosphere radius
     param: pars - parameters for density profile in snapshot units
@@ -293,7 +362,9 @@ def estimate_Natm(pars, mp, R_max):
 
 
 
-def rho(r, pars):
+def rho(r:np.ndarray,
+        pars:dict,
+        ):
     """ 
     Calculate the density profile at given positions
     param: r - distance to the center
@@ -302,6 +373,8 @@ def rho(r, pars):
         other fields - parameters specific for the profile
     return: the density at the given positions
     """
+
+    pars = pars['density']
 
     # Define density profiles
     if pars['profile']=='uniform':
@@ -323,7 +396,9 @@ def rho(r, pars):
     return density
 
 
-def tabulate_F_function(pars, R_max, N_points=1000):
+def tabulate_F_function(pars:dict,
+                        R_max:float,
+                        N_points:int=1000):
     """ 
     Tabulate the mass function for a given density profile
     param: pars - parameters of the density profile
@@ -339,7 +414,11 @@ def tabulate_F_function(pars, R_max, N_points=1000):
 
 
 
-def invert_density_cdf(F_uni, F_rho, R_max, Rmin):
+def invert_density_cdf(F_uni:np.ndarray,
+                       F_rho:np.ndarray,
+                       R_max:float,
+                       Rmin:float
+                       ):
     """ Invert cdf function to get position rescaling
     param: F_uni - uniform density CDF of particles
     param: F_rho - chosen density profile CDF
@@ -353,9 +432,9 @@ def invert_density_cdf(F_uni, F_rho, R_max, Rmin):
 
 
 
-def add_magnetic_fields(data,
-                        B0_Gaussian_Units=1e-3,  # micro Gauss
-                        type="uniform",
+def add_magnetic_fields(data:dict,
+                        B0_Gaussian_Units:float=1e-3,  # micro Gauss
+                        type:str="uniform",
                         ):
     """ 
     Add magnetic fields to the data dictionary
@@ -398,7 +477,9 @@ def add_magnetic_fields(data,
     return data
 
 
-def print_to_vtk(data, fileName):
+def print_to_vtk(data:dict,
+                 fileName:str,
+                 ):
     """ 
     Print the data dictionary to a VTK file
     param: data - the dictionary containing BoxSize, afact, N_in, and pos_in
@@ -420,7 +501,10 @@ def print_to_vtk(data, fileName):
     return
 
 
-def makeIC(fileInputName, fileOutputName, PrintToVTK = True):
+def makeIC(fileInputName:str,
+           fileOutputName:str,
+           PrintToVTK:bool = True,
+           ):
 
     """
     Make a new file from an input snapshot file
@@ -439,13 +523,30 @@ def makeIC(fileInputName, fileOutputName, PrintToVTK = True):
                                )
 
     # Atmosphere parameter setup. Profile follows U. P. Steinwandel et al. 2019
+    # gas atmosphere density parameters
     rho_units_snapshot = data['Units']['UM'] * data['Units']['UL']**(-3)
-    rho0 = 5e-26 / rho_units_snapshot  
+    rho0 = 5e-26 / rho_units_snapshot 
     R_max = 50 # maximal radius in kpc
-    pars = {'density':{'profile': 'beta', 'rho0': rho0, 'r0': 0.33, 'beta': 2/3 },
-            'temperature':{'profile': 'uniform', 'T0': 1e4, 'mu': 0.59 }
-            }  # form parameter dict
 
+    # dark matter halo mass distributon parameters                   
+    CONST_G_CGS = 6.672e-8 
+    PARSEC_IN_CGS = 3.0856776e18
+    KM_PER_SEC_IN_CGS = 1.0e5
+    M_200_cgs = 137 * data['Units']['UM']
+    c_200 = 9  
+    h = 0.704
+    H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
+    rhoc_cgs = 3 * H_0_cgs ** 2 / (8 * np.pi * CONST_G_CGS)
+    r_200_cgs = (3 * M_200_cgs / (4 * np.pi * rhoc_cgs * 200)) ** (1 / 3) / data['Units']['UL']
+    r_s_cgs = r_200_cgs / c_200 
+    a_hernquist = r_s_cgs * np.sqrt(2*(np.log(1+c_200)-c_200/(1+c_200)))
+    M_hernquist = M_200_cgs * (1+a_hernquist/r_200_cgs)**2/data['Units']['UM']
+
+    # parameter dict
+    pars = {'density':{'profile': 'beta', 'rho0': rho0, 'r0': 0.33, 'beta': 2/3 },
+            'temperature':{'profile': 'equilibrium'}, #, 'T0': 1e4, 'mu': 0.59 },
+            'gravity':{'profile':'hernquist','M':M_hernquist,'a':a_hernquist}
+            }  
     # Add atmosphere
     data = add_atmospere_particles(data, pars, R_max=R_max)
 
@@ -493,7 +594,12 @@ def makeIC(fileInputName, fileOutputName, PrintToVTK = True):
 
     fileOutput.close()
 
-def write_or_replace_dataset(group, name, datai, size, dtype):
+def write_or_replace_dataset(group:object,
+                             name:str,
+                             datai:np.ndarray,
+                             size:list,
+                             dtype:str,
+                             ):
 
     """ Write or replace a field in .hdf5
     param: group - group to write dataset into
