@@ -577,7 +577,7 @@ struct engine {
 
   /* The output selection options */
   struct output_options *output_options;
-  
+
   /* Temporary struct to hold a group of deferable properties (in MPI mode
    * these are reduced together, but may not be required just yet). */
   struct collectgroup1 collect_group1;

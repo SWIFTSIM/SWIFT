@@ -491,9 +491,9 @@ void engine_drift_top_multipoles(struct engine *e) {
             clocks_getunit());
 }
 
-
-void engine_do_drift_boundary_multipoles_mapper(void *map_data, int num_elements,
-						void *extra_data) {
+void engine_do_drift_boundary_multipoles_mapper(void *map_data,
+                                                int num_elements,
+                                                void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
   struct task **tasks = (struct task **)map_data;
@@ -504,8 +504,9 @@ void engine_do_drift_boundary_multipoles_mapper(void *map_data, int num_elements
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
 
-    /* Drift the multipoles at this level only 
-     * Remember to lock as different threads in the pool could work on the same m-pole. */
+    /* Drift the multipoles at this level only
+     * Remember to lock as different threads in the pool could work on the same
+     * m-pole. */
     lock_lock(&ci->grav.mlock);
     cell_drift_multipole(ci, e);
     if (lock_unlock(&ci->grav.mlock) != 0) error("Impossible to unlock m-pole");
@@ -525,14 +526,15 @@ void engine_do_drift_boundary_multipoles_mapper(void *map_data, int num_elements
  *
  * @param e The #engine.
  */
-void engine_drift_boundary_multipoles(struct engine* e) {
+void engine_drift_boundary_multipoles(struct engine *e) {
 
   const ticks tic = getticks();
-  
+
   threadpool_map(&e->threadpool, engine_do_drift_boundary_multipoles_mapper,
-		 e->s->list_boundary_grav_pairs, e->s->count_boundary_grav_pairs, sizeof(struct task*),
-		 threadpool_auto_chunk_size, e);
-  
+                 e->s->list_boundary_grav_pairs,
+                 e->s->count_boundary_grav_pairs, sizeof(struct task *),
+                 threadpool_auto_chunk_size, e);
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
