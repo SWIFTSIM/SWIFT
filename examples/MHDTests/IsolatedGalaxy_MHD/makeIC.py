@@ -266,7 +266,8 @@ def tabulate_Mtot_function(pars:dict,
     return: a function that computes the cumulative mass distribution
     """
     r = np.linspace(1e-6*R_max, R_max, N_points)
-    M = np.array([integrate.quad(lambda s: (rho(s, pars)+rho_DM(s, pars)) * s**2, 0, ri)[0] for ri in r])
+    #M = np.array([integrate.quad(lambda s: (rho(s, pars)+rho_DM(s, pars)) * s**2, 0, ri)[0] for ri in r])
+    M = np.array([integrate.quad(lambda s: rho_DM(s, pars) * s**2, 0, ri)[0] for ri in r])
 
     return r, M
 
