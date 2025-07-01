@@ -846,6 +846,15 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
             "gparts_foreign", (void **)&s->gparts_foreign, gpart_align,
             sizeof(struct gpart_foreign) * s->size_gparts_foreign) != 0)
       error("Failed to allocate foreign gpart data.");
+
+#ifdef SWIFT_DEBUG_CHECKS
+    bzero(s->gparts_foreign, s->size_gparts_foreign * sizeof(struct gpart_foreign));
+
+    for (size_t i = 0; i < s->size_gparts_foreign; ++i) {
+      s->gparts_foreign[i].time_bin = time_bin_not_created;
+      s->gparts_foreign[i].id = -45;
+    }
+#endif
   }
 
   /* Allocate space for the foreign FOF particles we will receive */
