@@ -1339,10 +1339,15 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
     if (!do_ci && !do_cj) return 0;
     if (ci->grav.count == 0 || cj->grav.count == 0) return 0;
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (!cell_is_multipole_drifted(ci, e)) error("Multipole ci is not drifted");
-    if (!cell_is_multipole_drifted(cj, e)) error("Multipole cj is not drifted");
-#endif
+    /* Atomically drift the multipole in ci */
+    lock_lock(&ci->grav.mlock);
+    if (ci->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
+    if (lock_unlock(&ci->grav.mlock) != 0) error("Impossible to unlock m-pole");
+
+    /* Atomically drift the multipole in cj */
+    lock_lock(&cj->grav.mlock);
+    if (cj->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
+    if (lock_unlock(&cj->grav.mlock) != 0) error("Impossible to unlock m-pole");
 
     /* Can we use multipoles ? */
     if (cell_can_use_pair_mm(ci, cj, e, sp, /*use_rebuild_data=*/0,
@@ -1615,9 +1620,9 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
 /**
  * @brief Will a gravity pair task acting on two cells access any #gpart?
  *
- * Note: This performs a check at the level of the two cells called. No recursion
- * is performed. If the gravity pair cannot use M-M , we do not check whether
- * progenies could. We assume particles will be touched in this case.
+ * Note: This performs a check at the level of the two cells called. No
+ * recursion is performed. If the gravity pair cannot use M-M , we do not check
+ * whether progenies could. We assume particles will be touched in this case.
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
@@ -1643,20 +1648,20 @@ int cell_grav_pair_will_act_on_gpart(const struct cell *restrict ci,
   if (!cell_is_multipole_drifted(ci, e)) error("Multipole ci is not drifted");
   if (!cell_is_multipole_drifted(cj, e)) error("Multipole cj is not drifted");
 #endif
-  
+
   /* Can we use multipoles ? */
   if (cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/0,
                            /*is_tree_walk=*/1)) {
-    
+
     /* Ok, no particle will be touched. */
     return 0;
   } else {
 
     /* Note: A more refined version of this function could recurse here
-     * and verify whether the progenies will access particles or not. 
+     * and verify whether the progenies will access particles or not.
      * Such an implementation would require to drift more multipoles
      * in engine_drift_boundary_multipoles(). */
-    
+
     return 1;
   }
 }

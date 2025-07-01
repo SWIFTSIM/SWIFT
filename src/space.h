@@ -198,11 +198,11 @@ struct space {
   int *local_cells_with_particles_top;
 
   /*! List of gravity pair tasks that have a non-local cell to act on. */
-  struct task** list_boundary_grav_pairs;
+  struct task **list_boundary_grav_pairs;
 
   /*! Number of gravity pair tasks that have a non-local cell to act on. */
   int count_boundary_grav_pairs;
-  
+
   /*! The total number of #part in the space. */
   size_t nr_parts;
 
