@@ -852,7 +852,6 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
     for (size_t i = 0; i < s->size_gparts_foreign; ++i) {
       s->gparts_foreign[i].time_bin = time_bin_not_created;
-      s->gparts_foreign[i].id = -45;
     }
 #endif
   }
