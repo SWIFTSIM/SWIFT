@@ -126,8 +126,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   dB_cross_dx[2] = dB[0] * dx[1] - dB[1] * dx[0];
 
   /* Compute gradient terms */
-  const float over_rho_i = 1.0f / rhoi * f_ij;
-  const float over_rho_j = 1.0f / rhoj * f_ji;
+  const float over_rho_i = 1.0f / rhoj * f_ij;
+  const float over_rho_j = 1.0f / rhoi * f_ji;
 
   /* Calculate curl */
   pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];
@@ -221,7 +221,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   dB_cross_dx[2] = dB[0] * dx[1] - dB[1] * dx[0];
 
   /* Compute gradient terms */
-  const float over_rho_i = 1.0f / rhoi * f_ij;
+  const float over_rho_i = 1.0f / rhoj * f_ij;
 
   /* Calculate curl */
   pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];
@@ -329,15 +329,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float dBdr = Bri - Brj;
 
   /* Compute gradient terms */
-  const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
-  const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
+  const float over_rho2_i = 1.0f / (rhoi * rhoj) * f_ij;
+  const float over_rho2_j = 1.0f / (rhoj * rhoi) * f_ji;
+
+  const float iso_over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
+  const float iso_over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
 
   /* Compute symmetric div(B) */
   const float grad_term_i = over_rho2_i * wi_dr * r_inv;
   const float grad_term_j = over_rho2_j * wj_dr * r_inv;
 
-  const float asym_grad_term_i = f_ij * wi_dr * r_inv / rhoi;
-  const float asym_grad_term_j = f_ji * wj_dr * r_inv / rhoj;
+  const float asym_grad_term_i = f_ij * wi_dr * r_inv / rhoj;
+  const float asym_grad_term_j = f_ji * wj_dr * r_inv / rhoi;
 
   const float divB_i = dBdr * asym_grad_term_i;
   const float divB_j = dBdr * asym_grad_term_j;
@@ -352,9 +355,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /* Isotropic MHD pressure term */
   sph_acc_term_i[0] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[0];
+      0.5f * B2i * permeability_inv * iso_over_rho2_i * wi_dr * r_inv * dx[0];
   sph_acc_term_i[0] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[0];
+      0.5f * B2j * permeability_inv * iso_over_rho2_j * wj_dr * r_inv * dx[0];
 
   /* Anisotropic MHD term */
   sph_acc_term_i[0] +=
@@ -366,9 +369,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /* Isotropic MHD pressure term */
   sph_acc_term_i[1] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[1];
+      0.5f * B2i * permeability_inv * iso_over_rho2_i * wi_dr * r_inv * dx[1];
   sph_acc_term_i[1] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[1];
+      0.5f * B2j * permeability_inv * iso_over_rho2_j * wj_dr * r_inv * dx[1];
 
   /* Anisotropic MHD term */
   sph_acc_term_i[1] +=
@@ -380,9 +383,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /* Isotropic MHD pressure term */
   sph_acc_term_i[2] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[2];
+      0.5f * B2i * permeability_inv * iso_over_rho2_i * wi_dr * r_inv * dx[2];
   sph_acc_term_i[2] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[2];
+      0.5f * B2j * permeability_inv * iso_over_rho2_j * wj_dr * r_inv * dx[2];
 
   /* Anisotropic MHD term */
   sph_acc_term_i[2] +=
@@ -656,14 +659,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float dBdr = Bri - Brj;
 
   /* Compute gradient terms */
-  const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
-  const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
+  const float over_rho2_i = 1.0f / (rhoi * rhoj) * f_ij;
+  const float over_rho2_j = 1.0f / (rhoj * rhoi) * f_ji;
+
+  const float iso_over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
+  const float iso_over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
 
   /* Compute symmetric div(B) */
   const float grad_term_i = over_rho2_i * wi_dr * r_inv;
   const float grad_term_j = over_rho2_j * wj_dr * r_inv;
 
-  const float asym_grad_term_i = f_ij * wi_dr * r_inv / rhoi;
+  const float asym_grad_term_i = f_ij * wi_dr * r_inv / rhoj;
 
   const float divB_i = dBdr * asym_grad_term_i;
 
@@ -676,9 +682,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* Isotropic MHD pressure term */
   sph_acc_term_i[0] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[0];
+      0.5f * B2i * permeability_inv * iso_over_rho2_i * wi_dr * r_inv * dx[0];
   sph_acc_term_i[0] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[0];
+      0.5f * B2j * permeability_inv * iso_over_rho2_j * wj_dr * r_inv * dx[0];
 
   /* Anisotropic MHD term */
   sph_acc_term_i[0] +=
@@ -690,9 +696,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* Isotropic MHD pressure term */
   sph_acc_term_i[1] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[1];
+      0.5f * B2i * permeability_inv * iso_over_rho2_i * wi_dr * r_inv * dx[1];
   sph_acc_term_i[1] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[1];
+      0.5f * B2j * permeability_inv * iso_over_rho2_j * wj_dr * r_inv * dx[1];
 
   /* Anisotropic MHD term */
   sph_acc_term_i[1] +=
@@ -704,9 +710,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* Isotropic MHD pressure term */
   sph_acc_term_i[2] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[2];
+      0.5f * B2i * permeability_inv * iso_over_rho2_i * wi_dr * r_inv * dx[2];
   sph_acc_term_i[2] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[2];
+      0.5f * B2j * permeability_inv * iso_over_rho2_j * wj_dr * r_inv * dx[2];
 
   /* Anisotropic MHD term */
   sph_acc_term_i[2] +=
