@@ -1760,14 +1760,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
-    /* int activated = 0; */
-
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
-
-      /* activated = 1; */
 
       /* Store current values of dx_max and h_max. */
       if (t->type == task_type_self) {
@@ -1797,36 +1793,22 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
     /* Only interested in pair interactions as of here. */
     if (t->type == task_type_pair) {
+
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
       if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
 
-        /* if(activated == -1) error("dummy"); */
-
 #ifdef WITH_MPI
 
-      int pair_will_act_on_particles = -1;
+      /* Verify whether the pair will actually involve any particle
+       * interaction.
+       * If not, the pair involves multipoles only, which don't need comms.
+       * Note that we are only interested in the case where the pair
+       * goes over domain boundaries */
+      int pair_will_act_on_particles = 0;
       if ((ci_nodeID != nodeID) || (cj_nodeID != nodeID)) {
         pair_will_act_on_particles =
             cell_hydro_pair_will_act_on_part(ci, cj, e);
-
-        /* int reverse_pair_will_act_on_particles = */
-        /*   cell_hydro_pair_will_act_on_part(cj, ci, e); */
-
-        /* if(pair_will_act_on_particles) { */
-
-        /*   message("pair %lld - %lld (nodes %d and %d) will run - %d / %d
-         * activated = %d", ci->cellID, cj->cellID, ci_nodeID, cj_nodeID,
-         * pair_will_act_on_particles, reverse_pair_will_act_on_particles,
-         * activated); */
-        /* } else { */
-
-        /*   message("pair %lld - %lld (nodes %d and %d) will NOT run - %d / %d
-         * activated = %d", ci->cellID, cj->cellID, ci_nodeID, cj_nodeID,
-         * pair_will_act_on_particles, reverse_pair_will_act_on_particles,
-         * activated); */
-
-        /* } */
       }
 
       /* Activate the send/recv tasks. */
