@@ -139,6 +139,13 @@ struct hydro_props {
 
   /*! MHD parameters */
   struct mhd_global_data mhd;
+
+  // Additional jet parameters //
+  float box_size;
+  float box_aspect_ratio;
+  float jet_power;
+  float jet_velocity;
+  float jet_duration;
 };
 
 void hydro_props_print(const struct hydro_props *p);
