@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl).
+ * Copyright (c) 2025 Katy Proctor (katy.proctor@fysik.su.se)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,9 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_SIDM_IO_H
+#define SWIFT_SIDM_IO_H
 
-/* This object's header. */
-#include "part_type.h"
+#include <config.h>
 
-const char* part_type_names[swift_type_count] = {
-    "Gas", "DM", "DMBackground", "Sink", "Stars", "BH", "Neutrino", "SIDM"};
+/* Local includes */
+#include "engine.h"
+
+/* Load the correct SIDM model */
+#if defined(SIDM_NONE)
+#include "./sidm/Default/sidm_io.h"
+#elif defined(SIDM_BASIC)
+#include "./sidm/Basic/sidm_io.h"
+#else
+#error "Invalid choice of SIDM model"
+#endif
+
+#endif /* SWIFT_SIDM_IO_H */

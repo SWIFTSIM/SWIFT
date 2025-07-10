@@ -997,7 +997,7 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the gparticles according to their cell index. */
   if (nr_gparts > 0)
-    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts,
+    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts, s->siparts,
                       g_dest, &g_counts[nodeID * nr_nodes], nr_nodes);
 
 #ifdef SWIFT_DEBUG_CHECKS

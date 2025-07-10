@@ -115,6 +115,7 @@ int main(int argc, char *argv[]) {
   struct spart *sparts = NULL;
   struct bpart *bparts = NULL;
   struct sink *sinks = NULL;
+  struct sipart *siparts = NULL;
   struct unit_system us;
   struct los_props los_properties;
   struct ic_info ics_metadata;
@@ -195,6 +196,7 @@ int main(int argc, char *argv[]) {
   int with_structure_finding = 0;
   int with_csds = 0;
   int with_sinks = 0;
+  int with_sidm = 0;
   int with_qla = 0;
   int with_eagle = 0;
   int with_gear = 0;
@@ -251,6 +253,7 @@ int main(int argc, char *argv[]) {
                   "Run with black holes.", NULL, 0, 0),
       OPT_BOOLEAN('k', "sinks", &with_sinks, "Run with sink particles.", NULL,
                   0, 0),
+      OPT_BOOLEAN('n', "sidm", &with_sidm, "Run with SIDM.", NULL, 0, 0),
       OPT_BOOLEAN(
           'u', "fof", &with_fof,
           "Run Friends-of-Friends algorithm to perform black hole seeding.",
@@ -793,6 +796,7 @@ int main(int argc, char *argv[]) {
     message("sizeof(sink)          is %4zi bytes.", sizeof(struct sink));
     message("sizeof(spart)         is %4zi bytes.", sizeof(struct spart));
     message("sizeof(bpart)         is %4zi bytes.", sizeof(struct bpart));
+    message("sizeof(sipart)         is %4zi bytes.", sizeof(struct sipart));
     message("sizeof(gpart)         is %4zi bytes.", sizeof(struct gpart));
     message("sizeof(gpart_foreign) is %4zi bytes.",
             sizeof(struct gpart_foreign));
@@ -1250,7 +1254,7 @@ int main(int argc, char *argv[]) {
 
     /* Get ready to read particles of all kinds */
     size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nnupart = 0;
-    size_t Nspart = 0, Nbpart = 0, Nsink = 0;
+    size_t Nspart = 0, Nbpart = 0, Nsink = 0, Nsipart = 0;
     double dim[3] = {0., 0., 0.};
 
     /* Prepare struct to store metadata from ICs */
@@ -1269,18 +1273,18 @@ int main(int argc, char *argv[]) {
                      nr_threads, dry_run, remap_ids, &ics_metadata);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                   &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
-                   &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-                   with_gravity, with_sinks, with_stars, with_black_holes,
+                   &bparts, &siparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
+                   &Nsink, &Nspart, &Nbpart, &Nsipart, &flag_entropy_ICs, with_hydro,
+                   with_gravity, with_sinks, with_stars, with_black_holes, with_sidm,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                    dry_run, remap_ids, &ics_metadata);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                   &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
-                   &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-                   with_gravity, with_sinks, with_stars, with_black_holes,
+                   &bparts, &siparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
+                   &Nsink, &Nspart, &Nbpart, &Nsipart, &flag_entropy_ICs, with_hydro,
+                   with_gravity, with_sinks, with_stars, with_black_holes, with_sidm,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    nr_threads, dry_run, remap_ids, &ics_metadata);
 #endif
@@ -1351,6 +1355,7 @@ int main(int argc, char *argv[]) {
     N_total[swift_type_dark_matter_background] = Ngpart_background;
     N_total[swift_type_sink] = Nsink;
     N_total[swift_type_stars] = Nspart;
+    N_total[swift_type_sidm] = Nsipart;
     N_total[swift_type_black_hole] = Nbpart;
     N_total[swift_type_neutrino] = Nnupart;
     N_total[swift_type_count] = Ngpart;
@@ -1360,11 +1365,11 @@ int main(int argc, char *argv[]) {
 
     if (myrank == 0)
       message(
-          "Read %lld gas particles, %lld sink particles, %lld star particles, "
+          "Read %lld gas particles, %lld sink particles, %lld star particles, %lld SIDM particles,"
           "%lld black hole particles, %lld DM particles, %lld DM background "
           "particles, and %lld neutrino DM particles from the ICs.",
           N_total[swift_type_gas], N_total[swift_type_sink],
-          N_total[swift_type_stars], N_total[swift_type_black_hole],
+          N_total[swift_type_stars], N_total[swift_type_sidm], N_total[swift_type_black_hole],
           N_total[swift_type_dark_matter],
           N_total[swift_type_dark_matter_background],
           N_total[swift_type_neutrino]);
@@ -1391,7 +1396,7 @@ int main(int argc, char *argv[]) {
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
-               sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, Nnupart,
+               sparts, bparts, siparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, Nnupart, Nsipart,
                periodic, replicate, remap_ids, generate_gas_in_ics, with_hydro,
                with_self_gravity, with_star_formation, with_sinks,
                with_DM_particles, with_DM_background_particles, with_neutrinos,
@@ -1469,6 +1474,7 @@ int main(int argc, char *argv[]) {
     N_long[swift_type_sink] = s.nr_sinks;
     N_long[swift_type_black_hole] = s.nr_bparts;
     N_long[swift_type_neutrino] = s.nr_nuparts;
+    N_long[swift_type_sidm] = s.nr_siparts;
     MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
 #else
@@ -1480,6 +1486,7 @@ int main(int argc, char *argv[]) {
     N_total[swift_type_sink] = s.nr_sinks;
     N_total[swift_type_black_hole] = s.nr_bparts;
     N_total[swift_type_neutrino] = s.nr_nuparts;
+    N_total[swift_type_sidm] = s.nr_siparts;
 #endif
 
     /* Say a few nice things about the space we just created. */
@@ -1494,6 +1501,7 @@ int main(int argc, char *argv[]) {
       message("%zi sinks in %i cells.", s.nr_sinks, s.tot_cells);
       message("%zi sparts in %i cells.", s.nr_sparts, s.tot_cells);
       message("%zi bparts in %i cells.", s.nr_bparts, s.tot_cells);
+      message("%zi siparts in %i cells.", s.nr_siparts, s.tot_cells);
       message("maximum depth is %d.", s.maxdepth);
       fflush(stdout);
     }

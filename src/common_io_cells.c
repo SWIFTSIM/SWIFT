@@ -83,6 +83,7 @@ static long long CELL_COUNT_NON_INHIBITED_PARTICLES(part, hydro);
 static long long CELL_COUNT_NON_INHIBITED_PARTICLES(spart, stars);
 static long long CELL_COUNT_NON_INHIBITED_PARTICLES(bpart, black_holes);
 static long long CELL_COUNT_NON_INHIBITED_PARTICLES(sink, sinks);
+static long long CELL_COUNT_NON_INHIBITED_PARTICLES(sipart, sidm);
 
 /**
  * @brief Count the non-inhibted g-particles in the cell and return the
@@ -172,6 +173,7 @@ long long IO_COUNT_PARTICLES_TO_WRITE(stars, spart);
 long long IO_COUNT_PARTICLES_TO_WRITE(sinks, sink);
 long long IO_COUNT_PARTICLES_TO_WRITE(black_holes, bpart);
 long long IO_COUNT_PARTICLES_TO_WRITE(neutrinos, neutrinos);
+long long IO_COUNT_PARTICLES_TO_WRITE(sidm, sipart);
 
 #if defined(HAVE_HDF5)
 

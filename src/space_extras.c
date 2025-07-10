@@ -167,7 +167,7 @@ void space_allocate_extras(struct space *s, int verbose) {
 
       /* We now need to correct all the pointers of the other particle arrays */
       part_relink_all_parts_to_gparts(gparts_new, s->nr_gparts, s->parts,
-                                      s->sinks, s->sparts, s->bparts,
+                                      s->sinks, s->sparts, s->bparts, s->siparts,
                                       &s->e->threadpool);
     }
 
