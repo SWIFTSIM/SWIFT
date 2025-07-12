@@ -77,7 +77,7 @@ INLINE static void *csds_hydro_convert_secondary(const struct part *p,
   const float secondary[7] = {
       hydro_get_comoving_entropy(p, xp),
       hydro_get_comoving_pressure(p),
-      p->viscosity.alpha * p->force.balsara,
+      p->viscosity.alpha,
       p->diffusion.alpha,
       p->diffusion.laplace_u,
       p->viscosity.div_v,
