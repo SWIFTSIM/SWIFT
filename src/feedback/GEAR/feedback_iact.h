@@ -120,6 +120,7 @@ runner_iact_nonsym_feedback_apply(
   const double dm = m_ej * weight;
   const double new_mass = mj + dm;
 
+  /* Distribute SN */
   if (e_sn != 0.0) {
     /* Energy received */
     const double du = (e_sn) * weight / new_mass;
@@ -139,15 +140,13 @@ runner_iact_nonsym_feedback_apply(
     }
   }
 
-  /* TODO: Distribute pre-SN */
+  /* Distribute pre-SN */
   if (e_preSN != 0.0) {
     /* Energy received */
     const double du = (e_preSN) * weight / new_mass;
-    // message("the received energy of particle %lld is : %e",pj->id,du);
     xpj->feedback_data.delta_u += du;
   }
 
-  
 
   /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);

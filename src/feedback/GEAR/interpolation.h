@@ -222,11 +222,11 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_free(
 ////////////////////////////// Interpolation 2D /////////////////////////////////
 
 /**
- * @brief Structure for the interpolation.
+ * @brief Structure for the 2D interpolation.
  */
 struct interpolation_2d {
   /* Data to interpolate */
-  double *data;
+  float *data;
 
   /* Minimal x */
   float xmin;
@@ -252,44 +252,39 @@ struct interpolation_2d {
 
 
 /**
- * @brief Initialize the #interpolation_2d. Stock the data in a flattened 1D array. 
+ * @brief Initialize the #interpolation_2d. Stock the data (with "Data limits" proportion) into a flattened 1D array (with "Interpolation limits" proportion).
  *
  * @param interp The #interpolation_2d.
- * @param xmin Minimal value of x to (in log).  Interpolation limits
- * @param xmax Maximal value of x (in log).   Interpolation limts
+ * @param log_xmin Minimal value of x to (in log).  Interpolation limits
+ * @param log_xmax Maximal value of x (in log).   Interpolation limts
  * @param Nx Requested number of values in x axes.  Interpolation limits
- * @param ymin Minimal value of y (in log).   Interpolation limts
- * @param ymax Maximal value of y (in log).   Interpolation limits
+ * @param log_ymin Minimal value of y (in log).   Interpolation limits
+ * @param log_ymax Maximal value of y (in log).   Interpolation limits
  * @param Ny Requested number of values in y axes.  Interpolation limits
  * @param log_data_xmin The minimal value of the data in x (in log).  Data limits
  * @param log_data_ymin The minimal value of the data in y (in log).  Data limits
- * @param step_size_x The size of the x steps (in log).   Data limits
- * @param step_size_y The size of the y steps (in log).   Data limits
+ * @param log_step_size_x The size of the x steps (in log).   Data limits
+ * @param log_step_size_y The size of the y steps (in log).   Data limits
  * @param N_data_x The number of element in the data x axis. Data limits
  * @param N_data_y The number of element in the data y axis. Data limits
  * @param data The data to interpolate (y).
  * @param boundary_condition The type of #interpolate_boundary_condition.
  */
 __attribute__((always_inline)) static INLINE void interpolate_2d_init(
-  struct interpolation_2d *interp, float xmin, float xmax, int Nx, 
-  float ymin, float ymax, int Ny, float log_data_xmin, float log_data_ymin, 
-  float step_size_x, float step_size_y, int N_data_x, int N_data_y, const double *data,
+  struct interpolation_2d *interp, float log_xmin, float log_xmax, int Nx, 
+  float log_ymin, float log_ymax, int Ny, float log_data_xmin, float log_data_ymin, 
+  float log_step_size_x, float log_step_size_y, int N_data_x, int N_data_y, const float *data,
   enum interpolate_boundary_condition boundary_condition) {
-    //TODO: Verify the interpolation
 
   /* Save the variables */
   interp->Nx = Nx;
-  interp->xmin = xmin;
-  interp->dx = (xmax - xmin) / (Nx - 1.f);
-  float dx = (xmax - xmin) / (Nx - 1.f);
+  interp->xmin = log_xmin;
+  interp->dx = (log_xmax - log_xmin) / (Nx - 1.f);
   interp->boundary_condition = boundary_condition;
 
-  // message("Nx = %d, xmin = %g, xmax = %g, dx = %g",Nx,xmin,xmax,dx);
-
   interp->Ny = Ny;
-  interp->ymin = ymin;
-  interp->dy = (ymax - ymin) / (Ny - 1.f);
-  // message("Ny = %d, ymin = %g, ymax = %g, dy = %g",Ny,ymin,ymax,interp->dy);
+  interp->ymin = log_ymin;
+  interp->dy = (log_ymax - log_ymin) / (Ny - 1.f);
 
   /* Allocate the memory */
   interp->data = malloc(sizeof(double) * Nx * Ny);
@@ -299,20 +294,20 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
 
   /* Interpolate the data */
   for (int i = 0; i < Nx; i++) {
-    const double log_x = xmin + i * interp->dx;
-    const double x_k = (log_x - log_data_xmin) / step_size_x;
+    const float log_x = log_xmin + i * interp->dx;               
+    const float x_k = (log_x - log_data_xmin) / log_step_size_x; 
 
     for (int j = 0; j < Ny; j++) {
-      const double log_y = ymin + j * interp->dy;
-      const double y_k = (log_y - log_data_ymin) / step_size_y;
+      const float log_y = log_ymin + j * interp->dy;
+      const float y_k = (log_y - log_data_ymin) / log_step_size_y;
 
       /* Data indexes */
       const int idx = x_k;
-      const double fx = x_k - idx;
+      const float fx = x_k - idx;
       const int idy = y_k;
-      const double fy = y_k - idy;
+      const float fy = y_k - idy;
 
-      /* Check boundaries */
+      /* Check i boundaries */
       if (x_k < 0) {
         switch (boundary_condition) {
           case boundary_condition_error:
@@ -325,7 +320,10 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
             interp->data[i * Ny + j] = 0;
             break;
           case boundary_condition_const:
-            interp->data[i * Ny + j] = data[idy];
+            if (idy >= 0) 
+              interp->data[i * Ny + j] = data[idy];
+            else
+              interp->data[i * Ny + j] = data[0];
             break;
           default:
             error("Interpolation type not implemented");
@@ -340,8 +338,13 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
             interp->data[i * Ny + j] = 0;
             break;
           case boundary_condition_zero_const:
+            interp->data[i * Ny + j] = 0;
+            break;
           case boundary_condition_const:
-            interp->data[i * Ny + j] = interp->data[(i - 1) * Ny + j];
+            if (i != 0) 
+              interp->data[i * Ny + j] = interp->data[(i - 1) * Ny + j];
+            else
+              interp->data[i * Ny + j] = 0;
             break;
           default:
             error("Interpolation type not implemented");
@@ -362,7 +365,10 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
             interp->data[i * Ny + j] = 0;
             break;
           case boundary_condition_const:
-            interp->data[i * Ny + j] = data[idx * N_data_y];
+            if (idx >= 0)
+              interp->data[i * Ny + j] = data[idx * N_data_y];
+            else
+              interp->data[i * Ny + j] = data[0];
             break;
           default:
             error("Interpolation type not implemented");
@@ -377,9 +383,15 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
             interp->data[i * Ny + j] = 0;
             break;
           case boundary_condition_zero_const:
-          case boundary_condition_const:
-            interp->data[i * Ny + j] = interp->data[i * Ny + (j - 1)];
+            interp->data[i * Ny + j] = 0;
             break;
+          case boundary_condition_const:
+            if (j != 0)
+              interp->data[i * Ny + j] = interp->data[i * Ny + (j - 1)];
+            else
+              interp->data[i * Ny + j] = 0;
+            break;
+
           default:
             error("Interpolation type not implemented");
         }
@@ -387,13 +399,10 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
       }
 
       /* Interpolate data[i][j] <=> data[i * Ny + j] */
-      const double fx1 = data[idx * N_data_y + idy] * (1. - fx) + data[(idx + 1) * N_data_y + idy] * fx;
-      const double fx2 = data[idx * N_data_y + idy + 1] * (1. - fx) + data[(idx + 1) * N_data_y + idy + 1] * fx;
+      const float fx1 = data[idx * N_data_y + idy] * (1. - fx) + data[(idx + 1) * N_data_y + idy] * fx;
+      const float fx2 = data[idx * N_data_y + idy + 1] * (1. - fx) + data[(idx + 1) * N_data_y + idy + 1] * fx;
       interp->data[i * Ny + j] = fx1 * (1. - fy) + fx2 * fy;
     }
-  }
-  for (int i = 0; i < Nx * Ny; i++){
-    // message("From what was interpolated, step %d -> %g",i,interp->data[i]);
   }
 
 }
@@ -401,66 +410,99 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
 /**
 * @brief Interpolate the data.
 *
-* @param interp The #interpolation_1d.
+* @param interp The #interpolation_2d.
 * @param x The x value where to interpolate in log.
 * @param y The y value where to interpolate in log.
 *
 * @return The interpolated value.
 */
 __attribute__((always_inline)) static INLINE double interpolate_2d(
-  const struct interpolation_2d *interp, float x, float y) {
-    //TODO 
+  const struct interpolation_2d *interp, float log_x, float log_y) {
 
-  // message("inside intorpolate_2d");
-
-  // message("interp->xmin = %g, interp->dx = %g",interp->xmin,interp->dx);
   /* Find indices */
-  const float i = (x - interp->xmin) / interp->dx;
+  const float i = (log_x - interp->xmin) / interp->dx;
   const int idx = i;
   const float dx = i - idx;
+
+  const int Nx = interp->Nx;
   const int Ny = interp->Ny;
 
-  const float j = (y - interp->ymin) / interp->dy;
+  const float j = (log_y - interp->ymin) / interp->dy;
   const int idy = j;
   const float dy = j - idy;
 
-  // message("mid 1 inside interpolation_2d, x = %g; y = %g\n i = %g; idx = %d; dx = %g\n j = %g, idy = %d, dy = %g",x,y,i,idx,dx,j,idy,dy);
-  /* Should we extrapolate? */
-  // if (i < 0) {
-  //   switch (interp->boundary_condition) {
-  //     case boundary_condition_error:
-  //       error("Cannot extrapolate");
-  //       break;
-  //     case boundary_condition_zero:
-  //     case boundary_condition_zero_const:
-  //       return 0;
-  //     case boundary_condition_const:
-  //       return interp->data[0];
-  //     default:
-  //       error("Interpolation type not implemented");
-  //   }
-  // } else if (i >= interp->Nx - 1) {
-  //   switch (interp->boundary_condition) {
-  //     case boundary_condition_error:
-  //       error("Cannot extrapolate");
-  //       break;
-  //     case boundary_condition_zero:
-  //       return 0;
-  //     case boundary_condition_zero_const:
-  //     case boundary_condition_const:
-  //       return interp->data[interp->N - 1];
-  //     default:
-  //       error("Interpolation type not implemented");
-  //   }
-  // }
-
+  /* Extrapolate */
+  if (i < 0) {
+    switch (interp->boundary_condition) {
+      case boundary_condition_error:
+        error("Cannot extrapolate");
+        break;
+      case boundary_condition_zero:
+        return 0;
+      case boundary_condition_zero_const:
+        return 0;
+      case boundary_condition_const:
+        if (j >= 0 && j <= Ny - 1)
+          return interp->data[idy];
+        else if (j < 0)
+          return interp->data[0];
+        else
+          return interp->data[Ny - 1];
+      default:
+        error("Interpolation type not implemented");
+    }
+  } else if (i >= Nx - 1) {
+    switch (interp->boundary_condition) {
+      case boundary_condition_error:
+        error("Cannot extrapolate");
+        break;
+      case boundary_condition_zero:
+        return 0;
+      case boundary_condition_zero_const:
+        return 0;
+      case boundary_condition_const:
+        if (j >= 0 && j <= Ny - 1)
+          return interp->data[(Nx-1) * Ny + idy];
+        else if (j < 0)
+          return interp->data[(Nx-1) * Ny];
+        else
+          return interp->data[(Nx-1) * Ny + Ny - 1];
+      default:
+        error("Interpolation type not implemented");
+    }
+  } else if (j < 0){
+    switch (interp->boundary_condition) {
+      case boundary_condition_error:
+        error("Cannot extrapolate");
+        break;
+      case boundary_condition_zero:
+        return 0;
+      case boundary_condition_zero_const:
+        return 0;
+      case boundary_condition_const:
+        return interp->data[idx * Ny];
+      default:
+        error("Interpolation type not implemented");
+    }
+  } else if (j >= Ny - 1){
+    switch (interp->boundary_condition) {
+      case boundary_condition_error:
+        error("Cannot extrapolate");
+        break;
+      case boundary_condition_zero:
+        return 0;
+      case boundary_condition_zero_const:
+        return 0;
+      case boundary_condition_const:
+        return interp->data[idx * Ny + (Ny - 1)];
+      default:
+        error("Interpolation type not implemented");
+    }
+  }
   
   /* interpolate */
-  const double fx1 = interp->data[idx * Ny + idy] * (1. - dx) + interp->data[(idx + 1) * Ny + idy] * dx;
-  const double fx2 = interp->data[idx * Ny + idy + 1] * (1. - dx) + interp->data[(idx + 1) * Ny + idy + 1] * dx;
-  // message("data[idx * Ny + idy] = %g; (1. - dx) = %g; data[(idx + 1) * Ny + idy] = %g; dx = %g",interp->data[idx * Ny + idy],(1. - dx),interp->data[(idx + 1) * Ny + idy],dx);
-  // message("data[idx * Ny + idy + 1] = %g; data[(idx + 1) * Ny + idy + 1] = %g",interp->data[idx * Ny + idy + 1],interp->data[(idx + 1) * Ny + idy + 1]);
-  // message("end of interpolate_2d, fx1 = %g, fx2 = %g", fx1,fx2);
+  const float fx1 = interp->data[idx * Ny + idy] * (1. - dx) + interp->data[(idx + 1) * Ny + idy] * dx;
+  const float fx2 = interp->data[idx * Ny + idy + 1] * (1. - dx) + interp->data[(idx + 1) * Ny + idy + 1] * dx;
   return fx1 * (1. - dy) + fx2 * dy;
 }
 

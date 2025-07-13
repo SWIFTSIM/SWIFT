@@ -25,7 +25,7 @@
 
 
 void stellar_wind_read_yields(struct stellar_wind *sw,
-    //struct swift_params *params,
+    struct swift_params *params,
     const struct stellar_model *sm,
     const int restart);
 
@@ -33,31 +33,15 @@ void stellar_wind_init(struct stellar_wind *sw, struct swift_params *params,
     const struct stellar_model *sm,
     const struct unit_system *us);
 
-
 void stellar_wind_read_yields_array(
     struct stellar_wind *sw, struct interpolation_2d *interp, const struct stellar_model *sm,
     hid_t group_id, const char *hdf5_dataset_name, hsize_t *previous_count,
     int interpolation_size_m, int interpolation_size_z);
-
 
 void stellar_wind_clean(struct stellar_wind *sw);
 
 double stellar_wind_get_ejected_energy(const struct stellar_wind *sw, double log_m, float log_z);
 
 double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw, double log_m, float log_z);
-
-
-/* The cut off parameter for the ejected mass function.
- * In ratio of log_10(M/M_sol)
- */
-static const float stellar_wind_x0 = 2;
-
-float calculate_b_parameter(const float log_Z, const float a[]);
-
-float stellar_wind_get_ejected_mass(const float log_Z,const float log_m);
-
-float stellar_wind_get_wind_velocity(const float log_Z,const float log_m);
-
-double stellar_wind_get_energy_dot(const float mass_loss, const float v_infinity);
 
 #endif 

@@ -69,21 +69,11 @@ struct feedback_spart_data {
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
 
-  /* TODO: Add you data in this struct (For clarity purposes :) */
   /*! Pre-SN data struct */
   struct {
 
     /*! Energy injected in the surrounding particles*/
-    double energy_ejected;
-
-    /*! the instanteneous Mass-Loss */
-    float mass_loss;
-
-    /*! Stellar wind velocity*/
-    float v_infinity;
-
-    /*! Metal mass ejected */
-    //float metal_mass_ejected[GEAR_CHEMISTRY_ELEMENT_COUNT];
+    float energy_ejected;
 
   } preSN;
 };
