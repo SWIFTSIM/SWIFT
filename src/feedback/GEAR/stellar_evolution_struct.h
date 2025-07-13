@@ -213,9 +213,10 @@ struct stellar_wind {
   /*! Maximal mass for a SW */
   float metallicity_max;
 
-  /*! Number of element in the interpolation array */
+  /*! Number of mass element in the interpolation 2d array*/
   int interpolation_size_m;
 
+  /*! Number of metallicity element in the interpolation 2d array*/
   int interpolation_size_z;
 
 };
