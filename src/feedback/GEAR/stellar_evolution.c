@@ -352,10 +352,6 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
   /* Get the log of the metallicity normalised by solar metallicity */
   const float metallicity = chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
   float log_metallicity = log10(metallicity / stellar_evolution_get_solar_abundance(sm,"Metals"));
-  // TODO: this limit could be implemented from the yield
-  if (fabs(log_metallicity) < -8){
-    log_metallicity = -8;
-  }
 
   /* If the star particle is single_star the calculation is straight forward */
   if (sp->star_type == single_star) {
