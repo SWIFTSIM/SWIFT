@@ -72,8 +72,8 @@ struct feedback_spart_data {
   /*! Pre-SN data struct */
   struct {
 
-    /*! Energy injected in the surrounding particles*/
-    float energy_ejected;
+    /*! Energy injected in the surrounding particles*/ /* TODO: maybe change into float for memory but /!\ change the stellar_wind.c functions in accordance */
+    double energy_ejected;
 
   } preSN;
 };
