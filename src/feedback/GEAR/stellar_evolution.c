@@ -1117,9 +1117,11 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
 
   /* The duration of the preSN feedback in yr*/
   const float feedback_duration_yr = (star_age_end_step_myr - star_age_beg_step_myr) * 1e6;
+
   /*  Compute the preSN properties */ 
   stellar_evolution_compute_preSN_properties(sp, sm, phys_const,m_beg_step, m_end_step, m_init);
 
+  /* The duration of the preSN feedback in yr */
   sp->feedback_data.preSN.energy_ejected *= feedback_duration_yr;
 
   /* convert to internal units */
@@ -1205,8 +1207,11 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
   /* compute pre-SN properties */
   stellar_evolution_compute_preSN_properties(sp, sm, phys_const,m_beg_step, m_end_step, m_init);
+
+  /* The duration of the preSN feedback in yr */
   sp->feedback_data.preSN.energy_ejected *= dt_myr * 1e6; 
 
   /* convert to internal units */
   sp->feedback_data.preSN.energy_ejected /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+
 }

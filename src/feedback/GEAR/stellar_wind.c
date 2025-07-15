@@ -88,13 +88,13 @@ void stellar_wind_read_yields_array(
     H5Dclose(h_dataset);
     
     /* Allocate the memory */
-    float *data = (float *)malloc(sizeof(float) * Nz * Nm);
+    double *data = (double *)malloc(sizeof(double) * Nz * Nm);
     if (data == NULL)
         error("Failed to allocate the SW yields for %s.", hdf5_dataset_name);
 
     /* Read the dataset */
     io_read_array_dataset(group_id, hdf5_dataset_name, DOUBLE, data, count);
-    
+
     /* Initialize the raw interpolation */
     float log_mass_max = log_mass_min + step_size_m * Nm;
     float log_metallicity_max = log_metallicity_min + step_size_z * Nz;
@@ -129,6 +129,7 @@ void stellar_wind_read_yields(struct stellar_wind *sw,
 
     hsize_t previous_count = 0;
 
+    //TODO this part is not active in fact
     if (!restart) {
     sw->interpolation_size_m = parser_get_opt_param_int(
     params, "GEARStellar_wind:interpolation_size_m", 200);
@@ -181,7 +182,7 @@ void stellar_wind_init(struct stellar_wind *sw, struct swift_params *params,
  * @return energy per unit time in [erg/yr].
  */
 double stellar_wind_get_ejected_energy(const struct stellar_wind *sw, double log_m, float log_z) {
-  return pow(10,interpolate_2d(&sw->raw.ejected_energy, log_z, log_m));
+  return pow(10,interpolate_2d(&sw->raw.ejected_energy, log_z, log_m, boundary_condition_const));
 };
 
 /**
@@ -194,7 +195,7 @@ double stellar_wind_get_ejected_energy(const struct stellar_wind *sw, double log
  * @return energy per progenitor mass per unit time in [erg/yr].
  */
 double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw, double log_m, float log_z) {
-  return pow(10,interpolate_2d(&sw->integrated.ejected_energy_per_progenitor_mass, log_z, log_m));
+  return pow(10,interpolate_2d(&sw->integrated.ejected_energy_per_progenitor_mass, log_z, log_m, boundary_condition_const));
 };
 
 

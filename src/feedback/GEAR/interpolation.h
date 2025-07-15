@@ -273,7 +273,7 @@ struct interpolation_2d {
 __attribute__((always_inline)) static INLINE void interpolate_2d_init(
   struct interpolation_2d *interp, float log_xmin, float log_xmax, int Nx, 
   float log_ymin, float log_ymax, int Ny, float log_data_xmin, float log_data_ymin, 
-  float log_step_size_x, float log_step_size_y, int N_data_x, int N_data_y, const float *data,
+  float log_step_size_x, float log_step_size_y, int N_data_x, int N_data_y, const double *data,
   enum interpolate_boundary_condition boundary_condition) {
 
   /* Save the variables */
@@ -287,7 +287,7 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
   interp->dy = (log_ymax - log_ymin) / (Ny - 1.f);
 
   /* Allocate the memory */
-  interp->data = malloc(sizeof(double) * Nx * Ny);
+  interp->data = malloc(sizeof(float) * Nx * Ny);
   if (interp->data == NULL){
     error("Failed to allocate memory for the interpolation");
   }
@@ -307,8 +307,8 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
       const int idy = y_k;
       const float fy = y_k - idy;
 
-      /* Check i boundaries */
-      if (x_k < 0) {
+      /* Extrapolate? */
+      if (idx < 0 || idx + 1 >= N_data_x || idy < 0 || idy + 1 >= N_data_y) {
         switch (boundary_condition) {
           case boundary_condition_error:
             error("Cannot extrapolate");
@@ -316,82 +316,15 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
           case boundary_condition_zero:
             interp->data[i * Ny + j] = 0;
             break;
-          case boundary_condition_zero_const:
-            interp->data[i * Ny + j] = 0;
-            break;
           case boundary_condition_const:
-            if (idy >= 0) 
-              interp->data[i * Ny + j] = data[idy];
-            else
-              interp->data[i * Ny + j] = data[0];
+            // Choose appropriate fallback here
+            /*! there these midx and midy are used to don't have problem with encapsuled min(max(...)...) macro in C... TODO: see if otherwise is possible */
+            const int midx = max(idx, 0);
+            const int midy = max(idy, 0);
+            interp->data[i * Ny + j] = data[
+              min(midx, N_data_x - 1) * N_data_y +
+              min(midy, N_data_y - 1)];
             break;
-          default:
-            error("Interpolation type not implemented");
-        }
-        continue;
-      } else if (x_k >= N_data_x) {
-        switch (boundary_condition) {
-          case boundary_condition_error:
-            error("Cannot extrapolate");
-            break;
-          case boundary_condition_zero:
-            interp->data[i * Ny + j] = 0;
-            break;
-          case boundary_condition_zero_const:
-            interp->data[i * Ny + j] = 0;
-            break;
-          case boundary_condition_const:
-            if (i != 0) 
-              interp->data[i * Ny + j] = interp->data[(i - 1) * Ny + j];
-            else
-              interp->data[i * Ny + j] = 0;
-            break;
-          default:
-            error("Interpolation type not implemented");
-        }
-        continue;
-      }
-
-      /* Check boundaries */
-      if (y_k < 0) {
-        switch (boundary_condition) {
-          case boundary_condition_error:
-            error("Cannot extrapolate");
-            break;
-          case boundary_condition_zero:
-            interp->data[i * Ny + j] = 0;
-            break;
-          case boundary_condition_zero_const:
-            interp->data[i * Ny + j] = 0;
-            break;
-          case boundary_condition_const:
-            if (idx >= 0)
-              interp->data[i * Ny + j] = data[idx * N_data_y];
-            else
-              interp->data[i * Ny + j] = data[0];
-            break;
-          default:
-            error("Interpolation type not implemented");
-        }
-        continue;
-      } else if (y_k >= N_data_y) {
-        switch (boundary_condition) {
-          case boundary_condition_error:
-            error("Cannot extrapolate");
-            break;
-          case boundary_condition_zero:
-            interp->data[i * Ny + j] = 0;
-            break;
-          case boundary_condition_zero_const:
-            interp->data[i * Ny + j] = 0;
-            break;
-          case boundary_condition_const:
-            if (j != 0)
-              interp->data[i * Ny + j] = interp->data[i * Ny + (j - 1)];
-            else
-              interp->data[i * Ny + j] = 0;
-            break;
-
           default:
             error("Interpolation type not implemented");
         }
@@ -404,7 +337,6 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
       interp->data[i * Ny + j] = fx1 * (1. - fy) + fx2 * fy;
     }
   }
-
 }
 
 /**
@@ -417,7 +349,9 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
 * @return The interpolated value.
 */
 __attribute__((always_inline)) static INLINE double interpolate_2d(
-  const struct interpolation_2d *interp, float log_x, float log_y) {
+  const struct interpolation_2d *interp, 
+  float log_x, float log_y, 
+  enum interpolate_boundary_condition boundary_condition) {
 
   /* Find indices */
   const float i = (log_x - interp->xmin) / interp->dx;
@@ -431,70 +365,22 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
   const int idy = j;
   const float dy = j - idy;
 
-  /* Extrapolate */
-  if (i < 0) {
-    switch (interp->boundary_condition) {
+  /* Extrapolate? */
+  if (idx < 0 || idx + 1 >= Nx || idy < 0 || idy + 1 >= Ny) {
+    switch (boundary_condition) {
       case boundary_condition_error:
         error("Cannot extrapolate");
         break;
       case boundary_condition_zero:
         return 0;
-      case boundary_condition_zero_const:
-        return 0;
       case boundary_condition_const:
-        if (j >= 0 && j <= Ny - 1)
-          return interp->data[idy];
-        else if (j < 0)
-          return interp->data[0];
-        else
-          return interp->data[Ny - 1];
-      default:
-        error("Interpolation type not implemented");
-    }
-  } else if (i >= Nx - 1) {
-    switch (interp->boundary_condition) {
-      case boundary_condition_error:
-        error("Cannot extrapolate");
-        break;
-      case boundary_condition_zero:
-        return 0;
-      case boundary_condition_zero_const:
-        return 0;
-      case boundary_condition_const:
-        if (j >= 0 && j <= Ny - 1)
-          return interp->data[(Nx-1) * Ny + idy];
-        else if (j < 0)
-          return interp->data[(Nx-1) * Ny];
-        else
-          return interp->data[(Nx-1) * Ny + Ny - 1];
-      default:
-        error("Interpolation type not implemented");
-    }
-  } else if (j < 0){
-    switch (interp->boundary_condition) {
-      case boundary_condition_error:
-        error("Cannot extrapolate");
-        break;
-      case boundary_condition_zero:
-        return 0;
-      case boundary_condition_zero_const:
-        return 0;
-      case boundary_condition_const:
-        return interp->data[idx * Ny];
-      default:
-        error("Interpolation type not implemented");
-    }
-  } else if (j >= Ny - 1){
-    switch (interp->boundary_condition) {
-      case boundary_condition_error:
-        error("Cannot extrapolate");
-        break;
-      case boundary_condition_zero:
-        return 0;
-      case boundary_condition_zero_const:
-        return 0;
-      case boundary_condition_const:
-        return interp->data[idx * Ny + (Ny - 1)];
+        // Choose appropriate fallback here
+        /*! there these midx and midy are used to don't have problem with encapsuled min(max(...)...) macro in C... TODO: see if otherwise is possible */
+        const int midx = max(idx, 0);
+        const int midy = max(idy, 0);
+        return interp->data[
+          min(midx, Nx - 1) * Ny +
+          min(midy, Ny - 1)];
       default:
         error("Interpolation type not implemented");
     }
