@@ -1576,6 +1576,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
    * not the case here). */
   int depth_i = t->ci->depth;
   int depth_j = t->cj->depth;
+
+  /* Note that buffer void cells continue the depth from the background
+   * top level, hence the strange depth accumulation here. */
   if (t->ci->type == cell_type_buffer && t->ci->subtype != cell_subtype_void) {
     depth_i += sp->zoom_props->buffer_cell_depth;
   }
