@@ -1576,11 +1576,23 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
    * not the case here). */
   int depth_i = t->ci->depth;
   int depth_j = t->cj->depth;
+  if (t->ci->type == cell_type_buffer) {
+    depth_i += sp->zoom_props->buffer_cell_depth;
+  }
+  if (t->cj->type == cell_type_buffer) {
+    depth_j += sp->zoom_props->buffer_cell_depth;
+  }
   if (t->ci->type == cell_type_zoom) {
     depth_i += sp->zoom_props->zoom_cell_depth;
+    if (sp->zoom_props->with_buffer_cells) {
+      depth_i += sp->zoom_props->buffer_cell_depth;
+    }
   }
   if (t->cj->type == cell_type_zoom) {
     depth_j += sp->zoom_props->zoom_cell_depth;
+    if (sp->zoom_props->with_buffer_cells) {
+      depth_j += sp->zoom_props->buffer_cell_depth;
+    }
   }
   if (depth_i != depth_j) {
     error("Got a pair task with different depths: %d (%s/%s) != %d (%s/%s)",
