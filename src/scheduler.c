@@ -1570,6 +1570,24 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   if (t->type != task_type_pair) {
     error("Got a non-pair task (t->type=%s)", taskID_names[t->type]);
   }
+
+  /* Ensure everything is at the same depth (while this is the norm, we
+   * once didn't split symmetrically so should make sure this is
+   * not the case here). */
+  if (t->ci->depth != t->cj->depth) {
+    error("Got a pair task with different depths: %d != %d", t->ci->depth,
+          t->cj->depth);
+  }
+
+  /* Ensure both cells are void or split... if not we are about to be in REAL
+   * trouble. */
+  if (t->ci->subtype != cell_subtype_void && !t->ci->split &&
+      t->cj->subtype != cell_subtype_void && !t->cj->split) {
+    error(
+        "Got a pair task with non-void and non-split cells: "
+        "ci=%s cj=%s",
+        cell_subtype_names[t->ci->subtype], cell_subtype_names[t->cj->subtype]);
+  }
 #endif
 
   /* Get a handle on the cells involved. */
@@ -1591,144 +1609,55 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   /* Define a flag for when the original task has been reused. */
   int reused = 0;
 
-  /* Handle each individual splitting case. */
-  if ((ci->subtype == cell_subtype_void ||
-       (ci->split && cell_is_above_diff_grav_depth(ci))) &&
-      (cj->subtype == cell_subtype_void ||
-       (cj->split && cell_is_above_diff_grav_depth(cj)))) {
+  /* We will use a progeny MM interaction since we can split both cells. */
+  t->subtype = task_subtype_progeny;
 
-    /* We will use a progeny MM interaction since we can split both cells. */
-    t->subtype = task_subtype_progeny;
+  /* Loop over the progeny. */
+  for (int i = 0; i < 8; i++) {
+    struct cell *cpi = ci->progeny[i];
 
-    /* Loop over the progeny. */
-    for (int i = 0; i < 8; i++) {
-      struct cell *cpi = ci->progeny[i];
+    /* Skip NULL progeny (can happen is a background cell tree has no
+     * particles at the leaves for whatever reason). */
+    if (cpi == NULL) continue;
 
-      /* Skip any empty progeny of a void cell (void cells themselves always
-       * have 0 particles but are never "empty"). */
-      if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
+    /* Skip any empty progeny of a void cell (void cells themselves always
+     * have 0 particles but are never "empty"). */
+    if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
 
-      for (int j = 0; j < 8; j++) {
-        struct cell *cpj = cj->progeny[j];
-
-        /* Skip any empty progeny of a void cell (void cells themselves
-        always
-         * have 0 particles but are never "empty"). */
-        if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
-
-        /* Can we use a M-M interaction here? */
-        if (cell_can_use_pair_mm(cpi, cpj, e, sp,
-                                 /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/1,
-                                 /*periodic boundaries*/ sp->periodic,
-                                 /*use_mesh*/ sp->periodic)) {
-
-          /* Flag that we've reused the original task. */
-          reused = 1;
-
-          /* Flag this pair as being treated by the M-M task.
-           * We use the 64 bits in the task->flags field to store
-           * this information. The corresponding taks will unpack
-           * the information and operate according to the choices
-           * made here. */
-          const int flag = i * 8 + j;
-          t->flags |= (1ULL << flag);
-
-        } else {
-
-          /* Can't use an M-M so let's make a pair task. */
-          zoom_scheduler_splittask_gravity_void_pair(
-              scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, cpi,
-                                cpj),
-              s);
-        }
-      }
-    }
-  } else if (ci->subtype == cell_subtype_void) {
-
-    /* Loop over the progeny of the void cell. */
-    for (int i = 0; i < 8; i++) {
-
-      /* Unpack the progeny. */
-      struct cell *cpi = ci->progeny[i];
-
-      /* Skip any empty progeny of a void cell (void cells themselves always
-       * have 0 particles but are never "empty"). */
-      if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
-
-      /* Can we use a M-M interaction here? */
-      if (cell_can_use_pair_mm(cpi, cj, e, sp,
-                               /*use_rebuild_data=*/1,
-                               /*is_tree_walk=*/1,
-                               /*periodic boundaries*/ sp->periodic,
-                               /*use_mesh*/ sp->periodic)) {
-
-        /* Can we reuse the orignal task or do we need to make a new one? */
-        if (!reused) {
-
-          /* We can make use of the old task but turn it into a direct one. */
-          t->subtype = task_subtype_direct;
-          t->ci = cpi;
-          t->cj = cj;
-          reused = 1;
-
-        } else {
-
-          /* We've already used to original task, make a new one for this
-           * progeny pair. */
-          scheduler_addtask(s, task_type_grav_mm, task_subtype_direct, 0, 0,
-                            cpi, cj);
-        }
-
-      } else {
-
-        /* Can't use an M-M so let's make a pair task. */
-        zoom_scheduler_splittask_gravity_void_pair(
-            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, cpi,
-                              cj),
-            s);
-      }
-    }
-  } else {
-
-    /* Loop over the progeny of the void cell. */
     for (int j = 0; j < 8; j++) {
-
-      /* Unpack the progeny. */
       struct cell *cpj = cj->progeny[j];
+
+      /* Skip NULL progeny (can happen is a background cell tree has no
+       * particles at the leaves for whatever reason). */
+      if (cpj == NULL) continue;
 
       /* Skip any empty progeny of a void cell (void cells themselves always
        * have 0 particles but are never "empty"). */
       if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
 
       /* Can we use a M-M interaction here? */
-      if (cell_can_use_pair_mm(ci, cpj, e, sp,
+      if (cell_can_use_pair_mm(cpi, cpj, e, sp,
                                /*use_rebuild_data=*/1,
                                /*is_tree_walk=*/1,
                                /*periodic boundaries*/ sp->periodic,
                                /*use_mesh*/ sp->periodic)) {
 
-        /* Can we reuse the orignal task or do we need to make a new one? */
-        if (!reused) {
+        /* Flag that we've reused the original task. */
+        reused = 1;
 
-          /* We can make use of the old task but turn it into a direct one. */
-          t->subtype = task_subtype_direct;
-          t->ci = ci;
-          t->cj = cpj;
-          reused = 1;
+        /* Flag this pair as being treated by the M-M task.
+         * We use the 64 bits in the task->flags field to store
+         * this information. The corresponding taks will unpack
+         * the information and operate according to the choices
+         * made here. */
+        const int flag = i * 8 + j;
+        t->flags |= (1ULL << flag);
 
-        } else {
-
-          /* We've already used to original task, make a new one for this
-           * progeny pair. */
-          scheduler_addtask(s, task_type_grav_mm, task_subtype_direct, 0, 0, ci,
-                            cpj);
-        }
       } else {
 
         /* Can't use an M-M so let's make a pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
-            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
+            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, cpi,
                               cpj),
             s);
       }
@@ -3206,13 +3135,13 @@ void scheduler_check_deadlock(struct scheduler *s) {
   ticks last = s->last_successful_task_fetch;
 
   if (last == 0LL) {
-    /* Ensure that the first check each engine_launch doesn't fail. There is no
-     * guarantee how long it will take from the point where
+    /* Ensure that the first check each engine_launch doesn't fail. There is
+     * no guarantee how long it will take from the point where
      * last_successful_task_fetch was reset to get to this point. A poorly
-     * chosen scheduler->deadlock_waiting_time_ms may abort a big run in places
-     * where there is no deadlock. Better safe than sorry, so at start-up, the
-     * last successful task fetch time is marked as 0. So we just exit without
-     * checking the time. */
+     * chosen scheduler->deadlock_waiting_time_ms may abort a big run in
+     * places where there is no deadlock. Better safe than sorry, so at
+     * start-up, the last successful task fetch time is marked as 0. So we
+     * just exit without checking the time. */
     while (atomic_cas(&s->last_successful_task_fetch, last, now) != last) {
       now = getticks();
       last = s->last_successful_task_fetch;
@@ -3229,7 +3158,8 @@ void scheduler_check_deadlock(struct scheduler *s) {
 
   if (idle_time > s->deadlock_waiting_time_ms) {
     message(
-        "Detected what looks like a deadlock after %g ms of no new task being "
+        "Detected what looks like a deadlock after %g ms of no new task "
+        "being "
         "fetched from queues. Dumping diagnostic data.",
         idle_time);
     engine_dump_diagnostic_data(s->e);
