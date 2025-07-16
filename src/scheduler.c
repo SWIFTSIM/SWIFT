@@ -1586,7 +1586,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     error(
         "Got a pair task with non-void and non-split cells: "
         "ci=%s cj=%s",
-        cell_subtype_names[t->ci->subtype], cell_subtype_names[t->cj->subtype]);
+        cellID_names[t->ci->subtype], subcellID_names[t->cj->subtype]);
   }
 #endif
 
