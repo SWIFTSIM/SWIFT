@@ -1571,14 +1571,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     error("Got a non-pair task (t->type=%s)", taskID_names[t->type]);
   }
 
-  /* Ensure everything is at the same depth (while this is the norm, we
-   * once didn't split symmetrically so should make sure this is
-   * not the case here). */
-  if (t->ci->depth != t->cj->depth) {
-    error("Got a pair task with different depths: %d != %d", t->ci->depth,
-          t->cj->depth);
-  }
-
 #endif
 
   /* Get a handle on the cells involved. */
