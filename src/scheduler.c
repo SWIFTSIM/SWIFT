@@ -1571,6 +1571,35 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     error("Got a non-pair task (t->type=%s)", taskID_names[t->type]);
   }
 
+  /* Ensure everything is at the same depth (while this is the norm, we
+   * once didn't split symmetrically so should make sure this is
+   * not the case here). */
+  int depth_i = t->ci->depth;
+  int depth_j = t->cj->depth;
+  if (t->ci->type == cell_type_buffer) {
+    depth_i += sp->zoom_props->buffer_cell_depth;
+  }
+  if (t->cj->type == cell_type_buffer) {
+    depth_j += sp->zoom_props->buffer_cell_depth;
+  }
+  if (t->ci->type == cell_type_zoom) {
+    depth_i += sp->zoom_props->zoom_cell_depth;
+    if (sp->zoom_props->with_buffer_cells) {
+      depth_i += sp->zoom_props->buffer_cell_depth;
+    }
+  }
+  if (t->cj->type == cell_type_zoom) {
+    depth_j += sp->zoom_props->zoom_cell_depth;
+    if (sp->zoom_props->with_buffer_cells) {
+      depth_j += sp->zoom_props->buffer_cell_depth;
+    }
+  }
+  if (depth_i != depth_j) {
+    error("Got a pair task with different depths: %d (%s/%s) != %d (%s/%s)",
+          depth_i, cellID_names[t->ci->type], subcellID_names[t->ci->subtype],
+          depth_j, cellID_names[t->cj->type], subcellID_names[t->cj->subtype]);
+  }
+
 #endif
 
   /* Get a handle on the cells involved. */
