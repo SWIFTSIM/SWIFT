@@ -1364,6 +1364,12 @@ __attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
     return 1;
   }
 
+  /* Neighbour cells (background cells within the zoom region's gravity
+   * criterion) should always have tasks down to at least the zoom level. */
+  if (c->subtype == cell_subtype_neighbour) {
+    return 1;
+  }
+
   /* Regular and zoom cells use the usual condition. */
   if (c->type == cell_type_regular || c->type == cell_type_zoom) {
     return (c->maxdepth - c->depth) > space_subdepth_diff_grav;
