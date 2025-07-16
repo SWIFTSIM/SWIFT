@@ -496,6 +496,8 @@ void zoom_report_cell_properties(const struct space *s) {
     message("%28s = %d", "Buffer Top Level Depth",
             zoom_props->buffer_cell_depth);
   message("%28s = %d", "Zoom Top Level Depth", zoom_props->zoom_cell_depth);
+  message("%28s = %d", "Neighbour Max Tree Depth",
+          zoom_props->neighbour_max_tree_depth);
 
   /* Assorted extra zoom properties */
   message("%28s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
