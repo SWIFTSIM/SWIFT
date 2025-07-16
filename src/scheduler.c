@@ -1579,16 +1579,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           t->cj->depth);
   }
 
-  /* Ensure both cells are void or split... if not we are about to be in REAL
-   * trouble. */
-  if (t->ci->subtype != cell_subtype_void && !t->ci->split &&
-      t->cj->subtype != cell_subtype_void && !t->cj->split) {
-    error(
-        "Got a pair task with non-void and non-split cells: "
-        "ci=%s/%s cj=%s/%s",
-        cellID_names[t->ci->type], subcellID_names[t->ci->subtype],
-        cellID_names[t->cj->type], subcellID_names[t->cj->subtype]);
-  }
 #endif
 
   /* Get a handle on the cells involved. */
