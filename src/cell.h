@@ -1351,22 +1351,26 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
  *
  * When running a zoom simulation this will use zoom_bkg_subdepth_diff_grav for
  * the background cells while the zoom cells will use the regular threshold.
+ * When running a zoom we can also have some cells interacting with void
+ * cells below space_subdepth_diff_grav, these carry a flag which we
+ * check and automatically return true for these cells.
  *
  * @param c The #cell.
  */
 __attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
     const struct cell *c) {
 
+  /* When running a zoom we can have cells with tasks below
+   * space_subdepth_diff_grav due to interactions with the void cells (i.e.
+   * zoom region). These cells carry a flag. */
+  if (c->grav->tasks_below_diff_grav) {
+    return 1;
+  }
+
   /* Void cells must always be treated all the way to the leaves to ensure
    * we get to the zoom cells, so we will always return true here (only
    * applicable in zoom simulations). */
   if (c->subtype == cell_subtype_void) {
-    return 1;
-  }
-
-  /* Neighbour cells (background cells within the zoom region's gravity
-   * criterion) should always have tasks down to at least the zoom level. */
-  if (c->subtype == cell_subtype_neighbour) {
     return 1;
   }
 
