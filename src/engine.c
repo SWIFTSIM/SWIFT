@@ -1213,12 +1213,11 @@ void engine_print_task_counts(const struct engine *e) {
 
     /* Now count MM tasks. */
     nr_zoom_zoom = 0;
-    nr_zoom_buffer = 0;
-    nr_zoom_bkg = 0;
     nr_buffer_buffer = 0;
-    nr_buffer_bkg = 0;
     nr_bkg_bkg = 0;
-    nr_zoom_neighbour = 0;
+    int nr_void_zoom = 0;
+    int nr_void_bkg = 0;
+    int nr_void_buffer = 0;
     /* Loop over tasks. */
     for (int i = 0; i < nr_tasks; i++) {
       const struct task *t = &tasks[i];
@@ -1241,48 +1240,18 @@ void engine_print_task_counts(const struct engine *e) {
       /* Count the pair types. */
       switch (t->ci->type) {
         case cell_type_zoom:
-          switch (t->cj->type) {
-            case cell_type_zoom:
-              nr_zoom_zoom++;
-              break;
-            case cell_type_buffer:
-              nr_zoom_buffer++;
-              break;
-            case cell_type_bkg:
-              nr_zoom_bkg++;
-              break;
-            default:
-              error("Unknown cell type %d", t->cj->type);
+          if (t->cj->type == cell_type_zoom) {
+            nr_zoom_zoom++;
           }
           break;
         case cell_type_buffer:
-          switch (t->cj->type) {
-            case cell_type_zoom:
-              nr_zoom_buffer++;
-              break;
-            case cell_type_buffer:
-              nr_buffer_buffer++;
-              break;
-            case cell_type_bkg:
-              nr_buffer_bkg++;
-              break;
-            default:
-              error("Unknown cell type %d", t->cj->type);
+          if (t->cj->type == cell_type_buffer) {
+            nr_buffer_buffer++;
           }
           break;
         case cell_type_bkg:
-          switch (t->cj->type) {
-            case cell_type_zoom:
-              nr_zoom_bkg++;
-              break;
-            case cell_type_buffer:
-              nr_buffer_bkg++;
-              break;
-            case cell_type_bkg:
-              nr_bkg_bkg++;
-              break;
-            default:
-              error("Unknown cell type %d", t->cj->type);
+          if (t->cj->type == cell_type_bkg) {
+            nr_bkg_bkg++;
           }
           break;
         case cell_type_regular:
@@ -1292,6 +1261,37 @@ void engine_print_task_counts(const struct engine *e) {
           break;
         default:
           error("Unknown cell type %d", t->ci->type);
+      }
+
+      /* Handle subtypes. */
+      if (t->ci->subtype == cell_subtype_void) {
+        switch (t->cj->type) {
+          case cell_type_zoom:
+            nr_void_zoom++;
+            break;
+          case cell_type_buffer:
+            nr_void_buffer++;
+            break;
+          case cell_type_bkg:
+            nr_void_bkg++;
+            break;
+          default:
+            error("Unknown cell type %d", t->cj->type);
+        }
+      } else if (t->cj->subtype == cell_subtype_void) {
+        switch (t->ci->type) {
+          case cell_type_zoom:
+            nr_void_zoom++;
+            break;
+          case cell_type_buffer:
+            nr_void_buffer++;
+            break;
+          case cell_type_bkg:
+            nr_void_bkg++;
+            break;
+          default:
+            error("Unknown cell type %d", t->ci->type);
+        }
       }
     }
 
@@ -3262,9 +3262,9 @@ int engine_step(struct engine *e) {
             e->collect_group1.csds_file_size_gb);
 #endif
 
-    /********************************************************/
-    /* OK, we are done with the regular stuff. Time for i/o */
-    /********************************************************/
+  /********************************************************/
+  /* OK, we are done with the regular stuff. Time for i/o */
+  /********************************************************/
 
 #ifdef WITH_LIGHTCONE
   /* Flush lightcone buffers if necessary */
