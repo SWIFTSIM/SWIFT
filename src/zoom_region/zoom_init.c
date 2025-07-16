@@ -688,6 +688,16 @@ void zoom_region_init(struct space *s, const int verbose) {
           ? s->zoom_props->zoom_cell_depth
           : s->zoom_props->neighbour_max_tree_depth;
 
+  /* The neighbour depth must be less the zoom depth or higher if given. */
+  if (s->zoom_props->neighbour_max_tree_depth <
+      s->zoom_props->zoom_cell_depth) {
+    error(
+        "Zoom neighbour cell depth (%d) must be greater than or equal to the "
+        "zoom cell depth (%d).",
+        s->zoom_props->neighbour_max_tree_depth,
+        s->zoom_props->zoom_cell_depth);
+  }
+
   /* Set the minimum allowed zoom cell width. */
   const double zoom_dmax =
       max3(s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]);
