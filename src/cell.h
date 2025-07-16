@@ -1363,7 +1363,7 @@ __attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
   /* When running a zoom we can have cells with tasks below
    * space_subdepth_diff_grav due to interactions with the void cells (i.e.
    * zoom region). These cells carry a flag. */
-  if (c->grav->tasks_below_diff_grav) {
+  if (c->grav.tasks_below_diff_grav) {
     return 1;
   }
 
