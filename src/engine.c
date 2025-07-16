@@ -1228,15 +1228,6 @@ void engine_print_task_counts(const struct engine *e) {
       /* Skip non-pairs. */
       if (t->type != task_type_grav_mm) continue;
 
-      /* Count a neighbour pair if ci and cj are the combination of a zoom and
-       * neighbour cell. */
-      if ((t->ci->type == cell_type_zoom &&
-           t->cj->subtype == cell_subtype_neighbour) ||
-          (t->cj->type == cell_type_zoom &&
-           t->ci->subtype == cell_subtype_neighbour)) {
-        nr_zoom_neighbour++;
-      }
-
       /* Count the pair types. */
       switch (t->ci->type) {
         case cell_type_zoom:
@@ -1267,7 +1258,7 @@ void engine_print_task_counts(const struct engine *e) {
       if (t->ci->subtype == cell_subtype_void) {
         switch (t->cj->type) {
           case cell_type_zoom:
-            nr_void_zoom++;
+            nr_void_zoom += 1;
             break;
           case cell_type_buffer:
             nr_void_buffer++;
