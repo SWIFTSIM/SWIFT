@@ -1624,7 +1624,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   t->subtype = task_subtype_progeny;
 
   /* When we split a regular cell's task because it is interacting with a
-   * void cell, we can end up below the depth set by cell_subdepth_diff_grav.
+   * void cell, we can end up below the depth set by space_subdepth_diff_grav.
    * This will cause absolute havoc with heierarchical gravity tasks being
    * missing on the regular cell if we don't flag this somehow. */
   if (!cell_is_above_diff_grav_depth(ci)) {
