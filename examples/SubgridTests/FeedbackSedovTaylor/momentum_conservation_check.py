@@ -21,6 +21,7 @@ import swiftsimio as sw
 from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
+import unyt as u
 
 #%%
 
