@@ -71,16 +71,22 @@ python3 plot_gas_density.py -i 40 -s 'snap/snapshot'
 python3 plot_gas_density.py -i 50 -s 'snap/snapshot'
 python3 plot_gas_density.py -i 100 -s 'snap/snapshot'
 
-python3 rhoTPlot.py -i 10 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 20 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 30 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 40 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 50 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 100 -s 'snap/snapshot'
+# Don't do a phase-space diagram if we are running without cooling
+if [ "$with_cooling" -eq 1 ];
+   python3 rhoTPlot.py -i 10 -s 'snap/snapshot'
+   python3 rhoTPlot.py -i 20 -s 'snap/snapshot'
+   python3 rhoTPlot.py -i 30 -s 'snap/snapshot'
+   python3 rhoTPlot.py -i 40 -s 'snap/snapshot'
+   python3 rhoTPlot.py -i 50 -s 'snap/snapshot'
+   python3 rhoTPlot.py -i 100 -s 'snap/snapshot'
 
-python3 rhoTPlot.py -i 0 -f 100 -s 'snap/snapshot'
+   python3 rhoTPlot.py -i 0 -f 100 -s 'snap/snapshot'
+else
+fi
 
+# Do a gas density evolution movie
 python3 plot_gas_density.py -i 0 -f 100 -s 'snap/snapshot'
+
 python3 radial_momentum_profile.py snap/snapshot_0010.hdf5 \
 	-o radial_momentum_profile_0010.png
 python3 radial_momentum_profile.py snap/snapshot_0020.hdf5 \
