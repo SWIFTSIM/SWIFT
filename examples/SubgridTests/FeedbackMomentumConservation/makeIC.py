@@ -99,6 +99,9 @@ def parse_options():
         help="output filename",
     )
 
+    parser.add_argument('--random_positions', default=False, action="store_true",
+                        help="Place the particles randomly in the box.")
+
     options = parser.parse_args()
     return options
 
@@ -150,9 +153,9 @@ G = constants.G
 
 # Jeans wave number
 kJ = 2 * np.pi / lJ
+
 # Velocity dispersion
 sigma = np.sqrt(4 * np.pi * G * rho) / kJ
-
 
 print("Boxsize                               : {}".format(L.to(units.kpc)))
 print("Number of particles                   : {}".format(N))
@@ -165,7 +168,19 @@ rho = rho.to(UnitMass / UnitLength ** 3).value
 sigma = sigma.to(UnitVelocity).value
 
 # Generate the particles
-pos = np.random.random([N, 3]) * np.array([L, L, L])
+
+if opt.random_positions:
+    print("Sampling random positions in the box")
+    pos = np.random.random([N, 3]) * np.array([L, L, L])
+else:
+    points = np.linspace(0, L, 2**opt.level, endpoint=False)
+
+    # Create a meshgrid of these points
+    x, y, z = np.meshgrid(points, points, points)
+
+    # Reshape the grids into a list of particle positions
+    pos = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
+
 vel = np.zeros([N, 3])
 mass = np.ones(N) * m
 u = np.ones(N) * sigma ** 2
