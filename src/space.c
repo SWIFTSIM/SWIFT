@@ -1798,7 +1798,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   offset_nuparts +=
       1 + total_dm + total_parts + total_sinks + total_sparts + total_bparts;
   offset_dm_background +=
-      1 + 10 * (total_dm * total_parts + total_sinks + total_sparts +
+      1 + 10 * (total_dm + total_parts + total_sinks + total_sparts +
                 total_bparts + total_nuparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
