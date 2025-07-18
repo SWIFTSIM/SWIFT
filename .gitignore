@@ -337,6 +337,10 @@ acs-*.bib
 *.snm
 *.vrb
 
+# clang tools
+.clang-tidy
+.clangd
+
 # glossaries
 *.acn
 *.acr
@@ -403,9 +407,14 @@ sympy-plots-for-*.tex/
 
 # vim
 *.swp
+.local.vimrc
 
 # black formatting
 black_formatting_env
 
 # vscode
 *.json
+
+# YouCompleteMe
+.ycm_extra_conf.py
+
