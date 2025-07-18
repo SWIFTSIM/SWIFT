@@ -30,7 +30,7 @@ L = 4  # Number of particles along one axis
 density = 2.0  # Density
 P = 1.0  # Pressure
 gamma = 5.0 / 3.0  # Gas adiabatic index
-material = 0 # Ideal gas
+material = 0  # Ideal gas
 fileName = "input.hdf5"
 
 # ---------------------------------------------------
