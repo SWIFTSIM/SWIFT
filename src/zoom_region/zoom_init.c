@@ -241,7 +241,7 @@ int zoom_get_void_geometry(struct space *s, const double region_dim) {
     upper_bounds[i] = (s->dim[i] / 2) + (region_dim / 2.0);
   }
 
-  /* Assign these temporaru bounds to the zoom region bounds, we'll overwrite
+  /* Assign these temporary bounds to the zoom region bounds, we'll overwrite
    * these later but useful to have them for now. */
   for (int i = 0; i < 3; i++) {
     s->zoom_props->region_lower_bounds[i] = lower_bounds[i];
@@ -339,7 +339,25 @@ void zoom_get_geometry_no_buffer_cells(struct space *s) {
   }
 }
 
+/**
+ * @brief Compute the geometry of the zoom region with buffer cells.
+ *
+ * This function computes the geometry of the zoom region when buffer cells are
+ * enabled. It calculates the bounds, dimensions, and cell widths for both the
+ * buffer and zoom regions.
+ *
+ * Currently, buffer cells are not fully supported and this function will
+ * simply through an error if called.
+ *
+ * @param s The space
+ */
 void zoom_get_geometry_with_buffer_cells(struct space *s) {
+
+  error(
+      "Buffer cells currently provide no performance benefit and carry a "
+      "significant complexity cost. They are thus not currently fully "
+      "supported. Set ZoomRegion:buffer_top_level_depth to 0 to disable "
+      "buffer cells.");
 
   /* Ensure we have a buffer cell depth. */
   if (s->zoom_props->buffer_cell_depth == 0) {
@@ -631,8 +649,8 @@ void zoom_region_init(struct space *s, const int verbose) {
   if (nr_zoom_regions >= 64) {
     error(
         "Background cell size is too large relative to the zoom region! "
-        "Increase ZoomRegion:bkg_top_level_cells (would have needed %d zoom "
-        "cells in the void region).",
+        "Increase ZoomRegion:bkg_top_level_cells (would have had %d zoom "
+        "regions in the void region).",
         nr_zoom_regions);
   }
 
@@ -640,8 +658,8 @@ void zoom_region_init(struct space *s, const int verbose) {
   if (nr_zoom_regions >= 16) {
     warning(
         "Background cell size is large relative to the zoom region! "
-        "(we'll need at least %d buffer cells which may be slow). ",
-        nr_zoom_regions);
+        "(would have had %d zoom regions in the void "
+        "region). " nr_zoom_regions);
   }
 
   if (verbose) {
