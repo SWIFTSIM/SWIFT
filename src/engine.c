@@ -1124,9 +1124,7 @@ void engine_print_task_counts(const struct engine *e) {
       const struct task *t = &tasks[i];
 
       /* Handle NULL pointers. */
-      if (t->ci == NULL || t->cj == NULL) {
-        error("Task %d has a NULL cell pointer!", i);
-      }
+      if (t->ci == NULL) continue;
 
       /* Count the task type by cell type. */
       switch (t->ci->type) {
