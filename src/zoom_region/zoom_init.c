@@ -658,8 +658,8 @@ void zoom_region_init(struct space *s, const int verbose) {
   if (nr_zoom_regions >= 16) {
     warning(
         "Background cell size is large relative to the zoom region! "
-        "(would have had %d zoom regions in the void "
-        "region). " nr_zoom_regions);
+        "(would have had %d zoom regions in the void region). ",
+        nr_zoom_regions);
   }
 
   if (verbose) {
