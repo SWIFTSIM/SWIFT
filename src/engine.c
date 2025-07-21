@@ -1158,6 +1158,49 @@ void engine_print_task_counts(const struct engine *e) {
           error("Unknown cell type %d", t->ci->type);
       }
     }
+
+    /* Print the counts. */
+#ifdef WITH_MPI
+    printf("[%04i] %s engine_print_task_counts: zoom task counts are [ %s=%i",
+           e->nodeID, clocks_get_timesincestart(), taskID_names[0],
+           zoom_counts[0]);
+#else
+    printf("%s engine_print_task_counts: zoom task counts are [ %s=%i",
+           clocks_get_timesincestart(), taskID_names[0], zoom_counts[0]);
+#endif /* WITH_MPI */
+
+    for (int k = 1; k < task_type_count; k++)
+      printf(" %s=%i", taskID_names[k], zoom_counts[k]);
+    printf(" skipped=%i ]\n", zoom_counts[task_type_count]);
+    fflush(stdout);
+
+    /* Only print buffer cells if we have them. */
+    if (e->s->zoom_props->with_buffer_cells) {
+#ifdef WITH_MPI
+      printf(
+          "[%04i] %s engine_print_task_counts: buffer task counts are [ %s=%i",
+          e->nodeID, clocks_get_timesincestart(), taskID_names[0],
+          buffer_counts[0]);
+#else
+      printf("%s engine_print_task_counts: buffer task counts are [ %s=%i",
+             clocks_get_timesincestart(), taskID_names[0], buffer_counts[0]);
+#endif /* WITH_MPI */
+
+      for (int k = 1; k < task_type_count; k++)
+        printf(" %s=%i", taskID_names[k], buffer_counts[k]);
+      printf(" skipped=%i ]\n", buffer_counts[task_type_count]);
+      fflush(stdout);
+    }
+
+#ifdef WITH_MPI
+    printf(
+        "[%04i] %s engine_print_task_counts: background task counts are [ "
+        "%s=%i",
+        e->nodeID, clocks_get_timesincestart(), taskID_names[0], bkg_counts[0]);
+#else
+    printf("%s engine_print_task_counts: background task counts are [ %s=%i",
+           clocks_get_timesincestart(), taskID_names[0], bkg_counts[0]);
+#endif /* WITH_MPI */
   }
 
   /* In zoom land its helpful to print the pair and mm types. */
