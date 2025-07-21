@@ -1107,6 +1107,56 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_bparts = %zu.", e->s->nr_bparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
+
+  /* In zoom land we can also break this down by cell type. */
+  if (e->s->with_zoom_region) {
+    int zoom_counts[task_type_count + 1];
+    int buffer_counts[task_type_count + 1];
+    int bkg_counts[task_type_count + 1];
+    for (int k = 0; k <= task_type_count; k++) {
+      zoom_counts[k] = 0;
+      buffer_counts[k] = 0;
+      bkg_counts[k] = 0;
+    }
+
+    /* Loop over tasks. */
+    for (int i = 0; i < nr_tasks; i++) {
+      const struct task *t = &tasks[i];
+
+      /* Count the task type by cell type. */
+      switch (t->ci->type) {
+        case cell_type_zoom:
+          if (t->skip) {
+            zoom_counts[task_type_count]++;
+          } else {
+            zoom_counts[(int)t->type]++;
+          }
+          break;
+        case cell_type_buffer:
+          if (t->skip) {
+            buffer_counts[task_type_count]++;
+          } else {
+            buffer_counts[(int)t->type]++;
+          }
+          break;
+        case cell_type_bkg:
+          if (t->skip) {
+            bkg_counts[task_type_count]++;
+          } else {
+            bkg_counts[(int)t->type]++;
+          }
+          break;
+        case cell_type_regular:
+          error(
+              "Regular cell found in zoom simulation task! There should be no "
+              "regular cells in zoom simulations.");
+          break;
+        default:
+          error("Unknown cell type %d", t->ci->type);
+      }
+    }
+  }
+
   /* In zoom land its helpful to print the pair and mm types. */
   if (e->s->with_zoom_region) {
     /* Initialise counts; */
