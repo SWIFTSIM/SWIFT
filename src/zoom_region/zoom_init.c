@@ -667,16 +667,10 @@ void zoom_region_init(struct space *s, const int verbose) {
             nr_zoom_regions);
   }
 
-  /* If the extra padding due to background cells is small enough we can forgo
-   * buffer cells entirel,y if not we'll use them to better match the geometry
-   * to the high resolution particle distribution. */
-  if (nr_zoom_regions <= 2) {
-    s->zoom_props->with_buffer_cells = 0;
-    zoom_get_geometry_no_buffer_cells(s);
-  } else {
-    s->zoom_props->with_buffer_cells = 1;
-    zoom_get_geometry_with_buffer_cells(s);
-  }
+  /* Construct the zoom region geometry. */
+  /* NOTE: here we entirely avoid any buffer cell considerations since they
+   * provide no performance benefit and are for now vestigual. */
+  zoom_get_geometry_no_buffer_cells(s);
 
   /* Store what the true boost factor ended up being */
   double input_pad_factor = s->zoom_props->region_pad_factor;
