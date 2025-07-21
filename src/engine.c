@@ -1307,10 +1307,9 @@ void engine_print_task_counts(const struct engine *e) {
     } else {
       printf(
           "[%04i] %s engine_print_task_counts: pair task type counts are [ "
-          "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
-          "buffer<->bkg=%i bkg<->bkg=%i ]\n",
-          e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer,
-          nr_zoom_bkg, nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg);
+          "zoom<->zoom=%i zoom<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
+          e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_bkg,
+          nr_bkg_bkg, nr_zoom_neighbour);
     }
 #else
     if (e->s->zoom_props->with_buffer_cells) {
@@ -1324,10 +1323,9 @@ void engine_print_task_counts(const struct engine *e) {
     } else {
       printf(
           "%s engine_print_task_counts: pair task type counts are [ "
-          "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
-          "buffer<->bkg=%i bkg<->bkg=%i ]\n",
-          clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer,
-          nr_zoom_bkg, nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg);
+          "zoom<->zoom=%i  zoom<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
+          clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_bkg, nr_bkg_bkg,
+          nr_zoom_neighbour);
     }
 #endif /* WITH_MPI */
 
