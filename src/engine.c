@@ -1201,6 +1201,11 @@ void engine_print_task_counts(const struct engine *e) {
     printf("%s engine_print_task_counts: background task counts are [ %s=%i",
            clocks_get_timesincestart(), taskID_names[0], bkg_counts[0]);
 #endif /* WITH_MPI */
+
+    for (int k = 1; k < task_type_count; k++)
+      printf(" %s=%i", taskID_names[k], bkg_counts[k]);
+    printf(" skipped=%i ]\n", bkg_counts[task_type_count]);
+    fflush(stdout);
   }
 
   /* In zoom land its helpful to print the pair and mm types. */
