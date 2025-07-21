@@ -1296,20 +1296,39 @@ void engine_print_task_counts(const struct engine *e) {
 
     /* Print the pair types. */
 #ifdef WITH_MPI
-    printf(
-        "[%04i] %s engine_print_task_counts: pair task type counts are [ "
-        "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
-        "buffer<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
-        e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer,
-        nr_zoom_bkg, nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg,
-        nr_zoom_neighbour);
+    if (e->s->zoom_props->with_buffer_cells) {
+      printf(
+          "[%04i] %s engine_print_task_counts: pair task type counts are [ "
+          "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
+          "buffer<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
+          e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer,
+          nr_zoom_bkg, nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg,
+          nr_zoom_neighbour);
+    } else {
+      printf(
+          "[%04i] %s engine_print_task_counts: pair task type counts are [ "
+          "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
+          "buffer<->bkg=%i bkg<->bkg=%i ]\n",
+          e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer,
+          nr_zoom_bkg, nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg);
+    }
 #else
-    printf(
-        "%s engine_print_task_counts: pair task type counts are [ "
-        "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
-        "buffer<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
-        clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer, nr_zoom_bkg,
-        nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg, nr_zoom_neighbour);
+    if (e->s->zoom_props->with_buffer_cells) {
+      printf(
+          "%s engine_print_task_counts: pair task type counts are [ "
+          "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
+          "buffer<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
+          clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer,
+          nr_zoom_bkg, nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg,
+          nr_zoom_neighbour);
+    } else {
+      printf(
+          "%s engine_print_task_counts: pair task type counts are [ "
+          "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
+          "buffer<->bkg=%i bkg<->bkg=%i ]\n",
+          clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer,
+          nr_zoom_bkg, nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg);
+    }
 #endif /* WITH_MPI */
 
     /* Now count MM tasks. */
@@ -1389,19 +1408,40 @@ void engine_print_task_counts(const struct engine *e) {
 
     /* Print the pair types. */
 #ifdef WITH_MPI
-    printf(
-        "[%04i] %s engine_print_task_counts: grav-MM task type counts are [ "
-        "zoom<->zoom=%i buffer<->buffer=%i bkg<->bkg=%i "
-        "void<->zoom=%i void<->buffer=%i void<->bkg=%i ]\n",
-        e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_buffer_buffer,
-        nr_bkg_bkg, nr_void_zoom, nr_void_buffer, nr_void_bkg);
+    if (e->s->zoom_props->with_buffer_cells) {
+
+      printf(
+          "[%04i] %s engine_print_task_counts: grav-MM task type counts are [ "
+          "zoom<->zoom=%i buffer<->buffer=%i bkg<->bkg=%i "
+          "void<->zoom=%i void<->buffer=%i void<->bkg=%i ]\n",
+          e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom,
+          nr_buffer_buffer, nr_bkg_bkg, nr_void_zoom, nr_void_buffer,
+          nr_void_bkg);
+    } else {
+      printf(
+          "[%04i] %s engine_print_task_counts: grav-MM task type counts are [ "
+          "zoom<->zoom=%i buffer<->buffer=%i bkg<->bkg=%i "
+          "void<->zoom=%i void<->buffer=%i void<->bkg=%i ]\n",
+          e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom,
+          nr_buffer_buffer, nr_bkg_bkg, nr_void_zoom, nr_void_buffer,
+          nr_void_bkg);
+    }
 #else
-    printf(
-        "%s engine_print_task_counts: grav-MM task type counts are [ "
-        "zoom<->zoom=%i buffer<->buffer=%i bkg<->bkg=%i "
-        "void<->zoom=%i void<->buffer=%i void<->bkg=%i ]\n",
-        clocks_get_timesincestart(), nr_zoom_zoom, nr_buffer_buffer, nr_bkg_bkg,
-        nr_void_zoom, nr_void_buffer, nr_void_bkg);
+    if (e->s->zoom_props->with_buffer_cells) {
+      printf(
+          "%s engine_print_task_counts: grav-MM task type counts are [ "
+          "zoom<->zoom=%i buffer<->buffer=%i bkg<->bkg=%i "
+          "void<->zoom=%i void<->buffer=%i void<->bkg=%i ]\n",
+          clocks_get_timesincestart(), nr_zoom_zoom, nr_buffer_buffer,
+          nr_bkg_bkg, nr_void_zoom, nr_void_buffer, nr_void_bkg);
+    } else {
+      printf(
+          "%s engine_print_task_counts: grav-MM task type counts are [ "
+          "zoom<->zoom=%i buffer<->buffer=%i bkg<->bkg=%i "
+          "void<->zoom=%i void<->buffer=%i void<->bkg=%i ]\n",
+          clocks_get_timesincestart(), nr_zoom_zoom, nr_buffer_buffer,
+          nr_bkg_bkg, nr_void_zoom, nr_void_buffer, nr_void_bkg);
+    }
 #endif /* WITH_MPI */
   }
 #endif /* SWIFT_DEBUG_CHECKS */
