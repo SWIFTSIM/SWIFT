@@ -1367,13 +1367,6 @@ __attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
     return 1;
   }
 
-  /* Void cells must always be treated all the way to the leaves to ensure
-   * we get to the zoom cells, so we will always return true here (only
-   * applicable in zoom simulations). */
-  if (c->subtype == cell_subtype_void) {
-    return 1;
-  }
-
   /* Regular and zoom cells use the usual condition. */
   if (c->type == cell_type_regular || c->type == cell_type_zoom) {
     return (c->maxdepth - c->depth) > space_subdepth_diff_grav;
