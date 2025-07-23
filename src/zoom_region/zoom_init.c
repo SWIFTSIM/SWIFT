@@ -241,7 +241,7 @@ int zoom_get_void_geometry(struct space *s, const double region_dim) {
     upper_bounds[i] = (s->dim[i] / 2) + (region_dim / 2.0);
   }
 
-  /* Assign these temporaru bounds to the zoom region bounds, we'll overwrite
+  /* Assign these temporary bounds to the zoom region bounds, we'll overwrite
    * these later but useful to have them for now. */
   for (int i = 0; i < 3; i++) {
     s->zoom_props->region_lower_bounds[i] = lower_bounds[i];
@@ -339,7 +339,25 @@ void zoom_get_geometry_no_buffer_cells(struct space *s) {
   }
 }
 
+/**
+ * @brief Compute the geometry of the zoom region with buffer cells.
+ *
+ * This function computes the geometry of the zoom region when buffer cells are
+ * enabled. It calculates the bounds, dimensions, and cell widths for both the
+ * buffer and zoom regions.
+ *
+ * Currently, buffer cells are not fully supported and this function will
+ * simply through an error if called.
+ *
+ * @param s The space
+ */
 void zoom_get_geometry_with_buffer_cells(struct space *s) {
+
+  error(
+      "Buffer cells currently provide no performance benefit and carry a "
+      "significant complexity cost. They are thus not currently fully "
+      "supported. Set ZoomRegion:buffer_top_level_depth to 0 to disable "
+      "buffer cells.");
 
   /* Ensure we have a buffer cell depth. */
   if (s->zoom_props->buffer_cell_depth == 0) {
@@ -496,6 +514,8 @@ void zoom_report_cell_properties(const struct space *s) {
     message("%28s = %d", "Buffer Top Level Depth",
             zoom_props->buffer_cell_depth);
   message("%28s = %d", "Zoom Top Level Depth", zoom_props->zoom_cell_depth);
+  message("%28s = %d", "Neighbour Max Tree Depth",
+          zoom_props->neighbour_max_tree_depth);
 
   /* Assorted extra zoom properties */
   message("%28s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
@@ -629,8 +649,8 @@ void zoom_region_init(struct space *s, const int verbose) {
   if (nr_zoom_regions >= 64) {
     error(
         "Background cell size is too large relative to the zoom region! "
-        "Increase ZoomRegion:bkg_top_level_cells (would have needed %d zoom "
-        "cells in the void region).",
+        "Increase ZoomRegion:bkg_top_level_cells (would have had %d zoom "
+        "regions in the void region).",
         nr_zoom_regions);
   }
 
@@ -638,7 +658,7 @@ void zoom_region_init(struct space *s, const int verbose) {
   if (nr_zoom_regions >= 16) {
     warning(
         "Background cell size is large relative to the zoom region! "
-        "(we'll need at least %d buffer cells which may be slow). ",
+        "(would have had %d zoom regions in the void region). ",
         nr_zoom_regions);
   }
 
@@ -647,16 +667,10 @@ void zoom_region_init(struct space *s, const int verbose) {
             nr_zoom_regions);
   }
 
-  /* If the extra padding due to background cells is small enough we can forgo
-   * buffer cells entirel,y if not we'll use them to better match the geometry
-   * to the high resolution particle distribution. */
-  if (nr_zoom_regions <= 2) {
-    s->zoom_props->with_buffer_cells = 0;
-    zoom_get_geometry_no_buffer_cells(s);
-  } else {
-    s->zoom_props->with_buffer_cells = 1;
-    zoom_get_geometry_with_buffer_cells(s);
-  }
+  /* Construct the zoom region geometry. */
+  /* NOTE: here we entirely avoid any buffer cell considerations since they
+   * provide no performance benefit and are for now vestigual. */
+  zoom_get_geometry_no_buffer_cells(s);
 
   /* Store what the true boost factor ended up being */
   double input_pad_factor = s->zoom_props->region_pad_factor;
@@ -677,8 +691,7 @@ void zoom_region_init(struct space *s, const int verbose) {
     warning(
         "The pad region has to be %d times larger than requested. "
         "Either increase ZoomRegion:region_pad_factor, increase the "
-        "number of background cells, or increase the depths of the zoom cells "
-        "(and buffer cells if using).",
+        "number of background cells, or increase the depths of the zoom cells.",
         (int)(s->zoom_props->region_pad_factor / input_pad_factor));
 
   /* If we didn't get an explicit neighbour cell depth we'll match the zoom
@@ -687,6 +700,16 @@ void zoom_region_init(struct space *s, const int verbose) {
       (s->zoom_props->neighbour_max_tree_depth < 0)
           ? s->zoom_props->zoom_cell_depth
           : s->zoom_props->neighbour_max_tree_depth;
+
+  /* The neighbour depth must be less the zoom depth or higher if given. */
+  if (s->zoom_props->neighbour_max_tree_depth <
+      s->zoom_props->zoom_cell_depth) {
+    error(
+        "Zoom neighbour cell depth (%d) must be greater than or equal to the "
+        "zoom cell depth (%d).",
+        s->zoom_props->neighbour_max_tree_depth,
+        s->zoom_props->zoom_cell_depth);
+  }
 
   /* Set the minimum allowed zoom cell width. */
   const double zoom_dmax =

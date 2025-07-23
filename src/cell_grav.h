@@ -119,6 +119,10 @@ struct cell_grav {
 
   /*! Number of M-M tasks that are associated with this cell. */
   short int nr_mm_tasks;
+
+  /*! Flag for when we have tasks below the depth set by
+   * cell_subdepth_diff_grav (only applicable to zoom simulations). */
+  int tasks_below_diff_grav;
 };
 
 #endif /* SWIFT_CELL_GRAV_H */
