@@ -585,7 +585,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float resistive_eta_i = pi->mhd_data.resistive_eta+pi->mhd_data.eta_OWAR;
   const float resistive_eta_j = pj->mhd_data.resistive_eta+pj->mhd_data.eta_OWAR;
 
-  const float rho_term_PR = 1.0f / (rhoi * rhoj);
+  const float rhoij = 0.5f * (rhoi + rhoj);
+  const float rhoij2 = rhoij * rhoij;
+  const float rho_term_PR = 1.0f / rhoij2;
   const float grad_term_PR = f_ij * wi_dr + f_ji * wj_dr;
 
   const float dB_dt_pref_PR = rho_term_PR * grad_term_PR * r_inv;
@@ -866,7 +868,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   const float resistive_eta_i = pi->mhd_data.resistive_eta+pi->mhd_data.eta_OWAR;
 
-  const float rho_term_PR = 1.0f / (rhoi * rhoj);
+  const float rhoij = 0.5f * (rhoi + rhoj);
+  const float rhoij2 = rhoij * rhoij;
+  const float rho_term_PR = 1.0f / rhoij2;
   const float grad_term_PR = f_ij * wi_dr + f_ji * wj_dr;
 
   const float dB_dt_pref_PR = rho_term_PR * grad_term_PR * r_inv;
