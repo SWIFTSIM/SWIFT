@@ -1624,7 +1624,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   /* When we split a regular cell's task because it is interacting with a
    * void cell, we can end up below the depth set by space_subdepth_diff_grav.
    * This will cause absolute havoc with heierarchical gravity tasks being
-   * missing on the regular cell if we don't flag this somehow. */
+   * missing on the regular cell if we don't flag this somehow to ensure
+   * task recursions continue to this level. */
   if (!cell_is_above_diff_grav_depth(ci)) {
     ci->grav.tasks_below_diff_grav = 1;
   }
@@ -3155,13 +3156,13 @@ void scheduler_check_deadlock(struct scheduler *s) {
   ticks last = s->last_successful_task_fetch;
 
   if (last == 0LL) {
-    /* Ensure that the first check each engine_launch doesn't fail. There is
-     * no guarantee how long it will take from the point where
+    /* Ensure that the first check each engine_launch doesn't fail. There is no
+     * guarantee how long it will take from the point where
      * last_successful_task_fetch was reset to get to this point. A poorly
-     * chosen scheduler->deadlock_waiting_time_ms may abort a big run in
-     * places where there is no deadlock. Better safe than sorry, so at
-     * start-up, the last successful task fetch time is marked as 0. So we
-     * just exit without checking the time. */
+     * chosen scheduler->deadlock_waiting_time_ms may abort a big run in places
+     * where there is no deadlock. Better safe than sorry, so at start-up, the
+     * last successful task fetch time is marked as 0. So we just exit without
+     * checking the time. */
     while (atomic_cas(&s->last_successful_task_fetch, last, now) != last) {
       now = getticks();
       last = s->last_successful_task_fetch;
@@ -3178,8 +3179,7 @@ void scheduler_check_deadlock(struct scheduler *s) {
 
   if (idle_time > s->deadlock_waiting_time_ms) {
     message(
-        "Detected what looks like a deadlock after %g ms of no new task "
-        "being "
+        "Detected what looks like a deadlock after %g ms of no new task being "
         "fetched from queues. Dumping diagnostic data.",
         idle_time);
     engine_dump_diagnostic_data(s->e);
