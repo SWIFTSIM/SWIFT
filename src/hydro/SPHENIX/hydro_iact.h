@@ -180,6 +180,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   const float mi = pi->mass;
   const float mj = pj->mass;
 
+  const	float rhoi = pi->rho;
+  const	float rhoj = pj->rho;
+  
   /* Need to get some kernel values F_ij = wi_dx */
   float wi, wi_dx, wj, wj_dx;
 
@@ -219,8 +222,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pj->viscosity.v_sig = max(pj->viscosity.v_sig, new_v_sig);
 
   /* Now we need to compute the div terms */
-  const float faci = mj * f_ij * wi_dx * r_inv;
-  const float facj = mi * f_ji * wj_dx * r_inv;
+  const float faci = mj * f_ij * wi_dx * r_inv / rhoj;
+  const float facj = mi * f_ji * wj_dx * r_inv / rhoi;
 
   pi->viscosity.div_v -= faci * dvdr;
   pj->viscosity.div_v -= facj * dvdr;
@@ -293,6 +296,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   const float mj = pj->mass;
 
+  const float rhoj = pj->rho;
+  
   /* Need to get some kernel values F_ij = wi_dx */
   float wi, wi_dx;
 
@@ -328,7 +333,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
 
   /* Now we need to compute the div terms */
-  const float faci = mj * f_ij * wi_dx * r_inv;
+  const float faci = mj * f_ij * wi_dx * r_inv / rhoj;
 
   pi->viscosity.div_v -= faci * dvdr;
 
