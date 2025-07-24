@@ -41,6 +41,8 @@
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "pressure_floor.h"
+#include "timestep_sync_part.h"
+
 
 /**
  * @brief Returns the comoving internal energy of a particle at the last
@@ -390,6 +392,31 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   p->force.soundspeed = soundspeed;
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+}
+
+/**
+ * @brief Correct the signal velocity of the particle partaking in
+ * supernova (kinetic) feedback based on the velocity kick the particle receives
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param dv_phys The velocity kick received by the particle expressed in
+ * physical units (note that dv_phys must be positive or equal to zero)
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_v_sig_based_on_velocity_kick(struct part *p,
+                                       const struct cosmology *cosmo,
+                                       const float dv_phys) {
+
+  /* Compute the velocity kick in comoving coordinates */
+  const float dv = dv_phys / cosmo->a_factor_sound_speed;
+
+  /* Sound speed */
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
+
+  /* Update the signal velocity */
+  p->force.v_sig =
+      max(2.f * soundspeed, p->force.v_sig + 2.f * dv);
 }
 
 /**
@@ -844,7 +871,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
     float dt_grav, float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct entropy_floor_properties *floor_props, const double time) {
 
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
@@ -881,6 +908,76 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     xp->rho_evol_full = floor_rho;
     p->drho_dt = 0.f;
   }
+
+  // only kick the particle if it hasn't yet been launched, and if it is time to kick it //
+  // max particle ID we should be kicking by now //
+  const float max_id = (hydro_props->jet_power * time) / (0.5 * p->mass * hydro_props->jet_velocity * hydro_props->jet_velocity);
+  if (p->id < max_id) {
+
+    // particle position relative to the box centre
+    double delta_x = (p->x[0] - hydro_props->box_aspect_ratio * hydro_props->box_size / 2.f);
+    double delta_y = (p->x[1] - hydro_props->box_aspect_ratio * hydro_props->box_size / 2.f);
+    double delta_z = (p->x[2] - hydro_props->box_size / 2.f);
+
+    // cylindrical and spherical radius
+    double r = sqrtf(delta_x * delta_x + delta_y * delta_y);
+    double R = sqrtf(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);
+
+    // angle position in the x-y plane
+    double phi = 0.f;
+    if (delta_y > 0.0001f) {
+      phi = acos(fmaxf(-1.0f, fminf(1.0f, delta_x / r)));
+    } else if (delta_y < 0.0001f) {
+      phi = -1.f * acos(fmaxf(-1.0f, fminf(1.0f, delta_x / r)));
+    } else {
+      if (delta_x > 0.f) {
+        phi = 0.f;
+      } else {
+        phi = M_PI;
+      }
+    }
+
+    // cosine and sine of particle position with respect to z axis
+    double cos_theta = delta_z / R;
+    double sin_theta = fmaxf(0.f, sqrtf(1.f - cos_theta * cos_theta));
+
+    // assign velocity to be given. We do a radial kick from the origin
+    float vel_kick_vec[3];
+    vel_kick_vec[0] = hydro_props->jet_velocity * sin_theta *  cos(phi);
+    vel_kick_vec[1] = hydro_props->jet_velocity * sin_theta *  sin(phi);
+    vel_kick_vec[2] = hydro_props->jet_velocity * cos_theta;
+
+    p->v[0] = vel_kick_vec[0];
+    p->v[1] = vel_kick_vec[1];
+    p->v[2] = vel_kick_vec[2];
+    xp->v_full[0] = vel_kick_vec[0];
+    xp->v_full[1] = vel_kick_vec[1];
+    xp->v_full[2] = vel_kick_vec[2];
+
+    // reset some hydro quantities
+    hydro_diffusive_feedback_reset(p);
+
+    // recompute the signal velocity of the particle
+    hydro_set_v_sig_based_on_velocity_kick(p, cosmo, hydro_props->jet_velocity);
+
+    // synchronize the particle on the time-line
+    timestep_sync_part(p);
+
+    // increase the particle's id so it's no longer ever kicked
+    p->id += 1e7;
+
+    const float opening_angle_radians = 10.f / 180. * M_PI;//hydro_props->opening_angle / 180. * M_PI;
+    const float A = 2. * M_PI * (delta_z * delta_z * tan(opening_angle_radians) * tan(opening_angle_radians));
+    const float rho_init = hydro_props->jet_power / (A * hydro_props->jet_velocity * hydro_props->jet_velocity * hydro_props->jet_velocity);
+      
+    p->rho = rho_init; 
+    p->rho_evol = rho_init; 
+    xp->rho_evol_full = rho_init; 
+    p->grad_m0[0] = 0.f;
+    p->grad_m0[1] = 0.f;
+    p->grad_m0[2] = 0.f;
+  
+  } 
 }
 
 /**
