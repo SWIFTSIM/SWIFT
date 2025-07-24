@@ -1502,14 +1502,14 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                                            /*is_tree_walk=*/1,
                                            /*periodic boundaries*/ sp->periodic,
                                            /*use_mesh*/ sp->periodic)) {
-
-                    /* Flag this pair as being treated by the M-M task.
-                     * We use the 64 bits in the task->flags field to store
-                     * this information. The corresponding taks will unpack
-                     * the information and operate according to the choices
-                     * made here. */
-                    const int flag = i * 8 + j;
-                    t->flags |= (1ULL << flag);
+                    //
+                    // /* Flag this pair as being treated by the M-M task.
+                    //  * We use the 64 bits in the task->flags field to store
+                    //  * this information. The corresponding taks will unpack
+                    //  * the information and operate according to the choices
+                    //  * made here. */
+                    // const int flag = i * 8 + j;
+                    // t->flags |= (1ULL << flag);
 
                   } else {
                     /* Ok, we actually have to create a task */
@@ -1684,6 +1684,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       }
     }
   }
+
+  reused = 0;
 
   /* Can none of the progenies use M-M calculations? */
   if (!reused) {
