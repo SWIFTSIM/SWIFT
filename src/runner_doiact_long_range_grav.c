@@ -31,6 +31,140 @@
 #include "timers.h"
 
 /**
+ * @brief Recurse through a cell finding any pairs of sub-cells we can do an
+ * M-M interaction with.
+ *
+ * The logic here mirrors the logic used during task splitting in
+ * scheduler.c:scheduler_splittask_gravity() and replaces the explicit
+ * grav_mm tasks.
+ *
+ * @param e The #engine.
+ * @param ci The #cell of interest.
+ * @param top The top-level parent of the #cell of interest.
+ */
+void runner_doself_mm_recursive(struct engine *e, struct cell *ci) {
+
+  /* Unpack the multipoles */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+
+  /* Exit if the multipoles are empty */
+  if (multi_i->m_pole.M_000 == 0.f) {
+    return;
+  }
+
+  /* Was this cell a split task? */
+  if (cell_can_split_self_gravity_task(ci) ||
+      ci->subtype == cell_subtype_void) {
+
+    /* If we did a fully fledged self task on this cell,
+     * we can just return (i.e. it can't be split further). */
+    if (scheduler_dosub && ci->subtype != cell_subtype_void &&
+        ci->grav.count < ((long long)space_subsize_self_grav)) {
+      return;
+    } else {
+
+      /* Make a task for every other pair of progeny */
+      for (int i = 0; i < 8; i++) {
+        if (ci->progeny[i] != NULL) {
+          for (int j = i + 1; j < 8; j++) {
+            if (ci->progeny[j] != NULL) {
+
+              /* Can we use a M-M interaction here? */
+              if (cell_can_use_pair_mm(ci->progeny[i], ci->progeny[j], e, e->s,
+                                       /*use_rebuild_data=*/1,
+                                       /*is_tree_walk=*/1,
+                                       /*periodic boundaries*/ e->s->periodic,
+                                       /*use_mesh*/ e->s->periodic)) {
+
+                /* Ok, do the interaction */
+                runner_dopair_grav_mm_nonsym(e->r, ci->progeny[i],
+                                             ci->progeny[j]);
+
+                /* Record that this multipole received a contribution */
+                multi_i->pot.interacted = 1;
+
+              } else {
+                /* We can't do an M-M interaction here, so we need to recurse
+                 * down the tree. */
+                runner_dopair_mm_recursive(e, ci->progeny[i], ci->progeny[j]);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @brief Recurse through a cell pair's trees finding any cells we can do an
+ * M-M interaction with.
+ *
+ * The logic here mirrors the logic used during task splitting in
+ * scheduler.c:scheduler_splittask_gravity() and replaces the explicit
+ * grav_mm tasks.
+ *
+ */
+void runner_dopair_mm_recursive(struct engine *e, struct cell *ci,
+                                struct cell *cj) {
+
+  /* Unpack the multipoles */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+  struct gravity_tensors *const multi_j = cj->grav.multipole;
+
+  /* Exit if the multipoles are empty */
+  if (multi_i->m_pole.M_000 == 0.f || multi_j->m_pole.M_000 == 0.f) {
+    return;
+  }
+
+  /* Was this cell pair a split task? */
+  if (cell_can_split_pair_gravity_task(ci, cj) ||
+      ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void) {
+    const long long gcount_i = ci->grav.count;
+    const long long gcount_j = cj->grav.count;
+
+    /* If we did a fully fledged pair task between these two cells,
+     * we can just return (i.e. they can't be split further). */
+    if (scheduler_dosub &&
+        !(ci->subtype == cell_subtype_void ||
+          cj->subtype == cell_subtype_void) &&
+        gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
+      return;
+    } else {
+
+      /* Make a task for every other pair of progeny */
+      for (int i = 0; i < 8; i++) {
+        if (ci->progeny[i] != NULL) {
+          for (int j = 0; j < 8; j++) {
+            if (cj->progeny[j] != NULL) {
+              /* Can we use a M-M interaction here? */
+              if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e, e->s,
+                                       /*use_rebuild_data=*/1,
+                                       /*is_tree_walk=*/1,
+                                       /*periodic boundaries*/ e->s->periodic,
+                                       /*use_mesh*/ e->s->periodic)) {
+
+                /* Ok, do the interaction */
+                runner_dopair_grav_mm_nonsym(e->r, ci->progeny[i],
+                                             cj->progeny[j]);
+
+                /* Record that this multipole received a contribution */
+                multi_i->pot.interacted = 1;
+
+              } else {
+                /* We can't do an M-M interaction here, so we need to recurse
+                 * down the tree. */
+                runner_dopair_mm_recursive(e, ci->progeny[i], cj->progeny[j]);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
  * @brief Performs M-M interactions between a given top-level cell and
  *        all other top level cells not interacted with via pair tasks.
  *
@@ -61,6 +195,9 @@ void runner_do_grav_long_range_uniform_non_periodic(struct runner *r,
   int *cells_with_particles = e->s->cells_with_particles_top;
   const int nr_cells_with_particles = e->s->nr_cells_with_particles;
 
+  /* Do any self M-M interactions first */
+  runner_doself_mm_recursive(e, ci);
+
   /* Loop over all the top-level cells and go for a M-M interaction if
    * well-separated */
   for (int n = 0; n < nr_cells_with_particles; ++n) {
@@ -87,7 +224,11 @@ void runner_do_grav_long_range_uniform_non_periodic(struct runner *r,
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
 
-    } /* We are in charge of this pair */
+    } else {
+      /* We can't do an M-M interaction here, so we need to recurse down the
+       * tree. */
+      runner_dopair_mm_recursive(e, ci, cj);
+    }
   } /* Loop over top-level cells */
 }
 
@@ -119,6 +260,9 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
 
   /* Recover the list of top-level cells */
   struct cell *bkg_cells = e->s->zoom_props->bkg_cells_top;
+
+  /* Do any self M-M interactions first */
+  runner_doself_mm_recursive(e, ci);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Define counters used to count gparts. */
@@ -155,7 +299,11 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
 
-    } /* We are in charge of this pair */
+    } else {
+      /* We can't do an M-M interaction here, so we need to recurse down the
+       * tree. */
+      runner_dopair_mm_recursive(e, ci, cj);
+    }
   } /* Loop over top-level cells */
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -224,6 +372,9 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
   int d =
       ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
 
+  /* Do any self M-M interactions first */
+  runner_doself_mm_recursive(e, ci);
+
   /* Loop over plausibly useful cells */
   for (int ii = top_i - d; ii <= top_i + d; ++ii) {
     for (int jj = top_j - d; jj <= top_j + d; ++jj) {
@@ -274,7 +425,11 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
           /* Record that this multipole received a contribution */
           multi_i->pot.interacted = 1;
 
-        } /* We can interact with this cell */
+        } else {
+          /* We can't do an M-M interaction here, so we need to recurse down the
+           * tree. */
+          runner_dopair_mm_recursive(e, ci, cj);
+        }
       } /* Loop over relevant top-level cells (k) */
     } /* Loop over relevant top-level cells (j) */
   } /* Loop over relevant top-level cells (i) */
@@ -322,6 +477,9 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
    * rounded up to the next integer */
   int d =
       ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
+
+  /* Do any self M-M interactions first */
+  runner_doself_mm_recursive(e, ci);
 
   /* Loop over plausibly useful cells */
   for (int ii = top_i - d; ii <= top_i + d; ++ii) {
@@ -375,7 +533,11 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
           /* Record that this multipole received a contribution */
           multi_i->pot.interacted = 1;
 
-        } /* We can interact with this cell */
+        } else {
+          /* We can't do an M-M interaction here, so we need to recurse down the
+           * tree. */
+          runner_dopair_mm_recursive(e, ci, cj);
+        }
       } /* Loop over relevant top-level cells (k) */
     } /* Loop over relevant top-level cells (j) */
   } /* Loop over relevant top-level cells (i) */
