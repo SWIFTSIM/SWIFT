@@ -2450,8 +2450,11 @@ case "$with_eos" in
    isothermal-gas)
       AC_DEFINE([EOS_ISOTHERMAL_GAS], [1], [Isothermal gas equation of state])
    ;;
-     barotropic-gas)
+   barotropic-gas)
        AC_DEFINE([EOS_BAROTROPIC_GAS], [1], [Barotropic gas equation of state])
+   ;;
+   continuous-barotropic-gas)
+       AC_DEFINE([EOS_CONTINUOUS_BAROTROPIC_GAS], [1], [Barotropic gas equation of state])
    ;;
    planetary)
       AC_DEFINE([EOS_PLANETARY], [1], [All planetary equations of state])
