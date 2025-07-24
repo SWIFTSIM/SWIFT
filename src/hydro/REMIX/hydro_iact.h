@@ -229,6 +229,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
+  // Interactions between recently kicked and unkicked particles are switched off
+  if ((pi->jet_kick_time > 0.f && pj->id < SWIFT_BOUNDARY_PARTICLES) || (pj->jet_kick_time > 0.f && pi->id < SWIFT_BOUNDARY_PARTICLES)) {
+    return;
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
@@ -401,6 +406,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H) {
+
+  // Interactions between recently kicked and unkicked particles are switched off
+  if ((pi->jet_kick_time > 0.f && pj->id < SWIFT_BOUNDARY_PARTICLES)) {
+    return;
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)

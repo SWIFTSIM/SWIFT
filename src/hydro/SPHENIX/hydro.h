@@ -1205,7 +1205,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     timestep_sync_part(p);
 
     // increase the particle's id so it's no longer ever kicked
-    p->id += 1e7;
+    p->id += SWIFT_BOUNDARY_PARTICLES;
   }
 }
 

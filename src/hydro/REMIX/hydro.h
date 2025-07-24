@@ -964,20 +964,33 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     timestep_sync_part(p);
 
     // increase the particle's id so it's no longer ever kicked
-    p->id += 1e7;
+    p->id += SWIFT_BOUNDARY_PARTICLES;
 
-    const float opening_angle_radians = 10.f / 180. * M_PI;//hydro_props->opening_angle / 180. * M_PI;
-    const float A = 2. * M_PI * (delta_z * delta_z * tan(opening_angle_radians) * tan(opening_angle_radians));
+    // Set density of particles leaving the cone based on rho = M_dot / (A * V_jet), where A is the combined
+    // cross-sectional area of the two cones at the height of the particle that is currently being launched.
+    // Then with M_dot = P_jet / v_jet ^2 this becomes rho = P_jet / (A * v_jet^3)
+    const float tan_opening_angle = tanf(hydro_props->jet_opening_angle / 180. * M_PI);
+    const float A = 2. * M_PI * (delta_z * delta_z * tan_opening_angle * tan_opening_angle);
     const float rho_init = hydro_props->jet_power / (A * hydro_props->jet_velocity * hydro_props->jet_velocity * hydro_props->jet_velocity);
-      
+
+    // Update densities
     p->rho = rho_init; 
     p->rho_evol = rho_init; 
-    xp->rho_evol_full = rho_init; 
-    p->grad_m0[0] = 0.f;
-    p->grad_m0[1] = 0.f;
-    p->grad_m0[2] = 0.f;
-  
-  } 
+    xp->rho_evol_full = rho_init;
+
+    // Store time of kick
+    p->jet_kick_time = time;
+  }
+
+  // jet_kick_time is used to switch off interactions of recently kicked particles with unkicked particles. 
+  // Kicked particles revert to normal interactions after a distance of approx. 2.f * kernel_gamma * p->h
+  // has been travelled by the particel since the kick.
+  if (p->jet_kick_time > 0.f) {  
+    float distance_since_kick = (time - p->jet_kick_time) * hydro_props->jet_velocity;
+    if (distance_since_kick >  2.f * kernel_gamma * p->h) {
+      p->jet_kick_time = -1.f;
+    }
+  }
 }
 
 /**
@@ -1030,6 +1043,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   p->rho_evol = p->rho;
   xp->rho_evol_full = p->rho_evol;
+
+  p->jet_kick_time = -1.f;
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);

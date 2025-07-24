@@ -150,6 +150,9 @@ struct part {
   /*! Gradient of geometric moment m_0. */
   float grad_m0[3];
 
+  /*! Time when jet particle was kicked */
+  float jet_kick_time;
+
   /* Store density/force specific stuff. */
   union {
 

@@ -217,6 +217,7 @@ void hydro_props_init(struct hydro_props *p,
   p->jet_power = parser_get_param_float(params, "SPH:jet_power");
   p->jet_velocity = parser_get_param_float(params, "SPH:jet_velocity");
   p->jet_duration = parser_get_param_float(params, "SPH:jet_duration");
+  p->jet_opening_angle = parser_get_param_float(params, "SPH:jet_opening_angle");
 }
 
 /**
