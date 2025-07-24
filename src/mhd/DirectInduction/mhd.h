@@ -133,10 +133,10 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
-  const float dt_eta = p->mhd_data.resistive_eta+p->mhd_data.eta_OWAR != 0.f
+  const float dt_eta = p->mhd_data.resistive_eta != 0.f
                            ? hydro_properties->CFL_condition * cosmo->a *
                                  cosmo->a * p->h * p->h /
-                                 (p->mhd_data.resistive_eta+p->mhd_data.eta_OWAR)
+                                 (p->mhd_data.resistive_eta) //+p->mhd_data.eta_OWAR)
                            : FLT_MAX;
 
   return dt_eta;
@@ -322,7 +322,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     p->mhd_data.mean_grad_SPH_err[k] = 0.f;
   }
   /* Set zero OW artificial resistivity*/
-  p->mhd_data.eta_OWAR = 0.0f; 
+  //p->mhd_data.eta_OWAR = 0.0f; 
 }
 
 /**
@@ -345,6 +345,36 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   B[1] = p->mhd_data.B_over_rho[1] * rho;
   B[2] = p->mhd_data.B_over_rho[2] * rho;
 
+
+  float absB;
+  absB = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
+  float Adv_B_source[3];
+  float Delta_B[3];
+  for (int k = 0; k < 3; k++) {
+    Adv_B_source[k] = p->mhd_data.Adv_B_source[k];
+    Delta_B[k] = p->mhd_data.Delta_B[k]; 
+  }
+  float Abs_Adv_B_source;
+  float Abs_Delta_B;
+  float Cos_Ind_B;
+  Abs_Adv_B_source = sqrtf(Adv_B_source[0]*Adv_B_source[0]+Adv_B_source[1]*Adv_B_source[1]+Adv_B_source[2]*Adv_B_source[2]);
+  Abs_Delta_B = sqrtf(Delta_B[0]*Delta_B[0]+Delta_B[1]*Delta_B[1]+Delta_B[2]*Delta_B[2]);
+
+  for (int k = 0; k < 3; k++) {
+  Adv_B_source[k] /= (Abs_Adv_B_source+FLT_MIN);
+  B[k] /= (absB+FLT_MIN);
+  }
+
+  Cos_Ind_B = (Adv_B_source[0]*B[0]+Adv_B_source[1]*B[1]+Adv_B_source[2]*B[2]);
+  
+
+  float Rm;
+  Rm = 1.0f;
+  p->mhd_data.c_ind = 0.0f;
+  if (Cos_Ind_B>0.0f){
+      p->mhd_data.c_ind = p->h*p->h*Abs_Delta_B/(2*absB + FLT_MIN)/Rm;
+  }
+ /*
   float OW;
   OW = 1.0f;
 
@@ -378,7 +408,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
         "Error: incorrect OWAR "
         );
 }
-
+*/
+ 
  
 }
 
@@ -717,7 +748,7 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     p->mhd_data.Diff_B_source[k] = 0.0f;
     p->mhd_data.Delta_B[k] = 0.0f;
   }
-  p->mhd_data.eta_OWAR = 0.01f*p->mhd_data.resistive_eta; 
+  //p->mhd_data.eta_OWAR = 0.01f*p->mhd_data.resistive_eta; 
 
 }
 

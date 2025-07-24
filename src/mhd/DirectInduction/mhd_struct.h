@@ -87,7 +87,10 @@ struct mhd_part_data {
   /* Laplacian B */
   float Delta_B[3];
   /* OW artificial resistivity */
-  float eta_OWAR;
+  //float eta_OWAR;
+
+  /* Induction limiter */
+  float c_ind;
 
 };
 
