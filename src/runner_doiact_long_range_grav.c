@@ -86,7 +86,7 @@ void runner_dopair_mm_recursive(struct runner *r, struct cell *ci,
                                        /*use_mesh*/ s->periodic)) {
 
                 /* Ok, do the interaction */
-                runner_dopair_grav_mm(r, ci->progeny[i], cj->progeny[j]);
+                runner_dopair_grav_mm_nonsym(r, ci->progeny[i], cj->progeny[j]);
 
                 /* Record that this multipole received a contribution */
                 multi_i->pot.interacted = 1;
@@ -155,7 +155,7 @@ void runner_doself_mm_recursive(struct runner *r, struct cell *ci) {
                                        /*use_mesh*/ s->periodic)) {
 
                 /* Ok, do the interaction */
-                runner_dopair_grav_mm(r, ci->progeny[i], ci->progeny[j]);
+                runner_dopair_grav_mm_nonsym(r, ci->progeny[i], ci->progeny[j]);
 
                 /* Record that this multipole received a contribution */
                 multi_i->pot.interacted = 1;
