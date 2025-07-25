@@ -1723,7 +1723,7 @@ void write_output_serial(struct engine* e,
         if (gpart_group_data_written)
           swift_free("gpart_group_written", gpart_group_data_written);
         if (sparts_written) swift_free("sparts_written", sparts_written);
-        if (bparts_written) swift_free("bparts_written", sparts_written);
+        if (bparts_written) swift_free("bparts_written", bparts_written);
         if (sinks_written) swift_free("sinks_written", sinks_written);
 
         /* Close particle group */
