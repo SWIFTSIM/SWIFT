@@ -6,6 +6,8 @@
 Time-step limiter
 =================
 
+Enabled with command-line option ``--limiter``.
+
 The first limit we impose is to limit the time-step of active particles
 (section 3.4, Schaller et al. (2024), MNRAS 530:2). 
 When a particle computes the size of its next time-step, typically using the CFL condition, 
