@@ -743,16 +743,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
-  const float rho_inv = 1.f / p->rho;
   const float a_inv2 = cosmo->a2_inv;
 
   /* Finish calculation of the velocity curl components */
-  p->viscosity.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-  p->viscosity.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-  p->viscosity.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->viscosity.rot_v[0] *= h_inv_dim_plus_one * a_inv2;
+  p->viscosity.rot_v[1] *= h_inv_dim_plus_one * a_inv2;
+  p->viscosity.rot_v[2] *= h_inv_dim_plus_one * a_inv2;
 
   /* Finish calculation of the velocity divergence */
-  p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
+  p->viscosity.div_v *= h_inv_dim_plus_one * a_inv2;
   p->viscosity.div_v += cosmo->H * hydro_dimension;
 
   /* Include the extra factors in the del^2 u */
