@@ -112,8 +112,9 @@ gas_entropy_from_pressure(const float density, const float pressure) {
  */
 __attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_entropy(const float density, const float entropy) {
-  error("Undefined");
-  return -1.;
+
+  const float P = gas_pressure_from_entropy(density, entropy);
+  return sqrtf(hydro_gamma * P / density);
 }
 
 /**
@@ -182,8 +183,8 @@ gas_internal_energy_from_pressure(const float density, const float pressure) {
 __attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_internal_energy(const float density, const float u) {
 
-  error("Undefined");
-  return -1.;
+  const float P = gas_pressure_from_internal_energy(density, u);
+  return sqrtf(hydro_gamma * P / density);
 }
 
 /**
@@ -199,8 +200,7 @@ gas_soundspeed_from_internal_energy(const float density, const float u) {
 __attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_pressure(const float density, const float P) {
 
-  error("Undefined");
-  return -1.;
+  return sqrtf(hydro_gamma * P / density);
 }
 
 /**
