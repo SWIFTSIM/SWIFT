@@ -636,6 +636,7 @@ void *runner_main(void *data) {
           /* Use the appropriate MM function, either between a pair (direct),
            * or between multiple pairs of progeny. */
           if (t->subtype == task_subtype_direct) {
+            error("Direct MM tasks should not be scheduled.");
             runner_dopair_grav_mm(r, t->ci, t->cj);
           } else if (t->subtype == task_subtype_progeny) {
             runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
