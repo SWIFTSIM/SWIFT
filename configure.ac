@@ -331,6 +331,18 @@ if test "$enable_debugging_checks" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
 fi
 
+# Check if expensive debugging is on.
+AC_ARG_ENABLE([magma2-debugging-checks],
+   [AS_HELP_STRING([--enable-magma2-debugging-checks],
+     [Activate expensive MAGMA2 debugging checks @<:@yes/no@:>@]
+   )],
+   [enable_magma2_debugging_checks="$enableval"],
+   [enable_magma2_debugging_checks="no"]
+)
+if test "$enable_magma2_debugging_checks" = "yes"; then
+   AC_DEFINE([MAGMA2_DEBUG_CHECKS],1,[Enable expensive MAGMA2 debugging])
+fi
+
 # Check if cell graph is on.
 AC_ARG_ENABLE([cell-graph],
    [AS_HELP_STRING([--enable-cell-graph],

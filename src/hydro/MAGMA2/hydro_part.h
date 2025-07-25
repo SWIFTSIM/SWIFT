@@ -142,7 +142,18 @@ struct part {
 
   /*! Correction matrix (C^ki in Rosswog 2020) */
   float C[3][3];
-  
+
+#ifdef MAGMA2_DEBUG_CHECKS
+  struct {
+    /*! C matrix at the last time it was ill-conditioned */
+    float C[3][3];
+    
+    /*! Number of times C was ill-conditioned */
+    int ill_conditioned_count;
+
+  } debug;
+#endif
+
   /* Store viscosity information in a separate struct. */
   struct {
 

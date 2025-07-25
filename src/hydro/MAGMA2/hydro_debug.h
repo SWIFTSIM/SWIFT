@@ -23,9 +23,9 @@
 #define SWIFT_MAGMA2_HYDRO_DEBUG_H
 
 /**
- * @file Gasoline/hydro_debug.h
+ * @file MAGMA2/hydro_debug.h
  * @brief Density-Energy conservative implementation of SPH,
- *        with added Gasoline physics (Rosswog 2020) (Debugging routines)
+ *        with added MAGMA2 physics (Rosswog 2020) (Debugging routines)
  */
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(

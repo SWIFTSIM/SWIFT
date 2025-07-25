@@ -251,6 +251,21 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential,
       "Co-moving gravitational potential at position of the particles");
+
+#ifdef MAGMA2_DEBUG_CHECKS
+  list[14] = io_make_output_field(
+      "CorrectionMatrices", FLOAT, 9, UNIT_CONV_LENGTH * UNIT_CONV_LENGTH, 
+      2.f, parts, debug.C,
+      "Co-moving correction matrices for the particles.");
+
+  list[15] = io_make_output_field(
+      "IllConditionedCounts", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      debug.ill_conditioned_count,
+      "Count for how many times this particle had an ill-conditioned C matrix");
+
+  *num_fields = 16;
+#endif
+
 }
 
 /**

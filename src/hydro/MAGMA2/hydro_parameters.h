@@ -45,6 +45,9 @@
  *        as well as a number of compile-time parameters.
  */
 
+/*! Consider C matrix can be ill-conditioned above this limit */
+#define const_condition_number_upper_limit 1.e4f
+
 /*! Viscosity parameters -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
 
 /*! Cosmology default beta=3.0.

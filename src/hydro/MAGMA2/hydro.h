@@ -41,6 +41,9 @@
 #include "minmax.h"
 #include "pressure_floor.h"
 
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_linalg.h>
+#include <gsl/gsl_vector.h>
 #include <float.h>
 
 /**
@@ -520,6 +523,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
+      p->C[i][j] = 0.f;
       p->viscosity.velocity_gradient[i][j] = 0.f;
     }
   }
@@ -680,6 +684,35 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
 }
 
 /**
+ * @brief Computes the condition number of a matrix A
+ *
+ *
+ * @param A The matrix to compute the condition number of.
+ */
+__attribute__((always_inline)) INLINE static float 
+condition_number(gsl_matrix *A) {
+
+  gsl_matrix *A_copy = gsl_matrix_alloc(3, 3);
+  gsl_matrix_memcpy(A_copy, A);
+
+  gsl_vector *S = gsl_vector_alloc(3);
+  gsl_vector *work = gsl_vector_alloc(3);
+  gsl_matrix *V = gsl_matrix_alloc(3, 3);
+
+  gsl_linalg_SV_decomp(A_copy, V, S, work);
+
+  double s_max = gsl_vector_get(S, 0);
+  double s_min = gsl_vector_get(S, 2);
+
+  gsl_matrix_free(A_copy);
+  gsl_matrix_free(V);
+  gsl_vector_free(S);
+  gsl_vector_free(work);
+
+  return (s_min != 0.f) ? s_max / s_min : FLT_MAX;
+}
+
+/**
  * @brief Finishes the gradient calculation.
  *
  * Just a wrapper around hydro_gradients_finalize, which can be an empty method,
@@ -701,6 +734,53 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   /* Apply correct normalisation */
   p->viscosity.shock_limiter *= h_inv_dim;
+  for (int k = 0; k < 3; k++) {
+    p->C[k][0] *= h_inv_dim;
+    p->C[k][1] *= h_inv_dim;
+    p->C[k][2] *= h_inv_dim;
+  }
+
+  /* Invert the p->C[3][3] matrix */
+  gsl_matrix_view C_view = gsl_matrix_view_array((double *)p->C, 3, 3);
+  gsl_matrix *C = &C_view.matrix;
+
+  float cond = condition_number(C);
+  if (cond < const_condition_number_upper_limit) {
+    gsl_matrix *C_inv = gsl_matrix_alloc(3, 3);
+    gsl_permutation *p_perm = gsl_permutation_alloc(3);
+    int signum;
+
+    gsl_linalg_LU_decomp(C, p_perm, &signum);
+    gsl_linalg_LU_invert(C, p_perm, C_inv);
+
+    for (int k = 0; k < 3; k++) {
+      for (int i = 0; i < 3; i++) {
+        p->C[k][i] = gsl_matrix_get(C_inv, k, i);
+      }
+    }
+
+    gsl_matrix_free(C_inv);
+    gsl_permutation_free(p_perm);
+  }
+  else {
+#ifdef MAGMA2_DEBUG_CHECKS
+    for (int k = 0; k < 3; k++) {
+      p->debug.C[k][0] = p->C[k][0];
+      p->debug.C[k][1] = p->C[k][1];
+      p->debug.C[k][2] = p->C[k][2];
+    }
+    
+    p->debug.ill_conditioned_count++;
+#endif
+
+    /* Ill-condition matrix, revert back to normal SPH gradients */
+    for (int k = 0; k < 3; k++) {
+      p->C[k][0] = 0.f;
+      p->C[k][1] = 0.f;
+      p->C[k][2] = 0.f;
+    }
+  }
+
 }
 
 /**
@@ -739,6 +819,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
+      p->C[i][j] = 0.f;
       p->viscosity.velocity_gradient[i][j] = 0.f;
     }
   }
@@ -1080,6 +1161,10 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   p->viscosity.shock_indicator_previous_step = 0.f;
   p->viscosity.tensor_norm = 0.f;
+
+#ifdef MAGMA2_DEBUG_CHECKS
+  p->debug.ill_conditioned_count = 0;
+#endif
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);

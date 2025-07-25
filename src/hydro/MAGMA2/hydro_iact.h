@@ -200,6 +200,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
+
+  /* Get particle properties */
+  const float mi = hydro_get_mass(pi);
+  const float mj = hydro_get_mass(pj);
+
+  const float rhoi = hydro_get_comoving_density(pi);
+  const float rhoj = hydro_get_comoving_density(pj);
+
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
 
@@ -250,16 +258,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
           ? pi->viscosity.shock_indicator / pi->viscosity.tensor_norm
           : 0.f;
 
-  pi->viscosity.shock_limiter += pj->mass * shock_ratio_i * wi;
-  pj->viscosity.shock_limiter += pi->mass * shock_ratio_j * wj;
+  pi->viscosity.shock_limiter += mj * shock_ratio_i * wi;
+  pj->viscosity.shock_limiter += mi * shock_ratio_j * wj;
 
   /* Correction factors for kernel gradients */
-  const float rho_inv_i = 1.f / pi->rho;
-  const float rho_inv_j = 1.f / pj->rho;
+  const float rho_inv_i = 1.f / rhoi;
+  const float rho_inv_j = 1.f / rhoj;
 
-  pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
-  pj->weighted_neighbour_wcount += pi->mass * r2 * wj_dx * rho_inv_i * r_inv;
+  pi->weighted_neighbour_wcount += mj * r2 * wi_dx * rho_inv_j * r_inv;
+  pj->weighted_neighbour_wcount += mi * r2 * wj_dx * rho_inv_i * r_inv;
 
+  for (int k = 0; k < 3; k++) {
+    for (int i = 0; i < 3; i++) {
+      /* dx is signed as (pi - pj), but it is symmetric so we add */
+      pi->C[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
+      pj->C[k][i] += mi * rho_inv_i * dx[k] * dx[i] * wj;
+    }
+  }
 }
 
 /**
@@ -283,6 +298,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
+
+  /* Get particle properties */
+  const float mj = hydro_get_mass(pj);
+  const float rhoj = hydro_get_comoving_density(pj);
+
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
 
@@ -324,13 +344,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
           ? pj->viscosity.shock_indicator / pj->viscosity.tensor_norm
           : 0.f;
 
-  pi->viscosity.shock_limiter += pj->mass * shock_ratio_i * wi;
+  pi->viscosity.shock_limiter += mj * shock_ratio_i * wi;
 
   /* Correction factors for kernel gradients */
 
-  const float rho_inv_j = 1.f / pj->rho;
+  const float rho_inv_j = 1.f / rhoj;
 
-  pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
+  pi->weighted_neighbour_wcount += mj * r2 * wi_dx * rho_inv_j * r_inv;
+
+  for (int k = 0; k < 3; k++) {
+    for (int i = 0; i < 3; i++) {
+      /* dx is signed as (pi - pj), but it is symmetric so we add */
+      pi->C[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
+    }
+  }
 }
 
 /**
