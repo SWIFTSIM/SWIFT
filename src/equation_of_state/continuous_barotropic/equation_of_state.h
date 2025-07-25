@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2023  Orestis Karapiperis (karapiperis@lorentz.leidenuniv.nl).
+ * Copyright (c) 2025  Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -33,8 +33,7 @@ extern struct eos_parameters eos;
 /**
  * @brief The parameters of the equation of state for the gas.
  *
- * Barotropic equation of state from Hennebelle et al., 2008, A&A, 477, 9
- * reimplemented following Pakmor et al., 2011, MNRAS, 418, 1392
+ * Barotropic equation of state for the Leiden jet comparison project.
  */
 struct eos_parameters {
 
