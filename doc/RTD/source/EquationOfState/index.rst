@@ -48,10 +48,18 @@ thermodynamical quantity given in the header of each column.
    :header: "Variable", "-", "-", "-"
 
    "A", "", :math:`\rho^{1-\gamma} c_0^2 \sqrt{1 + \left( \frac{\rho}{\rho_c}  \right) }`, ""
-   "u", "", :math:`\frac{1}(\gamma -1)c_0^2 \sqrt{1 + \left( \frac{\rho}{\rho_c}  \right) }`, ""
+   "u", "", :math:`\frac{1}{\gamma -1}c_0^2 \sqrt{1 + \left( \frac{\rho}{\rho_c}  \right) }`, ""
    "P", "", :math:`\rho c_0^2 \sqrt{1 + \left( \frac{\rho}{\rho_c}  \right) }`, ""
    :math:`c_s`, "", :math:`\sqrt{ c_0^2 \sqrt{1 + \left( \frac{\rho}{\rho_c}  \right) }}`, ""
-   
+
+.. csv-table:: Continuous Barotropic Gas
+   :header: "Variable", "-", "-", "-"
+
+   "A", "", "", ""
+   "u", "", "", ""
+   "P", "", ":math:`\max\left\{c^2_{{\rm s}, 0} \rho \left[1 + \left(\frac{\rho}{\rho_c}\right)^{\gamma - 1} \right], P_{\rm ext}\right\}`", ""
+   :math:`c_s`, "", ":math:`\sqrt{\gamma\max\left\{c^2_{{\rm s}, 0} \rho \left[1 + \left(\frac{\rho}{\rho_c}\right)^{\gamma - 1} \right], P_{\rm ext}\right\}/\rho}`", ""
+
 Note that when running with an isothermal or barotropic equation of state, the
 value of the tracked thermodynamic variable (e.g. the entropy in a
 density-entropy scheme or the internal enegy in a density-energy SPH
