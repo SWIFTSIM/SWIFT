@@ -278,11 +278,40 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pi->weighted_neighbour_wcount += mj * r2 * wi_dx * rho_inv_j * r_inv;
   pj->weighted_neighbour_wcount += mi * r2 * wj_dx * rho_inv_i * r_inv;
 
+  const float dv[3] = {pi->v[0] - pj->v[0],
+                       pi->v[1] - pj->v[1],
+                       pi->v[2] - pj->v[2]};
+
   for (int k = 0; k < 3; k++) {
     for (int i = 0; i < 3; i++) {
       /* dx is signed as (pi - pj), but it is symmetric so we add */
       pi->gradients.correction_matrix[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
       pj->gradients.correction_matrix[k][i] += mi * rho_inv_i * dx[k] * dx[i] * wj;
+
+      /* Indices in Rosswog 2020 are i for dv and k for dx. In this loop,
+       * they are swapped just because correction_matrix is computed with
+       * the paper indices. */
+      pi->gradients.velocity_tensor[k][i] += mj * rho_inv_j * dv[k] * dx[i] * wi;
+      pj->gradients.velocity_tensor[k][i] += mi * rho_inv_i * dv[k] * dx[i] * wj;
+
+      const float dv_grad_ki = pi->gradients.velocity_tensor_aux[k][i] -
+                               pj->gradients.velocity_tensor_aux[k][i];
+
+      /* Equation 19 indices:
+       * Index i: velocity direction
+       * Index k: gradient direction
+       *
+       * Our indices:
+       * Index k: velocity direction
+       * Index i: gradient direction
+       * Index j: second derivative gradient direction
+       */
+      for (int j = 0; j < 3; j++) {
+        pi->gradients.velocity_hessian[k][i][j] +=
+            mj * rho_inv_j * dv_grad_ki * dx[j] * wi;
+        pj->gradients.velocity_hessian[k][i][j] +=
+            mi * rho_inv_i * dv_grad_ki * dx[j] * wj;
+      }
     }
   }
 }
@@ -362,10 +391,38 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   pi->weighted_neighbour_wcount += mj * r2 * wi_dx * rho_inv_j * r_inv;
 
+  const float dv[3] = {pi->v[0] - pj->v[0],
+                       pi->v[1] - pj->v[1],
+                       pi->v[2] - pj->v[2]};
+
   for (int k = 0; k < 3; k++) {
     for (int i = 0; i < 3; i++) {
       /* dx is signed as (pi - pj), but it is symmetric so we add */
-      pi->gradients.correction_matrix[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
+      pi->gradients.correction_matrix[k][i] += 
+          mj * rho_inv_j * dx[k] * dx[i] * wi;
+
+      /* Indices in Rosswog 2020 are i for dv and k for dx. In this loop,
+       * they are swapped just because correction_matrix is computed with
+       * the paper indices. */
+      pi->gradients.velocity_tensor[k][i] += 
+          mj * rho_inv_j * dv[k] * dx[i] * wi;
+
+      const float dv_grad_ki = pi->gradients.velocity_tensor_aux[k][i] - 
+                               pj->gradients.velocity_tensor_aux[k][i];
+
+      /* Equation 19 indices:
+       * Index i: velocity direction
+       * Index k: gradient direction
+       *
+       * Our indices:
+       * Index k: velocity direction
+       * Index i: gradient direction
+       * Index j: second derivative gradient direction
+       */
+      for (int j = 0; j < 3; j++) {
+        pi->gradients.velocity_hessian[k][i][j] += 
+            mj * rho_inv_j * dv_grad_ki * dx[j] * wi;
+      }
     }
   }
 }

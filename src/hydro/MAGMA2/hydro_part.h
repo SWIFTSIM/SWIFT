@@ -175,6 +175,9 @@ struct part {
     /*! Normalization for computing velocity_tensor_aux */
     float velocity_tensor_aux_norm[3][3];
 
+    /*! Hessian tensor */
+    float velocity_hessian[3][3][3];
+
     /*! Smoothed pressure gradient */
     float pressure[3];
 

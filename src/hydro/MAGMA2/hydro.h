@@ -805,6 +805,12 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     p->gradients.velocity_tensor[i][0] = 0.f;
     p->gradients.velocity_tensor[i][1] = 0.f;
     p->gradients.velocity_tensor[i][2] = 0.f;
+
+    for (int j = 0; j < 3; j++) {
+      p->gradients.velocity_hessian[i][j][0] = 0.f;
+      p->gradients.velocity_hessian[i][j][1] = 0.f;
+      p->gradients.velocity_hessian[i][j][2] = 0.f; 
+    }
   }
 }
 
@@ -835,6 +841,16 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     p->gradients.correction_matrix[k][0] *= h_inv_dim;
     p->gradients.correction_matrix[k][1] *= h_inv_dim;
     p->gradients.correction_matrix[k][2] *= h_inv_dim;
+
+    p->gradients.velocity_tensor[k][0] *= h_inv_dim;
+    p->gradients.velocity_tensor[k][1] *= h_inv_dim;
+    p->gradients.velocity_tensor[k][2] *= h_inv_dim;
+
+    for (int j = 0; j < 3; j++) {
+      p->gradients.velocity_hessian[k][j][0] *= h_inv_dim;
+      p->gradients.velocity_hessian[k][j][1] *= h_inv_dim;
+      p->gradients.velocity_hessian[k][j][2] *= h_inv_dim;
+    }
   }
 
   /* Invert the p->gradients.correction_matrix[3][3] matrix */
@@ -880,6 +896,34 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     }
   }
 
+  /* Contract the correction matrix with the velocity tensor */
+  double velocity_tensor[3][3] = {0};
+  double velocity_hessian[3][3][3] = {0};
+  for (int j = 0; j < 3; j++) {
+    for (int i = 0; i < 3; i++) {
+      for (int k = 0; k < 3; k++) {
+        velocity_tensor[j][i] += p->gradients.correction_matrix[j][k] *
+                                 p->gradients.velocity_tensor[i][k];
+        for (int m = 0; m < 3; m++) {
+          velocity_hessian[j][i][k] += p->gradients.correction_matrix[j][m] * 
+                                       p->gradients.velocity_hessian[j][i][m];
+        }
+      }
+    }
+  }
+
+  /* Copy back over to the particle for later */
+  for (int a = 0; a < 3; a++) {
+    p->gradients.velocity_tensor[a][0] = velocity_tensor[a][0];
+    p->gradients.velocity_tensor[a][1] = velocity_tensor[a][1];
+    p->gradients.velocity_tensor[a][2] = velocity_tensor[a][2];
+
+    for (int b = 0; b < 3; b++) {
+      p->gradients.velocity_hessian[a][b][0] = velocity_hessian[a][b][0];
+      p->gradients.velocity_hessian[a][b][1] = velocity_hessian[a][b][1];
+      p->gradients.velocity_hessian[a][b][2] = velocity_hessian[a][b][2];
+    }
+  }
 }
 
 /**
@@ -924,6 +968,10 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
       p->gradients.velocity_tensor[i][j] = 0.f;
       p->gradients.velocity_tensor_aux[i][j] = 0.f;
       p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;
+
+      for (int k = 0; k < 3; k++) {
+        p->gradients.velocity_hessian[i][j][k] = 0.f;
+      }
     }
   }
 }
