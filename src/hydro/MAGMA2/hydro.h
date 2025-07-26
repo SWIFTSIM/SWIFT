@@ -514,19 +514,50 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->weighted_neighbour_wcount = 0.f;
   p->density.rho_dh = 0.f;
 
-  p->smooth_pressure_gradient[0] = 0.f;
-  p->smooth_pressure_gradient[1] = 0.f;
-  p->smooth_pressure_gradient[2] = 0.f;
+  p->gradients.pressure[0] = 0.f;
+  p->gradients.pressure[1] = 0.f;
+  p->gradients.pressure[2] = 0.f;
 
   p->viscosity.shock_indicator = 0.f;
   p->viscosity.shock_limiter = 0.f;
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      p->C[i][j] = 0.;
-      p->viscosity.velocity_gradient[i][j] = 0.f;
+      p->gradients.C[i][j] = 0.;
+      p->gradients.velocity_tensor[i][j] = 0.f;
+      p->gradients.velocity_tensor_aux[i][j] = 0.f;
+      p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;
     }
   }
+}
+
+/**
+ * @brief Computes the condition number of a matrix A
+ *
+ *
+ * @param A The matrix to compute the condition number of.
+ */
+__attribute__((always_inline)) INLINE static double
+condition_number(gsl_matrix *A) {
+
+  gsl_matrix *A_copy = gsl_matrix_alloc(3, 3);
+  gsl_matrix_memcpy(A_copy, A);
+
+  gsl_vector *S = gsl_vector_alloc(3);
+  gsl_vector *work = gsl_vector_alloc(3);
+  gsl_matrix *V = gsl_matrix_alloc(3, 3);
+
+  gsl_linalg_SV_decomp(A_copy, V, S, work);
+
+  double s_max = gsl_vector_get(S, 0);
+  double s_min = gsl_vector_get(S, 2);
+
+  gsl_matrix_free(A_copy);
+  gsl_matrix_free(V);
+  gsl_vector_free(S);
+  gsl_vector_free(work);
+
+  return (s_min != 0.) ? s_max / s_min : const_condition_number_upper_limit;
 }
 
 /**
@@ -564,23 +595,89 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Finish caclulation of the pressure gradients; note that the
    * kernel derivative is zero at our particle's position. */
-  p->smooth_pressure_gradient[0] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
-  p->smooth_pressure_gradient[1] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
-  p->smooth_pressure_gradient[2] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
+  p->gradients.pressure[0] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
+  p->gradients.pressure[1] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
+  p->gradients.pressure[2] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
 
-  /* Finish calculation of the velocity gradient tensor, and
-   * guard against FPEs here. */
-  const float velocity_gradient_norm =
-      p->weighted_wcount == 0.f ? 0.f
-                                : 3.f * cosmo->a2_inv / p->weighted_wcount;
-
+  double aux_norm[3][3];
   for (int i = 0; i < 3; i++) {
+    p->gradients.velocity_tensor_aux[i][0] *= h_inv_dim_plus_one;
+    p->gradients.velocity_tensor_aux[i][1] *= h_inv_dim_plus_one;
+    p->gradients.velocity_tensor_aux[i][2] *= h_inv_dim_plus_one;
+    p->gradients.velocity_tensor_aux_norm[i][0] *= h_inv_dim_plus_one;
+    p->gradients.velocity_tensor_aux_norm[i][1] *= h_inv_dim_plus_one;
+    p->gradients.velocity_tensor_aux_norm[i][2] *= h_inv_dim_plus_one;
+    aux_norm[i][0] = p->gradients.velocity_tensor_aux_norm[i][0];
+    aux_norm[i][1] = p->gradients.velocity_tensor_aux_norm[i][1];
+    aux_norm[i][2] = p->gradients.velocity_tensor_aux_norm[i][2];
+  }
+
+  /* Invert the p->gradients.C[3][3] matrix */
+  gsl_matrix_view A_view = gsl_matrix_view_array((double *)aux_norm, 3, 3);
+  gsl_matrix *A = &A_view.matrix;
+
+  double cond = condition_number(A);
+  if (cond < const_condition_number_upper_limit) {
+    gsl_matrix *A_inv = gsl_matrix_alloc(3, 3);
+    gsl_permutation *p_perm = gsl_permutation_alloc(3);
+    int signum;
+
+    gsl_linalg_LU_decomp(A, p_perm, &signum);
+    gsl_linalg_LU_invert(A, p_perm, A_inv);
+
+    for (int i = 0; i < 3; i++) {
+      aux_norm[i][0] = gsl_matrix_get(A_inv, i, 0);
+      aux_norm[i][1] = gsl_matrix_get(A_inv, i, 1);
+      aux_norm[i][2] = gsl_matrix_get(A_inv, i, 2);
+    }
+
+    gsl_matrix_free(A_inv);
+    gsl_permutation_free(p_perm);
+
+    /* aux_norm is equation 20 in Rosswog 2020, finalize the gradient in 19 */
+    double aux_matrix[3][3];
     for (int j = 0; j < 3; j++) {
-      const float hubble_term = i == j ? hydro_dimension * cosmo->H : 0.f;
+      for (int i = 0; i < 3; i++) {
+        aux_matrix[j][i] = 0.;
 
-      p->viscosity.velocity_gradient[i][j] *= velocity_gradient_norm;
+        /**
+         * The indices of aux_norm and velocity_gradient_aux are important.
+         * aux_norm j: dx vector direction.
+         *          k: kernel gradient direction
+         *
+         * velocity_gradient_aux i: dv vector direction
+         *                       k: kernel gradient direction
+         *
+         * aux_matrix j: spatial derivative direction
+         *            i: velocity direction
+         */
+        for (int k = 0; k < 3; k++) {
+          aux_matrix[j][i] += aux_norm[j][k] * p->gradients.velocity_tensor_aux[i][k];
+        }
+      }
+    }
 
-      p->viscosity.velocity_gradient[i][j] += hubble_term;
+    /* TODO: Change this from physical to comoving eventually */
+    for (int a = 0; a < 3; a++) {
+      for (int b = 0; b < 3; b++) {
+        aux_matrix[a][b] *= cosmo->a2_inv;
+        if (a == b) aux_matrix[a][b] += cosmo->H;
+        
+        p->gradients.velocity_tensor_aux[a][b] = aux_matrix[a][b];
+
+        /* Co-moving */
+        p->gradients.velocity_tensor_aux_norm[a][b] = aux_norm[a][b];
+      }
+    }
+  }
+  else {
+
+    /* Ensure no crazy gradients later */
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+        p->gradients.velocity_tensor_aux[i][j] = 0.f;
+        p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;
+      }
     }
   }
 }
@@ -606,9 +703,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
-  /* Reset the SPH gradient flag */
-  p->sph_gradients_flag = 0;
-
   /* Compute the sound speed  */
   const float pressure = hydro_get_comoving_pressure(p);
   const float pressure_including_floor =
@@ -621,19 +715,19 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->force.soundspeed = soundspeed;
 
   const float mod_pressure_gradient =
-      sqrtf(p->smooth_pressure_gradient[0] * p->smooth_pressure_gradient[0] +
-            p->smooth_pressure_gradient[1] * p->smooth_pressure_gradient[1] +
-            p->smooth_pressure_gradient[2] * p->smooth_pressure_gradient[2]);
+      sqrtf(p->gradients.pressure[0] * p->gradients.pressure[0] +
+            p->gradients.pressure[1] * p->gradients.pressure[1] +
+            p->gradients.pressure[2] * p->gradients.pressure[2]);
 
   float unit_pressure_gradient[3];
 
   /* As this is normalised, no cosmology factor is required */
   unit_pressure_gradient[0] =
-      p->smooth_pressure_gradient[0] / mod_pressure_gradient;
+      p->gradients.pressure[0] / mod_pressure_gradient;
   unit_pressure_gradient[1] =
-      p->smooth_pressure_gradient[1] / mod_pressure_gradient;
+      p->gradients.pressure[1] / mod_pressure_gradient;
   unit_pressure_gradient[2] =
-      p->smooth_pressure_gradient[2] / mod_pressure_gradient;
+      p->gradients.pressure[2] / mod_pressure_gradient;
 
   float dv_dn = 0.f;
   float shear_norm2 = 0.f;
@@ -643,16 +737,16 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       dv_dn += unit_pressure_gradient[i] *
-               p->viscosity.velocity_gradient[i][j] * unit_pressure_gradient[j];
+               p->gradients.velocity_tensor_aux[i][j] * unit_pressure_gradient[j];
 
       const float shear_component =
-          0.5f * (p->viscosity.velocity_gradient[i][j] +
-                  p->viscosity.velocity_gradient[j][i]);
+          0.5f * (p->gradients.velocity_tensor_aux[i][j] +
+                  p->gradients.velocity_tensor_aux[j][i]);
       const float shear_component2 = shear_component * shear_component;
 
       shear_norm2 += shear_component2;
       traceless_shear_norm2 += i == j ? 0.f : shear_component2;
-      div_v += i == j ? (1. / 3.) * p->viscosity.velocity_gradient[i][j] : 0.f;
+      div_v += i == j ? p->gradients.velocity_tensor_aux[i][j] : 0.f;
     }
   }
 
@@ -683,36 +777,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
+
+  p->gradients.C_well_conditioned = 0;
   p->viscosity.v_sig = p->force.soundspeed;
-}
-
-/**
- * @brief Computes the condition number of a matrix A
- *
- *
- * @param A The matrix to compute the condition number of.
- */
-__attribute__((always_inline)) INLINE static double 
-condition_number(gsl_matrix *A) {
-
-  gsl_matrix *A_copy = gsl_matrix_alloc(3, 3);
-  gsl_matrix_memcpy(A_copy, A);
-
-  gsl_vector *S = gsl_vector_alloc(3);
-  gsl_vector *work = gsl_vector_alloc(3);
-  gsl_matrix *V = gsl_matrix_alloc(3, 3);
-
-  gsl_linalg_SV_decomp(A_copy, V, S, work);
-
-  double s_max = gsl_vector_get(S, 0);
-  double s_min = gsl_vector_get(S, 2);
-
-  gsl_matrix_free(A_copy);
-  gsl_matrix_free(V);
-  gsl_vector_free(S);
-  gsl_vector_free(work);
-
-  return (s_min != 0.) ? s_max / s_min : const_condition_number_upper_limit;
 }
 
 /**
@@ -727,6 +794,7 @@ condition_number(gsl_matrix *A) {
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part *p) {
+
   /* The f_i is calculated explicitly in MAGMA2. */
   p->force.f = p->weighted_wcount / (p->weighted_neighbour_wcount * p->rho);
 
@@ -738,13 +806,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* Apply correct normalisation */
   p->viscosity.shock_limiter *= h_inv_dim;
   for (int k = 0; k < 3; k++) {
-    p->C[k][0] *= h_inv_dim;
-    p->C[k][1] *= h_inv_dim;
-    p->C[k][2] *= h_inv_dim;
+    p->gradients.C[k][0] *= h_inv_dim;
+    p->gradients.C[k][1] *= h_inv_dim;
+    p->gradients.C[k][2] *= h_inv_dim;
   }
 
-  /* Invert the p->C[3][3] matrix */
-  gsl_matrix_view C_view = gsl_matrix_view_array((double *)p->C, 3, 3);
+  /* Invert the p->gradients.C[3][3] matrix */
+  gsl_matrix_view C_view = 
+      gsl_matrix_view_array((double *)p->gradients.C, 3, 3);
   gsl_matrix *C = &C_view.matrix;
 
   double cond = condition_number(C);
@@ -758,7 +827,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
     for (int k = 0; k < 3; k++) {
       for (int i = 0; i < 3; i++) {
-        p->C[k][i] = gsl_matrix_get(C_inv, k, i);
+        p->gradients.C[k][i] = gsl_matrix_get(C_inv, k, i);
       }
     }
 
@@ -768,20 +837,20 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   else {
 #ifdef MAGMA2_DEBUG_CHECKS
     for (int k = 0; k < 3; k++) {
-      p->debug.C[k][0] = p->C[k][0];
-      p->debug.C[k][1] = p->C[k][1];
-      p->debug.C[k][2] = p->C[k][2];
+      p->debug.C[k][0] = p->gradients.C[k][0];
+      p->debug.C[k][1] = p->gradients.C[k][1];
+      p->debug.C[k][2] = p->gradients.C[k][2];
     }
     
     p->debug.ill_conditioned_count++;
 #endif
 
     /* Ill-condition matrix, revert back to normal SPH gradients */
-    p->sph_gradients_flag = 1;
+    p->gradients.C_well_conditioned = 0;
     for (int k = 0; k < 3; k++) {
-      p->C[k][0] = 0.;
-      p->C[k][1] = 0.;
-      p->C[k][2] = 0.;
+      p->gradients.C[k][0] = 0.;
+      p->gradients.C[k][1] = 0.;
+      p->gradients.C[k][2] = 0.;
     }
   }
 
@@ -821,11 +890,14 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->weighted_wcount = 1.f;
   p->weighted_neighbour_wcount = 1.f;
 
-  p->sph_gradients_flag = 1;
+  p->gradients.C_well_conditioned = 0;
   for (int i = 0; i < 3; i++) {
+    p->gradients.pressure[0] = 0.f;
     for (int j = 0; j < 3; j++) {
-      p->C[i][j] = 0.;
-      p->viscosity.velocity_gradient[i][j] = 0.f;
+      p->gradients.C[i][j] = 0.;
+      p->gradients.velocity_tensor[i][j] = 0.f;
+      p->gradients.velocity_tensor_aux[i][j] = 0.f;
+      p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;
     }
   }
 }

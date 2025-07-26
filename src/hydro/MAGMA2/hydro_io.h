@@ -76,11 +76,9 @@ INLINE static void convert_P(const struct engine* e, const struct part* p,
 
 INLINE static void convert_div_v(const struct engine* e, const struct part* p,
                                  const struct xpart* xp, float* ret) {
-  /* The velocity divergence is the 1/3 of the trace of the velocity
-   * gradient tensor */
-  ret[0] = (1. / 3.) * (p->viscosity.velocity_gradient[0][0] +
-                        p->viscosity.velocity_gradient[1][1] +
-                        p->viscosity.velocity_gradient[2][2]);
+  ret[0] = p->gradients.velocity_tensor[0][0] +
+           p->gradients.velocity_tensor[1][1] +
+           p->gradients.velocity_tensor[2][2];
 }
 
 INLINE static void convert_part_pos(const struct engine* e,

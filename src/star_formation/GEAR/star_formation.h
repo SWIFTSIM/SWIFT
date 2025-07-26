@@ -450,9 +450,9 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
                                    p->viscosity.velocity_gradient[2][2]);
 #elif MAGMA2_SPH
   /* Copy the velocity divergence */
-  xp->sf_data.div_v = p->viscosity.velocity_gradient[0][0] +
-                      p->viscosity.velocity_gradient[1][1] +
-                      p->viscosity.velocity_gradient[2][2];
+  xp->sf_data.div_v = p->gradients.velocity_tensor_aux[0][0] +
+                      p->gradients.velocity_tensor_aux[1][1] +
+                      p->gradients.velocity_tensor_aux[2][2];
 #elif HOPKINS_PU_SPH
   xp->sf_data.div_v = p->density.div_v;
 #else

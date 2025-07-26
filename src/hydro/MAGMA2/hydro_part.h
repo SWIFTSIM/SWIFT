@@ -128,21 +128,12 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  /*! Smoothed pressure gradient */
-  float smooth_pressure_gradient[3];
-
   /*! Weightings for correction factor */
   float weighted_wcount;
 
   /*! Neighbour weightings */
   float weighted_neighbour_wcount;
 
-  /*! Correction matrix (C^ki in Rosswog 2020) */
-  double C[3][3];
-
-  /*! Flag as to whether the SPH gradients should be used */
-  char sph_gradients_flag;
-  
 #ifdef MAGMA2_DEBUG_CHECKS
   struct {
     /*! C matrix at the last time it was ill-conditioned */
@@ -154,11 +145,31 @@ struct part {
   } debug;
 #endif
 
-  /* Store viscosity information in a separate struct. */
+  /* Store gradients in a separate struct */
   struct {
 
-    /*! Velocity gradient tensor (physical) */
-    float velocity_gradient[3][3];
+    /*! Correction matrix (C^ki in Rosswog 2020) */
+    double C[3][3];
+
+    /*! Flag for whether C is ill-conditioned */
+    char C_well_conditioned;
+
+    /*! Full velocity gradient tensor */
+    float velocity_tensor[3][3];
+
+    /*! Auxiliary full velocity gradient tensor */
+    float velocity_tensor_aux[3][3];
+
+    /*! Normalization for computing velocity_tensor_aux */
+    float velocity_tensor_aux_norm[3][3];
+
+    /*! Smoothed pressure gradient */
+    float pressure[3];
+
+  } gradients;
+
+  /* Store viscosity information in a separate struct. */
+  struct {
 
     /*! Velocity gradient tensor trace norm |T| */
     float tensor_norm;

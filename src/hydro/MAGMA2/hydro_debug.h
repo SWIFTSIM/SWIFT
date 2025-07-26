@@ -46,18 +46,18 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "[%.3e,%.3e,%.3e],"
       "[%.3e,%.3e,%.3e]]",
       p->id, p->viscosity.alpha, p->time_bin, p->rho,
-      p->viscosity.velocity_gradient[0][0],
-      p->viscosity.velocity_gradient[0][1],
-      p->viscosity.velocity_gradient[0][2],
-      p->viscosity.velocity_gradient[1][0],
-      p->viscosity.velocity_gradient[1][1],
-      p->viscosity.velocity_gradient[1][2],
-      p->viscosity.velocity_gradient[2][0],
-      p->viscosity.velocity_gradient[2][1],
-      p->viscosity.velocity_gradient[2][2]);
-  warning("[PID%lld] smooth_pressure_gradient=[%.3e,%.3e,%.3e]", p->id,
-          p->smooth_pressure_gradient[0], p->smooth_pressure_gradient[1],
-          p->smooth_pressure_gradient[2]);
+      p->gradients.velocity_tensor[0][0],
+      p->gradients.velocity_tensor[0][1],
+      p->gradients.velocity_tensor[0][2],
+      p->gradients.velocity_tensor[1][0],
+      p->gradients.velocity_tensor[1][1],
+      p->gradients.velocity_tensor[1][2],
+      p->gradients.velocity_tensor[2][0],
+      p->gradients.velocity_tensor[2][1],
+      p->gradients.velocity_tensor[2][2]);
+  warning("[PID%lld] gradients.pressure=[%.3e,%.3e,%.3e]", p->id,
+          p->gradients.pressure[0], p->gradients.pressure[1],
+          p->gradients.pressure[2]);
   warning("[PID%lld] weighted_wcount=%.3e", p->id, p->weighted_wcount);
 
   if (xp != NULL) {

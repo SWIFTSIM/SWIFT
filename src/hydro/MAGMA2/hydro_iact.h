@@ -90,25 +90,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float facj = mi * wj_dx * r_inv;
 
   /* Smooth pressure gradient */
-  pi->smooth_pressure_gradient[0] += faci * pj->u * dx[0];
-  pi->smooth_pressure_gradient[1] += faci * pj->u * dx[1];
-  pi->smooth_pressure_gradient[2] += faci * pj->u * dx[2];
+  pi->gradients.pressure[0] += faci * pj->u * dx[0];
+  pi->gradients.pressure[1] += faci * pj->u * dx[1];
+  pi->gradients.pressure[2] += faci * pj->u * dx[2];
 
-  pj->smooth_pressure_gradient[0] -= facj * pi->u * dx[0];
-  pj->smooth_pressure_gradient[1] -= facj * pi->u * dx[1];
-  pj->smooth_pressure_gradient[2] -= facj * pi->u * dx[2];
+  pj->gradients.pressure[0] -= facj * pi->u * dx[0];
+  pj->gradients.pressure[1] -= facj * pi->u * dx[1];
+  pj->gradients.pressure[2] -= facj * pi->u * dx[2];
 
-  /* Finally, the big boy; the velocity gradient tensor. Note that the
-   * loops here are over the coordinates, i=0 -> x, and so on. */
+  const float dv[3] = {pi->v[0] - pj->v[0],
+                       pi->v[1] - pj->v[1],
+                       pi->v[2] - pj->v[2]};
+
+  /* Equations 19 & 20 in Rosswog 2020. Signs are all positive because
+   * dv * dx always results in a positive sign. */
   for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      const float dv_ij = pi->v[i] - pj->v[i];
-      const float dx_ij = pi->x[j] - pj->x[j];
+    for (int k = 0; k < 3; k++) {
+      pi->gradients.velocity_tensor_aux[i][k] +=
+          mj * dv[i] * dx[k] * wi_dx * r_inv;
+      pj->gradients.velocity_tensor_aux[i][k] +=
+          mi * dv[i] * dx[k] * wj_dx * r_inv;
 
-      pi->viscosity.velocity_gradient[i][j] +=
-          mj * dv_ij * dx_ij * wi_dx * r_inv;
-      pj->viscosity.velocity_gradient[i][j] +=
-          mi * dv_ij * dx_ij * wj_dx * r_inv;
+      pi->gradients.velocity_tensor_aux_norm[i][k] +=
+          mj * dx[i] * dx[k] * wi_dx * r_inv;
+      pj->gradients.velocity_tensor_aux_norm[i][k] +=
+          mi * dx[i] * dx[k] * wj_dx * r_inv;
     }
   }
 
@@ -159,19 +165,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const float faci = mj * wi_dx * r_inv;
 
   /* Compute pressure gradient */
-  pi->smooth_pressure_gradient[0] += faci * pj->u * dx[0];
-  pi->smooth_pressure_gradient[1] += faci * pj->u * dx[1];
-  pi->smooth_pressure_gradient[2] += faci * pj->u * dx[2];
+  pi->gradients.pressure[0] += faci * pj->u * dx[0];
+  pi->gradients.pressure[1] += faci * pj->u * dx[1];
+  pi->gradients.pressure[2] += faci * pj->u * dx[2];
 
-  /* Finally, the big boy; the velocity gradient tensor. Note that the
-   * loops here are over the coordinates, i=0 -> x, and so on. */
+  const float dv[3] = {pi->v[0] - pj->v[0],
+                       pi->v[1] - pj->v[1],
+                       pi->v[2] - pj->v[2]};
+
+  /* Equations 19 & 20 in Rosswog 2020. Signs are all positive because
+   * dv * dx always results in a positive sign. */
   for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      const float dv_ij = pi->v[i] - pj->v[i];
-      const float dx_ij = pi->x[j] - pj->x[j];
+    for (int k = 0; k < 3; k++) {
+      pi->gradients.velocity_tensor_aux[i][k] +=
+          mj * dv[i] * dx[k] * wi_dx * r_inv;
 
-      pi->viscosity.velocity_gradient[i][j] +=
-          mj * dv_ij * dx_ij * wi_dx * r_inv;
+      pi->gradients.velocity_tensor_aux_norm[i][k] +=
+          mj * dx[i] * dx[k] * wi_dx * r_inv;
     }
   }
 
@@ -271,8 +281,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   for (int k = 0; k < 3; k++) {
     for (int i = 0; i < 3; i++) {
       /* dx is signed as (pi - pj), but it is symmetric so we add */
-      pi->C[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
-      pj->C[k][i] += mi * rho_inv_i * dx[k] * dx[i] * wj;
+      pi->gradients.C[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
+      pj->gradients.C[k][i] += mi * rho_inv_i * dx[k] * dx[i] * wj;
     }
   }
 }
@@ -355,7 +365,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   for (int k = 0; k < 3; k++) {
     for (int i = 0; i < 3; i++) {
       /* dx is signed as (pi - pj), but it is symmetric so we add */
-      pi->C[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
+      pi->gradients.C[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
     }
   }
 }
@@ -396,7 +406,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hi_inv_dim = pow_dimension(hi_inv);
-  const float hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
@@ -404,28 +413,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
   const float hj_inv_dim = pow_dimension(hj_inv);
-  const float hj_inv_dim_plus_one = hj_inv * hj_inv_dim; /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
-  float wi_dr = hi_inv_dim_plus_one * wi_dx;
-  float wj_dr = hj_inv_dim_plus_one * wj_dx;
   double G_ij[3] = {0., 0., 0.};
 
   /* Always use SPH gradients between particles if one of them has an
    * ill-conditioned C matrix */
-  char sph_gradients_flag = 1;
-  if (!pi->sph_gradients_flag && !pj->sph_gradients_flag) {
-    sph_gradients_flag = 0;
+  char C_well_conditioned = 0;
+  if (pi->gradients.C_well_conditioned && pj->gradients.C_well_conditioned) {
+    C_well_conditioned = 1;
     double G_i[3] = {0., 0., 0.};
     double G_j[3] = {0., 0., 0.};
     for (int k = 0; k < 3; k++) {
       for (int i = 0; i < 3; i++) {
         /* Note: Negative because dx is (pj-pi) in Rosswog 2020.
          * It is (pj-pi) for both particles. */
-        G_i[k] -= pi->C[k][i] * dx[i] * wi * hi_inv_dim;
-        G_j[k] -= pj->C[k][i] * dx[i] * wj * hj_inv_dim;
+        G_i[k] -= pi->gradients.C[k][i] * dx[i] * wi * hi_inv_dim;
+        G_j[k] -= pj->gradients.C[k][i] * dx[i] * wj * hj_inv_dim;
       }
 
       G_ij[k] = 0.5 * (G_i[k] + G_j[k]);
@@ -469,7 +475,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float visc_du_term_i = 0.5f * visc_acc_term;
   float visc_du_term_j = visc_du_term_i;
 
-  if (sph_gradients_flag) {
+  if (C_well_conditioned) {
+    sph_du_term_i *= dv_dot_G_ij;
+    sph_du_term_j *= dv_dot_G_ij;
+    visc_du_term_i *= dv_dot_G_ij + a2_Hubble + r2;
+    visc_du_term_j *= dv_dot_G_ij + a2_Hubble + r2;
+
+    /* Get the time derivative for h. */
+    pi->force.h_dt -= mj * dv_dot_G_ij;
+    pj->force.h_dt -= mi * dv_dot_G_ij;
+  }
+  else {
+    const float hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
+    const float hj_inv_dim_plus_one = hj_inv * hj_inv_dim;
+    const float wi_dr = hi_inv_dim_plus_one * wi_dx;
+    const float wj_dr = hj_inv_dim_plus_one * wj_dx;
+
     /* Variable smoothing length term */
     const float kernel_gradient =
         0.5f * r_inv * (wi_dr * pi->force.f + wj_dr * pj->force.f);
@@ -485,16 +506,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dvdr * r_inv * wi_dr;
     pj->force.h_dt -= mi * dvdr * r_inv * wj_dr;
-  }
-  else {
-    sph_du_term_i *= dv_dot_G_ij;
-    sph_du_term_j *= dv_dot_G_ij;
-    visc_du_term_i *= dv_dot_G_ij + a2_Hubble + r2;
-    visc_du_term_j *= dv_dot_G_ij + a2_Hubble + r2;
-
-    /* Get the time derivative for h. */
-    pi->force.h_dt -= mj * dv_dot_G_ij;
-    pj->force.h_dt -= mi * dv_dot_G_ij;
   }
 
   /* Assemble the acceleration */
@@ -555,7 +566,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hi_inv_dim = pow_dimension(hi_inv);
-  const float hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
@@ -563,27 +573,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
   const float hj_inv_dim = pow_dimension(hj_inv);
-  const float hj_inv_dim_plus_one = hj_inv * hj_inv_dim; /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
-  float wi_dr = hi_inv_dim_plus_one * wi_dx;
-  float wj_dr = hj_inv_dim_plus_one * wj_dx;
   double G_ij[3] = {0., 0., 0.};
 
   /* Always use SPH gradients between particles if one of them has an
    * ill-conditioned C matrix */
-  char sph_gradients_flag = 1;
-  if (!pi->sph_gradients_flag && !pj->sph_gradients_flag) {
-    sph_gradients_flag = 0;
+  char C_well_conditioned = 0;
+  if (pi->gradients.C_well_conditioned && pj->gradients.C_well_conditioned) {
+    C_well_conditioned = 1;
     double G_i[3] = {0., 0., 0.};
     double G_j[3] = {0., 0., 0.};
     for (int k = 0; k < 3; k++) {
       for (int i = 0; i < 3; i++) {
         /* Note: Negative because dx is (pj-pi) in Rosswog 2020 */
-        G_i[k] -= pi->C[k][i] * dx[i] * wi * hi_inv_dim;
-        G_j[k] -= pj->C[k][i] * dx[i] * wj * hj_inv_dim;
+        G_i[k] -= pi->gradients.C[k][i] * dx[i] * wi * hi_inv_dim;
+        G_j[k] -= pj->gradients.C[k][i] * dx[i] * wj * hj_inv_dim;
       }
 
       G_ij[k] = 0.5 * (G_i[k] + G_j[k]);
@@ -624,7 +631,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float sph_du_term_i = pressurei / (pi->rho * pj->rho);
   float visc_du_term_i = visc;
 
-  if (sph_gradients_flag) {
+  if (C_well_conditioned) {
+    sph_du_term_i *= dv_dot_G_ij;
+    visc_du_term_i *= dv_dot_G_ij + a2_Hubble * r2;
+
+    /* Get the time derivative for h. */
+    pi->force.h_dt -= mj * dv_dot_G_ij;
+  }
+  else {
+    const float hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
+    const float hj_inv_dim_plus_one = hj_inv * hj_inv_dim;
+    const float wi_dr = hi_inv_dim_plus_one * wi_dx;
+    const float wj_dr = hj_inv_dim_plus_one * wj_dx;
+
     /* Variable smoothing length term */
     const float kernel_gradient =
         0.5f * r_inv * (wi_dr * pi->force.f + wj_dr * pj->force.f);
@@ -636,13 +655,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dvdr * r_inv * wi_dr;
-  }
-  else {
-    sph_du_term_i *= dv_dot_G_ij;
-    visc_du_term_i *= dv_dot_G_ij + a2_Hubble * r2;
-
-    /* Get the time derivative for h. */
-    pi->force.h_dt -= mj * dv_dot_G_ij;
   }
 
   /* Assemble the acceleration */
