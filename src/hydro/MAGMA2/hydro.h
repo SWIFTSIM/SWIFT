@@ -1049,7 +1049,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
-    p->force.h_dt *= p->h * hydro_dimension_inv;
+  
+  const float rho_inv = hydro_get_comoving_density(p);  
+  p->force.h_dt *= p->h * rho_inv * hydro_dimension_inv;
 }
 
 /**

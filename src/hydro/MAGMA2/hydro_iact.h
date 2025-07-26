@@ -422,9 +422,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     double G_j[3] = {0., 0., 0.};
     for (int k = 0; k < 3; k++) {
       for (int i = 0; i < 3; i++) {
-        /* Note: Negative because dx is (pj-pi) in Rosswog 2020 */
+        /* Note: Negative because dx is (pj-pi) in Rosswog 2020.
+         * It is (pj-pi) for both particles. */
         G_i[k] -= pi->C[k][i] * dx[i] * wi * hi_inv_dim;
-        G_j[k] += pj->C[k][i] * dx[i] * wj * hj_inv_dim;
+        G_j[k] -= pj->C[k][i] * dx[i] * wj * hj_inv_dim;
       }
 
       G_ij[k] = 0.5 * (G_i[k] + G_j[k]);
@@ -482,8 +483,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     visc_du_term_j = visc_du_term_i;
 
     /* Get the time derivative for h. */
-    pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-    pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
+    pi->force.h_dt -= mj * dvdr * r_inv * wi_dr;
+    pj->force.h_dt -= mi * dvdr * r_inv * wj_dr;
   }
   else {
     sph_du_term_i *= dv_dot_G_ij;
@@ -492,8 +493,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     visc_du_term_j *= dv_dot_G_ij + a2_Hubble + r2;
 
     /* Get the time derivative for h. */
-    pi->force.h_dt -= mj * dv_dot_G_ij / rhoj;
-    pj->force.h_dt -= mi * dv_dot_G_ij / rhoi;
+    pi->force.h_dt -= mj * dv_dot_G_ij;
+    pj->force.h_dt -= mi * dv_dot_G_ij;
   }
 
   /* Assemble the acceleration */
@@ -582,7 +583,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       for (int i = 0; i < 3; i++) {
         /* Note: Negative because dx is (pj-pi) in Rosswog 2020 */
         G_i[k] -= pi->C[k][i] * dx[i] * wi * hi_inv_dim;
-        G_j[k] += pj->C[k][i] * dx[i] * wj * hj_inv_dim;
+        G_j[k] -= pj->C[k][i] * dx[i] * wj * hj_inv_dim;
       }
 
       G_ij[k] = 0.5 * (G_i[k] + G_j[k]);
@@ -634,14 +635,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     visc_du_term_i *= dvdr_Hubble * kernel_gradient;
 
     /* Get the time derivative for h. */
-    pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+    pi->force.h_dt -= mj * dvdr * r_inv * wi_dr;
   }
   else {
     sph_du_term_i *= dv_dot_G_ij;
     visc_du_term_i *= dv_dot_G_ij + a2_Hubble * r2;
 
     /* Get the time derivative for h. */
-    pi->force.h_dt -= mj * dv_dot_G_ij / rhoj;
+    pi->force.h_dt -= mj * dv_dot_G_ij;
   }
 
   /* Assemble the acceleration */
