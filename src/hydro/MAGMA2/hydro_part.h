@@ -137,10 +137,22 @@ struct part {
 #ifdef MAGMA2_DEBUG_CHECKS
   struct {
     /*! C matrix at the last time it was ill-conditioned */
-    float C[3][3];
+    float correction_matrix[3][3];
+
+    /*! Velocity tensor */
+    float velocity_tensor_aux[3][3];
+
+    /*! Velocity tensor norm ill-conditioned */
+    float velocity_tensor_aux_norm[3][3];
     
     /*! Number of times C was ill-conditioned */
-    int ill_conditioned_count;
+    int C_ill_conditioned_count;
+
+    /*! Flag for whether aux_norm is ill-conditioned */
+    char D_well_conditioned;
+
+    /*! Number of times aux_norm was ill-conditioned */
+    int D_ill_conditioned_count;
 
   } debug;
 #endif
@@ -149,7 +161,7 @@ struct part {
   struct {
 
     /*! Correction matrix (C^ki in Rosswog 2020) */
-    double C[3][3];
+    double correction_matrix[3][3];
 
     /*! Flag for whether C is ill-conditioned */
     char C_well_conditioned;

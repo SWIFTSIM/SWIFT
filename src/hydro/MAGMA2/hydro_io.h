@@ -253,15 +253,30 @@ INLINE static void hydro_write_particles(const struct part* parts,
 #ifdef MAGMA2_DEBUG_CHECKS
   list[14] = io_make_output_field(
       "CorrectionMatrices", FLOAT, 9, UNIT_CONV_LENGTH * UNIT_CONV_LENGTH, 
-      2.f, parts, debug.C,
+      2.f, parts, debug.correction_matrix,
       "Co-moving correction matrices for the particles.");
 
   list[15] = io_make_output_field(
-      "IllConditionedCounts", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
-      debug.ill_conditioned_count,
+      "CorrectionIllConditionedCounts", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      debug.C_ill_conditioned_count,
       "Count for how many times this particle had an ill-conditioned C matrix");
 
-  *num_fields = 16;
+  list[16] = io_make_output_field(
+      "NumeratorMatrices", FLOAT, 9, UNIT_CONV_DENSITY * UNIT_CONV_SPEED / UNIT_CONV_LENGTH,
+      -5.f, parts, debug.velocity_tensor_aux,
+      "Co-moving numerator matrices for the particles.");
+
+  list[17] = io_make_output_field(
+      "DenominatorMatrices", FLOAT, 9, UNIT_CONV_DENSITY,
+      -3.f, parts, debug.velocity_tensor_aux_norm,
+      "Co-moving denominator matrices for the particles.");
+
+  list[18] = io_make_output_field(
+      "DenominatorIllConditionedCounts", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      debug.D_ill_conditioned_count,
+      "Count for how many times this particle had an ill-conditioned D matrix");
+
+  *num_fields = 19;
 #endif
 
 }

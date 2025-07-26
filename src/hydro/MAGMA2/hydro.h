@@ -521,10 +521,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->viscosity.shock_indicator = 0.f;
   p->viscosity.shock_limiter = 0.f;
 
+  /* These must be zeroed before the density loop */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      p->gradients.C[i][j] = 0.;
-      p->gradients.velocity_tensor[i][j] = 0.f;
       p->gradients.velocity_tensor_aux[i][j] = 0.f;
       p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;
     }
@@ -612,7 +611,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     aux_norm[i][2] = p->gradients.velocity_tensor_aux_norm[i][2];
   }
 
-  /* Invert the p->gradients.C[3][3] matrix */
+  /* Invert the aux_norm matrix */
   gsl_matrix_view A_view = gsl_matrix_view_array((double *)aux_norm, 3, 3);
   gsl_matrix *A = &A_view.matrix;
 
@@ -657,24 +656,31 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
       }
     }
 
-    /* TODO: Change this from physical to comoving eventually */
+    /* Copy over the matrices for use later */
     for (int a = 0; a < 3; a++) {
       for (int b = 0; b < 3; b++) {
-        aux_matrix[a][b] *= cosmo->a2_inv;
-        if (a == b) aux_matrix[a][b] += cosmo->H;
-        
         p->gradients.velocity_tensor_aux[a][b] = aux_matrix[a][b];
-
-        /* Co-moving */
         p->gradients.velocity_tensor_aux_norm[a][b] = aux_norm[a][b];
       }
     }
   }
   else {
 
+#ifdef MAGMA2_DEBUG_CHECKS
+    p->debug.D_well_conditioned = 0;
+    p->debug.D_ill_conditioned_count++;
+#endif
+
     /* Ensure no crazy gradients later */
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
+#ifdef MAGMA2_DEBUG_CHECKS
+        p->debug.velocity_tensor_aux[i][j] =
+            p->gradients.velocity_tensor_aux[i][j];
+        p->debug.velocity_tensor_aux_norm[i][j] =
+            p->gradients.velocity_tensor_aux_norm[i][j];
+#endif
+
         p->gradients.velocity_tensor_aux[i][j] = 0.f;
         p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;
       }
@@ -734,19 +740,26 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   float traceless_shear_norm2 = 0.f;
   float div_v = 0.f;
 
+  /* Physical velocity gradient tensor with Hubble flow */
+  float velocity_tensor_phys[3][3] = {0};
+
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
+      /* Convert to physical for use in artificial viscosity */
+      velocity_tensor_phys[i][j] = p->gradients.velocity_tensor_aux[i][j];
+      velocity_tensor_phys[i][j] *= cosmo->a2_inv;
+      if (i == j) velocity_tensor_phys[i][j] += cosmo->H;
+
       dv_dn += unit_pressure_gradient[i] *
-               p->gradients.velocity_tensor_aux[i][j] * unit_pressure_gradient[j];
+               velocity_tensor_phys[i][j] * unit_pressure_gradient[j];
 
       const float shear_component =
-          0.5f * (p->gradients.velocity_tensor_aux[i][j] +
-                  p->gradients.velocity_tensor_aux[j][i]);
+          0.5f * (velocity_tensor_phys[i][j] + velocity_tensor_phys[j][i]);
       const float shear_component2 = shear_component * shear_component;
 
       shear_norm2 += shear_component2;
       traceless_shear_norm2 += i == j ? 0.f : shear_component2;
-      div_v += i == j ? p->gradients.velocity_tensor_aux[i][j] : 0.f;
+      div_v += i == j ? velocity_tensor_phys[i][j] : 0.f;
     }
   }
 
@@ -778,8 +791,21 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
-  p->gradients.C_well_conditioned = 0;
+  p->gradients.C_well_conditioned = 1;
+#ifdef MAGMA2_DEBUG_CHECKS
+  p->debug.D_well_conditioned = 1;
+#endif
   p->viscosity.v_sig = p->force.soundspeed;
+
+  for (int i = 0; i < 3; i++) {
+    p->gradients.correction_matrix[i][0] = 0.;
+    p->gradients.correction_matrix[i][1] = 0.;
+    p->gradients.correction_matrix[i][2] = 0.;
+
+    p->gradients.velocity_tensor[i][0] = 0.f;
+    p->gradients.velocity_tensor[i][1] = 0.f;
+    p->gradients.velocity_tensor[i][2] = 0.f;
+  }
 }
 
 /**
@@ -806,14 +832,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* Apply correct normalisation */
   p->viscosity.shock_limiter *= h_inv_dim;
   for (int k = 0; k < 3; k++) {
-    p->gradients.C[k][0] *= h_inv_dim;
-    p->gradients.C[k][1] *= h_inv_dim;
-    p->gradients.C[k][2] *= h_inv_dim;
+    p->gradients.correction_matrix[k][0] *= h_inv_dim;
+    p->gradients.correction_matrix[k][1] *= h_inv_dim;
+    p->gradients.correction_matrix[k][2] *= h_inv_dim;
   }
 
-  /* Invert the p->gradients.C[3][3] matrix */
+  /* Invert the p->gradients.correction_matrix[3][3] matrix */
   gsl_matrix_view C_view = 
-      gsl_matrix_view_array((double *)p->gradients.C, 3, 3);
+      gsl_matrix_view_array((double *)p->gradients.correction_matrix, 3, 3);
   gsl_matrix *C = &C_view.matrix;
 
   double cond = condition_number(C);
@@ -826,9 +852,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     gsl_linalg_LU_invert(C, p_perm, C_inv);
 
     for (int k = 0; k < 3; k++) {
-      for (int i = 0; i < 3; i++) {
-        p->gradients.C[k][i] = gsl_matrix_get(C_inv, k, i);
-      }
+      p->gradients.correction_matrix[k][0] = gsl_matrix_get(C_inv, k, 0);
+      p->gradients.correction_matrix[k][1] = gsl_matrix_get(C_inv, k, 1);
+      p->gradients.correction_matrix[k][2] = gsl_matrix_get(C_inv, k, 2);
     }
 
     gsl_matrix_free(C_inv);
@@ -837,20 +863,20 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   else {
 #ifdef MAGMA2_DEBUG_CHECKS
     for (int k = 0; k < 3; k++) {
-      p->debug.C[k][0] = p->gradients.C[k][0];
-      p->debug.C[k][1] = p->gradients.C[k][1];
-      p->debug.C[k][2] = p->gradients.C[k][2];
+      p->debug.correction_matrix[k][0] = p->gradients.correction_matrix[k][0];
+      p->debug.correction_matrix[k][1] = p->gradients.correction_matrix[k][1];
+      p->debug.correction_matrix[k][2] = p->gradients.correction_matrix[k][2];
     }
     
-    p->debug.ill_conditioned_count++;
+    p->debug.C_ill_conditioned_count++;
 #endif
 
     /* Ill-condition matrix, revert back to normal SPH gradients */
     p->gradients.C_well_conditioned = 0;
     for (int k = 0; k < 3; k++) {
-      p->gradients.C[k][0] = 0.;
-      p->gradients.C[k][1] = 0.;
-      p->gradients.C[k][2] = 0.;
+      p->gradients.correction_matrix[k][0] = 0.;
+      p->gradients.correction_matrix[k][1] = 0.;
+      p->gradients.correction_matrix[k][2] = 0.;
     }
   }
 
@@ -894,7 +920,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   for (int i = 0; i < 3; i++) {
     p->gradients.pressure[0] = 0.f;
     for (int j = 0; j < 3; j++) {
-      p->gradients.C[i][j] = 0.;
+      p->gradients.correction_matrix[i][j] = 0.;
       p->gradients.velocity_tensor[i][j] = 0.f;
       p->gradients.velocity_tensor_aux[i][j] = 0.f;
       p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;
@@ -1241,8 +1267,24 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->viscosity.shock_indicator_previous_step = 0.f;
   p->viscosity.tensor_norm = 0.f;
 
+  p->gradients.C_well_conditioned = 1;
 #ifdef MAGMA2_DEBUG_CHECKS
-  p->debug.ill_conditioned_count = 0;
+  p->debug.C_ill_conditioned_count = 0;
+  p->debug.D_well_conditioned = 1;
+  p->debug.D_ill_conditioned_count = 0;
+  for (int i = 0; i < 3; i++) {
+    p->debug.correction_matrix[i][0] = 0.f;
+    p->debug.correction_matrix[i][1] = 0.f;
+    p->debug.correction_matrix[i][2] = 0.f;
+
+    p->debug.velocity_tensor_aux[i][0] = 0.f;
+    p->debug.velocity_tensor_aux[i][1] = 0.f;
+    p->debug.velocity_tensor_aux[i][2] = 0.f;
+
+    p->debug.velocity_tensor_aux_norm[i][0] = 0.f;
+    p->debug.velocity_tensor_aux_norm[i][1] = 0.f;
+    p->debug.velocity_tensor_aux_norm[i][2] = 0.f;
+  }
 #endif
 
   hydro_reset_acceleration(p);

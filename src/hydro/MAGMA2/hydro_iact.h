@@ -281,8 +281,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   for (int k = 0; k < 3; k++) {
     for (int i = 0; i < 3; i++) {
       /* dx is signed as (pi - pj), but it is symmetric so we add */
-      pi->gradients.C[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
-      pj->gradients.C[k][i] += mi * rho_inv_i * dx[k] * dx[i] * wj;
+      pi->gradients.correction_matrix[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
+      pj->gradients.correction_matrix[k][i] += mi * rho_inv_i * dx[k] * dx[i] * wj;
     }
   }
 }
@@ -365,7 +365,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   for (int k = 0; k < 3; k++) {
     for (int i = 0; i < 3; i++) {
       /* dx is signed as (pi - pj), but it is symmetric so we add */
-      pi->gradients.C[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
+      pi->gradients.correction_matrix[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
     }
   }
 }
@@ -430,8 +430,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       for (int i = 0; i < 3; i++) {
         /* Note: Negative because dx is (pj-pi) in Rosswog 2020.
          * It is (pj-pi) for both particles. */
-        G_i[k] -= pi->gradients.C[k][i] * dx[i] * wi * hi_inv_dim;
-        G_j[k] -= pj->gradients.C[k][i] * dx[i] * wj * hj_inv_dim;
+        G_i[k] -= pi->gradients.correction_matrix[k][i] * dx[i] * wi * hi_inv_dim;
+        G_j[k] -= pj->gradients.correction_matrix[k][i] * dx[i] * wj * hj_inv_dim;
       }
 
       G_ij[k] = 0.5 * (G_i[k] + G_j[k]);
@@ -589,8 +589,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     for (int k = 0; k < 3; k++) {
       for (int i = 0; i < 3; i++) {
         /* Note: Negative because dx is (pj-pi) in Rosswog 2020 */
-        G_i[k] -= pi->gradients.C[k][i] * dx[i] * wi * hi_inv_dim;
-        G_j[k] -= pj->gradients.C[k][i] * dx[i] * wj * hj_inv_dim;
+        G_i[k] -= pi->gradients.correction_matrix[k][i] * dx[i] * wi * hi_inv_dim;
+        G_j[k] -= pj->gradients.correction_matrix[k][i] * dx[i] * wj * hj_inv_dim;
       }
 
       G_ij[k] = 0.5 * (G_i[k] + G_j[k]);
