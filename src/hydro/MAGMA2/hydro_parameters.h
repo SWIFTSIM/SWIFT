@@ -46,7 +46,7 @@
  */
 
 /*! Consider C matrix can be ill-conditioned above this limit */
-#define const_condition_number_upper_limit 1.e4f
+#define const_condition_number_upper_limit 99.0
 
 /*! Viscosity parameters -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
 

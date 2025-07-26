@@ -395,21 +395,48 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+  const float hi_inv_dim = pow_dimension(hi_inv);
+  const float hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+  const float hj_inv_dim = pow_dimension(hj_inv);
+  const float hj_inv_dim_plus_one = hj_inv * hj_inv_dim; /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hjd_inv * wj_dx;
 
-  /* Compute dv dot r. */
+  float wi_dr = hi_inv_dim_plus_one * wi_dx;
+  float wj_dr = hj_inv_dim_plus_one * wj_dx;
+  double G_ij[3] = {0., 0., 0.};
+
+  /* Always use SPH gradients between particles if one of them has an
+   * ill-conditioned C matrix */
+  char sph_gradients_flag = 1;
+  if (!pi->sph_gradients_flag && !pj->sph_gradients_flag) {
+    sph_gradients_flag = 0;
+    double G_i[3] = {0., 0., 0.};
+    double G_j[3] = {0., 0., 0.};
+    for (int k = 0; k < 3; k++) {
+      for (int i = 0; i < 3; i++) {
+        /* Note: Negative because dx is (pj-pi) in Rosswog 2020 */
+        G_i[k] -= pi->C[k][i] * dx[i] * wi * hi_inv_dim;
+        G_j[k] += pj->C[k][i] * dx[i] * wj * hj_inv_dim;
+      }
+
+      G_ij[k] = 0.5 * (G_i[k] + G_j[k]);
+    }
+  }
+
+  /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
+  const double dv_dot_G_ij = (pi->v[0] - pj->v[0]) * G_ij[0] +
+                             (pi->v[1] - pj->v[1]) * G_ij[1] +
+                             (pi->v[2] - pj->v[2]) * G_ij[2];
+
+  /* Compute dv dot dr. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2];
@@ -420,10 +447,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
-
-  /* Variable smoothing length term */
-  const float kernel_gradient =
-      0.5f * (wi_dr * pi->force.f + wj_dr * pj->force.f);
 
   /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
@@ -436,53 +459,64 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                 (0.5f * rho_ij)
           : 0.f;
 
-  /* Convolve with the kernel */
-  const float visc_acc_term = visc * kernel_gradient * r_inv;
+  /* These are set whether or not we fall back onto SPH gradients */
+  float visc_acc_term = visc;
+  float sph_acc_term = (pressurei + pressurej) / (pi->rho * pj->rho);
+  
+  float sph_du_term_i = pressurei / (pi->rho * pj->rho);
+  float sph_du_term_j = pressurej / (pi->rho * pj->rho);
+  float visc_du_term_i = 0.5f * visc_acc_term;
+  float visc_du_term_j = visc_du_term_i;
 
-  /* SPH acceleration term */
-  const float sph_acc_term =
-      (pressurei + pressurej) * r_inv * kernel_gradient / (pi->rho * pj->rho);
+  if (sph_gradients_flag) {
+    /* Variable smoothing length term */
+    const float kernel_gradient =
+        0.5f * r_inv * (wi_dr * pi->force.f + wj_dr * pj->force.f);
 
-  /* Adaptive softening acceleration term */
-  const float adapt_soft_acc_term = adaptive_softening_get_acc_term(
-      pi, pj, wi_dr, wj_dr, pi->force.f, pj->force.f, r_inv);
+    visc_acc_term *= kernel_gradient;
+    sph_acc_term *= kernel_gradient;
+
+    sph_du_term_i *= dvdr * kernel_gradient;
+    sph_du_term_j *= dvdr * kernel_gradient;
+    visc_du_term_i *= dvdr_Hubble * kernel_gradient;
+    visc_du_term_j = visc_du_term_i;
+
+    /* Get the time derivative for h. */
+    pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+    pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
+  }
+  else {
+    sph_du_term_i *= dv_dot_G_ij;
+    sph_du_term_j *= dv_dot_G_ij;
+    visc_du_term_i *= dv_dot_G_ij + a2_Hubble + r2;
+    visc_du_term_j *= dv_dot_G_ij + a2_Hubble + r2;
+
+    /* Get the time derivative for h. */
+    pi->force.h_dt -= mj * dv_dot_G_ij / rhoj;
+    pj->force.h_dt -= mi * dv_dot_G_ij / rhoi;
+  }
 
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term + adapt_soft_acc_term;
+  const float acc = sph_acc_term + visc_acc_term;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * dx[0];
-  pi->a_hydro[1] -= mj * acc * dx[1];
-  pi->a_hydro[2] -= mj * acc * dx[2];
+  pi->a_hydro[0] -= mj * acc * G_ij[0];
+  pi->a_hydro[1] -= mj * acc * G_ij[1];
+  pi->a_hydro[2] -= mj * acc * G_ij[2];
 
-  pj->a_hydro[0] += mi * acc * dx[0];
-  pj->a_hydro[1] += mi * acc * dx[1];
-  pj->a_hydro[2] += mi * acc * dx[2];
+  pj->a_hydro[0] += mi * acc * G_ij[0];
+  pj->a_hydro[1] += mi * acc * G_ij[1];
+  pj->a_hydro[2] += mi * acc * G_ij[2];
 
   /* Get the time derivative for u. */
-  const float sph_du_term_i =
-      pressurei * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
-  const float sph_du_term_j =
-      pressurej * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
-
-  /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
-
-  /* Diffusion term */
-  const float diff_du_term = 2.f * (pi->diffusion.rate + pj->diffusion.rate) *
-                             (pi->u - pj->u) * kernel_gradient / rho_ij;
 
   /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
-  const float du_dt_j = sph_du_term_j + visc_du_term - diff_du_term;
+  const float du_dt_i = sph_du_term_i + visc_du_term_i;
+  const float du_dt_j = sph_du_term_j + visc_du_term_j;
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
   pj->u_dt += du_dt_j * mi;
-
-  /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-  pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 }
 
 /**
@@ -519,21 +553,48 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+  const float hi_inv_dim = pow_dimension(hi_inv);
+  const float hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+  const float hj_inv_dim = pow_dimension(hj_inv);
+  const float hj_inv_dim_plus_one = hj_inv * hj_inv_dim; /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hjd_inv * wj_dx;
 
-  /* Compute dv dot r. */
+  float wi_dr = hi_inv_dim_plus_one * wi_dx;
+  float wj_dr = hj_inv_dim_plus_one * wj_dx;
+  double G_ij[3] = {0., 0., 0.};
+
+  /* Always use SPH gradients between particles if one of them has an
+   * ill-conditioned C matrix */
+  char sph_gradients_flag = 1;
+  if (!pi->sph_gradients_flag && !pj->sph_gradients_flag) {
+    sph_gradients_flag = 0;
+    double G_i[3] = {0., 0., 0.};
+    double G_j[3] = {0., 0., 0.};
+    for (int k = 0; k < 3; k++) {
+      for (int i = 0; i < 3; i++) {
+        /* Note: Negative because dx is (pj-pi) in Rosswog 2020 */
+        G_i[k] -= pi->C[k][i] * dx[i] * wi * hi_inv_dim;
+        G_j[k] += pj->C[k][i] * dx[i] * wj * hj_inv_dim;
+      }
+
+      G_ij[k] = 0.5 * (G_i[k] + G_j[k]);
+    }
+  }
+
+  /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
+  const double dv_dot_G_ij = (pi->v[0] - pj->v[0]) * G_ij[0] +
+                             (pi->v[1] - pj->v[1]) * G_ij[1] +
+                             (pi->v[2] - pj->v[2]) * G_ij[2];
+
+  /* Compute dv dot dr. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2];
@@ -544,10 +605,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
-
-  /* Variable smoothing length term */
-  const float kernel_gradient =
-      0.5f * (wi_dr * pi->force.f + wj_dr * pj->force.f);
 
   /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
@@ -560,44 +617,47 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                 (0.5f * rho_ij)
           : 0.f;
 
-  /* Convolve with the kernel */
-  const float visc_acc_term = visc * kernel_gradient * r_inv;
+  /* These are set whether or not we fall back onto SPH gradients */
+  float visc_acc_term = visc;
+  float sph_acc_term = (pressurei + pressurej) / (pi->rho * pj->rho);
+  float sph_du_term_i = pressurei / (pi->rho * pj->rho);
+  float visc_du_term_i = visc;
 
-  /* SPH acceleration term */
-  const float sph_acc_term =
-      (pressurei + pressurej) * r_inv * kernel_gradient / (pi->rho * pj->rho);
+  if (sph_gradients_flag) {
+    /* Variable smoothing length term */
+    const float kernel_gradient =
+        0.5f * r_inv * (wi_dr * pi->force.f + wj_dr * pj->force.f);
 
-  /* Adaptive softening acceleration term */
-  const float adapt_soft_acc_term = adaptive_softening_get_acc_term(
-      pi, pj, wi_dr, wj_dr, pi->force.f, pj->force.f, r_inv);
+    visc_acc_term *= kernel_gradient;
+    sph_acc_term *= kernel_gradient;
+    sph_du_term_i *= dvdr * kernel_gradient;
+    visc_du_term_i *= dvdr_Hubble * kernel_gradient;
+
+    /* Get the time derivative for h. */
+    pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  }
+  else {
+    sph_du_term_i *= dv_dot_G_ij;
+    visc_du_term_i *= dv_dot_G_ij + a2_Hubble * r2;
+
+    /* Get the time derivative for h. */
+    pi->force.h_dt -= mj * dv_dot_G_ij / rhoj;
+  }
 
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term + adapt_soft_acc_term;
+  const float acc = sph_acc_term + visc_acc_term;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * dx[0];
-  pi->a_hydro[1] -= mj * acc * dx[1];
-  pi->a_hydro[2] -= mj * acc * dx[2];
-
-  /* Get the time derivative for u. */
-  const float sph_du_term_i =
-      pressurei * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
-
-  /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
-
-  /* Diffusion term */
-  const float diff_du_term = 2.f * (pi->diffusion.rate + pj->diffusion.rate) *
-                             (pi->u - pj->u) * kernel_gradient / rho_ij;
+  pi->a_hydro[0] -= mj * acc * G_ij[0];
+  pi->a_hydro[1] -= mj * acc * G_ij[1];
+  pi->a_hydro[2] -= mj * acc * G_ij[2];
 
   /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
+  const float du_dt_i = sph_du_term_i + visc_du_term_i;
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
 
-  /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 }
 
 #endif /* SWIFT_MAGMA2_HYDRO_IACT_H */

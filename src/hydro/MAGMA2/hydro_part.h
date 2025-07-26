@@ -137,12 +137,12 @@ struct part {
   /*! Neighbour weightings */
   float weighted_neighbour_wcount;
 
-  /*! Kernel derivatives */
-  float G[3];
-
   /*! Correction matrix (C^ki in Rosswog 2020) */
-  float C[3][3];
+  double C[3][3];
 
+  /*! Flag as to whether the SPH gradients should be used */
+  char sph_gradients_flag;
+  
 #ifdef MAGMA2_DEBUG_CHECKS
   struct {
     /*! C matrix at the last time it was ill-conditioned */

@@ -523,7 +523,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      p->C[i][j] = 0.f;
+      p->C[i][j] = 0.;
       p->viscosity.velocity_gradient[i][j] = 0.f;
     }
   }
@@ -605,6 +605,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
+
+  /* Reset the SPH gradient flag */
+  p->sph_gradients_flag = 0;
 
   /* Compute the sound speed  */
   const float pressure = hydro_get_comoving_pressure(p);
@@ -689,7 +692,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  *
  * @param A The matrix to compute the condition number of.
  */
-__attribute__((always_inline)) INLINE static float 
+__attribute__((always_inline)) INLINE static double 
 condition_number(gsl_matrix *A) {
 
   gsl_matrix *A_copy = gsl_matrix_alloc(3, 3);
@@ -709,7 +712,7 @@ condition_number(gsl_matrix *A) {
   gsl_vector_free(S);
   gsl_vector_free(work);
 
-  return (s_min != 0.f) ? s_max / s_min : FLT_MAX;
+  return (s_min != 0.) ? s_max / s_min : const_condition_number_upper_limit;
 }
 
 /**
@@ -744,7 +747,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   gsl_matrix_view C_view = gsl_matrix_view_array((double *)p->C, 3, 3);
   gsl_matrix *C = &C_view.matrix;
 
-  float cond = condition_number(C);
+  double cond = condition_number(C);
   if (cond < const_condition_number_upper_limit) {
     gsl_matrix *C_inv = gsl_matrix_alloc(3, 3);
     gsl_permutation *p_perm = gsl_permutation_alloc(3);
@@ -774,10 +777,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 #endif
 
     /* Ill-condition matrix, revert back to normal SPH gradients */
+    p->sph_gradients_flag = 1;
     for (int k = 0; k < 3; k++) {
-      p->C[k][0] = 0.f;
-      p->C[k][1] = 0.f;
-      p->C[k][2] = 0.f;
+      p->C[k][0] = 0.;
+      p->C[k][1] = 0.;
+      p->C[k][2] = 0.;
     }
   }
 
@@ -817,9 +821,10 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->weighted_wcount = 1.f;
   p->weighted_neighbour_wcount = 1.f;
 
+  p->sph_gradients_flag = 1;
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      p->C[i][j] = 0.f;
+      p->C[i][j] = 0.;
       p->viscosity.velocity_gradient[i][j] = 0.f;
     }
   }
@@ -1044,7 +1049,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
-  p->force.h_dt *= p->h * hydro_dimension_inv;
+    p->force.h_dt *= p->h * hydro_dimension_inv;
 }
 
 /**
