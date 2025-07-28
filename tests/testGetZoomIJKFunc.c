@@ -146,7 +146,7 @@ void make_mock_cells(struct space *s) {
   }
 
   /* Label void cells. */
-  for (int cid = zoom_props->background_cell_offset; cid < s->nr_cells; cid++) {
+  for (int cid = zoom_props->bkg_cell_offset; cid < s->nr_cells; cid++) {
 
     /* Get the cell */
     struct cell *c = &s->cells_top[cid];
