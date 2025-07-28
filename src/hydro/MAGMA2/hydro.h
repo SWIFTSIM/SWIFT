@@ -1492,6 +1492,17 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   
   const float rho_inv = hydro_get_comoving_density(p);  
   p->force.h_dt *= p->h * rho_inv * hydro_dimension_inv;
+
+#ifdef MAGMA2_DEBUG_CHECKS
+  if (p->force.h_dt > 1.e10f) {
+    warning(
+        "Particle %lld has a very large h_dt value (%g). This may be due to "
+        "a very low density or a very high smoothing length."
+        "rho_inv = %g, h = %g, hydro_dimension_inv = %g",
+        p->id, p->force.h_dt,
+        rho_inv, p->h, hydro_dimension_inv);
+  }
+#endif
 }
 
 /**
