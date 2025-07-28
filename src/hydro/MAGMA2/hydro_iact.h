@@ -563,37 +563,43 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
         dv_dot_eta_j + a2_Hubble * r2 * hj_inv_kernel;
 
     /* Is the flow converging? If so, multiply mu by fac_mu. If not, zero. */
-    const float conv_i = (dv_dot_eta_i_phys < 0.f) ? fac_mu : 0.f;
-    const float conv_j = (dv_dot_eta_j_phys < 0.f) ? fac_mu : 0.f;
+    float conv = 0.f;
+    if (fabsf(dv_dot_eta_i_phys) > FLT_EPSILON &&
+        fabsf(dv_dot_eta_j_phys) > FLT_EPSILON) {
+      /* Is the flow converging? */
+      const char conv_i = (dv_dot_eta_i_phys < 0.f) ? 1 : 0;
+      const char conv_j = (dv_dot_eta_j_phys < 0.f) ? 1 : 0;
 
-    /* Both must be approaching */
-    const float conv = (conv_i != 0.f && conv_j != 0.f) ? fac_mu : 0.f;
+      /* They both must be approaching. */
+      conv = (conv_i && conv_j) ? fac_mu : 0.f;
 
 #ifdef MAGMA2_DEBUG_CHECKS
-    if (conv_i != conv_j) {
-      warning("Convergence factor mismatch for particles pi=%lld and pj=%lld.\n"
-              "conv_i = %g, conv_j = %g\n"
-              "dv_dot_eta_i_phys = %g, dv_dot_eta_j_phys = %g\n"
-              "vi_reconstructed = (%g, %g, %g), vj_reconstructed = (%g, %g, %g)\n"
-              "dv_ij = (%g, %g, %g), dv_ji = (%g, %g, %g)\n"
-              "eta_i = (%g, %g, %g), eta_j = (%g, %g, %g)\n"
-              "eta_i2 = %g, eta_j2 = %g\n"
-              "hi_inv_kernel = %g, hj_inv_kernel = %g\n"
-              "a2_Hubble = %g, r2 = %g\n",
-              pi->id, pj->id,
-              conv_i, conv_j,
-              dv_dot_eta_i_phys, dv_dot_eta_j_phys,
-              vi_reconstructed[0], vi_reconstructed[1], vi_reconstructed[2],
-              vj_reconstructed[0], vj_reconstructed[1], vj_reconstructed[2],
-              dv_ij[0], dv_ij[1], dv_ij[2],
-              dv_ji[0], dv_ji[1], dv_ji[2],
-              eta_i[0], eta_i[1], eta_i[2],
-              eta_j[0], eta_j[1], eta_j[2],
-              eta_i2, eta_j2,
-              hi_inv_kernel, hj_inv_kernel,
-              a2_Hubble, r2);
-    }
+      if (conv_i != conv_j) {
+        warning("Flow mismatch for particles pi=%lld and pj=%lld.\n"
+                "conv_i = %d, conv_j = %d\n"
+                "dv_dot_eta_i_phys = %g, dv_dot_eta_j_phys = %g\n"
+                "vi_reconstructed = (%g, %g, %g), "
+                "vj_reconstructed = (%g, %g, %g)\n"
+                "dv_ij = (%g, %g, %g), dv_ji = (%g, %g, %g)\n"
+                "eta_i = (%g, %g, %g), eta_j = (%g, %g, %g)\n"
+                "eta_i2 = %g, eta_j2 = %g\n"
+                "hi_inv_kernel = %g, hj_inv_kernel = %g\n"
+                "a2_Hubble = %g, r2 = %g\n",
+                pi->id, pj->id,
+                conv_i, conv_j,
+                dv_dot_eta_i_phys, dv_dot_eta_j_phys,
+                vi_reconstructed[0], vi_reconstructed[1], vi_reconstructed[2],
+                vj_reconstructed[0], vj_reconstructed[1], vj_reconstructed[2],
+                dv_ij[0], dv_ij[1], dv_ij[2],
+                dv_ji[0], dv_ji[1], dv_ji[2],
+                eta_i[0], eta_i[1], eta_i[2],
+                eta_j[0], eta_j[1], eta_j[2],
+                eta_i2, eta_j2,
+                hi_inv_kernel, hj_inv_kernel,
+                a2_Hubble, r2);
+      }
 #endif
+    }
 
     /* mu_i and mu_j include the Hubble flow */
     const float mu_i = 
@@ -953,38 +959,44 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float dv_dot_eta_j_phys = 
         dv_dot_eta_j + a2_Hubble * r2 * hj_inv_kernel;
 
-    /* Is the flow converging? */
-    const float conv_i = (dv_dot_eta_i_phys < 0.f) ? fac_mu : 0.f;
-    const float conv_j = (dv_dot_eta_j_phys < 0.f) ? fac_mu : 0.f;
+    /* Is the flow converging? If yes, multiply by fac_mu. If no, zero. */
+    float conv = 0.f;
+    if (fabsf(dv_dot_eta_i_phys) > FLT_EPSILON &&
+        fabsf(dv_dot_eta_j_phys) > FLT_EPSILON) {
+      /* Is the flow converging? */
+      const char conv_i = (dv_dot_eta_i_phys < 0.f) ? 1 : 0;
+      const char conv_j = (dv_dot_eta_j_phys < 0.f) ? 1 : 0;
 
-    /* They both must be approaching. */
-    const float conv = (conv_i != 0.f && conv_j != 0.f) ? fac_mu : 0.f;
+      /* They both must be approaching. */
+      conv = (conv_i && conv_j) ? fac_mu : 0.f;
 
 #ifdef MAGMA2_DEBUG_CHECKS
-    if (conv_i != conv_j) {
-      warning("Convergence factor mismatch for particles pi=%lld and pj=%lld.\n"
-              "conv_i = %g, conv_j = %g\n"
-              "dv_dot_eta_i_phys = %g, dv_dot_eta_j_phys = %g\n"
-              "vi_reconstructed = (%g, %g, %g), vj_reconstructed = (%g, %g, %g)\n"
-              "dv_ij = (%g, %g, %g), dv_ji = (%g, %g, %g)\n"
-              "eta_i = (%g, %g, %g), eta_j = (%g, %g, %g)\n"
-              "eta_i2 = %g, eta_j2 = %g\n"
-              "hi_inv_kernel = %g, hj_inv_kernel = %g\n"
-              "a2_Hubble = %g, r2 = %g\n",
-              pi->id, pj->id,
-              conv_i, conv_j,
-              dv_dot_eta_i_phys, dv_dot_eta_j_phys,
-              vi_reconstructed[0], vi_reconstructed[1], vi_reconstructed[2],
-              vj_reconstructed[0], vj_reconstructed[1], vj_reconstructed[2],
-              dv_ij[0], dv_ij[1], dv_ij[2],
-              dv_ji[0], dv_ji[1], dv_ji[2],
-              eta_i[0], eta_i[1], eta_i[2],
-              eta_j[0], eta_j[1], eta_j[2],
-              eta_i2, eta_j2,
-              hi_inv_kernel, hj_inv_kernel,
-              a2_Hubble, r2);
-    }
+      if (conv_i != conv_j) {
+        warning("Flow mismatch for particles pi=%lld and pj=%lld.\n"
+                "conv_i = %d, conv_j = %d\n"
+                "dv_dot_eta_i_phys = %g, dv_dot_eta_j_phys = %g\n"
+                "vi_reconstructed = (%g, %g, %g), "
+                "vj_reconstructed = (%g, %g, %g)\n"
+                "dv_ij = (%g, %g, %g), dv_ji = (%g, %g, %g)\n"
+                "eta_i = (%g, %g, %g), eta_j = (%g, %g, %g)\n"
+                "eta_i2 = %g, eta_j2 = %g\n"
+                "hi_inv_kernel = %g, hj_inv_kernel = %g\n"
+                "a2_Hubble = %g, r2 = %g\n",
+                pi->id, pj->id,
+                conv_i, conv_j,
+                dv_dot_eta_i_phys, dv_dot_eta_j_phys,
+                vi_reconstructed[0], vi_reconstructed[1], vi_reconstructed[2],
+                vj_reconstructed[0], vj_reconstructed[1], vj_reconstructed[2],
+                dv_ij[0], dv_ij[1], dv_ij[2],
+                dv_ji[0], dv_ji[1], dv_ji[2],
+                eta_i[0], eta_i[1], eta_i[2],
+                eta_j[0], eta_j[1], eta_j[2],
+                eta_i2, eta_j2,
+                hi_inv_kernel, hj_inv_kernel,
+                a2_Hubble, r2);
+      }
 #endif
+    }
 
     /* mu_i and mu_j include the Hubble flow */
     const float mu_i = 
