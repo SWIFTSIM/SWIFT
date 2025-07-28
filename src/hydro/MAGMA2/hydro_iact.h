@@ -483,7 +483,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
-  /* The acceleration vector */
+  /* For MAGMA2, this is the full anti-symmetric gradient vector. For the 
+   * fallback Gasoline2-style SPH, this will just be the direction vector
+   * between the two particles (r_i - r_j). */
   float G_ij[3] = {0.f, 0.f, 0.f};
 
   /* These are set whether or not we fall back onto SPH gradients */
@@ -492,8 +494,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   float sph_du_term_i = pressurei * rhoij_inv;
   float sph_du_term_j = pressurej * rhoij_inv;
-  float visc_du_term_i = 0.f;
-  float visc_du_term_j = 0.f;
+  float visc_du_term = 0.f;
 
   /* Always use SPH gradients between particles if one of them has an
    * ill-conditioned C matrix */
@@ -613,8 +614,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
     /* Add viscosity to the pressure */
     visc_acc_term = (Q_i + Q_j) * rhoij_inv;
-    visc_du_term_i = Q_i * rhoij_inv;
-    visc_du_term_j = Q_j * rhoij_inv;
+    visc_du_term = 0.5f * visc_acc_term;
 
     /* Averaged correction gradient. Note: antisymmetric, so only need
      * a sign flip for pj */
@@ -629,8 +629,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
     sph_du_term_i *= dv_dot_G_ij;
     sph_du_term_j *= dv_dot_G_ij;
-    visc_du_term_i *= dv_dot_G_ij + a2_Hubble * r2;
-    visc_du_term_j *= dv_dot_G_ij + a2_Hubble * r2;
+    visc_du_term *= dv_dot_G_ij + a2_Hubble * r2;
 
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dv_dot_G_ij;
@@ -668,8 +667,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
             : 0.f;
 
     visc_acc_term = visc;
-    visc_du_term_i = 0.5f * visc_acc_term;
-    visc_du_term_j = visc_du_term_i;
+    visc_du_term = 0.5f * visc_acc_term;
 
     const float hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
     const float hj_inv_dim_plus_one = hj_inv * hj_inv_dim;
@@ -685,8 +683,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
     sph_du_term_i *= dvdr * kernel_gradient;
     sph_du_term_j *= dvdr * kernel_gradient;
-    visc_du_term_i *= dvdr_Hubble * kernel_gradient;
-    visc_du_term_j = visc_du_term_i;
+    visc_du_term *= dvdr_Hubble * kernel_gradient;
 
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dvdr * r_inv * wi_dr;
@@ -708,8 +705,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Get the time derivative for u. */
 
   /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term_i;
-  const float du_dt_j = sph_du_term_j + visc_du_term_j;
+  const float du_dt_i = sph_du_term_i + visc_du_term;
+  const float du_dt_j = sph_du_term_j + visc_du_term;
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
@@ -765,13 +762,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
+  /* For MAGMA2, this is the full anti-symmetric gradient vector. For the 
+   * fallback Gasoline2-style SPH, this will just be the direction vector
+   * between the two particles (r_i - r_j). */
   float G_ij[3] = {0.f, 0.f, 0.f};
 
   /* These are set whether or not we fall back onto SPH gradients */
   float visc_acc_term = 0.f;
   float sph_acc_term = (pressurei + pressurej) * rhoij_inv;
   float sph_du_term_i = pressurei * rhoij_inv;
-  float visc_du_term_i = 0.f;
+  float visc_du_term = 0.f;
 
   /* Always use SPH gradients between particles if one of them has an
    * ill-conditioned C matrix */
@@ -891,7 +891,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     /* Add viscosity to the pressure */
     visc_acc_term = (Q_i + Q_j) * rhoij_inv;
-    visc_du_term_i = Q_i * rhoij_inv;
+    visc_du_term = 0.5f * visc_acc_term;
 
     /* Averaged correction gradient. Note: antisymmetric, so only need
      * a sign flip for pj */
@@ -905,7 +905,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                (pi->v[2] - pj->v[2]) * G_ij[2];
 
     sph_du_term_i *= dv_dot_G_ij;
-    visc_du_term_i *= dv_dot_G_ij + a2_Hubble * r2;
+    visc_du_term *= dv_dot_G_ij + a2_Hubble * r2;
 
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dv_dot_G_ij;
@@ -941,7 +941,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
             : 0.f;
 
     visc_acc_term = visc;
-    visc_du_term_i = 0.5f * visc_acc_term;
+    visc_du_term = 0.5f * visc_acc_term;
 
     const float hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
     const float hj_inv_dim_plus_one = hj_inv * hj_inv_dim;
@@ -955,7 +955,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     visc_acc_term *= kernel_gradient;
     sph_acc_term *= kernel_gradient;
     sph_du_term_i *= dvdr * kernel_gradient;
-    visc_du_term_i *= dvdr_Hubble * kernel_gradient;
+    visc_du_term *= dvdr_Hubble * kernel_gradient;
 
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dvdr * r_inv * wi_dr;
@@ -970,7 +970,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[2] -= mj * acc * G_ij[2];
 
   /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term_i;
+  const float du_dt_i = sph_du_term_i + visc_du_term;
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
