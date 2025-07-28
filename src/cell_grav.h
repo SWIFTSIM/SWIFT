@@ -122,7 +122,7 @@ struct cell_grav {
 
   /*! Flag for when we have tasks below the depth set by
    * cell_subdepth_diff_grav (only applicable to zoom simulations). */
-  int tasks_below_diff_grav;
+  int tasks_below_diff_grav_depth;
 };
 
 #endif /* SWIFT_CELL_GRAV_H */
