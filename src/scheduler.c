@@ -1627,10 +1627,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
    * missing on the regular cell if we don't flag this somehow to ensure
    * task recursions continue to this level. */
   if (!cell_is_above_diff_grav_depth(ci)) {
-    ci->grav.tasks_below_diff_grav_depth_depth = 1;
+    ci->grav.tasks_below_diff_grav_depth = 1;
   }
   if (!cell_is_above_diff_grav_depth(cj)) {
-    cj->grav.tasks_below_diff_grav_depth_depth = 1;
+    cj->grav.tasks_below_diff_grav_depth = 1;
   }
 
   /* Loop over the progeny. */
