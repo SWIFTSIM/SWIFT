@@ -1352,15 +1352,23 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
  * When running a zoom simulation this will use zoom_bkg_subdepth_diff_grav for
  * the background cells while the zoom cells will use the regular threshold.
  *
+ * When running a zoom we split all tasks involving a void cell, this can lead
+ * some cells interacting below space_subdepth_diff_grav to ensure we reach
+ * the zoom cells on the void side of the interaction. Cells requiring these
+ * tasks carry a flag (tasks_below_diff_grav_depth_depth) to signify this
+ * special condition. This flag ensures any task related recursion will continue
+ * right down to the lowest point tasks are defined on the cell in question.
+ *
  * @param c The #cell.
  */
 __attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
     const struct cell *c) {
 
-  /* Void cells must always be treated all the way to the leaves to ensure
-   * we get to the zoom cells, so we will always return true here (only
-   * applicable in zoom simulations). */
-  if (c->subtype == cell_subtype_void) {
+  /* When running a zoom we can have cells with tasks below
+   * space_subdepth_diff_grav due to interactions with the void cells (i.e.
+   * zoom region). These cells carry a special flag and must return true here
+   * to ensure task recursions work properly. */
+  if (c->grav.tasks_below_diff_grav_depth_depth) {
     return 1;
   }
 
