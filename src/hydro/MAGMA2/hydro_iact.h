@@ -98,6 +98,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->gradients.pressure[1] -= facj * pi->u * dx[1];
   pj->gradients.pressure[2] -= facj * pi->u * dx[2];
 
+  /* Equations 19 & 20 in Rosswog 2020. Compute the internal energy auxiliary 
+   * vector and norm for the gradient */
+  const float du = pi->u - pj->u;
+  pi->gradients.u_aux[0] += mj * du * dx[0] * wi_dx * r_inv;
+  pi->gradients.u_aux[1] += mj * du * dx[1] * wi_dx * r_inv;
+  pi->gradients.u_aux[2] += mj * du * dx[2] * wi_dx * r_inv;
+
+  pj->gradients.u_aux[0] += mi * du * dx[0] * wj_dx * r_inv;
+  pj->gradients.u_aux[1] += mi * du * dx[1] * wj_dx * r_inv;
+  pj->gradients.u_aux[2] += mi * du * dx[2] * wj_dx * r_inv;
+
+  pi->gradients.u_aux_norm[0] += mj * dx[0] * dx[0] * wi_dx * r_inv;
+  pi->gradients.u_aux_norm[1] += mj * dx[1] * dx[1] * wi_dx * r_inv;
+  pi->gradients.u_aux_norm[2] += mj * dx[2] * dx[2] * wi_dx * r_inv;
+
+  pj->gradients.u_aux_norm[0] += mi * dx[0] * dx[0] * wj_dx * r_inv;
+  pj->gradients.u_aux_norm[1] += mi * dx[1] * dx[1] * wj_dx * r_inv;
+  pj->gradients.u_aux_norm[2] += mi * dx[2] * dx[2] * wj_dx * r_inv;
+
   const float dv[3] = {pi->v[0] - pj->v[0],
                        pi->v[1] - pj->v[1],
                        pi->v[2] - pj->v[2]};
@@ -172,6 +191,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->gradients.pressure[0] += faci * pj->u * dx[0];
   pi->gradients.pressure[1] += faci * pj->u * dx[1];
   pi->gradients.pressure[2] += faci * pj->u * dx[2];
+
+  /* Equations 19 & 20 in Rosswog 2020. Compute the internal energy auxiliary 
+   * vector and norm for the gradient */
+
+  const float du = pi->u - pj->u;
+  pi->gradients.u_aux[0] += mj * du * dx[0] * wi_dx * r_inv;
+  pi->gradients.u_aux[1] += mj * du * dx[1] * wi_dx * r_inv;
+  pi->gradients.u_aux[2] += mj * du * dx[2] * wi_dx * r_inv;
+
+  pi->gradients.u_aux_norm[0] += mj * dx[0] * dx[0] * wi_dx * r_inv;
+  pi->gradients.u_aux_norm[1] += mj * dx[1] * dx[1] * wi_dx * r_inv;
+  pi->gradients.u_aux_norm[2] += mj * dx[2] * dx[2] * wi_dx * r_inv;
 
   const float dv[3] = {pi->v[0] - pj->v[0],
                        pi->v[1] - pj->v[1],
@@ -284,12 +315,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pi->weighted_neighbour_wcount += mj * r2 * wi_dx * rho_inv_j * r_inv;
   pj->weighted_neighbour_wcount += mi * r2 * wj_dx * rho_inv_i * r_inv;
 
+  /* Rosswog 2020 Equation 18 gradients. In the paper he uses (vj - vi) and
+   * (rj - ri), however this is symmetric so no sign problems. */
+  const float du = pi->u - pj->u;
+  pi->gradients.u[0] += mj * rho_inv_j * du * dx[0] * wi;
+  pi->gradients.u[1] += mj * rho_inv_j * du * dx[1] * wi;
+  pi->gradients.u[2] += mj * rho_inv_j * du * dx[2] * wi;
+
+  pj->gradients.u[0] += mi * rho_inv_i * du * dx[0] * wj;
+  pj->gradients.u[1] += mi * rho_inv_i * du * dx[1] * wj;
+  pj->gradients.u[2] += mi * rho_inv_i * du * dx[2] * wj;
+
   const float dv[3] = {pi->v[0] - pj->v[0],
                        pi->v[1] - pj->v[1],
                        pi->v[2] - pj->v[2]};
 
   for (int k = 0; k < 3; k++) {
     for (int i = 0; i < 3; i++) {
+      const float du_k = pi->gradients.u_aux[k] - pj->gradients.u_aux[k];
+      pi->gradients.u_hessian[k][i] += mj * rho_inv_j * du_k * dx[i] * wi;
+      pj->gradients.u_hessian[k][i] += mi * rho_inv_i * du_k * dx[i] * wj;
+
       /* dx is signed as (pi - pj), but it is symmetric so we add */
       pi->gradients.correction_matrix[k][i] += mj * rho_inv_j * dx[k] * dx[i] * wi;
       pj->gradients.correction_matrix[k][i] += mi * rho_inv_i * dx[k] * dx[i] * wj;
@@ -397,12 +443,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   pi->weighted_neighbour_wcount += mj * r2 * wi_dx * rho_inv_j * r_inv;
 
+  /* Rosswog 2020 Equation 18 gradients. In the paper he uses (vj - vi) and
+   * (rj - ri), however this is symmetric so no sign problems. */
+  const float du = pi->u - pj->u;
+  pi->gradients.u[0] += mj * rho_inv_j * du * dx[0] * wi;
+  pi->gradients.u[1] += mj * rho_inv_j * du * dx[1] * wi;
+  pi->gradients.u[2] += mj * rho_inv_j * du * dx[2] * wi;
+
   const float dv[3] = {pi->v[0] - pj->v[0],
                        pi->v[1] - pj->v[1],
                        pi->v[2] - pj->v[2]};
 
   for (int k = 0; k < 3; k++) {
     for (int i = 0; i < 3; i++) {
+      const float du_k = pi->gradients.u_aux[k] - pj->gradients.u_aux[i];
+      pi->gradients.u_hessian[k][i] += mj * rho_inv_j * du_k * dx[i] * wi;
+
       /* dx is signed as (pi - pj), but it is symmetric so we add */
       pi->gradients.correction_matrix[k][i] += 
           mj * rho_inv_j * dx[k] * dx[i] * wi;
@@ -495,6 +551,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float sph_du_term_i = pressurei * rhoij_inv;
   float sph_du_term_j = pressurej * rhoij_inv;
   float visc_du_term = 0.f;
+  float cond_du_term = 0.f;
 
   /* Always use SPH gradients between particles if one of them has an
    * ill-conditioned C matrix */
@@ -549,20 +606,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
         0.5f * ((float)pi->num_ngb + (float)pj->num_ngb);
 
     /* Compute global Van Leer limiter (scalar, not component-wise) */
-    const float phi_ij = hydro_vector_van_leer_phi(pi->gradients.velocity_tensor, 
-                                                   pj->gradients.velocity_tensor,
-                                                   dx_ij, xi, xj, num_ngb_ij);
-    const float phi_ji = hydro_vector_van_leer_phi(pj->gradients.velocity_tensor,
-                                                   pi->gradients.velocity_tensor,
-                                                   dx_ji, xj, xi, num_ngb_ij);
+    const float phi_ij_vec = 
+        hydro_vector_van_leer_phi(pi->gradients.velocity_tensor, 
+                                  pj->gradients.velocity_tensor,
+                                  dx_ij, xi, xj, num_ngb_ij);
+    const float phi_ji_vec = 
+        hydro_vector_van_leer_phi(pj->gradients.velocity_tensor,
+                                  pi->gradients.velocity_tensor,
+                                  dx_ji, xj, xi, num_ngb_ij);
 
     /* dx_ji for particle i and dx_ij for particle j */
-    hydro_vector_second_order_reconstruction(phi_ij, dx_ji, pi->v, 
+    hydro_vector_second_order_reconstruction(phi_ij_vec, dx_ji, pi->v, 
                                              pi->gradients.velocity_tensor,
                                              pi->gradients.velocity_hessian,
                                              vi_reconstructed);
 
-    hydro_vector_second_order_reconstruction(phi_ji, dx_ij, pj->v, 
+    hydro_vector_second_order_reconstruction(phi_ji_vec, dx_ij, pj->v, 
                                              pj->gradients.velocity_tensor,
                                              pj->gradients.velocity_hessian,
                                              vj_reconstructed);
@@ -603,24 +662,69 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
         fminf(0.f, dv_dot_eta_j_phys  / (eta_j2 + const_viscosity_epsilon2));
     
     const float Q_i_alpha = 
-        -const_viscosity_alpha * pi->force.soundspeed * mu_i;
-    const float Q_i_beta = const_viscosity_beta * mu_i * mu_i;
+        -const_viscosity_alpha * pi->force.soundspeed * mu_i * fac_mu;
+    const float Q_i_beta = const_viscosity_beta * mu_i * mu_i * fac_mu * fac_mu;
     const float Q_i = rhoi * (Q_i_alpha + Q_i_beta);
 
     const float Q_j_alpha =
-        -const_viscosity_alpha * pj->force.soundspeed * mu_j;
-    const float Q_j_beta = const_viscosity_beta * mu_j * mu_j;
+        -const_viscosity_alpha * pj->force.soundspeed * mu_j * fac_mu;
+    const float Q_j_beta = const_viscosity_beta * mu_j * mu_j * fac_mu * fac_mu;
     const float Q_j = rhoj * (Q_j_alpha + Q_j_beta);
 
     /* Add viscosity to the pressure */
     visc_acc_term = (Q_i + Q_j) * rhoij_inv;
     visc_du_term = 0.5f * visc_acc_term;
 
+
+    /* Artificial conductivity */
+
+
+    float ui_reconstructed = 0.f;
+    float uj_reconstructed = 0.f;
+
+    /* Compute global Van Leer limiter (scalar, not component-wise) */
+    const float phi_ij_scalar = 
+        hydro_scalar_van_leer_phi(pi->gradients.u, 
+                                  pj->gradients.u,
+                                  dx_ij, xi, xj, num_ngb_ij);
+    const float phi_ji_scalar = 
+        hydro_scalar_van_leer_phi(pj->gradients.u,
+                                  pi->gradients.u,
+                                  dx_ji, xj, xi, num_ngb_ij);
+
+    /* dx_ji for particle i and dx_ij for particle j */
+    hydro_scalar_second_order_reconstruction(phi_ij_scalar, dx_ji, pi->u, 
+                                             pi->gradients.u,
+                                             pi->gradients.u_hessian,
+                                             &ui_reconstructed);
+
+    hydro_scalar_second_order_reconstruction(phi_ji_scalar, dx_ij, pj->u, 
+                                             pj->gradients.u,
+                                             pj->gradients.u_hessian,
+                                             &uj_reconstructed);
+  
+    const float vsig_u = sqrtf(dv_ij[0] * dv_ij[0] +
+                               dv_ij[1] * dv_ij[1] +
+                               dv_ij[2] * dv_ij[2]);
+    const float du_ij = ui_reconstructed - uj_reconstructed;
+    const float rho_ij = 0.5f * (rhoi + rhoj);
+
+    /* Add conductivity to the specific energy */
+    cond_du_term = -const_conductivity_alpha * vsig_u * du_ij / rho_ij;
+
+
+    /* Finalize everything with the correct normalizations. */
+
+
     /* Averaged correction gradient. Note: antisymmetric, so only need
      * a sign flip for pj */
     G_ij[0] = 0.5f * (G_i[0] + G_j[0]);
     G_ij[1] = 0.5f * (G_i[1] + G_j[1]);
     G_ij[2] = 0.5f * (G_i[2] + G_j[2]);
+
+    const float G_ij_norm = sqrtf(G_ij[0] * G_ij[0] +
+                                  G_ij[1] * G_ij[1] +
+                                  G_ij[2] * G_ij[2]);
 
     /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
     const double dv_dot_G_ij = (pi->v[0] - pj->v[0]) * G_ij[0] +
@@ -630,6 +734,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     sph_du_term_i *= dv_dot_G_ij;
     sph_du_term_j *= dv_dot_G_ij;
     visc_du_term *= dv_dot_G_ij + a2_Hubble * r2;
+    cond_du_term *= G_ij_norm;
 
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dv_dot_G_ij;
@@ -705,8 +810,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Get the time derivative for u. */
 
   /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term;
-  const float du_dt_j = sph_du_term_j + visc_du_term;
+  const float du_dt_i = sph_du_term_i + visc_du_term + cond_du_term;
+  const float du_dt_j = sph_du_term_j + visc_du_term - cond_du_term;
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
@@ -772,6 +877,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float sph_acc_term = (pressurei + pressurej) * rhoij_inv;
   float sph_du_term_i = pressurei * rhoij_inv;
   float visc_du_term = 0.f;
+  float cond_du_term = 0.f;
 
   /* Always use SPH gradients between particles if one of them has an
    * ill-conditioned C matrix */
@@ -826,20 +932,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
         0.5f * ((float)pi->num_ngb + (float)pj->num_ngb);
 
     /* Compute global Van Leer limiter (scalar, not component-wise) */
-    const float phi_ij = hydro_vector_van_leer_phi(pi->gradients.velocity_tensor, 
-                                                   pj->gradients.velocity_tensor,
-                                                   dx_ij, xi, xj, num_ngb_ij);
-    const float phi_ji = hydro_vector_van_leer_phi(pj->gradients.velocity_tensor,
-                                                   pi->gradients.velocity_tensor,
-                                                   dx_ji, xj, xi, num_ngb_ij);
+    const float phi_ij_vec = 
+        hydro_vector_van_leer_phi(pi->gradients.velocity_tensor, 
+                                  pj->gradients.velocity_tensor,
+                                  dx_ij, xi, xj, num_ngb_ij);
+    const float phi_ji_vec = 
+        hydro_vector_van_leer_phi(pj->gradients.velocity_tensor,
+                                  pi->gradients.velocity_tensor,
+                                  dx_ji, xj, xi, num_ngb_ij);
 
     /* dx_ji for particle i and dx_ij for particle j */
-    hydro_vector_second_order_reconstruction(phi_ij, dx_ji, pi->v, 
+    hydro_vector_second_order_reconstruction(phi_ij_vec, dx_ji, pi->v, 
                                              pi->gradients.velocity_tensor,
                                              pi->gradients.velocity_hessian,
                                              vi_reconstructed);
 
-    hydro_vector_second_order_reconstruction(phi_ji, dx_ij, pj->v, 
+    hydro_vector_second_order_reconstruction(phi_ji_vec, dx_ij, pj->v, 
                                              pj->gradients.velocity_tensor,
                                              pj->gradients.velocity_hessian,
                                              vj_reconstructed);
@@ -880,24 +988,69 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
         fminf(0.f, dv_dot_eta_j_phys  / (eta_j2 + const_viscosity_epsilon2));
     
     const float Q_i_alpha = 
-        -const_viscosity_alpha * pi->force.soundspeed * mu_i;
-    const float Q_i_beta = const_viscosity_beta * mu_i * mu_i;
+        -const_viscosity_alpha * pi->force.soundspeed * mu_i * fac_mu;
+    const float Q_i_beta = const_viscosity_beta * mu_i * mu_i * fac_mu * fac_mu;
     const float Q_i = rhoi * (Q_i_alpha + Q_i_beta);
 
     const float Q_j_alpha =
-        -const_viscosity_alpha * pj->force.soundspeed * mu_j;
-    const float Q_j_beta = const_viscosity_beta * mu_j * mu_j;
+        -const_viscosity_alpha * pj->force.soundspeed * mu_j * fac_mu;
+    const float Q_j_beta = const_viscosity_beta * mu_j * mu_j * fac_mu * fac_mu;
     const float Q_j = rhoj * (Q_j_alpha + Q_j_beta);
 
     /* Add viscosity to the pressure */
     visc_acc_term = (Q_i + Q_j) * rhoij_inv;
     visc_du_term = 0.5f * visc_acc_term;
 
+  
+    /* Artificial conductivity */
+
+
+    float ui_reconstructed = 0.f;
+    float uj_reconstructed = 0.f;
+
+    /* Compute global Van Leer limiter (scalar, not component-wise) */
+    const float phi_ij_scalar = 
+        hydro_scalar_van_leer_phi(pi->gradients.u, 
+                                  pj->gradients.u,
+                                  dx_ij, xi, xj, num_ngb_ij);
+    const float phi_ji_scalar = 
+        hydro_scalar_van_leer_phi(pj->gradients.u,
+                                  pi->gradients.u,
+                                  dx_ji, xj, xi, num_ngb_ij);
+
+    /* dx_ji for particle i and dx_ij for particle j */
+    hydro_scalar_second_order_reconstruction(phi_ij_scalar, dx_ji, pi->u, 
+                                             pi->gradients.u,
+                                             pi->gradients.u_hessian,
+                                             &ui_reconstructed);
+
+    hydro_scalar_second_order_reconstruction(phi_ji_scalar, dx_ij, pj->u, 
+                                             pj->gradients.u,
+                                             pj->gradients.u_hessian,
+                                             &uj_reconstructed);
+  
+    const float vsig_u = sqrtf(dv_ij[0] * dv_ij[0] +
+                               dv_ij[1] * dv_ij[1] +
+                               dv_ij[2] * dv_ij[2]);
+    const float du_ij = ui_reconstructed - uj_reconstructed;
+    const float rho_ij = 0.5f * (rhoi + rhoj);
+
+    /* Add conductivity to the specific energy */
+    cond_du_term = -const_conductivity_alpha * vsig_u * du_ij / rho_ij;
+
+
+    /* Finalize the viscosity and conductivity with correct normalizations. */
+
+
     /* Averaged correction gradient. Note: antisymmetric, so only need
      * a sign flip for pj */
     G_ij[0] = 0.5f * (G_i[0] + G_j[0]);
     G_ij[1] = 0.5f * (G_i[1] + G_j[1]);
     G_ij[2] = 0.5f * (G_i[2] + G_j[2]);
+
+    const float G_ij_norm = sqrtf(G_ij[0] * G_ij[0] +
+                                  G_ij[1] * G_ij[1] +
+                                  G_ij[2] * G_ij[2]);
 
     /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
     const double dv_dot_G_ij = (pi->v[0] - pj->v[0]) * G_ij[0] +
@@ -906,6 +1059,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     sph_du_term_i *= dv_dot_G_ij;
     visc_du_term *= dv_dot_G_ij + a2_Hubble * r2;
+    cond_du_term *= G_ij_norm; /* Eq. 24 Rosswog 2020 */
 
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dv_dot_G_ij;
@@ -970,7 +1124,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[2] -= mj * acc * G_ij[2];
 
   /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term;
+  const float du_dt_i = sph_du_term_i + visc_du_term + cond_du_term;
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;

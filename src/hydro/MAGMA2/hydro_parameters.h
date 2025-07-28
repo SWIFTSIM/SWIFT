@@ -61,6 +61,9 @@
 /*! Softening squared (epsilon^2) in Eq. 15 Rosswog 2020 */
 #define const_viscosity_epsilon2 0.01f
 
+/*! Artificial conductivity alpha */
+#define const_conductivity_alpha 0.05f
+
 /*! The viscosity that the particles are reset to after being hit by a
  * feedback event. This should be set to the same value as the
  * hydro_props_default_viscosity_alpha in fixed schemes, and likely

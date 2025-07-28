@@ -184,6 +184,18 @@ struct part {
     /*! Smoothed pressure gradient */
     float pressure[3];
 
+    /*! Internal energy gradient */
+    float u[3];
+
+    /*! Auxiliary internal energy gradient */
+    float u_aux[3];
+
+    /*! Normalization for computing u_aux */
+    float u_aux_norm[3];
+    
+    /*! Internal energy Hessian */
+    float u_hessian[3][3];
+
   } gradients;
 
   /* Store viscosity information in a separate struct. */

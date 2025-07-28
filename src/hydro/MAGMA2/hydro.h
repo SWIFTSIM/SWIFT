@@ -377,7 +377,7 @@ hydro_set_drifted_physical_internal_energy(
   p->force.soundspeed = soundspeed;
   p->force.pressure = pressure_including_floor;
 
-  p->viscosity.v_sig = max(p->viscosity.v_sig, soundspeed);
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -401,7 +401,7 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
 
   /* Update the signal velocity */
   p->viscosity.v_sig =
-      max(soundspeed, p->viscosity.v_sig + const_viscosity_beta * dv);
+      max(2.f * soundspeed, p->viscosity.v_sig + const_viscosity_beta * dv);
 }
 
 /**
@@ -471,7 +471,7 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
 
-  return 0.5f * (ci + cj) - mu_ij;
+  return ci + cj - beta * mu_ij;
 }
 
 /**
@@ -524,6 +524,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   /* These must be zeroed before the density loop */
   for (int i = 0; i < 3; i++) {
+    p->gradients.u_aux[i] = 0.f;
+    p->gradients.u_aux_norm[i] = 0.f;
+
     for (int j = 0; j < 3; j++) {
       p->gradients.velocity_tensor_aux[i][j] = 0.f;
       p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;
@@ -944,6 +947,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->gradients.pressure[1] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
   p->gradients.pressure[2] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
 
+  p->gradients.u_aux[0] *= h_inv_dim_plus_one;
+  p->gradients.u_aux[1] *= h_inv_dim_plus_one;
+  p->gradients.u_aux[2] *= h_inv_dim_plus_one;
+
+  p->gradients.u_aux_norm[0] *= h_inv_dim_plus_one;
+  p->gradients.u_aux_norm[1] *= h_inv_dim_plus_one;
+  p->gradients.u_aux_norm[2] *= h_inv_dim_plus_one;
+
+  p->gradients.u_aux[0] /= p->gradients.u_aux_norm[0];
+  p->gradients.u_aux[1] /= p->gradients.u_aux_norm[1];
+  p->gradients.u_aux[2] /= p->gradients.u_aux_norm[2];
+
   double aux_norm[3][3];
   for (int i = 0; i < 3; i++) {
     p->gradients.velocity_tensor_aux[i][0] *= h_inv_dim_plus_one;
@@ -1141,9 +1156,14 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
 #ifdef MAGMA2_DEBUG_CHECKS
   p->debug.D_well_conditioned = 1;
 #endif
-  p->viscosity.v_sig = p->force.soundspeed;
+  p->viscosity.v_sig = 2.f * p->force.soundspeed;
 
   for (int i = 0; i < 3; i++) {
+    p->gradients.u[i] = 0.f;
+    p->gradients.u_hessian[i][0] = 0.f;
+    p->gradients.u_hessian[i][1] = 0.f;
+    p->gradients.u_hessian[i][2] = 0.f;
+
     p->gradients.correction_matrix[i][0] = 0.f;
     p->gradients.correction_matrix[i][1] = 0.f;
     p->gradients.correction_matrix[i][2] = 0.f;
@@ -1181,6 +1201,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
+  /* Normalize correctly with the smoothing length */
+  p->gradients.u[0] *= h_inv_dim;
+  p->gradients.u[1] *= h_inv_dim;
+  p->gradients.u[2] *= h_inv_dim;
+
   /* Temporary double for GSL */
   double correction_matrix[3][3] = {0};
 
@@ -1194,6 +1219,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     correction_matrix[k][0] = p->gradients.correction_matrix[k][0];
     correction_matrix[k][1] = p->gradients.correction_matrix[k][1];
     correction_matrix[k][2] = p->gradients.correction_matrix[k][2];
+
+    p->gradients.u_hessian[k][0] *= h_inv_dim;
+    p->gradients.u_hessian[k][1] *= h_inv_dim;
+    p->gradients.u_hessian[k][2] *= h_inv_dim;
 
     p->gradients.velocity_tensor[k][0] *= h_inv_dim;
     p->gradients.velocity_tensor[k][1] *= h_inv_dim;
@@ -1249,14 +1278,23 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     }
   }
 
-  /* Contract the correction matrix with the velocity tensor */
+  /* Contract the correction matrix with the internal energy gradient and with 
+   * the velocity tensor */
+  double u_gradient[3] = {0};
+  double u_hessian[3][3] = {0};
   double velocity_tensor[3][3] = {0};
   double velocity_hessian[3][3][3] = {0};
   for (int j = 0; j < 3; j++) {
     for (int i = 0; i < 3; i++) {
+      u_gradient[j] += p->gradients.correction_matrix[j][i] *
+                       p->gradients.u[i];
+
       for (int k = 0; k < 3; k++) {
+        u_hessian[j][i] += p->gradients.correction_matrix[j][k] *
+                           p->gradients.u_hessian[i][k];
         velocity_tensor[j][i] += p->gradients.correction_matrix[j][k] *
                                  p->gradients.velocity_tensor[i][k];
+
         for (int m = 0; m < 3; m++) {
           velocity_hessian[j][i][k] += p->gradients.correction_matrix[j][m] * 
                                        p->gradients.velocity_hessian[j][i][m];
@@ -1266,7 +1304,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   }
 
   /* Copy back over to the particle for later */
+  p->gradients.u[0] = u_gradient[0];
+  p->gradients.u[1] = u_gradient[1];
+  p->gradients.u[2] = u_gradient[2];
+
   for (int a = 0; a < 3; a++) {
+    p->gradients.u_hessian[a][0] = u_hessian[a][0];
+    p->gradients.u_hessian[a][1] = u_hessian[a][1];
+    p->gradients.u_hessian[a][2] = u_hessian[a][2];
+    
     p->gradients.velocity_tensor[a][0] = velocity_tensor[a][0];
     p->gradients.velocity_tensor[a][1] = velocity_tensor[a][1];
     p->gradients.velocity_tensor[a][2] = velocity_tensor[a][2];
@@ -1313,14 +1359,20 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->weighted_wcount = 1.f;
   p->weighted_neighbour_wcount = 1.f;
 
+  p->num_ngb = 0;
   p->gradients.C_well_conditioned = 0;
   for (int i = 0; i < 3; i++) {
-    p->gradients.pressure[0] = 0.f;
+    p->gradients.pressure[i] = 0.f;
+    p->gradients.u[i] = 0.f;
+    p->gradients.u_aux[i] = 0.f;
+    p->gradients.u_aux_norm[i] = 0.f;
+
     for (int j = 0; j < 3; j++) {
       p->gradients.correction_matrix[i][j] = 0.f;
       p->gradients.velocity_tensor[i][j] = 0.f;
       p->gradients.velocity_tensor_aux[i][j] = 0.f;
       p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;
+      p->gradients.u_hessian[i][j] = 0.f;
 
       for (int k = 0; k < 3; k++) {
         p->gradients.velocity_hessian[i][j][k] = 0.f;
@@ -1453,10 +1505,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
   p->force.pressure = pressure_including_floor;
-  p->force.soundspeed = soundspeed;
+  p->force.soundspeed = 2.f * soundspeed;
 
   /* Update the signal velocity, if we need to. */
-  p->viscosity.v_sig = max(p->viscosity.v_sig, soundspeed);
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -1531,7 +1583,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.soundspeed = soundspeed;
 
   /* Update signal velocity if we need to */
-  p->viscosity.v_sig = max(p->viscosity.v_sig, soundspeed);
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**
