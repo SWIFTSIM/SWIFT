@@ -513,6 +513,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->weighted_wcount = 0.f;
   p->weighted_neighbour_wcount = 0.f;
   p->density.rho_dh = 0.f;
+  p->num_ngb = 0;
 
   p->gradients.pressure[0] = 0.f;
   p->gradients.pressure[1] = 0.f;
@@ -536,8 +537,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  *
  * @param A The matrix to compute the condition number of.
  */
-__attribute__((always_inline)) INLINE static double
-condition_number(gsl_matrix *A) {
+__attribute__((always_inline)) INLINE static 
+double condition_number(gsl_matrix *A) {
 
   gsl_matrix *A_copy = gsl_matrix_alloc(3, 3);
   gsl_matrix_memcpy(A_copy, A);
@@ -559,8 +560,112 @@ condition_number(gsl_matrix *A) {
   return (s_min != 0.) ? s_max / s_min : const_condition_number_upper_limit;
 }
 
+__attribute__((always_inline)) INLINE static void hydro_mat3x3_vec3_dot(
+    const float mat[3][3], const float vec[3], float result[3]) {
+
+  for (int i = 0; i < 3; i++) {
+    result[i] = 0.f;
+    for (int j = 0; j < 3; j++) {
+      result[i] += mat[i][j] * vec[j];
+    }
+  }
+}
+
+__attribute__((always_inline)) INLINE static 
+void hydro_tensor3x3x3_matrix3x3_dot(const float tensor[3][3][3],
+                                     const float mat[3][3],
+                                     float result[3]) {
+
+  for (int i = 0; i < 3; i++) {
+    result[i] = 0.f;
+    for (int j = 0; j < 3; j++) {
+      for (int k = 0; k < 3; k++) {
+        result[i] += tensor[i][j][k] * mat[j][k];
+      }
+    }
+  }
+}
+
+__attribute__((always_inline)) INLINE static
+float hydro_van_leer_phi(const float grad_i[3][3],
+                         const float grad_j[3][3],
+                         const float dx[3],
+                         const float eta_i, 
+                         const float eta_j,
+                         const float num_ngb) {
+
+  float num = 0.f;
+  float denom = 0.f;
+  for (int delta = 0; delta < 3; delta++) {
+    for (int gamma = 0; gamma < 3; gamma++) {
+      const float dxdx = dx[delta] * dx[gamma];
+      num += grad_i[delta][gamma] * dxdx;
+      denom += grad_j[delta][gamma] * dxdx;
+    }
+  }
+
+  /* Regularize denominator */
+  if (fabsf(denom) < FLT_EPSILON) return 0.f;
+
+  const float A_ij = num / denom;
+  float phi_raw = (4.f * A_ij) / ((1.f + A_ij) * (1.f + A_ij));
+  phi_raw = fminf(1.f, fmaxf(0.f, phi_raw));
+
+  /* η_ab and η_crit damping */
+  const float eta_ij = fminf(eta_i, eta_j);
+  const float eta_crit = powf((32.f * M_PI) / (3.f * num_ngb), 1.f / 3.f);
+
+  float damping = 1.f;
+  if (eta_ij <= eta_crit) {
+    const float diff = (eta_ij - eta_crit) / 0.2f;
+    damping = expf(-diff * diff);
+  }
+
+  return phi_raw * damping;
+}
+
+__attribute__((always_inline)) INLINE static
+void hydro_slope_limiter(const float dx[3],
+                         const float eta_i, 
+                         const float eta_j,
+                         const float num_ngb,
+                         const float vi[3], 
+                         const float vj[3],
+                         const float grad_i[3][3],
+                         const float grad_j[3][3],
+                         const float hess_i[3][3][3],
+                         float vi_reconstruct[3]) {
+
+  /* dx[i] carries a factor of 0.5 from Equation 17 Rosswog 2020 */
+  const float dx_scaled[3] = {0.5f * dx[0],
+                              0.5f * dx[1],
+                              0.5f * dx[2]};
+  float dxdx_scaled[3][3] = {0};
+  for (int k = 0; k < 3; k++) {
+    dxdx_scaled[k][0] = dx_scaled[k] * dx_scaled[0];
+    dxdx_scaled[k][1] = dx_scaled[k] * dx_scaled[1];
+    dxdx_scaled[k][2] = dx_scaled[k] * dx_scaled[2];
+  }
+
+  float dvi_dx_dot_r[3] = {0};
+  float dvi_dxj_dx_dot_r[3] = {0};
+
+  hydro_mat3x3_vec3_dot(grad_i, dx_scaled, dvi_dx_dot_r);
+  hydro_tensor3x3x3_matrix3x3_dot(hess_i, dxdx_scaled, dvi_dxj_dx_dot_r);
+
+  /* Compute global Van Leer limiter (scalar, not component-wise) */
+  const float phi_ij = 
+      hydro_van_leer_phi(grad_i, grad_j, dx, eta_i, eta_j, num_ngb);
+
+  /* Apply limited slope reconstruction */
+  for (int k = 0; k < 3; k++) {
+    const float gradients_k = dvi_dx_dot_r[k] + 0.5f * dvi_dxj_dx_dot_r[k];
+    vi_reconstruct[k] = vi[k] + phi_ij * gradients_k;
+  }
+}
+
 /**
- * @brief Finishes the density calculation.
+ e @brief Finishes the density calculation.
  *
  * Multiplies the density and number of neighbours by the appropiate constants
  * and add the self-contribution term.
@@ -798,9 +903,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
   p->viscosity.v_sig = p->force.soundspeed;
 
   for (int i = 0; i < 3; i++) {
-    p->gradients.correction_matrix[i][0] = 0.;
-    p->gradients.correction_matrix[i][1] = 0.;
-    p->gradients.correction_matrix[i][2] = 0.;
+    p->gradients.correction_matrix[i][0] = 0.f;
+    p->gradients.correction_matrix[i][1] = 0.f;
+    p->gradients.correction_matrix[i][2] = 0.f;
 
     p->gradients.velocity_tensor[i][0] = 0.f;
     p->gradients.velocity_tensor[i][1] = 0.f;
@@ -835,12 +940,19 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
+  /* Temporary double for GSL */
+  double correction_matrix[3][3] = {0};
+
   /* Apply correct normalisation */
   p->viscosity.shock_limiter *= h_inv_dim;
   for (int k = 0; k < 3; k++) {
     p->gradients.correction_matrix[k][0] *= h_inv_dim;
     p->gradients.correction_matrix[k][1] *= h_inv_dim;
     p->gradients.correction_matrix[k][2] *= h_inv_dim;
+
+    correction_matrix[k][0] = p->gradients.correction_matrix[k][0];
+    correction_matrix[k][1] = p->gradients.correction_matrix[k][1];
+    correction_matrix[k][2] = p->gradients.correction_matrix[k][2];
 
     p->gradients.velocity_tensor[k][0] *= h_inv_dim;
     p->gradients.velocity_tensor[k][1] *= h_inv_dim;
@@ -855,7 +967,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   /* Invert the p->gradients.correction_matrix[3][3] matrix */
   gsl_matrix_view C_view = 
-      gsl_matrix_view_array((double *)p->gradients.correction_matrix, 3, 3);
+      gsl_matrix_view_array((double *)correction_matrix, 3, 3);
   gsl_matrix *C = &C_view.matrix;
 
   double cond = condition_number(C);
@@ -890,9 +1002,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     /* Ill-condition matrix, revert back to normal SPH gradients */
     p->gradients.C_well_conditioned = 0;
     for (int k = 0; k < 3; k++) {
-      p->gradients.correction_matrix[k][0] = 0.;
-      p->gradients.correction_matrix[k][1] = 0.;
-      p->gradients.correction_matrix[k][2] = 0.;
+      p->gradients.correction_matrix[k][0] = 0.f;
+      p->gradients.correction_matrix[k][1] = 0.f;
+      p->gradients.correction_matrix[k][2] = 0.f;
     }
   }
 
@@ -964,7 +1076,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   for (int i = 0; i < 3; i++) {
     p->gradients.pressure[0] = 0.f;
     for (int j = 0; j < 3; j++) {
-      p->gradients.correction_matrix[i][j] = 0.;
+      p->gradients.correction_matrix[i][j] = 0.f;
       p->gradients.velocity_tensor[i][j] = 0.f;
       p->gradients.velocity_tensor_aux[i][j] = 0.f;
       p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;

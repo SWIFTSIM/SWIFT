@@ -46,14 +46,20 @@
  */
 
 /*! Consider C matrix can be ill-conditioned above this limit */
-#define const_condition_number_upper_limit 99.0
+#define const_condition_number_upper_limit 999.f
 
 /*! Viscosity parameters -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
 
 /*! Cosmology default beta=3.0.
  * Alpha can be set in the parameter file.
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
-#define const_viscosity_beta 3.0f
+#define const_viscosity_beta 2.0f
+
+/*! Cosmology default alpha=1.0 */
+#define const_viscosity_alpha 1.0f
+
+/*! Softening squared (epsilon^2) in Eq. 15 Rosswog 2020 */
+#define const_viscosity_epsilon2 0.01f
 
 /*! The viscosity that the particles are reset to after being hit by a
  * feedback event. This should be set to the same value as the

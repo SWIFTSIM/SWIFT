@@ -134,6 +134,9 @@ struct part {
   /*! Neighbour weightings */
   float weighted_neighbour_wcount;
 
+  /*! Number of neighbors in the kernel */
+  int num_ngb;
+
 #ifdef MAGMA2_DEBUG_CHECKS
   struct {
     /*! C matrix at the last time it was ill-conditioned */
@@ -161,7 +164,7 @@ struct part {
   struct {
 
     /*! Correction matrix (C^ki in Rosswog 2020) */
-    double correction_matrix[3][3];
+    float correction_matrix[3][3];
 
     /*! Flag for whether C is ill-conditioned */
     char C_well_conditioned;

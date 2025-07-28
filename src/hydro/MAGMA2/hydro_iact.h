@@ -118,6 +118,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     }
   }
 
+  /* Number of neighbors */
+  pi->num_ngb++;
+  pj->num_ngb++;
+
   /* Correction factors for kernel gradients, and norm for the velocity
    * gradient. */
 
@@ -184,6 +188,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
           mj * dx[i] * dx[k] * wi_dx * r_inv;
     }
   }
+
+  pi->num_ngb++;
 
   /* Correction factors for kernel gradients, and norm for the velocity
    * gradient. */
@@ -456,6 +462,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
+  const float rhoi_inv = 1.f / rhoi;
+  const float rhoj_inv = 1.f / rhoj;
+  const float rhoij_inv = rhoi_inv * rhoj_inv;
 
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
@@ -474,75 +483,187 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
-  double G_ij[3] = {0., 0., 0.};
+  /* The acceleration vector */
+  float G_ij[3] = {0.f, 0.f, 0.f};
+
+  /* These are set whether or not we fall back onto SPH gradients */
+  float visc_acc_term = 0.f;
+  float sph_acc_term = (pressurei + pressurej) * rhoij_inv;
+
+  float sph_du_term_i = pressurei * rhoij_inv;
+  float sph_du_term_j = pressurej * rhoij_inv;
+  float visc_du_term_i = 0.f;
+  float visc_du_term_j = 0.f;
 
   /* Always use SPH gradients between particles if one of them has an
    * ill-conditioned C matrix */
-  char C_well_conditioned = 0;
   if (pi->gradients.C_well_conditioned && pj->gradients.C_well_conditioned) {
-    C_well_conditioned = 1;
-    double G_i[3] = {0., 0., 0.};
-    double G_j[3] = {0., 0., 0.};
-    for (int k = 0; k < 3; k++) {
-      for (int i = 0; i < 3; i++) {
-        /* Note: Negative because dx is (pj-pi) in Rosswog 2020.
-         * It is (pj-pi) for both particles. */
-        G_i[k] -= pi->gradients.correction_matrix[k][i] * dx[i] * wi * hi_inv_dim;
-        G_j[k] -= pj->gradients.correction_matrix[k][i] * dx[i] * wj * hj_inv_dim;
-      }
 
-      G_ij[k] = 0.5 * (G_i[k] + G_j[k]);
-    }
-  }
+    /* Corrected gradients */
+    float G_i[3] = {0.f, 0.f, 0.f};
+    float G_j[3] = {0.f, 0.f, 0.f};
+    hydro_mat3x3_vec3_dot(pi->gradients.correction_matrix, dx, G_i);
+    hydro_mat3x3_vec3_dot(pj->gradients.correction_matrix, dx, G_j);
 
-  /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
-  const double dv_dot_G_ij = (pi->v[0] - pj->v[0]) * G_ij[0] +
-                             (pi->v[1] - pj->v[1]) * G_ij[1] +
-                             (pi->v[2] - pj->v[2]) * G_ij[2];
+    /* Note: negative because dx is pj->x - pi->x in Rosswog 2020.
+     * It is pj->x - pi->x for BOTH particles, and then sign flip
+     * later */
+    G_i[0] *= -wi * hi_inv_dim;
+    G_i[1] *= -wi * hi_inv_dim;
+    G_i[2] *= -wi * hi_inv_dim;
 
-  /* Compute dv dot dr. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
+    G_j[0] *= -wj * hj_inv_dim;
+    G_j[1] *= -wj * hj_inv_dim;
+    G_j[2] *= -wj * hj_inv_dim;
 
-  /* Includes the hubble flow term; not used for du/dt */
-  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
+    /* Velocity tensor dot product with separation vector for pi */
+    float dvi_dx_dot_r[3] = {0.f, 0.f, 0.f};
+    hydro_mat3x3_vec3_dot(pi->gradients.velocity_tensor, dx, dvi_dx_dot_r);
 
-  /* Are the particles moving towards each others ? */
-  const float omega_ij = min(dvdr_Hubble, 0.f);
-  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+    /* Equation 17 has r_b - r_a, here we have pi - pj so the
+     * sign is flipped (because of dx) */
+    dvi_dx_dot_r[0] *= -0.5f;
+    dvi_dx_dot_r[1] *= -0.5f;
+    dvi_dx_dot_r[2] *= -0.5f;
+    
+    /* Velocity tensor dot product with separation vector for pi */
+    float dvj_dx_dot_r[3] = {0.f, 0.f, 0.f};
+    hydro_mat3x3_vec3_dot(pj->gradients.velocity_tensor, dx, dvj_dx_dot_r);
 
-  /* Construct the full viscosity term */
-  const float rho_ij = rhoi + rhoj;
-  const float alpha = pi->viscosity.alpha + pj->viscosity.alpha;
-  const float visc =
-      omega_ij < 0.f
-          ? (-0.25f * alpha * (pi->force.soundspeed + pj->force.soundspeed) *
-                 mu_ij +
-             const_viscosity_beta * mu_ij * mu_ij) /
-                (0.5f * rho_ij)
-          : 0.f;
+    /* Equation 17 has r_b - r_a, here we have pi - pj so the
+     * sign is NOT flipped on dvj_dx_dot_r */
+    dvj_dx_dot_r[0] *= 0.5f;
+    dvj_dx_dot_r[1] *= 0.5f;
+    dvj_dx_dot_r[2] *= 0.5f;
 
-  /* These are set whether or not we fall back onto SPH gradients */
-  float visc_acc_term = visc;
-  float sph_acc_term = (pressurei + pressurej) / (pi->rho * pj->rho);
-  
-  float sph_du_term_i = pressurei / (pi->rho * pj->rho);
-  float sph_du_term_j = pressurej / (pi->rho * pj->rho);
-  float visc_du_term_i = 0.5f * visc_acc_term;
-  float visc_du_term_j = visc_du_term_i;
+    /* Compute second order reconstruction of velocity between pi & pj */
+    float vi_reconstruct[3] = {0.f, 0.f, 0.f};
+    float vj_reconstruct[3] = {0.f, 0.f, 0.f};
 
-  if (C_well_conditioned) {
+    const float dx_ij[3] = {dx[0], dx[1], dx[2]};
+    const float dx_ji[3] = {-dx[0], -dx[1], -dx[2]};
+
+    /* TODO: make this constant */
+    const float num_ngb_ij = 
+        0.5f * ((float)pi->num_ngb + (float)pj->num_ngb);
+
+    hydro_slope_limiter(dx_ji, xi, xj, num_ngb_ij, pi->v, pj->v,
+                        pi->gradients.velocity_tensor,
+                        pj->gradients.velocity_tensor,
+                        pi->gradients.velocity_hessian,
+                        vi_reconstruct);
+
+    hydro_slope_limiter(dx_ij, xj, xi, num_ngb_ij, pj->v, pi->v,
+                        pj->gradients.velocity_tensor,
+                        pi->gradients.velocity_tensor,
+                        pj->gradients.velocity_hessian,
+                        vj_reconstruct);
+
+    /* Artificial viscosity */
+    const float dv_ij[3] = {vi_reconstruct[0] - vj_reconstruct[0],
+                            vi_reconstruct[1] - vj_reconstruct[1],
+                            vi_reconstruct[2] - vj_reconstruct[2]};
+    const float dv_ji[3] = {-dv_ij[0], -dv_ij[1], -dv_ij[2]};
+
+    const float eta_i[3] = {dx_ij[0] * hi_inv,
+                            dx_ij[1] * hi_inv, 
+                            dx_ij[2] * hi_inv};
+    const float eta_j[3] = {dx_ji[0] * hj_inv,
+                            dx_ji[1] * hj_inv,
+                            dx_ji[2] * hj_inv};
+    const float eta_i2 = eta_i[0] * eta_i[0] + 
+                         eta_i[1] * eta_i[1] +
+                         eta_i[2] * eta_i[2];
+    const float eta_j2 = eta_j[0] * eta_j[0] +
+                         eta_j[1] * eta_j[1] + 
+                         eta_j[2] * eta_j[2];
+    const float dv_dot_eta_i = dv_ij[0] * eta_i[0] + 
+                               dv_ij[1] * eta_i[1] +
+                               dv_ij[2] * eta_i[2];
+    /* Scale Hubble flow by hi_inv so it is overall scaled */
+    const float dv_dot_eta_i_phys = dv_dot_eta_i + a2_Hubble * r2 * hi_inv;
+    const float dv_dot_eta_j = dv_ji[0] * eta_j[0] +
+                               dv_ji[1] * eta_j[1] +
+                               dv_ji[2] * eta_j[2];
+    /* Scale Hubble flow by hj_inv so it is overall scaled */
+    const float dv_dot_eta_j_phys = dv_dot_eta_j + a2_Hubble * r2 * hj_inv;
+
+    /* mu_i and mu_j are physical, not comoving */
+    const float mu_i = 
+        fminf(0.f, dv_dot_eta_i_phys  / (eta_i2 + const_viscosity_epsilon2));
+    const float mu_j = 
+        fminf(0.f, dv_dot_eta_j_phys  / (eta_j2 + const_viscosity_epsilon2));
+    
+    const float Q_i_alpha = 
+        -const_viscosity_alpha * pi->force.soundspeed * mu_i;
+    const float Q_i_beta = const_viscosity_beta * mu_i * mu_i;
+    const float Q_i = rhoi * (Q_i_alpha + Q_i_beta);
+
+    const float Q_j_alpha =
+        -const_viscosity_alpha * pj->force.soundspeed * mu_j;
+    const float Q_j_beta = const_viscosity_beta * mu_j * mu_j;
+    const float Q_j = rhoj * (Q_j_alpha + Q_j_beta);
+
+    /* Add viscosity to the pressure */
+    visc_acc_term = (Q_i + Q_j) * rhoij_inv;
+    visc_du_term_i = Q_i * rhoij_inv;
+    visc_du_term_j = Q_j * rhoij_inv;
+
+    /* Averaged correction gradient. Note: antisymmetric, so only need
+     * a sign flip for pj */
+    G_ij[0] = 0.5f * (G_i[0] + G_j[0]);
+    G_ij[1] = 0.5f * (G_i[1] + G_j[1]);
+    G_ij[2] = 0.5f * (G_i[2] + G_j[2]);
+
+    /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
+    const double dv_dot_G_ij = (pi->v[0] - pj->v[0]) * G_ij[0] +
+                               (pi->v[1] - pj->v[1]) * G_ij[1] +
+                               (pi->v[2] - pj->v[2]) * G_ij[2];
+
     sph_du_term_i *= dv_dot_G_ij;
     sph_du_term_j *= dv_dot_G_ij;
-    visc_du_term_i *= dv_dot_G_ij + a2_Hubble + r2;
-    visc_du_term_j *= dv_dot_G_ij + a2_Hubble + r2;
+    visc_du_term_i *= dv_dot_G_ij + a2_Hubble * r2;
+    visc_du_term_j *= dv_dot_G_ij + a2_Hubble * r2;
 
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dv_dot_G_ij;
     pj->force.h_dt -= mi * dv_dot_G_ij;
   }
   else {
+
+    /* Dot product with the distance vector to align
+     * with dW/dr (dW/dr = r_ij / |r_ij| dot grad W */
+    G_ij[0] = dx[0];
+    G_ij[1] = dx[1];
+    G_ij[2] = dx[2];
+
+    /* Compute dv dot dr. */
+    const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
+                       (pi->v[1] - pj->v[1]) * dx[1] +
+                       (pi->v[2] - pj->v[2]) * dx[2];
+
+    /* Includes the hubble flow term; not used for du/dt */
+    const float dvdr_Hubble = dvdr + a2_Hubble * r2;
+
+    /* Are the particles moving towards each others ? */
+    const float omega_ij = min(dvdr_Hubble, 0.f);
+    const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+
+    /* Construct the full viscosity term */
+    const float rho_ij = rhoi + rhoj;
+    const float alpha = pi->viscosity.alpha + pj->viscosity.alpha;
+    const float visc =
+        omega_ij < 0.f
+            ? (-0.25f * alpha * (pi->force.soundspeed + pj->force.soundspeed) *
+                   mu_ij +
+               const_viscosity_beta * mu_ij * mu_ij) /
+                  (0.5f * rho_ij)
+            : 0.f;
+
+    visc_acc_term = visc;
+    visc_du_term_i = 0.5f * visc_acc_term;
+    visc_du_term_j = visc_du_term_i;
+
     const float hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
     const float hj_inv_dim_plus_one = hj_inv * hj_inv_dim;
     const float wi_dr = hi_inv_dim_plus_one * wi_dx;
@@ -616,6 +737,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
+  const float rhoi_inv = 1.f / rhoi;
+  const float rhoj_inv = 1.f / rhoj;
+  const float rhoij_inv = rhoi_inv * rhoj_inv;
 
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
@@ -634,61 +758,138 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
-  double G_ij[3] = {0., 0., 0.};
+  float G_ij[3] = {0.f, 0.f, 0.f};
+
+  /* These are set whether or not we fall back onto SPH gradients */
+  float visc_acc_term = 0.f;
+  float sph_acc_term = (pressurei + pressurej) * rhoij_inv;
+  float sph_du_term_i = pressurei * rhoij_inv;
+  float visc_du_term_i = 0.f;
 
   /* Always use SPH gradients between particles if one of them has an
    * ill-conditioned C matrix */
-  char C_well_conditioned = 0;
   if (pi->gradients.C_well_conditioned && pj->gradients.C_well_conditioned) {
-    C_well_conditioned = 1;
-    double G_i[3] = {0., 0., 0.};
-    double G_j[3] = {0., 0., 0.};
-    for (int k = 0; k < 3; k++) {
-      for (int i = 0; i < 3; i++) {
-        /* Note: Negative because dx is (pj-pi) in Rosswog 2020 */
-        G_i[k] -= pi->gradients.correction_matrix[k][i] * dx[i] * wi * hi_inv_dim;
-        G_j[k] -= pj->gradients.correction_matrix[k][i] * dx[i] * wj * hj_inv_dim;
-      }
 
-      G_ij[k] = 0.5 * (G_i[k] + G_j[k]);
-    }
-  }
+    /* Corrected gradients */
+    float G_i[3] = {0.f, 0.f, 0.f};
+    float G_j[3] = {0.f, 0.f, 0.f};
+    hydro_mat3x3_vec3_dot(pi->gradients.correction_matrix, dx, G_i);
+    hydro_mat3x3_vec3_dot(pj->gradients.correction_matrix, dx, G_j);
 
-  /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
-  const double dv_dot_G_ij = (pi->v[0] - pj->v[0]) * G_ij[0] +
-                             (pi->v[1] - pj->v[1]) * G_ij[1] +
-                             (pi->v[2] - pj->v[2]) * G_ij[2];
+    /* Note: negative because dx is pj->x - pi->x in Rosswog 2020.
+     * It is pj->x - pi->x for BOTH particles, and then sign flip
+     * later */
+    G_i[0] *= -wi * hi_inv_dim;
+    G_i[1] *= -wi * hi_inv_dim;
+    G_i[2] *= -wi * hi_inv_dim;
 
-  /* Compute dv dot dr. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
+    G_j[0] *= -wj * hj_inv_dim;
+    G_j[1] *= -wj * hj_inv_dim;
+    G_j[2] *= -wj * hj_inv_dim;
 
-  /* Includes the hubble flow term; not used for du/dt */
-  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
+    /* Velocity tensor dot product with separation vector for pi */
+    float dvi_dx_dot_r[3] = {0.f, 0.f, 0.f};
+    hydro_mat3x3_vec3_dot(pi->gradients.velocity_tensor, dx, dvi_dx_dot_r);
 
-  /* Are the particles moving towards each others ? */
-  const float omega_ij = min(dvdr_Hubble, 0.f);
-  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+    /* Equation 17 has r_b - r_a, here we have pi - pj so the
+     * sign is flipped (because of dx) */
+    dvi_dx_dot_r[0] *= -0.5f;
+    dvi_dx_dot_r[1] *= -0.5f;
+    dvi_dx_dot_r[2] *= -0.5f;
+    
+    /* Velocity tensor dot product with separation vector for pi */
+    float dvj_dx_dot_r[3] = {0.f, 0.f, 0.f};
+    hydro_mat3x3_vec3_dot(pj->gradients.velocity_tensor, dx, dvj_dx_dot_r);
 
-  /* Construct the full viscosity term */
-  const float rho_ij = rhoi + rhoj;
-  const float alpha = pi->viscosity.alpha + pj->viscosity.alpha;
-  const float visc =
-      omega_ij < 0.f
-          ? (-0.25f * alpha * (pi->force.soundspeed + pj->force.soundspeed) *
-                 mu_ij +
-             const_viscosity_beta * mu_ij * mu_ij) /
-                (0.5f * rho_ij)
-          : 0.f;
+    /* Equation 17 has r_b - r_a, here we have pi - pj so the
+     * sign is NOT flipped on dvj_dx_dot_r */
+    dvj_dx_dot_r[0] *= 0.5f;
+    dvj_dx_dot_r[1] *= 0.5f;
+    dvj_dx_dot_r[2] *= 0.5f;
 
-  /* These are set whether or not we fall back onto SPH gradients */
-  float visc_acc_term = visc;
-  float sph_acc_term = (pressurei + pressurej) / (pi->rho * pj->rho);
-  float sph_du_term_i = pressurei / (pi->rho * pj->rho);
-  float visc_du_term_i = visc;
+    /* Compute second order reconstruction of velocity between pi & pj */
+    float vi_reconstruct[3] = {0.f, 0.f, 0.f};
+    float vj_reconstruct[3] = {0.f, 0.f, 0.f};
 
-  if (C_well_conditioned) {
+    const float dx_ij[3] = {dx[0], dx[1], dx[2]};
+    const float dx_ji[3] = {-dx[0], -dx[1], -dx[2]};
+
+    /* TODO: make this constant */
+    const float num_ngb_ij = 
+        0.5f * ((float)pi->num_ngb + (float)pj->num_ngb);
+
+    hydro_slope_limiter(dx_ji, xi, xj, num_ngb_ij, pi->v, pj->v,
+                        pi->gradients.velocity_tensor,
+                        pj->gradients.velocity_tensor,
+                        pi->gradients.velocity_hessian,
+                        vi_reconstruct);
+
+    hydro_slope_limiter(dx_ij, xj, xi, num_ngb_ij, pj->v, pi->v,
+                        pj->gradients.velocity_tensor,
+                        pi->gradients.velocity_tensor,
+                        pj->gradients.velocity_hessian,
+                        vj_reconstruct);
+
+    /* Artificial viscosity */
+    const float dv_ij[3] = {vi_reconstruct[0] - vj_reconstruct[0],
+                            vi_reconstruct[1] - vj_reconstruct[1],
+                            vi_reconstruct[2] - vj_reconstruct[2]};
+    const float dv_ji[3] = {-dv_ij[0], -dv_ij[1], -dv_ij[2]};
+
+    const float eta_i[3] = {dx_ij[0] * hi_inv,
+                            dx_ij[1] * hi_inv, 
+                            dx_ij[2] * hi_inv};
+    const float eta_j[3] = {dx_ji[0] * hj_inv,
+                            dx_ji[1] * hj_inv,
+                            dx_ji[2] * hj_inv};
+    const float eta_i2 = eta_i[0] * eta_i[0] + 
+                         eta_i[1] * eta_i[1] +
+                         eta_i[2] * eta_i[2];
+    const float eta_j2 = eta_j[0] * eta_j[0] +
+                         eta_j[1] * eta_j[1] + 
+                         eta_j[2] * eta_j[2];
+    const float dv_dot_eta_i = dv_ij[0] * eta_i[0] + 
+                               dv_ij[1] * eta_i[1] +
+                               dv_ij[2] * eta_i[2];
+    /* Scale Hubble flow by hi_inv so it is overall scaled */
+    const float dv_dot_eta_i_phys = dv_dot_eta_i + a2_Hubble * r2 * hi_inv;
+    const float dv_dot_eta_j = dv_ji[0] * eta_j[0] +
+                               dv_ji[1] * eta_j[1] +
+                               dv_ji[2] * eta_j[2];
+    /* Scale Hubble flow by hi_inv so it is overall scaled */
+    const float dv_dot_eta_j_phys = dv_dot_eta_j + a2_Hubble * r2 * hj_inv;
+
+    /* mu_i and mu_j are physical, not comoving */
+    const float mu_i = 
+        fminf(0.f, dv_dot_eta_i_phys  / (eta_i2 + const_viscosity_epsilon2));
+    const float mu_j = 
+        fminf(0.f, dv_dot_eta_j_phys  / (eta_j2 + const_viscosity_epsilon2));
+    
+    const float Q_i_alpha = 
+        -const_viscosity_alpha * pi->force.soundspeed * mu_i;
+    const float Q_i_beta = const_viscosity_beta * mu_i * mu_i;
+    const float Q_i = rhoi * (Q_i_alpha + Q_i_beta);
+
+    const float Q_j_alpha =
+        -const_viscosity_alpha * pj->force.soundspeed * mu_j;
+    const float Q_j_beta = const_viscosity_beta * mu_j * mu_j;
+    const float Q_j = rhoj * (Q_j_alpha + Q_j_beta);
+
+    /* Add viscosity to the pressure */
+    visc_acc_term = (Q_i + Q_j) * rhoij_inv;
+    visc_du_term_i = Q_i * rhoij_inv;
+
+    /* Averaged correction gradient. Note: antisymmetric, so only need
+     * a sign flip for pj */
+    G_ij[0] = 0.5f * (G_i[0] + G_j[0]);
+    G_ij[1] = 0.5f * (G_i[1] + G_j[1]);
+    G_ij[2] = 0.5f * (G_i[2] + G_j[2]);
+
+    /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
+    const double dv_dot_G_ij = (pi->v[0] - pj->v[0]) * G_ij[0] +
+                               (pi->v[1] - pj->v[1]) * G_ij[1] +
+                               (pi->v[2] - pj->v[2]) * G_ij[2];
+
     sph_du_term_i *= dv_dot_G_ij;
     visc_du_term_i *= dv_dot_G_ij + a2_Hubble * r2;
 
@@ -696,6 +897,33 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     pi->force.h_dt -= mj * dv_dot_G_ij;
   }
   else {
+    
+    /* Compute dv dot dr. */
+    const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
+                       (pi->v[1] - pj->v[1]) * dx[1] +
+                       (pi->v[2] - pj->v[2]) * dx[2];
+
+    /* Includes the hubble flow term; not used for du/dt */
+    const float dvdr_Hubble = dvdr + a2_Hubble * r2;
+
+    /* Are the particles moving towards each others ? */
+    const float omega_ij = min(dvdr_Hubble, 0.f);
+    const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+
+    /* Construct the full viscosity term */
+    const float rho_ij = rhoi + rhoj;
+    const float alpha = pi->viscosity.alpha + pj->viscosity.alpha;
+    const float visc =
+        omega_ij < 0.f
+            ? (-0.25f * alpha * (pi->force.soundspeed + pj->force.soundspeed) *
+                  mu_ij +
+              const_viscosity_beta * mu_ij * mu_ij) /
+                  (0.5f * rho_ij)
+            : 0.f;
+
+    visc_acc_term = visc;
+    visc_du_term_i = 0.5f * visc_acc_term;
+    
     const float hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
     const float hj_inv_dim_plus_one = hj_inv * hj_inv_dim;
     const float wi_dr = hi_inv_dim_plus_one * wi_dx;
