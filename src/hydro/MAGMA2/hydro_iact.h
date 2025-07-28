@@ -537,8 +537,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     dvj_dx_dot_r[2] *= 0.5f;
 
     /* Compute second order reconstruction of velocity between pi & pj */
-    float vi_reconstruct[3] = {0.f, 0.f, 0.f};
-    float vj_reconstruct[3] = {0.f, 0.f, 0.f};
+    float vi_reconstructed[3] = {0.f, 0.f, 0.f};
+    float vj_reconstructed[3] = {0.f, 0.f, 0.f};
 
     const float dx_ij[3] = {dx[0], dx[1], dx[2]};
     const float dx_ji[3] = {-dx[0], -dx[1], -dx[2]};
@@ -547,22 +547,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float num_ngb_ij = 
         0.5f * ((float)pi->num_ngb + (float)pj->num_ngb);
 
-    hydro_slope_limiter(dx_ji, xi, xj, num_ngb_ij, pi->v, pj->v,
-                        pi->gradients.velocity_tensor,
-                        pj->gradients.velocity_tensor,
-                        pi->gradients.velocity_hessian,
-                        vi_reconstruct);
+    /* Compute global Van Leer limiter (scalar, not component-wise) */
+    const float phi_ij = hydro_vector_van_leer_phi(pi->gradients.velocity_tensor, 
+                                                   pj->gradients.velocity_tensor,
+                                                   dx_ij, xi, xj, num_ngb_ij);
+    const float phi_ji = hydro_vector_van_leer_phi(pj->gradients.velocity_tensor,
+                                                   pi->gradients.velocity_tensor,
+                                                   dx_ji, xj, xi, num_ngb_ij);
 
-    hydro_slope_limiter(dx_ij, xj, xi, num_ngb_ij, pj->v, pi->v,
-                        pj->gradients.velocity_tensor,
-                        pi->gradients.velocity_tensor,
-                        pj->gradients.velocity_hessian,
-                        vj_reconstruct);
+    /* dx_ji for particle i and dx_ij for particle j */
+    hydro_vector_second_order_reconstruction(phi_ij, dx_ji, pi->v, 
+                                             pi->gradients.velocity_tensor,
+                                             pi->gradients.velocity_hessian,
+                                             vi_reconstructed);
+
+    hydro_vector_second_order_reconstruction(phi_ji, dx_ij, pj->v, 
+                                             pj->gradients.velocity_tensor,
+                                             pj->gradients.velocity_hessian,
+                                             vj_reconstructed);
 
     /* Artificial viscosity */
-    const float dv_ij[3] = {vi_reconstruct[0] - vj_reconstruct[0],
-                            vi_reconstruct[1] - vj_reconstruct[1],
-                            vi_reconstruct[2] - vj_reconstruct[2]};
+    const float dv_ij[3] = {vi_reconstructed[0] - vj_reconstructed[0],
+                            vi_reconstructed[1] - vj_reconstructed[1],
+                            vi_reconstructed[2] - vj_reconstructed[2]};
     const float dv_ji[3] = {-dv_ij[0], -dv_ij[1], -dv_ij[2]};
 
     const float eta_i[3] = {dx_ij[0] * hi_inv,
@@ -808,8 +815,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     dvj_dx_dot_r[2] *= 0.5f;
 
     /* Compute second order reconstruction of velocity between pi & pj */
-    float vi_reconstruct[3] = {0.f, 0.f, 0.f};
-    float vj_reconstruct[3] = {0.f, 0.f, 0.f};
+    float vi_reconstructed[3] = {0.f, 0.f, 0.f};
+    float vj_reconstructed[3] = {0.f, 0.f, 0.f};
 
     const float dx_ij[3] = {dx[0], dx[1], dx[2]};
     const float dx_ji[3] = {-dx[0], -dx[1], -dx[2]};
@@ -818,22 +825,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float num_ngb_ij = 
         0.5f * ((float)pi->num_ngb + (float)pj->num_ngb);
 
-    hydro_slope_limiter(dx_ji, xi, xj, num_ngb_ij, pi->v, pj->v,
-                        pi->gradients.velocity_tensor,
-                        pj->gradients.velocity_tensor,
-                        pi->gradients.velocity_hessian,
-                        vi_reconstruct);
+    /* Compute global Van Leer limiter (scalar, not component-wise) */
+    const float phi_ij = hydro_vector_van_leer_phi(pi->gradients.velocity_tensor, 
+                                                   pj->gradients.velocity_tensor,
+                                                   dx_ij, xi, xj, num_ngb_ij);
+    const float phi_ji = hydro_vector_van_leer_phi(pj->gradients.velocity_tensor,
+                                                   pi->gradients.velocity_tensor,
+                                                   dx_ji, xj, xi, num_ngb_ij);
 
-    hydro_slope_limiter(dx_ij, xj, xi, num_ngb_ij, pj->v, pi->v,
-                        pj->gradients.velocity_tensor,
-                        pi->gradients.velocity_tensor,
-                        pj->gradients.velocity_hessian,
-                        vj_reconstruct);
+    /* dx_ji for particle i and dx_ij for particle j */
+    hydro_vector_second_order_reconstruction(phi_ij, dx_ji, pi->v, 
+                                             pi->gradients.velocity_tensor,
+                                             pi->gradients.velocity_hessian,
+                                             vi_reconstructed);
+
+    hydro_vector_second_order_reconstruction(phi_ji, dx_ij, pj->v, 
+                                             pj->gradients.velocity_tensor,
+                                             pj->gradients.velocity_hessian,
+                                             vj_reconstructed);
 
     /* Artificial viscosity */
-    const float dv_ij[3] = {vi_reconstruct[0] - vj_reconstruct[0],
-                            vi_reconstruct[1] - vj_reconstruct[1],
-                            vi_reconstruct[2] - vj_reconstruct[2]};
+    const float dv_ij[3] = {vi_reconstructed[0] - vj_reconstructed[0],
+                            vi_reconstructed[1] - vj_reconstructed[1],
+                            vi_reconstructed[2] - vj_reconstructed[2]};
     const float dv_ji[3] = {-dv_ij[0], -dv_ij[1], -dv_ij[2]};
 
     const float eta_i[3] = {dx_ij[0] * hi_inv,
@@ -898,6 +912,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   }
   else {
     
+    /* Fallback SPH points in the direction between the particles. */
+    G_ij[0] = dx[0];
+    G_ij[1] = dx[1];
+    G_ij[2] = dx[2];
+
     /* Compute dv dot dr. */
     const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                        (pi->v[1] - pj->v[1]) * dx[1] +
@@ -923,7 +942,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     visc_acc_term = visc;
     visc_du_term_i = 0.5f * visc_acc_term;
-    
+
     const float hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
     const float hj_inv_dim_plus_one = hj_inv * hj_inv_dim;
     const float wi_dr = hi_inv_dim_plus_one * wi_dx;

@@ -560,54 +560,154 @@ double condition_number(gsl_matrix *A) {
   return (s_min != 0.) ? s_max / s_min : const_condition_number_upper_limit;
 }
 
-__attribute__((always_inline)) INLINE static void hydro_mat3x3_vec3_dot(
-    const float mat[3][3], const float vec[3], float result[3]) {
-
-  for (int i = 0; i < 3; i++) {
-    result[i] = 0.f;
-    for (int j = 0; j < 3; j++) {
-      result[i] += mat[i][j] * vec[j];
-    }
-  }
-}
-
+/**
+ * @brief Vector dot product of two 3D vectors.
+ *
+ *
+ * @param vec_a The first vector.
+ * @param vec_b The second vector.
+ * @param result The result of the dot product.
+ */
 __attribute__((always_inline)) INLINE static 
-void hydro_tensor3x3x3_matrix3x3_dot(const float tensor[3][3][3],
-                                     const float mat[3][3],
-                                     float result[3]) {
+void hydro_vec3_vec3_dot(const float *restrict vec_a, 
+                         const float *restrict vec_b, 
+                         float *result) {
 
-  for (int i = 0; i < 3; i++) {
-    result[i] = 0.f;
-    for (int j = 0; j < 3; j++) {
-      for (int k = 0; k < 3; k++) {
-        result[i] += tensor[i][j][k] * mat[j][k];
-      }
-    }
-  }
+  *result = vec_a[0] * vec_b[0] + vec_a[1] * vec_b[1] + vec_a[2] * vec_b[2];
 }
 
+/**
+ * @brief The scalar triple product of vector vec and matrix mat.
+ *        That is vec^T * mat * vec.
+ *
+ *
+ * @param mat The matrix to contract with the vector.
+ * @param vec The vector to contract with the matrix.
+ * @param result The result of the contraction.
+ */
+__attribute__((always_inline)) INLINE static 
+void hydro_mat3x3_mat3x3_dot(const float (*restrict mat_a)[3], 
+                             const float (*restrict mat_b)[3], 
+                             float *result) {
+
+  *result = mat_a[0][0] * mat_b[0][0] +
+            mat_a[0][1] * mat_b[0][1] +
+            mat_a[0][2] * mat_b[0][2] +
+            mat_a[1][0] * mat_b[1][0] +
+            mat_a[1][1] * mat_b[1][1] +
+            mat_a[1][2] * mat_b[1][2] +
+            mat_a[2][0] * mat_b[2][0] +
+            mat_a[2][1] * mat_b[2][1] +
+            mat_a[2][2] * mat_b[2][2];
+}
+
+/**
+ * @brief Contracts the last index of matrix mat with a vector vec and stores in
+ *        result.
+ *
+ *
+ * @param mat The matrix to contract with the vector.
+ * @param vec The vector to contract with the matrix.
+ * @param result The result of the contraction.
+ */
+__attribute__((always_inline)) INLINE static void hydro_mat3x3_vec3_dot(
+    const float (*restrict mat)[3], 
+    const float *restrict vec, 
+    float *restrict result) {
+
+  result[0] = mat[0][0] * vec[0] + mat[0][1] * vec[1] + mat[0][2] * vec[2];
+  result[1] = mat[1][0] * vec[0] + mat[1][1] * vec[1] + mat[1][2] * vec[2];
+  result[2] = mat[2][0] * vec[0] + mat[2][1] * vec[1] + mat[2][2] * vec[2];
+}
+
+/**
+ * @brief Contracts the last two indices of the tensor tensor with a matrix
+ *        mat and stores in result. Form: mat^T * tensor * mat.
+ *
+ *
+ * @param tensor The tensor to contract with the matrix.
+ * @param mat The matrix to contract with the tensor.
+ * @param result The result of the contraction.
+ */
+__attribute__((always_inline)) INLINE static 
+void hydro_tensor3x3x3_matrix3x3_dot(
+    const float (*restrict tensor)[3][3],
+    const float (*restrict mat)[3],
+    float *restrict result) {
+
+  result[0] = tensor[0][0][0] * mat[0][0] +
+              tensor[0][0][1] * mat[0][1] +
+              tensor[0][0][2] * mat[0][2] +
+              tensor[0][1][0] * mat[1][0] +
+              tensor[0][1][1] * mat[1][1] +
+              tensor[0][1][2] * mat[1][2] +
+              tensor[0][2][0] * mat[2][0] +
+              tensor[0][2][1] * mat[2][1] +
+              tensor[0][2][2] * mat[2][2];
+  
+  result[1] = tensor[1][0][0] * mat[0][0] +
+              tensor[1][0][1] * mat[0][1] +
+              tensor[1][0][2] * mat[0][2] +
+              tensor[1][1][0] * mat[1][0] +
+              tensor[1][1][1] * mat[1][1] +
+              tensor[1][1][2] * mat[1][2] +
+              tensor[1][2][0] * mat[2][0] +
+              tensor[1][2][1] * mat[2][1] +
+              tensor[1][2][2] * mat[2][2];
+
+  result[3] = tensor[2][0][0] * mat[0][0] +
+              tensor[2][0][1] * mat[0][1] +
+              tensor[2][0][2] * mat[0][2] +
+              tensor[2][1][0] * mat[1][0] +
+              tensor[2][1][1] * mat[1][1] +
+              tensor[2][1][2] * mat[1][2] +
+              tensor[2][2][0] * mat[2][0] +
+              tensor[2][2][1] * mat[2][1] +
+              tensor[2][2][2] * mat[2][2];
+}
+
+/**
+ * @brief Constructs the outer product of two 3D vectors.
+ *
+ *
+ * @param vec_a The first vector.
+ * @param vec_b The second vector.
+ * @param result The result of the outer product.
+ */
+__attribute__((always_inline)) INLINE static void hydro_vec3_vec3_outer(
+    const float *restrict vec_a, 
+    const float *restrict vec_b, 
+    float (*restrict result)[3]) {
+
+  result[0][0] = vec_a[0] * vec_b[0];
+  result[0][1] = vec_a[0] * vec_b[1];
+  result[0][2] = vec_a[0] * vec_b[2];
+
+  result[1][0] = vec_a[1] * vec_b[0];
+  result[1][1] = vec_a[1] * vec_b[1];
+  result[1][2] = vec_a[1] * vec_b[2];
+
+  result[2][0] = vec_a[2] * vec_b[0];
+  result[2][1] = vec_a[2] * vec_b[1];
+  result[2][2] = vec_a[2] * vec_b[2];
+}
+
+/**
+ * @brief Computes Phi_ab from Rosswog 2020 21 for a field given A. This is the 
+ * van Leer 1974 slope limiting procedure.
+ *
+ *
+ * @param A_ij The ratio of the gradients of the two particles.
+ * @param eta_i The normed smoothing length of the first particle.
+ * @param eta_j The normed smoothing length of the second particle.
+ * @param num_ngb The number of neighbours in the scheme.
+ */
 __attribute__((always_inline)) INLINE static
-float hydro_van_leer_phi(const float grad_i[3][3],
-                         const float grad_j[3][3],
-                         const float dx[3],
+float hydro_van_leer_phi(const float A_ij,
                          const float eta_i, 
                          const float eta_j,
                          const float num_ngb) {
 
-  float num = 0.f;
-  float denom = 0.f;
-  for (int delta = 0; delta < 3; delta++) {
-    for (int gamma = 0; gamma < 3; gamma++) {
-      const float dxdx = dx[delta] * dx[gamma];
-      num += grad_i[delta][gamma] * dxdx;
-      denom += grad_j[delta][gamma] * dxdx;
-    }
-  }
-
-  /* Regularize denominator */
-  if (fabsf(denom) < FLT_EPSILON) return 0.f;
-
-  const float A_ij = num / denom;
   float phi_raw = (4.f * A_ij) / ((1.f + A_ij) * (1.f + A_ij));
   phi_raw = fminf(1.f, fmaxf(0.f, phi_raw));
 
@@ -624,44 +724,185 @@ float hydro_van_leer_phi(const float grad_i[3][3],
   return phi_raw * damping;
 }
 
+/**
+ * @brief Computes A_ab from Rosswog 2020 Eq. 22 for a scalar field.
+ *
+ *
+ * @param grad_i The gradient of the quantity for the first particle.
+ * @param grad_j The gradient of the quantity for the second particle.
+ * @param dx The distance vector between the two particles ( ri - rj ).
+ */
 __attribute__((always_inline)) INLINE static
-void hydro_slope_limiter(const float dx[3],
-                         const float eta_i, 
-                         const float eta_j,
-                         const float num_ngb,
-                         const float vi[3], 
-                         const float vj[3],
-                         const float grad_i[3][3],
-                         const float grad_j[3][3],
-                         const float hess_i[3][3][3],
-                         float vi_reconstruct[3]) {
+float hydro_scalar_van_leer_A(const float *restrict grad_i,
+                              const float *restrict grad_j,
+                              const float *restrict dx) {
 
-  /* dx[i] carries a factor of 0.5 from Equation 17 Rosswog 2020 */
-  const float dx_scaled[3] = {0.5f * dx[0],
-                              0.5f * dx[1],
-                              0.5f * dx[2]};
-  float dxdx_scaled[3][3] = {0};
-  for (int k = 0; k < 3; k++) {
-    dxdx_scaled[k][0] = dx_scaled[k] * dx_scaled[0];
-    dxdx_scaled[k][1] = dx_scaled[k] * dx_scaled[1];
-    dxdx_scaled[k][2] = dx_scaled[k] * dx_scaled[2];
-  }
+  float grad_dot_x_i = 0.f;
+  float grad_dot_x_j = 0.f;
+  hydro_vec3_vec3_dot(grad_i, dx, &grad_dot_x_i);
+  hydro_vec3_vec3_dot(grad_j, dx, &grad_dot_x_j);
 
-  float dvi_dx_dot_r[3] = {0};
-  float dvi_dxj_dx_dot_r[3] = {0};
+  /* Regularize denominator */
+  if (fabsf(grad_dot_x_j) < FLT_EPSILON) return 0.f;
 
-  hydro_mat3x3_vec3_dot(grad_i, dx_scaled, dvi_dx_dot_r);
-  hydro_tensor3x3x3_matrix3x3_dot(hess_i, dxdx_scaled, dvi_dxj_dx_dot_r);
+  const float A_ij = grad_dot_x_i / grad_dot_x_j;
 
-  /* Compute global Van Leer limiter (scalar, not component-wise) */
-  const float phi_ij = 
-      hydro_van_leer_phi(grad_i, grad_j, dx, eta_i, eta_j, num_ngb);
+  return A_ij;
+}
+
+/**
+ * @brief Computes A_ab from Rosswog 2020 Eq. 22 for a vector field.
+ *
+ *
+ * @param grad_i The gradient tensor for the first particle.
+ * @param grad_j The gradient tensor for the second particle.
+ * @param dx The distance vector between the two particles ( ri - rj ).
+ */
+__attribute__((always_inline)) INLINE static
+float hydro_vector_van_leer_A(const float (*restrict grad_i)[3],
+                              const float (*restrict grad_j)[3],
+                              const float *restrict dx) {
+
+  float delta_ij[3][3] = {0};
+  hydro_vec3_vec3_outer(dx, dx, delta_ij);
+
+  float grad_dot_x_x_i = 0.f;
+  float grad_dot_x_x_j = 0.f;
+  hydro_mat3x3_mat3x3_dot(grad_i, delta_ij, &grad_dot_x_x_i);
+  hydro_mat3x3_mat3x3_dot(grad_j, delta_ij, &grad_dot_x_x_j);
+
+  /* Regularize denominator */
+  if (fabsf(grad_dot_x_x_j) < FLT_EPSILON) return 0.f;
+
+  const float A_ij = grad_dot_x_x_i / grad_dot_x_x_j;
+
+  return A_ij;
+}
+
+/**
+ * @brief Computes Phi_ab from Rosswog 2020 21 for a scalar field. This is the 
+ * van Leer 1974 slope limiting procedure.
+ *
+ *
+ * @param grad_i The gradient of the quantity for the first particle.
+ * @param grad_j The gradient of the quantity for the second particle.
+ * @param dx The distance vector between the two particles ( ri - rj ).
+ * @param eta_i The normed smoothing length of the first particle.
+ * @param eta_j The normed smoothing length of the second particle.
+ * @param num_ngb The number of neighbours in the scheme.
+ */
+__attribute__((always_inline)) INLINE static
+float hydro_scalar_van_leer_phi(const float *restrict grad_i,
+                                const float *restrict grad_j,
+                                const float *restrict dx,
+                                const float eta_i, 
+                                const float eta_j,
+                                const float num_ngb) {
+
+  const float A_ij = hydro_scalar_van_leer_A(grad_i, grad_j, dx);
+
+  return hydro_van_leer_phi(A_ij, eta_i, eta_j, num_ngb);
+}
+
+/**
+ * @brief Computes Phi_ab from Rosswog 2020 21 for a vector field. This is the 
+ * van Leer 1974 slope limiting procedure.
+ *
+ *
+ * @param grad_i The gradient of the quantity for the first particle.
+ * @param grad_j The gradient of the quantity for the second particle.
+ * @param dx The distance vector between the two particles ( ri - rj ).
+ * @param eta_i The normed smoothing length of the first particle.
+ * @param eta_j The normed smoothing length of the second particle.
+ * @param num_ngb The number of neighbours in the scheme.
+ */
+__attribute__((always_inline)) INLINE static
+float hydro_vector_van_leer_phi(const float (*restrict grad_i)[3],
+                                const float (*restrict grad_j)[3],
+                                const float *restrict dx,
+                                const float eta_i, 
+                                const float eta_j,
+                                const float num_ngb) {
+
+  const float A_ij = hydro_vector_van_leer_A(grad_i, grad_j, dx);
+
+  return hydro_van_leer_phi(A_ij, eta_i, eta_j, num_ngb);
+}
+
+/**
+ * @brief Reconstructs the scalar field at the mid-point between to the 
+ *        two particles to second order.
+ *
+ *
+ * @param phi The slope limiter value from the van Leer 1974 scheme.
+ * @param dx The distance vector between the two particles ( ri - rj ).
+ * @param f The field at the particle.
+ * @param grad The gradient of the field at the particle.
+ * @param hess The Hessian of the field at the particle.
+ * @param f_reconstructed The reconstructed field at the mid-point (2nd order).
+ */
+__attribute__((always_inline)) INLINE static
+void hydro_scalar_second_order_reconstruction(const float phi,
+                                              const float *restrict dx,
+                                              const float f, 
+                                              const float *restrict grad,
+                                              const float (*restrict hess)[3],
+                                              float *f_reconstructed) {
+
+  /* Midpoint from Equation 17 Rosswog 2020 */
+  const float midpoint[3] = {0.5f * dx[0],
+                             0.5f * dx[1],
+                             0.5f * dx[2]};
+  float delta_ij[3][3] = {0};
+  hydro_vec3_vec3_outer(midpoint, midpoint, delta_ij);
+
+  float df_dx_dot_r = 0.f;
+  float df_dx_dx_dot_r2 = 0.f;
+
+  hydro_vec3_vec3_dot(grad, midpoint, &df_dx_dot_r);
+  hydro_mat3x3_mat3x3_dot(hess, delta_ij, &df_dx_dx_dot_r2);
 
   /* Apply limited slope reconstruction */
-  for (int k = 0; k < 3; k++) {
-    const float gradients_k = dvi_dx_dot_r[k] + 0.5f * dvi_dxj_dx_dot_r[k];
-    vi_reconstruct[k] = vi[k] + phi_ij * gradients_k;
-  }
+  *f_reconstructed = f + phi * (df_dx_dot_r + 0.5f * df_dx_dx_dot_r2);
+}
+
+/**
+ * @brief Reconstructs the vector field at the mid-point between to the 
+ *        two particles to second order.
+ *
+ *
+ * @param phi The slope limiter value from the van Leer 1974 scheme.
+ * @param dx The distance vector between the two particles ( ri - rj ).
+ * @param f The vector field at the particle.
+ * @param grad The gradient of the vector field at the particle.
+ * @param hess The Hessian of the vector field at the particle.
+ * @param f_reconstructed The reconstructed vector field at the mid-point (2nd order).
+ */
+__attribute__((always_inline)) INLINE static
+void hydro_vector_second_order_reconstruction(const float phi,
+                                              const float *restrict dx,
+                                              const float *restrict f, 
+                                              const float (*restrict grad)[3],
+                                              const float (*restrict hess)[3][3],
+                                              float *restrict f_reconstructed) {
+
+  /* Midpoint from Equation 17 Rosswog 2020 */
+  const float midpoint[3] = {0.5f * dx[0],
+                             0.5f * dx[1],
+                             0.5f * dx[2]};
+  float delta_ij[3][3] = {0};
+  hydro_vec3_vec3_outer(midpoint, midpoint, delta_ij);
+
+  float df_dx_dot_r[3] = {0};
+  float df_dx_dx_dot_r2[3] = {0};
+
+  hydro_mat3x3_vec3_dot(grad, midpoint, df_dx_dot_r);
+  hydro_tensor3x3x3_matrix3x3_dot(hess, delta_ij, df_dx_dx_dot_r2);
+
+  /* Apply limited slope reconstruction */
+  f_reconstructed[0] = f[0] + phi * (df_dx_dot_r[0] + 0.5f * df_dx_dx_dot_r2[0]);
+  f_reconstructed[1] = f[1] + phi * (df_dx_dot_r[1] + 0.5f * df_dx_dx_dot_r2[1]);
+  f_reconstructed[2] = f[2] + phi * (df_dx_dot_r[2] + 0.5f * df_dx_dx_dot_r2[2]);
 }
 
 /**
