@@ -48,9 +48,9 @@
 /*! Consider C matrix can be ill-conditioned above this limit */
 #define const_condition_number_upper_limit 999.f
 
-/*! Viscosity parameters -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
+/*! Viscosity & Conductivitiy parameters -- MUST BE DEFINED AT COMPILE-TIME */
 
-/*! Cosmology default beta=3.0.
+/*! Cosmology default beta=2.0.
  * Alpha can be set in the parameter file.
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
 #define const_viscosity_beta 2.0f
@@ -64,64 +64,13 @@
 /*! Artificial conductivity alpha */
 #define const_conductivity_alpha 0.05f
 
-/*! The viscosity that the particles are reset to after being hit by a
- * feedback event. This should be set to the same value as the
- * hydro_props_default_viscosity_alpha in fixed schemes, and likely
- * to hydro_props_default_viscosity_alpha_max in variable schemes. */
-#define hydro_props_default_viscosity_alpha_feedback_reset 2.0f
-
-/* Viscosity paramaters -- Defaults; can be changed at run-time */
-
-/*! The "initial" hydro viscosity, or the fixed value for non-variable
- * schemes. This usually takes the value 0.8. */
-#define hydro_props_default_viscosity_alpha 0.1f
-
-/*! Minimal value for the viscosity alpha in variable schemes. */
-#define hydro_props_default_viscosity_alpha_min 0.0f
-
-/*! Maximal value for the viscosity alpha in variable schemes. */
-#define hydro_props_default_viscosity_alpha_max 2.0f
-
-/*! Decay length for the viscosity scheme. This is scheme dependent. */
-#define hydro_props_default_viscosity_length 0.2f
-
-/* Diffusion parameters -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
-
-/*! The diffusion that the particles are reset to after being hit by a
- * feedback event. This should be set to the same value as the
- * hydro_props_default_diffusion_alpha in fixed schemes, and likely
- * to hydro_props_default_diffusion_alpha_min in variable schemes. */
-#define hydro_props_default_diffusion_coefficient_feedback_reset 0.0f
-
-/* Diffusion parameters -- Defaults; can be changed at run-time */
-
-/*! Rate limiting coefficient for the diffusion. */
-#define hydro_props_default_diffusion_coefficient 0.03f
-
-/* Structs that store the relevant variables */
+/* Structures for below */
 
 /*! Artificial viscosity parameters */
-struct viscosity_global_data {
-  /*! For the fixed, simple case. Also used to set the initial AV
-      coefficient for variable schemes. */
-  float alpha;
-
-  /*! Artificial viscosity (max) for the variable case (e.g. M&M) */
-  float alpha_max;
-
-  /*! Artificial viscosity (min) for the variable case (e.g. M&M) */
-  float alpha_min;
-
-  /*! The decay length of the artificial viscosity (used in M&M, etc.) */
-  float length;
-};
+struct viscosity_global_data { };
 
 /*! Thermal diffusion parameters */
-struct diffusion_global_data {
-
-  /*! Rate limiting coefficcient */
-  float coefficient;
-};
+struct diffusion_global_data { };
 
 /* Functions for reading from parameter file */
 
@@ -144,25 +93,7 @@ struct unit_system;
 static INLINE void viscosity_init(struct swift_params* params,
                                   const struct unit_system* us,
                                   const struct phys_const* phys_const,
-                                  struct viscosity_global_data* viscosity) {
-
-  /* Read the artificial viscosity parameters from the file, if they exist,
-   * otherwise set them to the defaults defined above. */
-
-  viscosity->alpha = parser_get_opt_param_float(
-      params, "SPH:viscosity_alpha", hydro_props_default_viscosity_alpha);
-
-  viscosity->alpha_max =
-      parser_get_opt_param_float(params, "SPH:viscosity_alpha_max",
-                                 hydro_props_default_viscosity_alpha_max);
-
-  viscosity->alpha_min =
-      parser_get_opt_param_float(params, "SPH:viscosity_alpha_min",
-                                 hydro_props_default_viscosity_alpha_min);
-
-  viscosity->length = parser_get_opt_param_float(
-      params, "SPH:viscosity_length", hydro_props_default_viscosity_length);
-}
+                                  struct viscosity_global_data* viscosity) { }
 
 /**
  * @brief Initialises a viscosity struct to sensible numbers for mocking
@@ -171,12 +102,7 @@ static INLINE void viscosity_init(struct swift_params* params,
  * @param viscosity: pointer to the viscosity_global_data struct to be filled.
  **/
 static INLINE void viscosity_init_no_hydro(
-    struct viscosity_global_data* viscosity) {
-  viscosity->alpha = hydro_props_default_viscosity_alpha;
-  viscosity->alpha_max = hydro_props_default_viscosity_alpha_max;
-  viscosity->alpha_min = hydro_props_default_viscosity_alpha_min;
-  viscosity->length = hydro_props_default_viscosity_length;
-}
+    struct viscosity_global_data* viscosity) { }
 
 /**
  * @brief Prints out the viscosity parameters at the start of a run.
@@ -186,11 +112,8 @@ static INLINE void viscosity_init_no_hydro(
  **/
 static INLINE void viscosity_print(
     const struct viscosity_global_data* viscosity) {
-  message(
-      "Artificial viscosity parameters set to alpha: %.3f, max: %.3f, "
-      "min: %.3f, length: %.3f.",
-      viscosity->alpha, viscosity->alpha_max, viscosity->alpha_min,
-      viscosity->length);
+  message("Artificial viscosity alpha set to %.3f", const_viscosity_alpha);
+  message("Artificial viscosity beta set to %.3f", const_viscosity_beta);
 }
 
 #if defined(HAVE_HDF5)
@@ -203,11 +126,7 @@ static INLINE void viscosity_print(
 static INLINE void viscosity_print_snapshot(
     hid_t h_grpsph, const struct viscosity_global_data* viscosity) {
 
-  io_write_attribute_f(h_grpsph, "Alpha viscosity", viscosity->alpha);
-  io_write_attribute_f(h_grpsph, "Alpha viscosity (max)", viscosity->alpha_max);
-  io_write_attribute_f(h_grpsph, "Alpha viscosity (min)", viscosity->alpha_min);
-  io_write_attribute_f(h_grpsph, "Viscosity decay length [internal units]",
-                       viscosity->length);
+  io_write_attribute_f(h_grpsph, "Alpha viscosity", const_viscosity_alpha);
   io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
 }
 #endif
@@ -226,12 +145,7 @@ static INLINE void viscosity_print_snapshot(
 static INLINE void diffusion_init(struct swift_params* params,
                                   const struct unit_system* us,
                                   const struct phys_const* phys_const,
-                                  struct diffusion_global_data* diffusion) {
-
-  diffusion->coefficient =
-      parser_get_opt_param_float(params, "SPH:diffusion_coefficient",
-                                 hydro_props_default_diffusion_coefficient);
-}
+                                  struct diffusion_global_data* diffusion) { }
 
 /**
  * @brief Initialises a diffusion struct to sensible numbers for mocking
@@ -240,9 +154,7 @@ static INLINE void diffusion_init(struct swift_params* params,
  * @param diffusion: pointer to the diffusion_global_data struct to be filled.
  **/
 static INLINE void diffusion_init_no_hydro(
-    struct diffusion_global_data* diffusion) {
-  diffusion->coefficient = hydro_props_default_diffusion_coefficient;
-}
+    struct diffusion_global_data* diffusion) { }
 
 /**
  * @brief Prints out the diffusion parameters at the start of a run.
@@ -252,8 +164,8 @@ static INLINE void diffusion_init_no_hydro(
  **/
 static INLINE void diffusion_print(
     const struct diffusion_global_data* diffusion) {
-  message("Artificial diffusion parameters set to coefficient: %.3f",
-          diffusion->coefficient);
+  message("Artificial conductivity alpha set to %.3f",
+          const_conductivity_alpha);
 }
 
 #ifdef HAVE_HDF5
@@ -265,8 +177,8 @@ static INLINE void diffusion_print(
  **/
 static INLINE void diffusion_print_snapshot(
     hid_t h_grpsph, const struct diffusion_global_data* diffusion) {
-  io_write_attribute_f(h_grpsph, "Diffusion coefficient",
-                       diffusion->coefficient);
+  io_write_attribute_f(h_grpsph, "Conductivity alpha",
+                       const_conductivity_alpha);
 }
 #endif
 

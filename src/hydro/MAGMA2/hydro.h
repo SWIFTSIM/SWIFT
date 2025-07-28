@@ -377,7 +377,7 @@ hydro_set_drifted_physical_internal_energy(
   p->force.soundspeed = soundspeed;
   p->force.pressure = pressure_including_floor;
 
-  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
+  p->v_sig_max = max(p->v_sig_max, soundspeed);
 }
 
 /**
@@ -400,8 +400,8 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
   const float soundspeed = hydro_get_comoving_soundspeed(p);
 
   /* Update the signal velocity */
-  p->viscosity.v_sig =
-      max(2.f * soundspeed, p->viscosity.v_sig + const_viscosity_beta * dv);
+  p->v_sig_max =
+      max(soundspeed, p->v_sig_max + const_viscosity_beta * dv);
 }
 
 /**
@@ -411,9 +411,7 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
  * @param alpha the new value for the viscosity coefficient.
  */
 __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
-    struct part *restrict p, float alpha) {
-  p->viscosity.alpha = alpha;
-}
+    struct part *restrict p, float alpha) { }
 
 /**
  * @brief Update the value of the diffusive coefficients to the
@@ -424,10 +422,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
 __attribute__((always_inline)) INLINE static void
 hydro_diffusive_feedback_reset(struct part *restrict p) {
   /* Set the viscosity to the max, and the diffusion to the min */
-  hydro_set_viscosity_alpha(p,
-                            hydro_props_default_viscosity_alpha_feedback_reset);
-
-  p->diffusion.rate = hydro_props_default_diffusion_coefficient_feedback_reset;
+  hydro_set_viscosity_alpha(p, const_viscosity_alpha);
 }
 
 /**
@@ -448,8 +443,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float CFL_condition = hydro_properties->CFL_condition;
 
   /* CFL condition */
-  const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
-                       (cosmo->a_factor_sound_speed * p->viscosity.v_sig);
+  const float h_min = kernel_gamma * p->h_min * cosmo->a;
+  const float v_sig_max = p->v_sig_max * cosmo->a_factor_sound_speed;
+  const float dt_cfl = CFL_condition * h_min / v_sig_max;
 
   return dt_cfl;
 }
@@ -471,7 +467,7 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
 
-  return ci + cj - beta * mu_ij;
+  return 0.5f * (ci + cj - beta * mu_ij);
 }
 
 /**
@@ -510,17 +506,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
-  p->weighted_wcount = 0.f;
-  p->weighted_neighbour_wcount = 0.f;
   p->density.rho_dh = 0.f;
   p->num_ngb = 0;
-
-  p->gradients.pressure[0] = 0.f;
-  p->gradients.pressure[1] = 0.f;
-  p->gradients.pressure[2] = 0.f;
-
-  p->viscosity.shock_indicator = 0.f;
-  p->viscosity.shock_limiter = 0.f;
 
   /* These must be zeroed before the density loop */
   for (int i = 0; i < 3; i++) {
@@ -941,12 +928,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
 
-  /* Finish caclulation of the pressure gradients; note that the
-   * kernel derivative is zero at our particle's position. */
-  p->gradients.pressure[0] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
-  p->gradients.pressure[1] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
-  p->gradients.pressure[2] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
-
   p->gradients.u_aux[0] *= h_inv_dim_plus_one;
   p->gradients.u_aux[1] *= h_inv_dim_plus_one;
   p->gradients.u_aux[2] *= h_inv_dim_plus_one;
@@ -955,9 +936,22 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->gradients.u_aux_norm[1] *= h_inv_dim_plus_one;
   p->gradients.u_aux_norm[2] *= h_inv_dim_plus_one;
 
-  p->gradients.u_aux[0] /= p->gradients.u_aux_norm[0];
-  p->gradients.u_aux[1] /= p->gradients.u_aux_norm[1];
-  p->gradients.u_aux[2] /= p->gradients.u_aux_norm[2];
+  if (fabsf(p->gradients.u_aux_norm[0]) > FLT_EPSILON &&
+      fabsf(p->gradients.u_aux_norm[1]) > FLT_EPSILON &&
+      fabsf(p->gradients.u_aux_norm[2]) > FLT_EPSILON) {
+    p->gradients.u_aux[0] /= p->gradients.u_aux_norm[0];
+    p->gradients.u_aux[1] /= p->gradients.u_aux_norm[1];
+    p->gradients.u_aux[2] /= p->gradients.u_aux_norm[2];
+  }
+  else {
+    p->gradients.u_aux[0] = 0.f;
+    p->gradients.u_aux[1] = 0.f;
+    p->gradients.u_aux[2] = 0.f;
+
+    p->gradients.u_aux_norm[0] = 0.f;
+    p->gradients.u_aux_norm[1] = 0.f;
+    p->gradients.u_aux_norm[2] = 0.f;
+  }
 
   double aux_norm[3][3];
   for (int i = 0; i < 3; i++) {
@@ -986,20 +980,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     gsl_linalg_LU_invert(A, p_perm, A_inv);
 
     for (int i = 0; i < 3; i++) {
-      aux_norm[i][0] = gsl_matrix_get(A_inv, i, 0);
-      aux_norm[i][1] = gsl_matrix_get(A_inv, i, 1);
-      aux_norm[i][2] = gsl_matrix_get(A_inv, i, 2);
+      p->gradients.velocity_tensor_aux_norm[i][0] = gsl_matrix_get(A_inv, i, 0);
+      p->gradients.velocity_tensor_aux_norm[i][1] = gsl_matrix_get(A_inv, i, 1);
+      p->gradients.velocity_tensor_aux_norm[i][2] = gsl_matrix_get(A_inv, i, 2);
     }
 
     gsl_matrix_free(A_inv);
     gsl_permutation_free(p_perm);
 
     /* aux_norm is equation 20 in Rosswog 2020, finalize the gradient in 19 */
-    double aux_matrix[3][3];
+    float aux_matrix[3][3] = {0};
     for (int j = 0; j < 3; j++) {
       for (int i = 0; i < 3; i++) {
-        aux_matrix[j][i] = 0.;
-
         /**
          * The indices of aux_norm and velocity_gradient_aux are important.
          * aux_norm j: dx vector direction.
@@ -1012,17 +1004,20 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
          *            i: velocity direction
          */
         for (int k = 0; k < 3; k++) {
-          aux_matrix[j][i] += aux_norm[j][k] * p->gradients.velocity_tensor_aux[i][k];
+          aux_matrix[j][i] += p->gradients.velocity_tensor_aux_norm[j][k] * 
+                              p->gradients.velocity_tensor_aux[i][k];
         }
       }
     }
 
     /* Copy over the matrices for use later */
-    for (int a = 0; a < 3; a++) {
-      for (int b = 0; b < 3; b++) {
-        p->gradients.velocity_tensor_aux[a][b] = aux_matrix[a][b];
-        p->gradients.velocity_tensor_aux_norm[a][b] = aux_norm[a][b];
-      }
+
+    /* D. Rennehan: For some reason, memcpy does not work here? Could it 
+     * be because of the union in the particle struct? */
+    for (int j = 0; j < 3; j++) {
+      p->gradients.velocity_tensor_aux[j][0] = aux_matrix[j][0];
+      p->gradients.velocity_tensor_aux[j][1] = aux_matrix[j][1];
+      p->gradients.velocity_tensor_aux[j][2] = aux_matrix[j][2];
     }
   }
   else {
@@ -1080,64 +1075,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   /* Update variables. */
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
-
-  const float mod_pressure_gradient =
-      sqrtf(p->gradients.pressure[0] * p->gradients.pressure[0] +
-            p->gradients.pressure[1] * p->gradients.pressure[1] +
-            p->gradients.pressure[2] * p->gradients.pressure[2]);
-
-  float unit_pressure_gradient[3];
-
-  /* As this is normalised, no cosmology factor is required */
-  unit_pressure_gradient[0] =
-      p->gradients.pressure[0] / mod_pressure_gradient;
-  unit_pressure_gradient[1] =
-      p->gradients.pressure[1] / mod_pressure_gradient;
-  unit_pressure_gradient[2] =
-      p->gradients.pressure[2] / mod_pressure_gradient;
-
-  float dv_dn = 0.f;
-  float shear_norm2 = 0.f;
-  float traceless_shear_norm2 = 0.f;
-  float div_v = 0.f;
-
-  /* Physical velocity gradient tensor with Hubble flow */
-  float velocity_tensor_phys[3][3] = {0};
-
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      /* Convert to physical for use in artificial viscosity */
-      velocity_tensor_phys[i][j] = p->gradients.velocity_tensor_aux[i][j];
-      velocity_tensor_phys[i][j] *= cosmo->a2_inv;
-      if (i == j) velocity_tensor_phys[i][j] += cosmo->H;
-
-      dv_dn += unit_pressure_gradient[i] *
-               velocity_tensor_phys[i][j] * unit_pressure_gradient[j];
-
-      const float shear_component =
-          0.5f * (velocity_tensor_phys[i][j] + velocity_tensor_phys[j][i]);
-      const float shear_component2 = shear_component * shear_component;
-
-      shear_norm2 += shear_component2;
-      traceless_shear_norm2 += i == j ? 0.f : shear_component2;
-      div_v += i == j ? velocity_tensor_phys[i][j] : 0.f;
-    }
-  }
-
-  const float shock_indicator =
-      (3.f / 2.f) * (dv_dn + max(-(1.f / 3.f) * div_v, 0.f));
-
-  /* Now do the conduction coefficient; note that no limiter is used here. */
-  /* These square roots are not included in the original documentation */
-  const float h_physical = p->h * cosmo->a;
-
-  const float diffusion_rate = hydro_props->diffusion.coefficient *
-                               sqrtf(traceless_shear_norm2) * h_physical *
-                               h_physical;
-
-  p->diffusion.rate = diffusion_rate;
-  p->viscosity.tensor_norm = sqrtf(shear_norm2);
-  p->viscosity.shock_indicator = shock_indicator;
 }
 
 /**
@@ -1152,11 +1089,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
+  p->h_min = p->h;
   p->gradients.C_well_conditioned = 1;
 #ifdef MAGMA2_DEBUG_CHECKS
   p->debug.D_well_conditioned = 1;
 #endif
-  p->viscosity.v_sig = 2.f * p->force.soundspeed;
 
   for (int i = 0; i < 3; i++) {
     p->gradients.u[i] = 0.f;
@@ -1193,9 +1130,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part *p) {
 
-  /* The f_i is calculated explicitly in MAGMA2. */
-  p->force.f = p->weighted_wcount / (p->weighted_neighbour_wcount * p->rho);
-
   /* Calculate smoothing length powers */
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
@@ -1210,7 +1144,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   double correction_matrix[3][3] = {0};
 
   /* Apply correct normalisation */
-  p->viscosity.shock_limiter *= h_inv_dim;
   for (int k = 0; k < 3; k++) {
     p->gradients.correction_matrix[k][0] *= h_inv_dim;
     p->gradients.correction_matrix[k][1] *= h_inv_dim;
@@ -1280,10 +1213,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   /* Contract the correction matrix with the internal energy gradient and with 
    * the velocity tensor */
-  double u_gradient[3] = {0};
-  double u_hessian[3][3] = {0};
-  double velocity_tensor[3][3] = {0};
-  double velocity_hessian[3][3][3] = {0};
+  float u_gradient[3] = {0};
+  float u_hessian[3][3] = {0};
+  float velocity_tensor[3][3] = {0};
+  float velocity_hessian[3][3][3] = {0};
   for (int j = 0; j < 3; j++) {
     for (int i = 0; i < 3; i++) {
       u_gradient[j] += p->gradients.correction_matrix[j][i] *
@@ -1308,20 +1241,26 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->gradients.u[1] = u_gradient[1];
   p->gradients.u[2] = u_gradient[2];
 
-  for (int a = 0; a < 3; a++) {
-    p->gradients.u_hessian[a][0] = u_hessian[a][0];
-    p->gradients.u_hessian[a][1] = u_hessian[a][1];
-    p->gradients.u_hessian[a][2] = u_hessian[a][2];
-    
-    p->gradients.velocity_tensor[a][0] = velocity_tensor[a][0];
-    p->gradients.velocity_tensor[a][1] = velocity_tensor[a][1];
-    p->gradients.velocity_tensor[a][2] = velocity_tensor[a][2];
+  for (int j = 0; j < 3; j++) {
+    p->gradients.u_hessian[j][0] = u_hessian[j][0];
+    p->gradients.u_hessian[j][1] = u_hessian[j][1];
+    p->gradients.u_hessian[j][2] = u_hessian[j][2];
 
-    for (int b = 0; b < 3; b++) {
-      p->gradients.velocity_hessian[a][b][0] = velocity_hessian[a][b][0];
-      p->gradients.velocity_hessian[a][b][1] = velocity_hessian[a][b][1];
-      p->gradients.velocity_hessian[a][b][2] = velocity_hessian[a][b][2];
-    }
+    p->gradients.velocity_tensor[j][0] = velocity_tensor[j][0];
+    p->gradients.velocity_tensor[j][1] = velocity_tensor[j][1];
+    p->gradients.velocity_tensor[j][2] = velocity_tensor[j][2];
+
+    p->gradients.velocity_hessian[j][0][0] = velocity_hessian[j][0][0];
+    p->gradients.velocity_hessian[j][0][1] = velocity_hessian[j][0][1];
+    p->gradients.velocity_hessian[j][0][2] = velocity_hessian[j][0][2];
+
+    p->gradients.velocity_hessian[j][1][0] = velocity_hessian[j][1][0];
+    p->gradients.velocity_hessian[j][1][1] = velocity_hessian[j][1][1];
+    p->gradients.velocity_hessian[j][1][2] = velocity_hessian[j][1][2];
+
+    p->gradients.velocity_hessian[j][2][0] = velocity_hessian[j][2][0];
+    p->gradients.velocity_hessian[j][2][1] = velocity_hessian[j][2][1];
+    p->gradients.velocity_hessian[j][2][2] = velocity_hessian[j][2][2];
   }
 }
 
@@ -1351,18 +1290,15 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   /* Re-set problematic values */
   p->rho = p->mass * kernel_root * h_inv_dim;
-  p->viscosity.v_sig = 0.f;
+  p->h_min = 0.f;
+  p->v_sig_max = 0.f;
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
-  /* Set to 1 as these are only used by taking the ratio */
-  p->weighted_wcount = 1.f;
-  p->weighted_neighbour_wcount = 1.f;
 
   p->num_ngb = 0;
   p->gradients.C_well_conditioned = 0;
   for (int i = 0; i < 3; i++) {
-    p->gradients.pressure[i] = 0.f;
     p->gradients.u[i] = 0.f;
     p->gradients.u_aux[i] = 0.f;
     p->gradients.u_aux_norm[i] = 0.f;
@@ -1405,55 +1341,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
-  /* Here we need to update the artificial viscosity alpha */
-  const float d_shock_indicator_dt =
-      dt_alpha == 0.f ? 0.f
-                      : (p->viscosity.shock_indicator -
-                         p->viscosity.shock_indicator_previous_step) /
-                            dt_alpha;
 
-  /* A_i in all of the equations */
-  const float v_sig_physical = p->viscosity.v_sig * cosmo->a_factor_sound_speed;
-  const float soundspeed_physical =
-      gas_soundspeed_from_pressure(hydro_get_physical_density(p, cosmo),
-                                   hydro_get_physical_pressure(p, cosmo));
-  const float h_physical = p->h * cosmo->a;
-
-  /* Note that viscosity.shock_limiter still includes the cosmology dependence
-   * from the density, so what we do here is correct (i.e. include no explicit
-   * h-factors). */
-  const float shock_limiter_core =
-      0.5f * (1.f - p->viscosity.shock_limiter / p->rho);
-  const float shock_limiter_core_2 = shock_limiter_core * shock_limiter_core;
-  const float shock_limiter = shock_limiter_core_2 * shock_limiter_core_2;
-
-  const float shock_detector = 2.f * h_physical * h_physical * kernel_gamma2 *
-                               shock_limiter *
-                               max(-1.f * d_shock_indicator_dt, 0.f);
-
-  const float alpha_loc =
-      hydro_props->viscosity.alpha_max *
-      (shock_detector / (shock_detector + v_sig_physical * v_sig_physical));
-
-  /* TODO: Probably use physical _h_ throughout this function */
-  const float d_alpha_dt = (alpha_loc - p->viscosity.alpha) *
-                           hydro_props->viscosity.length * soundspeed_physical /
-                           h_physical;
-
-  float new_alpha = p->viscosity.alpha;
-
-  if (new_alpha < alpha_loc) {
-    new_alpha = alpha_loc;
-  } else {
-    /* Very basic time integration here */
-    new_alpha += d_alpha_dt * dt_alpha;
-  }
-
-  new_alpha = max(new_alpha, hydro_props->viscosity.alpha_min);
-  new_alpha = min(new_alpha, hydro_props->viscosity.alpha_max);
-
-  p->viscosity.shock_indicator_previous_step = p->viscosity.shock_indicator;
-  p->viscosity.alpha = new_alpha;
+  p->v_sig_max = p->force.soundspeed;
 }
 
 /**
@@ -1505,10 +1394,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
   p->force.pressure = pressure_including_floor;
-  p->force.soundspeed = 2.f * soundspeed;
+  p->force.soundspeed = soundspeed;
 
   /* Update the signal velocity, if we need to. */
-  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
+  p->v_sig_max = max(p->v_sig_max, soundspeed);
 }
 
 /**
@@ -1583,7 +1472,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.soundspeed = soundspeed;
 
   /* Update signal velocity if we need to */
-  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
+  p->v_sig_max = max(p->v_sig_max, soundspeed);
 }
 
 /**
@@ -1686,8 +1575,6 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   /* Set the initial value of the artificial viscosity based on the non-variable
      schemes for safety */
 
-  p->viscosity.alpha = hydro_props->viscosity.alpha;
-
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
   const float pressure_including_floor =
       pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
@@ -1716,9 +1603,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
-
-  p->viscosity.shock_indicator_previous_step = 0.f;
-  p->viscosity.tensor_norm = 0.f;
 
   p->gradients.C_well_conditioned = 1;
 #ifdef MAGMA2_DEBUG_CHECKS

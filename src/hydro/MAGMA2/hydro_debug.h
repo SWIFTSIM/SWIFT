@@ -36,16 +36,16 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
   warning("[PID%lld] a=[%.3e,%.3e,%.3e]", p->id, p->a_hydro[0], p->a_hydro[1],
           p->a_hydro[2]);
   warning("[PID%lld] u=%.3e, du/dt=%.3e v_sig=%.3e, P=%.3e", p->id, p->u,
-          p->u_dt, p->viscosity.v_sig, hydro_get_comoving_pressure(p));
+          p->u_dt, p->v_sig_max, hydro_get_comoving_pressure(p));
   warning("[PID%lld] h=%.3e, dh/dt=%.3e wcount=%d, m=%.3e, dh_drho=%.3e", p->id,
           p->h, p->force.h_dt, (int)p->density.wcount, p->mass,
           p->density.rho_dh);
   warning(
-      "[PID%lld] alpha=%.3e, time_bin=%d, rho=%.3e, velocity_gradient=["
+      "[PID%lld] time_bin=%d, rho=%.3e, velocity_gradient=["
       "[%.3e,%.3e,%.3e],"
       "[%.3e,%.3e,%.3e],"
       "[%.3e,%.3e,%.3e]]",
-      p->id, p->viscosity.alpha, p->time_bin, p->rho,
+      p->id, p->time_bin, p->rho,
       p->gradients.velocity_tensor[0][0],
       p->gradients.velocity_tensor[0][1],
       p->gradients.velocity_tensor[0][2],
@@ -55,10 +55,6 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->gradients.velocity_tensor[2][0],
       p->gradients.velocity_tensor[2][1],
       p->gradients.velocity_tensor[2][2]);
-  warning("[PID%lld] gradients.pressure=[%.3e,%.3e,%.3e]", p->id,
-          p->gradients.pressure[0], p->gradients.pressure[1],
-          p->gradients.pressure[2]);
-  warning("[PID%lld] weighted_wcount=%.3e", p->id, p->weighted_wcount);
 
   if (xp != NULL) {
     warning("[PID%lld] xpart:", p->id);

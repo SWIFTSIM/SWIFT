@@ -128,14 +128,14 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  /*! Weightings for correction factor */
-  float weighted_wcount;
-
-  /*! Neighbour weightings */
-  float weighted_neighbour_wcount;
-
   /*! Number of neighbors in the kernel */
   int num_ngb;
+
+  /*! Minimum smoothing length in the kernel */
+  float h_min;
+
+  /*! Maximum signal velocity in the kernel */
+  float v_sig_max;
 
 #ifdef MAGMA2_DEBUG_CHECKS
   struct {
@@ -197,37 +197,6 @@ struct part {
     float u_hessian[3][3];
 
   } gradients;
-
-  /* Store viscosity information in a separate struct. */
-  struct {
-
-    /*! Velocity gradient tensor trace norm |T| */
-    float tensor_norm;
-
-    /*! Shock limiter (top portion of R) */
-    float shock_limiter;
-
-    /*! Shock indicator (D) */
-    float shock_indicator;
-
-    /*! Particle shock indicator from previous step */
-    float shock_indicator_previous_step;
-
-    /*! Artificial viscosity parameter */
-    float alpha;
-
-    /*! Signal velocity */
-    float v_sig;
-
-  } viscosity;
-
-  /* Store thermal diffusion information in a separate struct. */
-  struct {
-
-    /*! Thermal diffusion rate */
-    float rate;
-
-  } diffusion;
 
   /* Store density/force specific stuff. */
   union {
