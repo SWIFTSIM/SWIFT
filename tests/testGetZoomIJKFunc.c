@@ -269,6 +269,9 @@ int main(int argc, char *argv[]) {
   const struct cell *bkg_cell = &s.cells_top[bkg_cell_id];
 
   /* Test that the right type of cell was returned. */
+  if (zoom_cell->type != cell_type_zoom) {
+    error("Expected zoom cell, got %s", cellID_names[zoom_cell->type]);
+  }
   assert(zoom_cell->type == cell_type_zoom);
   assert(buffer_cell->type == cell_type_buffer);
   assert(bkg_cell->type == cell_type_bkg);
