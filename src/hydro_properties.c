@@ -77,18 +77,18 @@ void hydro_props_init(struct hydro_props *p,
       kernel_norm;
 
 #ifdef MAGMA2_SPH
-#ifndef const_desired_number_of_neighbours
+#ifndef const_kernel_target_neighbours
   error("When using MAGMA2 SPH, the constant "
-        "const_desired_number_of_neighbours must be defined in the header file "
+        "const_kernel_target_neighbours must be defined in the header file "
         "hydro_parameters.h. This is a compile-time constant and must be set "
         "to the desired number of neighbours in the parameter file.");
 #else
-  if (fabsf(const_desired_number_of_neighbours - p->target_neighbours) >
+  if (fabsf(const_kernel_target_neighbours - p->target_neighbours) >
       0.05f * p->target_neighbours) {
     error("When using MAGMA2 SPH, the compiled constant "
-          "const_desired_number_of_neighbours (%g) must be within 5 percent of "
+          "const_kernel_target_neighbours (%g) must be within 5 percent of "
           "the desired number of neighbours (%g) in the parameter file.",
-          const_desired_number_of_neighbours, p->target_neighbours);
+          const_kernel_target_neighbours, p->target_neighbours);
   }
 #endif
 #endif

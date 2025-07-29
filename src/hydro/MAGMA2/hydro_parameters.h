@@ -65,13 +65,14 @@
 #define const_conductivity_alpha 0.05f
 
 /*! Desired number of neighbours -- CRITICAL that this matches hydro props */
-#define const_desired_number_of_neighbours 57.f
+#define const_kernel_target_neighbours 57.f
 
-/*! eta_crit from Rosswog 2020 equation 23. Should be of order the mean
- * interparticle spacing. Example values for N = 64 assuming uniformly
- * distributed particles: kernel_gamma * 0.402997988504f. */
-#define const_slope_limiter_eta_crit (kernel_gamma*(4.f * M_PI / (3.f * \
-    powf(const_desired_number_of_neighbours, 1.f / 3.f))))
+/*! Mean interparticle spacing for this kernel and neighbour number */
+#define const_kernel_mean_spacing (kernel_gamma*(4.f * M_PI / (3.f * \
+    powf(const_kernel_target_neighbours, 1.f / 3.f))))
+
+/*! eta_crit Rosswog 2020 Eq 23. Of order the mean interparticle spacing. */
+#define const_slope_limiter_eta_crit (2.f * const_kernel_mean_spacing)
 
 /*! eta_fold from Frontiere+'17 Equation 51 */
 #define const_slope_limiter_eta_fold 0.2f
