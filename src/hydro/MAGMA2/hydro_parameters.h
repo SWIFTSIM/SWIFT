@@ -53,35 +53,38 @@
 /*! Cosmology default beta=2.0.
  * Alpha can be set in the parameter file.
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
-#define const_viscosity_beta 2.0f
+#define const_viscosity_beta 2.0
 
 /*! Cosmology default alpha=1.0 */
-#define const_viscosity_alpha 1.0f
+#define const_viscosity_alpha 1.0
 
 /*! Softening squared (epsilon^2) in Eq. 15 Rosswog 2020 */
-#define const_viscosity_epsilon2 0.01f
+#define const_viscosity_epsilon2 0.01
 
 /*! Artificial conductivity alpha */
-#define const_conductivity_alpha 0.05f
+#define const_conductivity_alpha 0.05
 
 /*! Desired number of neighbours -- CRITICAL that this matches hydro props */
-#define const_kernel_target_neighbours 57.f
+#define const_kernel_target_neighbours 57.0
 
 /*! Mean interparticle spacing for this kernel and neighbour number */
-#define const_kernel_mean_spacing (kernel_gamma*(4.f * M_PI / (3.f * \
-    powf(const_kernel_target_neighbours, 1.f / 3.f))))
+#define const_kernel_mean_spacing (kernel_gamma*(4. * M_PI / (3. * \
+    powf(const_kernel_target_neighbours, 1. / 3.))))
 
 /*! eta_crit Rosswog 2020 Eq 23. Of order the mean interparticle spacing. */
-#define const_slope_limiter_eta_crit (2.f * const_kernel_mean_spacing)
+#define const_slope_limiter_eta_crit (const_kernel_mean_spacing)
 
 /*! eta_fold from Frontiere+'17 Equation 51 */
-#define const_slope_limiter_eta_fold 0.2f
+#define const_slope_limiter_eta_fold 0.2
+
+/*! Activate to use the alternative viscosity weighting */
+//#define hydro_props_use_asymmetric_viscosity
 
 /*! Activate to use the second-order velocities in v_ij * G_ij  */
-//#define hydro_props_use_second_order_velocities_in_divergence
+#define hydro_props_use_second_order_velocities_in_divergence
 
 /*! Activate to use double precision for all matrix/vector operations */
-//#define hydro_props_use_double_precision
+#define hydro_props_use_double_precision
 
 /* Structures for below */
 

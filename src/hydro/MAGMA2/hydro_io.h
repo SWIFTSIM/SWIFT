@@ -252,22 +252,41 @@ INLINE static void hydro_write_particles(const struct part* parts,
   num++;
 
   list[num] = io_make_output_field(
-      "NumeratorMatrices", FLOAT, 9, 
+      "VelocityGradientNumeratorMatrices", FLOAT, 9, 
       UNIT_CONV_DENSITY * UNIT_CONV_SPEED / UNIT_CONV_LENGTH,
       -5.f, parts, debug.velocity_tensor_aux,
       "Co-moving numerator matrices for the particles.");
   num++;
 
   list[num] = io_make_output_field(
-      "DenominatorMatrices", FLOAT, 9, UNIT_CONV_DENSITY,
+      "VelocityGradientDenominatorMatrices", FLOAT, 9, UNIT_CONV_DENSITY,
       -3.f, parts, debug.velocity_tensor_aux_norm,
       "Co-moving denominator matrices for the particles.");
   num++;
 
   list[num] = io_make_output_field(
-      "DenominatorIllConditionedCounts", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
-      debug.D_ill_conditioned_count,
+      "VelocityGradientIllConditionedCounts", INT, 1, UNIT_CONV_NO_UNITS, 
+      0.f, parts, debug.D_ill_conditioned_count,
       "Count for how many times this particle had an ill-conditioned D matrix");
+  num++;
+
+  list[num] = io_make_output_field(
+      "SpecificEnergyGradientNumerators", FLOAT, 3, 
+      UNIT_CONV_DENSITY * UNIT_CONV_ENERGY_PER_UNIT_MASS / UNIT_CONV_LENGTH,
+      -6.f, parts, debug.u_aux,
+      "Co-moving specific energy numerator matrices for the particles.");
+  num++;
+
+  list[num] = io_make_output_field(
+      "SpecificEnergyGradientDenominators", FLOAT, 3, UNIT_CONV_DENSITY,
+      -3.f, parts, debug.u_aux,
+      "Co-moving specific energy gradient numerator for the particles.");
+  num++;
+
+  list[num] = io_make_output_field(
+      "SpecificEnergyIllConditionedCounts", INT, 1, UNIT_CONV_NO_UNITS, 
+      0.f, parts, debug.u_ill_conditioned_count,
+      "Count for how many times this particle had an ill-conditioned u_aux_norm");
   num++;
 #endif
 

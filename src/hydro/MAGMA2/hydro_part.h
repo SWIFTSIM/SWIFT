@@ -33,6 +33,7 @@
 #include "cooling_struct.h"
 #include "csds.h"
 #include "feedback_struct.h"
+#include "hydro_parameters.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "pressure_floor_struct.h"
@@ -142,23 +143,29 @@ struct part {
   
 #ifdef MAGMA2_DEBUG_CHECKS
   struct {
-    /*! C matrix at the last time it was ill-conditioned */
-    float correction_matrix[3][3];
+    /*! Correction matrix at the last time it was ill-conditioned */
+    hydro_real_t correction_matrix[3][3];
 
-    /*! Velocity tensor */
-    float velocity_tensor_aux[3][3];
+    /*! Velocity tensor at ill-condition time */
+    hydro_real_t velocity_tensor_aux[3][3];
 
     /*! Velocity tensor norm ill-conditioned */
-    float velocity_tensor_aux_norm[3][3];
+    hydro_real_t velocity_tensor_aux_norm[3][3];
     
-    /*! Number of times C was ill-conditioned */
+    /*! u_aux tensor at ill-condition time */
+    hydro_real_t u_aux[3];
+
+    /*! u_aux_norm tensor ill-conditioned */
+    hydro_real_t u_aux_norm[3];
+
+    /*! Number of times correction_matrix was ill-conditioned */
     int C_ill_conditioned_count;
 
-    /*! Flag for whether aux_norm is ill-conditioned */
-    char D_well_conditioned;
-
-    /*! Number of times aux_norm was ill-conditioned */
+    /*! Number of times velocity_tensor_aux_norm was ill-conditioned */
     int D_ill_conditioned_count;
+
+    /*! Number of times u_aux_norm was ill-conditioned */
+    int u_ill_conditioned_count;
 
   } debug;
 #endif
@@ -167,37 +174,40 @@ struct part {
   struct {
 
     /*! Correction matrix (C^ki in Rosswog 2020) */
-    float correction_matrix[3][3];
+    hydro_real_t correction_matrix[3][3];
 
     /*! Flag for whether C is ill-conditioned */
     char C_well_conditioned;
 
     /*! Full velocity gradient tensor */
-    float velocity_tensor[3][3];
+    hydro_real_t velocity_tensor[3][3];
 
     /*! Auxiliary full velocity gradient tensor */
-    float velocity_tensor_aux[3][3];
+    hydro_real_t velocity_tensor_aux[3][3];
+
+    /*! Flag for whether D (velocity_tensor_aux) is ill-conditioned */
+    char D_well_conditioned;
 
     /*! Normalization for computing velocity_tensor_aux */
-    float velocity_tensor_aux_norm[3][3];
+    hydro_real_t velocity_tensor_aux_norm[3][3];
 
     /*! Hessian tensor */
-    float velocity_hessian[3][3][3];
-
-    /*! Smoothed pressure gradient */
-    float pressure[3];
+    hydro_real_t velocity_hessian[3][3][3];
 
     /*! Internal energy gradient */
-    float u[3];
+    hydro_real_t u[3];
 
     /*! Auxiliary internal energy gradient */
-    float u_aux[3];
+    hydro_real_t u_aux[3];
 
     /*! Normalization for computing u_aux */
-    float u_aux_norm[3];
+    hydro_real_t u_aux_norm[3];
     
+    /*! Flag for whether u_aux_norm is ill-conditioned */
+    char u_well_conditioned;
+
     /*! Internal energy Hessian */
-    float u_hessian[3][3];
+    hydro_real_t u_hessian[3][3];
 
   } gradients;
 

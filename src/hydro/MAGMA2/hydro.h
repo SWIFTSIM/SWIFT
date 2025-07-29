@@ -504,14 +504,16 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rho_dh = 0.f;
   p->num_ngb = 0;
 
+  p->gradients.u_well_conditioned = 1;
+  p->gradients.D_well_conditioned = 1;
   /* These must be zeroed before the density loop */
   for (int i = 0; i < 3; i++) {
-    p->gradients.u_aux[i] = 0.f;
-    p->gradients.u_aux_norm[i] = 0.f;
+    p->gradients.u_aux[i] = 0;
+    p->gradients.u_aux_norm[i] = 0;
 
     for (int j = 0; j < 3; j++) {
-      p->gradients.velocity_tensor_aux[i][j] = 0.f;
-      p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;
+      p->gradients.velocity_tensor_aux[i][j] = 0;
+      p->gradients.velocity_tensor_aux_norm[i][j] = 0;
     }
   }
 }
@@ -554,9 +556,9 @@ double condition_number(gsl_matrix *A) {
  * @param result The result of the dot product.
  */
 __attribute__((always_inline)) INLINE static 
-void hydro_vec3_vec3_dot(const float *restrict vec_a, 
-                         const float *restrict vec_b, 
-                         float *result) {
+void hydro_vec3_vec3_dot(const hydro_real_t *restrict vec_a, 
+                         const hydro_real_t *restrict vec_b, 
+                         hydro_real_t *result) {
 
   *result = vec_a[0] * vec_b[0] + vec_a[1] * vec_b[1] + vec_a[2] * vec_b[2];
 }
@@ -571,9 +573,9 @@ void hydro_vec3_vec3_dot(const float *restrict vec_a,
  * @param result The result of the contraction.
  */
 __attribute__((always_inline)) INLINE static 
-void hydro_mat3x3_mat3x3_dot(const float (*restrict mat_a)[3], 
-                             const float (*restrict mat_b)[3], 
-                             float *result) {
+void hydro_mat3x3_mat3x3_dot(const hydro_real_t (*restrict mat_a)[3], 
+                             const hydro_real_t (*restrict mat_b)[3], 
+                             hydro_real_t *result) {
 
   *result = mat_a[0][0] * mat_b[0][0] +
             mat_a[0][1] * mat_b[0][1] +
@@ -596,9 +598,9 @@ void hydro_mat3x3_mat3x3_dot(const float (*restrict mat_a)[3],
  * @param result The result of the contraction.
  */
 __attribute__((always_inline)) INLINE static void hydro_mat3x3_vec3_dot(
-    const float (*restrict mat)[3], 
-    const float *restrict vec, 
-    float *restrict result) {
+    const hydro_real_t (*restrict mat)[3], 
+    const hydro_real_t *restrict vec, 
+    hydro_real_t *restrict result) {
 
   result[0] = mat[0][0] * vec[0] + mat[0][1] * vec[1] + mat[0][2] * vec[2];
   result[1] = mat[1][0] * vec[0] + mat[1][1] * vec[1] + mat[1][2] * vec[2];
@@ -616,9 +618,9 @@ __attribute__((always_inline)) INLINE static void hydro_mat3x3_vec3_dot(
  */
 __attribute__((always_inline)) INLINE static 
 void hydro_tensor3x3x3_matrix3x3_dot(
-    const float (*restrict tensor)[3][3],
-    const float (*restrict mat)[3],
-    float *restrict result) {
+    const hydro_real_t (*restrict tensor)[3][3],
+    const hydro_real_t (*restrict mat)[3],
+    hydro_real_t *restrict result) {
 
   result[0] = tensor[0][0][0] * mat[0][0] +
               tensor[0][0][1] * mat[0][1] +
@@ -660,9 +662,9 @@ void hydro_tensor3x3x3_matrix3x3_dot(
  * @param result The result of the outer product.
  */
 __attribute__((always_inline)) INLINE static void hydro_vec3_vec3_outer(
-    const float *restrict vec_a, 
-    const float *restrict vec_b, 
-    float (*restrict result)[3]) {
+    const hydro_real_t *restrict vec_a, 
+    const hydro_real_t *restrict vec_b, 
+    hydro_real_t (*restrict result)[3]) {
 
   result[0][0] = vec_a[0] * vec_b[0];
   result[0][1] = vec_a[0] * vec_b[1];
@@ -688,19 +690,20 @@ __attribute__((always_inline)) INLINE static void hydro_vec3_vec3_outer(
  * @param num_ngb The number of neighbours in the scheme.
  */
 __attribute__((always_inline)) INLINE static
-float hydro_van_leer_phi(const float A_ij,
-                         const float eta_i, 
-                         const float eta_j) {
+hydro_real_t hydro_van_leer_phi(const hydro_real_t A_ij,
+                                const hydro_real_t eta_i, 
+                                const hydro_real_t eta_j) {
 
-  float phi_raw = (4.f * A_ij) / ((1.f + A_ij) * (1.f + A_ij));
-  phi_raw = fminf(1.f, fmaxf(0.f, phi_raw));
+  hydro_real_t phi_raw = (4. * A_ij) / ((1. + A_ij) * (1. + A_ij));
+  phi_raw = min(1., phi_raw);
+  phi_raw = max(0., phi_raw);
 
   /* η_ab and η_crit damping */
-  const float eta_ij = fminf(eta_i, eta_j);
+  const hydro_real_t eta_ij = min(eta_i, eta_j);
 
-  float damping = 1.f;
+  hydro_real_t damping = 1.f;
   if (eta_ij <= const_slope_limiter_eta_crit) {
-    const float diff = 
+    const hydro_real_t diff = 
         (eta_ij - const_slope_limiter_eta_crit) / const_slope_limiter_eta_fold;
     damping = expf(-diff * diff);
   }
@@ -717,19 +720,19 @@ float hydro_van_leer_phi(const float A_ij,
  * @param dx The distance vector between the two particles ( ri - rj ).
  */
 __attribute__((always_inline)) INLINE static
-float hydro_scalar_van_leer_A(const float *restrict grad_i,
-                              const float *restrict grad_j,
-                              const float *restrict dx) {
+hydro_real_t hydro_scalar_van_leer_A(const hydro_real_t *restrict grad_i,
+                                     const hydro_real_t *restrict grad_j,
+                                     const hydro_real_t *restrict dx) {
 
-  float grad_dot_x_i = 0.f;
-  float grad_dot_x_j = 0.f;
+  hydro_real_t grad_dot_x_i = 0.;
+  hydro_real_t grad_dot_x_j = 0.;
   hydro_vec3_vec3_dot(grad_i, dx, &grad_dot_x_i);
   hydro_vec3_vec3_dot(grad_j, dx, &grad_dot_x_j);
 
   /* Regularize denominator */
-  if (fabsf(grad_dot_x_j) < FLT_EPSILON) return 0.f;
+  if (grad_dot_x_j == 0.) return 0.;
 
-  const float A_ij = grad_dot_x_i / grad_dot_x_j;
+  const hydro_real_t A_ij = grad_dot_x_i / grad_dot_x_j;
 
   return A_ij;
 }
@@ -743,22 +746,22 @@ float hydro_scalar_van_leer_A(const float *restrict grad_i,
  * @param dx The distance vector between the two particles ( ri - rj ).
  */
 __attribute__((always_inline)) INLINE static
-float hydro_vector_van_leer_A(const float (*restrict grad_i)[3],
-                              const float (*restrict grad_j)[3],
-                              const float *restrict dx) {
+hydro_real_t hydro_vector_van_leer_A(const hydro_real_t (*restrict grad_i)[3],
+                                     const hydro_real_t (*restrict grad_j)[3],
+                                     const hydro_real_t *restrict dx) {
 
-  float delta_ij[3][3] = {0};
+  hydro_real_t delta_ij[3][3] = {0};
   hydro_vec3_vec3_outer(dx, dx, delta_ij);
 
-  float grad_dot_x_x_i = 0.f;
-  float grad_dot_x_x_j = 0.f;
+  hydro_real_t grad_dot_x_x_i = 0.;
+  hydro_real_t grad_dot_x_x_j = 0.;
   hydro_mat3x3_mat3x3_dot(grad_i, delta_ij, &grad_dot_x_x_i);
   hydro_mat3x3_mat3x3_dot(grad_j, delta_ij, &grad_dot_x_x_j);
 
   /* Regularize denominator */
-  if (fabsf(grad_dot_x_x_j) < FLT_EPSILON) return 0.f;
+  if (grad_dot_x_x_j == 0.) return 0.;
 
-  const float A_ij = grad_dot_x_x_i / grad_dot_x_x_j;
+  const hydro_real_t A_ij = grad_dot_x_x_i / grad_dot_x_x_j;
 
   return A_ij;
 }
@@ -776,13 +779,13 @@ float hydro_vector_van_leer_A(const float (*restrict grad_i)[3],
  * @param num_ngb The number of neighbours in the scheme.
  */
 __attribute__((always_inline)) INLINE static
-float hydro_scalar_van_leer_phi(const float *restrict grad_i,
-                                const float *restrict grad_j,
-                                const float *restrict dx,
-                                const float eta_i, 
-                                const float eta_j) {
+hydro_real_t hydro_scalar_van_leer_phi(const hydro_real_t *restrict grad_i,
+                                       const hydro_real_t *restrict grad_j,
+                                       const hydro_real_t *restrict dx,
+                                       const hydro_real_t eta_i, 
+                                       const hydro_real_t eta_j) {
 
-  const float A_ij = hydro_scalar_van_leer_A(grad_i, grad_j, dx);
+  const hydro_real_t A_ij = hydro_scalar_van_leer_A(grad_i, grad_j, dx);
 
   return hydro_van_leer_phi(A_ij, eta_i, eta_j);
 }
@@ -800,13 +803,13 @@ float hydro_scalar_van_leer_phi(const float *restrict grad_i,
  * @param num_ngb The number of neighbours in the scheme.
  */
 __attribute__((always_inline)) INLINE static
-float hydro_vector_van_leer_phi(const float (*restrict grad_i)[3],
-                                const float (*restrict grad_j)[3],
-                                const float *restrict dx,
-                                const float eta_i, 
-                                const float eta_j) {
+hydro_real_t hydro_vector_van_leer_phi(const hydro_real_t (*restrict grad_i)[3],
+                                       const hydro_real_t (*restrict grad_j)[3],
+                                       const hydro_real_t *restrict dx,
+                                       const hydro_real_t eta_i, 
+                                       const hydro_real_t eta_j) {
 
-  const float A_ij = hydro_vector_van_leer_A(grad_i, grad_j, dx);
+  const hydro_real_t A_ij = hydro_vector_van_leer_A(grad_i, grad_j, dx);
 
   return hydro_van_leer_phi(A_ij, eta_i, eta_j);
 }
@@ -823,29 +826,29 @@ float hydro_vector_van_leer_phi(const float (*restrict grad_i)[3],
  * @param hess The Hessian of the field at the particle.
  * @param f_reconstructed The reconstructed field at the mid-point (2nd order).
  */
-__attribute__((always_inline)) INLINE static
-void hydro_scalar_second_order_reconstruction(const float phi,
-                                              const float *restrict dx,
-                                              const float f, 
-                                              const float *restrict grad,
-                                              const float (*restrict hess)[3],
-                                              float *f_reconstructed) {
+__attribute__((always_inline)) INLINE static void 
+hydro_scalar_second_order_reconstruction(const hydro_real_t phi,
+                                         const hydro_real_t *restrict dx,
+                                         const hydro_real_t f, 
+                                         const hydro_real_t *restrict grad,
+                                         const hydro_real_t (*restrict hess)[3],
+                                         hydro_real_t *f_reconstructed) {
 
   /* Midpoint from Equation 17 Rosswog 2020 */
-  const float midpoint[3] = {0.5f * dx[0],
-                             0.5f * dx[1],
-                             0.5f * dx[2]};
-  float delta_ij[3][3] = {0};
+  const hydro_real_t midpoint[3] = {0.5 * dx[0],
+                                    0.5 * dx[1],
+                                    0.5 * dx[2]};
+  hydro_real_t delta_ij[3][3] = {0};
   hydro_vec3_vec3_outer(midpoint, midpoint, delta_ij);
 
-  float df_dx_dot_r = 0.f;
-  float df_dx_dx_dot_r2 = 0.f;
+  hydro_real_t df_dx_dot_r = 0.;
+  hydro_real_t df_dx_dx_dot_r2 = 0.;
 
   hydro_vec3_vec3_dot(grad, midpoint, &df_dx_dot_r);
   hydro_mat3x3_mat3x3_dot(hess, delta_ij, &df_dx_dx_dot_r2);
 
   /* Apply limited slope reconstruction */
-  *f_reconstructed = f + phi * (df_dx_dot_r + 0.5f * df_dx_dx_dot_r2);
+  *f_reconstructed = f + phi * (df_dx_dot_r + 0.5 * df_dx_dx_dot_r2);
 }
 
 /**
@@ -860,31 +863,31 @@ void hydro_scalar_second_order_reconstruction(const float phi,
  * @param hess The Hessian of the vector field at the particle.
  * @param f_reconstructed The reconstructed vector field at the mid-point (2nd order).
  */
-__attribute__((always_inline)) INLINE static
-void hydro_vector_second_order_reconstruction(const float phi,
-                                              const float *restrict dx,
-                                              const float *restrict f, 
-                                              const float (*restrict grad)[3],
-                                              const float (*restrict hess)[3][3],
-                                              float *restrict f_reconstructed) {
+__attribute__((always_inline)) INLINE static void 
+hydro_vector_second_order_reconstruction(const hydro_real_t phi,
+                                         const hydro_real_t *restrict dx,
+                                         const hydro_real_t *restrict f, 
+                                         const hydro_real_t (*restrict grad)[3],
+                                         const hydro_real_t (*restrict hess)[3][3],
+                                         hydro_real_t *restrict f_reconstructed) {
 
   /* Midpoint from Equation 17 Rosswog 2020 */
-  const float midpoint[3] = {0.5f * dx[0],
-                             0.5f * dx[1],
-                             0.5f * dx[2]};
-  float delta_ij[3][3] = {0};
+  const hydro_real_t midpoint[3] = {0.5 * dx[0],
+                                    0.5 * dx[1],
+                                    0.5 * dx[2]};
+  hydro_real_t delta_ij[3][3] = {0};
   hydro_vec3_vec3_outer(midpoint, midpoint, delta_ij);
 
-  float df_dx_dot_r[3] = {0};
-  float df_dx_dx_dot_r2[3] = {0};
+  hydro_real_t df_dx_dot_r[3] = {0};
+  hydro_real_t df_dx_dx_dot_r2[3] = {0};
 
   hydro_mat3x3_vec3_dot(grad, midpoint, df_dx_dot_r);
   hydro_tensor3x3x3_matrix3x3_dot(hess, delta_ij, df_dx_dx_dot_r2);
 
   /* Apply limited slope reconstruction */
-  f_reconstructed[0] = f[0] + phi * (df_dx_dot_r[0] + 0.5f * df_dx_dx_dot_r2[0]);
-  f_reconstructed[1] = f[1] + phi * (df_dx_dot_r[1] + 0.5f * df_dx_dx_dot_r2[1]);
-  f_reconstructed[2] = f[2] + phi * (df_dx_dot_r[2] + 0.5f * df_dx_dx_dot_r2[2]);
+  f_reconstructed[0] = f[0] + phi * (df_dx_dot_r[0] + 0.5 * df_dx_dx_dot_r2[0]);
+  f_reconstructed[1] = f[1] + phi * (df_dx_dot_r[1] + 0.5 * df_dx_dx_dot_r2[1]);
+  f_reconstructed[2] = f[2] + phi * (df_dx_dot_r[2] + 0.5 * df_dx_dx_dot_r2[2]);
 }
 
 /**
@@ -928,24 +931,37 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->gradients.u_aux_norm[1] *= h_inv_dim_plus_one;
   p->gradients.u_aux_norm[2] *= h_inv_dim_plus_one;
 
-  if (fabsf(p->gradients.u_aux_norm[0]) > FLT_EPSILON &&
-      fabsf(p->gradients.u_aux_norm[1]) > FLT_EPSILON &&
-      fabsf(p->gradients.u_aux_norm[2]) > FLT_EPSILON) {
+  if (p->gradients.u_aux_norm[0] != 0. &&
+      p->gradients.u_aux_norm[1] != 0. &&
+      p->gradients.u_aux_norm[2] != 0.) {
     p->gradients.u_aux[0] /= p->gradients.u_aux_norm[0];
     p->gradients.u_aux[1] /= p->gradients.u_aux_norm[1];
     p->gradients.u_aux[2] /= p->gradients.u_aux_norm[2];
   }
   else {
-    p->gradients.u_aux[0] = 0.f;
-    p->gradients.u_aux[1] = 0.f;
-    p->gradients.u_aux[2] = 0.f;
+    p->gradients.u_well_conditioned = 0;
+#ifdef MAGMA2_DEBUG_CHECKS
+    p->debug.u_aux[0] = p->gradients.u_aux[0];
+    p->debug.u_aux[1] = p->gradients.u_aux[1];
+    p->debug.u_aux[2] = p->gradients.u_aux[2];
 
-    p->gradients.u_aux_norm[0] = 0.f;
-    p->gradients.u_aux_norm[1] = 0.f;
-    p->gradients.u_aux_norm[2] = 0.f;
+    p->debug.u_aux_norm[0] = p->gradients.u_aux_norm[0];
+    p->debug.u_aux_norm[1] = p->gradients.u_aux_norm[1];
+    p->debug.u_aux_norm[2] = p->gradients.u_aux_norm[2];
+
+    p->debug.u_ill_conditioned_count++;
+#endif
+
+    p->gradients.u_aux[0] = 0.;
+    p->gradients.u_aux[1] = 0.;
+    p->gradients.u_aux[2] = 0.;
+
+    p->gradients.u_aux_norm[0] = 0.;
+    p->gradients.u_aux_norm[1] = 0.;
+    p->gradients.u_aux_norm[2] = 0.;
   }
 
-  double aux_norm[3][3];
+  double aux_norm[3][3] = {0};
   for (int i = 0; i < 3; i++) {
     p->gradients.velocity_tensor_aux[i][0] *= h_inv_dim_plus_one;
     p->gradients.velocity_tensor_aux[i][1] *= h_inv_dim_plus_one;
@@ -981,7 +997,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     gsl_permutation_free(p_perm);
 
     /* aux_norm is equation 20 in Rosswog 2020, finalize the gradient in 19 */
-    float aux_matrix[3][3] = {0};
+    hydro_real_t aux_matrix[3][3] = {0};
     for (int j = 0; j < 3; j++) {
       for (int i = 0; i < 3; i++) {
         /**
@@ -1014,8 +1030,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   }
   else {
 
+    p->gradients.D_well_conditioned = 0;
 #ifdef MAGMA2_DEBUG_CHECKS
-    p->debug.D_well_conditioned = 0;
     p->debug.D_ill_conditioned_count++;
 #endif
 
@@ -1029,8 +1045,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
             p->gradients.velocity_tensor_aux_norm[i][j];
 #endif
 
-        p->gradients.velocity_tensor_aux[i][j] = 0.f;
-        p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;
+        p->gradients.velocity_tensor_aux[i][j] = 0.;
+        p->gradients.velocity_tensor_aux_norm[i][j] = 0.;
       }
     }
   }
@@ -1082,28 +1098,25 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
   p->gradients.C_well_conditioned = 1;
-#ifdef MAGMA2_DEBUG_CHECKS
-  p->debug.D_well_conditioned = 1;
-#endif
 
   for (int i = 0; i < 3; i++) {
-    p->gradients.u[i] = 0.f;
-    p->gradients.u_hessian[i][0] = 0.f;
-    p->gradients.u_hessian[i][1] = 0.f;
-    p->gradients.u_hessian[i][2] = 0.f;
+    p->gradients.u[i] = 0.;
+    p->gradients.u_hessian[i][0] = 0.;
+    p->gradients.u_hessian[i][1] = 0.;
+    p->gradients.u_hessian[i][2] = 0.;
 
-    p->gradients.correction_matrix[i][0] = 0.f;
-    p->gradients.correction_matrix[i][1] = 0.f;
-    p->gradients.correction_matrix[i][2] = 0.f;
+    p->gradients.correction_matrix[i][0] = 0.;
+    p->gradients.correction_matrix[i][1] = 0.;
+    p->gradients.correction_matrix[i][2] = 0.;
 
-    p->gradients.velocity_tensor[i][0] = 0.f;
-    p->gradients.velocity_tensor[i][1] = 0.f;
-    p->gradients.velocity_tensor[i][2] = 0.f;
+    p->gradients.velocity_tensor[i][0] = 0.;
+    p->gradients.velocity_tensor[i][1] = 0.;
+    p->gradients.velocity_tensor[i][2] = 0.;
 
     for (int j = 0; j < 3; j++) {
-      p->gradients.velocity_hessian[i][j][0] = 0.f;
-      p->gradients.velocity_hessian[i][j][1] = 0.f;
-      p->gradients.velocity_hessian[i][j][2] = 0.f; 
+      p->gradients.velocity_hessian[i][j][0] = 0.;
+      p->gradients.velocity_hessian[i][j][1] = 0.;
+      p->gradients.velocity_hessian[i][j][2] = 0.; 
     }
   }
 }
@@ -1164,7 +1177,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
       gsl_matrix_view_array((double *)correction_matrix, 3, 3);
   gsl_matrix *C = &C_view.matrix;
 
-  double cond = condition_number(C);
+  const double cond = condition_number(C);
   if (cond < const_condition_number_upper_limit) {
     gsl_matrix *C_inv = gsl_matrix_alloc(3, 3);
     gsl_permutation *p_perm = gsl_permutation_alloc(3);
@@ -1196,18 +1209,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     /* Ill-condition matrix, revert back to normal SPH gradients */
     p->gradients.C_well_conditioned = 0;
     for (int k = 0; k < 3; k++) {
-      p->gradients.correction_matrix[k][0] = 0.f;
-      p->gradients.correction_matrix[k][1] = 0.f;
-      p->gradients.correction_matrix[k][2] = 0.f;
+      p->gradients.correction_matrix[k][0] = 0.;
+      p->gradients.correction_matrix[k][1] = 0.;
+      p->gradients.correction_matrix[k][2] = 0.;
     }
   }
 
   /* Contract the correction matrix with the internal energy gradient and with 
    * the velocity tensor */
-  float u_gradient[3] = {0};
-  float u_hessian[3][3] = {0};
-  float velocity_tensor[3][3] = {0};
-  float velocity_hessian[3][3][3] = {0};
+  hydro_real_t u_gradient[3] = {0};
+  hydro_real_t u_hessian[3][3] = {0};
+  hydro_real_t velocity_tensor[3][3] = {0};
+  hydro_real_t velocity_hessian[3][3][3] = {0};
   for (int j = 0; j < 3; j++) {
     for (int i = 0; i < 3; i++) {
       u_gradient[j] += p->gradients.correction_matrix[j][i] *
@@ -1290,20 +1303,23 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   p->num_ngb = 0;
   p->gradients.C_well_conditioned = 0;
+  p->gradients.D_well_conditioned = 0;
+  p->gradients.u_well_conditioned = 0;
+
   for (int i = 0; i < 3; i++) {
-    p->gradients.u[i] = 0.f;
-    p->gradients.u_aux[i] = 0.f;
-    p->gradients.u_aux_norm[i] = 0.f;
+    p->gradients.u[i] = 0.;
+    p->gradients.u_aux[i] = 0.;
+    p->gradients.u_aux_norm[i] = 0.;
 
     for (int j = 0; j < 3; j++) {
-      p->gradients.correction_matrix[i][j] = 0.f;
-      p->gradients.velocity_tensor[i][j] = 0.f;
-      p->gradients.velocity_tensor_aux[i][j] = 0.f;
-      p->gradients.velocity_tensor_aux_norm[i][j] = 0.f;
-      p->gradients.u_hessian[i][j] = 0.f;
+      p->gradients.correction_matrix[i][j] = 0.;
+      p->gradients.velocity_tensor[i][j] = 0.;
+      p->gradients.velocity_tensor_aux[i][j] = 0.;
+      p->gradients.velocity_tensor_aux_norm[i][j] = 0.;
+      p->gradients.u_hessian[i][j] = 0.;
 
       for (int k = 0; k < 3; k++) {
-        p->gradients.velocity_hessian[i][j][k] = 0.f;
+        p->gradients.velocity_hessian[i][j][k] = 0.;
       }
     }
   }
@@ -1615,22 +1631,24 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->u_full = p->u;
 
   p->gradients.C_well_conditioned = 1;
+  p->gradients.D_well_conditioned = 1;
+  p->gradients.u_well_conditioned = 1;
 #ifdef MAGMA2_DEBUG_CHECKS
   p->debug.C_ill_conditioned_count = 0;
-  p->debug.D_well_conditioned = 1;
   p->debug.D_ill_conditioned_count = 0;
+  p->debug.u_ill_conditioned_count = 0;
   for (int i = 0; i < 3; i++) {
-    p->debug.correction_matrix[i][0] = 0.f;
-    p->debug.correction_matrix[i][1] = 0.f;
-    p->debug.correction_matrix[i][2] = 0.f;
+    p->debug.correction_matrix[i][0] = 0.;
+    p->debug.correction_matrix[i][1] = 0.;
+    p->debug.correction_matrix[i][2] = 0.;
 
-    p->debug.velocity_tensor_aux[i][0] = 0.f;
-    p->debug.velocity_tensor_aux[i][1] = 0.f;
-    p->debug.velocity_tensor_aux[i][2] = 0.f;
+    p->debug.velocity_tensor_aux[i][0] = 0.;
+    p->debug.velocity_tensor_aux[i][1] = 0.;
+    p->debug.velocity_tensor_aux[i][2] = 0.;
 
-    p->debug.velocity_tensor_aux_norm[i][0] = 0.f;
-    p->debug.velocity_tensor_aux_norm[i][1] = 0.f;
-    p->debug.velocity_tensor_aux_norm[i][2] = 0.f;
+    p->debug.velocity_tensor_aux_norm[i][0] = 0.;
+    p->debug.velocity_tensor_aux_norm[i][1] = 0.;
+    p->debug.velocity_tensor_aux_norm[i][2] = 0.;
   }
 #endif
 

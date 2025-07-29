@@ -83,7 +83,7 @@ void hydro_props_init(struct hydro_props *p,
         "hydro_parameters.h. This is a compile-time constant and must be set "
         "to the desired number of neighbours in the parameter file.");
 #else
-  if (fabsf(const_kernel_target_neighbours - p->target_neighbours) >
+  if (fabsf((float)const_kernel_target_neighbours - p->target_neighbours) >
       0.05f * p->target_neighbours) {
     error("When using MAGMA2 SPH, the compiled constant "
           "const_kernel_target_neighbours (%g) must be within 5 percent of "
