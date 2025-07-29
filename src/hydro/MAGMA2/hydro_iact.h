@@ -241,11 +241,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   const float faci = mj * rhoj_inv * wi;
   const float facj = mi * rhoi_inv * wj;
-
-  /* Minimum smoothing length in the kernel */
-  const float h_min = min(hi, hj);
-  pi->h_min = min(pi->h_min, h_min);
-  pj->h_min = min(pj->h_min, h_min);
   
   /* Compute all of the first-order gradients, and second-order gradients */
 
@@ -336,10 +331,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   kernel_deval(ui, &wi, &wi_dx);
   const float faci = mj * rhoj_inv * wi;
 
-  /* Minimum smoothing length in the kernel */
-  const float h_min = min(hi, hj);
-  pi->h_min = min(pi->h_min, h_min);
-
   /* Compute all of the first-order gradients, and second-order gradients */
 
   /* Rosswog 2020 Equation 18 gradients. In the paper he uses (vj - vi) and
@@ -407,7 +398,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float H) {
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const float a2_Hubble = a * a * H;
+  const float a_Hubble = a * H;
+  const float a2_Hubble = a * a_Hubble;
+  const float a_inv = 1.f / a;
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -438,6 +431,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
+
+  /* Peculiar velocity difference vector */
+  const float dv[3] = {pi->v[0] - pj->v[0],
+                       pi->v[1] - pj->v[1],
+                       pi->v[2] - pj->v[2]};
 
   /* For MAGMA2, this is the full anti-symmetric gradient vector. For the 
    * fallback Gasoline2-style SPH, this will just be the direction vector
@@ -474,26 +472,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     G_j[1] *= -wj * hj_inv_dim;
     G_j[2] *= -wj * hj_inv_dim;
 
-    /* Velocity tensor dot product with separation vector for pi */
-    float dvi_dx_dot_r[3] = {0.f, 0.f, 0.f};
-    hydro_mat3x3_vec3_dot(pi->gradients.velocity_tensor, dx, dvi_dx_dot_r);
-
-    /* Equation 17 has r_b - r_a, here we have pi - pj so the
-     * sign is flipped (because of dx) */
-    dvi_dx_dot_r[0] *= -0.5f;
-    dvi_dx_dot_r[1] *= -0.5f;
-    dvi_dx_dot_r[2] *= -0.5f;
-    
-    /* Velocity tensor dot product with separation vector for pi */
-    float dvj_dx_dot_r[3] = {0.f, 0.f, 0.f};
-    hydro_mat3x3_vec3_dot(pj->gradients.velocity_tensor, dx, dvj_dx_dot_r);
-
-    /* Equation 17 has r_b - r_a, here we have pi - pj so the
-     * sign is NOT flipped on dvj_dx_dot_r */
-    dvj_dx_dot_r[0] *= 0.5f;
-    dvj_dx_dot_r[1] *= 0.5f;
-    dvj_dx_dot_r[2] *= 0.5f;
-
     /* Compute second order reconstruction of velocity between pi & pj */
     float vi_reconstructed[3] = {0.f, 0.f, 0.f};
     float vj_reconstructed[3] = {0.f, 0.f, 0.f};
@@ -501,25 +479,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float dx_ij[3] = {dx[0], dx[1], dx[2]};
     const float dx_ji[3] = {-dx[0], -dx[1], -dx[2]};
 
-    /* TODO: make this constant */
-    const float num_ngb_ij = 
-        0.5f * ((float)pi->num_ngb + (float)pj->num_ngb);
-
-    /* Rosswog 2020 h_i and h_j are actually kernel_gamma * h */
-    const float hi_inv_kernel = hi_inv * kernel_gamma_inv;
-    const float hj_inv_kernel = hj_inv * kernel_gamma_inv;
-    const float eta_i_ij = r * hi_inv_kernel;
-    const float eta_j_ij = r * hj_inv_kernel;
+    /* Important: Rosswog 2020 h_i and h_j are without kernel_gamma. Therefore,
+     * use xi and xj in the slope limiting procedure. */
 
     /* Compute global Van Leer limiter (scalar, not component-wise) */
     const float phi_ij_vec = 
         hydro_vector_van_leer_phi(pi->gradients.velocity_tensor, 
                                   pj->gradients.velocity_tensor,
-                                  dx_ij, eta_i_ij, eta_j_ij, num_ngb_ij);
-    const float phi_ji_vec = 
-        hydro_vector_van_leer_phi(pj->gradients.velocity_tensor,
-                                  pi->gradients.velocity_tensor,
-                                  dx_ji, eta_j_ij, eta_i_ij, num_ngb_ij);
+                                  dx_ij, xi, xj);
 
     /* dx_ji for particle i and dx_ij for particle j */
     hydro_vector_second_order_reconstruction(phi_ij_vec, dx_ji, pi->v, 
@@ -527,7 +494,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                              pi->gradients.velocity_hessian,
                                              vi_reconstructed);
 
-    hydro_vector_second_order_reconstruction(phi_ji_vec, dx_ij, pj->v, 
+    hydro_vector_second_order_reconstruction(phi_ij_vec, dx_ij, pj->v, 
                                              pj->gradients.velocity_tensor,
                                              pj->gradients.velocity_hessian,
                                              vj_reconstructed);
@@ -536,14 +503,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float dv_ij[3] = {vi_reconstructed[0] - vj_reconstructed[0],
                             vi_reconstructed[1] - vj_reconstructed[1],
                             vi_reconstructed[2] - vj_reconstructed[2]};
+
+#ifdef hydro_props_use_asymmetric_viscosity
     const float dv_ji[3] = {-dv_ij[0], -dv_ij[1], -dv_ij[2]};
 
-    const float eta_i[3] = {dx_ij[0] * hi_inv_kernel,
-                            dx_ij[1] * hi_inv_kernel, 
-                            dx_ij[2] * hi_inv_kernel};
-    const float eta_j[3] = {dx_ji[0] * hj_inv_kernel,
-                            dx_ji[1] * hj_inv_kernel,
-                            dx_ji[2] * hj_inv_kernel};
+    const float eta_i[3] = {dx_ij[0] * hi_inv,
+                            dx_ij[1] * hi_inv, 
+                            dx_ij[2] * hi_inv};
+    const float eta_j[3] = {dx_ji[0] * hj_inv,
+                            dx_ji[1] * hj_inv,
+                            dx_ji[2] * hj_inv};
     float eta_i2 = 0.f;
     hydro_vec3_vec3_dot(eta_i, eta_i, &eta_i2);
 
@@ -554,13 +523,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     hydro_vec3_vec3_dot(dv_ij, eta_i, &dv_dot_eta_i);
     /* Scale Hubble flow by hi_inv so it is overall scaled */
     const float dv_dot_eta_i_phys = 
-        dv_dot_eta_i + a2_Hubble * r2 * hi_inv_kernel;
+        dv_dot_eta_i + a2_Hubble * r2 * hi_inv;
 
     float dv_dot_eta_j = 0.f;
     hydro_vec3_vec3_dot(dv_ji, eta_j, &dv_dot_eta_j);
     /* Scale Hubble flow by hj_inv so it is overall scaled */
     const float dv_dot_eta_j_phys = 
-        dv_dot_eta_j + a2_Hubble * r2 * hj_inv_kernel;
+        dv_dot_eta_j + a2_Hubble * r2 * hj_inv;
 
     /* Is the flow converging? If so, multiply mu by fac_mu. If not, zero. */
     float conv = 0.f;
@@ -583,7 +552,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                 "dv_ij = (%g, %g, %g), dv_ji = (%g, %g, %g)\n"
                 "eta_i = (%g, %g, %g), eta_j = (%g, %g, %g)\n"
                 "eta_i2 = %g, eta_j2 = %g\n"
-                "hi_inv_kernel = %g, hj_inv_kernel = %g\n"
+                "hi_inv = %g, hj_inv = %g\n"
                 "a2_Hubble = %g, r2 = %g\n",
                 pi->id, pj->id,
                 conv_i, conv_j,
@@ -595,7 +564,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                 eta_i[0], eta_i[1], eta_i[2],
                 eta_j[0], eta_j[1], eta_j[2],
                 eta_i2, eta_j2,
-                hi_inv_kernel, hj_inv_kernel,
+                hi_inv, hj_inv,
                 a2_Hubble, r2);
       }
 #endif
@@ -619,6 +588,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
     /* Add viscosity to the pressure */
     visc_acc_term = (Q_i + Q_j) * rhoij_inv;
+#else
+    float dv_dot_dr_ij = 0.f;
+    hydro_vec3_vec3_dot(dv_ij, dx_ij, &dv_dot_dr_ij);
+    dv_dot_dr_ij += a2_Hubble * r2;
+
+    const float conv = (dv_dot_dr_ij < 0.f) ? fac_mu : 0.f;
+    const float mu_ij = 
+        conv * dv_dot_dr_ij * r_inv / (1.f + const_viscosity_epsilon2);
+    const float c_ij = 0.5f * (pi->force.soundspeed + pj->force.soundspeed);
+
+    const float Q_ij_alpha = -const_viscosity_alpha * c_ij * mu_ij;
+    const float Q_ij_beta = const_viscosity_beta * mu_ij * mu_ij;
+    const float Q_ij_over_rho_ij = 
+        2.f * (Q_ij_alpha + Q_ij_beta) / (rhoi + rhoj);
+    
+    /* Add viscosity to the pressure */
+    visc_acc_term = Q_ij_over_rho_ij;
+#endif
+
+    /* Split heating between the two particles */
     visc_du_term = 0.5f * visc_acc_term;
 
 
@@ -632,11 +621,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float phi_ij_scalar = 
         hydro_scalar_van_leer_phi(pi->gradients.u, 
                                   pj->gradients.u,
-                                  dx_ij, eta_i_ij, eta_j_ij, num_ngb_ij);
-    const float phi_ji_scalar = 
-        hydro_scalar_van_leer_phi(pj->gradients.u,
-                                  pi->gradients.u,
-                                  dx_ji, eta_j_ij, eta_i_ij, num_ngb_ij);
+                                  dx_ij, xi, xj);
 
     /* dx_ji for particle i and dx_ij for particle j */
     hydro_scalar_second_order_reconstruction(phi_ij_scalar, dx_ji, pi->u, 
@@ -644,15 +629,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                              pi->gradients.u_hessian,
                                              &ui_reconstructed);
 
-    hydro_scalar_second_order_reconstruction(phi_ji_scalar, dx_ij, pj->u, 
+    hydro_scalar_second_order_reconstruction(phi_ij_scalar, dx_ij, pj->u, 
                                              pj->gradients.u,
                                              pj->gradients.u_hessian,
                                              &uj_reconstructed);
   
-    float dv_ij_dot_dv_ij = 0.f;
-    hydro_vec3_vec3_dot(dv_ij, dv_ij, &dv_ij_dot_dv_ij);
+    /* It is important to get the Hubble flow correction right for the
+     * conductivity. The same Hubble flow correction for the viscosity is not
+     * correct, since Rosswog 2020 uses |dv_ij||G_ij| for the heat flux. 
+     * 
+     * The Hubble flow correction is only applied to the velocity, but then 
+     * |G_ij| must be computed in physical coordinates (it is a distance).
+     */
+    const float dv_ij_phys[3] = {dv_ij[0] * a_inv + a_Hubble * dx[0],
+                                 dv_ij[1] * a_inv + a_Hubble * dx[1],
+                                 dv_ij[2] * a_inv + a_Hubble * dx[2]};
+
+    float dv_ij_phys_norm = 0.f;
+    hydro_vec3_vec3_dot(dv_ij_phys, dv_ij_phys, &dv_ij_phys_norm);
     /* Signal velocity is the norm of the velocity difference vector */
-    const float v_sig_cond = sqrtf(dv_ij_dot_dv_ij);
+    dv_ij_phys_norm = sqrtf(dv_ij_phys_norm);
+    const float v_sig_cond = fac_mu * dv_ij_phys_norm;
 
     const float du_ij = ui_reconstructed - uj_reconstructed;
     const float rho_ij = 0.5f * (rhoi + rhoj);
@@ -670,36 +667,73 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     G_ij[1] = 0.5f * (G_i[1] + G_j[1]);
     G_ij[2] = 0.5f * (G_i[2] + G_j[2]);
 
-    float G_ij_dot_G_ij = 0.f;
-    hydro_vec3_vec3_dot(G_ij, G_ij, &G_ij_dot_G_ij);
-    const float G_ij_norm = sqrtf(G_ij_dot_G_ij);
+    const float G_ij_phys[3] = {G_ij[0] * a, 
+                                G_ij[1] * a, 
+                                G_ij[2] * a};
+
+    float G_ij_phys_norm = 0.f;
+    hydro_vec3_vec3_dot(G_ij, G_ij, &G_ij_phys_norm);
+    G_ij_phys_norm = sqrtf(G_ij_phys_norm);
 
     /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
-    /* TODO: Use second-order reconstructions here? */
-    const double dv_dot_G_ij = (pi->v[0] - pj->v[0]) * G_ij[0] +
-                               (pi->v[1] - pj->v[1]) * G_ij[1] +
-                               (pi->v[2] - pj->v[2]) * G_ij[2];
+#ifdef hydro_props_use_second_order_velocities_in_divergence
+    float dv_dot_G_ij = 0.f;
+    hydro_vec3_vec3_dot(dv_ij, G_ij, &dv_dot_G_ij);
+
+    float dv_dot_G_ij_phys = 0.f;
+    hydro_vec3_vec3_dot(dv_ij_phys, G_ij_phys, &dv_dot_G_ij_phys);
+#else
+    float dv_dot_G_ij = 0.f;
+    hydro_vec3_vec3_dot(dv, G_ij, &dv_dot_G_ij);
+
+    const float dv_phys[3] = {dv[0] * a_inv + a_Hubble * dx[0],
+                              dv[1] * a_inv + a_Hubble * dx[1],
+                              dv[2] * a_inv + a_Hubble * dx[2]};
+    float dv_dot_G_ij_phys = 0.f;
+    hydro_vec3_vec3_dot(dv_phys, G_ij_phys, &dv_dot_G_ij_phys);
+#endif
 
     sph_du_term_i *= dv_dot_G_ij;
     sph_du_term_j *= dv_dot_G_ij;
-    visc_du_term *= dv_dot_G_ij + a2_Hubble * r2;
-    cond_du_term *= G_ij_norm;
+    /* TODO: Should these be physical? */
+    visc_du_term *= dv_dot_G_ij_phys;
+    cond_du_term *= G_ij_phys_norm; /* Eq. 24 Rosswog 2020 */
 
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dv_dot_G_ij;
     pj->force.h_dt -= mi * dv_dot_G_ij;
 
+
+    /* Timestepping */
+
+
     /* New signal velocity */
+#ifdef hydro_props_use_asymmetric_viscosity
     const float v_sig_visc_i =
         signal_velocity(dx, pi, pj, mu_i, const_viscosity_beta);
     const float v_sig_visc_j =
         signal_velocity(dx, pj, pi, mu_j, const_viscosity_beta);
     const float v_sig_visc = max(v_sig_visc_i, v_sig_visc_j);
-    const float v_sig = max(v_sig_visc, v_sig_cond);
+#else
+    const float v_sig_visc =
+        signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+#endif
+    const float v_sig_max = max(v_sig_visc, v_sig_cond);
 
     /* Update if we need to */
-    pi->v_sig_max = max(pi->v_sig_max, v_sig);
-    pj->v_sig_max = max(pj->v_sig_max, v_sig);
+    pi->v_sig_max = max(pi->v_sig_max, v_sig_max);
+    pj->v_sig_max = max(pj->v_sig_max, v_sig_max);
+
+    /* Average softening in kernel */
+    const float h_ij = 0.5f * (hi + hj);
+    pi->h_min = min(pi->h_min, h_ij);
+    pj->h_min = min(pj->h_min, h_ij);
+
+    /* New timestep estimate */
+    const float dt_min_i = pi->h_min / pi->v_sig_max;
+    const float dt_min_j = pj->h_min / pj->v_sig_max;
+    pi->dt_min = min(pi->dt_min, dt_min_i);
+    pj->dt_min = min(pj->dt_min, dt_min_j);
   }
   else {
 
@@ -710,9 +744,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     G_ij[2] = dx[2];
 
     /* Compute dv dot dr. */
-    const float dv[3] = {pi->v[0] - pj->v[0],
-                         pi->v[1] - pj->v[1],
-                         pi->v[2] - pj->v[2]};
     float dvdr = 0.f;
     hydro_vec3_vec3_dot(dv, G_ij, &dvdr);
 
@@ -741,6 +772,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     /* Update if we need to */
     pi->v_sig_max = max(pi->v_sig_max, new_v_sig);
     pj->v_sig_max = max(pj->v_sig_max, new_v_sig);
+
+    /* Minimum softening in kernel */
+    const float h_ij = 0.5f * (hi + hj);
+    pi->h_min = min(pi->h_min, h_ij);
+    pj->h_min = min(pj->h_min, h_ij);
+
+    /* New timestep estimate */
+    const float dt_min_i = pi->h_min / pi->v_sig_max;
+    const float dt_min_j = pj->h_min / pj->v_sig_max;
+    pi->dt_min = min(pi->dt_min, dt_min_i);
+    pj->dt_min = min(pj->dt_min, dt_min_j);
 
     visc_acc_term = visc;
     visc_du_term = 0.5f * visc_acc_term;
@@ -806,7 +848,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float H) {
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const float a2_Hubble = a * a * H;
+  const float a_Hubble = a * H;
+  const float a2_Hubble = a * a_Hubble;
+  const float a_inv = 1.f / a;
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -836,6 +880,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
+
+  /* Peculiar velocity difference vector */
+  const float dv[3] = {pi->v[0] - pj->v[0],
+                       pi->v[1] - pj->v[1],
+                       pi->v[2] - pj->v[2]};
 
   /* For MAGMA2, this is the full anti-symmetric gradient vector. For the 
    * fallback Gasoline2-style SPH, this will just be the direction vector
@@ -870,26 +919,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     G_j[1] *= -wj * hj_inv_dim;
     G_j[2] *= -wj * hj_inv_dim;
 
-    /* Velocity tensor dot product with separation vector for pi */
-    float dvi_dx_dot_r[3] = {0.f, 0.f, 0.f};
-    hydro_mat3x3_vec3_dot(pi->gradients.velocity_tensor, dx, dvi_dx_dot_r);
-
-    /* Equation 17 has r_b - r_a, here we have pi - pj so the
-     * sign is flipped (because of dx) */
-    dvi_dx_dot_r[0] *= -0.5f;
-    dvi_dx_dot_r[1] *= -0.5f;
-    dvi_dx_dot_r[2] *= -0.5f;
-    
-    /* Velocity tensor dot product with separation vector for pi */
-    float dvj_dx_dot_r[3] = {0.f, 0.f, 0.f};
-    hydro_mat3x3_vec3_dot(pj->gradients.velocity_tensor, dx, dvj_dx_dot_r);
-
-    /* Equation 17 has r_b - r_a, here we have pi - pj so the
-     * sign is NOT flipped on dvj_dx_dot_r */
-    dvj_dx_dot_r[0] *= 0.5f;
-    dvj_dx_dot_r[1] *= 0.5f;
-    dvj_dx_dot_r[2] *= 0.5f;
-
     /* Compute second order reconstruction of velocity between pi & pj */
     float vi_reconstructed[3] = {0.f, 0.f, 0.f};
     float vj_reconstructed[3] = {0.f, 0.f, 0.f};
@@ -897,25 +926,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float dx_ij[3] = {dx[0], dx[1], dx[2]};
     const float dx_ji[3] = {-dx[0], -dx[1], -dx[2]};
 
-    /* TODO: make this constant */
-    const float num_ngb_ij = 
-        0.5f * ((float)pi->num_ngb + (float)pj->num_ngb);
-
-    /* Rosswog 2020 h_i and h_j are actually kernel_gamma * h */
-    const float hi_inv_kernel = hi_inv * kernel_gamma_inv;
-    const float hj_inv_kernel = hj_inv * kernel_gamma_inv;
-    const float eta_i_ij = r * hi_inv_kernel;
-    const float eta_j_ij = r * hj_inv_kernel;
+    /* Important: Rosswog 2020 h_i and h_j are without kernel_gamma. Therefore,
+     * use xi and xj in the slope limiting procedure. */
 
     /* Compute global Van Leer limiter (scalar, not component-wise) */
     const float phi_ij_vec = 
         hydro_vector_van_leer_phi(pi->gradients.velocity_tensor, 
                                   pj->gradients.velocity_tensor,
-                                  dx_ij, eta_i_ij, eta_j_ij, num_ngb_ij);
+                                  dx_ij, xi, xj);
     const float phi_ji_vec = 
         hydro_vector_van_leer_phi(pj->gradients.velocity_tensor,
                                   pi->gradients.velocity_tensor,
-                                  dx_ji, eta_j_ij, eta_i_ij, num_ngb_ij);
+                                  dx_ji, xj, xi);
 
     /* dx_ji for particle i and dx_ij for particle j */
     hydro_vector_second_order_reconstruction(phi_ij_vec, dx_ji, pi->v, 
@@ -932,14 +954,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float dv_ij[3] = {vi_reconstructed[0] - vj_reconstructed[0],
                             vi_reconstructed[1] - vj_reconstructed[1],
                             vi_reconstructed[2] - vj_reconstructed[2]};
+
+#ifdef hydro_props_use_asymmetric_viscosity
     const float dv_ji[3] = {-dv_ij[0], -dv_ij[1], -dv_ij[2]};
 
-    const float eta_i[3] = {dx_ij[0] * hi_inv_kernel,
-                            dx_ij[1] * hi_inv_kernel, 
-                            dx_ij[2] * hi_inv_kernel};
-    const float eta_j[3] = {dx_ji[0] * hj_inv_kernel,
-                            dx_ji[1] * hj_inv_kernel,
-                            dx_ji[2] * hj_inv_kernel};
+    const float eta_i[3] = {dx_ij[0] * hi_inv,
+                            dx_ij[1] * hi_inv, 
+                            dx_ij[2] * hi_inv};
+    const float eta_j[3] = {dx_ji[0] * hj_inv,
+                            dx_ji[1] * hj_inv,
+                            dx_ji[2] * hj_inv};
 
     float eta_i2 = 0.f;
     hydro_vec3_vec3_dot(eta_i, eta_i, &eta_i2);
@@ -951,13 +975,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     hydro_vec3_vec3_dot(dv_ij, eta_i, &dv_dot_eta_i);
     /* Scale Hubble flow by hi_inv so it is overall scaled */
     const float dv_dot_eta_i_phys = 
-        dv_dot_eta_i + a2_Hubble * r2 * hi_inv_kernel;
+        dv_dot_eta_i + a2_Hubble * r2 * hi_inv;
 
     float dv_dot_eta_j = 0.f;
     hydro_vec3_vec3_dot(dv_ji, eta_j, &dv_dot_eta_j);
     /* Scale Hubble flow by hj_inv so it is overall scaled */
     const float dv_dot_eta_j_phys = 
-        dv_dot_eta_j + a2_Hubble * r2 * hj_inv_kernel;
+        dv_dot_eta_j + a2_Hubble * r2 * hj_inv;
 
     /* Is the flow converging? If yes, multiply by fac_mu. If no, zero. */
     float conv = 0.f;
@@ -980,7 +1004,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                 "dv_ij = (%g, %g, %g), dv_ji = (%g, %g, %g)\n"
                 "eta_i = (%g, %g, %g), eta_j = (%g, %g, %g)\n"
                 "eta_i2 = %g, eta_j2 = %g\n"
-                "hi_inv_kernel = %g, hj_inv_kernel = %g\n"
+                "hi_inv = %g, hj_inv = %g\n"
                 "a2_Hubble = %g, r2 = %g\n",
                 pi->id, pj->id,
                 conv_i, conv_j,
@@ -992,7 +1016,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                 eta_i[0], eta_i[1], eta_i[2],
                 eta_j[0], eta_j[1], eta_j[2],
                 eta_i2, eta_j2,
-                hi_inv_kernel, hj_inv_kernel,
+                hi_inv, hj_inv,
                 a2_Hubble, r2);
       }
 #endif
@@ -1016,6 +1040,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     /* Add viscosity to the pressure */
     visc_acc_term = (Q_i + Q_j) * rhoij_inv;
+#else
+    float dv_dot_dr_ij = 0.f;
+    hydro_vec3_vec3_dot(dv_ij, dx_ij, &dv_dot_dr_ij);
+    dv_dot_dr_ij += a2_Hubble * r2;
+
+    const float conv = (dv_dot_dr_ij < 0.f) ? fac_mu : 0.f;
+    const float mu_ij = 
+        conv * dv_dot_dr_ij * r_inv / (1.f + const_viscosity_epsilon2);
+    const float c_ij = 0.5f * (pi->force.soundspeed + pj->force.soundspeed);
+
+    const float Q_ij_alpha = -const_viscosity_alpha * c_ij * mu_ij;
+    const float Q_ij_beta = const_viscosity_beta * mu_ij * mu_ij;
+    const float Q_ij_over_rho_ij = 
+        2.f * (Q_ij_alpha + Q_ij_beta) / (rhoi + rhoj);
+    
+    /* Add viscosity to the pressure */
+    visc_acc_term = Q_ij_over_rho_ij;
+#endif
+
     visc_du_term = 0.5f * visc_acc_term;
 
   
@@ -1029,11 +1072,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float phi_ij_scalar = 
         hydro_scalar_van_leer_phi(pi->gradients.u, 
                                   pj->gradients.u,
-                                  dx_ij, eta_i_ij, eta_j_ij, num_ngb_ij);
-    const float phi_ji_scalar = 
-        hydro_scalar_van_leer_phi(pj->gradients.u,
-                                  pi->gradients.u,
-                                  dx_ji, eta_j_ij, eta_i_ij, num_ngb_ij);
+                                  dx_ij, xi, xj);
 
     /* dx_ji for particle i and dx_ij for particle j */
     hydro_scalar_second_order_reconstruction(phi_ij_scalar, dx_ji, pi->u, 
@@ -1041,14 +1080,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                              pi->gradients.u_hessian,
                                              &ui_reconstructed);
 
-    hydro_scalar_second_order_reconstruction(phi_ji_scalar, dx_ij, pj->u, 
+    hydro_scalar_second_order_reconstruction(phi_ij_scalar, dx_ij, pj->u, 
                                              pj->gradients.u,
                                              pj->gradients.u_hessian,
                                              &uj_reconstructed);
   
-    float dv_ij_dot_dv_ij = 0.f;
-    hydro_vec3_vec3_dot(dv_ij, dv_ij, &dv_ij_dot_dv_ij);
-    const float v_sig_cond = sqrtf(dv_ij_dot_dv_ij);
+    /* It is important to get the Hubble flow correction right for the
+     * conductivity. The same Hubble flow correction for the viscosity is not
+     * correct, since Rosswog 2020 uses |dv_ij||G_ij| for the heat flux. 
+     * 
+     * The Hubble flow correction is only applied to the velocity, but then 
+     * |G_ij| must be computed in physical coordinates (it is a distance).
+     * 
+     * The scale factors in velocity and distance cancel, so we end up with 
+     * something like a code velocity * code distance + Hubble flow correction.
+     */
+    const float dv_ij_phys[3] = {dv_ij[0] * a_inv + a_Hubble * dx[0],
+                                 dv_ij[1] * a_inv + a_Hubble * dx[1],
+                                 dv_ij[2] * a_inv + a_Hubble * dx[2]};
+
+    float dv_ij_phys_norm = 0.f;
+    hydro_vec3_vec3_dot(dv_ij_phys, dv_ij_phys, &dv_ij_phys_norm);
+    /* Signal velocity is the norm of the velocity difference vector */
+    dv_ij_phys_norm = sqrtf(dv_ij_phys_norm);
+    const float v_sig_cond = fac_mu * dv_ij_phys_norm;
 
     const float du_ij = ui_reconstructed - uj_reconstructed;
     const float rho_ij = 0.5f * (rhoi + rhoj);
@@ -1066,33 +1121,66 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     G_ij[1] = 0.5f * (G_i[1] + G_j[1]);
     G_ij[2] = 0.5f * (G_i[2] + G_j[2]);
 
-    float G_ij_dot_G_ij = 0.f;
-    hydro_vec3_vec3_dot(G_ij, G_ij, &G_ij_dot_G_ij);
-    const float G_ij_norm = sqrtf(G_ij_dot_G_ij);
+    const float G_ij_phys[3] = {G_ij[0] * a, 
+                                G_ij[1] * a, 
+                                G_ij[2] * a};
+
+    float G_ij_phys_norm = 0.f;
+    hydro_vec3_vec3_dot(G_ij, G_ij, &G_ij_phys_norm);
+    G_ij_phys_norm = sqrtf(G_ij_phys_norm);
 
     /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
-    /* TODO: Use reconstructed velocities here? */
-    const double dv_dot_G_ij = (pi->v[0] - pj->v[0]) * G_ij[0] +
-                               (pi->v[1] - pj->v[1]) * G_ij[1] +
-                               (pi->v[2] - pj->v[2]) * G_ij[2];
+#ifdef hydro_props_use_second_order_velocities_in_divergence
+    float dv_dot_G_ij = 0.f;
+    hydro_vec3_vec3_dot(dv_ij, G_ij, &dv_dot_G_ij);
+
+    float dv_dot_G_ij_phys = 0.f;
+    hydro_vec3_vec3_dot(dv_ij_phys, G_ij_phys, &dv_dot_G_ij_phys);
+#else
+    float dv_dot_G_ij = 0.f;
+    hydro_vec3_vec3_dot(dv, G_ij, &dv_dot_G_ij);
+
+    const float dv_phys[3] = {dv[0] * a_inv + a_Hubble * dx[0],
+                              dv[1] * a_inv + a_Hubble * dx[1],
+                              dv[2] * a_inv + a_Hubble * dx[2]};
+    float dv_dot_G_ij_phys = 0.f;
+    hydro_vec3_vec3_dot(dv_phys, G_ij_phys, &dv_dot_G_ij_phys);
+#endif
 
     sph_du_term_i *= dv_dot_G_ij;
-    visc_du_term *= dv_dot_G_ij + a2_Hubble * r2;
-    cond_du_term *= G_ij_norm; /* Eq. 24 Rosswog 2020 */
+    /* TODO: Should these be physical? */
+    visc_du_term *= dv_dot_G_ij_phys;
+    cond_du_term *= G_ij_phys_norm; /* Eq. 24 Rosswog 2020 */
 
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dv_dot_G_ij;
 
+
+    /* Timestepping */
+
+
     /* New signal velocity */
+#ifdef hydro_props_use_asymmetric_viscosity
     const float v_sig_visc_i =
         signal_velocity(dx, pi, pj, mu_i, const_viscosity_beta);
     const float v_sig_visc_j =
         signal_velocity(dx, pj, pi, mu_j, const_viscosity_beta);
     const float v_sig_visc = max(v_sig_visc_i, v_sig_visc_j);
-    const float v_sig = max(v_sig_visc, v_sig_cond);
+#else
+    const float v_sig_visc = 
+        signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+#endif
+    const float v_sig_max = max(v_sig_visc, v_sig_cond);
 
     /* Update if we need to */
-    pi->v_sig_max = max(pi->v_sig_max, v_sig);
+    pi->v_sig_max = max(pi->v_sig_max, v_sig_max);
+
+    /* Compute new timestep */
+    const float h_ij = 0.5f * (hi + hj);
+    pi->h_min = min(pi->h_min, h_ij);
+
+    const float dt_min_i = pi->h_min / pi->v_sig_max;
+    pi->dt_min = min(pi->dt_min, dt_min_i);
   }
   else {
     
@@ -1102,9 +1190,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     G_ij[2] = dx[2];
 
     /* Compute dv dot dr. */
-    const float dv[3] = {pi->v[0] - pj->v[0],
-                         pi->v[1] - pj->v[1],
-                         pi->v[2] - pj->v[2]};
     float dvdr = 0.f;
     hydro_vec3_vec3_dot(dv, G_ij, &dvdr);
 
@@ -1132,6 +1217,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     /* Update if we need to */
     pi->v_sig_max = max(pi->v_sig_max, new_v_sig);
+
+    /* Minimum softening in kernel */
+    const float h_ij = 0.5f * (hi + hj);
+    pi->h_min = min(pi->h_min, h_ij);
+
+    /* New time-step estimate */
+    const float dt_min_i = pi->h_min / pi->v_sig_max;
+    pi->dt_min = min(pi->dt_min, dt_min_i);
+
 
     visc_acc_term = visc;
     visc_du_term = 0.5f * visc_acc_term;

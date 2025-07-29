@@ -76,6 +76,23 @@ void hydro_props_init(struct hydro_props *p,
       (pow_dimension(delta_eta) - pow_dimension(p->eta_neighbours)) *
       kernel_norm;
 
+#ifdef MAGMA2_SPH
+#ifndef const_desired_number_of_neighbours
+  error("When using MAGMA2 SPH, the constant "
+        "const_desired_number_of_neighbours must be defined in the header file "
+        "hydro_parameters.h. This is a compile-time constant and must be set "
+        "to the desired number of neighbours in the parameter file.");
+#else
+  if (fabsf(const_desired_number_of_neighbours - p->target_neighbours) >
+      0.05f * p->target_neighbours) {
+    error("When using MAGMA2 SPH, the compiled constant "
+          "const_desired_number_of_neighbours (%g) must be within 5 percent of "
+          "the desired number of neighbours (%g) in the parameter file.",
+          const_desired_number_of_neighbours, p->target_neighbours);
+  }
+#endif
+#endif
+
 #ifdef SHADOWFAX_SPH
   /* change the meaning of target_neighbours and delta_neighbours */
   p->target_neighbours = 1.0f;

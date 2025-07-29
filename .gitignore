@@ -72,6 +72,7 @@ examples/*/*/restart
 examples/Cooling/CoolingRates/cooling_rates
 examples/Cooling/CoolingRates/cooling_element_*.dat
 examples/Cooling/CoolingRates/cooling_output.dat
+examples/Cooling/CoolingSedovBlast_3D/run/*
 examples/SubgridTests/StellarEvolution/StellarEvolutionSolution*
 examples/SubgridTests/CosmologicalStellarEvolution/StellarEvolutionSolution*
 examples/SmallCosmoVolume/SmallCosmoVolume_DM/power_spectra

@@ -137,6 +137,9 @@ struct part {
   /*! Maximum signal velocity in the kernel */
   float v_sig_max;
 
+  /*! Minimum time-step amongst neighbours */
+  float dt_min;
+  
 #ifdef MAGMA2_DEBUG_CHECKS
   struct {
     /*! C matrix at the last time it was ill-conditioned */

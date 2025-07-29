@@ -36,7 +36,7 @@
 
 /**
  * @file MAGMA2/hydro_parameters.h
- * @brief Density-Energy conservative implementation of SPH,
+ * @brief Density-Energy non-conservative implementation of SPH,
  *        with added MAGMA2 physics (Rosswog 2020) (default compile-time
  *        parameters).
  *
@@ -64,6 +64,24 @@
 /*! Artificial conductivity alpha */
 #define const_conductivity_alpha 0.05f
 
+/*! Desired number of neighbours -- CRITICAL that this matches hydro props */
+#define const_desired_number_of_neighbours 57.f
+
+/*! eta_crit from Rosswog 2020 equation 23. Should be of order the mean
+ * interparticle spacing. Example values for N = 64 assuming uniformly
+ * distributed particles: kernel_gamma * 0.402997988504f. */
+#define const_slope_limiter_eta_crit (kernel_gamma*(4.f * M_PI / (3.f * \
+    powf(const_desired_number_of_neighbours, 1.f / 3.f))))
+
+/*! eta_fold from Frontiere+'17 Equation 51 */
+#define const_slope_limiter_eta_fold 0.2f
+
+/*! Activate to use the second-order velocities in v_ij * G_ij  */
+//#define hydro_props_use_second_order_velocities_in_divergence
+
+/*! Activate to use double precision for all matrix/vector operations */
+//#define hydro_props_use_double_precision
+
 /* Structures for below */
 
 /*! Artificial viscosity parameters */
@@ -78,6 +96,13 @@ struct diffusion_global_data { };
 struct swift_params;
 struct phys_const;
 struct unit_system;
+
+/* Define float or double depending on hydro_props_use_double_precision */
+#if defined(hydro_props_use_double_precision)
+typedef double hydro_real_t;
+#else
+typedef float hydro_real_t;
+#endif
 
 /* Viscosity */
 

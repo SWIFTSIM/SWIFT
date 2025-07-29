@@ -440,14 +440,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct part *restrict p, const struct xpart *restrict xp,
     const struct hydro_props *restrict hydro_properties,
     const struct cosmology *restrict cosmo) {
-  const float CFL_condition = hydro_properties->CFL_condition;
 
   /* CFL condition */
-  const float h_min = kernel_gamma * p->h_min * cosmo->a;
-  const float v_sig_max = p->v_sig_max * cosmo->a_factor_sound_speed;
-  const float dt_cfl = CFL_condition * h_min / v_sig_max;
-
-  return dt_cfl;
+  return hydro_properties->CFL_condition * p->dt_min;
 }
 
 /**
@@ -695,19 +690,18 @@ __attribute__((always_inline)) INLINE static void hydro_vec3_vec3_outer(
 __attribute__((always_inline)) INLINE static
 float hydro_van_leer_phi(const float A_ij,
                          const float eta_i, 
-                         const float eta_j,
-                         const float num_ngb) {
+                         const float eta_j) {
 
   float phi_raw = (4.f * A_ij) / ((1.f + A_ij) * (1.f + A_ij));
   phi_raw = fminf(1.f, fmaxf(0.f, phi_raw));
 
   /* η_ab and η_crit damping */
   const float eta_ij = fminf(eta_i, eta_j);
-  const float eta_crit = powf((32.f * M_PI) / (3.f * num_ngb), 1.f / 3.f);
 
   float damping = 1.f;
-  if (eta_ij <= eta_crit) {
-    const float diff = (eta_ij - eta_crit) / 0.2f;
+  if (eta_ij <= const_slope_limiter_eta_crit) {
+    const float diff = 
+        (eta_ij - const_slope_limiter_eta_crit) / const_slope_limiter_eta_fold;
     damping = expf(-diff * diff);
   }
 
@@ -786,12 +780,11 @@ float hydro_scalar_van_leer_phi(const float *restrict grad_i,
                                 const float *restrict grad_j,
                                 const float *restrict dx,
                                 const float eta_i, 
-                                const float eta_j,
-                                const float num_ngb) {
+                                const float eta_j) {
 
   const float A_ij = hydro_scalar_van_leer_A(grad_i, grad_j, dx);
 
-  return hydro_van_leer_phi(A_ij, eta_i, eta_j, num_ngb);
+  return hydro_van_leer_phi(A_ij, eta_i, eta_j);
 }
 
 /**
@@ -811,12 +804,11 @@ float hydro_vector_van_leer_phi(const float (*restrict grad_i)[3],
                                 const float (*restrict grad_j)[3],
                                 const float *restrict dx,
                                 const float eta_i, 
-                                const float eta_j,
-                                const float num_ngb) {
+                                const float eta_j) {
 
   const float A_ij = hydro_vector_van_leer_A(grad_i, grad_j, dx);
 
-  return hydro_van_leer_phi(A_ij, eta_i, eta_j, num_ngb);
+  return hydro_van_leer_phi(A_ij, eta_i, eta_j);
 }
 
 /**
@@ -1089,7 +1081,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
-  p->h_min = p->h;
   p->gradients.C_well_conditioned = 1;
 #ifdef MAGMA2_DEBUG_CHECKS
   p->debug.D_well_conditioned = 1;
@@ -1291,6 +1282,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   /* Re-set problematic values */
   p->rho = p->mass * kernel_root * h_inv_dim;
   p->h_min = 0.f;
+  p->dt_min = 0.f;
   p->v_sig_max = 0.f;
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.rho_dh = 0.f;
@@ -1342,7 +1334,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
 
+  /* First estimates for the timestepping. Missing the kernel_gamma factors
+   * for now, but will be added at the end of the force loop. */
+  p->h_min = p->h;
   p->v_sig_max = p->force.soundspeed;
+  p->dt_min = p->h_min / p->v_sig_max;
 }
 
 /**
@@ -1492,6 +1488,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   
   const float rho_inv = hydro_get_comoving_density(p);  
   p->force.h_dt *= p->h * rho_inv * hydro_dimension_inv;
+
+  /* dt_min is in physical units, and requires the kernel_gamma factor for h */
+  p->dt_min *= kernel_gamma * cosmo->a / cosmo->a_factor_sound_speed;
 
 #ifdef MAGMA2_DEBUG_CHECKS
   if (p->force.h_dt > 1.e10f) {
