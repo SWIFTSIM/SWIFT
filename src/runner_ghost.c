@@ -1007,6 +1007,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
 
   TIMER_TIC;
 
@@ -1029,7 +1030,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         /* Finish the gradient calculation */
-        hydro_end_gradient(p);
+        hydro_end_gradient(p, cosmo, pressure_floor);
         mhd_end_gradient(p);
 
         /* As of here, particle force variables will be set. */
@@ -1056,7 +1057,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor, dt_alpha,
                             dt_therm);
-        mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+        mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha, mu_0);
         timestep_limiter_prepare_force(p, xp);
         rt_prepare_force(p);
         rt_timestep_prepare_force(p);
@@ -1098,6 +1099,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct star_formation *star_formation = e->star_formation;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_rt = (e->policy & engine_policy_rt);
@@ -1258,7 +1260,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Compute variables required for the gradient loop */
             hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
-            mhd_prepare_gradient(p, xp, cosmo, hydro_props);
+            mhd_prepare_gradient(p, xp, cosmo, hydro_props, mu_0);
 
             /* The particle gradient values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1295,7 +1297,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Compute variables required for the force loop */
             hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor,
                                 dt_alpha, dt_therm);
-            mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+            mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha, mu_0);
             timestep_limiter_prepare_force(p, xp);
             rt_prepare_force(p);
             rt_timestep_prepare_force(p);
@@ -1450,7 +1452,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Compute variables required for the gradient loop */
         hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
-        mhd_prepare_gradient(p, xp, cosmo, hydro_props);
+        mhd_prepare_gradient(p, xp, cosmo, hydro_props, mu_0);
 
         /* The particle gradient values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1487,7 +1489,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor, dt_alpha,
                             dt_therm);
-        mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+        mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha, mu_0);
         timestep_limiter_prepare_force(p, xp);
         rt_prepare_force(p);
         rt_timestep_prepare_force(p);
