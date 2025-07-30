@@ -652,14 +652,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                                &uj_reconstructed);
     }
 
+    const hydro_real_t rho_ij = 0.5 * (rhoi + rhoj);
+    const hydro_real_t rho_ij_inv = 1. / rho_ij;
+
     /* Signal velocity is the velocity difference projected with Hubble flow */
-    const hydro_real_t v_sig_cond = fac_mu * (dv_dot_dr_ij * r_inv);
+    const hydro_real_t v_sig_speed = fac_mu * fabs(dv_dot_dr_ij) * r_inv;
+    const hydro_real_t v_sig_pressure = 
+        sqrt(fabs(pi->force.pressure - pj->force.pressure) * rho_ij_inv);
+    const hydro_real_t v_sig_cond = v_sig_speed + v_sig_pressure;
 
     const hydro_real_t du_ij = ui_reconstructed - uj_reconstructed;
-    const hydro_real_t rho_ij = 0.5 * (rhoi + rhoj);
 
     /* Add conductivity to the specific energy */
-    cond_du_term = -const_conductivity_alpha * v_sig_cond * du_ij / rho_ij;
+    cond_du_term = 
+        const_conductivity_alpha * fabs(v_sig_cond) * du_ij * rho_ij_inv;
 
 
     /* Finalize everything with the correct normalizations. */
@@ -699,8 +705,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     cond_du_term *= G_ij_norm; /* Eq. 24 Rosswog 2020 */
 
     /* Get the time derivative for h. */
-    pi->force.h_dt += mj * dv_dot_G_ij;
-    pj->force.h_dt += mi * dv_dot_G_ij;
+    pi->force.h_dt -= mj * dv_dot_G_ij;
+    pj->force.h_dt -= mi * dv_dot_G_ij;
 
 
     /* Timestepping */
@@ -712,11 +718,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
         signal_velocity(dx, pi, pj, mu_i, const_viscosity_beta);
     const hydro_real_t v_sig_visc_j =
         signal_velocity(dx, pj, pi, mu_j, const_viscosity_beta);
-    const hydro_real_t v_sig_max = max(v_sig_visc_i, v_sig_visc_j);
+    const hydro_real_t v_sig_visc = max(v_sig_visc_i, v_sig_visc_j);
 #else
-    const hydro_real_t v_sig_max =
+    const hydro_real_t v_sig_visc =
         signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 #endif
+    const hydro_real_t v_sig_max = max(v_sig_visc, v_sig_cond);
 
     /* Update if we need to */
     pi->v_sig_max = max(pi->v_sig_max, v_sig_max);
@@ -1094,14 +1101,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                                &uj_reconstructed);
     }
 
-    /* Signal velocity is the velocity difference along r_ij */
-    const hydro_real_t v_sig_cond = fac_mu * (dv_dot_dr_ij * r_inv);
+    const hydro_real_t rho_ij = 0.5 * (rhoi + rhoj);
+    const hydro_real_t rho_ij_inv = 1. / rho_ij;
+
+    /* Signal velocity is the velocity difference projected with Hubble flow */
+    const hydro_real_t v_sig_speed = fac_mu * fabs(dv_dot_dr_ij) * r_inv;
+    const hydro_real_t v_sig_pressure = 
+        sqrt(fabs(pi->force.pressure - pj->force.pressure) * rho_ij_inv);
+    const hydro_real_t v_sig_cond = v_sig_speed + v_sig_pressure;
 
     const hydro_real_t du_ij = ui_reconstructed - uj_reconstructed;
-    const hydro_real_t rho_ij = 0.5 * (rhoi + rhoj);
 
     /* Add conductivity to the specific energy */
-    cond_du_term = -const_conductivity_alpha * v_sig_cond * du_ij / rho_ij;
+    cond_du_term = 
+        const_conductivity_alpha * fabs(v_sig_cond) * du_ij * rho_ij_inv;
 
 
     /* Finalize the viscosity and conductivity with correct normalizations. */
@@ -1140,7 +1153,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     cond_du_term *= G_ij_norm; /* Eq. 24 Rosswog 2020 */
 
     /* Get the time derivative for h. */
-    pi->force.h_dt += mj * dv_dot_G_ij;
+    pi->force.h_dt -= mj * dv_dot_G_ij;
 
 
     /* Timestepping */
@@ -1152,11 +1165,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
         signal_velocity(dx, pi, pj, mu_i, const_viscosity_beta);
     const hydro_real_t v_sig_visc_j =
         signal_velocity(dx, pj, pi, mu_j, const_viscosity_beta);
-    const hydro_real_t v_sig_max = max(v_sig_visc_i, v_sig_visc_j);
+    const hydro_real_t v_sig_visc = max(v_sig_visc_i, v_sig_visc_j);
 #else
-    const hydro_real_t v_sig_max = 
+    const hydro_real_t v_sig_visc = 
         signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 #endif
+    const hydro_real_t v_sig_max = max(v_sig_visc, v_sig_cond);
 
     /* Update if we need to */
     pi->v_sig_max = max(pi->v_sig_max, v_sig_max);

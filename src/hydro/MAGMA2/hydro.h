@@ -1510,14 +1510,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
   
-  /* Evolve using G_ab if well-conditioned, otherwise regular SPH */
-  if (p->gradients.C_well_conditioned && p->gradients.D_well_conditioned) {
-    p->force.h_dt *= p->h * hydro_dimension_inv;
-  }
-  else {
-    const float rho_inv = 1.f / hydro_get_comoving_density(p);
-    p->force.h_dt *= p->h * rho_inv * hydro_dimension_inv;
-  }
+  const float rho_inv = 1.f / hydro_get_comoving_density(p);
+  p->force.h_dt *= p->h * rho_inv * hydro_dimension_inv;
 
   /* dt_min is in physical units, and requires the kernel_gamma factor for h */
   p->dt_min *= kernel_gamma * cosmo->a / cosmo->a_factor_sound_speed;
