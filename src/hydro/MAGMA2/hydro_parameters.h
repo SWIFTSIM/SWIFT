@@ -61,14 +61,14 @@
 #elif defined(HYDRO_DIMENSION_2D)
 #define const_kernel_target_neighbours 17.0
 #else
-#define const_kernel_target_neighbours 128.//57.0
+#define const_kernel_target_neighbours 57.0
 #endif
 
 /*! Use the alternative viscosity weighting (each particle has mu_i and mu_j) */
-#define hydro_props_use_asymmetric_viscosity_mu
+// #define hydro_props_use_asymmetric_viscosity_mu
 
 /*! Use the second-order velocities in v_ij * G_ij  */
-#define hydro_props_use_second_order_velocities_in_divergence
+//#define hydro_props_use_second_order_velocities_in_divergence
 
 /*! Use double precision for all matrix/vector operations */
 #define hydro_props_use_double_precision
@@ -85,11 +85,11 @@
 #endif
 
 /*! Mean interparticle spacing for this kernel and neighbour number */
-#define const_kernel_mean_spacing (kernel_gamma*(4. * M_PI / (3. * \
-    powf((float)const_kernel_target_neighbours, 1. / 3.))))
+#define const_kernel_mean_spacing (kernel_gamma*powf(4. * M_PI / (3. * \
+    (float)const_kernel_target_neighbours), 1. / 3.))
 
 /*! eta_crit Rosswog 2020 Eq 23. Of order the mean interparticle spacing. */
-#define const_slope_limiter_eta_crit (4.f * const_kernel_mean_spacing)
+#define const_slope_limiter_eta_crit (const_kernel_mean_spacing)
 
 /*! eta_fold from Frontiere+'17 Equation 51 */
 #define const_slope_limiter_eta_fold 0.2

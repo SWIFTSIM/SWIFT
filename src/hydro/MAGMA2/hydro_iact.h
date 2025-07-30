@@ -475,20 +475,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     /* Corrected gradients */
     hydro_real_t G_i[3] = {0., 0., 0.};
     hydro_real_t G_j[3] = {0., 0., 0.};
-    hydro_mat3x3_vec3_dot(pi->gradients.correction_matrix, dx_ij, G_i);
-    /* Important: Use same separation vector */
-    hydro_mat3x3_vec3_dot(pj->gradients.correction_matrix, dx_ij, G_j);
+    /* Rosswog 2020 Eqs 4 & 5 use dx_ji for both */
+    hydro_mat3x3_vec3_dot(pi->gradients.correction_matrix, dx_ji, G_i);
+    hydro_mat3x3_vec3_dot(pj->gradients.correction_matrix, dx_ji, G_j);
 
-    /* Note: negative because dx is pj->x - pi->x in Rosswog 2020.
-     * It is pj->x - pi->x for BOTH particles, and then sign flip
-     * later */
-    G_i[0] *= -wi * hi_inv_dim;
-    G_i[1] *= -wi * hi_inv_dim;
-    G_i[2] *= -wi * hi_inv_dim;
+    G_i[0] *= wi * hi_inv_dim;
+    G_i[1] *= wi * hi_inv_dim;
+    G_i[2] *= wi * hi_inv_dim;
 
-    G_j[0] *= -wj * hj_inv_dim;
-    G_j[1] *= -wj * hj_inv_dim;
-    G_j[2] *= -wj * hj_inv_dim;
+    G_j[0] *= wj * hj_inv_dim;
+    G_j[1] *= wj * hj_inv_dim;
+    G_j[2] *= wj * hj_inv_dim;
 
     /* Compute second order reconstruction of velocity between pi & pj */
     hydro_real_t vi_reconstructed[3] = {0., 0., 0.};
@@ -910,20 +907,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     /* Corrected gradients */
     hydro_real_t G_i[3] = {0., 0., 0.};
     hydro_real_t G_j[3] = {0., 0., 0.};
-    hydro_mat3x3_vec3_dot(pi->gradients.correction_matrix, dx_ij, G_i);
-    /* Important: Use the same separation vector. */
-    hydro_mat3x3_vec3_dot(pj->gradients.correction_matrix, dx_ij, G_j);
+    /* Rosswog 2020 Eqs 4 & 5 use dx_ji for both */
+    hydro_mat3x3_vec3_dot(pi->gradients.correction_matrix, dx_ji, G_i);
+    hydro_mat3x3_vec3_dot(pj->gradients.correction_matrix, dx_ji, G_j);
 
-    /* Note: negative because dx is pj->x - pi->x in Rosswog 2020.
-     * It is pj->x - pi->x for BOTH particles, and then sign flip
-     * later */
-    G_i[0] *= -wi * hi_inv_dim;
-    G_i[1] *= -wi * hi_inv_dim;
-    G_i[2] *= -wi * hi_inv_dim;
+    G_i[0] *= wi * hi_inv_dim;
+    G_i[1] *= wi * hi_inv_dim;
+    G_i[2] *= wi * hi_inv_dim;
 
-    G_j[0] *= -wj * hj_inv_dim;
-    G_j[1] *= -wj * hj_inv_dim;
-    G_j[2] *= -wj * hj_inv_dim;
+    G_j[0] *= wj * hj_inv_dim;
+    G_j[1] *= wj * hj_inv_dim;
+    G_j[2] *= wj * hj_inv_dim;
 
     /* Compute second order reconstruction of velocity between pi & pj */
     hydro_real_t vi_reconstructed[3] = {0., 0., 0.};

@@ -564,8 +564,7 @@ void hydro_vec3_vec3_dot(const hydro_real_t *restrict vec_a,
 }
 
 /**
- * @brief The scalar triple product of vector vec and matrix mat.
- *        That is vec^T * mat * vec.
+ * @brief The Frobenius inner product of two matrices.
  *
  *
  * @param mat The matrix to contract with the vector.
@@ -642,7 +641,7 @@ void hydro_tensor3x3x3_matrix3x3_dot(
               tensor[1][2][1] * mat[2][1] +
               tensor[1][2][2] * mat[2][2];
 
-  result[3] = tensor[2][0][0] * mat[0][0] +
+  result[2] = tensor[2][0][0] * mat[0][0] +
               tensor[2][0][1] * mat[0][1] +
               tensor[2][0][2] * mat[0][2] +
               tensor[2][1][0] * mat[1][0] +
@@ -701,11 +700,20 @@ hydro_real_t hydro_van_leer_phi(const hydro_real_t A_ij,
   /* η_ab and η_crit damping */
   const hydro_real_t eta_ij = min(eta_i, eta_j);
 
-  hydro_real_t damping = 1.f;
+  hydro_real_t damping = 1.;
   if (eta_ij <= const_slope_limiter_eta_crit) {
     const hydro_real_t diff = 
         (eta_ij - const_slope_limiter_eta_crit) / const_slope_limiter_eta_fold;
-    damping = expf(-diff * diff);
+    damping = exp(-diff * diff);
+
+#ifdef MAGMA2_DEBUG_CHECKS
+    if (eta_ij < 0.1 * const_slope_limiter_eta_crit) {
+      warning("Particles extremely close! <0.1 mean interparticle spacing. "
+              "phi_raw = %g, damping = %g, eta_ij = %g, "
+              "eta_crit = %g, eta_fold = %g", phi_raw, damping, eta_ij,
+              const_slope_limiter_eta_crit, const_slope_limiter_eta_fold);
+    }
+#endif
   }
 
   return phi_raw * damping;
