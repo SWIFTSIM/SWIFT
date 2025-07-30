@@ -403,7 +403,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Cosmological factors entering the EoMs */
   const hydro_real_t fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const hydro_real_t a_inv = 1. / a;
   const hydro_real_t a_Hubble = a * H;
   const hydro_real_t a2_Hubble = a * a_Hubble;
 
@@ -847,7 +846,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Cosmological factors entering the EoMs */
   const hydro_real_t fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const hydro_real_t a_inv = 1. / a;
   const hydro_real_t a_Hubble = a * H;
   const hydro_real_t a2_Hubble = a * a_Hubble;
 
