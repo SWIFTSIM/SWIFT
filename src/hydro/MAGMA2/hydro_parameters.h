@@ -50,7 +50,7 @@
 
 
 /*! Alpha viscosity, usually =1.0. For lower neighbor number, should be higher */
-#define const_viscosity_alpha 1.0
+#define const_viscosity_alpha 1.5
 
 /*! Artificial conductivity alpha */
 #define const_conductivity_alpha 0.05
@@ -64,29 +64,32 @@
 #define const_kernel_target_neighbours 57.0
 #endif
 
-/*! Use the alternative viscosity weighting (each particle has mu_i and mu_j) */
-// #define hydro_props_use_asymmetric_viscosity_mu
-
-/*! Use the second-order velocities in v_ij * G_ij  */
-//#define hydro_props_use_second_order_velocities_in_divergence
-
-/*! Use double precision for all matrix/vector operations */
-//#define hydro_props_use_double_precision
-
 
 /* ---------- These parameters should not be changed ---------- */
 
 
-/*! Consider matrix inversion to be ill-conditioned above this limit */
-#ifdef hydro_props_use_double_precision
-#define const_condition_number_upper_limit 99999.
-#else
-#define const_condition_number_upper_limit 999.
-#endif
+/* Viscosity weighting scheme: 
+ *    0 = (rho_i * q_i + rho_j * q_j) / (rho_i * rho_j)
+ *    1 = (rho_i * q_ij + rho_j * q_ij) / (rho_i * rho_j)
+ *    2 = 2.0 * q_ij / (rho_i + rho_j) */
+#define hydro_props_viscosity_weighting_type 1
 
+/*! Use double precision for all matrix/vector operations */
+//#define hydro_props_use_double_precision
+
+#ifdef hydro_props_use_double_precision
+/*! Consider matrix inversion to be ill-conditioned above this limit */
+#define const_condition_number_upper_limit 99999.
+/*! Mean interparticle spacing for this kernel and neighbour number */
+#define const_kernel_mean_spacing (kernel_gamma*pow(4. * M_PI / (3. * \
+    (double)const_kernel_target_neighbours), 1. / 3.))
+#else
+/*! Consider matrix inversion to be ill-conditioned above this limit */
+#define const_condition_number_upper_limit 999.
 /*! Mean interparticle spacing for this kernel and neighbour number */
 #define const_kernel_mean_spacing (kernel_gamma*powf(4. * M_PI / (3. * \
     (float)const_kernel_target_neighbours), 1. / 3.))
+#endif
 
 /*! eta_crit Rosswog 2020 Eq 23. Of order the mean interparticle spacing. */
 #define const_slope_limiter_eta_crit (const_kernel_mean_spacing)
@@ -101,6 +104,17 @@
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
 #define const_viscosity_beta (2.0 * const_viscosity_alpha)
 
+/*! Use the second-order velocities in v_ij * G_ij (this doesn't work) */
+//#define hydro_props_use_second_order_velocities_in_divergence
+
+#ifdef hydro_props_viscosity_weighting_type
+#ifndef hydro_props_use_viscosity_weighting
+#define hydro_props_use_viscosity_weighting
+#endif
+#else
+#define hydro_props_use_viscosity_weighting
+#define hydro_props_viscosity_weighting_type 2
+#endif
 
 /* ---------- Structures for below ---------- */
 

@@ -529,7 +529,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     hydro_vec3_vec3_dot(dv_ij, dx_ij, &dv_dot_dr_Hubble);
     dv_dot_dr_Hubble += a2_Hubble * r2;
 
-#ifdef hydro_props_use_asymmetric_viscosity_mu
+#ifdef hydro_props_use_viscosity_weighting
+#if (hydro_props_viscosity_weighting_type == 0)
     const hydro_real_t dv_ji[3] = {-dv_ij[0], -dv_ij[1], -dv_ij[2]};
 
     const hydro_real_t eta_i[3] = {dx_ij[0] * hi_inv,
@@ -596,30 +597,47 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const hydro_real_t mu_j = 
         conv * dv_dot_eta_j_Hubble  / (eta_j2 + const_viscosity_epsilon2);
     
-    const hydro_real_t Q_i_alpha = 
+    const hydro_real_t q_i_alpha = 
         -const_viscosity_alpha * pi->force.soundspeed * mu_i;
-    const hydro_real_t Q_i_beta = const_viscosity_beta * mu_i * mu_i;
-    const hydro_real_t Q_i = rhoi * (Q_i_alpha + Q_i_beta);
+    const hydro_real_t q_i_beta = const_viscosity_beta * mu_i * mu_i;
+    const hydro_real_t Q_i = rhoi * (q_i_alpha + q_i_beta);
 
-    const hydro_real_t Q_j_alpha =
+    const hydro_real_t q_j_alpha =
         -const_viscosity_alpha * pj->force.soundspeed * mu_j;
-    const hydro_real_t Q_j_beta = const_viscosity_beta * mu_j * mu_j;
-    const hydro_real_t Q_j = rhoj * (Q_j_alpha + Q_j_beta);
+    const hydro_real_t q_j_beta = const_viscosity_beta * mu_j * mu_j;
+    const hydro_real_t Q_j = rhoj * (q_j_alpha + q_j_beta);
 
     /* Add viscosity to the pressure */
     visc_acc_term = (Q_i + Q_j) * rhoij_inv;
-#else
+#elif (hydro_props_viscosity_weighting_type == 1)
     const hydro_real_t conv = (dv_dot_dr_Hubble < 0.) ? fac_mu : 0.;
     const hydro_real_t mu_ij = conv * dv_dot_dr_Hubble * r_inv;
     const hydro_real_t c_ij = 
         0.5 * (pi->force.soundspeed + pj->force.soundspeed);
 
-    const hydro_real_t Q_ij_alpha = -const_viscosity_alpha * c_ij * mu_ij;
-    const hydro_real_t Q_ij_beta = const_viscosity_beta * mu_ij * mu_ij;
-    const hydro_real_t Q_ij = (rhoi + rhoj) * (Q_ij_alpha + Q_ij_beta);
+    const hydro_real_t q_ij_alpha = -const_viscosity_alpha * c_ij * mu_ij;
+    const hydro_real_t q_ij_beta = const_viscosity_beta * mu_ij * mu_ij;
+    const hydro_real_t Q_ij = (rhoi + rhoj) * (q_ij_alpha + q_ij_beta);
     
     /* Add viscosity to the pressure */
     visc_acc_term = Q_ij * rhoij_inv;
+#elif (hydro_props_viscosity_weighting_type == 2)
+    const hydro_real_t conv = (dv_dot_dr_Hubble < 0.) ? fac_mu : 0.;
+    const hydro_real_t mu_ij = conv * dv_dot_dr_Hubble * r_inv;
+    const hydro_real_t c_ij = 
+        0.5 * (pi->force.soundspeed + pj->force.soundspeed);
+
+    const hydro_real_t q_ij_alpha = -const_viscosity_alpha * c_ij * mu_ij;
+    const hydro_real_t q_ij_beta = const_viscosity_beta * mu_ij * mu_ij;
+    const hydro_real_t q_ij = 2. * (q_ij_alpha + q_ij_beta) / (rhoi + rhoj);
+    
+    /* Add viscosity to the pressure */
+    visc_acc_term = q_ij;
+#else
+    error("Unknown compiled hydro_props_use_viscosity_weighting value: %d\n"
+          "Valid values are 0, 1, or 2.\n",
+          (int)hydro_props_use_viscosity_weighting);
+#endif
 #endif
 
     /* Split heating between the two particles */
@@ -704,7 +722,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
 
     /* New signal velocity */
-#ifdef hydro_props_use_asymmetric_viscosity_mu
+#ifdef hydro_props_use_viscosity_weighting
+#if (hydro_props_viscosity_weighting_type == 0)
     const hydro_real_t v_sig_visc_i =
         signal_velocity(dx, pi, pj, mu_i, const_viscosity_beta);
     const hydro_real_t v_sig_visc_j =
@@ -713,6 +732,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 #else
     const hydro_real_t v_sig_visc =
         signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+#endif
 #endif
     const hydro_real_t v_sig_max = max(v_sig_visc, v_sig_cond);
 
@@ -969,7 +989,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     hydro_vec3_vec3_dot(dv_ij, dx_ij, &dv_dot_dr_Hubble);
     dv_dot_dr_Hubble += a2_Hubble * r2;
 
-#ifdef hydro_props_use_asymmetric_viscosity_mu
+#ifdef hydro_props_use_viscosity_weighting
+#if (hydro_props_viscosity_weighting_type == 0)
     const hydro_real_t dv_ji[3] = {-dv_ij[0], -dv_ij[1], -dv_ij[2]};
 
     const hydro_real_t eta_i[3] = {dx_ij[0] * hi_inv,
@@ -978,7 +999,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const hydro_real_t eta_j[3] = {dx_ji[0] * hj_inv,
                                    dx_ji[1] * hj_inv,
                                    dx_ji[2] * hj_inv};
-
     hydro_real_t eta_i2 = 0.;
     hydro_vec3_vec3_dot(eta_i, eta_i, &eta_i2);
 
@@ -1001,7 +1021,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const char conv_i = (dv_dot_eta_i_Hubble < 0.) ? 1 : 0;
     const char conv_j = (dv_dot_eta_j_Hubble < 0.) ? 1 : 0;
 
-    /* Is the flow converging? If yes, multiply by fac_mu. If no, zero. */
+    /* Is the flow converging? If so, multiply mu by fac_mu. If not, zero. */
     const hydro_real_t conv = (conv_i && conv_j) ? fac_mu : 0.;
 
 #ifdef MAGMA2_DEBUG_CHECKS
@@ -1037,30 +1057,47 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const hydro_real_t mu_j = 
         conv * dv_dot_eta_j_Hubble  / (eta_j2 + const_viscosity_epsilon2);
     
-    const hydro_real_t Q_i_alpha = 
+    const hydro_real_t q_i_alpha = 
         -const_viscosity_alpha * pi->force.soundspeed * mu_i;
-    const hydro_real_t Q_i_beta = const_viscosity_beta * mu_i * mu_i;
-    const hydro_real_t Q_i = rhoi * (Q_i_alpha + Q_i_beta);
+    const hydro_real_t q_i_beta = const_viscosity_beta * mu_i * mu_i;
+    const hydro_real_t Q_i = rhoi * (q_i_alpha + q_i_beta);
 
-    const hydro_real_t Q_j_alpha =
+    const hydro_real_t q_j_alpha =
         -const_viscosity_alpha * pj->force.soundspeed * mu_j;
-    const hydro_real_t Q_j_beta = const_viscosity_beta * mu_j * mu_j;
-    const hydro_real_t Q_j = rhoj * (Q_j_alpha + Q_j_beta);
+    const hydro_real_t q_j_beta = const_viscosity_beta * mu_j * mu_j;
+    const hydro_real_t Q_j = rhoj * (q_j_alpha + q_j_beta);
 
     /* Add viscosity to the pressure */
     visc_acc_term = (Q_i + Q_j) * rhoij_inv;
-#else
+#elif (hydro_props_viscosity_weighting_type == 1)
     const hydro_real_t conv = (dv_dot_dr_Hubble < 0.) ? fac_mu : 0.;
     const hydro_real_t mu_ij = conv * dv_dot_dr_Hubble * r_inv;
     const hydro_real_t c_ij = 
         0.5 * (pi->force.soundspeed + pj->force.soundspeed);
 
-    const hydro_real_t Q_ij_alpha = -const_viscosity_alpha * c_ij * mu_ij;
-    const hydro_real_t Q_ij_beta = const_viscosity_beta * mu_ij * mu_ij;
-    const hydro_real_t Q_ij = (rhoi + rhoj) * (Q_ij_alpha + Q_ij_beta);
+    const hydro_real_t q_ij_alpha = -const_viscosity_alpha * c_ij * mu_ij;
+    const hydro_real_t q_ij_beta = const_viscosity_beta * mu_ij * mu_ij;
+    const hydro_real_t Q_ij = (rhoi + rhoj) * (q_ij_alpha + q_ij_beta);
     
     /* Add viscosity to the pressure */
     visc_acc_term = Q_ij * rhoij_inv;
+#elif (hydro_props_viscosity_weighting_type == 2)
+    const hydro_real_t conv = (dv_dot_dr_Hubble < 0.) ? fac_mu : 0.;
+    const hydro_real_t mu_ij = conv * dv_dot_dr_Hubble * r_inv;
+    const hydro_real_t c_ij = 
+        0.5 * (pi->force.soundspeed + pj->force.soundspeed);
+
+    const hydro_real_t q_ij_alpha = -const_viscosity_alpha * c_ij * mu_ij;
+    const hydro_real_t q_ij_beta = const_viscosity_beta * mu_ij * mu_ij;
+    const hydro_real_t q_ij = 2. * (q_ij_alpha + q_ij_beta) / (rhoi + rhoj);
+    
+    /* Add viscosity to the pressure */
+    visc_acc_term = q_ij;
+#else
+    error("Unknown compiled hydro_props_use_viscosity_weighting value: %d\n"
+          "Valid values are 0, 1, or 2.\n",
+          (int)hydro_props_use_viscosity_weighting);
+#endif
 #endif
 
     visc_du_term = 0.5 * visc_acc_term;
@@ -1142,7 +1179,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
 
     /* New signal velocity */
-#ifdef hydro_props_use_asymmetric_viscosity_mu
+#ifdef hydro_props_use_viscosity_weighting
+#if (hydro_props_viscosity_weighting_type == 0)
     const hydro_real_t v_sig_visc_i =
         signal_velocity(dx, pi, pj, mu_i, const_viscosity_beta);
     const hydro_real_t v_sig_visc_j =
@@ -1151,6 +1189,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #else
     const hydro_real_t v_sig_visc = 
         signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+#endif
 #endif
     const hydro_real_t v_sig_max = max(v_sig_visc, v_sig_cond);
 
