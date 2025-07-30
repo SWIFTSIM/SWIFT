@@ -685,26 +685,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
     /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
     hydro_real_t dv_dot_G_ij = 0.;
-    hydro_real_t dv_dot_G_ij_Hubble = 0.;
 #ifdef hydro_props_use_second_order_velocities_in_divergence
     hydro_vec3_vec3_dot(dv_ij, G_ij, &dv_dot_G_ij);
-
-    const hydro_real_t dv_ij_Hubble[3] = {dv_ij[0] * a_inv + a_Hubble * dx[0],
-                                          dv_ij[1] * a_inv + a_Hubble * dx[1],
-                                          dv_ij[2] * a_inv + a_Hubble * dx[2]};
-    hydro_vec3_vec3_dot(dv_ij_Hubble, G_ij, &dv_dot_G_ij_Hubble);
 #else
-    hydro_vec3_vec3_dot(dv, G_ij, &dv_dot_G_ij);
-
-    const hydro_real_t dv_Hubble[3] = {dv[0] * a_inv + a_Hubble * dx[0],
-                                       dv[1] * a_inv + a_Hubble * dx[1],
-                                       dv[2] * a_inv + a_Hubble * dx[2]};
-    hydro_vec3_vec3_dot(dv_Hubble, G_ij, &dv_dot_G_ij_Hubble);                       
+    hydro_vec3_vec3_dot(dv, G_ij, &dv_dot_G_ij);                      
 #endif
 
     sph_du_term_i *= dv_dot_G_ij;
     sph_du_term_j *= dv_dot_G_ij;
-    visc_du_term *= dv_dot_G_ij_Hubble;
+    visc_du_term *= dv_dot_G_ij;
     cond_du_term *= -G_ij_norm; /* Eq. 24 Rosswog 2020 */
 
     /* Get the time derivative for h. */
@@ -1137,25 +1126,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
     hydro_real_t dv_dot_G_ij = 0.;
-    hydro_real_t dv_dot_G_ij_Hubble = 0.;
 #ifdef hydro_props_use_second_order_velocities_in_divergence
     hydro_vec3_vec3_dot(dv_ij, G_ij, &dv_dot_G_ij);
-
-    const hydro_real_t dv_ij_Hubble[3] = {dv_ij[0] * a_inv + a_Hubble * dx[0],
-                                          dv_ij[1] * a_inv + a_Hubble * dx[1],
-                                          dv_ij[2] * a_inv + a_Hubble * dx[2]};
-    hydro_vec3_vec3_dot(dv_ij_Hubble, G_ij, &dv_dot_G_ij_Hubble);
 #else
-    hydro_vec3_vec3_dot(dv, G_ij, &dv_dot_G_ij);
-
-    const hydro_real_t dv_Hubble[3] = {dv[0] * a_inv + a_Hubble * dx[0],
-                                       dv[1] * a_inv + a_Hubble * dx[1],
-                                       dv[2] * a_inv + a_Hubble * dx[2]};
-    hydro_vec3_vec3_dot(dv_Hubble, G_ij, &dv_dot_G_ij_Hubble);                       
+    hydro_vec3_vec3_dot(dv, G_ij, &dv_dot_G_ij);                      
 #endif
 
     sph_du_term_i *= dv_dot_G_ij;
-    visc_du_term *= dv_dot_G_ij_Hubble;
+    visc_du_term *= dv_dot_G_ij;
     cond_du_term *= -G_ij_norm; /* Eq. 24 Rosswog 2020 */
 
     /* Get the time derivative for h. */

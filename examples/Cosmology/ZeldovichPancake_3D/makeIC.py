@@ -43,7 +43,7 @@ G_in_SI = 6.67408e-11
 
 # Some useful variables in h-full units
 H_0 = 1.0 / Mpc_in_m * 10 ** 5  # h s^-1
-rho_0 = 3.0 * H_0 ** 2 / (8 * math.pi * G_in_SI)  # h^2 kg m^-3
+rho_0 = 3.0 * H_0 ** 2 / (8 * pi * G_in_SI)  # h^2 kg m^-3
 lambda_i = 64.0 / H_0 * 10 ** 5  # h^-1 m (= 64 h^-1 Mpc)
 x_min = -0.5 * lambda_i
 x_max = 0.5 * lambda_i
