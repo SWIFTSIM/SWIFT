@@ -24,7 +24,7 @@
 
 /**
  * @file MAGMA2/hydro_debug.h
- * @brief Density-Energy conservative implementation of SPH,
+ * @brief Density-Energy non-conservative implementation of SPH,
  *        with added MAGMA2 physics (Rosswog 2020) (Debugging routines)
  */
 

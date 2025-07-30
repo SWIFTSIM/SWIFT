@@ -23,7 +23,7 @@
 
 /**
  * @file MAGMA2/hydro_io.h
- * @brief Density-Energy conservative implementation of SPH,
+ * @brief Density-Energy non-conservative implementation of SPH,
  *        with added MAGMA2 physics (Rosswog 2020) (i/o routines)
  */
 
