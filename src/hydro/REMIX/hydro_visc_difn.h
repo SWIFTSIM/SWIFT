@@ -81,6 +81,7 @@ hydro_prepare_gradient_extra_viscosity(struct part *restrict p) {
     p->dh_norm_kernel[i] = 0.f;
     for (int j = 0; j < 3; j++) {
       p->dv_norm_kernel[i][j] = 0.f;
+      p->dv_norm_kernel_same_phase[i][j] = 0.f;
     }
   }
 }
@@ -146,8 +147,18 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
       pj->dv_norm_kernel[i][j] +=
           (pi->v[j] - pj->v[j]) * wj_dx_term[i] * volume_i;
     }
+    // Don't reconstruct quantities for visc at phase interfaces
+    if (pi->phase_state == pj->phase_state) {
+      for (int j = 0; j < 3; j++) {
+        pi->dv_norm_kernel_same_phase[i][j] +=
+            (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
+        pj->dv_norm_kernel_same_phase[i][j] +=
+            (pi->v[j] - pj->v[j]) * wj_dx_term[i] * volume_i;
+      }
+    }
   }
 }
+
 
 /**
  * @brief Extra gradient interaction between two particles (non-symmetric)
@@ -190,6 +201,13 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
       pi->dv_norm_kernel[i][j] +=
           (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
     }
+    // Don't reconstruct quantities for visc at phase interfaces
+    if (pi->phase_state == pj->phase_state) {
+      for (int j = 0; j < 3; j++) {
+        pi->dv_norm_kernel_same_phase[i][j] +=
+            (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
+      }
+    }
   }
 }
 
@@ -223,9 +241,15 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float alpha = viscosity_global.alpha;
   const float beta = viscosity_global.beta;
   const float epsilon = viscosity_global.epsilon;
-  const float a_visc = viscosity_global.a_visc;
-  const float b_visc = viscosity_global.b_visc;
   const float eta_crit = viscosity_global.eta_crit;
+  float a_visc = viscosity_global.a_visc;
+  float b_visc = viscosity_global.b_visc;
+
+  // For slip condition between solid and inviscid fluid
+  if (pi->phase_state != pj->phase_state) {
+    a_visc = 0.f;
+    b_visc = 1.f;
+  }
 
   if ((!pi->is_h_max) && (!pj->is_h_max)) {
     /* A numerators and denominators (eq 22 in Rosswog 2020) */
@@ -240,13 +264,13 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
       for (int j = 0; j < 3; j++) {
         /* Get the A numerators and denominators (eq 22 in Rosswog 2020). dv
          * is from eq 18 */
-        A_i_v += pi->dv_norm_kernel[i][j] * dx[i] * dx[j];
-        A_j_v += pj->dv_norm_kernel[i][j] * dx[i] * dx[j];
+        A_i_v += pi->dv_norm_kernel_same_phase[i][j] * dx[i] * dx[j];
+        A_j_v += pj->dv_norm_kernel_same_phase[i][j] * dx[i] * dx[j];
 
         /* Terms in square brackets in Rosswog 2020 eq 17. Add in FIRST
          * derivative terms */
-        v_reconst_i[j] -= 0.5 * pi->dv_norm_kernel[i][j] * dx[i];
-        v_reconst_j[j] += 0.5 * pj->dv_norm_kernel[i][j] * dx[i];
+        v_reconst_i[j] -= 0.5 * pi->dv_norm_kernel_same_phase[i][j] * dx[i];
+        v_reconst_j[j] += 0.5 * pj->dv_norm_kernel_same_phase[i][j] * dx[i];
       }
     }
 

@@ -154,6 +154,9 @@ struct part {
   /*! Gradient of velocity, calculated using normalised kernel. */
   float dv_norm_kernel[3][3];
 
+  /*! Gradient of velocity of same-phase particles, calculated using normalised kernel. */
+  float dv_norm_kernel_same_phase[3][3];
+
   /*! Gradient of internal energy, calculated using normalised kernel. */
   float du_norm_kernel[3];
 
