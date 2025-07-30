@@ -45,48 +45,65 @@
  *        as well as a number of compile-time parameters.
  */
 
-/*! Consider C matrix can be ill-conditioned above this limit */
-#define const_condition_number_upper_limit 999.f
 
-/*! Viscosity & Conductivitiy parameters -- MUST BE DEFINED AT COMPILE-TIME */
+/* ---------- Viscosity & Conductivitiy parameters ---------- */
 
-/*! Cosmology default beta=2.0.
- * Alpha can be set in the parameter file.
- * Beta is defined as in e.g. Price (2010) Eqn (103) */
-#define const_viscosity_beta 2.0
 
-/*! Cosmology default alpha=1.0 */
+/*! Alpha viscosity, usually ~2. For lower neighbor number, should be higher */
 #define const_viscosity_alpha 1.0
-
-/*! Softening squared (epsilon^2) in Eq. 15 Rosswog 2020 */
-#define const_viscosity_epsilon2 0.01
 
 /*! Artificial conductivity alpha */
 #define const_conductivity_alpha 0.05
 
 /*! Desired number of neighbours -- CRITICAL that this matches hydro props */
-#define const_kernel_target_neighbours 57.0
+#if defined(HYDRO_DIMENSION_1D)
+#define const_kernel_target_neighbours 4.0
+#elif defined(HYDRO_DIMENSION_2D)
+#define const_kernel_target_neighbours 17.0
+#else
+#define const_kernel_target_neighbours 128.//57.0
+#endif
+
+/*! Use the alternative viscosity weighting (each particle has mu_i and mu_j) */
+#define hydro_props_use_asymmetric_viscosity_mu
+
+/*! Use the second-order velocities in v_ij * G_ij  */
+#define hydro_props_use_second_order_velocities_in_divergence
+
+/*! Use double precision for all matrix/vector operations */
+#define hydro_props_use_double_precision
+
+
+/* ---------- These parameters should not be changed ---------- */
+
+
+/*! Consider matrix inversion to be ill-conditioned above this limit */
+#ifdef hydro_props_use_double_precision
+#define const_condition_number_upper_limit 99999.
+#else
+#define const_condition_number_upper_limit 999.
+#endif
 
 /*! Mean interparticle spacing for this kernel and neighbour number */
 #define const_kernel_mean_spacing (kernel_gamma*(4. * M_PI / (3. * \
-    powf(const_kernel_target_neighbours, 1. / 3.))))
+    powf((float)const_kernel_target_neighbours, 1. / 3.))))
 
 /*! eta_crit Rosswog 2020 Eq 23. Of order the mean interparticle spacing. */
-#define const_slope_limiter_eta_crit (const_kernel_mean_spacing)
+#define const_slope_limiter_eta_crit (4.f * const_kernel_mean_spacing)
 
 /*! eta_fold from Frontiere+'17 Equation 51 */
 #define const_slope_limiter_eta_fold 0.2
 
-/*! Activate to use the alternative viscosity weighting */
-//#define hydro_props_use_asymmetric_viscosity
+/*! Softening squared (epsilon^2) in Eq. 15 Rosswog 2020 */
+#define const_viscosity_epsilon2 0.01
 
-/*! Activate to use the second-order velocities in v_ij * G_ij  */
-#define hydro_props_use_second_order_velocities_in_divergence
+/*! Cosmology default const_viscosity_beta=2*const_viscosity_alpha
+ * Beta is defined as in e.g. Price (2010) Eqn (103) */
+#define const_viscosity_beta (2.0 * const_viscosity_alpha)
 
-/*! Activate to use double precision for all matrix/vector operations */
-#define hydro_props_use_double_precision
 
-/* Structures for below */
+/* ---------- Structures for below ---------- */
+
 
 /*! Artificial viscosity parameters */
 struct viscosity_global_data { };

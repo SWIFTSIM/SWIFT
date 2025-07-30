@@ -1502,22 +1502,17 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
   
-  const float rho_inv = hydro_get_comoving_density(p);  
-  p->force.h_dt *= p->h * rho_inv * hydro_dimension_inv;
+  /* Evolve using G_ab if well-conditioned, otherwise regular SPH */
+  if (p->gradients.C_well_conditioned && p->gradients.D_well_conditioned) {
+    p->force.h_dt *= p->h * hydro_dimension_inv;
+  }
+  else {
+    const float rho_inv = 1.f / hydro_get_comoving_density(p);
+    p->force.h_dt *= p->h * rho_inv * hydro_dimension_inv;
+  }
 
   /* dt_min is in physical units, and requires the kernel_gamma factor for h */
   p->dt_min *= kernel_gamma * cosmo->a / cosmo->a_factor_sound_speed;
-
-#ifdef MAGMA2_DEBUG_CHECKS
-  if (p->force.h_dt > 1.e10f) {
-    warning(
-        "Particle %lld has a very large h_dt value (%g). This may be due to "
-        "a very low density or a very high smoothing length."
-        "rho_inv = %g, h = %g, hydro_dimension_inv = %g",
-        p->id, p->force.h_dt,
-        rho_inv, p->h, hydro_dimension_inv);
-  }
-#endif
 }
 
 /**

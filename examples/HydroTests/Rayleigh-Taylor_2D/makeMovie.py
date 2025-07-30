@@ -71,7 +71,7 @@ def project(data, m_res, property, ylim):
     x = x[mask]
     y = y[mask] - np.float64(ylim[0])
 
-    h = data.gas.smoothing_length[mask]
+    h = data.gas.smoothing_lengths[mask]
 
     if property == "density":
         property = "masses"

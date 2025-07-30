@@ -63,14 +63,32 @@ void hydro_props_init(struct hydro_props *p,
   /* ------ Smoothing lengths parameters ---------- */
 
   /* Kernel properties */
-  p->eta_neighbours = parser_get_param_float(params, "SPH:resolution_eta");
+  p->eta_neighbours = 
+      parser_get_opt_param_float(params, "SPH:resolution_eta", 0.f);
+
+  /* Target number of neighbours (optional) */
+  p->target_neighbours = 
+        parser_get_opt_param_float(params, "SPH:target_neighbours", 0.f);
+
+  if (p->eta_neighbours <= 0.f && p->target_neighbours <=0.f) {
+    error("You must set either SPH:resolution_eta or SPH:target_neighbours "
+          "in the parameter file.");
+  }
 
   /* Tolerance for the smoothing length Newton-Raphson scheme */
   p->h_tolerance = parser_get_opt_param_float(params, "SPH:h_tolerance",
                                               hydro_props_default_h_tolerance);
 
   /* Get derived properties */
-  p->target_neighbours = pow_dimension(p->eta_neighbours) * kernel_norm;
+  /* Target number of neighbours */
+  if (p->eta_neighbours > 0.f) {
+    p->target_neighbours = pow_dimension(p->eta_neighbours) * kernel_norm;
+  }
+  else {
+    p->eta_neighbours =
+        powf(p->target_neighbours / kernel_norm, hydro_dimension_inv);
+  }
+
   const float delta_eta = p->eta_neighbours * (1.f + p->h_tolerance);
   p->delta_neighbours =
       (pow_dimension(delta_eta) - pow_dimension(p->eta_neighbours)) *
@@ -88,7 +106,7 @@ void hydro_props_init(struct hydro_props *p,
     error("When using MAGMA2 SPH, the compiled constant "
           "const_kernel_target_neighbours (%g) must be within 5 percent of "
           "the desired number of neighbours (%g) in the parameter file.",
-          const_kernel_target_neighbours, p->target_neighbours);
+          (float)const_kernel_target_neighbours, p->target_neighbours);
   }
 #endif
 #endif

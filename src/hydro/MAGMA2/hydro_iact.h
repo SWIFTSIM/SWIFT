@@ -403,9 +403,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Cosmological factors entering the EoMs */
   const hydro_real_t fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const hydro_real_t a_Hubble = a * H;
-  const hydro_real_t a2_Hubble = a * a_Hubble;
-  const hydro_real_t a_inv = 1. / a;
+  const hydro_real_t a2_Hubble = a * a * H;
 
   const hydro_real_t r = sqrt(r2);
   const hydro_real_t r_inv = r ? 1.0 / r : 0.0;
@@ -520,12 +518,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                              pj->gradients.velocity_hessian,
                                              vj_reconstructed);
 
+
     /* Artificial viscosity */
+
+
     const hydro_real_t dv_ij[3] = {vi_reconstructed[0] - vj_reconstructed[0],
                                    vi_reconstructed[1] - vj_reconstructed[1],
                                    vi_reconstructed[2] - vj_reconstructed[2]};
 
-#ifdef hydro_props_use_asymmetric_viscosity
+    /* Need this for viscosity and conductivity */
+    hydro_real_t dv_dot_dr_ij = 0.;
+    hydro_vec3_vec3_dot(dv_ij, dx_ij, &dv_dot_dr_ij);
+    dv_dot_dr_ij += a2_Hubble * r2;
+
+#ifdef hydro_props_use_asymmetric_viscosity_mu
     const hydro_real_t dv_ji[3] = {-dv_ij[0], -dv_ij[1], -dv_ij[2]};
 
     const hydro_real_t eta_i[3] = {dx_ij[0] * hi_inv,
@@ -605,10 +611,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     /* Add viscosity to the pressure */
     visc_acc_term = (Q_i + Q_j) * rhoij_inv;
 #else
-    hydro_real_t dv_dot_dr_ij = 0.;
-    hydro_vec3_vec3_dot(dv_ij, dx_ij, &dv_dot_dr_ij);
-    dv_dot_dr_ij += a2_Hubble * r2;
-
     const hydro_real_t conv = (dv_dot_dr_ij < 0.) ? fac_mu : 0.;
     const hydro_real_t mu_ij = conv * dv_dot_dr_ij * r_inv;
     const hydro_real_t c_ij = 
@@ -652,23 +654,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                                pj->gradients.u_hessian,
                                                &uj_reconstructed);
     }
-  
-    /* It is important to get the Hubble flow correction right for the
-     * conductivity. The same Hubble flow correction for the viscosity is not
-     * correct, since Rosswog 2020 uses |dv_ij||G_ij| for the heat flux. 
-     * 
-     * The Hubble flow correction is only applied to the velocity, but then 
-     * |G_ij| must be computed in physical coordinates (it is a distance).
-     */
-    const hydro_real_t dv_ij_phys[3] = {dv_ij[0] * a_inv + a_Hubble * dx[0],
-                                        dv_ij[1] * a_inv + a_Hubble * dx[1],
-                                        dv_ij[2] * a_inv + a_Hubble * dx[2]};
 
-    hydro_real_t dv_ij_phys_norm = 0.;
-    hydro_vec3_vec3_dot(dv_ij_phys, dv_ij_phys, &dv_ij_phys_norm);
-    /* Signal velocity is the norm of the velocity difference vector */
-    dv_ij_phys_norm = sqrt(dv_ij_phys_norm);
-    const hydro_real_t v_sig_cond = fac_mu * dv_ij_phys_norm;
+    /* Signal velocity is the velocity difference projected with Hubble flow */
+    const hydro_real_t v_sig_cond = fac_mu * (dv_dot_dr_ij * r_inv);
 
     const hydro_real_t du_ij = ui_reconstructed - uj_reconstructed;
     const hydro_real_t rho_ij = 0.5 * (rhoi + rhoj);
@@ -686,58 +674,42 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     G_ij[1] = 0.5 * (G_i[1] + G_j[1]);
     G_ij[2] = 0.5 * (G_i[2] + G_j[2]);
 
-    const hydro_real_t G_ij_phys[3] = {G_ij[0] * a, 
-                                       G_ij[1] * a, 
-                                       G_ij[2] * a};
-
-    hydro_real_t G_ij_phys_norm = 0.;
-    hydro_vec3_vec3_dot(G_ij, G_ij, &G_ij_phys_norm);
-    G_ij_phys_norm = sqrtf(G_ij_phys_norm);
+    hydro_real_t G_ij_norm = 0.;
+    hydro_vec3_vec3_dot(G_ij, G_ij, &G_ij_norm);
+    G_ij_norm = sqrt(G_ij_norm);
 
     /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
+    hydro_real_t dv_dot_G_ij = 0.;
 #ifdef hydro_props_use_second_order_velocities_in_divergence
-    hydro_real_t dv_dot_G_ij = 0.;
     hydro_vec3_vec3_dot(dv_ij, G_ij, &dv_dot_G_ij);
-
-    hydro_real_t dv_dot_G_ij_phys = 0.;
-    hydro_vec3_vec3_dot(dv_ij_phys, G_ij_phys, &dv_dot_G_ij_phys);
 #else
-    hydro_real_t dv_dot_G_ij = 0.;
     hydro_vec3_vec3_dot(dv, G_ij, &dv_dot_G_ij);
-
-    const hydro_real_t dv_phys[3] = {dv[0] * a_inv + a_Hubble * dx[0],
-                                     dv[1] * a_inv + a_Hubble * dx[1],
-                                     dv[2] * a_inv + a_Hubble * dx[2]};
-    hydro_real_t dv_dot_G_ij_phys = 0.;
-    hydro_vec3_vec3_dot(dv_phys, G_ij_phys, &dv_dot_G_ij_phys);
 #endif
 
     sph_du_term_i *= dv_dot_G_ij;
     sph_du_term_j *= dv_dot_G_ij;
-    /* TODO: Should these be physical? */
-    visc_du_term *= dv_dot_G_ij_phys;
-    cond_du_term *= G_ij_phys_norm; /* Eq. 24 Rosswog 2020 */
+    visc_du_term *= dv_dot_G_ij;
+    cond_du_term *= G_ij_norm; /* Eq. 24 Rosswog 2020 */
 
     /* Get the time derivative for h. */
-    pi->force.h_dt -= mj * dv_dot_G_ij;
-    pj->force.h_dt -= mi * dv_dot_G_ij;
+    pi->force.h_dt += mj * dv_dot_G_ij;
+    pj->force.h_dt += mi * dv_dot_G_ij;
 
 
     /* Timestepping */
 
 
     /* New signal velocity */
-#ifdef hydro_props_use_asymmetric_viscosity
+#ifdef hydro_props_use_asymmetric_viscosity_mu
     const hydro_real_t v_sig_visc_i =
         signal_velocity(dx, pi, pj, mu_i, const_viscosity_beta);
     const hydro_real_t v_sig_visc_j =
         signal_velocity(dx, pj, pi, mu_j, const_viscosity_beta);
-    const hydro_real_t v_sig_visc = max(v_sig_visc_i, v_sig_visc_j);
+    const hydro_real_t v_sig_max = max(v_sig_visc_i, v_sig_visc_j);
 #else
-    const hydro_real_t v_sig_visc =
+    const hydro_real_t v_sig_max =
         signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 #endif
-    const hydro_real_t v_sig_max = max(v_sig_visc, v_sig_cond);
 
     /* Update if we need to */
     pi->v_sig_max = max(pi->v_sig_max, v_sig_max);
@@ -869,9 +841,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Cosmological factors entering the EoMs */
   const hydro_real_t fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const hydro_real_t a_Hubble = a * H;
-  const hydro_real_t a2_Hubble = a * a_Hubble;
-  const hydro_real_t a_inv = 1. / a;
+  const hydro_real_t a2_Hubble = a * a * H;
 
   const hydro_real_t r = sqrtf(r2);
   const hydro_real_t r_inv = r ? 1.0 / r : 0.0;
@@ -983,12 +953,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                              pj->gradients.velocity_hessian,
                                              vj_reconstructed);
 
+
     /* Artificial viscosity */
+
+
     const hydro_real_t dv_ij[3] = {vi_reconstructed[0] - vj_reconstructed[0],
                                    vi_reconstructed[1] - vj_reconstructed[1],
                                    vi_reconstructed[2] - vj_reconstructed[2]};
 
-#ifdef hydro_props_use_asymmetric_viscosity
+    /* Need this for viscosity and conductivity */
+    hydro_real_t dv_dot_dr_ij = 0.;
+    hydro_vec3_vec3_dot(dv_ij, dx_ij, &dv_dot_dr_ij);
+    dv_dot_dr_ij += a2_Hubble * r2;
+
+#ifdef hydro_props_use_asymmetric_viscosity_mu
     const hydro_real_t dv_ji[3] = {-dv_ij[0], -dv_ij[1], -dv_ij[2]};
 
     const hydro_real_t eta_i[3] = {dx_ij[0] * hi_inv,
@@ -1069,10 +1047,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     /* Add viscosity to the pressure */
     visc_acc_term = (Q_i + Q_j) * rhoij_inv;
 #else
-    hydro_real_t dv_dot_dr_ij = 0.;
-    hydro_vec3_vec3_dot(dv_ij, dx_ij, &dv_dot_dr_ij);
-    dv_dot_dr_ij += a2_Hubble * r2;
-
     const hydro_real_t conv = (dv_dot_dr_ij < 0.) ? fac_mu : 0.;
     const hydro_real_t mu_ij = conv * dv_dot_dr_ij * r_inv;
     const hydro_real_t c_ij = 
@@ -1115,26 +1089,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                                pj->gradients.u_hessian,
                                                &uj_reconstructed);
     }
-  
-    /* It is important to get the Hubble flow correction right for the
-     * conductivity. The same Hubble flow correction for the viscosity is not
-     * correct, since Rosswog 2020 uses |dv_ij||G_ij| for the heat flux. 
-     * 
-     * The Hubble flow correction is only applied to the velocity, but then 
-     * |G_ij| must be computed in physical coordinates (it is a distance).
-     * 
-     * The scale factors in velocity and distance cancel, so we end up with 
-     * something like a code velocity * code distance + Hubble flow correction.
-     */
-    const hydro_real_t dv_ij_phys[3] = {dv_ij[0] * a_inv + a_Hubble * dx[0],
-                                        dv_ij[1] * a_inv + a_Hubble * dx[1],
-                                        dv_ij[2] * a_inv + a_Hubble * dx[2]};
 
-    hydro_real_t dv_ij_phys_norm = 0.;
-    hydro_vec3_vec3_dot(dv_ij_phys, dv_ij_phys, &dv_ij_phys_norm);
-    /* Signal velocity is the norm of the velocity difference vector */
-    dv_ij_phys_norm = sqrt(dv_ij_phys_norm);
-    const hydro_real_t v_sig_cond = fac_mu * dv_ij_phys_norm;
+    /* Signal velocity is the velocity difference along r_ij */
+    const hydro_real_t v_sig_cond = fac_mu * (dv_dot_dr_ij * r_inv);
 
     const hydro_real_t du_ij = ui_reconstructed - uj_reconstructed;
     const hydro_real_t rho_ij = 0.5 * (rhoi + rhoj);
@@ -1152,56 +1109,40 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     G_ij[1] = 0.5 * (G_i[1] + G_j[1]);
     G_ij[2] = 0.5 * (G_i[2] + G_j[2]);
 
-    const hydro_real_t G_ij_phys[3] = {G_ij[0] * a, 
-                                       G_ij[1] * a, 
-                                       G_ij[2] * a};
-
-    hydro_real_t G_ij_phys_norm = 0.;
-    hydro_vec3_vec3_dot(G_ij, G_ij, &G_ij_phys_norm);
-    G_ij_phys_norm = sqrtf(G_ij_phys_norm);
+    hydro_real_t G_ij_norm = 0.;
+    hydro_vec3_vec3_dot(G_ij, G_ij, &G_ij_norm);
+    G_ij_norm = sqrt(G_ij_norm);
 
     /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
+    hydro_real_t dv_dot_G_ij = 0.;
 #ifdef hydro_props_use_second_order_velocities_in_divergence
-    hydro_real_t dv_dot_G_ij = 0.;
     hydro_vec3_vec3_dot(dv_ij, G_ij, &dv_dot_G_ij);
-
-    hydro_real_t dv_dot_G_ij_phys = 0.;
-    hydro_vec3_vec3_dot(dv_ij_phys, G_ij_phys, &dv_dot_G_ij_phys);
 #else
-    hydro_real_t dv_dot_G_ij = 0.;
     hydro_vec3_vec3_dot(dv, G_ij, &dv_dot_G_ij);
-
-    const hydro_real_t dv_phys[3] = {dv[0] * a_inv + a_Hubble * dx[0],
-                                     dv[1] * a_inv + a_Hubble * dx[1],
-                                     dv[2] * a_inv + a_Hubble * dx[2]};
-    hydro_real_t dv_dot_G_ij_phys = 0.;
-    hydro_vec3_vec3_dot(dv_phys, G_ij_phys, &dv_dot_G_ij_phys);
 #endif
 
     sph_du_term_i *= dv_dot_G_ij;
-    /* TODO: Should these be physical? */
-    visc_du_term *= dv_dot_G_ij_phys;
-    cond_du_term *= G_ij_phys_norm; /* Eq. 24 Rosswog 2020 */
+    visc_du_term *= dv_dot_G_ij;
+    cond_du_term *= G_ij_norm; /* Eq. 24 Rosswog 2020 */
 
     /* Get the time derivative for h. */
-    pi->force.h_dt -= mj * dv_dot_G_ij;
+    pi->force.h_dt += mj * dv_dot_G_ij;
 
 
     /* Timestepping */
 
 
     /* New signal velocity */
-#ifdef hydro_props_use_asymmetric_viscosity
+#ifdef hydro_props_use_asymmetric_viscosity_mu
     const hydro_real_t v_sig_visc_i =
         signal_velocity(dx, pi, pj, mu_i, const_viscosity_beta);
     const hydro_real_t v_sig_visc_j =
         signal_velocity(dx, pj, pi, mu_j, const_viscosity_beta);
-    const hydro_real_t v_sig_visc = max(v_sig_visc_i, v_sig_visc_j);
+    const hydro_real_t v_sig_max = max(v_sig_visc_i, v_sig_visc_j);
 #else
-    const hydro_real_t v_sig_visc = 
+    const hydro_real_t v_sig_max = 
         signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 #endif
-    const hydro_real_t v_sig_max = max(v_sig_visc, v_sig_cond);
 
     /* Update if we need to */
     pi->v_sig_max = max(pi->v_sig_max, v_sig_max);
