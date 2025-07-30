@@ -49,7 +49,7 @@
 /* ---------- Viscosity & Conductivitiy parameters ---------- */
 
 
-/*! Alpha viscosity, usually ~2. For lower neighbor number, should be higher */
+/*! Alpha viscosity, usually =1.0. For lower neighbor number, should be higher */
 #define const_viscosity_alpha 1.0
 
 /*! Artificial conductivity alpha */
@@ -71,7 +71,7 @@
 //#define hydro_props_use_second_order_velocities_in_divergence
 
 /*! Use double precision for all matrix/vector operations */
-#define hydro_props_use_double_precision
+//#define hydro_props_use_double_precision
 
 
 /* ---------- These parameters should not be changed ---------- */
