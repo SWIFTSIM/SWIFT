@@ -128,16 +128,29 @@ hydro_end_gradient_extra_strength(struct part *restrict p) {}
 __attribute__((always_inline)) INLINE static void
 hydro_prepare_force_extra_strength(struct part *restrict p,
                                    const float density, const float u) {
+
+  const float pressure =
+      gas_pressure_from_internal_energy(density, u, p->mat_id);
+
+  hydro_set_stress_tensor(p, pressure);
+}
+
+/**
+ * @brief Resets strength time derivative fields in preparation
+  * for the sums taking  place in the various force tasks.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_reset_acceleration_strength(struct part *restrict p) {
+
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       p->dv_force_loop[i][j] = 0.f;
     }
   }
-    
-  const float pressure =
-      gas_pressure_from_internal_energy(density, u, p->mat_id);
-    
-  hydro_set_stress_tensor(p, pressure);
+
+  zero_sym_matrix(&p->dS_dt);
 }
 
 /**
@@ -196,7 +209,7 @@ hydro_runner_iact_nonsym_force_extra_strength(struct part *restrict pi,
 __attribute__((always_inline)) INLINE static void
 hydro_end_force_extra_strength(struct part *restrict p) {
 
- calculate_dS_dt(p); 
+ calculate_dS_dt(p);
 }
 
 /**
@@ -210,11 +223,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_e
     struct part *restrict p, const struct xpart *restrict xp) {
 
   p->deviatoric_stress_tensor = xp->deviatoric_stress_tensor_full;
-  #if defined(STRENGTH_DAMAGE)  
+  #if defined(STRENGTH_DAMAGE)
     p->damage = xp->damage_full;
     p->tensile_damage = xp->tensile_damage_full;
     p->shear_damage = xp->shear_damage_full;
-  #endif /* STRENGTH_DAMAGE */   
+  #endif /* STRENGTH_DAMAGE */
 }
 /**
  * @brief Predict additional particle strength properties forward in time when
@@ -226,24 +239,24 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength(
     struct part *restrict p, const float dt_therm) {
 
   // ### FOR LEAPFROG: dS_dt is calculated similarly to e.g. du_dt and S is updated similarly to u
-  // ### dDamage_dt does not depend on positions or velocities of particle neighbours, only on properties 
+  // ### dDamage_dt does not depend on positions or velocities of particle neighbours, only on properties
   // ### of the particle itself. Therefore dDamage_dt is recalculated each time damage is updated.
   // ## Damage depends on S and S can depend on damage through Y makes.
 
-  const int phase_state = p->phase_state; 
+  const int phase_state = p->phase_state;
   const float density = p->rho_evol;
-  const float u = p->u;  
-     
+  const float u = p->u;
+
   #if defined(STRENGTH_DAMAGE)
     const float damage = p->damage;
     const float yield_stress = compute_yield_stress_damaged(p, phase_state, density, u, damage);
-    
-    evolve_damage(p, &p->tensile_damage, &p->shear_damage, &p->damage, p->deviatoric_stress_tensor, yield_stress, density, u, dt_therm);  
+
+    evolve_damage(p, &p->tensile_damage, &p->shear_damage, &p->damage, p->deviatoric_stress_tensor, yield_stress, density, u, dt_therm);
   #else
     const float yield_stress = compute_yield_stress(p, phase_state, density, u);
-  #endif /* STRENGTH_DAMAGE */  
+  #endif /* STRENGTH_DAMAGE */
 
-  evolve_deviatoric_stress(p, &p->deviatoric_stress_tensor, phase_state, dt_therm);      
+  evolve_deviatoric_stress(p, &p->deviatoric_stress_tensor, phase_state, dt_therm);
 
   adjust_deviatoric_stress_tensor_by_yield_stress(
         p, &p->deviatoric_stress_tensor, yield_stress, density, u);
@@ -262,20 +275,20 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength(
 __attribute__((always_inline)) INLINE static void hydro_kick_extra_strength(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm) {
 
-  const int phase_state = xp->phase_state_full;  
+  const int phase_state = xp->phase_state_full;
   const float density = xp->rho_evol_full;
   const float u = xp->u_full;
-    
+
   #if defined(STRENGTH_DAMAGE)
     const float damage = xp->damage_full;
     const float yield_stress = compute_yield_stress_damaged(p, phase_state, density, u, damage);
-    
-    evolve_damage(p, &xp->tensile_damage_full, &xp->shear_damage_full, &xp->damage_full, xp->deviatoric_stress_tensor_full, yield_stress, density, u,  dt_therm);  
+
+    evolve_damage(p, &xp->tensile_damage_full, &xp->shear_damage_full, &xp->damage_full, xp->deviatoric_stress_tensor_full, yield_stress, density, u,  dt_therm);
   #else
-      const float yield_stress = compute_yield_stress(p, phase_state, density, u); 
-  #endif /* STRENGTH_DAMAGE */  
-   
-  evolve_deviatoric_stress(p, &xp->deviatoric_stress_tensor_full, phase_state, dt_therm);  
+      const float yield_stress = compute_yield_stress(p, phase_state, density, u);
+  #endif /* STRENGTH_DAMAGE */
+
+  evolve_deviatoric_stress(p, &xp->deviatoric_stress_tensor_full, phase_state, dt_therm);
 
   adjust_deviatoric_stress_tensor_by_yield_stress(
         p, &xp->deviatoric_stress_tensor_full, yield_stress, density, u);
@@ -296,7 +309,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part_strength
 
   for (int i = 0; i < 6; i++) {
     p->deviatoric_stress_tensor.elements[i] = 0.f;
-    xp->deviatoric_stress_tensor_full.elements[i] = 0.f; 
+    xp->deviatoric_stress_tensor_full.elements[i] = 0.f;
   }
   #ifdef STRENGTH_DAMAGE
     p->damage = 0.f;

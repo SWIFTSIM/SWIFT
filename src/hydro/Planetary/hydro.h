@@ -531,7 +531,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rot_v[2] = 0.f;
 #ifdef MATERIAL_STRENGTH
   hydro_init_part_extra_strength(p);
-#endif /* MATERIAL_STRENGTH */    
+#endif /* MATERIAL_STRENGTH */
 }
 
 /**
@@ -581,7 +581,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
 #ifdef MATERIAL_STRENGTH
   hydro_end_density_extra_strength(p);
-#endif /* MATERIAL_STRENGTH */    
+#endif /* MATERIAL_STRENGTH */
 }
 
 /**
@@ -680,14 +680,14 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
 
-#if defined(MATERIAL_STRENGTH)   
+#if defined(MATERIAL_STRENGTH)
   // Set the density to be used in the force loop to be the evolved density
   p->rho = p->rho_evol;
-#endif /* MATERIAL_STRENGTH */ 
+#endif /* MATERIAL_STRENGTH */
   p->phase_state =
     (enum mat_phase_state)material_phase_state_from_internal_energy(
-     p->rho, p->u, p->mat_id);  
-    
+     p->rho, p->u, p->mat_id);
+
   const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
 
   /* Compute the norm of the curl */
@@ -788,9 +788,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->force.h_dt = 0.0f;
   p->force.v_sig = p->force.soundspeed;
 
-#if defined(MATERIAL_STRENGTH)    
+#if defined(MATERIAL_STRENGTH)
   p->drho_dt = 0.0f;
-#endif /* MATERIAL_STRENGTH */   
+  hydro_reset_acceleration_strength(p);
+#endif /* MATERIAL_STRENGTH */
 }
 
 /**
@@ -816,11 +817,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 #if defined(MATERIAL_STRENGTH)
   p->rho = xp->rho_evol_full;
   p->rho_evol = xp->rho_evol_full;
-  p->phase_state = xp->phase_state_full;  
-    
-  hydro_reset_predicted_values_extra_strength(p, xp); 
-#endif /* MATERIAL_STRENGTH */   
-  
+  p->phase_state = xp->phase_state_full;
+
+  hydro_reset_predicted_values_extra_strength(p, xp);
+#endif /* MATERIAL_STRENGTH */
+
   /* Compute the pressure */
   const float pressure =
       gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
@@ -862,7 +863,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
 #ifdef MATERIAL_STRENGTH
   hydro_predict_extra_strength(p, dt_therm);
-#endif /* MATERIAL_STRENGTH */    
+#endif /* MATERIAL_STRENGTH */
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
@@ -882,14 +883,14 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->h *= expf(w1);
 
-  /* Predict density */    
+  /* Predict density */
 #if defined(MATERIAL_STRENGTH)
   p->rho_evol += p->drho_dt * dt_therm;
 
   /* compute minimum density */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float min_rho = p->mass * kernel_root * h_inv_dim;
-    
+
   p->rho_evol = max(p->rho_evol, min_rho);
   p->rho = p->rho_evol;
 #else
@@ -897,8 +898,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   if (fabsf(w2) < 0.2f)
     p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
   else
-    p->rho *= expf(w2);  
-#endif /* MATERIAL_STRENGTH */   
+    p->rho *= expf(w2);
+#endif /* MATERIAL_STRENGTH */
 
   /* Compute the new pressure */
   const float pressure =
@@ -912,10 +913,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.soundspeed = soundspeed;
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
-  
+
   p->phase_state =
     (enum mat_phase_state)material_phase_state_from_internal_energy(
-     p->rho, p->u, p->mat_id);     
+     p->rho, p->u, p->mat_id);
 }
 
 /**
@@ -965,7 +966,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
 #ifdef MATERIAL_STRENGTH
   hydro_kick_extra_strength(p, xp, dt_therm);
-#endif /* MATERIAL_STRENGTH */    
+#endif /* MATERIAL_STRENGTH */
 
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
@@ -1000,7 +1001,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   xp->phase_state_full =
     (enum mat_phase_state)material_phase_state_from_internal_energy(
-     xp->rho_evol_full, xp->u_full, p->mat_id);    
+     xp->rho_evol_full, xp->u_full, p->mat_id);
 
 #endif /* MATERIAL_STRENGTH */
 }
@@ -1055,16 +1056,16 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   p->phase_state =
     (enum mat_phase_state)material_phase_state_from_internal_energy(
-     p->rho, p->u, p->mat_id);  
+     p->rho, p->u, p->mat_id);
 
   #if defined(MATERIAL_STRENGTH)
     p->rho_evol = p->rho;
     xp->rho_evol_full = p->rho_evol;
     xp->phase_state_full = p->phase_state;
-    
+
     hydro_first_init_part_strength(p, xp);
   #endif /* MATERIAL_STRENGTH */
-    
+
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
 }
