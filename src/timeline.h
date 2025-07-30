@@ -47,8 +47,12 @@ typedef int8_t timebin_t;
 /*! Fictitious time-bin for particles not awaken */
 #define time_bin_not_awake (-num_time_bins)
 
-/* Maximal difference in time-bins between neighbouring particles */
+/*! Maximal difference in time-bins between neighbouring particles */
 #define time_bin_neighbour_max_delta_bin 2
+
+/*! Maximal difference in time-bins between neighbouring star particle
+ * and gas particle for injection of radiation */
+#define time_bin_neighbour_max_delta_bin_rt_injection 4
 
 /**
  * @brief Returns the integer time interval corresponding to a time bin
