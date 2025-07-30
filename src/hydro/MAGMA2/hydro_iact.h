@@ -403,7 +403,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Cosmological factors entering the EoMs */
   const hydro_real_t fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const hydro_real_t a2_Hubble = a * a * H;
+  const hydro_real_t a_inv = 1. / a;
+  const hydro_real_t a_Hubble = a * H;
+  const hydro_real_t a2_Hubble = a * a_Hubble;
 
   const hydro_real_t r = sqrt(r2);
   const hydro_real_t r_inv = r ? 1.0 / r : 0.0;
@@ -687,22 +689,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 #ifdef hydro_props_use_second_order_velocities_in_divergence
     hydro_vec3_vec3_dot(dv_ij, G_ij, &dv_dot_G_ij);
 
-    const hydro_real_t dv_ij_Hubble[3] = {dv_ij[0] + a2_Hubble * dx[0],
-                                          dv_ij[1] + a2_Hubble * dx[1],
-                                          dv_ij[2] + a2_Hubble * dx[2]};
+    const hydro_real_t dv_ij_Hubble[3] = {dv_ij[0] * a_inv + a_Hubble * dx[0],
+                                          dv_ij[1] * a_inv + a_Hubble * dx[1],
+                                          dv_ij[2] * a_inv + a_Hubble * dx[2]};
     hydro_vec3_vec3_dot(dv_ij_Hubble, G_ij, &dv_dot_G_ij_Hubble);
 #else
     hydro_vec3_vec3_dot(dv, G_ij, &dv_dot_G_ij);
-    const hydro_real_t dv_Hubble[3] = {dv[0] + a2_Hubble * dx[0],
-                                       dv[1] + a2_Hubble * dx[1],
-                                       dv[2] + a2_Hubble * dx[2]};
+
+    const hydro_real_t dv_Hubble[3] = {dv[0] * a_inv + a_Hubble * dx[0],
+                                       dv[1] * a_inv + a_Hubble * dx[1],
+                                       dv[2] * a_inv + a_Hubble * dx[2]};
     hydro_vec3_vec3_dot(dv_Hubble, G_ij, &dv_dot_G_ij_Hubble);                       
 #endif
 
     sph_du_term_i *= dv_dot_G_ij;
     sph_du_term_j *= dv_dot_G_ij;
     visc_du_term *= dv_dot_G_ij_Hubble;
-    cond_du_term *= G_ij_norm; /* Eq. 24 Rosswog 2020 */
+    cond_du_term *= -G_ij_norm; /* Eq. 24 Rosswog 2020 */
 
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dv_dot_G_ij;
@@ -855,7 +858,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Cosmological factors entering the EoMs */
   const hydro_real_t fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const hydro_real_t a2_Hubble = a * a * H;
+  const hydro_real_t a_inv = 1. / a;
+  const hydro_real_t a_Hubble = a * H;
+  const hydro_real_t a2_Hubble = a * a_Hubble;
 
   const hydro_real_t r = sqrtf(r2);
   const hydro_real_t r_inv = r ? 1.0 / r : 0.0;
@@ -1136,21 +1141,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #ifdef hydro_props_use_second_order_velocities_in_divergence
     hydro_vec3_vec3_dot(dv_ij, G_ij, &dv_dot_G_ij);
 
-    const hydro_real_t dv_ij_Hubble[3] = {dv_ij[0] + a2_Hubble * dx[0],
-                                          dv_ij[1] + a2_Hubble * dx[1],
-                                          dv_ij[2] + a2_Hubble * dx[2]};
+    const hydro_real_t dv_ij_Hubble[3] = {dv_ij[0] * a_inv + a_Hubble * dx[0],
+                                          dv_ij[1] * a_inv + a_Hubble * dx[1],
+                                          dv_ij[2] * a_inv + a_Hubble * dx[2]};
     hydro_vec3_vec3_dot(dv_ij_Hubble, G_ij, &dv_dot_G_ij_Hubble);
 #else
     hydro_vec3_vec3_dot(dv, G_ij, &dv_dot_G_ij);
-    const hydro_real_t dv_Hubble[3] = {dv[0] + a2_Hubble * dx[0],
-                                       dv[1] + a2_Hubble * dx[1],
-                                       dv[2] + a2_Hubble * dx[2]};
+
+    const hydro_real_t dv_Hubble[3] = {dv[0] * a_inv + a_Hubble * dx[0],
+                                       dv[1] * a_inv + a_Hubble * dx[1],
+                                       dv[2] * a_inv + a_Hubble * dx[2]};
     hydro_vec3_vec3_dot(dv_Hubble, G_ij, &dv_dot_G_ij_Hubble);                       
 #endif
 
     sph_du_term_i *= dv_dot_G_ij;
     visc_du_term *= dv_dot_G_ij_Hubble;
-    cond_du_term *= G_ij_norm; /* Eq. 24 Rosswog 2020 */
+    cond_du_term *= -G_ij_norm; /* Eq. 24 Rosswog 2020 */
 
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dv_dot_G_ij;
