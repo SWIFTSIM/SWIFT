@@ -247,10 +247,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 }
 
 /**
- * @brief Prepare a particle for the force calculation.
+ * @brief Prepare a particle for the force (flux) calculation.
  *
- * For ShadowSWIFT, this function is called before the flux exchange, and is
- * mainly used to apply the pressure floor if needed.
+ * For ShadowSWIFT, this function is called before the flux exchange, but
+ * nothing needs to be done here.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -265,29 +265,41 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
+  /* Nothing to do here */
+}
 
-  /* Apply the pressure floor. */
+/**
+ * @brief Applies the pressure floor. Note: the extrapolations in time (if any)
+ * are taken into account when evaluating the pressure floor. The returned
+ * pressure will be so that it does not violate the pressure floor, even after
+ * the extrapolations are applied.
+ *
+ * @p The current #part
+ * @xp The accompanying #xpart
+ * @cosmo The #cosmo struct
+ * @pressure_floor The #pressure_floor_props
+ * @return The pressure satisfying the pressure floor as described above.
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_pressure_with_floor(
+    struct part *restrict p, const struct xpart *restrict xp,
+    const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor) {
   /* Temporarily apply the time extrapolation to density as it is used in the
    * pressure floor... */
-#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+  #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
   const float d_rho = p->dW_time[0];
   const float d_P = p->dW_time[4];
-#else
+  #else
   const float d_rho = 0.f;
   const float d_P = 0.f;
-#endif
+  #endif
   const float rho = p->rho;
   p->rho += d_rho;
   const float pressure_with_floor = pressure_floor_get_comoving_pressure(
                                         p, pressure_floor, p->P + d_P, cosmo) -
                                     d_P;
   p->rho = rho;
-  if (p->P < pressure_with_floor) {
-    p->P = pressure_with_floor;
-    /* TODO: Should we update the internal energy and/or entropy as well to
-     * reflect this change? */
-    /* TODO: Should we update the total energy? */
-  }
+  return pressure_with_floor;
 }
 
 /**
@@ -348,6 +360,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   hydro_part_get_primitive_variables(p, W);
   hydro_gradients_extrapolate_in_time(p, W, dt_therm, p->dW_time);
 #endif
+
+  const float pressure_with_floor =
+      hydro_get_pressure_with_floor(p, xp, cosmo, pressure_floor);
+  if (pressure_with_floor < p->P) {
+    p->P = pressure_with_floor;
+    /* TODO: update the entropic function also? */
+  }
 
   /* Reset the delaunay flags after a particle has been drifted */
   p->geometry.delaunay_flags = 0;
