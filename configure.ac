@@ -2595,6 +2595,9 @@ AC_ARG_ENABLE([moving-mesh-cell-face-connections],
 if test "$enable_moving_mesh_cell_face_connections" = "yes"; then
     AC_DEFINE([MOVING_MESH_STORE_CELL_FACE_CONNECTIONS], [1],
         [Moving mesh: store cell-face connections (expensive, needed for e.g. mesh de-refinement)])
+else
+    AC_DEFINE([MOVING_MESH_STORE_CELL_FACE_CONNECTIONS], [0],
+            [Moving mesh: Do not store cell-face connections (expensive, needed for e.g. mesh de-refinement)])
 fi
 
 # Hydro does mass flux?

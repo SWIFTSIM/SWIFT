@@ -2296,6 +2296,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       }
       /* No conflicts were found, indicate that this particle will be killed
        * during the flux exchange */
+#ifdef SWIFT_DEBUG_CHECKS
+      if (total_weight <= 0.)
+        error("Cannot do apoptosis, since total weight is 0!");
+#endif
       pi->time_bin = time_bin_apoptosis;
       /* Apply any leftover fluxes */
       pi->conserved.mass += pi->flux.mass;
@@ -2304,7 +2308,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       pi->conserved.momentum[2] += pi->flux.momentum[2];
       pi->conserved.energy += pi->flux.energy;
       pi->conserved.entropy += pi->flux.entropy;
-      pi->apoptosis_data.total_weight_inv = 1. / total_weight;
+      pi->apoptosis_data.total_weight_inv =
+          total_weight > 0. ? 1. / total_weight : 0.;
 #ifdef SWIFT_DEBUG_CHECKS
       pi->apoptosis_data.transferred_fraction = 0.;
       pi->apoptosis_data.transfer_count = 0;
