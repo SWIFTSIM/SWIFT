@@ -360,16 +360,19 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
   float du_dt;
 
   // Do we need to catch old mass?
-  m_inv_1 = 1.f / p->conserved.mass;
-  if (p->conserved.mass < 0.) {
-    warning("Mass 1 is < 0!");
+  if (p->conserved.mass == 0.) {
+    warning("Mass 1 is = 0, setting internal energy dt to 0!");
+    m_inv_1 = 0.;
+  } else {
+    m_inv_1 = 1.f / p->conserved.mass;
   }
 
-  if ((p->conserved.mass + p->flux.mass) > 0.) {
-    m_inv_2 = 1.f / (p->conserved.mass + p->flux.mass);
+  // Catch updated mass?
+  if ((p->conserved.mass + p->flux.mass) <= 0.) {
+    warning("Mass 2 is <= 0, setting internal energy dt to 0!");
+    m_inv_2 = 0.;
   } else {
-    warning("Mass 2 is < 0!");
-    return 0.;
+    m_inv_2 = 1.f / (p->conserved.mass + p->flux.mass);
   }
 
   ekin_1 = 0.5 * (p->conserved.momentum[0] * p->conserved.momentum[0]
@@ -387,7 +390,6 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
   du_dt = (internal_energy_2 - internal_energy_1) / p->flux.dt;
 
   return du_dt;
- return du_dt;
 }
 
 /**

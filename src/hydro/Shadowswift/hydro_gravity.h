@@ -57,7 +57,7 @@ hydro_gravity_energy_update_term(const float dt_kick_corr1,
   /* Default onto simpler calculation if dE springel fails.
    * Seen in Uttenhove PhD thesis Eq 161
    * Also includes fluxes[4] incase it goes negative from addition later*/
-  if (conserved_energy + dE +  fluxes[4]< 0.) {
+  if (conserved_energy + dE +  fluxes[4] < 0.) {
 
     /* Corresponds to momentum p_n*/
     float conserved_momentum1[3] = {

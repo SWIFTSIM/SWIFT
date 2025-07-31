@@ -165,6 +165,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
 
   if (p->conserved.mass <= 0.) {
     hydro_gradients_init(p);
+    message("conserved_mass = %f", p->conserved.mass);
 #ifdef SHADOWSWIFT_WARNINGS
     warning("Mass is 0, falling back to first order for this particle");
 #endif

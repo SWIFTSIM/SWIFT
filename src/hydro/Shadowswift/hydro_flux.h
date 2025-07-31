@@ -139,9 +139,7 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
 
   float Qi[6], Qj[6];
   hydro_part_get_conserved_variables(pi, Qi);
-  Qi[4] += pi->gravity.dE_prev;
   hydro_part_get_conserved_variables(pj, Qj);
-  Qj[4] += pj->gravity.dE_prev;
 
   for (int k = 0; k < 6; ++k) {
     Qi[k] -= flux_fac_i * fluxes[k];
