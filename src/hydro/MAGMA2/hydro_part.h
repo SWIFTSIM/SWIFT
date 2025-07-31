@@ -129,8 +129,10 @@ struct part {
   /*! Particle density. */
   float rho;
 
+#ifdef MAGMA2_DEBUG_CHECKS
   /*! Number of neighbors in the kernel */
   int num_ngb;
+#endif
 
   /*! Minimum smoothing length in the kernel */
   float h_min;
@@ -172,6 +174,19 @@ struct part {
 
   /* Store gradients in a separate struct */
   struct {
+#ifdef MAGMA2_DEBUG_CHECKS
+    /*! Adiabatic kernel correction factor numerator */
+    hydro_real_t adiabatic_f_numerator;
+
+    /*! Adiabatic kernel correction factor */
+    hydro_real_t adiabatic_f;
+#endif
+
+    /*! Sum of the kernel weights */
+    hydro_real_t wcount;
+    
+    /*! Correction matrix Omega for smoothing length variation */
+    hydro_real_t grad_W_correction;
 
     /*! Correction matrix (C^ki in Rosswog 2020) */
     hydro_real_t correction_matrix[3][3];

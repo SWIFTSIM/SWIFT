@@ -50,7 +50,7 @@
 
 
 /*! Alpha viscosity, usually =1.0. For lower neighbor number, should be higher */
-#define const_viscosity_alpha 1.5
+#define const_viscosity_alpha 2.0
 
 /*! Artificial conductivity alpha */
 #define const_conductivity_alpha 0.05

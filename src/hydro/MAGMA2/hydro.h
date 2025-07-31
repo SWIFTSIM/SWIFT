@@ -502,8 +502,12 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
+#ifdef MAGMA2_DEBUG_CHECKS
   p->num_ngb = 0;
+  p->gradients.adiabatic_f_numerator = 0.;
+#endif
 
+  p->gradients.wcount = 0.;
   p->gradients.u_well_conditioned = 1;
   p->gradients.D_well_conditioned = 1;
   /* These must be zeroed before the density loop */
@@ -686,7 +690,6 @@ __attribute__((always_inline)) INLINE static void hydro_vec3_vec3_outer(
  * @param A_ij The ratio of the gradients of the two particles.
  * @param eta_i The normed smoothing length of the first particle.
  * @param eta_j The normed smoothing length of the second particle.
- * @param num_ngb The number of neighbours in the scheme.
  */
 __attribute__((always_inline)) INLINE static
 hydro_real_t hydro_van_leer_phi(const hydro_real_t A_ij,
@@ -784,7 +787,6 @@ hydro_real_t hydro_vector_van_leer_A(const hydro_real_t (*restrict grad_i)[3],
  * @param dx The distance vector between the two particles ( ri - rj ).
  * @param eta_i The normed smoothing length of the first particle.
  * @param eta_j The normed smoothing length of the second particle.
- * @param num_ngb The number of neighbours in the scheme.
  */
 __attribute__((always_inline)) INLINE static
 hydro_real_t hydro_scalar_van_leer_phi(const hydro_real_t *restrict grad_i,
@@ -808,7 +810,6 @@ hydro_real_t hydro_scalar_van_leer_phi(const hydro_real_t *restrict grad_i,
  * @param dx The distance vector between the two particles ( ri - rj ).
  * @param eta_i The normed smoothing length of the first particle.
  * @param eta_j The normed smoothing length of the second particle.
- * @param num_ngb The number of neighbours in the scheme.
  */
 __attribute__((always_inline)) INLINE static
 hydro_real_t hydro_vector_van_leer_phi(const hydro_real_t (*restrict grad_i)[3],
@@ -930,6 +931,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.rho_dh *= h_inv_dim_plus_one;
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
+
+  /* Need this for correct dh/dt */
+  p->gradients.wcount = p->density.wcount;
 
   p->gradients.u_aux[0] *= h_inv_dim_plus_one;
   p->gradients.u_aux[1] *= h_inv_dim_plus_one;
@@ -1091,6 +1095,55 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   /* Update variables. */
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
+
+  
+  /* ------ Compute the kernel correction for SPH gradients ------ */
+
+
+  /* Note: This is only for SPH gradients, the MAGMA2 gradients are already
+   * corrected. */
+
+  /* Compute the "grad h" term  - Note here that we have \tilde{x}
+   * as 1 as we use the local number density to find neighbours. This
+   * introduces a j-component that is considered in the force loop,
+   * meaning that this cached grad_h_term gives:
+   *
+   * f_ij = 1.f - grad_h_term_i / m_j */
+  const float common_factor = p->h * hydro_dimension_inv / p->density.wcount;
+  float grad_h_term;
+  float grad_W_term = 0.f;
+
+  /* Ignore changing-kernel effects when h ~= h_max */
+  if (p->h > 0.9999f * hydro_props->h_max) {
+    grad_h_term = 0.f;
+    warning("h ~ h_max for particle with ID %lld (h: %g)", p->id, p->h);
+  } 
+  else {
+    grad_W_term = common_factor * p->density.wcount_dh;
+
+    if (grad_W_term < -0.9999f) {
+      /* if we get here, we either had very small neighbour contributions
+         (which should be treated as a no neighbour case in the ghost) or
+         a very weird particle distribution (e.g. particles sitting on
+         top of each other). Either way, we cannot use the normal
+         expression, since that would lead to overflow or excessive round
+         off and cause excessively high accelerations in the force loop */
+      grad_h_term = 0.f;
+      grad_W_term = 0.f;
+      warning(
+          "grad_W_term very small for particle with ID %lld (h: %g, wcount: "
+          "%g, wcount_dh: %g)",
+          p->id, p->h, p->density.wcount, p->density.wcount_dh);
+    } 
+    else {
+      grad_h_term = common_factor * p->density.rho_dh / (1.f + grad_W_term);
+    }
+  }
+
+  /* Update variables. */
+  p->force.f = grad_h_term;
+  p->gradients.grad_W_correction = 1.f + grad_W_term;
+
 }
 
 /**
@@ -1148,6 +1201,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
   /* Normalize correctly with the smoothing length */
+#ifdef MAGMA2_DEBUG_CHECKS
+  p->gradients.adiabatic_f_numerator *= kernel_gamma_inv * h_inv;
+#endif
+
   p->gradients.u[0] *= h_inv_dim;
   p->gradients.u[1] *= h_inv_dim;
   p->gradients.u[2] *= h_inv_dim;
@@ -1309,7 +1366,9 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
 
+#ifdef MAGMA2_DEBUG_CHECKS
   p->num_ngb = 0;
+#endif
   p->gradients.C_well_conditioned = 0;
   p->gradients.D_well_conditioned = 0;
   p->gradients.u_well_conditioned = 0;
@@ -1363,6 +1422,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->h_min = p->h;
   p->v_sig_max = p->force.soundspeed;
   p->dt_min = p->h_min / p->v_sig_max;
+
+#ifdef MAGMA2_DEBUG_CHECKS
+  /* Kernel correction factor */
+  p->gradients.adiabatic_f = 0.;
+#endif
 }
 
 /**
@@ -1510,11 +1574,26 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
   
-  const float rho_inv = 1.f / hydro_get_comoving_density(p);
-  p->force.h_dt *= p->h * rho_inv * hydro_dimension_inv;
+  const hydro_real_t wcount_inv = 1. / p->gradients.wcount;
+  const hydro_real_t Omega_inv = 
+      (p->gradients.grad_W_correction > 0.) ? 
+          1. / p->gradients.grad_W_correction
+          : 1.;
+
+  p->force.h_dt *= Omega_inv * p->h * hydro_dimension_inv * wcount_inv;
 
   /* dt_min is in physical units, and requires the kernel_gamma factor for h */
   p->dt_min *= kernel_gamma * cosmo->a / cosmo->a_factor_sound_speed;
+
+#ifdef MAGMA2_DEBUG_CHECKS
+  /* Calculate smoothing length powers */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Kernel correction factors */
+  p->gradients.adiabatic_f *= h_inv_dim;
+#endif
 }
 
 /**
@@ -1630,6 +1709,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->gradients.C_well_conditioned = 1;
   p->gradients.D_well_conditioned = 1;
   p->gradients.u_well_conditioned = 1;
+  p->gradients.grad_W_correction = 1.;
 #ifdef MAGMA2_DEBUG_CHECKS
   p->debug.C_ill_conditioned_count = 0;
   p->debug.D_ill_conditioned_count = 0;
