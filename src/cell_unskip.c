@@ -3580,6 +3580,9 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int with_timestep_limiter = e->policy & engine_policy_timestep_limiter;
   const int nodeID = e->nodeID;
+  const int with_feedback = e->policy & engine_policy_feedback;
+
+
 
 #ifdef WITH_MPI
   if (e->policy & engine_policy_sinks)
@@ -3728,6 +3731,10 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->top->timestep_collect != NULL)
       scheduler_activate(s, c->top->timestep_collect);
+    if (c->top->hydro.star_formation != NULL) {
+      cell_activate_star_formation_tasks(c->top, s, with_feedback);
+      cell_activate_super_spart_drifts(c->top, s);
+    }
 
     /* TODO add other task types here as well */
   }

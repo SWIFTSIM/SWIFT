@@ -240,7 +240,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   float Whalf[5];
   float P_star = riemann_solver_solve(Wi, Wj, Whalf, n_unit);
   riemann_flux_from_half_state(Whalf, vij, n_unit, totflux);
-  const float mach_number = riemann_get_max_mach_number(Wi, Wj, P_star);
+  float mach_number = riemann_get_max_mach_number(Wi, Wj, P_star);
+
   float entropy_flux;
   if (totflux[0] > 0.f) {
     entropy_flux = totflux[0] * Wi[5];
@@ -259,9 +260,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
                                        totflux);
 #endif
 
+  /* Call positivity limiter */
+  hydro_part_positivity_limiter_fluxes(pi, pj, n_unit, vij, surface_area,
+                                   hydro->epsilon_rho, hydro->epsilon_P,
+                                   totflux);
+
   hydro_grav_work_from_half_state(pi, pj, shift, Whalf, vij, centroid, n_unit,
                                   surface_area, min_dt);
 #else
+  /* Get flux and limit flux to positivity */
   float mach_number =
       hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, totflux);
 #ifdef SHADOWSWIFT_FLUX_LIMITER
@@ -278,6 +285,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
     pj->timestepvars.mach_number =
         fmaxf(pj->timestepvars.mach_number, mach_number);
   }
+
 
   /* If we're working with RT, we need to pay additional attention to the
    * individual mass fractions of ionizing species. */
