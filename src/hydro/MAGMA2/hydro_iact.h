@@ -714,9 +714,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     cond_du_term *= -G_ij_norm; /* Eq. 24 Rosswog 2020 */
 
     /* Get the time derivative for h. */
+#ifdef hydro_props_use_second_order_velocities_in_dhdt
     pi->force.h_dt -= mj * dv_dot_G_ij;
     pj->force.h_dt -= mi * dv_dot_G_ij;
+#else
+    const hydro_real_t hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
+    const hydro_real_t hj_inv_dim_plus_one = hj_inv * hj_inv_dim;
+    const hydro_real_t wi_dr = hi_inv_dim_plus_one * wi_dx;
+    const hydro_real_t wj_dr = hj_inv_dim_plus_one * wj_dx;
 
+    /* Remove Hubble flow */
+    const hydro_real_t dv_dot_dr = dv_dot_dr_Hubble - a2_Hubble * r2;
+
+    pi->force.h_dt -= mj * dv_dot_dr * r_inv * wi_dr;
+    pj->force.h_dt -= mi * dv_dot_dr * r_inv * wj_dr;
+#endif
 
     /* Timestepping */
 
@@ -1171,9 +1183,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     visc_du_term *= dv_dot_G_ij;
     cond_du_term *= -G_ij_norm; /* Eq. 24 Rosswog 2020 */
 
+#ifdef hydro_props_use_second_order_velocities_in_dhdt
     /* Get the time derivative for h. */
     pi->force.h_dt -= mj * dv_dot_G_ij;
+#else
+    const hydro_real_t hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
+    const hydro_real_t wi_dr = hi_inv_dim_plus_one * wi_dx;
 
+    /* Remove Hubble flow */
+    const hydro_real_t dv_dot_dr = dv_dot_dr_Hubble - a2_Hubble * r2;
+
+    pi->force.h_dt -= mj * dv_dot_dr * r_inv * wi_dr;
+#endif
 
     /* Timestepping */
 

@@ -107,6 +107,9 @@
 /*! Use the second-order velocities in v_ij * G_ij (this doesn't work) */
 //#define hydro_props_use_second_order_velocities_in_divergence
 
+/*! Use v_ij * G_ij in dh/dt evolution */
+//#define hydro_props_use_second_order_velocities_in_dhdt
+
 #ifdef hydro_props_viscosity_weighting_type
 #ifndef hydro_props_use_viscosity_weighting
 #define hydro_props_use_viscosity_weighting
