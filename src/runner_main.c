@@ -473,6 +473,10 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_gpart) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_fof) {
+            free(t->buff);
           } else if (t->subtype == task_subtype_faces) {
             free(t->buff);
           }
@@ -510,6 +514,8 @@ void *runner_main(void *data) {
             /* Nothing to do here. Unpacking done in a separate task */
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
+          } else if (t->subtype == task_subtype_fof) {
+            /* Nothing to do here. */
           } else if (t->subtype == task_subtype_spart_density) {
             runner_do_recv_spart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_part_prep1) {
@@ -529,11 +535,25 @@ void *runner_main(void *data) {
           break;
 
         case task_type_pack:
-          runner_do_pack_limiter(r, ci, &t->buff, 1);
-          task_get_unique_dependent(t)->buff = t->buff;
+          if (t->subtype == task_subtype_limiter) {
+            runner_do_pack_limiter(r, ci, &t->buff, 1);
+            task_get_unique_dependent(t)->buff = t->buff;
+          } else if (t->subtype == task_subtype_gpart) {
+            runner_do_pack_gpart(r, ci, &t->buff, 1);
+            task_get_unique_dependent(t)->buff = t->buff;
+          } else if (t->subtype == task_subtype_fof) {
+            runner_do_pack_fof(r, ci, &t->buff, 1);
+            task_get_unique_dependent(t)->buff = t->buff;
+          } else {
+            error("Unknown/invalid task subtype (%d).", t->subtype);
+          }
           break;
         case task_type_unpack:
-          runner_do_unpack_limiter(r, ci, t->buff, 1);
+          if (t->subtype == task_subtype_limiter) {
+            runner_do_unpack_limiter(r, ci, t->buff, 1);
+          } else {
+            error("Unknown/invalid task subtype (%d).", t->subtype);
+          }
           break;
 #endif
         case task_type_grav_down:

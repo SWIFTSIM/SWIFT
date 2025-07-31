@@ -68,11 +68,17 @@ extern int engine_max_parts_per_cooling;
  * @param e The #engine.
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_pack_grav The grav packing #task, if it has already been created.
  * @param t_grav The send_grav #task, if it has already been created.
+ * @param t_pack_fof The fof packing #task, if it has already been created.
+ * @param t_fof The send_fof #task, if it has already been created.
+ * @param with_fof Are we running with FOF?
  */
 void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   struct cell *cj, struct task *t_grav_counts,
-                                  struct task *t_grav,
+                                  struct task *t_grav, struct task *t_pack_grav,
+                                  struct task *t_fof, struct task *t_pack_fof,
+                                  const int with_fof,
                                   const int with_star_formation) {
 
 #ifdef WITH_MPI
@@ -114,22 +120,43 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
                                  ci->mpi.tag, 0, ci, cj);
 
+      t_pack_grav = scheduler_addtask(s, task_type_pack, task_subtype_gpart, 0,
+                                      0, ci, cj);
+
+      /* Pack before you send */
+      scheduler_addunlock(s, t_pack_grav, t_grav);
+
+      if (with_fof) {
+        t_fof = scheduler_addtask(s, task_type_send, task_subtype_fof,
+                                  ci->mpi.tag, 0, ci, cj);
+
+        t_pack_fof = scheduler_addtask(s, task_type_pack, task_subtype_fof, 0,
+                                       0, ci, cj);
+
+        /* Pack before you send */
+        scheduler_addunlock(s, t_pack_fof, t_fof);
+      }
+
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->grav.super->grav.down);
 
       if (with_star_formation && ci->top->hydro.count > 0)
         scheduler_addunlock(s, t_grav, ci->top->hydro.star_formation);
 
-      /* Drift before you send */
-      scheduler_addunlock(s, ci->grav.super->grav.drift, t_grav);
+      /* Drift before you pack + send */
+      scheduler_addunlock(s, ci->grav.super->grav.drift, t_pack_grav);
 
       if (gravity_after_hydro_density)
-        scheduler_addunlock(s, ci->grav.super->grav.init_out, t_grav);
+        scheduler_addunlock(s, ci->grav.super->grav.init_out, t_pack_grav);
     }
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
-
+    engine_addlink(e, &ci->mpi.pack, t_pack_grav);
+    if (with_fof) {
+      engine_addlink(e, &ci->mpi.send, t_fof);
+      engine_addlink(e, &ci->mpi.pack, t_pack_fof);
+    }
     if (with_star_formation && ci->hydro.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_grav_counts);
     }
@@ -140,7 +167,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav_counts,
-                                     t_grav, with_star_formation);
+                                     t_grav, t_pack_grav, t_fof, t_pack_fof,
+                                     with_fof, with_star_formation);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1311,11 +1339,14 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The foreign #cell.
  * @param t_grav The recv_gpart #task, if it has already been created.
+ * @param t_fof The recv_fof #task, if it has already been created.
  * @param tend The top-level time-step communication #task.
+ * @param with_fof Are we running with FOF?
  */
 void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
                                   struct task *t_grav_counts,
-                                  struct task *t_grav, struct task *const tend,
+                                  struct task *t_grav, struct task *t_fof,
+                                  struct task *const tend, const int with_fof,
                                   const int with_star_formation) {
 
 #ifdef WITH_MPI
@@ -1350,11 +1381,16 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
                                c->mpi.tag, 0, c, NULL);
 
     if (t_grav_counts != NULL) scheduler_addunlock(s, t_grav, t_grav_counts);
+
+    if (with_fof)
+      t_fof = scheduler_addtask(s, task_type_recv, task_subtype_fof, c->mpi.tag,
+                                0, c, NULL);
   }
 
   /* If we have tasks, link them. */
   if (t_grav != NULL) {
     engine_addlink(e, &c->mpi.recv, t_grav);
+    if (with_fof) engine_addlink(e, &c->mpi.recv, t_fof);
 
     if (with_star_formation && c->hydro.count > 0) {
       engine_addlink(e, &c->mpi.recv, t_grav_counts);
@@ -1371,7 +1407,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_gravity(e, c->progeny[k], t_grav_counts, t_grav,
-                                     tend, with_star_formation);
+                                     t_fof, tend, with_fof,
+                                     with_star_formation);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -4684,6 +4721,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_sync = (e->policy & engine_policy_timestep_sync);
   const int with_rt = (e->policy & engine_policy_rt);
+  const int with_fof = (e->policy & engine_policy_fof);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
 #if defined(WITH_MPI) && !defined(SWIFT_DEBUG_CHECKS)
@@ -4742,8 +4780,10 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_send_gravity(e, ci, cj, /*t_grav_counts=*/NULL,
-                                   /*t_grav=*/NULL, with_star_formation);
+      engine_addtasks_send_gravity(e, ci, cj, /*t_grav_count=*/NULL,
+                                   /*t_grav=*/NULL, /*t_pack_grav=*/NULL,
+                                   /*t_fof=*/NULL, /*t_pack_fof=*/NULL,
+                                   with_fof, with_star_formation);
 
     /* Add the send tasks for the cells in the proxy that have a grid
      * connection */
@@ -4763,6 +4803,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_sync = (e->policy & engine_policy_timestep_sync);
+  const int with_fof = (e->policy & engine_policy_fof);
   const int with_rt = (e->policy & engine_policy_rt);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
@@ -4846,8 +4887,9 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_recv_gravity(e, ci, /*t_grav_counts*/ NULL,
-                                   /*t_grav=*/NULL, tend, with_star_formation);
+      engine_addtasks_recv_gravity(e, ci, /*t_grav_count=*/NULL,
+                                   /*t_grav=*/NULL, /*t_fof=*/NULL, tend,
+                                   with_fof, with_star_formation);
 
     /* Add the send tasks for the cells in the proxy that have a grid
      * connection */

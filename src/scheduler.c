@@ -2586,6 +2586,13 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_timestep_sync:
         cost = wscale * count_i;
         break;
+      case task_type_pack:
+      case task_type_unpack:
+        if (t->subtype == task_subtype_limiter)
+          cost = wscale * count_i;
+        else if (t->subtype == task_subtype_gpart)
+          cost = wscale * gcount_i;
+        break;
       case task_type_send:
         if (count_i < 1e5)
           cost = 10.f * (wscale * count_i) * count_i;
@@ -2838,9 +2845,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_gpart) {
 
           count = t->ci->grav.count;
-          size = count * sizeof(struct gpart);
-          type = gpart_mpi_type;
-          buff = t->ci->grav.parts;
+          size = count * sizeof(struct gpart_foreign);
+          type = gpart_foreign_mpi_type;
+          buff = t->ci->grav.parts_foreign;
+
+        } else if (t->subtype == task_subtype_fof) {
+
+          count = t->ci->grav.count;
+          size = count * sizeof(struct gpart_fof_foreign);
+          type = gpart_fof_foreign_mpi_type;
+          buff = t->ci->grav.parts_fof_foreign;
 
         } else if (t->subtype == task_subtype_spart_density ||
                    t->subtype == task_subtype_spart_prep2) {
@@ -2949,9 +2963,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_gpart) {
 
           count = t->ci->grav.count;
-          size = count * sizeof(struct gpart);
-          type = gpart_mpi_type;
-          buff = t->ci->grav.parts;
+          size = count * sizeof(struct gpart_foreign);
+          type = gpart_foreign_mpi_type;
+          buff = t->buff;
+
+        } else if (t->subtype == task_subtype_fof) {
+
+          count = t->ci->grav.count;
+          size = count * sizeof(struct gpart_fof_foreign);
+          type = gpart_fof_foreign_mpi_type;
+          buff = t->buff;
 
         } else if (t->subtype == task_subtype_spart_density ||
                    t->subtype == task_subtype_spart_prep2) {

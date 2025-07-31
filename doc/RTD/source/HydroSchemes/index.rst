@@ -2,7 +2,7 @@
    Josh Borrow 4th April 2018
 
 .. _hydro:
-   
+
 Hydrodynamics Schemes
 =====================
 
@@ -39,8 +39,8 @@ In case the case of a 2 loop scheme, SWIFT removes the gradient loop and the ext
    sphenix_sph
    gasoline_sph
    phantom_sph
+   remix_sph
    adaptive_softening
    gizmo
    shadowswift
    adding_your_own
-
