@@ -178,7 +178,6 @@ int main(int argc, char *argv[]) {
   int with_self_gravity = 0;
   int with_hydro = 0;
 #ifdef MOVING_MESH
-  int with_grid_hydro = 0;
   int with_grid = 0;
 #endif
   int with_stars = 0;
@@ -1326,7 +1325,7 @@ int main(int argc, char *argv[]) {
     /* Check that the other links are correctly set */
     if (!dry_run)
       part_verify_links(parts, gparts, sinks, sparts, bparts, Ngas, Ngpart,
-                        Nsink, Nspart, Nbpart, /*verbose=*/1);
+                        Nsink, Nspart, Nbpart, dim, periodic, /*verbose=*/1);
 #endif
 
     /* Get the total number of particles across all nodes. */

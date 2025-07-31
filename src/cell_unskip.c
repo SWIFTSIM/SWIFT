@@ -3014,7 +3014,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
-  int rebuild = 0; /* TODO: implement rebuild conditions? */
+  int rebuild = 0;
 
   /* Note: we only get this far if engine_policy_rt is flagged. */
   if (!(e->policy & engine_policy_rt)) error("Unskipping RT tasks without RT");
@@ -3263,6 +3263,473 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
       if (c->top->timestep_collect != NULL)
         scheduler_activate(s, c->top->timestep_collect);
     }
+  }
+
+  return rebuild;
+}
+
+/**
+ * @brief Un-skips all the moving mesh tasks associated with a given cell and
+ * checks if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
+  const struct engine *e = s->space->e;
+  int nodeID = e->nodeID;
+  const int with_timestep_limiter =
+      (e->policy & engine_policy_timestep_limiter);
+
+  int rebuild = 0;
+
+  /* Anything to do here? If c is inactive, we do not need to construct its
+   * voronoi grid. The sorts and/or drift will be activated from
+   * a pair construction task of a neighbouring cell that *is* active if
+   * necessary. */
+  if (!cell_is_active_hydro(c, e)) return rebuild;
+  /* If above grid construction level, nothing else to do. */
+  if (c->grid.construction_level == NULL) return rebuild;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->grid.construction_level != c)
+    error(
+        "Trying to activate grid construction tasks, but not at construction "
+        "level!");
+#endif
+
+#if WITH_MPI
+  /* Reset the send flags, they will be set below */
+  if (c->nodeID == nodeID) c->grid.send_flags = 0;
+#endif
+
+  /* Activate the construction task for this cell */
+  if (c->nodeID == nodeID) {
+    scheduler_activate(s, c->grid.construction);
+    /* Update the self-completeness flag of c. For non-local cells the rebuild
+     * will be triggered on another node if necessary */
+    cell_grid_update_self_completeness(c, 0);
+    rebuild = c->grid.self_completeness != grid_complete;
+  }
+
+  /* Loop over incoming sync tasks linked to this cell */
+  for (struct link *l = c->grid.sync_in; l != NULL; l = l->next) {
+
+    struct task *t = l->t;
+
+    /* Note that ci == c by definition of the sync_in tasks */
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    int ci_nodeID = ci->nodeID;
+    int cj_nodeID = cj != NULL ? cj->nodeID : -1;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ci != c) error("Incorrectly linked sync_in task!");
+#endif
+
+    /* At least one local cell? */
+    if (ci_nodeID != nodeID && cj_nodeID != nodeID) continue;
+
+    /* Local self task? Note that we are sure that ci == c is local at this
+     * point (since cj_nodeID = -1). */
+    if (t->type == task_type_self) {
+
+      scheduler_activate(s, t);
+
+      /* Activate hydro drift */
+      cell_activate_drift_part(ci, s);
+
+      /* Activate limiter */
+      if (with_timestep_limiter) cell_activate_limiter(c, s);
+    }
+
+    /* Pair task for constructing the grid of c? */
+    else if (t->type == task_type_pair) {
+
+      /* Only construct the grid for local cells */
+      if (ci_nodeID == nodeID) {
+        scheduler_activate(s, t);
+
+        /* We only need sorts for the grid construction.
+         * Set the correct sorting flags */
+        atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+        atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+        cell_activate_hydro_sorts(ci, t->flags, s);
+        cell_activate_hydro_sorts(cj, t->flags, s);
+
+        /* Check if we need to rebuild. */
+        if (cj->nodeID == nodeID) {
+          /* Update the self-completeness flag of cj. For non-local cells the
+           * rebuild will be triggered on another node if necessary */
+          cell_grid_update_self_completeness(cj, 0);
+        }
+        rebuild = cell_grid_pair_invalidates_completeness(ci, cj);
+
+#if WITH_MPI
+        /* Do we need to send the voronoi faces to cj's node for this sid? */
+        if (cj_nodeID != nodeID) {
+          struct cell *ci_temp = ci;
+          struct cell *cj_temp = cj;
+          double shift[3];
+          int sid =
+              space_getsid_and_swap_cells(s->space, &ci_temp, &cj_temp, shift);
+          if (ci == ci_temp) sid = 26 - sid;
+          ci->grid.send_flags |= 1 << sid;
+        }
+#endif
+      }
+
+      /* Activate the drift tasks for local cells only. Note that the particles
+       * of cj have to be drifted locally even if ci is not local, because they
+       * will be sent of to ci's node. */
+      if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+      /* Activate the limiter for local cells */
+      /* Activate the limiter tasks. */
+      if (cj_nodeID == nodeID && with_timestep_limiter)
+        cell_activate_limiter(cj, s);
+
+#ifdef WITH_MPI
+      /* Activate send and recieve tasks */
+      if (ci_nodeID != nodeID) { /* cj local */
+
+        /* Send the particles of cj to the foreign node, to construct the
+         * voronoi grid over there */
+        scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+
+        /* Receive the voronoi faces from the foreign node once they are
+         * constructed */
+        scheduler_activate_recv(s, ci->mpi.recv, task_subtype_faces);
+
+      } else if (cj_nodeID != nodeID) { /* ci local */
+
+        /* Receive cj's particles from the foreign node */
+        scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+
+        /* Send ci's voronoi grid to the foreign node. */
+        scheduler_activate_send(s, ci->mpi.send, task_subtype_faces, cj_nodeID);
+      }
+#endif
+    }
+  }
+
+  return rebuild;
+}
+
+/**
+ * @brief Un-skips all hydro tasks from a given linked list.
+ *
+ * @param l Linked list of hydro interaction tasks.
+ * @param s the #scheduler
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static void
+cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
+
+  struct engine *e = s->space->e;
+  int nodeID = e->nodeID;
+#ifdef WITH_MPI
+  const int with_timestep_limiter = e->policy & engine_policy_timestep_limiter;
+#endif
+  const int is_flux_interaction = l->t->subtype == task_subtype_flux;
+#ifdef SWIFT_DEBUG_CHECKS
+  int counter = 0;
+#endif
+
+  /* Loop over tasks in linked list */
+  for (; l != NULL; l = l->next) {
+#ifdef SWIFT_DEBUG_CHECKS
+    counter++;
+    if (counter > 27)
+      error("Cells should have not more than 27 hydro interaction tasks!");
+#endif
+
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_hydro(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+
+    if (t->type == task_type_self) {
+
+      /* Only activate self tasks for local active cells */
+      if (ci_active && ci_nodeID == nodeID) scheduler_activate(s, t);
+
+    } else if (t->type == task_type_pair) {
+
+      if (is_flux_interaction) {
+
+        /* Only activate pair flux interactions that involve at least one active
+         * and one local cell (not necessarily the same). This is necessary to
+         * keep the flux exchange manifestly symmetric over MPI (inactive local
+         * particles might receive a flux contribution from an active remote
+         * particle) */
+        if ((ci_active || cj_active) &&
+            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+          scheduler_activate(s, t);
+
+#ifdef WITH_MPI
+          if (ci_nodeID != nodeID) {
+            /* If one of the cells is active, make sure, we are receiving and
+             * sending the latest particle positions */
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                    ci_nodeID);
+          } else if (cj_nodeID != nodeID) {
+            /* If one of the cells is active, make sure, we are receiving and
+             * sending the latest particle positions */
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
+          }
+#endif
+        }
+
+      } else {
+
+        /* Only non-flux interactions (slope estimate or slope limiter) that
+         * involve at least one cell which is active *AND* local. These
+         * interactions only modify the active particles of pairs. The slope
+         * (limiting) information of remote particles is calculated on the
+         * remote node and will be communicated over MPI.  */
+        if ((ci_active && ci_nodeID == nodeID) ||
+            (cj_active && cj_nodeID == nodeID)) {
+          scheduler_activate(s, t);
+        }
+#ifdef WITH_MPI
+        if (ci_nodeID != nodeID) {
+          /* If the local cell is active, receive data from remote node */
+          if (cj_active) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+          }
+          /* If the foreign cell is active, send data to remote */
+          if (ci_active) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                    ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
+                                    ci_nodeID);
+          }
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (ci_active && with_timestep_limiter) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
+          }
+          /* If the local cell is active, send its particles for the limiting */
+          if (cj_active && with_timestep_limiter) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
+                                    ci_nodeID);
+            scheduler_activate_pack(s, cj->mpi.pack, task_subtype_limiter,
+                                    ci_nodeID);
+          }
+        } else if (cj_nodeID != nodeID) {
+          /* If the local cell is active, receive data from remote node */
+          if (ci_active) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+          }
+          /* If the foreign cell is active, send data to remote */
+          if (cj_active) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
+                                    cj_nodeID);
+          }
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (cj_active && with_timestep_limiter) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
+          }
+          /* If the local cell is active, send its particles for the limiting */
+          if (ci_active && with_timestep_limiter) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
+                                    cj_nodeID);
+            scheduler_activate_pack(s, ci->mpi.pack, task_subtype_limiter,
+                                    cj_nodeID);
+          }
+        }
+#endif
+
+      } /* Flux interaction? */
+
+    } else {
+      error("Unsupported hydro interaction task type!");
+    } /* Self task? */
+
+  } /* Loop over tasks in linked list */
+}
+
+/**
+ * @brief Un-skips all the moving mesh hydro tasks associated with a given cell
+ * and checks if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
+  struct engine *e = s->space->e;
+  const int with_timestep_limiter = e->policy & engine_policy_timestep_limiter;
+  const int nodeID = e->nodeID;
+
+#ifdef WITH_MPI
+  if (e->policy & engine_policy_sinks)
+    error("Currently moving mesh hydro schemes do not support sinks!");
+#endif
+  int rebuild = 0;
+
+  /* Anything to do here? If c is inactive, we do not need to activate any self
+   * or ghost tasks and any pair tasks will be activated from the neighbouring
+   * active cell if necessary. */
+  if (!cell_is_active_hydro(c, e)) return rebuild;
+
+  /* Un-skip the hydro interaction tasks involved with this cell. */
+  if (c->hydro.flux != NULL) {
+#if defined(EXTRA_HYDRO_LOOP) && !defined(SHADOWSWIFT_MESHLESS_GRADIENTS)
+#if defined(SWIFT_DEBUG_CHECKS)
+    if (c->hydro.slope_estimate == NULL)
+      error("Should have a slope estimation loop!");
+    if (c->hydro.slope_limiter == NULL)
+      error("Should have a slope limiter loop!");
+#endif
+    cell_unskip_grid_hydro_interaction_tasks(c->hydro.slope_estimate, s);
+    cell_unskip_grid_hydro_interaction_tasks(c->hydro.slope_limiter, s);
+#endif
+    cell_unskip_grid_hydro_interaction_tasks(c->hydro.flux, s);
+  }
+
+  for (struct link *l = c->hydro.gradient; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_hydro(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active && ci_nodeID == nodeID) ||
+        (cj_active && cj_nodeID == nodeID)) {
+      scheduler_activate(s, t);
+
+      /* Activate additional needed tasks */
+      if (t->type == task_type_self) {
+        cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
+
+        cell_activate_drift_part(ci, s);
+        if (with_timestep_limiter) cell_activate_limiter(ci, s);
+      } else if (t->type == task_type_pair) {
+        cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
+
+        /* Activate drift for local cells */
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+        /* Activate the limiter for local cells */
+        if (with_timestep_limiter) {
+          if (ci_nodeID == nodeID) cell_activate_limiter(ci, s);
+          if (cj_nodeID == nodeID) cell_activate_limiter(cj, s);
+        }
+      } else {
+#ifdef SWIF_DEBUG_CHECKS
+        error("Unsupported task type for subtype: task_subtype_gradient!");
+#endif
+      }
+    }
+
+    if (t->type == task_type_pair) {
+      /* Check whether there was too much particle motion, i.e. the
+         cell neighbour conditions were violated. */
+      if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
+
+#ifdef WITH_MPI
+      if (ci_nodeID != nodeID) {
+        /* If the local cell is active, receive data from remote node */
+        if (cj_active) {
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+        }
+        /* If the foreign cell is active, send data to remote */
+        if (ci_active) {
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+        }
+        /* If the foreign cell is active, we want its particles for the
+         * limiter */
+        if (ci_active && with_timestep_limiter) {
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
+          scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
+        }
+        /* If the local cell is active, send its particles for the limiting */
+        if (cj_active && with_timestep_limiter) {
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
+                                  ci_nodeID);
+          scheduler_activate_pack(s, cj->mpi.pack, task_subtype_limiter,
+                                  ci_nodeID);
+        }
+      } else if (cj_nodeID != nodeID) {
+        /* If the local cell is active, receive data from remote node */
+        if (ci_active) {
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+        }
+        /* If the foreign cell is active, send data to remote */
+        if (cj_active) {
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
+        }
+        /* If the foreign cell is active, we want its particles for the
+         * limiter */
+        if (cj_active && with_timestep_limiter) {
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
+          scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
+        }
+        /* If the local cell is active, send its particles for the limiting */
+        if (ci_active && with_timestep_limiter) {
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
+                                  cj_nodeID);
+          scheduler_activate_pack(s, ci->mpi.pack, task_subtype_limiter,
+                                  cj_nodeID);
+        }
+      }
+#endif
+    }
+  }
+
+  /* Unskip all the other task types. */
+  if (c->nodeID == nodeID && cell_is_active_hydro(c, e)) {
+    if (c->hydro.grid_ghost != NULL) scheduler_activate(s, c->hydro.grid_ghost);
+    if (c->hydro.extra_ghost != NULL)
+      scheduler_activate(s, c->hydro.extra_ghost);
+    if (c->hydro.slope_estimate_ghost != NULL)
+      scheduler_activate(s, c->hydro.slope_estimate_ghost);
+    if (c->hydro.slope_limiter_ghost != NULL)
+      scheduler_activate(s, c->hydro.slope_limiter_ghost);
+    if (c->hydro.flux_ghost != NULL) scheduler_activate(s, c->hydro.flux_ghost);
+    for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
+      scheduler_activate(s, l->t);
+    if (c->hydro.cooling_in != NULL) cell_activate_cooling(c, s, e);
+    if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+    if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
+    if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+    if (c->top->timestep_collect != NULL)
+      scheduler_activate(s, c->top->timestep_collect);
+
+    /* TODO add other task types here as well */
   }
 
   return rebuild;
