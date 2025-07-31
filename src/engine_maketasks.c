@@ -68,11 +68,17 @@ extern int engine_max_parts_per_cooling;
  * @param e The #engine.
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_pack_grav The grav packing #task, if it has already been created.
  * @param t_grav The send_grav #task, if it has already been created.
+ * @param t_pack_fof The fof packing #task, if it has already been created.
+ * @param t_fof The send_fof #task, if it has already been created.
+ * @param with_fof Are we running with FOF?
  */
 void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   struct cell *cj, struct task *t_grav_counts,
-                                  struct task *t_grav,
+                                  struct task *t_grav, struct task *t_pack_grav,
+                                  struct task *t_fof, struct task *t_pack_fof,
+                                  const int with_fof,
                                   const int with_star_formation) {
 
 #ifdef WITH_MPI
@@ -114,22 +120,43 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
                                  ci->mpi.tag, 0, ci, cj);
 
+      t_pack_grav = scheduler_addtask(s, task_type_pack, task_subtype_gpart, 0,
+                                      0, ci, cj);
+
+      /* Pack before you send */
+      scheduler_addunlock(s, t_pack_grav, t_grav);
+
+      if (with_fof) {
+        t_fof = scheduler_addtask(s, task_type_send, task_subtype_fof,
+                                  ci->mpi.tag, 0, ci, cj);
+
+        t_pack_fof = scheduler_addtask(s, task_type_pack, task_subtype_fof, 0,
+                                       0, ci, cj);
+
+        /* Pack before you send */
+        scheduler_addunlock(s, t_pack_fof, t_fof);
+      }
+
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->grav.super->grav.down);
 
       if (with_star_formation && ci->top->hydro.count > 0)
         scheduler_addunlock(s, t_grav, ci->top->hydro.star_formation);
 
-      /* Drift before you send */
-      scheduler_addunlock(s, ci->grav.super->grav.drift, t_grav);
+      /* Drift before you pack + send */
+      scheduler_addunlock(s, ci->grav.super->grav.drift, t_pack_grav);
 
       if (gravity_after_hydro_density)
-        scheduler_addunlock(s, ci->grav.super->grav.init_out, t_grav);
+        scheduler_addunlock(s, ci->grav.super->grav.init_out, t_pack_grav);
     }
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
-
+    engine_addlink(e, &ci->mpi.pack, t_pack_grav);
+    if (with_fof) {
+      engine_addlink(e, &ci->mpi.send, t_fof);
+      engine_addlink(e, &ci->mpi.pack, t_pack_fof);
+    }
     if (with_star_formation && ci->hydro.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_grav_counts);
     }
@@ -140,7 +167,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav_counts,
-                                     t_grav, with_star_formation);
+                                     t_grav, t_pack_grav, t_fof, t_pack_fof,
+                                     with_fof, with_star_formation);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1311,11 +1339,14 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The foreign #cell.
  * @param t_grav The recv_gpart #task, if it has already been created.
+ * @param t_fof The recv_fof #task, if it has already been created.
  * @param tend The top-level time-step communication #task.
+ * @param with_fof Are we running with FOF?
  */
 void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
                                   struct task *t_grav_counts,
-                                  struct task *t_grav, struct task *const tend,
+                                  struct task *t_grav, struct task *t_fof,
+                                  struct task *const tend, const int with_fof,
                                   const int with_star_formation) {
 
 #ifdef WITH_MPI
@@ -1350,11 +1381,16 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
                                c->mpi.tag, 0, c, NULL);
 
     if (t_grav_counts != NULL) scheduler_addunlock(s, t_grav, t_grav_counts);
+
+    if (with_fof)
+      t_fof = scheduler_addtask(s, task_type_recv, task_subtype_fof, c->mpi.tag,
+                                0, c, NULL);
   }
 
   /* If we have tasks, link them. */
   if (t_grav != NULL) {
     engine_addlink(e, &c->mpi.recv, t_grav);
+    if (with_fof) engine_addlink(e, &c->mpi.recv, t_fof);
 
     if (with_star_formation && c->hydro.count > 0) {
       engine_addlink(e, &c->mpi.recv, t_grav_counts);
@@ -1371,7 +1407,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_gravity(e, c->progeny[k], t_grav_counts, t_grav,
-                                     tend, with_star_formation);
+                                     t_fof, tend, with_fof,
+                                     with_star_formation);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2856,7 +2893,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_DEBUG_CHECKS
       atomic_inc(&ci->nr_tasks);
 #endif
-
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
       } else if (t_subtype == task_subtype_grav) {
@@ -2896,45 +2932,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
-        error("Found a pair/external-gravity task...");
-      }
-#endif
-
-      /* Link sub-self tasks to cells. */
-    } else if (t_type == task_type_sub_self) {
-#ifdef SWIFT_DEBUG_CHECKS
-      atomic_inc(&ci->nr_tasks);
-#endif
-
-      if (t_subtype == task_subtype_density) {
-        engine_addlink(e, &ci->hydro.density, t);
-      } else if (t_subtype == task_subtype_grav) {
-        engine_addlink(e, &ci->grav.grav, t);
-      } else if (t_subtype == task_subtype_external_grav) {
-        engine_addlink(e, &ci->grav.grav, t);
-      } else if (t_subtype == task_subtype_gradient) {
-        engine_addlink(e, &ci->hydro.gradient, t);
-      }
-
-      /* Link sub-pair tasks to cells. */
-    } else if (t_type == task_type_sub_pair) {
-#ifdef SWIFT_DEBUG_CHECKS
-      atomic_inc(&ci->nr_tasks);
-      atomic_inc(&cj->nr_tasks);
-#endif
-
-      if (t_subtype == task_subtype_density) {
-        engine_addlink(e, &ci->hydro.density, t);
-        engine_addlink(e, &cj->hydro.density, t);
-      } else if (t_subtype == task_subtype_grav) {
-        engine_addlink(e, &ci->grav.grav, t);
-        engine_addlink(e, &cj->grav.grav, t);
-      } else if (t_subtype == task_subtype_gradient) {
-        engine_addlink(e, &ci->hydro.gradient, t);
-        engine_addlink(e, &cj->hydro.gradient, t);
-      }
-#ifdef SWIFT_DEBUG_CHECKS
-      else if (t_subtype == task_subtype_external_grav) {
         error("Found a sub-pair/external-gravity task...");
       }
 #endif
@@ -2953,24 +2950,28 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 /**
  * @brief Creates all the task dependencies for the gravity
  *
- * @param e The #engine
+ * @param map_data The task array passed to this pool thread.
+ * @param num_elements The number of tasks in this pool thread.
+ * @param extra_data Pointer to the #engine.
  */
-void engine_link_gravity_tasks(struct engine *e) {
+void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
+                                      void *extra_data) {
 
+  struct task *tasks = (struct task *)map_data;
+  struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
-  const int nr_tasks = sched->nr_tasks;
 
-  for (int k = 0; k < nr_tasks; k++) {
+  for (int k = 0; k < num_elements; k++) {
 
     /* Get a pointer to the task. */
-    struct task *t = &sched->tasks[k];
+    struct task *t = &tasks[k];
 
     if (t->type == task_type_none) continue;
 
     /* Get the cells we act on */
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+    struct cell *restrict ci = t->ci;
+    struct cell *restrict cj = t->cj;
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
@@ -3012,7 +3013,8 @@ void engine_link_gravity_tasks(struct engine *e) {
     }
 
     /* Self-interaction for external gravity ? */
-    if (t_type == task_type_self && t_subtype == task_subtype_external_grav) {
+    else if (t_type == task_type_self &&
+             t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (ci_nodeID != nodeID) error("Non-local self task");
@@ -3047,7 +3049,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     }
 
     /* Otherwise, sub-self interaction? */
-    else if (t_type == task_type_sub_self && t_subtype == task_subtype_grav) {
+    else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (ci_nodeID != nodeID) error("Non-local sub-self task");
@@ -3060,7 +3062,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     }
 
     /* Sub-self-interaction for external gravity ? */
-    else if (t_type == task_type_sub_self &&
+    else if (t_type == task_type_self &&
              t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -3073,7 +3075,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     }
 
     /* Otherwise, sub-pair interaction? */
-    else if (t_type == task_type_sub_pair && t_subtype == task_subtype_grav) {
+    else if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
 
       if (ci_nodeID == nodeID) {
 
@@ -3241,19 +3243,20 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
     }
 
-    /* Self-interaction? */
+    /* Otherwise, self interaction? */
     else if (t_type == task_type_self && t_subtype == task_subtype_density) {
 
       const int bcount_i = ci->black_holes.count;
 
-      /* Make the self-density tasks depend on the drift only. */
+      /* Make all density tasks depend on the drift and sorts. */
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
 
-      /* Task for the second hydro loop, */
+      /* Start by constructing the task for the second hydro loop */
       t_force = scheduler_addtask(sched, task_type_self, task_subtype_force,
                                   flags, 0, ci, NULL);
 
-      /* the task for the time-step limiter */
+      /* and the task for the time-step limiter */
       if (with_timestep_limiter) {
         t_limiter = scheduler_addtask(sched, task_type_self,
                                       task_subtype_limiter, flags, 0, ci, NULL);
@@ -3300,12 +3303,15 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             sched, task_type_self, task_subtype_bh_density, flags, 0, ci, NULL);
         t_bh_swallow = scheduler_addtask(
             sched, task_type_self, task_subtype_bh_swallow, flags, 0, ci, NULL);
+
         t_do_gas_swallow =
             scheduler_addtask(sched, task_type_self,
                               task_subtype_do_gas_swallow, flags, 0, ci, NULL);
+
         t_do_bh_swallow =
             scheduler_addtask(sched, task_type_self, task_subtype_do_bh_swallow,
                               flags, 0, ci, NULL);
+
         t_bh_feedback =
             scheduler_addtask(sched, task_type_self, task_subtype_bh_feedback,
                               flags, 0, ci, NULL);
@@ -3320,7 +3326,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               flags, 0, ci, NULL);
       }
 
-      /* Link the tasks to the cells */
+      /* Add the link between the new loop and the cell */
       engine_addlink(e, &ci->hydro.force, t_force);
       if (with_timestep_limiter) {
         engine_addlink(e, &ci->hydro.limiter, t_limiter);
@@ -3353,20 +3359,22 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
 #ifdef EXTRA_HYDRO_LOOP
 
-      /* Same work for the additional hydro loop */
+      /* Start by constructing the task for the second and third hydro loop */
       t_gradient = scheduler_addtask(sched, task_type_self,
                                      task_subtype_gradient, flags, 0, ci, NULL);
 
-      /* Add the link between the new loops and the cell */
+      /* Add the link between the new loop and the cell */
       engine_addlink(e, &ci->hydro.gradient, t_gradient);
 
-      /* Now, build all the dependencies for the hydro */
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
       engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                            t_limiter, ci, with_cooling,
                                            with_timestep_limiter);
 #else
 
-      /* Now, build all the dependencies for the hydro */
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
       engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                            with_cooling, with_timestep_limiter);
 #endif
@@ -3383,7 +3391,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                             t_star_density);
+        scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                            t_star_density);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                            t_star_density);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
                             t_star_density);
         scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
                             t_star_density);
@@ -3412,7 +3424,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             ci->hydro.super->stars.stars_out);
       }
 
-      /* The sink's tasks. */
       if (with_sink) {
 
         /* Sink density */
@@ -3428,7 +3439,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         /* Do the sink_swallow */
         scheduler_addunlock(sched, ci->hydro.super->sinks.density_ghost,
                             t_sink_swallow);
-
         scheduler_addunlock(sched, t_sink_swallow,
                             ci->hydro.super->sinks.sink_ghost1);
 
@@ -3481,8 +3491,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_timestep_limiter) {
-        scheduler_addunlock(sched, ci->super->timestep, t_limiter);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+        scheduler_addunlock(sched, ci->super->timestep, t_limiter);
         scheduler_addunlock(sched, t_limiter, ci->super->kick1);
         scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
       }
@@ -3496,6 +3506,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_rt) {
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_rt_gradient);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_rt_gradient);
         scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
                             t_rt_gradient);
         scheduler_addunlock(sched, t_rt_gradient,
@@ -3558,6 +3569,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_star_feedback =
             scheduler_addtask(sched, task_type_pair,
                               task_subtype_stars_feedback, flags, 0, ci, cj);
+
 #ifdef EXTRA_STAR_LOOPS
         t_star_prep1 = scheduler_addtask(
             sched, task_type_pair, task_subtype_stars_prep1, flags, 0, ci, cj);
@@ -4520,7 +4532,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Start by constructing the task for the second and third hydro loop */
-      t_gradient = scheduler_addtask(sched, task_type_sub_pair,
+      t_gradient = scheduler_addtask(sched, task_type_pair,
                                      task_subtype_gradient, flags, 0, ci, cj);
 
       /* Add the link between the new loop and both cells */
@@ -5567,7 +5579,7 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
                                       flags, 0, ci, cj);
 
       /* Add links and dependencies */
-      if (t_type == task_type_self || t_type == task_type_sub_self) {
+      if (t_type == task_type_self) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (!ci_local)
           error("Encountered self-type gradient task for non-local cell!");
@@ -5576,7 +5588,11 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
         scheduler_addunlock(sched, ci->super->kick2, t);
         /* gradient -> extra ghost */
         scheduler_addunlock(sched, t, ci->hydro.super->hydro.extra_ghost);
-
+        /* Extra dependencies in case we are recursing this self task: */
+        /* Drift -> gradient */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+        /* sorts -> gradient */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
         if (with_timestep_limiter) {
           engine_addlink(e, &ci->hydro.limiter, t_limiter);
           scheduler_addunlock(sched, ci->super->timestep, t_limiter);
@@ -5584,7 +5600,6 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
           scheduler_addunlock(sched, t_limiter, ci->super->kick1);
           scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
         }
-
         /* Scheduler */
         if (with_feedback) {
           t_star_density = scheduler_addtask(sched, t_type,
@@ -5622,6 +5637,11 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
 
         /* Add dependencies*/
         if (with_feedback){
+
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+              t_star_density);
+          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                        t_star_density);
 
           if (with_cooling) {
             scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
@@ -5673,24 +5693,7 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
           scheduler_addunlock(sched, t_sink_do_sink_swallow,
                               ci->hydro.super->sinks.sink_out);
         }
-
-        /* For sub_self: extra dependencies: */
-        if (t_type == task_type_sub_self) {
-          /* Drift -> gradient */
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
-          /* sorts -> gradient */
-          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
-
-          /* sub_self feedback and star formation extra dependencies */
-          if (with_feedback) {
-            scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-              t_star_density);
-            scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                          t_star_density);
-          }
-        }
-
-      } else if (t_type == task_type_pair || t_type == task_type_sub_pair) {
+      } else if (t_type == task_type_pair) {
         /* Links */
         if (with_timestep_limiter) {
           engine_addlink(e, &ci->hydro.limiter, t_limiter);
@@ -5994,6 +5997,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_sync = (e->policy & engine_policy_timestep_sync);
   const int with_rt = (e->policy & engine_policy_rt);
+  const int with_fof = (e->policy & engine_policy_fof);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
 #if defined(WITH_MPI) && !defined(SWIFT_DEBUG_CHECKS)
@@ -6052,8 +6056,10 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_send_gravity(e, ci, cj, /*t_grav_counts=*/NULL,
-                                   /*t_grav=*/NULL, with_star_formation);
+      engine_addtasks_send_gravity(e, ci, cj, /*t_grav_count=*/NULL,
+                                   /*t_grav=*/NULL, /*t_pack_grav=*/NULL,
+                                   /*t_fof=*/NULL, /*t_pack_fof=*/NULL,
+                                   with_fof, with_star_formation);
 
     /* Add the send tasks for the cells in the proxy that have a grid
      * connection */
@@ -6073,6 +6079,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_sync = (e->policy & engine_policy_timestep_sync);
+  const int with_fof = (e->policy & engine_policy_fof);
   const int with_rt = (e->policy & engine_policy_rt);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
@@ -6157,8 +6164,9 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_recv_gravity(e, ci, /*t_grav_counts*/ NULL,
-                                   /*t_grav=*/NULL, tend, with_star_formation);
+      engine_addtasks_recv_gravity(e, ci, /*t_grav_count=*/NULL,
+                                   /*t_grav=*/NULL, /*t_fof=*/NULL, tend,
+                                   with_fof, with_star_formation);
 
     /* Add the send tasks for the cells in the proxy that have a grid
      * connection */
@@ -6265,7 +6273,10 @@ void engine_make_fof_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   ticks tic = getticks();
 
-  if (e->restarting) error("Running FOF on a restart step!");
+  if (e->restarting) {
+    /* Re-set the scheduler. */
+    scheduler_reset(sched, engine_estimate_nr_tasks(e));
+  }
 
   /* Construct a FOF loop over neighbours */
   if (e->policy & engine_policy_fof)
@@ -6464,8 +6475,13 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Add the dependencies for the gravity stuff */
-  if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
-    engine_link_gravity_tasks(e);
+  if (e->policy &
+      (engine_policy_self_gravity | engine_policy_external_gravity)) {
+
+    threadpool_map(&e->threadpool, engine_link_gravity_tasks_mapper,
+                   e->sched.tasks, e->sched.nr_tasks, sizeof(struct task),
+                   threadpool_auto_chunk_size, e);
+  }
 
   if (e->verbose)
     message("Linking gravity tasks took %.3f %s.",
@@ -6583,7 +6599,7 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Set the unlocks per task. */
-  scheduler_set_unlocks(sched);
+  scheduler_set_unlocks(sched, &e->threadpool);
 
   if (e->verbose)
     message("Setting unlocks took %.3f %s.",

@@ -4,9 +4,9 @@ from tqdm import tqdm
 from numba import jit, prange
 
 snapname = "eagle_0000/eagle_0000.hdf5"
-fofname = "fof_output_0000/fof_output_0000.0.hdf5"
+# fofname = "fof_output_0000/fof_output_0000.0.hdf5"
 # snapname = "eagle_0000.hdf5"
-# fofname = "fof_output_0000.hdf5"
+fofname = "fof_output_0000.hdf5"
 
 ######################################################
 
@@ -40,26 +40,36 @@ fof_grp = np.zeros(num_groups, dtype=np.int32)
 fof_size = np.zeros(num_groups, dtype=np.int32)
 fof_mass = np.zeros(num_groups)
 
-# Read the distributed catalog
-offset = 0
-for i in range(num_files):
+if num_files == 1:
 
-    my_filename = fofname[:-6]
-    my_filename = my_filename + str(i) + ".hdf5"
-    fof = h5.File(my_filename, "r")
-
-    my_fof_grp = fof["/Groups/GroupIDs"][:]
-    my_fof_size = fof["/Groups/Sizes"][:]
-    my_fof_mass = fof["/Groups/Masses"][:]
-
-    num_this_file = fof["/Header"].attrs["NumGroups_ThisFile"][0]
+    fof = h5.File(fofname, "r")
+    fof_grp = fof["/Groups/GroupIDs"][:]
+    fof_size = fof["/Groups/Sizes"][:]
+    fof_mass = fof["/Groups/Masses"][:]
     fof.close()
 
-    fof_grp[offset : offset + num_this_file] = my_fof_grp
-    fof_size[offset : offset + num_this_file] = my_fof_size
-    fof_mass[offset : offset + num_this_file] = my_fof_mass
+else:
 
-    offset += num_this_file
+    # Read the distributed catalog
+    offset = 0
+    for i in range(num_files):
+
+        my_filename = fofname[:-6]
+        my_filename = my_filename + str(i) + ".hdf5"
+        fof = h5.File(my_filename, "r")
+
+        my_fof_grp = fof["/Groups/GroupIDs"][:]
+        my_fof_size = fof["/Groups/Sizes"][:]
+        my_fof_mass = fof["/Groups/Masses"][:]
+
+        num_this_file = fof["/Header"].attrs["NumGroups_ThisFile"][0]
+        fof.close()
+
+        fof_grp[offset : offset + num_this_file] = my_fof_grp
+        fof_size[offset : offset + num_this_file] = my_fof_size
+        fof_mass[offset : offset + num_this_file] = my_fof_mass
+
+        offset += num_this_file
 
 ####################################################
 

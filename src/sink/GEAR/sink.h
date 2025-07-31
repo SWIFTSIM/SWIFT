@@ -77,7 +77,8 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
       sink->to_collect.sound_speed_gas * cosmo->a_factor_sound_speed;
   const double gas_c_phys2 = gas_c_phys * gas_c_phys;
   const float denominator = sqrtf(gas_c_phys2 + gas_v_norm2);
-  const float h_min = cosmo->a * min(sink->h, sink->to_collect.minimal_h_gas);
+  const float h_min =
+      cosmo->a * kernel_gamma * min(sink->h, sink->to_collect.minimal_h_gas);
   float dt_cfl = 0.0;
 
   /* This case can happen if the sink is just born. */
@@ -164,6 +165,12 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
 __attribute__((always_inline)) INLINE static void sink_first_init_sink(
     struct sink* sp, const struct sink_props* sink_props,
     const struct engine* e) {
+
+  /* Set the smoothing length if it is fixed. Note that, otherwise, the
+     smoothing lengths were read from the ICs. */
+  if (sink_props->use_fixed_r_cut) {
+    sp->h = sink_props->cut_off_radius / kernel_gamma;
+  }
 
   sp->time_bin = 0;
 

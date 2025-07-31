@@ -216,13 +216,24 @@ void hydro_props_init(struct hydro_props *p,
   }
 
   /* ------ Particle de-refinement parameters ------ */
+#if defined(MOVING_MESH)
   p->particle_derefinement =
       parser_get_opt_param_int(params, "SPH:particle_derefinement", 0);
 
   if (p->particle_derefinement) {
+    /* Check that we are compiled with the necessary info in the voronoi
+     * struct, so we can actually derefine particles */
+#if defined(HYDRO_DIMENSION_3D) && !MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+    error(
+        "De-refine of particles is enabled, but swift was not compiled with "
+        "--enable-moving-mesh-cell-face-connections!");
+#endif
     p->particle_derefinement_volume_threshold = parser_get_param_float(
         params, "SPH:particle_derefinement_volume_threshold");
   }
+#else
+  p->particle_derefinement = 0;
+#endif
 }
 
 /**

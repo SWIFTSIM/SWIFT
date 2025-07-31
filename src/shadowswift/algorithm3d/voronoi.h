@@ -13,6 +13,10 @@
 
 #include <string.h>
 
+#if MOVING_MESH_STORE_CELL_FACE_CONNECTIONS == 1
+#define VORONOI_STORE_CELL_FACE_CONNECTIONS
+#endif
+
 /*! @brief The sid order in which the faces are stored in their array */
 static const int face_sid_order[28] = {
     /* Local        */ 13,
@@ -116,7 +120,7 @@ struct voronoi {
   /*! @brief Total number of occupied pairs (all sids) */
   int pair_index;
 
-#ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   /*! @brief cell pair connections. Concatenation of the indices of the faces of
    * all parts. */
   int *cell_pair_connections;
@@ -182,7 +186,7 @@ inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
     v->pairs[sid] = NULL;
   }
 
-#ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   /* Allocate memory for the cell_pair connections */
   v->cell_pair_connections_size = 17 * number_of_cells;
   v->cell_pair_connections_index = 0;
@@ -226,7 +230,7 @@ inline static void voronoi_reset(struct voronoi *restrict v,
   v->face_vertices_index = 0;
 #endif
 
-#ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   /* Reset the cell_pair connections */
   v->cell_pair_connections_index = 0;
 #endif
@@ -308,7 +312,7 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     double area = 0.;
     double centroid[3] = {0., 0., 0.};
     int nface = 0;
-#ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
     int pair_connections_offset = v->cell_pair_connections_index;
 #else
     int pair_connections_offset = 0;
@@ -476,7 +480,7 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
                            face_centroid, face_vertices, face_vertex_count,
                            &face_sids)) {
         /* The face is not degenerate */
-#ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
         nface++;
 #endif
         area += face_area;
@@ -635,7 +639,7 @@ inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
   }
 #endif
 
-#ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   /* Recompute the cell face links */
 #ifdef SWIFT_DEBUG_CHECKS
   int *face_counts_old = (int *)malloc((d->vertex_end - d->vertex_start) *
@@ -750,7 +754,7 @@ inline static void voronoi_destroy(struct voronoi *restrict v) {
     }
   }
 
-#ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   if (v->cell_pair_connections != NULL) {
     swift_free("voronoi", v->cell_pair_connections);
 #ifdef SWIFT_DEBUG_CHECKS
@@ -776,7 +780,7 @@ inline static void voronoi_destroy(struct voronoi *restrict v) {
 
 inline static void voronoi_add_cell_face_connection(struct voronoi *v,
                                                     int face_idx) {
-#ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   if (v->cell_pair_connections_index == v->cell_pair_connections_size) {
     v->cell_pair_connections_size = (3 * v->cell_pair_connections_size) / 2;
     v->cell_pair_connections = (int *)swift_realloc(
@@ -834,7 +838,7 @@ inline static int voronoi_new_face(
   if (right_part_idx_in_d < d->vertex_end) {
     /* Already processed this pair? */
     if (right_part_idx_in_d < left_part_idx_in_d) {
-#ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
       /* Find the existing pair and add it to the cell_pair_connections. */
       struct part *ngb = &parts[right_part_idx];
       for (int i = 0; i < ngb->geometry.nface; i++) {
@@ -913,7 +917,7 @@ inline static int voronoi_new_face(
   memcpy(this_pair->vertices, vertices, 3 * n_vertices * sizeof(double));
 #endif
 
-#ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   /* Add cell_pair_connection */
   voronoi_add_cell_face_connection(v, face_idx);
 #endif
@@ -928,7 +932,7 @@ inline static int voronoi_new_face(
 inline static int voronoi_get_cell_face(const struct voronoi *v, int offset,
                                         int face_idx,
                                         struct voronoi_pair **face) {
-#ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   *face = &v->pairs_flat[v->cell_pair_connections[offset + face_idx]];
   int i;
   for (i = 0; i < 27 && v->pairs[face_sid_order[i + 1]] <= *face; i++) {
@@ -957,7 +961,7 @@ inline static void voronoi_check_grid(struct voronoi *v,
                                       const struct delaunay *d,
                                       const struct part *parts) {
 #ifdef SWIFT_DEBUG_CHECKS
-#ifdef MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   /* Check cell - face connections */
   int count_total = 0;
   for (int i = d->vertex_start; i < d->vertex_end; i++) {
@@ -1072,5 +1076,9 @@ inline static void voronoi_write_grid(const struct voronoi *restrict v,
     }
   }
 }
+
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
+#undef VORONOI_STORE_CELL_FACE_CONNECTIONS
+#endif
 
 #endif  // SWIFTSIM_SHADOWSWIFT_VORONOI_3D_H

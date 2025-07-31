@@ -254,6 +254,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   totflux[3] *= surface_area;
   totflux[4] *= surface_area;
   totflux[5] = surface_area * entropy_flux;
+#ifdef SHADOWSWIFT_FLUX_LIMITER
+  hydro_part_positivity_limiter_fluxes(pi, pj, n_unit, vij, surface_area,
+                                       hydro->epsilon_rho, hydro->epsilon_P,
+                                       totflux);
+#endif
 
   /* Call positivity limiter */
   hydro_part_positivity_limiter_fluxes(pi, pj, n_unit, vij, surface_area,
@@ -266,9 +271,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   /* Get flux and limit flux to positivity */
   float mach_number =
       hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, totflux);
+#ifdef SHADOWSWIFT_FLUX_LIMITER
   hydro_part_positivity_limiter_fluxes(pi, pj, n_unit, vij, surface_area,
                                        hydro->epsilon_rho, hydro->epsilon_P,
                                        totflux);
+#endif
 
   hydro_grav_work_from_mass_flux(pi, pj, dx, totflux[0], min_dt);
 #endif

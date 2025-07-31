@@ -247,10 +247,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 }
 
 /**
- * @brief Prepare a particle for the force calculation.
+ * @brief Prepare a particle for the force (flux) calculation.
  *
- * For ShadowSWIFT, this function is called before the flux exchange, and is
- * mainly used to apply the pressure floor if needed.
+ * For ShadowSWIFT, this function is called before the flux exchange, but
+ * nothing needs to be done here.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -265,29 +265,41 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
+  /* Nothing to do here */
+}
 
-  /* Apply the pressure floor. */
+/**
+ * @brief Applies the pressure floor. Note: the extrapolations in time (if any)
+ * are taken into account when evaluating the pressure floor. The returned
+ * pressure will be so that it does not violate the pressure floor, even after
+ * the extrapolations are applied.
+ *
+ * @p The current #part
+ * @xp The accompanying #xpart
+ * @cosmo The #cosmo struct
+ * @pressure_floor The #pressure_floor_props
+ * @return The pressure satisfying the pressure floor as described above.
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_pressure_with_floor(
+    struct part *restrict p, const struct xpart *restrict xp,
+    const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor) {
   /* Temporarily apply the time extrapolation to density as it is used in the
    * pressure floor... */
-#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+  #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
   const float d_rho = p->dW_time[0];
   const float d_P = p->dW_time[4];
-#else
+  #else
   const float d_rho = 0.f;
   const float d_P = 0.f;
-#endif
+  #endif
   const float rho = p->rho;
   p->rho += d_rho;
   const float pressure_with_floor = pressure_floor_get_comoving_pressure(
                                         p, pressure_floor, p->P + d_P, cosmo) -
                                     d_P;
   p->rho = rho;
-  if (p->P < pressure_with_floor) {
-    p->P = pressure_with_floor;
-    /* TODO: Should we update the internal energy and/or entropy as well to
-     * reflect this change? */
-    /* TODO: Should we update the total energy? */
-  }
+  return pressure_with_floor;
 }
 
 /**
@@ -369,6 +381,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   hydro_part_set_primitive_variables(p, W);
 #endif
 
+  const float pressure_with_floor =
+      hydro_get_pressure_with_floor(p, xp, cosmo, pressure_floor);
+  if (pressure_with_floor < p->P) {
+    p->P = pressure_with_floor;
+    /* TODO: update the entropic function also? */
+  }
+
   /* Reset the delaunay flags after a particle has been drifted */
   p->geometry.delaunay_flags = 0;
 }
@@ -416,10 +435,6 @@ hydro_convert_conserved_to_primitive(
 
   /* Check for vacuum (or near limits of floating point precision), which give
    * rise to precision errors resulting in NaNs... */
-#ifdef SWIFT_DEBUG_CHECKS
-  if (Q[0] < 0. || Q[4] < 0.)
-    warning("Negative mass or energy after applying fluxes! Q[0] = %E, Q[4] = %E", Q[0], Q[4]);
-#endif
   const double epsilon = 16. * FLT_MIN;
   if (fabs(Q[0]) < epsilon || fabs(Q[4]) < epsilon) {
     message("Float Minimum is = %e", epsilon);
@@ -440,11 +455,11 @@ hydro_convert_conserved_to_primitive(
 
   /* Calculate the updated internal energy and entropic function A.
    * NOTE: This may violate energy conservation. */
+  double Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
   double u;
 #ifdef EOS_ISOTHERMAL_GAS
   u = gas_internal_energy_from_pressure(0.f, 0.f);
 #else
-  double Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
   double thermal_energy = Q[4] - Ekin;
 #if SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_NONE
   u = thermal_energy * m_inv;
@@ -643,6 +658,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   if (p->timestepvars.last_kick == KICK1) {
     /* I.e. we are in kick2 (end of timestep), since the dt_therm > 0. */
 
+    float Q[6];
+    hydro_part_get_conserved_variables(p, Q);
+    float dE_grav = 0.f;
     /* Add gravity. We only do this if we have gravity activated. */
     if (p->gpart) {
       /* Retrieve the current value of the gravitational acceleration from the
@@ -663,9 +681,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       /* apply both half kicks to the momentum */
       /* Note that this also affects the particle movement, as the velocity for
          the particles is set after this. */
-      p->conserved.momentum[0] += grav_kick[0];
-      p->conserved.momentum[1] += grav_kick[1];
-      p->conserved.momentum[2] += grav_kick[2];
+      Q[1] += grav_kick[0];
+      Q[2] += grav_kick[1];
+      Q[3] += grav_kick[2];
 
       /* Extra hydrodynamic energy due to gravity kick, see eq. 94 in Springel
        * (2010) or eq. 62 in theory/Cosmology/cosmology.pdf. */
@@ -699,7 +717,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       p->gravity.dE_prev = dE_springel;
 
       /* Add potential gravitational energy change to conserved energy */
-      p->conserved.energy += dE_springel;
+      Q[4] += dE_springel;
 
     }
 
@@ -707,8 +725,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     assert(p->flux.dt >= 0.0f);
 #endif
 
-    float Q[6];
-    hydro_part_get_conserved_variables(p, Q);
     if (p->flux.dt > 0.0f) {
       /* Apply the fluxes */
       /* We are in kick2 of a normal timestep (not the very beginning of the
@@ -723,15 +739,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       Q[3] += flux[3];
 
 #if defined(EOS_ISOTHERMAL_GAS)
-      /* We use the EoS equation in a sneaky way here just to get the constant
-       * internal energy */
-      float u = gas_internal_energy_from_entropy(0.0f, 0.0f);
-      float rho = Q[0] / p->geometry.volume;
-      p->thermal_energy = p->conserved.mass * u;
-      float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
-      Q[4] = p->thermal_energy +
-             0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
-      Q[5] = Q[0] * gas_entropy_from_internal_energy(rho, u);
+      /* Nothing to do here. We will use the EoS equation to set the energy and
+       * entropy using the updated kinetic energy and constant internal energy
+       * when converting from conserved to primitive quantities below. */
 #else
       Q[4] += flux[4];
       Q[5] += flux[5];
@@ -759,6 +769,20 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       /* Cool XP as well */
       xp->u_full += p->cool_du_dt_prev * dt_therm;
     }
+
+    #ifdef SHADOWSWIFT_WARNINGS
+    if (Q[0] < 0. || Q[4] < 0.)
+      warning(
+          "Negative mass or energy after applying fluxes! "
+          "\n\tupdated mass = %E, updated energy = %E, "
+          "\n\told mass = %E, old energy = %E, "
+          "\n\tmflux = %E, energyflux = %E, dE_grav = %E"
+          "\n\tdensity = %E, pressure = %E"
+          "\n\tp->x = (%E, %E, %E), p->v = (%E, %E, %E)",
+          Q[0], Q[4], p->conserved.mass, p->conserved.energy, p->flux.mass,
+          p->flux.energy, dE_grav, p->rho, p->P, p->x[0], p->x[1], p->x[2],
+          p->v[0], p->v[1], p->v[2]);
+    #endif
 
     /* Compute primitive quantities. Note that this may also modify the vector
      * of conserved quantities (e.g. for cold flows).
@@ -951,8 +975,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
    * NOTE: the mass has already been rescales, so we should rescale the fluxes
    * as well. */
   p->conserved.mass -= fraction * p->flux.mass;
-  if (p->gpart)
-    p->gpart->mass -= fraction * p->flux.mass;
+  if (p->gpart) p->gpart->mass -= fraction * p->flux.mass;
 
   /* Rescale conserved quantities (without mass) */
   p->conserved.momentum[0] *= fraction;

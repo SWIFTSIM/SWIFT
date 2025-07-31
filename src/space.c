@@ -157,6 +157,11 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
     s->size_gparts_foreign = 0;
     s->gparts_foreign = NULL;
   }
+  if (s->gparts_fof_foreign != NULL) {
+    swift_free("gparts_fof_foreign", s->gparts_fof_foreign);
+    s->size_gparts_foreign = 0;
+    s->gparts_fof_foreign = NULL;
+  }
   if (s->sparts_foreign != NULL) {
     swift_free("sparts_foreign", s->sparts_foreign);
     s->size_sparts_foreign = 0;
@@ -794,33 +799,13 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
 
   /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
    * creation */
-#ifdef SWIFT_DEBUG_CHECKS
-  int count_low_rho = 0;
-  int count_low_P = 0;
-#endif
   for (int k = 0; k < count; k++) {
     if (parts[k].time_bin <= num_time_bins) {
       hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props,
                                floor);
       mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
-#ifdef SWIFT_DEBUG_CHECKS
-      if (parts[k].rho < hydro_props->epsilon_rho) count_low_rho++;
-      if (parts[k].P < hydro_props->epsilon_P) count_low_P++;
-#endif
     }
   }
-#ifdef SWIFT_DEBUG_CHECKS
-  if (count_low_rho > 0)
-    warning(
-        "Encountered %d particles with initial densities lower than "
-        "SPH:epsilon_rho (%E)! Is this intentional?",
-        count_low_rho, hydro_props->epsilon_rho);
-  if (count_low_P > 0)
-    warning(
-        "Encountered %d particles with initial pressures lower than "
-        "SPH:epsilon_P (%E)! Is this intentional?",
-        count_low_P, hydro_props->epsilon_P);
-#endif
 }
 
 /**
@@ -838,6 +823,28 @@ void space_convert_quantities(struct space *s, int verbose) {
     threadpool_map(&s->e->threadpool, space_convert_quantities_mapper, s->parts,
                    s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
                    s);
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined(SHADOWSWIFT)
+  // Check that the ICs do not contain values considered infinitesimal for rho
+  // or P.
+  const struct hydro_props *hydro_props = s->e->hydro_properties;
+  int count_low_rho = 0;
+  int count_low_P = 0;
+  for (size_t k = 0; k < s->nr_parts; k++) {
+      if (s->parts[k].rho < hydro_props->epsilon_rho) count_low_rho++;
+      if (s->parts[k].P < hydro_props->epsilon_P) count_low_P++;
+  }
+  if (count_low_rho > 0)
+    warning(
+        "Encountered %d particles with initial densities lower than "
+        "SPH:epsilon_rho (%E)! Is this intentional?",
+        count_low_rho, hydro_props->epsilon_rho);
+  if (count_low_P > 0)
+    warning(
+        "Encountered %d particles with initial pressures lower than "
+        "SPH:epsilon_P (%E)! Is this intentional?",
+        count_low_P, hydro_props->epsilon_P);
+#endif
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1825,7 +1832,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   offset_nuparts +=
       1 + total_dm + total_parts + total_sinks + total_sparts + total_bparts;
   offset_dm_background +=
-      1 + 10 * (total_dm * total_parts + total_sinks + total_sparts +
+      1 + 10 * (total_dm + total_parts + total_sinks + total_sparts +
                 total_bparts + total_nuparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */

@@ -355,6 +355,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
       p->h = max(p->h, hydro_h_min);
+
       /* Set the appropriate depth level for this particle */
       cell_set_part_h_depth(p, c);
 
@@ -624,6 +625,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_rt = (e->policy & engine_policy_rt);
   const float stars_h_max = e->hydro_properties->h_max;
   const float stars_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_spart = c->stars.ti_old_part;
@@ -718,9 +720,6 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
       drift_spart(sp, dt_drift, ti_old_spart, ti_current, e, replication_list,
                   c->loc);
 
-      /* Set the appropriate depth level for this particle */
-      cell_set_spart_h_depth(sp, c);
-
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
       if (fabs(sp->v[0] * dt_drift) > e->s->dim[0] ||
@@ -767,6 +766,9 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
       sp->h = min(sp->h, stars_h_max);
       sp->h = max(sp->h, stars_h_min);
 
+      /* Set the appropriate depth level for this particle */
+      cell_set_spart_h_depth(sp, c);
+
       /* Compute (square of) motion since last cell construction */
       const float dx2 = sp->x_diff[0] * sp->x_diff[0] +
                         sp->x_diff[1] * sp->x_diff[1] +
@@ -789,7 +791,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
         rt_init_spart(sp);
 
         /* Update the maximal active smoothing length in the cell */
-        cell_h_max_active = max(cell_h_max_active, sp->h);
+        if (feedback_is_active(sp, e) || with_rt)
+          cell_h_max_active = max(cell_h_max_active, sp->h);
       }
     }
 
@@ -927,9 +930,6 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
       drift_bpart(bp, dt_drift, ti_old_bpart, ti_current, e, replication_list,
                   c->loc);
 
-      /* Set the appropriate depth level for this particle */
-      cell_set_bpart_h_depth(bp, c);
-
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
       if (fabs(bp->v[0] * dt_drift) > e->s->dim[0] ||
@@ -973,6 +973,9 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
       /* Limit h to within the allowed range */
       bp->h = min(bp->h, black_holes_h_max);
       bp->h = max(bp->h, black_holes_h_min);
+
+      /* Set the appropriate depth level for this particle */
+      cell_set_bpart_h_depth(bp, c);
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = bp->x_diff[0] * bp->x_diff[0] +
@@ -1031,6 +1034,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const float sinks_h_max = e->hydro_properties->h_max;
+  const float sinks_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_sink = c->sinks.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct sink *const sinks = c->sinks.parts;
@@ -1114,9 +1119,6 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
       /* Drift... */
       drift_sink(sink, dt_drift, ti_old_sink, ti_current);
 
-      /* Set the appropriate depth level for this particle */
-      cell_set_sink_h_depth(sink, c);
-
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
       if (fabs(sink->v[0] * dt_drift) > e->s->dim[0] ||
@@ -1157,7 +1159,12 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
         }
       }
 
-      /* sp->h does not need to be limited. */
+      /* Limit h to within the allowed range */
+      sink->h = min(sink->h, sinks_h_max);
+      sink->h = max(sink->h, sinks_h_min);
+
+      /* Set the appropriate depth level for this particle */
+      cell_set_sink_h_depth(sink, c);
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = sink->x_diff[0] * sink->x_diff[0] +
