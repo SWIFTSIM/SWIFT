@@ -770,20 +770,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       xp->u_full += p->cool_du_dt_prev * dt_therm;
     }
 
-    #ifdef SHADOWSWIFT_WARNINGS
-    if (Q[0] < 0. || Q[4] < 0.)
-      warning(
-          "Negative mass or energy after applying fluxes! "
-          "\n\tupdated mass = %E, updated energy = %E, "
-          "\n\told mass = %E, old energy = %E, "
-          "\n\tmflux = %E, energyflux = %E, dE_grav = %E"
-          "\n\tdensity = %E, pressure = %E"
-          "\n\tp->x = (%E, %E, %E), p->v = (%E, %E, %E)",
-          Q[0], Q[4], p->conserved.mass, p->conserved.energy, p->flux.mass,
-          p->flux.energy, dE_grav, p->rho, p->P, p->x[0], p->x[1], p->x[2],
-          p->v[0], p->v[1], p->v[2]);
-    #endif
-
     /* Compute primitive quantities. Note that this may also modify the vector
      * of conserved quantities (e.g. for cold flows).
      * This also applies entropy floor/minimal internal energy limit. */
