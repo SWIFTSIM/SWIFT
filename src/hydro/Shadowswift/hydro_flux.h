@@ -240,10 +240,7 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
   }
   theta = fmax(0., theta);
   if (theta < 1.) {
-#ifdef SHADOWSWIFT_WARNINGS
-    warning(
-        "Positivity flux limiter failed! Falling back to guaranteed positivity");
-#endif
+
     for (int k = 0; k < 6; ++k) {
       fluxes[k] = fluxes_lo[k];
     }

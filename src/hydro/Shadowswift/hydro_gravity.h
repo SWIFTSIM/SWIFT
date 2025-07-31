@@ -93,12 +93,6 @@ hydro_gravity_energy_update_term(const float dt_kick_corr1,
     float dE_simple = grav_work_simple[0] +
       grav_work_simple[1] * grav_work_simple[2];
 
-    message("Springel dE failed, using simple approach! dE_springel = %e, "
-            "dE_simple = %e", dE, dE_simple);
-
-    message("dE_springel + energy = %e, dE_simple + energy = %e",
-      dE + conserved_energy, dE_simple + conserved_energy);
-
     /* Reset to 0, change to new simpler contribution */
     dE = 0.;
     dE += dE_simple;

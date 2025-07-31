@@ -358,6 +358,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   float new_pressure;
   new_pressure = gas_pressure_from_internal_energy(W[0], new_internal_energy);
+  // update entropic function A */
+  // Eq 198 from Thesis, variable name
+  //p.A * Pnew/Pold will do
+
+  new_pressure = max(0.f, new_pressure); // Brute force P limiter, happens anyway just avoids errors here.
 
   W[4] = new_pressure;
 
