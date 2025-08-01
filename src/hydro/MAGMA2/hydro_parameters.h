@@ -49,11 +49,11 @@
 /* ---------- Viscosity & Conductivitiy parameters ---------- */
 
 
-/*! Alpha viscosity, usually =1.0. For lower neighbor number, should be higher */
+/*! Alpha viscosity, usually =1.0. For lower N_ngb, should be higher */
 #define const_viscosity_alpha 2.0
 
-/*! Artificial conductivity alpha */
-#define const_conductivity_alpha 0.05
+/*! Alpha conductivity, usually =0.05. At lower N_ngb, should be higher */
+#define const_conductivity_alpha 0.1
 
 /*! Desired number of neighbours -- CRITICAL that this matches hydro props */
 #if defined(HYDRO_DIMENSION_1D)
@@ -108,7 +108,7 @@
 //#define hydro_props_use_second_order_velocities_in_divergence
 
 /*! Use v_ij * G_ij in dh/dt evolution */
-//#define hydro_props_use_second_order_velocities_in_dhdt
+#define hydro_props_use_higher_order_gradients_in_dh_dt
 
 #ifdef hydro_props_viscosity_weighting_type
 #ifndef hydro_props_use_viscosity_weighting

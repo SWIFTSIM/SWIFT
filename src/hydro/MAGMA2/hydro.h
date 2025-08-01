@@ -568,6 +568,23 @@ void hydro_vec3_vec3_dot(const hydro_real_t *restrict vec_a,
 }
 
 /**
+ * @brief Norm of two 3D vectors.
+ *
+ *
+ * @param vec_a The first vector.
+ * @param vec_b The second vector.
+ * @param result The result of the norm.
+ */
+__attribute__((always_inline)) INLINE static 
+void hydro_vec3_vec3_norm(const hydro_real_t *restrict vec_a, 
+                          const hydro_real_t *restrict vec_b, 
+                          hydro_real_t *result) {
+
+  *result = 
+      sqrt(vec_a[0] * vec_a[0] + vec_a[1] * vec_a[1] + vec_a[2] * vec_a[2]);
+}
+
+/**
  * @brief The Frobenius inner product of two matrices.
  *
  *
@@ -1085,7 +1102,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
-  /* Compute the sound speed  */
+    /* Compute the sound speed  */
   const float pressure = hydro_get_comoving_pressure(p);
   const float pressure_including_floor =
       pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
@@ -1100,22 +1117,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   /* ------ Compute the kernel correction for SPH gradients ------ */
 
 
-  /* Note: This is only for SPH gradients, the MAGMA2 gradients are already
-   * corrected. */
-
-  /* Compute the "grad h" term  - Note here that we have \tilde{x}
-   * as 1 as we use the local number density to find neighbours. This
-   * introduces a j-component that is considered in the force loop,
-   * meaning that this cached grad_h_term gives:
-   *
-   * f_ij = 1.f - grad_h_term_i / m_j */
+  /* Compute the "grad h" term */
   const float common_factor = p->h * hydro_dimension_inv / p->density.wcount;
-  float grad_h_term;
   float grad_W_term = 0.f;
 
   /* Ignore changing-kernel effects when h ~= h_max */
   if (p->h > 0.9999f * hydro_props->h_max) {
-    grad_h_term = 0.f;
     warning("h ~ h_max for particle with ID %lld (h: %g)", p->id, p->h);
   } 
   else {
@@ -1128,21 +1135,16 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
          top of each other). Either way, we cannot use the normal
          expression, since that would lead to overflow or excessive round
          off and cause excessively high accelerations in the force loop */
-      grad_h_term = 0.f;
       grad_W_term = 0.f;
       warning(
           "grad_W_term very small for particle with ID %lld (h: %g, wcount: "
           "%g, wcount_dh: %g)",
           p->id, p->h, p->density.wcount, p->density.wcount_dh);
     } 
-    else {
-      grad_h_term = common_factor * p->density.rho_dh / (1.f + grad_W_term);
-    }
   }
 
   /* Update variables. */
-  p->force.f = grad_h_term;
-  p->gradients.grad_W_correction = 1.f + grad_W_term;
+  p->force.f = (grad_W_term != 0.f) ? 1. / (1. + (hydro_real_t)grad_W_term) : 0.;
 
 }
 
@@ -1200,7 +1202,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
-  /* Normalize correctly with the smoothing length */
+    /* Normalize correctly with the smoothing length */
 #ifdef MAGMA2_DEBUG_CHECKS
   p->gradients.adiabatic_f_numerator *= kernel_gamma_inv * h_inv;
 #endif
@@ -1575,10 +1577,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
   
   const hydro_real_t wcount_inv = 1. / p->gradients.wcount;
-  const hydro_real_t Omega_inv = 
-      (p->gradients.grad_W_correction > 0.) ? 
-          1. / p->gradients.grad_W_correction
-          : 1.;
+#ifdef hydro_props_use_higher_order_gradients_in_dh_dt
+  const hydro_real_t Omega_inv = 1.;
+#else
+  const hydro_real_t Omega_inv = p->force.f;
+#endif
 
   p->force.h_dt *= Omega_inv * p->h * hydro_dimension_inv * wcount_inv;
 
@@ -1586,6 +1589,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   p->dt_min *= kernel_gamma * cosmo->a / cosmo->a_factor_sound_speed;
 
 #ifdef MAGMA2_DEBUG_CHECKS
+  if (fabs(p->force.h_dt / p->h) > 1000.) {
+    warning("Large dh/dt! Hydro end force for particle with ID %lld (h: %g, "
+            "wcount: %g, h_dt: %g, dt_min: %g, v_sig_max: %g, Omega_inv: %g)",
+            p->id, p->h, p->gradients.wcount, p->force.h_dt, p->dt_min,
+            p->v_sig_max, Omega_inv);
+  }
+
   /* Calculate smoothing length powers */
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
@@ -1709,7 +1719,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->gradients.C_well_conditioned = 1;
   p->gradients.D_well_conditioned = 1;
   p->gradients.u_well_conditioned = 1;
-  p->gradients.grad_W_correction = 1.;
 #ifdef MAGMA2_DEBUG_CHECKS
   p->debug.C_ill_conditioned_count = 0;
   p->debug.D_ill_conditioned_count = 0;

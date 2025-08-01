@@ -143,7 +143,7 @@ struct part {
   /*! Minimum time-step amongst neighbours */
   float dt_min;
   
-#ifdef MAGMA2_DEBUG_CHECKS
+  #ifdef MAGMA2_DEBUG_CHECKS
   struct {
     /*! Correction matrix at the last time it was ill-conditioned */
     hydro_real_t correction_matrix[3][3];
@@ -184,9 +184,6 @@ struct part {
 
     /*! Sum of the kernel weights */
     hydro_real_t wcount;
-    
-    /*! Correction matrix Omega for smoothing length variation */
-    hydro_real_t grad_W_correction;
 
     /*! Correction matrix (C^ki in Rosswog 2020) */
     hydro_real_t correction_matrix[3][3];
