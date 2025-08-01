@@ -74,6 +74,31 @@
  *    2 = 2.0 * q_ij / (rho_i + rho_j) */
 #define hydro_props_viscosity_weighting_type 1
 
+/*! Use the correction terms to make the internal energy match the mass flux */
+//#define hydro_props_use_adiabatic_correction
+
+/* Kernel gradient weighting scheme:
+ *    0 = 0.5 * (G_i + G_j)
+ *    1 = 0.5 * (f_i * G_i + f_j * G_j)
+ *    2 = 0.5 * f_ij * (G_i + G_j)
+ *        with f_ij = 0.5 * (f_i + f_j)
+ *    3 = 0.5 * f_ij * (G_i + G_j) 
+ *        with f_ij = 2 * f_i * f_j / (f_i + f_j)
+ *    4 = 0.5 * f_ij * (G_i + G_j) 
+ *        with f_ij = sqrt(f_i * f_j)
+ *    5 = 0.5 * f_ij * (G_i + G_j) 
+ *        with f_ij = (f_i * rho_i + f_j * rho_j) / (rho_i + rho_j)
+ *    6 = 0.5 * f_ij * (G_i + G_j) 
+ *        with f_ij = 2 * f_i * f_j / (f_i * rho_i + f_j * rho_j)
+ *    7 = 0.5 * f_ij * (G_i + G_j) 
+ *        with f_ij = (f_i * P_i + f_j * P_j) / (P_i + P_j)
+ *    8 = 0.5 * f_ij * (G_i + G_j) 
+ *        with f_ij = 2 * f_i * f_j / (f_i * P_i + f_j * P_j)
+ *   9 = 0.5 * f_ij * (G_i + G_j)
+ *       with f_ij = (f_i * V_i + f_j * V_j) / (V_i + V_j)
+ */
+#define hydro_props_kernel_gradient_weighting 0
+
 /*! Use double precision for all matrix/vector operations */
 //#define hydro_props_use_double_precision
 

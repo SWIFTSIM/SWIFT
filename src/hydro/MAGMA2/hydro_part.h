@@ -174,12 +174,12 @@ struct part {
 
   /* Store gradients in a separate struct */
   struct {
-#ifdef MAGMA2_DEBUG_CHECKS
+#ifdef hydro_props_use_adiabatic_correction
     /*! Adiabatic kernel correction factor numerator */
     hydro_real_t adiabatic_f_numerator;
 
-    /*! Adiabatic kernel correction factor */
-    hydro_real_t adiabatic_f;
+    /*! Adiabatic kernel correction factor denominator */
+    hydro_real_t adiabatic_f_denominator;
 #endif
 
     /*! Sum of the kernel weights */

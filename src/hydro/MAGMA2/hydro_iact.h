@@ -61,30 +61,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute density of pi. */
   const hydro_real_t hi_inv = 1. / hi;
-  const float ui = r * hi_inv;
+  const float xi = r * hi_inv;
 
-  kernel_deval(ui, &wi, &wi_dx);
+  kernel_deval(xi, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + xi * wi_dx);
 
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+  pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
 
-  adaptive_softening_add_correction_term(pi, ui, hi_inv, mj);
+  adaptive_softening_add_correction_term(pi, xi, hi_inv, mj);
 
   /* Compute density of pj. */
   const hydro_real_t hj_inv = 1. / hj;
-  const float uj = r * hj_inv;
-  kernel_deval(uj, &wj, &wj_dx);
+  const float xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
 
   pj->rho += mi * wj;
-  pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
+  pj->density.rho_dh -= mi * (hydro_dimension * wj + xj * wj_dx);
 
   pj->density.wcount += wj;
-  pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
+  pj->density.wcount_dh -= (hydro_dimension * wj + xj * wj_dx);
 
-  adaptive_softening_add_correction_term(pj, uj, hj_inv, mi);
+  adaptive_softening_add_correction_term(pj, xj, hj_inv, mi);
 
   /* Now we need to compute the derivative terms */
   const hydro_real_t r_inv = r ? 1.0 / r : 0.0;
@@ -130,10 +130,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   /* Number of neighbors */
   pi->num_ngb++;
   pj->num_ngb++;
+#endif
 
+#ifdef hydro_props_use_adiabatic_correction
   /* Needed for the adiabatic kernel correction factor */
-  pi->gradients.adiabatic_f_numerator += mj * r * wi_dx;
-  pj->gradients.adiabatic_f_numerator += mi * r * wj_dx;
+  pi->gradients.adiabatic_f_numerator += mj * r2 * wi;
+  pj->gradients.adiabatic_f_numerator += mi * r2 * wj;
 #endif
 
 }
@@ -165,16 +167,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const hydro_real_t r = sqrt(r2);
 
   const hydro_real_t h_inv = 1. / hi;
-  const float ui = r * h_inv;
-  kernel_deval(ui, &wi, &wi_dx);
+  const float xi = r * h_inv;
+  kernel_deval(xi, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + xi * wi_dx);
 
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+  pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
 
-  adaptive_softening_add_correction_term(pi, ui, h_inv, mj);
+  adaptive_softening_add_correction_term(pi, xi, h_inv, mj);
 
   const hydro_real_t r_inv = r ? 1.0 / r : 0.0;
   const hydro_real_t faci = mj * wi_dx * r_inv;
@@ -207,9 +209,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 #ifdef MAGMA2_DEBUG_CHECKS
   /* Neighbour number */
   pi->num_ngb++;
+#endif
 
+#ifdef hydro_props_use_adiabatic_correction
   /* Needed for the adiabatic kernel correction factor */
-  pi->gradients.adiabatic_f_numerator += mj * r * wi_dx;
+  pi->gradients.adiabatic_f_numerator += mj * r2 * wi;
 #endif
 
 }
@@ -249,11 +253,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   float wi, wi_dx, wj, wj_dx;
 
-  const float ui = r / hi;
-  const float uj = r / hj;
+  const float xi = r / hi;
+  const float xj = r / hj;
 
-  kernel_deval(ui, &wi, &wi_dx);
-  kernel_deval(uj, &wj, &wj_dx);
+  kernel_deval(xi, &wi, &wi_dx);
+  kernel_deval(xj, &wj, &wj_dx);
 
   const hydro_real_t faci = mj * rhoj_inv * wi;
   const hydro_real_t facj = mi * rhoi_inv * wj;
@@ -314,6 +318,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
       }
     }
   }
+
+#ifdef hydro_props_use_adiabatic_correction
+  /* Correction terms for div v */
+  pi->gradients.adiabatic_f_denominator += mj * rhoj_inv * r2 * wi;
+  pj->gradients.adiabatic_f_denominator += mi * rhoi_inv * r2 * wj;
+#endif
+
 }
 
 /**
@@ -344,8 +355,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const hydro_real_t rhoj_inv = 1. / rhoj;
   const hydro_real_t r = sqrt(r2);
   float wi, wi_dx;
-  const float ui = r / hi;
-  kernel_deval(ui, &wi, &wi_dx);
+  const float xi = r / hi;
+  kernel_deval(xi, &wi, &wi_dx);
   const hydro_real_t faci = mj * rhoj_inv * wi;
 
   /* Compute all of the first-order gradients, and second-order gradients */
@@ -396,6 +407,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
       }
     }
   }
+
+#ifdef hydro_props_use_adiabatic_correction
+  /* Correction terms for div v */
+  pi->gradients.adiabatic_f_denominator += mj * rhoj_inv * r2 * wi;
+#endif
+
 }
 
 /**
@@ -449,10 +466,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-
-  /* Variable smoothing length term */
-  const hydro_real_t f_i = pi->force.f;
-  const hydro_real_t f_j = pj->force.f;
 
   /* For dh/dt and fall-back SPH */
   const hydro_real_t hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
@@ -719,9 +732,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
     /* Averaged correction gradient. Note: antisymmetric, so only need
      * a sign flip for pj */
-    G_ij[0] = 0.5 * (f_i * G_i[0] + f_j * G_j[0]);
-    G_ij[1] = 0.5 * (f_i * G_i[1] + f_j * G_j[1]);
-    G_ij[2] = 0.5 * (f_i * G_i[2] + f_j * G_j[2]);
+    hydro_get_average_kernel_gradient(pi, pj, G_i, G_j, G_ij);
 
     hydro_real_t G_ij_norm = 0.;
     hydro_vec3_vec3_norm(G_ij, G_ij, &G_ij_norm);
@@ -752,33 +763,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
     pi->force.h_dt -= dv_dot_dr * r_inv * wi_dr;
     pj->force.h_dt -= dv_dot_dr * r_inv * wj_dr;
-#endif
-
-#ifdef MAGMA2_DEBUG_CHECKS
-    /* Kernel correction factors */
-    hydro_real_t dxdx[3][3] = {0};
-    hydro_vec3_vec3_outer(dx_ij, dx_ij, dxdx);
-
-    hydro_real_t adiabatic_f_denominator_j = 0.;
-    hydro_mat3x3_mat3x3_dot(pi->gradients.correction_matrix, 
-                            dxdx, &adiabatic_f_denominator_j);
-    adiabatic_f_denominator_j *= rhoj;
-    const hydro_real_t adiabatic_f_i =
-        (adiabatic_f_denominator_j != 0.) ?
-          pj->gradients.adiabatic_f_numerator / adiabatic_f_denominator_j
-          : 0.;
-
-    hydro_real_t adiabatic_f_denominator_i = 0.;
-    hydro_mat3x3_mat3x3_dot(pj->gradients.correction_matrix, 
-                            dxdx, &adiabatic_f_denominator_i);
-    adiabatic_f_denominator_i *= rhoi * mj * rhoj_inv * wi;
-    const hydro_real_t adiabatic_f_j = 
-        (adiabatic_f_denominator_i != 0.) ?
-          pi->gradients.adiabatic_f_numerator / adiabatic_f_denominator_i
-          : 0.;
-
-    pi->gradients.adiabatic_f -= mj * rhoj_inv * adiabatic_f_i * wi;
-    pj->gradients.adiabatic_f -= mi * rhoi_inv * adiabatic_f_j * wj;
 #endif
 
 
@@ -869,6 +853,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     visc_du_term = 0.5 * visc_acc_term;
 
     /* Variable smoothing length term */
+    const hydro_real_t f_i = pi->force.f;
+    const hydro_real_t f_j = pj->force.f;
     const hydro_real_t kernel_gradient = 
         0.5 * (f_i * wi_dr + f_j * wj_dr) * r_inv;
 
@@ -957,10 +943,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-
-  /* Variable smoothing length term */
-  const hydro_real_t f_i = pi->force.f;
-  const hydro_real_t f_j = pj->force.f;
 
   /* For dh/dt and fall-back SPH */
   const hydro_real_t hi_inv_dim_plus_one = hi_inv * hi_inv_dim; /* 1/h^(d+1) */
@@ -1223,9 +1205,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     /* Averaged correction gradient. Note: antisymmetric, so only need
      * a sign flip for pj */
-    G_ij[0] = 0.5 * (f_i * G_i[0] + f_j * G_j[0]);
-    G_ij[1] = 0.5 * (f_i * G_i[1] + f_j * G_j[1]);
-    G_ij[2] = 0.5 * (f_i * G_i[2] + f_j * G_j[2]);
+    hydro_get_average_kernel_gradient(pi, pj, G_i, G_j, G_ij);
 
     hydro_real_t G_ij_norm = 0.;
     hydro_vec3_vec3_norm(G_ij, G_ij, &G_ij_norm);
@@ -1255,22 +1235,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     pi->force.h_dt -= dv_dot_dr * r_inv * wi_dr;
 #endif
 
-#ifdef MAGMA2_DEBUG_CHECKS
-    /* Kernel correction factors */
-    hydro_real_t dxdx[3][3] = {0};
-    hydro_vec3_vec3_outer(dx_ij, dx_ij, dxdx);
-
-    hydro_real_t adiabatic_f_denominator_j = 0.;
-    hydro_mat3x3_mat3x3_dot(pi->gradients.correction_matrix, 
-                            dxdx, &adiabatic_f_denominator_j);
-    adiabatic_f_denominator_j *= rhoj;
-    const hydro_real_t adiabatic_f_i = 
-        (adiabatic_f_denominator_j != 0.) ?
-          pj->gradients.adiabatic_f_numerator / adiabatic_f_denominator_j
-          : 0.;
-
-    pi->gradients.adiabatic_f -= mj * rhoj_inv * adiabatic_f_i * wi;
-#endif
 
     /* Timestepping */
 
@@ -1353,6 +1317,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const hydro_real_t wj_dr = hj_inv_dim_plus_one * wj_dx;
 
     /* Variable smoothing length term */
+    const hydro_real_t f_i = pi->force.f;
+    const hydro_real_t f_j = pj->force.f;
     const hydro_real_t kernel_gradient = 
         0.5 * (f_i * wi_dr + f_j * wj_dr) * r_inv;
 

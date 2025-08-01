@@ -504,6 +504,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rho_dh = 0.f;
 #ifdef MAGMA2_DEBUG_CHECKS
   p->num_ngb = 0;
+#endif
+
+#ifdef hydro_props_use_adiabatic_correction
   p->gradients.adiabatic_f_numerator = 0.;
 #endif
 
@@ -916,8 +919,104 @@ hydro_vector_second_order_reconstruction(const hydro_real_t phi,
   f_reconstructed[2] = f[2] + phi * (df_dx_dot_r[2] + 0.5 * df_dx_dx_dot_r2[2]);
 }
 
+__attribute__((always_inline)) INLINE static 
+void hydro_get_average_kernel_gradient(const struct part *restrict pi, 
+                                       const struct part *restrict pj,
+                                       const hydro_real_t *restrict G_i,
+                                       const hydro_real_t *restrict G_j,
+                                       hydro_real_t *restrict G_ij) {
+
+#if (hydro_props_kernel_gradient_weighting == 0)
+  G_ij[0] = 0.5 * (G_i[0] + G_j[0]);
+  G_ij[1] = 0.5 * (G_i[1] + G_j[1]);
+  G_ij[2] = 0.5 * (G_i[2] + G_j[2]);
+#elif (hydro_props_kernel_gradient_weighting == 1)
+  const hydro_real_t f_i = pi->force.f;
+  const hydro_real_t f_j = pj->force.f;
+  G_ij[0] = 0.5 * (f_i * G_i[0] + f_j * G_j[0]);
+  G_ij[1] = 0.5 * (f_i * G_i[1] + f_j * G_j[1]);
+  G_ij[2] = 0.5 * (f_i * G_i[2] + f_j * G_j[2]);
+#elif (hydro_props_kernel_gradient_weighting == 2)
+  const hydro_real_t f_i = pi->force.f;
+  const hydro_real_t f_j = pj->force.f;
+  const hydro_real_t f_ij = 0.5 * (f_i + f_j);
+  G_ij[0] = 0.5 * f_ij * (G_i[0] + G_j[0]);
+  G_ij[1] = 0.5 * f_ij * (G_i[1] + G_j[1]);
+  G_ij[2] = 0.5 * f_ij * (G_i[2] + G_j[2]);
+#elif (hydro_props_kernel_gradient_weighting == 3)
+  const hydro_real_t f_i = pi->force.f;
+  const hydro_real_t f_j = pj->force.f;
+  hydro_real_t f_ij = 0.;
+  const hydro_real_t f_sum = f_i + f_j;
+  if (f_sum > 0.) f_ij = 2. * f_i * f_j / f_sum;
+
+  G_ij[0] = 0.5 * f_ij * (G_i[0] + G_j[0]);
+  G_ij[1] = 0.5 * f_ij * (G_i[1] + G_j[1]);
+  G_ij[2] = 0.5 * f_ij * (G_i[2] + G_j[2]);
+#elif (hydro_props_kernel_gradient_weighting == 4)
+  const hydro_real_t f_i = pi->force.f;
+  const hydro_real_t f_j = pj->force.f;
+  const hydro_real_t f_ij = sqrt(f_i * f_j);
+  G_ij[0] = 0.5 * f_ij * (G_i[0] + G_j[0]);
+  G_ij[1] = 0.5 * f_ij * (G_i[1] + G_j[1]);
+  G_ij[2] = 0.5 * f_ij * (G_i[2] + G_j[2]);
+#elif (hydro_props_kernel_gradient_weighting == 5)
+  const hydro_real_t f_i = pi->force.f;
+  const hydro_real_t f_j = pj->force.f;
+  const hydro_real_t rho_sum = pi->rho + pj->rho;
+  const hydro_real_t f_ij = (pi->rho * f_i + pj->rho * f_j) / rho_sum;
+  G_ij[0] = 0.5 * f_ij * (G_i[0] + G_j[0]);
+  G_ij[1] = 0.5 * f_ij * (G_i[1] + G_j[1]);
+  G_ij[2] = 0.5 * f_ij * (G_i[2] + G_j[2]);
+#elif (hydro_props_kernel_gradient_weighting == 6)
+  const hydro_real_t f_i = pi->force.f;
+  const hydro_real_t f_j = pj->force.f;
+  const hydro_real_t rho_f_sum = pi->rho * f_i + pj->rho * f_j;
+  const hydro_real_t f_ij = 2. * pi->rho * f_i * pj->rho * f_j / rho_f_sum;
+  G_ij[0] = 0.5 * f_ij * (G_i[0] + G_j[0]);
+  G_ij[1] = 0.5 * f_ij * (G_i[1] + G_j[1]);
+  G_ij[2] = 0.5 * f_ij * (G_i[2] + G_j[2]);
+#elif (hydro_props_kernel_gradient_weighting == 7)
+  const hydro_real_t f_i = pi->force.f;
+  const hydro_real_t f_j = pj->force.f;
+  const hydro_real_t P_sum = pi->force.pressure + pj->force.pressure;
+  const hydro_real_t f_ij = 
+      (pi->force.pressure * f_i + pj->force.pressure * f_j) / P_sum;
+  G_ij[0] = 0.5 * f_ij * (G_i[0] + G_j[0]);
+  G_ij[1] = 0.5 * f_ij * (G_i[1] + G_j[1]);
+  G_ij[2] = 0.5 * f_ij * (G_i[2] + G_j[2]);
+#elif (hydro_props_kernel_gradient_weighting == 8)
+  const hydro_real_t f_i = pi->force.f;
+  const hydro_real_t f_j = pj->force.f;
+  const hydro_real_t P_f_sum = 
+      pi->force.pressure * f_i + pj->force.pressure * f_j;
+  const hydro_real_t f_ij =
+      2. * pi->force.pressure * f_i * pj->force.pressure * f_j / P_f_sum;
+  G_ij[0] = 0.5 * f_ij * (G_i[0] + G_j[0]);
+  G_ij[1] = 0.5 * f_ij * (G_i[1] + G_j[1]);
+  G_ij[2] = 0.5 * f_ij * (G_i[2] + G_j[2]);
+#elif (hydro_props_kernel_gradient_weighting == 9)
+  const hydro_real_t f_i = pi->force.f;
+  const hydro_real_t f_j = pj->force.f;
+  const hydro_real_t mi = hydro_get_mass(pi);
+  const hydro_real_t mj = hydro_get_mass(pj);
+  const hydro_real_t rhoi_inv = 1. / hydro_get_comoving_density(pi);
+  const hydro_real_t rhoj_inv = 1. / hydro_get_comoving_density(pj);
+  const hydro_real_t Vi = mi * rhoi_inv;
+  const hydro_real_t Vj = mj * rhoj_inv;
+
+  const hydro_real_t f_ij = 0.5 * (Vi * f_i + Vj * f_j) / (Vi + Vj);
+  G_ij[0] = 0.5 * f_ij * (G_i[0] + G_j[0]);
+  G_ij[1] = 0.5 * f_ij * (G_i[1] + G_j[1]);
+  G_ij[2] = 0.5 * f_ij * (G_i[2] + G_j[2]);
+#else
+  error("Invalid hydro_props_kernel_gradient_weighting value: %d",
+        hydro_props_kernel_gradient_weighting);
+#endif
+}
+
 /**
- e @brief Finishes the density calculation.
+ * @brief Finishes the density calculation.
  *
  * Multiplies the density and number of neighbours by the appropiate constants
  * and add the self-contribution term.
@@ -1102,7 +1201,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
-    /* Compute the sound speed  */
+#ifdef hydro_props_use_adiabatic_correction
+  /* Prepare the denominator for the adiabatic correction term */
+  p->gradients.adiabatic_f_denominator = 0.;
+#endif
+
+  /* Compute the sound speed  */
   const float pressure = hydro_get_comoving_pressure(p);
   const float pressure_including_floor =
       pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
@@ -1201,11 +1305,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-
-    /* Normalize correctly with the smoothing length */
-#ifdef MAGMA2_DEBUG_CHECKS
-  p->gradients.adiabatic_f_numerator *= kernel_gamma_inv * h_inv;
-#endif
 
   p->gradients.u[0] *= h_inv_dim;
   p->gradients.u[1] *= h_inv_dim;
@@ -1425,9 +1524,28 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->v_sig_max = p->force.soundspeed;
   p->dt_min = p->h_min / p->v_sig_max;
 
+#ifdef hydro_props_use_adiabatic_correction
+  const hydro_real_t prev_f = p->force.f;
+  const hydro_real_t rho_inv = 1. / hydro_get_comoving_density(p);
+  /* Finish final kernel gradient correction factor */
+  if (p->gradients.adiabatic_f_denominator != 0.) {
+    const hydro_real_t kernel_r2 = p->gradients.adiabatic_f_numerator;
+    const hydro_real_t weighted_kernel_r2_inv = 
+        1. / p->gradients.adiabatic_f_denominator;
+    p->force.f = rho_inv * kernel_r2 * weighted_kernel_r2_inv;
+  }
+  else {
+    p->force.f = 1.;
+  }
+
 #ifdef MAGMA2_DEBUG_CHECKS
-  /* Kernel correction factor */
-  p->gradients.adiabatic_f = 0.;
+  if (p->force.f > 100.) {
+    warning("Final force factor is very high for particle with ID %lld"
+            " (prev f: %g, f: %g, numerator: %g, denominator: %g, rho_inv: %g)",
+            p->id, prev_f, p->force.f, p->gradients.adiabatic_f_numerator,
+            p->gradients.adiabatic_f_denominator, rho_inv);
+  }
+#endif
 #endif
 }
 
@@ -1595,14 +1713,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
             p->id, p->h, p->gradients.wcount, p->force.h_dt, p->dt_min,
             p->v_sig_max, Omega_inv);
   }
-
-  /* Calculate smoothing length powers */
-  const float h = p->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-
-  /* Kernel correction factors */
-  p->gradients.adiabatic_f *= h_inv_dim;
 #endif
 }
 
