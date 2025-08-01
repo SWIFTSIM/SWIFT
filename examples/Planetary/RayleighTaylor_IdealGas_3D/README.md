@@ -13,7 +13,7 @@ Wendland C2 kernel with ~100 neighbours.
 Some examples of configuration options with different hydro schemes:
 
 REMIX:
-`--with-hydro=remix --with-equation-of-state=planetary --with-kernel=wendland-C2 --with-ext-potential=constant --with-adiabatic-index=7/5 --enable-boundary-particles=20993`
+`--with-hydro=remix --with-equation-of-state=planetary --with-kernel=wendland-C2 --with-ext-potential=constant --with-adiabatic-index=7/5 --enable-boundary-particles-below-id=20993`
 
 "Traditional" SPH (tSPH):
-`--with-hydro=planetary --with-equation-of-state=planetary --with-kernel=wendland-C2 --with-ext-potential=constant --with-adiabatic-index=7/5 --enable-boundary-particles=20993`
+`--with-hydro=planetary --with-equation-of-state=planetary --with-kernel=wendland-C2 --with-ext-potential=constant --with-adiabatic-index=7/5 --enable-boundary-particles-below-id=20993`

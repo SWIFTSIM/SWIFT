@@ -50,7 +50,7 @@ Besides the pure gravity mode, swift also has the boundary particle mode,
 this mode turns off both the gravity forces and hydro forces for all
 particles. Because gas particles only receive hydro this mode only impacts
 gas particles more strictly than other particles. This mode can be
-activated using ``--enable-boundary-particles=N``. This will zero the
+activated using ``--enable-boundary-particles-below-id=N``. This will zero the
 gravitational and hydrodynamic *accelerations* of all particles with ``id``
 (strictly) lower than ``N`` at every time-step. Still if particles have an
 initial velocity they will keep moving at that speed. This compilation
@@ -63,7 +63,7 @@ on what can happen in any code module that directly changes the velocity of
 the boundary or no gravity particles. An example of this is momentum
 injection of stellar winds for example. If we additionally want to keep the
 boundary particles fixed at the same position for the whole simulation we can
-use the ``--enable-fixed-boundary-particles=N`` compile option, this option
+use the ``--enable-fixed-boundary-particles-below-id=N`` compile option, this option
 explicitly sets the velocity of the boundary particles to zero every time
 step on top of also zeroing the accelerations.
 
