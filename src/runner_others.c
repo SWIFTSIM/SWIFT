@@ -748,7 +748,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         if (id < SWIFT_BOUNDARY_PARTICLES) {
 
           /* Don't move ! */
-          hydro_reset_acceleration(p);
+          hydro_reset_boundary_particles(p);
           mhd_reset_acceleration(p);
 
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
