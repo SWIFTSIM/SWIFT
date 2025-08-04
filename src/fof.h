@@ -174,25 +174,6 @@ struct fof_final_index {
   size_t global_root;
 };
 
-/* Struct used to find the total mass of a group when using MPI */
-struct fof_final_mass {
-  size_t global_root;
-  double group_mass;
-  long long final_group_size;
-  double first_position[3];
-  double centre_of_mass[3];
-  float group_radii;
-  long long max_part_density_index;
-  float max_part_density;
-};
-
-/* Struct used to iterate over the hash table and unpack the mass fragments of a
- * group when using MPI */
-struct fof_mass_send_hashmap {
-  struct fof_final_mass *mass_send;
-  size_t nsend;
-};
-
 /* Store local and foreign cell indices that touch. */
 struct cell_pair_indices {
   struct cell *local, *foreign;

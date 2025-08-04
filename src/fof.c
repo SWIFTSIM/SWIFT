@@ -82,7 +82,6 @@ enum fof_halo_seeding_props {
 MPI_Datatype fof_mpi_type;
 MPI_Datatype group_length_mpi_type;
 MPI_Datatype fof_final_index_type;
-MPI_Datatype fof_final_mass_type;
 
 /*! Offset between the first particle on this MPI rank and the first particle in
  * the global order */
@@ -250,12 +249,6 @@ void fof_create_mpi_types(void) {
                           &fof_final_index_type) != MPI_SUCCESS ||
       MPI_Type_commit(&fof_final_index_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for fof_final_index.");
-  }
-  /* Define type for sending fof_final_mass struct */
-  if (MPI_Type_contiguous(sizeof(struct fof_final_mass), MPI_BYTE,
-                          &fof_final_mass_type) != MPI_SUCCESS ||
-      MPI_Type_commit(&fof_final_mass_type) != MPI_SUCCESS) {
-    error("Failed to create MPI type for fof_final_mass.");
   }
 #else
   error("Calling an MPI function in non-MPI code.");
@@ -561,25 +554,6 @@ int compare_fof_final_index_global_root(const void *a, const void *b) {
   if (fof_final_index_b->global_root < fof_final_index_a->global_root)
     return 1;
   else if (fof_final_index_b->global_root > fof_final_index_a->global_root)
-    return -1;
-  else
-    return 0;
-}
-
-/**
- * @brief Comparison function for qsort call comparing group global roots
- *
- * @param a The first #fof_final_mass object.
- * @param b The second #fof_final_mass object.
- * @return 1 if the global of the group b is *smaller* than the global group of
- * group a, -1 if a is the smaller one and 0 if they are equal.
- */
-int compare_fof_final_mass_global_root(const void *a, const void *b) {
-  struct fof_final_mass *fof_final_mass_a = (struct fof_final_mass *)a;
-  struct fof_final_mass *fof_final_mass_b = (struct fof_final_mass *)b;
-  if (fof_final_mass_b->global_root < fof_final_mass_a->global_root)
-    return 1;
-  else if (fof_final_mass_b->global_root > fof_final_mass_a->global_root)
     return -1;
   else
     return 0;
@@ -2711,9 +2685,6 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
     /* Relabel the group ids */
     props->final_group_index[i] = i + 1;
-
-    // Set the radii to zero
-    radii[i] = 0.;
   }
 
   // Calculate the maximum radius for each FOF
@@ -2743,7 +2714,6 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   }
 
 #ifdef WITH_MPI
-  /* TODO: Can this be MPI_Reduce? */
   MPI_Allreduce(MPI_IN_PLACE, radii, props->num_groups, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
 #endif
