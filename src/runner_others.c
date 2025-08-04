@@ -736,8 +736,8 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
 
         /* Apply the forcing terms (if any) */
-        forcing_terms_apply(e->time, e->forcing_terms, e->s,
-                            e->physical_constants, p, xp);
+        forcing_hydro_terms_apply(e->time, e->forcing_terms, e->s,
+                                  e->physical_constants, p, xp);
 
 #ifdef SWIFT_BOUNDARY_PARTICLES
 
@@ -820,6 +820,10 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
         /* Finish the force calculation */
         gravity_end_force(gp, G_newton, potential_normalisation, periodic,
                           with_self_gravity);
+
+        /* Apply the forcing terms (if any) */
+        forcing_grav_terms_apply(e->time, e->forcing_terms, e->s,
+                                 e->physical_constants, e, gp);
 
 #ifdef SWIFT_MAKE_GRAVITY_GLASS
 
