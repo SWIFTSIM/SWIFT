@@ -1378,6 +1378,16 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
             1.0e-4 * max(fabsf(d), ci->hydro.dx_max_sort_old) &&
         fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
             ci->width[0] * 1.0e-10)
+
+      //lily                                                                                                     
+      message("dx_max_sort error triggered:");
+      message("Particle ID = %llu", p->id);
+      message("Split flag  = %d", p->split_flag);
+      message("Position    = (%.5e, %.5e, %.5e)", p->x[0], p->x[1], p->x[2]);
+      message("h           = %.5e", p->h);
+      message("d = %.5e, sort_i[pid].d = %.5e, dx_max_sort = %.5e, dx_max_sort_old = %.5e",
+            d, sort_i[pid].d, ci->hydro.dx_max_sort, ci->hydro.dx_max_sort_old);
+
       error(
           "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
           "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->hydro.dx_max_sort=%e "

@@ -1,0 +1,1 @@
+[00053.6] ./runner_doiact_functions_hydro.h:runner_dopair1_branch_density():1386: particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=0 cj->nodeID=0 d=5.546675e-02 sort_i[pid].d=5.692690e-02 ci->hydro.dx_max_sort=1.451587e-03 ci->hydro.dx_max_sort_old=1.323186e-03

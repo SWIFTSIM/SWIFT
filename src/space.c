@@ -1470,8 +1470,10 @@ void space_init(struct space *s, struct swift_params *params,
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);
 
+  //lily hard coded
+  s->splitting_need_unique_id = 1;
   /* Compute the max id for the generation of unique id. */
-  if (create_sparts) {
+  if (create_sparts || s->splitting_need_unique_id) {
     space_init_unique_id(s, nr_nodes);
   }
 }

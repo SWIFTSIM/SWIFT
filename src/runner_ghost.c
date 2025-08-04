@@ -1217,7 +1217,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             p->density.wcount_dh = p->density.rho_dh * inv_mass;
 #endif
           }
-
+	 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
           const float n_target = hydro_eta_dim;

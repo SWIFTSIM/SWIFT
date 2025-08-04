@@ -62,6 +62,103 @@
 #include "timers.h"
 #include "timestep_limiter.h"
 #include "tracers.h"
+#include "black_holes.h"
+
+/**** lily code gas splitting *****/
+/**** split gas particles within BH hsml ****/
+void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
+  struct engine *e = r->e;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
+  struct bpart *restrict bhs = c->black_holes.parts;
+
+  TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID)
+    error("Running gas splitting task on a foreign node!");
+#endif
+
+   /* Anything to do here? */
+  if (count == 0 || !cell_is_active_hydro(c, e)) {
+    return;
+  }
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        /* Load the child cell */
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Do the recursion */
+         runner_do_particle_split(r, cp, 0);
+
+        /* Update the h_max */
+        c->hydro.h_max = max(c->hydro.h_max, cp->hydro.h_max);
+        c->hydro.h_max_active =
+            max(c->hydro.h_max_active, cp->hydro.h_max_active);
+      }
+  } else {
+    // Leaf cell: process particles here
+    
+    int num_bhs = c->black_holes.count;
+    //hardcode splits for now
+    // options are nsplit = 1, 5, 7, 9 (odd because we count the og central particle
+    const int n_split = 7;
+    
+    for (int i = 0; i < num_bhs; i++) {
+      struct bpart *bh = &bhs[i];
+      double bh_pos[3] = {bh->x[0], bh->x[1], bh->x[2]};
+      float bh_h = bh->h;
+
+      // Now loop over gas particles near BH
+      for (int j = 0; j < c->hydro.count; j++) {
+	struct part *p  = &parts[j];
+	struct xpart *xp = &xparts[j];
+	//this only really needs to be calculated once
+	const float child_mass = p->mass / n_split;  
+	double new_h = p->h * pow(1.0 / n_split, 1.0 / 3.0);
+        // Compute distance between gas particle and BH
+        double dx = p->x[0] - bh_pos[0];
+        double dy = p->x[1] - bh_pos[1];
+        double dz = p->x[2] - bh_pos[2];
+        double dist = sqrt(dx*dx + dy*dy + dz*dz);
+	
+        // If gas particle is within BH smoothing length
+        if (dist < 2*bh_h) {
+	  //split into 3D cross
+	  double delta = p->h / 3.0;
+	  double offsets[6][3] = {                                                 
+	    {+delta, +delta, 0},
+	    {+delta, 0, +delta},
+	    {0, +delta, +delta},
+	    {-delta, -delta, 0},
+	    {-delta, 0, -delta},
+	    {0, -delta, -delta}
+	  };
+	  //update parent mass and h (position remains the same
+	  p->h = new_h;
+	  p->mass = child_mass;
+	  // Spawn children 
+	  for (int k = 0; k < 6; k++) {
+	    double pos_offsets[3] = {offsets[k][0], offsets[k][1], offsets[k][2]};
+	    struct part *child = cell_spawn_new_part_from_part(e, c, p, xp, child_mass, pos_offsets, new_h);
+	    if (child == NULL)
+	      error("Failed to spawn child particle in gas splitting.");
+	    
+	  }
+	 
+
+	}
+      }
+    } 
+  }
+}
+
+
+
 
 extern const int sort_stack_size;
 
@@ -673,6 +770,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
  */
 void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
+  //change e from const to mutable?
   const struct engine *e = r->e;
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
@@ -688,12 +786,12 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
   } else {
 
     const struct cosmology *cosmo = e->cosmology;
-    const int count = c->hydro.count;
+    //const int count = c->hydro.count;
     struct part *restrict parts = c->hydro.parts;
     struct xpart *restrict xparts = c->hydro.xparts;
 
     /* Loop over the gas particles in this cell. */
-    for (int k = 0; k < count; k++) {
+    for (int k = 0; k < c->hydro.count; k++) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
@@ -713,8 +811,11 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
           dt = get_timestep(p->time_bin, e->time_base);
         }
 
+	
+
         /* Finish the force loop */
-        hydro_end_force(p, cosmo);
+	//lily change hydro_end_force added xp,e and c
+	hydro_end_force((struct engine *)e, c, xp, p, cosmo, e->time);
         mhd_end_force(p, cosmo);
         timestep_limiter_end_force(p);
         chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);

@@ -21,6 +21,7 @@
 import h5py
 import sys
 from numpy import *
+import numpy as np
 
 # Generates a swift IC file containing a cartesian distribution of particles
 # at a constant density and pressure in a cubic box
@@ -74,6 +75,7 @@ ds[()] = v
 v = zeros(1)
 
 m = full((numPart, 1), mass)
+m[0] = mass * 0.1
 ds = grp.create_dataset("Masses", (numPart, 1), "f")
 ds[()] = m
 m = zeros(1)
@@ -90,6 +92,7 @@ u = zeros(1)
 
 
 ids = linspace(0, numPart, numPart, endpoint=False).reshape((numPart, 1))
+print(ids[np.where(m > mass)[0]])
 ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
 ds[()] = ids + 1
 x = ids % L
