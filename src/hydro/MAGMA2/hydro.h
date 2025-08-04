@@ -563,11 +563,10 @@ double condition_number(gsl_matrix *A) {
  * @param result The result of the dot product.
  */
 __attribute__((always_inline)) INLINE static 
-void hydro_vec3_vec3_dot(const hydro_real_t *restrict vec_a, 
-                         const hydro_real_t *restrict vec_b, 
-                         hydro_real_t *result) {
+hydro_real_t hydro_vec3_vec3_dot(const hydro_real_t *restrict vec_a, 
+                                 const hydro_real_t *restrict vec_b) {
 
-  *result = vec_a[0] * vec_b[0] + vec_a[1] * vec_b[1] + vec_a[2] * vec_b[2];
+  return vec_a[0] * vec_b[0] + vec_a[1] * vec_b[1] + vec_a[2] * vec_b[2];
 }
 
 /**
@@ -579,12 +578,9 @@ void hydro_vec3_vec3_dot(const hydro_real_t *restrict vec_a,
  * @param result The result of the norm.
  */
 __attribute__((always_inline)) INLINE static 
-void hydro_vec3_vec3_norm(const hydro_real_t *restrict vec_a, 
-                          const hydro_real_t *restrict vec_b, 
-                          hydro_real_t *result) {
+hydro_real_t hydro_vec3_norm(const hydro_real_t *restrict vec) {
 
-  *result = 
-      sqrt(vec_a[0] * vec_a[0] + vec_a[1] * vec_a[1] + vec_a[2] * vec_a[2]);
+  return sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
 }
 
 /**
@@ -596,19 +592,18 @@ void hydro_vec3_vec3_norm(const hydro_real_t *restrict vec_a,
  * @param result The result of the contraction.
  */
 __attribute__((always_inline)) INLINE static 
-void hydro_mat3x3_mat3x3_dot(const hydro_real_t (*restrict mat_a)[3], 
-                             const hydro_real_t (*restrict mat_b)[3], 
-                             hydro_real_t *result) {
+hydro_real_t hydro_mat3x3_mat3x3_dot(const hydro_real_t (*restrict mat_a)[3], 
+                                     const hydro_real_t (*restrict mat_b)[3]) {
 
-  *result = mat_a[0][0] * mat_b[0][0] +
-            mat_a[0][1] * mat_b[0][1] +
-            mat_a[0][2] * mat_b[0][2] +
-            mat_a[1][0] * mat_b[1][0] +
-            mat_a[1][1] * mat_b[1][1] +
-            mat_a[1][2] * mat_b[1][2] +
-            mat_a[2][0] * mat_b[2][0] +
-            mat_a[2][1] * mat_b[2][1] +
-            mat_a[2][2] * mat_b[2][2];
+  return mat_a[0][0] * mat_b[0][0] +
+         mat_a[0][1] * mat_b[0][1] +
+         mat_a[0][2] * mat_b[0][2] +
+         mat_a[1][0] * mat_b[1][0] +
+         mat_a[1][1] * mat_b[1][1] +
+         mat_a[1][2] * mat_b[1][2] +
+         mat_a[2][0] * mat_b[2][0] +
+         mat_a[2][1] * mat_b[2][1] +
+         mat_a[2][2] * mat_b[2][2];
 }
 
 /**
@@ -755,10 +750,8 @@ hydro_real_t hydro_scalar_van_leer_A(const hydro_real_t *restrict grad_i,
                                      const hydro_real_t *restrict grad_j,
                                      const hydro_real_t *restrict dx) {
 
-  hydro_real_t grad_dot_x_i = 0.;
-  hydro_real_t grad_dot_x_j = 0.;
-  hydro_vec3_vec3_dot(grad_i, dx, &grad_dot_x_i);
-  hydro_vec3_vec3_dot(grad_j, dx, &grad_dot_x_j);
+  const hydro_real_t grad_dot_x_i = hydro_vec3_vec3_dot(grad_i, dx);
+  const hydro_real_t grad_dot_x_j = hydro_vec3_vec3_dot(grad_j, dx);
 
   /* Regularize denominator */
   if (grad_dot_x_j == 0.) return 0.;
@@ -784,10 +777,8 @@ hydro_real_t hydro_vector_van_leer_A(const hydro_real_t (*restrict grad_i)[3],
   hydro_real_t delta_ij[3][3] = {0};
   hydro_vec3_vec3_outer(dx, dx, delta_ij);
 
-  hydro_real_t grad_dot_x_x_i = 0.;
-  hydro_real_t grad_dot_x_x_j = 0.;
-  hydro_mat3x3_mat3x3_dot(grad_i, delta_ij, &grad_dot_x_x_i);
-  hydro_mat3x3_mat3x3_dot(grad_j, delta_ij, &grad_dot_x_x_j);
+  const hydro_real_t grad_dot_x_x_i = hydro_mat3x3_mat3x3_dot(grad_i, delta_ij);
+  const hydro_real_t grad_dot_x_x_j = hydro_mat3x3_mat3x3_dot(grad_j, delta_ij);
 
   /* Regularize denominator */
   if (grad_dot_x_x_j == 0.) return 0.;
@@ -870,11 +861,8 @@ hydro_scalar_second_order_reconstruction(const hydro_real_t phi,
   hydro_real_t delta_ij[3][3] = {0};
   hydro_vec3_vec3_outer(midpoint, midpoint, delta_ij);
 
-  hydro_real_t df_dx_dot_r = 0.;
-  hydro_real_t df_dx_dx_dot_r2 = 0.;
-
-  hydro_vec3_vec3_dot(grad, midpoint, &df_dx_dot_r);
-  hydro_mat3x3_mat3x3_dot(hess, delta_ij, &df_dx_dx_dot_r2);
+  const hydro_real_t df_dx_dot_r = hydro_vec3_vec3_dot(grad, midpoint);
+  const hydro_real_t df_dx_dx_dot_r2 = hydro_mat3x3_mat3x3_dot(hess, delta_ij);
 
   /* Apply limited slope reconstruction */
   *f_reconstructed = f + phi * (df_dx_dot_r + 0.5 * df_dx_dx_dot_r2);
@@ -919,6 +907,16 @@ hydro_vector_second_order_reconstruction(const hydro_real_t phi,
   f_reconstructed[2] = f[2] + phi * (df_dx_dot_r[2] + 0.5 * df_dx_dx_dot_r2[2]);
 }
 
+/**
+ * @brief Computes the average kernel gradient between pi and pj
+ *
+ *
+ * @param pi Particle pi
+ * @param pj Particle pj
+ * @param G_i Kernel gradient at pi
+ * @param G_j Kernel gradient at pj
+ * @param G_ij Kernel gradient average to fill
+ */
 __attribute__((always_inline)) INLINE static 
 void hydro_get_average_kernel_gradient(const struct part *restrict pi, 
                                        const struct part *restrict pj,
@@ -1012,6 +1010,191 @@ void hydro_get_average_kernel_gradient(const struct part *restrict pi,
 #else
   error("Invalid hydro_props_kernel_gradient_weighting value: %d",
         hydro_props_kernel_gradient_weighting);
+#endif
+}
+
+/**
+ * @brief Computes the viscosity acceleration and mu_ij terms.
+ *
+ *
+ * @param pi Particle pi
+ * @param pj Particle pj
+ * @param dv_ij Second order reconstructed velocity difference
+ * @param dx_ij Distance vector
+ * @param r2 Distance vector squared
+ * @param r_inv Inverse distance between pi and pj
+ * @param fac_mu Cosmological factor for mu_ij
+ * @param a2_Hubble Hubble flow
+ * @param mu_i The velocity jump indicator at pi to fill
+ * @param mu_j The velocity jump indicator at pj to fill
+ */
+__attribute__((always_inline)) INLINE static 
+hydro_real_t hydro_get_visc_acc_term_and_mu(const struct part *restrict pi,
+                                            const struct part *restrict pj,
+                                            const hydro_real_t *restrict dv_ij,
+                                            const hydro_real_t *restrict dx_ij,
+                                            const hydro_real_t r2,
+                                            const hydro_real_t r_inv,
+                                            const hydro_real_t fac_mu,
+                                            const hydro_real_t a2_Hubble,
+                                            hydro_real_t *mu_i,
+                                            hydro_real_t *mu_j) {
+
+  const hydro_real_t rhoi = pi->rho;
+  const hydro_real_t rhoj = pj->rho;
+
+#ifdef hydro_props_viscosity_weighting_type
+#if (hydro_props_viscosity_weighting_type == 0)
+  const hydro_real_t rhoij_inv = 1. / (rhoi * rhoj);
+  const hydro_real_t hi_inv = 1. / pi->h;
+  const hydro_real_t hj_inv = 1. / pj->h;
+
+  const hydro_real_t dv_ji[3] = {-dv_ij[0], -dv_ij[1], -dv_ij[2]};
+
+  const hydro_real_t eta_i[3] = {dx_ij[0] * hi_inv,
+                                  dx_ij[1] * hi_inv, 
+                                  dx_ij[2] * hi_inv};
+  const hydro_real_t eta_j[3] = {-dx_ij[0] * hj_inv,
+                                 -dx_ij[1] * hj_inv,
+                                 -dx_ij[2] * hj_inv};
+  const hydro_real_t eta_i2 = hydro_vec3_vec3_dot(eta_i, eta_i);
+  const hydro_real_t eta_j2 = hydro_vec3_vec3_dot(eta_j, eta_j);
+
+  const hydro_real_t dv_dot_eta_i = hydro_vec3_vec3_dot(dv_ij, eta_i);
+  /* Scale Hubble flow by hi_inv so it is overall scaled */
+  const hydro_real_t dv_dot_eta_i_Hubble = 
+      dv_dot_eta_i + a2_Hubble * r2 * hi_inv;
+
+  const hydro_real_t dv_dot_eta_j = hydro_vec3_vec3_dot(dv_ji, eta_j);
+  /* Scale Hubble flow by hj_inv so it is overall scaled */
+  const hydro_real_t dv_dot_eta_j_Hubble = 
+      dv_dot_eta_j + a2_Hubble * r2 * hj_inv;
+
+  /* Is the flow converging? */
+  const char conv_i = (dv_dot_eta_i_Hubble < 0.) ? 1 : 0;
+  const char conv_j = (dv_dot_eta_j_Hubble < 0.) ? 1 : 0;
+
+  /* Is the flow converging? If so, multiply mu by fac_mu. If not, zero. */
+  const hydro_real_t conv = (conv_i && conv_j) ? fac_mu : 0.;
+
+#ifdef MAGMA2_DEBUG_CHECKS
+  if (conv_i != conv_j) {
+    warning("Flow mismatch for particles pi=%lld and pj=%lld.\n"
+            "conv_i = %d, conv_j = %d\n"
+            "dv_dot_eta_i_Hubble = %g, dv_dot_eta_j_Hubble = %g\n"
+            "dv_ij = (%g, %g, %g), dv_ji = (%g, %g, %g)\n"
+            "eta_i = (%g, %g, %g), eta_j = (%g, %g, %g)\n"
+            "eta_i2 = %g, eta_j2 = %g\n"
+            "hi_inv = %g, hj_inv = %g\n"
+            "a2_Hubble = %g, r2 = %g\n",
+            pi->id, pj->id,
+            conv_i, conv_j,
+            dv_dot_eta_i_Hubble, dv_dot_eta_j_Hubble,
+            dv_ij[0], dv_ij[1], dv_ij[2],
+            dv_ji[0], dv_ji[1], dv_ji[2],
+            eta_i[0], eta_i[1], eta_i[2],
+            eta_j[0], eta_j[1], eta_j[2],
+            eta_i2, eta_j2,
+            hi_inv, hj_inv,
+            a2_Hubble, r2);
+  }
+#endif
+
+  /* mu_i and mu_j include the Hubble flow */
+  *mu_i = conv * dv_dot_eta_i_Hubble  / (eta_i2 + const_viscosity_epsilon2);
+  *mu_j = conv * dv_dot_eta_j_Hubble  / (eta_j2 + const_viscosity_epsilon2);
+  
+  const hydro_real_t q_i_alpha = 
+      -const_viscosity_alpha * pi->force.soundspeed * (*mu_i);
+  const hydro_real_t q_i_beta = const_viscosity_beta * (*mu_i) * (*mu_i);
+  const hydro_real_t Q_i = rhoi * (q_i_alpha + q_i_beta);
+
+  const hydro_real_t q_j_alpha =
+      -const_viscosity_alpha * pj->force.soundspeed * (*mu_j);
+  const hydro_real_t q_j_beta = const_viscosity_beta * (*mu_j) * (*mu_j);
+  const hydro_real_t Q_j = rhoj * (q_j_alpha + q_j_beta);
+
+  /* Add viscosity to the pressure */
+  return (Q_i + Q_j) * rhoij_inv;
+
+#elif (hydro_props_viscosity_weighting_type == 1)
+  const hydro_real_t rhoij_inv = 1. / (rhoi * rhoj);
+  const hydro_real_t dv_dot_dr_Hubble = 
+      hydro_vec3_vec3_dot(dv_ij, dx_ij) + a2_Hubble * r2;
+  const hydro_real_t conv = (dv_dot_dr_Hubble < 0.) ? fac_mu : 0.;
+  const hydro_real_t mu_ij = conv * dv_dot_dr_Hubble * r_inv;
+  const hydro_real_t c_ij = 
+      0.5 * (pi->force.soundspeed + pj->force.soundspeed);
+
+  const hydro_real_t q_ij_alpha = -const_viscosity_alpha * c_ij * mu_ij;
+  const hydro_real_t q_ij_beta = const_viscosity_beta * mu_ij * mu_ij;
+  const hydro_real_t Q_ij = (rhoi + rhoj) * (q_ij_alpha + q_ij_beta);
+  
+  /* Load mu_i and mu_j */
+  *mu_i = mu_ij;
+  *mu_j = mu_ij;
+
+  /* Add viscosity to the pressure */
+  return Q_ij * rhoij_inv;
+#elif (hydro_props_viscosity_weighting_type == 2)
+  const hydro_real_t dv_dot_dr_Hubble = 
+      hydro_vec3_vec3_dot(dv_ij, dx_ij) + a2_Hubble * r2;
+  const hydro_real_t conv = (dv_dot_dr_Hubble < 0.) ? fac_mu : 0.;
+  const hydro_real_t mu_ij = conv * dv_dot_dr_Hubble * r_inv;
+  const hydro_real_t c_ij = 
+      0.5 * (pi->force.soundspeed + pj->force.soundspeed);
+
+  const hydro_real_t q_ij_alpha = -const_viscosity_alpha * c_ij * mu_ij;
+  const hydro_real_t q_ij_beta = const_viscosity_beta * mu_ij * mu_ij;
+  const hydro_real_t q_ij = 2. * (q_ij_alpha + q_ij_beta) / (rhoi + rhoj);
+  
+  /* Load mu_i and mu_j */
+  *mu_i = mu_ij;
+  *mu_j = mu_ij;
+
+  /* Add viscosity to the pressure */
+  return q_ij;
+#endif
+#else
+  error("Unknown compiled hydro_props_viscosity_weighting_type value: %d\n"
+        "Valid values are 0, 1, or 2.\n",
+        (int)hydro_props_viscosity_weighting_type);
+#endif
+
+}
+
+/**
+ * @brief Gets the signal velocity for the viscous interaction based on mu_ij.
+ *
+ *
+ * @param dx The separation vector
+ * @param pi Particle pi
+ * @param pj Particle pj
+ * @param mu_i The velocity jump indicator at pi
+ * @param mu_j The velocity jump indicator at pj
+ */
+__attribute__((always_inline)) INLINE static 
+hydro_real_t hydro_get_visc_signal_velocity(const hydro_real_t *restrict dx,
+                                            const struct part *restrict pi,
+                                            const struct part *restrict pj,
+                                            const hydro_real_t mu_i,
+                                            const hydro_real_t mu_j,
+                                            const hydro_real_t beta) {
+
+#ifdef hydro_props_viscosity_weighting_type
+#if (hydro_props_viscosity_weighting_type == 0)
+  const hydro_real_t dx_ji[3] = {-dx[0], -dx[1], -dx[2]};
+  const hydro_real_t v_sig_visc_i = 
+      hydro_signal_velocity(dx, pi, pj, mu_i, beta);
+  const hydro_real_t v_sig_visc_j = 
+      hydro_signal_velocity(dx_ji, pj, pi, mu_j, beta);
+  return max(v_sig_visc_i, v_sig_visc_j);
+#else
+  /* Here mu_i = mu_j */
+  return hydro_signal_velocity(dx, pi, pj, mu_i, beta);
+#endif
+#else
+  error("No viscosity weighting type defined at compile time.");
 #endif
 }
 
@@ -1223,7 +1406,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   /* Compute the "grad h" term */
   const float common_factor = p->h * hydro_dimension_inv / p->density.wcount;
-  float grad_W_term = 0.f;
+  float grad_W_term = -1.f;
 
   /* Ignore changing-kernel effects when h ~= h_max */
   if (p->h > 0.9999f * hydro_props->h_max) {
@@ -1239,7 +1422,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
          top of each other). Either way, we cannot use the normal
          expression, since that would lead to overflow or excessive round
          off and cause excessively high accelerations in the force loop */
-      grad_W_term = 0.f;
+      grad_W_term = -1.f;
       warning(
           "grad_W_term very small for particle with ID %lld (h: %g, wcount: "
           "%g, wcount_dh: %g)",
@@ -1248,7 +1431,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   }
 
   /* Update variables. */
-  p->force.f = (grad_W_term != 0.f) ? 1. / (1. + (hydro_real_t)grad_W_term) : 0.;
+  p->force.f = (grad_W_term > -1.f) ? 1.f / (1.f + grad_W_term) : 1.f;
 
 }
 
@@ -1695,13 +1878,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
   
   const hydro_real_t wcount_inv = 1. / p->gradients.wcount;
-#ifdef hydro_props_use_higher_order_gradients_in_dh_dt
-  const hydro_real_t Omega_inv = 1.;
-#else
-  const hydro_real_t Omega_inv = p->force.f;
-#endif
 
-  p->force.h_dt *= Omega_inv * p->h * hydro_dimension_inv * wcount_inv;
+  p->force.h_dt *= p->h * hydro_dimension_inv * wcount_inv;
 
   /* dt_min is in physical units, and requires the kernel_gamma factor for h */
   p->dt_min *= kernel_gamma * cosmo->a / cosmo->a_factor_sound_speed;
@@ -1709,9 +1887,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 #ifdef MAGMA2_DEBUG_CHECKS
   if (fabs(p->force.h_dt / p->h) > 1000.) {
     warning("Large dh/dt! Hydro end force for particle with ID %lld (h: %g, "
-            "wcount: %g, h_dt: %g, dt_min: %g, v_sig_max: %g, Omega_inv: %g)",
+            "wcount: %g, h_dt: %g, dt_min: %g, v_sig_max: %g)",
             p->id, p->h, p->gradients.wcount, p->force.h_dt, p->dt_min,
-            p->v_sig_max, Omega_inv);
+            p->v_sig_max);
   }
 #endif
 }

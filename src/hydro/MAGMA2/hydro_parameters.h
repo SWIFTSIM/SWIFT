@@ -129,21 +129,6 @@
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
 #define const_viscosity_beta (2.0 * const_viscosity_alpha)
 
-/*! Use the second-order velocities in v_ij * G_ij (this doesn't work) */
-//#define hydro_props_use_second_order_velocities_in_divergence
-
-/*! Use v_ij * G_ij in dh/dt evolution */
-#define hydro_props_use_higher_order_gradients_in_dh_dt
-
-#ifdef hydro_props_viscosity_weighting_type
-#ifndef hydro_props_use_viscosity_weighting
-#define hydro_props_use_viscosity_weighting
-#endif
-#else
-#define hydro_props_use_viscosity_weighting
-#define hydro_props_viscosity_weighting_type 2
-#endif
-
 /* ---------- Structures for below ---------- */
 
 
