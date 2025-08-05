@@ -20,7 +20,7 @@
 #include "runner_doiact_sinks.h"
 
 /**
- * @brief Calculate gas and sink interaction around #sinks
+ * @brief Calculate gas and sink interaction around #sink
  *
  * @param r runner task
  * @param c cell
@@ -59,8 +59,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
       /* Skip inactive particles */
       if (!sink_is_active(si, e)) continue;
 
-      const float ri = si->r_cut;
-      const float ri2 = ri * ri;
+      const float hi = si->h;
+      const float hig2 = hi * hi * kernel_gamma2;
       const float six[3] = {(float)(si->x[0] - c->loc[0]),
                             (float)(si->x[1] - c->loc[1]),
                             (float)(si->x[2] - c->loc[2])};
@@ -90,9 +90,10 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
           error("Particle pj not drifted to current time");
 #endif
 
-        if (r2 < ri2) {
-          IACT_SINKS_GAS(r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
-                         e->gravity_properties, e->sink_properties);
+        if (r2 < hig2) {
+          IACT_SINKS_GAS(r2, dx, hi, hj, si, pj, with_cosmology, cosmo,
+                         e->gravity_properties, e->sink_properties,
+                         e->ti_current, e->time);
         }
       } /* loop over the parts in ci. */
     } /* loop over the sinks in ci. */
@@ -111,8 +112,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
     /* Skip inactive particles */
     if (!sink_is_active(si, e)) continue;
 
-    const float ri = si->r_cut;
-    const float ri2 = ri * ri;
+    const float hi = si->h;
+    const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
                           (float)(si->x[1] - c->loc[1]),
                           (float)(si->x[2] - c->loc[2])};
@@ -125,8 +126,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 
       /* Get a pointer to the jth particle. */
       struct sink *restrict sj = &sinks[sjd];
-      const float rj = sj->r_cut;
-      const float rj2 = rj * rj;
+      const float hj = sj->h;
+      const float hjg2 = hj * hj * kernel_gamma2;
 
       /* Early abort? */
       if (sink_is_inhibited(sj, e)) continue;
@@ -141,14 +142,15 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
       if (si->ti_drift != e->ti_current)
-        error("Particle bi not drifted to current time");
+        error("Particle si not drifted to current time");
       if (sj->ti_drift != e->ti_current)
         error("Particle bj not drifted to current time");
 #endif
 
-      if (r2 < ri2 || r2 < rj2) {
-        IACT_SINKS_SINK(r2, dx, ri, rj, si, sj, with_cosmology, cosmo,
-                        e->gravity_properties, e->sink_properties);
+      if (r2 < hig2 || r2 < hjg2) {
+        IACT_SINKS_SINK(r2, dx, hi, hj, si, sj, with_cosmology, cosmo,
+                        e->gravity_properties, e->sink_properties,
+                        e->ti_current, e->time);
       }
     } /* loop over the sinks in ci. */
   } /* loop over the sinks in ci. */
@@ -159,7 +161,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Calculate gas and sink interaction around #sinks
+ * @brief Calculate gas and sink interaction around #sink
  *
  * @param r runner task
  * @param ci The first #cell
@@ -208,11 +210,11 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Skip inactive particles */
       if (!sink_is_active(si, e)) continue;
 
-      const float ri = si->r_cut;
-      const float ri2 = ri * ri;
-      const float six[3] = {(float)(si->x[0] - cj->loc[0]),
-                            (float)(si->x[1] - cj->loc[1]),
-                            (float)(si->x[2] - cj->loc[2])};
+      const float hi = si->h;
+      const float hig2 = hi * hi * kernel_gamma2;
+      const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
+                            (float)(si->x[1] - (cj->loc[1] + shift[1])),
+                            (float)(si->x[2] - (cj->loc[2] + shift[2]))};
 
       /* Loop over the parts (gas) in cj. */
       for (int pjd = 0; pjd < count_j; pjd++) {
@@ -239,9 +241,10 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
           error("Particle pj not drifted to current time");
 #endif
 
-        if (r2 < ri2) {
-          IACT_SINKS_GAS(r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
-                         e->gravity_properties, e->sink_properties);
+        if (r2 < hig2) {
+          IACT_SINKS_GAS(r2, dx, hi, hj, si, pj, with_cosmology, cosmo,
+                         e->gravity_properties, e->sink_properties,
+                         e->ti_current, e->time);
         }
       } /* loop over the parts in cj. */
     } /* loop over the sinks in ci. */
@@ -263,8 +266,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Skip inactive particles */
     if (!sink_is_active(si, e)) continue;
 
-    const float ri = si->r_cut;
-    const float ri2 = ri * ri;
+    const float hi = si->h;
+    const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
                           (float)(si->x[1] - (cj->loc[1] + shift[1])),
                           (float)(si->x[2] - (cj->loc[2] + shift[2]))};
@@ -274,8 +277,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct sink *restrict sj = &sinks_j[sjd];
-      const float rj = sj->r_cut;
-      const float rj2 = rj * rj;
+      const float hj = sj->h;
+      const float hjg2 = hj * hj * kernel_gamma2;
 
       /* Skip inhibited particles. */
       if (sink_is_inhibited(sj, e)) continue;
@@ -295,9 +298,10 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
         error("Particle sj not drifted to current time");
 #endif
 
-      if (r2 < ri2 || r2 < rj2) {
-        IACT_SINKS_SINK(r2, dx, ri, rj, si, sj, with_cosmology, cosmo,
-                        e->gravity_properties, e->sink_properties);
+      if (r2 < hig2 || r2 < hjg2) {
+        IACT_SINKS_SINK(r2, dx, hi, hj, si, sj, with_cosmology, cosmo,
+                        e->gravity_properties, e->sink_properties,
+                        e->ti_current, e->time);
       }
     } /* loop over the sinks in cj. */
   } /* loop over the sinks in ci. */
@@ -306,8 +310,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 }
 
 /**
- * @brief Calculate swallow for ci #sinks part around the cj #gas and sinks and
- *                              cj #sinks part around the ci #gas and sinks
+ * @brief Calculate swallow for ci #sink part around the cj #part and sinks and
+ *                              cj #sink part around the ci #part and sinks
  *
  * @param r runner task
  * @param ci The first #cell
@@ -334,6 +338,299 @@ void DOPAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 }
 
 /**
+ * @brief Compute the interactions between a cell pair, but only for the
+ *      given indices in ci.
+ *
+ * Version using a brute-force algorithm.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param sinks_i The #sink to interact with @c cj.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param scount The number of particles in @c ind.
+ * @param cj The second #cell.
+ * @param shift The shift vector to apply to the particles in ci.
+ */
+void DOPAIR1_SUBSET_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
+                                struct sink *restrict sinks_i,
+                                int *restrict ind, const int scount,
+                                struct cell *restrict cj, const double *shift) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != engine_rank) error("Should be run on a different node");
+#endif
+
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_j = cj->hydro.parts;
+
+  /* Early abort? */
+  if (count_j == 0) return;
+
+  /* Loop over the parts_i. */
+  for (int sid = 0; sid < scount; sid++) {
+
+    /* Get a hold of the ith part in ci. */
+    struct sink *restrict si = &sinks_i[ind[sid]];
+
+    const double six = si->x[0] - (shift[0]);
+    const double siy = si->x[1] - (shift[1]);
+    const double siz = si->x[2] - (shift[2]);
+    const float hi = si->h;
+    const float hig2 = hi * hi * kernel_gamma2;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!sink_is_active(si, e))
+      error("Trying to correct smoothing length of inactive particle !");
+#endif
+
+    /* Loop over the parts in cj. */
+    for (int pjd = 0; pjd < count_j; pjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct part *restrict pj = &parts_j[pjd];
+
+      /* Skip inhibited particles */
+      if (part_is_inhibited(pj, e)) continue;
+
+      const double pjx = pj->x[0];
+      const double pjy = pj->x[1];
+      const double pjz = pj->x[2];
+      const float hj = pj->h;
+
+      /* Compute the pairwise distance. */
+      const float dx[3] = {(float)(six - pjx), (float)(siy - pjy),
+                           (float)(siz - pjz)};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (pj->ti_drift != e->ti_current)
+        error("Particle pj not drifted to current time");
+#endif
+      /* Hit or miss? */
+      if (r2 < hig2) {
+        IACT_SINKS_GAS(r2, dx, hi, hj, si, pj, with_cosmology, cosmo,
+                       e->gravity_properties, e->sink_properties, e->ti_current,
+                       e->time);
+      }
+    } /* loop over the parts in cj. */
+  } /* loop over the parts in ci. */
+}
+
+/**
+ * @brief Compute the interactions between a cell pair, but only for the
+ *      given indices in ci.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param sinks The #sink to interact.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param scount The number of particles in @c ind.
+ */
+void DOSELF1_SUBSET_SINKS(struct runner *r, struct cell *restrict ci,
+                          struct sink *restrict sinks, int *restrict ind,
+                          const int scount) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != engine_rank) error("Should be run on a different node");
+#endif
+
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int count_i = ci->hydro.count;
+  struct part *restrict parts_j = ci->hydro.parts;
+
+  /* Early abort? */
+  if (count_i == 0) return;
+
+  /* Loop over the parts in ci. */
+  for (int sid = 0; sid < scount; sid++) {
+
+    /* Get a hold of the ith part in ci. */
+    struct sink *si = &sinks[ind[sid]];
+    const float six[3] = {(float)(si->x[0] - ci->loc[0]),
+                          (float)(si->x[1] - ci->loc[1]),
+                          (float)(si->x[2] - ci->loc[2])};
+    const float hi = si->h;
+    const float hig2 = hi * hi * kernel_gamma2;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!sink_is_active(si, e)) error("Inactive particle in subset function!");
+#endif
+
+    /* Loop over the parts in cj. */
+    for (int pjd = 0; pjd < count_i; pjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct part *restrict pj = &parts_j[pjd];
+
+      /* Early abort? */
+      if (part_is_inhibited(pj, e)) continue;
+
+      /* Compute the pairwise distance. */
+      const float pjx[3] = {(float)(pj->x[0] - ci->loc[0]),
+                            (float)(pj->x[1] - ci->loc[1]),
+                            (float)(pj->x[2] - ci->loc[2])};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (pj->ti_drift != e->ti_current)
+        error("Particle pj not drifted to current time");
+#endif
+
+      /* Hit or miss? */
+      if (r2 < hig2) {
+        IACT_SINKS_GAS(r2, dx, hi, pj->h, si, pj, with_cosmology, cosmo,
+                       e->gravity_properties, e->sink_properties, e->ti_current,
+                       e->time);
+      }
+    } /* loop over the parts in cj. */
+  } /* loop over the parts in ci. */
+}
+
+/**
+ * @brief Determine which version of DOSELF1_SUBSET_SINKS needs to be called
+ * depending on the optimisation level.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param sinks The #sink to interact.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param scount The number of particles in @c ind.
+ */
+void DOSELF1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
+                                 struct sink *restrict sinks, int *restrict ind,
+                                 const int scount) {
+
+  DOSELF1_SUBSET_SINKS(r, ci, sinks, ind, scount);
+}
+
+/**
+ * @brief Determine which version of DOPAIR1_SUBSET_SINKS needs to be called
+ * depending on the orientation of the cells or whether DOPAIR1_SUBSET_SINKS
+ * needs to be called at all.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param sinks_i The #sink to interact with @c cj.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param scount The number of particles in @c ind.
+ * @param cj The second #cell.
+ */
+void DOPAIR1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
+                                 struct sink *restrict sinks_i,
+                                 int *restrict ind, int const scount,
+                                 struct cell *restrict cj) {
+
+  const struct engine *e = r->e;
+
+  /* Anything to do here? */
+  if (cj->hydro.count == 0) return;
+
+  /* Get the relative distance between the pairs, wrapping. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  for (int k = 0; k < 3; k++) {
+    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
+      shift[k] = e->s->dim[k];
+    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
+      shift[k] = -e->s->dim[k];
+  }
+
+  DOPAIR1_SUBSET_SINKS_NAIVE(r, ci, sinks_i, ind, scount, cj, shift);
+}
+
+void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
+                        int *ind, const int scount, struct cell *cj,
+                        int gettimer) {
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+
+  /* Should we even bother? */
+  if (!cell_is_active_sinks(ci, e) &&
+      (cj == NULL || !cell_is_active_sinks(cj, e)))
+    return;
+
+  /* Find out in which sub-cell of ci the parts are. */
+  struct cell *sub = NULL;
+  if (ci->split) {
+    for (int k = 0; k < 8; k++) {
+      if (ci->progeny[k] != NULL) {
+        if (&sinks[ind[0]] >= &ci->progeny[k]->sinks.parts[0] &&
+            &sinks[ind[0]] <
+                &ci->progeny[k]->sinks.parts[ci->progeny[k]->sinks.count]) {
+          sub = ci->progeny[k];
+          break;
+        }
+      }
+    }
+  }
+
+  /* Is this a single cell? */
+  if (cj == NULL) {
+
+    /* Recurse? */
+    if (cell_can_recurse_in_self_sinks_task(ci)) {
+
+      /* Loop over all progeny. */
+      DOSUB_SUBSET_SINKS(r, sub, sinks, ind, scount, NULL, 0);
+      for (int j = 0; j < 8; j++)
+        if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
+          DOSUB_SUBSET_SINKS(r, sub, sinks, ind, scount, ci->progeny[j], 0);
+
+    }
+
+    /* Otherwise, compute self-interaction. */
+    else
+      DOSELF1_SUBSET_BRANCH_SINKS(r, ci, sinks, ind, scount);
+  } /* self-interaction. */
+
+  /* Otherwise, it's a pair interaction. */
+  else {
+
+    /* Recurse? */
+    if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
+        cell_can_recurse_in_pair_sinks_task(cj, ci)) {
+
+      /* Get the type of pair and flip ci/cj if needed. */
+      double shift[3] = {0.0, 0.0, 0.0};
+      const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
+
+      struct cell_split_pair *csp = &cell_split_pairs[sid];
+      for (int k = 0; k < csp->count; k++) {
+        const int pid = csp->pairs[k].pid;
+        const int pjd = csp->pairs[k].pjd;
+        if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
+          DOSUB_SUBSET_SINKS(r, ci->progeny[pid], sinks, ind, scount,
+                             cj->progeny[pjd], 0);
+        if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
+          DOSUB_SUBSET_SINKS(r, cj->progeny[pjd], sinks, ind, scount,
+                             ci->progeny[pid], 0);
+      }
+    }
+
+    /* Otherwise, compute the pair directly. */
+    else if (cell_is_active_sinks(ci, e) && cj->hydro.count > 0) {
+
+      /* Do any of the cells need to be drifted first? */
+      if (cell_is_active_sinks(ci, e)) {
+        if (!cell_are_sink_drifted(ci, e)) error("Cell should be drifted!");
+        if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
+      }
+
+      DOPAIR1_SUBSET_BRANCH_SINKS(r, ci, sinks, ind, scount, cj);
+    }
+
+  } /* otherwise, pair interaction. */
+}
+
+/**
  * @brief Wrapper to runner_doself_sinks_swallow
  *
  * @param r #runner
@@ -341,6 +638,10 @@ void DOPAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
  *
  */
 void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
   const struct engine *restrict e = r->e;
 
@@ -351,8 +652,8 @@ void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
   if (!cell_is_active_sinks(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->sinks.r_cut_max_old > c->dmin)
-    error("Cell smaller than the cut off radius");
+  if (c->sinks.h_max_old * kernel_gamma > c->dmin)
+    error("Cell smaller than the cut off radius or smoothing length");
 
   DOSELF1_SINKS(r, c, 1);
 }
@@ -366,6 +667,10 @@ void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
  *
  */
 void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
+
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
   const struct engine *restrict e = r->e;
 
@@ -413,6 +718,9 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
  */
 void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
                        int timer) {
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
   TIMER_TIC;
 
@@ -492,6 +800,9 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
  * @param gettimer Do we have a timer ?
  */
 void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int timer) {
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
   TIMER_TIC;
 

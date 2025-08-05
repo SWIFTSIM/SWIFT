@@ -74,10 +74,10 @@
 #include "./hydro/Shadowswift/hydro_debug.h"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_debug.h"
+#elif defined(REMIX_SPH)
+#include "./hydro/REMIX/hydro_debug.h"
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_debug.h"
-#elif defined(MAGMA_SPH)
-#include "./hydro/MAGMA/hydro_debug.h"
 #elif defined(GASOLINE_SPH)
 #include "./hydro/Gasoline/hydro_debug.h"
 #elif defined(ANARCHY_PU_SPH)
@@ -250,8 +250,8 @@ int checkSpacehmax(struct space *s) {
   float cell_sinks_h_max = 0.0f;
   for (int k = 0; k < s->nr_cells; k++) {
     if (s->cells_top[k].nodeID == s->e->nodeID &&
-        s->cells_top[k].sinks.r_cut_max > cell_sinks_h_max) {
-      cell_sinks_h_max = s->cells_top[k].sinks.r_cut_max;
+        s->cells_top[k].sinks.h_max > cell_sinks_h_max) {
+      cell_sinks_h_max = s->cells_top[k].sinks.h_max;
     }
   }
 
@@ -274,8 +274,8 @@ int checkSpacehmax(struct space *s) {
   /* Now all the sinks. */
   float sink_h_max = 0.0f;
   for (size_t k = 0; k < s->nr_sinks; k++) {
-    if (s->sinks[k].r_cut > sink_h_max) {
-      sink_h_max = s->sinks[k].r_cut;
+    if (s->sinks[k].h > sink_h_max) {
+      sink_h_max = s->sinks[k].h;
     }
   }
 
@@ -323,17 +323,17 @@ int checkSpacehmax(struct space *s) {
   /* sink */
   for (int k = 0; k < s->nr_cells; k++) {
     if (s->cells_top[k].nodeID == s->e->nodeID) {
-      if (s->cells_top[k].sinks.r_cut_max > sink_h_max) {
+      if (s->cells_top[k].sinks.h_max > sink_h_max) {
         message("cell %d is inconsistent (%f > %f)", k,
-                s->cells_top[k].sinks.r_cut_max, sink_h_max);
+                s->cells_top[k].sinks.h_max, sink_h_max);
       }
     }
   }
 
   for (size_t k = 0; k < s->nr_sinks; k++) {
-    if (s->sinks[k].r_cut > cell_sinks_h_max) {
+    if (s->sinks[k].h > cell_sinks_h_max) {
       message("spart %lld is inconsistent (%f > %f)", s->sinks[k].id,
-              s->sinks[k].r_cut, cell_sinks_h_max);
+              s->sinks[k].h, cell_sinks_h_max);
     }
   }
 
@@ -444,7 +444,7 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
                       sp->x_diff[1] * sp->x_diff[1] +
                       sp->x_diff[2] * sp->x_diff[2];
 
-    sinks_h_max = max(sinks_h_max, sp->r_cut);
+    sinks_h_max = max(sinks_h_max, sp->h);
     sinks_dx_max = max(sinks_dx_max, sqrtf(dx2));
   }
 
@@ -484,9 +484,9 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
     result = 0;
   }
 
-  if (c->sinks.r_cut_max != sinks_h_max) {
+  if (c->sinks.h_max != sinks_h_max) {
     message("%d Inconsistent sinks_h_max: cell %f != parts %f", *depth,
-            c->sinks.r_cut_max, sinks_h_max);
+            c->sinks.h_max, sinks_h_max);
     message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
   }

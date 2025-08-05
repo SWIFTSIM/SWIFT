@@ -53,8 +53,10 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 sparts, birth_time);
 
   /* By default, stars are set to star_population */
-  list[6] = io_make_input_field("StellarParticleType", INT, 1, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, sparts, star_type);
+  const int default_star_type = 0;
+  list[6] = io_make_input_field_default("StellarParticleType", INT, 1, OPTIONAL,
+                                        UNIT_CONV_NO_UNITS, sparts, star_type,
+                                        default_star_type);
 }
 
 INLINE static void convert_spart_pos(const struct engine *e,
@@ -243,10 +245,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
   /* Maximal time-step lengths */
-  const double Myr_internal_units =
-      1e6 * phys_const->const_year *
-      units_cgs_conversion_factor(us, UNIT_CONV_TIME);
-
   const double max_time_step_young_Myr = parser_get_opt_param_float(
       params, "Stars:max_timestep_young_Myr", FLT_MAX);
   const double max_time_step_old_Myr =
@@ -267,6 +265,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   }
 
   /* Convert to internal units */
+  const double Myr_internal_units = 1e6 * phys_const->const_year;
   sp->max_time_step_young = max_time_step_young_Myr * Myr_internal_units;
   sp->max_time_step_old = max_time_step_old_Myr * Myr_internal_units;
   sp->age_threshold = age_threshold_Myr * Myr_internal_units;

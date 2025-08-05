@@ -47,8 +47,6 @@ enum task_types {
   task_type_sort,
   task_type_self,
   task_type_pair,
-  task_type_sub_self,
-  task_type_sub_pair,
   task_type_init_grav,
   task_type_init_grav_out, /* Implicit */
   task_type_ghost_in,      /* Implicit */
@@ -106,7 +104,8 @@ enum task_types {
   task_type_fof_attach_self,
   task_type_fof_attach_pair,
   task_type_neutrino_weight,
-  task_type_sink_in,     /* Implicit */
+  task_type_sink_in, /* Implicit */
+  task_type_sink_density_ghost,
   task_type_sink_ghost1, /* Implicit */
   task_type_sink_ghost2, /* Implicit */
   task_type_sink_out,    /* Implicit */
@@ -133,6 +132,7 @@ enum task_subtypes {
   task_subtype_force,
   task_subtype_limiter,
   task_subtype_grav,
+  task_subtype_fof,
   task_subtype_external_grav,
   task_subtype_tend,
   task_subtype_xv,
@@ -156,6 +156,7 @@ enum task_subtypes {
   task_subtype_do_gas_swallow,
   task_subtype_do_bh_swallow,
   task_subtype_bh_feedback,
+  task_subtype_sink_density,
   task_subtype_sink_do_sink_swallow,
   task_subtype_sink_swallow,
   task_subtype_sink_do_gas_swallow,

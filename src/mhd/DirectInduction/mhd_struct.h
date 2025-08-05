@@ -24,37 +24,50 @@
  */
 struct mhd_part_data {
 
+  /* Predicted magnetic field over density */
   float B_over_rho[3];
 
-  float divB;
-
-  /*! dB Direct Induction */
+  /* Time derivative of magnetic field over density */
   float B_over_rho_dt[3];
 
-  float v_fm;
+  /* Alfven speed (=sqrt(B2/(mu_0 * rho))) of the particle drifted to the
+   * current time */
+  float Alfven_speed;
 
+  /* Divergence of the magnetic field */
+  float divB;
+
+  /* Curl of the magnetic field */
   float curl_B[3];
 
-  /* Resistive Eta */
-  float resistive_eta;
-
-  float grad_B_tensor[3][3];
-
-  float alpha_AR;
-
-  float psi_over_ch;
-
-  float psi_over_ch_dt;
-
-  /*! Monopole subtraction in Lorentz Force*/
+  /* Tensile instability correction multiplicative prefactor */
   float monopole_beta;
 
-  /*! Artifical Diffusion */
+  /* Artifical resistivity multiplicative prefactor */
   float art_diff_beta;
 
+  /* Spatial gradient tensor of the magnetic field */
+  float grad_B_tensor[3][3];
+
+  /* Artificial resistivity gradient based switch */
+  float alpha_AR;
+
+  /* Artificial resistivity contribution to the time derivative of magnetic
+   * field over density */
   float B_over_rho_dt_AR[3];
 
+  /* Artificial resistivity contribution to the time derivative of thermal
+   * energy */
   float u_dt_AR;
+
+  /* Physical resistive parameter */
+  float resistive_eta;
+
+  /* Predicted Dedner scalar over divergence cleaning speed */
+  float psi_over_ch;
+
+  /* Time derivative of Dedner scalar over divergence cleaning speed */
+  float psi_over_ch_dt;
 
   /* SPH <1> error */
   float mean_SPH_err;
@@ -72,11 +85,12 @@ struct mhd_part_data {
 
   float monopole_correction_F[3];
  
-
   /* B advection source */
   float Adv_B_source[3];
+
   /* B total diffusion source */
   float Diff_B_source[3];
+
   /* Laplacian B */
   float Delta_B[3];
 
@@ -96,12 +110,11 @@ struct mhd_part_data {
  */
 struct mhd_xpart_data {
 
-  /*! Full Step Magnetic Field */
+  /* Full step magnetic field over density */
   float B_over_rho_full[3];
 
-  /*! Full Step Dedner Scalar */
+  /* Full step dedner scalar over divergence cleaning speed */
   float psi_over_ch_full;
-
 };
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_STRUCT_H */

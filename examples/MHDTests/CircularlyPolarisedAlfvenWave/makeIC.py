@@ -18,7 +18,7 @@ wavenum = 2.0 * np.pi / wavelen
 
 fileOutputName = "CircularlyPolarisedAlfvenWave.hdf5"
 
-# Fetch unit cell 
+# Fetch unit cell
 glass = h5py.File("BCCglassCube_32.hdf5", "r")
 
 unit_cell = glass["/PartType0/Coordinates"][:, :]

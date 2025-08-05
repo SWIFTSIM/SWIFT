@@ -69,6 +69,18 @@ double cooling_get_physical_density(
     const struct cooling_function_data* cooling);
 
 /**
+ * @brief Record the time when cooling was switched off for a particle.
+ *
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ * @param time The time when the cooling was switched off.
+ */
+INLINE void cooling_set_part_time_cooling_off(struct part* p, struct xpart* xp,
+                                              const double time) {
+  xp->cooling_data.time_last_event = time;
+}
+
+/**
  * @brief Common operations performed on the cooling function at a
  * given time-step or redshift.
  *
@@ -421,6 +433,10 @@ float cooling_get_radiated_energy(const struct xpart* xp) {
  * @param cooling The properties of the cooling function.
  */
 void cooling_print_backend(const struct cooling_function_data* cooling) {
+
+  if (engine_rank != 0) {
+    return;
+  }
 
   message("Cooling function is 'Grackle'.");
   message("Using Grackle = %i", cooling->chemistry_data.use_grackle);
@@ -1264,8 +1280,10 @@ void cooling_init_units(const struct unit_system* us,
 void cooling_init_grackle(struct cooling_function_data* cooling) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* enable verbose for grackle */
-  grackle_verbose = 1;
+  /* Enable verbose for grackle for rank 0 only. */
+  if (engine_rank == 0) {
+    grackle_verbose = 1;
+  }
 #endif
 
   chemistry_data* chemistry = &cooling->chemistry_data;

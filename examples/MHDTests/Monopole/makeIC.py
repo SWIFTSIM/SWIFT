@@ -46,9 +46,7 @@ vol = lx * ly * lz
 
 ###---------------------------###
 
-rot = np.sqrt(
-    (pos[:, 0] - lx_c) ** 2 + (pos[:, 1] - ly_c) ** 2
-)
+rot = np.sqrt((pos[:, 0] - lx_c) ** 2 + (pos[:, 1] - ly_c) ** 2)
 
 v = np.zeros((N, 3))
 B = np.zeros((N, 3))

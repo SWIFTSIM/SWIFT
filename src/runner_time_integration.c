@@ -363,6 +363,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int periodic = e->s->periodic;
   const int count = c->hydro.count;
@@ -461,8 +462,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 
         /* Prepare the values to be drifted */
         hydro_reset_predicted_values(p, xp, cosmo, pressure_floor);
-        mhd_reset_predicted_values(p, xp , cosmo);
-	}
+        mhd_reset_predicted_values(p, xp, cosmo, mu_0);
+      }
     }
 
     /* Loop over the g-particles in this cell. */
@@ -1143,6 +1144,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
     }
   }
 
+  /* Flag something may have changed */
+  if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
+
   /* Store the values. */
   c->hydro.updated = updated;
   c->grav.updated = g_updated;
@@ -1270,6 +1274,9 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
     }
   }
 
+  /* Flag something may have changed */
+  if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
+
   /* Store the collected values in the cell. */
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
@@ -1347,6 +1354,9 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
       }
     }
+
+    /* Flag something may have changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1428,6 +1438,9 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
       }
     }
 
+    /* Flag something may have changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
+
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
     c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
@@ -1499,6 +1512,9 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
       }
     }
+
+    /* Flag something may have changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1599,6 +1615,9 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         }
       }
     }
+
+    /* Flag something may have changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);

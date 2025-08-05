@@ -90,7 +90,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
                          multipole_rec_end);
     c->hydro.sorts = NULL;
     c->stars.sorts = NULL;
+#ifdef SWIFT_DEBUG_CHECKS
     c->nr_tasks = 0;
+#endif
     c->grav.nr_mm_tasks = 0;
     c->hydro.density = NULL;
     c->hydro.gradient = NULL;
@@ -138,6 +140,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.feedback = NULL;
     c->stars.prepare1 = NULL;
     c->stars.prepare2 = NULL;
+    c->sinks.density = NULL;
     c->sinks.swallow = NULL;
     c->sinks.do_sink_swallow = NULL;
     c->sinks.do_gas_swallow = NULL;
@@ -169,6 +172,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.black_holes_in = NULL;
     c->black_holes.black_holes_out = NULL;
     c->sinks.sink_in = NULL;
+    c->sinks.density_ghost = NULL;
     c->sinks.sink_ghost1 = NULL;
     c->sinks.sink_ghost2 = NULL;
     c->sinks.sink_out = NULL;
@@ -191,6 +195,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.parts = NULL;
     c->grav.parts_rebuild = NULL;
     c->sinks.parts = NULL;
+    c->sinks.parts_rebuild = NULL;
     c->stars.parts = NULL;
     c->stars.parts_rebuild = NULL;
     c->black_holes.parts = NULL;
@@ -247,6 +252,7 @@ void space_recycle(struct space *s, struct cell *c) {
   if (lock_destroy(&c->hydro.lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
       lock_destroy(&c->grav.mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
       lock_destroy(&c->sinks.lock) != 0 ||
+      lock_destroy(&c->hydro.extra_sort_lock) != 0 ||
       lock_destroy(&c->sinks.sink_formation_lock) != 0 ||
       lock_destroy(&c->black_holes.lock) != 0 ||
       lock_destroy(&c->grav.star_formation_lock) != 0 ||
@@ -297,6 +303,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
         lock_destroy(&c->grav.mlock) != 0 ||
         lock_destroy(&c->stars.lock) != 0 ||
         lock_destroy(&c->sinks.lock) != 0 ||
+        lock_destroy(&c->hydro.extra_sort_lock) != 0 ||
         lock_destroy(&c->sinks.sink_formation_lock) != 0 ||
         lock_destroy(&c->black_holes.lock) != 0 ||
         lock_destroy(&c->stars.star_formation_lock) != 0 ||
