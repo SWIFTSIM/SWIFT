@@ -5,7 +5,7 @@
 </a>
 </div>
 
-SWIFT: SPH WIth Fine-grained inter-dependent Tasking
+SWIFT: SPH With Inter-dependent Fine-grained Tasking
 ====================================================
 
 [![Build Status](https://gitlab.cosma.dur.ac.uk/jenkins/job/GNU%20SWIFT%20build/badge/icon)](https://gitlab.cosma.dur.ac.uk/jenkins/job/GNU%20SWIFT%20build/)
