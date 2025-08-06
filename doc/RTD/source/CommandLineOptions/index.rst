@@ -35,6 +35,7 @@ can be found by typing ``./swift -h``:
     -S, --stars                       Run with stars.
     -B, --black-holes                 Run with black holes.
     -k, --sinks                       Run with sink particles.
+    -n, --sidm                        Run with SIDM particles.
     -u, --fof                         Run Friends-of-Friends algorithm to
                                       perform black hole seeding.
     --lightcone                       Generate lightcone outputs.
