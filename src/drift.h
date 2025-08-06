@@ -71,29 +71,6 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   gp->ti_drift = ti_current;
 #endif
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-
-  /* Get the ID of the gpart */
-  long long id = 0;
-  if (gp->type == swift_type_gas)
-    id = e->s->parts[-gp->id_or_neg_offset].id;
-  else if (gp->type == swift_type_stars)
-    id = e->s->sparts[-gp->id_or_neg_offset].id;
-  else if (gp->type == swift_type_black_hole)
-    id = e->s->bparts[-gp->id_or_neg_offset].id;
-  else
-    id = gp->id_or_neg_offset;
-
-  /* Cancel the velocity of the particles */
-  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
-
-    /* Don't move! */
-    gp->v_full[0] = 0.f;
-    gp->v_full[1] = 0.f;
-    gp->v_full[2] = 0.f;
-  }
-#endif
-
 #ifdef WITH_LIGHTCONE
   /* Store initial position and velocity for lightcone check after the drift */
   const double x[3] = {gp->x[0], gp->x[1], gp->x[2]};
@@ -162,21 +139,6 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->ti_drift = ti_current;
 #endif
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-
-  /* Get the ID of the gpart */
-  const long long id = p->id;
-
-  /* Cancel the velocity of the particles */
-  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
-
-    /* Don't move! */
-    xp->v_full[0] = 0.f;
-    xp->v_full[1] = 0.f;
-    xp->v_full[2] = 0.f;
-  }
-#endif
-
 #ifdef WITH_LIGHTCONE
   /* Store initial position and velocity for lightcone check after the drift */
   const double x[3] = {p->x[0], p->x[1], p->x[2]};
@@ -215,16 +177,6 @@ __attribute__((always_inline)) INLINE static void drift_part(
     xp->x_diff_sort[k] -= dx;
   }
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-
-  /* Cancel the velocity of the particles */
-  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
-    p->v[0] = 0.f;
-    p->v[1] = 0.f;
-    p->v[2] = 0.f;
-  }
-#endif
-
 #ifdef WITH_LIGHTCONE
   /* Check if the particle crossed the lightcone */
   if (p->gpart)
@@ -255,21 +207,6 @@ __attribute__((always_inline)) INLINE static void drift_spart(
         sp->ti_drift, ti_old, ti_current);
 
   sp->ti_drift = ti_current;
-#endif
-
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-
-  /* Get the ID of the gpart */
-  const long long id = sp->id;
-
-  /* Cancel the velocity of the particles */
-  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
-
-    /* Don't move! */
-    sp->v[0] = 0.f;
-    sp->v[1] = 0.f;
-    sp->v[2] = 0.f;
-  }
 #endif
 
 #ifdef WITH_LIGHTCONE
@@ -325,21 +262,6 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
   bp->ti_drift = ti_current;
 #endif
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-
-  /* Get the ID of the gpart */
-  const long long id = bp->id;
-
-  /* Cancel the velocity of the particles */
-  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
-
-    /* Don't move! */
-    bp->v[0] = 0.f;
-    bp->v[1] = 0.f;
-    bp->v[2] = 0.f;
-  }
-#endif
-
 #ifdef WITH_LIGHTCONE
   /* Store initial position and velocity for lightcone check after the drift */
   const double x[3] = {bp->x[0], bp->x[1], bp->x[2]};
@@ -390,21 +312,6 @@ __attribute__((always_inline)) INLINE static void drift_sink(
   }
 
   sink->ti_drift = ti_current;
-#endif
-
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-
-  /* Get the ID of the gpart */
-  const long long id = sink->id;
-
-  /* Cancel the velocity of the particles */
-  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
-
-    /* Don't move! */
-    sink->v[0] = 0.f;
-    sink->v[1] = 0.f;
-    sink->v[2] = 0.f;
-  }
 #endif
 
 #ifdef WITH_LIGHTCONE

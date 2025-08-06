@@ -85,6 +85,15 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     p->a_hydro[1] = 0.0f;
     p->a_hydro[2] = 0.0f;
 
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+
+    /* Some values need to be reset in the Gizmo case. */
+    hydro_prepare_force(p, &c->hydro.xparts[k], cosmo,
+                        e->hydro_properties, e->pressure_floor_props,
+                        /*dt_alpha=*/0, /*dt_therm=*/0);
+    rt_prepare_force(p);
+#endif
+
     if (terms->enable_fixed_position) {
       /* Set velocity of fixed boundary particle to zero. */
       xp->v_full[0] = 0.f;
