@@ -46,23 +46,25 @@ There are several groups that contain 'auxiliary' information, such as
 the particles. Some types are currently ignored by SWIFT but are kept in the
 file format for compatibility reasons.
 
-+---------------------+------------------------+----------------------------------------+
-| HDF5 Group Name     | Physical Particle Type | In code ``enum part_type``             |
-+=====================+========================+========================================+
-| ``/PartType0/``     | Gas                    | ``swift_type_gas``                     |
-+---------------------+------------------------+----------------------------------------+
-| ``/PartType1/``     | Dark Matter            | ``swift_type_dark_matter``             |
-+---------------------+------------------------+----------------------------------------+
-| ``/PartType2/``     | Background Dark Matter | ``swift_type_dark_matter_background``  |
-+---------------------+------------------------+----------------------------------------+
-| ``/PartType3/``     | Sinks                  | ``swift_type_sink``                    |
-+---------------------+------------------------+----------------------------------------+
-| ``/PartType4/``     | Stars                  | ``swift_type_star``                    |
-+---------------------+------------------------+----------------------------------------+
-| ``/PartType5/``     | Black Holes            | ``swift_type_black_hole``              |
-+---------------------+------------------------+----------------------------------------+
-| ``/PartType6/``     | Neutrino Dark Matter   | ``swift_type_neutrino``                |
-+---------------------+------------------------+----------------------------------------+
++---------------------+-------------------------------+----------------------------------------+
+| HDF5 Group Name     | Physical Particle Type        | In code ``enum part_type``             |
++=====================+===============================+========================================+
+| ``/PartType0/``     | Gas                           | ``swift_type_gas``                     |
++---------------------+-------------------------------+----------------------------------------+
+| ``/PartType1/``     | Dark Matter                   | ``swift_type_dark_matter``             |
++---------------------+-------------------------------+----------------------------------------+
+| ``/PartType2/``     | Background Dark Matter        | ``swift_type_dark_matter_background``  |
++---------------------+-------------------------------+----------------------------------------+
+| ``/PartType3/``     | Sinks                         | ``swift_type_sink``                    |
++---------------------+-------------------------------+----------------------------------------+
+| ``/PartType4/``     | Stars                         | ``swift_type_star``                    |
++---------------------+-------------------------------+----------------------------------------+
+| ``/PartType5/``     | Black Holes                   | ``swift_type_black_hole``              |
++---------------------+-------------------------------+----------------------------------------+
+| ``/PartType6/``     | Neutrino Dark Matter          | ``swift_type_neutrino``                |
++---------------------+-------------------------------+----------------------------------------+
+| ``/PartType7/``     | Self-interacting Dark Matter  | ``swift_type_sidm``                    |
++---------------------+-------------------------------+----------------------------------------+
 
 The last column in the table gives the ``enum`` value from ``part_type.h``
 corresponding to a given entry in the files.
@@ -97,12 +99,12 @@ In the ``/Header/`` group, the following attributes are required:
   units specified in the ``/Units`` group (see below). Note that, unlike GADGET,
   we express all quantities in "h-free" units. So that, for instance, we express
   the box side-length in ``Mpc`` and not ``Mpc/h``. 
-+ ``NumPart_Total``, a length 6 array of integers that tells the code how many
++ ``NumPart_Total``, a length 8 array of integers that tells the code how many
   particles of each type are in the initial conditions file. Unlike traditional
   GADGET-2 files, these can be >2^31.
-+ ``NumPart_Total_HighWord``, a historical length-6 array that tells the code
++ ``NumPart_Total_HighWord``, a historical length-8 array that tells the code
   the number of high word particles in the initial conditions there are. If you
-  are unsure, just set this to ``[0, 0, 0, 0, 0, 0]``. This does have to be
+  are unsure, just set this to ``[0, 0, 0, 0, 0, 0, 0, 0]``. This does have to be
   present but can be a set of 0s unless you have more than 2^31 particles and
   want to be fully compliant with GADGET-2. Note that, as SWIFT supports
   ``NumPart_Total`` to be >2^31, the use of ``NumPart_Total_HighWord`` is only
@@ -115,10 +117,10 @@ In the ``/Header/`` group, the following attributes are required:
 You may want to include the following for backwards-compatibility with many
 GADGET-2 based analysis programs:
 
-+ ``MassTable``, an array of length 6 which gives the masses of each particle
++ ``MassTable``, an array of length 8 which gives the masses of each particle
   type. SWIFT ignores this and uses the individual particle masses, but some
   programs will crash if it is not included.
-+ ``NumPart_ThisFile``, a length 6 array of integers describing the number of
++ ``NumPart_ThisFile``, a length 8 array of integers describing the number of
   particles in this file. If you have followed the above advice, this will be
   exactly the same as the ``NumPart_Total`` array. As SWIFT only uses ICs
   contained in a single file, this is not necessary for SWIFT-only ICs.
@@ -225,8 +227,8 @@ You should have an HDF5 file with the following structure:
    Header/
      BoxSize=[x, y, z]
      Flag_Entropy_ICs=0
-     NumPart_Total=[0, 1, 0, 0, 4, 5]
-     NumPart_Total_HighWord=[0, 0, 0, 0, 0, 0]
+     NumPart_Total=[0, 1, 0, 0, 4, 5, 0, 0]
+     NumPart_Total_HighWord=[0, 0, 0, 0, 0, 0, 0, 0]
    Units/
      Unit current in cgs (U_I)=1.0
      Unit length in cgs (U_L)=1.0

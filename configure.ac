@@ -2931,6 +2931,27 @@ case "$with_sink" in
    ;;
 esac
 
+# SIDM model.
+AC_ARG_WITH([sidm],
+   [AS_HELP_STRING([--with-sidm=<model>],
+      [SIDM particle model to use @<:@none, Basic, default: none@:>@]
+   )],
+   [with_sidm="$withval"],
+   [with_sidm="none"]
+)
+
+case "$with_sidm" in
+   none)
+      AC_DEFINE([SIDM_NONE], [1], [No SIDM particle model])
+   ;;
+   Basic)
+    AC_DEFINE([SIDM_BASIC], [1], [TODO.])
+    ;;
+    *)
+      AC_MSG_ERROR([Unknown SIDM particle model model: $with_sidm])
+   ;;
+esac
+
 # Forcing terms
 AC_ARG_WITH([forcing],
    [AS_HELP_STRING([--with-forcing=<term>],
@@ -3407,6 +3428,7 @@ AC_MSG_RESULT([
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt
+   Self-interacting dark matter model  : $with_sidm
    Extra i/o            : $with_extra_io
 
    Atomic operations in tasks  : $enable_atomics_within_tasks

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl).
+ * Copyright (c) 2025 Katy Proctor (katy.proctor@fysik.su.se)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,9 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_SIDM_BASIC_DEBUG_H
+#define SWIFT_SIDM_BASIC_DEBUG_H
 
-/* This object's header. */
-#include "part_type.h"
+__attribute__((always_inline)) INLINE static void sidm_debug_particle(
+    const struct part* p, const struct xpart* xp) {}
 
-const char* part_type_names[swift_type_count] = {
-    "Gas", "DM", "DMBackground", "Sink", "Stars", "BH", "Neutrino", "SIDM"};
+#endif /* SWIFT_SIDM_BASIC_DEBUG_H */
