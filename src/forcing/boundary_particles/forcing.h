@@ -40,11 +40,11 @@
  */
 struct forcing_terms {
 
-  /*! Particles with ID <= max_boundary_particle_id are treated as boundary particles. */
-  int max_boundary_particle_id;
+  /*! Particles with ID <= boundary_particle_max_id are treated as boundary particles. */
+  int boundary_particle_max_id;
 
   /*! Whether or not boundary particles are fixed in place (0 (false, default) or 1 (true))  */
-  int fixed;
+  int enable_fixed_position;
 
   /*! Whether or not boundary particles have hydrodynamic accelerations enabled (0 (false, default) or 1 (true))  */
   int enable_hydro_acceleration;
@@ -75,13 +75,13 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     return;
   }
     
-  if (p->id <= terms->max_boundary_particle_id) {  
+  if (p->id <= terms->boundary_particle_max_id) {  
     /* Reset the hydro accelerations of boundary particles. */
     p->a_hydro[0] = 0.0f;
     p->a_hydro[1] = 0.0f;
     p->a_hydro[2] = 0.0f;
 
-    if (terms->fixed) {
+    if (terms->enable_fixed_position) {
       /* Set velocity of fixed boundary particle to zero. */
       xp->v_full[0] = 0.f;
       xp->v_full[1] = 0.f;
@@ -125,13 +125,13 @@ __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
   else
     id = gp->id_or_neg_offset;
 
-  if (id <= terms->max_boundary_particle_id) {  
+  if (id <= terms->boundary_particle_max_id) {  
     /* Reset the grav accelerations of boundary particles. */
     gp->a_grav[0] = 0.0f;
     gp->a_grav[1] = 0.0f;
     gp->a_grav[2] = 0.0f;
 
-    if (terms->fixed) {
+    if (terms->enable_fixed_position) {
       /* Set velocity of fixed boundary particle to zero. */
       gp->v_full[0] = 0.f;
       gp->v_full[1] = 0.f;
@@ -166,8 +166,8 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  */
 static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
 
-  message("Forcing terms is 'Boundary particles'. Max boundary particle ID: %i.", terms->max_boundary_particle_id);
-  message("Run with options: Fixed: %i, Enable hydro acceleration: %i, Enable grav acceleration: %i", terms->fixed,
+  message("Forcing terms is 'Boundary particles'. Max boundary particle ID: %i.", terms->boundary_particle_max_id);
+  message("Run with options: Enable fixed position: %i, Enable hydro acceleration: %i, Enable grav acceleration: %i", terms->enable_fixed_position,
           terms->enable_hydro_acceleration, terms->enable_grav_acceleration);
 }
 
@@ -186,16 +186,16 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
                                       const struct space* s,
                                       struct forcing_terms* terms) {
 
-  terms->max_boundary_particle_id = parser_get_param_int(parameter_file, "BoundaryParticles:max_boundary_particle_id");
-  terms->fixed = parser_get_opt_param_int(parameter_file, "BoundaryParticles:fixed", 0);
+  terms->boundary_particle_max_id = parser_get_param_int(parameter_file, "BoundaryParticles:boundary_particle_max_id");
+  terms->enable_fixed_position = parser_get_opt_param_int(parameter_file, "BoundaryParticles:enable_fixed_position", 0);
   terms->enable_hydro_acceleration = parser_get_opt_param_int(parameter_file, "BoundaryParticles:enable_hydro_acceleration", 0);
   terms->enable_grav_acceleration = parser_get_opt_param_int(parameter_file, "BoundaryParticles:enable_grav_acceleration", 0);
 
-  if (terms->fixed != 0 && terms->fixed != 1) {
-    error("BoundaryParticles:fixed must be either 0 (false) or 1 (true).");
+  if (terms->enable_fixed_position != 0 && terms->enable_fixed_position != 1) {
+    error("BoundaryParticles:enable_fixed_position must be either 0 (false) or 1 (true).");
   }
   
-  if (terms->fixed) {
+  if (terms->enable_fixed_position) {
     /* If using fixed boundary particles, both hydro and grav accelerations must be reset to 0. */  
     if (terms->enable_hydro_acceleration != 0) {
       error("BoundaryParticles:enable_hydro_acceleration must be 0 (false) when using fixed boundary particles.");
