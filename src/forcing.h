@@ -30,6 +30,8 @@
 /* Import the right external potential definition */
 #if defined(FORCING_NONE)
 #include "./forcing/none/forcing.h"
+#elif defined(FORCING_BOUNDARY_PARTICLES)
+#include "./forcing/boundary_particles/forcing.h"
 #elif defined(FORCING_ROBERTS_FLOW)
 #include "./forcing/roberts_flow/forcing.h"
 #elif defined(FORCING_ROBERTS_FLOW_ACCELERATION)
