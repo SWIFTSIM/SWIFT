@@ -40,16 +40,20 @@
  */
 struct forcing_terms {
 
-  /*! Particles with ID <= boundary_particle_max_id are treated as boundary particles. */
+  /*! Particles with ID <= boundary_particle_max_id are treated as boundary
+   * particles. */
   int boundary_particle_max_id;
 
-  /*! Whether or not boundary particles are fixed in place (0 (false, default) or 1 (true))  */
+  /*! Whether or not boundary particles are fixed in place (0 (false, default)
+   * or 1 (true))  */
   int enable_fixed_position;
 
-  /*! Whether or not boundary particles have hydrodynamic accelerations enabled (0 (false, default) or 1 (true))  */
+  /*! Whether or not boundary particles have hydrodynamic accelerations enabled
+   * (0 (false, default) or 1 (true))  */
   int enable_hydro_acceleration;
 
-  /*! Whether or not boundary particles have gravitational accelerations enabled (0 (false, default) or 1 (true))  */
+  /*! Whether or not boundary particles have gravitational accelerations enabled
+   * (0 (false, default) or 1 (true))  */
   int enable_grav_acceleration;
 };
 
@@ -74,8 +78,8 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     /* Skip if not resetting hydro accelerations. */
     return;
   }
-    
-  if (p->id <= terms->boundary_particle_max_id) {  
+
+  if (p->id <= terms->boundary_particle_max_id) {
     /* Reset the hydro accelerations of boundary particles. */
     p->a_hydro[0] = 0.0f;
     p->a_hydro[1] = 0.0f;
@@ -105,7 +109,8 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
  */
 __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
     const double time, const struct forcing_terms* terms, const struct space* s,
-    const struct phys_const* phys_const, const struct engine* e, struct gpart* gp) {
+    const struct phys_const* phys_const, const struct engine* e,
+    struct gpart* gp) {
 
   if (terms->enable_grav_acceleration) {
     /* Skip if not resetting grav accelerations. */
@@ -125,7 +130,7 @@ __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
   else
     id = gp->id_or_neg_offset;
 
-  if (id <= terms->boundary_particle_max_id) {  
+  if (id <= terms->boundary_particle_max_id) {
     /* Reset the grav accelerations of boundary particles. */
     gp->a_grav[0] = 0.0f;
     gp->a_grav[1] = 0.0f;
@@ -136,7 +141,7 @@ __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
       gp->v_full[0] = 0.f;
       gp->v_full[1] = 0.f;
       gp->v_full[2] = 0.f;
-    }  
+    }
   }
 }
 
@@ -166,9 +171,14 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  */
 static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
 
-  message("Forcing terms is 'Boundary particles'. Max boundary particle ID: %i.", terms->boundary_particle_max_id);
-  message("Run with options: Enable fixed position: %i, Enable hydro acceleration: %i, Enable grav acceleration: %i", terms->enable_fixed_position,
-          terms->enable_hydro_acceleration, terms->enable_grav_acceleration);
+  message(
+      "Forcing terms is 'Boundary particles'. Max boundary particle ID: %i.",
+      terms->boundary_particle_max_id);
+  message(
+      "Run with options: Enable fixed position: %i, Enable hydro acceleration: "
+      "%i, Enable grav acceleration: %i",
+      terms->enable_fixed_position, terms->enable_hydro_acceleration,
+      terms->enable_grav_acceleration);
 }
 
 /**
@@ -186,31 +196,49 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
                                       const struct space* s,
                                       struct forcing_terms* terms) {
 
-  terms->boundary_particle_max_id = parser_get_param_int(parameter_file, "BoundaryParticles:boundary_particle_max_id");
-  terms->enable_fixed_position = parser_get_opt_param_int(parameter_file, "BoundaryParticles:enable_fixed_position", 0);
-  terms->enable_hydro_acceleration = parser_get_opt_param_int(parameter_file, "BoundaryParticles:enable_hydro_acceleration", 0);
-  terms->enable_grav_acceleration = parser_get_opt_param_int(parameter_file, "BoundaryParticles:enable_grav_acceleration", 0);
+  terms->boundary_particle_max_id = parser_get_param_int(
+      parameter_file, "BoundaryParticles:boundary_particle_max_id");
+  terms->enable_fixed_position = parser_get_opt_param_int(
+      parameter_file, "BoundaryParticles:enable_fixed_position", 0);
+  terms->enable_hydro_acceleration = parser_get_opt_param_int(
+      parameter_file, "BoundaryParticles:enable_hydro_acceleration", 0);
+  terms->enable_grav_acceleration = parser_get_opt_param_int(
+      parameter_file, "BoundaryParticles:enable_grav_acceleration", 0);
 
   if (terms->enable_fixed_position != 0 && terms->enable_fixed_position != 1) {
-    error("BoundaryParticles:enable_fixed_position must be either 0 (false) or 1 (true).");
+    error(
+        "BoundaryParticles:enable_fixed_position must be either 0 (false) or 1 "
+        "(true).");
   }
-  
+
   if (terms->enable_fixed_position) {
-    /* If using fixed boundary particles, both hydro and grav accelerations must be reset to 0. */  
+    /* If using fixed boundary particles, both hydro and grav accelerations must
+     * be reset to 0. */
     if (terms->enable_hydro_acceleration != 0) {
-      error("BoundaryParticles:enable_hydro_acceleration must be 0 (false) when using fixed boundary particles.");
+      error(
+          "BoundaryParticles:enable_hydro_acceleration must be 0 (false) when "
+          "using fixed boundary particles.");
     }
     if (terms->enable_grav_acceleration != 0) {
-      error("BoundaryParticles:enable_grav_acceleration must be 0 (false) when using fixed boundary particles.");
+      error(
+          "BoundaryParticles:enable_grav_acceleration must be 0 (false) when "
+          "using fixed boundary particles.");
     }
-      
+
   } else {
-    /* If not using fixed boundary particles, hydro and grav accelerations can be enabled independently. */  
-    if (terms->enable_hydro_acceleration != 0 && terms->enable_hydro_acceleration != 1) {
-      error("BoundaryParticles:enable_hydro_acceleration must be either 0 (false) or 1 (true).");
+    /* If not using fixed boundary particles, hydro and grav accelerations can
+     * be enabled independently. */
+    if (terms->enable_hydro_acceleration != 0 &&
+        terms->enable_hydro_acceleration != 1) {
+      error(
+          "BoundaryParticles:enable_hydro_acceleration must be either 0 "
+          "(false) or 1 (true).");
     }
-    if (terms->enable_grav_acceleration != 0 && terms->enable_grav_acceleration != 1) {
-      error("BoundaryParticles:enable_grav_acceleration must be either 0 (false) or 1 (true).");
+    if (terms->enable_grav_acceleration != 0 &&
+        terms->enable_grav_acceleration != 1) {
+      error(
+          "BoundaryParticles:enable_grav_acceleration must be either 0 (false) "
+          "or 1 (true).");
     }
   }
 }
