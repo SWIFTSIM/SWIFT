@@ -65,7 +65,7 @@ struct forcing_terms {
 };
 
 /**
- * @brief Computes the forcing terms.
+ * @brief Computes the hydrodynamic forcing terms.
  *
  * Based on Tilgner & Brandenburg, 2008, MNRAS, 391, 1477
  *
@@ -76,7 +76,7 @@ struct forcing_terms {
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
-__attribute__((always_inline)) INLINE static void forcing_terms_apply(
+__attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     const double time, const struct forcing_terms* terms, const struct space* s,
     const struct phys_const* phys_const, struct part* p, struct xpart* xp) {
 
@@ -162,6 +162,25 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   p->a_hydro[0] += f[0];
   p->a_hydro[1] += f[1];
   p->a_hydro[2] += f[2] * Vz_factor;
+}
+
+/**
+ * @brief Computes the gravitational forcing terms.
+ *
+ * We do nothing in this 'none' scheme.
+ *
+ * @param time The current time.
+ * @param terms The properties of the forcing terms.
+ * @param s The #space we act on.
+ * @param phys_const The physical constants in internal units.
+ * @param e The engine.
+ * @param gp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
+    const double time, const struct forcing_terms* terms, const struct space* s,
+    const struct phys_const* phys_const, const struct engine* e,
+    struct gpart* gp) {
+  /* Nothing to do here */
 }
 
 /**
