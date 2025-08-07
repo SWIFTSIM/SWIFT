@@ -164,7 +164,7 @@ void part_relink_gparts_to_bparts(struct bpart *bparts, const size_t N,
 void part_relink_gparts_to_sinks(struct sink *sinks, const size_t N,
                                  const ptrdiff_t offset);
 void part_relink_gparts_to_siparts(struct sipart *siparts, const size_t N,
-                                 const ptrdiff_t offset);
+                                   const ptrdiff_t offset);
 void part_relink_parts_to_gparts(struct gpart *gparts, const size_t N,
                                  struct part *parts);
 void part_relink_sparts_to_gparts(struct gpart *gparts, const size_t N,
@@ -174,17 +174,17 @@ void part_relink_bparts_to_gparts(struct gpart *gparts, const size_t N,
 void part_relink_sinks_to_gparts(struct gpart *gparts, const size_t N,
                                  struct sink *sinks);
 void part_relink_siparts_to_gparts(struct gpart *gparts, const size_t N,
-                                 struct sipart *siparts);
+                                   struct sipart *siparts);
 void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
                                      struct part *parts, struct sink *sinks,
                                      struct spart *sparts, struct bpart *bparts,
-                                     struct sipart *siparts, struct threadpool *tp);
+                                     struct sipart *siparts,
+                                     struct threadpool *tp);
 void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct sink *sinks, struct spart *sparts,
                        struct bpart *bparts, struct sipart *siparts,
-                       size_t nr_parts, size_t nr_gparts,
-                       size_t nr_sinks, size_t nr_sparts, 
-                       size_t nr_bparts, size_t nr_siparts,
+                       size_t nr_parts, size_t nr_gparts, size_t nr_sinks,
+                       size_t nr_sparts, size_t nr_bparts, size_t nr_siparts,
                        int verbose);
 
 #ifdef WITH_MPI

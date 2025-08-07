@@ -44,8 +44,8 @@ INLINE static void convert_bpart_group_id(const struct engine* e,
 }
 
 INLINE static void convert_sipart_group_id(const struct engine* e,
-                                          const struct sipart* sip,
-                                          long long* ret) {
+                                           const struct sipart* sip,
+                                           long long* ret) {
   ret[0] = sip->gpart->fof_data.group_id;
 }
 #endif /* WITH_FOF */
@@ -154,7 +154,7 @@ INLINE static int fof_write_bparts(const struct bpart* bparts,
  * @return The number of fields to write.
  */
 INLINE static int fof_write_siparts(const struct sipart* siparts,
-                                   struct io_props* list) {
+                                    struct io_props* list) {
 
 #ifdef WITH_FOF
 

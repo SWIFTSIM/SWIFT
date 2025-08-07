@@ -108,9 +108,9 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
       break;
 
     case swift_type_sidm:
-      io_select_sidm_fields(NULL, with_cosmology, with_fof, with_stf, /*e=*/NULL,
-                          &num_fields, list);
-      break;  
+      io_select_sidm_fields(NULL, with_cosmology, with_fof, with_stf,
+                            /*e=*/NULL, &num_fields, list);
+      break;
 
     default:
       error("Particle Type %d not yet supported. Aborting", ptype);

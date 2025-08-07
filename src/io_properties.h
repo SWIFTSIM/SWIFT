@@ -90,14 +90,14 @@ typedef void (*conversion_func_sink_long_long)(const struct engine *,
                                                const struct sink *,
                                                long long *);
 typedef void (*conversion_func_sipart_float)(const struct engine *,
-                                           const struct sipart *, float *);
+                                             const struct sipart *, float *);
 typedef void (*conversion_func_sipart_int)(const struct engine *,
-                                         const struct sipart *, int *);
+                                           const struct sipart *, int *);
 typedef void (*conversion_func_sipart_double)(const struct engine *,
-                                            const struct sipart *, double *);
+                                              const struct sipart *, double *);
 typedef void (*conversion_func_sipart_long_long)(const struct engine *,
-                                               const struct sipart *,
-                                               long long *);
+                                                 const struct sipart *,
+                                                 long long *);
 
 /**
  * @brief The properties of a given dataset for i/o
@@ -752,26 +752,25 @@ INLINE static struct io_props io_make_output_field_convert_sink_(
   return r;
 }
 
-
 /**
  * @brief Constructs an #io_props (with conversion) from its parameters
  */
-#define io_make_output_field_convert_sipart(name, type, dim, units, a_exponent, \
-                                          sipart, convert, desc)                \
-  io_make_output_field_convert_sipart_(                                         \
-      name, type, dim, units, a_exponent, sizeof(sipart[0]), sipart, convert,     \
+#define io_make_output_field_convert_sipart(name, type, dim, units,            \
+                                            a_exponent, sipart, convert, desc) \
+  io_make_output_field_convert_sipart_(                                        \
+      name, type, dim, units, a_exponent, sizeof(sipart[0]), sipart, convert,  \
       desc, /*physical=*/0, /*convertible_to_physical=*/1)
 
-#define io_make_comoving_output_field_convert_sipart(                           \
-    name, type, dim, units, a_exponent, sipart, convert, desc)                   \
-  io_make_output_field_convert_sipart(name, type, dim, units, a_exponent, sipart, \
-                                    convert, desc)
+#define io_make_comoving_output_field_convert_sipart(                     \
+    name, type, dim, units, a_exponent, sipart, convert, desc)            \
+  io_make_output_field_convert_sipart(name, type, dim, units, a_exponent, \
+                                      sipart, convert, desc)
 
-#define io_make_physical_output_field_convert_sipart(                        \
-    name, type, dim, units, a_exponent, sipart, convertible, convert, desc)  \
-  io_make_output_field_convert_sipart_(name, type, dim, units, a_exponent,   \
-                                     sizeof(sipart[0]), sipart, convert, desc, \
-                                     /*physical=*/1, convertible);
+#define io_make_physical_output_field_convert_sipart(                       \
+    name, type, dim, units, a_exponent, sipart, convertible, convert, desc) \
+  io_make_output_field_convert_sipart_(name, type, dim, units, a_exponent,  \
+                                       sizeof(sipart[0]), sipart, convert,  \
+                                       desc, /*physical=*/1, convertible);
 
 /**
  * @brief Construct an #io_props from its parameters

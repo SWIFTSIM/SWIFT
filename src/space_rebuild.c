@@ -868,8 +868,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Sort the gparts according to their cells. */
   if (nr_gparts > 0)
-    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts, s->siparts,
-                      g_index, cell_gpart_counts, s->nr_cells);
+    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts,
+                      s->siparts, g_index, cell_gpart_counts, s->nr_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -917,9 +917,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Verify that the links are correct */
   if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0) ||
       (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0))
-    part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts, s->siparts,
-                      nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts, nr_siparts,
-                      verbose);
+    part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
+                      s->siparts, nr_parts, nr_gparts, nr_sinks, nr_sparts,
+                      nr_bparts, nr_siparts, verbose);
 #endif
 
   /* Hook the cells up to the parts. Make list of local and non-empty cells */

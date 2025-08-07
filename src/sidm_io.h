@@ -26,7 +26,7 @@
 
 /* Load the correct SIDM model */
 #if defined(SIDM_NONE)
-#include "./sidm/Default/sidm_io.h"
+#include "./sidm/None/sidm_io.h"
 #elif defined(SIDM_BASIC)
 #include "./sidm/Basic/sidm_io.h"
 #else

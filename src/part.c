@@ -105,7 +105,7 @@ void part_relink_gparts_to_bparts(struct bpart *bparts, const size_t N,
  * @param offset The offset of #sipart%s relative to the global siparts list.
  */
 void part_relink_gparts_to_siparts(struct sipart *siparts, const size_t N,
-                                  const ptrdiff_t offset) {
+                                   const ptrdiff_t offset) {
   for (size_t k = 0; k < N; k++) {
     if (siparts[k].gpart) {
       siparts[k].gpart->id_or_neg_offset = -(k + offset);
@@ -185,7 +185,7 @@ void part_relink_sinks_to_gparts(struct gpart *gparts, const size_t N,
  * @param siparts The global #sipart array in which to find the #gpart offsets.
  */
 void part_relink_siparts_to_gparts(struct gpart *gparts, const size_t N,
-                                 struct sipart *siparts) {
+                                   struct sipart *siparts) {
   for (size_t k = 0; k < N; k++) {
     if (gparts[k].type == swift_type_sidm) {
       siparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
@@ -241,8 +241,8 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
 }
 
 /**
- * @brief Re-link both the #part%s, #sink%s, #spart%s, #bpart%s and #sipart%s associated
- * with the list of #gpart%s.
+ * @brief Re-link both the #part%s, #sink%s, #spart%s, #bpart%s and #sipart%s
+ * associated with the list of #gpart%s.
  *
  * This function uses thread parallelism and should not be called inside
  * an already threaded section (unlike the functions linking individual arrays
@@ -260,9 +260,11 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
 void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
                                      struct part *parts, struct sink *sinks,
                                      struct spart *sparts, struct bpart *bparts,
-                                     struct sipart *siparts, struct threadpool *tp) {
+                                     struct sipart *siparts,
+                                     struct threadpool *tp) {
 
-  struct relink_data data = {parts, /*gparts=*/NULL, sinks, sparts, bparts, siparts};
+  struct relink_data data = {parts,  /*gparts=*/NULL, sinks,
+                             sparts, bparts,          siparts};
   threadpool_map(tp, part_relink_all_parts_to_gparts_mapper, gparts, N,
                  sizeof(struct gpart), 0, &data);
 }
@@ -290,9 +292,8 @@ void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
 void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct sink *sinks, struct spart *sparts,
                        struct bpart *bparts, struct sipart *siparts,
-                       size_t nr_parts, size_t nr_gparts,
-                       size_t nr_sinks, size_t nr_sparts, 
-                       size_t nr_bparts, size_t nr_siparts,
+                       size_t nr_parts, size_t nr_gparts, size_t nr_sinks,
+                       size_t nr_sparts, size_t nr_bparts, size_t nr_siparts,
                        int verbose) {
 
   ticks tic = getticks();
@@ -703,8 +704,8 @@ void part_create_mpi_types(void) {
       MPI_Type_commit(&sink_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for sink.");
   }
-  if (MPI_Type_contiguous(sizeof(struct sipart) / sizeof(unsigned char), MPI_BYTE,
-                          &sipart_mpi_type) != MPI_SUCCESS ||
+  if (MPI_Type_contiguous(sizeof(struct sipart) / sizeof(unsigned char),
+                          MPI_BYTE, &sipart_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&sipart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for siparts.");
   }

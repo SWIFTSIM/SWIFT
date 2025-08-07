@@ -697,7 +697,8 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
  * the first #sipart in the global array in the space structure (for
  * re-linking).
  */
-void cell_reorder_extra_siparts(struct cell *c, const ptrdiff_t siparts_offset) {
+void cell_reorder_extra_siparts(struct cell *c,
+                                const ptrdiff_t siparts_offset) {
   struct sipart *siparts = c->sidm.parts;
   const int count_real = c->sidm.count;
 

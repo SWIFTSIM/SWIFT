@@ -175,10 +175,9 @@ long long io_count_neutrinos_to_write(const struct space* s,
                                       const float subsample_ratio,
                                       const int snap_num);
 
-long long io_count_sidm_to_write(const struct space* s,
-                                      const int subsample,
-                                      const float subsample_ratio,
-                                      const int snap_num);
+long long io_count_sidm_to_write(const struct space* s, const int subsample,
+                                 const float subsample_ratio,
+                                 const int snap_num);
 
 void io_collect_parts_to_write(const struct part* restrict parts,
                                const struct xpart* restrict xparts,
@@ -205,11 +204,11 @@ void io_collect_bparts_to_write(const struct bpart* restrict bparts,
                                 const size_t Nbparts,
                                 const size_t Nbparts_written);
 void io_collect_siparts_to_write(const struct sipart* restrict siparts,
-                                struct sipart* restrict siparts_written,
-                                const int subsample,
-                                const float subsample_ratio, const int snap_num,
-                                const size_t Nsiparts,
-                                const size_t Nsiparts_written);
+                                 struct sipart* restrict siparts_written,
+                                 const int subsample,
+                                 const float subsample_ratio,
+                                 const int snap_num, const size_t Nsiparts,
+                                 const size_t Nsiparts_written);
 void io_collect_gparts_to_write(const struct gpart* restrict gparts,
                                 const struct velociraptor_gpart_data* vr_data,
                                 struct gpart* restrict gparts_written,
@@ -257,9 +256,10 @@ void io_duplicate_black_holes_gparts(struct threadpool* tp,
                                      struct bpart* const bparts,
                                      struct gpart* const gparts, size_t Nstars,
                                      size_t Ndm);
-void io_duplicate_sidm_gparts(struct threadpool* tp, struct sipart* const siparts,
-                               struct gpart* const gparts, size_t Nsidm,
-                               size_t Ndm);
+void io_duplicate_sidm_gparts(struct threadpool* tp,
+                              struct sipart* const siparts,
+                              struct gpart* const gparts, size_t Nsidm,
+                              size_t Ndm);
 
 void io_prepare_output_fields(struct output_options* output_options,
                               const int with_cosmology, const int with_fof,
@@ -318,8 +318,8 @@ void io_select_bh_fields(const struct bpart* const bparts,
                          int* const num_fields, struct io_props* const list);
 
 void io_select_sidm_fields(const struct sipart* const siparts,
-                         const int with_cosmology, const int with_fof,
-                         const int with_stf, const struct engine* const e,
-                         int* const num_fields, struct io_props* const list);
+                           const int with_cosmology, const int with_fof,
+                           const int with_stf, const struct engine* const e,
+                           int* const num_fields, struct io_props* const list);
 
 #endif /* SWIFT_COMMON_IO_H */

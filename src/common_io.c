@@ -1244,9 +1244,8 @@ void io_duplicate_black_holes_gparts(struct threadpool* tp,
                  &data);
 }
 
-void io_duplicate_sidm_gparts_mapper(void* restrict data,
-                                            int Nsidm,
-                                            void* restrict extra_data) {
+void io_duplicate_sidm_gparts_mapper(void* restrict data, int Nsidm,
+                                     void* restrict extra_data) {
 
   struct duplication_data* temp = (struct duplication_data*)extra_data;
   const int Ndm = temp->Ndm;
@@ -1279,9 +1278,9 @@ void io_duplicate_sidm_gparts_mapper(void* restrict data,
 /**
  * @brief Copy every #sipart into the corresponding #gpart and link them.
  *
- * This function assumes that the DM particles, gas particles, star particles, and BH particles
- * are all at the start of the gparts array and adds the SIDM particles
- * afterwards
+ * This function assumes that the DM particles, gas particles, star particles,
+ * and BH particles are all at the start of the gparts array and adds the SIDM
+ * particles afterwards
  *
  * @param tp The current #threadpool.
  * @param siparts The array of #sipart freshly read in.
@@ -1291,18 +1290,17 @@ void io_duplicate_sidm_gparts_mapper(void* restrict data,
  * @param Ndm The number of DM, gas, star, and BH particles read in.
  */
 void io_duplicate_sidm_gparts(struct threadpool* tp,
-                                     struct sipart* const siparts,
-                                     struct gpart* const gparts,
-                                     size_t Nsidm, size_t Ndm) {
+                              struct sipart* const siparts,
+                              struct gpart* const gparts, size_t Nsidm,
+                              size_t Ndm) {
 
   struct duplication_data data;
   data.gparts = gparts;
   data.siparts = siparts;
   data.Ndm = Ndm;
 
-  threadpool_map(tp, io_duplicate_sidm_gparts_mapper, siparts,
-                 Nsidm, sizeof(struct sipart), threadpool_auto_chunk_size,
-                 &data);
+  threadpool_map(tp, io_duplicate_sidm_gparts_mapper, siparts, Nsidm,
+                 sizeof(struct sipart), threadpool_auto_chunk_size, &data);
 }
 
 /**
@@ -1682,7 +1680,6 @@ void io_collect_gparts_neutrino_to_write(
           count, Ngparts_written);
 }
 
-
 /**
  * @brief Copy every non-inhibited #sipart into the siparts_written array.
  *
@@ -1698,11 +1695,11 @@ void io_collect_gparts_neutrino_to_write(
  * @param Nsiparts_written The total number of #part to write.
  */
 void io_collect_siparts_to_write(const struct sipart* restrict siparts,
-                                struct sipart* restrict siparts_written,
-                                const int subsample,
-                                const float subsample_ratio, const int snap_num,
-                                const size_t Nsiparts,
-                                const size_t Nsiparts_written) {
+                                 struct sipart* restrict siparts_written,
+                                 const int subsample,
+                                 const float subsample_ratio,
+                                 const int snap_num, const size_t Nsiparts,
+                                 const size_t Nsiparts_written) {
 
   size_t count = 0;
 
@@ -1999,7 +1996,6 @@ void io_select_bh_fields(const struct bpart* const bparts,
       extra_io_write_bparticles(bparts, list + *num_fields, with_cosmology);
 }
 
-
 /**
  * @brief Select the fields to write to snapshots for the SIDM particles.
  *
@@ -2012,9 +2008,9 @@ void io_select_bh_fields(const struct bpart* const bparts,
  * @param list (return) The list of fields to write.
  */
 void io_select_sidm_fields(const struct sipart* const siparts,
-                         const int with_cosmology, const int with_fof,
-                         const int with_stf, const struct engine* const e,
-                         int* const num_fields, struct io_props* const list) {
+                           const int with_cosmology, const int with_fof,
+                           const int with_stf, const struct engine* const e,
+                           int* const num_fields, struct io_props* const list) {
 
   sidm_write_particles(siparts, list, num_fields, with_cosmology);
   if (with_fof) {

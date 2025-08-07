@@ -57,8 +57,8 @@ INLINE static void velociraptor_convert_bpart_groupID(const struct engine* e,
 }
 
 INLINE static void velociraptor_convert_sipart_groupID(const struct engine* e,
-                                                      const struct sipart* sip,
-                                                      long long* ret) {
+                                                       const struct sipart* sip,
+                                                       long long* ret) {
   if (sip->gpart == NULL)
     ret[0] = 0.f;
   else {

@@ -447,15 +447,15 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
 void read_ic_single(
     const char* fileName, const struct unit_system* internal_units,
     double dim[3], struct part** parts, struct gpart** gparts,
-    struct sink** sinks, struct spart** sparts, struct bpart** bparts, struct sipart** siparts,
-    size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background, size_t* Nnuparts,
-    size_t* Nsinks, size_t* Nstars, size_t* Nblackholes, size_t* Nsidm, int* flag_entropy,
+    struct sink** sinks, struct spart** sparts, struct bpart** bparts,
+    struct sipart** siparts, size_t* Ngas, size_t* Ngparts,
+    size_t* Ngparts_background, size_t* Nnuparts, size_t* Nsinks,
+    size_t* Nstars, size_t* Nblackholes, size_t* Nsidm, int* flag_entropy,
     const int with_hydro, const int with_gravity, const int with_sink,
     const int with_stars, const int with_black_holes, const int with_sidm,
-     const int with_cosmology,
-    const int cleanup_h, const int cleanup_sqrt_a, const double h,
-    const double a, const int n_threads, const int dry_run, const int remap_ids,
-    struct ic_info* ics_metadata) {
+    const int with_cosmology, const int cleanup_h, const int cleanup_sqrt_a,
+    const double h, const double a, const int n_threads, const int dry_run,
+    const int remap_ids, struct ic_info* ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -812,9 +812,9 @@ void read_ic_single(
 
     /* Duplicate the SIDM particles into gparts */
     if (with_sidm)
-      io_duplicate_sidm_gparts(
-          &tp, *siparts, *gparts, *Nsidm,
-          Ndm + Ndm_background + Ndm_neutrino + *Ngas + *Nsinks + *Nstars +*Nblackholes);      
+      io_duplicate_sidm_gparts(&tp, *siparts, *gparts, *Nsidm,
+                               Ndm + Ndm_background + Ndm_neutrino + *Ngas +
+                                   *Nsinks + *Nstars + *Nblackholes);
 
     threadpool_clean(&tp);
   }
@@ -986,9 +986,9 @@ void write_output_single(struct engine* e,
   }
 
   if (subsample[swift_type_sidm]) {
-    Nsidm_written = io_count_sidm_to_write(
-        e->s, /*subsample=*/1, subsample_fraction[swift_type_sidm],
-        e->snapshot_output_count);
+    Nsidm_written = io_count_sidm_to_write(e->s, /*subsample=*/1,
+                                           subsample_fraction[swift_type_sidm],
+                                           e->snapshot_output_count);
   } else {
     Nsidm_written =
         e->s->nr_siparts - e->s->nr_inhibited_siparts - e->s->nr_extra_siparts;
@@ -1020,14 +1020,15 @@ void write_output_single(struct engine* e,
       (long long)Ngas_written,   (long long)Ndm_written,
       (long long)Ndm_background, (long long)Nsinks_written,
       (long long)Nstars_written, (long long)Nblackholes_written,
-      (long long)Ndm_neutrino, (long long)Nsidm_written};
+      (long long)Ndm_neutrino,   (long long)Nsidm_written};
 
   /* List what fields to write.
    * Note that we want to want to write a 0-size dataset for some species
    * in case future snapshots will contain them (e.g. star formation) */
   const int to_write[swift_type_count] = {
-      with_hydro, with_DM,         with_DM_background, with_sink,
-      with_stars, with_black_hole, with_neutrinos, with_sidm
+      with_hydro,     with_DM,    with_DM_background,
+      with_sink,      with_stars, with_black_hole,
+      with_neutrinos, with_sidm
 
   };
 
@@ -1471,7 +1472,7 @@ void write_output_single(struct engine* e,
 
           /* Select the fields to write */
           io_select_sidm_fields(siparts, with_cosmology, with_fof, with_stf, e,
-                              &num_fields, list);
+                                &num_fields, list);
 
         } else {
 
@@ -1487,12 +1488,12 @@ void write_output_single(struct engine* e,
           /* Collect the particles we want to write */
           io_collect_siparts_to_write(
               siparts, siparts_written, subsample[swift_type_sidm],
-              subsample_fraction[swift_type_sidm],
-              e->snapshot_output_count, Nsidm, Nsidm_written);
+              subsample_fraction[swift_type_sidm], e->snapshot_output_count,
+              Nsidm, Nsidm_written);
 
           /* Select the fields to write */
           io_select_sidm_fields(siparts_written, with_cosmology, with_fof,
-                              with_stf, e, &num_fields, list);
+                                with_stf, e, &num_fields, list);
         }
       } break;
 

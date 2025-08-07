@@ -244,7 +244,7 @@ void space_reorder_extra_sinks_mapper(void *map_data, int num_cells,
 }
 
 void space_reorder_extra_siparts_mapper(void *map_data, int num_cells,
-                                      void *extra_data) {
+                                        void *extra_data) {
 
   int *local_cells = (int *)map_data;
   struct space *s = (struct space *)extra_data;
@@ -776,7 +776,7 @@ void space_synchronize_sink_positions_mapper(void *map_data, int nr_sinks,
 }
 
 void space_synchronize_sipart_positions_mapper(void *map_data, int nr_siparts,
-                                             void *extra_data) {
+                                               void *extra_data) {
   /* Unpack the data */
   const struct sipart *siparts = (struct sipart *)map_data;
 
@@ -1089,7 +1089,7 @@ void space_collect_sum_bpart_mass(void *restrict map_data, int count,
 }
 
 void space_collect_sum_sipart_mass(void *restrict map_data, int count,
-                                 void *restrict extra_data) {
+                                   void *restrict extra_data) {
 
   struct space *s = (struct space *)extra_data;
   const struct sipart *siparts = (const struct sipart *)map_data;
@@ -1130,9 +1130,8 @@ void space_collect_mean_masses(struct space *s, int verbose) {
                  s->nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
                  s);
   threadpool_map(&s->e->threadpool, space_collect_sum_sipart_mass, s->siparts,
-                 s->nr_siparts, sizeof(struct sipart), threadpool_auto_chunk_size,
-                 s);
-
+                 s->nr_siparts, sizeof(struct sipart),
+                 threadpool_auto_chunk_size, s);
 
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, s->initial_mean_mass_particles, swift_type_count,
@@ -1198,12 +1197,11 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 const struct hydro_props *hydro_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
-                struct bpart *bparts, struct sipart *siparts,
-                size_t Npart, size_t Ngpart, size_t Nsink,
-                size_t Nspart, size_t Nbpart, size_t Nnupart, 
-                size_t Nsipart, int periodic,
-                int replicate, int remap_ids, int generate_gas_in_ics,
-                int hydro, int self_gravity, int star_formation, int with_sink,
+                struct bpart *bparts, struct sipart *siparts, size_t Npart,
+                size_t Ngpart, size_t Nsink, size_t Nspart, size_t Nbpart,
+                size_t Nnupart, size_t Nsipart, int periodic, int replicate,
+                int remap_ids, int generate_gas_in_ics, int hydro,
+                int self_gravity, int star_formation, int with_sink,
                 int with_DM, int with_DM_background, int neutrinos, int verbose,
                 int dry_run, int nr_nodes) {
 
@@ -1297,8 +1295,8 @@ void space_init(struct space *s, struct swift_params *params,
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!dry_run)
-      part_verify_links(parts, gparts, sinks, sparts, bparts, siparts, Npart, Ngpart,
-                        Nsink, Nspart, Nbpart, Nsipart, 1);
+      part_verify_links(parts, gparts, sinks, sparts, bparts, siparts, Npart,
+                        Ngpart, Nsink, Nspart, Nbpart, Nsipart, 1);
 #endif
   }
 
@@ -1325,8 +1323,8 @@ void space_init(struct space *s, struct swift_params *params,
     Nsipart = s->nr_siparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    part_verify_links(parts, gparts, sinks, sparts, bparts, siparts, Npart, Ngpart,
-                      Nsink, Nspart, Nbpart, Nsipart, 1);
+    part_verify_links(parts, gparts, sinks, sparts, bparts, siparts, Npart,
+                      Ngpart, Nsink, Nspart, Nbpart, Nsipart, 1);
 #endif
   }
 
@@ -1593,7 +1591,6 @@ void space_init(struct space *s, struct swift_params *params,
           if (siparts[k].x[j] < 0 || siparts[k].x[j] >= s->dim[j])
             error("Not all si-particles are within the specified domain.");
     }
-
   }
 
   /* Allocate the extra parts array for the gas particles. */
@@ -1678,7 +1675,8 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   const size_t nr_sinks = s->nr_sinks;
   const size_t nr_nuparts = s->nr_nuparts;
   const size_t nr_siparts = s->nr_siparts;
-  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts - nr_bparts - nr_siparts; 
+  const size_t nr_dm =
+      nr_gparts - nr_parts - nr_sparts - nr_bparts - nr_siparts;
   /* nr_dm does not include sidm particles */
 
   s->size_parts = s->nr_parts = nr_parts * factor;
@@ -1716,7 +1714,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   if (swift_memalign("bparts", (void **)&bparts, bpart_align,
                      s->nr_bparts * sizeof(struct bpart)) != 0)
     error("Failed to allocate new bpart array.");
-  
+
   if (swift_memalign("siparts", (void **)&siparts, sipart_align,
                      s->nr_siparts * sizeof(struct sipart)) != 0)
     error("Failed to allocate new sipart array.");
@@ -1769,14 +1767,16 @@ void space_replicate(struct space *s, int replicate, int verbose) {
           sinks[n].x[1] += shift[1];
           sinks[n].x[2] += shift[2];
         }
-        for (size_t n = offset * nr_siparts; n < (offset + 1) * nr_siparts; ++n) {
+        for (size_t n = offset * nr_siparts; n < (offset + 1) * nr_siparts;
+             ++n) {
           siparts[n].x[0] += shift[0];
           siparts[n].x[1] += shift[1];
           siparts[n].x[2] += shift[2];
         }
 
         /* Set the correct links (recall gpart are sorted by type at start-up):
-           first DM (unassociated gpart), then gas, then sinks, then stars, TODO:where bparts soprted? then SIDM */
+           first DM (unassociated gpart), then gas, then sinks, then stars,
+           TODO:where bparts soprted? then SIDM */
         if (nr_parts > 0 && nr_gparts > 0) {
           const size_t offset_part = offset * nr_parts;
           const size_t offset_gpart = offset * nr_gparts + nr_dm;
@@ -1850,9 +1850,9 @@ void space_replicate(struct space *s, int replicate, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */
-  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts, s->siparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, s-> nr_siparts, verbose);
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
+                    s->siparts, s->nr_parts, s->nr_gparts, s->nr_sinks,
+                    s->nr_sparts, s->nr_bparts, s->nr_siparts, verbose);
 #endif
 }
 
@@ -1890,7 +1890,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
       local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
   long long local_nr_dm = local_nr_gparts > 0
                               ? local_nr_gparts - local_nr_baryons -
-                                    local_nr_nuparts - local_nr_dm_background - local_nr_siparts
+                                    local_nr_nuparts - local_nr_dm_background -
+                                    local_nr_siparts
                               : 0;
 
   /* Get the global offsets */
@@ -1946,10 +1947,10 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 #endif
 
   /* Let's order the particles
-   * IDs will be DM then gas then sinks than stars then BHs then nus then SIDM then
-   * DM background. Note that we leave a large gap (10x the number of particles)
-   * in-between the regular particles and the background ones. This allow for
-   * particle splitting to keep a compact set of ids. */
+   * IDs will be DM then gas then sinks than stars then BHs then nus then SIDM
+   * then DM background. Note that we leave a large gap (10x the number of
+   * particles) in-between the regular particles and the background ones. This
+   * allow for particle splitting to keep a compact set of ids. */
   offset_dm += 1;
   offset_parts += 1 + total_dm;
   offset_sinks += 1 + total_dm + total_parts;
@@ -1957,11 +1958,12 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   offset_bparts += 1 + total_dm + total_parts + total_sinks + total_sparts;
   offset_nuparts +=
       1 + total_dm + total_parts + total_sinks + total_sparts + total_bparts;
-  offset_siparts +=
-      1 + total_dm + total_parts + total_sinks + total_sparts + total_bparts + total_nuparts;
+  offset_siparts += 1 + total_dm + total_parts + total_sinks + total_sparts +
+                    total_bparts + total_nuparts;
   offset_dm_background +=
       1 + 10 * (total_dm + total_parts + total_sinks + total_sparts +
-                total_bparts + total_nuparts + total_siparts); /* MS:changed to total_dm + total_parts...*/
+                total_bparts + total_nuparts +
+                total_siparts); /* MS:changed to total_dm + total_parts...*/
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
   for (long long i = 0; i < local_nr_parts; ++i) {
@@ -2861,8 +2863,8 @@ void space_struct_dump(struct space *s, FILE *stream) {
     restart_write_blocks(s->bparts, s->nr_bparts, sizeof(struct bpart), stream,
                          "bparts", "bparts");
   if (s->nr_siparts > 0)
-    restart_write_blocks(s->siparts, s->nr_siparts, sizeof(struct sipart), stream,
-                         "siparts", "siparts");
+    restart_write_blocks(s->siparts, s->nr_siparts, sizeof(struct sipart),
+                         stream, "siparts", "siparts");
 }
 
 /**
@@ -3064,9 +3066,9 @@ void space_struct_restore(struct space *s, FILE *stream) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */
-  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts, s->siparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, s->nr_siparts, 1);
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
+                    s->siparts, s->nr_parts, s->nr_gparts, s->nr_sinks,
+                    s->nr_sparts, s->nr_bparts, s->nr_siparts, 1);
 #endif
 }
 

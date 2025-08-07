@@ -1273,20 +1273,22 @@ int main(int argc, char *argv[]) {
                      nr_threads, dry_run, remap_ids, &ics_metadata);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                   &bparts, &siparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
-                   &Nsink, &Nspart, &Nbpart, &Nsipart, &flag_entropy_ICs, with_hydro,
-                   with_gravity, with_sinks, with_stars, with_black_holes, with_sidm,
-                   with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                   dry_run, remap_ids, &ics_metadata);
+                   &bparts, &siparts, &Ngas, &Ngpart, &Ngpart_background,
+                   &Nnupart, &Nsink, &Nspart, &Nbpart, &Nsipart,
+                   &flag_entropy_ICs, with_hydro, with_gravity, with_sinks,
+                   with_stars, with_black_holes, with_sidm, with_cosmology,
+                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
+                   nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads, dry_run,
+                   remap_ids, &ics_metadata);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                   &bparts, &siparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
-                   &Nsink, &Nspart, &Nbpart, &Nsipart, &flag_entropy_ICs, with_hydro,
-                   with_gravity, with_sinks, with_stars, with_black_holes, with_sidm,
-                   with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                   nr_threads, dry_run, remap_ids, &ics_metadata);
+                   &bparts, &siparts, &Ngas, &Ngpart, &Ngpart_background,
+                   &Nnupart, &Nsink, &Nspart, &Nbpart, &Nsipart,
+                   &flag_entropy_ICs, with_hydro, with_gravity, with_sinks,
+                   with_stars, with_black_holes, with_sidm, with_cosmology,
+                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
+                   dry_run, remap_ids, &ics_metadata);
 #endif
 #endif
 
@@ -1365,12 +1367,13 @@ int main(int argc, char *argv[]) {
 
     if (myrank == 0)
       message(
-          "Read %lld gas particles, %lld sink particles, %lld star particles, %lld SIDM particles,"
+          "Read %lld gas particles, %lld sink particles, %lld star particles, "
+          "%lld SIDM particles,"
           "%lld black hole particles, %lld DM particles, %lld DM background "
           "particles, and %lld neutrino DM particles from the ICs.",
           N_total[swift_type_gas], N_total[swift_type_sink],
-          N_total[swift_type_stars], N_total[swift_type_sidm], N_total[swift_type_black_hole],
-          N_total[swift_type_dark_matter],
+          N_total[swift_type_stars], N_total[swift_type_sidm],
+          N_total[swift_type_black_hole], N_total[swift_type_dark_matter],
           N_total[swift_type_dark_matter_background],
           N_total[swift_type_neutrino]);
 
@@ -1396,11 +1399,12 @@ int main(int argc, char *argv[]) {
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
-               sparts, bparts, siparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, Nnupart, Nsipart,
-               periodic, replicate, remap_ids, generate_gas_in_ics, with_hydro,
-               with_self_gravity, with_star_formation, with_sinks,
-               with_DM_particles, with_DM_background_particles, with_neutrinos,
-               talking, dry_run, nr_nodes);
+               sparts, bparts, siparts, Ngas, Ngpart, Nsink, Nspart, Nbpart,
+               Nnupart, Nsipart, periodic, replicate, remap_ids,
+               generate_gas_in_ics, with_hydro, with_self_gravity,
+               with_star_formation, with_sinks, with_DM_particles,
+               with_DM_background_particles, with_neutrinos, talking, dry_run,
+               nr_nodes);
 
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);

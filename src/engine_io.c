@@ -320,7 +320,7 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
             (e->mesh->ti_beg_mesh_next + e->mesh->ti_end_mesh_next) / 2,
             e->time_base, with_cosmology, e->cosmology);
   }
-  
+
 /* Dump (depending on the chosen strategy) ... */
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)

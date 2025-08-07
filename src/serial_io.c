@@ -542,23 +542,18 @@ void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
  * @todo Read snapshots distributed in more than one file.
  *
  */
-void read_ic_serial(char* fileName, const struct unit_system* internal_units,
-                    double dim[3], struct part** parts, struct gpart** gparts,
-                    struct sink** sinks, struct spart** sparts,
-                    struct bpart** bparts, struct sipart** siparts,
-                    size_t* Ngas, size_t* Ngparts,
-                    size_t* Ngparts_background, size_t* Nnuparts,
-                    size_t* Nsinks, size_t* Nstars, size_t* Nblackholes,
-                    size_t* Nsidm,
-                    int* flag_entropy, const int with_hydro,
-                    const int with_gravity, const int with_sink,
-                    const int with_stars, const int with_black_holes,
-                    const int with_sidm,
-                    const int with_cosmology, const int cleanup_h,
-                    const int cleanup_sqrt_a, double h, double a,
-                    const int mpi_rank, int mpi_size, MPI_Comm comm,
-                    MPI_Info info, const int n_threads, const int dry_run,
-                    const int remap_ids, struct ic_info* ics_metadata) {
+void read_ic_serial(
+    char* fileName, const struct unit_system* internal_units, double dim[3],
+    struct part** parts, struct gpart** gparts, struct sink** sinks,
+    struct spart** sparts, struct bpart** bparts, struct sipart** siparts,
+    size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background, size_t* Nnuparts,
+    size_t* Nsinks, size_t* Nstars, size_t* Nblackholes, size_t* Nsidm,
+    int* flag_entropy, const int with_hydro, const int with_gravity,
+    const int with_sink, const int with_stars, const int with_black_holes,
+    const int with_sidm, const int with_cosmology, const int cleanup_h,
+    const int cleanup_sqrt_a, double h, double a, const int mpi_rank,
+    int mpi_size, MPI_Comm comm, MPI_Info info, const int n_threads,
+    const int dry_run, const int remap_ids, struct ic_info* ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -893,7 +888,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
               Nparticles = *Nsidm;
               sidm_read_particles(*siparts, list, &num_fields);
             }
-            break;  
+            break;
 
           default:
             if (mpi_rank == 0)
@@ -971,9 +966,9 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
     /* Duplicate the black holes particles into gparts */
     if (with_sidm)
-      io_duplicate_sidm_gparts(
-          &tp, *siparts, *gparts, *Nsidm,
-          Ndm + Ndm_background + Ndm_neutrino + *Ngas + *Nsinks + *Nstars + *Nblackholes);
+      io_duplicate_sidm_gparts(&tp, *siparts, *gparts, *Nsidm,
+                               Ndm + Ndm_background + Ndm_neutrino + *Ngas +
+                                   *Nsinks + *Nstars + *Nblackholes);
 
     threadpool_clean(&tp);
   }
@@ -1143,13 +1138,13 @@ void write_output_serial(struct engine* e,
   }
 
   if (subsample[swift_type_sidm]) {
-    Nsidm_written = io_count_sidm_to_write(
-        e->s, /*subsample=*/1, subsample_fraction[swift_type_sidm],
-        e->snapshot_output_count);
+    Nsidm_written = io_count_sidm_to_write(e->s, /*subsample=*/1,
+                                           subsample_fraction[swift_type_sidm],
+                                           e->snapshot_output_count);
   } else {
     Nsidm_written =
         e->s->nr_siparts - e->s->nr_inhibited_siparts - e->s->nr_extra_siparts;
-  }  
+  }
 
   Ndm_written = io_count_dark_matter_to_write(
       e->s, subsample[swift_type_dark_matter],
@@ -1182,7 +1177,7 @@ void write_output_serial(struct engine* e,
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {
       Ngas_written,   Ndm_written,         Ndm_background, Nsinks_written,
-      Nstars_written, Nblackholes_written, Ndm_neutrino, Nsidm_written};
+      Nstars_written, Nblackholes_written, Ndm_neutrino,   Nsidm_written};
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
   MPI_Exscan(N, offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
@@ -1196,8 +1191,9 @@ void write_output_serial(struct engine* e,
    * Note that we want to want to write a 0-size dataset for some species
    * in case future snapshots will contain them (e.g. star formation) */
   const int to_write[swift_type_count] = {
-      with_hydro, with_DM,         with_DM_background, with_sink,
-      with_stars, with_black_hole, with_neutrinos, with_sidm
+      with_hydro,     with_DM,    with_DM_background,
+      with_sink,      with_stars, with_black_hole,
+      with_neutrinos, with_sidm
 
   };
 
@@ -1742,14 +1738,14 @@ void write_output_serial(struct engine* e,
               /* Collect the particles we want to write */
               io_collect_siparts_to_write(
                   siparts, siparts_written, subsample[swift_type_sidm],
-                  subsample_fraction[swift_type_sidm],
-                  e->snapshot_output_count, Nsidm, Nsidm_written);
+                  subsample_fraction[swift_type_sidm], e->snapshot_output_count,
+                  Nsidm, Nsidm_written);
 
               /* Select the fields to write */
               io_select_sidm_fields(siparts_written, with_cosmology, with_fof,
                                     with_stf, e, &num_fields, list);
             }
-          } break;  
+          } break;
 
           default:
             error("Particle Type %d not yet supported. Aborting", ptype);
@@ -1804,7 +1800,10 @@ void write_output_serial(struct engine* e,
         if (gpart_group_data_written)
           swift_free("gpart_group_written", gpart_group_data_written);
         if (sparts_written) swift_free("sparts_written", sparts_written);
-        if (bparts_written) swift_free("bparts_written", bparts_written); /* MS:changed sparts_written to bparts_written */
+        if (bparts_written)
+          swift_free(
+              "bparts_written",
+              bparts_written); /* MS:changed sparts_written to bparts_written */
         if (sinks_written) swift_free("sinks_written", sinks_written);
         if (siparts_written) swift_free("siparts_written", siparts_written);
 
