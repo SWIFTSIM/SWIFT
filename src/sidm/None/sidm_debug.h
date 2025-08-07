@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SIDM_DEFAULT_DEBUG_H
-#define SWIFT_SIDM_DEFAULT_DEBUG_H
+#ifndef SWIFT_SIDM_NONE_DEBUG_H
+#define SWIFT_SIDM_NONE_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void sidm_debug_particle(
     const struct part* p, const struct xpart* xp) {}
 
-#endif /* SWIFT_SIDM_DEFAULT_DEBUG_H */
+#endif /* SWIFT_SIDM_NONE_DEBUG_H */
