@@ -70,6 +70,33 @@
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
+/* Import the moving mesh construction loop functions */
+#include "runner_doiact_grid.h"
+
+/* Moving mesh hydro loops. */
+#ifdef EXTRA_HYDRO_LOOP
+/* Gradient calculation */
+#define FUNCTION slope_estimate
+#define FUNCTION_TASK_LOOP TASK_LOOP_SLOPE_ESTIMATE
+#include "runner_doiact_grid_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
+/* Slope limiter */
+#define FUNCTION slope_limiter
+#define FUNCTION_TASK_LOOP TASK_LOOP_SLOPE_LIMITER
+#include "runner_doiact_grid_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+#endif
+
+/* Flux exchange */
+#define FUNCTION flux_exchange
+#define FUNCTION_TASK_LOOP TASK_LOOP_FLUX_EXCHANGE
+#include "runner_doiact_grid_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
 /**
  * @brief Intermediate task after the density to check that the smoothing
  * lengths are correct.
@@ -998,15 +1025,17 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 #ifdef EXTRA_HYDRO_LOOP
 
   struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
   const int count = c->hydro.count;
   const struct engine *e = r->e;
+#ifndef MOVING_MESH
+  struct xpart *restrict xparts = c->hydro.xparts;
   const integertime_t ti_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const double time_base = e->time_base;
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+#endif
 
   TIMER_TIC;
 
@@ -1024,7 +1053,6 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
       /* Get a direct pointer on the part. */
       struct part *restrict p = &parts[i];
-      struct xpart *restrict xp = &xparts[i];
 
       if (part_is_active(p, e)) {
 
@@ -1032,7 +1060,9 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_end_gradient(p);
         mhd_end_gradient(p);
 
+#ifndef MOVING_MESH
         /* As of here, particle force variables will be set. */
+        struct xpart *restrict xp = &xparts[i];
 
         /* Calculate the time-step for passing to hydro_prepare_force.
          * This is the physical time between the start and end of the time-step
@@ -1067,6 +1097,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         /* Prepare the particle for the force loop over neighbours */
         hydro_reset_acceleration(p);
         mhd_reset_acceleration(p);
+#endif
       }
     }
   }
@@ -1211,7 +1242,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Are we using the alternative definition of the
              number of neighbours? */
           if (use_mass_weighted_num_ngb) {
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
             error(
                 "Can't use alternative neighbour definition with this scheme!");
 #else
@@ -2094,3 +2125,361 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
   if (timer) TIMER_TOC(timer_do_sinks_ghost);
 }
+
+#ifdef MOVING_MESH
+/**
+ * @brief Some preparation work after the grid construction
+ *
+ * This function recalculates h_max and prepares for the flux calculation.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
+
+  if (c->hydro.super == NULL) error("Grid ghost run above grid super level!");
+
+  TIMER_TIC;
+
+  struct engine *e = r->e;
+  const struct hydro_props *hydro = e->hydro_properties;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct pressure_floor_props *pfloor;
+  const struct chemistry_global_data *chemistry = e->chemistry;
+  const int with_ext_gravity = e->policy & engine_policy_external_gravity;
+  const int with_self_gravity = e->policy & engine_policy_self_gravity;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const integertime_t ti_current = e->ti_current;
+  const double time_base = e->time_base;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Running value of the maximal smoothing length */
+  float h_max = 0.f;
+  float h_max_active = 0.f;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_grid_ghost(r, c->progeny[k], 0);
+
+        /* Update h_max */
+        h_max = max(h_max, c->progeny[k]->hydro.h_max);
+        h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);
+      }
+    }
+  } else {
+    for (int i = 0; i < c->hydro.count; i++) {
+      struct part *p = &c->hydro.parts[i];
+      if (part_is_active(p, e)) {
+        /* Set the particle's smoothing length */
+        p->h = 1.25f * kernel_gamma_inv * p->geometry.search_radius;
+        h_max_active = max(h_max_active, p->h);
+        /* The particles smoothing length is updated by the volume calculation,
+         * so we must update the h_depth as well. */
+        cell_set_part_h_depth(p, c);
+
+        /* Make set up quantities for cooling */
+        /* We don't want smoothing for Moving mesh, so use the
+         * _part_has_no_neighbours version instead of _end_density */
+        chemistry_part_has_no_neighbours(p, &c->hydro.xparts[i], chemistry,
+                                         cosmo);
+
+        /* Update position of #gparts for gravity calculation at the end of
+         * timestep */
+        if (with_ext_gravity || with_self_gravity) {
+          hydro_get_center_of_mass(p, p->gpart->x);
+        }
+
+        /* Prepare particle for hydro calculations. */
+        /* Calculate the time-step for passing to hydro_prepare_force.
+         * This is the physical time between the start and end of the time-step
+         * without any scale-factor powers. */
+        double dt_alpha, dt_therm;
+
+        if (with_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(p->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current - 1, p->time_bin);
+
+          dt_alpha =
+              cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+          dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_begin,
+                                                     ti_begin + ti_step);
+        } else {
+          dt_alpha = get_timestep(p->time_bin, time_base);
+          dt_therm = get_timestep(p->time_bin, time_base);
+        }
+        struct xpart *xp = &c->hydro.xparts[i];
+        hydro_prepare_force(p, xp, e->cosmology, hydro, pfloor, dt_alpha,
+                            dt_therm);
+        timestep_limiter_prepare_force(p, xp);
+      }
+      h_max = max(h_max, p->h);
+    }
+  }
+
+  /* Update h_max */
+  c->hydro.h_max = h_max;
+  c->hydro.h_max_active = h_max_active;
+
+  /* The ghost may not always be at the top level.
+   * Therefore, we need to update h_max between the super- and top-levels */
+  if (c->hydro.grid_ghost) {
+    for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+      atomic_max_f(&tmp->hydro.h_max, h_max);
+      atomic_max_f(&tmp->hydro.h_max_active, h_max_active);
+    }
+  }
+
+  /* Flag particles for de-refinement if we are at the construction level */
+  if (hydro->particle_derefinement && c->grid.construction_level == c) {
+
+    /* TODO: construct cell->face links here? */
+
+    /* Get the neighbouring cells */
+    struct cell *ngb_cells[27];
+    bzero(ngb_cells, 27 * sizeof(ngb_cells[0]));
+    ngb_cells[13] = c;
+    for (struct link *l = c->grid.sync_in; l != NULL; l = l->next) {
+      if (l->t->type == task_type_self) continue;
+      struct cell *ci_temp = c;
+      struct cell *cj_temp = l->t->cj;
+      double shift[3] = {0.0, 0.0, 0.0};
+      int sid = space_getsid_and_swap_cells(e->s, &ci_temp, &cj_temp, shift);
+      /* Flipped? */
+      if (c == ci_temp) sid = 26 - sid;
+      ngb_cells[sid] = l->t->cj;
+    }
+
+    /* Loop through the particles and flag the ones whose volume is too small
+     * and have no neighbours with smaller volume */
+    for (int pi_idx = 0; pi_idx < c->hydro.count; pi_idx++) {
+      struct part *pi = &c->hydro.parts[pi_idx];
+      /* Anything to do here? */
+      if (!part_is_active(pi, e)) continue;
+      if (pi->geometry.volume > hydro->particle_derefinement_volume_threshold)
+        continue;
+
+      /* We have a particle that should be de-refined, check its neighbours for
+       * conflicts. */
+      int faces_offset = pi->geometry.pair_connections_offset;
+      double total_weight = 0.;
+      for (int j = 0; j < pi->geometry.nface; j++) {
+        struct voronoi_pair *face;
+        int sid =
+            voronoi_get_cell_face(c->grid.voronoi, faces_offset, j, &face);
+        /* Boundary face? */
+        if (sid == 27) continue;
+#ifdef SWIFT_DEBUG_CHECKS
+        if (pi_idx != face->left_idx && pi_idx != face->right_idx) {
+          error("Got unconnected face!");
+        }
+#endif
+        int pj_idx =
+            face->left_idx == pi_idx ? face->right_idx : face->left_idx;
+        struct part *pj = &ngb_cells[sid]->hydro.parts[pj_idx];
+        /* Should we de-refine pj instead? */
+        if (pj->time_bin == time_bin_apoptosis ||
+            (part_is_active(pj, e) &&
+             pj->geometry.volume < pi->geometry.volume)) {
+          /* we found a conflict, so we can't de-refine pi, continue the outer
+           * loop instead */
+          goto next_particle;
+        }
+        total_weight += hydro_part_get_derefinement_weight_face(
+            pi, pj, face->surface_area, face->midpoint);
+      }
+      /* No conflicts were found, indicate that this particle will be killed
+       * during the flux exchange */
+#ifdef SWIFT_DEBUG_CHECKS
+      if (total_weight <= 0.)
+        error("Cannot do apoptosis, since total weight is 0!");
+#endif
+      pi->time_bin = time_bin_apoptosis;
+      /* Apply any leftover fluxes */
+      pi->conserved.mass += pi->flux.mass;
+      pi->conserved.momentum[0] += pi->flux.momentum[0];
+      pi->conserved.momentum[1] += pi->flux.momentum[1];
+      pi->conserved.momentum[2] += pi->flux.momentum[2];
+      pi->conserved.energy += pi->flux.energy;
+      pi->conserved.entropy += pi->flux.entropy;
+      pi->apoptosis_data.total_weight_inv =
+          total_weight > 0. ? 1. / total_weight : 0.;
+#ifdef SWIFT_DEBUG_CHECKS
+      pi->apoptosis_data.transferred_fraction = 0.;
+      pi->apoptosis_data.transfer_count = 0;
+#endif
+      /* TODO apply gravitational work term? or transfer later? */
+
+    next_particle:;
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_do_grid_ghost);
+}
+
+/**
+ * @brief Finish up the slope estimate calculation.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_slope_estimate_ghost(struct runner *r, struct cell *c,
+                                    int timer) {
+
+  struct engine *e = r->e;
+
+  if (c->hydro.super != c)
+    error("Slope estimate ghost not run at super level!");
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Do gradient calculation for boundary particles? */
+  if (!e->s->periodic) {
+    runner_dopair_boundary_slope_estimate(r, c);
+  }
+
+  /* Finish gradient calculation for active particles */
+  for (int k = 0; k < c->hydro.count; k++) {
+    struct part *p = &c->hydro.parts[k];
+
+    if (!part_is_active(p, e)) continue;
+
+    /* Finalize gradients and initialize slope limiters */
+    hydro_end_gradient(p);
+  }
+
+  if (timer) TIMER_TOC(timer_do_slope_estimate_ghost);
+}
+
+/**
+ * @brief Finish up the gradient limiting procedure.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_slope_limiter_ghost(struct runner *r, struct cell *c,
+                                   int timer) {
+
+  struct engine *e = r->e;
+
+  if (c->hydro.super != c) error("Slope limiter ghost not run at super level!");
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Do gradient calculation for boundary particles? */
+  if (!e->s->periodic) {
+    runner_dopair_boundary_slope_limiter(r, c);
+  }
+
+  /* Apply the cell wide slope limiters for active particles */
+  for (int k = 0; k < c->hydro.count; k++) {
+    struct part *p = &c->hydro.parts[k];
+
+    if (!part_is_active(p, e)) continue;
+
+    /* Apply cell wide slope limiter */
+    hydro_slope_limit_cell(p);
+  }
+
+  if (timer) TIMER_TOC(timer_do_slope_limiter_ghost);
+}
+
+/**
+ * @brief Finish up the flux calculation.
+ *
+ * This function reruns the construction tasks for unconverged particles until
+ * all particles have converged.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
+
+  struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+  const int with_ext_gravity = e->policy & engine_policy_external_gravity;
+  const int with_self_gravity = e->policy & engine_policy_self_gravity;
+
+  if (c->hydro.super != c) error("Flux ghost not run at super level!");
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Do flux calculation for boundary particles? */
+  if (!e->s->periodic) {
+    runner_dopair_boundary_flux_exchange(r, c);
+  }
+
+  for (int i = 0; i < c->hydro.count; i++) {
+    struct part *p = &c->hydro.parts[i];
+    /* once flux calculation is complete, apoptosis is finished. */
+    if (p->time_bin == time_bin_apoptosis) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (fabs(p->apoptosis_data.transferred_fraction - 1.) > 1e-4)
+        error("Not fully transferred during apoptosis!");
+#endif
+      /* We can now remove the part */
+      cell_remove_part(e, c, p, &c->hydro.xparts[i]);
+    }
+    if (!part_is_active(p, e)) continue;
+
+#ifdef EXTRA_HYDRO_LOOP
+    /* get a handle on the xp */
+    struct xpart *xp = &c->hydro.xparts[i];
+    /* Prepare particle for gradient calculation */
+    hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
+#endif
+
+    /* Update mass of #gparts for gravity calculation at the end of timestep */
+    if (with_ext_gravity || with_self_gravity) {
+      p->gpart->mass = p->conserved.mass + p->flux.mass;
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_do_flux_ghost);
+}
+
+#else
+
+/**
+ * @brief Only used for moving mesh schemes.
+ */
+void runner_do_slope_estimate_ghost(struct runner *r, struct cell *c,
+                                    int timer) {}
+
+/**
+ * @brief Only used for moving mesh schemes.
+ */
+void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {}
+
+/**
+ * @brief Only used for moving mesh schemes.
+ */
+void runner_do_slope_limiter_ghost(struct runner *r, struct cell *c,
+                                   int timer) {}
+
+/**
+ * @brief Only used for moving mesh schemes.
+ */
+void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {}
+
+#endif

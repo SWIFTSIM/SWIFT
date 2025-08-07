@@ -80,6 +80,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 
   for (int k = 0; k < num_elements; k++) {
     struct cell *c = &cells[k];
+    if (s->e->policy & engine_policy_grid) cell_grid_free_rec(c);
     struct cell *cell_rec_begin = NULL, *cell_rec_end = NULL;
     struct gravity_tensors *multipole_rec_begin = NULL,
                            *multipole_rec_end = NULL;
@@ -125,6 +126,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.init = NULL;
     c->grav.init_out = NULL;
     c->hydro.extra_ghost = NULL;
+    c->hydro.grid_ghost = NULL;
     c->hydro.ghost_in = NULL;
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
@@ -222,7 +224,24 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_RT_DEBUG_CHECKS
     c->rt.advanced_time = 0;
 #endif
-
+    c->grid.voronoi = NULL;
+    c->grid.self_completeness = grid_invalidated_completeness;
+    c->grid.complete = 0;
+#if WITH_MPI
+    c->grid.send_flags = 0;
+#endif
+    c->grid.super = NULL;
+    c->grid.construction_level = NULL;
+    c->grid.ti_old = 0;
+    c->grid.construction = NULL;
+    c->grid.sync_in = NULL;
+    c->grid.sync_out = NULL;
+    c->hydro.slope_estimate = NULL;
+    c->hydro.slope_limiter = NULL;
+    c->hydro.flux = NULL;
+    c->hydro.slope_estimate_ghost = NULL;
+    c->hydro.slope_limiter_ghost = NULL;
+    c->hydro.flux_ghost = NULL;
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;

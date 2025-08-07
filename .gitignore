@@ -418,3 +418,6 @@ black_formatting_env
 # YouCompleteMe
 .ycm_extra_conf.py
 
+
+# IntelliJ
+.idea
