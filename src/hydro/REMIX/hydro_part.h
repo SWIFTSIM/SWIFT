@@ -67,6 +67,25 @@ struct xpart {
   /*! Evolved density at the last full step. */
   float rho_evol_full;
 
+  /*! Phase state flag at the last full step. */
+  enum mat_phase_state phase_state_full;
+
+  #if defined(MATERIAL_STRENGTH)
+    // Stress tensor
+     struct sym_matrix deviatoric_stress_tensor_full;
+
+    #if defined(STRENGTH_DAMAGE)
+      // Accumulated damage at the last full step
+      float damage_full;
+
+      // Damage accumulated due to tension at the last full step
+      float tensile_damage_full;
+
+      // Damage accumulated due to shear at the last full step
+      float shear_damage_full;
+    #endif
+  #endif
+
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
 
@@ -134,6 +153,9 @@ struct part {
 
   /*! Gradient of velocity, calculated using normalised kernel. */
   float dv_norm_kernel[3][3];
+
+  /*! Gradient of velocity of same-phase particles, calculated using normalised kernel. */
+  float dv_norm_kernel_same_phase[3][3];
 
   /*! Gradient of internal energy, calculated using normalised kernel. */
   float du_norm_kernel[3];
@@ -275,6 +297,9 @@ struct part {
   /*! Material identifier flag */
   enum eos_planetary_material_id mat_id;
 
+  /*! Phase state flag */
+  enum mat_phase_state phase_state;
+
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
 
@@ -307,6 +332,46 @@ struct part {
   /* Fixed specific entropy */
   float s_fixed;
 #endif
+
+#ifdef MATERIAL_STRENGTH
+  // Stress tensor
+  struct sym_matrix stress_tensor;
+
+  // Principal stresses (Eigenvalues of stress_tensor)
+  float principal_stress_eigen[3];
+
+  // Deviatoric stress tensor
+  struct sym_matrix deviatoric_stress_tensor;
+
+  // Time derivative of deviatoric stress tensor
+  struct sym_matrix dS_dt;
+
+  // Gradient of velocity, calculated using linear-order reproducing kernel.
+  float dv_force_loop[3][3];
+
+  #if defined(STRENGTH_DAMAGE)
+    // Accumulated damage
+    float damage;
+
+    // Damage accumulated due to tension
+    float tensile_damage;
+
+    // Damage accumulated due to shear
+    float shear_damage;
+
+    // Need to store this as a particle parameter for timestep
+    float dD_dt;
+  #endif
+
+  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
+    // Number of flaws for tensile damage accumulation
+    int number_of_flaws;
+
+    // Activation thresholds of flaws for tensile damage accumulation
+    // ### Work out how to set the length of this
+    float activation_thresholds[40];
+  #endif
+#endif /* MATERIAL_STRENGTH */
 
 } SWIFT_STRUCT_ALIGN;
 

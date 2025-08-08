@@ -518,17 +518,130 @@ elif test "$fixed_boundary_particles" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_FIXED_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
 fi
 
-# Check if fixed entropy is on for settling planetary initial conditions
+# Check if fixed entropy is on, e.g. for settling planetary-EoS initial conditions
 AC_ARG_ENABLE([planetary-fixed-entropy],
    [AS_HELP_STRING([--enable-planetary-fixed-entropy],
-     [Force entropies to stay fixed for settling planetary initial conditions @<:@yes/no@:>@]
+     [Force entropies to stay fixed for settling planetary-EoS initial conditions @<:@yes/no@:>@]
    )],
    [planetary_fixed_entropy="$enableval"],
    [planetary_fixed_entropy="no"]
 )
 if test "$planetary_fixed_entropy" = "yes"; then
-   AC_DEFINE([PLANETARY_FIXED_ENTROPY],1,[Enable planetary fixed entropy])
+   AC_DEFINE([PLANETARY_FIXED_ENTROPY], 1, [Enable planetary fixed entropy])
 fi
+
+
+#
+# Material strength and related options
+#
+AC_ARG_ENABLE([material-strength],
+   [AS_HELP_STRING([--enable-material-strength],
+     [Enable material strength @<:@yes/no@:>@]
+   )],
+   [material_strength="$enableval"],
+   [material_strength="no"]
+)
+if test "$material_strength" = "yes"; then
+   AC_DEFINE([MATERIAL_STRENGTH], 1, [Enable material strength])
+fi
+
+#  Strength: artificial stress
+AC_ARG_WITH([strength-stress],
+   [AS_HELP_STRING([--with-strength-stress=<stress>],
+      [strength stress @<:@none, mon2000, basis-indp default: none@:>@]
+   )],
+   [with_stress="$withval"],
+   [with_stress="none"]
+)
+if test "$with_stress" != "none"; then
+   case "$with_stress" in
+      mon2000)
+         AC_DEFINE([STRENGTH_STRESS_MON2000], [1], [Mon2000 artificial stress])
+      ;;
+      basis-indp)
+         AC_DEFINE([STRENGTH_STRESS_BASIS_INDP], [1], [Basis independent artificial stress])
+      ;;
+      *)
+         AC_MSG_ERROR([Unknown strength stress: $with_stress])
+      ;;
+   esac
+fi
+
+#  Strength: yield stress
+AC_ARG_WITH([strength-yield],
+   [AS_HELP_STRING([--with-strength-yield=<yield>],
+      [strength yield @<:@none, benz-asphaug, collins default: none@:>@]
+   )],
+   [with_yield="$withval"],
+   [with_yield="none"]
+)
+if test "$with_yield" != "none"; then
+   case "$with_yield" in
+      benz-asphaug)
+         AC_DEFINE([STRENGTH_YIELD_BENZ_ASPHAUG], [1], [Benz and Asphaug yield stress])
+      ;;
+      collins)
+         AC_DEFINE([STRENGTH_YIELD_COLLINS], [1], [Collins yield stress])
+      ;;
+      *)
+         AC_MSG_ERROR([Unknown yield stress: $with_yield])
+      ;;
+   esac
+
+   AC_DEFINE([STRENGTH_YIELD_STRESS], [1], [Any yield stress model])
+fi
+
+#  Strength: thermal softening
+AC_ARG_ENABLE([strength-yield-thermal-softening],
+   [AS_HELP_STRING([--enable-strength-yield-thermal-softening],
+     [Enable thermal softened yield stress @<:@yes/no@:>@]
+   )],
+   [strength_yield_thermal_softening="$enableval"],
+   [strength_yield_thermal_softening="no"]
+)
+if test "$strength_yield_thermal_softening" = "yes"; then
+   AC_DEFINE([STRENGTH_YIELD_THERMAL_SOFTENING],1,[Enable thermal-softened yield stress])
+fi
+
+#  Strength: density softening
+AC_ARG_ENABLE([strength-yield-density-softening],
+   [AS_HELP_STRING([--enable-strength-yield-density-softening],
+     [Enable density softened yield stress @<:@yes/no@:>@]
+   )],
+   [strength_yield_density_softening="$enableval"],
+   [strength_yield_density_softening="no"]
+)
+if test "$strength_yield_density_softening" = "yes"; then
+   AC_DEFINE([STRENGTH_YIELD_DENSITY_SOFTENING],1,[Enable density-softened yield stress])
+fi
+
+#  Strength: damage
+AC_ARG_WITH([strength-damage],
+   [AS_HELP_STRING([--with-strength-damage=<damage>],
+      [strength damage @<:@none, tensile-benz-asphaug, shear-collins default: none@:>@]
+   )],
+   [with_damage="$withval"],
+   [with_damage="none"]
+)
+if test "$with_damage" != "none"; then
+   case "$with_damage" in
+      tensile-benz-asphaug)
+         AC_DEFINE([STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG], [1], [Benz and Asphaug tensile damage])
+      ;;
+      shear-collins)
+         AC_DEFINE([STRENGTH_DAMAGE_SHEAR_COLLINS], [1], [Collins shear damage])
+      ;;
+      *)
+         AC_MSG_ERROR([Unknown yield stress: $with_damage])
+      ;;
+   esac
+
+   AC_DEFINE([STRENGTH_DAMAGE], [1], [Any damage model])
+fi
+#
+# End of material strength and related options
+#
+
 
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
@@ -3426,6 +3539,7 @@ AC_MSG_RESULT([
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
+   Material strength           : $material_strength
    Ghost statistics            : $ghost_stats
 
    Continuous Sim. Data Stream : $with_csds

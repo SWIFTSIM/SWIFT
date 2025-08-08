@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+
 #ifndef SWIFT_REMIX_HYDRO_IO_H
 #define SWIFT_REMIX_HYDRO_IO_H
 
@@ -43,11 +44,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                         struct io_props* list,
                                         int* num_fields) {
 
-#ifdef PLANETARY_FIXED_ENTROPY
-  *num_fields = 10;
-#else
   *num_fields = 9;
-#endif
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -69,9 +66,20 @@ INLINE static void hydro_read_particles(struct part* parts,
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
 #ifdef PLANETARY_FIXED_ENTROPY
-  list[9] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
+  list[*num_fields] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS, parts,
                                 s_fixed);
+  
+  *num_fields += 1;  
+#endif
+#ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
+  list[*num_fields] = io_make_input_field("NumFlaws", INT, 1, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, parts, number_of_flaws);
+  // ### Set length of these arrays in a better way here and in hydro_part.h
+  list[*num_fields+1] = io_make_input_field("ActivationThresholds", FLOAT, 40, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, parts, activation_thresholds);
+  
+  *num_fields += 2;  
 #endif
 }
 
@@ -217,6 +225,12 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[10] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, 0.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
+#ifdef STRENGTH_DAMAGE
+   list[*num_fields] = io_make_output_field(
+       "Damage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, damage, "Damage of the particles");
+  
+  *num_fields += 1;  
+#endif
 }
 
 /**

@@ -95,6 +95,7 @@
 #include "star_formation_logger.h"
 #include "stars.h"
 #include "stars_io.h"
+#include "strength.h"
 #include "task.h"
 #include "threadpool.h"
 #include "timeline.h"
