@@ -18,12 +18,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_HYDRO_IO_H
-#define SWIFT_PLANETARY_HYDRO_IO_H
+
+#ifndef SWIFT_REMIX_HYDRO_IO_H
+#define SWIFT_REMIX_HYDRO_IO_H
 
 /**
- * @file Planetary/hydro_io.h
- * @brief REMIX implementation of SPH (Sandnes et al. 2024) i/o routines
+ * @file REMIX/hydro_io.h
+ * @brief REMIX implementation of SPH (Sandnes et al. 2025) i/o routines
  */
 
 #include "adiabatic_index.h"
@@ -60,7 +61,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
-  list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
+  list[7] = io_make_input_field("Density", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
@@ -79,7 +80,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_NO_UNITS, parts, activation_thresholds);
   
   *num_fields += 2;  
-#endif    
+#endif
 }
 
 INLINE static void convert_S(const struct engine* e, const struct part* p,
@@ -229,7 +230,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
        "Damage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, damage, "Damage of the particles");
   
   *num_fields += 1;  
-#endif    
+#endif
 }
 
 /**
@@ -238,9 +239,20 @@ INLINE static void hydro_write_particles(const struct part* parts,
  */
 INLINE static void hydro_write_flavour(hid_t h_grpsph) {
 
-  /* Viscosity and thermal conduction */
-  /* Nothing in this minimal model... */
-  io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
+  io_write_attribute_s(h_grpsph, "Density estimate", "Evolved in time");
+  io_write_attribute_s(h_grpsph, "EoM free functions", "Evolved densities");
+  io_write_attribute_s(h_grpsph, "Kernel gradients",
+                       "Linear-order reproducing kernels with grad-h terms");
+  io_write_attribute_s(h_grpsph, "Vacuum boundary treatment",
+                       "As presented in Sandnes et al. (2025)");
+  io_write_attribute_s(
+      h_grpsph, "Artificial viscosity",
+      "With linear reconstruction, van Leer slope limiter, Balsara switch");
+  io_write_attribute_s(
+      h_grpsph, "Artificial diffusion",
+      "With linear reconstruction, van Leer slope limiter, Balsara switch");
+  io_write_attribute_s(h_grpsph, "Normalising term",
+                       "As presented in Sandnes et al. (2025)");
 }
 
 /**
@@ -250,4 +262,4 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
  */
 INLINE static int writeEntropyFlag(void) { return 0; }
 
-#endif /* SWIFT_PLANETARY_HYDRO_IO_H */
+#endif /* SWIFT_REMIX_HYDRO_IO_H */

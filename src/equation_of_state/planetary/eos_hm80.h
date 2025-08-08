@@ -184,7 +184,7 @@ INLINE static void convert_units_HM80(struct HM80_params *hm80,
 
 // gas_internal_energy_from_entropy
 INLINE static float HM80_internal_energy_from_entropy(
-    float density, float entropy, const struct HM80_params *hm80) {
+    const float density, const float entropy, const struct HM80_params *hm80) {
 
   error("This EOS function is not yet implemented!");
 
@@ -192,7 +192,8 @@ INLINE static float HM80_internal_energy_from_entropy(
 }
 
 // gas_pressure_from_entropy
-INLINE static float HM80_pressure_from_entropy(float density, float entropy,
+INLINE static float HM80_pressure_from_entropy(const float density,
+                                               const float entropy,
                                                const struct HM80_params *hm80) {
 
   error("This EOS function is not yet implemented!");
@@ -201,7 +202,8 @@ INLINE static float HM80_pressure_from_entropy(float density, float entropy,
 }
 
 // gas_entropy_from_pressure
-INLINE static float HM80_entropy_from_pressure(float density, float pressure,
+INLINE static float HM80_entropy_from_pressure(const float density,
+                                               const float pressure,
                                                const struct HM80_params *hm80) {
 
   error("This EOS function is not yet implemented!");
@@ -211,7 +213,7 @@ INLINE static float HM80_entropy_from_pressure(float density, float pressure,
 
 // gas_soundspeed_from_entropy
 INLINE static float HM80_soundspeed_from_entropy(
-    float density, float entropy, const struct HM80_params *hm80) {
+    const float density, const float entropy, const struct HM80_params *hm80) {
 
   error("This EOS function is not yet implemented!");
 
@@ -220,29 +222,25 @@ INLINE static float HM80_soundspeed_from_entropy(
 
 // gas_entropy_from_internal_energy
 INLINE static float HM80_entropy_from_internal_energy(
-    float density, float u, const struct HM80_params *hm80) {
+    const float density, const float u, const struct HM80_params *hm80) {
 
   return 0.f;
 }
 
 // gas_pressure_from_internal_energy
 INLINE static float HM80_pressure_from_internal_energy(
-    float density, float u, const struct HM80_params *hm80) {
-
-  float log_P, log_P_1, log_P_2, log_P_3, log_P_4;
+    const float density, const float u, const struct HM80_params *hm80) {
 
   if (u <= 0.f) {
     return 0.f;
   }
 
-  int idx_rho, idx_u;
-  float intp_rho, intp_u;
   const float log_rho = logf(density);
   const float log_u = logf(u);
 
   // 2D interpolation (bilinear with log(rho), log(u)) to find P(rho, u)
-  idx_rho = floor((log_rho - hm80->log_rho_min) * hm80->inv_log_rho_step);
-  idx_u = floor((log_u - hm80->log_u_min) * hm80->inv_log_u_step);
+  int idx_rho = floor((log_rho - hm80->log_rho_min) * hm80->inv_log_rho_step);
+  int idx_u = floor((log_u - hm80->log_u_min) * hm80->inv_log_u_step);
 
   // If outside the table then extrapolate from the edge and edge-but-one values
   if (idx_rho <= -1) {
@@ -256,26 +254,31 @@ INLINE static float HM80_pressure_from_internal_energy(
     idx_u = hm80->num_u - 2;
   }
 
-  intp_rho = (log_rho - hm80->log_rho_min - idx_rho * hm80->log_rho_step) *
-             hm80->inv_log_rho_step;
-  intp_u = (log_u - hm80->log_u_min - idx_u * hm80->log_u_step) *
-           hm80->inv_log_u_step;
+  const float intp_rho =
+      (log_rho - hm80->log_rho_min - idx_rho * hm80->log_rho_step) *
+      hm80->inv_log_rho_step;
+  const float intp_u =
+      (log_u - hm80->log_u_min - idx_u * hm80->log_u_step) * hm80->inv_log_u_step;
 
   // Table values
-  log_P_1 = hm80->table_log_P_rho_u[idx_rho * hm80->num_u + idx_u];
-  log_P_2 = hm80->table_log_P_rho_u[idx_rho * hm80->num_u + idx_u + 1];
-  log_P_3 = hm80->table_log_P_rho_u[(idx_rho + 1) * hm80->num_u + idx_u];
-  log_P_4 = hm80->table_log_P_rho_u[(idx_rho + 1) * hm80->num_u + idx_u + 1];
+  const float log_P_1 = hm80->table_log_P_rho_u[idx_rho * hm80->num_u + idx_u];
+  const float log_P_2 =
+      hm80->table_log_P_rho_u[idx_rho * hm80->num_u + idx_u + 1];
+  const float log_P_3 =
+      hm80->table_log_P_rho_u[(idx_rho + 1) * hm80->num_u + idx_u];
+  const float log_P_4 =
+      hm80->table_log_P_rho_u[(idx_rho + 1) * hm80->num_u + idx_u + 1];
 
-  log_P = (1.f - intp_rho) * ((1.f - intp_u) * log_P_1 + intp_u * log_P_2) +
-          intp_rho * ((1.f - intp_u) * log_P_3 + intp_u * log_P_4);
+  const float log_P =
+      (1.f - intp_rho) * ((1.f - intp_u) * log_P_1 + intp_u * log_P_2) +
+      intp_rho * ((1.f - intp_u) * log_P_3 + intp_u * log_P_4);
 
   return expf(log_P);
 }
 
 // gas_internal_energy_from_pressure
 INLINE static float HM80_internal_energy_from_pressure(
-    float density, float P, const struct HM80_params *hm80) {
+    const float density, const float P, const struct HM80_params *hm80) {
 
   error("This EOS function is not yet implemented!");
 
@@ -284,9 +287,9 @@ INLINE static float HM80_internal_energy_from_pressure(
 
 // gas_soundspeed_from_internal_energy
 INLINE static float HM80_soundspeed_from_internal_energy(
-    float density, float u, const struct HM80_params *hm80) {
+    const float density, const float u, const struct HM80_params *hm80) {
 
-  float c, P;
+  float c;
 
   // Bulk modulus
   if (hm80->bulk_mod != 0) {
@@ -294,10 +297,10 @@ INLINE static float HM80_soundspeed_from_internal_energy(
   }
   // Ideal gas
   else {
-    P = HM80_pressure_from_internal_energy(density, u, hm80);
+    const float P = HM80_pressure_from_internal_energy(density, u, hm80);
     c = sqrtf(hydro_gamma * P / density);
 
-    if (c <= 0) {
+    if (c <= 0.f) {
       c = sqrtf(hydro_gamma * hm80->P_min_for_c_min / density);
     }
   }
@@ -307,7 +310,7 @@ INLINE static float HM80_soundspeed_from_internal_energy(
 
 // gas_soundspeed_from_pressure
 INLINE static float HM80_soundspeed_from_pressure(
-    float density, float P, const struct HM80_params *hm80) {
+    const float density, const float P, const struct HM80_params *hm80) {
 
   error("This EOS function is not yet implemented!");
 
@@ -316,7 +319,7 @@ INLINE static float HM80_soundspeed_from_pressure(
 
 // gas_entropy_from_internal_energy
 INLINE static float HM80_temperature_from_internal_energy(
-    float density, float u, const struct HM80_params *hm80) {
+    const float density, const float u, const struct HM80_params *hm80) {
 
   error("This EOS function is not yet implemented!");
 
@@ -325,7 +328,7 @@ INLINE static float HM80_temperature_from_internal_energy(
 
 // gas_density_from_pressure_and_temperature
 INLINE static float HM80_density_from_pressure_and_temperature(
-    float P, float T, const struct HM80_params *hm80) {
+    const float P, const float T, const struct HM80_params *hm80) {
 
   error("This EOS function is not yet implemented!");
 
@@ -334,7 +337,7 @@ INLINE static float HM80_density_from_pressure_and_temperature(
 
 // gas_density_from_pressure_and_internal_energy
 INLINE static float HM80_density_from_pressure_and_internal_energy(
-    float P, float u, float rho_ref, float rho_sph,
+    const float P, const float u, const float rho_ref, const float rho_sph,
     const struct HM80_params *hm80) {
 
   error("This EOS function is not yet implemented!");
@@ -344,7 +347,7 @@ INLINE static float HM80_density_from_pressure_and_internal_energy(
 
 // material_phase_state_from_internal_energy
 INLINE static float HM80_phase_state_from_internal_energy(
-    float density, float u, const struct mat_params *hm80,
+    const float density, const float u, const struct mat_params *hm80,
     const struct HM80_params *HM80_eos) {
 
   error("This EOS function is not yet implemented!");

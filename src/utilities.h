@@ -74,8 +74,9 @@ INLINE static int vertical_find_value_in_monot_incr_array(const float x,
                                                           const int n_row,
                                                           const int n_col,
                                                           const int j) {
-
-  int i_mid, i_low = 0, i_high = n_row - 1;  // nrow - 1 or n_row?
+  int i_low = 0;
+  int i_high = n_row - 1;
+  int i_mid;
 
   // Until table[i_low,j] < x < table[i_high=i_low + 1, j]
   while (i_high - i_low > 1) {

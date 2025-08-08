@@ -18,18 +18,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_HYDRO_PART_H
-#define SWIFT_PLANETARY_HYDRO_PART_H
+#ifndef SWIFT_REMIX_HYDRO_PART_H
+#define SWIFT_REMIX_HYDRO_PART_H
 
 /**
- * @file Planetary/hydro_part.h
- * @brief REMIX implementation of SPH (Sandnes et al. 2024)
+ * @file REMIX/hydro_part.h
+ * @brief REMIX implementation of SPH (Sandnes et al. 2025)
  */
 
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
-#include "equation_of_state.h"  // For enum material_id
+#include "equation_of_state.h" /* For enum material_id */
 #include "feedback_struct.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
@@ -273,6 +273,9 @@ struct part {
       /*! Variable switch to identify proximity to vacuum boundaries. */
       float vac_switch;
 
+      /*! Constant needed for slope limiter: 1 / eta_neighbours. */
+      float eta_crit;
+
     } force;
   };
 
@@ -306,11 +309,14 @@ struct part {
   /*! Time-step length */
   timebin_t time_bin;
 
-  /*! Time-step limiter information */
-  struct timestep_limiter_data limiter_data;
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
 
   /* Whether or not the particle has h=h_max ('1' or '0') */
   char is_h_max;
+
+  /*! Time-step limiter information */
+  struct timestep_limiter_data limiter_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -369,4 +375,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_PLANETARY_HYDRO_PART_H */
+#endif /* SWIFT_REMIX_HYDRO_PART_H */

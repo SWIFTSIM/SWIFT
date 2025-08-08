@@ -18,12 +18,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_HYDRO_IACT_H
-#define SWIFT_PLANETARY_HYDRO_IACT_H
+
+#ifndef SWIFT_REMIX_HYDRO_IACT_H
+#define SWIFT_REMIX_HYDRO_IACT_H
 
 /**
- * @file Planetary/hydro_iact.h
- * @brief REMIX implementation of SPH (Sandnes et al. 2024)
+ * @file REMIX/hydro_iact.h
+ * @brief REMIX implementation of SPH (Sandnes et al. 2025)
  */
 
 #include "adiabatic_index.h"
@@ -122,15 +123,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->n_density += wi;
-  pj->n_density += wj;
-  pi->N_density++;
-  pj->N_density++;
-#endif
-
-  hydro_runner_iact_density_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
-  hydro_runner_iact_density_extra_viscosity(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_runner_iact_density_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);  
 #ifdef MATERIAL_STRENGTH
   hydro_runner_iact_density_extra_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
 #endif /* MATERIAL_STRENGTH */
@@ -177,13 +170,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->n_density += wi;
-  pi->N_density++;
-#endif
-
   hydro_runner_iact_nonsym_density_extra_kernel(pi, pj, dx, wi, wi_dx);
-  hydro_runner_iact_nonsym_density_extra_viscosity(pi, pj, dx, wi, wi_dx);
 #ifdef MATERIAL_STRENGTH
   hydro_runner_iact_nonsym_density_extra_strength(pi, pj, dx, wi, wi_dx);
 #endif /* MATERIAL_STRENGTH */
@@ -224,7 +211,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   kernel_deval(uj, &wj, &wj_dx);
 
   hydro_runner_iact_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
-  hydro_runner_iact_gradient_extra_viscosity(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_runner_iact_gradient_extra_visc_difn(pi, pj, dx, wi, wj, wi_dx, wj_dx);
 #ifdef MATERIAL_STRENGTH
   hydro_runner_iact_gradient_extra_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
 #endif /* MATERIAL_STRENGTH */
@@ -267,7 +254,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx,
                                                  wj_dx);
-  hydro_runner_iact_nonsym_gradient_extra_viscosity(pi, pj, dx, wi, wi_dx);
+  hydro_runner_iact_nonsym_gradient_extra_visc_difn(pi, pj, dx, wi, wi_dx);
 #ifdef MATERIAL_STRENGTH
   hydro_runner_iact_nonsym_gradient_extra_strength(pi, pj, dx, wi, wi_dx);
 #endif /* MATERIAL_STRENGTH */
@@ -297,7 +284,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     error("Inhibited pj in interaction function!");
 #endif
 
-  /* Get r and 1/r. */
+  /* Get r. */
   const float r = sqrtf(r2);
 
   /* Recover some data */
@@ -305,8 +292,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
+  const float rhoi_inv = 1.f / rhoi;
+  const float rhoj_inv = 1.f / rhoj;
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
+
+  /* Convert the pressures into stress tensors. Stress tensor = -P * I(3)
+      for fluids, and for interactions of solids with fluids */
+  float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
+  hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i,
+                                    pairwise_stress_tensor_j, pi, pj, r,
+                                    pressurei, pressurej);
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -320,170 +316,190 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
-  // Linear-order reproducing kernel gradient term
+  /* Linear-order reproducing kernel gradient term (Sandnes+2025 Eqn. 28) */
   float Gj[3], Gi[3], G_mean[3];
   hydro_set_Gi_Gj_forceloop(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
-  for (int i = 0; i < 3; i++) {
-    G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
-  }
 
-  // Convert the pressures into "stress" tensors for fluids, or set the stress
-  // for solid particle pairs with strength
-  float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
-  hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i,
-                                    pairwise_stress_tensor_j, pi, pj, r,
-                                    pressurei, pressurej);
+  /* Antisymmetric kernel grad term for conservation of momentum and energy */
+  G_mean[0] = 0.5f * (Gi[0] - Gj[0]);
+  G_mean[1] = 0.5f * (Gi[1] - Gj[1]);
+  G_mean[2] = 0.5f * (Gi[2] - Gj[2]);
 
-  // Viscous pressures
+  /* Viscous pressures (Sandnes+2025 Eqn. 41) */
   float Qi, Qj;
   float beta_mu_ij, difn_signal_velocity;
   hydro_set_Qi_Qj(&Qi, &Qj, &beta_mu_ij, &difn_signal_velocity, pi,
                   pj, dx, a, H);
 
-  // Incorporate kernel gradient term into viscous pressures and stress tensors
-  float Q_term_i[3], Q_term_j[3];
-  float stress_tensor_term_i[3], stress_tensor_term_j[3];
-  for (int i = 0; i < 3; i++) {
-    Q_term_i[i] = -Qi * G_mean[i];
-    Q_term_j[i] = -Qj * G_mean[i];
+  /* Stress tensor terms to be used in evolution equations */
+  float stress_tensor_i_term[3], stress_tensor_j_term[3];
+  stress_tensor_i_term[0] = (pairwise_stress_tensor_i[0][0] * G_mean[0] +
+                             pairwise_stress_tensor_i[0][1] * G_mean[1] +
+                             pairwise_stress_tensor_i[0][2] * G_mean[2]) *
+                             rhoi_inv * rhoj_inv;
+  stress_tensor_i_term[1] = (pairwise_stress_tensor_i[1][0] * G_mean[0] +
+                             pairwise_stress_tensor_i[1][1] * G_mean[1] +
+                             pairwise_stress_tensor_i[1][2] * G_mean[2]) *
+                             rhoi_inv * rhoj_inv;
+  stress_tensor_i_term[2] = (pairwise_stress_tensor_i[2][0] * G_mean[0] +
+                             pairwise_stress_tensor_i[2][1] * G_mean[1] +
+                             pairwise_stress_tensor_i[2][2] * G_mean[2]) *
+                             rhoi_inv * rhoj_inv;
 
-    stress_tensor_term_i[i] = 0.f;
-    stress_tensor_term_j[i] = 0.f;
-    for (int j = 0; j < 3; j++) {
-      stress_tensor_term_i[i] += pairwise_stress_tensor_i[i][j] * G_mean[j];
-      stress_tensor_term_j[i] += pairwise_stress_tensor_j[i][j] * G_mean[j];
-    }
-  }
+  stress_tensor_j_term[0] = (pairwise_stress_tensor_j[0][0] * G_mean[0] +
+                             pairwise_stress_tensor_j[0][1] * G_mean[1] +
+                             pairwise_stress_tensor_j[0][2] * G_mean[2]) *
+                             rhoi_inv * rhoj_inv;
+  stress_tensor_j_term[1] = (pairwise_stress_tensor_j[1][0] * G_mean[0] +
+                             pairwise_stress_tensor_j[1][1] * G_mean[1] +
+                             pairwise_stress_tensor_j[1][2] * G_mean[2]) *
+                             rhoi_inv * rhoj_inv;
+  stress_tensor_j_term[2] = (pairwise_stress_tensor_j[2][0] * G_mean[0] +
+                             pairwise_stress_tensor_j[2][1] * G_mean[1] +
+                             pairwise_stress_tensor_j[2][2] * G_mean[2]) *
+                             rhoi_inv * rhoj_inv;
+
+  /* Artificial visc terms to be used in evolution equations */
+  float Q_i_term[3], Q_j_term[3];
+  Q_i_term[0] = -Qi * G_mean[0] * rhoi_inv * rhoj_inv;
+  Q_i_term[1] = -Qi * G_mean[1] * rhoi_inv * rhoj_inv;
+  Q_i_term[2] = -Qi * G_mean[2] * rhoi_inv * rhoj_inv;
+
+  Q_j_term[0] = -Qj * G_mean[0] * rhoi_inv * rhoj_inv;
+  Q_j_term[1] = -Qj * G_mean[1] * rhoi_inv * rhoj_inv;
+  Q_j_term[2] = -Qj * G_mean[2] * rhoi_inv * rhoj_inv;
 
   /* Use the force Luke! */
-  for (int i = 0; i < 3; i++) {
-    pi->a_hydro[i] += mj *
-                      (stress_tensor_term_i[i] + stress_tensor_term_j[i] +
-                       Q_term_i[i] + Q_term_j[i]) /
-                      (rhoi * rhoj);
-    pj->a_hydro[i] -= mi *
-                      (stress_tensor_term_i[i] + stress_tensor_term_j[i] +
-                       Q_term_i[i] + Q_term_j[i]) /
-                      (rhoi * rhoj);
-  }
+  pi->a_hydro[0] += mj * (stress_tensor_i_term[0] + stress_tensor_j_term[0] +
+                          Q_i_term[0] + Q_j_term[0]);
+  pi->a_hydro[1] += mj * (stress_tensor_i_term[1] + stress_tensor_j_term[1] +
+                          Q_i_term[1] + Q_j_term[1]);
+  pi->a_hydro[2] += mj * (stress_tensor_i_term[2] + stress_tensor_j_term[2] +
+                          Q_i_term[2] + Q_j_term[2]);
 
-  // Compute dv terms for u and h time derivatives
-  float dv_dot_Q_term_i = 0.f, dv_dot_Q_term_j = 0.f;
-  float dv_dot_stress_term_i = 0.f, dv_dot_stress_term_j = 0.f;
-  float dv_dot_G = 0.f;
-  for (int i = 0; i < 3; i++) {
-    dv_dot_Q_term_i += (pi->v[i] - pj->v[i]) * Q_term_i[i];
-    dv_dot_Q_term_j += (pi->v[i] - pj->v[i]) * Q_term_j[i];
+  pj->a_hydro[0] -= mi * (stress_tensor_i_term[0] + stress_tensor_j_term[0] +
+                          Q_i_term[0] + Q_j_term[0]);
+  pj->a_hydro[1] -= mi * (stress_tensor_i_term[1] + stress_tensor_j_term[1] +
+                          Q_i_term[1] + Q_j_term[1]);
+  pj->a_hydro[2] -= mi * (stress_tensor_i_term[2] + stress_tensor_j_term[2] +
+                          Q_i_term[2] + Q_j_term[2]);
 
-    dv_dot_stress_term_i += (pi->v[i] - pj->v[i]) * stress_tensor_term_i[i];
-    dv_dot_stress_term_j += (pi->v[i] - pj->v[i]) * stress_tensor_term_j[i];
+  /* Compute dv terms for u and h time derivatives */
+  const float dv_dot_Q_i_term = (pi->v[0] - pj->v[0]) * Q_i_term[0] +
+                                (pi->v[1] - pj->v[1]) * Q_i_term[1] +
+                                (pi->v[2] - pj->v[2]) * Q_i_term[2];
+  const float dv_dot_Q_j_term = (pi->v[0] - pj->v[0]) * Q_j_term[0] +
+                                (pi->v[1] - pj->v[1]) * Q_j_term[1] +
+                                (pi->v[2] - pj->v[2]) * Q_j_term[2];
 
-    dv_dot_G += (pi->v[i] - pj->v[i]) * G_mean[i];
-  }
+  const float dv_dot_stress_term_i = (pi->v[0] - pj->v[0]) * stress_tensor_i_term[0] +
+                                     (pi->v[1] - pj->v[1]) * stress_tensor_i_term[1] +
+                                     (pi->v[2] - pj->v[2]) * stress_tensor_i_term[2];
+  const float dv_dot_stress_term_j = (pi->v[0] - pj->v[0]) * stress_tensor_j_term[0] +
+                                     (pi->v[1] - pj->v[1]) * stress_tensor_j_term[1] +
+                                     (pi->v[2] - pj->v[2]) * stress_tensor_j_term[2];
 
-  /* Get the time derivative for u, including the viscosity */
-  float du_dt_i = -(dv_dot_stress_term_i + dv_dot_Q_term_i) / (rhoi * rhoj);
-  float du_dt_j = -(dv_dot_stress_term_j + dv_dot_Q_term_j) / (rhoi * rhoj);
+  const float dv_dot_G = (pi->v[0] - pj->v[0]) * G_mean[0] +
+                         (pi->v[1] - pj->v[1]) * G_mean[1] +
+                         (pi->v[2] - pj->v[2]) * G_mean[2];
 
   /* Internal energy time derivative */
-  pi->u_dt += du_dt_i * mj;
-  pj->u_dt += du_dt_j * mi;
+  pi->u_dt += -mj * (dv_dot_stress_term_i + dv_dot_Q_i_term);
+  pj->u_dt += -mi * (dv_dot_stress_term_j + dv_dot_Q_j_term);
+
+  /* Density time derivative */
+  pi->drho_dt += mj * (rhoi * rhoj_inv) * dv_dot_G;
+  pj->drho_dt += mi * (rhoj * rhoi_inv) * dv_dot_G;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dv_dot_G / rhoj;
-  pj->force.h_dt -= mi * dv_dot_G / rhoi;
- 
+  pi->force.h_dt -= mj * dv_dot_G * rhoj_inv;
+  pj->force.h_dt -= mi * dv_dot_G * rhoi_inv;
+
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
   float max_wave_speed_i, max_wave_speed_j;
   hydro_compute_max_wave_speed(pi, &max_wave_speed_i, ci, rhoi);
   hydro_compute_max_wave_speed(pj, &max_wave_speed_j, cj, rhoj);
-
   const float v_sig = max_wave_speed_i + max_wave_speed_j - beta_mu_ij;
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
-  pi->drho_dt += mj * (rhoi / rhoj) * dv_dot_G;
-  pj->drho_dt += mi * (rhoj / rhoi) * dv_dot_G;
-
-  // Diffusion and kernel normalising term, if particles are not at h=h_max
-  if ((!pi->is_h_max) && (!pj->is_h_max)) {
-    float mean_rho = 0.5f * (rhoi + rhoj);
-    float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
-    float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
-                        G_mean[2] * G_mean[2]);
-    float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
-                             (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
-                             (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
-
-    // Kernel normalising term (zero for solid particles with strength)
-    const float alpha_norm = diffusion_global.alpha_norm;
-    float drho_dt_norm_and_difn_i;
-    float drho_dt_norm_and_difn_j;
-    if (pi->phase_state == mat_phase_state_fluid) {
-      drho_dt_norm_and_difn_i =
-          alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
-          (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
-    } else {
-      drho_dt_norm_and_difn_i = 0.f;
-    }
-    if (pj->phase_state == mat_phase_state_fluid) {
-      drho_dt_norm_and_difn_j =
-          alpha_norm * mi * v_sig_norm * pj->force.vac_switch *
-          (pj->m0 * pj->rho_evol - pj->rho_evol) * mod_G / mean_rho;
-    } else {
-      drho_dt_norm_and_difn_j = 0.f;
-    }
-
-    // Diffusion for same materials
-    if (pi->mat_id == pj->mat_id) {
-      // Diffusion parameters
-      const float a_difn_rho = diffusion_global.a_difn_rho;
-      const float b_difn_rho = diffusion_global.b_difn_rho;
-      const float a_difn_u = diffusion_global.a_difn_u;
-      const float b_difn_u = diffusion_global.b_difn_u;
-
-      // ...
-      float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
-                           pj, dx, a, H);
-      float v_sig_difn = difn_signal_velocity;
-      float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
-                           v_sig_difn * (utilde_i - utilde_j) * mod_G /
-                           mean_rho;
-      float du_dt_difn_j = -(a_difn_u + b_difn_u * mean_balsara) * mi *
-                           v_sig_difn * (utilde_j - utilde_i) * mod_G /
-                           mean_rho;
-
-      // ...
-      pi->u_dt += du_dt_difn_i;
-      pj->u_dt += du_dt_difn_j;
-
-      // ...
-      drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
-                                 mj * (rhoi / rhoj) * v_sig_difn *
-                                 (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
-      drho_dt_norm_and_difn_j += -(a_difn_rho + b_difn_rho * mean_balsara) *
-                                 mi * (rhoj / rhoi) * v_sig_difn *
-                                 (rhotilde_j - rhotilde_i) * mod_G / mean_rho;
-    }
-
-    pi->drho_dt += drho_dt_norm_and_difn_i;
-    pj->drho_dt += drho_dt_norm_and_difn_j;
+  if ((pi->is_h_max) || (pj->is_h_max)) {
+    /* Do not add diffusion or normalising terms if either particle has h=h_max
+     */
+    return;
   }
+
+  /* Calculate some quantities */
+  const float mean_rho = 0.5f * (rhoi + rhoj);
+  const float mean_rho_inv = 1.f / mean_rho;
+  const float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
+  const float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
+                            G_mean[2] * G_mean[2]);
+  const float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
+                                 (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
+                                 (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
+
+  /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
+  const float alpha_norm = const_remix_norm_alpha;
+  float drho_dt_norm_and_difn_i = alpha_norm * mj * v_sig_norm *
+                                  pi->force.vac_switch *
+                                  (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
+  float drho_dt_norm_and_difn_j = alpha_norm * mi * v_sig_norm *
+                                  pj->force.vac_switch *
+                                  (pj->m0 * rhoj - rhoj) * mod_G * mean_rho_inv;
+
+  if (pi->phase_state != mat_phase_state_fluid) {
+    drho_dt_norm_and_difn_i = 0.f;
+  }
+  if (pj->phase_state != mat_phase_state_fluid) {
+    drho_dt_norm_and_difn_j = 0.f;
+  }
+
+  /* Only include diffusion for same-material particle pair */
+  if (pi->mat_id == pj->mat_id) {
+    /* Diffusion parameters */
+    const float a_difn_rho = const_remix_difn_a_rho;
+    const float b_difn_rho = const_remix_difn_b_rho;
+    const float a_difn_u = const_remix_difn_a_u;
+    const float b_difn_u = const_remix_difn_b_u;
+
+    float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
+    hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj,
+                         dx);
+    const float v_sig_difn = difn_signal_velocity;
+
+    /* Calculate artificial diffusion of internal energy (Sandnes+2025 Eqn. 42)
+     */
+    const float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
+                               v_sig_difn * (utilde_i - utilde_j) * mod_G *
+                               mean_rho_inv;
+    const float du_dt_difn_j = -(a_difn_u + b_difn_u * mean_balsara) * mi *
+                               v_sig_difn * (utilde_j - utilde_i) * mod_G *
+                               mean_rho_inv;
+
+    /* Add artificial diffusion to evolution of internal energy */
+    pi->u_dt += du_dt_difn_i;
+    pj->u_dt += du_dt_difn_j;
+
+    /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
+    drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
+                               (rhoi * rhoj_inv) * v_sig_difn *
+                               (rhotilde_i - rhotilde_j) * mod_G * mean_rho_inv;
+    drho_dt_norm_and_difn_j += -(a_difn_rho + b_difn_rho * mean_balsara) * mi *
+                               (rhoj * rhoi_inv) * v_sig_difn *
+                               (rhotilde_j - rhotilde_i) * mod_G * mean_rho_inv;
+  }
+
+  /* Add normalising term and artificial diffusion to evolution of density */
+  pi->drho_dt += drho_dt_norm_and_difn_i;
+  pj->drho_dt += drho_dt_norm_and_difn_j;
 
 #ifdef MATERIAL_STRENGTH
   hydro_runner_iact_force_extra_strength(pi, pj, dx, Gi, Gj);
 #endif /* MATERIAL_STRENGTH */
-
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->n_force += wi + wj;
-  pj->n_force += wi + wj;
-  pi->N_force++;
-  pj->N_force++;
-#endif
 }
 
 /**
@@ -510,15 +526,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     error("Inhibited pj in interaction function!");
 #endif
 
-  /* Get r and 1/r. */
+  /* Get r. */
   const float r = sqrtf(r2);
 
   /* Recover some data */
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
+  const float rhoi_inv = 1.f / rhoi;
+  const float rhoj_inv = 1.f / rhoj;
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
+
+  /* Convert the pressures into stress tensors. Stress tensor = -P * I(3)
+      for fluids, and for interactions of solids with fluids */
+  float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
+  hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i,
+                                    pairwise_stress_tensor_j, pi, pj, r,
+                                    pressurei, pressurej);
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -532,138 +557,160 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
-  // Linear-order reproducing kernel gradient term
+  /* Linear-order reproducing kernel gradient term (Sandnes+2025 Eqn. 28) */
   float Gj[3], Gi[3], G_mean[3];
   hydro_set_Gi_Gj_forceloop(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
-  for (int i = 0; i < 3; i++) {
-    G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
-  }
 
-  // Convert the pressures into "stress" tensors for fluids, S = -P * I(3),
-  // or set the stress for solid particle pairs with strength
-  float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
-  hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i,
-                                    pairwise_stress_tensor_j, pi, pj, r,
-                                    pressurei, pressurej);
+  /* Antisymmetric kernel grad term for conservation of momentum and energy */
+  G_mean[0] = 0.5f * (Gi[0] - Gj[0]);
+  G_mean[1] = 0.5f * (Gi[1] - Gj[1]);
+  G_mean[2] = 0.5f * (Gi[2] - Gj[2]);
 
-  // Viscous pressures
+  /* Viscous pressures (Sandnes+2025 Eqn. 41) */
   float Qi, Qj;
   float beta_mu_ij, difn_signal_velocity;
   hydro_set_Qi_Qj(&Qi, &Qj, &beta_mu_ij, &difn_signal_velocity, pi,
                   pj, dx, a, H);
 
-  // Incorporate kernel gradient term into viscous pressures and stress tensors
-  float Q_term_i[3], Q_term_j[3];
-  float stress_tensor_term_i[3], stress_tensor_term_j[3];
-  for (int i = 0; i < 3; i++) {
-    Q_term_i[i] = -Qi * G_mean[i];
-    Q_term_j[i] = -Qj * G_mean[i];
+  /* Stress tensor terms to be used in evolution equations */
+  float stress_tensor_i_term[3], stress_tensor_j_term[3];
+  stress_tensor_i_term[0] = (pairwise_stress_tensor_i[0][0] * G_mean[0] +
+                             pairwise_stress_tensor_i[0][1] * G_mean[1] +
+                             pairwise_stress_tensor_i[0][2] * G_mean[2]) *
+                             rhoi_inv * rhoj_inv;
+  stress_tensor_i_term[1] = (pairwise_stress_tensor_i[1][0] * G_mean[0] +
+                             pairwise_stress_tensor_i[1][1] * G_mean[1] +
+                             pairwise_stress_tensor_i[1][2] * G_mean[2]) *
+                             rhoi_inv * rhoj_inv;
+  stress_tensor_i_term[2] = (pairwise_stress_tensor_i[2][0] * G_mean[0] +
+                             pairwise_stress_tensor_i[2][1] * G_mean[1] +
+                             pairwise_stress_tensor_i[2][2] * G_mean[2]) *
+                             rhoi_inv * rhoj_inv;
 
-    stress_tensor_term_i[i] = 0.f;
-    stress_tensor_term_j[i] = 0.f;
-    for (int j = 0; j < 3; j++) {
-      stress_tensor_term_i[i] += pairwise_stress_tensor_i[i][j] * G_mean[j];
-      stress_tensor_term_j[i] += pairwise_stress_tensor_j[i][j] * G_mean[j];
-    }
-  }
+  stress_tensor_j_term[0] = (pairwise_stress_tensor_j[0][0] * G_mean[0] +
+                             pairwise_stress_tensor_j[0][1] * G_mean[1] +
+                             pairwise_stress_tensor_j[0][2] * G_mean[2]) *
+                             rhoi_inv * rhoj_inv;
+  stress_tensor_j_term[1] = (pairwise_stress_tensor_j[1][0] * G_mean[0] +
+                             pairwise_stress_tensor_j[1][1] * G_mean[1] +
+                             pairwise_stress_tensor_j[1][2] * G_mean[2]) *
+                             rhoi_inv * rhoj_inv;
+  stress_tensor_j_term[2] = (pairwise_stress_tensor_j[2][0] * G_mean[0] +
+                             pairwise_stress_tensor_j[2][1] * G_mean[1] +
+                             pairwise_stress_tensor_j[2][2] * G_mean[2]) *
+                             rhoi_inv * rhoj_inv;
+
+  /* Artificial visc terms to be used in evolution equations */
+  float Q_i_term[3], Q_j_term[3];
+  Q_i_term[0] = -Qi * G_mean[0] * rhoi_inv * rhoj_inv;
+  Q_i_term[1] = -Qi * G_mean[1] * rhoi_inv * rhoj_inv;
+  Q_i_term[2] = -Qi * G_mean[2] * rhoi_inv * rhoj_inv;
+
+  Q_j_term[0] = -Qj * G_mean[0] * rhoi_inv * rhoj_inv;
+  Q_j_term[1] = -Qj * G_mean[1] * rhoi_inv * rhoj_inv;
+  Q_j_term[2] = -Qj * G_mean[2] * rhoi_inv * rhoj_inv;
 
   /* Use the force Luke! */
-  for (int i = 0; i < 3; i++) {
-    pi->a_hydro[i] += mj *
-                      (stress_tensor_term_i[i] + stress_tensor_term_j[i] +
-                       Q_term_i[i] + Q_term_j[i]) /
-                      (rhoi * rhoj);
-  }
+  pi->a_hydro[0] += mj * (stress_tensor_i_term[0] + stress_tensor_j_term[0] +
+                          Q_i_term[0] + Q_j_term[0]);
+  pi->a_hydro[1] += mj * (stress_tensor_i_term[1] + stress_tensor_j_term[1] +
+                          Q_i_term[1] + Q_j_term[1]);
+  pi->a_hydro[2] += mj * (stress_tensor_i_term[2] + stress_tensor_j_term[2] +
+                          Q_i_term[2] + Q_j_term[2]);
 
-  // Compute dv terms for u and h time derivatives
-  float dv_dot_Q_term_i = 0.f;
-  float dv_dot_stress_term_i = 0.f;
-  float dv_dot_G = 0.f;
-  for (int i = 0; i < 3; i++) {
-    dv_dot_Q_term_i += (pi->v[i] - pj->v[i]) * Q_term_i[i];
+  /* Compute dv terms for u and h time derivatives */
+  const float dv_dot_Q_i_term = (pi->v[0] - pj->v[0]) * Q_i_term[0] +
+                                (pi->v[1] - pj->v[1]) * Q_i_term[1] +
+                                (pi->v[2] - pj->v[2]) * Q_i_term[2];
 
-    dv_dot_stress_term_i += (pi->v[i] - pj->v[i]) * stress_tensor_term_i[i];
+  const float dv_dot_stress_term_i = (pi->v[0] - pj->v[0]) * stress_tensor_i_term[0] +
+                                     (pi->v[1] - pj->v[1]) * stress_tensor_i_term[1] +
+                                     (pi->v[2] - pj->v[2]) * stress_tensor_i_term[2];
 
-    dv_dot_G += (pi->v[i] - pj->v[i]) * G_mean[i];
-  }
-
-  /* Get the time derivative for u, including the viscosity */
-  float du_dt_i = -(dv_dot_stress_term_i + dv_dot_Q_term_i) / (rhoi * rhoj);
+  const float dv_dot_G = (pi->v[0] - pj->v[0]) * G_mean[0] +
+                         (pi->v[1] - pj->v[1]) * G_mean[1] +
+                         (pi->v[2] - pj->v[2]) * G_mean[2];
 
   /* Internal energy time derivative */
-  pi->u_dt += du_dt_i * mj;
+  pi->u_dt += -mj * (dv_dot_stress_term_i + dv_dot_Q_i_term);
+
+  /* Density time derivative */
+  pi->drho_dt += mj * (rhoi * rhoj_inv) * dv_dot_G;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dv_dot_G / rhoj;
+  pi->force.h_dt -= mj * dv_dot_G * rhoj_inv;
 
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
   float max_wave_speed_i, max_wave_speed_j;
   hydro_compute_max_wave_speed(pi, &max_wave_speed_i, ci, rhoi);
   hydro_compute_max_wave_speed(pj, &max_wave_speed_j, cj, rhoj);
-
   const float v_sig = max_wave_speed_i + max_wave_speed_j - beta_mu_ij;
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
-  pi->drho_dt += mj * (rhoi / rhoj) * dv_dot_G;
-
-  if ((!pi->is_h_max) && (!pj->is_h_max)) {
-    float mean_rho = 0.5f * (rhoi + rhoj);
-    float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
-    float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
-                        G_mean[2] * G_mean[2]);
-
-    float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
-                             (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
-                             (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
-
-    const float alpha_norm = diffusion_global.alpha_norm;
-    float drho_dt_norm_and_difn_i = 0.f;
-    if (pi->phase_state == mat_phase_state_fluid) {
-      drho_dt_norm_and_difn_i +=
-          alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
-          (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
-    }
-
-    // Diffusion for same materials
-    if (pi->mat_id == pj->mat_id) {
-      // Diffusion parameters
-      const float a_difn_rho = diffusion_global.a_difn_rho;
-      const float b_difn_rho = diffusion_global.b_difn_rho;
-      const float a_difn_u = diffusion_global.a_difn_u;
-      const float b_difn_u = diffusion_global.b_difn_u;
-
-      // ...
-      float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
-                           pj, dx, a, H);
-      float v_sig_difn = difn_signal_velocity;
-      float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
-                           v_sig_difn * (utilde_i - utilde_j) * mod_G /
-                           mean_rho;
-
-      // ...
-      pi->u_dt += du_dt_difn_i;
-
-      // ...
-      drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
-                                 mj * (rhoi / rhoj) * v_sig_difn *
-                                 (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
-    }
-
-    pi->drho_dt += drho_dt_norm_and_difn_i;
+  if ((pi->is_h_max) || (pj->is_h_max)) {
+    /* Do not add diffusion or normalising terms if either particle has h=h_max
+     */
+    return;
   }
+
+  /* Calculate some quantities */
+  const float mean_rho = 0.5f * (rhoi + rhoj);
+  const float mean_rho_inv = 1.f / mean_rho;
+  const float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
+  const float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
+                            G_mean[2] * G_mean[2]);
+
+  const float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
+                                 (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
+                                 (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
+
+  /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
+  const float alpha_norm = const_remix_norm_alpha;
+  float drho_dt_norm_and_difn_i = alpha_norm * mj * v_sig_norm *
+                                  pi->force.vac_switch *
+                                  (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
+
+  if (pi->phase_state != mat_phase_state_fluid) {
+    drho_dt_norm_and_difn_i = 0.f;
+  }
+
+  /* Only include diffusion for same-material particle pair */
+  if (pi->mat_id == pj->mat_id) {
+    /* Diffusion parameters */
+    const float a_difn_rho = const_remix_difn_a_rho;
+    const float b_difn_rho = const_remix_difn_b_rho;
+    const float a_difn_u = const_remix_difn_a_u;
+    const float b_difn_u = const_remix_difn_b_u;
+
+    float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
+    hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj,
+                         dx);
+    const float v_sig_difn = difn_signal_velocity;
+
+    /* Calculate artificial diffusion of internal energy (Sandnes+2025 Eqn. 42)
+     */
+    const float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
+                               v_sig_difn * (utilde_i - utilde_j) * mod_G *
+                               mean_rho_inv;
+
+    /* Add artificial diffusion to evolution of internal energy */
+    pi->u_dt += du_dt_difn_i;
+
+    /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
+    drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
+                               (rhoi * rhoj_inv) * v_sig_difn *
+                               (rhotilde_i - rhotilde_j) * mod_G * mean_rho_inv;
+  }
+
+  /* Add normalising term and artificial diffusion to evolution of density */
+  pi->drho_dt += drho_dt_norm_and_difn_i;
 
 #ifdef MATERIAL_STRENGTH
   hydro_runner_iact_nonsym_force_extra_strength(pi, pj, dx, Gi);
 #endif /* MATERIAL_STRENGTH */
-
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->n_force += wi + wj;
-  pi->N_force++;
-#endif
 }
 
-#endif /* SWIFT_PLANETARY_HYDRO_IACT_H */
+#endif /* SWIFT_REMIX_HYDRO_IACT_H */

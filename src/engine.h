@@ -89,8 +89,10 @@ enum engine_policy {
   engine_policy_sinks = (1 << 25),
   engine_policy_rt = (1 << 26),
   engine_policy_power_spectra = (1 << 27),
+  engine_policy_grid = (1 << 28),
+  engine_policy_grid_hydro = (1 << 29),
 };
-#define engine_maxpolicy 28
+#define engine_maxpolicy 30
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -348,7 +350,9 @@ struct engine {
   float snapshot_subsample_fraction[swift_type_count];
   int snapshot_run_on_dump;
   int snapshot_distributed;
-  int snapshot_lustre_OST_count;
+  int snapshot_lustre_OST_checks;
+  int snapshot_lustre_OST_free;
+  int snapshot_lustre_OST_test;
   int snapshot_compression;
   int snapshot_invoke_stf;
   int snapshot_invoke_fof;
@@ -587,8 +591,16 @@ struct engine {
   /* Whether to dump restart files after the last step. */
   int restart_onexit;
 
-  /* Number of Lustre OSTs on the system to use as rank-based striping offset */
-  int restart_lustre_OST_count;
+  /* Perform OST checks and assign each restart file a stripe on the basis of
+   * most free space first. */
+  int restart_lustre_OST_checks;
+
+  /* Free space that an OST should have to be used, -1 makes this
+   * the rss size. In MiB so we can use an int and human sized. */
+  int restart_lustre_OST_free;
+
+  /* Whether to check is OSTs are writable, if not then they are not used. */
+  int restart_lustre_OST_test;
 
   /* Do we free the foreign data before writing restart files? */
   int free_foreign_when_dumping_restart;
@@ -682,7 +694,7 @@ struct engine {
 /* Function prototypes, engine.c. */
 void engine_addlink(struct engine *e, struct link **l, struct task *t);
 void engine_barrier(struct engine *e);
-void engine_compute_next_snapshot_time(struct engine *e);
+void engine_compute_next_snapshot_time(struct engine *e, const int restart);
 void engine_compute_next_stf_time(struct engine *e);
 void engine_compute_next_fof_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
@@ -747,7 +759,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             size_t *Ngpart, const size_t offset_sparts,
                             const int *ind_spart, size_t *Nspart,
                             const size_t offset_bparts, const int *ind_bpart,
-                            size_t *Nbpart);
+                            size_t *Nbpart, const size_t offset_sinks,
+                            const int *ind_sink, size_t *Nsink);
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
@@ -772,11 +785,9 @@ void engine_maketasks(struct engine *e);
 /* Function prototypes, engine_maketasks.c. */
 void engine_make_fof_tasks(struct engine *e);
 
-/* Function prototypes, engine_marktasks.c. */
-int engine_marktasks(struct engine *e);
-
 /* Function prototypes, engine_split_particles.c. */
 void engine_split_gas_particles(struct engine *e);
+void engine_init_split_gas_particles(struct engine *e);
 
 #ifdef HAVE_SETAFFINITY
 cpu_set_t *engine_entry_affinity(void);

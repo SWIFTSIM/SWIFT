@@ -45,6 +45,7 @@
 #include "restart.h"
 #include "units.h"
 
+
 /**
  * @brief Returns the internal energy given density and entropy
  *
@@ -720,12 +721,12 @@ gas_temperature_from_internal_energy(float density, float u,
       return SESAME_temperature_from_internal_energy(density, u,
                                                      &eos.all_ANEOS[unit_id]);
 
-    /*! Linear EoS -- user-provided parameters */
+    /* Linear EoS -- user-provided parameters */
     case eos_type_linear:
       return linear_temperature_from_internal_energy(density, u,
                                                      &eos.all_linear[unit_id]);
 
-    /*! Generic user-provided custom tables */
+    /* Generic user-provided custom tables */
     case eos_type_custom:
       return SESAME_temperature_from_internal_energy(density, u,
                                                      &eos.all_custom[unit_id]);

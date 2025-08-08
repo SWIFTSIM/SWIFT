@@ -13,5 +13,5 @@ Sink particles and star formation in GEAR model
 
    introduction
    theory
+   sink_timesteps
    params
-   output

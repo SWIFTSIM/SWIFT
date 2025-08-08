@@ -152,7 +152,7 @@ for i in range(num_files):
         for i in range(len(tasks)):
 
             # Extract the different blocks
-            if re.search("scheduler_report_task_times: \*\*\*  ", line):
+            if re.search("scheduler_report_task_times: \\*\\*\\*  ", line):
                 if re.search("%s" % tasks[i], line):
                     counts_tasks[i] += 1.0
                     times_tasks[i] += float(
@@ -205,7 +205,7 @@ important_is_rebuild = [0]
 important_is_fof = [0]
 important_is_VR = [0]
 important_is_mesh = [0]
-important_labels = ["Others (all below %.1f\%%)" % (threshold * 100)]
+important_labels = ["Others (all below %.1f\\%%)" % (threshold * 100)]
 need_print = True
 print("Time spent in the different code sections:")
 for i in range(len(labels)):

@@ -63,6 +63,9 @@ struct bpart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
   struct {
 
     /* Number of neighbours. */
@@ -102,6 +105,9 @@ struct bpart {
   /*! Density of the gas surrounding the black hole, taking account of only the
    *  hot particles. */
   float rho_gas_hot;
+
+  /*! Internal energy of the gas surrounding the black hole. */
+  float internal_energy_gas;
 
   /*! Smoothed sound speed of the gas surrounding the black hole. */
   float sound_speed_gas;
@@ -161,6 +167,9 @@ struct bpart {
    * lower potential than all eligible neighbours) */
   int number_of_reposition_attempts;
 
+  /* Velocity of most recent reposition jump */
+  float last_repos_vel;
+
   /*! Total number of time steps in which the black hole was active. */
   int number_of_time_steps;
 
@@ -170,18 +179,18 @@ struct bpart {
   /*! Total (physical) angular momentum accumulated from subgrid accretion */
   float accreted_angular_momentum[3];
 
-  /*! Integer (cumulative) number of energy injections in AGN feedback. At a
-   * given time-step, an AGN-active BH may produce multiple energy injections.
-   * The number of energy injections is equal to or more than the number of
-   * particles heated by the BH during this time-step. */
+  /*! Integer (cumulative) number of thermal energy injections in AGN feedback.
+   * At a given time-step, an AGN-active BH may produce multiple energy
+   * injections. The number of energy injections is equal to or more than the
+   * number of particles heated by the BH during this time-step. */
   int AGN_number_of_energy_injections;
 
-  /*! Integer (cumulative) number of AGN events. If a BH does feedback at a
-   * given time-step, the number of its AGN events is incremented by 1. Each
-   * AGN event may have multiple energy injections. */
+  /*! Integer (cumulative) number of thermal AGN events. If a BH does feedback
+   * at a given time-step, the number of its AGN events is incremented by 1.
+   * Each AGN event may have multiple energy injections. */
   int AGN_number_of_AGN_events;
 
-  /* Total energy injected into the gas in AGN feedback by this BH */
+  /* Total thermal energy injected into the gas in AGN feedback by this BH */
   float AGN_cumulative_energy;
 
   /*! Union for the last AGN event time and the last AGN event scale factor */
@@ -311,16 +320,17 @@ struct bpart {
   /*! Properties used in the feedback loop to distribute to gas neighbours. */
   struct {
 
-    /*! Energy per unit mass in a single AGN energy-injection event */
+    /*! Thermal energy per unit mass in a single thermal AGN */
+    /* energy-injection event. */
     float AGN_delta_u;
 
-    /*! Number of energy injections per time-step */
+    /*! Number of thermal energy injections per time-step */
     int AGN_number_of_energy_injections;
 
-    /*! Number of energy injections per time-step */
+    /*! Number of thermal energy injections per time-step */
     int AGN_number_of_jet_injections;
 
-    /*! Change in energy from SNII feedback energy injection */
+    /*! Change in energy from thermal AGN energy injection */
     float AGN_delta_u_jet;
 
   } to_distribute;

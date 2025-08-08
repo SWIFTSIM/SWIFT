@@ -36,6 +36,7 @@ plus an individual value:
     + Granite: ``101``
     + Water: ``102``
     + Basalt: ``103``
+    + Ice: ``104``
     + Custom user-provided Tillotson parameters: ``1000``, ``1001``, ..., ``1009``
 + Hubbard \& MacFarlane (1980): ``2``
     + Hydrogen-helium atmosphere: ``200``

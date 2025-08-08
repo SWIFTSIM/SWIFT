@@ -54,8 +54,6 @@ const char *taskID_names[task_type_count] = {
     "sort",
     "self",
     "pair",
-    "sub_self",
-    "sub_pair",
     "init_grav",
     "init_grav_out",
     "ghost_in",
@@ -114,6 +112,7 @@ const char *taskID_names[task_type_count] = {
     "fof_attach_pair",
     "neutrino_weight",
     "sink_in",
+    "sink_density_ghost",
     "sink_ghost1",
     "sink_ghost2",
     "sink_out",
@@ -137,6 +136,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "force",
     "limiter",
     "grav",
+    "fof",
     "external_grav",
     "tend",
     "xv",
@@ -152,6 +152,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "stars_prep2",
     "stars_feedback",
     "sf_counts",
+    "grav_counts",
     "bpart_rho",
     "bpart_feedback",
     "bh_density",
@@ -159,6 +160,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "do_gas_swallow",
     "do_bh_swallow",
     "bh_feedback",
+    "sink_density",
     "sink_do_sink_swallow",
     "sink_swallow",
     "sink_do_gas_swallow",
@@ -247,6 +249,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_drift_sink:
+    case task_type_sink_density_ghost:
       return task_action_sink;
       break;
 
@@ -265,8 +268,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_self:
     case task_type_pair:
-    case task_type_sub_self:
-    case task_type_sub_pair:
       switch (t->subtype) {
 
         case task_subtype_density:
@@ -292,6 +293,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           return task_action_bpart;
           break;
 
+        case task_subtype_sink_density:
         case task_subtype_sink_do_gas_swallow:
         case task_subtype_sink_do_sink_swallow:
         case task_subtype_sink_swallow:
@@ -568,13 +570,13 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_self:
-    case task_type_sub_self:
       if (subtype == task_subtype_grav) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_gunlocktree(ci);
         cell_munlocktree(ci);
 #endif
-      } else if ((subtype == task_subtype_sink_swallow) ||
+      } else if ((subtype == task_subtype_sink_density) ||
+                 (subtype == task_subtype_sink_swallow) ||
                  (subtype == task_subtype_sink_do_gas_swallow)) {
         cell_sink_unlocktree(ci);
         cell_unlocktree(ci);
@@ -604,7 +606,6 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_pair:
-    case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_gunlocktree(ci);
@@ -612,7 +613,8 @@ void task_unlock(struct task *t) {
         cell_munlocktree(ci);
         cell_munlocktree(cj);
 #endif
-      } else if ((subtype == task_subtype_sink_swallow) ||
+      } else if ((subtype == task_subtype_sink_density) ||
+                 (subtype == task_subtype_sink_swallow) ||
                  (subtype == task_subtype_sink_do_gas_swallow)) {
         cell_sink_unlocktree(ci);
         cell_sink_unlocktree(cj);
@@ -794,7 +796,6 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_self:
-    case task_type_sub_self:
       if (subtype == task_subtype_grav) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the gparts and the m-pole */
@@ -806,7 +807,8 @@ int task_lock(struct task *t) {
           return 0;
         }
 #endif
-      } else if ((subtype == task_subtype_sink_swallow) ||
+      } else if ((subtype == task_subtype_sink_density) ||
+                 (subtype == task_subtype_sink_swallow) ||
                  (subtype == task_subtype_sink_do_gas_swallow)) {
         if (ci->sinks.hold) return 0;
         if (ci->hydro.hold) return 0;
@@ -855,7 +857,6 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_pair:
-    case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the gparts and the m-pole in both cells */
@@ -875,7 +876,8 @@ int task_lock(struct task *t) {
           return 0;
         }
 #endif
-      } else if ((subtype == task_subtype_sink_swallow) ||
+      } else if ((subtype == task_subtype_sink_density) ||
+                 (subtype == task_subtype_sink_swallow) ||
                  (subtype == task_subtype_sink_do_gas_swallow)) {
         if (ci->sinks.hold || cj->sinks.hold) return 0;
         if (ci->hydro.hold || cj->hydro.hold) return 0;
@@ -1191,6 +1193,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
         strcpy(cluster, "RTtransport");
       }
       break;
+    case task_subtype_sink_density:
+      strcpy(cluster, "SinkDensity");
+      break;
     case task_subtype_sink_swallow:
       strcpy(cluster, "SinkSwallow");
       break;
@@ -1323,7 +1328,6 @@ void task_dump_all(struct engine *e, int step) {
               engine_rank, (long long int)e->tic_step,
               (long long int)e->toc_step, e->updates, e->g_updates,
               e->s_updates, cpufreq);
-      int count = 0;
       for (int l = 0; l < e->sched.nr_tasks; l++) {
         if (!e->sched.tasks[l].implicit &&
             e->sched.tasks[l].tic > e->tic_step) {
@@ -1343,7 +1347,6 @@ void task_dump_all(struct engine *e, int step) {
                                              : 0,
               e->sched.tasks[l].flags, e->sched.tasks[l].sid);
         }
-        count++;
       }
       fclose(file_thread);
     }
@@ -1670,6 +1673,7 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_star_formation_sink:
       return task_category_star_formation;
 
+    case task_type_sink_density_ghost:
     case task_type_sink_formation:
       return task_category_sink;
 
@@ -1749,9 +1753,7 @@ enum task_categories task_get_category(const struct task *t) {
       return task_category_neutrino;
 
     case task_type_self:
-    case task_type_pair:
-    case task_type_sub_self:
-    case task_type_sub_pair: {
+    case task_type_pair: {
       switch (t->subtype) {
 
         case task_subtype_density:
@@ -1779,6 +1781,7 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_bh_feedback:
           return task_category_black_holes;
 
+        case task_subtype_sink_density:
         case task_subtype_sink_swallow:
         case task_subtype_sink_do_sink_swallow:
         case task_subtype_sink_do_gas_swallow:

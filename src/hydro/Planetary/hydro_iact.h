@@ -164,6 +164,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 #ifdef MATERIAL_STRENGTH
   hydro_runner_iact_density_extra_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
 #endif /* MATERIAL_STRENGTH */
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_density += wi;
+  pj->n_density += wj;
+  pi->N_density++;
+  pj->N_density++;
+#endif
 }
 
 /**
@@ -233,6 +240,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 #ifdef MATERIAL_STRENGTH
   hydro_runner_iact_nonsym_density_extra_strength(pi, pj, dx, wi, wi_dx);
 #endif /* MATERIAL_STRENGTH */
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_density += wi;
+  pi->N_density++;
+#endif
 }
 
 /**
@@ -436,6 +448,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     
   hydro_runner_iact_force_extra_strength(pi, pj, dx, Gi, Gj);
 #endif /* MATERIAL_STRENGTH */    
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+  pj->n_force += wi + wj;
+  pi->N_force++;
+  pj->N_force++;
+#endif
 }
 
 /**
@@ -587,7 +606,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->drho_dt += mj * dv_dot_G_i;
 
   hydro_runner_iact_nonsym_force_extra_strength(pi, pj, dx, Gi);
-#endif /* MATERIAL_STRENGTH */       
+#endif /* MATERIAL_STRENGTH */
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+  pi->N_force++;
+#endif
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_IACT_H */

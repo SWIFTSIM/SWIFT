@@ -18,11 +18,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_HYDRO_DEBUG_H
-#define SWIFT_PLANETARY_HYDRO_DEBUG_H
+
+#ifndef SWIFT_REMIX_HYDRO_DEBUG_H
+#define SWIFT_REMIX_HYDRO_DEBUG_H
 
 /**
- * @file Planetary/hydro_debug.h
+ * @file REMIX/hydro_debug.h
  * @brief Debugging routines for REMIX SPH.
  */
 
@@ -50,4 +51,4 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
   }
 }
 
-#endif /* SWIFT_PLANETARY_HYDRO_DEBUG_H */
+#endif /* SWIFT_REMIX_HYDRO_DEBUG_H */

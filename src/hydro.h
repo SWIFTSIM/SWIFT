@@ -62,11 +62,10 @@
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 #include "./hydro/Gizmo/hydro.h"
 #include "./hydro/Gizmo/hydro_iact.h"
-#elif defined(SHADOWFAX_SPH)
+#elif defined(SHADOWSWIFT)
 #include "./hydro/Shadowswift/hydro.h"
 #include "./hydro/Shadowswift/hydro_iact.h"
-#define SPH_IMPLEMENTATION \
-  "Shadowfax moving mesh (Vandenbroucke and De Rijcke 2016)"
+#define SPH_IMPLEMENTATION "ShadowSWIFT moving mesh"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro.h"
 #include "./hydro/Planetary/hydro_iact.h"
@@ -74,7 +73,7 @@
 #elif defined(REMIX_SPH)
 #include "./hydro/REMIX/hydro.h"
 #include "./hydro/REMIX/hydro_iact.h"
-#define SPH_IMPLEMENTATION "SPH with multiple materials and methods"
+#define SPH_IMPLEMENTATION "REMIX (Sandnes+ 2025)"
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro.h"
 #include "./hydro/SPHENIX/hydro_iact.h"

@@ -120,24 +120,30 @@ __attribute__((always_inline)) INLINE static void sym_matrix_multiplication_ABA(
     struct sym_matrix *M_out, const struct sym_matrix *A,
     const struct sym_matrix *B) {
 
-  M_out->xx = (A->xx * (A->xx * B->xx + A->xy * B->xy + A->xz * B->xz) +
-               A->xy * (A->xx * B->xy + A->xy * B->yy + A->xz * B->yz) +
-               A->xz * (A->xx * B->xz + A->xy * B->yz + A->xz * B->zz));
-  M_out->yy = (A->xy * (A->xy * B->xx + A->yy * B->xy + A->yz * B->xz) +
-               A->yy * (A->xy * B->xy + A->yy * B->yy + A->yz * B->yz) +
-               A->yz * (A->xy * B->xz + A->yy * B->yz + A->yz * B->zz));
-  M_out->zz = (A->xz * (A->xz * B->xx + A->yz * B->xy + A->zz * B->xz) +
-               A->yz * (A->xz * B->xy + A->yz * B->yy + A->zz * B->yz) +
-               A->zz * (A->xz * B->xz + A->yz * B->yz + A->zz * B->zz));
-  M_out->xy = (A->xy * (A->xx * B->xx + A->xy * B->xy + A->xz * B->xz) +
-               A->yy * (A->xx * B->xy + A->xy * B->yy + A->xz * B->yz) +
-               A->yz * (A->xx * B->xz + A->xy * B->yz + A->xz * B->zz));
-  M_out->xz = (A->xz * (A->xx * B->xx + A->xy * B->xy + A->xz * B->xz) +
-               A->yz * (A->xx * B->xy + A->xy * B->yy + A->xz * B->yz) +
-               A->zz * (A->xx * B->xz + A->xy * B->yz + A->xz * B->zz));
-  M_out->yz = (A->xz * (A->xy * B->xx + A->yy * B->xy + A->yz * B->xz) +
-               A->yz * (A->xy * B->xy + A->yy * B->yy + A->yz * B->yz) +
-               A->zz * (A->xy * B->xz + A->yy * B->yz + A->yz * B->zz));
+  float BA_array[3][3] = {0};
+  float A_array[3][3], B_array[3][3];
+  get_matrix_from_sym_matrix(A_array, A);
+  get_matrix_from_sym_matrix(B_array, B);
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      for (int k = 0; k < 3; k++) {
+        BA_array[i][j] += B_array[i][k] * A_array[k][j];
+      }
+    }
+  }
+
+  M_out->xx = (A->xx * BA_array[0][0] + A->xy * BA_array[1][0] +
+               A->xz * BA_array[2][0]);
+  M_out->yy = (A->xy * BA_array[0][1] + A->yy * BA_array[1][1] +
+               A->yz * BA_array[2][1]);
+  M_out->zz = (A->xz * BA_array[0][2] + A->yz * BA_array[1][2] +
+               A->zz * BA_array[2][2]);
+  M_out->xy = (A->xy * BA_array[0][0] + A->yy * BA_array[1][0] +
+               A->yz * BA_array[2][0]);
+  M_out->xz = (A->xz * BA_array[0][0] + A->yz * BA_array[1][0] +
+               A->zz * BA_array[2][0]);
+  M_out->yz = (A->xz * BA_array[0][1] + A->yz * BA_array[1][1] +
+               A->zz * BA_array[2][1]);
 }
 
 /**
@@ -158,9 +164,6 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
 __attribute__((always_inline)) INLINE static void sym_matrix_invert(
     struct sym_matrix *M_inv, const struct sym_matrix *M) {
 
-  // Can probably do this by just typing out all the elements,
-  // so we don't have to go back and forth between arrays and sym_matrix.
-  // But, for now use invert_dimension_by_dimension_matrix function
   float M_inv_matrix[3][3];
   get_matrix_from_sym_matrix(M_inv_matrix, M);
   int res = invert_dimension_by_dimension_matrix(M_inv_matrix);
@@ -169,7 +172,12 @@ __attribute__((always_inline)) INLINE static void sym_matrix_invert(
     error("Error inverting matrix");
   }
 
-  get_sym_matrix_from_matrix(M_inv, M_inv_matrix);
+  M_inv->xx = M_inv_matrix[0][0];
+  M_inv->yy = M_inv_matrix[1][1];
+  M_inv->zz = M_inv_matrix[2][2];
+  M_inv->xy = M_inv_matrix[0][1];
+  M_inv->xz = M_inv_matrix[0][2];
+  M_inv->yz = M_inv_matrix[1][2];
 }
 
 /**

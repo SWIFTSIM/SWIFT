@@ -60,7 +60,7 @@ INLINE static void set_idg_def(struct idg_params *idg,
  * @param entropy The entropy \f$A\f$.
  */
 INLINE static float idg_internal_energy_from_entropy(
-    float density, float entropy, const struct idg_params *idg) {
+    const float density, const float entropy, const struct idg_params *idg) {
 
   return entropy * powf(density, idg->gamma - 1.f) *
          idg->one_over_gamma_minus_one;
@@ -74,7 +74,8 @@ INLINE static float idg_internal_energy_from_entropy(
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$A\f$.
  */
-INLINE static float idg_pressure_from_entropy(float density, float entropy,
+INLINE static float idg_pressure_from_entropy(const float density,
+                                              const float entropy,
                                               const struct idg_params *idg) {
 
   return entropy * powf(density, idg->gamma);
@@ -89,7 +90,8 @@ INLINE static float idg_pressure_from_entropy(float density, float entropy,
  * @param pressure The pressure \f$P\f$.
  * @return The entropy \f$A\f$.
  */
-INLINE static float idg_entropy_from_pressure(float density, float pressure,
+INLINE static float idg_entropy_from_pressure(const float density,
+                                              const float pressure,
                                               const struct idg_params *idg) {
 
   return pressure * powf(density, -idg->gamma);
@@ -103,7 +105,8 @@ INLINE static float idg_entropy_from_pressure(float density, float pressure,
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$A\f$.
  */
-INLINE static float idg_soundspeed_from_entropy(float density, float entropy,
+INLINE static float idg_soundspeed_from_entropy(const float density,
+                                                const float entropy,
                                                 const struct idg_params *idg) {
 
   return sqrtf(idg->gamma * powf(density, idg->gamma - 1.f) * entropy);
@@ -118,7 +121,7 @@ INLINE static float idg_soundspeed_from_entropy(float density, float entropy,
  * @param u The internal energy \f$u\f$
  */
 INLINE static float idg_entropy_from_internal_energy(
-    float density, float u, const struct idg_params *idg) {
+    const float density, const float u, const struct idg_params *idg) {
 
   return (idg->gamma - 1.f) * u * powf(density, 1.f - idg->gamma);
 }
@@ -132,7 +135,7 @@ INLINE static float idg_entropy_from_internal_energy(
  * @param u The internal energy \f$u\f$
  */
 INLINE static float idg_pressure_from_internal_energy(
-    float density, float u, const struct idg_params *idg) {
+    const float density, const float u, const struct idg_params *idg) {
 
   return (idg->gamma - 1.f) * u * density;
 }
@@ -147,7 +150,7 @@ INLINE static float idg_pressure_from_internal_energy(
  * @return The internal energy \f$u\f$.
  */
 INLINE static float idg_internal_energy_from_pressure(
-    float density, float pressure, const struct idg_params *idg) {
+    const float density, const float pressure, const struct idg_params *idg) {
 
   return idg->one_over_gamma_minus_one * pressure / density;
 }
@@ -161,7 +164,7 @@ INLINE static float idg_internal_energy_from_pressure(
  * @param u The internal energy \f$u\f$
  */
 INLINE static float idg_soundspeed_from_internal_energy(
-    float density, float u, const struct idg_params *idg) {
+    const float density, const float u, const struct idg_params *idg) {
 
   return sqrtf(u * idg->gamma * (idg->gamma - 1.f));
 }
@@ -174,7 +177,8 @@ INLINE static float idg_soundspeed_from_internal_energy(
  * @param density The density \f$\rho\f$
  * @param P The pressure \f$P\f$
  */
-INLINE static float idg_soundspeed_from_pressure(float density, float P,
+INLINE static float idg_soundspeed_from_pressure(const float density,
+                                                 const float P,
                                                  const struct idg_params *idg) {
 
   return sqrtf(idg->gamma * P / density);
@@ -182,7 +186,7 @@ INLINE static float idg_soundspeed_from_pressure(float density, float P,
 
 // gas_temperature_from_internal_energy
 INLINE static float idg_temperature_from_internal_energy(
-    float density, float u, const struct idg_params *idg) {
+    const float density, const float u, const struct idg_params *idg) {
 
   error("This EOS function is not yet implemented!");
 
@@ -191,7 +195,7 @@ INLINE static float idg_temperature_from_internal_energy(
 
 // gas_density_from_pressure_and_temperature
 INLINE static float idg_density_from_pressure_and_temperature(
-    float P, float T, const struct idg_params *idg) {
+    const float P, const float T, const struct idg_params *idg) {
 
   error("This EOS function is not yet implemented!");
 
@@ -200,7 +204,7 @@ INLINE static float idg_density_from_pressure_and_temperature(
 
 // gas_density_from_pressure_and_internal_energy
 INLINE static float idg_density_from_pressure_and_internal_energy(
-    float P, float u, float rho_ref, float rho_sph,
+    const float P, const float u, const float rho_ref, const float rho_sph,
     const struct idg_params *idg) {
 
   return idg->one_over_gamma_minus_one * P / u;
@@ -208,10 +212,36 @@ INLINE static float idg_density_from_pressure_and_internal_energy(
 
 // material_phase_state_from_internal_energy
 INLINE static float idg_phase_state_from_internal_energy(
-    float density, float u, const struct mat_params *idg,
+    const float density, const float u, const struct mat_params *idg,
     const struct idg_params *idg_eos) {
 
   return mat_phase_state_fluid;
+}
+
+// gas_temperature_from_internal_energy
+INLINE static float idg_temperature_from_internal_energy(
+    const float density, const float u, const struct idg_params *idg) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+// gas_density_from_pressure_and_temperature
+INLINE static float idg_density_from_pressure_and_temperature(
+    const float P, const float T, const struct idg_params *idg) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+// gas_density_from_pressure_and_internal_energy
+INLINE static float idg_density_from_pressure_and_internal_energy(
+    const float P, const float u, const float rho_ref, const float rho_sph,
+    const struct idg_params *idg) {
+
+  return idg->one_over_gamma_minus_one * P / u;
 }
 
 #endif /* SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H */

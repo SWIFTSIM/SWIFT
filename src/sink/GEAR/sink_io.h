@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2021 Loic Hausammann (loic.hausammann@epfl.ch)
+ *               2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -33,7 +34,7 @@ INLINE static void sink_read_particles(struct sink* sinks,
                                        struct io_props* list, int* num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 4;
+  *num_fields = 6;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -44,6 +45,10 @@ INLINE static void sink_read_particles(struct sink* sinks,
                                 sinks, mass);
   list[3] = io_make_input_field("ParticleIDs", LONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, sinks, id);
+  list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_LENGTH, sinks, h);
+  list[5] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
+                                sinks, birth_time);
 }
 
 INLINE static void convert_sink_pos(const struct engine* e,
@@ -97,9 +102,9 @@ INLINE static void convert_sink_vel(const struct engine* e,
 INLINE static void convert_sink_target_mass(const struct engine* e,
                                             const struct sink* sink,
                                             float* ret) {
-  /* Recall that the target_mass is in M_sun in the code. We nee to convert it
-     to internal units for consistency in the output. */
-  ret[0] = sink->target_mass * e->physical_constants->const_solar_mass;
+  /* Recall that the target_mass_Msun is in M_sun in the code. We nee to convert
+     it to internal units for consistency in the output. */
+  ret[0] = sink->target_mass_Msun * e->physical_constants->const_solar_mass;
 }
 
 INLINE static void convert_sink_swallowed_angular_momentum(
@@ -122,7 +127,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 10;
+  *num_fields = 11;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
@@ -141,11 +146,9 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sinks, id,
       /*can convert to comoving=*/0, "Unique ID of the particles");
 
-  /* chemistry : this should be in chemistry_io.h */
   list[4] = io_make_output_field(
-      "MetalMassFractions", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
-      UNIT_CONV_NO_UNITS, 0.f, sinks, chemistry_data.metal_mass_fraction,
-      "Mass fraction of each element");
+      "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sinks, h,
+      "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
 
   list[5] = io_make_physical_output_field(
       "NumberOfSinkSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
@@ -174,6 +177,17 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       sinks,
       /*can convert to comoving=*/0, convert_sink_swallowed_angular_momentum,
       "Physical swallowed angular momentum of the particles");
+
+  if (with_cosmology) {
+    list[10] = io_make_physical_output_field(
+        "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
+        birth_scale_factor, /*can convert to comoving=*/0,
+        "Scale-factors at which the sinks were born");
+  } else {
+    list[10] =
+        io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, sinks,
+                             birth_time, "Times at which the sinks were born");
+  }
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 

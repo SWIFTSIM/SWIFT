@@ -19,13 +19,38 @@
 #ifndef SWIFT_DEFAULT_SINK_PROPERTIES_H
 #define SWIFT_DEFAULT_SINK_PROPERTIES_H
 
+/* Local header */
+#include "feedback_properties.h"
+#include "parser.h"
+
 /**
  * @brief Properties of sink in the Default model.
  */
 struct sink_props {
 
-  /*! Cut off radius */
-  float cut_off_radius;
+  /* ----- Basic neighbour search properties ------ */
+
+  /*! Resolution parameter */
+  float eta_neighbours;
+
+  /*! Target weightd number of neighbours (for info only)*/
+  float target_neighbours;
+
+  /*! Smoothing length tolerance */
+  float h_tolerance;
+
+  /*! Tolerance on neighbour number  (for info only)*/
+  float delta_neighbours;
+
+  /*! Maximal number of iterations to converge h */
+  int max_smoothing_iterations;
+
+  /*! Maximal change of h over one time-step */
+  float log_max_h_change;
+
+  /*! Are we using a fixed cutoff radius? (all smoothing length calculations are
+   * disabled if so) */
+  char use_fixed_r_cut;
 };
 
 /**
@@ -36,16 +61,50 @@ struct sink_props {
  * @param us The internal unit system.
  * @param params The parsed parameters.
  * @param cosmo The cosmological model.
+ * @param with_feedback Are we running with feedback?
  */
-INLINE static void sink_props_init(struct sink_props *sp,
-                                   struct feedback_props *fp,
-                                   const struct phys_const *phys_const,
-                                   const struct unit_system *us,
-                                   struct swift_params *params,
-                                   const struct cosmology *cosmo) {
+INLINE static void sink_props_init(
+    struct sink_props *sp, struct feedback_props *fp,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    struct swift_params *params, const struct hydro_props *hydro_props,
+    const struct cosmology *cosmo, const int with_feedback) {
 
-  sp->cut_off_radius =
-      parser_get_param_float(params, "DefaultSink:cut_off_radius");
+  /* Read in the basic neighbour search properties or default to the hydro
+     ones if the user did not provide any different values */
+
+  /* Kernel properties */
+  sp->eta_neighbours = parser_get_opt_param_float(
+      params, "Sinks:resolution_eta", hydro_props->eta_neighbours);
+
+  /* Tolerance for the smoothing length Newton-Raphson scheme */
+  sp->h_tolerance = parser_get_opt_param_float(params, "Sinks:h_tolerance",
+                                               hydro_props->h_tolerance);
+
+  /* Get derived properties */
+  sp->target_neighbours = pow_dimension(sp->eta_neighbours) * kernel_norm;
+  const float delta_eta = sp->eta_neighbours * (1.f + sp->h_tolerance);
+  sp->delta_neighbours =
+      (pow_dimension(delta_eta) - pow_dimension(sp->eta_neighbours)) *
+      kernel_norm;
+
+  /* Number of iterations to converge h */
+  sp->max_smoothing_iterations =
+      parser_get_opt_param_int(params, "Sinks:max_ghost_iterations",
+                               hydro_props->max_smoothing_iterations);
+
+  /* Time integration properties */
+  const float max_volume_change =
+      parser_get_opt_param_float(params, "Sinks:max_volume_change", -1);
+  if (max_volume_change == -1)
+    sp->log_max_h_change = hydro_props->log_max_h_change;
+  else
+    sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
+
+  /* This property determines whether we're using a fixed cutoff radius (and
+   * smoothing length) for the sink. It must always be present, as we use it
+   * to skip smoothing length iterations in runner_ghost if a fixed cutoff is
+   * being used. */
+  sp->use_fixed_r_cut = 0;
 }
 
 /**

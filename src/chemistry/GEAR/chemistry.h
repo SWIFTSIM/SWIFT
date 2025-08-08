@@ -105,8 +105,9 @@ INLINE static void chemistry_copy_sink_properties(const struct part* p,
  */
 static INLINE void chemistry_print_backend(
     const struct chemistry_global_data* data) {
-
-  message("Chemistry function is 'Gear'.");
+  if (engine_rank == 0) {
+    message("Chemistry function is 'Gear'.");
+  }
 }
 
 /**
@@ -283,10 +284,12 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   const float initial_metallicity = parser_get_param_float(
       parameter_file, "GEARChemistry:initial_metallicity");
 
-  if (initial_metallicity < 0) {
-    message("Setting the initial metallicity from the snapshot.");
-  } else {
-    message("Setting the initial metallicity from the parameter file.");
+  if (engine_rank == 0) {
+    if (initial_metallicity < 0) {
+      message("Setting the initial metallicity from the snapshot.");
+    } else {
+      message("Setting the initial metallicity from the parameter file.");
+    }
   }
 
   /* Set the initial metallicities */
@@ -478,11 +481,31 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
 /* Add chemistry first init sink ? */
 
 /**
+ * @brief Sets the chemistry properties of the sink particles to a valid start
+ * state.
+ *
+ * @param data The global chemistry information.
+ * @param sink Pointer to the sink particle data.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_first_init_sink(
+    const struct chemistry_global_data* data, struct sink* restrict sink) {
+
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    /* Use the value from the parameter file */
+    if (data->initial_metallicities[i] >= 0) {
+      sink->chemistry_data.metal_mass_fraction[i] =
+          data->initial_metallicities[i];
+    }
+    /* else : read the metallicities from the ICs. */
+  }
+}
+
+/**
  * @brief Add the chemistry data of a sink particle to a sink.
  *
  * @param si_data The black hole data to add to.
  * @param sj_data The gas data to use.
- * @param gas_mass The mass of the gas particle.
+ * @param mi_old The mass of the #sink i before accreting the #part p.
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
     struct sink* si, const struct sink* sj, const double mi_old) {
@@ -500,7 +523,7 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
  *
  * @param sp_data The sink data to add to.
  * @param p_data The gas data to use.
- * @param gas_mass The mass of the gas particle.
+ * @param ms_old The mass of the #sink before accreting the #part p.
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
     struct sink* s, const struct part* p, const double ms_old) {

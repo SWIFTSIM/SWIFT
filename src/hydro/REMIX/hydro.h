@@ -18,12 +18,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_HYDRO_H
-#define SWIFT_PLANETARY_HYDRO_H
+
+#ifndef SWIFT_REMIX_HYDRO_H
+#define SWIFT_REMIX_HYDRO_H
 
 /**
- * @file Planetary/hydro.h
- * @brief REMIX implementation of SPH (Sandnes et al. 2024)
+ * @file REMIX/hydro.h
+ * @brief REMIX implementation of SPH (Sandnes et al. 2025)
  */
 
 #include "adiabatic_index.h"
@@ -502,22 +503,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  p->N_density = 1; /* Self contribution */
-  p->N_force = 0;
-  p->N_density_exact = 0;
-  p->N_force_exact = 0;
-  p->rho_exact = 0.f;
-  p->n_density = 0.f;
-  p->n_density_exact = 0.f;
-  p->n_force = 0.f;
-  p->n_force_exact = 0.f;
-  p->inhibited_exact = 0;
-  p->limited_part = 0;
-#endif
-
   hydro_init_part_extra_kernel(p);
-  hydro_init_part_extra_viscosity(p);
 #ifdef MATERIAL_STRENGTH
   hydro_init_part_extra_strength(p);
 #endif /* MATERIAL_STRENGTH */
@@ -557,12 +543,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  p->n_density += kernel_root;
-  p->n_density *= h_inv_dim;
-#endif
-
-  hydro_end_density_extra_viscosity(p);
   hydro_end_density_extra_kernel(p);
 #ifdef MATERIAL_STRENGTH
   hydro_end_density_extra_strength(p);
@@ -619,6 +599,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
+  /* Set p->is_h_max = 1 if smoothing length is h_max */
   if (p->h > 0.999f * hydro_props->h_max) {
     p->is_h_max = 1;
   } else {
@@ -626,7 +607,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   }
 
   hydro_prepare_gradient_extra_kernel(p);
-  hydro_prepare_gradient_extra_viscosity(p);
+  hydro_prepare_gradient_extra_visc_difn(p);
 #ifdef MATERIAL_STRENGTH
   hydro_prepare_gradient_extra_strength(p);
 #endif /* MATERIAL_STRENGTH */
@@ -658,12 +639,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part *p) {
 
   hydro_end_gradient_extra_kernel(p);
-  hydro_end_gradient_extra_viscosity(p);
+  hydro_end_gradient_extra_visc_difn(p);
 #ifdef MATERIAL_STRENGTH
   hydro_end_gradient_extra_strength(p);
 #endif /* MATERIAL_STRENGTH */
 
-  // Set the density to be used in the force loop to be the evolved density
+  /* Set the density to be used in the force loop to be the evolved density */
   p->rho = p->rho_evol;
 }
 
@@ -703,16 +684,17 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho_evol, p->u, p->mat_id);
 
-  float div_v = p->dv_norm_kernel[0][0] + p->dv_norm_kernel[1][1] +
-                p->dv_norm_kernel[2][2];
+  const float div_v = p->dv_norm_kernel[0][0] + p->dv_norm_kernel[1][1] +
+                      p->dv_norm_kernel[2][2];
   float curl_v[3];
   curl_v[0] = p->dv_norm_kernel[1][2] - p->dv_norm_kernel[2][1];
   curl_v[1] = p->dv_norm_kernel[2][0] - p->dv_norm_kernel[0][2];
-  curl_v[2] = p->dv_norm_kernel[0][1] - p->dv_norm_kernel[1][0];
-  float mod_curl_v = sqrtf(curl_v[0] * curl_v[0] + curl_v[1] * curl_v[1] +
-                           curl_v[2] * curl_v[2]);
+  curl_v[2] = p->dv_norm_kernel[0][1] - p->dv_norm_kernel[1][0];  
+  const float mod_curl_v = sqrtf(curl_v[0] * curl_v[0] + curl_v[1] * curl_v[1] +
+                                 curl_v[2] * curl_v[2]);
 
-  // Balsara switch using normalised kernel gradients
+  /* Balsara switch using normalised kernel gradients (Sandnes+2025 Eqn. 34 with
+   * velocity gradients calculated by Eqn. 35) */
   float balsara;
   if (div_v == 0.f) {
     balsara = 0.f;
@@ -727,6 +709,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+
+  /* Set eta_crit for arificial viscosity and diffusion slope limiters */
+  p->force.eta_crit = 1.f / hydro_props->eta_neighbours;
 
 #ifdef MATERIAL_STRENGTH
   hydro_prepare_force_extra_strength(p, p->rho_evol, p->u);
@@ -784,9 +769,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Re-set the internal energy */
   p->u = xp->u_full;
 
+  /* Re-set the density */
   p->rho = xp->rho_evol_full;
   p->rho_evol = xp->rho_evol_full;
-
   p->phase_state = xp->phase_state_full;
 
   /* Compute the pressure */
@@ -807,7 +792,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 #ifdef MATERIAL_STRENGTH
   hydro_reset_predicted_values_extra_strength(p, xp);
 #endif /* MATERIAL_STRENGTH */
-
 }
 
 /**
@@ -847,12 +831,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-  const float min_rho = p->mass * kernel_root * h_inv_dim;
-  p->rho_evol = max(p->rho_evol, min_rho);
+  const float floor_rho = p->mass * kernel_root * h_inv_dim;
+  p->rho_evol = max(p->rho_evol, floor_rho);
+  p->rho = p->rho_evol;
 
   /* Check against absolute minimum */
   const float min_u =
-      max(hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy, FLT_MIN);
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
 
   p->u = max(p->u, min_u);
 
@@ -863,14 +848,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->h *= expf(w1);
 
-  /* Predict density */
-  const float w2 = -hydro_dimension * w1;
-  if (fabsf(w2) < 0.2f)
-    p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-  else
-    p->rho *= expf(w2);
-
-  p->rho = p->rho_evol;
+  const float floor_u = FLT_MIN;
+  p->u = max(p->u, floor_u);
 
   /* Compute the new pressure */
   const float pressure =
@@ -960,12 +939,14 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->u_dt = 0.f;
   }
 
+  /* Integrate the density forward in time */
   const float delta_rho = p->drho_dt * dt_therm;
 
+  /* Do not decrease the density by more than a factor of 2*/
   xp->rho_evol_full =
       max(xp->rho_evol_full + delta_rho, 0.5f * xp->rho_evol_full);
 
-  /* Minimum SPH quantities */
+  /* Minimum SPH density */
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
@@ -1036,9 +1017,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
      p->rho_evol, p->u, p->mat_id);
   xp->phase_state_full = p->phase_state;
 
-  #if defined(STRENGTH_DAMAGE)
-    hydro_first_init_part_strength(p, xp);
-  #endif /* STRENGTH_DAMAGE */
+#if defined(STRENGTH_DAMAGE)
+  hydro_first_init_part_strength(p, xp);
+#endif /* STRENGTH_DAMAGE */
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
@@ -1084,4 +1065,4 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
       p->u, p->force.pressure, p->rho, p->h, p->mat_id, time);
 }
 
-#endif /* SWIFT_PLANETARY_HYDRO_H */
+#endif /* SWIFT_REMIX_HYDRO_H */
