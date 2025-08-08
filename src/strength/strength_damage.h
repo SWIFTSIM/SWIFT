@@ -92,7 +92,6 @@ adjust_yield_stress_by_damage(struct part *restrict p,
   return yield_stress;
 }
 
-
 /**
  * @brief Calculates the rate of cbrt(damage) accumulated due to tension
  *
