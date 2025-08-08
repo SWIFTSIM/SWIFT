@@ -22,8 +22,7 @@
 #ifdef MATERIAL_STRENGTH
 
 /**
- * @file Planetary/strength_yield.h
- * @brief REMIX implementation of SPH with material strength
+ * @file strength/strength_yield.h
  */
 
 #include "const.h"

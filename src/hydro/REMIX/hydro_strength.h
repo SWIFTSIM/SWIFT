@@ -30,10 +30,7 @@
 #include "equation_of_state.h"
 #include "hydro_parameters.h"
 #include "math.h"
-#include "strength_utilities.h"
-#include "strength_damage.h"
-#include "strength_stress.h"
-#include "strength_yield.h"
+#include "strength.h"
 
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep_strength(
     const struct part *restrict p, const struct hydro_props *restrict hydro_properties, 
