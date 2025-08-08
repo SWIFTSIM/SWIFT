@@ -25,10 +25,12 @@
 
 /* Import the right functions */
 #ifdef MATERIAL_STRENGTH
+#include "./hydro/REMIX/hydro_strength.h"
+#include "./strength/strength_utilities.h"
 #include "./strength/strength_utilities.h"
 #include "./strength/strength_damage.h"
 #include "./strength/strength_stress.h"
 #include "./strength/strength_yield.h"
-#endif
+#endif /* MATERIAL_STRENGTH */
 
 #endif /* SWIFT_STRENGTH_H */

@@ -328,8 +328,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Viscous pressures (Sandnes+2025 Eqn. 41) */
   float Qi, Qj;
   float beta_mu_ij, difn_signal_velocity;
-  hydro_set_Qi_Qj(&Qi, &Qj, &beta_mu_ij, &difn_signal_velocity, pi,
-                  pj, dx, a, H);
+  hydro_set_Qi_Qj(&Qi, &Qj, &beta_mu_ij, &difn_signal_velocity, pi, pj, dx);
 
   /* Stress tensor terms to be used in evolution equations */
   float stress_tensor_i_term[3], stress_tensor_j_term[3];
@@ -569,8 +568,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Viscous pressures (Sandnes+2025 Eqn. 41) */
   float Qi, Qj;
   float beta_mu_ij, difn_signal_velocity;
-  hydro_set_Qi_Qj(&Qi, &Qj, &beta_mu_ij, &difn_signal_velocity, pi,
-                  pj, dx, a, H);
+  hydro_set_Qi_Qj(&Qi, &Qj, &beta_mu_ij, &difn_signal_velocity, pi, pj, dx);
 
   /* Stress tensor terms to be used in evolution equations */
   float stress_tensor_i_term[3], stress_tensor_j_term[3];
