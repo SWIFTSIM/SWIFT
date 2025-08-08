@@ -1,7 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016   Matthieu Schaller (schaller@strw.leidenuniv.nl).
- *               2018   Jacob Kegerreis (jacob.kegerreis@durham.ac.uk).
+ *               2025   Jacob Kegerreis (j.kegerreis@imperial.ac.uk).
+ *               2025   Thomas Sandnes (thomas.d.sandnes@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -52,7 +53,7 @@
  */
 __attribute__((always_inline)) INLINE static float
 material_phase_state_from_internal_energy(
-    float density, float u, enum eos_planetary_material_id mat_id) {
+    const float density, const float u, const enum eos_planetary_material_id mat_id) {
 
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_type_factor);
@@ -115,28 +116,28 @@ material_phase_state_from_internal_energy(
 
 /** @brief Returns the shear modulus of a material */
 __attribute__((always_inline)) INLINE static float material_shear_mod(
-    enum eos_planetary_material_id mat_id) {
+    const enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
   return eos.all_mat_params[mat_index].shear_mod;
 }
 
 /** @brief Returns the bulk modulus of a material */
 __attribute__((always_inline)) INLINE static float material_bulk_mod(
-    enum eos_planetary_material_id mat_id) {
+    const enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
   return eos.all_mat_params[mat_index].bulk_mod;
 }
 
 /** @brief Returns the melting temperature of a material */
 __attribute__((always_inline)) INLINE static float material_T_melt(
-    enum eos_planetary_material_id mat_id) {
+    const enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
   return eos.all_mat_params[mat_index].T_melt;
 }
 
 /** @brief Returns the rho_0 of a material */
 __attribute__((always_inline)) INLINE static float material_rho_0(
-    enum eos_planetary_material_id mat_id) {
+    const enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
   return eos.all_mat_params[mat_index].rho_0;
 }
@@ -144,35 +145,35 @@ __attribute__((always_inline)) INLINE static float material_rho_0(
 #if defined(STRENGTH_YIELD_BENZ_ASPHAUG)
   /** @brief Returns the Y_0 of a material */
   __attribute__((always_inline)) INLINE static float material_Y_0(
-      enum eos_planetary_material_id mat_id) {
+      const enum eos_planetary_material_id mat_id) {
     const int mat_index = material_index_from_mat_id(mat_id);
     return eos.all_mat_params[mat_index].Y_0;
   }
 #elif defined(STRENGTH_YIELD_COLLINS)
   /** @brief Returns the Y_0 of a material */
   __attribute__((always_inline)) INLINE static float material_Y_0(
-      enum eos_planetary_material_id mat_id) {
+      const enum eos_planetary_material_id mat_id) {
     const int mat_index = material_index_from_mat_id(mat_id);
     return eos.all_mat_params[mat_index].Y_0;
   }
 
   /** @brief Returns the Y_M of a material */
   __attribute__((always_inline)) INLINE static float material_Y_M(
-      enum eos_planetary_material_id mat_id) {
+      const enum eos_planetary_material_id mat_id) {
     const int mat_index = material_index_from_mat_id(mat_id);
     return eos.all_mat_params[mat_index].Y_M;
   }
 
   /** @brief Returns the mu_i of a material */
   __attribute__((always_inline)) INLINE static float material_mu_i(
-      enum eos_planetary_material_id mat_id) {
+      const enum eos_planetary_material_id mat_id) {
     const int mat_index = material_index_from_mat_id(mat_id);
     return eos.all_mat_params[mat_index].mu_i;
   }
 
   /** @brief Returns the mu_d of a material */
   __attribute__((always_inline)) INLINE static float material_mu_d(
-      enum eos_planetary_material_id mat_id) {
+      const enum eos_planetary_material_id mat_id) {
     const int mat_index = material_index_from_mat_id(mat_id);
     return eos.all_mat_params[mat_index].mu_d;
   }
@@ -181,14 +182,14 @@ __attribute__((always_inline)) INLINE static float material_rho_0(
 #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
   /** @brief Returns the brittle to ductile transition pressure of a material */
   __attribute__((always_inline)) INLINE static float
-  material_brittle_to_ductile_pressure(enum eos_planetary_material_id mat_id) {
+  material_brittle_to_ductile_pressure(const enum eos_planetary_material_id mat_id) {
     const int mat_index = material_index_from_mat_id(mat_id);
     return eos.all_mat_params[mat_index].brittle_to_ductile_pressure;
   }
 
   /** @brief Returns the brittle to plastic transition pressure of a material */
   __attribute__((always_inline)) INLINE static float
-  material_brittle_to_plastic_pressure(enum eos_planetary_material_id mat_id) {
+  material_brittle_to_plastic_pressure(const enum eos_planetary_material_id mat_id) {
     const int mat_index = material_index_from_mat_id(mat_id);
     return eos.all_mat_params[mat_index].brittle_to_plastic_pressure;
   }
