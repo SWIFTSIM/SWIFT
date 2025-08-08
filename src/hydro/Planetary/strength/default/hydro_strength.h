@@ -17,13 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_STRENGTH_H
-#define SWIFT_PLANETARY_STRENGTH_H
-#ifdef MATERIAL_STRENGTH
+#ifndef SWIFT_PLANETARY_STRENGTH_DEFAULT_H
+#define SWIFT_PLANETARY_STRENGTH_DEFAULT_H
 
 /**
- * @file Planetary/hydro_strength.h
- * @brief REMIX implementation of SPH with material strength
+ * @file Planetary/strength/default/hydro_strength.h
+ * @brief Planetary implementation of SPH with default material strength
  */
 
 #include "const.h"
@@ -101,48 +100,6 @@ hydro_runner_iact_nonsym_density_extra_strength(struct part *restrict pi,
  */
 __attribute__((always_inline)) INLINE static void
 hydro_end_density_extra_strength(struct part *restrict p) {}
-
-/**
- * @brief Prepares extra strength parameters for a particle for the gradient
- * calculation.
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_prepare_gradient_extra_strength(struct part *restrict p) {}
-
-/**
- * @brief Extra strength gradient interaction between two particles
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_gradient_extra_strength(struct part *restrict pi,
-                                          struct part *restrict pj,
-                                          const float dx[3], const float wi,
-                                          const float wj, const float wi_dx,
-                                          const float wj_dx) {}
-
-/**
- * @brief Extra strength gradient interaction between two particles
- * (non-symmetric)
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_gradient_extra_strength(struct part *restrict pi,
-                                                 const struct part *restrict pj,
-                                                 const float dx[3],
-                                                 const float wi,
-                                                 const float wi_dx) {}
-
-/**
- * @brief Finishes extra strength parts of the gradient calculation.
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_end_gradient_extra_strength(struct part *restrict p) {}
 
 /**
  * @brief Prepares extra strength parameters for a particle for the force
@@ -282,6 +239,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_e
     p->shear_damage = xp->shear_damage_full;
   #endif /* STRENGTH_DAMAGE */
 }
+
 /**
  * @brief Predict additional particle strength properties forward in time when
  * drifting
@@ -378,5 +336,5 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part_strength
     xp->shear_damage_full = 0.f;
  #endif /* STRENGTH_DAMAGE */
 }
-#endif /* MATERIAL_STRENGTH */
-#endif /* SWIFT_PLANETARY_STRENGTH_H */
+
+#endif /* SWIFT_PLANETARY_STRENGTH_DEFAULT_H */

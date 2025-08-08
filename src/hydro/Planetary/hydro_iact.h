@@ -39,9 +39,7 @@
 #include "hydro_parameters.h"
 #include "minmax.h"
 #include "signal_velocity.h"
-
-//### temp
-#include "../REMIX/hydro_strength.h"
+#include "strength.h"
 
 /**
  * @brief Calculates the stress tensor for force interaction. No strength if

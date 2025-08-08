@@ -31,10 +31,10 @@
 #include "const.h"
 #include "hydro_kernels.h"
 #include "hydro_parameters.h"
-#include "hydro_strength.h"
 #include "hydro_visc_difn.h"
 #include "math.h"
 #include "minmax.h"
+#include "strength.h"
 
 /**
  * @brief Calculates the stress tensor for force interaction. No strength if

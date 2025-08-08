@@ -20,17 +20,38 @@
 #ifndef SWIFT_STRENGTH_H
 #define SWIFT_STRENGTH_H
 
-/* Config parameters. */
+/* Config parameters */
 #include <config.h>
 
-/* Import the right functions */
+/* Strength functions */
 #ifdef MATERIAL_STRENGTH
-#include "./hydro/REMIX/hydro_strength.h"
+#include "./strength/strength_utilities.h"
 #include "./strength/strength_utilities.h"
 #include "./strength/strength_utilities.h"
 #include "./strength/strength_damage.h"
 #include "./strength/strength_stress.h"
 #include "./strength/strength_yield.h"
+#endif /* MATERIAL_STRENGTH */
+
+/* Hydro functions */
+#ifdef MATERIAL_STRENGTH
+
+#if defined(PLANETARY_SPH)
+#include "./hydro/Planetary/strength/default/hydro_strength.h"
+#elif defined(REMIX_SPH)
+#include "./hydro/REMIX/strength/default/hydro_strength.h"
+#else
+#error "Choice of SPH variant not valid for material strength"
+#endif
+
+#else /* !MATERIAL_STRENGTH */
+
+#if defined(PLANETARY_SPH)
+#include "./hydro/Planetary/strength/none/hydro_strength.h"
+#elif defined(REMIX_SPH)
+#include "./hydro/REMIX/strength/none/hydro_strength.h"
+#endif
+
 #endif /* MATERIAL_STRENGTH */
 
 #endif /* SWIFT_STRENGTH_H */

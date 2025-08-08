@@ -38,11 +38,11 @@
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
-#include "hydro_strength.h"
 #include "hydro_visc_difn.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "pressure_floor.h"
+#include "strength.h"
 
 /**
  * @brief Returns the comoving internal energy of a particle at the last
