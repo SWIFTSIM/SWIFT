@@ -218,30 +218,4 @@ INLINE static float idg_phase_state_from_internal_energy(
   return mat_phase_state_fluid;
 }
 
-// gas_temperature_from_internal_energy
-INLINE static float idg_temperature_from_internal_energy(
-    const float density, const float u, const struct idg_params *idg) {
-
-  error("This EOS function is not yet implemented!");
-
-  return 0.f;
-}
-
-// gas_density_from_pressure_and_temperature
-INLINE static float idg_density_from_pressure_and_temperature(
-    const float P, const float T, const struct idg_params *idg) {
-
-  error("This EOS function is not yet implemented!");
-
-  return 0.f;
-}
-
-// gas_density_from_pressure_and_internal_energy
-INLINE static float idg_density_from_pressure_and_internal_energy(
-    const float P, const float u, const float rho_ref, const float rho_sph,
-    const struct idg_params *idg) {
-
-  return idg->one_over_gamma_minus_one * P / u;
-}
-
 #endif /* SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H */

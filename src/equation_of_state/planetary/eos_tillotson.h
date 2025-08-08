@@ -471,7 +471,7 @@ INLINE static float compute_u_cold(const float density, const struct Til_params 
 }
 
 // Compute A1_u_cold
-INLINE static void set_Til_u_cold(const struct Til_params *Til,
+INLINE static void set_Til_u_cold(struct Til_params *Til,
                                   const enum eos_planetary_material_id mat_id) {
 
   int N = 10000;
