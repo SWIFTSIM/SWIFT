@@ -282,7 +282,7 @@ INLINE static void convert_units_Til(struct Til_params *Til,
 
 // gas_internal_energy_from_entropy
 INLINE static float Til_internal_energy_from_entropy(
-    float density, float entropy, const struct Til_params *Til) {
+    const float density, const float entropy, const struct Til_params *Til) {
 
   error("This EOS function is not yet implemented!");
 
@@ -290,7 +290,7 @@ INLINE static float Til_internal_energy_from_entropy(
 }
 
 // gas_pressure_from_entropy
-INLINE static float Til_pressure_from_entropy(float density, float entropy,
+INLINE static float Til_pressure_from_entropy(const float density, const float entropy,
                                               const struct Til_params *Til) {
 
   error("This EOS function is not yet implemented!");
@@ -299,7 +299,7 @@ INLINE static float Til_pressure_from_entropy(float density, float entropy,
 }
 
 // gas_entropy_from_pressure
-INLINE static float Til_entropy_from_pressure(float density, float pressure,
+INLINE static float Til_entropy_from_pressure(const float density, const float pressure,
                                               const struct Til_params *Til) {
 
   error("This EOS function is not yet implemented!");
@@ -308,7 +308,7 @@ INLINE static float Til_entropy_from_pressure(float density, float pressure,
 }
 
 // gas_soundspeed_from_entropy
-INLINE static float Til_soundspeed_from_entropy(float density, float entropy,
+INLINE static float Til_soundspeed_from_entropy(const float density, const float entropy,
                                                 const struct Til_params *Til) {
 
   error("This EOS function is not yet implemented!");
@@ -318,14 +318,14 @@ INLINE static float Til_soundspeed_from_entropy(float density, float entropy,
 
 // gas_entropy_from_internal_energy
 INLINE static float Til_entropy_from_internal_energy(
-    float density, float u, const struct Til_params *Til) {
+    const float density, const float u, const struct Til_params *Til) {
 
   return 0.f;
 }
 
 // gas_pressure_from_internal_energy
 INLINE static float Til_pressure_from_internal_energy(
-    float density, float u, const struct Til_params *Til) {
+    const float density, const float u, const struct Til_params *Til) {
 
   const float eta = density / Til->rho_0;
   const float eta_sq = eta * eta;
@@ -372,7 +372,7 @@ INLINE static float Til_pressure_from_internal_energy(
 
 // gas_internal_energy_from_pressure
 INLINE static float Til_internal_energy_from_pressure(
-    float density, float P, const struct Til_params *Til) {
+    const float density, const float P, const struct Til_params *Til) {
 
   error("This EOS function is not yet implemented!");
 
@@ -381,7 +381,7 @@ INLINE static float Til_internal_energy_from_pressure(
 
 // gas_soundspeed_from_internal_energy
 INLINE static float Til_soundspeed_from_internal_energy(
-    float density, float u, const struct Til_params *Til) {
+    const float density, const float u, const struct Til_params *Til) {
 
   const float rho_0_inv = 1.f / Til->rho_0;
   const float eta = density * rho_0_inv;
@@ -442,7 +442,7 @@ INLINE static float Til_soundspeed_from_internal_energy(
 }
 
 // gas_soundspeed_from_pressure
-INLINE static float Til_soundspeed_from_pressure(float density, float P,
+INLINE static float Til_soundspeed_from_pressure(const float density, const float P,
                                                  const struct Til_params *Til) {
 
   error("This EOS function is not yet implemented!");
@@ -451,8 +451,8 @@ INLINE static float Til_soundspeed_from_pressure(float density, float P,
 }
 
 // Compute u cold
-INLINE static float compute_u_cold(float density, struct Til_params *Til,
-                                   enum eos_planetary_material_id mat_id) {
+INLINE static float compute_u_cold(const float density, const struct Til_params *Til,
+                                   const enum eos_planetary_material_id mat_id) {
   float rho_0, x, u_cold, drho;
   int N = 10000;
 
@@ -471,8 +471,8 @@ INLINE static float compute_u_cold(float density, struct Til_params *Til,
 }
 
 // Compute A1_u_cold
-INLINE static void set_Til_u_cold(struct Til_params *Til,
-                                  enum eos_planetary_material_id mat_id) {
+INLINE static void set_Til_u_cold(const struct Til_params *Til,
+                                  const enum eos_planetary_material_id mat_id) {
 
   int N = 10000;
   float rho_min = 100.f;
@@ -492,7 +492,7 @@ INLINE static void set_Til_u_cold(struct Til_params *Til,
 }
 
 // Compute u cold fast from precomputed values
-INLINE static float compute_fast_u_cold(float density,
+INLINE static float compute_fast_u_cold(const float density,
                                         const struct Til_params *Til) {
 
   int N = 10000;
@@ -522,7 +522,7 @@ INLINE static float compute_fast_u_cold(float density,
 
 // gas_temperature_from_internal_energy
 INLINE static float Til_temperature_from_internal_energy(
-    float density, float u, const struct Til_params *Til) {
+    const float density, const float u, const struct Til_params *Til) {
 
   float u_cold, T;
 
@@ -538,7 +538,7 @@ INLINE static float Til_temperature_from_internal_energy(
 
 // gas_pressure_from_density_and_temperature
 INLINE static float Til_pressure_from_temperature(
-    float density, float T, const struct Til_params *Til) {
+    const float density, const float T, const struct Til_params *Til) {
 
   float u, P;
 
@@ -550,7 +550,7 @@ INLINE static float Til_pressure_from_temperature(
 
 // gas_density_from_pressure_and_temperature
 INLINE static float Til_density_from_pressure_and_temperature(
-    float P, float T, const struct Til_params *Til) {
+    const float P, const float T, const struct Til_params *Til) {
 
   float rho_min = Til->rho_min;
   float rho_max = Til->rho_max;
@@ -606,7 +606,7 @@ INLINE static float Til_density_from_pressure_and_temperature(
 
 // gas_density_from_pressure_and_internal_energy
 INLINE static float Til_density_from_pressure_and_internal_energy(
-    float P, float u, float rho_ref, float rho_sph,
+    const float P, const float u, const float rho_ref, const float rho_sph,
     const struct Til_params *Til) {
 
   if (P <= Til->P_min || u == 0) {
@@ -959,7 +959,7 @@ INLINE static float Til_density_from_pressure_and_internal_energy(
 
 // material_phase_state_from_internal_energy
 INLINE static float Til_phase_state_from_internal_energy(
-    float density, float u, const struct mat_params *Til,
+    const float density, const float u, const struct mat_params *Til,
     const struct Til_params *Til_eos) {
 
 #ifdef MATERIAL_STRENGTH
