@@ -336,8 +336,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   // Viscous pressures
   float Qi, Qj;
-  float visc_signal_velocity, difn_signal_velocity;
-  hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &difn_signal_velocity, pi,
+  float beta_mu_ij, difn_signal_velocity;
+  hydro_set_Qi_Qj(&Qi, &Qj, &beta_mu_ij, &difn_signal_velocity, pi,
                   pj, dx, a, H);
 
   // Incorporate kernel gradient term into viscous pressures and stress tensors
@@ -392,8 +392,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dv_dot_G / rhoj;
   pj->force.h_dt -= mi * dv_dot_G / rhoi;
+ 
+  const float ci = pi->force.soundspeed;
+  const float cj = pj->force.soundspeed;
+  float max_wave_speed_i, max_wave_speed_j;
+  hydro_compute_max_wave_speed(pi, &max_wave_speed_i, ci, rhoi);
+  hydro_compute_max_wave_speed(pj, &max_wave_speed_j, cj, rhoj);
 
-  const float v_sig = visc_signal_velocity;
+  const float v_sig = max_wave_speed_i + max_wave_speed_j - beta_mu_ij;
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
@@ -542,8 +548,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   // Viscous pressures
   float Qi, Qj;
-  float visc_signal_velocity, difn_signal_velocity;
-  hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &difn_signal_velocity, pi,
+  float beta_mu_ij, difn_signal_velocity;
+  hydro_set_Qi_Qj(&Qi, &Qj, &beta_mu_ij, &difn_signal_velocity, pi,
                   pj, dx, a, H);
 
   // Incorporate kernel gradient term into viscous pressures and stress tensors
@@ -590,7 +596,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dv_dot_G / rhoj;
 
-  const float v_sig = visc_signal_velocity;
+  const float ci = pi->force.soundspeed;
+  const float cj = pj->force.soundspeed;
+  float max_wave_speed_i, max_wave_speed_j;
+  hydro_compute_max_wave_speed(pi, &max_wave_speed_i, ci, rhoi);
+  hydro_compute_max_wave_speed(pj, &max_wave_speed_j, cj, rhoj);
+
+  const float v_sig = max_wave_speed_i + max_wave_speed_j - beta_mu_ij;
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);

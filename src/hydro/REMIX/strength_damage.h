@@ -33,6 +33,18 @@
 #include "math.h"
 #include "strength_utilities.h"
 
+__attribute__((always_inline)) INLINE static void damage_timestep(
+    const struct part *restrict p, const float dt_cfl, float *dt_damage) {
+#if defined(STRENGTH_DAMAGE)
+    const float damage_timestep_factor = 0.01f; // ### Hardcoded for now. Treat this similarly to CFL
+    
+  if (p->dD_dt * dt_cfl > damage_timestep_factor) {
+    *dt_damage = damage_timestep_factor / p->dD_dt;
+  } else {
+    *dt_damage = FLT_MAX;
+  }
+#endif /* STRENGTH_DAMAGE */
+}
 
 /**
  * @brief Set the (symmetric) stress tensor by combining the deviatoric with the

@@ -437,7 +437,30 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
 
+#ifdef MATERIAL_STRENGTH
+  const float dt_strength = hydro_compute_timestep_strength(p, hydro_properties, dt_cfl);
+  if (dt_strength <  dt_cfl) {
+    return dt_strength;
+  }
+#endif /* MATERIAL_STRENGTH */
+
   return dt_cfl;
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_compute_max_wave_speed(const struct part *restrict p, float *wave_speed, const float soundspeed, const float density) {
+
+  // wave speed is initialised as sound speed
+  *wave_speed = soundspeed;
+
+#ifdef MATERIAL_STRENGTH
+  if (p->phase_state == mat_phase_state_solid) {
+    const float shear_mod = material_shear_mod(p->mat_id);
+    
+    // Speed of longitudinal elastic wave
+    *wave_speed = sqrtf(soundspeed * soundspeed + (4.f / 3.f) * shear_mod / density);
+  }
+#endif /* MATERIAL_STRENGTH */
 }
 
 /**
@@ -730,7 +753,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->u_dt = 0.0f;
   p->drho_dt = 0.0f;
   p->force.h_dt = 0.0f;
-  p->force.v_sig = p->force.soundspeed;
+
+  float max_wave_speed;
+  hydro_compute_max_wave_speed(p, &max_wave_speed, p->force.soundspeed, p->rho);
+  p->force.v_sig = 2.f * max_wave_speed;
 
   #ifdef MATERIAL_STRENGTH
     hydro_reset_acceleration_strength(p);
@@ -774,7 +800,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+  float max_wave_speed;
+  hydro_compute_max_wave_speed(p, &max_wave_speed, soundspeed, p->rho_evol);
+  p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
 
 #ifdef MATERIAL_STRENGTH
   hydro_reset_predicted_values_extra_strength(p, xp);
@@ -855,7 +883,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+  float max_wave_speed;
+  hydro_compute_max_wave_speed(p, &max_wave_speed, soundspeed, p->rho_evol);
+  p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
 
   p->phase_state =
     (enum mat_phase_state)material_phase_state_from_internal_energy(

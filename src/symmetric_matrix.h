@@ -47,6 +47,22 @@ struct sym_matrix {
 };
 
 /**
+ * @brief Calculate the Frobenius Norm of a symmetric matrix.
+ * @return The Frobenius norm as a float.
+ */
+__attribute__((always_inline)) INLINE static float norm_sym_matrix(
+    const struct sym_matrix *M) {
+    
+  return sqrtf(M->elements[0] * M->elements[0] +  // xx^2
+               M->elements[1] * M->elements[1] +  // yy^2
+               M->elements[2] * M->elements[2] +  // zz^2
+               2.f * M->elements[3] * M->elements[3] +  // xy^2 + yx^2
+               2.f * M->elements[4] * M->elements[4] +  // xz^2 + zx^2
+               2.f * M->elements[5] * M->elements[5]);  // yz^2 + zy^2
+}
+
+
+/**
  * @brief Zero the matrix
  */
 __attribute__((always_inline)) INLINE static void zero_sym_matrix(

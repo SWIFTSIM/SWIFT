@@ -35,6 +35,34 @@
 #include "strength_stress.h"
 #include "strength_yield.h"
 
+__attribute__((always_inline)) INLINE static float hydro_compute_timestep_strength(
+    const struct part *restrict p, const struct hydro_props *restrict hydro_properties, 
+    const float dt_cfl) {
+    
+  const float elastic_timestep_factor = hydro_properties->CFL_condition; // ### Set as same as CFL factor for now. Treat this similarly to CFL
+  const float norm_dS_dt = norm_sym_matrix(&p->dS_dt);
+  const float shear_mod = material_shear_mod(p->mat_id);
+
+  float dt_elastic;
+    
+  if (norm_dS_dt * dt_cfl > elastic_timestep_factor * shear_mod) {
+    dt_elastic = elastic_timestep_factor * shear_mod / norm_dS_dt;
+  } else {
+    dt_elastic = FLT_MAX;
+  }
+
+  float dt_strength = dt_elastic;
+    
+#if defined(STRENGTH_DAMAGE)
+  // Update dt_strength with damage contribution
+  float dt_damage;
+  damage_timestep(p, dt_cfl, &dt_damage);
+  dt_strength = fminf(dt_elastic, dt_damage);
+#endif /* STRENGTH_DAMAGE */
+    
+  return dt_strength;
+}
+
 /**
  * @brief Prepares extra strength parameters for a particle for the density
  * calculation.
@@ -210,6 +238,34 @@ __attribute__((always_inline)) INLINE static void
 hydro_end_force_extra_strength(struct part *restrict p) {
 
  calculate_dS_dt(p);
+
+  // Calculate dD/dt for timestep
+#if defined(STRENGTH_DAMAGE)
+  const int phase_state = p->phase_state;
+  const float density = p->rho_evol;
+  const float u = p->u;
+  const float damage = p->damage;
+  const float yield_stress = compute_yield_stress_damaged(p, phase_state, density, u, damage);
+
+  p->dD_dt = 0.f;
+    
+  float tensile_cbrtD_dt = 0.f;
+  float number_of_activated_flaws = 0;
+  calculate_tensile_cbrtD_dt(p, &tensile_cbrtD_dt, &number_of_activated_flaws, 
+                                        p->deviatoric_stress_tensor, damage, density, u);
+  if (p->tensile_damage < number_of_activated_flaws / (float)p->number_of_flaws) {
+    // Chain rule d(D^(1/3))/dt  = d(D^(1/3))/dD * dD/dt
+    p->dD_dt += 3.f * powf(p->tensile_damage, 2.f / 3.f) * tensile_cbrtD_dt;
+  }
+    
+  float shear_dD_dt = 0.f;
+  calculate_shear_dD_dt(p, &shear_dD_dt, p->deviatoric_stress_tensor, yield_stress, density, u);
+
+  if (p->shear_damage < 1.f) {
+    p->dD_dt += shear_dD_dt;
+  } 
+
+#endif /* STRENGTH_DAMAGE */
 }
 
 /**
@@ -260,6 +316,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength(
 
   adjust_deviatoric_stress_tensor_by_yield_stress(
         p, &p->deviatoric_stress_tensor, yield_stress, density, u);
+
+  const float pressure =
+      gas_pressure_from_internal_energy(density, u, p->mat_id);  
+  hydro_set_stress_tensor(p, pressure);
 }
 
 /**

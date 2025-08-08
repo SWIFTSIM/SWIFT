@@ -223,7 +223,7 @@ hydro_end_gradient_extra_viscosity(struct part *restrict p) {}
  * @brief Returns particle viscous pressures
  */
 __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
-    float *Qi, float *Qj, float *visc_signal_velocity,
+    float *Qi, float *Qj, float *beta_mu_ij,
     float *difn_signal_velocity, const struct part *restrict pi,
     const struct part *restrict pj, const float dx[3], const float a,
     const float H) {
@@ -341,8 +341,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   *Qj = (a_visc + b_visc * pj->force.balsara) * 0.5f * pj->rho *
         (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
-  // Account for alpha being outside brackets in timestep code
-  *visc_signal_velocity = ci + cj - 2.f * beta / alpha * min(mu_i, mu_j);
+  *beta_mu_ij = beta * fminf(mu_i, mu_j);
 
   // ...
   *difn_signal_velocity =

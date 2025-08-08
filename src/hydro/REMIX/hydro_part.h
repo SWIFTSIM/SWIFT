@@ -352,6 +352,9 @@ struct part {
 
     // Damage accumulated due to shear
     float shear_damage;
+
+    // Need to store this as a particle parameter for timestep
+    float dD_dt;
   #endif
 
   #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
