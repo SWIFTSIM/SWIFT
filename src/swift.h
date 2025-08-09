@@ -53,6 +53,7 @@
 #include "gravity_properties.h"
 #include "hashmap.h"
 #include "hydro.h"
+#include "hydro_part_strength.h"
 #include "hydro_properties.h"
 #include "ic_info.h"
 #include "lightcone/lightcone_array.h"

@@ -36,6 +36,7 @@
 #include "rt_struct.h"
 #include "sink_struct.h"
 #include "star_formation_struct.h"
+#include "hydro_part_strength.h"
 #include "symmetric_matrix.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
@@ -69,22 +70,9 @@ struct xpart {
 
   /*! Phase state flag at the last full step. */
   enum mat_phase_state phase_state_full;
-
-  #if defined(MATERIAL_STRENGTH)
-    // Stress tensor
-     struct sym_matrix deviatoric_stress_tensor_full;
-
-    #if defined(STRENGTH_DAMAGE)
-      // Accumulated damage at the last full step
-      float damage_full;
-
-      // Damage accumulated due to tension at the last full step
-      float tensile_damage_full;
-
-      // Damage accumulated due to shear at the last full step
-      float shear_damage_full;
-    #endif
-  #endif
+ 
+  /*! Additional data used by the strength scheme */
+  struct strength_xpart_data strength_data;
 
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
@@ -279,6 +267,9 @@ struct part {
     } force;
   };
 
+  /*! Additional data used by the strength scheme */
+  struct strength_part_data strength_data;
+
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
 
@@ -332,46 +323,6 @@ struct part {
   /* Fixed specific entropy */
   float s_fixed;
 #endif
-
-#ifdef MATERIAL_STRENGTH
-  // Stress tensor
-  struct sym_matrix stress_tensor;
-
-  // Principal stresses (Eigenvalues of stress_tensor)
-  float principal_stress_eigen[3];
-
-  // Deviatoric stress tensor
-  struct sym_matrix deviatoric_stress_tensor;
-
-  // Time derivative of deviatoric stress tensor
-  struct sym_matrix dS_dt;
-
-  // Gradient of velocity, calculated using linear-order reproducing kernel.
-  float dv_force_loop[3][3];
-
-  #if defined(STRENGTH_DAMAGE)
-    // Accumulated damage
-    float damage;
-
-    // Damage accumulated due to tension
-    float tensile_damage;
-
-    // Damage accumulated due to shear
-    float shear_damage;
-
-    // Need to store this as a particle parameter for timestep
-    float dD_dt;
-  #endif
-
-  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
-    // Number of flaws for tensile damage accumulation
-    int number_of_flaws;
-
-    // Activation thresholds of flaws for tensile damage accumulation
-    // ### Work out how to set the length of this
-    float activation_thresholds[40];
-  #endif
-#endif /* MATERIAL_STRENGTH */
 
 } SWIFT_STRUCT_ALIGN;
 

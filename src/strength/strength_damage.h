@@ -32,14 +32,12 @@
 #include "strength_utilities.h"
 
 __attribute__((always_inline)) INLINE static void damage_timestep(
-    const struct part *restrict p, const float dt_cfl, float *dt_damage) {
+    const struct part *restrict p, float dt_cfl) {
 #if defined(STRENGTH_DAMAGE)
     const float damage_timestep_factor = 0.01f; // ### Hardcoded for now. Treat this similarly to CFL
     
-  if (p->dD_dt * dt_cfl > damage_timestep_factor) {
-    *dt_damage = damage_timestep_factor / p->dD_dt;
-  } else {
-    *dt_damage = FLT_MAX;
+  if (p->strength_data.dD_dt * dt_cfl > damage_timestep_factor) {
+    dt_cfl = damage_timestep_factor / p->strength_data.dD_dt;
   }
 #endif /* STRENGTH_DAMAGE */
 }
@@ -107,7 +105,7 @@ __attribute__((always_inline)) INLINE static void calculate_tensile_cbrtD_dt(
   // add fracture under compression)
 
   // If there are no flaws, we can not accumulate damage
-  if (p->number_of_flaws > 0) {
+  if (p->strength_data.number_of_flaws > 0) {
      
     // Compute current stress tensor to get max eigenvalue
     const float pressure =
@@ -135,8 +133,8 @@ __attribute__((always_inline)) INLINE static void calculate_tensile_cbrtD_dt(
           max_principal_stress / ((1.f - damage) * E);
 
       *number_of_activated_flaws = 0;
-      for (int i = 0; i < p->number_of_flaws; i++) {
-        if (local_scalar_strain > p->activation_thresholds[i]) {
+      for (int i = 0; i < p->strength_data.number_of_flaws; i++) {
+        if (local_scalar_strain > p->strength_data.activation_thresholds[i]) {
           *number_of_activated_flaws += 1;
         }
       }
@@ -166,7 +164,7 @@ __attribute__((always_inline)) INLINE static void evolve_damage_tensile(
     float Delta_cbrtD = tensile_cbrtD_dt * dt_therm;
 
     const float max_cbrtD =
-        cbrtf(number_of_activated_flaws / (float)p->number_of_flaws);
+        cbrtf(number_of_activated_flaws / (float)p->strength_data.number_of_flaws);
     const float max_Delta_cbrtD =
         max(0.f, max_cbrtD - cbrtf(*tensile_damage));
 

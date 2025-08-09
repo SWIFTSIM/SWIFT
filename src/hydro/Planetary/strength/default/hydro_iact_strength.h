@@ -68,18 +68,18 @@ hydro_runner_iact_force_extra_strength(struct part *restrict pi,
                                        const float Gj[3], const float dv_dot_G_i, 
                                        const float dv_dot_G_j) {
     
-  pi->drho_dt += mj * dv_dot_G_i;
-  pj->drho_dt += mi * dv_dot_G_j;
+  pi->strength_data.drho_dt += mj * dv_dot_G_i;
+  pj->strength_data.drho_dt += mi * dv_dot_G_j;
 
   // Compute velocity gradient if both particles are solid
   if ((pi->phase_state == mat_phase_state_solid) &&
       (pj->phase_state == mat_phase_state_solid)) {
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        pi->dv_force_loop[i][j] +=
-            (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->rho_evol);
-        pj->dv_force_loop[i][j] +=
-            (pi->v[j] - pj->v[j]) * Gj[i] * (pi->mass / pi->rho_evol);
+        pi->strength_data.dv_force_loop[i][j] +=
+            (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->strength_data.rho_evol);
+        pj->strength_data.dv_force_loop[i][j] +=
+            (pi->v[j] - pj->v[j]) * Gj[i] * (pi->mass / pi->strength_data.rho_evol);
       }
     }
   }
@@ -96,15 +96,15 @@ hydro_runner_iact_nonsym_force_extra_strength(struct part *restrict pi,
                                               const float dx[3],
                                               const float Gi[3], const float dv_dot_G_i) {
   
-  pi->drho_dt += mj * dv_dot_G_i;
+  pi->strength_data.drho_dt += mj * dv_dot_G_i;
 
   // Compute velocity gradient if both particles are solid
   if ((pi->phase_state == mat_phase_state_solid) &&
       (pj->phase_state == mat_phase_state_solid)) {
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        pi->dv_force_loop[i][j] +=
-            (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->rho_evol);
+        pi->strength_data.dv_force_loop[i][j] +=
+            (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->strength_data.rho_evol);
       }
     }
   }

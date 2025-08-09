@@ -33,28 +33,24 @@
 
 __attribute__((always_inline)) INLINE static void hydro_compute_timestep_strength(
     const struct part *restrict p, const struct hydro_props *restrict hydro_properties, 
-    *float dt_cfl) {
+    float dt_cfl) {
     
   const float elastic_timestep_factor = hydro_properties->CFL_condition; // ### Set as same as CFL factor for now. Treat this similarly to CFL
-  const float norm_dS_dt = norm_sym_matrix(&p->dS_dt);
+  const float norm_dS_dt = norm_sym_matrix(&p->strength_data.dS_dt);
   const float shear_mod = material_shear_mod(p->mat_id);
-
-  float dt_elastic;
     
   if (norm_dS_dt * dt_cfl > elastic_timestep_factor * shear_mod) {
-    *dt_cfl = elastic_timestep_factor * shear_mod / norm_dS_dt;
+    dt_cfl = elastic_timestep_factor * shear_mod / norm_dS_dt;
   }
     
 #if defined(STRENGTH_DAMAGE)
   // Update dt_strength with damage contribution
-  float dt_damage;
-  damage_timestep(p, dt_cfl, &dt_damage);
-  dt_strength = fminf(dt_elastic, dt_damage);
+  damage_timestep(p, dt_cfl);
 #endif /* STRENGTH_DAMAGE */
 }
 
 __attribute__((always_inline)) INLINE static void
-hydro_compute_max_wave_speed_strength(const struct part *restrict p, float *wave_speed, const float soundspeed, const float density) {
+hydro_compute_max_wave_speed_strength(const struct part *restrict p, const float soundspeed, const float density, float *wave_speed) {
   if (p->phase_state == mat_phase_state_solid) {
     const float shear_mod = material_shear_mod(p->mat_id);
     
@@ -124,11 +120,11 @@ hydro_reset_acceleration_strength(struct part *restrict p) {
 
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
-      p->dv_force_loop[i][j] = 0.f;
+      p->strength_data.dv_force_loop[i][j] = 0.f;
     }
   }
 
-  zero_sym_matrix(&p->dS_dt);
+  zero_sym_matrix(&p->strength_data.dS_dt);
 }
 
 
@@ -147,25 +143,25 @@ hydro_end_force_extra_strength(struct part *restrict p) {
   const int phase_state = p->phase_state;
   const float density = p->rho_evol;
   const float u = p->u;
-  const float damage = p->damage;
+  const float damage = p->strength_data.damage;
   const float yield_stress = compute_yield_stress_damaged(p, phase_state, density, u, damage);
 
-  p->dD_dt = 0.f;
+  p->strength_data.dD_dt = 0.f;
     
   float tensile_cbrtD_dt = 0.f;
   float number_of_activated_flaws = 0;
   calculate_tensile_cbrtD_dt(p, &tensile_cbrtD_dt, &number_of_activated_flaws, 
-                                        p->deviatoric_stress_tensor, damage, density, u);
-  if (p->tensile_damage < number_of_activated_flaws / (float)p->number_of_flaws) {
+                                        p->strength_data.deviatoric_stress_tensor, damage, density, u);
+  if (p->strength_data.tensile_damage < number_of_activated_flaws / (float)p->strength_data.number_of_flaws) {
     // Chain rule d(D^(1/3))/dt  = d(D^(1/3))/dD * dD/dt
-    p->dD_dt += 3.f * powf(p->tensile_damage, 2.f / 3.f) * tensile_cbrtD_dt;
+    p->strength_data.dD_dt += 3.f * powf(p->strength_data.tensile_damage, 2.f / 3.f) * tensile_cbrtD_dt;
   }
     
   float shear_dD_dt = 0.f;
-  calculate_shear_dD_dt(p, &shear_dD_dt, p->deviatoric_stress_tensor, yield_stress, density, u);
+  calculate_shear_dD_dt(p, &shear_dD_dt, p->strength_data.deviatoric_stress_tensor, yield_stress, density, u);
 
-  if (p->shear_damage < 1.f) {
-    p->dD_dt += shear_dD_dt;
+  if (p->strength_data.shear_damage < 1.f) {
+    p->strength_data.dD_dt += shear_dD_dt;
   } 
 
 #endif /* STRENGTH_DAMAGE */
@@ -181,11 +177,11 @@ hydro_end_force_extra_strength(struct part *restrict p) {
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_extra_strength(
     struct part *restrict p, const struct xpart *restrict xp) {
 
-  p->deviatoric_stress_tensor = xp->deviatoric_stress_tensor_full;
+  p->strength_data.deviatoric_stress_tensor = xp->strength_data.deviatoric_stress_tensor_full;
   #if defined(STRENGTH_DAMAGE)
-    p->damage = xp->damage_full;
-    p->tensile_damage = xp->tensile_damage_full;
-    p->shear_damage = xp->shear_damage_full;
+    p->strength_data.damage = xp->strength_data.damage_full;
+    p->strength_data.tensile_damage = xp->strength_data.tensile_damage_full;
+    p->strength_data.shear_damage = xp->strength_data.shear_damage_full;
   #endif /* STRENGTH_DAMAGE */
 }
 
@@ -208,18 +204,18 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_b
   const float u = p->u;
 
   #if defined(STRENGTH_DAMAGE)
-    const float damage = p->damage;
+    const float damage = p->strength_data.damage;
     const float yield_stress = compute_yield_stress_damaged(p, phase_state, density, u, damage);
 
-    evolve_damage(p, &p->tensile_damage, &p->shear_damage, &p->damage, p->deviatoric_stress_tensor, yield_stress, density, u, dt_therm);
+    evolve_damage(p, &p->strength_data.tensile_damage, &p->strength_data.shear_damage, &p->strength_data.damage, p->strength_data.deviatoric_stress_tensor, yield_stress, density, u, dt_therm);
   #else
     const float yield_stress = compute_yield_stress(p, phase_state, density, u);
   #endif /* STRENGTH_DAMAGE */
 
-  evolve_deviatoric_stress(p, &p->deviatoric_stress_tensor, phase_state, dt_therm);
+  evolve_deviatoric_stress(p, &p->strength_data.deviatoric_stress_tensor, phase_state, dt_therm);
 
   adjust_deviatoric_stress_tensor_by_yield_stress(
-        p, &p->deviatoric_stress_tensor, yield_stress, density, u);
+        p, &p->strength_data.deviatoric_stress_tensor, yield_stress, density, u);
 }
 
 /**
@@ -258,18 +254,18 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra_strength_begi
   const float u = xp->u_full;
 
   #if defined(STRENGTH_DAMAGE)
-    const float damage = xp->damage_full;
+    const float damage = xp->strength_data.damage_full;
     const float yield_stress = compute_yield_stress_damaged(p, phase_state, density, u, damage);
 
-    evolve_damage(p, &xp->tensile_damage_full, &xp->shear_damage_full, &xp->damage_full, xp->deviatoric_stress_tensor_full, yield_stress, density, u,  dt_therm);
+    evolve_damage(p, &xp->strength_data.tensile_damage_full, &xp->strength_data.shear_damage_full, &xp->strength_data.damage_full, xp->strength_data.deviatoric_stress_tensor_full, yield_stress, density, u,  dt_therm);
   #else
       const float yield_stress = compute_yield_stress(p, phase_state, density, u);
   #endif /* STRENGTH_DAMAGE */
 
-  evolve_deviatoric_stress(p, &xp->deviatoric_stress_tensor_full, phase_state, dt_therm);
+  evolve_deviatoric_stress(p, &xp->strength_data.deviatoric_stress_tensor_full, phase_state, dt_therm);
 
   adjust_deviatoric_stress_tensor_by_yield_stress(
-        p, &xp->deviatoric_stress_tensor_full, yield_stress, density, u);
+        p, &xp->strength_data.deviatoric_stress_tensor_full, yield_stress, density, u);
 }
 
 /**
@@ -300,17 +296,17 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part_strength
     struct part *restrict p, struct xpart *restrict xp) {
 
   for (int i = 0; i < 6; i++) {
-    p->deviatoric_stress_tensor.elements[i] = 0.f;
-    xp->deviatoric_stress_tensor_full.elements[i] = 0.f;
+    p->strength_data.deviatoric_stress_tensor.elements[i] = 0.f;
+    xp->strength_data.deviatoric_stress_tensor_full.elements[i] = 0.f;
   }
   #ifdef STRENGTH_DAMAGE
-    p->damage = 0.f;
-    p->tensile_damage = 0.f;
-    p->shear_damage = 0.f;
+    p->strength_data.damage = 0.f;
+    p->strength_data.tensile_damage = 0.f;
+    p->strength_data.shear_damage = 0.f;
 
-    xp->damage_full = 0.f;
-    xp->tensile_damage_full = 0.f;
-    xp->shear_damage_full = 0.f;
+    xp->strength_data.damage_full = 0.f;
+    xp->strength_data.tensile_damage_full = 0.f;
+    xp->strength_data.shear_damage_full = 0.f;
  #endif /* STRENGTH_DAMAGE */
 }
 

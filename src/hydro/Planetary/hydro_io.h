@@ -39,6 +39,7 @@
 #include "hydro_parameters.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
+#include "strength.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -75,13 +76,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
-#if defined(MATERIAL_STRENGTH)
-  list[7] = io_make_input_field("Density", FLOAT, 1, COMPULSORY,
-                                UNIT_CONV_DENSITY, parts, rho);
-#else
-  list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
-                                UNIT_CONV_DENSITY, parts, rho);
-#endif /* MATERIAL_STRENGTH */
+  // list[7] (Density) gets set in strength function/
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
 #ifdef PLANETARY_FIXED_ENTROPY
@@ -91,15 +86,9 @@ INLINE static void hydro_read_particles(struct part* parts,
   
   *num_fields += 1;  
 #endif
-#ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
-  list[*num_fields] = io_make_input_field("NumFlaws", INT, 1, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, parts, number_of_flaws);
-  // ### Set length of these arrays in a better way here and in hydro_part.h
-  list[*num_fields+1] = io_make_input_field("ActivationThresholds", FLOAT, 40, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, parts, activation_thresholds);
-  
-  *num_fields += 2;  
-#endif    
+
+  hydro_read_particles_strength(parts, list, num_fields);
+
 }
 
 INLINE static void convert_S(const struct engine* e, const struct part* p,
@@ -244,12 +233,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[10] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, 0.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
-#ifdef STRENGTH_DAMAGE
-   list[*num_fields] = io_make_output_field(
-       "Damage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, damage, "Damage of the particles");
-  
-  *num_fields += 1;  
-#endif    
+
+
+  hydro_write_particles_strength(parts, xparts, list, num_fields);
 }
 
 /**

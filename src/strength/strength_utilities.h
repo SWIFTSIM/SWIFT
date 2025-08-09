@@ -27,6 +27,7 @@
 
 #include "hydro_parameters.h"
 #include "math.h"
+#include "symmetric_matrix.h"
 
 /**
  * @brief Compute the J_2 invariant of the deviatoric stress tensor.
@@ -61,7 +62,7 @@ __attribute__((always_inline)) INLINE static void calculate_strain_rate_tensor(
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       strain_rate_tensor[i][j] =
-          0.5f * (p->dv_force_loop[i][j] + p->dv_force_loop[j][i]);
+          0.5f * (p->strength_data.dv_force_loop[i][j] + p->strength_data.dv_force_loop[j][i]);
     }
   }
 }
@@ -78,7 +79,7 @@ calculate_rotation_rate_tensor(struct part *restrict p,
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       rotation_rate_tensor[i][j] =
-          0.5f * (p->dv_force_loop[j][i] - p->dv_force_loop[i][j]);
+          0.5f * (p->strength_data.dv_force_loop[j][i] - p->strength_data.dv_force_loop[i][j]);
     }
   }
 }

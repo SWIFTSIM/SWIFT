@@ -97,9 +97,9 @@ hydro_runner_iact_force_extra_strength(struct part *restrict pi,
       (pj->phase_state == mat_phase_state_solid)) {
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        pi->dv_force_loop[i][j] +=
+        pi->strength_data.dv_force_loop[i][j] +=
             (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->rho_evol);
-        pj->dv_force_loop[i][j] +=
+        pj->strength_data.dv_force_loop[i][j] +=
             (pi->v[j] - pj->v[j]) * Gj[i] * (pi->mass / pi->rho_evol);
       }
     }
@@ -122,7 +122,7 @@ hydro_runner_iact_nonsym_force_extra_strength(struct part *restrict pi,
       (pj->phase_state == mat_phase_state_solid)) {
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        pi->dv_force_loop[i][j] +=
+        pi->strength_data.dv_force_loop[i][j] +=
             (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->rho_evol);
       }
     }

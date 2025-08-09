@@ -44,16 +44,16 @@ __attribute__((always_inline)) INLINE static void hydro_set_stress_tensor(
     struct part *restrict p, const float pressure) {
 
   #ifdef STRENGTH_DAMAGE
-    p->stress_tensor = stress_tensor_damaged(p->deviatoric_stress_tensor, pressure, p->damage);
+    p->strength_data.stress_tensor = stress_tensor_damaged(p->strength_data.deviatoric_stress_tensor, pressure, p->strength_data.damage);
   #else
-    p->stress_tensor = p->deviatoric_stress_tensor;
-    p->stress_tensor.xx -= pressure;
-    p->stress_tensor.yy -= pressure;
-    p->stress_tensor.zz -= pressure;
+    p->strength_data.stress_tensor = p->strength_data.deviatoric_stress_tensor;
+    p->strength_data.stress_tensor.xx -= pressure;
+    p->strength_data.stress_tensor.yy -= pressure;
+    p->strength_data.stress_tensor.zz -= pressure;
   #endif /* STRENGTH_DAMAGE */  
     
     // Compute principal stresses
-    sym_matrix_compute_eigenvalues(p->principal_stress_eigen, p->stress_tensor);
+    sym_matrix_compute_eigenvalues(p->strength_data.principal_stress_eigen, p->strength_data.stress_tensor);
 }
 
 /**
@@ -109,17 +109,17 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
                    0.04f);// hydro_slope_limiter_exp_denom);
   }
 
-  float max_principal_stress_i = pi->principal_stress_eigen[0];
-  if (pi->principal_stress_eigen[1] > max_principal_stress_i)
-    max_principal_stress_i = pi->principal_stress_eigen[1];
-  if (pi->principal_stress_eigen[2] > max_principal_stress_i)
-    max_principal_stress_i = pi->principal_stress_eigen[2];
+  float max_principal_stress_i = pi->strength_data.principal_stress_eigen[0];
+  if (pi->strength_data.principal_stress_eigen[1] > max_principal_stress_i)
+    max_principal_stress_i = pi->strength_data.principal_stress_eigen[1];
+  if (pi->strength_data.principal_stress_eigen[2] > max_principal_stress_i)
+    max_principal_stress_i = pi->strength_data.principal_stress_eigen[2];
 
-  float max_principal_stress_j = pj->principal_stress_eigen[0];
-  if (pj->principal_stress_eigen[1] > max_principal_stress_j)
-    max_principal_stress_j = pj->principal_stress_eigen[1];
-  if (pj->principal_stress_eigen[2] > max_principal_stress_j)
-    max_principal_stress_j = pj->principal_stress_eigen[2];
+  float max_principal_stress_j = pj->strength_data.principal_stress_eigen[0];
+  if (pj->strength_data.principal_stress_eigen[1] > max_principal_stress_j)
+    max_principal_stress_j = pj->strength_data.principal_stress_eigen[1];
+  if (pj->strength_data.principal_stress_eigen[2] > max_principal_stress_j)
+    max_principal_stress_j = pj->strength_data.principal_stress_eigen[2];
 
   for (int i = 0; i < 3; ++i) {
     if (max_principal_stress_i > 0)
@@ -148,8 +148,8 @@ hydro_set_pairwise_stress_tensors_strength(float pairwise_stress_tensor_i[3][3],
   if ((pi->phase_state == mat_phase_state_solid) &&
       (pj->phase_state == mat_phase_state_solid)) {
 
-    get_matrix_from_sym_matrix(pairwise_stress_tensor_i, &pi->stress_tensor);
-    get_matrix_from_sym_matrix(pairwise_stress_tensor_j, &pj->stress_tensor);
+    get_matrix_from_sym_matrix(pairwise_stress_tensor_i, &pi->strength_data.stress_tensor);
+    get_matrix_from_sym_matrix(pairwise_stress_tensor_j, &pj->strength_data.stress_tensor);
 
     strength_add_artif_stress(pairwise_stress_tensor_i,
                               pairwise_stress_tensor_j, pi, pj, r);
@@ -167,7 +167,7 @@ __attribute__((always_inline)) INLINE static void calculate_dS_dt(struct part *r
       rotation_term[3][3];
   float deviatoric_stress_tensor[3][3];
   get_matrix_from_sym_matrix(deviatoric_stress_tensor,
-                             &p->deviatoric_stress_tensor);
+                             &p->strength_data.deviatoric_stress_tensor);
 
   // Set the strain and rotation rates
   calculate_strain_rate_tensor(p, strain_rate_tensor);
@@ -190,7 +190,7 @@ __attribute__((always_inline)) INLINE static void calculate_dS_dt(struct part *r
                    3.f;
   }
 
-  get_sym_matrix_from_matrix(&p->dS_dt, dS_dt);
+  get_sym_matrix_from_matrix(&p->strength_data.dS_dt, dS_dt);
 }
 
 /**
@@ -209,7 +209,7 @@ __attribute__((always_inline)) INLINE static void evolve_deviatoric_stress(
     // Update solid stress
     for (int i = 0; i < 6; i++) {
       deviatoric_stress_tensor->elements[i] +=
-          p->dS_dt.elements[i] * dt_therm;
+          p->strength_data.dS_dt.elements[i] * dt_therm;
     }
   }    
 }

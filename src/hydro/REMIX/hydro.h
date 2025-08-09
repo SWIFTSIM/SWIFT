@@ -449,7 +449,7 @@ hydro_compute_max_wave_speed(const struct part *restrict p, float *wave_speed, c
   // wave speed is initialised as sound speed
   *wave_speed = soundspeed;
 
-  hydro_compute_max_wave_speed_strength(p, *wave_speed, soundspeed, density);
+  hydro_compute_max_wave_speed_strength(p, soundspeed, density, wave_speed);
 }
 
 /**
