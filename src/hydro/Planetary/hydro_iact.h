@@ -69,10 +69,8 @@ hydro_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
     }
   }
 
-#ifdef MATERIAL_STRENGTH
   hydro_set_pairwise_stress_tensors_strength(
       pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, r);
-#endif /* MATERIAL_STRENGTH */
 }
 
 
@@ -159,9 +157,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
 
-#ifdef MATERIAL_STRENGTH
   hydro_runner_iact_density_extra_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
-#endif /* MATERIAL_STRENGTH */
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_density += wi;
@@ -235,9 +231,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[1] += faci * curlvr[1];
   pi->density.rot_v[2] += faci * curlvr[2];
 
-#ifdef MATERIAL_STRENGTH
   hydro_runner_iact_nonsym_density_extra_strength(pi, pj, dx, wi, wi_dx);
-#endif /* MATERIAL_STRENGTH */
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_density += wi;
@@ -440,12 +434,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
-#if defined(MATERIAL_STRENGTH)    
-  pi->drho_dt += mj * dv_dot_G_i;
-  pj->drho_dt += mi * dv_dot_G_j;
-    
-  hydro_runner_iact_force_extra_strength(pi, pj, dx, Gi, Gj);
-#endif /* MATERIAL_STRENGTH */    
+  hydro_runner_iact_force_extra_strength(pi, pj, dx, Gi, Gj, dv_dot_G_i, dv_dot_G_j);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
@@ -600,11 +589,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
-#if defined(MATERIAL_STRENGTH)    
-  pi->drho_dt += mj * dv_dot_G_i;
-
-  hydro_runner_iact_nonsym_force_extra_strength(pi, pj, dx, Gi);
-#endif /* MATERIAL_STRENGTH */
+  hydro_runner_iact_nonsym_force_extra_strength(pi, pj, dx, Gi, dv_dot_G_i);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;

@@ -48,31 +48,6 @@ __attribute__((always_inline)) INLINE static void
 hydro_init_part_extra_strength(struct part *restrict p) {}
 
 /**
- * @brief Extra strength density interaction between two particles
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_density_extra_strength(struct part *restrict pi,
-                                         struct part *restrict pj,
-                                         const float dx[3], const float wi,
-                                         const float wj, const float wi_dx,
-                                         const float wj_dx) {}
-
-/**
- * @brief Extra strength density interaction between two particles
- * (non-symmetric)
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_density_extra_strength(struct part *restrict pi,
-                                                const struct part *restrict pj,
-                                                const float dx[3],
-                                                const float wi,
-                                                const float wi_dx) {}
-
-/**
  * @brief Finishes extra strength parts of the density calculation.
  *
  * @param p The particle to act upon
@@ -88,31 +63,6 @@ hydro_end_density_extra_strength(struct part *restrict p) {}
  */
 __attribute__((always_inline)) INLINE static void
 hydro_prepare_gradient_extra_strength(struct part *restrict p) {}
-
-/**
- * @brief Extra strength gradient interaction between two particles
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_gradient_extra_strength(struct part *restrict pi,
-                                          struct part *restrict pj,
-                                          const float dx[3], const float wi,
-                                          const float wj, const float wi_dx,
-                                          const float wj_dx) {}
-
-/**
- * @brief Extra strength gradient interaction between two particles
- * (non-symmetric)
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_gradient_extra_strength(struct part *restrict pi,
-                                                 const struct part *restrict pj,
-                                                 const float dx[3],
-                                                 const float wi,
-                                                 const float wi_dx) {}
 
 /**
  * @brief Finishes extra strength parts of the gradient calculation.
@@ -140,28 +90,6 @@ hydro_prepare_force_extra_strength(struct part *restrict p,
  */
 __attribute__((always_inline)) INLINE static void
 hydro_reset_acceleration_strength(struct part *restrict p) {}
-
-/**
- * @brief Extra strength force interaction between two particles
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_force_extra_strength(struct part *restrict pi,
-                                       struct part *restrict pj,
-                                       const float dx[3], const float Gi[3],
-                                       const float Gj[3]) {}
-
-/**
- * @brief Extra strength force interaction between two particles (non-symmetric)
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_force_extra_strength(struct part *restrict pi,
-                                              const struct part *restrict pj,
-                                              const float dx[3],
-                                              const float Gi[3]) {}
 
 /**
  * @brief Finishes extra strength parts of the force calculation.

@@ -38,8 +38,14 @@
 
 #if defined(PLANETARY_SPH)
 #include "./hydro/Planetary/strength/default/hydro_strength.h"
+#include "./hydro/Planetary/strength/default/hydro_iact_strength.h"
+#include "./hydro/Planetary/strength/default/hydro_part_strength.h"
+#include "./hydro/Planetary/strength/default/hydro_io_strength.h"
 #elif defined(REMIX_SPH)
 #include "./hydro/REMIX/strength/default/hydro_strength.h"
+#include "./hydro/REMIX/strength/default/hydro_iact_strength.h"
+#include "./hydro/REMIX/strength/default/hydro_part_strength.h"
+#include "./hydro/REMIX/strength/default/hydro_io_strength.h"
 #else
 #error "Choice of SPH variant not valid for material strength"
 #endif
@@ -48,8 +54,14 @@
 
 #if defined(PLANETARY_SPH)
 #include "./hydro/Planetary/strength/none/hydro_strength.h"
+#include "./hydro/Planetary/strength/none/hydro_iact_strength.h"
+#include "./hydro/Planetary/strength/none/hydro_part_strength.h"
+#include "./hydro/Planetary/strength/none/hydro_io_strength.h"
 #elif defined(REMIX_SPH)
 #include "./hydro/REMIX/strength/none/hydro_strength.h"
+#include "./hydro/REMIX/strength/none/hydro_iact_strength.h"
+#include "./hydro/REMIX/strength/none/hydro_part_strength.h"
+#include "./hydro/REMIX/strength/none/hydro_io_strength.h"
 #endif
 
 #endif /* MATERIAL_STRENGTH */

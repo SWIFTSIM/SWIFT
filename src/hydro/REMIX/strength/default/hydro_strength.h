@@ -31,9 +31,9 @@
 #include "math.h"
 #include "strength.h"
 
-__attribute__((always_inline)) INLINE static float hydro_compute_timestep_strength(
+__attribute__((always_inline)) INLINE static void hydro_compute_timestep_strength(
     const struct part *restrict p, const struct hydro_props *restrict hydro_properties, 
-    const float dt_cfl) {
+    *float dt_cfl) {
     
   const float elastic_timestep_factor = hydro_properties->CFL_condition; // ### Set as same as CFL factor for now. Treat this similarly to CFL
   const float norm_dS_dt = norm_sym_matrix(&p->dS_dt);
@@ -42,12 +42,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep_streng
   float dt_elastic;
     
   if (norm_dS_dt * dt_cfl > elastic_timestep_factor * shear_mod) {
-    dt_elastic = elastic_timestep_factor * shear_mod / norm_dS_dt;
-  } else {
-    dt_elastic = FLT_MAX;
+    *dt_cfl = elastic_timestep_factor * shear_mod / norm_dS_dt;
   }
-
-  float dt_strength = dt_elastic;
     
 #if defined(STRENGTH_DAMAGE)
   // Update dt_strength with damage contribution
@@ -55,8 +51,16 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep_streng
   damage_timestep(p, dt_cfl, &dt_damage);
   dt_strength = fminf(dt_elastic, dt_damage);
 #endif /* STRENGTH_DAMAGE */
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_compute_max_wave_speed_strength(const struct part *restrict p, float *wave_speed, const float soundspeed, const float density) {
+  if (p->phase_state == mat_phase_state_solid) {
+    const float shear_mod = material_shear_mod(p->mat_id);
     
-  return dt_strength;
+    // Speed of longitudinal elastic wave
+    *wave_speed = sqrtf(soundspeed * soundspeed + (4.f / 3.f) * shear_mod / density);
+  }
 }
 
 /**
@@ -67,31 +71,6 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep_streng
  */
 __attribute__((always_inline)) INLINE static void
 hydro_init_part_extra_strength(struct part *restrict p) {}
-
-/**
- * @brief Extra strength density interaction between two particles
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_density_extra_strength(struct part *restrict pi,
-                                         struct part *restrict pj,
-                                         const float dx[3], const float wi,
-                                         const float wj, const float wi_dx,
-                                         const float wj_dx) {}
-
-/**
- * @brief Extra strength density interaction between two particles
- * (non-symmetric)
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_density_extra_strength(struct part *restrict pi,
-                                                const struct part *restrict pj,
-                                                const float dx[3],
-                                                const float wi,
-                                                const float wi_dx) {}
 
 /**
  * @brief Finishes extra strength parts of the density calculation.
@@ -109,31 +88,6 @@ hydro_end_density_extra_strength(struct part *restrict p) {}
  */
 __attribute__((always_inline)) INLINE static void
 hydro_prepare_gradient_extra_strength(struct part *restrict p) {}
-
-/**
- * @brief Extra strength gradient interaction between two particles
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_gradient_extra_strength(struct part *restrict pi,
-                                          struct part *restrict pj,
-                                          const float dx[3], const float wi,
-                                          const float wj, const float wi_dx,
-                                          const float wj_dx) {}
-
-/**
- * @brief Extra strength gradient interaction between two particles
- * (non-symmetric)
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_gradient_extra_strength(struct part *restrict pi,
-                                                 const struct part *restrict pj,
-                                                 const float dx[3],
-                                                 const float wi,
-                                                 const float wi_dx) {}
 
 /**
  * @brief Finishes extra strength parts of the gradient calculation.
@@ -177,53 +131,6 @@ hydro_reset_acceleration_strength(struct part *restrict p) {
   zero_sym_matrix(&p->dS_dt);
 }
 
-/**
- * @brief Extra strength force interaction between two particles
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_force_extra_strength(struct part *restrict pi,
-                                       struct part *restrict pj,
-                                       const float dx[3], const float Gi[3],
-                                       const float Gj[3]) {
-
-  // Compute velocity gradient if both particles are solid
-  if ((pi->phase_state == mat_phase_state_solid) &&
-      (pj->phase_state == mat_phase_state_solid)) {
-    for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 3; ++j) {
-        pi->dv_force_loop[i][j] +=
-            (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->rho_evol);
-        pj->dv_force_loop[i][j] +=
-            (pi->v[j] - pj->v[j]) * Gj[i] * (pi->mass / pi->rho_evol);
-      }
-    }
-  }
-}
-
-/**
- * @brief Extra strength force interaction between two particles (non-symmetric)
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_force_extra_strength(struct part *restrict pi,
-                                              const struct part *restrict pj,
-                                              const float dx[3],
-                                              const float Gi[3]) {
-
-  // Compute velocity gradient if both particles are solid
-  if ((pi->phase_state == mat_phase_state_solid) &&
-      (pj->phase_state == mat_phase_state_solid)) {
-    for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 3; ++j) {
-        pi->dv_force_loop[i][j] +=
-            (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->rho_evol);
-      }
-    }
-  }
-}
 
 /**
  * @brief Finishes extra strength parts of the force calculation.
@@ -284,11 +191,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_e
 
 /**
  * @brief Predict additional particle strength properties forward in time when
- * drifting
+ * drifting. At beginning of hydro function, before hydro quantities have been drifted.
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_predict_extra_strength(
+__attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_beginning(
     struct part *restrict p, const float dt_therm) {
 
   // ### FOR LEAPFROG: dS_dt is calculated similarly to e.g. du_dt and S is updated similarly to u
@@ -313,14 +220,28 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength(
 
   adjust_deviatoric_stress_tensor_by_yield_stress(
         p, &p->deviatoric_stress_tensor, yield_stress, density, u);
+}
 
+/**
+ * @brief Predict additional particle strength properties forward in time when
+ * drifting. At end of hydro function, after hydro quantities have been drifted.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_end(
+    struct part *restrict p, const float dt_therm) {
+
+  const float density = p->rho_evol;
+  const float u = p->u;
   const float pressure =
       gas_pressure_from_internal_energy(density, u, p->mat_id);  
+    
   hydro_set_stress_tensor(p, pressure);
 }
 
 /**
- * @brief Kick the additional particle strength properties
+ * @brief Kick the additional particle strength properties.
+ * At beginning of hydro function, before hydro quantities have been kicked.
  *
  * Additional hydrodynamic quantites are kicked forward in time here. These
  * include thermal quantities (thermal energy or total energy or entropy, ...).
@@ -329,7 +250,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength(
  * @param xp The particle extended data to act upon.
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
  */
-__attribute__((always_inline)) INLINE static void hydro_kick_extra_strength(
+__attribute__((always_inline)) INLINE static void hydro_kick_extra_strength_beginning(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm) {
 
   const int phase_state = xp->phase_state_full;
@@ -350,6 +271,20 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra_strength(
   adjust_deviatoric_stress_tensor_by_yield_stress(
         p, &xp->deviatoric_stress_tensor_full, yield_stress, density, u);
 }
+
+/**
+ * @brief Kick the additional particle strength properties
+ * At end of hydro function, after hydro quantities have been kicked.
+ *
+ * Additional hydrodynamic quantites are kicked forward in time here. These
+ * include thermal quantities (thermal energy or total energy or entropy, ...).
+ *
+ * @param p The particle to act upon.
+ * @param xp The particle extended data to act upon.
+ * @param dt_therm The time-step for this kick (for thermodynamic quantities).
+ */
+__attribute__((always_inline)) INLINE static void hydro_kick_extra_strength_end(
+    struct part *restrict p, struct xpart *restrict xp, float dt_therm) {}
 
 /**
  * @brief Initialises the strength properties for the first time
