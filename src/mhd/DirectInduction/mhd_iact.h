@@ -588,7 +588,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pi->mhd_data.dedner_B_source[i] -= mj * grad_psi * dx[i];
     pi->mhd_data.physical_resistivity_B_source[i] += resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
     pi->mhd_data.artificial_resistivity_B_source[i] += mj * art_diff_pref * dB[i];
-    pj->mhd_data.stretching_B_source[i] += mi * dB_dt_pref_k * dB_dt_j[i];
+    pj->mhd_data.stretching_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
     pj->mhd_data.dedner_B_source[i] += mi * grad_psi * dx[i];
     pj->mhd_data.physical_resistivity_B_source[i] -= resistive_eta_j * mi * dB_dt_pref_PR * dB[i];
     pj->mhd_data.artificial_resistivity_B_source[i] -= mi * art_diff_pref * dB[i];
