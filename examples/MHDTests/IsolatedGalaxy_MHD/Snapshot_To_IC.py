@@ -30,6 +30,19 @@ def open_IAfile_stars(path_to_file):
     pids = IAfile["/PartType4/ParticleIDs"]
     return boxsize,t,pos,h,v,m,pids
 
+def open_IAfile_DM(path_to_file):
+    IAfile = h5py.File(path_to_file, "r")
+    boxsize = IAfile["Header"].attrs["BoxSize"][0]
+    t = IAfile["Header"].attrs["Time"][0]
+    pos = IAfile["/PartType1/Coordinates"][:, :]
+    h = IAfile["/PartType1/SmoothingLengths"][:]
+    v = IAfile["/PartType1/Velocities"][:]
+    m = IAfile["/PartType1/Masses"]
+    pids = IAfile["/PartType1/ParticleIDs"]
+    return boxsize,t,pos,h,v,m,pids
+
+
+
 # Make snapshot
 def make_ICs_from_snapshot(path_to_snapshot,path_to_ICs="./CoolingHalo_new.hdf5"):
     ICfile = h5py.File(path_to_snapshot, "r")
@@ -100,10 +113,32 @@ def make_ICs_from_snapshot(path_to_snapshot,path_to_ICs="./CoolingHalo_new.hdf5"
     ds = grpS.create_dataset("ParticleIDs", (Ns,), "L")
     ds[()] = pids
 
-    Ntot = Ng+Ns
-    grp.attrs["NumPart_Total"] = [Ng, 0, 0, 0, Ns, 0]
+    # Read DM particle properties
+    pos = ICfile["/PartType1/Coordinates"][:, :]
+    h = ICfile["/PartType1/SmoothingLengths"][:]
+    v = ICfile["/PartType1/Velocities"][:]
+    m = ICfile["/PartType1/Masses"]
+    pids = ICfile["/PartType1/ParticleIDs"]
+    Ndm = len(pids)
+
+    # Create DM particle properties
+    grpS = file.create_group("/PartType1")
+    ds = grpS.create_dataset("Coordinates", (Ndm, 3), "d")
+    ds[()] = pos
+    ds = grpS.create_dataset("Velocities", (Ndm, 3), "d")
+    ds[()] = v
+    ds = grpS.create_dataset("SmoothingLength", (Ndm,), "f")
+    ds[()] = h
+    ds = grpS.create_dataset("Masses", (Ndm,), "f")
+    ds[()] = m
+    ds = grpS.create_dataset("ParticleIDs", (Ndm,), "L")
+    ds[()] = pids
+
+
+    Ntot = Ng+Ns+Ndm
+    grp.attrs["NumPart_Total"] = [Ng, Ndm, 0, 0, Ns, 0]
     grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_ThisFile"] = [Ng, 0, 0, 0, Ns, 0]
+    grp.attrs["NumPart_ThisFile"] = [Ng, Ndm, 0, 0, Ns, 0]
 
     # Units
     grp = file.create_group("/Units")
