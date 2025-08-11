@@ -22,14 +22,6 @@ units_dict = {'length':1.49597871 * 10**13 *u.cm,'density':u.g/u.cm**3,'velocity
 # Constants
 G = 6.67430e-11 * u.m **3 / u.kg / u.s **2 #6.67430e-8
 G = G.to(u.cm **3 / u.g / u.s **2)
-# Parameters (taken from Hopkins 2016)
-Rcloud = 4.628516371e16 * u.cm
-M = 1.99e33 * u.g  # total mass of the sphere
-rhocloud0 = M/(4/3 * np.pi * Rcloud**3 )
-rhouniform = rhocloud0/360
-t_ff_lit = np.sqrt(3/(2*np.pi*G*rhocloud0)) 
-t_ff_wiki = np.sqrt(3*np.pi/(32*G*rhocloud0))
-t_ff_script = 3e4 * 3.156e7 * u.s
 
 def abs_vec(vec):
     res = np.sqrt(vec[:, 0] ** 2 + vec[:, 1] ** 2 + vec[:, 2] ** 2)
@@ -54,7 +46,7 @@ def cross_vec(vec1, vec2):
 def extract_variables_of_interest(data):
 
     # Get snapshot parameters
-    time = data.metadata.time/t_ff_script
+    time = data.metadata.time
     z = data.metadata.z
     a = data.metadata.a
 
@@ -81,35 +73,35 @@ def extract_variables_of_interest(data):
 
     # force tracking variables
 
-    #total_force = data.gas.total_force.to_physical().astype('float64')
+    total_force = data.gas.total_force.to_physical().astype('float64')
     
-    #lorentz_isotropic_force = data.gas.lorentz_isotropic_force.to_physical().astype('float64')
-    #lorentz_anisotropic_force = data.gas.lorentz_anisotropic_force.to_physical().astype('float64')
-    #monopole_correction_force = data.gas.monopole_correction_force.to_physical().astype('float64')
+    lorentz_isotropic_force = data.gas.lorentz_isotropic_force.to_physical().astype('float64')
+    lorentz_anisotropic_force = data.gas.lorentz_anisotropic_force.to_physical().astype('float64')
+    monopole_correction_force = data.gas.monopole_correction_force.to_physical().astype('float64')
 
 
     # force magnitude in the velocity direction
-    #total_force_v = get_projection(total_force.value,velocities.value)*total_force.units
-    #lorentz_isotropic_force_v = get_projection(lorentz_isotropic_force.value,velocities.value)*lorentz_isotropic_force.units
-    #lorentz_anisotropic_force_v = get_projection(lorentz_anisotropic_force.value,velocities.value)*lorentz_anisotropic_force.units
-    #total_lorentz_force_v = lorentz_isotropic_force_v+lorentz_anisotropic_force_v
-    #monopole_correction_force_v = get_projection(monopole_correction_force.value,velocities.value)*monopole_correction_force.units
-    #total_hydro_force_v = total_force_v - total_lorentz_force_v - monopole_correction_force_v
+    total_force_v = get_projection(total_force.value,velocities.value)*total_force.units
+    lorentz_isotropic_force_v = get_projection(lorentz_isotropic_force.value,velocities.value)*lorentz_isotropic_force.units
+    lorentz_anisotropic_force_v = get_projection(lorentz_anisotropic_force.value,velocities.value)*lorentz_anisotropic_force.units
+    total_lorentz_force_v = lorentz_isotropic_force_v+lorentz_anisotropic_force_v
+    monopole_correction_force_v = get_projection(monopole_correction_force.value,velocities.value)*monopole_correction_force.units
+    total_hydro_force_v = total_force_v - total_lorentz_force_v - monopole_correction_force_v
     # B field source tracking variables
   
-    #stretching_bsource = data.gas.stretching_bsource.to_physical().astype('float64')
+    stretching_bsource = data.gas.stretching_bsource.to_physical().astype('float64')
 
-    #dedner_bsource = data.gas.dedner_bsource.to_physical().astype('float64')
+    dedner_bsource = data.gas.dedner_bsource.to_physical().astype('float64')
 
-    #artificial_resistivity_bsource = data.gas.artificial_resistivity_bsource.to_physical().astype('float64')
+    artificial_resistivity_bsource = data.gas.artificial_resistivity_bsource.to_physical().astype('float64')
 
-    #physical_resistivity_bsource = data.gas.physical_resistivity_bsource.to_physical().astype('float64')
+    physical_resistivity_bsource = data.gas.physical_resistivity_bsource.to_physical().astype('float64')
 
     # force magnitude in the velocity direction
-    #stretching_bsource_B = get_projection(stretching_bsource.value,magnetic_flux_densities.value)*stretching_bsource.units
-    #dedner_bsource_B = get_projection(dedner_bsource.value,magnetic_flux_densities.value)*dedner_bsource.units
-    #artificial_resistivity_bsource_B = get_projection(artificial_resistivity_bsource.value,magnetic_flux_densities.value)*artificial_resistivity_bsource.units
-    #physical_resistivity_bsource_B = get_projection(physical_resistivity_bsource.value,magnetic_flux_densities.value)*physical_resistivity_bsource.units
+    stretching_bsource_B = get_projection(stretching_bsource.value,magnetic_flux_densities.value)*stretching_bsource.units
+    dedner_bsource_B = get_projection(dedner_bsource.value,magnetic_flux_densities.value)*dedner_bsource.units
+    artificial_resistivity_bsource_B = get_projection(artificial_resistivity_bsource.value,magnetic_flux_densities.value)*artificial_resistivity_bsource.units
+    physical_resistivity_bsource_B = get_projection(physical_resistivity_bsource.value,magnetic_flux_densities.value)*physical_resistivity_bsource.units
  
 
     # Center of mass position tracking
@@ -123,7 +115,7 @@ def extract_variables_of_interest(data):
     #    lorentz_anisotropic_force[:,k] /= total_force_abs
     #    monopole_correction_force[:,k] /= total_force_abs
     # working with units for snapshot parameters:
-    #time.to(units_dict['time'])
+    time.to(units_dict['time'])
 
     # working with units:
     coordinates = coordinates.to(units_dict['length'])
@@ -137,28 +129,27 @@ def extract_variables_of_interest(data):
     magnetic_divergences = magnetic_divergences.to(units_dict['magneticfieldgradient']) 
     masses = masses.to(units_dict['mass'])
  
-    #total_force_v = total_force_v.to(units_dict['acceleration'])
-    #lorentz_isotropic_force_v = lorentz_isotropic_force_v.to(units_dict['acceleration'])
-    #lorentz_anisotropic_force_v = lorentz_anisotropic_force_v.to(units_dict['acceleration'])
-    #total_lorentz_force_v = total_lorentz_force_v.to(units_dict['acceleration']) 
-    #monopole_correction_force_v = monopole_correction_force_v.to(units_dict['acceleration'])
-    #total_hydro_force_v = total_hydro_force_v.to(units_dict['acceleration'])
+    total_force_v = total_force_v.to(units_dict['acceleration'])
+    lorentz_isotropic_force_v = lorentz_isotropic_force_v.to(units_dict['acceleration'])
+    lorentz_anisotropic_force_v = lorentz_anisotropic_force_v.to(units_dict['acceleration'])
+    total_lorentz_force_v = total_lorentz_force_v.to(units_dict['acceleration']) 
+    monopole_correction_force_v = monopole_correction_force_v.to(units_dict['acceleration'])
+    total_hydro_force_v = total_hydro_force_v.to(units_dict['acceleration'])
 
     r0_no_cut = magnetic_divergences * smoothing_lengths / (abs_vec(magnetic_flux_densities.value)*magnetic_flux_densities.units)
 
     mu0 = 1.25663706127e-1 * u.g * u.cm / (u.s**2 * u.A**2)
     plasma_beta = pressures / ((abs_vec(magnetic_flux_densities.value)*magnetic_flux_densities.units)**2/(2*mu0))
 
-    #stretching_bsource = stretching_bsource.to(units_dict['magneticfieldpertime'])
-    #dedner_bsource = data.gas.dedner_bsource.to(units_dict['magneticfieldpertime'])
-    #artificial_resistivity_bsource = data.gas.artificial_resistivity_bsource.to(units_dict['magneticfieldpertime'])
-    #physical_resistivity_bsource = data.gas.physical_resistivity_bsource.to(units_dict['magneticfieldpertime'])
+    stretching_bsource = stretching_bsource.to(units_dict['magneticfieldpertime'])
+    dedner_bsource = data.gas.dedner_bsource.to(units_dict['magneticfieldpertime'])
+    artificial_resistivity_bsource = data.gas.artificial_resistivity_bsource.to(units_dict['magneticfieldpertime'])
+    physical_resistivity_bsource = data.gas.physical_resistivity_bsource.to(units_dict['magneticfieldpertime'])
 
     CM_frame_z = np.abs(CM_frame_coordinates[:,2])
     data_dict = {'pids':pids,'coordinates':coordinates,'densities':densities,'smoothing_lengths':smoothing_lengths,'velocities':velocities,'momentums':momentums,'pressures':pressures,'magnetic_flux_densities':magnetic_flux_densities,'CM_frame_coordinates':CM_frame_coordinates,'CM_frame_z':CM_frame_z,'plasma_beta':plasma_beta}
     
-
-#    data_dict = {'pids':pids,'coordinates':coordinates,'densities':densities,'smoothing_lengths':smoothing_lengths,'velocities':velocities,'pressures':pressures,'magnetic_flux_densities':magnetic_flux_densities,'magnetic_flux_densitiesdt':magnetic_flux_densitiesdt,'magnetic_divergences':magnetic_divergences,'r0_no_cut':r0_no_cut,'lorentz_isotropic_force_v':lorentz_isotropic_force_v,'lorentz_anisotropic_force_v':lorentz_anisotropic_force_v,'total_lorentz_force_v':total_lorentz_force_v, 'monopole_correction_force_v':monopole_correction_force_v, 'total_force_v':total_force_v,'total_hydro_force_v':total_hydro_force_v,'stretching_bsource_B':stretching_bsource_B,'dedner_bsource_B':dedner_bsource_B,'artificial_resistivity_bsource_B':artificial_resistivity_bsource_B,'physical_resistivity_bsource_B':physical_resistivity_bsource_B,'CM_frame_coordinates':CM_frame_coordinates,'CM_frame_z':CM_frame_z,'plasma_beta':plasma_beta}
+    data_dict = {'pids':pids,'coordinates':coordinates,'densities':densities,'smoothing_lengths':smoothing_lengths,'velocities':velocities,'pressures':pressures,'magnetic_flux_densities':magnetic_flux_densities,'magnetic_flux_densitiesdt':magnetic_flux_densitiesdt,'magnetic_divergences':magnetic_divergences,'r0_no_cut':r0_no_cut,'lorentz_isotropic_force_v':lorentz_isotropic_force_v,'lorentz_anisotropic_force_v':lorentz_anisotropic_force_v,'total_lorentz_force_v':total_lorentz_force_v, 'monopole_correction_force_v':monopole_correction_force_v, 'total_force_v':total_force_v,'total_hydro_force_v':total_hydro_force_v,'stretching_bsource_B':stretching_bsource_B,'dedner_bsource_B':dedner_bsource_B,'artificial_resistivity_bsource_B':artificial_resistivity_bsource_B,'physical_resistivity_bsource_B':physical_resistivity_bsource_B,'CM_frame_coordinates':CM_frame_coordinates,'CM_frame_z':CM_frame_z,'plasma_beta':plasma_beta}
     
     values = {}
     units = {}
@@ -365,8 +356,17 @@ folder = './MCC_ODI2_control'
 
 snapshots_history, snapshot_names = updoad_shapshots_data_from_folder(folder)
 
-plot_quantity_vs_time(snapshots_history,'momentums',outputfileaddr=folder+'/momentums_noRegCut.png',isvec=True,region_cut=False, label = ' All')
-plot_quantity_vs_time(snapshots_history,'momentums',outputfileaddr=folder+'/momentums_cut.png',isvec=True,region_cut=True, label = f' $Lbox=${2*Lcut}')
+#plot_quantity_vs_time(snapshots_history,'momentums',outputfileaddr=folder+'/momentums_noRegCut.png',isvec=True,region_cut=False, label = ' All')
+#plot_quantity_vs_time(snapshots_history,'momentums',outputfileaddr=folder+'/momentums_cut.png',isvec=True,region_cut=True, label = f' $Lbox=${2*Lcut}')
+
+# plot forces for a given particle
+pid = 10000
+particle_history = upload_particle_history(snapshots_history,pid)
+B_vs_time = plot_quatities_for_particle_vs_time(particle_history,['CM_frame_z','densities','velocities','magnetic_flux_densities'],outputfileaddr='./tracked_particles/output_rho_v_B_'+str(pid)+'.png',time_var = 'time',customtimeinterval = False,timeinterval = [0.0,0.2])
+#errors_vs_time = plot_quatities_for_particle_vs_time(particle_history,['r0','r1','r2'],outputfileaddr='./tracked_particles/output_r0_r1_r2_'+str(pid)+'.png',time_var = 'time',customtimeinterval = False,timeinterval = [0.0,0.2])
+divergences_and_dedner_vs_time = plot_quatities_for_particle_vs_time(particle_history,['magnetic_flux_densitiesdt','magnetic_divergences'],outputfileaddr='./tracked_particles/output_divB_dBdt_'+str(pid)+'.png',time_var = 'time',customtimeinterval = False,timeinterval = [0.0,0.2])
+force_vs_time = plot_quatities_for_particle_vs_time(particle_history,['total_force','lorentz_isotropic_force','lorentz_anisotropic_force','monopole_correction_force'],outputfileaddr='./tracked_particles/forces_'+str(pid)+'.png',time_var = 'time',customtimeinterval = False,timeinterval = [0.0,0.2],customquantityinterval = True, quantityinterval=[1e0,1e13])
+bsource_vs_time = plot_quatities_for_particle_vs_time(particle_history,['stretching_bsource','dedner_bsource'],outputfileaddr='./tracked_particles/bsources_'+str(pid)+'.png',time_var = 'time',customtimeinterval = False,timeinterval = [0.0,0.2],customquantityinterval = True, quantityinterval=[1e-17,1e7])
 
 
 #largest_qty_particles = identify_largest_quantity_particles(snapshots_history,quantity = 'magnetic_flux_densities', isvec = True,region_cut=False )
