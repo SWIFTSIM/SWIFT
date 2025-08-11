@@ -17,31 +17,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STRENGTH_DAMAGE_H
-#define SWIFT_STRENGTH_DAMAGE_H
+#ifndef SWIFT_DAMAGE_TENSILE_NONE_H
+#define SWIFT_DAMAGE_TENSILE_NONE_H
 
 /**
- * @file strength/strength_damage.h
- * @brief Selects whether using damage models or not on configuration options.
+ * @file strength/damage/damage_tensile/damage_tensile_none.h
  */
 
-#if defined(STRENGTH_DAMAGE)
+#include "const.h"
+#include "equation_of_state.h"
+#include "hydro_parameters.h"
+#include "math.h"
 
-#if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
-#include "damage/damage_shear/damage_shear_collins04.h"
-#else
-#include "damage/damage_shear/damage_shear_none.h"
-#endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
+/**
+ * @brief Calculates the rate of cbrt(damage) accumulated due to tension
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void calculate_tensile_cbrtD_dt(
+    struct part *restrict p, float *tensile_cbrtD_dt, float *number_of_activated_flaws, 
+    struct sym_matrix deviatoric_stress_tensor, const float damage, const float density, const float u) {}
 
-#if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
-#include "damage/damage_tensile/damage_tensile_ba94.h"
-#else
-#include "damage/damage_tensile/damage_tensile_none.h"
-#endif /* STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG */
+/**
+ * @brief Evolves particle tensile damage
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void evolve_damage_tensile(
+    struct part *restrict p, float *tensile_damage, const float tensile_cbrtD_dt, 
+    const float number_of_activated_flaws, const float dt_therm) {}
 
-#include "damage/damage.h"
-#else
-#include "damage/damage_none.h"
-#endif
-
-#endif /* SWIFT_STRENGTH_DAMAGE_H */
+#endif /* SWIFT_DAMAGE_TENSILE_NONE_H */

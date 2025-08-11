@@ -25,12 +25,12 @@
 
 /* Strength functions */
 #ifdef MATERIAL_STRENGTH
-#include "./strength/strength_utilities.h"
-#include "./strength/strength_utilities.h"
-#include "./strength/strength_utilities.h"
+#include "./strength/strength_artificial_stress.h"
 #include "./strength/strength_damage.h"
-#include "./strength/strength_stress.h"
-#include "./strength/strength_yield.h"
+#include "./strength/strength_stress_tensor.h"
+#include "./strength/strength_utilities.h"
+#include "./strength/strength_yield_stress_softening.h"
+#include "./strength/strength_yield_stress.h"
 #endif /* MATERIAL_STRENGTH */
 
 /* Hydro functions */

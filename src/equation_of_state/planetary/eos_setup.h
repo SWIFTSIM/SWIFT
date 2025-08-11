@@ -254,9 +254,9 @@ struct mat_params {
   float T_melt;
   float rho_0;
 
-  #if defined(STRENGTH_YIELD_BENZ_ASPHAUG)
+  #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
     float Y_0;
-  #elif defined(STRENGTH_YIELD_COLLINS)
+  #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
     float Y_0;
     float Y_M;
     float mu_i;
@@ -276,16 +276,16 @@ struct mat_params {
 struct method_params {
 
 #ifdef MATERIAL_STRENGTH
-  #if defined(STRENGTH_STRESS_MON2000) || defined(STRENGTH_STRESS_BASIS_INDP)
+  #if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
     float artif_stress_n;
     float artif_stress_epsilon;
   #endif
 
-  #if defined(STRENGTH_YIELD_THERMAL_SOFTENING)
+  #if defined(STRENGTH_YIELD_STRESS_SOFTENING_THERMAL)
     float yield_thermal_soft_xi;
   #endif
 
-  #if defined(STRENGTH_YIELD_DENSITY_SOFTENING)
+  #if defined(STRENGTH_YIELD_STRESS_SOFTENING_DENSITY)
     float yield_density_soft_mult_param;
     float yield_density_soft_pow_param;
   #endif

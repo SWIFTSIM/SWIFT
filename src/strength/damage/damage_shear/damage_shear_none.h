@@ -17,31 +17,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STRENGTH_DAMAGE_H
-#define SWIFT_STRENGTH_DAMAGE_H
+#ifndef SWIFT_DAMAGE_SHEAR_NONE_H
+#define SWIFT_DAMAGE_SHEAR_NONE_H
 
 /**
- * @file strength/strength_damage.h
- * @brief Selects whether using damage models or not on configuration options.
+ * @file strength/damage/damage_shear/damage_shear_none.h
  */
 
-#if defined(STRENGTH_DAMAGE)
+#include "const.h"
+#include "equation_of_state.h"
+#include "hydro_parameters.h"
+#include "math.h"
 
-#if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
-#include "damage/damage_shear/damage_shear_collins04.h"
-#else
-#include "damage/damage_shear/damage_shear_none.h"
-#endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
 
-#if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
-#include "damage/damage_tensile/damage_tensile_ba94.h"
-#else
-#include "damage/damage_tensile/damage_tensile_none.h"
-#endif /* STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG */
+/**
+ * @brief Calculates the rate of damage accumulated due to tension
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void calculate_shear_dD_dt(
+    struct part *restrict p, float *shear_dD_dt, struct sym_matrix deviatoric_stress_tensor, const float yield_stress, const float density, const float u) {}
 
-#include "damage/damage.h"
-#else
-#include "damage/damage_none.h"
-#endif
+/**
+ * @brief Evolves particle shear damage
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void evolve_damage_shear(
+    struct part *restrict p, float *shear_damage, const float  shear_dD_dt, const float dt_therm) {}
 
-#endif /* SWIFT_STRENGTH_DAMAGE_H */
+#endif /* SWIFT_DAMAGE_SHEAR_NONE_H */

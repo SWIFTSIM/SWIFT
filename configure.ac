@@ -546,73 +546,73 @@ if test "$material_strength" = "yes"; then
 fi
 
 #  Strength: artificial stress
-AC_ARG_WITH([strength-stress],
-   [AS_HELP_STRING([--with-strength-stress=<stress>],
-      [strength stress @<:@none, mon2000, basis-indp default: none@:>@]
+AC_ARG_WITH([strength-artificial-stress],
+   [AS_HELP_STRING([--with-strength-artificial-stress=<artificial-stress>],
+      [strength artificial stress @<:@none, basis-indp, mon2000, default: none@:>@]
    )],
-   [with_stress="$withval"],
-   [with_stress="none"]
+   [with_artificial_stress="$withval"],
+   [with_artificial_stress="none"]
 )
-if test "$with_stress" != "none"; then
-   case "$with_stress" in
-      mon2000)
-         AC_DEFINE([STRENGTH_STRESS_MON2000], [1], [Mon2000 artificial stress])
-      ;;
+if test "$with_artificial_stress" != "none"; then
+   case "$with_artificial_stress" in
       basis-indp)
-         AC_DEFINE([STRENGTH_STRESS_BASIS_INDP], [1], [Basis independent artificial stress])
+         AC_DEFINE([STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP], [1], [Basis independent artificial stress])
+      ;;
+      mon2000)
+         AC_DEFINE([STRENGTH_ARTIFICIAL_STRESS_MON2000], [1], [Mon2000 artificial stress])
       ;;
       *)
-         AC_MSG_ERROR([Unknown strength stress: $with_stress])
+         AC_MSG_ERROR([Unknown strength artificial stress: $with_artificial_stress])
       ;;
    esac
 fi
 
 #  Strength: yield stress
-AC_ARG_WITH([strength-yield],
-   [AS_HELP_STRING([--with-strength-yield=<yield>],
-      [strength yield @<:@none, benz-asphaug, collins default: none@:>@]
+AC_ARG_WITH([strength-yield-stress],
+   [AS_HELP_STRING([--with-strength-yield-stress=<yield>],
+      [strength yield stress @<:@none, benz-asphaug, collins default: none@:>@]
    )],
-   [with_yield="$withval"],
-   [with_yield="none"]
+   [with_yield_stress="$withval"],
+   [with_yield_stress="none"]
 )
-if test "$with_yield" != "none"; then
-   case "$with_yield" in
+if test "$with_yield_stress" != "none"; then
+   case "$with_yield_stress" in
       benz-asphaug)
-         AC_DEFINE([STRENGTH_YIELD_BENZ_ASPHAUG], [1], [Benz and Asphaug yield stress])
+         AC_DEFINE([STRENGTH_YIELD_STRESS_BENZ_ASPHAUG], [1], [Benz and Asphaug yield stress])
       ;;
       collins)
-         AC_DEFINE([STRENGTH_YIELD_COLLINS], [1], [Collins yield stress])
+         AC_DEFINE([STRENGTH_YIELD_STRESS_COLLINS], [1], [Collins yield stress])
       ;;
       *)
-         AC_MSG_ERROR([Unknown yield stress: $with_yield])
+         AC_MSG_ERROR([Unknown yield stress: $with_yield_stress])
       ;;
    esac
 
    AC_DEFINE([STRENGTH_YIELD_STRESS], [1], [Any yield stress model])
 fi
 
-#  Strength: thermal softening
-AC_ARG_ENABLE([strength-yield-thermal-softening],
-   [AS_HELP_STRING([--enable-strength-yield-thermal-softening],
-     [Enable thermal softened yield stress @<:@yes/no@:>@]
+#  Strength: yield stress softening: thermal
+AC_ARG_ENABLE([strength-yield-stress-softening-thermal],
+   [AS_HELP_STRING([--enable-strength-yield-stress-softening-thermal],
+     [Enable thermal softening of yield stress @<:@yes/no@:>@]
    )],
-   [strength_yield_thermal_softening="$enableval"],
-   [strength_yield_thermal_softening="no"]
+   [strength_yield_stress_softening_thermal="$enableval"],
+   [strength_yield_stress_softening_thermal="no"]
 )
-if test "$strength_yield_thermal_softening" = "yes"; then
-   AC_DEFINE([STRENGTH_YIELD_THERMAL_SOFTENING],1,[Enable thermal-softened yield stress])
+if test "$strength_yield_stress_softening_thermal" = "yes"; then
+   AC_DEFINE([STRENGTH_YIELD_STRESS_SOFTENING_THERMAL],1,[Enable thermal softening of yield stress])
 fi
 
-#  Strength: density softening
-AC_ARG_ENABLE([strength-yield-density-softening],
-   [AS_HELP_STRING([--enable-strength-yield-density-softening],
-     [Enable density softened yield stress @<:@yes/no@:>@]
+#  Strength: yield stress softening: density 
+AC_ARG_ENABLE([strength-yield-stress-softening-density],
+   [AS_HELP_STRING([--enable-strength-yield-stress-softening-density],
+     [Enable density softening of yield stress @<:@yes/no@:>@]
    )],
-   [strength_yield_density_softening="$enableval"],
-   [strength_yield_density_softening="no"]
+   [strength_yield_stress_softening_density="$enableval"],
+   [strength_yield_stress_softening_density="no"]
 )
-if test "$strength_yield_density_softening" = "yes"; then
-   AC_DEFINE([STRENGTH_YIELD_DENSITY_SOFTENING],1,[Enable density-softened yield stress])
+if test "$strength_yield_stress_softening_density" = "yes"; then
+   AC_DEFINE([STRENGTH_YIELD_STRESS_SOFTENING_DENSITY],1,[Enable density softening of yield stress])
 fi
 
 #  Strength: damage

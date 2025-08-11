@@ -17,22 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_STRESS_H
-#define SWIFT_PLANETARY_STRESS_H
-#ifdef MATERIAL_STRENGTH
+#ifndef SWIFT_STRENGTH_STRESS_TENSOR_H
+#define SWIFT_STRENGTH_STRESS_TENSOR_H
 
 /**
- * @file Planetary/strength_stress.h
- * @brief REMIX implementation of SPH with material strength
+ * @file strength/strength_stress_tensor.h
+ * @brief Hooke's Law model for elastc stress 
  */
 
 #include "const.h"
 #include "equation_of_state.h"
 #include "hydro_parameters.h"
 #include "math.h"
-#include "strength_damage.h"
 #include "strength_utilities.h"
-#include "strength_yield.h"
 
 /**
  * @brief Set the (symmetric) stress tensor by combining the deviatoric with the
@@ -43,93 +40,16 @@
 __attribute__((always_inline)) INLINE static void hydro_set_stress_tensor(
     struct part *restrict p, const float pressure) {
 
-  #ifdef STRENGTH_DAMAGE
-    p->strength_data.stress_tensor = stress_tensor_damaged(p->strength_data.deviatoric_stress_tensor, pressure, p->strength_data.damage);
-  #else
-    p->strength_data.stress_tensor = p->strength_data.deviatoric_stress_tensor;
-    p->strength_data.stress_tensor.xx -= pressure;
-    p->strength_data.stress_tensor.yy -= pressure;
-    p->strength_data.stress_tensor.zz -= pressure;
-  #endif /* STRENGTH_DAMAGE */  
+  p->strength_data.stress_tensor = p->strength_data.deviatoric_stress_tensor;
+  p->strength_data.stress_tensor.xx -= pressure;
+  p->strength_data.stress_tensor.yy -= pressure;
+  p->strength_data.stress_tensor.zz -= pressure;
+
+  const float damage = p->strength_data.damage;
+  adjust_stress_tensor_by_damage(p->strength_data.stress_tensor, p->strength_data.deviatoric_stress_tensor,  pressure, damage);
     
-    // Compute principal stresses
-    sym_matrix_compute_eigenvalues(p->strength_data.principal_stress_eigen, p->strength_data.stress_tensor);
-}
-
-/**
- * @brief Update the pairwise stress tensors with artificial stress.
- */
-__attribute__((always_inline)) INLINE static void strength_add_artif_stress(
-    float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
-    const struct part *restrict pi, const struct part *restrict pj,
-    const float r) {
-   #if defined(STRENGTH_STRESS_MON2000)
-      // Artificial stress (Monaghan, 2000)
-      const float max_h = max(pi->h, pj->h);
-      const float delta_p = max_h / 1.487; // ### hardcoded for now
-
-      float wij_delta_p;
-      kernel_eval(delta_p / max_h, &wij_delta_p);
-
-      float wij_r;
-      kernel_eval(r / max_h, &wij_r);
-
-      // This factor should be set in extra parameter file
-      const float artif_stress_n = method_artif_stress_n();
-      const float artif_stress_f = powf(wij_r / wij_delta_p, artif_stress_n);
-
-      // This factor should be set in extra parameter file
-      const float artif_stress_epsilon = method_artif_stress_epsilon();
-
-      for (int i = 0; i < 3; ++i) {
-          for (int j = 0; j < 3; ++j) {
-            if (pairwise_stress_tensor_i[i][j] > 0.f)
-              pairwise_stress_tensor_i[i][j] -= artif_stress_f *
-                  artif_stress_epsilon * pairwise_stress_tensor_i[i][j]; 
-            if (pairwise_stress_tensor_j[i][j] > 0.f) 
-              pairwise_stress_tensor_j[i][j] -= artif_stress_f * 
-                  artif_stress_epsilon * pairwise_stress_tensor_j[i][j];
-          }
-      }
-   #elif defined(STRENGTH_STRESS_BASIS_INDP)
-  /* New version that is independent of basis:
-   * Principal stresses are basis-independent
-   * Adding the same constant to all diagonal elemenets is equivalent in any
-   * basis: M + c*I = P (M + c*I) P^-1 = P M P^-1 + P (c*I) P^-1 = P M P^-1 +
-   * c*I This is a lot easier than e.g. Gray, Monaghan, and Swift (2001) */
-
-  // ### hardcoded for now so it works with Planetary (WC2)
-  const float eta_crit = 1.f / 1.487;//viscosity_global.eta_crit;
-  float eta_ab = min(r / pi->h, r / pj->h);
-
-  float artif_stress_f = 0.f;
-  if (eta_ab < eta_crit) {
-    // ### hardcoded for now so it works with Planetary    
-    artif_stress_f = 1.f - expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
-                   0.04f);// hydro_slope_limiter_exp_denom);
-  }
-
-  float max_principal_stress_i = pi->strength_data.principal_stress_eigen[0];
-  if (pi->strength_data.principal_stress_eigen[1] > max_principal_stress_i)
-    max_principal_stress_i = pi->strength_data.principal_stress_eigen[1];
-  if (pi->strength_data.principal_stress_eigen[2] > max_principal_stress_i)
-    max_principal_stress_i = pi->strength_data.principal_stress_eigen[2];
-
-  float max_principal_stress_j = pj->strength_data.principal_stress_eigen[0];
-  if (pj->strength_data.principal_stress_eigen[1] > max_principal_stress_j)
-    max_principal_stress_j = pj->strength_data.principal_stress_eigen[1];
-  if (pj->strength_data.principal_stress_eigen[2] > max_principal_stress_j)
-    max_principal_stress_j = pj->strength_data.principal_stress_eigen[2];
-
-  for (int i = 0; i < 3; ++i) {
-    if (max_principal_stress_i > 0)
-      pairwise_stress_tensor_i[i][i] -=
-          artif_stress_f * max_principal_stress_i;
-    if (max_principal_stress_j > 0)
-      pairwise_stress_tensor_j[i][i] -=
-          artif_stress_f * max_principal_stress_j;
-  }
-  #endif
+  // Compute principal stresses (maybe this should be done in separate function)
+  sym_matrix_compute_eigenvalues(p->strength_data.principal_stress_eigen, p->strength_data.stress_tensor);
 }
 
 /**
@@ -214,5 +134,4 @@ __attribute__((always_inline)) INLINE static void evolve_deviatoric_stress(
   }    
 }
 
-#endif /* MATERIAL_STRENGTH */
-#endif /* SWIFT_PLANETARY_STRESS_H */
+#endif /* SWIFT_STRENGTH_STRESS_TENSOR_H */

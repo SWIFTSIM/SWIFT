@@ -17,31 +17,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STRENGTH_DAMAGE_H
-#define SWIFT_STRENGTH_DAMAGE_H
+#ifndef SWIFT_STRENGTH_ARTIFICIAL_STRESS_H
+#define SWIFT_STRENGTH_ARTIFICIAL_STRESS_H
 
 /**
- * @file strength/strength_damage.h
- * @brief Selects whether using damage models or not on configuration options.
+ * @file strength/strength_artificial_stress.h
+ * @brief Selects artificial stress model based on configuration options.
  */
 
-#if defined(STRENGTH_DAMAGE)
-
-#if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
-#include "damage/damage_shear/damage_shear_collins04.h"
+#if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP)
+#include "artificial_stress/artificial_stress_basis_indep.h"
+#elif defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
+#include "artificial_stress/artificial_stress_monaghan00.h"
 #else
-#include "damage/damage_shear/damage_shear_none.h"
-#endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
-
-#if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
-#include "damage/damage_tensile/damage_tensile_ba94.h"
-#else
-#include "damage/damage_tensile/damage_tensile_none.h"
-#endif /* STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG */
-
-#include "damage/damage.h"
-#else
-#include "damage/damage_none.h"
+#include "artificial_stress/artificial_stress_none.h"
 #endif
 
-#endif /* SWIFT_STRENGTH_DAMAGE_H */
+#endif /* SWIFT_STRENGTH_ARTIFICIAL_STRESS_H */

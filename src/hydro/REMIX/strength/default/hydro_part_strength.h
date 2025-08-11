@@ -43,7 +43,7 @@ struct strength_xpart_data {
   // Stress tensor
   struct sym_matrix deviatoric_stress_tensor_full;
 
-#if defined(STRENGTH_DAMAGE)
+#ifdef STRENGTH_DAMAGE
   // Accumulated damage at the last full step
   float damage_full;
 
@@ -79,7 +79,7 @@ struct strength_part_data {
   // Gradient of velocity, calculated using linear-order reproducing kernel.
   float dv_force_loop[3][3];
 
-#if defined(STRENGTH_DAMAGE)
+#ifdef STRENGTH_DAMAGE 
   // Accumulated damage
   float damage;
 
@@ -93,7 +93,7 @@ struct strength_part_data {
   float dD_dt;
 #endif
 
-#if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
+#ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
   // Number of flaws for tensile damage accumulation
   int number_of_flaws;
 

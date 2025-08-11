@@ -17,9 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_STRENGTH_UTILS_H
-#define SWIFT_PLANETARY_STRENGTH_UTILS_H
-#ifdef MATERIAL_STRENGTH
+#ifndef SWIFT_STRENGTH_UTILITIES_H
+#define SWIFT_STRENGTH_UTILITIES_H
 
 /**
  * @file strength/strength_utilities.h
@@ -108,5 +107,4 @@ __attribute__((always_inline)) INLINE static void calculate_rotation_term(
   }
 }
 
-#endif /* MATERIAL_STRENGTH */
-#endif /* SWIFT_PLANETARY_STRENGTH_UTILS_H */
+#endif /* SWIFT_STRENGTH_UTILITIES_H */

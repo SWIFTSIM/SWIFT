@@ -135,12 +135,12 @@ INLINE static void convert_units_material_params(struct mat_params *mat_params,
    mat_params->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
    // Specific EoS-dependent constants for material-strength schemes
-   #if defined(STRENGTH_YIELD_BENZ_ASPHAUG)
+   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
      mat_params->Y_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
 
      // cgs to internal
      mat_params->Y_0 /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
-   #elif defined(STRENGTH_YIELD_COLLINS)
+   #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
      // SI to cgs
      mat_params->Y_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
      mat_params->Y_M *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
@@ -197,18 +197,18 @@ INLINE static void set_material_params(struct mat_params *all_mat_params,
 
 
   // Specific EoS-independent constants for material-strength schemes
-  #if defined(STRENGTH_STRESS_MON2000) || defined(STRENGTH_STRESS_BASIS_INDP)
+  #if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
     method_params->artif_stress_n = parser_get_opt_param_float(
         file_params, "ArtificialStress:n", 0.f);
     method_params->artif_stress_epsilon = parser_get_opt_param_float(
         file_params, "ArtificialStress:epsilon", 0.f);
-  #endif /* STRENGTH_STRESS_MON2000 || STRENGTH_STRESS_BASIS_INDP */
+  #endif /* STRENGTH_STRESS_MON2000 */
 
   // Specific EoS-dependent constants for material-strength schemes
-  #if defined(STRENGTH_YIELD_BENZ_ASPHAUG)
+  #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
     mat_params->Y_0 =
         parser_get_opt_param_float(file_params, "YieldStress:Y_0", 0.f);
-  #elif defined(STRENGTH_YIELD_COLLINS)
+  #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
     mat_params->Y_0 =
         parser_get_opt_param_float(file_params, "YieldStress:Y_0", 0.f);
     mat_params->Y_M =
@@ -219,12 +219,12 @@ INLINE static void set_material_params(struct mat_params *all_mat_params,
         parser_get_opt_param_float(file_params, "YieldStress:mu_d", 0.f);
   #endif
 
-  #if defined(STRENGTH_YIELD_THERMAL_SOFTENING)
+  #if defined(STRENGTH_YIELD_STRESS_SOFTENING_THERMAL)
     method_params->yield_thermal_soft_xi = parser_get_opt_param_float(
         file_params, "YieldStress:yield_thermal_soft_xi", 0.f);
   #endif
 
-  #if defined(STRENGTH_YIELD_DENSITY_SOFTENING)
+  #if defined(STRENGTH_YIELD_STRESS_SOFTENING_DENSITY)
     method_params->yield_density_soft_mult_param = parser_get_opt_param_float(
         file_params, "YieldStress:yield_density_soft_mult_param", 0.f);
     method_params->yield_density_soft_pow_param = parser_get_opt_param_float(

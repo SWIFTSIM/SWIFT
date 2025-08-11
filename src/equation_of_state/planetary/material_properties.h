@@ -142,14 +142,14 @@ __attribute__((always_inline)) INLINE static float material_rho_0(
   return eos.all_mat_params[mat_index].rho_0;
 }
 
-#if defined(STRENGTH_YIELD_BENZ_ASPHAUG)
+#if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
   /** @brief Returns the Y_0 of a material */
   __attribute__((always_inline)) INLINE static float material_Y_0(
       const enum eos_planetary_material_id mat_id) {
     const int mat_index = material_index_from_mat_id(mat_id);
     return eos.all_mat_params[mat_index].Y_0;
   }
-#elif defined(STRENGTH_YIELD_COLLINS)
+#elif defined(STRENGTH_YIELD_STRESS_COLLINS)
   /** @brief Returns the Y_0 of a material */
   __attribute__((always_inline)) INLINE static float material_Y_0(
       const enum eos_planetary_material_id mat_id) {
@@ -197,7 +197,7 @@ __attribute__((always_inline)) INLINE static float material_rho_0(
 
 // Method parameters
 
-#if defined(STRENGTH_STRESS_MON2000) || defined(STRENGTH_STRESS_BASIS_INDP)
+#if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
   /** @brief Returns the artificial stress n parameter of a material */
   __attribute__((always_inline)) INLINE static float method_artif_stress_n(void) {
     return eos.method_params.artif_stress_n;
@@ -207,17 +207,17 @@ __attribute__((always_inline)) INLINE static float material_rho_0(
   __attribute__((always_inline)) INLINE static float method_artif_stress_epsilon(void) {
     return eos.method_params.artif_stress_epsilon;
   }
-#endif /* STRENGTH_STRESS_MON2000 || STRENGTH_STRESS_BASIS_INDP */
+#endif /* STRENGTH_ARTIFICIAL_STRESS_MON2000 */
 
-#if defined(STRENGTH_YIELD_THERMAL_SOFTENING)
+#if defined(STRENGTH_YIELD_STRESS_SOFTENING_THERMAL)
   /** @brief Returns the yield stress thermal softening parameter of a material */
   __attribute__((always_inline)) INLINE static float
   method_yield_thermal_soft_xi(void) {
     return eos.method_params.yield_thermal_soft_xi;
   }
-#endif /* STRENGTH_YIELD_THERMAL_SOFTENING */
+#endif /* STRENGTH_YIELD_STRESS_SOFTENING_THERMAL */
 
-#if defined(STRENGTH_YIELD_DENSITY_SOFTENING)
+#if defined(STRENGTH_YIELD_STRESS_SOFTENING_DENSITY)
   /** @brief Returns the yield stress density softening multiplication parameter
    * of a material */
   __attribute__((always_inline)) INLINE static float
@@ -231,7 +231,7 @@ __attribute__((always_inline)) INLINE static float material_rho_0(
   method_yield_density_soft_pow_param(void) {
     return eos.method_params.yield_density_soft_pow_param;
   }
-#endif /* STRENGTH_YIELD_DENSITY_SOFTENING */
+#endif /* STRENGTH_YIELD_STRESS_SOFTENING_DENSITY */
 
 #endif /* MATERIAL_STRENGTH */
 
