@@ -585,14 +585,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.Delta_B[i] -= mi * dB_dt_pref_Lap_j * wj_dr * dB[i];
 
     pi->mhd_data.stretching_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
-    pj->mhd_data.stretching_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
-    pi->mhd_data.dedner_B_source[i] -= mj * Qi * grad_psi_i * dx[i];
-    pj->mhd_data.dedner_B_source[i] += mj * Qj * grad_psi_j * dx[i];
-    pi->mhd_data.physical_resistivity_B_source[i] += mj * dB_dt_pref_PR_i * wi_dr * dB[i];
-    pj->mhd_data.physical_resistivity_B_source[i] -= mi * dB_dt_pref_PR_j * wj_dr * dB[i];
-    pi->mhd_data.artificial_resistivity_B_source[i] += mj * art_diff_pref_i * dB[i];
-    pj->mhd_data.artificial_resistivity_B_source[i] -= mi * art_diff_pref_j * dB[i];
-
+    pi->mhd_data.dedner_B_source[i] -= mj * grad_psi * dx[i];
+    pi->mhd_data.physical_resistivity_B_source[i] += resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
+    pi->mhd_data.artificial_resistivity_B_source[i] += mj * art_diff_pref * dB[i];
+    pj->mhd_data.stretching_B_source[i] += mi * dB_dt_pref_k * dB_dt_j[i];
+    pj->mhd_data.dedner_B_source[i] += mi * grad_psi * dx[i];
+    pj->mhd_data.physical_resistivity_B_source[i] -= resistive_eta_j * mi * dB_dt_pref_PR * dB[i];
+    pj->mhd_data.artificial_resistivity_B_source[i] -= mi * art_diff_pref * dB[i];
   }
 }
 
@@ -858,8 +857,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap * wi_dr * dB[i];
 
     pi->mhd_data.stretching_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
-    pi->mhd_data.dedner_B_source[i] -= mj * Qi * grad_psi_i * dx[i];
-    pi->mhd_data.physical_resistivity_B_source[i] += mj * dB_dt_pref_PR * wi_dr * dB[i];
+    pi->mhd_data.dedner_B_source[i] -= mj * grad_psi * dx[i];
+    pi->mhd_data.physical_resistivity_B_source[i] += resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
     pi->mhd_data.artificial_resistivity_B_source[i] += mj * art_diff_pref * dB[i];
   }
 }
