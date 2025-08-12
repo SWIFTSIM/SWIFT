@@ -32,7 +32,7 @@
  * @brief Compute the J_2 invariant of the deviatoric stress tensor.
  */
 __attribute__((always_inline)) INLINE static float J_2_from_stress_tensor(
-    struct sym_matrix *sym_matrix_deviatoric_stress_tensor) {
+    const struct sym_matrix *sym_matrix_deviatoric_stress_tensor) {
 
   // ### Does j_2 need to be decreased by a factor of (1 - damage)^2 for B&A?
   float deviatoric_stress_tensor[3][3];
@@ -56,12 +56,12 @@ __attribute__((always_inline)) INLINE static float J_2_from_stress_tensor(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void calculate_strain_rate_tensor(
-    struct part *restrict p, float strain_rate_tensor[3][3]) {
+    const float dv[3][3], float strain_rate_tensor[3][3]) {
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       strain_rate_tensor[i][j] =
-          0.5f * (p->strength_data.dv_force_loop[i][j] + p->strength_data.dv_force_loop[j][i]);
+          0.5f * (dv[i][j] + dv[j][i]);
     }
   }
 }
@@ -72,13 +72,13 @@ __attribute__((always_inline)) INLINE static void calculate_strain_rate_tensor(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-calculate_rotation_rate_tensor(struct part *restrict p,
+calculate_rotation_rate_tensor(const float dv[3][3],
                                float rotation_rate_tensor[3][3]) {
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       rotation_rate_tensor[i][j] =
-          0.5f * (p->strength_data.dv_force_loop[j][i] - p->strength_data.dv_force_loop[i][j]);
+          0.5f * (dv[j][i] - dv[i][j]);
     }
   }
 }

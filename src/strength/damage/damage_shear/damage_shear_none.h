@@ -36,7 +36,15 @@
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void calculate_shear_dD_dt(
-    struct part *restrict p, float *shear_dD_dt, struct sym_matrix deviatoric_stress_tensor, const float yield_stress, const float density, const float u) {}
+    float *shear_dD_dt, const struct sym_matrix deviatoric_stress_tensor, const int mat_id, const float density, const float u, const float yield_stress, const float shear_damage) {}
+
+/**
+ * @brief Steps particle shear damage
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void step_damage_shear(
+    float *shear_damage, const float shear_dD_dt, const float dt_therm) {}
 
 /**
  * @brief Evolves particle shear damage
@@ -44,6 +52,7 @@ __attribute__((always_inline)) INLINE static void calculate_shear_dD_dt(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void evolve_damage_shear(
-    struct part *restrict p, float *shear_damage, const float  shear_dD_dt, const float dt_therm) {}
+    struct part *restrict p, float *shear_damage, const struct sym_matrix deviatoric_stress_tensor, 
+    const int mat_id, const float density, const float u, const float yield_stress, const float dt_therm) {}
 
 #endif /* SWIFT_DAMAGE_SHEAR_NONE_H */

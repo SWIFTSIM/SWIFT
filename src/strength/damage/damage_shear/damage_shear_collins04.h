@@ -36,30 +36,36 @@
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void calculate_shear_dD_dt(
-    struct part *restrict p, float *shear_dD_dt, struct sym_matrix deviatoric_stress_tensor, const float yield_stress, const float density, const float u) {
-   
+    float *shear_dD_dt, const struct sym_matrix deviatoric_stress_tensor, const int mat_id, const float density, const float u, const float yield_stress, const float shear_damage) {
+    
   *shear_dD_dt = 0.f;
 
+  // Return with dD/dt = 0 if already at max shear damage
+  if (shear_damage >= 1.f) {
+    return;
+  } 
+
   // ### Made some changes here. Compare with old version when testing
-    
-  const float J_2 = J_2_from_stress_tensor(deviatoric_stress_tensor);
+  // ### Not sure whether this should be deviatoric_stress_tensor or damaged_deviatoric_stress_tensor.
+  // ### Currently deviatoric_stress_tensor, set in hydro_strength.h
+  const float J_2 = J_2_from_stress_tensor(&deviatoric_stress_tensor);
     
   // See Collins for this.
   if (sqrtf(J_2) > yield_stress) {
     const float pressure =
-        gas_pressure_from_internal_energy(density, u, p->mat_id);     
+        gas_pressure_from_internal_energy(density, u, mat_id);     
     // do I need this or can it happen when p is negative as well?
     if (pressure > 0) {
       // shear damage
       float brittle_to_ductile_pressure =
-          material_brittle_to_ductile_pressure(p->mat_id);
+          material_brittle_to_ductile_pressure(mat_id);
       float brittle_to_plastic_pressure =
-          material_brittle_to_plastic_pressure(p->mat_id);
+          material_brittle_to_plastic_pressure(mat_id);
 
       float plastic_strain_at_failure;
       if (pressure < brittle_to_ductile_pressure) {
 
-        // Is this meant to be inear? maybe not clear in paper
+        // Is this meant to be linear? maybe not clear in paper
         plastic_strain_at_failure =
             0.04f * (pressure / brittle_to_ductile_pressure) + 0.01f;
 
@@ -76,11 +82,22 @@ __attribute__((always_inline)) INLINE static void calculate_shear_dD_dt(
         plastic_strain_at_failure = 1.f;
       }
 
-      strain_rate_invariant = sqrtf(J_2);
+      const float strain_rate_invariant = sqrtf(J_2);
 
       *shear_dD_dt = (strain_rate_invariant / plastic_strain_at_failure);
     }
   }
+}
+
+/**
+ * @brief Steps particle shear damage
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void step_damage_shear(
+    float *shear_damage, const float shear_dD_dt, const float dt_therm) {
+ 
+  *shear_damage += min(shear_dD_dt * dt_therm, 1.f);
 }
 
 /**
@@ -89,9 +106,12 @@ __attribute__((always_inline)) INLINE static void calculate_shear_dD_dt(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void evolve_damage_shear(
-    struct part *restrict p, float *shear_damage, const float  shear_dD_dt, const float dt_therm) {
+    struct part *restrict p, float *shear_damage, const struct sym_matrix deviatoric_stress_tensor, 
+    const int mat_id, const float density, const float u, const float yield_stress, const float dt_therm) {
  
-  *shear_damage += min(shear_dD_dt * dt_therm, 1.f);
+  float shear_dD_dt;
+  calculate_shear_dD_dt(&shear_dD_dt, deviatoric_stress_tensor, mat_id, density, u, yield_stress, *shear_damage);
+  step_damage_shear(shear_damage, shear_dD_dt, dt_therm);
 }
 
 #endif /* SWIFT_DAMAGE_SHEAR_COLLINS04_H */

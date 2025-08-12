@@ -54,8 +54,7 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_model_adjus
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float
-adjust_yield_stress_by_damage(struct part *restrict p,
-  const float yield_stress_intact, const float yield_stress_fully_damaged, const float damage) {
+adjust_yield_stress_by_damage(const float yield_stress_intact, const float yield_stress_fully_damaged, const float damage) {
 
   return yield_stress_intact;
 }
@@ -66,13 +65,13 @@ adjust_yield_stress_by_damage(struct part *restrict p,
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float compute_yield_stress_intact(
-    struct part *restrict p, const int phase_state, const float pressure) {
+    const int mat_id, const int phase_state, const float pressure) {
 
   float yield_stress_intact = 0.f;
 
   if (phase_state != mat_phase_state_fluid) {
     // Constant yield stress
-    yield_stress_intact = material_Y_0(p->mat_id);
+    yield_stress_intact = material_Y_0(mat_id);
   }
 
   return yield_stress_intact;
@@ -84,12 +83,12 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress_intact(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float compute_yield_stress_fully_damaged(
-    struct part *restrict p, const int phase_state, const float pressure,
+    const int mat_id, const int phase_state, const float pressure,
     const float yield_stress_intact) {
 
   // Constant yield stress. 
   // Instead damage appears in effective_deviatoric_stress_from_damage()
-  return compute_yield_stress_intact(p, phase_state, pressure);
+  return compute_yield_stress_intact(mat_id, phase_state, pressure);
 }
 
 /**
@@ -98,51 +97,25 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress_fully_da
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float compute_yield_stress(
-    struct part *restrict p, const int phase_state, const float density, const float u, const float damage) {
+    const int mat_id, const int phase_state, const float density, const float u, const float damage) {
 
   float yield_stress = 0.f;
 
   if (phase_state != mat_phase_state_fluid) {
     const float pressure =
-      gas_pressure_from_internal_energy(density, u, p->mat_id);    
+      gas_pressure_from_internal_energy(density, u, mat_id);    
       
     // Constant yield stress
-    yield_stress = compute_yield_stress_intact(p, phase_state, pressure);
+    yield_stress = compute_yield_stress_intact(mat_id, phase_state, pressure);
 
     yield_stress =
-        adjust_yield_stress_by_density(p, yield_stress, density);
+        adjust_yield_stress_by_density(yield_stress, mat_id, density);
 
     yield_stress =
-        adjust_yield_stress_by_temperature(p, yield_stress, density, u);
+        adjust_yield_stress_by_temperature(yield_stress, mat_id, density, u);
   }
 
   return yield_stress;
-}
-
-/**
- * @brief Calculates the yield stress using p->strength_data.damage
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static float compute_yield_stress_damage(
-    struct part *restrict p, const int phase_state, const float density, const float u) {
-
-  const float damage = strength_get_damage(p);
-
-  return compute_yield_stress(p, phase_state, density, u, damage);
-}
-
-/**
- * @brief Calculates the yield stress using xp->strength_data.damage_full
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static float compute_yield_stress_damage_full(
-    struct part *restrict p, struct xpart *restrict xp, const int phase_state, const float density, const float u) {
-
-  const float damage = strength_get_damage_full(xp);
-    
-  return compute_yield_stress(p, phase_state, density, u, damage);
 }
 
 /**
@@ -152,7 +125,7 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress_damage_f
  */
 __attribute__((always_inline)) INLINE static void
 adjust_deviatoric_stress_tensor_by_yield_stress(
-    struct part *restrict p, struct sym_matrix *deviatoric_stress_tensor,
+    struct sym_matrix *deviatoric_stress_tensor,
     const float yield_stress, const float density, const float u) {
 
   float J_2 = J_2_from_stress_tensor(deviatoric_stress_tensor);

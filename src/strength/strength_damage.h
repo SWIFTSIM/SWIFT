@@ -39,7 +39,7 @@
 #include "damage/damage_tensile/damage_tensile_none.h"
 #endif /* STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG */
 
-#include "damage/damage.h"
+#include "damage/damage_core.h"
 #else
 #include "damage/damage_none.h"
 #endif

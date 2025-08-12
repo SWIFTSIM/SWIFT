@@ -45,11 +45,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_stress_tensor(
   p->strength_data.stress_tensor.yy -= pressure;
   p->strength_data.stress_tensor.zz -= pressure;
 
-  const float damage = p->strength_data.damage;
-  adjust_stress_tensor_by_damage(p->strength_data.stress_tensor, p->strength_data.deviatoric_stress_tensor,  pressure, damage);
-    
-  // Compute principal stresses (maybe this should be done in separate function)
-  sym_matrix_compute_eigenvalues(p->strength_data.principal_stress_eigen, p->strength_data.stress_tensor);
+  const float damage = strength_get_damage(p);
+  const struct sym_matrix damaged_deviatoric_stress_tensor = yield_model_adjust_deviatoric_stress_tensor_by_damage(p->strength_data.deviatoric_stress_tensor, damage);
+  damaged_stress_tensor(&p->strength_data.stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
 }
 
 /**
@@ -81,7 +79,7 @@ hydro_set_pairwise_stress_tensors_strength(float pairwise_stress_tensor_i[3][3],
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void calculate_dS_dt(struct part *restrict p) {
+__attribute__((always_inline)) INLINE static void calculate_dS_dt(struct part *restrict p, const float dv[3][3]) {
 
   float strain_rate_tensor[3][3], rotation_rate_tensor[3][3],
       rotation_term[3][3];
@@ -90,8 +88,8 @@ __attribute__((always_inline)) INLINE static void calculate_dS_dt(struct part *r
                              &p->strength_data.deviatoric_stress_tensor);
 
   // Set the strain and rotation rates
-  calculate_strain_rate_tensor(p, strain_rate_tensor);
-  calculate_rotation_rate_tensor(p, rotation_rate_tensor);
+  calculate_strain_rate_tensor(dv, strain_rate_tensor);
+  calculate_rotation_rate_tensor(dv, rotation_rate_tensor);
   calculate_rotation_term(rotation_term, rotation_rate_tensor,
                           deviatoric_stress_tensor);  
     

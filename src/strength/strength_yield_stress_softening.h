@@ -35,16 +35,16 @@
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float
-adjust_yield_stress_by_temperature(struct part *restrict p, const float Y,
+adjust_yield_stress_by_temperature(const float Y, const int mat_id,
                                    const float density, const float u) {
 
 #ifdef STRENGTH_YIELD_STRESS_SOFTENING_THERMAL
   const float temperature =
-        gas_temperature_from_internal_energy(density, u, p->mat_id);
+        gas_temperature_from_internal_energy(density, u, mat_id);
   //  This is from Emsenhuber+2017
   //  See Senft+Stewart2007 for why this comes here and not just for intact
   const float xi = method_yield_thermal_soft_xi();
-  const float T_melt = material_T_melt(p->mat_id);
+  const float T_melt = material_T_melt(mat_id);
     
   return Y * tanhf(xi * (T_melt / temperature - 1.f));
 #else
@@ -60,11 +60,11 @@ adjust_yield_stress_by_temperature(struct part *restrict p, const float Y,
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float
-adjust_yield_stress_by_density(struct part *restrict p, const float Y,
+adjust_yield_stress_by_density(const float Y, const int mat_id,
                                const float density) {
 
 #ifdef STRENGTH_YIELD_STRESS_SOFTENING_DENSITY
-  const float rho_0 = material_rho_0(p->mat_id);
+  const float rho_0 = material_rho_0(mat_id);
   const float a = method_yield_density_soft_mult_param();
   const float rho_weak = a * rho_0;
     
