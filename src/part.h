@@ -148,7 +148,7 @@ struct threadpool;
 
 /* Import the right SIDM particle definition */
 #if defined(SIDM_NONE)
-#include "./sidm/Default/sidm_part.h"
+#include "./sidm/None/sidm_part.h"
 #elif defined(SIDM_BASIC)
 #include "./sidm/Basic/sidm_part.h"
 #else
