@@ -47,6 +47,7 @@
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "pressure_floor.h"
+#include "strength.h"
 
 /*
  * Note: Define PLANETARY_SPH_NO_BALSARA to disable the Balsara (1995) switch
@@ -526,6 +527,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
+    
+  hydro_init_part_extra_strength(p);
 }
 
 /**
@@ -572,6 +575,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Finish calculation of the (physical) velocity divergence */
   p->density.div_v *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+
+  hydro_end_density_extra_strength(p);
 }
 
 /**
@@ -670,6 +675,18 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
 
+#ifdef PLANETARY_FIXED_ENTROPY
+  /* Override the internal energy to satisfy the fixed entropy */
+  p->u = gas_internal_energy_from_entropy(p->rho, p->s_fixed, p->mat_id);
+  xp->u_full = p->u;
+#endif
+
+  hydro_prepare_force_extra_strength(p, p->rho, p->u);
+
+  p->phase_state =
+    (enum mat_phase_state)material_phase_state_from_internal_energy(
+     p->rho, p->u, p->mat_id);
+
   const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
 
   /* Compute the norm of the curl */
@@ -680,12 +697,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the norm of div v including the Hubble flow term */
   const float div_physical_v = p->density.div_v + hydro_dimension * cosmo->H;
   const float abs_div_physical_v = fabsf(div_physical_v);
-
-#ifdef PLANETARY_FIXED_ENTROPY
-  /* Override the internal energy to satisfy the fixed entropy */
-  p->u = gas_internal_energy_from_entropy(p->rho, p->s_fixed, p->mat_id);
-  xp->u_full = p->u;
-#endif
 
   /* Compute the pressure */
   const float pressure =
@@ -765,6 +776,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
   p->force.v_sig = p->force.soundspeed;
+
+  hydro_reset_acceleration_strength(p);
 }
 
 /**
@@ -787,6 +800,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   /* Re-set the internal energy */
   p->u = xp->u_full;
+  p->phase_state = xp->phase_state_full;
+  hydro_reset_predicted_values_extra_strength(p, xp);
 
   /* Compute the pressure */
   const float pressure =
@@ -827,12 +842,14 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     const struct entropy_floor_properties *floor_props,
     const struct pressure_floor_props *pressure_floor) {
 
+  hydro_predict_extra_strength_beginning(p, dt_therm);
+
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
 
   /* Check against absolute minimum */
   const float min_u =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+      max(hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy, FLT_MIN);
 
   p->u = max(p->u, min_u);
 
@@ -864,6 +881,12 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.soundspeed = soundspeed;
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+
+  p->phase_state =
+    (enum mat_phase_state)material_phase_state_from_internal_energy(
+     p->rho, p->u, p->mat_id);
+
+ hydro_predict_extra_strength_end(p, dt_therm);
 }
 
 /**
@@ -882,6 +905,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
+
+  hydro_end_force_extra_strength(p);
 }
 
 /**
@@ -907,6 +932,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
+  hydro_kick_extra_strength_beginning(p, xp, dt_therm);
+
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
 
@@ -921,6 +948,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     xp->u_full = min_u;
     p->u_dt = 0.f;
   }
+
+  xp->phase_state_full =
+    (enum mat_phase_state)material_phase_state_from_internal_energy(
+     p->rho, xp->u_full, p->mat_id);
+    
+  hydro_kick_extra_strength_end(p, xp, dt_therm);
 }
 
 /**
@@ -970,6 +1003,13 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
+
+  p->phase_state =
+    (enum mat_phase_state)material_phase_state_from_internal_energy(
+     p->rho, p->u, p->mat_id);
+  xp->phase_state_full = p->phase_state;
+
+  hydro_first_init_part_strength(p, xp);
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
