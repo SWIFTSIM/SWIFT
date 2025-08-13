@@ -136,6 +136,19 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       cell_sink_counts == NULL)
     error("Failed to allocate cell particle count buffer.");
 
+#ifdef MOVING_MESH
+  /* Make sure parts are in gparts*/
+  for (size_t i = 0; i < s->nr_parts; ++i) {
+    const struct part *p = &s->parts[i];
+
+    if (p->gpart != NULL) {
+      p->gpart->x[0] = p->x[0];
+      p->gpart->x[1] = p->x[1];
+      p->gpart->x[2] = p->x[2];
+    }
+  }
+#endif
+
   /* Initialise the counters, including buffer space for future particles */
   for (int i = 0; i < s->nr_cells; ++i) {
     cell_part_counts[i] = 0;
@@ -913,15 +926,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   swift_free("g_index", g_index);
   swift_free("cell_gpart_counts", cell_gpart_counts);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Verify that the links are correct */
-  if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0) ||
-      (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0))
-    part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                      nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
-                      verbose);
-#endif
-
   /* Hook the cells up to the parts. Make list of local and non-empty cells */
   const ticks tic3 = getticks();
   struct part *finger = s->parts;
@@ -1007,6 +1011,28 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* At this point, we have the upper-level cells. Now recursively split each
      cell to get the full AMR grid. */
   space_split(s, verbose);
+
+#ifdef MOVING_MESH
+  /* Make sure parts are moved to CoM */
+  for (size_t i = 0; i < s->nr_parts; ++i) {
+    const struct part *p = &s->parts[i];
+
+    if (p->gpart != NULL) {
+      p->gpart->x[0] = p->x[0] + p->geometry.centroid[0];
+      p->gpart->x[1] = p->x[1] + p->geometry.centroid[1];
+      p->gpart->x[2] = p->x[2] + p->geometry.centroid[2];
+    }
+  }
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that the links are correct */
+  if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0) ||
+      (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0))
+    part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
+                      nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
+                      s->dim, s->periodic, verbose);
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the multipole construction went OK */

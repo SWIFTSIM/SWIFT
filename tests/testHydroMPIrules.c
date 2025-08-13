@@ -84,7 +84,9 @@ void test(void) {
   float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
   /* --- Test the density loop --- */
+#ifndef MOVING_MESH_HYDRO
   runner_iact_nonsym_density(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+#endif
   runner_iact_nonsym_mhd_density(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
   runner_iact_nonsym_chemistry(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_pressure_floor(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
@@ -104,6 +106,19 @@ void test(void) {
   /* --- Test the gradient loop --- */
 #ifdef EXTRA_HYDRO_LOOP
 
+#ifdef MOVING_MESH_HYDRO
+  /* Set some extra quantities */
+  double shift[3] = {0., 0., 0.};
+  double centroid[3] = {pj.x[0] + 0.5 * dx[0], pj.x[1] + 0.5 * dx[1],
+                        pj.x[2] + 0.5 * dx[2]};
+  double pert = 0.5 * fminf(sqrtf(r2), fmaxf(pi.h, pj.h));
+  for (int i = 0; i < 3; i++) {
+    centroid[i] += random_uniform(0., pert);
+  }
+  float surface_area = random_uniform(0., 1.);
+  runner_iact_slope_estimate(&pi, &pj, centroid, surface_area, shift, 0);
+  runner_iact_slope_limiter(&pi, &pj, centroid, surface_area, shift, 0);
+#endif
   runner_iact_nonsym_gradient(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_mhd_gradient(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
 
@@ -120,8 +135,13 @@ void test(void) {
 #endif
 
   /* --- Test the force loop --- */
+#ifndef MOVING_MESH_HYDRO
   runner_iact_nonsym_force(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+#endif
   runner_iact_nonsym_mhd_force(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
+
+  /* Note: flux exchange is always symmetric, even when interacting with foreign
+   * particles, so we don't test it here. */
 
   /* Check that the particles are the same */
   j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));
