@@ -45,6 +45,7 @@ enum power_type {
   pow_type_neutrino,
   pow_type_neutrino_0,
   pow_type_neutrino_1,
+  pow_type_magnetic_energy,
   pow_type_count /* Nb. of power spect. types (always last elem. in the enum) */
 } __attribute__((packed));
 
