@@ -112,15 +112,25 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_e
     
 /**
  * @brief Predict additional particle strength properties forward in time when
- * drifting
+ * drifting. At beginning of hydro function, before hydro quantities have been drifted.
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_predict_extra_strength(
+__attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_beginning(
     struct part *restrict p, const float dt_therm) {}
 
 /**
- * @brief Kick the additional particle strength properties
+ * @brief Predict additional particle strength properties forward in time when
+ * drifting. At end of hydro function, after hydro quantities have been drifted.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_end(
+    struct part *restrict p, const float dt_therm) {}
+
+/**
+ * @brief Kick the additional particle strength properties.
+ * At beginning of hydro function, before hydro quantities have been kicked.
  *
  * Additional hydrodynamic quantites are kicked forward in time here. These
  * include thermal quantities (thermal energy or total energy or entropy, ...).
@@ -129,7 +139,21 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength(
  * @param xp The particle extended data to act upon.
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
  */
-__attribute__((always_inline)) INLINE static void hydro_kick_extra_strength(
+__attribute__((always_inline)) INLINE static void hydro_kick_extra_strength_beginning(
+    struct part *restrict p, struct xpart *restrict xp, float dt_therm) {}
+
+/**
+ * @brief Kick the additional particle strength properties
+ * At end of hydro function, after hydro quantities have been kicked.
+ *
+ * Additional hydrodynamic quantites are kicked forward in time here. These
+ * include thermal quantities (thermal energy or total energy or entropy, ...).
+ *
+ * @param p The particle to act upon.
+ * @param xp The particle extended data to act upon.
+ * @param dt_therm The time-step for this kick (for thermodynamic quantities).
+ */
+__attribute__((always_inline)) INLINE static void hydro_kick_extra_strength_end(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm) {}
 
 /**

@@ -47,7 +47,7 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_apply_damag
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float
-yield_apply_damage_to_yield_stress(const float yield_stress_intact, const float yield_stress_fully_damaged, const float damage) {
+yield_compute_damaged_yield_stress(const float yield_stress_intact, const float yield_stress_fully_damaged, const float damage) {
 
   return (1.f - damage) * yield_stress_intact + damage * yield_stress_fully_damaged;
 }
@@ -60,27 +60,21 @@ yield_apply_damage_to_yield_stress(const float yield_stress_intact, const float 
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_intact(
     const int mat_id, const int phase_state, const float pressure) {
 
-  float yield_stress_intact = 0.f;
-
-  if (phase_state != mat_phase_state_fluid) {
-
-    const float mu_i = material_mu_i(mat_id);
-    const float Y_0 = material_Y_0(mat_id);
-    const float Y_M = material_Y_M(mat_id);
-      
-    yield_stress_intact = Y_0;
-
-    // Should be able to decrease if negative pressures until yield_stress=0?
-    // miluphcuda does this so maybe not wrong?
-    if (pressure > 0.f) {
-      if (Y_M != Y_0) {
-        yield_stress_intact +=
-            mu_i * pressure / (1.f + (mu_i * pressure) / (Y_M - Y_0));
-      }
-    }
+  if (phase_state == mat_phase_state_fluid) {
+    return 0.f;
   }
 
-  return yield_stress_intact;
+  const float mu_i = material_mu_i(mat_id);
+  const float Y_0 = material_Y_0(mat_id);
+  const float Y_M = material_Y_M(mat_id);
+
+  // Should be able to decrease if negative pressures until yield_stress=0?
+  // miluphcuda does this so maybe not wrong?
+  if (pressure > 0.f && Y_M != Y_0) {
+    return Y_0 + mu_i * pressure / (1.f + (mu_i * pressure) / (Y_M - Y_0));
+  } else {
+    return Y_0;
+  }
 }
 
 /**
@@ -92,23 +86,17 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
     const int mat_id, const int phase_state, const float pressure,
     const float yield_stress_intact) {
 
-  float yield_stress_damaged = 0.f;
-
-  if (phase_state != mat_phase_state_fluid) {
-
-    const float mu_d = material_mu_d(mat_id);
-
-    if (pressure > 0.f) {
-      yield_stress_damaged = mu_d * pressure;
-    }
-
+  if (phase_state == mat_phase_state_fluid) {
+    return 0.f;
+  }
+      
+  if (pressure > 0.f) {    
     // Maybe yield_stress_damaged also needs have a max value indep of
     // yield_stress_intact? See e.g. Güldemeister et al. 2015; Winkler et al. 2018
-
-    yield_stress_damaged = fminf(yield_stress_damaged, yield_stress_intact);
+    return fminf(material_mu_d(mat_id), yield_stress_intact);
+  } else {
+    return 0.f;
   }
-
-  return yield_stress_damaged;
 }
 
 /**
@@ -119,28 +107,24 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
     const int mat_id, const int phase_state, const float density, const float u, const float damage) {
 
-  float yield_stress = 0.f;
-
-  if (phase_state != mat_phase_state_fluid) {
-
-    const float pressure =
-      gas_pressure_from_internal_energy(density, u, mat_id);    
-      
-    float yield_stress_intact = yield_compute_yield_stress_intact(mat_id, phase_state, pressure);
-    float yield_stress_fully_damaged =
-        yield_compute_yield_stress_fully_damaged(mat_id, phase_state, pressure, yield_stress_intact);
-
-    // ...
-    yield_stress = 
-        yield_apply_damage_to_yield_stress(yield_stress_intact, yield_stress_fully_damaged, damage);
-
-    // ### This was previously only for intact.
-    yield_stress =
-        yield_softening_apply_density_to_yield_stress(yield_stress, mat_id, density);
-
-    yield_stress =
-        yield_softening_apply_temperature_to_yield_stress(yield_stress, mat_id, density, u);
+  if (phase_state == mat_phase_state_fluid) {
+    return 0.f;
   }
+
+  const float pressure =
+    gas_pressure_from_internal_energy(density, u, mat_id);    
+      
+  const float yield_stress_intact = yield_compute_yield_stress_intact(mat_id, phase_state, pressure);
+  const float yield_stress_fully_damaged =
+      yield_compute_yield_stress_fully_damaged(mat_id, phase_state, pressure, yield_stress_intact);
+
+  // ...
+  float yield_stress = 
+      yield_compute_damaged_yield_stress(yield_stress_intact, yield_stress_fully_damaged, damage);
+
+  // ### This was previously only for intact.
+  yield_softening_apply_density_to_yield_stress(&yield_stress, mat_id, density);
+  yield_softening_apply_temperature_to_yield_stress(&yield_stress, mat_id, density, u);
 
   return yield_stress;
 }
@@ -161,7 +145,12 @@ yield_apply_yield_stress_to_deviatoric_stress_tensor(
   float f = fminf(yield_stress / sqrtf(J_2), 1.f);
 
   // ## should have some dt dependence?
-  for (int i = 0; i < 6; i++) deviatoric_stress_tensor->elements[i] *= f;
+  deviatoric_stress_tensor->xx *= f;
+  deviatoric_stress_tensor->yy *= f;
+  deviatoric_stress_tensor->zz *= f;
+  deviatoric_stress_tensor->xy *= f;
+  deviatoric_stress_tensor->xz *= f;
+  deviatoric_stress_tensor->yz *= f;
 }
 
 #endif /* SWIFT_YIELD_STRESS_COLLINS04_H */

@@ -47,12 +47,12 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
   const float eta_crit = 1.f / 1.487;//viscosity_global.eta_crit;
   float eta_ab = fminf(r / pi->h, r / pj->h);
 
-  float artif_stress_f = 0.f;
-  if (eta_ab < eta_crit) {
-    // ### hardcoded for now so it works with Planetary    
-    artif_stress_f = 1.f - expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
-                   0.04f);// hydro_slope_limiter_exp_denom);
+  if (eta_ab >= eta_crit) {
+    return;
   }
+
+  const float artif_stress_f = 1.f - expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
+                   0.04f);// hydro_slope_limiter_exp_denom);
 
   float max_principal_stress_i = pi->strength_data.principal_stress_eigen[0];
   if (pi->strength_data.principal_stress_eigen[1] > max_principal_stress_i)
@@ -66,13 +66,16 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
   if (pj->strength_data.principal_stress_eigen[2] > max_principal_stress_j)
     max_principal_stress_j = pj->strength_data.principal_stress_eigen[2];
 
-  for (int i = 0; i < 3; ++i) {
-    if (max_principal_stress_i > 0)
-      pairwise_stress_tensor_i[i][i] -=
-          artif_stress_f * max_principal_stress_i;
-    if (max_principal_stress_j > 0)
-      pairwise_stress_tensor_j[i][i] -=
-          artif_stress_f * max_principal_stress_j;
+  if (max_principal_stress_i > 0.f) {
+    pairwise_stress_tensor_i[0][0] -= artif_stress_f * max_principal_stress_i;
+    pairwise_stress_tensor_i[1][1] -= artif_stress_f * max_principal_stress_i;
+    pairwise_stress_tensor_i[2][2] -= artif_stress_f * max_principal_stress_i;
+  }
+
+  if (max_principal_stress_j > 0.f) {
+    pairwise_stress_tensor_j[0][0] -= artif_stress_f * max_principal_stress_j;
+    pairwise_stress_tensor_j[1][1] -= artif_stress_f * max_principal_stress_j;
+    pairwise_stress_tensor_j[2][2] -= artif_stress_f * max_principal_stress_j;
   }
 }
 

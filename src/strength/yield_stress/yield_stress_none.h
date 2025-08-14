@@ -55,7 +55,7 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_apply_damag
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float
-yield_apply_damage_to_yield_stress(const float yield_stress_intact, const float yield_stress_fully_damaged, const float damage) {
+yield_compute_damaged_yield_stress(const float yield_stress_intact, const float yield_stress_fully_damaged, const float damage) {
 
   return yield_stress_intact;
 }
@@ -68,15 +68,12 @@ yield_apply_damage_to_yield_stress(const float yield_stress_intact, const float 
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_intact(
     const int mat_id, const int phase_state, const float pressure) {
 
-  float yield_stress_intact = 0.f;
   const float max_yield_stress = FLT_MAX;
-
-  if (phase_state != mat_phase_state_fluid) {
-    // Treat intact solid as perfectly elastic.
-    yield_stress_intact = max_yield_stress;
+  if (phase_state == mat_phase_state_fluid) {
+    return 0.f;
   }
-
-  return yield_stress_intact;
+    
+  return max_yield_stress;
 }
 
 /**
@@ -101,15 +98,15 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
     const int mat_id, const int phase_state, const float density, const float u, const float damage) {
 
-  float yield_stress = 0.f;
-
-  if (phase_state != mat_phase_state_fluid) {
-    const float pressure =
-      gas_pressure_from_internal_energy(density, u, mat_id);    
-      
-    // Constant yield stress
-    yield_stress = yield_compute_yield_stress_intact(mat_id, phase_state, pressure);
+  if (phase_state == mat_phase_state_fluid) {
+    return 0.f;
   }
+    
+  const float pressure =
+    gas_pressure_from_internal_energy(density, u, mat_id);    
+      
+  // Constant yield stress
+  float yield_stress = yield_compute_yield_stress_intact(mat_id, phase_state, pressure);
 
   return yield_stress;
 }

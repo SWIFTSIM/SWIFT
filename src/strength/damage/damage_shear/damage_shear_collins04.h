@@ -68,44 +68,34 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
   // ### Not sure whether this should be deviatoric_stress_tensor or damaged_deviatoric_stress_tensor.
   // ### Currently deviatoric_stress_tensor, set in hydro_strength.h
   const float J_2 = strength_compute_stress_tensor_J_2(&deviatoric_stress_tensor);
+  const float strain_rate_invariant = sqrtf(J_2);
+  const float pressure =
+        gas_pressure_from_internal_energy(density, u, mat_id); 
     
-  // See Collins for this.
-  if (sqrtf(J_2) > yield_stress) {
-    const float pressure =
-        gas_pressure_from_internal_energy(density, u, mat_id);     
-    // do I need this or can it happen when p is negative as well?
-    if (pressure > 0) {
-      // shear damage
-      float brittle_to_ductile_pressure =
-          material_brittle_to_ductile_pressure(mat_id);
-      float brittle_to_plastic_pressure =
-          material_brittle_to_plastic_pressure(mat_id);
+  // See Collins for this. // do I need pressure < 0 condition or can it happen when p is negative as well?
+  if (sqrtf(J_2) > yield_stress || pressure < 0) {
+    return;
+  }    
+    
+  // shear damage
+  const float brittle_to_ductile_pressure = material_brittle_to_ductile_pressure(mat_id);
+  const float brittle_to_plastic_pressure = material_brittle_to_plastic_pressure(mat_id);
 
-      float plastic_strain_at_failure;
-      if (pressure < brittle_to_ductile_pressure) {
-
-        // Is this meant to be linear? maybe not clear in paper
-        plastic_strain_at_failure =
-            0.04f * (pressure / brittle_to_ductile_pressure) + 0.01f;
-
-      } else if (pressure < brittle_to_plastic_pressure) {
-
-        float slope = (0.1f - 0.05f) / (brittle_to_plastic_pressure -
-                                      brittle_to_ductile_pressure);
-        float intercept = brittle_to_ductile_pressure - slope * 0.05f;
-
-        plastic_strain_at_failure =
-            slope * pressure + intercept;
-
-      } else {
-        plastic_strain_at_failure = 1.f;
-      }
-
-      const float strain_rate_invariant = sqrtf(J_2);
-
-      *shear_dD_dt = (strain_rate_invariant / plastic_strain_at_failure);
-    }
+  float plastic_strain_at_failure;
+  if (pressure < brittle_to_ductile_pressure) {
+    // Is this meant to be linear? maybe not clear in paper
+    plastic_strain_at_failure = 0.04f * (pressure / brittle_to_ductile_pressure) + 0.01f;
+      
+  } else if (pressure < brittle_to_plastic_pressure) {
+    const float slope = (0.1f - 0.05f) / (brittle_to_plastic_pressure - brittle_to_ductile_pressure);
+    const float intercept = brittle_to_ductile_pressure - slope * 0.05f;
+    plastic_strain_at_failure = slope * pressure + intercept;
+      
+  } else {
+    plastic_strain_at_failure = 1.f;
   }
+
+  *shear_dD_dt = (strain_rate_invariant / plastic_strain_at_failure);
 }
 
 /**

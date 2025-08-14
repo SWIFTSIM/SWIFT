@@ -154,9 +154,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_e
 
   p->rho = xp->strength_data.rho_evol_full;
   p->strength_data.rho_evol = xp->strength_data.rho_evol_full;
-  p->strength_data.deviatoric_stress_tensor = xp->strength_data.deviatoric_stress_tensor_full;
-
-  damage_reset_predicted_values(p, xp);
+    
+  strength_reset_predicted_values_stress_tensor(p, xp);
+  strength_reset_predicted_values_damage(p, xp);
 }
 
 /**
@@ -322,12 +322,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part_strength
   p->strength_data.rho_evol = p->rho;
   xp->strength_data.rho_evol_full = p->strength_data.rho_evol;
 
-  for (int i = 0; i < 6; i++) {
-    p->strength_data.deviatoric_stress_tensor.elements[i] = 0.f;
-    xp->strength_data.deviatoric_stress_tensor_full.elements[i] = 0.f;
-  }
-
-  damage_first_init_part(p, xp);
+  strength_first_init_part_stress_tensor(p, xp);
+  strength_first_init_part_damage(p, xp);
 }
 
 #endif /* SWIFT_PLANETARY_STRENGTH_DEFAULT_H */

@@ -34,8 +34,8 @@
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static float
-yield_softening_apply_temperature_to_yield_stress(const float Y, const int mat_id,
+__attribute__((always_inline)) INLINE static void
+yield_softening_apply_temperature_to_yield_stress(float *Y, const int mat_id,
                                    const float density, const float u) {
 
 #ifdef STRENGTH_YIELD_STRESS_SOFTENING_THERMAL
@@ -46,12 +46,8 @@ yield_softening_apply_temperature_to_yield_stress(const float Y, const int mat_i
   const float xi = method_yield_thermal_soft_xi();
   const float T_melt = material_T_melt(mat_id);
     
-  return Y * tanhf(xi * (T_melt / temperature - 1.f));
-#else
-  return Y;
+  *Y *= tanhf(xi * (T_melt / temperature - 1.f));
 #endif /* STRENGTH_YIELD_STRESS_SOFTENING_THERMAL */
-
-
 }
 
 /**
@@ -59,8 +55,8 @@ yield_softening_apply_temperature_to_yield_stress(const float Y, const int mat_i
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static float
-yield_softening_apply_density_to_yield_stress(const float Y, const int mat_id,
+__attribute__((always_inline)) INLINE static void
+yield_softening_apply_density_to_yield_stress(float *Y, const int mat_id,
                                const float density) {
 
 #ifdef STRENGTH_YIELD_STRESS_SOFTENING_DENSITY
@@ -70,12 +66,8 @@ yield_softening_apply_density_to_yield_stress(const float Y, const int mat_id,
     
   if (density < rho_weak) {
     const float b = method_yield_density_soft_pow_param();
-    return Y * powf(density / rho_weak, b);
-  } else {
-    return Y;
+    *Y *= powf(density / rho_weak, b);
   }
-#else
-  return Y;
 #endif /* STRENGTH_YIELD_STRESS_SOFTENING_DENSITY */
 }
 

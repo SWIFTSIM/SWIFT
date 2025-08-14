@@ -54,14 +54,14 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
   // This factor should be set in extra parameter file
   const float artif_stress_epsilon = method_artif_stress_epsilon();
 
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-    if (pairwise_stress_tensor_i[i][j] > 0.f)
-      pairwise_stress_tensor_i[i][j] -= artif_stress_f *
-                  artif_stress_epsilon * pairwise_stress_tensor_i[i][j]; 
-    if (pairwise_stress_tensor_j[i][j] > 0.f) 
-      pairwise_stress_tensor_j[i][j] -= artif_stress_f * 
-                  artif_stress_epsilon * pairwise_stress_tensor_j[i][j];
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      if (pairwise_stress_tensor_i[i][j] > 0.f) {
+        pairwise_stress_tensor_i[i][j] -= artif_stress_f * artif_stress_epsilon * pairwise_stress_tensor_i[i][j];
+      }
+      if (pairwise_stress_tensor_j[i][j] > 0.f) {
+        pairwise_stress_tensor_j[i][j] -= artif_stress_f * artif_stress_epsilon * pairwise_stress_tensor_j[i][j];
+      }
     }
   }
 }

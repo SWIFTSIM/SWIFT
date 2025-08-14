@@ -79,10 +79,10 @@ __attribute__((always_inline)) INLINE static void strength_compute_stress_tensor
  */
 __attribute__((always_inline)) INLINE static void
 strength_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
-                                           float pairwise_stress_tensor_j[3][3],
-                                           const struct part *restrict pi,
-                                           const struct part *restrict pj,
-                                           const float r) {
+                                     float pairwise_stress_tensor_j[3][3],
+                                     const struct part *restrict pi,
+                                     const struct part *restrict pj,
+                                     const float r) {
 
   // Use the full stress tensor for solid particles
   if ((pi->phase_state == mat_phase_state_solid) &&
@@ -94,6 +94,12 @@ strength_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
     artif_stress_apply_artif_stress_to_pairwise_stress_tensors(pairwise_stress_tensor_i,
                                                                pairwise_stress_tensor_j, pi, pj, r);
   }
+}
+
+__attribute__((always_inline)) INLINE static void strength_reset_predicted_values_stress_tensor(
+    struct part *restrict p, const struct xpart *restrict xp) {
+    
+  p->strength_data.deviatoric_stress_tensor = xp->strength_data.deviatoric_stress_tensor_full;
 }
 
 /**
@@ -152,6 +158,13 @@ __attribute__((always_inline)) INLINE static void stress_tensor_evolve_deviatori
           p->strength_data.dS_dt.elements[i] * dt_therm;
     }
   }    
+}
+
+__attribute__((always_inline)) INLINE static void strength_first_init_part_stress_tensor(
+    struct part *restrict p, struct xpart *restrict xp) {
+
+  zero_sym_matrix(&p->strength_data.deviatoric_stress_tensor);
+  zero_sym_matrix(&xp->strength_data.deviatoric_stress_tensor_full);
 }
 
 #endif /* SWIFT_STRENGTH_STRESS_TENSOR_H */

@@ -56,7 +56,7 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_dama
 __attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
     struct sym_matrix *stress_tensor, const struct sym_matrix damaged_deviatoric_stress_tensor, const float pressure, const float damage) {}
 
-__attribute__((always_inline)) INLINE static void damage_reset_predicted_values(
+__attribute__((always_inline)) INLINE static void strength_reset_predicted_values_damage(
     struct part *restrict p, const struct xpart *restrict xp) {}
 
 /**
@@ -96,7 +96,7 @@ __attribute__((always_inline)) INLINE static void damage_compute_dD_dt(
     struct part *restrict p, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
     const int mat_id, const float mass, const float density, const float u, const float yield_stress) {}
 
-__attribute__((always_inline)) INLINE static void damage_first_init_part(
+__attribute__((always_inline)) INLINE static void strength_first_init_part_damage(
     struct part *restrict p, struct xpart *restrict xp) {}
 
 

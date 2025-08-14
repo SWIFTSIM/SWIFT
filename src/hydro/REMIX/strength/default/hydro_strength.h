@@ -110,12 +110,7 @@ hydro_prepare_force_extra_strength(struct part *restrict p,
 __attribute__((always_inline)) INLINE static void
 hydro_reset_acceleration_strength(struct part *restrict p) {
 
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      p->strength_data.dv_force_loop[i][j] = 0.f;
-    }
-  }
-
+  memset(p->strength_data.dv_force_loop, 0.f, 3 * 3 * sizeof(float));
   zero_sym_matrix(&p->strength_data.dS_dt);
 }
 
@@ -158,9 +153,8 @@ hydro_end_force_extra_strength(struct part *restrict p) {
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_extra_strength(
     struct part *restrict p, const struct xpart *restrict xp) {
 
-  p->strength_data.deviatoric_stress_tensor = xp->strength_data.deviatoric_stress_tensor_full;
-
-  damage_reset_predicted_values(p, xp);
+  strength_reset_predicted_values_stress_tensor(p, xp);
+  strength_reset_predicted_values_damage(p, xp);
 }
 
 /**
@@ -282,12 +276,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra_strength_end(
 __attribute__((always_inline)) INLINE static void hydro_first_init_part_strength(
     struct part *restrict p, struct xpart *restrict xp) {
 
-  for (int i = 0; i < 6; i++) {
-    p->strength_data.deviatoric_stress_tensor.elements[i] = 0.f;
-    xp->strength_data.deviatoric_stress_tensor_full.elements[i] = 0.f;
-  }
-  
-  damage_first_init_part(p, xp);
+  strength_first_init_part_stress_tensor(p, xp);
+  strength_first_init_part_damage(p, xp);
 }
 
 #endif /* SWIFT_REMIX_STRENGTH_DEFAULT_H */

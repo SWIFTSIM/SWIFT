@@ -63,44 +63,43 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   // add fracture under compression)
 
   // If there are no flaws, we can not accumulate damage
-  if (number_of_flaws > 0) {
-      
-    float principal_stress_eigen[3];
-    sym_matrix_compute_eigenvalues(principal_stress_eigen, stress_tensor); 
+  if (number_of_flaws == 0) {
+    return;
+  }
+    
+  float principal_stress_eigen[3];
+  sym_matrix_compute_eigenvalues(principal_stress_eigen, stress_tensor); 
 
-    // Find max eignenvalue of stress_tensor_sigma:
-    float max_principal_stress = principal_stress_eigen[0];
-    if (principal_stress_eigen[1] > max_principal_stress)
-      max_principal_stress = principal_stress_eigen[1];
-    if (principal_stress_eigen[2] > max_principal_stress)
-      max_principal_stress = principal_stress_eigen[2];
+  // Find max eignenvalue of stress_tensor_sigma:
+  float max_principal_stress = principal_stress_eigen[0];
+  if (principal_stress_eigen[1] > max_principal_stress)
+    max_principal_stress = principal_stress_eigen[1];
+  if (principal_stress_eigen[2] > max_principal_stress)
+    max_principal_stress = principal_stress_eigen[2];
+
+  if (max_principal_stress <= 0.f) {
+    return;
+  }
      
-    if (max_principal_stress > 0.f) {
-      const float shear_mod = material_shear_mod(mat_id);
-      const float bulk_mod = material_bulk_mod(mat_id);
+  const float shear_mod = material_shear_mod(mat_id);
+  const float bulk_mod = material_bulk_mod(mat_id);
+  const float E = 9.f * bulk_mod * shear_mod / (3.f * bulk_mod + shear_mod);
 
-      // tensile damage
-      const float E = 9.f * bulk_mod * shear_mod / (3.f * bulk_mod + shear_mod);
+  // tensile damage
+  const float local_scalar_strain = max_principal_stress / ((1.f - damage) * E);
 
-      const float local_scalar_strain =
-          max_principal_stress / ((1.f - damage) * E);
-
-      *number_of_activated_flaws = 0;
-      for (int i = 0; i < number_of_flaws; i++) {
-        if (local_scalar_strain > activation_thresholds[i]) {
-          *number_of_activated_flaws += 1;
-        }
-      }
-
-      // Schafer
-      const float longitudinal_wave_speed = sqrtf(
-          (bulk_mod + (4.f / 3.f) * (1.f - damage) * shear_mod) / density);
-      const float crack_velocity = 0.4f * longitudinal_wave_speed;
-
-      *tensile_cbrtD_dt =
-          (float)*number_of_activated_flaws * crack_velocity * cbrtf(density / mass);
+  *number_of_activated_flaws = 0;
+  for (int i = 0; i < number_of_flaws; i++) {
+    if (local_scalar_strain > activation_thresholds[i]) {
+      *number_of_activated_flaws += 1;
     }
   }
+
+  // Schafer. Check if thi is the max wave speed
+  const float longitudinal_wave_speed = sqrtf((bulk_mod + (4.f / 3.f) * (1.f - damage) * shear_mod) / density);
+  const float crack_velocity = 0.4f * longitudinal_wave_speed;
+
+  *tensile_cbrtD_dt = (float)*number_of_activated_flaws * crack_velocity * cbrtf(density / mass);
 }
 
 /**
@@ -142,7 +141,9 @@ __attribute__((always_inline)) INLINE static void damage_tensile_apply_timestep_
   const float max_Delta_cbrtD =
       fmaxf(0.f, max_cbrtD - cbrtf(*tensile_damage));
 
-  if (Delta_cbrtD > max_Delta_cbrtD) Delta_cbrtD = max_Delta_cbrtD;
+  if (Delta_cbrtD > max_Delta_cbrtD){
+    Delta_cbrtD = max_Delta_cbrtD;
+  }
 
   const float evolved_D_cbrt = cbrtf(*tensile_damage) + Delta_cbrtD;
   *tensile_damage = powf(evolved_D_cbrt, 3.f);

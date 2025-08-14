@@ -54,7 +54,6 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_dama
     const struct part *restrict p, float *dt_cfl) {
 
   const float dD_dt = p->strength_data.dD_dt;
-
   const float damage_timestep_factor = 0.01f; // ### Hardcoded for now. Treat this similarly to CFL
     
   if (dD_dt * *dt_cfl > damage_timestep_factor) {
@@ -84,7 +83,7 @@ __attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
   }
 }
 
-__attribute__((always_inline)) INLINE static void damage_reset_predicted_values(
+__attribute__((always_inline)) INLINE static void strength_reset_predicted_values_damage(
     struct part *restrict p, const struct xpart *restrict xp) {
     
   strength_set_damage(p, xp->strength_data.damage_full);
@@ -107,7 +106,6 @@ __attribute__((always_inline)) INLINE static void damage_evolve(
     // ### might be computationally expensive with recalculation of eigenvalues
 
   damage_tensile_evolve(p, tensile_damage, stress_tensor, mat_id, mass, density, *damage, dt_therm);
-
   damage_shear_evolve(p, shear_damage, deviatoric_stress_tensor, mat_id, density, u, yield_stress, dt_therm);
 
   *damage = fminf(*tensile_damage + *shear_damage, 1.f);
@@ -183,7 +181,7 @@ __attribute__((always_inline)) INLINE static void damage_compute_dD_dt(
   p->strength_data.dD_dt = tensile_dD_dt + shear_dD_dt;
 }
 
-__attribute__((always_inline)) INLINE static void damage_first_init_part(
+__attribute__((always_inline)) INLINE static void strength_first_init_part_damage(
     struct part *restrict p, struct xpart *restrict xp) {
 
   strength_set_damage(p, 0.f);
