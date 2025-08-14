@@ -29,6 +29,19 @@
 #include "hydro_parameters.h"
 #include "math.h"
 
+__attribute__((always_inline)) INLINE static float damage_get_shear_damage(const struct part *restrict p) {
+
+  return 0.f;
+}
+
+__attribute__((always_inline)) INLINE static float damage_get_shear_damage_full(const struct xpart *restrict xp) {
+
+  return 0.f;
+}
+
+__attribute__((always_inline)) INLINE static void damage_set_shear_damage(struct part *restrict p, const float shear_damage) {}
+
+__attribute__((always_inline)) INLINE static void damage_set_shear_damage_full(struct xpart *restrict xp, const float shear_damage_full) {}
 
 /**
  * @brief Calculates the rate of damage accumulated due to tension

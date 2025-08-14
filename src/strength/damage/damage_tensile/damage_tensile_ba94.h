@@ -29,6 +29,26 @@
 #include "hydro_parameters.h"
 #include "math.h"
 
+__attribute__((always_inline)) INLINE static float damage_get_tensile_damage(const struct part *restrict p) {
+
+  return p->strength_data.tensile_damage;
+}
+
+__attribute__((always_inline)) INLINE static float damage_get_tensile_damage_full(const struct xpart *restrict xp) {
+
+  return xp->strength_data.tensile_damage_full;
+}
+
+__attribute__((always_inline)) INLINE static void damage_set_tensile_damage(struct part *restrict p, const float tensile_damage) {
+
+  p->strength_data.tensile_damage = tensile_damage;
+}
+
+__attribute__((always_inline)) INLINE static void damage_set_tensile_damage_full(struct xpart *restrict xp, const float tensile_damage_full) {
+
+  xp->strength_data.tensile_damage_full = tensile_damage_full;
+}
+
 /**
  * @brief Calculates the rate of cbrt(damage) accumulated due to tension
  *

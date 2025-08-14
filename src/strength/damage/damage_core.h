@@ -30,7 +30,7 @@
 #include "math.h"
 #include "strength.h"
 
-__attribute__((always_inline)) INLINE static float strength_get_damage(struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float strength_get_damage(const struct part *restrict p) {
 
   return p->strength_data.damage;
 }
@@ -38,6 +38,16 @@ __attribute__((always_inline)) INLINE static float strength_get_damage(struct pa
 __attribute__((always_inline)) INLINE static float strength_get_damage_full(const struct xpart *restrict xp) {
 
   return xp->strength_data.damage_full;
+}
+
+__attribute__((always_inline)) INLINE static void strength_set_damage(struct part *restrict p, const float damage) {
+
+  p->strength_data.damage = damage;
+}
+
+__attribute__((always_inline)) INLINE static void strength_set_damage_full(struct xpart *restrict xp, const float damage_full) {
+
+  xp->strength_data.damage_full = damage_full;
 }
 
 __attribute__((always_inline)) INLINE static void strength_compute_timestep_damage(
@@ -77,9 +87,9 @@ __attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
 __attribute__((always_inline)) INLINE static void damage_reset_predicted_values(
     struct part *restrict p, const struct xpart *restrict xp) {
     
-  p->strength_data.damage = xp->strength_data.damage_full;
-  p->strength_data.tensile_damage = xp->strength_data.tensile_damage_full;
-  p->strength_data.shear_damage = xp->strength_data.shear_damage_full;
+  strength_set_damage(p, xp->strength_data.damage_full);
+  damage_set_tensile_damage(p, xp->strength_data.tensile_damage_full);
+  damage_set_shear_damage(p, xp->strength_data.shear_damage_full);
 }
 
 /**
@@ -88,7 +98,7 @@ __attribute__((always_inline)) INLINE static void damage_reset_predicted_values(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void damage_evolve(
-    struct part *restrict p, float *tensile_damage, float *shear_damage, float *damage,
+    struct part *restrict p, float *damage, float *tensile_damage, float *shear_damage,
     const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
     const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {
 
@@ -112,8 +122,19 @@ __attribute__((always_inline)) INLINE static void damage_predict_evolve(
     struct part *restrict p, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
     const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {
 
-    damage_evolve(p, &p->strength_data.tensile_damage, &p->strength_data.shear_damage, &p->strength_data.damage, 
+  // Get damage parameters before they get evolved in time
+  float damage = strength_get_damage(p);
+  float tensile_damage = damage_get_tensile_damage(p);
+  float shear_damage = damage_get_shear_damage(p);
+
+  // Evolve damage parameters
+  damage_evolve(p, &damage, &tensile_damage, &shear_damage, 
                   stress_tensor, deviatoric_stress_tensor, mat_id, mass, density, u, yield_stress, dt_therm);
+
+  // Update damage particle properties
+  strength_set_damage(p, damage);
+  damage_set_tensile_damage(p, tensile_damage);
+  damage_set_shear_damage(p, shear_damage);
 }
 
 /**
@@ -125,8 +146,19 @@ __attribute__((always_inline)) INLINE static void damage_kick_evolve(
     struct part *restrict p, struct xpart *restrict xp, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
     const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {
 
-    damage_evolve(p, &xp->strength_data.tensile_damage_full, &xp->strength_data.shear_damage_full, &xp->strength_data.damage_full, 
+// Get damage parameters before they get evolved in time
+  float damage = strength_get_damage_full(xp);
+  float tensile_damage = damage_get_tensile_damage_full(xp);
+  float shear_damage = damage_get_shear_damage_full(xp);
+
+  // Evolve damage parameters
+  damage_evolve(p, &damage, &tensile_damage, &shear_damage, 
                   stress_tensor, deviatoric_stress_tensor, mat_id, mass, density, u, yield_stress, dt_therm);
+
+  // Update damage particle properties
+  strength_set_damage_full(xp, damage);
+  damage_set_tensile_damage_full(xp, tensile_damage);
+  damage_set_shear_damage_full(xp, shear_damage);
 }
     
 /**
@@ -138,9 +170,9 @@ __attribute__((always_inline)) INLINE static void damage_compute_dD_dt(
     struct part *restrict p, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
     const int mat_id, const float mass, const float density, const float u, const float yield_stress) {
 
-  const float tensile_damage = p->strength_data.tensile_damage;
-  const float shear_damage = p->strength_data.shear_damage;
-  const float damage = p->strength_data.damage;
+  const float damage = strength_get_damage(p);
+  const float tensile_damage = damage_get_tensile_damage(p);
+  const float shear_damage = damage_get_shear_damage(p);
 
   float tensile_dD_dt = 0.f;
   damage_tensile_compute_dD_dt(p, &tensile_dD_dt, stress_tensor, mat_id, mass, density, damage, tensile_damage);
@@ -154,13 +186,13 @@ __attribute__((always_inline)) INLINE static void damage_compute_dD_dt(
 __attribute__((always_inline)) INLINE static void damage_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
-  p->strength_data.damage = 0.f;
-  p->strength_data.tensile_damage = 0.f;
-  p->strength_data.shear_damage = 0.f;
-
-  xp->strength_data.damage_full = 0.f;
-  xp->strength_data.tensile_damage_full = 0.f;
-  xp->strength_data.shear_damage_full = 0.f;
+  strength_set_damage(p, 0.f);
+  damage_set_tensile_damage(p, 0.f);
+  damage_set_shear_damage(p, 0.f);
+    
+  strength_set_damage_full(xp, 0.f);
+  damage_set_tensile_damage_full(xp, 0.f);
+  damage_set_shear_damage_full(xp, 0.f);
 }
 
 #endif /* SWIFT_DAMAGE_H */

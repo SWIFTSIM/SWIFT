@@ -29,7 +29,7 @@
 #include "hydro_parameters.h"
 #include "math.h"
 
-__attribute__((always_inline)) INLINE static float strength_get_damage(struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float strength_get_damage(const struct part *restrict p) {
 
   return 0.f;
 }
@@ -38,6 +38,11 @@ __attribute__((always_inline)) INLINE static float strength_get_damage_full(cons
 
   return 0.f;
 }
+
+__attribute__((always_inline)) INLINE static void strength_set_damage(struct part *restrict p, const float damage) {}
+
+__attribute__((always_inline)) INLINE static void strength_set_damage_full(struct xpart *restrict xp, const float damage_full) {}
+
 
 __attribute__((always_inline)) INLINE static void strength_compute_timestep_damage(
     const struct part *restrict p, float *dt_cfl) {}
@@ -60,7 +65,7 @@ __attribute__((always_inline)) INLINE static void damage_reset_predicted_values(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void damage_evolve(
-    struct part *restrict p, float *tensile_damage, float *shear_damage, float *damage,
+    struct part *restrict p, float *damage, float *tensile_damage, float *shear_damage,
     const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
     const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {}
 

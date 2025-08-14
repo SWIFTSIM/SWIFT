@@ -83,24 +83,25 @@ struct strength_part_data {
   // Accumulated damage
   float damage;
 
-  // Damage accumulated due to tension
-  float tensile_damage;
-
-  // Damage accumulated due to shear
-  float shear_damage;
-
   // Need to store this as a particle parameter for timestep
   float dD_dt;
 #endif
 
 #ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
+  // Damage accumulated due to tension
+  float tensile_damage;
+
   // Number of flaws for tensile damage accumulation
   int number_of_flaws;
 
   // Activation thresholds of flaws for tensile damage accumulation
   // ### Work out how to set the length of this
   float activation_thresholds[40];
+#endif
 
+#ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
+  // Damage accumulated due to shear
+  float shear_damage;
 #endif
 };
 
