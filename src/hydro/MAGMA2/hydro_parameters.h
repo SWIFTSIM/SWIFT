@@ -50,10 +50,10 @@
 
 
 /*! Alpha viscosity, usually =1.0. For lower N_ngb, should be higher */
-#define const_viscosity_alpha 2.0
+#define const_viscosity_alpha 1.0
 
 /*! Alpha conductivity, usually =0.05. At lower N_ngb, should be higher */
-#define const_conductivity_alpha 0.1
+#define const_conductivity_alpha 0.05
 
 /*! Desired number of neighbours -- CRITICAL that this matches hydro props */
 #if defined(HYDRO_DIMENSION_1D)
@@ -67,12 +67,20 @@
 
 /* ---------- These parameters should not be changed ---------- */
 
+/* Slope limiter length */
+#define hydro_props_grad_overshoot_length 0.25
+
+/*! Slope limiter tolerance */
+#define hydro_props_grad_overshoot_tolerance 0.1
 
 /* Viscosity weighting scheme: 
  *    0 = (rho_i * q_i + rho_j * q_j) / (rho_i * rho_j)
  *    1 = (rho_i * q_ij + rho_j * q_ij) / (rho_i * rho_j)
  *    2 = 2.0 * q_ij / (rho_i + rho_j) */
-#define hydro_props_viscosity_weighting_type 1
+#define hydro_props_viscosity_weighting_type 2
+
+/* Viscosity floor when G_ij is extremely misaligned with dx_ij */
+#define const_viscosity_cosine_limit 0.7
 
 /*! Use the correction terms to make the internal energy match the mass flux */
 //#define hydro_props_use_adiabatic_correction
@@ -104,13 +112,13 @@
 
 #ifdef hydro_props_use_double_precision
 /*! Consider matrix inversion to be ill-conditioned above this limit */
-#define const_condition_number_upper_limit 99999.
+#define const_condition_number_upper_limit 300.
 /*! Mean interparticle spacing for this kernel and neighbour number */
 #define const_kernel_mean_spacing (kernel_gamma*pow(4. * M_PI / (3. * \
     (double)const_kernel_target_neighbours), 1. / 3.))
 #else
 /*! Consider matrix inversion to be ill-conditioned above this limit */
-#define const_condition_number_upper_limit 999.
+#define const_condition_number_upper_limit 60.
 /*! Mean interparticle spacing for this kernel and neighbour number */
 #define const_kernel_mean_spacing (kernel_gamma*powf(4. * M_PI / (3. * \
     (float)const_kernel_target_neighbours), 1. / 3.))

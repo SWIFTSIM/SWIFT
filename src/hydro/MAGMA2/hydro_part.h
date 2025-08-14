@@ -129,11 +129,6 @@ struct part {
   /*! Particle density. */
   float rho;
 
-#ifdef MAGMA2_DEBUG_CHECKS
-  /*! Number of neighbors in the kernel */
-  int num_ngb;
-#endif
-
   /*! Minimum smoothing length in the kernel */
   float h_min;
 
@@ -168,6 +163,15 @@ struct part {
 
     /*! Number of times u_aux_norm was ill-conditioned */
     int u_ill_conditioned_count;
+
+    /*! How many low-order SPH gradients in force interactions */
+    int N_force_low_order_grad;
+
+    /*! How many high-order SPH gradients in force interactions */
+    int N_force_high_order_grad;
+
+    /*! Number of neighbors in the kernel */
+    int num_ngb;
 
   } debug;
 #endif
@@ -220,6 +224,24 @@ struct part {
 
     /*! Internal energy Hessian */
     hydro_real_t u_hessian[3][3];
+
+    /*! Minimum delta u across kernel */
+    hydro_real_t du_min;
+
+    /*! Maximum delta u across kernel */
+    hydro_real_t du_max;
+
+    /*! Minimum dv across kernel */
+    hydro_real_t dv_min[3];
+
+    /*! Maximum dv across kernel */
+    hydro_real_t dv_max[3];
+
+    /*! Kernel size for slope limiting */
+    hydro_real_t kernel_size;
+
+    /*! Balsara limiter for divergences */
+    hydro_real_t balsara;
 
   } gradients;
 

@@ -82,7 +82,8 @@ INLINE static double sink_compute_neighbour_rotation_energy_magnitude(
  *
  */
 INLINE static float sink_get_physical_div_v_from_part(
-    const struct part* restrict p) {
+    const struct part* restrict p,
+    const struct cosmology* cosmo) {
 
   float div_v = 0.0;
 
@@ -108,9 +109,7 @@ INLINE static float sink_get_physical_div_v_from_part(
                        p->viscosity.velocity_gradient[2][2]);
 #elif MAGMA2_SPH
   /* Copy the velocity divergence */
-  div_v = p->gradients.velocity_tensor_aux[0][0] +
-          p->gradients.velocity_tensor_aux[1][1] +
-          p->gradients.velocity_tensor_aux[2][2];
+  div_v = hydro_get_physical_div_v(p, cosmo);
 #elif HOPKINS_PU_SPH
   div_v = p->density.div_v;
 #else

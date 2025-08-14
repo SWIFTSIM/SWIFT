@@ -240,6 +240,24 @@ INLINE static void hydro_write_particles(const struct part* parts,
 
 #ifdef MAGMA2_DEBUG_CHECKS
   list[num] = io_make_output_field(
+      "NumberOfNeighbours", INT, 1, UNIT_CONV_NO_UNITS, 
+      0.f, parts, debug.num_ngb,
+      "Number of neighbours.");
+  num++;
+
+  list[num] = io_make_output_field(
+      "LowOrderGradientsCount", INT, 1, UNIT_CONV_NO_UNITS, 
+      0.f, parts, debug.N_force_low_order_grad,
+      "Cumulative number of low order gradient force interactions.");
+  num++;
+
+  list[num] = io_make_output_field(
+      "HighOrderGradientsCount", INT, 1, UNIT_CONV_NO_UNITS, 
+      0.f, parts, debug.N_force_high_order_grad,
+      "Cumulative number of high order gradient force interactions.");
+  num++;
+
+  list[num] = io_make_output_field(
       "CorrectionMatrices", FLOAT, 9, UNIT_CONV_LENGTH * UNIT_CONV_LENGTH, 
       2.f, parts, debug.correction_matrix,
       "Co-moving correction matrices for the particles.");
