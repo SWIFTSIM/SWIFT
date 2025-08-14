@@ -88,8 +88,8 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 
     /* Some values need to be reset in the Gizmo case. */
-    hydro_prepare_force(p, &c->hydro.xparts[k], cosmo,
-                        e->hydro_properties, e->pressure_floor_props,
+    hydro_prepare_force(p, &c->hydro.xparts[k], cosmo, e->hydro_properties,
+                        e->pressure_floor_props,
                         /*dt_alpha=*/0, /*dt_therm=*/0);
     rt_prepare_force(p);
 #endif
@@ -109,35 +109,17 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
  * Resets the gravitational accelerations of boundary particles to zero.
  * If using fixed boundary particles, their velocities are also set to zero.
  *
- * @param time The current time.
+ * @param id The particle ID.
  * @param terms The properties of the forcing terms.
- * @param s The #space we act on.
- * @param phys_const The physical constants in internal units.
- * @param e The engine.
  * @param gp Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
-    const double time, const struct forcing_terms* terms, const struct space* s,
-    const struct phys_const* phys_const, const struct engine* e,
-    struct gpart* gp) {
+    const long long id, const struct forcing_terms* terms, struct gpart* gp) {
 
   if (terms->enable_grav_acceleration) {
     /* Skip if not resetting grav accelerations. */
     return;
   }
-
-  /* Get the ID of the gpart */
-  long long id = 0;
-  if (gp->type == swift_type_gas)
-    id = e->s->parts[-gp->id_or_neg_offset].id;
-  else if (gp->type == swift_type_stars)
-    id = e->s->sparts[-gp->id_or_neg_offset].id;
-  else if (gp->type == swift_type_sink)
-    id = e->s->sinks[-gp->id_or_neg_offset].id;
-  else if (gp->type == swift_type_black_hole)
-    id = e->s->bparts[-gp->id_or_neg_offset].id;
-  else
-    id = gp->id_or_neg_offset;
 
   if (id <= terms->boundary_particle_max_id) {
     /* Reset the grav accelerations of boundary particles. */

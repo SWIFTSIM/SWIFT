@@ -798,20 +798,6 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
         gravity_end_force(gp, G_newton, potential_normalisation, periodic,
                           with_self_gravity);
 
-        /* Apply the forcing terms (if any) */
-        forcing_grav_terms_apply(e->time, e->forcing_terms, e->s,
-                                 e->physical_constants, e, gp);
-
-#ifdef SWIFT_MAKE_GRAVITY_GLASS
-
-        /* Negate the gravity forces */
-        gp->a_grav[0] *= -1.f;
-        gp->a_grav[1] *= -1.f;
-        gp->a_grav[2] *= -1.f;
-#endif
-
-#ifdef SWIFT_NO_GRAVITY_BELOW_ID
-
         /* Get the ID of the gpart */
         long long id = 0;
         if (gp->type == swift_type_gas)
@@ -824,6 +810,19 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           id = e->s->bparts[-gp->id_or_neg_offset].id;
         else
           id = gp->id_or_neg_offset;
+
+        /* Apply the forcing terms (if any) */
+        forcing_grav_terms_apply(id, e->forcing_terms, gp);
+
+#ifdef SWIFT_MAKE_GRAVITY_GLASS
+
+        /* Negate the gravity forces */
+        gp->a_grav[0] *= -1.f;
+        gp->a_grav[1] *= -1.f;
+        gp->a_grav[2] *= -1.f;
+#endif
+
+#ifdef SWIFT_NO_GRAVITY_BELOW_ID
 
         /* Cancel gravity forces of these particles */
         if (id < SWIFT_NO_GRAVITY_BELOW_ID) {

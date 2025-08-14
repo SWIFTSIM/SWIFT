@@ -169,17 +169,12 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
  *
  * We do nothing in this 'none' scheme.
  *
- * @param time The current time.
+ * @param id The particle ID.
  * @param terms The properties of the forcing terms.
- * @param s The #space we act on.
- * @param phys_const The physical constants in internal units.
- * @param e The engine.
  * @param gp Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
-    const double time, const struct forcing_terms* terms, const struct space* s,
-    const struct phys_const* phys_const, const struct engine* e,
-    struct gpart* gp) {
+    const long long id, const struct forcing_terms* terms, struct gpart* gp) {
   /* Nothing to do here */
 }
 
