@@ -848,25 +848,12 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           if (gp->num_interacted !=
               e->total_nr_gparts - e->count_inhibited_gparts) {
 
-            /* Get the ID of the gpart */
-            long long my_id = 0;
-            if (gp->type == swift_type_gas)
-              my_id = e->s->parts[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_stars)
-              my_id = e->s->sparts[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_sink)
-              my_id = e->s->sinks[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_black_hole)
-              error("Unexisting type");
-            else
-              my_id = gp->id_or_neg_offset;
-
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally with all other gparts "
                 "gp->num_interacted=%lld, total_gparts=%lld (local "
                 "num_gparts=%zd inhibited_gparts=%lld)",
-                my_id, part_type_names[gp->type], gp->num_interacted,
+                id, part_type_names[gp->type], gp->num_interacted,
                 e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts);
           }
         }
