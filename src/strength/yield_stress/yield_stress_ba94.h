@@ -106,8 +106,8 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
   // Constant yield stress
   float yield_stress = yield_compute_yield_stress_intact(mat_id, phase_state, pressure);
 
-  yield_softening_apply_density_to_yield_stress(&yield_stress, mat_id, density);
-  yield_softening_apply_temperature_to_yield_stress(&yield_stress, mat_id, density, u);
+  yield_weakening_apply_density_to_yield_stress(&yield_stress, mat_id, density);
+  yield_weakening_apply_temperature_to_yield_stress(&yield_stress, mat_id, density, u);
 
   return yield_stress;
 }

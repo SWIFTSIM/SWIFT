@@ -122,9 +122,9 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
   float yield_stress = 
       yield_compute_damaged_yield_stress(yield_stress_intact, yield_stress_fully_damaged, damage);
 
-  // ### This was previously only for intact.
-  yield_softening_apply_density_to_yield_stress(&yield_stress, mat_id, density);
-  yield_softening_apply_temperature_to_yield_stress(&yield_stress, mat_id, density, u);
+  //  See Senft+Stewart2007 for why this comes here and not just for intact
+  yield_weakening_apply_density_to_yield_stress(&yield_stress, mat_id, density);
+  yield_weakening_apply_temperature_to_yield_stress(&yield_stress, mat_id, density, u);
 
   return yield_stress;
 }

@@ -591,28 +591,28 @@ if test "$with_yield_stress" != "none"; then
    AC_DEFINE([STRENGTH_YIELD_STRESS], [1], [Any yield stress model])
 fi
 
-#  Strength: yield stress softening: thermal
-AC_ARG_ENABLE([strength-yield-stress-softening-thermal],
-   [AS_HELP_STRING([--enable-strength-yield-stress-softening-thermal],
-     [Enable thermal softening of yield stress @<:@yes/no@:>@]
+#  Strength: yield stress weakening: thermal
+AC_ARG_ENABLE([strength-yield-stress-weakening-thermal],
+   [AS_HELP_STRING([--enable-strength-yield-stress-weakening-thermal],
+     [Enable thermal weakening of yield stress @<:@yes/no@:>@]
    )],
-   [strength_yield_stress_softening_thermal="$enableval"],
-   [strength_yield_stress_softening_thermal="no"]
+   [strength_yield_stress_weakening_thermal="$enableval"],
+   [strength_yield_stress_weakening_thermal="no"]
 )
-if test "$strength_yield_stress_softening_thermal" = "yes"; then
-   AC_DEFINE([STRENGTH_YIELD_STRESS_SOFTENING_THERMAL],1,[Enable thermal softening of yield stress])
+if test "$strength_yield_stress_weakening_thermal" = "yes"; then
+   AC_DEFINE([STRENGTH_YIELD_STRESS_WEAKENING_THERMAL],1,[Enable thermal weakening of yield stress])
 fi
 
-#  Strength: yield stress softening: density 
-AC_ARG_ENABLE([strength-yield-stress-softening-density],
-   [AS_HELP_STRING([--enable-strength-yield-stress-softening-density],
-     [Enable density softening of yield stress @<:@yes/no@:>@]
+#  Strength: yield stress weakening: density 
+AC_ARG_ENABLE([strength-yield-stress-weakening-density],
+   [AS_HELP_STRING([--enable-strength-yield-stress-weakening-density],
+     [Enable density weakening of yield stress @<:@yes/no@:>@]
    )],
-   [strength_yield_stress_softening_density="$enableval"],
-   [strength_yield_stress_softening_density="no"]
+   [strength_yield_stress_weakening_density="$enableval"],
+   [strength_yield_stress_weakening_density="no"]
 )
-if test "$strength_yield_stress_softening_density" = "yes"; then
-   AC_DEFINE([STRENGTH_YIELD_STRESS_SOFTENING_DENSITY],1,[Enable density softening of yield stress])
+if test "$strength_yield_stress_weakening_density" = "yes"; then
+   AC_DEFINE([STRENGTH_YIELD_STRESS_WEAKENING_DENSITY],1,[Enable density weakening of yield stress])
 fi
 
 #  Strength: damage
