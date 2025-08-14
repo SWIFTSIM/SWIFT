@@ -67,7 +67,7 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
   // ### Made some changes here. Compare with old version when testing
   // ### Not sure whether this should be deviatoric_stress_tensor or damaged_deviatoric_stress_tensor.
   // ### Currently deviatoric_stress_tensor, set in hydro_strength.h
-  const float J_2 = strength_compute_stress_tensor_J_2(&deviatoric_stress_tensor);
+  const float J_2 = strength_compute_stress_tensor_J_2(deviatoric_stress_tensor);
   const float strain_rate_invariant = sqrtf(J_2);
   const float pressure =
         gas_pressure_from_internal_energy(density, u, mat_id); 

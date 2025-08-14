@@ -37,10 +37,10 @@
  * set the yield stress to 0 here when the temperature exceeds the melting
  * temperature; this is handled elsewhere based on the material's phase state.
  *
- * @param Y the yield stress to be weakened.
- * @param mat_id the material ID.
- * @param density the density.
- * @param u the specific internal energy.
+ * @param Y The yield stress to be weakened.
+ * @param mat_id The material ID.
+ * @param density The density.
+ * @param u The specific internal energy.
  */
 __attribute__((always_inline)) INLINE static void
 yield_weakening_apply_temperature_to_yield_stress(float *Y, const int mat_id,
@@ -62,9 +62,9 @@ yield_weakening_apply_temperature_to_yield_stress(float *Y, const int mat_id,
  * point. This method is discussed in Luther+2022, where it is described in the
  * context of its implementation in iSALE.
  *
- * @param Y the yield stress to be weakened.
- * @param mat_id the material ID.
- * @param density the density.
+ * @param Y The yield stress to be weakened.
+ * @param mat_id The material ID.
+ * @param density The density.
  */
 __attribute__((always_inline)) INLINE static void
 yield_weakening_apply_density_to_yield_stress(float *Y, const int mat_id,

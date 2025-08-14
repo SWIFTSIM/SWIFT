@@ -122,7 +122,7 @@ yield_apply_yield_stress_to_deviatoric_stress_tensor(
     struct sym_matrix *deviatoric_stress_tensor,
     const float yield_stress, const float density, const float u) {
 
-  float J_2 = strength_compute_stress_tensor_J_2(deviatoric_stress_tensor);
+  float J_2 = strength_compute_stress_tensor_J_2(*deviatoric_stress_tensor);
 
   // ...
   float f = fminf((yield_stress * yield_stress) / (3.f * J_2), 1.f);

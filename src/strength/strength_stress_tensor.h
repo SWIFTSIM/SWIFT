@@ -109,32 +109,33 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  */
 __attribute__((always_inline)) INLINE static void stress_tensor_compute_dS_dt(struct part *restrict p, const float dv[3][3]) {
 
-  float strain_rate_tensor[3][3], rotation_rate_tensor[3][3],
-      rotation_term[3][3];
-  float deviatoric_stress_tensor[3][3];
-  get_matrix_from_sym_matrix(deviatoric_stress_tensor,
-                             &p->strength_data.deviatoric_stress_tensor);
+  const float shear_mod = material_shear_mod(p->mat_id);
+  float strain_rate_tensor[3][3], rotation_rate_tensor[3][3], rotation_term[3][3];
 
   // Set the strain and rotation rates
-  strength_compute_strain_rate_tensor(dv, strain_rate_tensor);
-  strength_compute_rotation_rate_tensor(dv, rotation_rate_tensor);
+  strength_compute_strain_rate_tensor(strain_rate_tensor, dv);
+  strength_compute_rotation_rate_tensor(rotation_rate_tensor, dv);
   strength_compute_rotation_term(rotation_term, rotation_rate_tensor,
-                                 deviatoric_stress_tensor);  
+                                 p->strength_data.deviatoric_stress_tensor);  
     
   // Compute time derivative of the deviatoric stress tensor (Hooke's law)
-  const float shear_mod = material_shear_mod(p->mat_id);
   float dS_dt[3][3];
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      dS_dt[i][j] =
-          2.0f * shear_mod * strain_rate_tensor[i][j] + rotation_term[i][j];
-    }
+  dS_dt[0][0] = 2.0f * shear_mod * strain_rate_tensor[0][0] + rotation_term[0][0];
+  dS_dt[0][1] = 2.0f * shear_mod * strain_rate_tensor[0][1] + rotation_term[0][1];
+  dS_dt[0][2] = 2.0f * shear_mod * strain_rate_tensor[0][2] + rotation_term[0][2];
+  dS_dt[1][0] = 2.0f * shear_mod * strain_rate_tensor[1][0] + rotation_term[1][0];
+  dS_dt[1][1] = 2.0f * shear_mod * strain_rate_tensor[1][1] + rotation_term[1][1];
+  dS_dt[1][2] = 2.0f * shear_mod * strain_rate_tensor[1][2] + rotation_term[1][2];
+  dS_dt[2][0] = 2.0f * shear_mod * strain_rate_tensor[2][0] + rotation_term[2][0];
+  dS_dt[2][1] = 2.0f * shear_mod * strain_rate_tensor[2][1] + rotation_term[2][1];
+  dS_dt[2][2] = 2.0f * shear_mod * strain_rate_tensor[2][2] + rotation_term[2][2];
 
-    dS_dt[i][i] -= 2.0f * shear_mod *
-                   (strain_rate_tensor[0][0] + strain_rate_tensor[1][1] +
-                    strain_rate_tensor[2][2]) /
-                   3.f;
-  }
+  dS_dt[0][0] -= 2.0f * shear_mod * (strain_rate_tensor[0][0] + strain_rate_tensor[1][1] +
+                                     strain_rate_tensor[2][2]) / 3.f;
+  dS_dt[1][1] -= 2.0f * shear_mod * (strain_rate_tensor[0][0] + strain_rate_tensor[1][1] +
+                                     strain_rate_tensor[2][2]) / 3.f;
+  dS_dt[2][2] -= 2.0f * shear_mod * (strain_rate_tensor[0][0] + strain_rate_tensor[1][1] +
+                                     strain_rate_tensor[2][2]) / 3.f;
 
   get_sym_matrix_from_matrix(&p->strength_data.dS_dt, dS_dt);
 }
@@ -153,10 +154,12 @@ __attribute__((always_inline)) INLINE static void stress_tensor_evolve_deviatori
     zero_sym_matrix(deviatoric_stress_tensor);
   } else {
     // Update solid stress
-    for (int i = 0; i < 6; i++) {
-      deviatoric_stress_tensor->elements[i] +=
-          p->strength_data.dS_dt.elements[i] * dt_therm;
-    }
+    deviatoric_stress_tensor->xx += p->strength_data.dS_dt.xx * dt_therm;
+    deviatoric_stress_tensor->yy += p->strength_data.dS_dt.yy * dt_therm;
+    deviatoric_stress_tensor->zz += p->strength_data.dS_dt.zz * dt_therm;
+    deviatoric_stress_tensor->xy += p->strength_data.dS_dt.xy * dt_therm;
+    deviatoric_stress_tensor->xz += p->strength_data.dS_dt.xz * dt_therm;
+    deviatoric_stress_tensor->yz += p->strength_data.dS_dt.yz * dt_therm;
   }    
 }
 

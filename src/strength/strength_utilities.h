@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2024 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
- *               2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ * Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2025 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,81 +22,90 @@
 
 /**
  * @file strength/strength_utilities.h
+ * Utilities used throughout the material strength scheme.
  */
 
-#include "hydro_parameters.h"
 #include "math.h"
 #include "symmetric_matrix.h"
 
 /**
- * @brief Compute the J_2 invariant of the deviatoric stress tensor.
+ * @brief Computes the J_2 invariant of the deviatoric stress tensor.
+ *
+ * @param deviatoric_stress_tensor (sym_matrix) The deviatoric stress tensor.
  */
 __attribute__((always_inline)) INLINE static float strength_compute_stress_tensor_J_2(
-    const struct sym_matrix *sym_matrix_deviatoric_stress_tensor) {
+    const struct sym_matrix deviatoric_stress_tensor) {
 
   // ### Does j_2 need to be decreased by a factor of (1 - damage)^2 for B&A?
-  float deviatoric_stress_tensor[3][3];
-  get_matrix_from_sym_matrix(deviatoric_stress_tensor,
-                             sym_matrix_deviatoric_stress_tensor);
-  float J_2 = 0.f;
-
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      J_2 += 0.5f * deviatoric_stress_tensor[i][j] *
-              deviatoric_stress_tensor[j][i];
-    }
-  }
-
-  return J_2;
+  return 0.5f * deviatoric_stress_tensor.xx * deviatoric_stress_tensor.xx +
+         0.5f * deviatoric_stress_tensor.yy * deviatoric_stress_tensor.yy +
+         0.5f * deviatoric_stress_tensor.zz * deviatoric_stress_tensor.zz +
+         deviatoric_stress_tensor.xy * deviatoric_stress_tensor.xy +
+         deviatoric_stress_tensor.xz * deviatoric_stress_tensor.xz +
+         deviatoric_stress_tensor.yz * deviatoric_stress_tensor.yz;
 }
 
 /**
- * @brief Calculate the strain rate tensor.
+ * @brief Computes the strain rate tensor.
  *
- * @param p The particle to act upon
+ * @param strain_rate_tensor The strain rate tensor to be computed.
+ * @param dv The velocity gradient dv/dr.
  */
-__attribute__((always_inline)) INLINE static void strength_compute_strain_rate_tensor(
-    const float dv[3][3], float strain_rate_tensor[3][3]) {
+__attribute__((always_inline)) INLINE static void 
+strength_compute_strain_rate_tensor(float strain_rate_tensor[3][3], const float dv[3][3]) {
 
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      strain_rate_tensor[i][j] =
-          0.5f * (dv[i][j] + dv[j][i]);
-    }
-  }
+  strain_rate_tensor[0][0] = 0.5f * (dv[0][0] + dv[0][0]);
+  strain_rate_tensor[0][1] = 0.5f * (dv[0][1] + dv[1][0]);
+  strain_rate_tensor[0][2] = 0.5f * (dv[0][2] + dv[2][0]);
+  strain_rate_tensor[1][0] = 0.5f * (dv[1][0] + dv[0][1]);
+  strain_rate_tensor[1][1] = 0.5f * (dv[1][1] + dv[1][1]);
+  strain_rate_tensor[1][2] = 0.5f * (dv[1][2] + dv[2][1]);
+  strain_rate_tensor[2][0] = 0.5f * (dv[2][0] + dv[0][2]);
+  strain_rate_tensor[2][1] = 0.5f * (dv[2][1] + dv[1][2]);
+  strain_rate_tensor[2][2] = 0.5f * (dv[2][2] + dv[2][2]);
 }
 
 /**
- * @brief Calculate the rotation rate tensor.
+ * @brief Computes the rotation rate tensor.
  *
- * @param p The particle to act upon
+ * @param rotation_rate_tensor The rotation rate tensor to be computed.
+ * @param dv The velocity gradient dv/dr.
  */
 __attribute__((always_inline)) INLINE static void
-strength_compute_rotation_rate_tensor(const float dv[3][3],
-                               float rotation_rate_tensor[3][3]) {
+strength_compute_rotation_rate_tensor(float rotation_rate_tensor[3][3], const float dv[3][3]) {
 
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      rotation_rate_tensor[i][j] =
-          0.5f * (dv[j][i] - dv[i][j]);
-    }
-  }
+  rotation_rate_tensor[0][0] = 0.5f * (dv[0][0] - dv[0][0]);
+  rotation_rate_tensor[0][1] = 0.5f * (dv[1][0] - dv[0][1]);
+  rotation_rate_tensor[0][2] = 0.5f * (dv[2][0] - dv[0][2]);
+  rotation_rate_tensor[1][0] = 0.5f * (dv[0][1] - dv[1][0]);
+  rotation_rate_tensor[1][1] = 0.5f * (dv[1][1] - dv[1][1]);
+  rotation_rate_tensor[1][2] = 0.5f * (dv[2][1] - dv[1][2]);
+  rotation_rate_tensor[2][0] = 0.5f * (dv[0][2] - dv[2][0]);
+  rotation_rate_tensor[2][1] = 0.5f * (dv[1][2] - dv[2][1]);
+  rotation_rate_tensor[2][2] = 0.5f * (dv[2][2] - dv[2][2]);
 }
 
 /**
- * @brief Calculate the rotation term to transform into the co-rotating frame.
+ * @brief Computes the rotation term to transform the deviatoric stress tensor into the co-rotating frame.
  *
- * @param p The particle to act upon
+ * Note: Papers often make errors in the signs in this equation. For the correct
+ *       equation, see Dienes 1979 for a detailed derivation, which leads to 
+ *       the final expression in Eqn. 4.8.
+ *
+ * @param rotation_term The rotation term to be computed.
+ * @param rotation_rate_tensor The rotation rate tensor.
+ * @param sym_matrix_deviatoric_stress_tensor (sym_matrix) The deviatoric stress tensor.
  */
-__attribute__((always_inline)) INLINE static void strength_compute_rotation_term(
-    float rotation_term[3][3], const float rotation_rate_tensor[3][3],
-    const float deviatoric_stress_tensor[3][3]) {
+__attribute__((always_inline)) INLINE static void strength_compute_rotation_term(float rotation_term[3][3], 
+const float rotation_rate_tensor[3][3], const struct sym_matrix sym_matrix_deviatoric_stress_tensor) {
 
-  // Set rotation to transform into the corotating frame
+  float deviatoric_stress_tensor[3][3];
+  get_matrix_from_sym_matrix(deviatoric_stress_tensor,
+                             &sym_matrix_deviatoric_stress_tensor);
+
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       rotation_term[i][j] = 0.f;
-
       for (int k = 0; k < 3; k++) {
         // See Dienes 1978 (eqn 4.8)
         rotation_term[i][j] +=
