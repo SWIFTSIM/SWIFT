@@ -31,7 +31,7 @@
 /**
  * @brief Compute the J_2 invariant of the deviatoric stress tensor.
  */
-__attribute__((always_inline)) INLINE static float J_2_from_stress_tensor(
+__attribute__((always_inline)) INLINE static float strength_compute_stress_tensor_J_2(
     const struct sym_matrix *sym_matrix_deviatoric_stress_tensor) {
 
   // ### Does j_2 need to be decreased by a factor of (1 - damage)^2 for B&A?
@@ -55,7 +55,7 @@ __attribute__((always_inline)) INLINE static float J_2_from_stress_tensor(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void calculate_strain_rate_tensor(
+__attribute__((always_inline)) INLINE static void strength_compute_strain_rate_tensor(
     const float dv[3][3], float strain_rate_tensor[3][3]) {
 
   for (int i = 0; i < 3; i++) {
@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void calculate_strain_rate_tensor(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-calculate_rotation_rate_tensor(const float dv[3][3],
+strength_compute_rotation_rate_tensor(const float dv[3][3],
                                float rotation_rate_tensor[3][3]) {
 
   for (int i = 0; i < 3; i++) {
@@ -88,7 +88,7 @@ calculate_rotation_rate_tensor(const float dv[3][3],
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void calculate_rotation_term(
+__attribute__((always_inline)) INLINE static void strength_compute_rotation_term(
     float rotation_term[3][3], const float rotation_rate_tensor[3][3],
     const float deviatoric_stress_tensor[3][3]) {
 

@@ -39,19 +39,19 @@ __attribute__((always_inline)) INLINE static float strength_get_damage_full(cons
   return 0.f;
 }
 
+__attribute__((always_inline)) INLINE static void strength_compute_timestep_damage(
+    const struct part *restrict p, float *dt_cfl) {}
+
 /**
  * @brief Set the (symmetric) stress tensor by combining the deviatoric with the
  * pressure and applying damage.
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void damaged_stress_tensor(
+__attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
     struct sym_matrix *stress_tensor, const struct sym_matrix damaged_deviatoric_stress_tensor, const float pressure, const float damage) {}
 
-__attribute__((always_inline)) INLINE static void damage_timestep(
-    const struct part *restrict p, float *dt_cfl) {}
-
-__attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_extra_damage(
+__attribute__((always_inline)) INLINE static void damage_reset_predicted_values(
     struct part *restrict p, const struct xpart *restrict xp) {}
 
 /**
@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_e
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void evolve_damage(
+__attribute__((always_inline)) INLINE static void damage_evolve(
     struct part *restrict p, float *tensile_damage, float *shear_damage, float *damage,
     const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
     const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {}
@@ -69,7 +69,7 @@ __attribute__((always_inline)) INLINE static void evolve_damage(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_predict_evolve_damage(
+__attribute__((always_inline)) INLINE static void damage_predict_evolve(
     struct part *restrict p, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
     const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {}
 
@@ -78,7 +78,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_evolve_damage(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_kick_evolve_damage(
+__attribute__((always_inline)) INLINE static void damage_kick_evolve(
     struct part *restrict p, struct xpart *restrict xp, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
     const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {}
 
@@ -87,11 +87,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_evolve_damage(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void set_dD_dt(
+__attribute__((always_inline)) INLINE static void damage_compute_dD_dt(
     struct part *restrict p, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
     const int mat_id, const float mass, const float density, const float u, const float yield_stress) {}
 
-__attribute__((always_inline)) INLINE static void hydro_first_init_part_damage(
+__attribute__((always_inline)) INLINE static void damage_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {}
 
 

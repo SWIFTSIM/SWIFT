@@ -31,12 +31,13 @@
 #include "math.h"
 #include "strength.h"
 
-__attribute__((always_inline)) INLINE static float hydro_compute_timestep_strength(
+__attribute__((always_inline)) INLINE static void hydro_compute_timestep_strength(
     const struct part *restrict p, const struct hydro_props *restrict hydro_properties, 
-    const float dt_cfl) {
+    float *dt_cfl) {}
 
-  return dt_cfl;
-}
+__attribute__((always_inline)) INLINE static void
+hydro_compute_max_wave_speed_strength(const struct part *restrict p, const float soundspeed, 
+                                      const float density, float *wave_speed) {}
 
 /**
  * @brief Prepares extra strength parameters for a particle for the density

@@ -32,7 +32,7 @@
 /**
  * @brief Update the pairwise stress tensors with artificial stress.
  */
-__attribute__((always_inline)) INLINE static void strength_add_artif_stress(
+__attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
     const struct part *restrict pi, const struct part *restrict pj,
     const float r) {
@@ -45,7 +45,7 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
 
   // ### hardcoded for now so it works with Planetary (WC2)
   const float eta_crit = 1.f / 1.487;//viscosity_global.eta_crit;
-  float eta_ab = min(r / pi->h, r / pj->h);
+  float eta_ab = fminf(r / pi->h, r / pj->h);
 
   float artif_stress_f = 0.f;
   if (eta_ab < eta_crit) {

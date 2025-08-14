@@ -34,7 +34,7 @@
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void calculate_tensile_cbrtD_dt(
+__attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_dt(
     float *tensile_cbrtD_dt, int *number_of_activated_flaws,  const int number_of_flaws, const float activation_thresholds[40], // ### Change this length
     const struct sym_matrix stress_tensor, const int mat_id, const float mass, const float density, const float damage) {
 
@@ -88,7 +88,7 @@ __attribute__((always_inline)) INLINE static void calculate_tensile_cbrtD_dt(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void calculate_tensile_dD_dt(
+__attribute__((always_inline)) INLINE static void damage_tensile_compute_dD_dt(
     struct part *restrict p, float *tensile_dD_dt, const struct sym_matrix stress_tensor, const int mat_id, const float mass, const float density, const float damage, const float tensile_damage) {
 
   const float number_of_flaws = p->strength_data.number_of_flaws;
@@ -97,7 +97,7 @@ __attribute__((always_inline)) INLINE static void calculate_tensile_dD_dt(
 
   float tensile_cbrtD_dt = 0.f;
   int number_of_activated_flaws = 0;
-  calculate_tensile_cbrtD_dt(&tensile_cbrtD_dt, &number_of_activated_flaws, number_of_flaws, 
+  damage_tensile_compute_cbrtD_dt(&tensile_cbrtD_dt, &number_of_activated_flaws, number_of_flaws, 
                                activation_thresholds, stress_tensor, mat_id, mass, density, damage);
   
   if (tensile_damage < (float)number_of_activated_flaws / (float)number_of_flaws) {
@@ -111,7 +111,7 @@ __attribute__((always_inline)) INLINE static void calculate_tensile_dD_dt(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void step_damage_tensile(
+__attribute__((always_inline)) INLINE static void damage_tensile_apply_timestep_to_tensile_damage(
     float *tensile_damage, const float tensile_cbrtD_dt, 
     const int number_of_activated_flaws, const int number_of_flaws, const float dt_therm) {
 
@@ -120,7 +120,7 @@ __attribute__((always_inline)) INLINE static void step_damage_tensile(
   const float max_cbrtD =
       cbrtf((float)number_of_activated_flaws / (float)number_of_flaws);
   const float max_Delta_cbrtD =
-      max(0.f, max_cbrtD - cbrtf(*tensile_damage));
+      fmaxf(0.f, max_cbrtD - cbrtf(*tensile_damage));
 
   if (Delta_cbrtD > max_Delta_cbrtD) Delta_cbrtD = max_Delta_cbrtD;
 
@@ -133,7 +133,7 @@ __attribute__((always_inline)) INLINE static void step_damage_tensile(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void evolve_damage_tensile(
+__attribute__((always_inline)) INLINE static void damage_tensile_evolve(
     struct part *restrict p, float *tensile_damage, const struct sym_matrix stress_tensor, const int mat_id, 
     const float mass, const float density, const float damage, const float dt_therm) {
 
@@ -143,9 +143,9 @@ __attribute__((always_inline)) INLINE static void evolve_damage_tensile(
         
   float tensile_cbrtD_dt;
   int number_of_activated_flaws;
-  calculate_tensile_cbrtD_dt(&tensile_cbrtD_dt, &number_of_activated_flaws, number_of_flaws, 
+  damage_tensile_compute_cbrtD_dt(&tensile_cbrtD_dt, &number_of_activated_flaws, number_of_flaws, 
                                activation_thresholds, stress_tensor, mat_id, mass, density, damage);
-  step_damage_tensile(tensile_damage, tensile_cbrtD_dt, number_of_activated_flaws, number_of_flaws, dt_therm);
+  damage_tensile_apply_timestep_to_tensile_damage(tensile_damage, tensile_cbrtD_dt, number_of_activated_flaws, number_of_flaws, dt_therm);
 }
 
 #endif /* SWIFT_DAMAGE_TENSILE_BA94_H */

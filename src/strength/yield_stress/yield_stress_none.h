@@ -34,7 +34,7 @@
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static struct sym_matrix yield_model_adjust_deviatoric_stress_tensor_by_damage(
+__attribute__((always_inline)) INLINE static struct sym_matrix yield_apply_damage_to_deviatoric_stress_tensor(
     struct sym_matrix deviatoric_stress_tensor, const float damage) {
 
   // With no yield stress, we allow damage to transition material from an intact solid to a fluid.
@@ -55,7 +55,7 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_model_adjus
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float
-adjust_yield_stress_by_damage(const float yield_stress_intact, const float yield_stress_fully_damaged, const float damage) {
+yield_apply_damage_to_yield_stress(const float yield_stress_intact, const float yield_stress_fully_damaged, const float damage) {
 
   return yield_stress_intact;
 }
@@ -65,7 +65,7 @@ adjust_yield_stress_by_damage(const float yield_stress_intact, const float yield
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static float compute_yield_stress_intact(
+__attribute__((always_inline)) INLINE static float yield_compute_yield_stress_intact(
     const int mat_id, const int phase_state, const float pressure) {
 
   float yield_stress_intact = 0.f;
@@ -84,13 +84,13 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress_intact(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static float compute_yield_stress_fully_damaged(
+__attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_damaged(
     const int mat_id, const int phase_state, const float pressure,
     const float yield_stress_intact) {
     
   // This is treated similarly to BA94, but with a yield stress at FLT_MAX.
   // Damage appears in effective_deviatoric_stress_from_damage()
-  return compute_yield_stress_intact(mat_id, phase_state, pressure);
+  return yield_compute_yield_stress_intact(mat_id, phase_state, pressure);
 }
 
 /**
@@ -98,7 +98,7 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress_fully_da
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static float compute_yield_stress(
+__attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
     const int mat_id, const int phase_state, const float density, const float u, const float damage) {
 
   float yield_stress = 0.f;
@@ -108,7 +108,7 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress(
       gas_pressure_from_internal_energy(density, u, mat_id);    
       
     // Constant yield stress
-    yield_stress = compute_yield_stress_intact(mat_id, phase_state, pressure);
+    yield_stress = yield_compute_yield_stress_intact(mat_id, phase_state, pressure);
   }
 
   return yield_stress;
@@ -120,7 +120,7 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-adjust_deviatoric_stress_tensor_by_yield_stress(
+yield_apply_yield_stress_to_deviatoric_stress_tensor(
     struct sym_matrix *deviatoric_stress_tensor,
     const float yield_stress, const float density, const float u) {}
 

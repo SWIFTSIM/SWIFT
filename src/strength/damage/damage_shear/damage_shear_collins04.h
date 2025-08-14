@@ -35,7 +35,7 @@
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void calculate_shear_dD_dt(
+__attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
     float *shear_dD_dt, const struct sym_matrix deviatoric_stress_tensor, const int mat_id, const float density, const float u, const float yield_stress, const float shear_damage) {
     
   *shear_dD_dt = 0.f;
@@ -48,7 +48,7 @@ __attribute__((always_inline)) INLINE static void calculate_shear_dD_dt(
   // ### Made some changes here. Compare with old version when testing
   // ### Not sure whether this should be deviatoric_stress_tensor or damaged_deviatoric_stress_tensor.
   // ### Currently deviatoric_stress_tensor, set in hydro_strength.h
-  const float J_2 = J_2_from_stress_tensor(&deviatoric_stress_tensor);
+  const float J_2 = strength_compute_stress_tensor_J_2(&deviatoric_stress_tensor);
     
   // See Collins for this.
   if (sqrtf(J_2) > yield_stress) {
@@ -94,10 +94,10 @@ __attribute__((always_inline)) INLINE static void calculate_shear_dD_dt(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void step_damage_shear(
+__attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to_shear_damage(
     float *shear_damage, const float shear_dD_dt, const float dt_therm) {
  
-  *shear_damage += min(shear_dD_dt * dt_therm, 1.f);
+  *shear_damage += fminf(shear_dD_dt * dt_therm, 1.f);
 }
 
 /**
@@ -105,13 +105,13 @@ __attribute__((always_inline)) INLINE static void step_damage_shear(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void evolve_damage_shear(
+__attribute__((always_inline)) INLINE static void damage_shear_evolve(
     struct part *restrict p, float *shear_damage, const struct sym_matrix deviatoric_stress_tensor, 
     const int mat_id, const float density, const float u, const float yield_stress, const float dt_therm) {
  
   float shear_dD_dt;
-  calculate_shear_dD_dt(&shear_dD_dt, deviatoric_stress_tensor, mat_id, density, u, yield_stress, *shear_damage);
-  step_damage_shear(shear_damage, shear_dD_dt, dt_therm);
+  damage_shear_compute_dD_dt(&shear_dD_dt, deviatoric_stress_tensor, mat_id, density, u, yield_stress, *shear_damage);
+  damage_shear_apply_timestep_to_shear_damage(shear_damage, shear_dD_dt, dt_therm);
 }
 
 #endif /* SWIFT_DAMAGE_SHEAR_COLLINS04_H */

@@ -32,7 +32,7 @@
 /**
  * @brief Update the pairwise stress tensors with artificial stress.
  */
-__attribute__((always_inline)) INLINE static void strength_add_artif_stress(
+__attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
     const struct part *restrict pi, const struct part *restrict pj,
     const float r) {}

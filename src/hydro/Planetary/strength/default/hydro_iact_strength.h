@@ -32,6 +32,22 @@
 #include "strength.h"
 
 /**
+ * @brief Calculates the stress tensor with strength for the force interaction.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_pairwise_stress_tensors_strength(float pairwise_stress_tensor_i[3][3],
+                                           float pairwise_stress_tensor_j[3][3],
+                                           const struct part *restrict pi,
+                                           const struct part *restrict pj,
+                                           const float r) {
+
+  strength_set_pairwise_stress_tensors(pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, r);
+}
+
+
+/**
  * @brief Extra strength density interaction between two particles
  *
  * @param p The particle to act upon

@@ -35,7 +35,7 @@
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float
-adjust_yield_stress_by_temperature(const float Y, const int mat_id,
+yield_softening_apply_temperature_to_yield_stress(const float Y, const int mat_id,
                                    const float density, const float u) {
 
 #ifdef STRENGTH_YIELD_STRESS_SOFTENING_THERMAL
@@ -60,7 +60,7 @@ adjust_yield_stress_by_temperature(const float Y, const int mat_id,
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float
-adjust_yield_stress_by_density(const float Y, const int mat_id,
+yield_softening_apply_density_to_yield_stress(const float Y, const int mat_id,
                                const float density) {
 
 #ifdef STRENGTH_YIELD_STRESS_SOFTENING_DENSITY
