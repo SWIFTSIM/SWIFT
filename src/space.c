@@ -85,6 +85,8 @@ int space_recurse_size_pair_black_holes =
     space_recurse_size_pair_black_holes_default;
 int space_recurse_size_self_sinks = space_recurse_size_self_sinks_default;
 int space_recurse_size_pair_sinks = space_recurse_size_pair_sinks_default;
+int space_recurse_size_self_sidm = space_recurse_size_self_sidm_default;
+int space_recurse_size_pair_sidm = space_recurse_size_pair_sidm_default;
 
 /*! Number of extra #part we allocate memory for per top-level cell */
 int space_extra_parts = space_extra_parts_default;
@@ -100,6 +102,9 @@ int space_extra_gparts = space_extra_gparts_default;
 
 /*! Number of extra #sink we allocate memory for per top-level cell */
 int space_extra_sinks = space_extra_sinks_default;
+
+/*! Number of extra #sipart we allocate memory for per top-level cell */
+int space_extra_siparts = space_extra_siparts_default;
 
 /*! Maximum number of particles per ghost */
 int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
@@ -172,6 +177,11 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
     s->size_sinks_foreign = 0;
     s->sinks_foreign = NULL;
   }
+  if (s->siparts_foreign != NULL) {
+    swift_free("siparts_foreign", s->siparts_foreign);
+    s->size_siparts_foreign = 0;
+    s->siparts_foreign = NULL;
+  }
   if (clear_cell_pointers) {
     for (int k = 0; k < s->e->nr_proxies; k++) {
       for (int j = 0; j < s->e->proxies[k].nr_cells_in; j++) {
@@ -233,6 +243,18 @@ void space_reorder_extra_sinks_mapper(void *map_data, int num_cells,
   }
 }
 
+void space_reorder_extra_siparts_mapper(void *map_data, int num_cells,
+                                        void *extra_data) {
+
+  int *local_cells = (int *)map_data;
+  struct space *s = (struct space *)extra_data;
+  struct cell *cells_top = s->cells_top;
+
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[local_cells[ind]];
+    cell_reorder_extra_siparts(c, c->sidm.parts - s->siparts);
+  }
+}
 /**
  * @brief Re-orders the particles in each cell such that the extra particles
  * for on-the-fly creation are located at the end of their respective cells.
@@ -270,6 +292,12 @@ void space_reorder_extras(struct space *s, int verbose) {
   /* Re-order the sink particles */
   if (space_extra_sinks)
     threadpool_map(&s->e->threadpool, space_reorder_extra_sinks_mapper,
+                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   threadpool_auto_chunk_size, s);
+
+  /* Re-order the SIDM particles */
+  if (space_extra_siparts)
+    threadpool_map(&s->e->threadpool, space_reorder_extra_siparts_mapper,
                    s->local_cells_top, s->nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, s);
 }
@@ -747,6 +775,40 @@ void space_synchronize_sink_positions_mapper(void *map_data, int nr_sinks,
   }
 }
 
+void space_synchronize_sipart_positions_mapper(void *map_data, int nr_siparts,
+                                               void *extra_data) {
+  /* Unpack the data */
+  const struct sipart *siparts = (struct sipart *)map_data;
+
+  for (int k = 0; k < nr_siparts; k++) {
+
+    /* Get the particle */
+    const struct sipart *sip = &siparts[k];
+
+    /* Skip unimportant particles */
+    if (sip->time_bin == time_bin_not_created ||
+        sip->time_bin == time_bin_inhibited)
+      continue;
+
+    /* Get its gravity friend */
+    struct gpart *gp = sip->gpart;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gp == NULL) error("Unlinked particle!");
+#endif
+
+    /* Synchronize positions, velocities and masses */
+    gp->x[0] = sip->x[0];
+    gp->x[1] = sip->x[1];
+    gp->x[2] = sip->x[2];
+
+    gp->v_full[0] = sip->v[0];
+    gp->v_full[1] = sip->v[1];
+    gp->v_full[2] = sip->v[2];
+
+    gp->mass = sip->mass;
+  }
+}
 /**
  * @brief Make sure the baryon particles are at the same position and
  * have the same velocity and mass as their #gpart friends.
@@ -777,6 +839,11 @@ void space_synchronize_particle_positions(struct space *s) {
   if (s->nr_gparts > 0 && s->nr_sinks > 0)
     threadpool_map(&s->e->threadpool, space_synchronize_sink_positions_mapper,
                    s->sinks, s->nr_sinks, sizeof(struct sink),
+                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
+
+  if (s->nr_gparts > 0 && s->nr_siparts > 0)
+    threadpool_map(&s->e->threadpool, space_synchronize_sipart_positions_mapper,
+                   s->siparts, s->nr_siparts, sizeof(struct sipart),
                    threadpool_auto_chunk_size, /*extra_data=*/NULL);
 
   if (s->e->verbose)
@@ -1021,6 +1088,21 @@ void space_collect_sum_bpart_mass(void *restrict map_data, int count,
   atomic_add(&s->initial_count_particles[5], count);
 }
 
+void space_collect_sum_sipart_mass(void *restrict map_data, int count,
+                                   void *restrict extra_data) {
+
+  struct space *s = (struct space *)extra_data;
+  const struct sipart *siparts = (const struct sipart *)map_data;
+
+  /* Local collection */
+  double sum = 0.;
+  for (int i = 0; i < count; ++i) sum += siparts[i].mass;
+
+  /* Store back */
+  atomic_add_d(&s->initial_mean_mass_particles[7], sum);
+  atomic_add(&s->initial_count_particles[7], count);
+}
+
 /**
  * @brief Collect the mean mass of each particle type in the #space.
  */
@@ -1047,6 +1129,9 @@ void space_collect_mean_masses(struct space *s, int verbose) {
   threadpool_map(&s->e->threadpool, space_collect_sum_bpart_mass, s->bparts,
                  s->nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
                  s);
+  threadpool_map(&s->e->threadpool, space_collect_sum_sipart_mass, s->siparts,
+                 s->nr_siparts, sizeof(struct sipart),
+                 threadpool_auto_chunk_size, s);
 
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, s->initial_mean_mass_particles, swift_type_count,
@@ -1083,11 +1168,13 @@ void space_collect_mean_masses(struct space *s, int verbose) {
  * @param sinks Array of sink particles.
  * @param sparts Array of stars particles.
  * @param bparts Array of black hole particles.
+ * @param siparts Array of SIDM particles.
  * @param Npart The number of Gas particles in the space.
  * @param Ngpart The number of Gravity particles in the space.
  * @param Nsink The number of sink particles in the space.
  * @param Nspart The number of stars particles in the space.
  * @param Nbpart The number of black hole particles in the space.
+ * @param Nsipart The number of SIDM particles in the space.
  * @param periodic flag whether the domain is periodic or not.
  * @param replicate How many replications along each direction do we want?
  * @param remap_ids Are we remapping the IDs from 1 to N?
@@ -1110,10 +1197,11 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 const struct hydro_props *hydro_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
-                struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
-                size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
-                int replicate, int remap_ids, int generate_gas_in_ics,
-                int hydro, int self_gravity, int star_formation, int with_sink,
+                struct bpart *bparts, struct sipart *siparts, size_t Npart,
+                size_t Ngpart, size_t Nsink, size_t Nspart, size_t Nbpart,
+                size_t Nnupart, size_t Nsipart, int periodic, int replicate,
+                int remap_ids, int generate_gas_in_ics, int hydro,
+                int self_gravity, int star_formation, int with_sink,
                 int with_DM, int with_DM_background, int neutrinos, int verbose,
                 int dry_run, int nr_nodes) {
 
@@ -1138,36 +1226,43 @@ void space_init(struct space *s, struct swift_params *params,
   s->nr_bparts = Nbpart;
   s->nr_sinks = Nsink;
   s->nr_nuparts = Nnupart;
+  s->nr_siparts = Nsipart;
   s->size_parts = Npart;
   s->size_gparts = Ngpart;
   s->size_sparts = Nspart;
   s->size_bparts = Nbpart;
   s->size_sinks = Nsink;
+  s->size_siparts = Nsipart;
   s->nr_inhibited_parts = 0;
   s->nr_inhibited_gparts = 0;
   s->nr_inhibited_sparts = 0;
   s->nr_inhibited_bparts = 0;
   s->nr_inhibited_sinks = 0;
+  s->nr_inhibited_siparts = 0;
   s->nr_extra_parts = 0;
   s->nr_extra_gparts = 0;
   s->nr_extra_sparts = 0;
   s->nr_extra_bparts = 0;
   s->nr_extra_sinks = 0;
+  s->nr_extra_siparts = 0;
   s->parts = parts;
   s->gparts = gparts;
   s->sparts = sparts;
   s->bparts = bparts;
   s->sinks = sinks;
+  s->siparts = siparts;
   s->min_part_mass = FLT_MAX;
   s->min_gpart_mass = FLT_MAX;
   s->min_sink_mass = FLT_MAX;
   s->min_spart_mass = FLT_MAX;
   s->min_bpart_mass = FLT_MAX;
+  s->min_sipart_mass = FLT_MAX;
   s->sum_part_vel_norm = 0.f;
   s->sum_gpart_vel_norm = 0.f;
   s->sum_sink_vel_norm = 0.f;
   s->sum_spart_vel_norm = 0.f;
   s->sum_bpart_vel_norm = 0.f;
+  s->sum_sipart_vel_norm = 0.f;
   s->nr_queues = 1; /* Temporary value until engine construction */
 
   /* do a quick check that the box size has valid values */
@@ -1200,8 +1295,8 @@ void space_init(struct space *s, struct swift_params *params,
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!dry_run)
-      part_verify_links(parts, gparts, sinks, sparts, bparts, Npart, Ngpart,
-                        Nsink, Nspart, Nbpart, 1);
+      part_verify_links(parts, gparts, sinks, sparts, bparts, siparts, Npart,
+                        Ngpart, Nsink, Nspart, Nbpart, Nsipart, 1);
 #endif
   }
 
@@ -1219,15 +1314,17 @@ void space_init(struct space *s, struct swift_params *params,
     sparts = s->sparts;
     bparts = s->bparts;
     sinks = s->sinks;
+    siparts = s->siparts;
     Npart = s->nr_parts;
     Ngpart = s->nr_gparts;
     Nspart = s->nr_sparts;
     Nbpart = s->nr_bparts;
     Nsink = s->nr_sinks;
+    Nsipart = s->nr_siparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    part_verify_links(parts, gparts, sinks, sparts, bparts, Npart, Ngpart,
-                      Nsink, Nspart, Nbpart, 1);
+    part_verify_links(parts, gparts, sinks, sparts, bparts, siparts, Npart,
+                      Ngpart, Nsink, Nspart, Nbpart, Nsipart, 1);
 #endif
   }
 
@@ -1300,6 +1397,12 @@ void space_init(struct space *s, struct swift_params *params,
   space_recurse_size_pair_sinks =
       parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_pair_sinks",
                                space_recurse_size_pair_sinks_default);
+  space_recurse_size_self_sidm =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_self_sidm",
+                               space_recurse_size_self_sidm_default);
+  space_recurse_size_pair_sidm =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_pair_sidm",
+                               space_recurse_size_pair_sidm_default);
 
   space_extra_parts = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_parts", space_extra_parts_default);
@@ -1311,6 +1414,8 @@ void space_init(struct space *s, struct swift_params *params,
       params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
   space_extra_sinks = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_sinks", space_extra_sinks_default);
+  space_extra_siparts = parser_get_opt_param_int(
+      params, "Scheduler:cell_extra_siparts", space_extra_siparts_default);
 
   engine_max_parts_per_ghost =
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
@@ -1394,6 +1499,11 @@ void space_init(struct space *s, struct swift_params *params,
       sinks[k].x[1] += shift[1];
       sinks[k].x[2] += shift[2];
     }
+    for (size_t k = 0; k < Nsipart; k++) {
+      siparts[k].x[0] += shift[0];
+      siparts[k].x[1] += shift[1];
+      siparts[k].x[2] += shift[2];
+    }
   }
 
   if (!dry_run) {
@@ -1466,6 +1576,20 @@ void space_init(struct space *s, struct swift_params *params,
         for (int j = 0; j < 3; j++)
           if (sinks[k].x[j] < 0 || sinks[k].x[j] >= s->dim[j])
             error("Not all sink-particles are within the specified domain.");
+    }
+
+    /* Same for the siparts */
+    if (periodic) {
+      for (size_t k = 0; k < Nsipart; k++)
+        for (int j = 0; j < 3; j++) {
+          while (siparts[k].x[j] < 0) siparts[k].x[j] += s->dim[j];
+          while (siparts[k].x[j] >= s->dim[j]) siparts[k].x[j] -= s->dim[j];
+        }
+    } else {
+      for (size_t k = 0; k < Nsipart; k++)
+        for (int j = 0; j < 3; j++)
+          if (siparts[k].x[j] < 0 || siparts[k].x[j] >= s->dim[j])
+            error("Not all si-particles are within the specified domain.");
     }
   }
 
@@ -1550,7 +1674,10 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   const size_t nr_bparts = s->nr_bparts;
   const size_t nr_sinks = s->nr_sinks;
   const size_t nr_nuparts = s->nr_nuparts;
-  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts - nr_bparts;
+  const size_t nr_siparts = s->nr_siparts;
+  const size_t nr_dm =
+      nr_gparts - nr_parts - nr_sparts - nr_bparts - nr_siparts;
+  /* nr_dm does not include sidm particles */
 
   s->size_parts = s->nr_parts = nr_parts * factor;
   s->size_gparts = s->nr_gparts = nr_gparts * factor;
@@ -1558,6 +1685,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   s->size_bparts = s->nr_bparts = nr_bparts * factor;
   s->size_sinks = s->nr_sinks = nr_sinks * factor;
   s->nr_nuparts = nr_nuparts * factor;
+  s->size_siparts = s->nr_siparts = nr_siparts * factor;
 
   /* Allocate space for new particles */
   struct part *parts = NULL;
@@ -1565,6 +1693,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   struct spart *sparts = NULL;
   struct bpart *bparts = NULL;
   struct sink *sinks = NULL;
+  struct sipart *siparts = NULL;
 
   if (swift_memalign("parts", (void **)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
@@ -1586,6 +1715,10 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                      s->nr_bparts * sizeof(struct bpart)) != 0)
     error("Failed to allocate new bpart array.");
 
+  if (swift_memalign("siparts", (void **)&siparts, sipart_align,
+                     s->nr_siparts * sizeof(struct sipart)) != 0)
+    error("Failed to allocate new sipart array.");
+
   /* Replicate everything */
   for (int i = 0; i < replicate; ++i) {
     for (int j = 0; j < replicate; ++j) {
@@ -1603,6 +1736,8 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                nr_gparts * sizeof(struct gpart));
         memcpy(sinks + offset * nr_sinks, s->sinks,
                nr_sinks * sizeof(struct sink));
+        memcpy(siparts + offset * nr_siparts, s->siparts,
+               nr_siparts * sizeof(struct sipart));
 
         /* Shift the positions */
         const double shift[3] = {i * s->dim[0], j * s->dim[1], k * s->dim[2]};
@@ -1632,9 +1767,16 @@ void space_replicate(struct space *s, int replicate, int verbose) {
           sinks[n].x[1] += shift[1];
           sinks[n].x[2] += shift[2];
         }
+        for (size_t n = offset * nr_siparts; n < (offset + 1) * nr_siparts;
+             ++n) {
+          siparts[n].x[0] += shift[0];
+          siparts[n].x[1] += shift[1];
+          siparts[n].x[2] += shift[2];
+        }
 
         /* Set the correct links (recall gpart are sorted by type at start-up):
-           first DM (unassociated gpart), then gas, then sinks, then stars */
+           first DM (unassociated gpart), then gas, then sinks, then stars,
+           TODO:where bparts soprted? then SIDM */
         if (nr_parts > 0 && nr_gparts > 0) {
           const size_t offset_part = offset * nr_parts;
           const size_t offset_gpart = offset * nr_gparts + nr_dm;
@@ -1673,6 +1815,16 @@ void space_replicate(struct space *s, int replicate, int verbose) {
             gparts[offset_gpart + n].id_or_neg_offset = -(offset_bpart + n);
           }
         }
+        if (nr_siparts > 0 && nr_gparts > 0) {
+          const size_t offset_sipart = offset * nr_siparts;
+          const size_t offset_gpart =
+              offset * nr_gparts + nr_dm + nr_parts + nr_sinks + nr_bparts;
+
+          for (size_t n = 0; n < nr_siparts; ++n) {
+            siparts[offset_sipart + n].gpart = &gparts[offset_gpart + n];
+            gparts[offset_gpart + n].id_or_neg_offset = -(offset_sipart + n);
+          }
+        }
       }
     }
   }
@@ -1683,11 +1835,13 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   swift_free("sparts", s->sparts);
   swift_free("bparts", s->bparts);
   swift_free("sinks", s->sinks);
+  swift_free("siparts", s->siparts);
   s->parts = parts;
   s->gparts = gparts;
   s->sparts = sparts;
   s->bparts = bparts;
   s->sinks = sinks;
+  s->siparts = siparts;
 
   /* Finally, update the domain size */
   s->dim[0] *= replicate;
@@ -1697,8 +1851,8 @@ void space_replicate(struct space *s, int replicate, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, verbose);
+                    s->siparts, s->nr_parts, s->nr_gparts, s->nr_sinks,
+                    s->nr_sparts, s->nr_bparts, s->nr_siparts, verbose);
 #endif
 }
 
@@ -1706,7 +1860,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
  * @brief Remaps the IDs of the particles to the range [1, N]
  *
  * The IDs are unique accross all MPI ranks and are generated
- * in ther order DM, gas, sinks, stars, BHs.
+ * in ther order DM, gas, sinks, stars, BHs, SIDM.
  *
  * @param s The current #space object.
  * @param nr_nodes The number of MPI ranks used in the run.
@@ -1731,11 +1885,13 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long local_nr_gparts = s->nr_gparts;
   long long local_nr_sparts = s->nr_sparts;
   long long local_nr_bparts = s->nr_bparts;
+  long long local_nr_siparts = s->nr_siparts;
   long long local_nr_baryons =
       local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
   long long local_nr_dm = local_nr_gparts > 0
                               ? local_nr_gparts - local_nr_baryons -
-                                    local_nr_nuparts - local_nr_dm_background
+                                    local_nr_nuparts - local_nr_dm_background -
+                                    local_nr_siparts
                               : 0;
 
   /* Get the global offsets */
@@ -1743,6 +1899,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long offset_sinks = 0;
   long long offset_sparts = 0;
   long long offset_bparts = 0;
+  long long offset_siparts = 0;
   long long offset_dm = 0;
   long long offset_dm_background = 0;
   long long offset_nuparts = 0;
@@ -1761,6 +1918,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
              MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
   MPI_Exscan(&local_nr_nuparts, &offset_nuparts, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
+  MPI_Exscan(&local_nr_siparts, &offset_siparts, 1, MPI_LONG_LONG_INT, MPI_SUM,
+             MPI_COMM_WORLD);
 #endif
 
   /* Total number of particles of each kind */
@@ -1770,6 +1929,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long total_sparts = offset_sparts + local_nr_sparts;
   long long total_bparts = offset_bparts + local_nr_bparts;
   long long total_nuparts = offset_nuparts + local_nr_nuparts;
+  long long total_siparts = offset_siparts + local_nr_siparts;
   // long long total_dm_backgroud = offset_dm_background +
   // local_nr_dm_background;
 
@@ -1781,15 +1941,16 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   MPI_Bcast(&total_sparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_bparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_nuparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
+  MPI_Bcast(&total_siparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   // MPI_Bcast(&total_dm_background, 1, MPI_LONG_LONG_INT, nr_nodes - 1,
   // MPI_COMM_WORLD);
 #endif
 
   /* Let's order the particles
-   * IDs will be DM then gas then sinks than stars then BHs then nus then
-   * DM background. Note that we leave a large gap (10x the number of particles)
-   * in-between the regular particles and the background ones. This allow for
-   * particle splitting to keep a compact set of ids. */
+   * IDs will be DM then gas then sinks than stars then BHs then nus then SIDM
+   * then DM background. Note that we leave a large gap (10x the number of
+   * particles) in-between the regular particles and the background ones. This
+   * allow for particle splitting to keep a compact set of ids. */
   offset_dm += 1;
   offset_parts += 1 + total_dm;
   offset_sinks += 1 + total_dm + total_parts;
@@ -1797,9 +1958,11 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   offset_bparts += 1 + total_dm + total_parts + total_sinks + total_sparts;
   offset_nuparts +=
       1 + total_dm + total_parts + total_sinks + total_sparts + total_bparts;
+  offset_siparts += 1 + total_dm + total_parts + total_sinks + total_sparts +
+                    total_bparts + total_nuparts;
   offset_dm_background +=
       1 + 10 * (total_dm + total_parts + total_sinks + total_sparts +
-                total_bparts + total_nuparts);
+                total_bparts + total_nuparts + total_siparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
   for (long long i = 0; i < local_nr_parts; ++i) {
@@ -1813,6 +1976,9 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   }
   for (long long i = 0; i < local_nr_bparts; ++i) {
     s->bparts[i].id = offset_bparts + i;
+  }
+  for (long long i = 0; i < local_nr_siparts; ++i) {
+    s->siparts[i].id = offset_siparts + i;
   }
   long long count_dm = 0;
   long long count_dm_background = 0;
@@ -1841,7 +2007,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
  * gas un-initialised as they will be given a value from the parameter file at a
  * later stage.
  *
- * Background DM particles are not duplicated.
+ * Background DM and SIDM particles are not duplicated.
  *
  * @param s The #space to create the particles in.
  * @param cosmo The current #cosmology model.
@@ -2226,6 +2392,7 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
   space_map_cells_pre(s, 1, cell_check_spart_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_bpart_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_sink_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_sipart_drift_point, &ti_drift);
   if (multipole)
     space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
 #else
@@ -2560,12 +2727,14 @@ void space_clean(struct space *s) {
   swift_free("sparts", s->sparts);
   swift_free("bparts", s->bparts);
   swift_free("sinks", s->sinks);
+  swift_free("siparts", s->siparts);
 #ifdef WITH_MPI
   swift_free("parts_foreign", s->parts_foreign);
   swift_free("sparts_foreign", s->sparts_foreign);
   swift_free("gparts_foreign", s->gparts_foreign);
   swift_free("bparts_foreign", s->bparts_foreign);
   swift_free("sinks_foreign", s->sinks_foreign);
+  swift_free("siparts_foreign", s->siparts_foreign);
 #endif
   free(s->cells_sub);
   free(s->multipoles_sub);
@@ -2618,6 +2787,8 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "space_extra_sparts", "space_extra_sparts");
   restart_write_blocks(&space_extra_bparts, sizeof(int), 1, stream,
                        "space_extra_bparts", "space_extra_bparts");
+  restart_write_blocks(&space_extra_siparts, sizeof(int), 1, stream,
+                       "space_extra_siparts", "space_extra_siparts");
   restart_write_blocks(&space_recurse_size_self_hydro, sizeof(int), 1, stream,
                        "space_recurse_size_self_hydro",
                        "space_recurse_size_self_hydro");
@@ -2642,6 +2813,12 @@ void space_struct_dump(struct space *s, FILE *stream) {
   restart_write_blocks(&space_recurse_size_pair_sinks, sizeof(int), 1, stream,
                        "space_recurse_size_pair_sinks",
                        "space_recurse_size_pair_sinks");
+  restart_write_blocks(&space_recurse_size_self_sidm, sizeof(int), 1, stream,
+                       "space_recurse_size_self_sidm",
+                       "space_recurse_size_self_sidm");
+  restart_write_blocks(&space_recurse_size_pair_sidm, sizeof(int), 1, stream,
+                       "space_recurse_size_pair_sidm",
+                       "space_recurse_size_pair_sidm");
   restart_write_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                        "space_expected_max_nr_strays",
                        "space_expected_max_nr_strays");
@@ -2685,6 +2862,9 @@ void space_struct_dump(struct space *s, FILE *stream) {
   if (s->nr_bparts > 0)
     restart_write_blocks(s->bparts, s->nr_bparts, sizeof(struct bpart), stream,
                          "bparts", "bparts");
+  if (s->nr_siparts > 0)
+    restart_write_blocks(s->siparts, s->nr_siparts, sizeof(struct sipart),
+                         stream, "siparts", "siparts");
 }
 
 /**
@@ -2729,6 +2909,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_extra_sparts");
   restart_read_blocks(&space_extra_bparts, sizeof(int), 1, stream, NULL,
                       "space_extra_bparts");
+  restart_read_blocks(&space_extra_siparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_siparts");
   restart_read_blocks(&space_recurse_size_self_hydro, sizeof(int), 1, stream,
                       NULL, "space_recurse_size_self_hydro");
   restart_read_blocks(&space_recurse_size_pair_hydro, sizeof(int), 1, stream,
@@ -2745,6 +2927,10 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       NULL, "space_recurse_size_self_sinks");
   restart_read_blocks(&space_recurse_size_pair_sinks, sizeof(int), 1, stream,
                       NULL, "space_recurse_size_pair_sinks");
+  restart_read_blocks(&space_recurse_size_self_sidm, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_self_sidm");
+  restart_read_blocks(&space_recurse_size_pair_sidm, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_pair_sidm");
   restart_read_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                       NULL, "space_expected_max_nr_strays");
   restart_read_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream, NULL,
@@ -2783,6 +2969,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->size_bparts_foreign = 0;
   s->sinks_foreign = NULL;
   s->size_sinks_foreign = 0;
+  s->siparts_foreign = NULL;
+  s->size_siparts_foreign = 0;
 #endif
 
   /* More things to read. */
@@ -2842,6 +3030,15 @@ void space_struct_restore(struct space *s, FILE *stream) {
     restart_read_blocks(s->bparts, s->nr_bparts, sizeof(struct bpart), stream,
                         NULL, "bparts");
   }
+  s->siparts = NULL;
+  if (s->nr_siparts > 0) {
+    if (swift_memalign("siparts", (void **)&s->bparts, sipart_align,
+                       s->size_siparts * sizeof(struct sipart)) != 0)
+      error("Failed to allocate restore sipart array.");
+
+    restart_read_blocks(s->siparts, s->nr_siparts, sizeof(struct spart), stream,
+                        NULL, "siparts");
+  }
 
   /* Need to reconnect the gravity parts to their hydro, star and BH particles.
    * Note that we can't use the threadpool here as we have not restored it yet.
@@ -2863,11 +3060,15 @@ void space_struct_restore(struct space *s, FILE *stream) {
   if (s->nr_bparts > 0 && s->nr_gparts > 0)
     part_relink_bparts_to_gparts(s->gparts, s->nr_gparts, s->bparts);
 
+  /* Re-link the bparts. */
+  if (s->nr_siparts > 0 && s->nr_gparts > 0)
+    part_relink_siparts_to_gparts(s->gparts, s->nr_gparts, s->siparts);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, 1);
+                    s->siparts, s->nr_parts, s->nr_gparts, s->nr_sinks,
+                    s->nr_sparts, s->nr_bparts, s->nr_siparts, 1);
 #endif
 }
 

@@ -44,6 +44,7 @@ struct threadpool;
 #define gpart_align 128
 #define bpart_align 128
 #define sink_align 128
+#define sipart_align 128
 
 /* Import the right hydro particle definition */
 #if defined(NONE_SPH)
@@ -145,6 +146,15 @@ struct threadpool;
 #error "Invalid choice of sink particle"
 #endif
 
+/* Import the right SIDM particle definition */
+#if defined(SIDM_NONE)
+#include "./sidm/None/sidm_part.h"
+#elif defined(SIDM_BASIC)
+#include "./sidm/Basic/sidm_part.h"
+#else
+#error "Invalid choice of SIDM particle"
+#endif
+
 void part_relink_gparts_to_parts(struct part *parts, const size_t N,
                                  const ptrdiff_t offset);
 void part_relink_gparts_to_sparts(struct spart *sparts, const size_t N,
@@ -153,6 +163,8 @@ void part_relink_gparts_to_bparts(struct bpart *bparts, const size_t N,
                                   const ptrdiff_t offset);
 void part_relink_gparts_to_sinks(struct sink *sinks, const size_t N,
                                  const ptrdiff_t offset);
+void part_relink_gparts_to_siparts(struct sipart *siparts, const size_t N,
+                                   const ptrdiff_t offset);
 void part_relink_parts_to_gparts(struct gpart *gparts, const size_t N,
                                  struct part *parts);
 void part_relink_sparts_to_gparts(struct gpart *gparts, const size_t N,
@@ -161,14 +173,18 @@ void part_relink_bparts_to_gparts(struct gpart *gparts, const size_t N,
                                   struct bpart *bparts);
 void part_relink_sinks_to_gparts(struct gpart *gparts, const size_t N,
                                  struct sink *sinks);
+void part_relink_siparts_to_gparts(struct gpart *gparts, const size_t N,
+                                   struct sipart *siparts);
 void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
                                      struct part *parts, struct sink *sinks,
                                      struct spart *sparts, struct bpart *bparts,
+                                     struct sipart *siparts,
                                      struct threadpool *tp);
 void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct sink *sinks, struct spart *sparts,
-                       struct bpart *bparts, size_t nr_parts, size_t nr_gparts,
-                       size_t nr_sinks, size_t nr_sparts, size_t nr_bparts,
+                       struct bpart *bparts, struct sipart *siparts,
+                       size_t nr_parts, size_t nr_gparts, size_t nr_sinks,
+                       size_t nr_sparts, size_t nr_bparts, size_t nr_siparts,
                        int verbose);
 
 #ifdef WITH_MPI
@@ -181,6 +197,7 @@ extern MPI_Datatype gpart_fof_foreign_mpi_type;
 extern MPI_Datatype spart_mpi_type;
 extern MPI_Datatype bpart_mpi_type;
 extern MPI_Datatype sink_mpi_type;
+extern MPI_Datatype sipart_mpi_type;
 
 void part_create_mpi_types(void);
 void part_free_mpi_types(void);

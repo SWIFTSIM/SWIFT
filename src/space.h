@@ -54,6 +54,7 @@ struct hydro_props;
 #define space_extra_sparts_default 200
 #define space_extra_bparts_default 0
 #define space_extra_sinks_default 0
+#define space_extra_siparts_default 0
 #define space_expected_max_nr_strays_default 100
 #define space_subsize_pair_hydro_default 256000000
 #define space_subsize_self_hydro_default 32000
@@ -69,6 +70,8 @@ struct hydro_props;
 #define space_recurse_size_pair_black_holes_default 100
 #define space_recurse_size_self_sinks_default 100
 #define space_recurse_size_pair_sinks_default 100
+#define space_recurse_size_self_sidm_default 100
+#define space_recurse_size_pair_sidm_default 100
 #define space_subdepth_diff_grav_default 4
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
@@ -97,11 +100,14 @@ extern int space_recurse_size_self_black_holes;
 extern int space_recurse_size_pair_black_holes;
 extern int space_recurse_size_self_sinks;
 extern int space_recurse_size_pair_sinks;
+extern int space_recurse_size_self_sidm;
+extern int space_recurse_size_pair_sidm;
 extern int space_extra_parts;
 extern int space_extra_gparts;
 extern int space_extra_sparts;
 extern int space_extra_bparts;
 extern int space_extra_sinks;
+extern int space_extra_siparts;
 extern double engine_redistribute_alloc_margin;
 extern double engine_foreign_alloc_margin;
 
@@ -215,6 +221,9 @@ struct space {
   /*! The total number of neutrino #gpart in the space. */
   size_t nr_nuparts;
 
+  /*! The total number of #sipart in the space. */
+  size_t nr_siparts;
+
   /*! The total number of #part we allocated memory for */
   size_t size_parts;
 
@@ -229,6 +238,9 @@ struct space {
 
   /*! The total number of #sink we allocated memory for. */
   size_t size_sinks;
+
+  /*! The total number of #sipart we allocated memory for. */
+  size_t size_siparts;
 
   /*! Number of inhibted gas particles in the space */
   size_t nr_inhibited_parts;
@@ -245,6 +257,9 @@ struct space {
   /*! Number of inhibted sinks in the space */
   size_t nr_inhibited_sinks;
 
+  /*! Number of inhibted SIDM particles in the space */
+  size_t nr_inhibited_siparts;
+
   /*! Number of extra #part we allocated (for on-the-fly creation) */
   size_t nr_extra_parts;
 
@@ -259,6 +274,9 @@ struct space {
 
   /*! Number of extra #sink we allocated (for on-the-fly creation) */
   size_t nr_extra_sinks;
+
+  /*! Number of extra #sipart we allocated (for on-the-fly creation) */
+  size_t nr_extra_siparts;
 
   /*! The particle data (cells have pointers to this). */
   struct part *parts;
@@ -278,6 +296,9 @@ struct space {
   /*! The sink particle data (cells have pointers to this). */
   struct sink *sinks;
 
+  /*! The si-particle data (cells have pointers to this). */
+  struct sipart *siparts;
+
   /*! Minimal mass of all the #part */
   float min_part_mass;
 
@@ -293,6 +314,9 @@ struct space {
   /*! Minimal mass of all the #bpart */
   float min_bpart_mass;
 
+  /*! Minimal mass of all the #sipart */
+  float min_sipart_mass;
+
   /*! Sum of the norm of the velocity of all the #part */
   float sum_part_vel_norm;
 
@@ -307,6 +331,9 @@ struct space {
 
   /*! Sum of the norm of the velocity of all the #bpart */
   float sum_bpart_vel_norm;
+
+  /*! Sum of the norm of the velocity of all the #sipart */
+  float sum_sipart_vel_norm;
 
   /*! Minimal gravity acceleration accross all particles */
   float min_a_grav;
@@ -373,6 +400,9 @@ struct space {
   struct sink *sinks_foreign;
   size_t nr_sinks_foreign, size_sinks_foreign;
 
+  /*! Buffers for si-parts that we will receive from foreign cells. */
+  struct sipart *siparts_foreign;
+  size_t nr_siparts_foreign, size_siparts_foreign;
 #endif
 };
 
@@ -382,26 +412,29 @@ void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
                       int *counts, int num_bins, ptrdiff_t parts_offset);
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        struct sink *sinks, struct spart *sparts,
-                       struct bpart *bparts, int *ind, int *counts,
-                       int num_bins);
+                       struct bpart *bparts, struct sipart *siparts, int *ind,
+                       int *counts, int num_bins);
 void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t sparts_offset);
 void space_bparts_sort(struct bpart *bparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t bparts_offset);
 void space_sinks_sort(struct sink *sinks, int *ind, int *counts, int num_bins,
                       ptrdiff_t sinks_offset);
+void space_siparts_sort(struct sipart *siparts, int *ind, int *counts,
+                        int num_bins, ptrdiff_t siparts_offset);
 void space_getcells(struct space *s, int nr_cells, struct cell **cells,
                     const short int tid);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 const struct hydro_props *hydro_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
-                struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
-                size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
-                int replicate, int remap_ids, int generate_gas_in_ics,
-                int hydro, int gravity, int star_formation, int with_sink,
-                int with_DM, int with_DM_background, int neutrinos, int verbose,
-                int dry_run, int nr_nodes);
+                struct bpart *bparts, struct sipart *siparts, size_t Npart,
+                size_t Ngpart, size_t Nsink, size_t Nspart, size_t Nbpart,
+                size_t Nnupart, size_t Nsipart, int periodic, int replicate,
+                int remap_ids, int generate_gas_in_ics, int hydro, int gravity,
+                int star_formation, int with_sink, int with_DM,
+                int with_DM_background, int neutrinos, int verbose, int dry_run,
+                int nr_nodes);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
@@ -439,18 +472,23 @@ void space_bparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
 void space_sinks_get_cell_index(struct space *s, int *sind, int *cell_counts,
                                 size_t *count_inhibited_sinks,
                                 size_t *count_extra_sinks, int verbose);
+void space_siparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
+                                  size_t *count_inhibited_siparts,
+                                  size_t *count_extra_siparts, int verbose);
 void space_synchronize_particle_positions(struct space *s);
 void space_first_init_parts(struct space *s, int verbose);
 void space_first_init_gparts(struct space *s, int verbose);
 void space_first_init_sparts(struct space *s, int verbose);
 void space_first_init_bparts(struct space *s, int verbose);
 void space_first_init_sinks(struct space *s, int verbose);
+void space_first_init_siparts(struct space *s, int verbose);
 void space_collect_mean_masses(struct space *s, int verbose);
 void space_init_parts(struct space *s, int verbose);
 void space_init_gparts(struct space *s, int verbose);
 void space_init_sparts(struct space *s, int verbose);
 void space_init_bparts(struct space *s, int verbose);
 void space_init_sinks(struct space *s, int verbose);
+void space_init_siparts(struct space *s, int verbose);
 void space_after_snap_tracer(struct space *s, int verbose);
 void space_mark_cell_as_updated(struct space *s, const struct cell *c);
 void space_convert_quantities(struct space *s, int verbose);

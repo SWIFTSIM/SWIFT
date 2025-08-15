@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl).
+ * Copyright (C) 2025 Katy Proctor (katy.proctor@fysik.su.se).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -49,22 +49,18 @@ int main(int argc, char *argv[]) {
   /* Properties of the ICs */
   const double boxSize = 1.;
   const size_t L = 4;
-  const double rho = 2.;
-#ifdef CHEMISTRY_GRACKLE
-  const float he_density = rho * 0.24;
-#endif
 
   /* Read data */
-  read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &sinks, &sparts,
+  read_ic_single("input_SIDM.hdf5", &us, dim, &parts, &gparts, &sinks, &sparts,
                  &bparts, &siparts, &Ngas, &Ngpart, &Ngpart_background,
                  &Nnupart, &Nsink, &Nspart, &Nbpart, &Nsipart,
                  &flag_entropy_ICs,
-                 /*with_hydro=*/1,
+                 /*with_hydro=*/0,
                  /*with_gravity=*/1,
                  /*with_sink=*/0,
                  /*with_stars=*/0,
                  /*with_black_holes=*/0,
-                 /*with_sidm=*/0,
+                 /*with_sidm=*/1,
                  /*with_cosmology=*/0,
                  /*cleanup_h=*/0,
                  /*cleanup_sqrt_a=*/0,
@@ -75,30 +71,19 @@ int main(int argc, char *argv[]) {
   assert(dim[0] == boxSize);
   assert(dim[1] == boxSize);
   assert(dim[2] == boxSize);
-  assert(Ngas == L * L * L);
-  assert(Ngpart == L * L * L);
+  assert(Nsipart == L * L * L);
 
   /* Check particles */
-  for (size_t n = 0; n < Ngas; ++n) {
+  for (size_t n = 0; n < Nsipart; ++n) {
 
     /* Check that indices are in a reasonable range */
-    unsigned long long index = parts[n].id;
-    assert(index < Ngas);
-
-    /* Check masses */
-    float mass = hydro_get_mass(&parts[n]);
-    float correct_mass = boxSize * boxSize * boxSize * rho / Ngas;
-    assert(mass == correct_mass);
-
-    /* Check smoothing length */
-    float h = parts[n].h;
-    float correct_h = 2.251 * boxSize / L;
-    assert(h == correct_h);
+    unsigned long long index = siparts[n].id;
+    assert(index < Nsipart);
 
     /* Check velocity */
-    assert(parts[n].v[0] == 0.);
-    assert(parts[n].v[1] == 0.);
-    assert(parts[n].v[2] == 0.);
+    assert(siparts[n].v[0] == 0.);
+    assert(siparts[n].v[1] == 0.);
+    assert(siparts[n].v[2] == 0.);
 
     /* Check positions */
     k = index % 4;
@@ -107,23 +92,13 @@ int main(int argc, char *argv[]) {
     double correct_x = i * boxSize / L + boxSize / (2 * L);
     double correct_y = j * boxSize / L + boxSize / (2 * L);
     double correct_z = k * boxSize / L + boxSize / (2 * L);
-    assert(parts[n].x[0] == correct_x);
-    assert(parts[n].x[1] == correct_y);
-    assert(parts[n].x[2] == correct_z);
-
-    /* Check accelerations */
-    assert(parts[n].a_hydro[0] == 0.);
-    assert(parts[n].a_hydro[1] == 0.);
-    assert(parts[n].a_hydro[2] == 0.);
-
-#ifdef CHEMISTRY_GRACKLE
-    assert(parts[n].chemistry_data.he_density == he_density);
-#endif
+    assert(siparts[n].x[0] == correct_x);
+    assert(siparts[n].x[1] == correct_y);
+    assert(siparts[n].x[2] == correct_z);
   }
 
   /* Clean-up */
-  free(parts);
-  free(gparts);
+  free(siparts);
 
   return 0;
 }
