@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
                   "Run with black holes.", NULL, 0, 0),
       OPT_BOOLEAN('k', "sinks", &with_sinks, "Run with sink particles.", NULL,
                   0, 0),
-      OPT_BOOLEAN('n', "sidm", &with_sidm, "Run with SIDM.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "sidm", &with_sidm, "Run with SIDM.", NULL, 0, 0),
       OPT_BOOLEAN(
           'u', "fof", &with_fof,
           "Run Friends-of-Friends algorithm to perform black hole seeding.",
@@ -540,6 +540,7 @@ int main(int argc, char *argv[]) {
     pretime_message("Error: sink particles are not available yet with MPI.");
     return 1;
   }
+
 #endif /* SWIFT_DEBUG_CHECKS */
 #endif /* WITH_MPI */
 
@@ -693,6 +694,12 @@ int main(int argc, char *argv[]) {
 #ifdef SINK_NONE
   if (with_sinks) {
     error("Running with sink particles but compiled without them!");
+  }
+#endif
+
+#ifdef SIDM_NONE
+  if (with_sidm) {
+    error("Running with SIDM particles but compiled without them!");
   }
 #endif
 
@@ -1329,11 +1336,14 @@ int main(int argc, char *argv[]) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_sink) error("Linking problem");
     }
-
+    if (!with_sidm && !dry_run) {
+      for (size_t k = 0; k < Ngpart; ++k)
+        if (gparts[k].type == swift_type_sidm) error("Linking problem");
+    }
     /* Check that the other links are correctly set */
     if (!dry_run)
-      part_verify_links(parts, gparts, sinks, sparts, bparts, Ngas, Ngpart,
-                        Nsink, Nspart, Nbpart, /*verbose=*/1);
+      part_verify_links(parts, gparts, sinks, sparts, bparts, siparts, Ngas,
+                        Ngpart, Nsink, Nspart, Nbpart, Nsipart, /*verbose=*/1);
 #endif
 
     /* Get the total number of particles across all nodes. */
@@ -1345,11 +1355,13 @@ int main(int argc, char *argv[]) {
     N_long[swift_type_dark_matter_background] = Ngpart_background;
     N_long[swift_type_sink] = Nsink;
     N_long[swift_type_stars] = Nspart;
+    N_total[swift_type_sidm] = Nsipart;
     N_long[swift_type_black_hole] = Nbpart;
     N_long[swift_type_neutrino] = Nnupart;
     N_long[swift_type_count] = Ngpart;
     N_long[swift_type_dark_matter] =
-        with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart : 0;
+        with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart - Nsipart
+                     : 0;
 
     MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
@@ -1363,7 +1375,8 @@ int main(int argc, char *argv[]) {
     N_total[swift_type_neutrino] = Nnupart;
     N_total[swift_type_count] = Ngpart;
     N_total[swift_type_dark_matter] =
-        with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart : 0;
+        with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart - Nsipart
+                     : 0;
 #endif
 
     if (myrank == 0)
@@ -1569,6 +1582,7 @@ int main(int argc, char *argv[]) {
     if (with_sinks) engine_policies |= engine_policy_sinks;
     if (with_rt) engine_policies |= engine_policy_rt;
     if (with_power) engine_policies |= engine_policy_power_spectra;
+    if (with_sidm) engine_policies |= engine_policy_sidm;
 
     /* Initialize the engine with the space and policies. */
     engine_init(&e, &s, params, output_options, N_total[swift_type_gas],

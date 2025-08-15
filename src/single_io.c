@@ -687,7 +687,6 @@ void read_ic_single(
 
       case swift_type_gas:
         if (with_hydro) {
-          printf("reading hydro fields");
           Nparticles = *Ngas;
           hydro_read_particles(*parts, list, &num_fields);
           num_fields += mhd_read_particles(*parts, list + num_fields);

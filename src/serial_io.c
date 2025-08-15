@@ -1004,7 +1004,6 @@ void write_output_serial(struct engine* e,
                          const struct unit_system* snapshot_units,
                          const int fof, const int mpi_rank, const int mpi_size,
                          MPI_Comm comm, MPI_Info info) {
-  printf("checking!!!");
 
   hid_t h_file = 0, h_grp = 0, h_props = 0;
   int numFiles = 1;
@@ -1316,16 +1315,13 @@ void write_output_serial(struct engine* e,
     } else {
       io_write_attribute_s(h_grp, "OutputType", "FullVolume");
     }
-    printf("DEBUG GOT HERE");
 
     /* Close header */
     H5Gclose(h_grp);
 
     /* Copy metadata from ICs to the file */
-    printf("IC INFO WRITE");
     ic_info_write_hdf5(e->ics_metadata, h_file);
 
-    printf("META DATA WRITE");
     /* Write all the meta-data */
     io_write_meta_data(h_file, e, internal_units, snapshot_units, fof);
 
@@ -1800,10 +1796,7 @@ void write_output_serial(struct engine* e,
         if (gpart_group_data_written)
           swift_free("gpart_group_written", gpart_group_data_written);
         if (sparts_written) swift_free("sparts_written", sparts_written);
-        if (bparts_written)
-          swift_free(
-              "bparts_written",
-              bparts_written); /* MS:changed sparts_written to bparts_written */
+        if (bparts_written) swift_free("bparts_written", bparts_written);
         if (sinks_written) swift_free("sinks_written", sinks_written);
         if (siparts_written) swift_free("siparts_written", siparts_written);
 

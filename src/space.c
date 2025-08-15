@@ -1962,8 +1962,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
                     total_bparts + total_nuparts;
   offset_dm_background +=
       1 + 10 * (total_dm + total_parts + total_sinks + total_sparts +
-                total_bparts + total_nuparts +
-                total_siparts); /* MS:changed to total_dm + total_parts...*/
+                total_bparts + total_nuparts + total_siparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
   for (long long i = 0; i < local_nr_parts; ++i) {
@@ -2393,6 +2392,7 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
   space_map_cells_pre(s, 1, cell_check_spart_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_bpart_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_sink_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_sipart_drift_point, &ti_drift);
   if (multipole)
     space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
 #else
