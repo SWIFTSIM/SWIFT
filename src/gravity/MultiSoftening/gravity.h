@@ -138,7 +138,7 @@ gravity_get_physical_potential(const struct gpart* gp,
  */
 __attribute__((always_inline)) INLINE static float
 gravity_compute_timestep_self(const struct gpart* const gp,
-                              const float a_hydro[3],
+                              const double a_hydro[3],
                               const struct gravity_props* grav_props,
                               const struct cosmology* cosmo) {
 

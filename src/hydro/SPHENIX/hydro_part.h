@@ -52,19 +52,19 @@
 struct xpart {
 
   /*! Offset between current position and position at last tree rebuild. */
-  float x_diff[3];
+  double x_diff[3];
 
   /*! Offset between the current position and position at the last sort. */
-  float x_diff_sort[3];
+  double x_diff_sort[3];
 
   /*! Velocity at the last full step. */
-  float v_full[3];
+  double v_full[3];
 
   /*! Gravitational acceleration at the end of the last step */
-  float a_grav[3];
+  double a_grav[3];
 
   /*! Internal energy at the last full step. */
-  float u_full;
+  double u_full;
 
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
@@ -110,46 +110,46 @@ struct part {
   double x[3];
 
   /*! Particle predicted velocity. */
-  float v[3];
+  double v[3];
 
   /*! Particle acceleration. */
-  float a_hydro[3];
+  double a_hydro[3];
 
   /*! Particle mass. */
-  float mass;
+  double mass;
 
   /*! Particle smoothing length. */
-  float h;
+  double h;
 
   /*! Particle internal energy. */
-  float u;
+  double u;
 
   /*! Time derivative of the internal energy. */
-  float u_dt;
+  double u_dt;
 
   /*! Particle density. */
-  float rho;
+  double rho;
 
   /* Store viscosity information in a separate struct. */
   struct {
 
     /*! Particle velocity divergence */
-    float div_v;
+    double div_v;
 
     /*! Time differential of velocity divergence */
-    float div_v_dt;
+    double div_v_dt;
 
     /*! Particle velocity curl. */
-    float rot_v[3];
+    double rot_v[3];
 
     /*! Particle velocity divergence from previous step */
-    float div_v_previous_step;
+    double div_v_previous_step;
 
     /*! Artificial viscosity parameter */
-    float alpha;
+    double alpha;
 
     /*! Signal velocity */
-    float v_sig;
+    double v_sig;
 
   } viscosity;
 
@@ -157,10 +157,10 @@ struct part {
   struct {
 
     /*! del^2 u, a smoothed quantity */
-    float laplace_u;
+    double laplace_u;
 
     /*! Thermal diffusion coefficient */
-    float alpha;
+    double alpha;
 
   } diffusion;
 
@@ -177,13 +177,13 @@ struct part {
   struct {
 
     /*! Neighbour number count. */
-    float wcount;
+    double wcount;
 
     /*! Derivative of the neighbour number with respect to h. */
-    float wcount_dh;
+    double wcount_dh;
 
     /*! Derivative of density with respect to h */
-    float rho_dh;
+    double rho_dh;
 
   } density;
 
@@ -197,19 +197,19 @@ struct part {
   struct {
 
     /*! "Grad h" term -- only partial in P-U */
-    float f;
+    double f;
 
     /*! Particle pressure. */
-    float pressure;
+    double pressure;
 
     /*! Particle soundspeed. */
-    float soundspeed;
+    double soundspeed;
 
     /*! Time derivative of smoothing length  */
-    float h_dt;
+    double h_dt;
 
     /*! Maximal alpha (viscosity) over neighbours */
-    float alpha_visc_max_ngb;
+    double alpha_visc_max_ngb;
 
   } force;
 
@@ -283,25 +283,25 @@ struct part {
   int N_force_exact;
 
   /*! Exact value of the density field obtained via brute-force loop */
-  float rho_exact;
+  double rho_exact;
 
   /*! Weighted numer of neighbours in the density loop */
-  float n_density;
+  double n_density;
 
   /*! Exact value of the weighted numer of neighbours in the density loop */
-  float n_density_exact;
+  double n_density_exact;
 
   /*! Weighted numer of neighbours in the gradient loop */
-  float n_gradient;
+  double n_gradient;
 
   /*! Exact value of the weighted numer of neighbours in the gradient loop */
-  float n_gradient_exact;
+  double n_gradient_exact;
 
   /*! Weighted numer of neighbours in the force loop */
-  float n_force;
+  double n_force;
 
   /*! Exact value of the weighted numer of neighbours in the force loop */
-  float n_force_exact;
+  double n_force_exact;
 
   /*! Has this particle interacted with any unhibited neighbour? */
   char inhibited_exact;

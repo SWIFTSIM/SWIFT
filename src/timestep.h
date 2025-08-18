@@ -104,7 +104,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
     new_dt_ext = external_gravity_timestep(e->time, e->external_potential,
                                            e->physical_constants, gp);
 
-  const float a_hydro[3] = {0.f, 0.f, 0.f};
+  const double a_hydro[3] = {0.0, 0.0, 0.0};
   if (e->policy & engine_policy_self_gravity)
     new_dt_self = gravity_compute_timestep_self(
         gp, a_hydro, e->gravity_properties, e->cosmology);
@@ -190,9 +190,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Limit change in smoothing length */
   const float dt_h_change =
-      (p->force.h_dt != 0.0f)
-          ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->force.h_dt)
-          : FLT_MAX;
+      (p->force.h_dt != 0.0)
+          ? fabs(e->hydro_properties->log_max_h_change * p->h / p->force.h_dt)
+          : DBL_MAX;
 
   new_dt = min(new_dt, dt_h_change);
 
@@ -315,7 +315,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
     new_dt_ext = external_gravity_timestep(e->time, e->external_potential,
                                            e->physical_constants, sp->gpart);
 
-  const float a_hydro[3] = {0.f, 0.f, 0.f};
+  const double a_hydro[3] = {0.0, 0.0, 0.0};
   if (e->policy & engine_policy_self_gravity)
     new_dt_self = gravity_compute_timestep_self(
         sp->gpart, a_hydro, e->gravity_properties, e->cosmology);
@@ -367,7 +367,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_bpart_timestep(
     new_dt_ext = external_gravity_timestep(e->time, e->external_potential,
                                            e->physical_constants, bp->gpart);
 
-  const float a_hydro[3] = {0.f, 0.f, 0.f};
+  const double a_hydro[3] = {0.0, 0.0, 0.0};
   if (e->policy & engine_policy_self_gravity)
     new_dt_self = gravity_compute_timestep_self(
         bp->gpart, a_hydro, e->gravity_properties, e->cosmology);
@@ -416,7 +416,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_sink_timestep(
     new_dt_ext = external_gravity_timestep(e->time, e->external_potential,
                                            e->physical_constants, sink->gpart);
 
-  const float a_hydro[3] = {0.f, 0.f, 0.f};
+  const double a_hydro[3] = {0.0, 0.0, 0.0};
   if (e->policy & engine_policy_self_gravity)
     new_dt_self = gravity_compute_timestep_self(
         sink->gpart, a_hydro, e->gravity_properties, e->cosmology);

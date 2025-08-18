@@ -40,7 +40,7 @@ INLINE static void *csds_hydro_convert_acc(const struct part *p,
                                            const struct engine *e,
                                            void *buffer) {
   /* Compute the acceleration due to hydro and gravity */
-  float *acc = (float *)buffer;
+  double *acc = (double *)buffer;
 
   /* The hydro and gravity do not have the same factors */
   /* Convert everything into gravity acceleration */
@@ -74,7 +74,7 @@ INLINE static void *csds_hydro_convert_secondary(const struct part *p,
                                                  const struct engine *e,
                                                  void *buffer) {
   // Can be done directly into the buffer in order to avoid memcpy
-  const float secondary[7] = {
+  const double secondary[7] = {
       hydro_get_comoving_entropy(p, xp),
       hydro_get_comoving_pressure(p),
       p->viscosity.alpha,
@@ -132,7 +132,7 @@ INLINE static int csds_hydro_define_fields(struct csds_field *fields) {
   /* Grouped field */
   csds_define_field_from_function_hydro(fields[8], "SPHENIXSecondaryFields",
                                         csds_hydro_convert_secondary,
-                                        7 * sizeof(float));
+                                        7 * sizeof(double));
 
   return 9;
 }

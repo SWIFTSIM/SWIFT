@@ -106,16 +106,16 @@
 struct viscosity_global_data {
   /*! For the fixed, simple case. Also used to set the initial AV
       coefficient for variable schemes. */
-  float alpha;
+  double alpha;
 
   /*! Artificial viscosity (max) for the variable case (e.g. M&M) */
-  float alpha_max;
+  double alpha_max;
 
   /*! Artificial viscosity (min) for the variable case (e.g. M&M) */
-  float alpha_min;
+  double alpha_min;
 
   /*! The decay length of the artificial viscosity (used in M&M, etc.) */
-  float length;
+  double length;
 };
 
 /*! Thermal diffusion parameters */
@@ -123,16 +123,16 @@ struct diffusion_global_data {
 
   /*! Initialisation value, or the case for constant thermal diffusion coeffs
    */
-  float alpha;
+  double alpha;
 
   /*! Tuning parameter for speed of ramp up/down */
-  float beta;
+  double beta;
 
   /*! Maximal value for alpha_diff */
-  float alpha_max;
+  double alpha_max;
 
   /*! Minimal value for alpha_diff */
-  float alpha_min;
+  double alpha_min;
 };
 
 /* Functions for reading from parameter file */
@@ -161,18 +161,18 @@ static INLINE void viscosity_init(struct swift_params* params,
   /* Read the artificial viscosity parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
 
-  viscosity->alpha = parser_get_opt_param_float(
+  viscosity->alpha = parser_get_opt_param_double(
       params, "SPH:viscosity_alpha", hydro_props_default_viscosity_alpha);
 
   viscosity->alpha_max =
-      parser_get_opt_param_float(params, "SPH:viscosity_alpha_max",
+      parser_get_opt_param_double(params, "SPH:viscosity_alpha_max",
                                  hydro_props_default_viscosity_alpha_max);
 
   viscosity->alpha_min =
-      parser_get_opt_param_float(params, "SPH:viscosity_alpha_min",
+      parser_get_opt_param_double(params, "SPH:viscosity_alpha_min",
                                  hydro_props_default_viscosity_alpha_min);
 
-  viscosity->length = parser_get_opt_param_float(
+  viscosity->length = parser_get_opt_param_double(
       params, "SPH:viscosity_length", hydro_props_default_viscosity_length);
 }
 
@@ -240,18 +240,18 @@ static INLINE void diffusion_init(struct swift_params* params,
                                   const struct phys_const* phys_const,
                                   struct diffusion_global_data* diffusion) {
 
-  diffusion->alpha = parser_get_opt_param_float(
+  diffusion->alpha = parser_get_opt_param_double(
       params, "SPH:diffusion_alpha", hydro_props_default_diffusion_alpha);
 
-  diffusion->beta = parser_get_opt_param_float(
+  diffusion->beta = parser_get_opt_param_double(
       params, "SPH:diffusion_beta", hydro_props_default_diffusion_beta);
 
   diffusion->alpha_max =
-      parser_get_opt_param_float(params, "SPH:diffusion_alpha_max",
+      parser_get_opt_param_double(params, "SPH:diffusion_alpha_max",
                                  hydro_props_default_diffusion_alpha_max);
 
   diffusion->alpha_min =
-      parser_get_opt_param_float(params, "SPH:diffusion_alpha_min",
+      parser_get_opt_param_double(params, "SPH:diffusion_alpha_min",
                                  hydro_props_default_diffusion_alpha_min);
 }
 

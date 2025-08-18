@@ -174,7 +174,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
     /* Get position and velocity */
     double x[3];
-    float v[3];
+    double v[3];
     convert_part_pos(e, p, xp, x);
     convert_part_vel(e, p, xp, v);
 

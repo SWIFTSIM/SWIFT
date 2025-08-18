@@ -25,67 +25,67 @@
 struct mhd_part_data {
 
   /* Predicted magnetic field over density */
-  float B_over_rho[3];
+  double B_over_rho[3];
 
   /* Time derivative of magnetic field over density */
-  float B_over_rho_dt[3];
+  double B_over_rho_dt[3];
 
   /* Alfven speed (=sqrt(B2/(mu_0 * rho))) of the particle drifted to the
    * current time */
-  float Alfven_speed;
+  double Alfven_speed;
 
   /* Divergence of the magnetic field */
-  float divB;
+  double divB;
 
   /* Curl of the magnetic field */
-  float curl_B[3];
+  double curl_B[3];
 
   /* Tensile instability correction multiplicative prefactor */
-  float monopole_beta;
+  double monopole_beta;
 
   /* Artifical resistivity multiplicative prefactor */
-  float art_diff_beta;
+  double art_diff_beta;
 
   /* Spatial gradient tensor of the magnetic field */
-  float grad_B_tensor[3][3];
+  double grad_B_tensor[3][3];
 
   /* Artificial resistivity gradient based switch */
-  float alpha_AR;
+  double alpha_AR;
 
   /* Artificial resistivity contribution to the time derivative of magnetic
    * field over density */
-  float B_over_rho_dt_AR[3];
+  double B_over_rho_dt_AR[3];
 
   /* Artificial resistivity contribution to the time derivative of thermal
    * energy */
-  float u_dt_AR;
+  double u_dt_AR;
 
   /* Physical resistive parameter */
-  float resistive_eta;
+  double resistive_eta;
 
   /* Predicted Dedner scalar over divergence cleaning speed */
-  float psi_over_ch;
+  double psi_over_ch;
 
   /* Time derivative of Dedner scalar over divergence cleaning speed */
-  float psi_over_ch_dt;
+  double psi_over_ch_dt;
 
   /* SPH <1> error */
-  float mean_SPH_err;
+  double mean_SPH_err;
 
   /* SPH <grad1> error */
-  float mean_grad_SPH_err[3];
+  double mean_grad_SPH_err[3];
 
   /* Magnetic force */
-  float tot_mag_F[3];
+  double tot_mag_F[3];
 
   /* B advection source */
-  float Adv_B_source[3];
+  double Adv_B_source[3];
 
   /* B total diffusion source */
-  float Diff_B_source[3];
+  double Diff_B_source[3];
 
   /* Laplacian B */
-  float Delta_B[3];
+  double Delta_B[3];
 };
 
 /**
@@ -94,10 +94,10 @@ struct mhd_part_data {
 struct mhd_xpart_data {
 
   /* Full step magnetic field over density */
-  float B_over_rho_full[3];
+  double B_over_rho_full[3];
 
   /* Full step dedner scalar over divergence cleaning speed */
-  float psi_over_ch_full;
+  double psi_over_ch_full;
 };
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_STRUCT_H */

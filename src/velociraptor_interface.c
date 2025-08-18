@@ -306,7 +306,7 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
         const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
 
         convert_part_pos(e, p, xp, swift_parts[i].x);
-        convert_part_vel(e, p, xp, swift_parts[i].v);
+        // convert_part_vel(e, p, xp, swift_parts[i].v);
         swift_parts[i].id = parts[-gparts[i].id_or_neg_offset].id;
         swift_parts[i].u = hydro_get_drifted_physical_internal_energy(p, cosmo);
         swift_parts[i].T = cooling_get_temperature(phys_const, hydro_props, us,
@@ -573,7 +573,7 @@ void velociraptor_dump_orphan_particles(struct engine *e,
           const struct part *p = &parts[-gparts[i].id_or_neg_offset];
           const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
           convert_part_pos(e, p, xp, &pos[3 * offset]);
-          convert_part_vel(e, p, xp, &vel[3 * offset]);
+          // convert_part_vel(e, p, xp, &vel[3 * offset]);
           ids[offset] = parts[-gparts[i].id_or_neg_offset].id;
         } break;
         case swift_type_stars: {

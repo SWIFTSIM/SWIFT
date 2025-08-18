@@ -78,12 +78,12 @@
 /*! MHD parameters */
 struct mhd_global_data {
   /*! For the fixed, simple case of direct induction. */
-  float monopole_subtraction;
-  float art_diffusion;
-  float hyp_dedner;
-  float hyp_dedner_divv;
-  float par_dedner;
-  float mhd_eta;
+  double monopole_subtraction;
+  double art_diffusion;
+  double hyp_dedner;
+  double hyp_dedner_divv;
+  double par_dedner;
+  double mhd_eta;
 };
 
 /* Functions for reading from parameter file */
@@ -112,15 +112,15 @@ static INLINE void mhd_init(struct swift_params* params,
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
 
-  mhd->hyp_dedner = parser_get_param_float(params, "MHD:hyperbolic_dedner");
-  mhd->par_dedner = parser_get_param_float(params, "MHD:parabolic_dedner");
-  mhd->mhd_eta = parser_get_param_float(params, "MHD:resistive_eta");
+  mhd->hyp_dedner = parser_get_param_double(params, "MHD:hyperbolic_dedner");
+  mhd->par_dedner = parser_get_param_double(params, "MHD:parabolic_dedner");
+  mhd->mhd_eta = parser_get_param_double(params, "MHD:resistive_eta");
   mhd->monopole_subtraction =
-      parser_get_param_float(params, "MHD:monopole_subtraction");
+      parser_get_param_double(params, "MHD:monopole_subtraction");
   mhd->art_diffusion =
-      parser_get_param_float(params, "MHD:artificial_diffusion");
+      parser_get_param_double(params, "MHD:artificial_diffusion");
   mhd->hyp_dedner_divv =
-      parser_get_param_float(params, "MHD:hyperbolic_dedner_divv");
+      parser_get_param_double(params, "MHD:hyperbolic_dedner_divv");
 }
 
 /**

@@ -2029,6 +2029,12 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       p->v[1] = gp_gas->v_full[1];
       p->v[2] = gp_gas->v_full[2];
 
+      /* Set the magnetic field */
+      p->mhd_data.B_over_rho[0] = 0.0f;
+      p->mhd_data.B_over_rho[1] = 0.0f;
+      p->mhd_data.B_over_rho[2] = 0.00008446829;
+      // p->mhd_data.B_over_rho[2] = 0.0000002f;
+      
       /* Set the smoothing length to the mean inter-particle separation */
       p->h = d;
 
