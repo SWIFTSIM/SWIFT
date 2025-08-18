@@ -248,6 +248,26 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 }
 
 /**
+ * @brief Sets the drifted physical internal energy of a particle
+ *                                                    
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param pressure_floor The #pressure_floor_props used.
+ * @param u The physical internal energy
+ */
+__attribute__((always_inline)) INLINE static void
+mhd_set_drifted_physical_internal_energy(
+    struct part *p, const float mu_0) {
+
+  p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+
+  const float c_ms = mhd_get_comoving_magnetosonic_speed(p);
+  
+  p->viscosity.v_sig = fmaxf(p->viscosity.v_sig, 2.f * c_ms);
+}
+
+
+/**
  * @brief Prepares a particle for the density calculation.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in

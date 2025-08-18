@@ -946,6 +946,8 @@ void cooling_Hydrogen_reionization(
   struct part *parts = s->parts;
   struct xpart *xparts = s->xparts;
 
+  const float mu_0 = s->e->physical_constants->const_vacuum_permeability; 
+  
   /* Energy to inject in internal units */
   const float extra_heat =
       cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
@@ -965,6 +967,7 @@ void cooling_Hydrogen_reionization(
 
     hydro_set_physical_internal_energy(p, xp, cosmo, new_u);
     hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, new_u);
+    mhd_set_drifted_physical_internal_energy(p, mu_0);
   }
 }
 
