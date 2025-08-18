@@ -50,7 +50,7 @@
 
 
 /*! Alpha viscosity, usually =1.0. For lower N_ngb, should be higher */
-#define const_viscosity_alpha 1.0
+#define const_viscosity_alpha 2.0
 
 /*! Alpha conductivity, usually =0.05. At lower N_ngb, should be higher */
 #define const_conductivity_alpha 0.05
@@ -67,11 +67,14 @@
 
 /* ---------- These parameters should not be changed ---------- */
 
-/* Slope limiter length */
-#define hydro_props_grad_overshoot_length 0.25
+/* Slope limiter length, fraction of max. distance in kernel */
+#define const_grad_overshoot_length 0.25
 
 /*! Slope limiter tolerance */
-#define hydro_props_grad_overshoot_tolerance 0.1
+//#define const_grad_overshoot_tolerance 0.1
+
+/* Viscosity floor when G_ij is extremely misaligned with dx_ij */
+#define const_viscosity_cosine_limit 0.1736481 //0.7
 
 /* Viscosity weighting scheme: 
  *    0 = (rho_i * q_i + rho_j * q_j) / (rho_i * rho_j)
@@ -79,8 +82,14 @@
  *    2 = 2.0 * q_ij / (rho_i + rho_j) */
 #define hydro_props_viscosity_weighting_type 2
 
-/* Viscosity floor when G_ij is extremely misaligned with dx_ij */
-#define const_viscosity_cosine_limit 0.7
+/* Flag to use radial gradients for viscosity and conductivity */
+#define hydro_props_use_radial_viscosity
+
+/* Flag to disallow sign flip in reconstructed quantities */
+//#define hydro_props_use_strict_minmod_limiter
+
+/* Use dv_ij dot G_ij in the h_dt evolution term */
+#define hydro_props_use_high_order_gradients_in_h_dt
 
 /*! Use the correction terms to make the internal energy match the mass flux */
 //#define hydro_props_use_adiabatic_correction

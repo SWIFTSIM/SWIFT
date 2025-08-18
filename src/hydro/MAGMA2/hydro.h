@@ -773,6 +773,7 @@ hydro_real_t hydro_scalar_minmod_limiter(const hydro_real_t df_reconstructed,
                                          const hydro_real_t df_min_j,
                                          const hydro_real_t df_max_j) {
 
+#ifdef hydro_props_use_strict_minmod_limiter
   const hydro_real_t lo0 = fmax(df_min_i, -df_max_j);
   const hydro_real_t hi0 = fmin(df_max_i, -df_min_j);
   const hydro_real_t lo = fmin(lo0, hi0);
@@ -786,6 +787,9 @@ hydro_real_t hydro_scalar_minmod_limiter(const hydro_real_t df_reconstructed,
   if ((df > 0) != (df_raw > 0)) df = df_raw;
 
   return df;
+#else
+  return df_reconstructed;
+#endif
 }
 
 /**
@@ -836,7 +840,7 @@ void hydro_vec_slope_limiter(const hydro_real_t df_min,
                              hydro_real_t *restrict grad) {
 
   const hydro_real_t grad_norm = hydro_vec3_norm(grad);
-  const hydro_real_t length = hydro_props_grad_overshoot_length * kernel_size;
+  const hydro_real_t length = const_grad_overshoot_length * kernel_size;
 
   /* Nothing to do if there is no gradient or no look-ahead distance */
   if (grad_norm > 0. && length > 0.) {
@@ -846,8 +850,8 @@ void hydro_vec_slope_limiter(const hydro_real_t df_min,
 
     hydro_real_t bound = df_abs_min;
     
-#ifdef hydro_props_grad_overshoot_tolerance
-    const hydro_real_t tolerance = hydro_props_grad_overshoot_tolerance;
+#ifdef const_grad_overshoot_tolerance
+    const hydro_real_t tolerance = const_grad_overshoot_tolerance;
     if (tolerance > 0.) {
       const hydro_real_t df_abs_max = fmax(df_min_abs, df_max_abs);
       const hydro_real_t extra = tolerance * df_abs_max;
@@ -883,8 +887,8 @@ hydro_real_t hydro_van_leer_phi(const hydro_real_t A_ij,
                                 const hydro_real_t eta_j) {
 
   hydro_real_t phi_raw = (4. * A_ij) / ((1. + A_ij) * (1. + A_ij));
-  phi_raw = min(1., phi_raw);
-  phi_raw = max(0., phi_raw);
+  phi_raw = fmin(1., phi_raw);
+  phi_raw = fmax(0., phi_raw);
 
   /* η_ab and η_crit damping */
   const hydro_real_t eta_ij = min(eta_i, eta_j);
@@ -899,8 +903,8 @@ hydro_real_t hydro_van_leer_phi(const hydro_real_t A_ij,
   phi_raw *= damping;
 
   /* Handle any edge cases */
-  phi_raw = min(1., phi_raw);
-  phi_raw = max(0., phi_raw);
+  phi_raw = fmin(1., phi_raw);
+  phi_raw = fmax(0., phi_raw);
 
   return phi_raw;
 }

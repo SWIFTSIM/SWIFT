@@ -87,9 +87,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   adaptive_softening_add_correction_term(pj, xj, hj_inv, mi);
 
   /* For slope limiter */
-  const hydro_real_t h_ij = 0.5 * (hi + hj);
-  pi->gradients.kernel_size = fmax(h_ij, pi->gradients.kernel_size);
-  pj->gradients.kernel_size = fmax(h_ij, pj->gradients.kernel_size);
+  pi->gradients.kernel_size = fmax(r, pi->gradients.kernel_size);
+  pj->gradients.kernel_size = fmax(r, pj->gradients.kernel_size);
 
   /* Now we need to compute the derivative terms */
   const hydro_real_t r_inv = r ? 1.0 / r : 0.0;
@@ -200,8 +199,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   adaptive_softening_add_correction_term(pi, xi, h_inv, mj);
 
   /* For slope limiter */
-  const hydro_real_t h_ij = 0.5 * (hi + hj);
-  pi->gradients.kernel_size = fmax(h_ij, pi->gradients.kernel_size);
+  pi->gradients.kernel_size = fmax(r, pi->gradients.kernel_size);
 
   const hydro_real_t r_inv = r ? 1.0 / r : 0.0;
   const hydro_real_t faci = mj * wi_dx * r_inv;
@@ -284,7 +282,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   const hydro_real_t rhoj_inv = 1. / rhoj;
 
   const hydro_real_t r = sqrt(r2);
-  const hydro_real_t r_inv = r ? 1.0 / r : 0.0;
 
   float wi, wi_dx, wj, wj_dx;
 
@@ -387,11 +384,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   /* Get particle properties */
   const hydro_real_t mj = hydro_get_mass(pj);
-  const hydro_real_t rhoi = hydro_get_comoving_density(pi);
   const hydro_real_t rhoj = hydro_get_comoving_density(pj);
   const hydro_real_t rhoj_inv = 1. / rhoj;
   const hydro_real_t r = sqrt(r2);
-  const hydro_real_t r_inv = r ? 1.0 / r : 0.0;
   float wi, wi_dx;
   const float xi = r / hi;
   kernel_deval(xi, &wi, &wi_dx);
@@ -596,10 +591,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       /* Make sure we use the correct interaction */
       high_order_gradients_flag = 1;
 
+#ifdef hydro_props_use_radial_viscosity
       /* G along the separation vector */
       G_rad_ij[0] = G_ij_dot_dx_ij_hat * dx_ij_hat[0];
       G_rad_ij[1] = G_ij_dot_dx_ij_hat * dx_ij_hat[1];
       G_rad_ij[2] = G_ij_dot_dx_ij_hat * dx_ij_hat[2];
+#else
+      G_rad_ij[0] = G_ij[0];
+      G_rad_ij[1] = G_ij[1];
+      G_rad_ij[2] = G_ij[2];
+#endif
     }
     else {
       /* Revert back to standard separation vector */
@@ -660,9 +661,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
     const hydro_real_t dv_raw[3] = {dv[0], dv[1], dv[2]};
     const hydro_real_t dv_reconstructed[3] = {
-      vi_reconstructed[0] - vj_reconstructed[0],
-      vi_reconstructed[1] - vj_reconstructed[1],
-      vi_reconstructed[2] - vj_reconstructed[2]
+        vi_reconstructed[0] - vj_reconstructed[0],
+        vi_reconstructed[1] - vj_reconstructed[1],
+        vi_reconstructed[2] - vj_reconstructed[2]
     };
 
     /* Get velocity difference, but limit reconstructed values */
@@ -757,41 +758,43 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const hydro_real_t dv_dot_G_ij = hydro_vec3_vec3_dot(dv, G_ij);
 
     /* Get Hubble flow contribution along dx */
-    const hydro_real_t dv_ij_Hubble[3] = {dv_ij[0] + a2_Hubble * dx_ij[0],
-                                          dv_ij[1] + a2_Hubble * dx_ij[1],
-                                          dv_ij[2] + a2_Hubble * dx_ij[2]};
-    hydro_real_t dv_ij_Hubble_dot_dx_ij_hat = 
-        hydro_vec3_vec3_dot(dv_ij_Hubble, dx_ij_hat);
-    const hydro_real_t dv_ij_Hubble_along_dx_ij[3] = {
-        dv_ij_Hubble_dot_dx_ij_hat * dx_ij_hat[0],
-        dv_ij_Hubble_dot_dx_ij_hat * dx_ij_hat[1],
-        dv_ij_Hubble_dot_dx_ij_hat * dx_ij_hat[2]
+    const hydro_real_t dv_Hubble[3] = {dv[0] + a2_Hubble * dx[0],
+                                       dv[1] + a2_Hubble * dx[1],
+                                       dv[2] + a2_Hubble * dx[2]};
+    hydro_real_t dv_Hubble_dot_dx_ij_hat = 
+        hydro_vec3_vec3_dot(dv_Hubble, dx_ij_hat);
+    const hydro_real_t dv_Hubble_along_dx_ij[3] = {
+        dv_Hubble_dot_dx_ij_hat * dx_ij_hat[0],
+        dv_Hubble_dot_dx_ij_hat * dx_ij_hat[1],
+        dv_Hubble_dot_dx_ij_hat * dx_ij_hat[2]
     };
 
     /* Get velocity divergence along dx */
-    hydro_real_t dv_ij_Hubble_dot_G_rad_ij = 
-        hydro_vec3_vec3_dot(dv_ij_Hubble_along_dx_ij, G_rad_ij);
+    const hydro_real_t dv_Hubble_dot_G_rad_ij = 
+        hydro_vec3_vec3_dot(dv_Hubble_along_dx_ij, G_rad_ij);
 
     /* Evolve the heating terms using the velocity divergence */
     sph_du_term_i *= dv_dot_G_ij;
     sph_du_term_j *= dv_dot_G_ij;
-    visc_du_term *= dv_ij_Hubble_dot_G_rad_ij;
+    visc_du_term *= fmax(dv_Hubble_dot_G_rad_ij, 0.);
     cond_du_term *= -G_rad_ij_norm; /* Eq. 24 Rosswog 2020 */
+
+    if (visc_du_term <= 0.) visc_acc_term = 0.;
 
 #ifdef MAGMA2_DEBUG_CHECKS
     if (visc_du_term < 0.) {
       error("Viscous COOLING for particle %llu with pj %llu: "
             "visc_du_term = %g\n"
-            "dv_ij_Hubble_dot_G_rad_ij = %g, \n"
-            "dv_ij_Hubble = (%g, %g, %g), \n"
+            "dv_Hubble_dot_G_rad_ij = %g, \n"
+            "dv_Hubble = (%g, %g, %g), \n"
             "G_rad_ij = (%g, %g, %g), \n"
             "mu_i = %g, mu_j = %g, \n"
             "G_ij_norm = %g",
             pi->id, pj->id, (double)visc_du_term,
-            (double)dv_ij_Hubble_dot_G_rad_ij,
-            (double)dv_ij_Hubble[0], 
-            (double)dv_ij_Hubble[1], 
-            (double)dv_ij_Hubble[2],
+            (double)dv_Hubble_dot_G_rad_ij,
+            (double)dv_Hubble[0], 
+            (double)dv_Hubble[1], 
+            (double)dv_Hubble[2],
             (double)G_rad_ij[0], 
             (double)G_rad_ij[1], 
             (double)G_rad_ij[2],
@@ -804,10 +807,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     /* Get the time derivative for h. */
     
 
+#ifdef hydro_props_use_high_order_gradients_in_h_dt
+    pi->force.h_dt -= dv_dot_G_ij;
+    pj->force.h_dt -= dv_dot_G_ij;
+#else
     /* Velocity divergence is from the SPH estimator, not the G_ij vector */
     const hydro_real_t dv_dot_dx = hydro_vec3_vec3_dot(dv, dx);
     pi->force.h_dt -= dv_dot_dx * r_inv * wi_dr;
     pj->force.h_dt -= dv_dot_dx * r_inv * wj_dr;
+#endif
 
 
     /* Timestepping */
@@ -909,9 +917,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Assemble the acceleration */
   const hydro_real_t acc[3] = {
-    sph_acc_term * G_ij[0] + visc_acc_term * G_rad_ij[0],
-    sph_acc_term * G_ij[1] + visc_acc_term * G_rad_ij[1],
-    sph_acc_term * G_ij[2] + visc_acc_term * G_rad_ij[2]
+      sph_acc_term * G_ij[0] + visc_acc_term * G_rad_ij[0],
+      sph_acc_term * G_ij[1] + visc_acc_term * G_rad_ij[1],
+      sph_acc_term * G_ij[2] + visc_acc_term * G_rad_ij[2]
   };
 
   /* Use the force Luke ! */
@@ -1077,10 +1085,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       /* Make sure we use the correct gradients below */
       high_order_gradients_flag = 1;
 
+#ifdef hydro_props_use_radial_viscosity
       /* G along the separation vector */
       G_rad_ij[0] = G_ij_dot_dx_ij_hat * dx_ij_hat[0];
       G_rad_ij[1] = G_ij_dot_dx_ij_hat * dx_ij_hat[1];
       G_rad_ij[2] = G_ij_dot_dx_ij_hat * dx_ij_hat[2];
+#else
+      G_rad_ij[0] = G_ij[0];
+      G_rad_ij[1] = G_ij[1];
+      G_rad_ij[2] = G_ij[2];
+#endif
     }
     else {
       /* Revert back to standard separation vector */
@@ -1237,38 +1251,40 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const hydro_real_t dv_dot_G_ij = hydro_vec3_vec3_dot(dv, G_ij);
 
     /* Get Hubble flow along dx */
-    const hydro_real_t dv_ij_Hubble[3] = {dv_ij[0] + a2_Hubble * dx_ij[0],
-                                          dv_ij[1] + a2_Hubble * dx_ij[1],
-                                          dv_ij[2] + a2_Hubble * dx_ij[2]};
-    const hydro_real_t dv_ij_Hubble_dot_dx_ij_hat = 
-        hydro_vec3_vec3_dot(dv_ij_Hubble, dx_ij_hat);
-    const hydro_real_t dv_ij_Hubble_along_dx_ij[3] = {
-        dv_ij_Hubble_dot_dx_ij_hat * dx_ij_hat[0],
-        dv_ij_Hubble_dot_dx_ij_hat * dx_ij_hat[1],
-        dv_ij_Hubble_dot_dx_ij_hat * dx_ij_hat[2]
+    const hydro_real_t dv_Hubble[3] = {dv[0] + a2_Hubble * dx[0],
+                                       dv[1] + a2_Hubble * dx[1],
+                                       dv[2] + a2_Hubble * dx[2]};
+    const hydro_real_t dv_Hubble_dot_dx_ij_hat = 
+        hydro_vec3_vec3_dot(dv_Hubble, dx_ij_hat);
+    const hydro_real_t dv_Hubble_along_dx_ij[3] = {
+        dv_Hubble_dot_dx_ij_hat * dx_ij_hat[0],
+        dv_Hubble_dot_dx_ij_hat * dx_ij_hat[1],
+        dv_Hubble_dot_dx_ij_hat * dx_ij_hat[2]
     };
     
     /* Get Hubble flow contribution */
-    hydro_real_t dv_ij_Hubble_dot_G_rad_ij = 
-        hydro_vec3_vec3_dot(dv_ij_Hubble_along_dx_ij, G_rad_ij);
+    const hydro_real_t dv_Hubble_dot_G_rad_ij = 
+        hydro_vec3_vec3_dot(dv_Hubble_along_dx_ij, G_rad_ij);
 
     sph_du_term_i *= dv_dot_G_ij;
-    visc_du_term *= dv_ij_Hubble_dot_G_rad_ij;
+    visc_du_term *= fmax(dv_Hubble_dot_G_rad_ij, 0.);
     cond_du_term *= -G_rad_ij_norm; /* Eq. 24 Rosswog 2020 */
+
+    if (visc_du_term <= 0.) visc_acc_term = 0.;
 
 #ifdef MAGMA2_DEBUG_CHECKS
     if (visc_du_term < 0.) {
       error("Viscous COOLING for particle %llu with pj %llu: visc_du_term = %g\n"
-            "dv_ij_Hubble_dot_G_rad_ij = %g, \n"
-            "dv_ij_Hubble = (%g, %g, %g), \n"
+            "dv_Hubble_dot_G_rad_ij = %g, \n"
+            "dv_Hubble = (%g, %g, %g), \n"
             "G_rad_ij = (%g, %g, %g), \n"
             "mu_i = %g, mu_j = %g, \n"
             "G_ij_norm = %g",
             pi->id, pj->id, (double)visc_du_term,
-            (double)dv_ij_Hubble_dot_G_rad_ij,
-            (double)dv_ij_Hubble[0], 
-            (double)dv_ij_Hubble[1], 
-            (double)dv_ij_Hubble[2],
+            (double)dv_Hubble_dot_G_rad_ij,
+            (double)dv_Hubble[0], 
+            (double)dv_Hubble[1], 
+            (double)dv_Hubble[2],
             (double)G_rad_ij[0], 
             (double)G_rad_ij[1], 
             (double)G_rad_ij[2],
@@ -1281,9 +1297,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     /* Get the time derivative for h. */
 
 
+#ifdef hydro_props_use_high_order_gradients_in_h_dt
+    pi->force.h_dt -= dv_dot_G_ij;
+#else
     const hydro_real_t dv_dot_dx = hydro_vec3_vec3_dot(dv, dx);
     pi->force.h_dt -= dv_dot_dx * r_inv * wi_dr;
-
+#endif
 
     /* Timestepping */
 
@@ -1368,7 +1387,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
   }
 
-  /* Assemble the acceleration */
   /* Assemble the acceleration */
   const hydro_real_t acc[3] = {
       sph_acc_term * G_ij[0] + visc_acc_term * G_rad_ij[0],
