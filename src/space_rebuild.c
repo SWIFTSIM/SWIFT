@@ -64,6 +64,23 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we only have real particles in the top-level cells at this point. */
+  for (int i = 0; i < s->nr_cells; ++i) {
+    struct cell *c = &s->cells_top[i];
+    int count = c->grav.count;
+    struct gpart *gparts = c->grav.parts;
+    for (int j = 0; j < count; ++j) {
+      if (gparts[j].time_bin == time_bin_not_created) {
+        error("Found extra gpart in space_rebuild() at cell %d", i);
+      }
+      if (gparts[j].time_bin == time_bin_inhibited) {
+        error("Found inhibited gpart in space_rebuild() at cell %d", i);
+      }
+    }
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
+
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);
 
