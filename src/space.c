@@ -199,14 +199,6 @@ void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
 
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells[ind]];
-    message(
-        "Cell %d (%s/%s) has %d hydro, %d grav, %d stars, %d sinks, "
-        "%d black holes, hydro_total=%d grav_total=%d stars_total=%d "
-        "sinks_total=%d black_holes_total=%d",
-        local_cells[ind], cellID_names[c->type], subcellID_names[c->subtype],
-        c->hydro.count, c->grav.count, c->stars.count, c->sinks.count,
-        c->black_holes.count, c->hydro.count_total, c->grav.count_total,
-        c->stars.count_total, c->sinks.count_total, c->black_holes.count_total);
     cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks, s->bparts);
   }
 }
