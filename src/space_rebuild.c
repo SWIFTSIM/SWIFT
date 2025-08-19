@@ -993,17 +993,17 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 #endif
 
-  // /* Extract the cell counts from the sorted indices. Deduct the extra
-  //  * particles. */
-  // size_t last_gindex = 0;
-  // g_index[nr_gparts] = s->nr_cells;
-  // for (size_t k = 0; k < nr_gparts; k++) {
-  //   if (g_index[k] < g_index[k + 1]) {
-  //     cells_top[g_index[k]].grav.count =
-  //         k - last_gindex + 1 - space_extra_gparts;
-  //     last_gindex = k + 1;
-  //   }
-  // }
+  /* Extract the cell counts from the sorted indices. Deduct the extra
+   * particles. */
+  size_t last_gindex = 0;
+  g_index[nr_gparts] = s->nr_cells;
+  for (size_t k = 0; k < nr_gparts; k++) {
+    if (g_index[k] < g_index[k + 1]) {
+      cells_top[g_index[k]].grav.count =
+          k - last_gindex + 1 - space_extra_gparts;
+      last_gindex = k + 1;
+    }
+  }
 
   /* Debug check before reorder to see if particles are already corrupted */
 #ifdef SWIFT_DEBUG_CHECKS
