@@ -38,6 +38,8 @@
 #error TODO
 #elif defined(STARS_GEAR)
 #include "./stars/GEAR/stars_csds.h"
+#elif defined(STARS_DFTEST)
+#include "./stars/DFTest/stars_csds.h"
 #else
 #error "Invalid choice of star model"
 #endif

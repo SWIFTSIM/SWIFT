@@ -36,6 +36,9 @@
 #include "./stars/GEAR/stars.h"
 #include "./stars/GEAR/stars_iact.h"
 #include "./stars/GEAR/stars_stellar_type.h"
+#elif defined(STARS_DFTEST)
+#include "./stars/DFTest/stars.h"
+#include "./stars/DFTest/stars_iact.h"
 #else
 #error "Invalid choice of star model"
 #endif

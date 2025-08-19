@@ -2793,6 +2793,9 @@ case "$with_stars" in
    basic)
       AC_DEFINE([STARS_BASIC], [1], [Basic stellar model])
    ;;
+   dftest)
+      AC_DEFINE([STARS_DFTEST], [1], [Basic stellar model, altered for testing DF])
+   ;;
    none)
       AC_DEFINE([STARS_NONE], [1], [No stellar model])
    ;;

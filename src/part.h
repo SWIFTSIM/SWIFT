@@ -119,6 +119,8 @@ struct threadpool;
 #include "./stars/EAGLE/stars_part.h"
 #elif defined(STARS_GEAR)
 #include "./stars/GEAR/stars_part.h"
+#elif defined(STARS_DFTEST)
+#include "./stars/DFTest/stars_part.h"
 #else
 #error "Invalid choice of star particle"
 #endif
