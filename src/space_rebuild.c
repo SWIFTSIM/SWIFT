@@ -979,6 +979,20 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
+  /* Debug check before reorder to see if particles are already corrupted */
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < s->nr_cells; ++i) {
+    struct cell *c = &s->cells_top[i];
+    int count = c->grav.count;
+    struct gpart *gparts = c->grav.parts;
+    for (int j = 0; j < count; ++j) {
+      if (gparts[j].time_bin == time_bin_not_created) {
+        error("Found extra gpart before space_reorder_extras() at cell %d", i);
+      }
+    }
+  }
+#endif
+
   /* Extract the cell counts from the sorted indices. Deduct the extra
    * particles. */
   size_t last_gindex = 0;
@@ -990,6 +1004,20 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       last_gindex = k + 1;
     }
   }
+
+  /* Debug check before reorder to see if particles are already corrupted */
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < s->nr_cells; ++i) {
+    struct cell *c = &s->cells_top[i];
+    int count = c->grav.count;
+    struct gpart *gparts = c->grav.parts;
+    for (int j = 0; j < count; ++j) {
+      if (gparts[j].time_bin == time_bin_not_created) {
+        error("Found extra gpart before space_reorder_extras() at cell %d", i);
+      }
+    }
+  }
+#endif
 
   /* We no longer need the indices as of here. */
   swift_free("g_index", g_index);
