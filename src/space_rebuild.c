@@ -1005,20 +1005,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     }
   }
 
-  /* Debug check before reorder to see if particles are already corrupted */
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < s->nr_cells; ++i) {
-    struct cell *c = &s->cells_top[i];
-    int count = c->grav.count;
-    struct gpart *gparts = c->grav.parts;
-    for (int j = 0; j < count; ++j) {
-      if (gparts[j].time_bin == time_bin_not_created) {
-        error("Found extra gpart before space_reorder_extras() at cell %d", i);
-      }
-    }
-  }
-#endif
-
   /* We no longer need the indices as of here. */
   swift_free("g_index", g_index);
   swift_free("cell_gpart_counts", cell_gpart_counts);
@@ -1030,20 +1016,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
                       nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
                       verbose);
-#endif
-
-  /* Debug check before reorder to see if particles are already corrupted */
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < s->nr_cells; ++i) {
-    struct cell *c = &s->cells_top[i];
-    int count = c->grav.count;
-    struct gpart *gparts = c->grav.parts;
-    for (int j = 0; j < count; ++j) {
-      if (gparts[j].time_bin == time_bin_not_created) {
-        error("Found extra gpart before space_reorder_extras() at cell %d", i);
-      }
-    }
-  }
 #endif
 
   /* Define variables to count particles in cell types */
