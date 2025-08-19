@@ -24,6 +24,7 @@
 
 /* Read additional subgrid models */
 #include "chemistry_struct.h"
+#include "dynamical_friction_struct.h"
 #include "feedback_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
@@ -101,6 +102,9 @@ struct spart {
 
   /*! Radiative Transfer data */
   struct rt_spart_data rt_data;
+
+  /*! Dynamical friction data */
+  struct df_spart_data df_data;
 
 #ifdef WITH_CSDS
   /* Additional data for the particle csds */

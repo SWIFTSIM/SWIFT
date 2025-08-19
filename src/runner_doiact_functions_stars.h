@@ -24,6 +24,7 @@
    and runner_dosub_FUNCTION calling the pairwise interaction function
    runner_iact_FUNCTION. */
 
+#include "dynamical_friction.h"
 #include "feedback.h"
 #include "runner_doiact_stars.h"
 

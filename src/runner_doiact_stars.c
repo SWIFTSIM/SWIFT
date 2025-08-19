@@ -25,6 +25,8 @@
 /* Local headers. */
 #include "active.h"
 #include "cell.h"
+#include "dynamical_friction.h"
+#include "dynamical_friction_iact.h"
 #include "engine.h"
 #include "feedback.h"
 #include "feedback_iact.h"
@@ -61,3 +63,13 @@
 #include "runner_doiact_undef.h"
 
 #endif /* EXTRA_STAR_LOOPS */
+
+
+#ifdef DYNAMICAL_FRICTION_STAR_LOOPS
+
+#define FUNCTION df
+#define FUNCTION_TASK_LOOP TASK_LOOP_DF
+#include "runner_doiact_functions_stars.h"
+#include "runner_doiact_undef.h"
+
+#endif /* DYNAMICAL_FRICTION_STAR_LOOPS */
