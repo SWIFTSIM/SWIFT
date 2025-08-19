@@ -38,7 +38,7 @@
  * density or force loops. Quantities should be used in the kick, drift and
  * potentially ghost tasks only.
  */
-struct strength_xpart_data {  
+struct strength_xpart_data {
 
   // Stress tensor
   struct sym_matrix deviatoric_stress_tensor_full;
@@ -62,7 +62,7 @@ struct strength_xpart_data {
  * within the density and force loops over neighbours. All more permanent
  * variables should be declared in the main part of the part structure,
  */
-struct strength_part_data {  
+struct strength_part_data {
 
   // Stress tensor
   struct sym_matrix stress_tensor;
@@ -79,7 +79,7 @@ struct strength_part_data {
   // Gradient of velocity, calculated using linear-order reproducing kernel.
   float dv_force_loop[3][3];
 
-#ifdef STRENGTH_DAMAGE 
+#ifdef STRENGTH_DAMAGE
   // Accumulated damage
   float damage;
 

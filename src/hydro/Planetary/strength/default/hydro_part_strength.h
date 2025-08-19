@@ -89,7 +89,7 @@ struct strength_part_data {
   // Gradient of velocity, calculated using linear-order reproducing kernel.
   float dv_force_loop[3][3];
 
-#ifdef STRENGTH_DAMAGE 
+#ifdef STRENGTH_DAMAGE
   // Accumulated damage
   float damage;
 

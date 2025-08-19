@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2024 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
- *               2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ * Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2025 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -26,7 +26,7 @@
  */
 
 #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
-#include "yield_stress/yield_stress_ba94.h"
+#include "yield_stress/yield_stress_ba95.h"
 #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
 #include "yield_stress/yield_stress_collins04.h"
 #else

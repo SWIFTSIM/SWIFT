@@ -281,13 +281,13 @@ struct method_params {
     float artif_stress_epsilon;
   #endif
 
-  #if defined(STRENGTH_YIELD_STRESS_SOFTENING_THERMAL)
-    float yield_thermal_soft_xi;
+  #if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL)
+    float yield_weakening_thermal_xi;
   #endif
 
-  #if defined(STRENGTH_YIELD_STRESS_SOFTENING_DENSITY)
-    float yield_density_soft_mult_param;
-    float yield_density_soft_pow_param;
+  #if defined(STRENGTH_YIELD_STRESS_WEAKENING_DENSITY)
+    float yield_weakening_density_mult_param;
+    float yield_weakening_density_pow_param;
   #endif
 #endif /* MATERIAL_STRENGTH */
 };

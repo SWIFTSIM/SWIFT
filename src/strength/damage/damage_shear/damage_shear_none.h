@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2024 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
- *               2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ * Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2025 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,6 +22,7 @@
 
 /**
  * @file strength/damage/damage_shear/damage_shear_none.h
+ * @brief No shear fracture models.
  */
 
 #include "const.h"
@@ -29,18 +30,38 @@
 #include "hydro_parameters.h"
 #include "math.h"
 
+/**
+ * @brief Get shear damage of particle at last drift time.
+ *
+ * @param p The particle of interest.
+ */
 __attribute__((always_inline)) INLINE static float damage_get_shear_damage(const struct part *restrict p) {
 
   return 0.f;
 }
 
+/**
+ * @brief Get shear damage of particle at last kick time.
+ *
+ * @param xp The extended data of the particle of interest.
+ */
 __attribute__((always_inline)) INLINE static float damage_get_shear_damage_full(const struct xpart *restrict xp) {
 
   return 0.f;
 }
 
+/**
+ * @brief Set drift-time shear damage of particle.
+ *
+ * @param p The particle of interest.
+ */
 __attribute__((always_inline)) INLINE static void damage_set_shear_damage(struct part *restrict p, const float shear_damage) {}
 
+/**
+ * @brief Set kick-time shear damage of particle.
+ *
+ * @param xp The extended data of the particle of interest.
+ */
 __attribute__((always_inline)) INLINE static void damage_set_shear_damage_full(struct xpart *restrict xp, const float shear_damage_full) {}
 
 /**
@@ -65,7 +86,7 @@ __attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void damage_shear_evolve(
-    struct part *restrict p, float *shear_damage, const struct sym_matrix deviatoric_stress_tensor, 
+    float *shear_damage, struct part *restrict p, const struct sym_matrix deviatoric_stress_tensor,
     const int mat_id, const float density, const float u, const float yield_stress, const float dt_therm) {}
 
 #endif /* SWIFT_DAMAGE_SHEAR_NONE_H */

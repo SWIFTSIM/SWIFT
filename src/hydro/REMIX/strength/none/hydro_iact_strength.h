@@ -32,9 +32,18 @@
 #include "strength.h"
 
 /**
- * @brief Calculates the stress tensor with strength for the force interaction.
+ * @brief Calculates the pairwise stress tensors for the force interaction.
  *
- * @param p The particle to act upon
+ * The stress tensors used for the force interaction between a specific pair of
+ * particles. These differ from the particle's own stress tensor, since they
+ * factor in the phases of the two particles as well as the contribution of
+ * artificial stress for the pairwie interaction.
+ *
+ * @param pairwise_stress_tensor_i Stress tensor of particle i for its interactiion with j.
+ * @param pairwise_stress_tensor_j Stress tensor of particle j for its interactiion with i.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param r The particle separation.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_set_pairwise_stress_tensors_strength(float pairwise_stress_tensor_i[3][3],
@@ -47,7 +56,13 @@ hydro_set_pairwise_stress_tensors_strength(float pairwise_stress_tensor_i[3][3],
 /**
  * @brief Extra strength density interaction between two particles
  *
- * @param p The particle to act upon
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param wi The value of the unmodified kernel function W(r, hi) * hi^d.
+ * @param wj The value of the unmodified kernel function W(r, hj) * hj^d.
+ * @param wi_dx The norm of the gradient of wi: dW(r, hi)/dr * hi^(d+1).
+ * @param wj_dx The norm of the gradient of wj: dW(r, hj)/dr * hj^(d+1).
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_density_extra_strength(struct part *restrict pi,
@@ -60,7 +75,11 @@ hydro_runner_iact_density_extra_strength(struct part *restrict pi,
  * @brief Extra strength density interaction between two particles
  * (non-symmetric)
  *
- * @param p The particle to act upon
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param wi The value of the unmodified kernel function W(r, hi) * hi^d.
+ * @param wi_dx The norm of the gradient of wi: dW(r, hi)/dr * hi^(d+1).
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_nonsym_density_extra_strength(struct part *restrict pi,
@@ -72,7 +91,13 @@ hydro_runner_iact_nonsym_density_extra_strength(struct part *restrict pi,
 /**
  * @brief Extra strength gradient interaction between two particles
  *
- * @param p The particle to act upon
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param wi The value of the unmodified kernel function W(r, hi) * hi^d.
+ * @param wj The value of the unmodified kernel function W(r, hj) * hj^d.
+ * @param wi_dx The norm of the gradient of wi: dW(r, hi)/dr * hi^(d+1).
+ * @param wj_dx The norm of the gradient of wj: dW(r, hj)/dr * hj^(d+1).
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_gradient_extra_strength(struct part *restrict pi,
@@ -85,7 +110,11 @@ hydro_runner_iact_gradient_extra_strength(struct part *restrict pi,
  * @brief Extra strength gradient interaction between two particles
  * (non-symmetric)
  *
- * @param p The particle to act upon
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param wi The value of the unmodified kernel function W(r, hi) * hi^d.
+ * @param wi_dx The norm of the gradient of wi: dW(r, hi)/dr * hi^(d+1).
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_nonsym_gradient_extra_strength(struct part *restrict pi,
@@ -96,7 +125,11 @@ hydro_runner_iact_nonsym_gradient_extra_strength(struct part *restrict pi,
 /**
  * @brief Extra strength force interaction between two particles
  *
- * @param p The particle to act upon
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param Gi Kernel gradient for first particle.
+ * @param Gj Kernel gradient for second particle.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_force_extra_strength(struct part *restrict pi,
@@ -107,7 +140,10 @@ hydro_runner_iact_force_extra_strength(struct part *restrict pi,
 /**
  * @brief Extra strength force interaction between two particles (non-symmetric)
  *
- * @param p The particle to act upon
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param Gi Kernel gradient for first particle.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_nonsym_force_extra_strength(struct part *restrict pi,

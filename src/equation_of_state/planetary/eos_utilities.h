@@ -219,16 +219,16 @@ INLINE static void set_material_params(struct mat_params *all_mat_params,
         parser_get_opt_param_float(file_params, "YieldStress:mu_d", 0.f);
   #endif
 
-  #if defined(STRENGTH_YIELD_STRESS_SOFTENING_THERMAL)
-    method_params->yield_thermal_soft_xi = parser_get_opt_param_float(
-        file_params, "YieldStress:yield_thermal_soft_xi", 0.f);
+  #if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL)
+    method_params->yield_weakening_thermal_xi = parser_get_opt_param_float(
+        file_params, "YieldStress:yield_weakening_thermal_xi", 0.f);
   #endif
 
-  #if defined(STRENGTH_YIELD_STRESS_SOFTENING_DENSITY)
-    method_params->yield_density_soft_mult_param = parser_get_opt_param_float(
-        file_params, "YieldStress:yield_density_soft_mult_param", 0.f);
-    method_params->yield_density_soft_pow_param = parser_get_opt_param_float(
-        file_params, "YieldStress:yield_density_soft_pow_param", 0.f);
+  #if defined(STRENGTH_YIELD_STRESS_WEAKENING_DENSITY)
+    method_params->yield_weakening_density_mult_param = parser_get_opt_param_float(
+        file_params, "YieldStress:yield_weakening_density_mult_param", 0.f);
+    method_params->yield_weakening_density_pow_param = parser_get_opt_param_float(
+        file_params, "YieldStress:yield_weakening_density_pow_param", 0.f);
   #endif
 
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)

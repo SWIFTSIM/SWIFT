@@ -31,13 +31,26 @@
 #include "math.h"
 #include "strength.h"
 
+/**
+ * @brief Updates the hydro (+ strength) time-step based on strength methods.
+ *
+ *
+ * @param dt_cfl The hydro (+ strength) time-step.
+ * @param p The particle of interest.
+ */
 __attribute__((always_inline)) INLINE static void hydro_compute_timestep_strength(
-    const struct part *restrict p, const struct hydro_props *restrict hydro_properties, 
-    float *dt_cfl) {}
+    float *dt_cfl, const struct part *restrict p, const struct hydro_props *restrict hydro_properties) {}
 
+/**
+ * @brief Updates the max wave speed based on strength methods.
+ *
+ * @param wave_speed The wave speed to be updated.
+ * @param p The particle of interest.
+ * @param soundspeed The sound speed.
+ * @param density The sound density.
+ */
 __attribute__((always_inline)) INLINE static void
-hydro_compute_max_wave_speed_strength(const struct part *restrict p, const float soundspeed, 
-                                      const float density, float *wave_speed) {}
+hydro_compute_max_wave_speed_strength(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {}
 
 /**
  * @brief Prepares extra strength parameters for a particle for the density
@@ -78,6 +91,8 @@ hydro_end_gradient_extra_strength(struct part *restrict p) {}
  * calculation.
  *
  * @param p The particle to act upon
+ * @param density The density
+ * @param u The specific internal energy
  */
 __attribute__((always_inline)) INLINE static void
 hydro_prepare_force_extra_strength(struct part *restrict p,
@@ -109,12 +124,13 @@ hydro_end_force_extra_strength(struct part *restrict p) {}
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_extra_strength(
     struct part *restrict p, const struct xpart *restrict xp) {}
-    
+
 /**
  * @brief Predict additional particle strength properties forward in time when
  * drifting. At beginning of hydro function, before hydro quantities have been drifted.
  *
  * @param p The particle to act upon
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_beginning(
     struct part *restrict p, const float dt_therm) {}
@@ -124,6 +140,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_b
  * drifting. At end of hydro function, after hydro quantities have been drifted.
  *
  * @param p The particle to act upon
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_end(
     struct part *restrict p, const float dt_therm) {}

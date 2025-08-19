@@ -209,29 +209,29 @@ __attribute__((always_inline)) INLINE static float material_rho_0(
   }
 #endif /* STRENGTH_ARTIFICIAL_STRESS_MON2000 */
 
-#if defined(STRENGTH_YIELD_STRESS_SOFTENING_THERMAL)
-  /** @brief Returns the yield stress thermal softening parameter of a material */
+#if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL)
+  /** @brief Returns the yield stress thermal weakening parameter of a material */
   __attribute__((always_inline)) INLINE static float
-  method_yield_thermal_soft_xi(void) {
-    return eos.method_params.yield_thermal_soft_xi;
+  method_yield_weakening_thermal_xi(void) {
+    return eos.method_params.yield_weakening_thermal_xi;
   }
-#endif /* STRENGTH_YIELD_STRESS_SOFTENING_THERMAL */
+#endif /* STRENGTH_YIELD_STRESS_WEAKENING_THERMAL */
 
-#if defined(STRENGTH_YIELD_STRESS_SOFTENING_DENSITY)
-  /** @brief Returns the yield stress density softening multiplication parameter
+#if defined(STRENGTH_YIELD_STRESS_WEAKENING_DENSITY)
+  /** @brief Returns the yield stress density weakening multiplication parameter
    * of a material */
   __attribute__((always_inline)) INLINE static float
-  method_yield_density_soft_mult_param(void) {
-    return eos.method_params.yield_density_soft_mult_param;
+  method_yield_weakening_density_mult_param(void) {
+    return eos.method_params.yield_weakening_density_mult_param;
   }
 
-  /** @brief Returns the yield stress density softening exponent parameter of a
+  /** @brief Returns the yield stress density weakening exponent parameter of a
    * material */
   __attribute__((always_inline)) INLINE static float
-  method_yield_density_soft_pow_param(void) {
-    return eos.method_params.yield_density_soft_pow_param;
+  method_yield_weakening_density_pow_param(void) {
+    return eos.method_params.yield_weakening_density_pow_param;
   }
-#endif /* STRENGTH_YIELD_STRESS_SOFTENING_DENSITY */
+#endif /* STRENGTH_YIELD_STRESS_WEAKENING_DENSITY */
 
 #endif /* MATERIAL_STRENGTH */
 

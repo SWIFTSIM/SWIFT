@@ -367,6 +367,23 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
 }
 
 /**
+ * @brief Computes the max wave speed in the material for time-stepping.
+ *
+ * @param wave_speed The wave speed to be updated.
+ * @param p The particle of interest.
+ * @param soundspeed The sound speed.
+ * @param density The sound density.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_compute_max_wave_speed(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {
+
+  /* Wave speed is initialised as sound speed. */
+  *wave_speed = soundspeed;
+
+  hydro_compute_max_wave_speed_strength(wave_speed, p, soundspeed, density);
+}
+
+/**
  * @brief Sets the drifted physical internal energy of a particle
  *
  * @param p The particle of interest.
@@ -391,7 +408,10 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+  /* Set signal velocity based on max wave speed. */
+  float max_wave_speed;
+  hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho);
+  p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
 }
 
 /**
@@ -438,18 +458,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
 
-  hydro_compute_timestep_strength(p, hydro_properties, &dt_cfl);
+  hydro_compute_timestep_strength(&dt_cfl, p, hydro_properties);
 
   return dt_cfl;
-}
-
-__attribute__((always_inline)) INLINE static void
-hydro_compute_max_wave_speed(const struct part *restrict p, float *wave_speed, const float soundspeed, const float density) {
-
-  // wave speed is initialised as sound speed
-  *wave_speed = soundspeed;
-
-  hydro_compute_max_wave_speed_strength(p, soundspeed, density, wave_speed);
 }
 
 /**
@@ -670,7 +681,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   float curl_v[3];
   curl_v[0] = p->dv_norm_kernel[1][2] - p->dv_norm_kernel[2][1];
   curl_v[1] = p->dv_norm_kernel[2][0] - p->dv_norm_kernel[0][2];
-  curl_v[2] = p->dv_norm_kernel[0][1] - p->dv_norm_kernel[1][0];  
+  curl_v[2] = p->dv_norm_kernel[0][1] - p->dv_norm_kernel[1][0];
   const float mod_curl_v = sqrtf(curl_v[0] * curl_v[0] + curl_v[1] * curl_v[1] +
                                  curl_v[2] * curl_v[2]);
 
@@ -716,8 +727,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->drho_dt = 0.0f;
   p->force.h_dt = 0.0f;
 
+  /* Set signal velocity based on max wave speed. */
   float max_wave_speed;
-  hydro_compute_max_wave_speed(p, &max_wave_speed, p->force.soundspeed, p->rho);
+  hydro_compute_max_wave_speed(&max_wave_speed, p, p->force.soundspeed, p->rho);
   p->force.v_sig = 2.f * max_wave_speed;
 
   hydro_reset_acceleration_strength(p);
@@ -760,8 +772,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
+  /* Set signal velocity based on max wave speed. */
   float max_wave_speed;
-  hydro_compute_max_wave_speed(p, &max_wave_speed, soundspeed, p->rho_evol);
+  hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho_evol);
   p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
 
   hydro_reset_predicted_values_extra_strength(p, xp);
@@ -833,14 +846,15 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
+  /* Set signal velocity based on max wave speed. */
   float max_wave_speed;
-  hydro_compute_max_wave_speed(p, &max_wave_speed, soundspeed, p->rho_evol);
+  hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho_evol);
   p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
 
   p->phase_state =
     (enum mat_phase_state)material_phase_state_from_internal_energy(
      p->rho_evol, p->u, p->mat_id);
-    
+
   hydro_predict_extra_strength_end(p, dt_therm);
 }
 
@@ -929,7 +943,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     (enum mat_phase_state)material_phase_state_from_internal_energy(
      xp->rho_evol_full, xp->u_full, p->mat_id);
 
-    
+
   hydro_kick_extra_strength_end(p, xp, dt_therm);
 }
 

@@ -31,21 +31,35 @@
 #include "math.h"
 #include "strength.h"
 
+/**
+ * @brief Updates the hydro (+ strength) time-step based on strength methods.
+ *
+ *
+ * @param dt_cfl The hydro (+ strength) time-step.
+ * @param p The particle of interest.
+ */
 __attribute__((always_inline)) INLINE static void hydro_compute_timestep_strength(
-    const struct part *restrict p, const struct hydro_props *restrict hydro_properties, 
-    float *dt_cfl) {
+    float *dt_cfl, const struct part *restrict p, const struct hydro_props *restrict hydro_properties) {
 
-  // Update dt_cfl with elastic contribution
-  strength_compute_timestep_stress_tensor(p, hydro_properties, &dt_cfl);
-    
-  // Update dt_cfl with damage contribution
-  strength_compute_timestep_damage(p, &dt_cfl);
+  /* Update dt_cfl with elastic contribution. */
+  strength_compute_timestep_stress_tensor(dt_cfl, p, hydro_properties);
+
+  /* Update dt_cfl with damage contribution. */
+  strength_compute_timestep_damage(dt_cfl, p);
 }
 
+/**
+ * @brief Updates the max wave speed based on strength methods.
+ *
+ * @param wave_speed The wave speed to be updated.
+ * @param p The particle of interest.
+ * @param soundspeed The sound speed.
+ * @param density The sound density.
+ */
 __attribute__((always_inline)) INLINE static void
-hydro_compute_max_wave_speed_strength(const struct part *restrict p, const float soundspeed, const float density, float *wave_speed) {
+hydro_compute_max_wave_speed_strength(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {
 
-  strength_compute_max_wave_speed_stress_tensor(p, soundspeed, density, &wave_speed);
+  strength_compute_max_wave_speed_stress_tensor(wave_speed, p, soundspeed, density);
 }
 
 /**
@@ -70,27 +84,30 @@ hydro_end_density_extra_strength(struct part *restrict p) {}
  * calculation.
  *
  * @param p The particle to act upon
+ * @param density The density
+ * @param u The specific internal energy
  */
 __attribute__((always_inline)) INLINE static void
 hydro_prepare_force_extra_strength(struct part *restrict p, struct xpart *restrict xp,
                                    const float density, const float u) {
 
-  // Set the density to be used in the force loop to be the evolved density
+  /* Set the density to be used in the force loop to be the evolved density. */
   p->rho = p->strength_data.rho_evol;
 
 #ifdef PLANETARY_FIXED_ENTROPY
-  /* Override the internal energy to satisfy the fixed entropy. 
+  /* Override the internal energy to satisfy the fixed entropy.
     * Needs to happen here as well because of the updated rho. */
   p->u = gas_internal_energy_from_entropy(p->rho, p->s_fixed, p->mat_id);
   xp->u_full = p->u;
 #endif
-    
+
   const float pressure =
       gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
 
+  /* Compute stress tensor. */
   strength_compute_stress_tensor(p, pressure);
 
-  // Compute principal stresses.
+  /* Compute principal stresses. */
   sym_matrix_compute_eigenvalues(p->strength_data.principal_stress_eigen, p->strength_data.stress_tensor);
 }
 
@@ -104,13 +121,8 @@ __attribute__((always_inline)) INLINE static void
 hydro_reset_acceleration_strength(struct part *restrict p) {
 
   p->strength_data.drho_dt = 0.0f;
-    
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      p->strength_data.dv_force_loop[i][j] = 0.f;
-    }
-  }
 
+  memset(p->strength_data.dv_force_loop, 0.f, 3 * 3 * sizeof(float));
   zero_sym_matrix(&p->strength_data.dS_dt);
 }
 
@@ -122,23 +134,25 @@ hydro_reset_acceleration_strength(struct part *restrict p) {
 __attribute__((always_inline)) INLINE static void
 hydro_end_force_extra_strength(struct part *restrict p) {
 
+ /* Update dS/dt for timestep. */
  stress_tensor_compute_dS_dt(p, p->strength_data.dv_force_loop);
 
-  // Update p->strength_data.dD/dt for timestep
+  /* Get quntities needed for dD/dt calculation. */
   const int mat_id = p->mat_id;
   const int phase_state = p->phase_state;
   const float mass = p->mass;
   const float density = p->rho_evol;
   const float u = p->u;
-  const float pressure = gas_pressure_from_internal_energy(density, u, mat_id); 
+  const float pressure = gas_pressure_from_internal_energy(density, u, mat_id);
   const float damage = strength_get_damage(p);
   const float yield_stress = yield_compute_yield_stress(mat_id, phase_state, density, u, damage);
   const struct sym_matrix deviatoric_stress_tensor = p->strength_data.deviatoric_stress_tensor;
-    
+
   struct sym_matrix stress_tensor;
-  const struct sym_matrix damaged_deviatoric_stress_tensor = yield_apply_damage_to_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
+  const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
   damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
-    
+
+  /* Update dD/dt for timestep. */
   damage_compute_dD_dt(p, stress_tensor, deviatoric_stress_tensor, mat_id, mass, density, u, yield_stress);
 }
 
@@ -154,7 +168,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_e
 
   p->rho = xp->strength_data.rho_evol_full;
   p->strength_data.rho_evol = xp->strength_data.rho_evol_full;
-    
+
   strength_reset_predicted_values_stress_tensor(p, xp);
   strength_reset_predicted_values_damage(p, xp);
 }
@@ -164,6 +178,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_e
  * drifting. At beginning of hydro function, before hydro quantities have been drifted.
  *
  * @param p The particle to act upon
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_beginning(
     struct part *restrict p, const float dt_therm) {
@@ -173,26 +188,30 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_b
   // ### of the particle itself. Therefore dDamage_dt is recalculated each time damage is updated.
   // ## Damage depends on S and S can depend on damage through Y makes.
 
+  /* Get quantities needed for strength evolution. */
   const int mat_id = p->mat_id;
   const int phase_state = p->phase_state;
   const float mass = p->mass;
   const float density = p->strength_data.rho_evol;
   const float u = p->u;
-  const float pressure = gas_pressure_from_internal_energy(density, u, mat_id); 
+  const float pressure = gas_pressure_from_internal_energy(density, u, mat_id);
   const float damage = strength_get_damage(p);
   const float yield_stress = yield_compute_yield_stress(mat_id, phase_state, density, u, damage);
   const struct sym_matrix deviatoric_stress_tensor = p->strength_data.deviatoric_stress_tensor;
-    
+
   struct sym_matrix stress_tensor;
-  const struct sym_matrix damaged_deviatoric_stress_tensor = yield_apply_damage_to_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
+  const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
   damage_compute_stress_tensor(stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
-    
+
   // ### Since I have to calc dD/d now for timesteps, could this just use p->dD/dt?
-  damage_predict_evolve(&stress_tensor, deviatoric_stress_tensor, mat_id, mass, 
+  /* Evolve damage. */
+  damage_predict_evolve(&stress_tensor, deviatoric_stress_tensor, mat_id, mass,
                               density, u, yield_stress, dt_therm);
 
-  stress_tensor_evolve_deviatoric_stress_tensor(p, &p->strength_data.deviatoric_stress_tensor, phase_state, dt_therm);
+  /* Evolve deviatoric stress tensor. */
+  stress_tensor_evolve_deviatoric_stress_tensor(&p->strength_data.deviatoric_stress_tensor, p, phase_state, dt_therm);
 
+  /* Apply yield stress to deviatoric stress tensor. */
   yield_apply_yield_stress_to_deviatoric_stress_tensor(
         &p->strength_data.deviatoric_stress_tensor, yield_stress, density, u);
 }
@@ -202,36 +221,35 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_b
  * drifting. At end of hydro function, after hydro quantities have been drifted.
  *
  * @param p The particle to act upon
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_end(
     struct part *restrict p, const float dt_therm) {
 
+  /* Evolve density. */
   p->strength_data.rho_evol += p->strength_data.drho_dt * dt_therm;
 
-  /* compute minimum density */
+  /* Compute minimum density */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float min_rho = p->mass * kernel_root * h_inv_dim;
 
-  // Overwrite stored hydro qunatities with those calculated based on evolved density.
+  /* Overwrite stored hydro qunatities with those calculated based on evolved density. */
   p->strength_data.rho_evol = max(p->strength_data.rho_evol, min_rho);
   p->rho = p->strength_data.rho_evol;
-
   const float density = p->strength_data.rho_evol;
   const float u = p->u;
   const float pressure =
-      gas_pressure_from_internal_energy(density, u, p->mat_id);  
+      gas_pressure_from_internal_energy(density, u, p->mat_id);
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho, p->u, p->mat_id);
-
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
-
   p->phase_state =
     (enum mat_phase_state)material_phase_state_from_internal_energy(
      p->rho, p->u, p->mat_id);
-    
+
+  /* Compute updated stress tensor. */
   strength_compute_stress_tensor(p, pressure);
 }
 
@@ -249,30 +267,36 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_e
 __attribute__((always_inline)) INLINE static void hydro_kick_extra_strength_beginning(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm) {
 
+  /* Get quantities needed for strength evolution. */
   const int mat_id = p->mat_id;
   const int phase_state = xp->phase_state_full;
   const float mass = p->mass;
   const float density = xp->strength_data.rho_evol_full;
   const float u = xp->u_full;
-  const float pressure = gas_pressure_from_internal_energy(density, u, mat_id); 
+  const float pressure = gas_pressure_from_internal_energy(density, u, mat_id);
   const float damage = strength_get_damage_full(xp);
   const float yield_stress = yield_compute_yield_stress(mat_id, phase_state, density, u, damage);
   const struct sym_matrix deviatoric_stress_tensor = xp->strength_data.deviatoric_stress_tensor_full;
-    
+
   struct sym_matrix stress_tensor;
-  const struct sym_matrix damaged_deviatoric_stress_tensor = yield_apply_damage_to_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
+  const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
   damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
-    
-  damage_kick_evolve(stress_tensor, deviatoric_stress_tensor, mat_id, mass, 
+
+  /* Evolve damage. */
+  damage_kick_evolve(stress_tensor, deviatoric_stress_tensor, mat_id, mass,
                            density, u, yield_stress, dt_therm);
 
-  stress_tensor_evolve_deviatoric_stress_tensor(p, &xp->strength_data.deviatoric_stress_tensor_full, phase_state, dt_therm);
+  /* Evolve deviatoric stress tensor. */
+  stress_tensor_evolve_deviatoric_stress_tensor(&xp->strength_data.deviatoric_stress_tensor_full, p, phase_state, dt_therm);
 
+  /* Apply yield stress to deviatoric stress tensor. */
   yield_apply_yield_stress_to_deviatoric_stress_tensor(
         &xp->strength_data.deviatoric_stress_tensor_full, yield_stress, density, u);
 
+  /* Evolve density. Note this comes after e.g. calculation of stress tensor for
+   * strength evolution, since the stress tensor used in the evolution myst be
+   * at the current time. */
   const float delta_rho = p->strength_data.drho_dt * dt_therm;
-
   xp->strength_data.rho_evol_full =
       max(xp->strength_data.rho_evol_full + delta_rho, 0.5f * xp->strength_data.rho_evol_full);
 
@@ -286,7 +310,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra_strength_begi
     p->strength_data.drho_dt = 0.f;
   }
 
-  // Overwrite based on evolved density
+  /* Overwrite based on evolved density. */
   xp->phase_state_full =
     (enum mat_phase_state)material_phase_state_from_internal_energy(
      xp->strength_data.rho_evol_full, xp->u_full, p->mat_id);
@@ -318,7 +342,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra_strength_end(
  */
 __attribute__((always_inline)) INLINE static void hydro_first_init_part_strength(
     struct part *restrict p, struct xpart *restrict xp) {
-    
+
   p->strength_data.rho_evol = p->rho;
   xp->strength_data.rho_evol_full = p->strength_data.rho_evol;
 

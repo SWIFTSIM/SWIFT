@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2024 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
- *               2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ * Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2025 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,6 +22,7 @@
 
 /**
  * @file strength/damage/damage.h
+ * @brief Core damage scheme that combines multiple fracture models.
  */
 
 #include "const.h"
@@ -30,48 +31,84 @@
 #include "math.h"
 #include "strength.h"
 
+/**
+ * @brief Get damage of particle at last drift time.
+ *
+ * @param p The particle of interest.
+ */
 __attribute__((always_inline)) INLINE static float strength_get_damage(const struct part *restrict p) {
 
   return p->strength_data.damage;
 }
 
+/**
+ * @brief Get damage of particle at last kick time.
+ *
+ * @param xp The extended data of the particle of interest.
+ */
 __attribute__((always_inline)) INLINE static float strength_get_damage_full(const struct xpart *restrict xp) {
 
   return xp->strength_data.damage_full;
 }
 
+/**
+ * @brief Set drift-time damage of particle.
+ *
+ * @param p The particle of interest.
+ */
 __attribute__((always_inline)) INLINE static void strength_set_damage(struct part *restrict p, const float damage) {
 
   p->strength_data.damage = damage;
 }
 
+/**
+ * @brief Set kick-time damage of particle.
+ *
+ * @param xp The extended data of the particle of interest.
+ */
 __attribute__((always_inline)) INLINE static void strength_set_damage_full(struct xpart *restrict xp, const float damage_full) {
 
   xp->strength_data.damage_full = damage_full;
 }
 
+/**
+ * @brief Computes the damage time-step of a given particle
+ *
+ * Calculates a time-step based on the particle's rate of damage accumulation.
+ * If this time-step is smaller than dt_cfl, dt_cfl gets overwritten to this
+ * damage time-step.
+ *
+ * @param dt_cfl The hydro (+ strength) time-step.
+ * @param p The particle of interest.
+ */
 __attribute__((always_inline)) INLINE static void strength_compute_timestep_damage(
-    const struct part *restrict p, float *dt_cfl) {
+    float *dt_cfl, const struct part *restrict p) {
 
   const float dD_dt = p->strength_data.dD_dt;
   const float damage_timestep_factor = 0.01f; // ### Hardcoded for now. Treat this similarly to CFL
-    
+
   if (dD_dt * *dt_cfl > damage_timestep_factor) {
     *dt_cfl = damage_timestep_factor / dD_dt;
   }
 }
 
 /**
- * @brief Set the (symmetric) stress tensor by combining the deviatoric with the
- * pressure and applying damage.
+ * @brief Computes the damage-modified stress tensor.
  *
- * @param p The particle to act upon
+ * @param stress_tensor The stress tensor.
+ * @param damaged_deviatoric_stress_tensor The damaged_deviatoric stress tensor, already modified by damage.
+ * @param pressure The pressure.
+ * @param damage The damage.
  */
 __attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
     struct sym_matrix *stress_tensor, const struct sym_matrix damaged_deviatoric_stress_tensor, const float pressure, const float damage) {
 
+  /* How damage affects the deviatoric stress tensor depends on the yield stress
+   * method used. */
   *stress_tensor = damaged_deviatoric_stress_tensor;
 
+  /* Damage weakens negative pressures so that fully damaged material cannot be
+   * in tension. */
   if (pressure < 0.f) {
     stress_tensor->xx -= (1.f - damage) * pressure;
     stress_tensor->yy -= (1.f - damage) * pressure;
@@ -83,53 +120,79 @@ __attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
   }
 }
 
+/**
+ * @brief Sets the values of additional particle damage properties at a
+ * kick time
+ *
+ * @param p The particle of interest.
+ * @param xp The extended data of this particle.
+ */
 __attribute__((always_inline)) INLINE static void strength_reset_predicted_values_damage(
     struct part *restrict p, const struct xpart *restrict xp) {
-    
+
   strength_set_damage(p, xp->strength_data.damage_full);
   damage_set_tensile_damage(p, xp->strength_data.tensile_damage_full);
   damage_set_shear_damage(p, xp->strength_data.shear_damage_full);
 }
 
 /**
- * @brief Evolves particle damage
+ * @brief Evolves particle damage.
  *
- * @param p The particle to act upon
+ * @param damage The damage.
+ * @param tensile_damage The tensile damage.
+ * @param shear_damage The shear damage.
+ * @param p The particle of interest.
+ * @param stress_tensor The stress tensor.
+ * @param deviatoric_stress_tensor The deviatoric stress tensor.
+ * @param mat_id The material ID.
+ * @param mass The particle mass.
+ * @param density The density.
+ * @param u The specific internal energy.
+ * @param yield_stress The yield stress.
+ * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_evolve(
-    struct part *restrict p, float *damage, float *tensile_damage, float *shear_damage,
-    const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
+    float *damage, float *tensile_damage, float *shear_damage, struct part *restrict p,
+    const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor,
     const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {
 
-    // ### note that time derivatives get calculated each time this gets called i.e. in all of kick-drift-kick
-    // ### results are sensitive to how often these get recalculated so might need to do it each time like this
-    // ### might be computationally expensive with recalculation of eigenvalues
+  /* Evolve tensile damage. */
+  damage_tensile_evolve(tensile_damage, p, stress_tensor, mat_id, mass, density, *damage, dt_therm);
 
-  damage_tensile_evolve(p, tensile_damage, stress_tensor, mat_id, mass, density, *damage, dt_therm);
-  damage_shear_evolve(p, shear_damage, deviatoric_stress_tensor, mat_id, density, u, yield_stress, dt_therm);
+  /* Evolve shear damage. */
+  damage_shear_evolve(shear_damage, p, deviatoric_stress_tensor, mat_id, density, u, yield_stress, dt_therm);
 
+  /* Combine sources of damage. */
   *damage = fminf(*tensile_damage + *shear_damage, 1.f);
 }
 
 /**
  * @brief Evolves particle damage in the drift
  *
- * @param p The particle to act upon
+ * @param p The particle of interest.
+ * @param stress_tensor The stress tensor.
+ * @param deviatoric_stress_tensor The deviatoric stress tensor.
+ * @param mat_id The material ID.
+ * @param mass The particle mass.
+ * @param density The density.
+ * @param u The specific internal energy.
+ * @param yield_stress The yield stress.
+ * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_predict_evolve(
-    struct part *restrict p, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
+    struct part *restrict p, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor,
     const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {
 
-  // Get damage parameters before they get evolved in time
+  /* Damage parameters set to values at drift time. */
   float damage = strength_get_damage(p);
   float tensile_damage = damage_get_tensile_damage(p);
   float shear_damage = damage_get_shear_damage(p);
 
-  // Evolve damage parameters
-  damage_evolve(p, &damage, &tensile_damage, &shear_damage, 
+  /* Evolve damage. */
+  damage_evolve(&damage, &tensile_damage, &shear_damage, p,
                   stress_tensor, deviatoric_stress_tensor, mat_id, mass, density, u, yield_stress, dt_therm);
 
-  // Update damage particle properties
+  /* Update damage particle properties. */
   strength_set_damage(p, damage);
   damage_set_tensile_damage(p, tensile_damage);
   damage_set_shear_damage(p, shear_damage);
@@ -138,56 +201,86 @@ __attribute__((always_inline)) INLINE static void damage_predict_evolve(
 /**
  * @brief Evolves particle damage in the kick
  *
- * @param p The particle to act upon
+ * @param p The particle of interest.
+ * @param xp The extended data of the particle of interest.
+ * @param stress_tensor The stress tensor.
+ * @param deviatoric_stress_tensor The deviatoric stress tensor.
+ * @param mat_id The material ID.
+ * @param mass The particle mass.
+ * @param density The density.
+ * @param u The specific internal energy.
+ * @param yield_stress The yield stress.
+ * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_kick_evolve(
-    struct part *restrict p, struct xpart *restrict xp, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
+    struct part *restrict p, struct xpart *restrict xp, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor,
     const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {
 
-// Get damage parameters before they get evolved in time
+  /* Damage parameters set to values at kick time. */
   float damage = strength_get_damage_full(xp);
   float tensile_damage = damage_get_tensile_damage_full(xp);
   float shear_damage = damage_get_shear_damage_full(xp);
 
-  // Evolve damage parameters
-  damage_evolve(p, &damage, &tensile_damage, &shear_damage, 
+  /* Evolve damage. */
+  damage_evolve(&damage, &tensile_damage, &shear_damage, p,
                   stress_tensor, deviatoric_stress_tensor, mat_id, mass, density, u, yield_stress, dt_therm);
 
-  // Update damage particle properties
+  /* Update damage particle properties. */
   strength_set_damage_full(xp, damage);
   damage_set_tensile_damage_full(xp, tensile_damage);
   damage_set_shear_damage_full(xp, shear_damage);
 }
-    
+
 /**
  * @brief Calculate time derivative of damage.
  *
- * @param p The particle to act upon
+ * @param p The particle of interest.
+ * @param stress_tensor The stress tensor.
+ * @param deviatoric_stress_tensor The deviatoric stress tensor.
+ * @param mat_id The material ID.
+ * @param mass The particle mass.
+ * @param density The density.
+ * @param u The specific internal energy.
+ * @param yield_stress The yield stress.
  */
 __attribute__((always_inline)) INLINE static void damage_compute_dD_dt(
-    struct part *restrict p, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor, 
+    struct part *restrict p, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor,
     const int mat_id, const float mass, const float density, const float u, const float yield_stress) {
 
+  /* Damage parameters set to values at drift time. */
   const float damage = strength_get_damage(p);
   const float tensile_damage = damage_get_tensile_damage(p);
   const float shear_damage = damage_get_shear_damage(p);
 
+  /* Compute tensile dD/dt. */
   float tensile_dD_dt = 0.f;
-  damage_tensile_compute_dD_dt(p, &tensile_dD_dt, stress_tensor, mat_id, mass, density, damage, tensile_damage);
-    
+  damage_tensile_compute_dD_dt(&tensile_dD_dt, p, stress_tensor, mat_id, mass, density, damage, tensile_damage);
+
+  /* Compute shear dD/dt. */
   float shear_dD_dt = 0.f;
   damage_shear_compute_dD_dt(&shear_dD_dt, deviatoric_stress_tensor, mat_id, density, u, yield_stress, shear_damage);
 
+  /* Combine sources of Dd/dt. */
   p->strength_data.dD_dt = tensile_dD_dt + shear_dD_dt;
 }
 
+/**
+ * @brief Initialises the damage properties for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in to do some conversions or assignments between the particle
+ * and extended particle fields.
+ *
+ * @param p The particle of interest.
+ * @param xp The extended data of the particle of interest.
+ */
 __attribute__((always_inline)) INLINE static void strength_first_init_part_damage(
     struct part *restrict p, struct xpart *restrict xp) {
 
   strength_set_damage(p, 0.f);
   damage_set_tensile_damage(p, 0.f);
   damage_set_shear_damage(p, 0.f);
-    
+
   strength_set_damage_full(xp, 0.f);
   damage_set_tensile_damage_full(xp, 0.f);
   damage_set_shear_damage_full(xp, 0.f);

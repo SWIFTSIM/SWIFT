@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2024 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
- *               2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ * Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2025 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,7 +22,7 @@
 
 /**
  * @file strength/strength_damage.h
- * @brief Selects whether using damage models or not on configuration options.
+ * @brief Selects damage models based on configuration options.
  */
 
 #if defined(STRENGTH_DAMAGE)
@@ -34,7 +34,7 @@
 #endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
 
 #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
-#include "damage/damage_tensile/damage_tensile_ba94.h"
+#include "damage/damage_tensile/damage_tensile_ba95.h"
 #else
 #include "damage/damage_tensile/damage_tensile_none.h"
 #endif /* STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG */

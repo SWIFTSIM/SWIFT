@@ -378,6 +378,23 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
 }
 
 /**
+ * @brief Computes the max wave speed in the material for time-stepping.
+ *
+ * @param wave_speed The wave speed to be updated.
+ * @param p The particle of interest.
+ * @param soundspeed The sound speed.
+ * @param density The sound density.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_compute_max_wave_speed(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {
+
+  /* Wave speed is initialised as sound speed. */
+  *wave_speed = soundspeed;
+
+  hydro_compute_max_wave_speed_strength(wave_speed, p, soundspeed, density);
+}
+
+/**
  * @brief Sets the drifted physical internal energy of a particle
  *
  * @param p The particle of interest.
@@ -402,7 +419,10 @@ hydro_set_drifted_physical_internal_energy(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+  /* Set signal velocity based on max wave speed. */
+  float max_wave_speed;
+  hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho);
+  p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
 }
 
 /**
@@ -449,7 +469,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
 
-  hydro_compute_timestep_strength(p, hydro_properties, &dt_cfl);
+  hydro_compute_timestep_strength(&dt_cfl, p, hydro_properties);
 
   return dt_cfl;
 }
@@ -472,8 +492,13 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
 
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
+  const float rhoi = pi->rho;
+  const float rhoj = pj->rho;
+  float max_wave_speed_i, max_wave_speed_j;
+  hydro_compute_max_wave_speed(&max_wave_speed_i, pi, ci, rhoi);
+  hydro_compute_max_wave_speed(&max_wave_speed_j, pj, cj, rhoj);
 
-  return ci + cj - beta * mu_ij;
+  return max_wave_speed_i + max_wave_speed_j - beta * mu_ij;
 }
 
 /**
@@ -529,7 +554,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
-    
+
   hydro_init_part_extra_strength(p);
 }
 
@@ -777,7 +802,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
-  p->force.v_sig = p->force.soundspeed;
+
+  /* Set signal velocity based on max wave speed. */
+  float max_wave_speed;
+  hydro_compute_max_wave_speed(&max_wave_speed, p, p->force.soundspeed, p->rho);
+  p->force.v_sig = 2.f * max_wave_speed;
 
   hydro_reset_acceleration_strength(p);
 }
@@ -816,7 +845,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+  /* Set signal velocity based on max wave speed. */
+  float max_wave_speed;
+  hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho);
+  p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
 }
 
 /**
@@ -882,7 +914,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+  /* Set signal velocity based on max wave speed. */
+  float max_wave_speed;
+  hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho);
+  p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
 
   p->phase_state =
     (enum mat_phase_state)material_phase_state_from_internal_energy(
@@ -954,7 +989,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   xp->phase_state_full =
     (enum mat_phase_state)material_phase_state_from_internal_energy(
      p->rho, xp->u_full, p->mat_id);
-    
+
   hydro_kick_extra_strength_end(p, xp, dt_therm);
 }
 

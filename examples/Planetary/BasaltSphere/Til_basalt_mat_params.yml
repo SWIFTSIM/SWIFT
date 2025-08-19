@@ -16,15 +16,15 @@ Strength:
 ArtificialStress:
     n:             4
     epsilon:       0.2
-    
+
 YieldStress:
     Y_0:            3.5e9
     Y_M:            3.5e9
     mu_i:           2.0
     mu_d:           0.8
-    yield_thermal_soft_xi:          1.2
-    yield_density_soft_mult_param:  0.85
-    yield_density_soft_pow_param:   4
+    yield_weakening_thermal_xi:          1.2
+    yield_weakening_density_mult_param:  0.85
+    yield_weakening_density_pow_param:   4
 
 DamageShearCollins:
     brittle_to_ductile_pressure:    0

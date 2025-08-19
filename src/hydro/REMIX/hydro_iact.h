@@ -121,7 +121,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
-  hydro_runner_iact_density_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);  
+  hydro_runner_iact_density_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_density_extra_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
 }
 
@@ -407,8 +407,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
   float max_wave_speed_i, max_wave_speed_j;
-  hydro_compute_max_wave_speed(pi, &max_wave_speed_i, ci, rhoi);
-  hydro_compute_max_wave_speed(pj, &max_wave_speed_j, cj, rhoj);
+  hydro_compute_max_wave_speed(&max_wave_speed_i, pi, ci, rhoi);
+  hydro_compute_max_wave_speed(&max_wave_speed_j, pj, cj, rhoj);
   const float v_sig = max_wave_speed_i + max_wave_speed_j - beta_mu_ij;
 
   /* Update the signal velocity. */
@@ -629,8 +629,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
   float max_wave_speed_i, max_wave_speed_j;
-  hydro_compute_max_wave_speed(pi, &max_wave_speed_i, ci, rhoi);
-  hydro_compute_max_wave_speed(pj, &max_wave_speed_j, cj, rhoj);
+  hydro_compute_max_wave_speed(&max_wave_speed_i, pi, ci, rhoi);
+  hydro_compute_max_wave_speed(&max_wave_speed_j, pj, cj, rhoj);
   const float v_sig = max_wave_speed_i + max_wave_speed_j - beta_mu_ij;
 
   /* Update the signal velocity. */

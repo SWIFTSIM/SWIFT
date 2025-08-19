@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2024 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
- *               2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ * Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2025 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,6 +22,7 @@
 
 /**
  * @file strength/artificial_stress/artificial_stress_none.h
+ * @brief No artificial stress method.
  */
 
 #include "const.h"
@@ -30,7 +31,15 @@
 #include "math.h"
 
 /**
- * @brief Update the pairwise stress tensors with artificial stress.
+ * @brief Apply artificial stress to pairwise stress tensors.
+ *
+ * Empty function when configuring without artificial stress.
+ *
+ * @param pairwise_stress_tensor_i Stress tensor of particle i for its interactiion with j.
+ * @param pairwise_stress_tensor_j Stress tensor of particle j for its interactiion with i.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param r The particle separation.
  */
 __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],

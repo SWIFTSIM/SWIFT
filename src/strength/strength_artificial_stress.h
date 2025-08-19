@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2024 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
- *               2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ * Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2025 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,7 +22,7 @@
 
 /**
  * @file strength/strength_artificial_stress.h
- * @brief Selects artificial stress model based on configuration options.
+ * @brief Selects artificial stress method based on configuration options.
  */
 
 #if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP)

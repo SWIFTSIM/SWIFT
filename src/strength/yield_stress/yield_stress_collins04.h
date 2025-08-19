@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2024 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
- *               2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ * Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2025 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,6 +22,7 @@
 
 /**
  * @file strength/yield_stress/yield_stress_collins04.h
+ * Collins+2004 pressure-dependent yield stress.
  */
 
 #include "const.h"
@@ -30,46 +31,74 @@
 #include "math.h"
 
 /**
- * @brief Yield stress method dependent way of adding contribution of damage to deviatoric stress tensor
+ * @brief Compute damaged deviatoric stress tensor.
  *
- * @param p The particle to act upon
+ * Yield stress method dependent way of adding contribution of damage to
+ * deviatoric stress tensor. Note that this does not "apply" damage to the
+ * deviatoric stress tensor, since the deviatoric stress tensor that is evolved
+ * in time doesn't get modified by the damage. Instead this function returns a
+ * new tensor, which gets used, for example, to construct the pairwise stress
+ * tensors for the interaction of a particle pair.
+ *
+ * With the Collins+2004 yield stress method, damage does not act on the
+ * deviatoric stress tensor. Damage is instead applied to the yield stress.
+ *
+ * @param deviatoric_stress_tensor (sym_matrix) The deviatoric stress tensor.
+ * @param damage The damage.
  */
-__attribute__((always_inline)) INLINE static struct sym_matrix yield_apply_damage_to_deviatoric_stress_tensor(
+__attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_damaged_deviatoric_stress_tensor(
     struct sym_matrix deviatoric_stress_tensor, const float damage) {
 
-  // This method does not apply damage to deviatoric_stress_tensor 
   return deviatoric_stress_tensor;
 }
 
 /**
- * @brief Adjust the yield stress depending on the damage
+ * @brief Compute damaged yield stress.
  *
- * @param p The particle to act upon
+ * With the Collins+2004 yield stress method, damage acts to linearly transition
+ * the yield stress between the fully intact and fully damaged yield stresses.
+ *
+ * @param yield_stress_fully_intact The yield stress for fully intact material.
+ * @param yield_stress_fully_damaged The yield stress for fully damaged material.
+ * @param damage The damage.
  */
 __attribute__((always_inline)) INLINE static float
-yield_compute_damaged_yield_stress(const float yield_stress_intact, const float yield_stress_fully_damaged, const float damage) {
+yield_compute_damaged_yield_stress(const float yield_stress_fully_intact, const float yield_stress_fully_damaged, const float damage) {
 
-  return (1.f - damage) * yield_stress_intact + damage * yield_stress_fully_damaged;
+  /* Compute damaged yield stress, Collins+2004 Eqn. ### */
+  return (1.f - damage) * yield_stress_fully_intact + damage * yield_stress_fully_damaged;
 }
 
 /**
- * @brief Compute the intact yield stress
+ * @brief Compute the yield stress of fully intact material.
  *
- * @param p The particle to act upon
+ * Collins+2004 pressure-dependent yield stress of fully intact solids.
+ *
+ * Method parameters needed in material parameter file:
+ * YieldStress:
+ *    mu_i: ###.
+ *    Y_0: ### (Pa).
+ *    Y_M: ### (Pa).
+ *
+ * @param mat_id The material ID.
+ * @param phase_state The phase ID.
+ * @param pressure The pressure.
  */
-__attribute__((always_inline)) INLINE static float yield_compute_yield_stress_intact(
+__attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_intact(
     const int mat_id, const int phase_state, const float pressure) {
 
-  if (phase_state == mat_phase_state_fluid) {
+  /* Return 0.f if the material is not solid. */
+  if (phase_state != mat_phase_state_solid) {
     return 0.f;
   }
 
+  /* Method parameters. */
   const float mu_i = material_mu_i(mat_id);
   const float Y_0 = material_Y_0(mat_id);
   const float Y_M = material_Y_M(mat_id);
 
-  // Should be able to decrease if negative pressures until yield_stress=0?
-  // miluphcuda does this so maybe not wrong?
+  /* Compute yield stress of fully intact material, Collins+2004 Eqn. ### */
+  // ### Should be able to decrease if negative pressures until yield_stress=0? miluphcuda does this so maybe not wrong?
   if (pressure > 0.f && Y_M != Y_0) {
     return Y_0 + mu_i * pressure / (1.f + (mu_i * pressure) / (Y_M - Y_0));
   } else {
@@ -78,51 +107,75 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_in
 }
 
 /**
- * @brief Compute the fully damaged yield stress
+ * @brief Compute the yield stress of fully damaged material.
  *
- * @param p The particle to act upon
+ * Collins+2004 pressure-dependent yield stress of fully damaged solids.
+ *
+ * Method parameters needed in material parameter file:
+ * YieldStress:
+ *    mu_i: ###.
+ *    Y_0: ### (Pa).
+ *    Y_M: ### (Pa).
+ *
+ * @param mat_id The material ID.
+ * @param phase_state The phase ID.
+ * @param pressure The pressure.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_damaged(
-    const int mat_id, const int phase_state, const float pressure,
-    const float yield_stress_intact) {
+    const int mat_id, const int phase_state, const float pressure) {
 
-  if (phase_state == mat_phase_state_fluid) {
+  /* Return 0.f if the material is not solid. */
+  if (phase_state != mat_phase_state_solid) {
     return 0.f;
   }
-      
-  if (pressure > 0.f) {    
-    // Maybe yield_stress_damaged also needs have a max value indep of
-    // yield_stress_intact? See e.g. Güldemeister et al. 2015; Winkler et al. 2018
-    return fminf(material_mu_d(mat_id), yield_stress_intact);
+
+  /* Compute yield stress of fully damaged material, Collins+2004 Eqn. ### */
+  // ### Maybe yield_stress_damaged also needs have a max value indep of
+  // ### yield_stress_fully_intact? See e.g. Güldemeister et al. 2015; Winkler et al. 2018
+  if (pressure > 0.f) {
+    const float mu_d = material_mu_d(mat_id);
+    const float yield_stress_fully_intact = yield_compute_yield_stress_fully_intact(mat_id, phase_state, pressure);
+    return fminf(mu_d, yield_stress_fully_intact);
   } else {
     return 0.f;
   }
 }
 
 /**
- * @brief Calculates the yield stress
+ * @brief Compute the yield stress.
  *
- * @param p The particle to act upon
+ * Calculates the yield stress that combines all relevant methods e.g. damage
+ * and weakening.
+ *
+ * @param mat_id The material ID.
+ * @param phase_state The phase ID.
+ * @param density The density.
+ * @param u The specific internal energy.
+ * @param damage The damage.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
     const int mat_id, const int phase_state, const float density, const float u, const float damage) {
 
-  if (phase_state == mat_phase_state_fluid) {
+  /* Return 0.f if the material is not solid. */
+  if (phase_state != mat_phase_state_solid) {
     return 0.f;
   }
 
+  /* Calculate pressure. */
   const float pressure =
-    gas_pressure_from_internal_energy(density, u, mat_id);    
-      
-  const float yield_stress_intact = yield_compute_yield_stress_intact(mat_id, phase_state, pressure);
+    gas_pressure_from_internal_energy(density, u, mat_id);
+
+  /* Calculate yield stresses of fully intact and fully damaged material. */
+  const float yield_stress_fully_intact =
+      yield_compute_yield_stress_fully_intact(mat_id, phase_state, pressure);
   const float yield_stress_fully_damaged =
-      yield_compute_yield_stress_fully_damaged(mat_id, phase_state, pressure, yield_stress_intact);
+      yield_compute_yield_stress_fully_damaged(mat_id, phase_state, pressure);
 
-  // ...
-  float yield_stress = 
-      yield_compute_damaged_yield_stress(yield_stress_intact, yield_stress_fully_damaged, damage);
+  /* Combine yield stresses based on how damaged the material is. */
+  float yield_stress =
+      yield_compute_damaged_yield_stress(yield_stress_fully_intact, yield_stress_fully_damaged, damage);
 
-  //  See Senft+Stewart2007 for why this comes here and not just for intact
+  /* Apply weakening to yield stress. */
   yield_weakening_apply_density_to_yield_stress(&yield_stress, mat_id, density);
   yield_weakening_apply_temperature_to_yield_stress(&yield_stress, mat_id, density, u);
 
@@ -130,21 +183,27 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 }
 
 /**
- * @brief Evolve the deviatoric stress tensor
+ * @brief Apply the yield stress to the deviatoric stress tensor.
  *
- * @param p The particle to act upon
+ * ### Something about yield criterion
+ *
+ * @param deviatoric_stress_tensor The deviatoric stress tensor to be modified.
+ * @param yield_stress The yield stress.
+ * @param density The density.
+ * @param u The specific internal energy.
  */
 __attribute__((always_inline)) INLINE static void
 yield_apply_yield_stress_to_deviatoric_stress_tensor(
     struct sym_matrix *deviatoric_stress_tensor,
     const float yield_stress, const float density, const float u) {
 
+  /* Calculate the J_2 invariant of the deviatoric stress tensor. */
   float J_2 = strength_compute_stress_tensor_J_2(*deviatoric_stress_tensor);
 
-  // ...
+  /* ### Comment with name of yield criterion */
   float f = fminf(yield_stress / sqrtf(J_2), 1.f);
 
-  // ## should have some dt dependence?
+  /* Reduce elements of deviatoric stress tensor based on yield stress */
   deviatoric_stress_tensor->xx *= f;
   deviatoric_stress_tensor->yy *= f;
   deviatoric_stress_tensor->zz *= f;

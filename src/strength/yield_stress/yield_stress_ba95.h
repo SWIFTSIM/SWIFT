@@ -17,13 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_YIELD_STRESS_NONE_H
-#define SWIFT_YIELD_STRESS_NONE_H
+#ifndef SWIFT_YIELD_STRESS_BA95_H
+#define SWIFT_YIELD_STRESS_BA95_H
 
 /**
- * @file strength/yield_stress/yield_stress_none.h
- * @brief No yield stress method. If a yield stress is required for other
- * methods, functions return a yield stress of FLT_MAX.
+ * @file strength/yield_stress/yield_stress_ba95.h
+ * Benz&Asphaug95 constant yield stress.
  */
 
 #include "const.h"
@@ -41,10 +40,10 @@
  * new tensor, which gets used, for example, to construct the pairwise stress
  * tensors for the interaction of a particle pair.
  *
- * With no yield stress method, damage acts to reduce all elements of the
- * deviatoric stress tensor, meaning that a fully damaged material acts as a
- * fluid. See Benz&Asphaug95 Eqn. 13.
- *
+ * With the Benz&Asphaug95 yield stress method, damage acts to reduce all
+ * elements of the deviatoric stress tensor, meaning that a fully damaged
+ * material acts as afluid. See Benz&Asphaug95 Eqn. 13.
+
  * @param deviatoric_stress_tensor (sym_matrix) The deviatoric stress tensor.
  * @param damage The damage.
  */
@@ -66,8 +65,8 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_dam
 /**
  * @brief Compute damaged yield stress.
  *
- * With no yield stress method, damage does not affect the yield stress. Damage
- * is instead applied to the deviatoric stress tensor.
+ * With the Benz&Asphaug95 yield stress method, damage does not affect the yield
+ * stress. Damage is instead applied to the deviatoric stress tensor.
  *
  * @param yield_stress_fully_intact The yield stress for fully intact material.
  * @param yield_stress_fully_damaged The yield stress for fully damaged material.
@@ -82,8 +81,11 @@ yield_compute_damaged_yield_stress(const float yield_stress_fully_intact, const 
 /**
  * @brief Compute the yield stress of fully intact material.
  *
- * With no yield stress method, the yield stress of a fully intact solid is set
- * to FLT_MAX.
+ * Benz&Asphaug95 constant yield stress of solids.
+ *
+ * Method parameters needed in material parameter file:
+ * YieldStress:
+ *    Y_0: Constant yield stress (Pa).
  *
  * @param mat_id The material ID.
  * @param phase_state The phase ID.
@@ -97,15 +99,15 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
     return 0.f;
   }
 
-  /* Return constant yield stress, FLT_MAX. */
-  return FLT_MAX;
+  /* Return constant yield stress, Y_0. */
+  return material_Y_0(mat_id);
 }
 
 /**
  * @brief Compute the yield stress of fully damaged material.
  *
- * With no yield stress method, damage does not affect the yield stress. Damage
- * is instead applied to the deviatoric stress tensor.
+ * With the Benz&Asphaug95 yield stress method, damage does not affect the yield
+ * stress. Damage is instead applied to the deviatoric stress tensor.
  *
  * @param mat_id The material ID.
  * @param phase_state The phase ID.
@@ -114,7 +116,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_damaged(
     const int mat_id, const int phase_state, const float pressure) {
 
-  /* Damage does not affect the yield stress i.e. it is still FLT_MAX. */
+  /* Damage does not affect the yield stress. */
   return yield_compute_yield_stress_fully_intact(mat_id, phase_state, pressure);
 }
 
@@ -142,8 +144,12 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
   const float pressure =
     gas_pressure_from_internal_energy(density, u, mat_id);
 
-  /* Get constant yield stress, FLT_MAX. */
+  /* Get constant yield stress. */
   float yield_stress = yield_compute_yield_stress_fully_intact(mat_id, phase_state, pressure);
+
+  /* Apply weakening to yield stress. */
+  yield_weakening_apply_density_to_yield_stress(&yield_stress, mat_id, density);
+  yield_weakening_apply_temperature_to_yield_stress(&yield_stress, mat_id, density, u);
 
   return yield_stress;
 }
@@ -151,7 +157,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 /**
  * @brief Apply the yield stress to the deviatoric stress tensor.
  *
- * Empty function when configuring without yield stress method.
+ * ### Something about yield criterion
  *
  * @param deviatoric_stress_tensor The deviatoric stress tensor to be modified.
  * @param yield_stress The yield stress.
@@ -161,6 +167,21 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 __attribute__((always_inline)) INLINE static void
 yield_apply_yield_stress_to_deviatoric_stress_tensor(
     struct sym_matrix *deviatoric_stress_tensor,
-    const float yield_stress, const float density, const float u) {}
+    const float yield_stress, const float density, const float u) {
 
-#endif /* SWIFT_YIELD_STRESS_NONE_H */
+  /* Calculate the J_2 invariant of the deviatoric stress tensor. */
+  float J_2 = strength_compute_stress_tensor_J_2(*deviatoric_stress_tensor);
+
+  /* ### Comment with name of yield criterion */
+  float f = fminf((yield_stress * yield_stress) / (3.f * J_2), 1.f);
+
+  /* Reduce elements of deviatoric stress tensor based on yield stress */
+  deviatoric_stress_tensor->xx *= f;
+  deviatoric_stress_tensor->yy *= f;
+  deviatoric_stress_tensor->zz *= f;
+  deviatoric_stress_tensor->xy *= f;
+  deviatoric_stress_tensor->xz *= f;
+  deviatoric_stress_tensor->yz *= f;
+}
+
+#endif /* SWIFT_YIELD_STRESS_BA95_H */
