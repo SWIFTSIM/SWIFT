@@ -24,6 +24,7 @@
 
 /* This object's header. */
 #include "cell.h"
+#include "part_types.h"
 
 /* Local headers. */
 #include "memswap.h"
