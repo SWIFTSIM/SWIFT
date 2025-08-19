@@ -2556,10 +2556,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   engine_first_init_particles(e);
 
   /* Initialise the particle splitting mechanism */
-  if (e->hydro_properties->particle_splitting) {
-    message("Initialising the particle splitting mechanism.");
+  if (e->hydro_properties->particle_splitting)
     engine_init_split_gas_particles(e);
-  }
 
   if (e->nodeID == 0)
     message("Computing initial gas densities and approximate gravity.");
