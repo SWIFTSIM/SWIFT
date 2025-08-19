@@ -103,7 +103,7 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
   // ### then the plastic strain is the accumulation of the strain that gets
   // ### reset based on Y/sqrtf(J_2). In practice this becomes:
 
-  // ### Evolve deviatoric *strain* based on diviatoric strain rate = strain rate - 1/3 * trace.
+  // ### Evolve *strain* based on strain rate.
   // ### Make sure to do evolution in co-rotating frame.
   // ### deviatoric strain gets reduced by yield criterion in the same way as deviatoric stress.
   // ### The accumulation of the amount that the deviatoric strain gets reduced by in each elements gets stored as the plastic strain.

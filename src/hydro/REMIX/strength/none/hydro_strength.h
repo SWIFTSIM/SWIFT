@@ -59,7 +59,7 @@ hydro_compute_max_wave_speed_strength(float *wave_speed, const struct part *rest
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_init_part_extra_strength(struct part *restrict p) {}
+hydro_init_part_strength(struct part *restrict p) {}
 
 /**
  * @brief Finishes extra strength parts of the density calculation.
@@ -67,7 +67,7 @@ hydro_init_part_extra_strength(struct part *restrict p) {}
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_end_density_extra_strength(struct part *restrict p) {}
+hydro_end_density_strength(struct part *restrict p) {}
 
 /**
  * @brief Prepares extra strength parameters for a particle for the gradient
@@ -76,7 +76,7 @@ hydro_end_density_extra_strength(struct part *restrict p) {}
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_gradient_extra_strength(struct part *restrict p) {}
+hydro_prepare_gradient_strength(struct part *restrict p) {}
 
 /**
  * @brief Finishes extra strength parts of the gradient calculation.
@@ -84,7 +84,7 @@ hydro_prepare_gradient_extra_strength(struct part *restrict p) {}
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_end_gradient_extra_strength(struct part *restrict p) {}
+hydro_end_gradient_strength(struct part *restrict p) {}
 
 /**
  * @brief Prepares extra strength parameters for a particle for the force
@@ -95,7 +95,7 @@ hydro_end_gradient_extra_strength(struct part *restrict p) {}
  * @param u The specific internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_force_extra_strength(struct part *restrict p,
+hydro_prepare_force_strength(struct part *restrict p,
                                    const float density, const float u) {}
 
 /**
@@ -113,7 +113,7 @@ hydro_reset_acceleration_strength(struct part *restrict p) {}
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_end_force_extra_strength(struct part *restrict p) {}
+hydro_end_force_strength(struct part *restrict p) {}
 
 /**
  * @brief Sets the values of additional particle strength properties at a
@@ -122,7 +122,7 @@ hydro_end_force_extra_strength(struct part *restrict p) {}
  * @param p The particle.
  * @param xp The extended data of this particle.
  */
-__attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_extra_strength(
+__attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_strength(
     struct part *restrict p, const struct xpart *restrict xp) {}
 
 /**
@@ -132,7 +132,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_e
  * @param p The particle to act upon
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
-__attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_beginning(
+__attribute__((always_inline)) INLINE static void hydro_predict_strength_beginning(
     struct part *restrict p, const float dt_therm) {}
 
 /**
@@ -142,7 +142,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_b
  * @param p The particle to act upon
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
-__attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_end(
+__attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
     struct part *restrict p, const float dt_therm) {}
 
 /**
@@ -156,7 +156,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength_e
  * @param xp The particle extended data to act upon.
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
  */
-__attribute__((always_inline)) INLINE static void hydro_kick_extra_strength_beginning(
+__attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm) {}
 
 /**
@@ -170,7 +170,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra_strength_begi
  * @param xp The particle extended data to act upon.
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
  */
-__attribute__((always_inline)) INLINE static void hydro_kick_extra_strength_end(
+__attribute__((always_inline)) INLINE static void hydro_kick_strength_end(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm) {}
 
 /**

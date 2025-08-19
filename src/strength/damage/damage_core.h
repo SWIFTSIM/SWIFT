@@ -130,9 +130,13 @@ __attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
 __attribute__((always_inline)) INLINE static void strength_reset_predicted_values_damage(
     struct part *restrict p, const struct xpart *restrict xp) {
 
-  strength_set_damage(p, xp->strength_data.damage_full);
-  damage_set_tensile_damage(p, xp->strength_data.tensile_damage_full);
-  damage_set_shear_damage(p, xp->strength_data.shear_damage_full);
+  const float damage_full = strength_get_damage_full(xp);
+  const float tensile_damage_full = damage_get_tensile_damage_full(xp);
+  const float shear_damage_full = damage_get_shear_damage_full(xp);
+
+  strength_set_damage(p, damage_full);
+  damage_set_tensile_damage(p, tensile_damage_full);
+  damage_set_shear_damage(p, shear_damage_full);
 }
 
 /**

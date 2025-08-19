@@ -30,4 +30,51 @@
 #include "symmetric_matrix.h"
 
 
+/**
+ * @brief Predict additional particle strength extra properties forward in time when
+ * drifting. At beginning of hydro function, before hydro quantities have been drifted.
+ *
+ * @param p The particle to act upon
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
+ */
+__attribute__((always_inline)) INLINE static void hydro_predict_strength_extra_beginning(
+    struct part *restrict p, const float dt_therm) {
+
+}
+
+/**
+ * @brief Kick the additional particle strength extra properties.
+ * At beginning of hydro function, before hydro quantities have been kicked.
+ *
+ * Additional hydrodynamic quantites are kicked forward in time here. These
+ * include thermal quantities (thermal energy or total energy or entropy, ...).
+ *
+ * @param p The particle to act upon.
+ * @param xp The particle extended data to act upon.
+ * @param dt_therm The time-step for this kick (for thermodynamic quantities).
+ */
+__attribute__((always_inline)) INLINE static void hydro_kick_strength_extra_beginning(
+    struct part *restrict p, struct xpart *restrict xp, float dt_therm) {
+
+}
+
+/**
+ * @brief Initialises the extra stress properties for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in to do some conversions or assignments between the particle
+ * and extended particle fields.
+ *
+ * @param p The particle of interest.
+ * @param xp The extended data of the particle of interest.
+ */
+__attribute__((always_inline)) INLINE static void strength_first_init_part_extra(
+    struct part *restrict p, struct xpart *restrict xp) {
+
+#ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
+  zero_sym_matrix(&p->strength_data.strain_tensor);
+  zero_sym_matrix(&xp->strength_data.strain_tensor_full);
+#endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
+}
+
 #endif /* SWIFT_STRENGTH_EXTRA_H */

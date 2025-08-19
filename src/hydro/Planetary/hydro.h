@@ -555,7 +555,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
 
-  hydro_init_part_extra_strength(p);
+  hydro_init_part_strength(p);
 }
 
 /**
@@ -603,7 +603,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Finish calculation of the (physical) velocity divergence */
   p->density.div_v *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 
-  hydro_end_density_extra_strength(p);
+  hydro_end_density_strength(p);
 }
 
 /**
@@ -708,7 +708,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   xp->u_full = p->u;
 #endif
 
-  hydro_prepare_force_extra_strength(p, p->rho, p->u);
+  hydro_prepare_force_strength(p, p->rho, p->u);
 
   p->phase_state =
     (enum mat_phase_state)material_phase_state_from_internal_energy(
@@ -832,7 +832,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Re-set the internal energy */
   p->u = xp->u_full;
   p->phase_state = xp->phase_state_full;
-  hydro_reset_predicted_values_extra_strength(p, xp);
+  hydro_reset_predicted_values_strength(p, xp);
 
   /* Compute the pressure */
   const float pressure =
@@ -876,7 +876,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     const struct entropy_floor_properties *floor_props,
     const struct pressure_floor_props *pressure_floor) {
 
-  hydro_predict_extra_strength_beginning(p, dt_therm);
+  hydro_predict_strength_beginning(p, dt_therm);
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
@@ -923,7 +923,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     (enum mat_phase_state)material_phase_state_from_internal_energy(
      p->rho, p->u, p->mat_id);
 
- hydro_predict_extra_strength_end(p, dt_therm);
+ hydro_predict_strength_end(p, dt_therm);
 }
 
 /**
@@ -943,7 +943,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
-  hydro_end_force_extra_strength(p);
+  hydro_end_force_strength(p);
 }
 
 /**
@@ -969,7 +969,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
-  hydro_kick_extra_strength_beginning(p, xp, dt_therm);
+  hydro_kick_strength_beginning(p, xp, dt_therm);
 
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
@@ -990,7 +990,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     (enum mat_phase_state)material_phase_state_from_internal_energy(
      p->rho, xp->u_full, p->mat_id);
 
-  hydro_kick_extra_strength_end(p, xp, dt_therm);
+  hydro_kick_strength_end(p, xp, dt_therm);
 }
 
 /**

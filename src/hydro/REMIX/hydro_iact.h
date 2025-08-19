@@ -122,7 +122,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
   hydro_runner_iact_density_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
-  hydro_runner_iact_density_extra_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_runner_iact_density_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
 }
 
 /**
@@ -167,7 +167,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
   hydro_runner_iact_nonsym_density_extra_kernel(pi, pj, dx, wi, wi_dx);
-  hydro_runner_iact_nonsym_density_extra_strength(pi, pj, dx, wi, wi_dx);
+  hydro_runner_iact_nonsym_density_strength(pi, pj, dx, wi, wi_dx);
 }
 
 /**
@@ -206,7 +206,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   hydro_runner_iact_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_gradient_extra_visc_difn(pi, pj, dx, wi, wj, wi_dx, wj_dx);
-  hydro_runner_iact_gradient_extra_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_runner_iact_gradient_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
 }
 
 /**
@@ -247,7 +247,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx,
                                                  wj_dx);
   hydro_runner_iact_nonsym_gradient_extra_visc_difn(pi, pj, dx, wi, wi_dx);
-  hydro_runner_iact_nonsym_gradient_extra_strength(pi, pj, dx, wi, wi_dx);
+  hydro_runner_iact_nonsym_gradient_strength(pi, pj, dx, wi, wi_dx);
 }
 
 /**
@@ -486,7 +486,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->drho_dt += drho_dt_norm_and_difn_i;
   pj->drho_dt += drho_dt_norm_and_difn_j;
 
-  hydro_runner_iact_force_extra_strength(pi, pj, dx, Gi, Gj);
+  hydro_runner_iact_force_strength(pi, pj, dx, Gi, Gj);
 }
 
 /**
@@ -694,7 +694,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Add normalising term and artificial diffusion to evolution of density */
   pi->drho_dt += drho_dt_norm_and_difn_i;
 
-  hydro_runner_iact_nonsym_force_extra_strength(pi, pj, dx, Gi);
+  hydro_runner_iact_nonsym_force_strength(pi, pj, dx, Gi);
 }
 
 #endif /* SWIFT_REMIX_HYDRO_IACT_H */

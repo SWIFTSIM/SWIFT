@@ -46,16 +46,23 @@ struct strength_xpart_data {
   // Stress tensor
   struct sym_matrix deviatoric_stress_tensor_full;
 
-#ifdef STRENGTH_DAMAGE
-  // Accumulated damage at the last full step
-  float damage_full;
+  #ifdef STRENGTH_DAMAGE
+    // Accumulated damage at the last full step
+    float damage_full;
+  #endif
 
-  // Damage accumulated due to tension at the last full step
-  float tensile_damage_full;
+  #ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
+    // Damage accumulated due to tension at the last full step
+    float tensile_damage_full;
+  #endif
 
-  // Damage accumulated due to shear at the last full step
-  float shear_damage_full;
-#endif
+  #ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
+    // Damage accumulated due to shear at the last full step
+    float shear_damage_full;
+
+    // Strain tensor
+    struct sym_matrix strain_tensor_full;
+  #endif
 
 };
 
@@ -112,6 +119,9 @@ struct strength_part_data {
 #ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
   // Damage accumulated due to shear
   float shear_damage;
+
+  // Strain tensor
+  struct sym_matrix strain_tensor;
 #endif
 
 };

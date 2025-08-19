@@ -157,7 +157,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
 
-  hydro_runner_iact_density_extra_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_runner_iact_density_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_density += wi;
@@ -231,7 +231,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[1] += faci * curlvr[1];
   pi->density.rot_v[2] += faci * curlvr[2];
 
-  hydro_runner_iact_nonsym_density_extra_strength(pi, pj, dx, wi, wi_dx);
+  hydro_runner_iact_nonsym_density_strength(pi, pj, dx, wi, wi_dx);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_density += wi;
@@ -373,7 +373,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i,
                                     pairwise_stress_tensor_j, pi, pj, r,
                                     pressurei, pressurej);
-    
+
   float stress_tensor_term_i[3], stress_tensor_term_j[3];
   for (int i = 0; i < 3; i++) {
     stress_tensor_term_i[i] = 0.f;
@@ -386,7 +386,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Construct acceleration terms */
   float visc_acc_term[3], sph_acc_term[3], adapt_soft_acc_term[3];
-  for (int i = 0; i < 3; i++) {  
+  for (int i = 0; i < 3; i++) {
      sph_acc_term[i] = stress_tensor_term_i[i] / (rhoi * rhoi) -  stress_tensor_term_j[i] / (rhoj * rhoj);
      visc_acc_term[i] = -visc * G_mean[i];
      adapt_soft_acc_term[i] =
@@ -394,7 +394,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   }
 
   /* Use the force Luke ! */
-  for (int i = 0; i < 3; i++) {  
+  for (int i = 0; i < 3; i++) {
     pi->a_hydro[i] += mj * (sph_acc_term[i] + visc_acc_term[i] + adapt_soft_acc_term[i]);
     pj->a_hydro[i] -= mi * (sph_acc_term[i] + visc_acc_term[i] + adapt_soft_acc_term[i]);
   }
@@ -402,7 +402,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float dv_dot_stress_term_i = 0.f, dv_dot_stress_term_j = 0.f;
   float dv_dot_visc = 0.f;
   float dv_dot_G_i = 0.f;
-  float dv_dot_G_j = 0.f;  
+  float dv_dot_G_j = 0.f;
   for (int i = 0; i < 3; i++) {
     dv_dot_stress_term_i += (pi->v[i] - pj->v[i]) * stress_tensor_term_i[i];
     dv_dot_stress_term_j += -(pi->v[i] - pj->v[i]) * stress_tensor_term_j[i];
@@ -434,7 +434,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
-  hydro_runner_iact_force_extra_strength(pi, pj, dx, Gi, Gj, dv_dot_G_i, dv_dot_G_j);
+  hydro_runner_iact_force_strength(pi, pj, dx, Gi, Gj, dv_dot_G_i, dv_dot_G_j);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
@@ -537,7 +537,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i,
                                     pairwise_stress_tensor_j, pi, pj, r,
                                     pressurei, pressurej);
-    
+
   float stress_tensor_term_i[3], stress_tensor_term_j[3];
   for (int i = 0; i < 3; i++) {
     stress_tensor_term_i[i] = 0.f;
@@ -550,7 +550,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Construct acceleration terms */
   float visc_acc_term[3], sph_acc_term[3], adapt_soft_acc_term[3];
-  for (int i = 0; i < 3; i++) {  
+  for (int i = 0; i < 3; i++) {
      sph_acc_term[i] = stress_tensor_term_i[i] / (rhoi * rhoi) -  stress_tensor_term_j[i] / (rhoj * rhoj);
      visc_acc_term[i] = -visc * G_mean[i];
      adapt_soft_acc_term[i] =
@@ -558,7 +558,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   }
 
   /* Use the force Luke ! */
-  for (int i = 0; i < 3; i++) {  
+  for (int i = 0; i < 3; i++) {
     pi->a_hydro[i] += mj * (sph_acc_term[i] + visc_acc_term[i] + adapt_soft_acc_term[i]);
   }
 
@@ -589,7 +589,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
-  hydro_runner_iact_nonsym_force_extra_strength(pi, pj, dx, Gi, dv_dot_G_i);
+  hydro_runner_iact_nonsym_force_strength(pi, pj, dx, Gi, dv_dot_G_i);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;

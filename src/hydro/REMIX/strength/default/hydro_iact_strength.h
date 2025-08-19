@@ -68,7 +68,7 @@ hydro_set_pairwise_stress_tensors_strength(float pairwise_stress_tensor_i[3][3],
  * @param wj_dx The norm of the gradient of wj: dW(r, hj)/dr * hj^(d+1).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_runner_iact_density_extra_strength(struct part *restrict pi,
+hydro_runner_iact_density_strength(struct part *restrict pi,
                                          struct part *restrict pj,
                                          const float dx[3], const float wi,
                                          const float wj, const float wi_dx,
@@ -85,7 +85,7 @@ hydro_runner_iact_density_extra_strength(struct part *restrict pi,
  * @param wi_dx The norm of the gradient of wi: dW(r, hi)/dr * hi^(d+1).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_density_extra_strength(struct part *restrict pi,
+hydro_runner_iact_nonsym_density_strength(struct part *restrict pi,
                                                 const struct part *restrict pj,
                                                 const float dx[3],
                                                 const float wi,
@@ -103,7 +103,7 @@ hydro_runner_iact_nonsym_density_extra_strength(struct part *restrict pi,
  * @param wj_dx The norm of the gradient of wj: dW(r, hj)/dr * hj^(d+1).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_runner_iact_gradient_extra_strength(struct part *restrict pi,
+hydro_runner_iact_gradient_strength(struct part *restrict pi,
                                           struct part *restrict pj,
                                           const float dx[3], const float wi,
                                           const float wj, const float wi_dx,
@@ -120,7 +120,7 @@ hydro_runner_iact_gradient_extra_strength(struct part *restrict pi,
  * @param wi_dx The norm of the gradient of wi: dW(r, hi)/dr * hi^(d+1).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_gradient_extra_strength(struct part *restrict pi,
+hydro_runner_iact_nonsym_gradient_strength(struct part *restrict pi,
                                                  const struct part *restrict pj,
                                                  const float dx[3],
                                                  const float wi,
@@ -136,7 +136,7 @@ hydro_runner_iact_nonsym_gradient_extra_strength(struct part *restrict pi,
  * @param Gj Kernel gradient for second particle.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_runner_iact_force_extra_strength(struct part *restrict pi,
+hydro_runner_iact_force_strength(struct part *restrict pi,
                                        struct part *restrict pj,
                                        const float dx[3], const float Gi[3],
                                        const float Gj[3]) {
@@ -164,7 +164,7 @@ hydro_runner_iact_force_extra_strength(struct part *restrict pi,
  * @param Gi Kernel gradient for first particle.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_force_extra_strength(struct part *restrict pi,
+hydro_runner_iact_nonsym_force_strength(struct part *restrict pi,
                                               const struct part *restrict pj,
                                               const float dx[3],
                                               const float Gi[3]) {
