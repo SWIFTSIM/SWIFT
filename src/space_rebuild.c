@@ -1074,6 +1074,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->sinks.parts_rebuild = c->sinks.parts;
       c->grav.parts_rebuild = c->grav.parts;
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure the particles assigned to this cell are real. */
+      for (int i = 0; i < c->grav.count; i++) {
+        if (c->grav.parts[i].time_bin == time_bin_not_created) {
+          error("Found extra gpart at cell %d", k);
+        }
+      }
+#endif
+
       c->hydro.count_total = c->hydro.count + space_extra_parts;
       c->grav.count_total = c->grav.count + space_extra_gparts;
       c->stars.count_total = c->stars.count + space_extra_sparts;
