@@ -939,6 +939,14 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
                                 /*offset*/ 0);
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure we haven't got a void cell here. */
+  if (s->cells_top[cell_id].subtype == cell_subtype_void) {
+    error("cell_getid_from_pos: got a void cell (%i) at (%f %f %f)", cell_id, x,
+          y, z);
+  }
+#endif
+
   return cell_id;
 }
 
