@@ -262,7 +262,6 @@ mhd_set_drifted_physical_internal_energy(
   p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
 
   const float c_ms = mhd_get_comoving_magnetosonic_speed(p);
-  
   p->viscosity.v_sig = fmaxf(p->viscosity.v_sig, 2.f * c_ms);
 }
 
@@ -336,6 +335,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     }
   }
 
+  const float c_ms = mhd_get_comoving_magnetosonic_speed(p);
+  p->viscosity.v_sig = 2.f * c_ms;
+  
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
   for (int k = 0; k < 3; k++) {
@@ -520,6 +522,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
   p->mhd_data.psi_over_ch = xp->mhd_data.psi_over_ch_full;
 
   p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+
+  const float c_ms = mhd_get_comoving_magnetosonic_speed(p);
+  p->viscosity.v_sig = fmaxf(p->viscosity.v_sig, 2.f * c_ms);
 }
 
 /**
@@ -551,6 +556,9 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.psi_over_ch += p->mhd_data.psi_over_ch_dt * dt_therm;
 
   p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+
+  const float c_ms = mhd_get_comoving_magnetosonic_speed(p);
+  p->viscosity.v_sig = fmaxf(p->viscosity.v_sig, 2.f * c_ms);
 }
 
 /**
