@@ -999,6 +999,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   g_index[nr_gparts] = s->nr_cells;
   for (size_t k = 0; k < nr_gparts; k++) {
     if (g_index[k] < g_index[k + 1]) {
+      message("gpart %zu in cell %d of %s/%s", k, g_index[k],
+              cellID_names[cells_top[g_index[k]].type],
+              subcellID_names[cells_top[g_index[k]].subtype]);
       cells_top[g_index[k]].grav.count =
           k - last_gindex + 1 - space_extra_gparts;
       last_gindex = k + 1;
