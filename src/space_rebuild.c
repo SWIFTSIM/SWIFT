@@ -975,6 +975,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->stars.count_total = c->stars.count + space_extra_sparts;
       c->sinks.count_total = c->sinks.count + space_extra_sinks;
       c->black_holes.count_total = c->black_holes.count + space_extra_bparts;
+      message(
+          "Cell %d (%s) has %d hydro, %d grav, %d stars, %d sinks, "
+          "%d black holes, total %d particles.",
+          k, cellID_names[c->type], c->hydro.count, c->grav.count,
+          c->stars.count, c->sinks.count, c->black_holes.count,
+          c->hydro.count_total + c->grav.count_total + c->stars.count_total +
+              c->sinks.count_total + c->black_holes.count_total);
 
       /* Add the number of particles to the correct cell counter for
        * reporting to the user. */
