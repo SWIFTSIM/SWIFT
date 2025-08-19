@@ -1078,7 +1078,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       /* Make sure the particles assigned to this cell are real. */
       for (int i = 0; i < c->grav.count; i++) {
         if (c->grav.parts[i].time_bin == time_bin_not_created) {
-          error("Found extra gpart at cell %d", k);
+          error("Found extra gpart at cell %d, particle type %s", k,
+                part_type_names[c->grav.parts[i].type]);
         }
       }
 #endif
