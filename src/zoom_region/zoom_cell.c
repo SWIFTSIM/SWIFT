@@ -512,10 +512,10 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         c->type = cell_type_zoom;
         c->subtype = cell_subtype_regular;
         c->dmin = dmin_zoom;
-        c->h_min_allowed = temp->dmin * 0.5 *
+        c->h_min_allowed = c->dmin * 0.5 *
                            (1. / kernel_gamma); /* Only needed for zoom cells */
         c->h_max_allowed =
-            temp->dmin * (1. / kernel_gamma); /* Only needed for zoom cells */
+            c->dmin * (1. / kernel_gamma); /* Only needed for zoom cells */
         c->depth = 0;
         c->split = 0;
         c->hydro.count = 0;
