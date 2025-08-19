@@ -2053,7 +2053,8 @@ __attribute__((always_inline)) static INLINE void cell_set_part_h_depth(
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  error("Could not find an appropriate depth!");
+  error("Could not find an appropriate depth! (%s/%s)", cellID_names[c->type],
+        subcellID_names[c->subtype]);
 #endif
 }
 
