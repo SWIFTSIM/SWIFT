@@ -663,10 +663,10 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
             "Looking for extra particles beyond this cell's range! "
             "(cell_type/cell_subtype=%s/%s, depth=%d, "
             "c->grav.count=%d, first_not_extra=%d, space_extra_gparts=%d, "
-            "part_type=%s, i=%d, " cellID_names[c->type],
-            subcellID_names[c->subtype], c->depth, count_real, first_not_extra,
-            space_extra_gparts, part_type_names[gparts[first_not_extra].type],
-            i);
+            "part_type=%s, i=%d",
+            cellID_names[c->type], subcellID_names[c->subtype], c->depth,
+            count_real, first_not_extra, space_extra_gparts,
+            part_type_names[gparts[first_not_extra].type], i);
 #endif
 
       /* Swap everything (including pointers) */
