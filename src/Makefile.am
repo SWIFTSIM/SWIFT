@@ -373,7 +373,6 @@ nobase_noinst_HEADERS += stars/GEAR/stars_debug.h stars/GEAR/stars_csds.h stars/
 nobase_noinst_HEADERS += stars/GEAR/stars_stellar_type.h
 nobase_noinst_HEADERS += stars/DFTest/stars.h stars/DFTest/stars_iact.h stars/DFTest/stars_io.h
 nobase_noinst_HEADERS += stars/DFTest/stars_debug.h stars/DFTest/stars_csds.h stars/DFTest/stars_part.h
-nobase_noinst_HEADERS += stars/DFTest/stars_stellar_type.h
 nobase_noinst_HEADERS += forcing/none/forcing.h forcing/roberts_flow/forcing.h forcing/roberts_flow_acceleration/forcing.h
 nobase_noinst_HEADERS += forcing/ABC_flow/forcing.h
 nobase_noinst_HEADERS += potential/none/potential.h potential/point_mass/potential.h
