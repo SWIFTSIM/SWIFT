@@ -2556,8 +2556,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   engine_first_init_particles(e);
 
   /* Initialise the particle splitting mechanism */
-  if (e->hydro_properties->particle_splitting)
+  if (e->hydro_properties->particle_splitting) {
+    message("Initialising the particle splitting mechanism.");
     engine_init_split_gas_particles(e);
+  }
 
   if (e->nodeID == 0)
     message("Computing initial gas densities and approximate gravity.");
@@ -3389,9 +3391,9 @@ int engine_step(struct engine *e) {
             e->collect_group1.csds_file_size_gb);
 #endif
 
-    /********************************************************/
-    /* OK, we are done with the regular stuff. Time for i/o */
-    /********************************************************/
+  /********************************************************/
+  /* OK, we are done with the regular stuff. Time for i/o */
+  /********************************************************/
 
 #ifdef WITH_LIGHTCONE
   /* Flush lightcone buffers if necessary */
