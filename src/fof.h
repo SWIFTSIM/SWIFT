@@ -37,6 +37,13 @@ struct phys_const;
 struct black_holes_props;
 struct cosmology;
 
+/* Store group size and offset into array. */
+struct group_length {
+
+  size_t index, size;
+
+} SWIFT_STRUCT_ALIGN;
+
 struct fof_props {
 
   /*! Whether we're doing periodic FoF calls to seed black holes. */
@@ -80,10 +87,6 @@ struct fof_props {
   /*! Number of groups */
   long long num_groups;
 
-  /*! Number of local black holes that belong to groups whose roots are on a
-   * different node. */
-  int extra_bh_seed_count;
-
   /*! Index of the root particle of the group a given gpart belongs to. */
   size_t *group_index;
 
@@ -93,32 +96,41 @@ struct fof_props {
   /*! Has the particle found a linkable to attach to? */
   char *found_attachable_link;
 
-  /*! Is the group purely local after linking the foreign particles? */
-  char *is_purely_local;
-
   /*! For attachable particles: distance to the current nearest linkable part */
   float *distance_to_link;
 
   /*! Size of the group a given gpart belongs to. */
   size_t *group_size;
 
+  /*! Size of the local groups a given gpart belongs to. */
+  struct group_length *high_group_sizes;
+
   /*! Final size of the group a given gpart belongs to. */
   long long *final_group_size;
+
+  /*! Final index of the group a given gpart belongs to. */
+  long long *final_group_index;
 
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
 
+  /*! Does the group have a black hole? */
+  char *has_black_hole;
+
   /*! Centre of mass of the group a given gpart belongs to. */
   double *group_centre_of_mass;
 
-  /*! Position of the first particle of a given group. */
-  double *group_first_position;
-
-  /*! Index of the part with the maximal density of each group. */
-  long long *max_part_density_index;
-
   /*! Maximal density of all parts of each group. */
   float *max_part_density;
+
+  /* Number of groups on each node */
+  size_t *num_on_node;
+
+  /* First group on each node */
+  size_t *first_on_node;
+
+  /* Total number of groups on lower numbered MPI ranks */
+  size_t num_groups_prev;
 
   /* ------------ MPI-related arrays --------------- */
 
@@ -133,13 +145,6 @@ struct fof_props {
    * node */
   struct fof_mpi *group_links;
 };
-
-/* Store group size and offset into array. */
-struct group_length {
-
-  size_t index, size;
-
-} SWIFT_STRUCT_ALIGN;
 
 #ifdef WITH_MPI
 
@@ -199,10 +204,9 @@ void fof_compute_local_sizes(struct fof_props *props, struct space *s);
 void fof_search_foreign_cells(struct fof_props *props, const struct space *s);
 void fof_link_attachable_particles(struct fof_props *props,
                                    const struct space *s);
-void fof_finalise_attachables(struct fof_props *props, const struct space *s);
+void fof_finalise_attachables(struct fof_props *props, struct space *s);
 void fof_link_foreign_fragments(struct fof_props *props, const struct space *s);
-void fof_build_list_of_purely_local_groups(struct fof_props *props,
-                                           const struct space *s);
+void fof_assign_group_ids(struct fof_props *props, struct space *s);
 void fof_compute_group_props(struct fof_props *props,
                              const struct black_holes_props *bh_props,
                              const struct phys_const *constants,
@@ -228,6 +232,7 @@ void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
                          const size_t nr_gparts, struct cell *restrict ci,
                          struct cell *restrict cj, const int ci_local,
                          const int cj_local);
+void fof_free_arrays(struct fof_props *props);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
 

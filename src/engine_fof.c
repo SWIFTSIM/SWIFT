@@ -48,10 +48,13 @@ void engine_activate_gpart_comms(struct engine *e) {
 
     struct task *t = &tasks[k];
 
-    if ((t->type == task_type_send) && (t->subtype == task_subtype_gpart)) {
+    if ((t->type == task_type_send) && (t->subtype == task_subtype_fof)) {
+      scheduler_activate(s, t);
+    } else if ((t->type == task_type_pack) &&
+               (t->subtype == task_subtype_fof)) {
       scheduler_activate(s, t);
     } else if ((t->type == task_type_recv) &&
-               (t->subtype == task_subtype_gpart)) {
+               (t->subtype == task_subtype_fof)) {
       scheduler_activate(s, t);
     } else {
       t->skip = 1;
@@ -179,6 +182,24 @@ void engine_fof(struct engine *e, const int dump_results,
 
   /* Compute the local<->foreign group links (nothing to do without MPI)*/
   fof_search_foreign_cells(e->fof_properties, e->s);
+
+  /* Link the foreign fragments and finalise global group list (nothing to do
+   * without MPI) */
+  fof_link_foreign_fragments(e->fof_properties, e->s);
+#endif
+
+  /* Count the total number of (linkable) groups,
+   * assign unique group IDs and set the IDs in the particles */
+  fof_assign_group_ids(e->fof_properties, e->s);
+
+#ifdef WITH_MPI
+
+  /* Activate the tasks exchanging all the required gparts */
+  engine_activate_gpart_comms(e);
+
+  /* Perform send and receive tasks. */
+  engine_launch(e, "fof comms");
+
 #endif
 
   /* Compute the attachable->linkable links */
@@ -189,18 +210,6 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Free the foreign particles */
   space_free_foreign_parts(e->s, /*clear pointers=*/1);
 
-  /* Make a list of purely local groups to speed up the attaching */
-  fof_build_list_of_purely_local_groups(e->fof_properties, e->s);
-#endif
-
-  /* Finish the operations attaching the attachables to their groups */
-  fof_finalise_attachables(e->fof_properties, e->s);
-
-#ifdef WITH_MPI
-
-  /* Link the foreign fragments and finalise global group list (nothing to do
-   * without MPI) */
-  fof_link_foreign_fragments(e->fof_properties, e->s);
 #endif
 
   /* Compute group properties and act on the results
@@ -217,6 +226,13 @@ void engine_fof(struct engine *e, const int dump_results,
 
   /* ... and find the next FOF time */
   if (seed_black_holes) engine_compute_next_fof_time(e);
+
+  /* Free everything we allocated */
+  fof_free_arrays(e->fof_properties);
+
+#ifdef WITH_MPI
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
   /* Restore the foreign buffers as they were*/
   if (foreign_buffers_allocated) {

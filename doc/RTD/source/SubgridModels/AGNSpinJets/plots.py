@@ -241,8 +241,8 @@ plt.style.use("classic")
 plt.fill_between(a, [0.0001 for x in a], [0.01 for x in a], color="blue", alpha=0.2)
 plt.fill_between(a, [0.01 for x in a], [1 for x in a], color="red", alpha=0.2)
 plt.fill_between(a, [1 for x in a], [375 for x in a], color="orange", alpha=0.2)
-plt.ylabel("$f_\mathrm{Edd}$", fontsize=24, usetex=True)
-plt.xlabel("$a$", fontsize=24, usetex=True)
+plt.ylabel(r"$f_\mathrm{Edd}$", fontsize=24, usetex=True)
+plt.xlabel(r"$a$", fontsize=24, usetex=True)
 plt.tick_params(axis="y", right=True, direction="in")
 plt.yscale("log")
 plt.axis([-1, 1, 0.0001, 100])
@@ -367,14 +367,14 @@ plt.plot(
     a,
     100 * 0.005 * (1 + 3 * (phi / 50) ** 2 * (horizon_ang_vel / 0.2) ** 2),
     linewidth=2,
-    label="$\epsilon_\mathrm{wind,thick}$",
+    label=r"$\epsilon_\mathrm{wind,thick}$",
     color="blue",
 )
 plt.plot(
     a,
     100 * 0.1 * (1 - np.sqrt(1 - 2 / (3 * r_iso))),
     linewidth=2,
-    label="$\epsilon_\mathrm{f}\epsilon_\mathrm{rad,NT}$ $\mathrm{(thin}$ $\mathrm{disc})$",
+    label=r"$\epsilon_\mathrm{f}\epsilon_\mathrm{rad,NT}$ $\mathrm{(thin}$ $\mathrm{disc})$",
     color="red",
 )
 plt.plot(
@@ -385,7 +385,7 @@ plt.plot(
     * np.maximum((1 - 8 * omega(a) ** 2 + 1 * omega(a)), np.zeros(np.size(a))),
     linestyle=":",
     linewidth=1.5,
-    label="$\epsilon_\mathrm{wind,slim},$ $f_\mathrm{Edd}=1$",
+    label=r"$\epsilon_\mathrm{wind,slim},$ $f_\mathrm{Edd}=1$",
     color="orange",
 )
 plt.plot(
@@ -396,7 +396,7 @@ plt.plot(
     * np.maximum((1 - 8 * omega(a) ** 2 + 1 * omega(a)), np.zeros(np.size(a))),
     linestyle="-.",
     linewidth=1.5,
-    label="$\epsilon_\mathrm{wind,slim},$ $f_\mathrm{Edd}=10$",
+    label=r"$\epsilon_\mathrm{wind,slim},$ $f_\mathrm{Edd}=10$",
     color="orange",
 )
 plt.plot(
@@ -407,7 +407,7 @@ plt.plot(
     * np.maximum((1 - 8 * omega(a) ** 2 + 1 * omega(a)), np.zeros(np.size(a))),
     linestyle="--",
     linewidth=1.5,
-    label="$\epsilon_\mathrm{wind,slim},$ $f_\mathrm{Edd}=100$",
+    label=r"$\epsilon_\mathrm{wind,slim},$ $f_\mathrm{Edd}=100$",
     color="orange",
 )
 plt.plot(
@@ -418,13 +418,13 @@ plt.plot(
     * np.maximum((1 - 8 * omega(a) ** 2 + 1 * omega(a)), np.zeros(np.size(a))),
     linestyle="-",
     linewidth=1.5,
-    label="$\epsilon_\mathrm{wind,slim},$ $f_\mathrm{Edd}=1000$",
+    label=r"$\epsilon_\mathrm{wind,slim},$ $f_\mathrm{Edd}=1000$",
     color="orange",
 )
 
 plt.fill_between(a, eps_ADAF1, eps_ADAF2, color="red", alpha=0.2)
-plt.ylabel("$\epsilon_\mathrm{wind}$ $[\%]$", fontsize=24, usetex=True)
-plt.xlabel("$a$", fontsize=24, usetex=True)
+plt.ylabel(r"$\epsilon_\mathrm{wind}$ $[\%]$", fontsize=24, usetex=True)
+plt.xlabel(r"$a$", fontsize=24, usetex=True)
 plt.tick_params(axis="y", right=True, direction="in")
 pylab.legend(loc="upper left", prop={"size": 12}, ncol=2)
 plt.minorticks_on()
@@ -473,14 +473,14 @@ plt.title("Wind efficiency", fontsize=16)
 
 plt.subplot(gs[1])
 plt.plot(
-    a, 100 * Jet_ADAF, linewidth=2, label="$\epsilon_\mathrm{jet,thick}$", color="blue"
+    a, 100 * Jet_ADAF, linewidth=2, label=r"$\epsilon_\mathrm{jet,thick}$", color="blue"
 )
 plt.plot(
     a,
     100 * Jet_ADAF * ((0.01 / 1.88) ** 1.29 / (1 + (0.01 / 1.88) ** 1.29)) ** 2,
     linewidth=1.5,
     linestyle=":",
-    label="$\epsilon_\mathrm{jet,thin},$ $f_\mathrm{Edd}=0.01$",
+    label=r"$\epsilon_\mathrm{jet,thin},$ $f_\mathrm{Edd}=0.01$",
     color="red",
 )
 plt.plot(
@@ -488,7 +488,7 @@ plt.plot(
     100 * Jet_ADAF * ((0.1 / 1.88) ** 1.29 / (1 + (0.1 / 1.88) ** 1.29)) ** 2,
     linewidth=1.5,
     linestyle="-.",
-    label="$\epsilon_\mathrm{jet,thin},$ $f_\mathrm{Edd}=0.1$",
+    label=r"$\epsilon_\mathrm{jet,thin},$ $f_\mathrm{Edd}=0.1$",
     color="red",
 )
 plt.plot(
@@ -496,7 +496,7 @@ plt.plot(
     100 * Jet_ADAF * ((1 / 1.88) ** 1.29 / (1 + (1 / 1.88) ** 1.29)) ** 2,
     linewidth=1.5,
     linestyle="--",
-    label="$\epsilon_\mathrm{jet,thin},$ $f_\mathrm{Edd}=1$",
+    label=r"$\epsilon_\mathrm{jet,thin},$ $f_\mathrm{Edd}=1$",
     color="red",
 )
 plt.plot(
@@ -504,7 +504,7 @@ plt.plot(
     100 * Jet_ADAF * ((10 / 1.88) ** 1.29 / (1 + (10 / 1.88) ** 1.29)) ** 2,
     linewidth=1.5,
     linestyle="--",
-    label="$\epsilon_\mathrm{jet,slim},$ $f_\mathrm{Edd}=10$",
+    label=r"$\epsilon_\mathrm{jet,slim},$ $f_\mathrm{Edd}=10$",
     color="orange",
 )
 plt.plot(
@@ -512,12 +512,12 @@ plt.plot(
     100 * Jet_ADAF * ((100 / 1.88) ** 1.29 / (1 + (100 / 1.88) ** 1.29)) ** 2 - 2,
     linewidth=1.5,
     linestyle="-",
-    label="$\epsilon_\mathrm{jet,slim},$ $f_\mathrm{Edd}=100$",
+    label=r"$\epsilon_\mathrm{jet,slim},$ $f_\mathrm{Edd}=100$",
     color="orange",
 )
 
-plt.ylabel("$\epsilon_\mathrm{jet}$ $[\%]$", fontsize=24, usetex=True)
-plt.xlabel("$a$", fontsize=24, usetex=True)
+plt.ylabel(r"$\epsilon_\mathrm{jet}$ $[\%]$", fontsize=24, usetex=True)
+plt.xlabel(r"$a$", fontsize=24, usetex=True)
 plt.tick_params(axis="y", right=True, direction="in")
 pylab.legend(loc="upper left", prop={"size": 15})
 plt.axis([-1, 1, 0, 200])
@@ -570,7 +570,7 @@ L_isco1 = [2 / 3 * 1 / np.sqrt(3) * (1 + 2 * np.sqrt(3 * r_isco(x) - 2)) for x i
 
 plt.style.use("classic")
 fig = plt.figure(figsize=(8, 6), linewidth=4)
-plt.plot(a, L_isco1, linewidth=2, label="$\ell_\mathrm{ISCO}$", color="red")
+plt.plot(a, L_isco1, linewidth=2, label=r"$\ell_\mathrm{ISCO}$", color="red")
 plt.plot(
     a,
     0.45 * np.array(L_isco1),
@@ -600,8 +600,8 @@ plt.plot(
     label=r"$\ell_\mathrm{adv},\alpha=0.3$",
     color="purple",
 )
-plt.ylabel("$\ell_\mathrm{in}$", fontsize=24, usetex=True)
-plt.xlabel("$a$", fontsize=24, usetex=True)
+plt.ylabel(r"$\ell_\mathrm{in}$", fontsize=24, usetex=True)
+plt.xlabel(r"$a$", fontsize=24, usetex=True)
 plt.tick_params(axis="y", right=True, direction="in")
 plt.legend(loc="upper right", prop={"size": 14})
 plt.minorticks_on()
@@ -731,7 +731,7 @@ plt.plot(
     a,
     s(0.01, a),
     linewidth=2,
-    label="Thin disk, $f_\mathrm{Edd}=0.01$",
+    label=r"Thin disk, $f_\mathrm{Edd}=0.01$",
     linestyle=":",
     color="red",
 )
@@ -739,7 +739,7 @@ plt.plot(
     a,
     s(0.1, a),
     linewidth=2,
-    label="Thin disk, $f_\mathrm{Edd}=0.1$",
+    label=r"Thin disk, $f_\mathrm{Edd}=0.1$",
     linestyle="-.",
     color="red",
 )
@@ -747,7 +747,7 @@ plt.plot(
     a,
     s(1, a),
     linewidth=2,
-    label="Thin disk, $f_\mathrm{Edd}=1$",
+    label=r"Thin disk, $f_\mathrm{Edd}=1$",
     linestyle="--",
     color="red",
 )
@@ -755,7 +755,7 @@ plt.plot(
     a,
     s(10, a),
     linewidth=2,
-    label="Slim disk, $f_\mathrm{Edd}=10$",
+    label=r"Slim disk, $f_\mathrm{Edd}=10$",
     linestyle="--",
     color="orange",
 )
@@ -763,14 +763,14 @@ plt.plot(
     a,
     s(100, a),
     linewidth=2,
-    label="Slim disk, $f_\mathrm{Edd}=100$",
+    label=r"Slim disk, $f_\mathrm{Edd}=100$",
     linestyle="-",
     color="orange",
 )
 plt.plot(a, [0 for x in a], linewidth=1.0, color="black", linestyle="--")
 plt.plot([-0.0001, 0.0001], [-200, 200], linewidth=1.0, color="black", linestyle="--")
 plt.ylabel(
-    "$\mathrm{d}a/(\mathrm{d} M_\mathrm{BH,0}/M_\mathrm{BH})$", fontsize=24, usetex=True
+    r"$\mathrm{d}a/(\mathrm{d} M_\mathrm{BH,0}/M_\mathrm{BH})$", fontsize=24, usetex=True
 )
 plt.xlabel("$a$", fontsize=24, usetex=True)
 plt.tick_params(axis="y", right=True, direction="in")
