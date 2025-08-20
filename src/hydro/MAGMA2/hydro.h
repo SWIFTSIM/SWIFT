@@ -839,6 +839,7 @@ void hydro_vec_slope_limiter(const hydro_real_t df_min,
                              const hydro_real_t kernel_size,
                              hydro_real_t *restrict grad) {
 
+#ifdef hydro_props_use_extra_slope_limiter
   const hydro_real_t grad_norm = hydro_vec3_norm(grad);
   const hydro_real_t length = const_grad_overshoot_length * kernel_size;
 
@@ -870,6 +871,8 @@ void hydro_vec_slope_limiter(const hydro_real_t df_min,
       grad[2] *= limiter;
     }
   }
+#endif
+
 }
 
 /**

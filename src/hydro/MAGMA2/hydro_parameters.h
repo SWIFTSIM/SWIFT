@@ -53,7 +53,7 @@
 #define const_viscosity_alpha 2.0
 
 /*! Alpha conductivity, usually =0.05. At lower N_ngb, should be higher */
-#define const_conductivity_alpha 0.05
+#define const_conductivity_alpha 0.5
 
 /*! Desired number of neighbours -- CRITICAL that this matches hydro props */
 #if defined(HYDRO_DIMENSION_1D)
@@ -67,14 +67,22 @@
 
 /* ---------- These parameters should not be changed ---------- */
 
+/*! Flag to use additional slope limiting procedures */
+//#define hydro_props_use_extra_slope_limiter
+
+/* Flag to disallow sign flip in reconstructed quantities */
+//#define hydro_props_use_strict_minmod_limiter
+
 /* Slope limiter length, fraction of max. distance in kernel */
+#ifdef hydro_props_use_extra_slope_limiter
 #define const_grad_overshoot_length 0.25
 
 /*! Slope limiter tolerance */
-//#define const_grad_overshoot_tolerance 0.1
+#define const_grad_overshoot_tolerance 0.0
+#endif
 
 /* Viscosity floor when G_ij is extremely misaligned with dx_ij */
-#define const_viscosity_cosine_limit 0.1736481 //0.7
+#define const_viscosity_cosine_limit 0.7
 
 /* Viscosity weighting scheme: 
  *    0 = (rho_i * q_i + rho_j * q_j) / (rho_i * rho_j)
@@ -83,13 +91,7 @@
 #define hydro_props_viscosity_weighting_type 2
 
 /* Flag to use radial gradients for viscosity and conductivity */
-#define hydro_props_use_radial_viscosity
-
-/* Flag to disallow sign flip in reconstructed quantities */
-//#define hydro_props_use_strict_minmod_limiter
-
-/* Use dv_ij dot G_ij in the h_dt evolution term */
-#define hydro_props_use_high_order_gradients_in_h_dt
+//#define hydro_props_use_radial_viscosity
 
 /*! Use the correction terms to make the internal energy match the mass flux */
 //#define hydro_props_use_adiabatic_correction
@@ -144,7 +146,7 @@
 
 /*! Cosmology default const_viscosity_beta=2*const_viscosity_alpha
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
-#define const_viscosity_beta (2.0 * const_viscosity_alpha)
+#define const_viscosity_beta (1.5*const_viscosity_alpha)
 
 /* ---------- Structures for below ---------- */
 
