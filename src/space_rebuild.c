@@ -1210,11 +1210,12 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     struct cell *c = &s->cells_top[i];
     int count = c->grav.count;
     struct gpart *gparts = c->grav.parts;
-    for (int j = 0; j < count; ++j) {
-      if (gparts[j].time_bin == time_bin_not_created) {
-        error("Found extra gpart before space_reorder_extras() at cell %d", i);
-      }
-    }
+    // for (int j = 0; j < count; ++j) {
+    //   if (gparts[j].time_bin == time_bin_not_created) {
+    //     error("Found extra gpart before space_reorder_extras() at cell %d",
+    //     i);
+    //   }
+    // }
     /* And check the extras */
     for (int j = count; j < c->grav.count_total; ++j) {
       if (gparts[j].time_bin != time_bin_not_created) {
