@@ -81,7 +81,7 @@ static void engine_do_unskip_hydro(struct cell *c, struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we only get zoom cells here when we are in zoom land. */
-  if (s->with_zoom_region && c->type != cell_type_zoom) {
+  if (e->s->with_zoom_region && c->type != cell_type_zoom) {
     error("Unskipping hydro tasks in a non-zoom cell (%s/%s) in zoom land.",
           cellID_names[c->type], subcellID_names[c->subtype]);
   }
