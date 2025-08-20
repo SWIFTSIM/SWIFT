@@ -79,7 +79,7 @@ struct unskip_data {
  */
 static void engine_do_unskip_hydro(struct cell *c, struct engine *e) {
 
-  if (c->type != cell_type_regular || c->type != cell_type_zoom) {
+  if (!(c->type == cell_type_regular || c->type == cell_type_zoom)) {
     return; /* No hydro tasks in non-regular cells. */
   }
 
