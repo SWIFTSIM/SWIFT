@@ -85,7 +85,8 @@ void space_allocate_extras(struct space *s, int verbose) {
   /* List the local cells */
   size_t nr_local_cells = 0;
   for (int i = 0; i < s->nr_cells; ++i) {
-    if (s->cells_top[i].nodeID == local_nodeID) {
+    if (s->cells_top[i].nodeID == local_nodeID &&
+        s->cells_top[i].subtype != cell_subtype_void) {
       local_cells[nr_local_cells] = i;
       ++nr_local_cells;
     }

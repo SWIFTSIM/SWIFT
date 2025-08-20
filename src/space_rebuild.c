@@ -443,20 +443,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     error("Counts of inhibited sink-particles do not match!");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  /* Debug check before reorder to see if particles are already corrupted */
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < s->nr_cells; ++i) {
-    struct cell *c = &s->cells_top[i];
-    int count = c->grav.count;
-    struct gpart *gparts = c->grav.parts;
-    for (int j = 0; j < count; ++j) {
-      if (gparts[j].time_bin == time_bin_not_created) {
-        error("Found extra gpart before space_reorder_extras() at cell %d", i);
-      }
-    }
-  }
-#endif
-
   /* Move non-local gparts and inhibited parts to the end of the list. */
   if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_gparts > 0)) {
 
@@ -918,38 +904,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   s->nr_inhibited_bparts = 0;
   s->nr_inhibited_sinks = 0;
 
-  /* Debug check before reorder to see if particles are already corrupted */
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < s->nr_cells; ++i) {
-    struct cell *c = &s->cells_top[i];
-    int count = c->grav.count;
-    struct gpart *gparts = c->grav.parts;
-    for (int j = 0; j < count; ++j) {
-      if (gparts[j].time_bin == time_bin_not_created) {
-        error("Found extra gpart before space_reorder_extras() at cell %d", i);
-      }
-    }
-  }
-#endif
-
   /* Sort the gparts according to their cells. */
   if (nr_gparts > 0)
     space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts,
                       g_index, cell_gpart_counts, s->nr_cells);
-
-  /* Debug check before reorder to see if particles are already corrupted */
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < s->nr_cells; ++i) {
-    struct cell *c = &s->cells_top[i];
-    int count = c->grav.count;
-    struct gpart *gparts = c->grav.parts;
-    for (int j = 0; j < count; ++j) {
-      if (gparts[j].time_bin == time_bin_not_created) {
-        error("Found extra gpart before space_reorder_extras() at cell %d", i);
-      }
-    }
-  }
-#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -979,37 +937,12 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  /* Debug check before reorder to see if particles are already corrupted */
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < s->nr_cells; ++i) {
-    struct cell *c = &s->cells_top[i];
-    int count = c->grav.count;
-    struct gpart *gparts = c->grav.parts;
-    for (int j = 0; j < count; ++j) {
-      if (gparts[j].time_bin == time_bin_not_created) {
-        error("Found extra gpart before space_reorder_extras() at cell %d", i);
-      }
-    }
-  }
-
-  /* Ensure the g_index array is in ascending order */
-  for (size_t k = 0; k < nr_gparts - 1; k++) {
-    if (g_index[k] > g_index[k + 1]) {
-      error("g_index is not sorted in ascending order at index %zu: %d > %d", k,
-            g_index[k], g_index[k + 1]);
-    }
-  }
-#endif
-
   /* Extract the cell counts from the sorted indices. Deduct the extra
    * particles. */
   size_t last_gindex = 0;
   g_index[nr_gparts] = s->nr_cells;
   for (size_t k = 0; k < nr_gparts; k++) {
     if (g_index[k] < g_index[k + 1]) {
-      message("gpart %zu in cell %d of %s/%s", k, g_index[k],
-              cellID_names[cells_top[g_index[k]].type],
-              subcellID_names[cells_top[g_index[k]].subtype]);
       cells_top[g_index[k]].grav.count =
           k - last_gindex + 1 - space_extra_gparts;
       last_gindex = k + 1;
