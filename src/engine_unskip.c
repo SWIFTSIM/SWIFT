@@ -79,10 +79,6 @@ struct unskip_data {
  */
 static void engine_do_unskip_hydro(struct cell *c, struct engine *e) {
 
-  if (!(c->type == cell_type_regular || c->type == cell_type_zoom)) {
-    return; /* No hydro tasks in non-regular cells. */
-  }
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we only get zoom cells here when we are in zoom land. */
   if (e->s->with_zoom_region && c->type != cell_type_zoom) {
@@ -325,6 +321,13 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
      * This gives us the broad type of task we are working on. */
     const ptrdiff_t delta = &local_cells[ind] - list_base;
     const int type = delta / num_active_cells;
+
+    /* When running a zoom simulation, non-zoom cells only get gravity tasks.
+     * These cells are local though, so instead we just skip them. */
+    if (e->s->with_zoom_region && c->type != cell_type_zoom &&
+        task_types[type] != task_broad_types_gravity) {
+      continue;
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (type >= data->multiplier) error("Invalid broad task type!");
