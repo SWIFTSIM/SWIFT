@@ -322,8 +322,9 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
     const ptrdiff_t delta = &local_cells[ind] - list_base;
     const int type = delta / num_active_cells;
 
-    /* Void cells only do gravity tasks. */
-    if (c->subtype == cell_subtype_void &&
+    /* When running a zoom simulation, non-zoom cells only get gravity tasks.
+     * These cells are local though, so instead we just skip them. */
+    if (e->s->with_zoom_region && c->type != cell_type_zoom &&
         task_types[type] != task_broad_types_gravity) {
       continue;
     }
