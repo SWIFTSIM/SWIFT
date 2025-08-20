@@ -991,6 +991,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       }
     }
   }
+
+  /* Ensure the g_index array is in ascending order */
+  for (size_t k = 0; k < nr_gparts - 1; k++) {
+    if (g_index[k] >= g_index[k + 1]) {
+      error("g_index is not sorted in ascending order at index %zu: %d >= %d",
+            k, g_index[k], g_index[k + 1]);
+    }
+  }
 #endif
 
   /* Extract the cell counts from the sorted indices. Deduct the extra
