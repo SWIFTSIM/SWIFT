@@ -174,6 +174,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_s
 
   strength_reset_predicted_values_stress_tensor(p, xp);
   strength_reset_predicted_values_damage(p, xp);
+  strength_reset_predicted_values_extra(p, xp);
 }
 
 /**
@@ -217,6 +218,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
   /* Apply yield stress to deviatoric stress tensor. */
   yield_apply_yield_stress_to_deviatoric_stress_tensor(
         &p->strength_data.deviatoric_stress_tensor, yield_stress, density, u);
+
+  strength_predict_extra_beginning(p, dt_therm);
 }
 
 /**
@@ -250,7 +253,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
-    struct part *restrict p, struct xpart *restrict xp, float dt_therm) {
+    struct part *restrict p, struct xpart *restrict xp, const float dt_therm) {
 
   /* Get quantities needed for strength evolution. */
   const int mat_id = p->mat_id;
@@ -277,6 +280,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
   /* Apply yield stress to deviatoric stress tensor. */
   yield_apply_yield_stress_to_deviatoric_stress_tensor(
         &xp->strength_data.deviatoric_stress_tensor_full, yield_stress, density, u);
+
+  strength_kick_extra_beginning(p, xp, dt_therm);
 }
 
 /**
@@ -291,7 +296,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_strength_end(
-    struct part *restrict p, struct xpart *restrict xp, float dt_therm) {}
+    struct part *restrict p, struct xpart *restrict xp, const float dt_therm) {}
 
 /**
  * @brief Initialises the strength properties for the first time

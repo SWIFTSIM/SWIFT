@@ -160,9 +160,14 @@ __attribute__((always_inline)) INLINE static void stress_tensor_compute_dS_dt(st
   strength_compute_strain_rate_tensor(strain_rate_tensor, dv);
   strength_compute_rotation_rate_tensor(rotation_rate_tensor, dv);
 
+  /* Convert deviatoric stress to 3x3 float to compute the rotation term . */
+  float deviatoric_stress_tensor[3][3];
+  get_matrix_from_sym_matrix(deviatoric_stress_tensor,
+                             &p->strength_data.deviatoric_stress_tensor);
+
   /* Compute rotation term. */
   strength_compute_rotation_term(rotation_term, rotation_rate_tensor,
-                                 p->strength_data.deviatoric_stress_tensor);
+                                 deviatoric_stress_tensor);
 
   /* Compute time derivative of the deviatoric stress tensor (Hooke's law). */
   float dS_dt[3][3];

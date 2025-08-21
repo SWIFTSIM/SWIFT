@@ -171,6 +171,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_s
 
   strength_reset_predicted_values_stress_tensor(p, xp);
   strength_reset_predicted_values_damage(p, xp);
+  strength_reset_predicted_values_extra(p, xp);
 }
 
 /**
@@ -214,6 +215,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
   /* Apply yield stress to deviatoric stress tensor. */
   yield_apply_yield_stress_to_deviatoric_stress_tensor(
         &p->strength_data.deviatoric_stress_tensor, yield_stress, density, u);
+
+  strength_predict_extra_beginning(p, dt_therm);
 }
 
 /**
@@ -223,7 +226,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
  * @param p The particle to act upon
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
-__attribute__((always_inline)) INLINE static void hydro_predict__strength_end(
+__attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
     struct part *restrict p, const float dt_therm) {
 
   /* Evolve density. */
@@ -265,7 +268,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict__strength_end(
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
-    struct part *restrict p, struct xpart *restrict xp, float dt_therm) {
+    struct part *restrict p, struct xpart *restrict xp, const float dt_therm) {
 
   /* Get quantities needed for strength evolution. */
   const int mat_id = p->mat_id;
@@ -293,6 +296,23 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
   yield_apply_yield_stress_to_deviatoric_stress_tensor(
         &xp->strength_data.deviatoric_stress_tensor_full, yield_stress, density, u);
 
+  strength_kick_extra_beginning(p, xp, dt_therm);
+}
+
+/**
+ * @brief Kick the additional particle strength properties
+ * At end of hydro function, after hydro quantities have been kicked.
+ *
+ * Additional hydrodynamic quantites are kicked forward in time here. These
+ * include thermal quantities (thermal energy or total energy or entropy, ...).
+ *
+ * @param p The particle to act upon.
+ * @param xp The particle extended data to act upon.
+ * @param dt_therm The time-step for this kick (for thermodynamic quantities).
+ */
+__attribute__((always_inline)) INLINE static void hydro_kick_strength_end(
+    struct part *restrict p, struct xpart *restrict xp, const float dt_therm) {
+
   /* Evolve density. Note this comes after e.g. calculation of stress tensor for
    * strength evolution, since the stress tensor used in the evolution myst be
    * at the current time. */
@@ -315,20 +335,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
     (enum mat_phase_state)material_phase_state_from_internal_energy(
      xp->strength_data.rho_evol_full, xp->u_full, p->mat_id);
 }
-
-/**
- * @brief Kick the additional particle strength properties
- * At end of hydro function, after hydro quantities have been kicked.
- *
- * Additional hydrodynamic quantites are kicked forward in time here. These
- * include thermal quantities (thermal energy or total energy or entropy, ...).
- *
- * @param p The particle to act upon.
- * @param xp The particle extended data to act upon.
- * @param dt_therm The time-step for this kick (for thermodynamic quantities).
- */
-__attribute__((always_inline)) INLINE static void hydro_kick_strength_end(
-    struct part *restrict p, struct xpart *restrict xp, float dt_therm) {}
 
 /**
  * @brief Initialises the strength properties for the first time
