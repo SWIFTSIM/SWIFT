@@ -190,10 +190,6 @@ INLINE static double integrate_imf(
   return result * imf_log10_mass_bin_size * M_LN10;
 }
 
-/* ================================================================
- *  New: IMF models and options-based initialization (YAML-friendly)
- * ================================================================ */
-
 /**
  * @brief Supported IMF model choices when reading from YAML or options.
  */

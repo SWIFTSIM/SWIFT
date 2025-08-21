@@ -448,6 +448,42 @@ void feedback_props_init(struct feedback_props* fp,
   fp->log10_imf_max_mass_msun = log10(fp->imf_max_mass_msun);
   fp->log10_imf_min_mass_msun = log10(fp->imf_min_mass_msun);
 
+  /* Optional IMF configuration (default: Chabrier 2003) */
+  {
+    fp->imf_model_code = 0;
+    fp->imf_high_mass_slope = -1.0;
+    fp->imf_low_mass_slope = -1.0;
+    fp->imf_pivot_mass_msun = -1.0;
+    fp->imf_chabrier_m_c_msun = -1.0;
+    fp->imf_chabrier_sigma_log10 = -1.0;
+
+    char model_str[32] = {0};
+    parser_get_opt_param_string(params, "EAGLEFeedback:IMF_Model", model_str,
+                                "Chabrier");
+    if (strcmp(model_str, "Chabrier") == 0)
+      fp->imf_model_code = 0;
+    else if (strcmp(model_str, "Kroupa") == 0)
+      fp->imf_model_code = 1;
+    else if (strcmp(model_str, "Salpeter") == 0)
+      fp->imf_model_code = 2;
+    else if (strcmp(model_str, "Custom") == 0)
+      fp->imf_model_code = 3;
+    else
+      error("Invalid EAGLEFeedback:IMF_Model '%s'", model_str);
+
+    fp->imf_high_mass_slope = parser_get_opt_param_double(
+        params, "EAGLEFeedback:IMF_HighMassSlope", fp->imf_high_mass_slope);
+    fp->imf_low_mass_slope = parser_get_opt_param_double(
+        params, "EAGLEFeedback:IMF_LowMassSlope", fp->imf_low_mass_slope);
+    fp->imf_pivot_mass_msun = parser_get_opt_param_double(
+        params, "EAGLEFeedback:IMF_PivotMass", fp->imf_pivot_mass_msun);
+    fp->imf_chabrier_m_c_msun = parser_get_opt_param_double(
+        params, "EAGLEFeedback:IMF_ChabrierMc", fp->imf_chabrier_m_c_msun);
+    fp->imf_chabrier_sigma_log10 = parser_get_opt_param_double(
+        params, "EAGLEFeedback:IMF_ChabrierSigmaLog10",
+        fp->imf_chabrier_sigma_log10);
+  }
+
   /* Properties of the SNII energy feedback model ------------------------- */
 
   /* Are we sampling the SNII lifetimes for feedback or using a fixed delay? */
@@ -628,8 +664,23 @@ void feedback_props_init(struct feedback_props* fp,
       (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
 
   /* Initialise the IMF ------------------------------------------------- */
+  {
+    struct eagle_imf_options opts;
+    opts.model = (fp->imf_model_code == 1)
+                     ? eagle_imf_model_kroupa
+                     : (fp->imf_model_code == 2)
+                           ? eagle_imf_model_salpeter
+                           : (fp->imf_model_code == 3)
+                                 ? eagle_imf_model_custom
+                                 : eagle_imf_model_chabrier;
+    opts.high_mass_slope = fp->imf_high_mass_slope;
+    opts.low_mass_slope = fp->imf_low_mass_slope;
+    opts.pivot_mass_msun = fp->imf_pivot_mass_msun;
+    opts.chabrier_m_c_msun = fp->imf_chabrier_m_c_msun;
+    opts.chabrier_sigma_log10 = fp->imf_chabrier_sigma_log10;
 
-  init_imf(fp);
+    init_imf_from_options(fp, &opts);
+  }
 
   /* Calculate number of type II SN per unit solar mass based on our choice
    * of IMF and integration limits for type II SNe.
