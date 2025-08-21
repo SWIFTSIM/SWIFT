@@ -29,22 +29,36 @@
 #include "symmetric_matrix.h"
 
 /**
- * @brief Computes the J_2 invariant of the deviatoric stress tensor.
+ * @brief Computes the J_2 invariant of a deviatoric symmetric tensor.
  *
- * @param deviatoric_stress_tensor (sym_matrix) The deviatoric stress tensor.
+ * @param M The deviatoric symmetric matrix.
  */
-__attribute__((always_inline)) INLINE static float strength_compute_stress_tensor_J_2(
-    const struct sym_matrix deviatoric_stress_tensor) {
+__attribute__((always_inline)) INLINE static float strength_compute_deviatoric_sym_matrix_J_2(
+    const struct sym_matrix M) {
 
   // ### Does j_2 need to be decreased by a factor of (1 - damage)^2 for B&A?
 
   /* Compute J_2 invariant. */
-  return 0.5f * deviatoric_stress_tensor.xx * deviatoric_stress_tensor.xx +
-         0.5f * deviatoric_stress_tensor.yy * deviatoric_stress_tensor.yy +
-         0.5f * deviatoric_stress_tensor.zz * deviatoric_stress_tensor.zz +
-         deviatoric_stress_tensor.xy * deviatoric_stress_tensor.xy +
-         deviatoric_stress_tensor.xz * deviatoric_stress_tensor.xz +
-         deviatoric_stress_tensor.yz * deviatoric_stress_tensor.yz;
+  return 0.5f * M.xx * M.xx + 0.5f * M.yy * M.yy + 0.5f * M.zz * M.zz +
+         M.xy * M.xy + M.xz * M.xz + M.yz * M.yz;
+}
+
+/**
+ * @brief Computes the J_2 invariant of a symmetric tensor.
+ *
+ * @param M The symmetric matrix.
+ */
+__attribute__((always_inline)) INLINE static float strength_compute_sym_matrix_J_2(
+    const struct sym_matrix M) {
+
+  /* Calculate deviatoric tensor. */
+  struct sym_matrix M_dev = M;
+  M_dev.xx -= (M.xx + M.yy + M.zz) / 3.f;
+  M_dev.yy -= (M.xx + M.yy + M.zz) / 3.f;
+  M_dev.zz -= (M.xx + M.yy + M.zz) / 3.f;
+
+  /* Compute J_2 invariant. */
+  return strength_compute_deviatoric_sym_matrix_J_2(M_dev);
 }
 
 /**

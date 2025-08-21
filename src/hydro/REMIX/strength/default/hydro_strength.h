@@ -216,10 +216,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
   stress_tensor_evolve_deviatoric_stress_tensor(&p->strength_data.deviatoric_stress_tensor, p, phase_state, dt_therm);
 
   /* Apply yield stress to deviatoric stress tensor. */
-  yield_apply_yield_stress_to_deviatoric_stress_tensor(
-        &p->strength_data.deviatoric_stress_tensor, yield_stress, density, u);
+  yield_apply_yield_stress_to_sym_matrix(
+        &p->strength_data.deviatoric_stress_tensor, p->strength_data.deviatoric_stress_tensor, density, u, yield_stress);
 
-  strength_predict_extra_beginning(p, dt_therm);
+  strength_predict_extra_beginning(p, density, u, yield_stress, dt_therm);
 }
 
 /**
@@ -278,10 +278,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
   stress_tensor_evolve_deviatoric_stress_tensor(&xp->strength_data.deviatoric_stress_tensor_full, p, phase_state, dt_therm);
 
   /* Apply yield stress to deviatoric stress tensor. */
-  yield_apply_yield_stress_to_deviatoric_stress_tensor(
-        &xp->strength_data.deviatoric_stress_tensor_full, yield_stress, density, u);
+  yield_apply_yield_stress_to_sym_matrix(
+        &p->strength_data.deviatoric_stress_tensor, p->strength_data.deviatoric_stress_tensor, density, u, yield_stress);
 
-  strength_kick_extra_beginning(p, xp, dt_therm);
+  strength_kick_extra_beginning(p, xp, density, u, yield_stress, dt_therm);
 }
 
 /**

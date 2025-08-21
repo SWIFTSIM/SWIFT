@@ -183,33 +183,34 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 }
 
 /**
- * @brief Apply the yield stress to the deviatoric stress tensor.
+ * @brief Apply the yield stress to a symmetric matrix.
  *
  * ### Something about yield criterion
  *
- * @param deviatoric_stress_tensor The deviatoric stress tensor to be modified.
- * @param yield_stress The yield stress.
+ * @param M The symmetric matrix to be modified.
+ * @param deviatoric_stress_tensor The deviatoric stress tensor.
  * @param density The density.
  * @param u The specific internal energy.
+ * @param yield_stress The yield stress.
  */
 __attribute__((always_inline)) INLINE static void
-yield_apply_yield_stress_to_deviatoric_stress_tensor(
-    struct sym_matrix *deviatoric_stress_tensor,
-    const float yield_stress, const float density, const float u) {
+yield_apply_yield_stress_to_sym_matrix(
+    struct sym_matrix *M, struct sym_matrix deviatoric_stress_tensor,
+    const float density, const float u, const float yield_stress) {
 
   /* Calculate the J_2 invariant of the deviatoric stress tensor. */
-  float J_2 = strength_compute_stress_tensor_J_2(*deviatoric_stress_tensor);
+  float J_2 = strength_compute_deviatoric_sym_matrix_J_2(deviatoric_stress_tensor);
 
   /* ### Comment with name of yield criterion */
   float f = fminf(yield_stress / sqrtf(J_2), 1.f);
 
   /* Reduce elements of deviatoric stress tensor based on yield stress */
-  deviatoric_stress_tensor->xx *= f;
-  deviatoric_stress_tensor->yy *= f;
-  deviatoric_stress_tensor->zz *= f;
-  deviatoric_stress_tensor->xy *= f;
-  deviatoric_stress_tensor->xz *= f;
-  deviatoric_stress_tensor->yz *= f;
+  M->xx *= f;
+  M->yy *= f;
+  M->zz *= f;
+  M->xy *= f;
+  M->xz *= f;
+  M->yz *= f;
 }
 
 #endif /* SWIFT_YIELD_STRESS_COLLINS04_H */

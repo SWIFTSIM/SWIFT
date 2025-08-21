@@ -41,6 +41,7 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
 
 #ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
   p->strength_data.strain_tensor = xp->strength_data.strain_tensor_full;
+  p->strength_data.total_plastic_strain = xp->strength_data.total_plastic_strain_full;
 #endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
 }
 
@@ -49,10 +50,13 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  * drifting. At beginning of hydro function, before hydro quantities have been drifted.
  *
  * @param p The particle to act upon
+ * @param density The density.
+ * @param u The specific internal energy.
+ * @param yield_stress The yield stress.
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void strength_predict_extra_beginning(
-    struct part *restrict p, const float dt_therm) {
+    struct part *restrict p, const float density, const float u, const float yield_stress,  const float dt_therm) {
 
 #ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
   float strain_rate_tensor[3][3], rotation_rate_tensor[3][3], rotation_term[3][3];
@@ -73,6 +77,25 @@ __attribute__((always_inline)) INLINE static void strength_predict_extra_beginni
   /* Evolve strain tensor. */
   strength_evolve_strain_tensor(strain_tensor, strain_rate_tensor, rotation_term, dt_therm);
   get_sym_matrix_from_matrix(&p->strength_data.strain_tensor, strain_tensor);
+
+  /* Make copy of strain tensor prior to apply yield criterion. */
+  const struct sym_matrix strain_tensor_pre_yield = p->strength_data.strain_tensor;
+
+  /* Apply yield stress to strain tensor. */
+  yield_apply_yield_stress_to_sym_matrix(
+         &p->strength_data.strain_tensor, p->strength_data.deviatoric_stress_tensor, density, u, yield_stress);
+
+  /* Calculate the change in elastic strain in the time-step. */
+  struct sym_matrix delta_elastic_strain_tensor;
+  delta_elastic_strain_tensor.xx = p->strength_data.strain_tensor.xx - strain_tensor_pre_yield.xx;
+  delta_elastic_strain_tensor.yy = p->strength_data.strain_tensor.yy - strain_tensor_pre_yield.yy;
+  delta_elastic_strain_tensor.zz = p->strength_data.strain_tensor.zz - strain_tensor_pre_yield.zz;
+  delta_elastic_strain_tensor.xy = p->strength_data.strain_tensor.xy - strain_tensor_pre_yield.xy;
+  delta_elastic_strain_tensor.xz = p->strength_data.strain_tensor.xz - strain_tensor_pre_yield.xz;
+  delta_elastic_strain_tensor.yz = p->strength_data.strain_tensor.yz - strain_tensor_pre_yield.yz;
+
+  /* Add contribution to measure of total plastic strain. */
+  p->strength_data.total_plastic_strain += strength_compute_sym_matrix_J_2(delta_elastic_strain_tensor);
 #endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
 }
 
@@ -85,10 +108,13 @@ __attribute__((always_inline)) INLINE static void strength_predict_extra_beginni
  *
  * @param p The particle to act upon.
  * @param xp The particle extended data to act upon.
+ * @param density The density.
+ * @param u The specific internal energy.
+ * @param yield_stress The yield stress.
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
  */
 __attribute__((always_inline)) INLINE static void strength_kick_extra_beginning(
-    struct part *restrict p, struct xpart *restrict xp, const float dt_therm) {
+    struct part *restrict p, struct xpart *restrict xp,  const float density, const float u, const float yield_stress, const float dt_therm) {
 
 #ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
   float strain_rate_tensor[3][3], rotation_rate_tensor[3][3], rotation_term[3][3];
@@ -109,6 +135,25 @@ __attribute__((always_inline)) INLINE static void strength_kick_extra_beginning(
   /* Evolve strain tensor. */
   strength_evolve_strain_tensor(strain_tensor, strain_rate_tensor, rotation_term, dt_therm);
   get_sym_matrix_from_matrix(&xp->strength_data.strain_tensor_full, strain_tensor);
+
+  /* Make copy of strain tensor prior to apply yield criterion. */
+  const struct sym_matrix strain_tensor_pre_yield = xp->strength_data.strain_tensor_full;
+
+  /* Apply yield stress to strain tensor. */
+  yield_apply_yield_stress_to_sym_matrix(
+         &xp->strength_data.strain_tensor_full, xp->strength_data.deviatoric_stress_tensor_full, density, u, yield_stress);
+
+ /* Calculate the change in elastic strain in the time-step. */
+ struct sym_matrix delta_elastic_strain_tensor;
+ delta_elastic_strain_tensor.xx = xp->strength_data.strain_tensor_full.xx - strain_tensor_pre_yield.xx;
+ delta_elastic_strain_tensor.yy = xp->strength_data.strain_tensor_full.yy - strain_tensor_pre_yield.yy;
+ delta_elastic_strain_tensor.zz = xp->strength_data.strain_tensor_full.zz - strain_tensor_pre_yield.zz;
+ delta_elastic_strain_tensor.xy = xp->strength_data.strain_tensor_full.xy - strain_tensor_pre_yield.xy;
+ delta_elastic_strain_tensor.xz = xp->strength_data.strain_tensor_full.xz - strain_tensor_pre_yield.xz;
+ delta_elastic_strain_tensor.yz = xp->strength_data.strain_tensor_full.yz - strain_tensor_pre_yield.yz;
+
+ /* Add contribution to measure of total plastic strain. */
+ xp->strength_data.total_plastic_strain_full += strength_compute_sym_matrix_J_2(delta_elastic_strain_tensor);
 #endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
 }
 
@@ -128,6 +173,9 @@ __attribute__((always_inline)) INLINE static void strength_first_init_part_extra
 #ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
   zero_sym_matrix(&p->strength_data.strain_tensor);
   zero_sym_matrix(&xp->strength_data.strain_tensor_full);
+
+  p->strength_data.total_plastic_strain = 0.f;
+  xp->strength_data.total_plastic_strain_full = 0.f;
 #endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
 }
 

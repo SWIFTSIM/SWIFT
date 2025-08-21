@@ -59,6 +59,9 @@ struct strength_xpart_data {
 
   // Strain tensor
   struct sym_matrix strain_tensor_full;
+
+  // Total plastic strain
+  float total_plastic_strain_full;
 #endif
 };
 
@@ -112,6 +115,9 @@ struct strength_part_data {
 
   // Strain tensor
   struct sym_matrix strain_tensor;
+
+  // Total plastic strain
+  float total_plastic_strain;
 #endif
 };
 

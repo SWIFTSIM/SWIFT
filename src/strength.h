@@ -31,12 +31,12 @@
 // Strength models
 #include "./strength/strength_artificial_stress.h"
 #include "./strength/strength_damage.h"
-#include "./strength/strength_extra.h"
 #include "./strength/strength_yield_stress_weakening.h"
 #include "./strength/strength_yield_stress.h"
 
 // Stress tensor, combining strength models
 #include "./strength/strength_stress_tensor.h"
+#include "./strength/strength_extra.h"
 #endif /* MATERIAL_STRENGTH */
 
 /* Hydro functions */

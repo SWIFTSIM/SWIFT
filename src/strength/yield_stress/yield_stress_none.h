@@ -149,18 +149,19 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 }
 
 /**
- * @brief Apply the yield stress to the deviatoric stress tensor.
+ * @brief Apply the yield stress to a symmetric matrix.
  *
  * Empty function when configuring without yield stress method.
  *
- * @param deviatoric_stress_tensor The deviatoric stress tensor to be modified.
- * @param yield_stress The yield stress.
+ * @param M The symmetric matrix to be modified.
+ * @param deviatoric_stress_tensor The deviatoric stress tensor.
  * @param density The density.
  * @param u The specific internal energy.
+ * @param yield_stress The yield stress.
  */
 __attribute__((always_inline)) INLINE static void
-yield_apply_yield_stress_to_deviatoric_stress_tensor(
-    struct sym_matrix *deviatoric_stress_tensor,
-    const float yield_stress, const float density, const float u) {}
+yield_apply_yield_stress_to_sym_matrix(
+    struct sym_matrix *M, struct sym_matrix deviatoric_stress_tensor,
+    const float density, const float u, const float yield_stress) {}
 
 #endif /* SWIFT_YIELD_STRESS_NONE_H */
