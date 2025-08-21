@@ -240,6 +240,18 @@ INLINE static void hydro_write_particles(const struct part* parts,
 
 #ifdef MAGMA2_DEBUG_CHECKS
   list[num] = io_make_output_field(
+      "MaxViscSignalVel", FLOAT, 1, UNIT_CONV_SPEED,
+      -1.5 * hydro_gamma_minus_one, parts, debug.v_sig_visc_max,
+      "Maximum viscous signal speed encountered by the particle this step.");
+  num++;
+
+  list[num] = io_make_output_field(
+      "MaxCondSignalVel", FLOAT, 1, UNIT_CONV_SPEED,
+      -1.5 * hydro_gamma_minus_one, parts, debug.v_sig_cond_max,
+      "Maximum conduction signal speed encountered by the particle this step.");
+  num++;
+
+  list[num] = io_make_output_field(
       "NumberOfNeighbours", INT, 1, UNIT_CONV_NO_UNITS, 
       0.f, parts, debug.num_ngb,
       "Number of neighbours.");

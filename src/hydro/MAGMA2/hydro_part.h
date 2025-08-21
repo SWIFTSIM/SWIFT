@@ -173,6 +173,11 @@ struct part {
     /*! Number of neighbors in the kernel */
     int num_ngb;
 
+    /*! The maximum viscous signal speed this step */
+    hydro_real_t v_sig_visc_max;
+
+    /*! The maximum conductive signal speed this step */
+    hydro_real_t v_sig_cond_max;
   } debug;
 #endif
 

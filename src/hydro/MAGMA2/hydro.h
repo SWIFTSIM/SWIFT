@@ -463,8 +463,9 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
 
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
+  const float c_ij = 0.5 * (ci + cj);
 
-  return 0.5f * (ci + cj - beta * mu_ij);
+  return 1.25 * (c_ij + 0.75 * (const_viscosity_alpha * c_ij - beta * mu_ij));
 }
 
 /**
@@ -531,6 +532,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rho_dh = 0.f;
 #ifdef MAGMA2_DEBUG_CHECKS
   p->debug.num_ngb = 0;
+  p->debug.v_sig_visc_max = 0.;
+  p->debug.v_sig_cond_max = 0.;
 #endif
 
 #ifdef hydro_props_use_adiabatic_correction
@@ -541,8 +544,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->gradients.u_well_conditioned = 1;
   p->gradients.D_well_conditioned = 1;
 
-  p->gradients.du_min = 0.;
-  p->gradients.du_max = 0.;
+  p->gradients.du_min = FLT_MAX;
+  p->gradients.du_max = -FLT_MAX;
   p->gradients.kernel_size = FLT_MIN;
 
   /* These must be zeroed before the density loop */
@@ -550,8 +553,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
     p->gradients.u_aux[i] = 0.;
     p->gradients.u_aux_norm[i] = 0.;
 
-    p->gradients.dv_min[i] = 0.;
-    p->gradients.dv_max[i] = 0.;
+    p->gradients.dv_min[i] = FLT_MAX;
+    p->gradients.dv_max[i] = -FLT_MAX;
 
     for (int j = 0; j < 3; j++) {
       p->gradients.velocity_tensor_aux[i][j] = 0.;
@@ -758,6 +761,22 @@ __attribute__((always_inline)) INLINE static void hydro_vec3_vec3_outer(
  * @brief Limit gradients to variation across the kernel.
  *
  *
+ * @param df_raw Raw value
+ * @param df_reconstructed Reconstructed value
+ */
+__attribute__((always_inline)) INLINE static 
+hydro_real_t hydro_scalar_minmod(const hydro_real_t df_raw, 
+                                 const hydro_real_t df_reconstructed) {
+
+  if (df_raw * df_reconstructed <= 0.) return 0.;
+
+  return (fabs(df_raw) < fabs(df_reconstructed)) ? df_raw : df_reconstructed;
+}
+
+/**
+ * @brief Limit gradients to variation across the kernel.
+ *
+ *
  * @param df_reconstructed Reconstructed estimate of df
  * @param df_raw Particle estimate of df
  * @param df_min_i Minimum value of df_raw across the kernel.
@@ -774,20 +793,20 @@ hydro_real_t hydro_scalar_minmod_limiter(const hydro_real_t df_reconstructed,
                                          const hydro_real_t df_max_j) {
 
 #ifdef hydro_props_use_strict_minmod_limiter
-  const hydro_real_t lo0 = fmax(df_min_i, -df_max_j);
-  const hydro_real_t hi0 = fmin(df_max_i, -df_min_j);
-  const hydro_real_t lo = fmin(lo0, hi0);
-  const hydro_real_t hi = fmax(lo0, hi0);
+  hydro_real_t df = hydro_scalar_minmod(df_raw, df_reconstructed);
 
-  hydro_real_t df = df_reconstructed;
+  const hydro_real_t lo = fmax(df_min_i, -df_max_j);
+  const hydro_real_t hi = fmin(df_max_i, -df_min_j);
+
+  if (lo > hi) return df_raw;
+
   if (df < lo) df = lo;
   if (df > hi) df = hi;
 
-  /* If sign flips trust the original estimate over reconstructed */
-  if ((df > 0) != (df_raw > 0)) df = df_raw;
-
   return df;
 #else
+  if (df_raw * df_reconstructed < 0.) return df_raw;
+
   return df_reconstructed;
 #endif
 }
@@ -822,6 +841,13 @@ void hydro_vec_minmod_limiter(const hydro_real_t *restrict dv_reconstructed,
   dv_ij[2] = hydro_scalar_minmod_limiter(dv_reconstructed[2], dv_raw[2],
                                          dv_min_i[2], dv_max_i[2], 
                                          dv_min_j[2], dv_max_j[2]);
+
+  /* If any of the components are exactly zero, we return a zero vector */
+  if (dv_ij[0] == 0. || dv_ij[1] == 0. || dv_ij[2] == 0.) {
+    dv_ij[0] = 0.;
+    dv_ij[1] = 0.;
+    dv_ij[2] = 0.;
+  }
 }
 
 /**
@@ -928,8 +954,11 @@ hydro_real_t hydro_scalar_van_leer_A(const hydro_real_t *restrict grad_i,
   const hydro_real_t grad_dot_x_i = hydro_vec3_vec3_dot(grad_i, dx);
   const hydro_real_t grad_dot_x_j = hydro_vec3_vec3_dot(grad_j, dx);
 
+  /* Fall-back to raw estimates */
+  if (grad_dot_x_i * grad_dot_x_j <= 0.) return 0.;
+
   /* Regularize denominator */
-  if (grad_dot_x_j == 0.) return 0.;
+  if (fabs(grad_dot_x_j) < 1.e-10) return 0.;
 
   const hydro_real_t A_ij = grad_dot_x_i / grad_dot_x_j;
 
@@ -955,8 +984,11 @@ hydro_real_t hydro_vector_van_leer_A(const hydro_real_t (*restrict grad_i)[3],
   const hydro_real_t grad_dot_x_x_i = hydro_mat3x3_mat3x3_dot(grad_i, delta_ij);
   const hydro_real_t grad_dot_x_x_j = hydro_mat3x3_mat3x3_dot(grad_j, delta_ij);
 
+  /* Fall-back to raw estimates */
+  if (grad_dot_x_x_i * grad_dot_x_x_j <= 0.) return 0.;
+
   /* Regularize denominator */
-  if (grad_dot_x_x_j == 0.) return 0.;
+  if (fabs(grad_dot_x_x_j) < 1.e-10) return 0.;
 
   const hydro_real_t A_ij = grad_dot_x_x_i / grad_dot_x_x_j;
 
@@ -1093,6 +1125,7 @@ __attribute__((always_inline)) INLINE static
 hydro_real_t hydro_get_balsara_limiter(const struct part *restrict p,
                                        const struct cosmology* cosmo) {
   
+#ifdef hydro_props_use_balsara_limiter
   const hydro_real_t fac_B = cosmo->a_factor_Balsara_eps;
   hydro_real_t balsara = 1.;
 
@@ -1116,6 +1149,9 @@ hydro_real_t hydro_get_balsara_limiter(const struct part *restrict p,
   }
 
   return balsara;
+#else
+  return 1.;
+#endif
 }
 
 /**
@@ -1344,6 +1380,29 @@ hydro_real_t hydro_get_visc_acc_term_and_mu(const struct part *restrict pi,
 }
 
 /**
+ * @brief Gets the signal velocity for the conduction interaction based on mu_ij.
+ *
+ *
+ * @param dx The separation vector
+ * @param pi Particle pi
+ * @param pj Particle pj
+ * @param mu_i The velocity jump indicator at pi
+ * @param mu_j The velocity jump indicator at pj
+ */
+__attribute__((always_inline)) INLINE static 
+hydro_real_t hydro_get_cond_signal_velocity(const float *restrict dx,
+                                            const struct part *restrict pi,
+                                            const struct part *restrict pj,
+                                            const float mu_i,
+                                            const float mu_j,
+                                            const float beta) {
+
+
+  const float mu_ij = 0.5f * (mu_i + mu_j);
+  return hydro_signal_velocity(dx, pi, pj, mu_ij, beta);
+}
+
+/**
  * @brief Gets the signal velocity for the viscous interaction based on mu_ij.
  *
  *
@@ -1354,24 +1413,23 @@ hydro_real_t hydro_get_visc_acc_term_and_mu(const struct part *restrict pi,
  * @param mu_j The velocity jump indicator at pj
  */
 __attribute__((always_inline)) INLINE static 
-hydro_real_t hydro_get_visc_signal_velocity(const hydro_real_t *restrict dx,
+hydro_real_t hydro_get_visc_signal_velocity(const float *restrict dx,
                                             const struct part *restrict pi,
                                             const struct part *restrict pj,
-                                            const hydro_real_t mu_i,
-                                            const hydro_real_t mu_j,
-                                            const hydro_real_t beta) {
+                                            const float mu_i,
+                                            const float mu_j,
+                                            const float beta) {
 
 #ifdef hydro_props_viscosity_weighting_type
 #if (hydro_props_viscosity_weighting_type == 0)
-  const hydro_real_t dx_ji[3] = {-dx[0], -dx[1], -dx[2]};
-  const hydro_real_t v_sig_visc_i = 
+  const float dx_ji[3] = {-dx[0], -dx[1], -dx[2]};
+  const float v_sig_visc_i = 
       hydro_signal_velocity(dx, pi, pj, mu_i, beta);
-  const hydro_real_t v_sig_visc_j = 
+  const float v_sig_visc_j = 
       hydro_signal_velocity(dx_ji, pj, pi, mu_j, beta);
   return 0.5 * (v_sig_visc_i + v_sig_visc_j);
 #else
-  /* Here mu_ij is the average */
-  const hydro_real_t mu_ij = 0.5 * (mu_i + mu_j);
+  const float mu_ij = 0.5f * (mu_i + mu_j);
   return hydro_signal_velocity(dx, pi, pj, mu_ij, beta);
 #endif
 #else
@@ -1850,6 +1908,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
 #ifdef MAGMA2_DEBUG_CHECKS
   p->debug.num_ngb = 0;
+  p->debug.v_sig_visc_max = 0;
+  p->debug.v_sig_cond_max = 0;
 #endif
   p->gradients.C_well_conditioned = 0;
   p->gradients.D_well_conditioned = 0;
@@ -1908,7 +1968,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* First estimates for the timestepping. Missing the kernel_gamma factors
    * for now, but will be added at the end of the force loop. */
   p->h_min = p->h;
-  p->v_sig_max = p->force.soundspeed;
+  p->v_sig_max = 1.25 * p->force.soundspeed + 
+                 0.75 * const_viscosity_alpha * p->force.soundspeed;
   p->dt_min = p->h_min / p->v_sig_max;
   p->gradients.balsara = hydro_get_balsara_limiter(p, cosmo);
 

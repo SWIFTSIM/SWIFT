@@ -50,10 +50,10 @@
 
 
 /*! Alpha viscosity, usually =1.0. For lower N_ngb, should be higher */
-#define const_viscosity_alpha 2.0
+#define const_viscosity_alpha 1.0
 
 /*! Alpha conductivity, usually =0.05. At lower N_ngb, should be higher */
-#define const_conductivity_alpha 0.5
+#define const_conductivity_alpha 0.05
 
 /*! Desired number of neighbours -- CRITICAL that this matches hydro props */
 #if defined(HYDRO_DIMENSION_1D)
@@ -61,11 +61,14 @@
 #elif defined(HYDRO_DIMENSION_2D)
 #define const_kernel_target_neighbours 17.0
 #else
-#define const_kernel_target_neighbours 57.0
+#define const_kernel_target_neighbours 256.0
 #endif
 
 
 /* ---------- These parameters should not be changed ---------- */
+
+/*! Flag to use Balsara limiter */
+#define hydro_props_use_balsara_limiter
 
 /*! Flag to use additional slope limiting procedures */
 //#define hydro_props_use_extra_slope_limiter
@@ -82,7 +85,7 @@
 #endif
 
 /* Viscosity floor when G_ij is extremely misaligned with dx_ij */
-#define const_viscosity_cosine_limit 0.7
+#define const_viscosity_cosine_limit 0.1736
 
 /* Viscosity weighting scheme: 
  *    0 = (rho_i * q_i + rho_j * q_j) / (rho_i * rho_j)
@@ -91,7 +94,7 @@
 #define hydro_props_viscosity_weighting_type 2
 
 /* Flag to use radial gradients for viscosity and conductivity */
-//#define hydro_props_use_radial_viscosity
+#define hydro_props_use_radial_artificial_terms
 
 /*! Use the correction terms to make the internal energy match the mass flux */
 //#define hydro_props_use_adiabatic_correction
@@ -139,14 +142,14 @@
 #define const_slope_limiter_eta_crit (const_kernel_mean_spacing)
 
 /*! eta_fold from Frontiere+'17 Equation 51 */
-#define const_slope_limiter_eta_fold 0.2
+#define const_slope_limiter_eta_fold (0.4*const_kernel_mean_spacing)
 
 /*! Softening squared (epsilon^2) in Eq. 15 Rosswog 2020 */
 #define const_viscosity_epsilon2 0.01
 
 /*! Cosmology default const_viscosity_beta=2*const_viscosity_alpha
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
-#define const_viscosity_beta (1.5*const_viscosity_alpha)
+#define const_viscosity_beta (2.*const_viscosity_alpha)
 
 /* ---------- Structures for below ---------- */
 
