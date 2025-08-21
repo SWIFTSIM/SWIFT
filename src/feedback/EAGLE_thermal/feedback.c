@@ -751,13 +751,10 @@ void feedback_props_init(struct feedback_props* fp,
   /* Initialise the IMF ------------------------------------------------- */
   {
     struct eagle_imf_options opts;
-    opts.model = (fp->imf_model_code == 1)
-                     ? eagle_imf_model_kroupa
-                     : (fp->imf_model_code == 2)
-                           ? eagle_imf_model_salpeter
-                           : (fp->imf_model_code == 3)
-                                 ? eagle_imf_model_custom
-                                 : eagle_imf_model_chabrier;
+    opts.model = (fp->imf_model_code == 1)   ? eagle_imf_model_kroupa
+                 : (fp->imf_model_code == 2) ? eagle_imf_model_salpeter
+                 : (fp->imf_model_code == 3) ? eagle_imf_model_custom
+                                             : eagle_imf_model_chabrier;
     opts.high_mass_slope = fp->imf_high_mass_slope;
     opts.low_mass_slope = fp->imf_low_mass_slope;
     opts.pivot_mass_msun = fp->imf_pivot_mass_msun;
