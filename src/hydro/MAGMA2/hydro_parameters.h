@@ -67,6 +67,13 @@
 
 /* ---------- These parameters should not be changed ---------- */
 
+/*! Use a Swift-like estimator for dh/dt rather than the correct formula
+ * 0 = Simple mass flow estimator
+ * 1 = Correct formula based on number density constraint
+ * 2 = Using v_ij dot G_ij with simple mass flow estimator
+ */
+#define hydro_props_dh_dt_estimator_type 0
+
 /*! Flag to use Balsara limiter */
 #define hydro_props_use_balsara_limiter
 

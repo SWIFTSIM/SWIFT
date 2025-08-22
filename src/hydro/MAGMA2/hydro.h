@@ -2128,6 +2128,69 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 }
 
 /**
+ * @brief Returns the sum term for the dh/dt calculation
+ *
+ *
+ * @param m The particle mass of the neighbour
+ * @param rho_inv The inverse density of the neighbour
+ * @param r_inv The inverse distance between particles
+ * @param w_dr The kernel gradient for this particle
+ */
+__attribute__((always_inline)) INLINE static 
+hydro_real_t hydro_get_h_dt_sum(const hydro_real_t dv_dot_dx,
+                                const hydro_real_t dv_dot_G,
+                                const hydro_real_t m, 
+                                const hydro_real_t rho_inv,
+                                const hydro_real_t r_inv,
+                                const hydro_real_t w_dr) {
+
+  hydro_real_t dvdx = 0.;
+#ifdef hydro_props_dh_dt_estimator_type
+#if (hydro_props_dh_dt_estimator_type == 0)
+  const hydro_real_t grad = r_inv * w_dr;
+  const hydro_real_t wt = m * rho_inv;
+  dvdx = dv_dot_dx;
+#elif (hydro_props_dh_dt_estimator_type == 1)
+  const hydro_real_t grad = r_inv * w_dr;
+  const hydro_real_t wt = 1.;
+  dvdx = dv_dot_dx;
+#elif (hydro_props_dh_dt_estimator_type == 2)
+  const hydro_real_t grad = 1.;
+  const hydro_real_t wt = m * rho_inv;
+  dvdx = dv_dot_G;
+#else
+  error("Compiled with an unknown dh/dt estimator type");
+#endif
+#else
+  error("Must compile with hydro_props_dh_dt_estimator_type.");
+#endif
+
+  return wt * dvdx * grad;
+}
+
+/**
+ * @brief Returns the normalization for the dh/dt sum
+ *
+ *
+ * @param p The particle
+ */
+__attribute__((always_inline)) INLINE static 
+hydro_real_t hydro_get_h_dt_norm(struct part *restrict p) {
+
+  hydro_real_t renormalization = 1.;
+
+#ifdef hydro_props_dh_dt_estimator_type
+#if (hydro_props_dh_dt_estimator_type == 1)
+  renormalization = p->force.f / p->gradients.wcount;
+#endif
+#else
+  error("Must compile with hydro_props_dh_dt_estimator_type.");
+#endif
+
+  return renormalization * p->h * hydro_dimension_inv;
+}
+
+/**
  * @brief Finishes the force calculation.
  *
  * Multiplies the force and accelerations by the appropiate constants
@@ -2141,9 +2204,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
-  
-  const hydro_real_t wcount_inv = 1. / p->gradients.wcount;
-  p->force.h_dt *= p->force.f * p->h * hydro_dimension_inv * wcount_inv;
+
+  p->force.h_dt *= hydro_get_h_dt_norm(p);
 }
 
 /**

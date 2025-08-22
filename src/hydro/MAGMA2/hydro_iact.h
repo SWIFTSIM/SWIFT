@@ -843,8 +843,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
     /* Velocity divergence is from the SPH estimator, not the G_ij vector */
     const hydro_real_t dv_dot_dx_ij = hydro_vec3_vec3_dot(dv_raw, dx_ij);
-    pi->force.h_dt -= dv_dot_dx_ij * r_inv * wi_dr;
-    pj->force.h_dt -= dv_dot_dx_ij * r_inv * wj_dr;
+    pi->force.h_dt -= hydro_get_h_dt_sum(dv_dot_dx_ij, dv_dot_G_ij, 
+                                         mj, rhoj_inv, r_inv, wi_dr);
+    pj->force.h_dt -= hydro_get_h_dt_sum(dv_dot_dx_ij, dv_dot_G_ij, 
+                                         mi, rhoi_inv, r_inv, wj_dr);
 
 
     /* Timestepping */
@@ -942,8 +944,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     cond_du_term *= kernel_gradient;
 
     /* Get the time derivative for h. */
-    pi->force.h_dt -= dvdr * r_inv * wi_dr;
-    pj->force.h_dt -= dvdr * r_inv * wj_dr;
+    pi->force.h_dt -= hydro_get_h_dt_sum(dvdr, 0., mj, rhoj_inv, r_inv, wi_dr);
+    pj->force.h_dt -= hydro_get_h_dt_sum(dvdr, 0., mi, rhoi_inv, r_inv, wj_dr);
 
 #ifdef MAGMA2_DEBUG_CHECKS
     pi->debug.N_force_low_order_grad++;
@@ -1378,7 +1380,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
 
     const hydro_real_t dv_dot_dx_ij = hydro_vec3_vec3_dot(dv_raw, dx_ij);
-    pi->force.h_dt -= dv_dot_dx_ij * r_inv * wi_dr;
+    pi->force.h_dt -= hydro_get_h_dt_sum(dv_dot_dx_ij, dv_dot_G_ij, 
+                                         mj, rhoj_inv, r_inv, wi_dr);
 
 
     /* Timestepping */
@@ -1467,7 +1470,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     cond_du_term *= kernel_gradient;
 
     /* Get the time derivative for h. */
-    pi->force.h_dt -= dvdr * r_inv * wi_dr;
+    pi->force.h_dt -= hydro_get_h_dt_sum(dvdr, 0., mj, rhoj_inv, r_inv, wi_dr);
 
 #ifdef MAGMA2_DEBUG_CHECKS
     pi->debug.N_force_low_order_grad++;
