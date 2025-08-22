@@ -535,9 +535,10 @@ struct cell {
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                 ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
-                struct cell_buff *buff, struct cell_buff *sbuff,
-                struct cell_buff *bbuff, struct cell_buff *gbuff,
-                struct cell_buff *sinkbuff);
+                ptrdiff_t siparts_offset, struct cell_buff *buff,
+                struct cell_buff *sbuff, struct cell_buff *bbuff,
+                struct cell_buff *gbuff, struct cell_buff *sinkbuff,
+                struct cell_buff *sibuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
@@ -716,7 +717,7 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
 void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset);
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
                                struct spart *sparts, struct sink *sinks,
-                               struct bpart *bparts);
+                               struct bpart *bparts, struct sipart *siparts);
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
 void cell_reorder_extra_siparts(struct cell *c, const ptrdiff_t siparts_offset);
 void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
@@ -1785,6 +1786,41 @@ __attribute__((always_inline)) static INLINE void cell_set_bpart_h_depth(
   while (c != NULL) {
     if (h >= c->h_min_allowed && h < c->h_max_allowed) {
       bp->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
+}
+
+/**
+ * @brief Set the depth_h field of an #sipart.
+ *
+ * @param sip The #sipart.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_sipart_h_depth(
+    struct sipart *sip, const struct cell *leaf_cell) {
+
+  const float h = sip->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    sip->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      sip->depth_h = c->depth;
       return;
     }
     c = c->parent;

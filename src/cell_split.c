@@ -41,6 +41,8 @@
  * s->black_holes.parts.
  * @param sinks_offset Offset of the cell sink array relative to the
  *        space's sink array, i.e. c->sinks.parts - s->sinks.parts.
+ * @param siparts_offset Offset of the cell siparts array relative to the
+ *        space's sink array, i.e. c->sidm.parts - s->sidm.parts
  * @param buff A buffer with at least max(c->hydro.count, c->grav.count)
  * entries, used for sorting indices.
  * @param sbuff A buffer with at least max(c->stars.count, c->grav.count)
@@ -51,24 +53,29 @@
  * entries, used for sorting indices for the gparts.
  * @param sinkbuff A buffer with at least max(c->sinks.count, c->grav.count)
  * entries, used for sorting indices for the sinks.
+ * @param sipartbuff A buffer with at least max(c->sidm.count, c->grav.count)
+ * entries, used for sorting indices for the sinks.
  */
 void cell_split(struct cell *c, const ptrdiff_t parts_offset,
                 const ptrdiff_t sparts_offset, const ptrdiff_t bparts_offset,
-                const ptrdiff_t sinks_offset, struct cell_buff *restrict buff,
+                const ptrdiff_t sinks_offset, const ptrdiff_t siparts_offset,
+                struct cell_buff *restrict buff,
                 struct cell_buff *restrict sbuff,
                 struct cell_buff *restrict bbuff,
                 struct cell_buff *restrict gbuff,
-                struct cell_buff *restrict sinkbuff) {
+                struct cell_buff *restrict sinkbuff,
+                struct cell_buff *restrict sibuff) {
 
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
-            sink_count = c->sinks.count;
+            sink_count = c->sinks.count, sicount = c->sidm.count;
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
   struct sink *sinks = c->sinks.parts;
+  struct sipart *siparts = c->sidm.parts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
                            c->loc[2] + c->width[2] / 2};
@@ -101,6 +108,11 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     if (sinkbuff[k].x[0] != sinks[k].x[0] ||
         sinkbuff[k].x[1] != sinks[k].x[1] || sinkbuff[k].x[2] != sinks[k].x[2])
       error("Inconsistent sinkbuff contents.");
+  }
+  for (int k = 0; k < sicount; k++) {
+    if (sibuff[k].x[0] != siparts[k].x[0] ||
+        sibuff[k].x[1] != siparts[k].x[1] || sibuff[k].x[2] != siparts[k].x[2])
+      error("Inconsistent sibuff contents.");
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -387,6 +399,62 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     c->progeny[k]->sinks.parts_rebuild = c->progeny[k]->sinks.parts;
   }
 
+  /* Now do the same song and dance for the siparts. */
+  for (int k = 0; k < 8; k++) bucket_count[k] = 0;
+
+  /* Fill the buffer with the indices. */
+  for (int k = 0; k < sicount; k++) {
+    const int bid = (sibuff[k].x[0] > pivot[0]) * 4 +
+                    (sibuff[k].x[1] > pivot[1]) * 2 +
+                    (sibuff[k].x[2] > pivot[2]);
+    bucket_count[bid]++;
+    sibuff[k].ind = bid;
+  }
+
+  /* Set the buffer offsets. */
+  bucket_offset[0] = 0;
+  for (int k = 1; k <= 8; k++) {
+    bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
+    bucket_count[k - 1] = 0;
+  }
+
+  /* Run through the buckets, and swap particles to their correct spot. */
+  for (int bucket = 0; bucket < 8; bucket++) {
+    for (int k = bucket_offset[bucket] + bucket_count[bucket];
+         k < bucket_offset[bucket + 1]; k++) {
+      int bid = sibuff[k].ind;
+      if (bid != bucket) {
+        struct sipart sipart = siparts[k];
+        struct cell_buff temp_buff = sibuff[k];
+        while (bid != bucket) {
+          int j = bucket_offset[bid] + bucket_count[bid]++;
+          while (sibuff[j].ind == bid) {
+            j++;
+            bucket_count[bid]++;
+          }
+          memswap(&siparts[j], &sipart, sizeof(struct sipart));
+          memswap(&sibuff[j], &temp_buff, sizeof(struct cell_buff));
+          if (siparts[j].gpart)
+            siparts[j].gpart->id_or_neg_offset = -(j + siparts_offset);
+          bid = temp_buff.ind;
+        }
+        siparts[k] = sipart;
+        sibuff[k] = temp_buff;
+        if (siparts[k].gpart)
+          siparts[k].gpart->id_or_neg_offset = -(k + siparts_offset);
+      }
+      bucket_count[bid]++;
+    }
+  }
+
+  /* Store the counts and offsets. */
+  for (int k = 0; k < 8; k++) {
+    c->progeny[k]->sidm.count = bucket_count[k];
+    c->progeny[k]->sidm.count_total = c->progeny[k]->sidm.count;
+    c->progeny[k]->sidm.parts = &c->sidm.parts[bucket_offset[k]];
+    c->progeny[k]->sidm.parts_rebuild = c->progeny[k]->sidm.parts;
+  }
+
   /* Finally, do the same song and dance for the gparts. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
@@ -433,6 +501,9 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           } else if (gparts[j].type == swift_type_black_hole) {
             bparts[-gparts[j].id_or_neg_offset - bparts_offset].gpart =
                 &gparts[j];
+          } else if (gparts[j].type == swift_type_sidm) {
+            siparts[-gparts[j].id_or_neg_offset - siparts_offset].gpart =
+                &gparts[j];
           }
           bid = temp_buff.ind;
         }
@@ -447,6 +518,9 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           sinks[-gparts[k].id_or_neg_offset - sinks_offset].gpart = &gparts[k];
         } else if (gparts[k].type == swift_type_black_hole) {
           bparts[-gparts[k].id_or_neg_offset - bparts_offset].gpart =
+              &gparts[k];
+        } else if (gparts[k].type == swift_type_sidm) {
+          siparts[-gparts[k].id_or_neg_offset - siparts_offset].gpart =
               &gparts[k];
         }
       }
@@ -638,7 +712,7 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset) {
  */
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
                                struct spart *sparts, struct sink *sinks,
-                               struct bpart *bparts) {
+                               struct bpart *bparts, struct sipart *siparts) {
   struct gpart *gparts = c->grav.parts;
   const int count_real = c->grav.count;
 
@@ -672,6 +746,8 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
         sparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       } else if (gparts[i].type == swift_type_black_hole) {
         bparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
+      } else if (gparts[i].type == swift_type_sidm) {
+        siparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       }
     }
   }

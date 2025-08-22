@@ -102,6 +102,7 @@ int main(int argc, char *argv[]) {
   struct sink_props sink_properties;
   struct neutrino_props neutrino_properties;
   struct neutrino_response neutrino_response;
+  struct sidm_props sidm_properties;
   struct feedback_props feedback_properties;
   struct rt_props rt_properties;
   struct entropy_floor_properties entropy_floor;
@@ -1191,6 +1192,13 @@ int main(int argc, char *argv[]) {
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
 
+    /* Initialise the SIDM properties */
+    if (with_sidm) {
+      sidm_props_init(&sidm_properties, &prog_const, &us, params,
+                      &hydro_properties, &cosmo);
+    } else
+      bzero(&sidm_properties, sizeof(struct sidm_props));
+
       /* Initialise the cooling function properties */
 #ifdef COOLING_NONE
     if (with_cooling) {
@@ -1483,6 +1491,7 @@ int main(int argc, char *argv[]) {
     /* Also update the total counts (in case of changes due to replication) */
     Nbaryons = s.nr_parts + s.nr_sparts + s.nr_bparts + s.nr_sinks;
     Nnupart = s.nr_nuparts;
+    Nsipart = s.nr_siparts;
 #if defined(WITH_MPI)
     N_long[swift_type_gas] = s.nr_parts;
     N_long[swift_type_dark_matter] =
@@ -1589,10 +1598,11 @@ int main(int argc, char *argv[]) {
                 N_total[swift_type_count], N_total[swift_type_sink],
                 N_total[swift_type_stars], N_total[swift_type_black_hole],
                 N_total[swift_type_dark_matter_background],
-                N_total[swift_type_neutrino], engine_policies, talking, &us,
-                &prog_const, &cosmo, &hydro_properties, &entropy_floor,
-                &gravity_properties, &stars_properties, &black_holes_properties,
-                &sink_properties, &neutrino_properties, &neutrino_response,
+                N_total[swift_type_neutrino], N_total[swift_type_sidm],
+                engine_policies, talking, &us, &prog_const, &cosmo,
+                &hydro_properties, &entropy_floor, &gravity_properties,
+                &stars_properties, &black_holes_properties, &sink_properties,
+                &neutrino_properties, &sidm_properties, &neutrino_response,
                 &feedback_properties, &pressure_floor_props, &rt_properties,
                 &mesh, &pow_data, &potential, &forcing_terms, &cooling_func,
                 &starform, &chemistry, &extra_io_props, &fof_properties,

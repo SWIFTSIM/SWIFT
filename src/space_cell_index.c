@@ -47,11 +47,13 @@ struct space_index_data {
   size_t count_inhibited_spart;
   size_t count_inhibited_bpart;
   size_t count_inhibited_sink;
+  size_t count_inhibited_sipart;
   size_t count_extra_part;
   size_t count_extra_gpart;
   size_t count_extra_spart;
   size_t count_extra_bpart;
   size_t count_extra_sink;
+  size_t count_extra_sipart;
 };
 
 /**
@@ -697,6 +699,134 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
 }
 
 /**
+ * @brief #threadpool mapper function to compute the si-particle cell indices.
+ *
+ * @param map_data Pointer towards the si-particles.
+ * @param nr_sparts The number of si-particles to treat.
+ * @param extra_data Pointers to the space and index list
+ */
+void space_siparts_get_cell_index_mapper(void *map_data, int nr_siparts,
+                                         void *extra_data) {
+
+  /* Unpack the data */
+  struct sipart *restrict siparts = (struct sipart *)map_data;
+  struct space_index_data *data = (struct space_index_data *)extra_data;
+  struct space *s = data->s;
+  int *const ind = data->ind + (ptrdiff_t)(siparts - s->siparts);
+
+  /* Get some constants */
+  const double dim_x = s->dim[0];
+  const double dim_y = s->dim[1];
+  const double dim_z = s->dim[2];
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double ih_x = s->iwidth[0];
+  const double ih_y = s->iwidth[1];
+  const double ih_z = s->iwidth[2];
+
+  /* Init the local count buffer. */
+  int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
+  if (cell_counts == NULL)
+    error("Failed to allocate temporary cell count buffer.");
+
+  /* Init the local collectors */
+  float min_mass = FLT_MAX;
+  float sum_vel_norm = 0.f;
+  size_t count_inhibited_sipart = 0;
+  size_t count_extra_sipart = 0;
+
+  for (int k = 0; k < nr_siparts; k++) {
+
+    /* Get the particle */
+    struct sipart *restrict sip = &siparts[k];
+
+    double old_pos_x = sip->x[0];
+    double old_pos_y = sip->x[1];
+    double old_pos_z = sip->x[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!s->periodic && sip->time_bin != time_bin_inhibited) {
+      if (old_pos_x < 0. || old_pos_x > dim_x)
+        error("Particle outside of volume along X.");
+      if (old_pos_y < 0. || old_pos_y > dim_y)
+        error("Particle outside of volume along Y.");
+      if (old_pos_z < 0. || old_pos_z > dim_z)
+        error("Particle outside of volume along Z.");
+    }
+#endif
+
+    /* Put it back into the simulation volume */
+    double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
+    double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
+    double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+
+    /* Treat the case where a particle was wrapped back exactly onto
+     * the edge because of rounding issues (more accuracy around 0
+     * than around dim) */
+    if (pos_x == dim_x) pos_x = 0.0;
+    if (pos_y == dim_y) pos_y = 0.0;
+    if (pos_z == dim_z) pos_z = 0.0;
+
+    /* Get its cell index */
+    const int index =
+        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
+            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+
+    if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
+        pos_y < 0. || pos_z < 0.)
+      error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
+            pos_z);
+#endif
+
+    /* Is this particle to be removed? */
+    if (sip->time_bin == time_bin_inhibited) {
+      ind[k] = -1;
+      ++count_inhibited_sipart;
+    } else if (sip->time_bin == time_bin_not_created) {
+      /* Is this a place-holder for on-the-fly creation? */
+      ind[k] = index;
+      cell_counts[index]++;
+      ++count_extra_sipart;
+
+    } else {
+      /* List its top-level cell index */
+      ind[k] = index;
+      cell_counts[index]++;
+
+      /* Compute minimal mass */
+      min_mass = min(min_mass, sip->mass);
+
+      /* Compute sum of velocity norm */
+      sum_vel_norm +=
+          sip->v[0] * sip->v[0] + sip->v[1] * sip->v[1] + sip->v[2] * sip->v[2];
+
+      /* Update the position */
+      sip->x[0] = pos_x;
+      sip->x[1] = pos_y;
+      sip->x[2] = pos_z;
+    }
+  }
+
+  /* Write the counts back to the global array. */
+  for (int k = 0; k < s->nr_cells; k++)
+    if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
+  free(cell_counts);
+
+  /* Write the count of inhibited and extra siparts */
+  if (count_inhibited_sipart)
+    atomic_add(&data->count_inhibited_sipart, count_inhibited_sipart);
+  if (count_extra_sipart)
+    atomic_add(&data->count_extra_sipart, count_extra_sipart);
+
+  /* Write back the minimal part mass and velocity sum */
+  atomic_min_f(&s->min_sipart_mass, min_mass);
+  atomic_add_f(&s->sum_sipart_vel_norm, sum_vel_norm);
+}
+
+/**
  * @brief Computes the cell index of all the particles.
  *
  * Also computes the minimal mass of all #part.
@@ -943,6 +1073,60 @@ void space_bparts_get_cell_index(struct space *s, int *bind, int *cell_counts,
 
   *count_inhibited_bparts = data.count_inhibited_bpart;
   *count_extra_bparts = data.count_extra_bpart;
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Computes the cell index of all the si-particles.
+ *
+ * Also computes the minimal mass of all #spart.
+ *
+ * @param s The #space.
+ * @param si_ind The array of indices to fill.
+ * @param cell_counts The cell counters to update.
+ * @param count_inhibited_siparts (return) The number of #sipart to remove.
+ * @param count_extra_siparts (return) The number of #sipart for on-the-fly
+ * creation.
+ * @param verbose Are we talkative ?
+ */
+void space_siparts_get_cell_index(struct space *s, int *si_ind,
+                                  int *cell_counts,
+                                  size_t *count_inhibited_siparts,
+                                  size_t *count_extra_siparts, int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Re-set the counters */
+  s->min_sipart_mass = FLT_MAX;
+  s->sum_sipart_vel_norm = 0.f;
+
+  /* Pack the extra information */
+  struct space_index_data data;
+  data.s = s;
+  data.ind = si_ind;
+  data.cell_counts = cell_counts;
+  data.count_inhibited_part = 0;
+  data.count_inhibited_gpart = 0;
+  data.count_inhibited_spart = 0;
+  data.count_inhibited_sink = 0;
+  data.count_inhibited_bpart = 0;
+  data.count_inhibited_sipart = 0;
+  data.count_extra_part = 0;
+  data.count_extra_gpart = 0;
+  data.count_extra_spart = 0;
+  data.count_extra_bpart = 0;
+  data.count_extra_sink = 0;
+  data.count_extra_sipart = 0;
+
+  threadpool_map(&s->e->threadpool, space_siparts_get_cell_index_mapper,
+                 s->siparts, s->nr_siparts, sizeof(struct sipart),
+                 threadpool_auto_chunk_size, &data);
+
+  *count_inhibited_siparts = data.count_inhibited_sipart;
+  *count_extra_siparts = data.count_extra_sipart;
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

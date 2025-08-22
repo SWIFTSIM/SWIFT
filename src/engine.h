@@ -268,6 +268,15 @@ struct engine {
   /* Maximal sinks ti_beg for the next time-step */
   integertime_t ti_sinks_beg_max;
 
+  /* Minimal sidm ti_end for the next time-step */
+  integertime_t ti_sidm_end_min;
+
+  /* Maximal sidm ti_end for the next time-step */
+  integertime_t ti_sidm_end_max;
+
+  /* Maximal sidm ti_beg for the next time-step */
+  integertime_t ti_sidm_beg_max;
+
   /* Minimal overall ti_end for the next time-step */
   integertime_t ti_end_min;
 
@@ -275,7 +284,8 @@ struct engine {
   integertime_t ti_beg_max;
 
   /* Number of particles updated in the previous step */
-  long long updates, g_updates, s_updates, b_updates, sink_updates, rt_updates;
+  long long updates, g_updates, s_updates, b_updates, sink_updates, rt_updates,
+      si_updates;
 
   /* Number of updates since the last rebuild */
   long long updates_since_rebuild;
@@ -283,6 +293,7 @@ struct engine {
   long long s_updates_since_rebuild;
   long long sink_updates_since_rebuild;
   long long b_updates_since_rebuild;
+  long long si_updates_since_rebuild;
 
   /* Star formation logger information */
   struct star_formation_history_accumulator sfh;
@@ -296,6 +307,7 @@ struct engine {
   long long total_nr_sparts;
   long long total_nr_sinks;
   long long total_nr_bparts;
+  long long total_nr_siparts;
   long long total_nr_DM_background_gparts;
   long long total_nr_neutrino_gparts;
 
@@ -311,6 +323,7 @@ struct engine {
   long long nr_inhibited_sparts;
   long long nr_inhibited_sinks;
   long long nr_inhibited_bparts;
+  long long nr_inhibited_siparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Total number of particles removed from the system since the last rebuild */
@@ -318,6 +331,7 @@ struct engine {
   long long count_inhibited_gparts;
   long long count_inhibited_sparts;
   long long count_inhibited_bparts;
+  long long count_inhibited_siparts;
 #endif
 
   /* Maximal ID of the parts, *excluding* background particles
@@ -531,6 +545,9 @@ struct engine {
   /* Properties of the neutrino model */
   const struct neutrino_props *neutrino_properties;
 
+  /* Properties of the SIDM model */
+  const struct sidm_props *sidm_properties;
+
   /* The linear neutrino response */
   struct neutrino_response *neutrino_response;
 
@@ -721,14 +738,14 @@ void engine_init(
     struct engine *e, struct space *s, struct swift_params *params,
     struct output_options *output_options, long long Ngas, long long Ngparts,
     long long Nsinks, long long Nstars, long long Nblackholes,
-    long long Nbackground_gparts, long long Nnuparts, int policy, int verbose,
-    const struct unit_system *internal_units,
+    long long Nbackground_gparts, long long Nnuparts, long long Nsidm,
+    int policy, int verbose, const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
     struct hydro_props *hydro,
     const struct entropy_floor_properties *entropy_floor,
     struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
-    const struct neutrino_props *neutrinos,
+    const struct neutrino_props *neutrinos, const struct sidm_props *sidm,
     struct neutrino_response *neutrino_response,
     struct feedback_props *feedback,
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
@@ -761,7 +778,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             const int *ind_spart, size_t *Nspart,
                             const size_t offset_bparts, const int *ind_bpart,
                             size_t *Nbpart, const size_t offset_sinks,
-                            const int *ind_sink, size_t *Nsink);
+                            const int *ind_sink, size_t *Nsink,
+                            const size_t offset_siparts, const int *ind_sipart,
+                            size_t *Nsipart);
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);

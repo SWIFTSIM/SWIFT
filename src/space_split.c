@@ -49,20 +49,21 @@
  *        c->grav.count or @c NULL.
  * @param sink_buff A buffer for particle sorting, should be of size at least
  *        c->sinks.count or @c NULL.
+ * @param sibuff A buffer for particle sorting, should be of size at least
+ *        c->sidm.count or @c NULL.
  */
-void space_split_recursive(struct space *s, struct cell *c,
-                           struct cell_buff *restrict buff,
-                           struct cell_buff *restrict sbuff,
-                           struct cell_buff *restrict bbuff,
-                           struct cell_buff *restrict gbuff,
-                           struct cell_buff *restrict sink_buff,
-                           const short int tpid) {
+void space_split_recursive(
+    struct space *s, struct cell *c, struct cell_buff *restrict buff,
+    struct cell_buff *restrict sbuff, struct cell_buff *restrict bbuff,
+    struct cell_buff *restrict gbuff, struct cell_buff *restrict sink_buff,
+    struct cell_buff *restrict sibuff, const short int tpid) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
   const int sink_count = c->sinks.count;
+  const int sicount = c->sidm.count;
   const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
   int maxdepth = 0;
@@ -74,6 +75,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   float black_holes_h_max_active = 0.f;
   float sinks_h_max = 0.f;
   float sinks_h_max_active = 0.f;
+  float sidm_h_max = 0.f;
+  float sidm_h_max_active = 0.f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_rt_min_step_size = max_nr_timesteps;
@@ -82,12 +85,14 @@ void space_split_recursive(struct space *s, struct cell *c,
   integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_beg_max = 0;
+  integertime_t ti_sidm_end_min = max_nr_timesteps, ti_sidm_beg_max = 0;
   struct part *parts = c->hydro.parts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
   struct xpart *xparts = c->hydro.xparts;
   struct sink *sinks = c->sinks.parts;
+  struct sipart *siparts = c->sidm.parts;
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
   const int with_rt = e->policy & engine_policy_rt;
@@ -97,8 +102,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   if (depth == 0) c->tpid = tpid;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
-  const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
-                               bbuff == NULL && sink_buff == NULL);
+  const int allocate_buffer =
+      (buff == NULL && gbuff == NULL && sbuff == NULL && bbuff == NULL &&
+       sink_buff == NULL && sibuff == NULL);
   if (allocate_buffer) {
     if (count > 0) {
       if (swift_memalign("tempbuff", (void **)&buff, SWIFT_STRUCT_ALIGNMENT,
@@ -181,6 +187,23 @@ void space_split_recursive(struct space *s, struct cell *c,
         sink_buff[k].x[2] = sinks[k].x[2];
       }
     }
+    if (sicount > 0) {
+      if (swift_memalign("temp_sibuff", (void **)&sibuff,
+                         SWIFT_STRUCT_ALIGNMENT,
+                         sizeof(struct cell_buff) * sicount) != 0)
+        error("Failed to allocate temporary indices.");
+      for (int k = 0; k < sicount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (siparts[k].time_bin == time_bin_inhibited)
+          error("Inhibited particle present in space_split()");
+        if (siparts[k].time_bin == time_bin_not_created)
+          error("Extra particle present in space_split()");
+#endif
+        sibuff[k].x[0] = siparts[k].x[0];
+        sibuff[k].x[1] = siparts[k].x[1];
+        sibuff[k].x[2] = siparts[k].x[2];
+      }
+    }
   }
 
   /* If the depth is too large, we have a problem and should stop. */
@@ -209,17 +232,20 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.count = 0;
       cp->sinks.count = 0;
       cp->black_holes.count = 0;
+      cp->sidm.count = 0;
       cp->hydro.count_total = 0;
       cp->grav.count_total = 0;
       cp->sinks.count_total = 0;
       cp->stars.count_total = 0;
       cp->black_holes.count_total = 0;
+      cp->sidm.count_total = 0;
       cp->hydro.ti_old_part = c->hydro.ti_old_part;
       cp->grav.ti_old_part = c->grav.ti_old_part;
       cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
       cp->stars.ti_old_part = c->stars.ti_old_part;
       cp->sinks.ti_old_part = c->sinks.ti_old_part;
       cp->black_holes.ti_old_part = c->black_holes.ti_old_part;
+      cp->sidm.ti_old_part = c->sidm.ti_old_part;
       cp->loc[0] = c->loc[0];
       cp->loc[1] = c->loc[1];
       cp->loc[2] = c->loc[2];
@@ -248,6 +274,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->black_holes.h_max = 0.f;
       cp->black_holes.h_max_active = 0.f;
       cp->black_holes.dx_max_part = 0.f;
+      cp->sidm.h_max = 0.f;
+      cp->sidm.h_max_active = 0.f;
+      cp->sidm.dx_max_part = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->top = c->top;
@@ -267,12 +296,13 @@ void space_split_recursive(struct space *s, struct cell *c,
     /* Split the cell's particle data. */
     cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
                c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
-               buff, sbuff, bbuff, gbuff, sink_buff);
+               c->sidm.parts - s->siparts, buff, sbuff, bbuff, gbuff, sink_buff,
+               sibuff);
 
     /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
                      *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
-                     *progeny_sink_buff = sink_buff;
+                     *progeny_sink_buff = sink_buff, *progeny_sibuff = sibuff;
 
     for (int k = 0; k < 8; k++) {
 
@@ -281,7 +311,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Remove any progeny with zero particles. */
       if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
-          cp->black_holes.count == 0 && cp->sinks.count == 0) {
+          cp->black_holes.count == 0 && cp->sinks.count == 0 &&
+          cp->sidm.count) {
 
         space_recycle(s, cp);
         c->progeny[k] = NULL;
@@ -290,7 +321,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Recurse */
         space_split_recursive(s, cp, progeny_buff, progeny_sbuff, progeny_bbuff,
-                              progeny_gbuff, progeny_sink_buff, tpid);
+                              progeny_gbuff, progeny_sink_buff, progeny_sibuff,
+                              tpid);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
@@ -298,6 +330,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         progeny_sbuff += cp->stars.count;
         progeny_bbuff += cp->black_holes.count;
         progeny_sink_buff += cp->sinks.count;
+        progeny_sibuff += cp->sidm.count;
 
         /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
@@ -309,6 +342,8 @@ void space_split_recursive(struct space *s, struct cell *c,
             max(black_holes_h_max_active, cp->black_holes.h_max_active);
         sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
         sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
+        sidm_h_max = max(sidm_h_max, cp->sidm.h_max);
+        sidm_h_max_active = max(sidm_h_max_active, cp->sidm.h_max_active);
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -326,6 +361,8 @@ void space_split_recursive(struct space *s, struct cell *c,
             min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
         ti_black_holes_beg_max =
             max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+        ti_sidm_end_min = min(ti_sidm_end_min, cp->sidm.ti_end_min);
+        ti_sidm_beg_max = max(ti_sidm_beg_max, cp->sidm.ti_beg_max);
 
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
@@ -461,6 +498,9 @@ void space_split_recursive(struct space *s, struct cell *c,
 
     ti_black_holes_end_min = max_nr_timesteps;
     ti_black_holes_beg_max = 0;
+
+    ti_sidm_end_min = max_nr_timesteps;
+    ti_sidm_beg_max = 0;
 
     ti_rt_end_min = max_nr_timesteps;
     ti_rt_beg_max = 0;
@@ -627,6 +667,36 @@ void space_split_recursive(struct space *s, struct cell *c,
       bparts[k].x_diff[2] = 0.f;
     }
 
+    /* sidm: Get dt_min/dt_max */
+    for (int k = 0; k < sicount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (siparts[k].time_bin == time_bin_not_created)
+        error("Extra si-particle present in space_split()");
+      if (siparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited si-particle present in space_split()");
+#endif
+
+      /* When does this particle's time-step start and end? */
+      const timebin_t time_bin = siparts[k].time_bin;
+      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
+      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+
+      ti_sidm_end_min = min(ti_sidm_end_min, ti_end);
+      ti_sidm_beg_max = max(ti_sidm_beg_max, ti_beg);
+
+      sidm_h_max = max(sidm_h_max, siparts[k].h);
+
+      if (sipart_is_active(&siparts[k], e))
+        sidm_h_max_active = max(sidm_h_max_active, siparts[k].h);
+
+      cell_set_sipart_h_depth(&siparts[k], c);
+
+      /* Reset x_diff */
+      siparts[k].x_diff[0] = 0.f;
+      siparts[k].x_diff[1] = 0.f;
+      siparts[k].x_diff[2] = 0.f;
+    }
+
     /* Construct the multipole and the centre of mass*/
     if (s->with_self_gravity) {
       if (gcount > 0) {
@@ -681,6 +751,10 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.h_max = black_holes_h_max;
   c->black_holes.h_max_active = black_holes_h_max_active;
+  c->sidm.ti_end_min = ti_sidm_end_min;
+  c->sidm.ti_beg_max = ti_sidm_beg_max;
+  c->sidm.h_max = sidm_h_max;
+  c->sidm.h_max_active = sidm_h_max_active;
   c->maxdepth = maxdepth;
 
   /* No runner owns this cell yet. We assign those during scheduling. */
@@ -696,6 +770,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (sbuff != NULL) swift_free("tempsbuff", sbuff);
     if (bbuff != NULL) swift_free("tempbbuff", bbuff);
     if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
+    if (sibuff != NULL) swift_free("temp_sibuff", sibuff);
   }
 }
 
@@ -725,7 +800,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, NULL, tpid);
 
     if (s->with_self_gravity) {
       min_a_grav =
