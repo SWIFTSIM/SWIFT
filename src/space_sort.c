@@ -275,6 +275,67 @@ void space_sinks_sort(struct sink *sinks, int *restrict ind,
 }
 
 /**
+ * @brief Sort the si-particles according to the given indices.
+ *
+ * @param siparts The array of #sipart to sort.
+ * @param ind The indices with respect to which the #sipart are sorted.
+ * @param counts Number of particles per index.
+ * @param num_bins Total number of bins (length of counts).
+ * @param siparts_offset Offset of the #sipart array from the global #sipart.
+ * array.
+ */
+void space_siparts_sort(struct sipart *siparts, int *restrict ind,
+                        int *restrict counts, int num_bins,
+                        ptrdiff_t siparts_offset) {
+  /* Create the offsets array. */
+  size_t *offsets = NULL;
+  if (swift_memalign("siparts_offsets", (void **)&offsets,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(size_t) * (num_bins + 1)) != 0)
+    error("Failed to allocate temporary cell offsets array.");
+
+  offsets[0] = 0;
+  for (int k = 1; k <= num_bins; k++) {
+    offsets[k] = offsets[k - 1] + counts[k - 1];
+    counts[k - 1] = 0;
+  }
+
+  /* Loop over local cells. */
+  for (int cid = 0; cid < num_bins; cid++) {
+    for (size_t k = offsets[cid] + counts[cid]; k < offsets[cid + 1]; k++) {
+      counts[cid]++;
+      int target_cid = ind[k];
+      if (target_cid == cid) {
+        continue;
+      }
+      struct sipart temp_sipart = siparts[k];
+      while (target_cid != cid) {
+        size_t j = offsets[target_cid] + counts[target_cid]++;
+        while (ind[j] == target_cid) {
+          j = offsets[target_cid] + counts[target_cid]++;
+        }
+        memswap(&siparts[j], &temp_sipart, sizeof(struct sipart));
+        memswap(&ind[j], &target_cid, sizeof(int));
+        if (siparts[j].gpart)
+          siparts[j].gpart->id_or_neg_offset = -(j + siparts_offset);
+      }
+      siparts[k] = temp_sipart;
+      ind[k] = target_cid;
+      if (siparts[k].gpart)
+        siparts[k].gpart->id_or_neg_offset = -(k + siparts_offset);
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int k = 0; k < num_bins; k++)
+    if (offsets[k + 1] != offsets[k] + counts[k])
+      error("Bad offsets after shuffle.");
+#endif /* SWIFT_DEBUG_CHECKS */
+
+  swift_free("siparts_offsets", offsets);
+}
+
+/**
  * @brief Sort the g-particles according to the given indices.
  *
  * @param gparts The array of #gpart to sort.
@@ -288,8 +349,8 @@ void space_sinks_sort(struct sink *sinks, int *restrict ind,
  */
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        struct sink *sinks, struct spart *sparts,
-                       struct bpart *bparts, int *restrict ind,
-                       int *restrict counts, int num_bins) {
+                       struct bpart *bparts, struct sipart *siparts,
+                       int *restrict ind, int *restrict counts, int num_bins) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
   if (swift_memalign("gparts_offsets", (void **)&offsets,
@@ -327,6 +388,8 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
           bparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
         } else if (gparts[j].type == swift_type_sink) {
           sinks[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
+        } else if (gparts[j].type == swift_type_sidm) {
+          siparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
         }
       }
       gparts[k] = temp_gpart;
@@ -339,6 +402,8 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
         bparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
       } else if (gparts[k].type == swift_type_sink) {
         sinks[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+      } else if (gparts[k].type == swift_type_sidm) {
+        siparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
       }
     }
   }

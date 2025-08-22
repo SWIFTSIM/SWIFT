@@ -29,9 +29,9 @@
 #define proxy_buffinit 100
 
 /* Number of particle types to exchange with proxies in
-   proxy_parts_exchange_first(). We have parts, gparts, sparts, bparts and
-   sinks to exchange, hence 5 types. */
-#define PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES 5
+   proxy_parts_exchange_first(). We have parts, gparts, sparts, bparts,
+   sinks and siparts to exchange, hence 6 types. */
+#define PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES 6
 
 /* Proxy tag arithmetic. */
 #define proxy_tag_shift 9
@@ -42,7 +42,8 @@
 #define proxy_tag_sparts 4
 #define proxy_tag_bparts 5
 #define proxy_tag_sinks 6
-#define proxy_tag_cells 7
+#define proxy_tag_siparts 7
+#define proxy_tag_cells 8
 
 /**
  * @brief The different reasons a cell can be in a proxy
@@ -78,6 +79,7 @@ struct proxy {
   struct spart *sparts_in, *sparts_out;
   struct bpart *bparts_in, *bparts_out;
   struct sink *sinks_in, *sinks_out;
+  struct sipart *siparts_in, *siparts_out;
   int size_parts_in, size_parts_out;
   int nr_parts_in, nr_parts_out;
   int size_gparts_in, size_gparts_out;
@@ -88,6 +90,8 @@ struct proxy {
   int nr_bparts_in, nr_bparts_out;
   int size_sinks_in, size_sinks_out;
   int nr_sinks_in, nr_sinks_out;
+  int size_siparts_in, size_siparts_out;
+  int nr_siparts_in, nr_siparts_out;
 
   /* Buffer to hold the incomming/outgoing particle counts. */
   int buff_out[PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES],
@@ -102,6 +106,7 @@ struct proxy {
   MPI_Request req_sparts_out, req_sparts_in;
   MPI_Request req_bparts_out, req_bparts_in;
   MPI_Request req_sinks_out, req_sinks_in;
+  MPI_Request req_siparts_out, req_siparts_in;
   MPI_Request req_cells_count_out, req_cells_count_in;
   MPI_Request req_cells_out, req_cells_in;
 #endif
@@ -116,6 +121,7 @@ void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N);
 void proxy_sparts_load(struct proxy *p, const struct spart *sparts, int N);
 void proxy_bparts_load(struct proxy *p, const struct bpart *bparts, int N);
 void proxy_sinks_load(struct proxy *p, const struct sink *sinks, int N);
+void proxy_siparts_load(struct proxy *p, const struct sipart *siparts, int N);
 void proxy_free_particle_buffers(struct proxy *p);
 void proxy_parts_exchange_first(struct proxy *p);
 void proxy_parts_exchange_second(struct proxy *p);

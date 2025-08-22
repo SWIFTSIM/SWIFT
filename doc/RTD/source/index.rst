@@ -45,6 +45,7 @@ tumbler of 16yrs old Lagavulin.
    ExternalPotentials/index
    Neutrinos/index
    RadiativeTransfer/index
+   SIDM/index
    NewOption/index
    Task/index
    AnalysisTools/index
