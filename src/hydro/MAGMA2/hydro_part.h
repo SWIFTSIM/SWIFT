@@ -132,12 +132,12 @@ struct part {
   /*! Minimum smoothing length in the kernel */
   float h_min;
 
-  /*! Maximum signal velocity in the kernel */
-  float v_sig_max;
-
   /*! Minimum time-step amongst neighbours */
   float dt_min;
-  
+ 
+  /*! Conduction du/dt */
+  float u_dt_cond;
+ 
   #ifdef MAGMA2_DEBUG_CHECKS
   struct {
     /*! Correction matrix at the last time it was ill-conditioned */

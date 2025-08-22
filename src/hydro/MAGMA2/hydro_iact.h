@@ -703,21 +703,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     /* Artificial viscosity */
 
 
-    hydro_real_t mu_i = 0.;
-    hydro_real_t mu_j = 0.;
-
     /* Get the acceleration term, depends on the weighting scheme */
     visc_acc_term = 
-        hydro_get_visc_acc_term_and_mu(pi, pj, dv_ij, dx_ij, r, 
-                                       fac_mu, a2_Hubble, &mu_i, &mu_j);
+        hydro_get_visc_acc_term(pi, pj, dv_ij, dx_ij, fac_mu, a2_Hubble);
 
     /* Split heating between the two particles */
     visc_du_term = 0.5 * visc_acc_term;
-
-    /* Viscous signal velocity */
-    const hydro_real_t v_sig_visc = 
-        hydro_get_visc_signal_velocity(dx, pi, pj, mu_i, mu_j, 
-                                       const_viscosity_beta);
 
 
     /* Artificial conductivity */
@@ -757,13 +748,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
     const hydro_real_t rho_ij = 0.5 * (rhoi + rhoj);
     const hydro_real_t rho_ij_inv = 1. / rho_ij;
-    const hydro_real_t dv_ij_Hubble[3] = {
-        dv_ij[0] + a2_Hubble * dx_ij[0],
-        dv_ij[1] + a2_Hubble * dx_ij[1],
-        dv_ij[2] + a2_Hubble * dx_ij[2]
+    const hydro_real_t dv_Hubble[3] = {
+        dv[0] + a2_Hubble * dx_ij[0],
+        dv[1] + a2_Hubble * dx_ij[1],
+        dv[2] + a2_Hubble * dx_ij[2]
     };
-    const hydro_real_t dv_ij_Hubble_dot_dx_ij_hat = 
-        hydro_vec3_vec3_dot(dv_ij_Hubble, dx_ij_hat);
+
+    const hydro_real_t dv_Hubble_dot_dx_ij_hat =
+        hydro_vec3_vec3_dot(dv_Hubble, dx_ij_hat);
 
     /* Limit art. cond. to only when information is communicable */
     const hydro_real_t c_ij = 
@@ -771,20 +763,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const hydro_real_t v_sig_alpha = c_ij * (1. + 0.75 * const_viscosity_alpha);
 
     /* Must connect the particles along the LOS */
-    const hydro_real_t eps2 = const_viscosity_epsilon2;
-    const hydro_real_t faci = fac_mu * r * hi / (r2 + eps2 * hi * hi);
-    const hydro_real_t facj = fac_mu * r * hj / (r2 + eps2 * hj * hj);
-    hydro_real_t mu_cond_i = faci * dv_ij_Hubble_dot_dx_ij_hat;
-    hydro_real_t mu_cond_j = facj * dv_ij_Hubble_dot_dx_ij_hat;
-    const hydro_real_t mu_cond_ij = 0.5 * (mu_cond_i + mu_cond_j);
-    const hydro_real_t v_sig_beta = 0.75 * const_viscosity_beta * mu_cond_ij;
+    hydro_real_t mu_ij = fac_mu * dv_Hubble_dot_dx_ij_hat;
+    const hydro_real_t v_sig_beta = 0.75 * const_viscosity_beta * mu_ij;
 
     /* Skip conduction if expansion beats sound speed along LOS */
     if (v_sig_alpha > v_sig_beta) {
 
+      const hydro_real_t dv_ij_Hubble[3] = {
+          dv_ij[0] + a2_Hubble * dx_ij[0],
+          dv_ij[1] + a2_Hubble * dx_ij[1],
+          dv_ij[2] + a2_Hubble * dx_ij[2]
+      };
+
       /* Signal velocity from speed contributions */
 #ifdef hydro_props_use_radial_artificial_terms
-      const hydro_real_t v_sig_speed = fabs(mu_cond_ij);
+      const hydro_real_t dv_ij_Hubble_dot_dx_ij_hat =
+          hydro_vec3_vec3_dot(dv_ij_Hubble, dx_ij_hat);
+      const hydro_real_t v_sig_speed = 
+          fac_mu * fabs(dv_ij_Hubble_dot_dx_ij_hat);
 #else
       const hydro_real_t v_sig_speed = fac_mu * hydro_vec3_norm(dv_ij_Hubble);
 #endif
@@ -797,23 +793,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                       pi->gradients.du_min, pi->gradients.du_max,
                                       pj->gradients.du_min, pj->gradients.du_max);
 
-      /* Use the Balsara limiter */
-      const hydro_real_t b_ij = 
-          0.5 * (pi->gradients.balsara + pj->gradients.balsara);
-
-      const hydro_real_t alpha_cond = const_conductivity_alpha * b_ij;
+      const hydro_real_t alpha_cond = const_conductivity_alpha;
+      const hydro_real_t delta_P = fabs(pressurei - pressurej);
+      const hydro_real_t P_lim = delta_P / (pressurei + pressurej);
 
       /* Add conductivity to the specific energy */
-      cond_du_term = alpha_cond * fabs(v_sig_speed) * du_ij * rho_ij_inv;
+      cond_du_term = alpha_cond * P_lim * v_sig_speed * du_ij * rho_ij_inv;
     }
     else {
-      mu_cond_i = 0.;
-      mu_cond_j = 0.;
+      mu_ij = 0.;
     }
-
-    const hydro_real_t v_sig_cond =
-        hydro_get_cond_signal_velocity(dx, pi, pj, mu_cond_i, mu_cond_j,
-                                       const_viscosity_beta);
 
 
     /* Finalize everything with the correct normalizations. */
@@ -822,17 +811,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
     const hydro_real_t dv_dot_G_ij = hydro_vec3_vec3_dot(dv_raw, G_ij);
 
-    /* Raw velocities with Hubble flow */
-    const hydro_real_t dv_Hubble[3] = {
-        dv[0] + a2_Hubble * dx_ij[0],
-        dv[1] + a2_Hubble * dx_ij[1],
-        dv[2] + a2_Hubble * dx_ij[2]
-    };
-
 #ifdef hydro_props_use_radial_artificial_terms
-    const hydro_real_t dv_Hubble_dot_dx_ij_hat = 
-        hydro_vec3_vec3_dot(dv_Hubble, dx_ij_hat);
-
     /* Compute Hubble flow along LOS */
     const hydro_real_t dv_Hubble_along_dx_ij[3] = {
         dv_Hubble_dot_dx_ij_hat * dx_ij_hat[0],
@@ -871,29 +850,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     /* Timestepping */
 
 
-    /* New signal velocity */
-    const hydro_real_t v_sig_max = fmax(v_sig_visc, v_sig_cond);
+    /* Compute based on raw velocities */
+    const hydro_real_t v_sig_visc =
+        signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
-    /* Update if we need to */
-    pi->v_sig_max = fmax(pi->v_sig_max, v_sig_max);
-    pj->v_sig_max = fmax(pj->v_sig_max, v_sig_max);
-
-#ifdef MAGMA2_DEBUG_CHECKS
-    pi->debug.v_sig_visc_max = fmax(pi->debug.v_sig_visc_max, v_sig_visc);
-    pi->debug.v_sig_cond_max = fmax(pi->debug.v_sig_cond_max, v_sig_cond);
-
-    pj->debug.v_sig_visc_max = fmax(pj->debug.v_sig_visc_max, v_sig_visc);
-    pj->debug.v_sig_cond_max = fmax(pj->debug.v_sig_cond_max, v_sig_cond);
-#endif
-
-    /* Average softening in kernel */
     const hydro_real_t h_ij = 0.5 * (hi + hj);
     pi->h_min = fmin(pi->h_min, h_ij);
     pj->h_min = fmin(pj->h_min, h_ij);
 
     /* New timestep estimate */
-    const hydro_real_t dt_min_i = pi->h_min / pi->v_sig_max;
-    const hydro_real_t dt_min_j = pj->h_min / pj->v_sig_max;
+    const hydro_real_t dt_min_i = h_ij / v_sig_visc;
+    const hydro_real_t dt_min_j = h_ij / v_sig_visc;
     pi->dt_min = fmin(pi->dt_min, dt_min_i);
     pj->dt_min = fmin(pj->dt_min, dt_min_j);
 
@@ -914,7 +881,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     /* Are the particles moving towards each others ? */
     const hydro_real_t omega_ij = fmin(dvdr_Hubble, 0.);
     
-    hydro_real_t mu_cond_ij = fac_mu * r_inv * dvdr_Hubble;
+    hydro_real_t mu_full_ij = fac_mu * r_inv * dvdr_Hubble;
     const hydro_real_t mu_ij = fac_mu * r_inv * omega_ij;
 
     /* Construct the full viscosity term */
@@ -932,57 +899,39 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                   (0.5 * rho_ij)
             : 0.;
 
-    visc_acc_term = visc;
+    visc_acc_term = const_fallback_reduction_factor * visc;
     visc_du_term = 0.5 * visc_acc_term;
     
     const hydro_real_t v_sig_alpha = c_ij * (1. + 0.75 * const_viscosity_alpha);
-    const hydro_real_t v_sig_beta = 0.75 * const_viscosity_beta * mu_cond_ij;
+    const hydro_real_t v_sig_beta = 0.75 * const_viscosity_beta * mu_full_ij;
 
     if (v_sig_alpha > v_sig_beta) {
       const hydro_real_t rho_ij_inv = 2. / rho_ij;
       const hydro_real_t du = pi->u - pj->u;
 
-      cond_du_term = 
-          const_conductivity_alpha * fabs(mu_cond_ij) * du * rho_ij_inv;
-      cond_du_term *= b_ij;
-    }
-    else {
-      mu_cond_ij = 0.;
+      const hydro_real_t alpha_cond = const_conductivity_alpha;
+      const hydro_real_t delta_P = fabs(pressurei - pressurej);
+      const hydro_real_t P_lim = delta_P / (pressurei + pressurej);
+
+      cond_du_term = alpha_cond * P_lim * fabs(mu_full_ij) * du * rho_ij_inv;
+      cond_du_term *= const_fallback_reduction_factor;
     }
 
     /* New signal velocity */
     const hydro_real_t new_v_sig_visc =
         signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
-    const hydro_real_t new_v_sig_cond = 
-        signal_velocity(dx, pi, pj, mu_cond_ij, const_viscosity_beta);
 
-    const hydro_real_t v_sig_max = fmax(new_v_sig_visc, new_v_sig_cond);
-
-    /* Update if we need to */
-    pi->v_sig_max = fmax(pi->v_sig_max, v_sig_max);
-    pj->v_sig_max = fmax(pj->v_sig_max, v_sig_max);
-
-#ifdef MAGMA2_DEBUG_CHECKS
-    pi->debug.v_sig_visc_max = fmax(pi->debug.v_sig_visc_max, new_v_sig_visc);
-    pi->debug.v_sig_cond_max = fmax(pi->debug.v_sig_cond_max, new_v_sig_cond);
-
-    pj->debug.v_sig_visc_max = fmax(pj->debug.v_sig_visc_max, new_v_sig_visc);
-    pj->debug.v_sig_cond_max = fmax(pj->debug.v_sig_cond_max, new_v_sig_cond);
-#endif
-
-    /* Minimum softening in kernel */
     const hydro_real_t h_ij = 0.5 * (hi + hj);
     pi->h_min = fmin(pi->h_min, h_ij);
     pj->h_min = fmin(pj->h_min, h_ij);
-
+ 
     /* New timestep estimate */
-    const hydro_real_t dt_min_i = pi->h_min / pi->v_sig_max;
-    const hydro_real_t dt_min_j = pj->h_min / pj->v_sig_max;
+    const hydro_real_t dt_min_i = h_ij / new_v_sig_visc;
+    const hydro_real_t dt_min_j = h_ij / new_v_sig_visc;
     pi->dt_min = fmin(pi->dt_min, dt_min_i);
     pj->dt_min = fmin(pj->dt_min, dt_min_j);
 
-    const hydro_real_t kernel_gradient = 
-        0.5 * (pi->force.f * wi_dr + pj->force.f * wj_dr) * r_inv;
+    const hydro_real_t kernel_gradient = 0.5 * (wi_dr + wj_dr) * r_inv;
 
     visc_acc_term *= kernel_gradient;
     sph_acc_term *= kernel_gradient;
@@ -1034,6 +983,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->u_dt += du_dt_i * mj;
   pj->u_dt += du_dt_j * mi;
 
+  pi->u_dt_cond += cond_du_term * mj;
+  pj->u_dt_cond -= cond_du_term * mi;
 }
 
 /**
@@ -1291,21 +1242,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     /* Artificial viscosity */
 
 
-    hydro_real_t mu_i = 0.;
-    hydro_real_t mu_j = 0.;
-
     /* Get the acceleration term, depends on the weighting scheme */
     visc_acc_term = 
-        hydro_get_visc_acc_term_and_mu(pi, pj, dv_ij, dx_ij, r, 
-                                       fac_mu, a2_Hubble, &mu_i, &mu_j);
+        hydro_get_visc_acc_term(pi, pj, dv_ij, dx_ij, fac_mu, a2_Hubble);
 
     /* Split heating between the two particles */
     visc_du_term = 0.5 * visc_acc_term;
-
-    /* Viscous signal velocity */
-    const hydro_real_t v_sig_visc = 
-        hydro_get_visc_signal_velocity(dx, pi, pj, mu_i, mu_j, 
-                                       const_viscosity_beta);
 
 
     /* Artificial conductivity */
@@ -1344,13 +1286,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     const hydro_real_t rho_ij = 0.5 * (rhoi + rhoj);
     const hydro_real_t rho_ij_inv = 1. / rho_ij;
-    const hydro_real_t dv_ij_Hubble[3] = {
-        dv_ij[0] + a2_Hubble * dx_ij[0],
-        dv_ij[1] + a2_Hubble * dx_ij[1],
-        dv_ij[2] + a2_Hubble * dx_ij[2]
+    const hydro_real_t dv_Hubble[3] = {
+        dv[0] + a2_Hubble * dx_ij[0],
+        dv[1] + a2_Hubble * dx_ij[1],
+        dv[2] + a2_Hubble * dx_ij[2]
     };
-    const hydro_real_t dv_ij_Hubble_dot_dx_ij_hat = 
-        hydro_vec3_vec3_dot(dv_ij_Hubble, dx_ij_hat);
+
+    const hydro_real_t dv_Hubble_dot_dx_ij_hat =
+        hydro_vec3_vec3_dot(dv_Hubble, dx_ij_hat);
 
     /* Limit art. cond. to only when information is communicable */
     const hydro_real_t c_ij = 
@@ -1358,21 +1301,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const hydro_real_t v_sig_alpha = c_ij * (1. + 0.75 * const_viscosity_alpha);
 
     /* Must connect the particles along the LOS */
-    const hydro_real_t eps2 = const_viscosity_epsilon2;
-    const hydro_real_t fac = fac_mu * r;
-    const hydro_real_t faci = fac * hi / (r2 + eps2 * hi * hi);
-    const hydro_real_t facj = fac * hj / (r2 + eps2 * hj * hj);
-    hydro_real_t mu_cond_i = faci * dv_ij_Hubble_dot_dx_ij_hat;
-    hydro_real_t mu_cond_j = facj * dv_ij_Hubble_dot_dx_ij_hat;
-    const hydro_real_t mu_cond_ij = 0.5 * (mu_cond_i + mu_cond_j);
-    const hydro_real_t v_sig_beta = 0.75 * const_viscosity_beta * mu_cond_ij;
+    hydro_real_t mu_ij = fac_mu * dv_Hubble_dot_dx_ij_hat;
+    const hydro_real_t v_sig_beta = 0.75 * const_viscosity_beta * mu_ij;
 
     /* Skip conduction if expansion beats sound speed along LOS */
     if (v_sig_alpha > v_sig_beta) {
 
+      const hydro_real_t dv_ij_Hubble[3] = {
+          dv_ij[0] + a2_Hubble * dx_ij[0],
+          dv_ij[1] + a2_Hubble * dx_ij[1],
+          dv_ij[2] + a2_Hubble * dx_ij[2]
+      };
+
       /* Signal velocity from speed contributions */
 #ifdef hydro_props_use_radial_artificial_terms
-      const hydro_real_t v_sig_speed = fabs(mu_cond_ij);
+      const hydro_real_t dv_ij_Hubble_dot_dx_ij_hat =
+          hydro_vec3_vec3_dot(dv_ij_Hubble, dx_ij_hat);
+      const hydro_real_t v_sig_speed = 
+          fac_mu * fabs(dv_ij_Hubble_dot_dx_ij_hat);
 #else
       const hydro_real_t v_sig_speed = fac_mu * hydro_vec3_norm(dv_ij_Hubble);
 #endif
@@ -1385,24 +1331,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                       pi->gradients.du_min, pi->gradients.du_max,
                                       pj->gradients.du_min, pj->gradients.du_max);
 
-      /* Use the Balsara limiter */
-      const hydro_real_t b_ij = 
-          0.5 * (pi->gradients.balsara + pj->gradients.balsara);
-
-      const hydro_real_t alpha_cond = const_conductivity_alpha * b_ij;
+      const hydro_real_t alpha_cond = const_conductivity_alpha;
+      const hydro_real_t delta_P = fabs(pressurei - pressurej);
+      const hydro_real_t P_lim = delta_P / (pressurei + pressurej);
 
       /* Add conductivity to the specific energy */
-      cond_du_term = alpha_cond * fabs(v_sig_speed) * du_ij * rho_ij_inv;
+      cond_du_term = alpha_cond * P_lim * v_sig_speed * du_ij * rho_ij_inv;
     }
     else {
-      mu_cond_i = 0.;
-      mu_cond_j = 0.;
+      mu_ij = 0.;
     }
-
-    const hydro_real_t v_sig_cond =
-        hydro_get_cond_signal_velocity(dx, pi, pj, mu_cond_i, mu_cond_j,
-                                       const_viscosity_beta);
-
 
     /* Finalize the viscosity and conductivity with correct normalizations. */
 
@@ -1410,17 +1348,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     /* Compute dv dot G_ij, reduces to dv dot dx in regular SPH. */
     const hydro_real_t dv_dot_G_ij = hydro_vec3_vec3_dot(dv_raw, G_ij);
 
-    /* Raw velocities with Hubble flow */
-    const hydro_real_t dv_Hubble[3] = {
-        dv[0] + a2_Hubble * dx_ij[0],
-        dv[1] + a2_Hubble * dx_ij[1],
-        dv[2] + a2_Hubble * dx_ij[2]
-    };
-
 #ifdef hydro_props_use_radial_artificial_terms
-    const hydro_real_t dv_Hubble_dot_dx_ij_hat = 
-        hydro_vec3_vec3_dot(dv_Hubble, dx_ij_hat);
-
     /* Get Hubble flow along dx */
     const hydro_real_t dv_Hubble_along_dx_ij[3] = {
         dv_Hubble_dot_dx_ij_hat * dx_ij_hat[0],
@@ -1456,22 +1384,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     /* Timestepping */
 
 
-    /* New signal velocity */
-    const hydro_real_t v_sig_max = fmax(v_sig_visc, v_sig_cond);
+    /* Compute based on raw velocities */
+    const hydro_real_t v_sig_visc =
+        signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
-    /* Update if we need to */
-    pi->v_sig_max = fmax(pi->v_sig_max, v_sig_max);
-
-#ifdef MAGMA2_DEBUG_CHECKS
-    pi->debug.v_sig_visc_max = fmax(pi->debug.v_sig_visc_max, v_sig_visc);
-    pi->debug.v_sig_cond_max = fmax(pi->debug.v_sig_cond_max, v_sig_cond);
-#endif
-
-    /* Compute new timestep */
     const hydro_real_t h_ij = 0.5 * (hi + hj);
     pi->h_min = fmin(pi->h_min, h_ij);
 
-    const hydro_real_t dt_min_i = pi->h_min / pi->v_sig_max;
+    const hydro_real_t dt_min_i = h_ij / v_sig_visc;
     pi->dt_min = fmin(pi->dt_min, dt_min_i);
 
 #ifdef MAGMA2_DEBUG_CHECKS
@@ -1490,7 +1410,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     /* Are the particles moving towards each others ? */
     const hydro_real_t omega_ij = fmin(dvdr_Hubble, 0.);
 
-    hydro_real_t mu_cond_ij = fac_mu * r_inv * dvdr_Hubble;
+    hydro_real_t mu_full_ij = fac_mu * r_inv * dvdr_Hubble;
     const hydro_real_t mu_ij = fac_mu * r_inv * omega_ij;
 
     /* Construct the full viscosity term */
@@ -1508,51 +1428,37 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                   (0.5 * rho_ij)
             : 0.;
 
-    visc_acc_term = visc;
+    visc_acc_term = const_fallback_reduction_factor * visc;
     visc_du_term = 0.5 * visc_acc_term;
     
     const hydro_real_t v_sig_alpha = c_ij * (1. + 0.75 * const_viscosity_alpha);
-    const hydro_real_t v_sig_beta = 0.75 * const_viscosity_beta * mu_cond_ij;
+    const hydro_real_t v_sig_beta = 0.75 * const_viscosity_beta * mu_full_ij;
 
     if (v_sig_alpha > v_sig_beta) {
       const hydro_real_t rho_ij_inv = 2. / rho_ij;
       const hydro_real_t du = pi->u - pj->u;
 
-      cond_du_term = 
-          const_conductivity_alpha * fabs(mu_cond_ij) * du * rho_ij_inv;
-      cond_du_term *= b_ij;
-    }
-    else {
-      mu_cond_ij = 0.;
+      const hydro_real_t alpha_cond = const_conductivity_alpha;
+      const hydro_real_t delta_P = fabs(pressurei - pressurej);
+      const hydro_real_t P_lim = delta_P / (pressurei + pressurej);
+
+      cond_du_term = alpha_cond * P_lim * fabs(mu_full_ij) * du * rho_ij_inv;
+      cond_du_term *= const_fallback_reduction_factor;
     }
 
     /* New signal velocity */
     const hydro_real_t new_v_sig_visc =
         signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
-    const hydro_real_t new_v_sig_cond = 
-        signal_velocity(dx, pi, pj, mu_cond_ij, const_viscosity_beta);
 
-    const hydro_real_t v_sig_max = fmax(new_v_sig_visc, new_v_sig_cond);
-
-    /* Update if we need to */
-    pi->v_sig_max = fmax(pi->v_sig_max, v_sig_max);
-
-#ifdef MAGMA2_DEBUG_CHECKS
-    pi->debug.v_sig_visc_max = fmax(pi->debug.v_sig_visc_max, new_v_sig_visc);
-    pi->debug.v_sig_cond_max = fmax(pi->debug.v_sig_cond_max, new_v_sig_cond);
-#endif
-
-    /* Minimum softening in kernel */
     const hydro_real_t h_ij = 0.5 * (hi + hj);
     pi->h_min = fmin(pi->h_min, h_ij);
 
     /* New time-step estimate */
-    const hydro_real_t dt_min_i = pi->h_min / pi->v_sig_max;
+    const hydro_real_t dt_min_i = h_ij / new_v_sig_visc;
     pi->dt_min = fmin(pi->dt_min, dt_min_i);
 
     /* Variable smoothing length term */
-    const hydro_real_t kernel_gradient = 
-        0.5 * (pi->force.f * wi_dr + pj->force.f * wj_dr) * r_inv;
+    const hydro_real_t kernel_gradient = 0.5 * (wi_dr + wj_dr) * r_inv;
 
     visc_acc_term *= kernel_gradient;
     sph_acc_term *= kernel_gradient;
@@ -1586,6 +1492,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
 
+  pi->u_dt_cond += cond_du_term * mj;
 }
 
 #endif /* SWIFT_MAGMA2_HYDRO_IACT_H */

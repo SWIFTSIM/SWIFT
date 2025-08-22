@@ -377,7 +377,8 @@ hydro_set_drifted_physical_internal_energy(
   p->force.soundspeed = soundspeed;
   p->force.pressure = pressure_including_floor;
 
-  p->v_sig_max = max(p->v_sig_max, soundspeed);
+  const float v_sig = 1.25 * (1. + 0.75 * const_viscosity_alpha) * soundspeed;
+  p->dt_min = min(p->dt_min, p->h_min / v_sig);
 }
 
 /**
@@ -399,9 +400,14 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
   /* Sound speed */
   const float soundspeed = hydro_get_comoving_soundspeed(p);
 
-  /* Update the signal velocity */
-  p->v_sig_max =
-      max(soundspeed, p->v_sig_max + const_viscosity_beta * dv);
+  /* Signal speed */
+  const float v_sig_sound = 
+      1.25 * (1. + 0.75 * const_viscosity_alpha) * soundspeed;
+  const float v_sig_kick =
+      1.25 * 0.75 * const_viscosity_beta * dv;
+  const float v_sig = v_sig_sound + v_sig_kick;
+
+  p->dt_min = min(p->dt_min, p->h_min / v_sig);
 }
 
 /**
@@ -443,8 +449,25 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 
   if (p->dt_min == 0.f) return FLT_MAX;
 
+  /* Use full kernel support and physical time */
+  const float conv = kernel_gamma * cosmo->a / cosmo->a_factor_sound_speed;
+
   /* CFL condition */
-  return hydro_properties->CFL_condition * p->dt_min;
+  const float dt_cfl = 2. * hydro_properties->CFL_condition * conv * p->dt_min;
+
+  /* Do not allow more than 0.25 * |u|/|du/dt| per step */
+  const float dt_u = 
+      (p->u_dt_cond != 0.) ? 0.25 * p->u / fabs(p->u_dt_cond) : FLT_MAX;
+
+#ifdef MAGMA2_DEBUG_CHECKS
+  if (dt_u < dt_cfl) {
+    message("dt_u < dt_cfl for pid=%lld u=%g u_dt_cond=%g dt_min=%g conv=%g "
+            "dt_cfl=%g dt_u=%g",
+            p->id, p->u, p->u_dt_cond, p->dt_min, conv, dt_cfl, dt_u);
+  }
+#endif
+
+  return fmin(dt_cfl, dt_u);
 }
 
 /**
@@ -805,8 +828,6 @@ hydro_real_t hydro_scalar_minmod_limiter(const hydro_real_t df_reconstructed,
 
   return df;
 #else
-  if (df_raw * df_reconstructed < 0.) return df_raw;
-
   return df_reconstructed;
 #endif
 }
@@ -1275,23 +1296,15 @@ void hydro_get_average_kernel_gradient(const struct part *restrict pi,
  * @param mu_j The velocity jump indicator at pj to fill
  */ 
 __attribute__((always_inline)) INLINE static
-hydro_real_t hydro_get_visc_acc_term_and_mu(const struct part *restrict pi,
-                                            const struct part *restrict pj,
-                                            const hydro_real_t *restrict dv,
-                                            const hydro_real_t *restrict dx,
-                                            const hydro_real_t r,
-                                            const hydro_real_t fac_mu,
-                                            const hydro_real_t a2_Hubble,
-                                            hydro_real_t *mu_i,
-                                            hydro_real_t *mu_j) {
+hydro_real_t hydro_get_visc_acc_term(const struct part *restrict pi,
+                                     const struct part *restrict pj,
+                                     const hydro_real_t *restrict dv,
+                                     const hydro_real_t *restrict dx,
+                                     const hydro_real_t fac_mu,
+                                     const hydro_real_t a2_Hubble) {
 
   const hydro_real_t rhoi = pi->rho;
   const hydro_real_t rhoj = pj->rho;
-
-  const hydro_real_t hi = pi->h;
-  const hydro_real_t hj = pj->h;
-
-  const hydro_real_t r2 = r * r;
 
   const hydro_real_t bi = pi->gradients.balsara;
   const hydro_real_t bj = pj->gradients.balsara;
@@ -1307,8 +1320,10 @@ hydro_real_t hydro_get_visc_acc_term_and_mu(const struct part *restrict pi,
   const hydro_real_t dv_dot_dx_hat = hydro_vec3_vec3_dot(dv_Hubble, dx_hat);
   const hydro_real_t conv = (dv_dot_dx_hat < 0.) ? fac_mu : 0.;
 
-  /* Softening to prevent blow-up on close particle approach */
-  const hydro_real_t eps2 = const_viscosity_epsilon2;
+  /* Must be a converging flow */
+  if (conv == 0.) return 0.;
+
+  const hydro_real_t mu_ij = conv * dv_dot_dx_hat;
 
 #ifdef hydro_props_viscosity_weighting_type
 #if (hydro_props_viscosity_weighting_type == 0)
@@ -1316,17 +1331,14 @@ hydro_real_t hydro_get_visc_acc_term_and_mu(const struct part *restrict pi,
   /* Each particle gets its own Q and then weighted by density */
   const hydro_real_t rhoij_inv = 1.0 / (rhoi * rhoj);
 
-  *mu_i = conv * (dv_dot_dx_hat * r * hi) / (r2 + eps2 * (hi * hi));
-  *mu_j = conv * (dv_dot_dx_hat * r * hj) / (r2 + eps2 * (hj * hj));
-
   const hydro_real_t q_i_alpha = 
-      -const_viscosity_alpha * pi->force.soundspeed * (*mu_i);
-  const hydro_real_t q_i_beta = const_viscosity_beta  * (*mu_i) * (*mu_i);
+      -const_viscosity_alpha * pi->force.soundspeed * mu_ij;
+  const hydro_real_t q_i_beta = const_viscosity_beta  * mu_ij * mu_ij;
   const hydro_real_t Q_i = rhoi * (q_i_alpha + q_i_beta);
 
   const hydro_real_t q_j_alpha = 
-      -const_viscosity_alpha * pj->force.soundspeed * (*mu_j);
-  const hydro_real_t q_j_beta = const_viscosity_beta  * (*mu_j) * (*mu_j);
+      -const_viscosity_alpha * pj->force.soundspeed * mu_ij;
+  const hydro_real_t q_j_beta = const_viscosity_beta  * mu_ij * mu_ij;
   const hydro_real_t Q_j = rhoj * (q_j_alpha + q_j_beta);
 
   return (bi * Q_i + bj * Q_j) * rhoij_inv;
@@ -1335,16 +1347,7 @@ hydro_real_t hydro_get_visc_acc_term_and_mu(const struct part *restrict pi,
 
   /* Each particle has the same Q but is density weighted */
   const hydro_real_t b_ij = 0.5 * (bi + bj);
-
   const hydro_real_t rhoij_inv = 1. / (rhoi * rhoj);
-
-  const hydro_real_t hi2 = hi * hi;
-  const hydro_real_t hj2 = hj * hj;
-
-  *mu_i = conv * (dv_dot_dx_hat * r * hi) / (r2 + eps2 * hi2);
-  *mu_j = conv * (dv_dot_dx_hat * r * hj) / (r2 + eps2 * hj2);
-
-  const hydro_real_t mu_ij = 0.5 * (*mu_i + *mu_j);
   const hydro_real_t c_ij = 0.5 * (pi->force.soundspeed + pj->force.soundspeed);
   const hydro_real_t q_ij_alpha = -const_viscosity_alpha * c_ij * mu_ij;
   const hydro_real_t q_ij_beta = const_viscosity_beta  * mu_ij * mu_ij;
@@ -1356,14 +1359,6 @@ hydro_real_t hydro_get_visc_acc_term_and_mu(const struct part *restrict pi,
 
   /* Particles average symmetrically and arithmetically */
   const hydro_real_t b_ij = 0.5 * (bi + bj);
-
-  const hydro_real_t hi2 = hi * hi;
-  const hydro_real_t hj2 = hj * hj;
-
-  *mu_i = conv * (dv_dot_dx_hat * r * hi) / (r2 + eps2 * hi2);
-  *mu_j = conv * (dv_dot_dx_hat * r * hj) / (r2 + eps2 * hj2);
-
-  const hydro_real_t mu_ij = 0.5 * (*mu_i + *mu_j);
   const hydro_real_t c_ij = 0.5 * (pi->force.soundspeed + pj->force.soundspeed);
   const hydro_real_t q_ij_alpha = -const_viscosity_alpha * c_ij * mu_ij;
   const hydro_real_t q_ij_beta = const_viscosity_beta  * mu_ij * mu_ij;
@@ -1899,9 +1894,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   /* Re-set problematic values */
   p->rho = p->mass * kernel_root * h_inv_dim;
-  p->h_min = 0.f;
-  p->dt_min = 0.f;
-  p->v_sig_max = 0.f;
+  p->h_min = FLT_MAX;
+  p->dt_min = FLT_MAX;
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
@@ -1967,10 +1961,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* First estimates for the timestepping. Missing the kernel_gamma factors
    * for now, but will be added at the end of the force loop. */
-  p->h_min = p->h;
-  p->v_sig_max = 1.25 * p->force.soundspeed + 
-                 0.75 * const_viscosity_alpha * p->force.soundspeed;
-  p->dt_min = p->h_min / p->v_sig_max;
+  p->h_min = FLT_MAX;
+  p->dt_min = FLT_MAX;
   p->gradients.balsara = hydro_get_balsara_limiter(p, cosmo);
 
 #ifdef hydro_props_use_adiabatic_correction
@@ -2015,6 +2007,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
+  p->u_dt_cond = 0.0f;
   p->force.h_dt = 0.0f;
 }
 
@@ -2049,8 +2042,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
 
+  /* Signal speed */
+  const float v_sig = 1.25 * (1. + 0.75 * const_viscosity_alpha) * soundspeed;
+
   /* Update the signal velocity, if we need to. */
-  p->v_sig_max = max(p->v_sig_max, soundspeed);
+  p->dt_min = min(p->dt_min, p->h_min / v_sig);
 }
 
 /**
@@ -2124,8 +2120,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
 
+  /* Signal speed */
+  const float v_sig = 1.25 * (1. + 0.75 * const_viscosity_alpha) * soundspeed;
+
   /* Update signal velocity if we need to */
-  p->v_sig_max = max(p->v_sig_max, soundspeed);
+  p->dt_min = min(p->dt_min, p->h_min / v_sig);
 }
 
 /**
@@ -2144,20 +2143,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
   
   const hydro_real_t wcount_inv = 1. / p->gradients.wcount;
-
   p->force.h_dt *= p->force.f * p->h * hydro_dimension_inv * wcount_inv;
-
-  /* dt_min is in physical units, and requires the kernel_gamma factor for h */
-  p->dt_min *= kernel_gamma * cosmo->a / cosmo->a_factor_sound_speed;
-
-#ifdef MAGMA2_DEBUG_CHECKS
-  if (fabs(p->force.h_dt / p->h) > 1000.) {
-    warning("Large dh/dt! Hydro end force for particle with ID %lld (h: %g, "
-            "wcount: %g, h_dt: %g, dt_min: %g, v_sig_max: %g)",
-            p->id, p->h, p->gradients.wcount, p->force.h_dt, p->dt_min,
-            p->v_sig_max);
-  }
-#endif
 }
 
 /**

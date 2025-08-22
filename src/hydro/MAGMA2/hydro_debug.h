@@ -35,8 +35,8 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
   warning("[PID%lld] v=[%.3e,%.3e,%.3e]", p->id, p->v[0], p->v[1], p->v[2]);
   warning("[PID%lld] a=[%.3e,%.3e,%.3e]", p->id, p->a_hydro[0], p->a_hydro[1],
           p->a_hydro[2]);
-  warning("[PID%lld] u=%.3e, du/dt=%.3e v_sig=%.3e, P=%.3e", p->id, p->u,
-          p->u_dt, p->v_sig_max, hydro_get_comoving_pressure(p));
+  warning("[PID%lld] u=%.3e, du/dt=%.3e P=%.3e", p->id, p->u,
+          p->u_dt, hydro_get_comoving_pressure(p));
   warning("[PID%lld] h=%.3e, dh/dt=%.3e wcount=%d, m=%.3e, dh_drho=%.3e", p->id,
           p->h, p->force.h_dt, (int)p->density.wcount, p->mass,
           p->density.rho_dh);
