@@ -39,6 +39,40 @@
 #include "hydro_parameters.h"
 #include "minmax.h"
 #include "signal_velocity.h"
+#include "strength.h"
+
+/**
+ * @brief Calculates the stress tensor for force interaction. No strength if
+ * either particle is fluid (or not using strength at all)
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
+                                  float pairwise_stress_tensor_j[3][3],
+                                  const struct part *restrict pi,
+                                  const struct part *restrict pj, const float r,
+                                  const float pressurei,
+                                  const float pressurej) {
+
+  // Set the default stress tensor with just the pressures, S = -P * I(3)
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      if (i == j) {
+        // Only include the pressure if it is positive (i.e. not in tension)
+        pairwise_stress_tensor_i[i][i] = -max(pressurei, 0.f);
+        pairwise_stress_tensor_j[i][i] = -max(pressurej, 0.f);
+      } else {
+        pairwise_stress_tensor_i[i][j] = 0.f;
+        pairwise_stress_tensor_j[i][j] = 0.f;
+      }
+    }
+  }
+
+  hydro_set_pairwise_stress_tensors_strength(
+      pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, r);
+}
+
 
 /**
  * @brief Density interaction between two particles.
@@ -123,6 +157,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
 
+  hydro_runner_iact_density_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_density += wi;
   pj->n_density += wj;
@@ -194,6 +230,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[0] += faci * curlvr[0];
   pi->density.rot_v[1] += faci * curlvr[1];
   pi->density.rot_v[2] += faci * curlvr[2];
+
+  hydro_runner_iact_nonsym_density_strength(pi, pj, dx, wi, wi_dx);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_density += wi;
@@ -302,10 +340,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
-  /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
-
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
@@ -326,36 +360,63 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float rho_ij = 0.5f * (rhoi + rhoj);
   const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
-  /* Convolve with the kernel */
-  const float visc_acc_term =
-      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
+  float Gi[3], Gj[3], G_mean[3];
+  for (int i = 0; i < 3; i++) {
+    Gi[i] = wi_dr * f_ij * dx[i] * r_inv;
+    Gj[i] = -wj_dr * f_ji * dx[i] * r_inv;
+    G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
+  }
 
-  /* SPH acceleration term */
-  const float sph_acc_term =
-      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+  // Convert the pressures into "stress" tensors for fluids, S = -P * I(3),
+  // or set the stress for solid particle pairs with strength
+  float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
+  hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i,
+                                    pairwise_stress_tensor_j, pi, pj, r,
+                                    pressurei, pressurej);
 
-  /* Adaptive softening acceleration term */
-  const float adapt_soft_acc_term =
-      adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv);
+  float stress_tensor_term_i[3], stress_tensor_term_j[3];
+  for (int i = 0; i < 3; i++) {
+    stress_tensor_term_i[i] = 0.f;
+    stress_tensor_term_j[i] = 0.f;
+    for (int j = 0; j < 3; j++) {
+      stress_tensor_term_i[i] += pairwise_stress_tensor_i[i][j] * Gi[j];
+      stress_tensor_term_j[i] += pairwise_stress_tensor_j[i][j] * Gj[j];
+    }
+  }
 
-  /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term + adapt_soft_acc_term;
+  /* Construct acceleration terms */
+  float visc_acc_term[3], sph_acc_term[3], adapt_soft_acc_term[3];
+  for (int i = 0; i < 3; i++) {
+     sph_acc_term[i] = stress_tensor_term_i[i] / (rhoi * rhoi) -  stress_tensor_term_j[i] / (rhoj * rhoj);
+     visc_acc_term[i] = -visc * G_mean[i];
+     adapt_soft_acc_term[i] =
+         -adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv) * dx[i];
+  }
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * dx[0];
-  pi->a_hydro[1] -= mj * acc * dx[1];
-  pi->a_hydro[2] -= mj * acc * dx[2];
+  for (int i = 0; i < 3; i++) {
+    pi->a_hydro[i] += mj * (sph_acc_term[i] + visc_acc_term[i] + adapt_soft_acc_term[i]);
+    pj->a_hydro[i] -= mi * (sph_acc_term[i] + visc_acc_term[i] + adapt_soft_acc_term[i]);
+  }
 
-  pj->a_hydro[0] += mi * acc * dx[0];
-  pj->a_hydro[1] += mi * acc * dx[1];
-  pj->a_hydro[2] += mi * acc * dx[2];
+  float dv_dot_stress_term_i = 0.f, dv_dot_stress_term_j = 0.f;
+  float dv_dot_visc = 0.f;
+  float dv_dot_G_i = 0.f;
+  float dv_dot_G_j = 0.f;
+  for (int i = 0; i < 3; i++) {
+    dv_dot_stress_term_i += (pi->v[i] - pj->v[i]) * stress_tensor_term_i[i];
+    dv_dot_stress_term_j += -(pi->v[i] - pj->v[i]) * stress_tensor_term_j[i];
+    dv_dot_visc += (pi->v[i] - pj->v[i]) * visc_acc_term[i];
+    dv_dot_G_i += (pi->v[i] - pj->v[i]) * Gi[i];
+    dv_dot_G_j += (pj->v[i] - pi->v[i]) * Gj[i];
+  }
 
   /* Get the time derivative for u. */
-  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
-  const float sph_du_term_j = P_over_rho2_j * dvdr * r_inv * wj_dr;
+  const float sph_du_term_i = -(dv_dot_stress_term_i) / (rhoi * rhoi);
+  const float sph_du_term_j = -(dv_dot_stress_term_j) / (rhoj * rhoj);
 
   /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr;
+  const float visc_du_term = -0.5f * dv_dot_visc;
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term;
@@ -372,6 +433,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
+
+  hydro_runner_iact_force_strength(pi, pj, dx, Gi, Gj, dv_dot_G_i, dv_dot_G_j);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
@@ -441,10 +504,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
-  /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
-
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
@@ -465,31 +524,58 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float rho_ij = 0.5f * (rhoi + rhoj);
   const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
-  /* Convolve with the kernel */
-  const float visc_acc_term =
-      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
+  float Gi[3], Gj[3], G_mean[3];
+  for (int i = 0; i < 3; i++) {
+    Gi[i] = wi_dr * f_ij * dx[i] * r_inv;
+    Gj[i] = -wj_dr * f_ji * dx[i] * r_inv;
+    G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
+  }
 
-  /* SPH acceleration term */
-  const float sph_acc_term =
-      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+  // Convert the pressures into "stress" tensors for fluids, S = -P * I(3),
+  // or set the stress for solid particle pairs with strength
+  float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
+  hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i,
+                                    pairwise_stress_tensor_j, pi, pj, r,
+                                    pressurei, pressurej);
 
-  /* Adaptive softening acceleration term */
-  const float adapt_soft_acc_term =
-      adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv);
+  float stress_tensor_term_i[3], stress_tensor_term_j[3];
+  for (int i = 0; i < 3; i++) {
+    stress_tensor_term_i[i] = 0.f;
+    stress_tensor_term_j[i] = 0.f;
+    for (int j = 0; j < 3; j++) {
+      stress_tensor_term_i[i] += pairwise_stress_tensor_i[i][j] * Gi[j];
+      stress_tensor_term_j[i] += pairwise_stress_tensor_j[i][j] * Gj[j];
+    }
+  }
 
-  /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term + adapt_soft_acc_term;
+  /* Construct acceleration terms */
+  float visc_acc_term[3], sph_acc_term[3], adapt_soft_acc_term[3];
+  for (int i = 0; i < 3; i++) {
+     sph_acc_term[i] = stress_tensor_term_i[i] / (rhoi * rhoi) -  stress_tensor_term_j[i] / (rhoj * rhoj);
+     visc_acc_term[i] = -visc * G_mean[i];
+     adapt_soft_acc_term[i] =
+         -adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv) * dx[i];
+  }
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * dx[0];
-  pi->a_hydro[1] -= mj * acc * dx[1];
-  pi->a_hydro[2] -= mj * acc * dx[2];
+  for (int i = 0; i < 3; i++) {
+    pi->a_hydro[i] += mj * (sph_acc_term[i] + visc_acc_term[i] + adapt_soft_acc_term[i]);
+  }
+
+  float dv_dot_stress_term_i = 0.f;
+  float dv_dot_visc = 0.f;
+  float dv_dot_G_i = 0.f;
+  for (int i = 0; i < 3; i++) {
+    dv_dot_stress_term_i += (pi->v[i] - pj->v[i]) * stress_tensor_term_i[i];
+    dv_dot_visc += (pi->v[i] - pj->v[i]) * visc_acc_term[i];
+    dv_dot_G_i += (pi->v[i] - pj->v[i]) * Gi[i];
+  }
 
   /* Get the time derivative for u. */
-  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
+  const float sph_du_term_i = -(dv_dot_stress_term_i) / (rhoi * rhoi);
 
   /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr;
+  const float visc_du_term = -0.5f * dv_dot_visc;
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term;
@@ -502,6 +588,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
+
+  hydro_runner_iact_nonsym_force_strength(pi, pj, dx, Gi, dv_dot_G_i);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
