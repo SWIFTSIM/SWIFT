@@ -81,6 +81,8 @@ struct mhd_part_data {
   /* More detailed force tracking */
   float lorentz_isotropic_F[3];
 
+  float lorentz_isotropic_F_correction[3];
+
   float lorentz_anisotropic_F[3];
 
   float monopole_correction_F[3];

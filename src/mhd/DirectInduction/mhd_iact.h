@@ -458,6 +458,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pi->mhd_data.lorentz_isotropic_F[k] -= 0.5f * mj * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[k];
     pj->mhd_data.lorentz_isotropic_F[k] += 0.5f * mi * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[k];
     pj->mhd_data.lorentz_isotropic_F[k] += 0.5f * mi * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[k];
+    
+    pi->mhd_data.lorentz_isotropic_F_correction[k] -= 0.5f * mj * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[k];
+    pj->mhd_data.lorentz_isotropic_F_correction[k] += 0.5f * mi * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[k];
+
+
     pi->mhd_data.lorentz_anisotropic_F[k] -= -1.f * mj * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[k];
     pi->mhd_data.lorentz_anisotropic_F[k] -= -1.f * mj * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[k];
     pj->mhd_data.lorentz_anisotropic_F[k] += -1.f * mi * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[k];
@@ -771,6 +776,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
     pi->mhd_data.lorentz_isotropic_F[k] -= 0.5f * mj * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[k];
     pi->mhd_data.lorentz_isotropic_F[k] -= 0.5f * mj * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[k];
+
+    pi->mhd_data.lorentz_isotropic_F_correction[k] -= 0.5f * mj * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[k];
+
     pi->mhd_data.lorentz_anisotropic_F[k] -= -1.f * mj * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[k];
     pi->mhd_data.lorentz_anisotropic_F[k] -= -1.f * mj * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[k];
     pi->mhd_data.monopole_correction_F[k] -= mj * monopole_beta * over_rho2_i * wi_dr * permeability_inv * Bri * r_inv * Bi[k] * tensile_correction_scale_i;

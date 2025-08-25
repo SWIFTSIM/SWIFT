@@ -485,28 +485,31 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "MonopoleCorrectionForce", FLOAT, 3, UNIT_CONV_ACCELERATION,
       1.f, parts, mhd_data.monopole_correction_F,
       "Particle EOM: tensile instability correction term, proportional to divB");
-
+  list[20] = io_make_output_field(
+      "LorentzIsotropicForceCorrection", FLOAT, 3, UNIT_CONV_ACCELERATION,
+      1.f, parts, mhd_data.lorentz_isotropic_F_correction,
+      "Particle EOM: error correction to isotropic component of lorentz force");
 
 
   /* MHD equations source tracking */
-  list[20] = io_make_output_field(
+  list[21] = io_make_output_field(
       "StretchingBSource", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_DENSITY_RATIO_PER_TIME,
       1.f, parts, mhd_data.stretching_B_source,
       "MHD equations: (B * grad) v source");
-  list[21] = io_make_output_field(
+  list[22] = io_make_output_field(
       "DednerBSource", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_DENSITY_RATIO_PER_TIME,
       1.f, parts, mhd_data.dedner_B_source,
       "MHD equations: -grad psi, dedner divergence cleaning source");
-  list[22] = io_make_output_field(
+  list[23] = io_make_output_field(
       "PhysicalResistivityBSource", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_DENSITY_RATIO_PER_TIME,
       1.f, parts, mhd_data.physical_resistivity_B_source,
       "MHD equations: physical resistivity source");
-  list[23] = io_make_output_field(
+  list[24] = io_make_output_field(
       "ArtificialResistivityBSource", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_DENSITY_RATIO_PER_TIME,
       1.f, parts, mhd_data.artificial_resistivity_B_source,
       "MHD equations: artificial resistivity source");
 
-  return 24;
+  return 25;
 }
 
 /**

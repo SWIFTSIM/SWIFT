@@ -475,6 +475,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     p->mhd_data.lorentz_isotropic_F[k] = 0.0f;
     p->mhd_data.lorentz_anisotropic_F[k] = 0.0f;
     p->mhd_data.monopole_correction_F[k] = 0.0f;
+    p->mhd_data.lorentz_isotropic_F_correction[k] = 0.0f;
+
+
   }
   /* Save induction sources*/
   for (int k = 0; k < 3; k++) {
