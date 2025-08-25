@@ -760,11 +760,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     /* Limit art. cond. to only when information is communicable */
     const hydro_real_t c_ij = 
         0.5 * (pi->force.soundspeed + pj->force.soundspeed);
-    const hydro_real_t v_sig_alpha = c_ij * (1. + 0.75 * const_viscosity_alpha);
+    const hydro_real_t v_sig_alpha = const_viscosity_alpha_prefactor * c_ij;
 
     /* Must connect the particles along the LOS */
     hydro_real_t mu_ij = fac_mu * dv_Hubble_dot_dx_ij_hat;
-    const hydro_real_t v_sig_beta = 0.75 * const_viscosity_beta * mu_ij;
+    const hydro_real_t v_sig_beta = const_viscosity_beta_prefactor * mu_ij;
 
     /* Skip conduction if expansion beats sound speed along LOS */
     if (v_sig_alpha > v_sig_beta) {
@@ -904,8 +904,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     visc_acc_term = const_fallback_reduction_factor * visc;
     visc_du_term = 0.5 * visc_acc_term;
     
-    const hydro_real_t v_sig_alpha = c_ij * (1. + 0.75 * const_viscosity_alpha);
-    const hydro_real_t v_sig_beta = 0.75 * const_viscosity_beta * mu_full_ij;
+    const hydro_real_t v_sig_alpha = const_viscosity_alpha_prefactor * c_ij;
+    const hydro_real_t v_sig_beta = const_viscosity_beta_prefactor * mu_full_ij;
 
     if (v_sig_alpha > v_sig_beta) {
       const hydro_real_t rho_ij_inv = 2. / rho_ij;
@@ -1300,11 +1300,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     /* Limit art. cond. to only when information is communicable */
     const hydro_real_t c_ij = 
         0.5 * (pi->force.soundspeed + pj->force.soundspeed);
-    const hydro_real_t v_sig_alpha = c_ij * (1. + 0.75 * const_viscosity_alpha);
+    const hydro_real_t v_sig_alpha = const_viscosity_alpha_prefactor * c_ij;
 
     /* Must connect the particles along the LOS */
     hydro_real_t mu_ij = fac_mu * dv_Hubble_dot_dx_ij_hat;
-    const hydro_real_t v_sig_beta = 0.75 * const_viscosity_beta * mu_ij;
+    const hydro_real_t v_sig_beta = const_viscosity_beta_prefactor * mu_ij;
 
     /* Skip conduction if expansion beats sound speed along LOS */
     if (v_sig_alpha > v_sig_beta) {
@@ -1434,8 +1434,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     visc_acc_term = const_fallback_reduction_factor * visc;
     visc_du_term = 0.5 * visc_acc_term;
     
-    const hydro_real_t v_sig_alpha = c_ij * (1. + 0.75 * const_viscosity_alpha);
-    const hydro_real_t v_sig_beta = 0.75 * const_viscosity_beta * mu_full_ij;
+    const hydro_real_t v_sig_alpha = const_viscosity_alpha_prefactor * c_ij;
+    const hydro_real_t v_sig_beta = const_viscosity_beta_prefactor * mu_full_ij;
 
     if (v_sig_alpha > v_sig_beta) {
       const hydro_real_t rho_ij_inv = 2. / rho_ij;

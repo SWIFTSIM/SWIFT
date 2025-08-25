@@ -377,7 +377,9 @@ hydro_set_drifted_physical_internal_energy(
   p->force.soundspeed = soundspeed;
   p->force.pressure = pressure_including_floor;
 
-  const float v_sig = 1.25 * (1. + 0.75 * const_viscosity_alpha) * soundspeed;
+  /* Signal speed */
+  const float v_sig = const_viscosity_alpha_prefactor * soundspeed;
+
   p->dt_min = min(p->dt_min, p->h_min / v_sig);
 }
 
@@ -401,10 +403,8 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
   const float soundspeed = hydro_get_comoving_soundspeed(p);
 
   /* Signal speed */
-  const float v_sig_sound = 
-      1.25 * (1. + 0.75 * const_viscosity_alpha) * soundspeed;
-  const float v_sig_kick =
-      1.25 * 0.75 * const_viscosity_beta * dv;
+  const float v_sig_sound = const_viscosity_alpha_prefactor * soundspeed;
+  const float v_sig_kick = const_viscosity_beta_prefactor * dv;
   const float v_sig = v_sig_sound + v_sig_kick;
 
   p->dt_min = min(p->dt_min, p->h_min / v_sig);
@@ -486,9 +486,13 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
 
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-  const float c_ij = 0.5 * (ci + cj);
+  const float c_ij = 0.5f * (ci + cj);
 
-  return 1.25 * (c_ij + 0.75 * (const_viscosity_alpha * c_ij - beta * mu_ij));
+  const float v_sig_alpha = const_viscosity_alpha_prefactor * c_ij;
+  const float v_sig_beta = const_viscosity_beta_prefactor * mu_ij;
+  const float v_sig = v_sig_alpha - fmin(v_sig_beta, 0.f);
+
+  return v_sig;
 }
 
 /**
@@ -2043,7 +2047,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->force.soundspeed = soundspeed;
 
   /* Signal speed */
-  const float v_sig = 1.25 * (1. + 0.75 * const_viscosity_alpha) * soundspeed;
+  const float v_sig = const_viscosity_alpha_prefactor * soundspeed;
 
   /* Update the signal velocity, if we need to. */
   p->dt_min = min(p->dt_min, p->h_min / v_sig);
@@ -2121,7 +2125,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.soundspeed = soundspeed;
 
   /* Signal speed */
-  const float v_sig = 1.25 * (1. + 0.75 * const_viscosity_alpha) * soundspeed;
+  const float v_sig = const_viscosity_alpha_prefactor * soundspeed;
 
   /* Update signal velocity if we need to */
   p->dt_min = min(p->dt_min, p->h_min / v_sig);

@@ -158,6 +158,13 @@
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
 #define const_viscosity_beta (2.0*const_viscosity_alpha)
 
+/*! Prefactor for alpha term in signal velocity */
+#define const_viscosity_alpha_prefactor (1.25 * (1. + \
+  0.75 * const_viscosity_alpha))
+
+/*! Prefactor for beta term in signal velocity */
+#define const_viscosity_beta_prefactor (1.25 * 0.75 * const_viscosity_beta)
+
 /*! Fallback multiplier for alpha/beta terms to reduce spread */
 #define const_fallback_reduction_factor 0.25
 
