@@ -698,7 +698,7 @@ void runner_do_stars_df_from_dm_ghost(struct runner *r, struct cell *c, int time
         } else {
 
           /* Finish the DF calculation */
-          stars_end_df_from_dm(sp, cosmo);
+          stars_end_df_from_dm(sp, cosmo, e->gravity_properties, e->physical_constants);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = sp->df_data.density_dm.wcount * h_old_dim;
@@ -996,7 +996,7 @@ void runner_do_stars_df_from_stars_ghost(struct runner *r, struct cell *c, int t
         } else {
 
           /* Finish the DF calculation */
-          stars_end_df_from_stars(sp, cosmo);
+          stars_end_df_from_stars(sp, cosmo, e->gravity_properties, e->physical_constants);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = sp->df_data.density_stars.wcount * h_old_dim;
