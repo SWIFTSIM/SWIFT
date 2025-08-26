@@ -140,7 +140,24 @@ __attribute__((always_inline)) INLINE static void stars_end_feedback(
  * @param dt The time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void stars_kick_extra(
-    struct spart* sp, float dt) {}
+    struct spart* sp, float dt) {
+
+  if (sp->df_data.apply_df){
+
+    /* Kick from DF from DM */
+
+    /* Kick the velocity of the spart with the dynamical friction acceleration */ 
+    sp->v[0] += sp->df_data.dm_df_a[0] * dt;
+    sp->v[1] += sp->df_data.dm_df_a[1] * dt;
+    sp->v[2] += sp->df_data.dm_df_a[2] * dt;
+
+    /* Also its companion gpart */
+    sp->gpart->v_full[0] += sp->df_data.dm_df_a[0] * dt;
+    sp->gpart->v_full[1] += sp->df_data.dm_df_a[1] * dt;
+    sp->gpart->v_full[2] += sp->df_data.dm_df_a[2] * dt;
+
+  }
+}
 
 /**
  * @brief Finishes the calculation of density on stars

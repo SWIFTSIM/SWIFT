@@ -35,8 +35,8 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_dm_density(const float r2, const float dx[3],
                                  const float hi,
                                  struct spart *restrict si,
-                                 const struct gpart *restrict gpj, const float a,
-                                 const float H) {
+                                 const struct gpart *restrict gpj, const int with_cosmology, 
+                                 const struct cosmology *cosmo) {
 
   float wi, wi_dx;
 
@@ -51,6 +51,48 @@ runner_iact_nonsym_stars_dm_density(const float r2, const float dx[3],
   /* Compute contribution to the number of neighbours */
   si->df_data.density_dm.wcount += wi;
   si->df_data.density_dm.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+  const float mj = gpj->mass;
+
+  /* Contribution to the total neighbour mass */
+  si->df_data.dm_ngb_mass += mj;
+
+  /* Contribution to the density at the GC */
+  si->df_data.dm_rho += mj * wi;
+  
+  /* Neighbour's velocity in the frame of the GC */
+  const float dv[3] = {gpj->v_full[0] - si->v[0], gpj->v_full[1] - si->v[1],
+                      gpj->v_full[2] - si->v[2]};
+
+  /* Contribution to the smoothed velocity (surrounding medium rel. to GC) */
+  si->df_data.dm_v_medium[0] += mj * dv[0] * wi;
+  si->df_data.dm_v_medium[1] += mj * dv[1] * wi;
+  si->df_data.dm_v_medium[2] += mj * dv[2] * wi;
+
+  float norm_v2;
+  if (with_cosmology){
+    const float a = cosmo->a;
+    const float H = cosmo->H;
+    const float a2H = a * a * H;
+
+    const float dx[3] = {si->x[0] - gpj->x[0], si->x[1] - gpj->x[1],
+                si->x[2] - gpj->x[2]};
+
+    /* Calculate the velocity with the Hubble flow */
+    const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
+                                    a2H * dx[2] + dv[2]};
+
+    norm_v2 = v_plus_H_flow[0] * v_plus_H_flow[0] +
+              v_plus_H_flow[1] * v_plus_H_flow[1] +
+              v_plus_H_flow[2] * v_plus_H_flow[2];
+
+  } else {
+    norm_v2 = dv[0] * dv[0] +
+              dv[1] * dv[1] +
+              dv[2] * dv[2];
+  }
+
+  si->df_data.dm_sigma2 += norm_v2 * wi * mj;
 
 }
 
@@ -70,8 +112,8 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_stars_density(const float r2, const float dx[3],
                                  const float hi, const float hj,
                                  struct spart *restrict si,
-                                 const struct spart *restrict sj, const float a,
-                                 const float H) {
+                                 const struct spart *restrict sj, const int with_cosmology, 
+                                 const struct cosmology *cosmo) {
 
   float wi, wi_dx;
 

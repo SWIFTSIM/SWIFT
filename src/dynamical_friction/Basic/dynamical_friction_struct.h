@@ -55,6 +55,17 @@ struct df_spart_data {
     float wcount_dh;
 
   } density_stars;
+
+  float dm_ngb_mass;
+
+  float dm_rho;
+
+  float dm_v_medium[3];
+
+  float dm_sigma2;
+
+  float dm_df_a[3];
+
 };
 
 #endif /* SWIFT_DYNAMICAL_FRICTION_STRUCT_BASIC_H */
