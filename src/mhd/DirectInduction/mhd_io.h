@@ -509,7 +509,25 @@ INLINE static int mhd_write_particles(const struct part* parts,
       1.f, parts, mhd_data.artificial_resistivity_B_source,
       "MHD equations: artificial resistivity source");
 
-  return 25;
+  /* Derivative and SPH sum error estimators */
+
+  list[25] = io_make_output_field(
+      "SPH1", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts, 
+      mhd_data.mean_SPH_err, "it is actually <rho>/rho, need to change");
+
+  list[26] = io_make_output_field(
+      "symmetric_gradient_err_fij", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.0f, parts, 
+      mhd_data.symmetric_gradient_err_fij, " symmetric_gradient_err_fij ");
+
+  list[27] = io_make_output_field(
+      "symmetric_gradient_err", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.0f, parts,
+      mhd_data.symmetric_gradient_err, " symmetric_gradient_err ");
+
+  list[28] = io_make_output_field(
+      "antisymmetric_gradient_err_fij", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.0f, parts,
+      mhd_data.antisymmetric_gradient_err_fij, " antisymmetric_gradient_err_fij ");
+ 
+  return 29;
 }
 
 /**

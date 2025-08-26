@@ -156,6 +156,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     pj->mhd_data.mean_grad_SPH_err[k] -=
         mi * over_rho_j * wj_dr * r_inv * dx[k];
   }
+
+
+
+  /* Calculate SPH gradient errors */
+  for (int k = 0; k < 3; k++) {
+
+  pi->mhd_data.symmetric_gradient_err_fij[k] += mj * (wi_dr * over_rho_i * over_rho_i + wj_dr * over_rho_j * over_rho_j) * r_inv * dx[k];
+  pj->mhd_data.symmetric_gradient_err_fij[k] -= mi * (wj_dr * over_rho_j * over_rho_j + wi_dr * over_rho_i * over_rho_i) * r_inv * dx[k];
+
+  pi->mhd_data.symmetric_gradient_err[k] += mj * (wi_dr / (rhoi * rhoi) + wj_dr / (rhoj * rhoj)) * r_inv * dx[k];
+  pj->mhd_data.symmetric_gradient_err[k] -= mi * (wj_dr / (rhoj * rhoj) + wi_dr / (rhoi * rhoi)) * r_inv * dx[k];
+
+  pi->mhd_data.antisymmetric_gradient_err_fij[k] += ( mj * f_ij * r * wi_dr );
+  pj->mhd_data.antisymmetric_gradient_err_fij[k] += ( mi * f_ji * r * wj_dr );
+
+  } 
+
+
 }
 
 /**
@@ -185,12 +203,13 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 const float H) {
 
   /* Define kernel variables */
-  float wi, wi_dx;
+  float wi, wj, wi_dx, wj_dx;
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
+  const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -211,10 +230,18 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   kernel_deval(xi, &wi, &wi_dx);
   const float wi_dr = hid_inv * wi_dx;
 
+  /* Get the kernel for hj. */
+  const float hj_inv = 1.0f / hj;
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+  const float xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
+  const float wj_dr = hjd_inv * wj_dx;
+
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
 
-  /* dB cross r */
+   /* dB cross r */
   float dB_cross_dx[3];
   dB_cross_dx[0] = dB[1] * dx[2] - dB[2] * dx[1];
   dB_cross_dx[1] = dB[2] * dx[0] - dB[0] * dx[2];
@@ -222,6 +249,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   /* Compute gradient terms */
   const float over_rho_i = 1.0f / rhoi * f_ij;
+  const float over_rho_j = 1.0f / rhoj * f_ji;
 
   /* Calculate curl */
   pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];
@@ -242,6 +270,19 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
     pi->mhd_data.mean_grad_SPH_err[k] +=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
   }
+
+  /* Calculate SPH gradient errors */
+  for (int k = 0; k < 3; k++) {
+
+  pi->mhd_data.symmetric_gradient_err_fij[k] += mj * (wi_dr * over_rho_i * over_rho_i + wj_dr * over_rho_j * over_rho_j) * r_inv * dx[k];
+
+  pi->mhd_data.symmetric_gradient_err[k] += mj * (wi_dr / (rhoi * rhoi) + wj_dr / (rhoj * rhoj)) * r_inv * dx[k];
+
+  pi->mhd_data.antisymmetric_gradient_err_fij[k] += ( mj * f_ij * r * wi_dr );
+
+  } 
+
+
 }
 
 /**
