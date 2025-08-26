@@ -136,7 +136,8 @@ const char *engine_policy_names[] = {"none",
                                      "rt",
                                      "power spectra",
                                      "moving mesh",
-                                     "moving mesh hydro"};
+                                     "moving mesh hydro",
+                                     "dynamical friction"};
 
 const int engine_default_snapshot_subsample[swift_type_count] = {0};
 
@@ -1788,6 +1789,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_star_formation ||
         t->type == task_type_star_formation_sink ||
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
+        t->type == task_type_stars_df_from_dm_ghost || t->type == task_type_stars_df_from_stars_ghost ||
         t->type == task_type_stars_ghost ||
         t->type == task_type_stars_ghost_in ||
         t->type == task_type_stars_ghost_out || t->type == task_type_sink_in ||
@@ -1809,6 +1811,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_stars_prep1 ||
         t->subtype == task_subtype_stars_prep2 ||
         t->subtype == task_subtype_stars_feedback ||
+        t->subtype == task_subtype_stars_df_from_dm ||
+        t->subtype == task_subtype_stars_df_from_stars ||
         t->subtype == task_subtype_bh_feedback ||
         t->subtype == task_subtype_bh_swallow ||
         t->subtype == task_subtype_do_gas_swallow ||

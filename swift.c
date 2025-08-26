@@ -181,6 +181,7 @@ int main(int argc, char *argv[]) {
   int with_grid_hydro = 0;
   int with_grid = 0;
 #endif
+  int with_dynamical_friction = 0;
   int with_stars = 0;
   int with_fof = 0;
   int with_lightcone = 0;
@@ -246,6 +247,7 @@ int main(int argc, char *argv[]) {
                   "Reconstruct the multipoles every time-step.", NULL, 0, 0),
       OPT_BOOLEAN('s', "hydro", &with_hydro, "Run with hydrodynamics.", NULL, 0,
                   0),
+      OPT_BOOLEAN(0, "dynamical-friction", &with_dynamical_friction, "Run with dynamical friction.", NULL, 0, 0),
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
       OPT_BOOLEAN('B', "black-holes", &with_black_holes,
                   "Run with black holes.", NULL, 0, 0),
@@ -1544,6 +1546,7 @@ int main(int argc, char *argv[]) {
       engine_policies |= engine_policy_timestep_limiter;
     if (with_timestep_sync) engine_policies |= engine_policy_timestep_sync;
     if (with_cooling) engine_policies |= engine_policy_cooling;
+    if (with_dynamical_friction) engine_policies |= engine_policy_dynamical_friction;
     if (with_stars) engine_policies |= engine_policy_stars;
     if (with_star_formation) engine_policies |= engine_policy_star_formation;
     if (with_feedback) engine_policies |= engine_policy_feedback;

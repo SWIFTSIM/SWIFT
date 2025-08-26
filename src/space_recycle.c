@@ -134,12 +134,16 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->sinks.star_formation_sink = NULL;
     c->hydro.stars_resort = NULL;
     c->stars.density_ghost = NULL;
+    c->stars.df_from_dm_ghost = NULL;
+    c->stars.df_from_stars_ghost= NULL;
     c->stars.prep1_ghost = NULL;
     c->stars.prep2_ghost = NULL;
     c->stars.density = NULL;
     c->stars.feedback = NULL;
     c->stars.prepare1 = NULL;
     c->stars.prepare2 = NULL;
+    c->stars.df_from_dm = NULL;
+    c->stars.df_from_stars = NULL;
     c->sinks.density = NULL;
     c->sinks.swallow = NULL;
     c->sinks.do_sink_swallow = NULL;

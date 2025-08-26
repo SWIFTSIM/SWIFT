@@ -55,6 +55,12 @@ struct cell_stars {
     /*! The second star ghost task related to kinetic feedback */
     struct task *prep2_ghost;
 
+    /*! The star ghost task for finishing DF-from-dm calculations */
+    struct task *df_from_dm_ghost;
+
+    /*! The star ghost task for finishing DF-from-stars calculations */
+    struct task *df_from_stars_ghost;
+
     /*! Linked list of the tasks computing this cell's star density. */
     struct link *density;
 
@@ -65,6 +71,12 @@ struct cell_stars {
     /*! Linked list of the tasks computing this cell's star 2nd prep for kinetic
      * feedback. */
     struct link *prepare2;
+
+    /*! Linked list of the tasks computing dynamical friction from DM */
+    struct link *df_from_dm;
+
+    /*! Linked list of the tasks computing dynamical friction from stars */
+    struct link *df_from_stars;
 
     /*! Linked list of the tasks computing this cell's star feedback. */
     struct link *feedback;

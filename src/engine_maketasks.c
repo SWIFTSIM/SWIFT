@@ -49,6 +49,7 @@
 #include "clocks.h"
 #include "cycle.h"
 #include "debug.h"
+#include "dynamical_friction.h"
 #include "error.h"
 #include "feedback.h"
 #include "neutrino_properties.h"
@@ -481,6 +482,11 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
     if (with_star_formation && ci->hydro.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
+
+#ifdef DYNAMICAL_FRICTION_STAR_LOOPS
+    error("Dynamical friction won't work over MPI yet!");
+#endif
+
   }
 
   /* Recurse? */
@@ -1252,6 +1258,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   struct scheduler *s = &e->sched;
   const int with_sinks = (e->policy & engine_policy_sinks);
   const int with_stars = (e->policy & engine_policy_stars);
+  const int with_dynamical_friction = (e->policy & engine_policy_dynamical_friction);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
   const int with_star_formation_sink = with_sinks && with_stars;
   const int with_timestep_limiter =
@@ -1385,6 +1392,22 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
       if (with_timestep_limiter && with_timestep_sync) {
         scheduler_addunlock(s, c->timestep_limiter, c->timestep_sync);
+      }
+
+      if (with_dynamical_friction){
+#ifdef DYNAMICAL_FRICTION_STAR_LOOPS
+        c->stars.df_from_dm_ghost =
+            scheduler_addtask(s, task_type_stars_df_from_dm_ghost, task_subtype_none,
+                              0, 0, c, NULL);
+        
+        c->stars.df_from_stars_ghost =
+            scheduler_addtask(s, task_type_stars_df_from_stars_ghost, task_subtype_none,
+                              0, 0, c, NULL);
+
+        /* DF tasks should slot in between gravity tasks and kick2, where the extra acceleration is applied */
+        scheduler_addunlock(s, c->stars.df_from_dm_ghost, c->kick2);
+        scheduler_addunlock(s, c->stars.df_from_stars_ghost, c->kick2);
+#endif
       }
     }
   } else { /* We are above the super-cell so need to go deeper */
@@ -2204,6 +2227,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav.grav, t);
+      } else if (t_subtype == task_subtype_stars_df_from_dm) {
+        engine_addlink(e, &ci->stars.df_from_dm, t);
       }
 
       /* Link pair tasks to cells. */
@@ -2225,6 +2250,10 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         error("Found a sub-pair/external-gravity task...");
       }
 #endif
+      else if (t_subtype == task_subtype_stars_df_from_dm) {
+        engine_addlink(e, &ci->stars.df_from_dm, t);
+        engine_addlink(e, &cj->stars.df_from_dm, t);
+      }
 
       /* Multipole-multipole interaction of progenies */
     } else if (t_type == task_type_grav_mm) {
@@ -3359,6 +3388,252 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Make the DF tasks for this cell.
+ * 
+ * Jon: This code heavily copies from the extra hydroloop mapper - I figured I needed something similar for the DF
+ * interactions that wasn't explicitly tied to the hydro, and I couldn't see an existing sensible place for it.
+ * 
+ */
+void engine_make_extra_df_loop_tasks_mapper(void *map_data, int num_elements,
+                                              void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int with_dynamical_friction = (e->policy & engine_policy_dynamical_friction);
+
+  if (with_dynamical_friction){
+
+#ifdef DYNAMICAL_FRICTION_STAR_LOOPS
+
+    /* DF-from-dm task has already been created, just need to add the df-from-stars task and set unlocks */
+    struct task *t_star_df_from_stars = NULL;
+
+    for (int ind = 0; ind < num_elements; ind++) {
+
+      struct task *t = &((struct task *)map_data)[ind];
+      const enum task_types t_type = t->type;
+      const enum task_subtypes t_subtype = t->subtype;
+      const long long flags = t->flags;
+      struct cell *const ci = t->ci;
+      struct cell *const cj = t->cj;
+
+      /* Self interaction? */
+      if (t_type == task_type_self && t_subtype == task_subtype_stars_df_from_dm) {
+
+        
+        t_star_df_from_stars =
+            scheduler_addtask(sched, task_type_self, task_subtype_stars_df_from_stars,
+                              flags, 0, ci, NULL);
+
+        engine_addlink(e, &ci->stars.df_from_stars, t_star_df_from_stars);
+
+        /* DF tasks should slot between the gravity tasks and kick2, where the extra acceleration is applied */
+        /* Do we even need to wait for gravity? Can they just happen any time before kick2? */
+        scheduler_addunlock(sched, ci->super->grav.end_force,
+                              t);
+        scheduler_addunlock(sched, t, ci->super->stars.df_from_dm_ghost);
+
+        scheduler_addunlock(sched, ci->super->grav.end_force,
+                              t_star_df_from_stars);
+        scheduler_addunlock(sched, t_star_df_from_stars,
+                              ci->super->stars.df_from_stars_ghost);
+
+      }
+
+      /* Otherwise, pair interaction? */
+      else if (t_type == task_type_pair && t_subtype == task_subtype_stars_df_from_dm) {
+
+        t_star_df_from_stars = scheduler_addtask(
+            sched, task_type_pair, task_subtype_stars_df_from_stars, flags, 0, ci, cj);
+
+        engine_addlink(e, &ci->stars.df_from_stars, t_star_df_from_stars);
+        engine_addlink(e, &cj->stars.df_from_stars, t_star_df_from_stars);
+
+        if (ci->nodeID == nodeID) {
+
+          scheduler_addunlock(sched, ci->super->grav.end_force,
+                              t);
+          scheduler_addunlock(sched, t,
+                                ci->super->stars.df_from_dm_ghost);
+
+          scheduler_addunlock(sched, ci->super->grav.end_force,
+                                t_star_df_from_stars);
+          scheduler_addunlock(sched, t_star_df_from_stars,
+                                ci->super->stars.df_from_stars_ghost);
+
+        }
+
+        if ((cj->nodeID == nodeID) && (ci->super != cj->super)) {
+
+          scheduler_addunlock(sched, cj->super->grav.end_force,
+                            t);
+          scheduler_addunlock(sched, t,
+                                cj->super->stars.df_from_dm_ghost);
+
+          scheduler_addunlock(sched, cj->super->grav.end_force,
+                                t_star_df_from_stars);
+          scheduler_addunlock(sched, t_star_df_from_stars,
+                                cj->super->stars.df_from_stars_ghost);
+
+        } 
+      }
+    }
+  }
+#endif
+
+}
+
+/**
+ * @brief Constructs the top-level pair tasks for the first DF loop over
+ * neighbours
+ *
+ * Here we construct all the tasks for all possible neighbouring non-empty
+ * local cells in the hierarchy. No dependencies are being added thus far.
+ * Additional loop over neighbours can later be added by simply duplicating
+ * all the tasks created by this function.
+ *
+ * @param map_data Offset of first two indices disguised as a pointer.
+ * @param num_elements Number of cells to traverse.
+ * @param extra_data The #engine.
+ */
+void engine_make_df_loop_tasks_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
+
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+  const int with_dynamical_friction = (e->policy & engine_policy_dynamical_friction);
+
+  if (with_dynamical_friction){
+
+    const int periodic = e->s->periodic;
+    struct space *s = e->s;
+    struct scheduler *sched = &e->sched;
+    const int nodeID = e->nodeID;
+    const int *cdim = s->cdim;
+    struct cell *cells = s->cells_top;
+
+    /* Loop through the elements, which are just byte offsets from NULL. */
+    for (int ind = 0; ind < num_elements; ind++) {
+
+      /* Get the cell index. */
+      const int cid = (size_t)(map_data) + ind;
+
+      /* Integer indices of the cell in the top-level grid */
+      const int i = cid / (cdim[1] * cdim[2]);
+      const int j = (cid / cdim[2]) % cdim[1];
+      const int k = cid % cdim[2];
+
+      /* Get the cell */
+      struct cell *ci = &cells[cid];
+
+      /* Assume DF only from DM and star particles in all possible prescriptions for now. */
+      /* Ideally we skip cells with no DM or stars - but there's no counter for DM specifically(?) */
+      /* For now just skip cells with no gravity particles. Does this ever actually happen(?) */
+      if (ci->grav.count == 0) continue;
+
+      /* We need to create at least one task for other DF tasks to piggyback off */
+      /* At some point we need to deal with DF for different particle types, i.e. it won't always be stars. */
+      /* For now only star tasks exist so this should be OK. */
+#ifdef DYNAMICAL_FRICTION_STAR_LOOPS
+      /* If the cell is local build a self-interaction */
+      if (ci->nodeID == nodeID) {
+        scheduler_addtask(sched, task_type_self, task_subtype_stars_df_from_dm, 0, 0, ci,
+                          NULL);
+      }
+#else
+      error("DF enabled, but DYNAMICAL_FRICTION_STAR_LOOPS not set (i.e. DF is not froms stars.) Currently no infrastructure to make DF tasks for other particle types.");
+#endif
+
+      /* Now loop over all the neighbours of this cell */
+      for (int ii = -1; ii < 2; ii++) {
+        int iii = i + ii;
+        if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+        iii = (iii + cdim[0]) % cdim[0];
+        for (int jj = -1; jj < 2; jj++) {
+          int jjj = j + jj;
+          if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+          jjj = (jjj + cdim[1]) % cdim[1];
+          for (int kk = -1; kk < 2; kk++) {
+            int kkk = k + kk;
+            if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+            kkk = (kkk + cdim[2]) % cdim[2];
+
+            /* Get the neighbouring cell */
+            const int cjd = cell_getid(cdim, iii, jjj, kkk);
+            struct cell *cj = &cells[cjd];
+
+            /* Is that neighbour local and does it have gravity particles ? */
+            if ((cid >= cjd) || (cj->grav.count == 0)) continue;
+
+            /* Construct the pair task */
+            const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+#ifdef DYNAMICAL_FRICTION_STAR_LOOPS
+            scheduler_addtask(sched, task_type_pair, task_subtype_stars_df_from_dm, sid, 0,
+                              ci, cj);
+#else
+            error("DF enabled, but DYNAMICAL_FRICTION_STAR_LOOPS not set (i.e. DF is not froms stars.) Currently no infrastructure to make DF tasks for other particle types.");
+#endif
+
+#ifdef WITH_MPI
+            error("DF tasks not yet ready to work over MPI ");
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+            /* Let's cross-check that we had a proxy for that cell */
+            if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+              /* Find the proxy for this node */
+              const int proxy_id = e->proxy_ind[cj->nodeID];
+              if (proxy_id < 0)
+                error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+              const struct proxy *p = &e->proxies[proxy_id];
+
+              /* Check whether the cell exists in the proxy */
+              int n = 0;
+              for (n = 0; n < p->nr_cells_in; n++)
+                if (p->cells_in[n] == cj) break;
+              if (n == p->nr_cells_in)
+                error(
+                    "Cell %d not found in the proxy but trying to construct "
+                    "hydro task!",
+                    cjd);
+            } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+              /* Find the proxy for this node */
+              const int proxy_id = e->proxy_ind[ci->nodeID];
+              if (proxy_id < 0)
+                error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+              const struct proxy *p = &e->proxies[proxy_id];
+
+              /* Check whether the cell exists in the proxy */
+              int n = 0;
+              for (n = 0; n < p->nr_cells_in; n++)
+                if (p->cells_in[n] == ci) break;
+              if (n == p->nr_cells_in)
+                error(
+                    "Cell %d not found in the proxy but trying to construct "
+                    "hydro task!",
+                    cid);
+            }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+
+
+/**
  * @brief Constructs the top-level pair tasks for the first hydro loop over
  * neighbours
  *
@@ -3913,6 +4188,17 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
+  /* Construct the first dynamical friction loop over neighbours */
+  if (e->policy & engine_policy_dynamical_friction)
+    threadpool_map(&e->threadpool, engine_make_df_loop_tasks_mapper, NULL,
+                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
+
+  if (e->verbose)
+    message("Making dynamical friction tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
   /* Split the tasks. */
   scheduler_splittasks(sched, /*fof_tasks=*/0, e->verbose);
 
@@ -3995,6 +4281,17 @@ void engine_maketasks(struct engine *e) {
 
   if (e->verbose)
     message("Making extra hydroloop tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
+  /* Make extra dynamical friction tasks, analogously to how things work for the hydro tasks */
+  if (e->policy & engine_policy_dynamical_friction) {
+    engine_make_extra_df_loop_tasks_mapper(sched->tasks, sched->nr_tasks, e);
+  }
+
+  if (e->verbose)
+    message("Making extra dynamical friction tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();

@@ -31,6 +31,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "dynamical_friction.h"
 #include "engine.h"
 #include "feedback.h"
 #include "scheduler.h"
@@ -93,6 +94,20 @@
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
 #include "runner_doiact_stars.h"
 #include "runner_doiact_undef.h"
+
+#ifdef DYNAMICAL_FRICTION_STAR_LOOPS
+
+#define FUNCTION df_from_dm
+#define FUNCTION_TASK_LOOP TASK_LOOP_DF_FROM_DM
+#include "runner_doiact_stars.h"
+#include "runner_doiact_undef.h"
+
+#define FUNCTION df_from_stars
+#define FUNCTION_TASK_LOOP TASK_LOOP_DF_FROM_STARS
+#include "runner_doiact_stars.h"
+#include "runner_doiact_undef.h"
+
+#endif /* DYNAMICAL_FRICTION_STAR_LOOPS */
 
 /* Import the black hole density loop functions. */
 #define FUNCTION density
@@ -234,6 +249,12 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_self_stars_feedback(r, ci, /*below_h_max=*/0, 1);
+#ifdef DYNAMICAL_FRICTION_STAR_LOOPS
+          else if (t->subtype == task_subtype_stars_df_from_dm)
+            runner_dosub_self_stars_df_from_dm(r, ci, /*below_h_max=*/0, 1);
+          else if (t->subtype == task_subtype_stars_df_from_stars)
+            runner_dosub_self_stars_df_from_stars(r, ci, /*below_h_max=*/0, 1);
+#endif
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_self_bh_density(r, ci, 1);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -288,6 +309,12 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_pair_stars_feedback(r, ci, cj, /*below_h_max=*/0, 1);
+#ifdef DYNAMICAL_FRICTION_STAR_LOOPS
+          else if (t->subtype == task_subtype_stars_df_from_dm)
+            runner_dosub_pair_stars_df_from_dm(r, ci, cj, /*below_h_max=*/0, 1);
+          else if (t->subtype == task_subtype_stars_df_from_stars)
+            runner_dosub_pair_stars_df_from_stars(r, ci, cj, /*below_h_max=*/0, 1);
+#endif
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_pair_bh_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -358,6 +385,12 @@ void *runner_main(void *data) {
 #endif
         case task_type_stars_ghost:
           runner_do_stars_ghost(r, ci, 1);
+          break;
+        case task_type_stars_df_from_dm_ghost:
+          runner_do_stars_df_from_dm_ghost(r, ci, 1);
+          break;
+        case task_type_stars_df_from_stars_ghost:
+          runner_do_stars_df_from_stars_ghost(r, ci, 1);
           break;
         case task_type_bh_density_ghost:
           runner_do_black_holes_density_ghost(r, ci, 1);

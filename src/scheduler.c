@@ -1644,6 +1644,9 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {
       scheduler_splittask_gravity(t, s);
+    } else if (t->subtype == task_subtype_stars_df_from_dm) {
+      /* For now, don't split up DF tasks. Collisionless neighbour h_maxes aren't tracked yet. */
+      // scheduler_splittask_dynamical_friction(t, s);
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type %s/%s", taskID_names[t->type],
@@ -2059,7 +2062,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_prep1 ||
                    t->subtype == task_subtype_stars_prep2 ||
-                   t->subtype == task_subtype_stars_feedback) {
+                   t->subtype == task_subtype_stars_feedback ||
+                   t->subtype == task_subtype_stars_df_from_dm ||
+                   t->subtype == task_subtype_stars_df_from_stars) {
           cost = 1.f * (wscale * scount_i) * count_i;
         } else if (t->subtype == task_subtype_sink_density ||
                    t->subtype == task_subtype_sink_swallow ||
@@ -2102,7 +2107,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_prep1 ||
                    t->subtype == task_subtype_stars_prep2 ||
-                   t->subtype == task_subtype_stars_feedback) {
+                   t->subtype == task_subtype_stars_feedback ||
+                   t->subtype == task_subtype_stars_df_from_dm ||
+                   t->subtype == task_subtype_stars_df_from_stars) {
           if (t->ci->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * scount_j * sid_scale[t->flags];
           } else if (t->cj->nodeID != nodeID) {
@@ -2183,6 +2190,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
         break;
       case task_type_stars_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
+        break;
+      case task_type_stars_df_from_dm_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
+        break;
+      case task_type_stars_df_from_stars_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
         break;
       case task_type_bh_density_ghost:

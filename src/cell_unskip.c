@@ -2459,6 +2459,133 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     /* Nothing more to do here, all drifts and sorts activated above */
   }
 
+  /* Un-skip the DF-from-DM tasks involved with this cell. */
+  for (struct link *l = c->stars.df_from_dm; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    error("Dynamical friction tasks almost certainly do not work with MPI yet.");
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
+
+    const int cj_active =
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+      scheduler_activate(s, t);
+
+      /* Jon: do we need this??? */
+      // if (t->type == task_type_self) {
+      //   cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation,
+      //                                     with_star_formation_sink,
+      //                                     with_timestep_sync);
+
+      //   cell_activate_drift_spart(ci, s);
+      //   cell_activate_drift_gpart(ci, s);
+      // }
+
+      // else if (t->type == task_type_pair) {
+      //   cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
+      //                                     with_star_formation_sink,
+      //                                     with_timestep_sync);
+
+      //   /* Activate the drift tasks. */
+      //   if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+      //   if (cj_nodeID == nodeID) cell_activate_drift_gpart(cj, s);
+
+      //   /* Activate the drift tasks. */
+      //   if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
+      //   if (ci_nodeID == nodeID) cell_activate_drift_gpart(ci, s);
+
+      // }
+    }
+
+    /* Jon: do we need this??? */
+    // /* Only interested in pair interactions as of here. */
+    // if (t->type == task_type_pair) {
+    //   /* Check whether there was too much particle motion, i.e. the
+    //      cell neighbour conditions were violated. */
+    //   if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
+    //   if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
+
+// #ifdef WITH_MPI
+//       // TODO things here??
+// #endif
+    // }
+  }
+
+  /* Un-skip the DF-from-stars tasks involved with this cell. */
+  for (struct link *l = c->stars.df_from_stars; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    error("Dynamical friction tasks almost certainly do not work with MPI yet.");
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
+
+    const int cj_active =
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+      scheduler_activate(s, t);
+
+      /* Jon: do we need this??? */
+      // if (t->type == task_type_self) {
+      //   cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation,
+      //                                     with_star_formation_sink,
+      //                                     with_timestep_sync);
+
+      //   cell_activate_drift_spart(ci, s);
+      // }
+
+      // else if (t->type == task_type_pair) {
+      //   cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
+      //                                     with_star_formation_sink,
+      //                                     with_timestep_sync);
+
+      //   /* Activate the drift tasks. */
+      //   if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+      //   if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
+
+      // }
+    }
+
+    /* Jon: do we need this??? */
+//     /* Only interested in pair interactions as of here. */
+//     if (t->type == task_type_pair) {
+//       /* Check whether there was too much particle motion, i.e. the
+//          cell neighbour conditions were violated. */
+//       if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
+//       if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
+
+// #ifdef WITH_MPI
+//       // TODO things here??
+// #endif
+//     }
+  }
+
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID) {
     if (cell_need_activating_stars(c, e, with_star_formation,
@@ -2472,6 +2599,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         scheduler_activate(s, c->hydro.prep1_ghost);
       if (c->stars.prep2_ghost != NULL)
         scheduler_activate(s, c->stars.prep2_ghost);
+      if (c->stars.df_from_dm_ghost != NULL)
+        scheduler_activate(s, c->stars.df_from_dm_ghost);
+      if (c->stars.df_from_stars_ghost != NULL)
+        scheduler_activate(s, c->stars.df_from_stars_ghost);
       /* If we don't have pair tasks, then the stars_in and stars_out still
        * need reactivation. */
       if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);
