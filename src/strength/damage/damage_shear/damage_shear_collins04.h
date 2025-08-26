@@ -71,28 +71,26 @@ __attribute__((always_inline)) INLINE static void damage_set_shear_damage_full(s
 }
 
 /**
- * @brief Calculates the rate of damage accumulation due to shear
+ * @brief Calculates the damage accumulated due to shear
  *
  * Method parameters needed in material parameter file:
  * DamageShearCollins:
  *     brittle_to_ductile_pressure: brittle--ductile transition pressure (Pa).
  *     brittle_to_plastic_pressure: brittle--plastic transition pressure (Pa).
  *
- * @param shear_dD_dt The rate of shear damage accumulation.
- * @param deviatoric_stress_tensor The stress deviatoric tensor.
+ * @param shear_damage The updated shear damage.
+ * @param p The particle of interest.
  * @param mat_id The material ID.
  * @param density The density.
  * @param u The specific internal energy.
- * @param yield_stress The yield stress.
- * @param shear_damage The shear damage.
  */
-__attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
-    float *shear_dD_dt, const struct sym_matrix deviatoric_stress_tensor, const int mat_id, const float density, const float u, const float yield_stress, const float shear_damage) {
+__attribute__((always_inline)) INLINE static void damage_shear_evolve(
+    float *shear_damage, struct part *restrict p, const int mat_id, const float density, const float u) {
 
-  *shear_dD_dt = 0.f;
-
-  /* Return dD/dt = 0 if already at max shear damage. */
-  if (shear_damage >= 1.f) {
+  /* Return shear_damage = 1 if already at max shear damage. */
+  const float shear_damage_prev = *shear_damage;
+  if (shear_damage_prev >= 1.f) {
+    *shear_damage = 1.f;
     return;
   }
 
@@ -109,11 +107,10 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
   // ### The accumulation of the amount that the deviatoric strain gets reduced by in each elements gets stored as the plastic strain.
   // ### The equivalent of the J_2 invariant of this plastic strain is added up each timestep to get a quantity epsilon_tot (Collins Eqn A6).
 
-  /* Calculate pressure and J_2 invariant of stress tensor. */
+  /* Calculate pressure and set invariant of total plastric strain. */
   const float pressure =
         gas_pressure_from_internal_energy(density, u, mat_id);
-  const float J_2 = strength_compute_deviatoric_sym_matrix_J_2(deviatoric_stress_tensor);
-  const float strain_rate_invariant = sqrtf(J_2);
+  const float strain_rate_invariant = p->strength_data.total_plastic_strain;
 
   /* Method parameters. */
   const float brittle_to_ductile_pressure = material_brittle_to_ductile_pressure(mat_id);
@@ -147,38 +144,14 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
   }
 
   const float plastic_strain_at_failure = slope * pressure + intercept;
+  const float shear_damage_new = fminf(strain_rate_invariant / plastic_strain_at_failure, 1.f);
 
   // ### Main questions here are:
   // ### 1) what the eqn is in the "else" above:
   // ### 2) Can damage decrease if e.g.  plastic_strain_at_failure increases but evolved plastic strain is const
 
-  // ### This is wrong. I need to calcualte based on the new evolved strain rate invariant
-  *shear_dD_dt = (strain_rate_invariant / plastic_strain_at_failure);
-}
-
-/**
- * @brief Steps particle shear damage
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to_shear_damage(
-    float *shear_damage, const float shear_dD_dt, const float dt_therm) {
-
-  *shear_damage += fminf(shear_dD_dt * dt_therm, 1.f);
-}
-
-/**
- * @brief Evolves particle shear damage
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void damage_shear_evolve(
-    float *shear_damage, struct part *restrict p, const struct sym_matrix deviatoric_stress_tensor,
-    const int mat_id, const float density, const float u, const float yield_stress, const float dt_therm) {
-
-  float shear_dD_dt;
-  damage_shear_compute_dD_dt(&shear_dD_dt, deviatoric_stress_tensor, mat_id, density, u, yield_stress, *shear_damage);
-  damage_shear_apply_timestep_to_shear_damage(shear_damage, shear_dD_dt, dt_therm);
+  /* Prevent damage from decreasing. */
+  *shear_damage = fmaxf(shear_damage_new, shear_damage_prev);
 }
 
 #endif /* SWIFT_DAMAGE_SHEAR_COLLINS04_H */

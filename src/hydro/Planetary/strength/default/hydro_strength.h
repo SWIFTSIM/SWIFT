@@ -139,13 +139,11 @@ hydro_end_force_strength(struct part *restrict p) {
 
   /* Get quntities needed for dD/dt calculation. */
   const int mat_id = p->mat_id;
-  const int phase_state = p->phase_state;
   const float mass = p->mass;
   const float density = p->rho_evol;
   const float u = p->u;
   const float pressure = gas_pressure_from_internal_energy(density, u, mat_id);
   const float damage = strength_get_damage(p);
-  const float yield_stress = yield_compute_yield_stress(mat_id, phase_state, density, u, damage);
   const struct sym_matrix deviatoric_stress_tensor = p->strength_data.deviatoric_stress_tensor;
 
   struct sym_matrix stress_tensor;
@@ -153,7 +151,7 @@ hydro_end_force_strength(struct part *restrict p) {
   damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
 
   /* Update dD/dt for timestep. */
-  damage_compute_dD_dt(p, stress_tensor, deviatoric_stress_tensor, mat_id, mass, density, u, yield_stress);
+  damage_compute_dD_dt(p, stress_tensor, mat_id, mass, density, u);
 }
 
 /**
@@ -206,8 +204,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
 
   // ### Since I have to calc dD/d now for timesteps, could this just use p->dD/dt?
   /* Evolve damage. */
-  damage_predict_evolve(&stress_tensor, deviatoric_stress_tensor, mat_id, mass,
-                              density, u, yield_stress, dt_therm);
+  damage_predict_evolve(&stress_tensor, mat_id, mass, density, u, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
   stress_tensor_evolve_deviatoric_stress_tensor(&p->strength_data.deviatoric_stress_tensor, p, phase_state, dt_therm);
@@ -286,8 +283,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
   damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
 
   /* Evolve damage. */
-  damage_kick_evolve(stress_tensor, deviatoric_stress_tensor, mat_id, mass,
-                           density, u, yield_stress, dt_therm);
+  damage_kick_evolve(stress_tensor, mat_id, mass, density, u, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
   stress_tensor_evolve_deviatoric_stress_tensor(&xp->strength_data.deviatoric_stress_tensor_full, p, phase_state, dt_therm);

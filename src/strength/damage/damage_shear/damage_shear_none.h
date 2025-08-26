@@ -65,28 +65,20 @@ __attribute__((always_inline)) INLINE static void damage_set_shear_damage(struct
 __attribute__((always_inline)) INLINE static void damage_set_shear_damage_full(struct xpart *restrict xp, const float shear_damage_full) {}
 
 /**
- * @brief Calculates the rate of damage accumulated due to tension
+ * @brief Calculates the damage accumulated due to shear
  *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
-    float *shear_dD_dt, const struct sym_matrix deviatoric_stress_tensor, const int mat_id, const float density, const float u, const float yield_stress, const float shear_damage) {}
-
-/**
- * @brief Steps particle shear damage
+ * Method parameters needed in material parameter file:
+ * DamageShearCollins:
+ *     brittle_to_ductile_pressure: brittle--ductile transition pressure (Pa).
+ *     brittle_to_plastic_pressure: brittle--plastic transition pressure (Pa).
  *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to_shear_damage(
-    float *shear_damage, const float shear_dD_dt, const float dt_therm) {}
-
-/**
- * @brief Evolves particle shear damage
- *
- * @param p The particle to act upon
+ * @param shear_damage The shear damage accumulated.
+ * @param p The particle of interest.
+ * @param mat_id The material ID.
+ * @param density The density.
+ * @param u The specific internal energy.
  */
 __attribute__((always_inline)) INLINE static void damage_shear_evolve(
-    float *shear_damage, struct part *restrict p, const struct sym_matrix deviatoric_stress_tensor,
-    const int mat_id, const float density, const float u, const float yield_stress, const float dt_therm) {}
+    float *shear_damage, struct part *restrict p, const int mat_id, const float density, const float u) {}
 
 #endif /* SWIFT_DAMAGE_SHEAR_NONE_H */
