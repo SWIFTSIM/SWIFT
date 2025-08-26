@@ -91,4 +91,46 @@ runner_iact_nonsym_stars_feedback(const float r2, const float dx[3],
 #endif
 }
 
+
+/**
+ * @brief Star-gas interactions for dynamical friction from DM.
+ * 
+ * This is needed so I can make the df_from_dm task loop, but I can't see why there should ever be anything to do here.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle (not updated).
+ * @param pj Second (gas) particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_stars_df_from_dm(const float r2, const float dx[3],
+                                  const float hi, const float hj,
+                                  const struct spart *si, struct part *pj,
+                                  const float a, const float H) {}
+
+/**
+ * @brief Star-gas interactions for dynamical friction from stars.
+ * 
+ * This is needed so I can make the df_from_stars task loop, but I can't see why there should ever be anything to do here.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle (not updated).
+ * @param pj Second (gas) particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_stars_df_from_stars(const float r2, const float dx[3],
+                                  const float hi, const float hj,
+                                  const struct spart *si, struct part *pj,
+                                  const float a, const float H) {}
+
+
 #endif /* SWIFT_BASIC_STARS_IACT_H */

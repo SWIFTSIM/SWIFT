@@ -29,6 +29,7 @@
 #include "active.h"
 #include "adaptive_softening.h"
 #include "drift.h"
+#include "dynamical_friction.h"
 #include "feedback.h"
 #include "gravity.h"
 #include "lightcone/lightcone.h"
@@ -752,6 +753,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
         stars_init_spart(sp);
         feedback_init_spart(sp);
         rt_init_spart(sp);
+        df_from_dm_init_spart(sp);
+        df_from_stars_init_spart(sp);
 
         /* Update the maximal active smoothing length in the cell */
         if (feedback_is_active(sp, e) || with_rt)

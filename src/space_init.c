@@ -29,6 +29,7 @@
 #include "adaptive_softening.h"
 #include "black_holes.h"
 #include "chemistry.h"
+#include "dynamical_friction.h"
 #include "engine.h"
 #include "gravity.h"
 #include "mhd.h"
@@ -120,6 +121,8 @@ void space_init_sparts_mapper(void *restrict map_data, int scount,
     stars_init_spart(&sparts[k]);
     rt_init_spart(&sparts[k]);
     rt_reset_spart(&sparts[k]);
+    df_from_dm_init_spart(&sparts[k]);
+    df_from_stars_init_spart(&sparts[k]);
   }
 }
 

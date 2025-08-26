@@ -2937,6 +2937,27 @@ case "$with_sink" in
    ;;
 esac
 
+#  Dynamical friction
+AC_ARG_WITH([dynamical-friction],
+    [AS_HELP_STRING([--with-dynamical-friction=<dfm>],
+       [entropy floor @<:@none, basic default: none@:>@]
+    )],
+    [with_dynamical_friction="$withval"],
+    [with_dynamical_friction="none"]
+)
+
+case "$with_dynamical_friction" in
+   none)
+      AC_DEFINE([DYNAMICAL_FRICTION_NONE], [1], [No dynamical friction])
+   ;;
+   basic)
+      AC_DEFINE([DYNAMICAL_FRICTION_BASIC], [1], [Dynamical friction following Genina+24])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown dynamical friction model])
+   ;;
+esac
+
 # Forcing terms
 AC_ARG_WITH([forcing],
    [AS_HELP_STRING([--with-forcing=<term>],

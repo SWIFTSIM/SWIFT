@@ -28,6 +28,7 @@
 /* Local headers. */
 #include "black_holes.h"
 #include "chemistry.h"
+#include "dynamical_friction.h"
 #include "engine.h"
 #include "feedback.h"
 #include "gravity.h"
@@ -324,6 +325,10 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
 
     /* And radiative transfer data */
     rt_first_init_spart(&sp[k]);
+
+    /* And DF data */
+    df_from_dm_first_init_spart(&sp[k], stars_properties);
+    df_from_stars_first_init_spart(&sp[k], stars_properties);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (sp[k].gpart && sp[k].gpart->id_or_neg_offset != -(k + delta))

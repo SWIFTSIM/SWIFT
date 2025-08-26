@@ -21,25 +21,6 @@
 
 
 /**
- * @brief DF interaction between stars and gas (non-symmetric).
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param si First sparticle.
- * @param pj Second particle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- */
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_df(const float r2, const float dx[3],
-                                 const float hi, const float hj,
-                                 struct spart *restrict si,
-                                 const struct part *restrict pj, const float a,
-                                 const float H) {}
-
-/**
  * @brief Density interaction between star and DM gravity particles (non-symmetric).
  *
  * @param r2 Comoving square distance between the two particles.

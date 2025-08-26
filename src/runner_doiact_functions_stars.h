@@ -63,8 +63,14 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
   const struct cosmology *cosmo = e->cosmology;
 
   /* Anything to do here? */
-  if (c->hydro.count == 0 || c->stars.count == 0) return;
   if (!cell_is_active_stars(c, e)) return;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+  if (c->grav.count == 0 || c->stars.count == 0) return;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+  if (c->stars.count == 0) return;
+#else
+  if (c->hydro.count == 0 || c->stars.count == 0) return;
+#endif
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -176,6 +182,96 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
 #endif
       }
     } /* loop over the parts in ci. */
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+
+    /* Should we calculate DF forces for this spart? */
+    if (!si->df_data.apply_df) continue;
+
+    /* Get the DF h information */
+    const float hi_dm = si->df_data.h_dm;
+    const float hig2_dm = hi_dm * hi_dm * kernel_gamma2;
+
+    struct gpart *restrict gparts = c->grav.parts;
+
+    // message("Running DF-from-DM self task on %i gparts", c->grav.count);
+
+    /* Loop over the gparts in cj. */
+    for (int gjd = 0; gjd < c->grav.count; gjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct gpart *restrict gj = &gparts[gjd];
+
+      if (gj->type == swift_type_dark_matter){
+
+        /* Early abort? */
+        if (gpart_is_inhibited(gj, e)) continue;
+
+        /* Compute the pairwise distance. */
+        const float gjx[3] = {(float)(gj->x[0] - c->loc[0]),
+                              (float)(gj->x[1] - c->loc[1]),
+                              (float)(gj->x[2] - c->loc[2])};
+        const float dx[3] = {six[0] - gjx[0], six[1] - gjx[1], six[2] - gjx[2]};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+  #ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (gj->ti_drift != e->ti_current)
+          error("Particle gj not drifted to current time");
+  #endif
+
+        if (r2 < hig2_dm) {
+          runner_iact_nonsym_stars_dm_density(r2, dx, hi_dm, si, gj, a, H);
+        }
+      }
+    } /* loop over the sparts in cj. */
+
+#endif
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+
+    /* Should we calculate DF forces for this spart? */
+    if (!si->df_data.apply_df) continue;
+
+    /* Get the DF h information */
+    const float hi_stars = si->df_data.h_stars;
+    const float hig2_stars = hi_stars * hi_stars * kernel_gamma2;
+
+    /* Loop over the sparts in cj. */
+    for (int sjd = 0; sjd < c->stars.count; sjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct spart *restrict sj = &sparts[sjd];
+
+      const float hj = sj->h;
+
+      /* Early abort? */
+      if (spart_is_inhibited(sj, e)) continue;
+
+      /* Check we're not trying to interact a spart with itself */
+      if (si->id == sj->id) continue;
+
+      /* Compute the pairwise distance. */
+      const float sjx[3] = {(float)(sj->x[0] - c->loc[0]),
+                            (float)(sj->x[1] - c->loc[1]),
+                            (float)(sj->x[2] - c->loc[2])};
+      const float dx[3] = {six[0] - sjx[0], six[1] - sjx[1], six[2] - sjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (sj->ti_drift != e->ti_current)
+        error("Particle sj not drifted to current time");
+#endif
+
+      if (r2 < hig2_stars) {
+        runner_iact_nonsym_stars_stars_density(r2, dx, hi_stars, hj, si, sj, a, H);
+      }
+
+    } /* loop over the sparts in cj. */
+
+#endif
+
   } /* loop over the sparts in ci. */
 
   TIMER_TOC(TIMER_DOSELF_STARS);
@@ -210,8 +306,14 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
   const struct cosmology *cosmo = e->cosmology;
 
   /* Anything to do here? */
-  if (cj->hydro.count == 0 || ci->stars.count == 0) return;
   if (!cell_is_active_stars(ci, e)) return;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+  if (cj->grav.count == 0 || ci->stars.count == 0) return;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+  if (cj->stars.count == 0 || ci->stars.count == 0) return;
+#else
+  if (cj->hydro.count == 0 || ci->stars.count == 0) return;
+#endif
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -341,6 +443,99 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
 #endif
       }
     } /* loop over the parts in cj. */
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+
+    /* Should we calculate DF forces for this spart? */
+    if (!si->df_data.apply_df) continue;
+
+    /* Get the DF h information */
+    const float hi_dm = si->df_data.h_dm;
+    const float hig2_dm = hi_dm * hi_dm * kernel_gamma2;
+
+    struct gpart *restrict gparts_j = cj->grav.parts;
+
+    // message("Running DF-from-DM pair task on %i gparts", cj->grav.count);
+
+    /* Loop over the gparts in cj. */
+    for (int gjd = 0; gjd < cj->grav.count; gjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct gpart *restrict gj = &gparts_j[gjd];
+
+      /* Skip inhibited particles. */
+      if (gpart_is_inhibited(gj, e)) continue;
+
+      if (gj->type == swift_type_dark_matter){
+
+        /* Compute the pairwise distance. */
+        const float gjx[3] = {(float)(gj->x[0] - cj->loc[0]),
+                              (float)(gj->x[1] - cj->loc[1]),
+                              (float)(gj->x[2] - cj->loc[2])};
+        const float dx[3] = {six[0] - gjx[0], six[1] - gjx[1], six[2] - gjx[2]};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+  #ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (gj->ti_drift != e->ti_current)
+          error("Particle gpj not drifted to current time");
+  #endif
+
+        if (r2 < hig2_dm) {
+          runner_iact_nonsym_stars_dm_density(r2, dx, hi_dm, si, gj, a, H);
+        }
+      }
+    } /* loop over the gparts in cj. */
+
+#endif
+
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+
+    /* Should we calculate DF forces for this spart? */
+    if (!si->df_data.apply_df) continue;
+
+    /* Get the DF h information */
+    const float hi_stars = si->df_data.h_stars;
+    const float hig2_stars = hi_stars * hi_stars * kernel_gamma2;
+
+    struct spart *restrict sparts_j = cj->stars.parts;
+
+    /* Loop over the sparts in cj. */
+    for (int sjd = 0; sjd < cj->stars.count; sjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct spart *restrict sj = &sparts_j[sjd];
+
+      const float hj = sj->h;
+
+      /* Early abort? */
+      if (spart_is_inhibited(sj, e)) continue;
+
+      /* Check we're not trying to interact a spart with itself */
+      if (si->id == sj->id) continue;
+
+      /* Compute the pairwise distance. */
+      const float sjx[3] = {(float)(sj->x[0] - cj->loc[0]),
+                            (float)(sj->x[1] - cj->loc[1]),
+                            (float)(sj->x[2] - cj->loc[2])};
+      const float dx[3] = {six[0] - sjx[0], six[1] - sjx[1], six[2] - sjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (sj->ti_drift != e->ti_current)
+        error("Particle sj not drifted to current time");
+#endif
+
+      if (r2 < hig2_stars) {
+        runner_iact_nonsym_stars_stars_density(r2, dx, hi_stars, hj, si, sj, a, H);
+      }
+
+    } /* loop over the sparts in cj. */
+
+#endif
+
   } /* loop over the parts in ci. */
 }
 
@@ -745,7 +940,9 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, const struct cell *restrict ci,
   TIMER_TIC;
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
-     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
   const int do_ci_stars = ci->nodeID == r->e->nodeID;
   const int do_cj_stars = cj->nodeID == r->e->nodeID;
 #else
@@ -753,11 +950,23 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, const struct cell *restrict ci,
   const int do_ci_stars = cj->nodeID == r->e->nodeID;
   const int do_cj_stars = ci->nodeID == r->e->nodeID;
 #endif
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)  
+  if (do_ci_stars && ci->stars.count != 0 && cj->grav.count != 0)
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
+  if (do_cj_stars && cj->stars.count != 0 && ci->grav.count != 0)
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci, limit_min_h, limit_max_h);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS) 
+  if (do_ci_stars && ci->stars.count != 0 && cj->stars.count != 0)
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
+  if (do_cj_stars && cj->stars.count != 0 && ci->stars.count != 0)
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci, limit_min_h, limit_max_h);
+#else
   if (do_ci_stars && ci->stars.count != 0 && cj->hydro.count != 0)
     DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
   if (do_cj_stars && cj->stars.count != 0 && ci->hydro.count != 0)
     DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci, limit_min_h, limit_max_h);
-
+#endif
   TIMER_TOC(TIMER_DOPAIR_STARS);
 }
 
@@ -794,7 +1003,13 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Early abort? */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+  if (cj->grav.count == 0) return;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+  if (cj->stars.count == 0) return;
+#else
   if (count_j == 0) return;
+#endif
 
   /* Pick-out the sorted lists. */
   const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
@@ -962,7 +1177,13 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Early abort? */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+  if (cj->grav.count == 0) return;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+  if (cj->stars.count == 0) return;
+#else
   if (count_j == 0) return;
+#endif
 
   /* Loop over the parts_i. */
   for (int pid = 0; pid < scount; pid++) {
@@ -1022,6 +1243,100 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
 #endif
       }
     } /* loop over the parts in cj. */
+
+    #if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+
+    /* Should we calculate DF forces for this spart? */
+    if (!spi->df_data.apply_df) continue;
+
+    /* Get the DF h information */
+    const float hi_dm = spi->df_data.h_dm;
+    const float hig2_dm = hi_dm * hi_dm * kernel_gamma2;
+
+    struct gpart *restrict gparts_j = cj->grav.parts;
+
+    // message("Running DF-from-DM subset pair task on %i gparts", cj->grav.count);
+
+    /* Loop over the gparts in cj. */
+    for (int gjd = 0; gjd < cj->grav.count; gjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct gpart *restrict gj = &gparts_j[gjd];
+
+      /* Skip inhibited particles. */
+      if (gpart_is_inhibited(gj, e)) continue;
+
+      if (gj->type == swift_type_dark_matter){
+
+        /* Compute the pairwise distance. */
+        const float gjx[3] = {(float)(gj->x[0] - cj->loc[0]),
+                              (float)(gj->x[1] - cj->loc[1]),
+                              (float)(gj->x[2] - cj->loc[2])};
+        const float dx[3] = {pix - gjx[0], piy - gjx[1], piz - gjx[2]};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+  #ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (gj->ti_drift != e->ti_current)
+          error("Particle gpj not drifted to current time");
+  #endif
+
+        if (r2 < hig2_dm) {
+          runner_iact_nonsym_stars_dm_density(r2, dx, hi_dm, spi, gj, a, H);
+        }
+      }
+    } /* loop over the gparts in cj. */
+
+#endif
+
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+
+    /* Should we calculate DF forces for this spart? */
+    if (!spi->df_data.apply_df) continue;
+
+    /* Get the DF h information */
+    const float hi_stars = spi->df_data.h_stars;
+    const float hig2_stars = hi_stars * hi_stars * kernel_gamma2;
+
+    struct spart *restrict sparts_j = cj->stars.parts;
+
+    /* Loop over the sparts in cj. */
+    for (int sjd = 0; sjd < cj->stars.count; sjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct spart *restrict sj = &sparts_j[sjd];
+
+      const float hj = sj->h;
+
+      /* Early abort? */
+      if (spart_is_inhibited(sj, e)) continue;
+
+      /* Check we're not trying to interact a spart with itself */
+      if (spi->id == sj->id) continue;
+
+      /* Compute the pairwise distance. */
+      const float sjx[3] = {(float)(sj->x[0] - cj->loc[0]),
+                            (float)(sj->x[1] - cj->loc[1]),
+                            (float)(sj->x[2] - cj->loc[2])};
+      const float dx[3] = {pix - sjx[0], piy - sjx[1], piz - sjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (sj->ti_drift != e->ti_current)
+        error("Particle sj not drifted to current time");
+#endif
+
+      if (r2 < hig2_stars) {
+        runner_iact_nonsym_stars_stars_density(r2, dx, hi_stars, hj, spi, sj, a, H);
+      }
+
+    } /* loop over the sparts in cj. */
+
+#endif
+
+
   } /* loop over the parts in ci. */
 }
 
@@ -1053,7 +1368,13 @@ void DOSELF1_SUBSET_STARS(struct runner *r, const struct cell *ci,
   struct part *restrict parts_j = ci->hydro.parts;
 
   /* Early abort? */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+  if (ci->grav.count == 0) return;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+  if (ci->stars.count == 0) return;
+#else
   if (count_i == 0) return;
+#endif
 
   /* Loop over the parts in ci. */
   for (int spid = 0; spid < scount; spid++) {
@@ -1109,6 +1430,97 @@ void DOSELF1_SUBSET_STARS(struct runner *r, const struct cell *ci,
 #endif
       }
     } /* loop over the parts in cj. */
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+
+    /* Should we calculate DF forces for this spart? */
+    if (!spi->df_data.apply_df) continue;
+
+    /* Get the DF h information */
+    const float hi_dm = spi->df_data.h_dm;
+    const float hig2_dm = hi_dm * hi_dm * kernel_gamma2;
+
+    struct gpart *restrict gparts = ci->grav.parts;
+
+    // message("Running DF-from-DM subset self task on %i gparts", ci->grav.count);
+
+    /* Loop over the gparts in cj. */
+    for (int gjd = 0; gjd < ci->grav.count; gjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct gpart *restrict gj = &gparts[gjd];
+
+      if (gj->type == swift_type_dark_matter){
+
+        /* Early abort? */
+        if (gpart_is_inhibited(gj, e)) continue;
+
+        /* Compute the pairwise distance. */
+        const float gjx[3] = {(float)(gj->x[0] - ci->loc[0]),
+                              (float)(gj->x[1] - ci->loc[1]),
+                              (float)(gj->x[2] - ci->loc[2])};
+        const float dx[3] = {spix[0] - gjx[0], spix[1] - gjx[1], spix[2] - gjx[2]};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+  #ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (gj->ti_drift != e->ti_current)
+          error("Particle sj not drifted to current time");
+  #endif
+
+        if (r2 < hig2_dm) {
+          runner_iact_nonsym_stars_dm_density(r2, dx, hi_dm, spi, gj, a, H);
+        }
+      }
+    } /* loop over the sparts in cj. */
+
+#endif
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+
+    /* Should we calculate DF forces for this spart? */
+    if (!spi->df_data.apply_df) continue;
+
+    /* Get the DF h information */
+    const float hi_stars = spi->df_data.h_stars;
+    const float hig2_stars = hi_stars * hi_stars * kernel_gamma2;
+
+    /* Loop over the sparts in cj. */
+    for (int sjd = 0; sjd < ci->stars.count; sjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct spart *restrict sj = &sparts[sjd];
+
+      const float hj = sj->h;
+
+      /* Early abort? */
+      if (spart_is_inhibited(sj, e)) continue;
+
+      /* Check we're not trying to interact a spart with itself */
+      if (spi->id == sj->id) continue;
+
+      /* Compute the pairwise distance. */
+      const float sjx[3] = {(float)(sj->x[0] - ci->loc[0]),
+                            (float)(sj->x[1] - ci->loc[1]),
+                            (float)(sj->x[2] - ci->loc[2])};
+      const float dx[3] = {spix[0] - sjx[0], spix[1] - sjx[1], spix[2] - sjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (sj->ti_drift != e->ti_current)
+        error("Particle sj not drifted to current time");
+#endif
+
+      if (r2 < hig2_stars) {
+        runner_iact_nonsym_stars_stars_density(r2, dx, hi_stars, hj, spi, sj, a, H);
+      }
+
+    } /* loop over the sparts in cj. */
+
+#endif
+
+
   } /* loop over the parts in ci. */
 }
 
@@ -1150,7 +1562,13 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
   const struct engine *e = r->e;
 
   /* Anything to do here? */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+  if (cj->grav.count == 0) return;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+  if (cj->stars.count == 0) return;
+#else
   if (cj->hydro.count == 0) return;
+#endif
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -1179,7 +1597,8 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
       (cj->hydro.sorted & (1 << sid)) &&
       (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
 
-#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+/* Only use naive interactions in DF calculations for now */
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS) || (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM) || (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
   const int force_naive = 1;
 #else
   const int force_naive = 0;
@@ -1215,7 +1634,13 @@ void DOSELF1_BRANCH_STARS(struct runner *r, const struct cell *c,
   if (c->stars.count == 0) return;
 
   /* Anything to do here? */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+  if (c->grav.count == 0) return;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+  if (c->stars.count == 0) return;
+#else
   if (c->hydro.count == 0) return;
+#endif
 
   /* Anything to do here? */
   if (!cell_is_active_stars(c, e)) return;
@@ -1312,7 +1737,8 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                 cj->stars.dx_max_sort_old > space_maxreldx * cj->dmin))
     error("Interacting unsorted cells. (cj stars)");
 
-#ifdef SWIFT_USE_NAIVE_INTERACTIONS_STARS
+/* Only do naive pair interactions for DF for now */
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS_STARS) || (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM) || (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
   DOPAIR1_STARS_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #else
   DO_SYM_PAIR1_STARS(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
@@ -1344,7 +1770,9 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
-     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
   /* Here we update the stars --> the star cell must be local */
   const int ci_local = (ci->nodeID == e->nodeID);
   const int cj_local = (cj->nodeID == e->nodeID);
@@ -1358,10 +1786,22 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
   /* What kind of pair are we doing here? */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+  const int do_ci = ci->stars.count != 0 && cj->grav.count != 0 &&
+                    cell_is_active_stars(ci, e) && ci_local;
+  const int do_cj = cj->stars.count != 0 && ci->grav.count != 0 &&
+                    cell_is_active_stars(cj, e) && cj_local;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+  const int do_ci = ci->stars.count != 0 && cj->stars.count != 0 &&
+                    cell_is_active_stars(ci, e) && ci_local;
+  const int do_cj = cj->stars.count != 0 && ci->stars.count != 0 &&
+                    cell_is_active_stars(cj, e) && cj_local;
+#else
   const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
                     cell_is_active_stars(ci, e) && ci_local;
   const int do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
                     cell_is_active_stars(cj, e) && cj_local;
+#endif
 
   /* Should we even bother? */
   if (!do_ci && !do_cj) return;
@@ -1369,6 +1809,9 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   /* We reached a leaf OR a cell small enough to be processed quickly */
   if (!ci->split || ci->stars.count < space_recurse_size_pair_stars ||
       !cj->split || cj->stars.count < space_recurse_size_pair_stars) {
+
+    /* For now, deactivate sort checks for DF tasks as we haven't implemented fancy pair tasks yet */
+#if (FUNCTION_TASK_LOOP != TASK_LOOP_DF_FROM_DM) && (FUNCTION_TASK_LOOP != TASK_LOOP_DF_FROM_STARS)
 
     /* Do any of the cells need to be sorted first?
      * Since h_max might have changed, we may not have sorted at this level */
@@ -1396,6 +1839,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
         runner_do_stars_sort(r, cj, (1 << sid), 0, 0);
       }
     }
+#endif
 
     /* We interact all particles in that cell:
        - No limit on the smallest h
@@ -1419,6 +1863,8 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
        process them at this level before going deeper */
     if (recurse_below_h_max) {
 
+      /* For now, deactivate sort checks for DF tasks as we haven't implemented fancy pair tasks yet */
+#if (FUNCTION_TASK_LOOP != TASK_LOOP_DF_FROM_DM) && (FUNCTION_TASK_LOOP != TASK_LOOP_DF_FROM_STARS)
       /* Do any of the cells need to be sorted first?
        * Since h_max might have changed, we may not have sorted at this level */
       if (do_ci) {
@@ -1447,6 +1893,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
           runner_do_stars_sort(r, cj, (1 << sid), 0, 0);
         }
       }
+#endif
 
       /* message("Multi-level PAIR! ci->count=%d cj->count=%d",
        * ci->hydro.count, cj->hydro.count); */
@@ -1491,9 +1938,15 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *c,
 #endif
 
   /* Should we even bother? */
-  if (c->hydro.count == 0 || c->stars.count == 0 ||
-      !cell_is_active_stars(c, r->e))
-    return;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+  if (c->grav.count == 0) return;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+  if (c->stars.count == 0) return;
+#else
+  if (c->hydro.count == 0) return;
+#endif
+  if (c->stars.count == 0) return;
+  if (!cell_is_active_stars(c, r->e)) return;
 
   /* We reached a leaf OR a cell small enough to process quickly */
   if (!c->split || c->stars.count < space_recurse_size_self_stars) {
@@ -1587,7 +2040,13 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
   struct space *s = e->s;
 
   /* Should we even bother? */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+  if (cj->grav.count == 0) return;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+  if (cj->stars.count == 0) return;
+#else
   if (cj->hydro.count == 0) return;
+#endif
   if (ci->stars.count == 0) return;
   if (!cell_is_active_stars(ci, e)) return;
 
@@ -1632,7 +2091,13 @@ void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
   const struct engine *e = r->e;
 
   /* Should we even bother? */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_DM)
+  if (ci->grav.count == 0) return;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_DF_FROM_STARS)
+  if (ci->stars.count == 0) return;
+#else
   if (ci->hydro.count == 0) return;
+#endif
   if (ci->stars.count == 0) return;
   if (!cell_is_active_stars(ci, e)) return;
 

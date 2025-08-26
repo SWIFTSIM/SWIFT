@@ -26,6 +26,10 @@
  */
 struct df_spart_data {
 
+  /* Should DF calculations be done for this particle? */
+  /* This will be a mandatory field for all DF models - allows us to skip neighbour finding */
+  char apply_df;
+
   /* Smoothing length for DM neighbours */
   float h_dm;
 

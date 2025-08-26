@@ -23,6 +23,18 @@
 #include "kick.h"
 #include "stars_part.h"
 
+// N_neigh = 4/3 pi (gamma*eta)^n_d
+// For the SPHENIX kernel gamma = 1.936492
+// eta=1.2348 gives 58 neighbours, and is the default for the hydro
+// eta=1.487 gives 100 neighbours.
+
+#define df_default_resolution_eta 1.2348
+#define df_default_max_iterations 30
+#define df_default_volume_change 1.4f
+#define df_default_h_max FLT_MAX
+#define df_default_h_min_ratio 0.f
+#define df_default_h_tolerance 1e-4
+
 /**
  * @brief Specifies which s-particle fields to read from a dataset
  *
@@ -217,6 +229,60 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->log_max_h_change = p->log_max_h_change;
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
+
+  /* Properties of the star-DM neighbour search */
+  /* Right now this is all inherited from the hydro, as it is for the stars themselves. */
+  
+  sp->df_from_dm.eta_neighbours = parser_get_opt_param_float(
+      params, "DynamicalFriction:dm_resolution_eta", df_default_resolution_eta);
+
+  sp->df_from_dm.h_tolerance =
+      parser_get_opt_param_float(params, "DynamicalFriction:dm_h_tolerance", df_default_h_tolerance);
+
+  sp->df_from_dm.max_smoothing_iterations = parser_get_opt_param_int(
+      params, "DynamicalFriction:dm_max_ghost_iterations", df_default_max_iterations);
+
+  const float df_from_dm_max_volume_change =
+      parser_get_opt_param_float(params, "DynamicalFriction:dm_max_volume_change", -1);
+  if (df_from_dm_max_volume_change == -1)
+    sp->df_from_dm.log_max_h_change = logf(powf(df_default_volume_change, hydro_dimension_inv));
+  else
+    sp->df_from_dm.log_max_h_change = logf(powf(df_from_dm_max_volume_change, hydro_dimension_inv));
+
+  sp->df_from_dm.h_max = parser_get_opt_param_float(
+      params, "DynamicalFriction:dm_h_max", df_default_h_max);
+
+  /* Need to update this to use a ratio */
+  sp->df_from_dm.h_min = parser_get_opt_param_float(
+      params, "DynamicalFriction:dm_h_min", 0.);
+
+  
+
+  /* Properties of the star-star neighbour search */
+  
+  sp->df_from_stars.eta_neighbours = parser_get_opt_param_float(
+      params, "DynamicalFriction:stars_resolution_eta", df_default_resolution_eta);
+
+  sp->df_from_stars.h_tolerance =
+      parser_get_opt_param_float(params, "DynamicalFriction:stars_h_tolerance", df_default_h_tolerance);
+
+  sp->df_from_stars.max_smoothing_iterations = parser_get_opt_param_int(
+      params, "DynamicalFriction:stars_max_ghost_iterations", df_default_max_iterations);
+
+  const float df_from_stars_max_volume_change =
+      parser_get_opt_param_float(params, "DynamicalFriction:stars_max_volume_change", -1);
+  if (df_from_stars_max_volume_change == -1)
+    sp->df_from_stars.log_max_h_change = logf(powf(df_default_volume_change, hydro_dimension_inv));
+  else
+    sp->df_from_stars.log_max_h_change = logf(powf(df_from_stars_max_volume_change, hydro_dimension_inv));
+
+  sp->df_from_stars.h_max = parser_get_opt_param_float(
+      params, "DynamicalFriction:stars_h_max", df_default_h_max);
+
+  /* Need to update this to use a ratio */
+  sp->df_from_stars.h_min = parser_get_opt_param_float(
+      params, "DynamicalFriction:stars_h_min", 0.);
+
 }
 
 /**

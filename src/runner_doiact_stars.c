@@ -67,8 +67,13 @@
 
 #ifdef DYNAMICAL_FRICTION_STAR_LOOPS
 
-#define FUNCTION df
-#define FUNCTION_TASK_LOOP TASK_LOOP_DF
+#define FUNCTION df_from_dm
+#define FUNCTION_TASK_LOOP TASK_LOOP_DF_FROM_DM
+#include "runner_doiact_functions_stars.h"
+#include "runner_doiact_undef.h"
+
+#define FUNCTION df_from_stars
+#define FUNCTION_TASK_LOOP TASK_LOOP_DF_FROM_STARS
 #include "runner_doiact_functions_stars.h"
 #include "runner_doiact_undef.h"
 

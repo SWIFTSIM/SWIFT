@@ -159,6 +159,60 @@ struct stars_props {
 
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
+
+  /* Properties of the star-DM neighbour search */
+  struct {
+
+    /*! Resolution parameter */
+    float eta_neighbours;
+
+    /*! Smoothing length tolerance */
+    float h_tolerance;
+
+    /*! Maximal smoothing length (internal units) */
+    float h_max;
+
+    /*! Minimal smoothing length expressed as ratio to softening length */
+    float h_min_ratio;
+
+    /*! Minimal smoothing length (internal units) */
+    float h_min;
+
+    /*! Maximal number of iterations to converge h */
+    int max_smoothing_iterations;
+
+    /*! Maximal change of h over one time-step */
+    float log_max_h_change;
+
+  } df_from_dm;
+
+  /* Properties of the star-star neighbour search */
+  struct {
+
+    /*! Resolution parameter */
+    float eta_neighbours;
+
+    /*! Smoothing length tolerance */
+    float h_tolerance;
+
+    /*! Maximal smoothing length (internal units) */
+    float h_max;
+
+    /*! Minimal smoothing length expressed as ratio to softening length */
+    float h_min_ratio;
+
+    /*! Minimal smoothing length (internal units) */
+    float h_min;
+
+    /*! Maximal number of iterations to converge h */
+    int max_smoothing_iterations;
+
+    /*! Maximal change of h over one time-step */
+    float log_max_h_change;
+
+  } df_from_stars;
+
+
 };
 
 #endif /* SWIFT_BASIC_STAR_PART_H */

@@ -27,15 +27,25 @@
 #include "units.h"
 
 /**
- * @brief Prepares a s-particle for its df interactions
+ * @brief Prepares a s-particle for its df interactions from dm
  *
  * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void df_init_spart(
+__attribute__((always_inline)) INLINE static void df_from_dm_init_spart(
     struct spart* sp) {
 
   sp->df_data.density_dm.wcount = 0.f;
   sp->df_data.density_dm.wcount_dh = 0.f;
+
+}
+
+/**
+ * @brief Prepares a s-particle for its df interactions from stars
+ *
+ * @param sp The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void df_from_stars_init_spart(
+    struct spart* sp) {
 
   sp->df_data.density_stars.wcount = 0.f;
   sp->df_data.density_stars.wcount_dh = 0.f;
@@ -52,10 +62,31 @@ __attribute__((always_inline)) INLINE static void df_init_spart(
  * @param sp The particle to act upon.
  * @param df_props The properties of the df model.
  */
-__attribute__((always_inline)) INLINE static void df_first_init_spart(
-    struct spart* sp, const struct df_props* df_props) {
+__attribute__((always_inline)) INLINE static void df_from_dm_first_init_spart(
+    struct spart* sp, const struct stars_props* props) {
 
-  df_init_spart(sp);
+  /* Set the initial DF smoothing to be equal to the hydro smoothing just so we have something */
+  sp->df_data.h_dm = sp->h;
+
+  df_from_dm_init_spart(sp);
+}
+
+/**
+ * @brief Initialises the s-particles df props for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in
+ *
+ * @param sp The particle to act upon.
+ * @param df_props The properties of the df model.
+ */
+__attribute__((always_inline)) INLINE static void df_from_stars_first_init_spart(
+    struct spart* sp, const struct stars_props* props) {
+
+  /* Set the initial DF smoothing to be equal to the hydro smoothing just so we have something */
+  sp->df_data.h_stars = sp->h;
+
+  df_from_stars_init_spart(sp);
 }
 
 
@@ -65,11 +96,11 @@ __attribute__((always_inline)) INLINE static void df_first_init_spart(
  * @param sp The particle to act upon
  * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void stars_end_dm_density(
+__attribute__((always_inline)) INLINE static void stars_end_df_from_dm(
     struct spart* sp, const struct cosmology* cosmo) {
 
   /* Some smoothing length multiples. */
-  const float h = sp->h;
+  const float h = sp->df_data.h_dm;
   const float h_inv = 1.0f / h;                       /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
@@ -86,11 +117,11 @@ __attribute__((always_inline)) INLINE static void stars_end_dm_density(
  * @param sp The particle to act upon
  * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void stars_end_stars_density(
+__attribute__((always_inline)) INLINE static void stars_end_df_from_stars(
     struct spart* sp, const struct cosmology* cosmo) {
 
   /* Some smoothing length multiples. */
-  const float h = sp->h;
+  const float h = sp->df_data.h_stars;
   const float h_inv = 1.0f / h;                       /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
