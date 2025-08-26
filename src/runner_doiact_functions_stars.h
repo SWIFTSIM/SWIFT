@@ -60,6 +60,7 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
 
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct cosmology *cosmo = e->cosmology;
 
   /* Anything to do here? */
@@ -221,7 +222,7 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
   #endif
 
         if (r2 < hig2_dm) {
-          runner_iact_nonsym_stars_dm_density(r2, dx, hi_dm, si, gj, a, H);
+          runner_iact_nonsym_stars_dm_density(r2, dx, hi_dm, si, gj, with_cosmology, cosmo);
         }
       }
     } /* loop over the sparts in cj. */
@@ -265,7 +266,7 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
 #endif
 
       if (r2 < hig2_stars) {
-        runner_iact_nonsym_stars_stars_density(r2, dx, hi_stars, hj, si, sj, a, H);
+        runner_iact_nonsym_stars_stars_density(r2, dx, hi_stars, hj, si, sj, with_cosmology, cosmo);
       }
 
     } /* loop over the sparts in cj. */
@@ -303,6 +304,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
 
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct cosmology *cosmo = e->cosmology;
 
   /* Anything to do here? */
@@ -482,7 +484,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
   #endif
 
         if (r2 < hig2_dm) {
-          runner_iact_nonsym_stars_dm_density(r2, dx, hi_dm, si, gj, a, H);
+          runner_iact_nonsym_stars_dm_density(r2, dx, hi_dm, si, gj, with_cosmology, cosmo);
         }
       }
     } /* loop over the gparts in cj. */
@@ -529,7 +531,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
 #endif
 
       if (r2 < hig2_stars) {
-        runner_iact_nonsym_stars_stars_density(r2, dx, hi_stars, hj, si, sj, a, H);
+        runner_iact_nonsym_stars_stars_density(r2, dx, hi_stars, hj, si, sj, with_cosmology, cosmo);
       }
 
     } /* loop over the sparts in cj. */
@@ -1167,6 +1169,7 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
 #endif
 
   const struct engine *e = r->e;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct cosmology *cosmo = e->cosmology;
 
   /* Cosmological terms */
@@ -1282,7 +1285,7 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
   #endif
 
         if (r2 < hig2_dm) {
-          runner_iact_nonsym_stars_dm_density(r2, dx, hi_dm, spi, gj, a, H);
+          runner_iact_nonsym_stars_dm_density(r2, dx, hi_dm, spi, gj, with_cosmology, cosmo);
         }
       }
     } /* loop over the gparts in cj. */
@@ -1329,7 +1332,7 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
 #endif
 
       if (r2 < hig2_stars) {
-        runner_iact_nonsym_stars_stars_density(r2, dx, hi_stars, hj, spi, sj, a, H);
+        runner_iact_nonsym_stars_stars_density(r2, dx, hi_stars, hj, spi, sj, with_cosmology, cosmo);
       }
 
     } /* loop over the sparts in cj. */
@@ -1358,6 +1361,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, const struct cell *ci,
 #endif
 
   const struct engine *e = r->e;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct cosmology *cosmo = e->cosmology;
 
   /* Cosmological terms */
@@ -1469,7 +1473,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, const struct cell *ci,
   #endif
 
         if (r2 < hig2_dm) {
-          runner_iact_nonsym_stars_dm_density(r2, dx, hi_dm, spi, gj, a, H);
+          runner_iact_nonsym_stars_dm_density(r2, dx, hi_dm, spi, gj, with_cosmology, cosmo);
         }
       }
     } /* loop over the sparts in cj. */
@@ -1513,7 +1517,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, const struct cell *ci,
 #endif
 
       if (r2 < hig2_stars) {
-        runner_iact_nonsym_stars_stars_density(r2, dx, hi_stars, hj, spi, sj, a, H);
+        runner_iact_nonsym_stars_stars_density(r2, dx, hi_stars, hj, spi, sj, with_cosmology, cosmo);
       }
 
     } /* loop over the sparts in cj. */
