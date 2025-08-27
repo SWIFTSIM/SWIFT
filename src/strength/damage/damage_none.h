@@ -106,35 +106,31 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  * @param shear_damage The shear damage.
  * @param p The particle of interest.
  * @param stress_tensor The stress tensor.
- * @param deviatoric_stress_tensor The deviatoric stress tensor.
  * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
  * @param u The specific internal energy.
- * @param yield_stress The yield stress.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_evolve(
-    struct part *restrict p, float *damage, float *tensile_damage, float *shear_damage,
-    const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor,
-    const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {}
+    float *damage, float *tensile_damage, float *shear_damage, struct part *restrict p,
+    const struct sym_matrix stress_tensor,
+    const int mat_id, const float mass, const float density, const float u, const float dt_therm) {}
 
 /**
  * @brief Evolves particle damage in the drift
  *
  * @param p The particle of interest.
  * @param stress_tensor The stress tensor.
- * @param deviatoric_stress_tensor The deviatoric stress tensor.
  * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
  * @param u The specific internal energy.
- * @param yield_stress The yield stress.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_predict_evolve(
-    struct part *restrict p, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor,
-    const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {}
+    struct part *restrict p, const struct sym_matrix stress_tensor,
+    const int mat_id, const float mass, const float density, const float u, const float dt_therm) {}
 
 /**
  * @brief Evolves particle damage in the kick
@@ -142,33 +138,29 @@ __attribute__((always_inline)) INLINE static void damage_predict_evolve(
  * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
  * @param stress_tensor The stress tensor.
- * @param deviatoric_stress_tensor The deviatoric stress tensor.
  * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
  * @param u The specific internal energy.
- * @param yield_stress The yield stress.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_kick_evolve(
-    struct part *restrict p, struct xpart *restrict xp, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor,
-    const int mat_id, const float mass, const float density, const float u, const float yield_stress, const float dt_therm) {}
+    struct part *restrict p, struct xpart *restrict xp, const struct sym_matrix stress_tensor,
+    const int mat_id, const float mass, const float density, const float u, const float dt_therm) {}
 
 /**
  * @brief Calculate time derivative of damage.
  *
  * @param p The particle of interest.
  * @param stress_tensor The stress tensor.
- * @param deviatoric_stress_tensor The deviatoric stress tensor.
  * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
  * @param u The specific internal energy.
- * @param yield_stress The yield stress.
  */
 __attribute__((always_inline)) INLINE static void damage_compute_dD_dt(
-    struct part *restrict p, const struct sym_matrix stress_tensor, const struct sym_matrix deviatoric_stress_tensor,
-    const int mat_id, const float mass, const float density, const float u, const float yield_stress) {}
+    struct part *restrict p, const struct sym_matrix stress_tensor,
+    const int mat_id, const float mass, const float density, const float u) {}
 
 /**
  * @brief Initialises the damage properties for the first time
