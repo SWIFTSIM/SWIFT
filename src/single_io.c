@@ -55,6 +55,7 @@
 #include "part.h"
 #include "part_type.h"
 #include "rt_io.h"
+#include "sidm_io.h"
 #include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
@@ -408,6 +409,7 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
  * @param sinks (output) Array of #sink particles.
  * @param sparts (output) Array of #spart particles.
  * @param bparts (output) Array of #bpart particles.
+ * @param siparts (output) Array of #sipart particles.
  * @param Ngas (output) number of Gas particles read.
  * @param Ngparts (output) The number of #gpart read.
  * @param Ngparts_background (output) The number of background #gpart (type 2)
@@ -415,6 +417,7 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
  * @param Nsinks (output) The number of #sink read.
  * @param Nstars (output) The number of #spart read.
  * @param Nblackholes (output) The number of #bpart read.
+ * @param Nsidm (output) The number of #sipart read.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we reading gas particles ?
@@ -422,6 +425,7 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
  * @param with_sink Are we reading sink particles ?
  * @param with_stars Are we reading star particles ?
  * @param with_black_hole Are we reading black hole particles ?
+ * @param with_sidm Are we reading SIDM particles ?
  * @param with_cosmology Are we running with cosmology ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
@@ -444,13 +448,14 @@ void read_ic_single(
     const char* fileName, const struct unit_system* internal_units,
     double dim[3], struct part** parts, struct gpart** gparts,
     struct sink** sinks, struct spart** sparts, struct bpart** bparts,
-    size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background, size_t* Nnuparts,
-    size_t* Nsinks, size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
+    struct sipart** siparts, size_t* Ngas, size_t* Ngparts,
+    size_t* Ngparts_background, size_t* Nnuparts, size_t* Nsinks,
+    size_t* Nstars, size_t* Nblackholes, size_t* Nsidm, int* flag_entropy,
     const int with_hydro, const int with_gravity, const int with_sink,
-    const int with_stars, const int with_black_holes, const int with_cosmology,
-    const int cleanup_h, const int cleanup_sqrt_a, const double h,
-    const double a, const int n_threads, const int dry_run, const int remap_ids,
-    struct ic_info* ics_metadata) {
+    const int with_stars, const int with_black_holes, const int with_sidm,
+    const int with_cosmology, const int cleanup_h, const int cleanup_sqrt_a,
+    const double h, const double a, const int n_threads, const int dry_run,
+    const int remap_ids, struct ic_info* ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -465,7 +470,7 @@ void read_ic_single(
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
-  *Nblackholes = 0, *Nsinks = 0, *Nnuparts = 0;
+  *Nblackholes = 0, *Nsinks = 0, *Nnuparts = 0, *Nsidm = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -623,6 +628,15 @@ void read_ic_single(
     bzero(*bparts, *Nblackholes * sizeof(struct bpart));
   }
 
+  /* Allocate memory to store SIDM particles */
+  if (with_sidm) {
+    *Nsidm = N[swift_type_sidm];
+    if (swift_memalign("siparts", (void**)siparts, sipart_align,
+                       *Nsidm * sizeof(struct sipart)) != 0)
+      error("Error while allocating memory for SIDM particles");
+    bzero(*siparts, *Nsidm * sizeof(struct sipart));
+  }
+
   /* Allocate memory to store all gravity particles */
   if (with_gravity) {
     Ndm = N[swift_type_dark_matter];
@@ -633,6 +647,7 @@ void read_ic_single(
                N[swift_type_dark_matter_background] + N[swift_type_neutrino] +
                (with_sink ? N[swift_type_sink] : 0) +
                (with_stars ? N[swift_type_stars] : 0) +
+               (with_sidm ? N[swift_type_sidm] : 0) +
                (with_black_holes ? N[swift_type_black_hole] : 0);
     *Ngparts_background = Ndm_background;
     *Nnuparts = Ndm_neutrino;
@@ -726,6 +741,13 @@ void read_ic_single(
         }
         break;
 
+      case swift_type_sidm:
+        if (with_sidm) {
+          Nparticles = *Nsidm;
+          sidm_read_particles(*siparts, list, &num_fields);
+        }
+        break;
+
       default:
         message("Particle Type %d not yet supported. Particles ignored", ptype);
     }
@@ -787,6 +809,12 @@ void read_ic_single(
           &tp, *bparts, *gparts, *Nblackholes,
           Ndm + Ndm_background + Ndm_neutrino + *Ngas + *Nsinks + *Nstars);
 
+    /* Duplicate the SIDM particles into gparts */
+    if (with_sidm)
+      io_duplicate_sidm_gparts(&tp, *siparts, *gparts, *Nsidm,
+                               Ndm + Ndm_background + Ndm_neutrino + *Ngas +
+                                   *Nsinks + *Nstars + *Nblackholes);
+
     threadpool_clean(&tp);
   }
 
@@ -828,6 +856,7 @@ void write_output_single(struct engine* e,
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
   const struct sink* sinks = e->s->sinks;
+  const struct sipart* siparts = e->s->siparts;
   struct output_options* output_options = e->output_options;
   struct output_list* output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
@@ -841,6 +870,7 @@ void write_output_single(struct engine* e,
   const int with_stars = (e->policy & engine_policy_stars) ? 1 : 0;
   const int with_black_hole = (e->policy & engine_policy_black_holes) ? 1 : 0;
   const int with_sink = (e->policy & engine_policy_sinks) ? 1 : 0;
+  const int with_sidm = (e->policy & engine_policy_sidm) ? 1 : 0;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -855,6 +885,7 @@ void write_output_single(struct engine* e,
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nsinks = e->s->nr_sinks;
   const size_t Nblackholes = e->s->nr_bparts;
+  const size_t Nsidm = e->s->nr_siparts;
 
   /* Determine if we are writing a reduced snapshot, and if so which
    * output selection type to use */
@@ -915,7 +946,7 @@ void write_output_single(struct engine* e,
 
   /* Number of particles that we will write */
   size_t Ngas_written, Ndm_written, Ndm_background, Ndm_neutrino,
-      Nsinks_written, Nstars_written, Nblackholes_written;
+      Nsinks_written, Nstars_written, Nblackholes_written, Nsidm_written;
 
   if (subsample[swift_type_gas]) {
     Ngas_written = io_count_gas_to_write(e->s, /*subsample=*/1,
@@ -953,6 +984,15 @@ void write_output_single(struct engine* e,
         e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
   }
 
+  if (subsample[swift_type_sidm]) {
+    Nsidm_written = io_count_sidm_to_write(e->s, /*subsample=*/1,
+                                           subsample_fraction[swift_type_sidm],
+                                           e->snapshot_output_count);
+  } else {
+    Nsidm_written =
+        e->s->nr_siparts - e->s->nr_inhibited_siparts - e->s->nr_extra_siparts;
+  }
+
   Ndm_written = io_count_dark_matter_to_write(
       e->s, subsample[swift_type_dark_matter],
       subsample_fraction[swift_type_dark_matter], e->snapshot_output_count);
@@ -979,14 +1019,15 @@ void write_output_single(struct engine* e,
       (long long)Ngas_written,   (long long)Ndm_written,
       (long long)Ndm_background, (long long)Nsinks_written,
       (long long)Nstars_written, (long long)Nblackholes_written,
-      (long long)Ndm_neutrino};
+      (long long)Ndm_neutrino,   (long long)Nsidm_written};
 
   /* List what fields to write.
    * Note that we want to want to write a 0-size dataset for some species
    * in case future snapshots will contain them (e.g. star formation) */
   const int to_write[swift_type_count] = {
-      with_hydro, with_DM,         with_DM_background, with_sink,
-      with_stars, with_black_hole, with_neutrinos
+      with_hydro,     with_DM,    with_DM_background,
+      with_sink,      with_stars, with_black_hole,
+      with_neutrinos, with_sidm
 
   };
 
@@ -1166,6 +1207,7 @@ void write_output_single(struct engine* e,
     struct spart* sparts_written = NULL;
     struct bpart* bparts_written = NULL;
     struct sink* sinks_written = NULL;
+    struct sipart* siparts_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1421,6 +1463,39 @@ void write_output_single(struct engine* e,
         }
       } break;
 
+      case swift_type_sidm: {
+        if (Nsidm == Nsidm_written) {
+
+          /* No inhibited particles: easy case */
+          N = Nsidm;
+
+          /* Select the fields to write */
+          io_select_sidm_fields(siparts, with_cosmology, with_fof, with_stf, e,
+                                &num_fields, list);
+
+        } else {
+
+          /* Ok, we need to fish out the particles we want */
+          N = Nsidm_written;
+
+          /* Allocate temporary arrays */
+          if (swift_memalign("siparts_written", (void**)&siparts_written,
+                             sipart_align,
+                             Nsidm_written * sizeof(struct sipart)) != 0)
+            error("Error while allocating temporary memory for siparts");
+
+          /* Collect the particles we want to write */
+          io_collect_siparts_to_write(
+              siparts, siparts_written, subsample[swift_type_sidm],
+              subsample_fraction[swift_type_sidm], e->snapshot_output_count,
+              Nsidm, Nsidm_written);
+
+          /* Select the fields to write */
+          io_select_sidm_fields(siparts_written, with_cosmology, with_fof,
+                                with_stf, e, &num_fields, list);
+        }
+      } break;
+
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
@@ -1472,6 +1547,7 @@ void write_output_single(struct engine* e,
     if (sparts_written) swift_free("sparts_written", sparts_written);
     if (bparts_written) swift_free("bparts_written", bparts_written);
     if (sinks_written) swift_free("sinks_written", sinks_written);
+    if (siparts_written) swift_free("siparts_written", siparts_written);
 
     /* Close particle group */
     H5Gclose(h_grp);

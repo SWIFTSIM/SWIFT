@@ -38,6 +38,7 @@
 #include "cell_grid.h"
 #include "cell_hydro.h"
 #include "cell_rt.h"
+#include "cell_sidm.h"
 #include "cell_sinks.h"
 #include "cell_stars.h"
 #include "ghost_stats.h"
@@ -409,6 +410,9 @@ struct cell {
   /*! Sink particles variables */
   struct cell_sinks sinks;
 
+  /*! SIDM particles variables */
+  struct cell_sidm sidm;
+
   /*! The grid variables */
   struct cell_grid grid;
 
@@ -600,6 +604,7 @@ void cell_clean(struct cell *c);
 void cell_check_part_drift_point(struct cell *c, void *data);
 void cell_check_gpart_drift_point(struct cell *c, void *data);
 void cell_check_spart_drift_point(struct cell *c, void *data);
+void cell_check_sipart_drift_point(struct cell *c, void *data);
 void cell_check_bpart_drift_point(struct cell *c, void *data);
 void cell_check_sink_drift_point(struct cell *c, void *data);
 void cell_check_multipole_drift_point(struct cell *c, void *data);
@@ -713,6 +718,7 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
                                struct spart *sparts, struct sink *sinks,
                                struct bpart *bparts);
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
+void cell_reorder_extra_siparts(struct cell *c, const ptrdiff_t siparts_offset);
 void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,

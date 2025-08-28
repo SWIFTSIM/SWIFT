@@ -56,6 +56,17 @@ INLINE static void velociraptor_convert_bpart_groupID(const struct engine* e,
   }
 }
 
+INLINE static void velociraptor_convert_sipart_groupID(const struct engine* e,
+                                                       const struct sipart* sip,
+                                                       long long* ret) {
+  if (sip->gpart == NULL)
+    ret[0] = 0.f;
+  else {
+    const ptrdiff_t offset = sip->gpart - e->s->gparts;
+    *ret = (e->s->gpart_group_data + offset)->groupID;
+  }
+}
+
 __attribute__((always_inline)) INLINE static int velociraptor_write_parts(
     const struct part* parts, const struct xpart* xparts,
     struct io_props* list) {
@@ -95,6 +106,17 @@ __attribute__((always_inline)) INLINE static int velociraptor_write_bparts(
   list[0] = io_make_output_field_convert_bpart(
       "VELOCIraptorGroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       velociraptor_convert_bpart_groupID,
+      "Group IDs of the particles in the VELOCIraptor catalogue");
+
+  return 1;
+}
+
+__attribute__((always_inline)) INLINE static int velociraptor_write_siparts(
+    const struct sipart* siparts, struct io_props* list) {
+
+  list[0] = io_make_output_field_convert_sipart(
+      "VELOCIraptorGroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, siparts,
+      velociraptor_convert_sipart_groupID,
       "Group IDs of the particles in the VELOCIraptor catalogue");
 
   return 1;

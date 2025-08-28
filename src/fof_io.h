@@ -43,6 +43,11 @@ INLINE static void convert_bpart_group_id(const struct engine* e,
   ret[0] = bp->gpart->fof_data.group_id;
 }
 
+INLINE static void convert_sipart_group_id(const struct engine* e,
+                                           const struct sipart* sip,
+                                           long long* ret) {
+  ret[0] = sip->gpart->fof_data.group_id;
+}
 #endif /* WITH_FOF */
 
 /**
@@ -133,6 +138,29 @@ INLINE static int fof_write_bparts(const struct bpart* bparts,
   list[0] = io_make_output_field_convert_bpart(
       "FOFGroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       convert_bpart_group_id,
+      "Friends-Of-Friends ID of the group the particles belong to");
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+/**
+ * @brief Specifies which FoF-related si-particle fields to write to a dataset
+ *
+ * @param siparts The si-particle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return The number of fields to write.
+ */
+INLINE static int fof_write_siparts(const struct sipart* siparts,
+                                    struct io_props* list) {
+
+#ifdef WITH_FOF
+
+  list[0] = io_make_output_field_convert_sipart(
+      "FOFGroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, siparts,
+      convert_sipart_group_id,
       "Friends-Of-Friends ID of the group the particles belong to");
   return 1;
 #else

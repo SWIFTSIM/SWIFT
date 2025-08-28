@@ -47,6 +47,7 @@
 #include "neutrino_io.h"
 #include "particle_splitting.h"
 #include "rt_io.h"
+#include "sidm_io.h"
 #include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
@@ -1001,11 +1002,13 @@ struct duplication_data {
   struct spart* sparts;
   struct bpart* bparts;
   struct sink* sinks;
+  struct sipart* siparts;
   int Ndm;
   int Ngas;
   int Nstars;
   int Nblackholes;
   int Nsinks;
+  int Nsidm;
 };
 
 void io_duplicate_hydro_gparts_mapper(void* restrict data, int Ngas,
@@ -1239,6 +1242,65 @@ void io_duplicate_black_holes_gparts(struct threadpool* tp,
   threadpool_map(tp, io_duplicate_black_holes_gparts_mapper, bparts,
                  Nblackholes, sizeof(struct bpart), threadpool_auto_chunk_size,
                  &data);
+}
+
+void io_duplicate_sidm_gparts_mapper(void* restrict data, int Nsidm,
+                                     void* restrict extra_data) {
+
+  struct duplication_data* temp = (struct duplication_data*)extra_data;
+  const int Ndm = temp->Ndm;
+  struct sipart* siparts = (struct sipart*)data;
+  const ptrdiff_t offset = siparts - temp->siparts;
+  struct gpart* gparts = temp->gparts + offset;
+
+  for (int i = 0; i < Nsidm; ++i) {
+
+    /* Duplicate the crucial information */
+    gparts[i + Ndm].x[0] = siparts[i].x[0];
+    gparts[i + Ndm].x[1] = siparts[i].x[1];
+    gparts[i + Ndm].x[2] = siparts[i].x[2];
+
+    gparts[i + Ndm].v_full[0] = siparts[i].v[0];
+    gparts[i + Ndm].v_full[1] = siparts[i].v[1];
+    gparts[i + Ndm].v_full[2] = siparts[i].v[2];
+
+    gparts[i + Ndm].mass = siparts[i].mass;
+
+    /* Set gpart type */
+    gparts[i + Ndm].type = swift_type_sidm;
+
+    /* Link the particles */
+    gparts[i + Ndm].id_or_neg_offset = -(long long)(offset + i);
+    siparts[i].gpart = &gparts[i + Ndm];
+  }
+}
+
+/**
+ * @brief Copy every #sipart into the corresponding #gpart and link them.
+ *
+ * This function assumes that the DM particles, gas particles, star particles,
+ * and BH particles are all at the start of the gparts array and adds the SIDM
+ * particles afterwards
+ *
+ * @param tp The current #threadpool.
+ * @param siparts The array of #sipart freshly read in.
+ * @param gparts The array of #gpart freshly read in with all the DM, gas
+ * and star particles at the start.
+ * @param Nsidm The number of SIDM particles read in.
+ * @param Ndm The number of DM, gas, star, and BH particles read in.
+ */
+void io_duplicate_sidm_gparts(struct threadpool* tp,
+                              struct sipart* const siparts,
+                              struct gpart* const gparts, size_t Nsidm,
+                              size_t Ndm) {
+
+  struct duplication_data data;
+  data.gparts = gparts;
+  data.siparts = siparts;
+  data.Ndm = Ndm;
+
+  threadpool_map(tp, io_duplicate_sidm_gparts_mapper, siparts, Nsidm,
+                 sizeof(struct sipart), threadpool_auto_chunk_size, &data);
 }
 
 /**
@@ -1619,6 +1681,55 @@ void io_collect_gparts_neutrino_to_write(
 }
 
 /**
+ * @brief Copy every non-inhibited #sipart into the siparts_written array.
+ *
+ * Also takes into account possible downsampling.
+ *
+ * @param siparts The array of #sipart containing all particles.
+ * @param siparts_written The array of #sipart to fill with particles we want to
+ * write.
+ * @param subsample Are we subsampling the particles?
+ * @param subsample_ratio The fraction of particles to write if subsampling.
+ * @param snap_num The snapshot ID (used to seed the RNG when sub-sampling).
+ * @param Nsiparts The total number of #part.
+ * @param Nsiparts_written The total number of #part to write.
+ */
+void io_collect_siparts_to_write(const struct sipart* restrict siparts,
+                                 struct sipart* restrict siparts_written,
+                                 const int subsample,
+                                 const float subsample_ratio,
+                                 const int snap_num, const size_t Nsiparts,
+                                 const size_t Nsiparts_written) {
+
+  size_t count = 0;
+
+  /* Loop over all parts */
+  for (size_t i = 0; i < Nsiparts; ++i) {
+
+    /* And collect the ones that have not been removed */
+    if (siparts[i].time_bin != time_bin_inhibited &&
+        siparts[i].time_bin != time_bin_not_created) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r = random_unit_interval(siparts[i].id, snap_num,
+                                             random_number_snapshot_sampling);
+
+        if (r > subsample_ratio) continue;
+      }
+
+      siparts_written[count] = siparts[i];
+      count++;
+    }
+  }
+
+  /* Check that everything is fine */
+  if (count != Nsiparts_written)
+    error("Collected the wrong number of si-particles (%zu vs. %zu expected)",
+          count, Nsiparts_written);
+}
+
+/**
  * @brief Create the subdirectory for snapshots if the user demanded one.
  *
  * Does nothing if the directory is '.'
@@ -1883,4 +1994,29 @@ void io_select_bh_fields(const struct bpart* const bparts,
   }
   *num_fields +=
       extra_io_write_bparticles(bparts, list + *num_fields, with_cosmology);
+}
+
+/**
+ * @brief Select the fields to write to snapshots for the SIDM particles.
+ *
+ * @param siparts The #sipart's
+ * @param with_cosmology Are we running with cosmology switched on?
+ * @param with_fof Are we running FoF?
+ * @param with_stf Are we running with structure finding?
+ * @param e The #engine (to access scheme properties).
+ * @param num_fields (return) The number of fields to write.
+ * @param list (return) The list of fields to write.
+ */
+void io_select_sidm_fields(const struct sipart* const siparts,
+                           const int with_cosmology, const int with_fof,
+                           const int with_stf, const struct engine* const e,
+                           int* const num_fields, struct io_props* const list) {
+
+  sidm_write_particles(siparts, list, num_fields, with_cosmology);
+  if (with_fof) {
+    *num_fields += fof_write_siparts(siparts, list + *num_fields);
+  }
+  if (with_stf) {
+    *num_fields += velociraptor_write_siparts(siparts, list + *num_fields);
+  }
 }
