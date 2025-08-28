@@ -1002,6 +1002,17 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
           error("Unknown cell type %d", c->type);
       }
 
+      /* Need to ensure void cells have zeroed total counts too since they
+       * don't have extras but they are local so need some of the operations
+       * below. */
+      if (c->subtype == cell_subtype_void) {
+        c->hydro.count_total = 0;
+        c->grav.count_total = 0;
+        c->stars.count_total = 0;
+        c->sinks.count_total = 0;
+        c->black_holes.count_total = 0;
+      }
+
       finger = &finger[c->hydro.count_total];
       xfinger = &xfinger[c->hydro.count_total];
       gfinger = &gfinger[c->grav.count_total];

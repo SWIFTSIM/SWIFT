@@ -944,6 +944,14 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
                                 /*offset*/ 0);
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure we haven't got a void cell here. */
+  if (s->cells_top[cell_id].subtype == cell_subtype_void) {
+    error("cell_getid_from_pos: got a void cell (%i) at (%f %f %f)", cell_id, x,
+          y, z);
+  }
+#endif
+
   return cell_id;
 }
 
@@ -2058,7 +2066,8 @@ __attribute__((always_inline)) static INLINE void cell_set_part_h_depth(
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  error("Could not find an appropriate depth!");
+  error("Could not find an appropriate depth! (%s/%s)",
+        cellID_names[leaf_cell->type], subcellID_names[leaf_cell->subtype]);
 #endif
 }
 
