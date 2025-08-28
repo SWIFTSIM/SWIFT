@@ -575,6 +575,9 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   const float internal_energy =
       p->conserved.energy / cosmo->a_factor_internal_energy;
 
+  /* Update xp->u_full as well for later when thermal switches are called */
+  xp->u_full = internal_energy;
+
   /* Set primitive quantities */
   W[0] = p->conserved.mass * volume_inv;
   W[1] = p->v[0];
