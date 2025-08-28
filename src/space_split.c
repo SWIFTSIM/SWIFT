@@ -688,8 +688,9 @@ void space_split_recursive(struct space *s, struct cell *c,
         "Exceeded maximum depth (%d) when splitting cells, aborting. This is "
         "most likely due to having too many particles at the exact same "
         "position, making the construction of a tree impossible. (gcount=%d,"
-        " c->type=%d, c->subtype=%d, gparts[0].x=%.3f, gparts[1].x=%.3f)",
-        space_cell_maxdepth, gcount, c->type, c->subtype, c->grav.parts[0].x[0],
+        " c->type=%s, c->subtype=%s, gparts[0].x=%.3f, gparts[1].x=%.3f)",
+        space_cell_maxdepth, gcount, cellID_names[c->type],
+        subcellID_names[c->subtype], c->grav.parts[0].x[0],
         c->grav.parts[1].x[0]);
   }
 
