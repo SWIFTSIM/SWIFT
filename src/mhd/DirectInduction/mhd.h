@@ -320,6 +320,10 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   p->mhd_data.mean_SPH_err = 0.f;
   for (int k = 0; k < 3; k++) {
     p->mhd_data.mean_grad_SPH_err[k] = 0.f;
+    p->mhd_data.symmetric_gradient_err_fij[k] = 0.0f;
+    p->mhd_data.symmetric_gradient_err[k] = 0.0f;
+    p->mhd_data.antisymmetric_gradient_err_fij[k] = 0.0f;
+
   }
 }
 
@@ -336,6 +340,14 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
   /* Finish SPH_1 calculation*/
   p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho;
+
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.symmetric_gradient_err_fij[k] *= p->h * p->rho;
+    p->mhd_data.symmetric_gradient_err[k] *= p->h * p->rho;
+    p->mhd_data.antisymmetric_gradient_err_fij[k] *= 1.0f / p->rho;
+
+  }
+
 }
 
 /**
@@ -471,12 +483,24 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] = 0.0f;
+
+    p->mhd_data.lorentz_isotropic_F[k] = 0.0f;
+    p->mhd_data.lorentz_anisotropic_F[k] = 0.0f;
+    p->mhd_data.monopole_correction_F[k] = 0.0f;
+    p->mhd_data.lorentz_isotropic_F_correction[k] = 0.0f;
+
+
   }
   /* Save induction sources*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.Adv_B_source[k] = 0.0f;
     p->mhd_data.Diff_B_source[k] = 0.0f;
     p->mhd_data.Delta_B[k] = 0.0f;
+
+    p->mhd_data.stretching_B_source[k] = 0.0f;
+    p->mhd_data.dedner_B_source[k] = 0.0f;
+    p->mhd_data.physical_resistivity_B_source[k] = 0.0f;
+    p->mhd_data.artificial_resistivity_B_source[k] = 0.0f;
   }
 }
 

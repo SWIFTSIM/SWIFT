@@ -468,7 +468,66 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
 
-  return 16;
+  /* EOM force tracking */
+  list[16] = io_make_output_field(
+      "TotalForce", FLOAT, 3, UNIT_CONV_ACCELERATION,
+      1.f, parts, a_hydro,
+      "Particle EOM: total force");
+  list[17] = io_make_output_field(
+      "LorentzIsotropicForce", FLOAT, 3, UNIT_CONV_ACCELERATION,
+      1.f, parts, mhd_data.lorentz_isotropic_F,
+      "Particle EOM: isotropic component of lorentz force");
+  list[18] = io_make_output_field(
+      "LorentzAnisotropicForce", FLOAT, 3, UNIT_CONV_ACCELERATION,
+      1.f, parts, mhd_data.lorentz_anisotropic_F,
+      "Particle EOM: anisotropic component of lorentz force");
+  list[19] = io_make_output_field(
+      "MonopoleCorrectionForce", FLOAT, 3, UNIT_CONV_ACCELERATION,
+      1.f, parts, mhd_data.monopole_correction_F,
+      "Particle EOM: tensile instability correction term, proportional to divB");
+  list[20] = io_make_output_field(
+      "LorentzIsotropicForceCorrection", FLOAT, 3, UNIT_CONV_ACCELERATION,
+      1.f, parts, mhd_data.lorentz_isotropic_F_correction,
+      "Particle EOM: error correction to isotropic component of lorentz force");
+
+
+  /* MHD equations source tracking */
+  list[21] = io_make_output_field(
+      "StretchingBSource", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_DENSITY_RATIO_PER_TIME,
+      1.f, parts, mhd_data.stretching_B_source,
+      "MHD equations: (B * grad) v source");
+  list[22] = io_make_output_field(
+      "DednerBSource", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_DENSITY_RATIO_PER_TIME,
+      1.f, parts, mhd_data.dedner_B_source,
+      "MHD equations: -grad psi, dedner divergence cleaning source");
+  list[23] = io_make_output_field(
+      "PhysicalResistivityBSource", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_DENSITY_RATIO_PER_TIME,
+      1.f, parts, mhd_data.physical_resistivity_B_source,
+      "MHD equations: physical resistivity source");
+  list[24] = io_make_output_field(
+      "ArtificialResistivityBSource", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_DENSITY_RATIO_PER_TIME,
+      1.f, parts, mhd_data.artificial_resistivity_B_source,
+      "MHD equations: artificial resistivity source");
+
+  /* Derivative and SPH sum error estimators */
+
+  list[25] = io_make_output_field(
+      "SPH1", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts, 
+      mhd_data.mean_SPH_err, "it is actually <rho>/rho, need to change");
+
+  list[26] = io_make_output_field(
+      "symmetric_gradient_err_fij", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.0f, parts, 
+      mhd_data.symmetric_gradient_err_fij, " symmetric_gradient_err_fij ");
+
+  list[27] = io_make_output_field(
+      "symmetric_gradient_err", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.0f, parts,
+      mhd_data.symmetric_gradient_err, " symmetric_gradient_err ");
+
+  list[28] = io_make_output_field(
+      "antisymmetric_gradient_err_fij", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.0f, parts,
+      mhd_data.antisymmetric_gradient_err_fij, " antisymmetric_gradient_err_fij ");
+ 
+  return 29;
 }
 
 /**
