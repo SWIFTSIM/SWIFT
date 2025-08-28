@@ -89,6 +89,15 @@ typedef void (*conversion_func_sink_double)(const struct engine *,
 typedef void (*conversion_func_sink_long_long)(const struct engine *,
                                                const struct sink *,
                                                long long *);
+typedef void (*conversion_func_sipart_float)(const struct engine *,
+                                             const struct sipart *, float *);
+typedef void (*conversion_func_sipart_int)(const struct engine *,
+                                           const struct sipart *, int *);
+typedef void (*conversion_func_sipart_double)(const struct engine *,
+                                              const struct sipart *, double *);
+typedef void (*conversion_func_sipart_long_long)(const struct engine *,
+                                                 const struct sipart *,
+                                                 long long *);
 
 /**
  * @brief The properties of a given dataset for i/o
@@ -155,6 +164,7 @@ struct io_props {
   const struct spart *sparts;
   const struct bpart *bparts;
   const struct sink *sinks;
+  const struct sipart *siparts;
 
   /* Are we converting? */
   int conversion;
@@ -192,6 +202,12 @@ struct io_props {
     conversion_func_sink_int convert_sink_i;
     conversion_func_sink_double convert_sink_d;
     conversion_func_sink_long_long convert_sink_l;
+
+    /* Conversion function for sipart */
+    conversion_func_sipart_float convert_sipart_f;
+    conversion_func_sipart_int convert_sipart_i;
+    conversion_func_sipart_double convert_sipart_d;
+    conversion_func_sipart_long_long convert_sipart_l;
   };
 };
 
@@ -730,6 +746,72 @@ INLINE static struct io_props io_make_output_field_convert_sink_(
   r.scale_factor_exponent = a_exponent;
   r.partSize = sinkSize;
   r.sinks = sinks;
+  r.conversion = 1;
+  r.ptr_func = functionPtr;
+
+  return r;
+}
+
+/**
+ * @brief Constructs an #io_props (with conversion) from its parameters
+ */
+#define io_make_output_field_convert_sipart(name, type, dim, units,            \
+                                            a_exponent, sipart, convert, desc) \
+  io_make_output_field_convert_sipart_(                                        \
+      name, type, dim, units, a_exponent, sizeof(sipart[0]), sipart, convert,  \
+      desc, /*physical=*/0, /*convertible_to_physical=*/1)
+
+#define io_make_comoving_output_field_convert_sipart(                     \
+    name, type, dim, units, a_exponent, sipart, convert, desc)            \
+  io_make_output_field_convert_sipart(name, type, dim, units, a_exponent, \
+                                      sipart, convert, desc)
+
+#define io_make_physical_output_field_convert_sipart(                       \
+    name, type, dim, units, a_exponent, sipart, convertible, convert, desc) \
+  io_make_output_field_convert_sipart_(name, type, dim, units, a_exponent,  \
+                                       sizeof(sipart[0]), sipart, convert,  \
+                                       desc, /*physical=*/1, convertible);
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
+ * @param sipartSize The size in byte of the particle
+ * @param siparts The particle array
+ * @param functionPtr The function used to convert a sink-particle to a float
+ * @param description Description of the field added to the meta-data.
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_sipart_(
+    const char *name, enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, float a_exponent, size_t sipartSize,
+    const struct sipart *siparts, void *functionPtr, const char *description,
+    const int is_physical, const int is_convertible_to_comoving) {
+
+  struct io_props r;
+  bzero(&r, sizeof(struct io_props));
+
+  safe_strcpy(r.name, name, FIELD_BUFFER_SIZE);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
+  }
+  r.type = type;
+  r.is_used = 1;
+  r.is_physical = is_physical;
+  r.is_convertible_to_comoving = is_convertible_to_comoving;
+  r.dimension = dimension;
+  r.importance = UNUSED;
+  r.units = units;
+  r.scale_factor_exponent = a_exponent;
+  r.partSize = sipartSize;
+  r.siparts = siparts;
   r.conversion = 1;
   r.ptr_func = functionPtr;
 

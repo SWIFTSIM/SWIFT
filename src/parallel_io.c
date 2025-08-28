@@ -57,6 +57,7 @@
 #include "part_type.h"
 #include "particle_splitting.h"
 #include "rt_io.h"
+#include "sidm_io.h"
 #include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
@@ -361,6 +362,7 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
       props.gparts += max_chunk_size;                 /* gpart* on the gpart */
       props.sparts += max_chunk_size;                 /* spart* on the spart */
       props.bparts += max_chunk_size;                 /* bpart* on the bpart */
+      props.siparts += max_chunk_size; /* sipart* on the sipart */
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -695,6 +697,7 @@ void write_array_parallel(const struct engine* e, hid_t grp,
       props.gparts += max_chunk_size;                 /* gpart* on the gpart */
       props.sparts += max_chunk_size;                 /* spart* on the spart */
       props.bparts += max_chunk_size;                 /* bpart* on the bpart */
+      props.siparts += max_chunk_size; /* sipart* on the sipart */
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -733,6 +736,7 @@ void write_array_parallel(const struct engine* e, hid_t grp,
  * @param sinks (output) The array of #sink read from the file.
  * @param sparts (output) The array of #spart read from the file.
  * @param bparts (output) The array of #bpart read from the file.
+ * @param siparts (output) The array of #sipart read from the file.
  * @param Ngas (output) The number of particles read from the file.
  * @param Ngparts (output) The number of particles read from the file.
  * @param Ngparts_background (output) The number of background DM particles read
@@ -741,6 +745,7 @@ void write_array_parallel(const struct engine* e, hid_t grp,
  * @param Nsink (output) The number of particles read from the file.
  * @param Nstars (output) The number of particles read from the file.
  * @param Nblackholes (output) The number of particles read from the file.
+ * @param Nsidm (output) The number of particles read from the file.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we running with hydro ?
@@ -748,6 +753,7 @@ void write_array_parallel(const struct engine* e, hid_t grp,
  * @param with_sink Are we running with sink ?
  * @param with_stars Are we running with stars ?
  * @param with_black_holes Are we running with black holes ?
+ * @param with_sidm Are we running with SIDM ?
  * @param with_cosmology Are we running with cosmology ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
@@ -767,12 +773,13 @@ void write_array_parallel(const struct engine* e, hid_t grp,
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
                       struct sink** sinks, struct spart** sparts,
-                      struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
-                      size_t* Ngparts_background, size_t* Nnuparts,
-                      size_t* Nsinks, size_t* Nstars, size_t* Nblackholes,
-                      int* flag_entropy, const int with_hydro,
-                      const int with_gravity, const int with_sink,
-                      const int with_stars, const int with_black_holes,
+                      struct bpart** bparts, struct sipart** siparts,
+                      size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background,
+                      size_t* Nnuparts, size_t* Nsinks, size_t* Nstars,
+                      size_t* Nblackholes, size_t* Nsidm, int* flag_entropy,
+                      const int with_hydro, const int with_gravity,
+                      const int with_sink, const int with_stars,
+                      const int with_black_holes, const int with_sidm,
                       const int with_cosmology, const int cleanup_h,
                       const int cleanup_sqrt_a, const double h, const double a,
                       const int mpi_rank, const int mpi_size, MPI_Comm comm,
@@ -794,7 +801,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
-  *Nblackholes = 0, *Nsinks = 0, *Nnuparts = 0;
+  *Nblackholes = 0, *Nsinks = 0, *Nnuparts = 0, *Nsidm = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -963,6 +970,15 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     bzero(*bparts, *Nblackholes * sizeof(struct bpart));
   }
 
+  /* Allocate memory to store SIDM particles */
+  if (with_sidm) {
+    *Nsidm = N[swift_type_sidm];
+    if (swift_memalign("siparts", (void**)siparts, sipart_align,
+                       *Nsidm * sizeof(struct sipart)) != 0)
+      error("Error while allocating memory for SIDM particles");
+    bzero(*siparts, *Nsidm * sizeof(struct sipart));
+  }
+
   /* Allocate memory to store gravity particles */
   if (with_gravity) {
     Ndm = N[swift_type_dark_matter];
@@ -973,7 +989,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                N[swift_type_dark_matter_background] + N[swift_type_neutrino] +
                (with_stars ? N[swift_type_stars] : 0) +
                (with_sink ? N[swift_type_sink] : 0) +
-               (with_black_holes ? N[swift_type_black_hole] : 0);
+               (with_black_holes ? N[swift_type_black_hole] : 0) +
+               (with_sidm ? N[swift_type_sidm] : 0);
     *Ngparts_background = Ndm_background;
     *Nnuparts = Ndm_neutrino;
     if (swift_memalign("gparts", (void**)gparts, gpart_align,
@@ -1066,6 +1083,13 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         }
         break;
 
+      case swift_type_sidm:
+        if (with_sidm) {
+          Nparticles = *Nsidm;
+          sidm_read_particles(*siparts, list, &num_fields);
+        }
+        break;
+
       default:
         if (mpi_rank == 0)
           message("Particle Type %d not yet supported. Particles ignored",
@@ -1128,6 +1152,12 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
       io_duplicate_black_holes_gparts(
           &tp, *bparts, *gparts, *Nblackholes,
           Ndm + Ndm_background + Ndm_neutrino + *Ngas + *Nsinks + *Nstars);
+
+    /* Duplicate the SIDM particles into gparts */
+    if (with_sidm)
+      io_duplicate_sidm_gparts(&tp, *siparts, *gparts, *Nsidm,
+                               Ndm + Ndm_background + Ndm_neutrino + *Ngas +
+                                   *Nsinks + *Nstars + *Nblackholes);
 
     threadpool_clean(&tp);
   }
@@ -1382,6 +1412,11 @@ void prepare_file(struct engine* e, const char* fileName,
                             &num_fields, list);
         break;
 
+      case swift_type_sidm:
+        io_select_sidm_fields(NULL, with_cosmology, with_fof, with_stf, e,
+                              &num_fields, list);
+        break;
+
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
@@ -1472,6 +1507,7 @@ void write_output_parallel(struct engine* e,
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
   const struct sink* sinks = e->s->sinks;
+  const struct sipart* siparts = e->s->siparts;
   struct output_options* output_options = e->output_options;
   struct output_list* output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
@@ -1485,6 +1521,7 @@ void write_output_parallel(struct engine* e,
   const int with_stars = (e->policy & engine_policy_stars) ? 1 : 0;
   const int with_black_hole = (e->policy & engine_policy_black_holes) ? 1 : 0;
   const int with_sink = (e->policy & engine_policy_sinks) ? 1 : 0;
+  const int with_sidm = (e->policy & engine_policy_sidm) ? 1 : 0;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -1499,6 +1536,7 @@ void write_output_parallel(struct engine* e,
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nsinks = e->s->nr_sinks;
   const size_t Nblackholes = e->s->nr_bparts;
+  const size_t Nsidm = e->s->nr_siparts;
 
 #ifdef IO_SPEED_MEASUREMENT
   ticks tic = getticks();
@@ -1560,7 +1598,7 @@ void write_output_parallel(struct engine* e,
 
   /* Number of particles that we will write */
   size_t Ngas_written, Ndm_written, Ndm_background, Ndm_neutrino,
-      Nsinks_written, Nstars_written, Nblackholes_written;
+      Nsinks_written, Nstars_written, Nblackholes_written, Nsidm_written;
 
   if (subsample[swift_type_gas]) {
     Ngas_written = io_count_gas_to_write(e->s, /*subsample=*/1,
@@ -1596,6 +1634,15 @@ void write_output_parallel(struct engine* e,
   } else {
     Nsinks_written =
         e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
+  }
+
+  if (subsample[swift_type_sidm]) {
+    Nsidm_written = io_count_sidm_to_write(e->s, /*subsample=*/1,
+                                           subsample_fraction[swift_type_sidm],
+                                           e->snapshot_output_count);
+  } else {
+    Nsidm_written =
+        e->s->nr_siparts - e->s->nr_inhibited_siparts - e->s->nr_extra_siparts;
   }
 
   Ndm_written = io_count_dark_matter_to_write(
@@ -1640,8 +1687,9 @@ void write_output_parallel(struct engine* e,
    * Note that we want to want to write a 0-size dataset for some species
    * in case future snapshots will contain them (e.g. star formation) */
   const int to_write[swift_type_count] = {
-      with_hydro, with_DM,         with_DM_background, with_sink,
-      with_stars, with_black_hole, with_neutrinos
+      with_hydro,     with_DM,    with_DM_background,
+      with_sink,      with_stars, with_black_hole,
+      with_neutrinos, with_sidm
 
   };
 
@@ -1784,6 +1832,7 @@ void write_output_parallel(struct engine* e,
     struct spart* sparts_written = NULL;
     struct bpart* bparts_written = NULL;
     struct sink* sinks_written = NULL;
+    struct sipart* siparts_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -2038,6 +2087,39 @@ void write_output_parallel(struct engine* e,
         }
       } break;
 
+      case swift_type_sidm: {
+        if (Nsidm == Nsidm_written) {
+
+          /* No inhibted particles: easy case */
+          Nparticles = Nsidm;
+
+          /* Select the fields to write */
+          io_select_sidm_fields(siparts, with_cosmology, with_fof, with_stf, e,
+                                &num_fields, list);
+
+        } else {
+
+          /* Ok, we need to fish out the particles we want */
+          Nparticles = Nsidm_written;
+
+          /* Allocate temporary arrays */
+          if (swift_memalign("bparts_written", (void**)&siparts_written,
+                             sipart_align,
+                             Nsidm_written * sizeof(struct sipart)) != 0)
+            error("Error while allocating temporary memory for siparts");
+
+          /* Collect the particles we want to write */
+          io_collect_siparts_to_write(
+              siparts, siparts_written, subsample[swift_type_sidm],
+              subsample_fraction[swift_type_sidm], e->snapshot_output_count,
+              Nsidm, Nsidm_written);
+
+          /* Select the fields to write */
+          io_select_sidm_fields(siparts_written, with_cosmology, with_fof,
+                                with_stf, e, &num_fields, list);
+        }
+      } break;
+
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
@@ -2075,6 +2157,7 @@ void write_output_parallel(struct engine* e,
     if (sparts_written) swift_free("sparts_written", sparts_written);
     if (bparts_written) swift_free("bparts_written", bparts_written);
     if (sinks_written) swift_free("sinks_written", sinks_written);
+    if (siparts_written) swift_free("siparts_written", siparts_written);
 
 #ifdef IO_SPEED_MEASUREMENT
     MPI_Barrier(MPI_COMM_WORLD);

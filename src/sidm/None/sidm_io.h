@@ -47,7 +47,7 @@ INLINE static void sidm_read_particles(struct sipart* siparts,
 }
 
 INLINE static void convert_sipart_pos(const struct engine* e,
-                                    const struct sipart* sip, double* ret) {
+                                      const struct sipart* sip, double* ret) {
 
   const struct space* s = e->s;
   if (s->periodic) {
@@ -67,7 +67,7 @@ INLINE static void convert_sipart_pos(const struct engine* e,
 }
 
 INLINE static void convert_sipart_vel(const struct engine* e,
-                                    const struct sipart* sip, float* ret) {
+                                      const struct sipart* sip, float* ret) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology* cosmo = e->cosmology;
@@ -75,7 +75,8 @@ INLINE static void convert_sipart_vel(const struct engine* e,
   const double time_base = e->time_base;
   const float dt_kick_grav_mesh = e->dt_kick_grav_mesh_for_io;
 
-  const integertime_t ti_beg = get_integer_time_begin(ti_current, sip->time_bin);
+  const integertime_t ti_beg =
+      get_integer_time_begin(ti_current, sip->time_bin);
   const integertime_t ti_end = get_integer_time_end(ti_current, sip->time_bin);
 
   /* Get time-step since the last kick */
@@ -102,8 +103,9 @@ INLINE static void convert_sipart_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
-INLINE static void convert_sipart_potential(const struct engine *e,
-                                           const struct sipart *sip, float *ret) {
+INLINE static void convert_sipart_potential(const struct engine* e,
+                                            const struct sipart* sip,
+                                            float* ret) {
 
   if (sip->gpart != NULL)
     ret[0] = gravity_get_comoving_potential(sip->gpart);
@@ -129,16 +131,16 @@ INLINE static void sidm_write_particles(const struct sipart* siparts,
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sipart(
-      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, siparts, convert_sipart_pos,
-      "Co-moving position of the particles");
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, siparts,
+      convert_sipart_pos, "Co-moving position of the particles");
 
   list[1] = io_make_output_field_convert_sipart(
       "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, siparts, convert_sipart_vel,
       "Peculiar velocities of the particles. This is a * dx/dt where x is the "
       "co-moving position of the particles.");
 
-  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, siparts,
-                                 mass, "Masses of the particles");
+  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                                 siparts, mass, "Masses of the particles");
 
   list[3] = io_make_physical_output_field(
       "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, siparts, id,
@@ -147,7 +149,6 @@ INLINE static void sidm_write_particles(const struct sipart* siparts,
   list[4] = io_make_output_field_convert_sipart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, siparts,
       convert_sipart_potential, "Gravitational potentials of the particles");
-
 }
 
 #endif /* SWIFT_BASIC_SIDM_IO_H */

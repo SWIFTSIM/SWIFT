@@ -687,3 +687,60 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
   }
 #endif
 }
+
+/**
+ * @brief Re-arrange the #sipart in a top-level cell such that all the extra
+ * ones for on-the-fly creation are located at the end of the array.
+ *
+ * @param c The #cell to sort.
+ * @param siparts_offset The offset between the first #sipart in the array and
+ * the first #sipart in the global array in the space structure (for
+ * re-linking).
+ */
+void cell_reorder_extra_siparts(struct cell *c,
+                                const ptrdiff_t siparts_offset) {
+  struct sipart *siparts = c->sidm.parts;
+  const int count_real = c->sidm.count;
+
+  if (c->depth != 0 || c->nodeID != engine_rank)
+    error("This function should only be called on local top-level cells!");
+
+  int first_not_extra = count_real;
+
+  /* Find extra particles */
+  for (int i = 0; i < count_real; ++i) {
+    if (siparts[i].time_bin == time_bin_not_created) {
+      /* Find the first non-extra particle after the end of the
+         real particles */
+      while (siparts[first_not_extra].time_bin == time_bin_not_created) {
+        ++first_not_extra;
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (first_not_extra >= count_real + space_extra_sparts)
+        error("Looking for extra particles beyond this cell's range!");
+#endif
+
+      /* Swap everything, including g-part pointer */
+      memswap(&siparts[i], &siparts[first_not_extra], sizeof(struct sipart));
+      if (siparts[i].gpart)
+        siparts[i].gpart->id_or_neg_offset = -(i + siparts_offset);
+      siparts[first_not_extra].gpart = NULL;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (siparts[first_not_extra].time_bin != time_bin_not_created)
+        error("Incorrect swap occured!");
+#endif
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->sidm.count_total; ++i) {
+    if (siparts[i].time_bin == time_bin_not_created && i < c->sidm.count) {
+      error("Extra particle before the end of the regular array");
+    }
+    if (siparts[i].time_bin != time_bin_not_created && i >= c->sidm.count) {
+      error("Regular particle after the end of the regular array");
+    }
+  }
+#endif
+}

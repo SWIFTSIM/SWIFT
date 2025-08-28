@@ -288,8 +288,8 @@ void space_sinks_sort(struct sink *sinks, int *restrict ind,
  */
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        struct sink *sinks, struct spart *sparts,
-                       struct bpart *bparts, int *restrict ind,
-                       int *restrict counts, int num_bins) {
+                       struct bpart *bparts, struct sipart *siparts,
+                       int *restrict ind, int *restrict counts, int num_bins) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
   if (swift_memalign("gparts_offsets", (void **)&offsets,
@@ -327,6 +327,8 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
           bparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
         } else if (gparts[j].type == swift_type_sink) {
           sinks[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
+        } else if (gparts[j].type == swift_type_sidm) {
+          siparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
         }
       }
       gparts[k] = temp_gpart;
@@ -339,6 +341,8 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
         bparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
       } else if (gparts[k].type == swift_type_sink) {
         sinks[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+      } else if (gparts[k].type == swift_type_sidm) {
+        siparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
       }
     }
   }
