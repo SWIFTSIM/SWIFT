@@ -54,8 +54,6 @@ const char *taskID_names[task_type_count] = {
     "sort",
     "self",
     "pair",
-    "sub_self",
-    "sub_pair",
     "init_grav",
     "init_grav_out",
     "ghost_in",
@@ -140,6 +138,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "grav",
     "progeny",
     "direct",
+    "fof",
     "external_grav",
     "tend",
     "xv",
@@ -271,8 +270,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_self:
     case task_type_pair:
-    case task_type_sub_self:
-    case task_type_sub_pair:
       switch (t->subtype) {
 
         case task_subtype_density:
@@ -575,7 +572,6 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_self:
-    case task_type_sub_self:
       if (subtype == task_subtype_grav) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_gunlocktree(ci);
@@ -612,7 +608,6 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_pair:
-    case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_gunlocktree(ci);
@@ -803,7 +798,6 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_self:
-    case task_type_sub_self:
       if (subtype == task_subtype_grav) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the gparts and the m-pole */
@@ -865,7 +859,6 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_pair:
-    case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the gparts and the m-pole in both cells */
@@ -1801,9 +1794,7 @@ enum task_categories task_get_category(const struct task *t) {
       return task_category_neutrino;
 
     case task_type_self:
-    case task_type_pair:
-    case task_type_sub_self:
-    case task_type_sub_pair: {
+    case task_type_pair: {
       switch (t->subtype) {
 
         case task_subtype_density:

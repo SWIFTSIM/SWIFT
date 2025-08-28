@@ -56,9 +56,6 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* The top-level cells */
   const struct cell *cells = s->cells_top;
-  const double half_cell_width[3] = {0.5 * cells[0].width[0],
-                                     0.5 * cells[0].width[1],
-                                     0.5 * cells[0].width[2]};
 
   /* The current number of particles (including spare ones) */
   size_t nr_parts = s->nr_parts;
@@ -88,7 +85,8 @@ void space_allocate_extras(struct space *s, int verbose) {
   /* List the local cells */
   size_t nr_local_cells = 0;
   for (int i = 0; i < s->nr_cells; ++i) {
-    if (s->cells_top[i].nodeID == local_nodeID) {
+    if (s->cells_top[i].nodeID == local_nodeID &&
+        s->cells_top[i].subtype != cell_subtype_void) {
       local_cells[nr_local_cells] = i;
       ++nr_local_cells;
     }
@@ -197,9 +195,12 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (s->gparts[i].time_bin == time_bin_not_created) {
 
         /* We want the extra particles to be at the centre of their cell */
-        s->gparts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
-        s->gparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
-        s->gparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        s->gparts[i].x[0] =
+            cells[current_cell].loc[0] + (cells[current_cell].width[0] / 2.0);
+        s->gparts[i].x[1] =
+            cells[current_cell].loc[1] + (cells[current_cell].width[1] / 2.0);
+        s->gparts[i].x[2] =
+            cells[current_cell].loc[2] + (cells[current_cell].width[2] / 2.0);
         ++count_in_cell;
 #ifdef SWIFT_DEBUG_CHECKS
         count_extra_gparts++;
@@ -293,9 +294,12 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (s->parts[i].time_bin == time_bin_not_created) {
 
         /* We want the extra particles to be at the centre of their cell */
-        s->parts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
-        s->parts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
-        s->parts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        s->parts[i].x[0] =
+            cells[current_cell].loc[0] + cells[current_cell].width[0] / 2.0;
+        s->parts[i].x[1] =
+            cells[current_cell].loc[1] + cells[current_cell].width[1] / 2.0;
+        s->parts[i].x[2] =
+            cells[current_cell].loc[2] + cells[current_cell].width[2] / 2.0;
         ++count_in_cell;
 #ifdef SWIFT_DEBUG_CHECKS
         count_extra_parts++;
@@ -379,9 +383,12 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (s->sinks[i].time_bin == time_bin_not_created) {
 
         /* We want the extra particles to be at the centre of their cell */
-        s->sinks[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
-        s->sinks[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
-        s->sinks[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        s->sinks[i].x[0] =
+            cells[current_cell].loc[0] + cells[current_cell].width[0] / 2.0;
+        s->sinks[i].x[1] =
+            cells[current_cell].loc[1] + cells[current_cell].width[1] / 2.0;
+        s->sinks[i].x[2] =
+            cells[current_cell].loc[2] + cells[current_cell].width[2] / 2.0;
         ++count_in_cell;
 #ifdef SWIFT_DEBUG_CHECKS
         count_extra_sinks++;
@@ -465,9 +472,12 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (s->sparts[i].time_bin == time_bin_not_created) {
 
         /* We want the extra particles to be at the centre of their cell */
-        s->sparts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
-        s->sparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
-        s->sparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        s->sparts[i].x[0] =
+            cells[current_cell].loc[0] + cells[current_cell].width[0] / 2.0;
+        s->sparts[i].x[1] =
+            cells[current_cell].loc[1] + cells[current_cell].width[1] / 2.0;
+        s->sparts[i].x[2] =
+            cells[current_cell].loc[2] + cells[current_cell].width[2] / 2.0;
         ++count_in_cell;
 #ifdef SWIFT_DEBUG_CHECKS
         count_extra_sparts++;
@@ -551,9 +561,12 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (s->bparts[i].time_bin == time_bin_not_created) {
 
         /* We want the extra particles to be at the centre of their cell */
-        s->bparts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
-        s->bparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
-        s->bparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        s->bparts[i].x[0] =
+            cells[current_cell].loc[0] + cells[current_cell].width[0] / 2.0;
+        s->bparts[i].x[1] =
+            cells[current_cell].loc[1] + cells[current_cell].width[1] / 2.0;
+        s->bparts[i].x[2] =
+            cells[current_cell].loc[2] + cells[current_cell].width[2] / 2.0;
         ++count_in_cell;
 #ifdef SWIFT_DEBUG_CHECKS
         count_extra_bparts++;
