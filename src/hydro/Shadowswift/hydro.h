@@ -578,6 +578,16 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   /* Update xp->u_full as well for later when thermal switches are called */
   xp->u_full = internal_energy;
 
+  /* Apply the minimal energy limit */
+  const float min_comoving_energy =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+
+  if (xp->u_full < min_comoving_energy) {
+    xp->u_full = min_comoving_energy;
+    internal_energy = min_comoving_energy;
+    p->flux.energy = 0.f;
+  }
+
   /* Set primitive quantities */
   W[0] = p->conserved.mass * volume_inv;
   W[1] = p->v[0];
