@@ -297,9 +297,12 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
     }
 
     /* Compute the distance from the zoom region centre. */
-    double dx = s->gparts[k].x[0] - s->zoom_props->com[0];
-    double dy = s->gparts[k].x[1] - s->zoom_props->com[1];
-    double dz = s->gparts[k].x[2] - s->zoom_props->com[2];
+    double dx = s->gparts[k].x[0] - s->zoom_props->com[0] +
+                s->zoom_props->zoom_shift[0];
+    double dy = s->gparts[k].x[1] - s->zoom_props->com[1] +
+                s->zoom_props->zoom_shift[1];
+    double dz = s->gparts[k].x[2] - s->zoom_props->com[2] +
+                s->zoom_props->zoom_shift[2];
 
     /* Account for periodicity. */
     if (s->periodic) {
