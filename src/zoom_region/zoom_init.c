@@ -230,6 +230,64 @@ double zoom_get_region_dim_and_shift(struct space *s) {
 }
 
 /**
+ * @brief Calculate the distance at which we can truncate the parent volume.
+ *
+ * This uses a simple geometric argument (based on the (L/R)^3 tidal criterion)
+ * to find the distance from the zoom region at which the contributions from the
+ * background drop below the desired accuracy.
+ *
+ * @param zoom_dim The zoom region dimensions.
+ * @param tidal_factor The tidal factor accounting for anisotropies in the
+ *     background (>1, higher means more background preserved, i.e. more
+ *     accurate).
+ * @param epsilon The desired accuracy.
+ * @return The truncation distance.
+ */
+static double zoom_compute_bkg_truncate_dist(const double zoom_dim,
+                                             const double tidal_factor,
+                                             const double epsilon) {
+
+  return tidal_factor * zoom_dim / pow(epsilon, 1.0 / 3.0);
+}
+
+/**
+ * @brief Truncate the simulation volume to remove distant background.
+ *
+ * This removes all cells that are further away from the zoom region than the
+ * truncation distance computed with zoom_compute_bkg_truncate_dist.
+ *
+ * @param s The #space.
+ * @param verbose Whether to be verbose or not.
+ */
+void zoom_truncate_background(struct space *s, const double zoom_dim,
+                              const int verbose) {
+
+  /* Extract some useful pointers and information. */
+  double tidal_factor = s->zoom_props->tidal_factor;
+  double epsilon = s->zoom_props->truncate_epsilon;
+
+  /* Compute the truncation distance. */
+  const double r_trunc =
+      zoom_compute_bkg_truncate_dist(zoom_dim, tidal_factor, epsilon);
+
+  if (verbose)
+    message(
+        "Computed a truncation distance of %.2e (with %.2f x %.2e * "
+        "(%.1e)^(1/3))",
+        r_trunc, tidal_factor, zoom_dim, epsilon);
+
+  /* If the truncation distance exceeds the box size we can't truncate. */
+  if (r_trunc * 2.0 >= fmin(s->dim[0], fmin(s->dim[1], s->dim[2]))) {
+    error(
+        "Truncation distance (%.2e) exceeds box size (%.2e), cannot truncate. "
+        "You probably don't need truncation in this case, turn off "
+        "ZoomRegion:truncate_background.",
+        r_trunc, fmin(s->dim[0], fmin(s->dim[1], s->dim[2])));
+    return;
+  }
+}
+
+/**
  * @brief Compute the void region geometry.
  *
  * The void region is the region covered by background cells above the zoom
