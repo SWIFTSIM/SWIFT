@@ -286,45 +286,6 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
     return;
   }
 
-  /* Loop over all the gparts and inhibit background particles that are
-   * further away than the truncation distance. */
-  int ntrunc = 0;
-  for (size_t k = 0; k < s->nr_gparts; k++) {
-
-    /* Skip non-background particles. */
-    if (s->gparts[k].type != swift_type_dark_matter_background) {
-      continue;
-    }
-
-    /* Compute the distance from the zoom region centre. */
-    double dx = s->gparts[k].x[0] - s->zoom_props->com[0];
-    double dy = s->gparts[k].x[1] - s->zoom_props->com[1];
-    double dz = s->gparts[k].x[2] - s->zoom_props->com[2];
-
-    /* Account for periodicity. */
-    if (s->periodic) {
-      box_wrap(dx, 0, s->dim[0]);
-      box_wrap(dy, 0, s->dim[1]);
-      box_wrap(dz, 0, s->dim[2]);
-    }
-
-    const double r = sqrt(dx * dx + dy * dy + dz * dz);
-    if (k == 0)
-      message("Particle %zu at distance %f inhibited: %d", k, r,
-              (r > r_trunc) ? 1 : 0);
-
-    /* If the particle is further away than the truncation distance we
-     * inhibit it. */
-    if (r > r_trunc) {
-      s->gparts[k].time_bin = time_bin_inhibited;
-      ntrunc++;
-    }
-  }
-
-  if (verbose)
-    message("Removing %d background particles out of %zu.", ntrunc,
-            s->nr_gparts);
-
   /* Shift all the particles so that they lie within the new truncated box. */
   for (size_t k = 0; k < s->nr_parts; k++) {
     s->parts[k].x[0] -= r_trunc;
@@ -364,6 +325,29 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
     s->zoom_props->zoom_shift[i] -= r_trunc;
     s->zoom_props->com[i] = s->dim[i] / 2.0;
   }
+
+  /* Loop over all the gparts and inhibit background particles that are
+   * further away than the truncation distance. */
+  int ntrunc = 0;
+  for (size_t k = 0; k < s->nr_gparts; k++) {
+
+    /* Skip non-background particles. */
+    if (s->gparts[k].type != swift_type_dark_matter_background) {
+      continue;
+    }
+
+    /* Inhibit background particles that are too far away. */
+    if (s->gparts[k].x[0] < 0.0 || s->gparts[k].x[0] > s->dim[0] ||
+        s->gparts[k].x[1] < 0.0 || s->gparts[k].x[1] > s->dim[1] ||
+        s->gparts[k].x[2] < 0.0 || s->gparts[k].x[2] > s->dim[2]) {
+      s->gparts[k].time_bin = time_bin_inhibited;
+      ntrunc++;
+    }
+  }
+
+  if (verbose)
+    message("Removing %d background particles out of %zu.", ntrunc,
+            s->nr_gparts);
 }
 
 /**
