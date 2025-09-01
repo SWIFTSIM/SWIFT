@@ -306,9 +306,9 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
 
     /* Account for periodicity. */
     if (s->periodic) {
-      box_wrap(dx, -s->dim[0] / 2.0, s->dim[0] / 2.0);
-      box_wrap(dy, -s->dim[1] / 2.0, s->dim[1] / 2.0);
-      box_wrap(dz, -s->dim[2] / 2.0, s->dim[2] / 2.0);
+      box_wrap(dx, 0, s->dim[0]);
+      box_wrap(dy, 0, s->dim[1]);
+      box_wrap(dz, 0, s->dim[2]);
     }
 
     const double r = sqrt(dx * dx + dy * dy + dz * dz);
