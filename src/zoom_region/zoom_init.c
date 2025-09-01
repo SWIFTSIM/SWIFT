@@ -325,7 +325,7 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
   /* Set the new box dimensions. */
   for (int i = 0; i < 3; i++) {
     s->dim[i] = 2.0 * r_trunc;
-    s->width[i] = s->dim[i] / s->bkg_cdim[i];
+    s->width[i] = s->dim[i] / s->zoom_props->bkg_cdim[i];
     s->iwidth[i] = 1.0 / s->width[i];
   }
 
