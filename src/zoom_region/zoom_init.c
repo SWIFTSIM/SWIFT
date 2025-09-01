@@ -620,7 +620,8 @@ void zoom_region_init(struct space *s, const int verbose) {
 
   /* Are we truncating? */
   if (s->zoom_props->truncate_background) {
-    zoom_truncate_background(s, ini_dim, verbose);
+    zoom_truncate_background(s, ini_dim * s->zoom_props->region_pad_factor,
+                             verbose);
   }
 
   /* Apply the shift to the particles. */
