@@ -297,12 +297,9 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
     }
 
     /* Compute the distance from the zoom region centre. */
-    double dx = s->gparts[k].x[0] - s->zoom_props->com[0] +
-                s->zoom_props->zoom_shift[0];
-    double dy = s->gparts[k].x[1] - s->zoom_props->com[1] +
-                s->zoom_props->zoom_shift[1];
-    double dz = s->gparts[k].x[2] - s->zoom_props->com[2] +
-                s->zoom_props->zoom_shift[2];
+    double dx = s->gparts[k].x[0] - s->zoom_props->com[0];
+    double dy = s->gparts[k].x[1] - s->zoom_props->com[1];
+    double dz = s->gparts[k].x[2] - s->zoom_props->com[2];
 
     /* Account for periodicity. */
     if (s->periodic) {
@@ -324,6 +321,33 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
   if (verbose)
     message("Removing %d background particles out of %zu.", ntrunc,
             s->nr_gparts);
+
+  /* Shift all the particles so that they lie within the new truncated box. */
+  for (size_t k = 0; k < s->nr_parts; k++) {
+    s->parts[k].x[0] -= r_trunc;
+    s->parts[k].x[1] -= r_trunc;
+    s->parts[k].x[2] -= r_trunc;
+  }
+  for (size_t k = 0; k < s->nr_gparts; k++) {
+    s->gparts[k].x[0] -= r_trunc;
+    s->gparts[k].x[1] -= r_trunc;
+    s->gparts[k].x[2] -= r_trunc;
+  }
+  for (size_t k = 0; k < s->nr_sparts; k++) {
+    s->sparts[k].x[0] -= r_trunc;
+    s->sparts[k].x[1] -= r_trunc;
+    s->sparts[k].x[2] -= r_trunc;
+  }
+  for (size_t k = 0; k < s->nr_bparts; k++) {
+    s->bparts[k].x[0] -= r_trunc;
+    s->bparts[k].x[1] -= r_trunc;
+    s->bparts[k].x[2] -= r_trunc;
+  }
+  for (size_t k = 0; k < s->nr_sinks; k++) {
+    s->sinks[k].x[0] -= r_trunc;
+    s->sinks[k].x[1] -= r_trunc;
+    s->sinks[k].x[2] -= r_trunc;
+  }
 
   /* Set the new box dimensions. */
   for (int i = 0; i < 3; i++) {
@@ -729,12 +753,6 @@ void zoom_region_init(struct space *s, const int verbose) {
    * the centre of the box and stores it in s->zoom_props */
   double ini_dim = zoom_get_region_dim_and_shift(s);
 
-  /* Are we truncating? */
-  if (s->zoom_props->truncate_background) {
-    zoom_truncate_background(s, ini_dim * s->zoom_props->region_pad_factor,
-                             verbose);
-  }
-
   /* Apply the shift to the particles. */
   for (size_t k = 0; k < s->nr_parts; k++) {
     s->parts[k].x[0] += s->zoom_props->zoom_shift[0];
@@ -760,6 +778,12 @@ void zoom_region_init(struct space *s, const int verbose) {
     s->sinks[k].x[0] += s->zoom_props->zoom_shift[0];
     s->sinks[k].x[1] += s->zoom_props->zoom_shift[1];
     s->sinks[k].x[2] += s->zoom_props->zoom_shift[2];
+  }
+
+  /* Are we truncating? */
+  if (s->zoom_props->truncate_background) {
+    zoom_truncate_background(s, ini_dim * s->zoom_props->region_pad_factor,
+                             verbose);
   }
 
   /* Include the requested padding around the high resolution particles. */
