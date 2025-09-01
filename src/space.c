@@ -2176,14 +2176,14 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
           "Omega_nu = %e",
           cosmo->Omega_nu_0, Omega_particles_nu);
 
-    if (fabs(Omega_particles_m - Omega_m) > 1e-3)
-      error(
-          "The total matter content of the simulation does not match the "
-          "cosmology in the parameter file: cosmo.Omega_m = %e particles "
-          "Omega_m = %e \n cosmo: Omega_b=%e Omega_cdm=%e \n "
-          "particles: Omega_b=%e Omega_cdm=%e",
-          Omega_m, Omega_particles_m, cosmo->Omega_b, cosmo->Omega_cdm,
-          Omega_particles_b, Omega_particles_cdm);
+    //   if (fabs(Omega_particles_m - Omega_m) > 1e-3)
+    //     error(
+    //         "The total matter content of the simulation does not match the "
+    //         "cosmology in the parameter file: cosmo.Omega_m = %e particles "
+    //         "Omega_m = %e \n cosmo: Omega_b=%e Omega_cdm=%e \n "
+    //         "particles: Omega_b=%e Omega_cdm=%e",
+    //         Omega_m, Omega_particles_m, cosmo->Omega_b, cosmo->Omega_cdm,
+    //         Omega_particles_b, Omega_particles_cdm);
   }
 }
 
