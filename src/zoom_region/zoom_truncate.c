@@ -41,14 +41,11 @@
  * @param epsilon The desired accuracy.
  * @return The truncation distance.
  */
-double zoom_compute_bkg_truncate_dist(const double zoom_dim[3],
+double zoom_compute_bkg_truncate_dist(const double zoom_dim,
                                       const double tidal_factor,
                                       const double epsilon) {
 
-  /* Get the maximum zoom dimension in case we are not cubic */
-  double dim = fmax(zoom_dim[0], fmax(zoom_dim[1], zoom_dim[2]));
-
-  return tidal_factor * dim / pow(epsilon, 1.0 / 3.0);
+  return tidal_factor * zoom_dim / pow(epsilon, 1.0 / 3.0);
 }
 
 /**
@@ -60,23 +57,22 @@ double zoom_compute_bkg_truncate_dist(const double zoom_dim[3],
  * @param s The #space.
  * @param verbose Whether to be verbose or not.
  */
-void zoom_truncate_background(struct space *s, const int verbose) {
+void zoom_truncate_background(struct space *s, const double zoom_dim,
+                              const int verbose) {
 
   /* Extract some useful pointers and information. */
-  struct cell *cells = s->cells_top;
-  double *zoom_dim = s->zoom_props->zoom_dim;
   double tidal_factor = s->zoom_props->tidal_factor;
   double epsilon = s->zoom_props->truncate_epsilon;
 
   /* Compute the truncation distance. */
   const double r_trunc =
       zoom_compute_bkg_truncate_dist(zoom_dim, tidal_factor, epsilon);
+
   if (verbose)
     message(
         "Computed a truncation distance of %.2e (with %.2f x %.2e * "
         "(%.1e)^(1/3))",
-        r_trunc, tidal_factor,
-        fmax(zoom_dim[0], fmax(zoom_dim[1], zoom_dim[2])), epsilon);
+        r_trunc, tidal_factor, zoom_dim, epsilon);
 
   /* If the truncation distance exceeds the box size we can't truncate. */
   if (r_trunc * 2.0 >= fmin(s->dim[0], fmin(s->dim[1], s->dim[2]))) {

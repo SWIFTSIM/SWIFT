@@ -618,6 +618,11 @@ void zoom_region_init(struct space *s, const int verbose) {
    * the centre of the box and stores it in s->zoom_props */
   double ini_dim = zoom_get_region_dim_and_shift(s);
 
+  /* Are we truncating? */
+  if (s->zoom_props->truncate_background) {
+    zoom_truncate_background(s, ini_dim, verbose);
+  }
+
   /* Apply the shift to the particles. */
   for (size_t k = 0; k < s->nr_parts; k++) {
     s->parts[k].x[0] += s->zoom_props->zoom_shift[0];
