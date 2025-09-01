@@ -309,6 +309,8 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
     }
 
     const double r = sqrt(dx * dx + dy * dy + dz * dz);
+    message("Particle %zu at distance %f inhibited: %d", k, r,
+            (r > r_trunc) ? 1 : 0);
 
     /* If the particle is further away than the truncation distance we
      * inhibit it. */
