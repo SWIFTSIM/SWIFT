@@ -272,8 +272,8 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
 
   if (verbose)
     message(
-        "Computed a truncation distance of %.2e (with %.2f x %.2e * "
-        "(%.1e)^(1/3))",
+        "Computed a truncation distance of %.2f internal units (with %.2f x "
+        "%.2e * (%.1e)^(-1/3))",
         r_trunc, tidal_factor, zoom_dim, epsilon);
 
   /* If the truncation distance exceeds the box size we can't truncate. */
