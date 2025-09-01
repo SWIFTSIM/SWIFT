@@ -273,7 +273,7 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
   if (verbose)
     message(
         "Computed a truncation distance of %.2f internal units (with %.2f x "
-        "%.2e * (%.1e)^(-1/3))",
+        "%.2f * (%.1e)^(-1/3))",
         r_trunc, tidal_factor, zoom_dim, epsilon);
 
   /* If the truncation distance exceeds the box size we can't truncate. */
@@ -284,6 +284,55 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
         "ZoomRegion:truncate_background.",
         r_trunc, fmin(s->dim[0], fmin(s->dim[1], s->dim[2])));
     return;
+  }
+
+  /* Loop over all the gparts and inhibit background particles that are
+   * further away than the truncation distance. */
+  int ntrunc = 0;
+  for (size_t k = 0; k < s->nr_gparts; k++) {
+
+    /* Skip non-background particles. */
+    if (s->gparts[k].type != swift_type_dark_matter_background) {
+      continue;
+    }
+
+    /* Compute the distance from the zoom region centre. */
+    double dx = s->gparts[k].x[0] - s->zoom_props->com[0];
+    double dy = s->gparts[k].x[1] - s->zoom_props->com[1];
+    double dz = s->gparts[k].x[2] - s->zoom_props->com[2];
+
+    /* Account for periodicity. */
+    if (s->periodic) {
+      box_wrap(dx, -s->dim[0] / 2.0, s->dim[0] / 2.0);
+      box_wrap(dy, -s->dim[1] / 2.0, s->dim[1] / 2.0);
+      box_wrap(dz, -s->dim[2] / 2.0, s->dim[2] / 2.0);
+    }
+
+    const double r = sqrt(dx * dx + dy * dy + dz * dz);
+
+    /* If the particle is further away than the truncation distance we
+     * inhibit it. */
+    if (r > r_trunc) {
+      s->gparts[k].time_bin = time_bin_inhibited;
+      ntrunc++;
+    }
+  }
+
+  if (verbose)
+    message("Removing %d background particles out of %zu.", ntrunc,
+            s->nr_gparts);
+
+  /* Set the new box dimensions. */
+  for (int i = 0; i < 3; i++) {
+    s->dim[i] = 2.0 * r_trunc;
+    s->width[i] = s->dim[i] / s->bkg_cdim[i];
+    s->iwidth[i] = 1.0 / s->width[i];
+  }
+
+  /* Include the new edge in the zoom shift. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->zoom_shift[i] -= r_trunc;
+    s->zoom_props->com[i] = s->dim[i] / 2.0;
   }
 }
 
@@ -367,8 +416,8 @@ static int zoom_get_cdim_at_depth(double region_dim, double parent_width,
       floor((region_dim + (0.1 * parent_width)) / parent_width);
 
   /* We now know how many parent cells we have in the region, use this and the
-   * depth of the zoom region to calculate the cdim (the number of parents times
-   * the number of children in a parent. */
+   * depth of the zoom region to calculate the cdim (the number of parents
+   * times the number of children in a parent. */
   return region_parent_cdim * pow(2, child_depth);
 }
 
@@ -416,9 +465,9 @@ void zoom_get_geometry_no_buffer_cells(struct space *s) {
 /**
  * @brief Compute the geometry of the zoom region with buffer cells.
  *
- * This function computes the geometry of the zoom region when buffer cells are
- * enabled. It calculates the bounds, dimensions, and cell widths for both the
- * buffer and zoom regions.
+ * This function computes the geometry of the zoom region when buffer cells
+ * are enabled. It calculates the bounds, dimensions, and cell widths for both
+ * the buffer and zoom regions.
  *
  * Currently, buffer cells are not fully supported and this function will
  * simply through an error if called.
@@ -436,7 +485,8 @@ void zoom_get_geometry_with_buffer_cells(struct space *s) {
   /* Ensure we have a buffer cell depth. */
   if (s->zoom_props->buffer_cell_depth == 0) {
     error(
-        "Current cell structure requires buffer cells but not buffer cell has "
+        "Current cell structure requires buffer cells but not buffer cell "
+        "has "
         "been given. ZoomRegion:buffer_top_level_depth must be greater than "
         "0.");
   }
@@ -771,7 +821,8 @@ void zoom_region_init(struct space *s, const int verbose) {
     warning(
         "The pad region has to be %d times larger than requested. "
         "Either increase ZoomRegion:region_pad_factor, increase the "
-        "number of background cells, or increase the depths of the zoom cells.",
+        "number of background cells, or increase the depths of the zoom "
+        "cells.",
         (int)(s->zoom_props->region_pad_factor / input_pad_factor));
 
   /* If we didn't get an explicit neighbour cell depth we'll match the zoom
