@@ -60,7 +60,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   int ncells = zoom_props->nr_bkg_cells;
 
   /* Work out how many void cells we should have. */
-  int void_cdim = s->zoom_props->void_dim[0] * s->iwidth[0] * 1.0001;
+  int void_cdim = (int)ceil(s->zoom_props->void_dim[0] * 1.0001 * s->iwidth[0]);
   int target_void_count = void_cdim * void_cdim * void_cdim;
 
   /* Allocate the indices of void cells */
