@@ -85,6 +85,22 @@ void zoom_parse_params(struct swift_params *params,
   zoom_bkg_subdepth_diff_grav =
       parser_get_opt_param_int(params, "ZoomRegion:bkg_subdepth_diff_grav",
                                zoom_bkg_subdepth_diff_grav_default);
+
+  /* Should we truncate the background? */
+  props->truncate_background =
+      parser_get_opt_param_int(params, "ZoomRegion:truncate_background", 0);
+
+  /* If we are truncating the background we need the tidal factor and the
+   * target tolerance. */
+  if (props->truncate_background) {
+    props->tidal_factor = parser_get_opt_param_float(
+        params, "ZoomRegion:truncate_tidal_factor", 1.0);
+    props->truncate_epsilon =
+        parser_get_opt_param_float(params, "ZoomRegion:truncate_epsilon", 1e-3);
+  } else {
+    props->tidal_factor = 0.0;
+    props->truncate_epsilon = 0.0;
+  }
 }
 
 /**

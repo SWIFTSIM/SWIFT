@@ -563,6 +563,17 @@ struct zoom_region_properties {
   /*! Are we treating each grid individually? */
   int separate_decomps;
 
+  /*! Are we truncating the background volume? */
+  int truncate_background;
+
+  /*! The target tolerence for force errors in the background truncation. (Only
+   * applicable if truncate_background is true). */
+  float truncate_epsilon;
+
+  /*! The tidal factor accounting for anisotropies etc. in the background
+   * potential. (Only applicable if truncate_background is true). */
+  float tidal_factor;
+
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /*! The total number of edges summed over all cells.  */
   int nr_edges;
