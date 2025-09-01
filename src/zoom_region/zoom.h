@@ -40,7 +40,8 @@ void zoom_region_init(struct space *s, const int verbose);
 void zoom_report_cell_properties(const struct space *s);
 
 /* Truncation of the background functions. */
-void zoom_truncate_background(struct space *s, const int verbose);
+void zoom_truncate_background(struct space *s, const double zoom_dim,
+                              const int verbose);
 
 /* Construct top level cells with a zoom region. */
 void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
