@@ -60,8 +60,8 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   int ncells = zoom_props->nr_bkg_cells;
 
   /* Work out how many void cells we should have. */
-  int void_cdim = s->zoom_props->void_cdim[0];
-  int target_void_count = void_cdim * void_cdim * void_cdim;
+  int target_void_count = zoom_props->void_cdim[0] * zoom_props->void_cdim[1] *
+                          zoom_props->void_cdim[2];
 
   /* Allocate the indices of void cells */
   if (swift_memalign(
@@ -79,6 +79,8 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
 
     /* Label this cell if it contains the zoom region. */
     if (zoom_cell_overlaps_zoom_region(c, s)) {
+      message("Found void cell at index %d (position=[%f %f %f])", cid,
+              c->loc[0], c->loc[1], c->loc[2]);
       c->subtype = cell_subtype_void;
       zoom_props->void_cell_indices[zoom_props->nr_void_cells++] = cid;
     }
