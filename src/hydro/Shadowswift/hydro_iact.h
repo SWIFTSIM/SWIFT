@@ -260,10 +260,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
                                        totflux);
 #endif
 
-  /* Call positivity limiter */
-  hydro_part_positivity_limiter_fluxes(pi, pj, n_unit, vij, surface_area,
-                                   hydro->epsilon_rho, hydro->epsilon_P,
-                                   totflux);
 
   hydro_grav_work_from_half_state(pi, pj, shift, Whalf, vij, centroid, n_unit,
                                   surface_area, min_dt);
