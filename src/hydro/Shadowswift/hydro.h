@@ -366,7 +366,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   new_internal_energy = old_internal_energy + p->cool_du_dt_prev * dt_therm / 2;
 
   /* Limit internal energy decrease to max 1/2 of internal energy */
-  new_internal_energy = max(new_internal_energy, 0.5 * old_internal_energy);
+  new_internal_energy = fmax(new_internal_energy, 0.5 * old_internal_energy);
 
   /* Apply internal energy floor */
   new_internal_energy = fmax(new_internal_energy,
@@ -374,10 +374,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Calculate new Pressure */
   float new_pressure;
-  new_pressure = gas_pressure_from_internal_energy(W[0], new_internal_energy);
-  // update entropic function A */
-  // Eq 198 from Thesis, variable name
-  //p.A * Pnew/Pold will do
   new_pressure = gas_pressure_from_internal_energy(W[0],
     new_internal_energy);
 
@@ -861,23 +857,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Update the gravitational dt */
     p->gravity.dt = dt_grav;
     p->gravity.dt_corr = dt_kick_corr;
-
-    // /* Add cooling from previous timestep calculation */
-    // p->conserved.energy += p->conserved.mass * p->cool_du_dt_prev * dt_therm;
-    //
-    // /* Update Entropy according to cooling */
-    // p->conserved.entropy += p->conserved.mass
-    // * gas_entropy_from_internal_energy(p->rho, p->cool_du_dt_prev)
-    // * dt_therm;
-    //
-    // /* Also add entropy changes from cooling */
-    // float rho = Q[0] / p->geometry.volume;
-    // float entropy_dt = gas_entropy_from_internal_energy(rho,
-    //   p->cool_du_dt_prev);
-    // Q[5] += Q[0] * entropy_dt * dt_therm;
-    //
-    // /* Update particle with cooled conserved variables */
-    // hydro_part_set_conserved_variables(p, Q);
 
     /*Update Cooling and Entropy*/
     float Q[6];
