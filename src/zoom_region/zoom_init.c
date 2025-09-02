@@ -112,6 +112,8 @@ void zoom_parse_params(struct swift_params *params,
  * transformation when writing out.
  *
  * @param s The space
+ *
+ * @return The initial maximum dimension of the zoom region (all sides equal).
  */
 double zoom_get_region_dim_and_shift(struct space *s) {
 
@@ -258,13 +260,19 @@ static double zoom_compute_bkg_truncate_dist(const double zoom_dim,
  *
  * @param s The #space.
  * @param verbose Whether to be verbose or not.
+ * @return The initial maximum dimension of the zoom region (all sides equal).
  */
-void zoom_truncate_background(struct space *s, const double zoom_dim,
-                              const int verbose) {
+double zoom_get_truncated_region_dim_and_shift(struct space *s,
+                                               const int verbose) {
 
   /* Extract some useful pointers and information. */
   double tidal_factor = s->zoom_props->tidal_factor;
   double epsilon = s->zoom_props->truncate_epsilon;
+
+  /* Get the initial zoom region dimension and (this will calculate the shift
+   * too but we don't care about this shift and will recalculate it later). */
+  const double zoom_dim =
+      zoom_get_region_dim_and_shift(s) * s->zoom_props->region_pad_factor;
 
   /* Compute the truncation distance. */
   const double r_trunc =
@@ -292,50 +300,6 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
     s->width[i] = s->dim[i] / s->zoom_props->bkg_cdim[i];
     s->iwidth[i] = 1.0 / s->width[i];
   }
-  message("Truncated box dimensions to [%.2f, %.2f, %.2f]", s->dim[0],
-          s->dim[1], s->dim[2]);
-  message("Truncated cell width to [%.2f, %.2f, %.2f]", s->width[0],
-          s->width[1], s->width[2]);
-
-  /* Define the new lower bounds of the box. */
-  double new_min[3] = {s->zoom_props->com[0] - r_trunc,
-                       s->zoom_props->com[1] - r_trunc,
-                       s->zoom_props->com[2] - r_trunc};
-  message("New box min corner is at (%.2f, %.2f, %.2f)", new_min[0], new_min[1],
-          new_min[2]);
-
-  /* Include the new edge in the zoom shift. */
-  for (int i = 0; i < 3; i++) {
-    s->zoom_props->zoom_shift[i] -= r_trunc;
-    s->zoom_props->com[i] = s->dim[i] / 2.0;
-  }
-
-  /* Shift all the particles so that they lie within the new truncated box. */
-  for (size_t k = 0; k < s->nr_parts; k++) {
-    s->parts[k].x[0] -= new_min[0];
-    s->parts[k].x[1] -= new_min[1];
-    s->parts[k].x[2] -= new_min[2];
-  }
-  for (size_t k = 0; k < s->nr_gparts; k++) {
-    s->gparts[k].x[0] -= new_min[0];
-    s->gparts[k].x[1] -= new_min[1];
-    s->gparts[k].x[2] -= new_min[2];
-  }
-  for (size_t k = 0; k < s->nr_sparts; k++) {
-    s->sparts[k].x[0] -= new_min[0];
-    s->sparts[k].x[1] -= new_min[1];
-    s->sparts[k].x[2] -= new_min[2];
-  }
-  for (size_t k = 0; k < s->nr_bparts; k++) {
-    s->bparts[k].x[0] -= new_min[0];
-    s->bparts[k].x[1] -= new_min[1];
-    s->bparts[k].x[2] -= new_min[2];
-  }
-  for (size_t k = 0; k < s->nr_sinks; k++) {
-    s->sinks[k].x[0] -= new_min[0];
-    s->sinks[k].x[1] -= new_min[1];
-    s->sinks[k].x[2] -= new_min[2];
-  }
 
   /* Loop over all the gparts and inhibit background particles that are
    * further away than the truncation distance. */
@@ -347,66 +311,29 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
       continue;
     }
 
+    /* Get the distance from the zoom region centre. */
+    const double dx = s->gparts[k].x[0] + s->zoom_props->zoom_shift[0] -
+                      s->zoom_props->com[0];
+    const double dy = s->gparts[k].x[1] + s->zoom_props->zoom_shift[1] -
+                      s->zoom_props->com[1];
+    const double dz = s->gparts[k].x[2] + s->zoom_props->zoom_shift[2] -
+                      s->zoom_props->com[2];
+    const double r = sqrt(dx * dx + dy * dy + dz * dz);
+
     /* Inhibit background particles that are too far away. */
-    if (s->gparts[k].x[0] < 0.0 || s->gparts[k].x[0] > s->dim[0] ||
-        s->gparts[k].x[1] < 0.0 || s->gparts[k].x[1] > s->dim[1] ||
-        s->gparts[k].x[2] < 0.0 || s->gparts[k].x[2] > s->dim[2]) {
+    if (r > r_trunc) {
       s->gparts[k].time_bin = time_bin_inhibited;
       ntrunc++;
     }
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that no particles are outside the new box. */
-  for (size_t k = 0; k < s->nr_parts; k++) {
-    if (s->parts[k].x[0] < 0.0 || s->parts[k].x[0] > s->dim[0] ||
-        s->parts[k].x[1] < 0.0 || s->parts[k].x[1] > s->dim[1] ||
-        s->parts[k].x[2] < 0.0 || s->parts[k].x[2] > s->dim[2]) {
-      error("Found a part (%zu) outside the truncated box. (%f, %f, %f)", k,
-            s->parts[k].x[0], s->parts[k].x[1], s->parts[k].x[2]);
-    }
-  }
-  for (size_t k = 0; k < s->nr_gparts; k++) {
-    if (s->gparts[k].time_bin != time_bin_inhibited) {
-      continue;
-    }
-    if (s->gparts[k].x[0] < 0.0 || s->gparts[k].x[0] > s->dim[0] ||
-        s->gparts[k].x[1] < 0.0 || s->gparts[k].x[1] > s->dim[1] ||
-        s->gparts[k].x[2] < 0.0 || s->gparts[k].x[2] > s->dim[2]) {
-      error("Found a gpart (%zu/%s) outside the truncated box. (%f, %f, %f)", k,
-            part_type_names[s->gparts[k].type], s->gparts[k].x[0],
-            s->gparts[k].x[1], s->gparts[k].x[2]);
-    }
-  }
-  for (size_t k = 0; k < s->nr_sparts; k++) {
-    if (s->sparts[k].x[0] < 0.0 || s->sparts[k].x[0] > s->dim[0] ||
-        s->sparts[k].x[1] < 0.0 || s->sparts[k].x[1] > s->dim[1] ||
-        s->sparts[k].x[2] < 0.0 || s->sparts[k].x[2] > s->dim[2]) {
-      error("Found a spart (%zu) outside the truncated box. (%f, %f, %f)", k,
-            s->sparts[k].x[0], s->sparts[k].x[1], s->sparts[k].x[2]);
-    }
-  }
-  for (size_t k = 0; k < s->nr_bparts; k++) {
-    if (s->bparts[k].x[0] < 0.0 || s->bparts[k].x[0] > s->dim[0] ||
-        s->bparts[k].x[1] < 0.0 || s->bparts[k].x[1] > s->dim[1] ||
-        s->bparts[k].x[2] < 0.0 || s->bparts[k].x[2] > s->dim[2]) {
-      error("Found a bpart (%zu) outside the truncated box. (%f, %f, %f)", k,
-            s->bparts[k].x[0], s->bparts[k].x[1], s->bparts[k].x[2]);
-    }
-  }
-  for (size_t k = 0; k < s->nr_sinks; k++) {
-    if (s->sinks[k].x[0] < 0.0 || s->sinks[k].x[0] > s->dim[0] ||
-        s->sinks[k].x[1] < 0.0 || s->sinks[k].x[1] > s->dim[1] ||
-        s->sinks[k].x[2] < 0.0 || s->sinks[k].x[2] > s->dim[2]) {
-      error("Found a sink (%zu) outside the truncated box. (%f, %f, %f)", k,
-            s->sinks[k].x[0], s->sinks[k].x[1], s->sinks[k].x[2]);
-    }
-  }
-#endif
-
   if (verbose)
     message("Removing %d background particles out of %zu.", ntrunc,
             s->nr_gparts);
+
+  /* Recalculate the zoom region dimensions and shift (we have changed the
+   * box size and shifted the particles). */
+  return zoom_get_region_dim_and_shift(s);
 }
 
 /**
@@ -794,10 +721,17 @@ void zoom_region_init(struct space *s, const int verbose) {
         s->e->gravity_properties->r_cut_max_ratio;
   }
 
-  /* Compute the extent of the zoom region.
+  /* Compute the extent of the zoom region and truncate the background if
+   * requested.
    * NOTE: this calculates the shift necessary to move the zoom region to
-   * the centre of the box and stores it in s->zoom_props */
-  double ini_dim = zoom_get_region_dim_and_shift(s);
+   * the centre of the box and stores it in s->zoom_props to be applied below.
+   */
+  double ini_dim;
+  if (s->zoom_props->truncate_background) {
+    ini_dim = zoom_get_truncated_region_dim_and_shift(s, verbose);
+  } else {
+    ini_dim = zoom_get_region_dim_and_shift(s);
+  }
 
   /* Apply the shift to the particles. */
   for (size_t k = 0; k < s->nr_parts; k++) {
@@ -824,12 +758,6 @@ void zoom_region_init(struct space *s, const int verbose) {
     s->sinks[k].x[0] += s->zoom_props->zoom_shift[0];
     s->sinks[k].x[1] += s->zoom_props->zoom_shift[1];
     s->sinks[k].x[2] += s->zoom_props->zoom_shift[2];
-  }
-
-  /* Are we truncating? */
-  if (s->zoom_props->truncate_background) {
-    zoom_truncate_background(s, ini_dim * s->zoom_props->region_pad_factor,
-                             verbose);
   }
 
   /* Include the requested padding around the high resolution particles. */
@@ -939,4 +867,52 @@ void zoom_region_init(struct space *s, const int verbose) {
   if (verbose) {
     zoom_report_cell_properties(s);
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that no particles are outside the new box. */
+  for (size_t k = 0; k < s->nr_parts; k++) {
+    if (s->parts[k].x[0] < 0.0 || s->parts[k].x[0] > s->dim[0] ||
+        s->parts[k].x[1] < 0.0 || s->parts[k].x[1] > s->dim[1] ||
+        s->parts[k].x[2] < 0.0 || s->parts[k].x[2] > s->dim[2]) {
+      error("Found a part (%zu) outside the truncated box. (%f, %f, %f)", k,
+            s->parts[k].x[0], s->parts[k].x[1], s->parts[k].x[2]);
+    }
+  }
+  for (size_t k = 0; k < s->nr_gparts; k++) {
+    if (s->gparts[k].time_bin == time_bin_inhibited) {
+      continue;
+    }
+    if (s->gparts[k].x[0] < 0.0 || s->gparts[k].x[0] > s->dim[0] ||
+        s->gparts[k].x[1] < 0.0 || s->gparts[k].x[1] > s->dim[1] ||
+        s->gparts[k].x[2] < 0.0 || s->gparts[k].x[2] > s->dim[2]) {
+      error("Found a gpart (%zu/%s) outside the truncated box. (%f, %f, %f)", k,
+            part_type_names[s->gparts[k].type], s->gparts[k].x[0],
+            s->gparts[k].x[1], s->gparts[k].x[2]);
+    }
+  }
+  for (size_t k = 0; k < s->nr_sparts; k++) {
+    if (s->sparts[k].x[0] < 0.0 || s->sparts[k].x[0] > s->dim[0] ||
+        s->sparts[k].x[1] < 0.0 || s->sparts[k].x[1] > s->dim[1] ||
+        s->sparts[k].x[2] < 0.0 || s->sparts[k].x[2] > s->dim[2]) {
+      error("Found a spart (%zu) outside the truncated box. (%f, %f, %f)", k,
+            s->sparts[k].x[0], s->sparts[k].x[1], s->sparts[k].x[2]);
+    }
+  }
+  for (size_t k = 0; k < s->nr_bparts; k++) {
+    if (s->bparts[k].x[0] < 0.0 || s->bparts[k].x[0] > s->dim[0] ||
+        s->bparts[k].x[1] < 0.0 || s->bparts[k].x[1] > s->dim[1] ||
+        s->bparts[k].x[2] < 0.0 || s->bparts[k].x[2] > s->dim[2]) {
+      error("Found a bpart (%zu) outside the truncated box. (%f, %f, %f)", k,
+            s->bparts[k].x[0], s->bparts[k].x[1], s->bparts[k].x[2]);
+    }
+  }
+  for (size_t k = 0; k < s->nr_sinks; k++) {
+    if (s->sinks[k].x[0] < 0.0 || s->sinks[k].x[0] > s->dim[0] ||
+        s->sinks[k].x[1] < 0.0 || s->sinks[k].x[1] > s->dim[1] ||
+        s->sinks[k].x[2] < 0.0 || s->sinks[k].x[2] > s->dim[2]) {
+      error("Found a sink (%zu) outside the truncated box. (%f, %f, %f)", k,
+            s->sinks[k].x[0], s->sinks[k].x[1], s->sinks[k].x[2]);
+    }
+  }
+#endif
 }
