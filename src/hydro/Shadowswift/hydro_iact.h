@@ -255,11 +255,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   totflux[4] *= surface_area;
   totflux[5] = surface_area * entropy_flux;
 #ifdef SHADOWSWIFT_FLUX_LIMITER
+  /* Call positivity limiter */
   hydro_part_positivity_limiter_fluxes(pi, pj, n_unit, vij, surface_area,
                                        hydro->epsilon_rho, hydro->epsilon_P,
                                        totflux);
 #endif
-
 
   hydro_grav_work_from_half_state(pi, pj, shift, Whalf, vij, centroid, n_unit,
                                   surface_area, min_dt);
