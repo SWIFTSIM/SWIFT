@@ -367,8 +367,9 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
     if (s->gparts[k].x[0] < 0.0 || s->gparts[k].x[0] > s->dim[0] ||
         s->gparts[k].x[1] < 0.0 || s->gparts[k].x[1] > s->dim[1] ||
         s->gparts[k].x[2] < 0.0 || s->gparts[k].x[2] > s->dim[2]) {
-      error("Found a gpart (%zu) outside the truncated box. (%f, %f, %f)", k,
-            s->gparts[k].x[0], s->gparts[k].x[1], s->gparts[k].x[2]);
+      error("Found a gpart (%zu/%s) outside the truncated box. (%f, %f, %f)", k,
+            part_type_names[s->gparts[k].type], s->gparts[k].x[0],
+            s->gparts[k].x[1], s->gparts[k].x[2]);
     }
   }
   for (size_t k = 0; k < s->nr_sparts; k++) {
