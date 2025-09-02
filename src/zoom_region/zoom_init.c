@@ -356,7 +356,8 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
     if (s->parts[k].x[0] < 0.0 || s->parts[k].x[0] > s->dim[0] ||
         s->parts[k].x[1] < 0.0 || s->parts[k].x[1] > s->dim[1] ||
         s->parts[k].x[2] < 0.0 || s->parts[k].x[2] > s->dim[2]) {
-      error("Found a part (%zu) outside the truncated box.", k);
+      error("Found a part (%zu) outside the truncated box. (%f, %f, %f)", k,
+            s->parts[k].x[0], s->parts[k].x[1], s->parts[k].x[2]);
     }
   }
   for (size_t k = 0; k < s->nr_gparts; k++) {
@@ -366,28 +367,32 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
     if (s->gparts[k].x[0] < 0.0 || s->gparts[k].x[0] > s->dim[0] ||
         s->gparts[k].x[1] < 0.0 || s->gparts[k].x[1] > s->dim[1] ||
         s->gparts[k].x[2] < 0.0 || s->gparts[k].x[2] > s->dim[2]) {
-      error("Found a gpart (%zu) outside the truncated box.", k);
+      error("Found a gpart (%zu) outside the truncated box. (%f, %f, %f)", k,
+            s->gparts[k].x[0], s->gparts[k].x[1], s->gparts[k].x[2]);
     }
   }
   for (size_t k = 0; k < s->nr_sparts; k++) {
     if (s->sparts[k].x[0] < 0.0 || s->sparts[k].x[0] > s->dim[0] ||
         s->sparts[k].x[1] < 0.0 || s->sparts[k].x[1] > s->dim[1] ||
         s->sparts[k].x[2] < 0.0 || s->sparts[k].x[2] > s->dim[2]) {
-      error("Found a spart (%zu) outside the truncated box.", k);
+      error("Found a spart (%zu) outside the truncated box. (%f, %f, %f)", k,
+            s->sparts[k].x[0], s->sparts[k].x[1], s->sparts[k].x[2]);
     }
   }
   for (size_t k = 0; k < s->nr_bparts; k++) {
     if (s->bparts[k].x[0] < 0.0 || s->bparts[k].x[0] > s->dim[0] ||
         s->bparts[k].x[1] < 0.0 || s->bparts[k].x[1] > s->dim[1] ||
         s->bparts[k].x[2] < 0.0 || s->bparts[k].x[2] > s->dim[2]) {
-      error("Found a bpart (%zu) outside the truncated box.", k);
+      error("Found a bpart (%zu) outside the truncated box. (%f, %f, %f)", k,
+            s->bparts[k].x[0], s->bparts[k].x[1], s->bparts[k].x[2]);
     }
   }
   for (size_t k = 0; k < s->nr_sinks; k++) {
     if (s->sinks[k].x[0] < 0.0 || s->sinks[k].x[0] > s->dim[0] ||
         s->sinks[k].x[1] < 0.0 || s->sinks[k].x[1] > s->dim[1] ||
         s->sinks[k].x[2] < 0.0 || s->sinks[k].x[2] > s->dim[2]) {
-      error("Found a sink (%zu) outside the truncated box.", k);
+      error("Found a sink (%zu) outside the truncated box. (%f, %f, %f)", k,
+            s->sinks[k].x[0], s->sinks[k].x[1], s->sinks[k].x[2]);
     }
   }
 #endif
