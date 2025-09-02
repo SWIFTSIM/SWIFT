@@ -39,6 +39,7 @@
 #include "star_formation.h"
 #include "stars.h"
 #include "threadpool.h"
+#include "timeline.h"
 #include "tracers.h"
 
 void space_first_init_parts_mapper(void *restrict map_data, int count,
@@ -191,6 +192,12 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
 
   /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
+
+    /* Skip inhibited background particles */
+    if (gp[k].type == swift_type_dark_matter_background &&
+        gp[k].time_bin == time_bin_inhibited)
+      continue;
+
     gp[k].v_full[0] *= a_factor_vel;
     gp[k].v_full[1] *= a_factor_vel;
     gp[k].v_full[2] *= a_factor_vel;
@@ -208,6 +215,11 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
 
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
+
+    /* Skip inhibited background particles */
+    if (gp[k].type == swift_type_dark_matter_background &&
+        gp[k].time_bin == time_bin_inhibited)
+      continue;
 
     gravity_first_init_gpart(&gp[k], grav_props);
 
