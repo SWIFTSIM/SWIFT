@@ -286,10 +286,29 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
     return;
   }
 
+  /* Set the new box dimensions. */
+  for (int i = 0; i < 3; i++) {
+    s->dim[i] = 2.0 * r_trunc;
+    s->width[i] = s->dim[i] / s->zoom_props->bkg_cdim[i];
+    s->iwidth[i] = 1.0 / s->width[i];
+  }
+  message("Truncated box dimensions to [%.2f, %.2f, %.2f]", s->dim[0],
+          s->dim[1], s->dim[2]);
+  message("Truncated box width to [%.2f, %.2f, %.2f]", s->width[0], s->width[1],
+          s->width[2]);
+
+  /* Include the new edge in the zoom shift. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->zoom_shift[i] -= r_trunc;
+    s->zoom_props->com[i] = s->dim[i] / 2.0;
+  }
+
   /* Define the new lower bounds of the box. */
   double new_min[3] = {s->zoom_props->com[0] - r_trunc,
                        s->zoom_props->com[1] - r_trunc,
                        s->zoom_props->com[2] - r_trunc};
+  message("New box min corner is at (%.2f, %.2f, %.2f)", new_min[0], new_min[1],
+          new_min[2]);
 
   /* Shift all the particles so that they lie within the new truncated box. */
   for (size_t k = 0; k < s->nr_parts; k++) {
@@ -316,19 +335,6 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
     s->sinks[k].x[0] -= new_min[0];
     s->sinks[k].x[1] -= new_min[1];
     s->sinks[k].x[2] -= new_min[2];
-  }
-
-  /* Set the new box dimensions. */
-  for (int i = 0; i < 3; i++) {
-    s->dim[i] = 2.0 * r_trunc;
-    s->width[i] = s->dim[i] / s->zoom_props->bkg_cdim[i];
-    s->iwidth[i] = 1.0 / s->width[i];
-  }
-
-  /* Include the new edge in the zoom shift. */
-  for (int i = 0; i < 3; i++) {
-    s->zoom_props->zoom_shift[i] -= r_trunc;
-    s->zoom_props->com[i] = s->dim[i] / 2.0;
   }
 
   /* Loop over all the gparts and inhibit background particles that are
