@@ -222,7 +222,7 @@ double zoom_get_region_dim_and_shift(struct space *s) {
   /* Let's shift the COM.
    * NOTE: boundaries are recalculated relative to box centre later. */
   for (int i = 0; i < 3; i++)
-    s->zoom_props->com[i] += s->zoom_props->zoom_shift[i];
+    s->zoom_props->com[i] = com[i] + s->zoom_props->zoom_shift[i];
 
   /* Compute maximum side length of the zoom region, we need zoom dim to be
    * equal. */
@@ -269,7 +269,7 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
   double tidal_factor = s->zoom_props->tidal_factor;
   double epsilon = s->zoom_props->truncate_epsilon;
 
-  /* Get the initial zoom region dimension and (this will calculate the shift
+  /* Get the initial zoom region dimension (this will calculate the shift
    * too but we don't care about this shift and will recalculate it later). */
   const double zoom_dim =
       zoom_get_region_dim_and_shift(s) * s->zoom_props->region_pad_factor;
