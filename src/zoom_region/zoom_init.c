@@ -286,31 +286,36 @@ void zoom_truncate_background(struct space *s, const double zoom_dim,
     return;
   }
 
+  /* Define the new lower bounds of the box. */
+  double new_min[3] = {s->zoom_props->com[0] - r_trunc,
+                       s->zoom_props->com[1] - r_trunc,
+                       s->zoom_props->com[2] - r_trunc};
+
   /* Shift all the particles so that they lie within the new truncated box. */
   for (size_t k = 0; k < s->nr_parts; k++) {
-    s->parts[k].x[0] -= r_trunc;
-    s->parts[k].x[1] -= r_trunc;
-    s->parts[k].x[2] -= r_trunc;
+    s->parts[k].x[0] -= new_min[0];
+    s->parts[k].x[1] -= new_min[1];
+    s->parts[k].x[2] -= new_min[2];
   }
   for (size_t k = 0; k < s->nr_gparts; k++) {
-    s->gparts[k].x[0] -= r_trunc;
-    s->gparts[k].x[1] -= r_trunc;
-    s->gparts[k].x[2] -= r_trunc;
+    s->gparts[k].x[0] -= new_min[0];
+    s->gparts[k].x[1] -= new_min[1];
+    s->gparts[k].x[2] -= new_min[2];
   }
   for (size_t k = 0; k < s->nr_sparts; k++) {
-    s->sparts[k].x[0] -= r_trunc;
-    s->sparts[k].x[1] -= r_trunc;
-    s->sparts[k].x[2] -= r_trunc;
+    s->sparts[k].x[0] -= new_min[0];
+    s->sparts[k].x[1] -= new_min[1];
+    s->sparts[k].x[2] -= new_min[2];
   }
   for (size_t k = 0; k < s->nr_bparts; k++) {
-    s->bparts[k].x[0] -= r_trunc;
-    s->bparts[k].x[1] -= r_trunc;
-    s->bparts[k].x[2] -= r_trunc;
+    s->bparts[k].x[0] -= new_min[0];
+    s->bparts[k].x[1] -= new_min[1];
+    s->bparts[k].x[2] -= new_min[2];
   }
   for (size_t k = 0; k < s->nr_sinks; k++) {
-    s->sinks[k].x[0] -= r_trunc;
-    s->sinks[k].x[1] -= r_trunc;
-    s->sinks[k].x[2] -= r_trunc;
+    s->sinks[k].x[0] -= new_min[0];
+    s->sinks[k].x[1] -= new_min[1];
+    s->sinks[k].x[2] -= new_min[2];
   }
 
   /* Set the new box dimensions. */
