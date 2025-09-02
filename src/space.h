@@ -430,6 +430,9 @@ struct zoom_region_properties {
    *  the zoom region. */
   int buffer_cdim[3];
 
+  /*! The cdim of the void cells (cells containing the zoom region). */
+  int void_cdim[3];
+
   /*! The minimum top-level zoom cell width allowed. */
   double cell_min;
 
