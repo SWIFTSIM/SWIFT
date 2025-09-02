@@ -862,9 +862,12 @@ void zoom_region_init(struct space *s, const int verbose) {
                                    s->zoom_props->buffer_cdim[2];
 
   /* Compute the number of background cells along each side of the void
-   * region. */
+   * region. Here we include an small buffer to ensure we don't fall foul of
+   * rounding errors, we already know the void region is aligned with the
+   * background cells so this is totally safe. */
   for (int i = 0; i < 3; i++) {
-    s->zoom_props->void_cdim[i] = s->zoom_props->void_dim[i] * s->iwidth[i];
+    s->zoom_props->void_cdim[i] =
+        (int)floor((s->zoom_props->void_dim[i] * s->iwidth[i]) + 0.5);
   }
 
   /* Report what we have done */
