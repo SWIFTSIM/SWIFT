@@ -79,8 +79,6 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
 
     /* Label this cell if it contains the zoom region. */
     if (zoom_cell_overlaps_zoom_region(c, s)) {
-      message("Found void cell at index %d (position=[%f %f %f])", cid,
-              c->loc[0], c->loc[1], c->loc[2]);
       c->subtype = cell_subtype_void;
       zoom_props->void_cell_indices[zoom_props->nr_void_cells++] = cid;
     }

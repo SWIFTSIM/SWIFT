@@ -573,13 +573,6 @@ void zoom_report_cell_properties(const struct space *s) {
 
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
-  /* Compute the number of background cells along each side of the void
-   * region. */
-  for (int i = 0; i < 3; i++) {
-    zoom_props->void_cdim[i] =
-        (int)ceil(s->zoom_props->void_dim[i] * s->iwidth[i]);
-  }
-
   /* Cdims */
   message("%28s = [%d, %d, %d]", "Background cdim", s->cdim[0], s->cdim[1],
           s->cdim[2]);
@@ -862,6 +855,12 @@ void zoom_region_init(struct space *s, const int verbose) {
   s->zoom_props->nr_buffer_cells = s->zoom_props->buffer_cdim[0] *
                                    s->zoom_props->buffer_cdim[1] *
                                    s->zoom_props->buffer_cdim[2];
+
+  /* Compute the number of background cells along each side of the void
+   * region. */
+  for (int i = 0; i < 3; i++) {
+    zoom_props->void_cdim[i] = s->zoom_props->void_dim[i] * s->iwidth[i];
+  }
 
   /* Report what we have done */
   if (verbose) {
