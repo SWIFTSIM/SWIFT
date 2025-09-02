@@ -320,9 +320,13 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
                       s->zoom_props->com[2];
     const double r = sqrt(dx * dx + dy * dy + dz * dz);
 
-    /* Inhibit background particles that are too far away. */
+    /* Inhibit background particles that are too far away and place them in the
+     * centre of the box to avoid any issues with periodicity. */
     if (r > r_trunc) {
       s->gparts[k].time_bin = time_bin_inhibited;
+      s->gparts[k].x[0] = s->dim[0] / 2.0;
+      s->gparts[k].x[1] = s->dim[1] / 2.0;
+      s->gparts[k].x[2] = s->dim[2] / 2.0;
       ntrunc++;
     }
   }
