@@ -75,9 +75,6 @@ runner_iact_nonsym_stars_dm_density(const float r2, const float dx[3],
     const float H = cosmo->H;
     const float a2H = a * a * H;
 
-    const float dx[3] = {si->x[0] - gpj->x[0], si->x[1] - gpj->x[1],
-                si->x[2] - gpj->x[2]};
-
     /* Calculate the velocity with the Hubble flow */
     const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
                                     a2H * dx[2] + dv[2]};

@@ -146,6 +146,8 @@ __attribute__((always_inline)) INLINE static void stars_kick_extra(
 
     /* Kick from DF from DM */
 
+    message("Kick: previous velocity=[%f,%f,%f]",sp->v[0],sp->v[1],sp->v[2]);
+
     /* Kick the velocity of the spart with the dynamical friction acceleration */ 
     sp->v[0] += sp->df_data.dm_df_a[0] * dt;
     sp->v[1] += sp->df_data.dm_df_a[1] * dt;
@@ -155,6 +157,13 @@ __attribute__((always_inline)) INLINE static void stars_kick_extra(
     sp->gpart->v_full[0] += sp->df_data.dm_df_a[0] * dt;
     sp->gpart->v_full[1] += sp->df_data.dm_df_a[1] * dt;
     sp->gpart->v_full[2] += sp->df_data.dm_df_a[2] * dt;
+
+    message("Kick: new velocity=[%f,%f,%f]",sp->v[0],sp->v[1],sp->v[2]);
+
+    /* Reset DF acceleration to prevent double-kicking */
+    sp->df_data.dm_df_a[0] = 0.f;
+    sp->df_data.dm_df_a[1] = 0.f;
+    sp->df_data.dm_df_a[2] = 0.f;
 
   }
 }
