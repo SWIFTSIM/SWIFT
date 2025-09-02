@@ -291,7 +291,7 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
         "You probably don't need truncation in this case, turn off "
         "ZoomRegion:truncate_background.",
         r_trunc, fmin(s->dim[0], fmin(s->dim[1], s->dim[2])));
-    return;
+    return 0.0;
   }
 
   /* Set the new box dimensions. */
