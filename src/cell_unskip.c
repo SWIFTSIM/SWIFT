@@ -1031,6 +1031,104 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 }
 
 /**
+ * @brief Traverse a sub-cell task and activate the stars drift tasks that are
+ * required by a stars task.
+ * 
+ * DRIFTS ONLY - for the case of dynamical friction without hydro.
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in.
+ * @param s The task #scheduler.
+ * @param with_star_formation Are we running with star formation switched on?
+ * @param with_star_formation Are we running with star formation from the sinks
+ * switched on?
+ * @param with_timestep_sync Are we running with time-step synchronization on?
+ */
+void cell_activate_subcell_stars_drifts_only(struct cell *ci, struct cell *cj,
+                                       struct scheduler *s,
+                                       const int with_star_formation,
+                                       const int with_star_formation_sink,
+                                       const int with_timestep_sync) {
+  const struct engine *e = s->space->e;
+
+  /* Self interaction? */
+  if (cj == NULL) {
+
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
+
+    /* Do anything? */
+    if (!ci_active ||
+        (!with_star_formation && !with_star_formation_sink &&
+         ci->stars.count == 0))
+      return;
+
+    /* Recurse? */
+    if (cell_can_recurse_in_self_stars_task(ci)) {
+      /* Loop over all progenies and pairs of progenies */
+      for (int j = 0; j < 8; j++) {
+        if (ci->progeny[j] != NULL) {
+          cell_activate_subcell_stars_drifts_only(
+              ci->progeny[j], NULL, s, with_star_formation,
+              with_star_formation_sink, with_timestep_sync);
+          for (int k = j + 1; k < 8; k++)
+            if (ci->progeny[k] != NULL)
+              cell_activate_subcell_stars_drifts_only(
+                  ci->progeny[j], ci->progeny[k], s, with_star_formation,
+                  with_star_formation_sink, with_timestep_sync);
+        }
+      }
+    } else {
+      /* We have reached the bottom of the tree: activate drift */
+      cell_activate_drift_spart(ci, s);
+    }
+  }
+
+  /* Otherwise, pair interaction */
+  else {
+
+    /* Get the orientation of the pair. */
+    double shift[3];
+    const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
+
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
+    const int cj_active = cell_need_activating_stars(cj, e, with_star_formation,
+                                                     with_star_formation_sink);
+
+    /* Should we even bother? */
+    if (!ci_active && !cj_active) return;
+
+    /* recurse? */
+    if (cell_can_recurse_in_pair_stars_task(ci) &&
+        cell_can_recurse_in_pair_stars_task(cj)) {
+
+      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      for (int k = 0; k < csp->count; k++) {
+        const int pid = csp->pairs[k].pid;
+        const int pjd = csp->pairs[k].pjd;
+        if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+          cell_activate_subcell_stars_drifts_only(
+              ci->progeny[pid], cj->progeny[pjd], s, with_star_formation,
+              with_star_formation_sink, with_timestep_sync);
+      }
+    }
+
+    /* Otherwise, activate the sorts and drifts. */
+    else {
+      if (ci_active) {
+        /* Activate the drifts if the cells are local. */
+        if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
+      }
+      if (cj_active) {
+        /* Activate the drifts if the cells are local. */
+        if (cj->nodeID == engine_rank) cell_activate_drift_spart(cj, s);
+      }
+    }
+  } /* Otherwise, pair interation */
+}
+
+/**
  * @brief Traverse a sub-cell task and activate the black_holes drift tasks that
  * are required by a black_holes task
  *
@@ -2485,30 +2583,32 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
 
-      /* Jon: do we need this??? */
-      // if (t->type == task_type_self) {
-      //   cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation,
-      //                                     with_star_formation_sink,
-      //                                     with_timestep_sync);
+      if (t->type == task_type_self) {
+        cell_activate_subcell_stars_drifts_only(ci, NULL, s, with_star_formation,
+                                          with_star_formation_sink,
+                                          with_timestep_sync);
 
-      //   cell_activate_drift_spart(ci, s);
-      //   cell_activate_drift_gpart(ci, s);
-      // }
+        cell_activate_drift_spart(ci, s);
+        cell_activate_drift_gpart(ci, s);
+      }
 
-      // else if (t->type == task_type_pair) {
-      //   cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
-      //                                     with_star_formation_sink,
-      //                                     with_timestep_sync);
+      else if (t->type == task_type_pair) {
+        cell_activate_subcell_stars_drifts_only(ci, cj, s, with_star_formation,
+                                          with_star_formation_sink,
+                                          with_timestep_sync);
 
-      //   /* Activate the drift tasks. */
-      //   if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
-      //   if (cj_nodeID == nodeID) cell_activate_drift_gpart(cj, s);
+        /* Activate the drift tasks. */
+        if (ci_nodeID == nodeID) {
+          cell_activate_drift_spart(ci, s);
+          cell_activate_drift_gpart(ci, s);
+        }
 
-      //   /* Activate the drift tasks. */
-      //   if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
-      //   if (ci_nodeID == nodeID) cell_activate_drift_gpart(ci, s);
+        if (cj_nodeID == nodeID) {
+          cell_activate_drift_spart(cj, s);
+          cell_activate_drift_gpart(cj, s);
+        }
 
-      // }
+      }
     }
 
     /* Jon: do we need this??? */
@@ -2519,10 +2619,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     //   if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
     //   if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
 
-// #ifdef WITH_MPI
-//       // TODO things here??
-// #endif
-    // }
+// // #ifdef WITH_MPI
+// //       // TODO things here??
+// // #endif
+//     }
   }
 
   /* Un-skip the DF-from-stars tasks involved with this cell. */
@@ -2552,24 +2652,24 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       scheduler_activate(s, t);
 
       /* Jon: do we need this??? */
-      // if (t->type == task_type_self) {
-      //   cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation,
-      //                                     with_star_formation_sink,
-      //                                     with_timestep_sync);
+      if (t->type == task_type_self) {
+        cell_activate_subcell_stars_drifts_only(ci, NULL, s, with_star_formation,
+                                          with_star_formation_sink,
+                                          with_timestep_sync);
 
-      //   cell_activate_drift_spart(ci, s);
-      // }
+        cell_activate_drift_spart(ci, s);
+      }
 
-      // else if (t->type == task_type_pair) {
-      //   cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
-      //                                     with_star_formation_sink,
-      //                                     with_timestep_sync);
+      else if (t->type == task_type_pair) {
+        cell_activate_subcell_stars_drifts_only(ci, cj, s, with_star_formation,
+                                          with_star_formation_sink,
+                                          with_timestep_sync);
 
-      //   /* Activate the drift tasks. */
-      //   if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
-      //   if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
+        /* Activate the drift tasks. */
+        if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+        if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
 
-      // }
+      }
     }
 
     /* Jon: do we need this??? */
@@ -2580,9 +2680,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 //       if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
 //       if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
 
-// #ifdef WITH_MPI
-//       // TODO things here??
-// #endif
+// // #ifdef WITH_MPI
+// //       // TODO things here??
+// // #endif
 //     }
   }
 

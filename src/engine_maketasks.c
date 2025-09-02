@@ -3432,9 +3432,13 @@ void engine_make_extra_df_loop_tasks_mapper(void *map_data, int num_elements,
         /* Do we even need to wait for gravity? Can they just happen any time before kick2? */
         scheduler_addunlock(sched, ci->super->grav.end_force,
                               t);
+        scheduler_addunlock(sched, ci->super->stars.drift,
+                              t);
         scheduler_addunlock(sched, t, ci->super->stars.df_from_dm_ghost);
 
         scheduler_addunlock(sched, ci->super->grav.end_force,
+                              t_star_df_from_stars);
+        scheduler_addunlock(sched, ci->super->stars.drift,
                               t_star_df_from_stars);
         scheduler_addunlock(sched, t_star_df_from_stars,
                               ci->super->stars.df_from_stars_ghost);
@@ -3452,29 +3456,25 @@ void engine_make_extra_df_loop_tasks_mapper(void *map_data, int num_elements,
 
         if (ci->nodeID == nodeID) {
 
-          scheduler_addunlock(sched, ci->super->grav.end_force,
-                              t);
-          scheduler_addunlock(sched, t,
-                                ci->super->stars.df_from_dm_ghost);
+          scheduler_addunlock(sched, ci->super->grav.end_force, t);
+          scheduler_addunlock(sched, ci->super->stars.drift, t);
+          scheduler_addunlock(sched, t, ci->super->stars.df_from_dm_ghost);
 
-          scheduler_addunlock(sched, ci->super->grav.end_force,
-                                t_star_df_from_stars);
-          scheduler_addunlock(sched, t_star_df_from_stars,
-                                ci->super->stars.df_from_stars_ghost);
+          scheduler_addunlock(sched, ci->super->grav.end_force, t_star_df_from_stars);
+          scheduler_addunlock(sched, ci->super->stars.drift, t_star_df_from_stars);
+          scheduler_addunlock(sched, t_star_df_from_stars, ci->super->stars.df_from_stars_ghost);
 
         }
 
         if ((cj->nodeID == nodeID) && (ci->super != cj->super)) {
 
-          scheduler_addunlock(sched, cj->super->grav.end_force,
-                            t);
-          scheduler_addunlock(sched, t,
-                                cj->super->stars.df_from_dm_ghost);
+          scheduler_addunlock(sched, cj->super->grav.end_force, t);
+          scheduler_addunlock(sched, cj->super->stars.drift, t);
+          scheduler_addunlock(sched, t, cj->super->stars.df_from_dm_ghost);
 
-          scheduler_addunlock(sched, cj->super->grav.end_force,
-                                t_star_df_from_stars);
-          scheduler_addunlock(sched, t_star_df_from_stars,
-                                cj->super->stars.df_from_stars_ghost);
+          scheduler_addunlock(sched, cj->super->grav.end_force, t_star_df_from_stars);
+          scheduler_addunlock(sched, cj->super->stars.drift, t_star_df_from_stars);
+          scheduler_addunlock(sched, t_star_df_from_stars, cj->super->stars.df_from_stars_ghost);
 
         } 
       }
