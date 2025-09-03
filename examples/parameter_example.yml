@@ -1093,5 +1093,5 @@ ZoomRegion:
   neighbour_max_tree_depth:   2      # (Optional) The depth of the cell trees neighbouring the zoom region (default: -1)
   bkg_subdepth_diff_grav:     3      # The minimum difference between the leaf depth and the task depth for background cells.
   truncate_background:        0      # (Optional) Whether to truncate the background particle distribution to a fixed distance from the zoom region derived from PM gravity accuracy. (default: 0) 
-  truncate_epsilon:           1e-3   # (Optional) The tolerance for the PM gravity accuracy when truncating the background particle distribution. (default: 1e-3) 
+  truncate_epsilon:           1e-3   # (Optional) The tolerance for the PM gravity accuracy when truncating the background particle distribution. (default: 1e-3, i.e. 0.1% error) 
   truncate_tidal_factor:      1.0    # (Optional) A scaling factor accounting for anisotropies in the background potential when truncating the background particle distribution. Larger means more parent volume is kept, i.e. more accurate. (default: 1.0)
