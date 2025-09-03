@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[2025.01],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[2025.04],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 AC_COPYRIGHT
@@ -1449,7 +1449,7 @@ if test "x$with_lustreapi" != "xno"; then
       LUSTREAPI_LIBS="-llustreapi"
       LUSTREAPI_INCS=""
    fi
-   AC_CHECK_LIB([lustreapi], [llapi_obd_statfs], [have_lustreapi="yes"], 
+   AC_CHECK_LIB([lustreapi], [llapi_obd_statfs], [have_lustreapi="yes"],
                 [have_lustreapi="no"],[$LUSTREAPI_LIBS])
 
    if test "$have_lustreapi" = "yes"; then
@@ -2223,7 +2223,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -2269,6 +2269,9 @@ case "$with_hydro" in
    ;;
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
+   ;;
+   remix)
+      AC_DEFINE([REMIX_SPH], [1], [REMIX SPH])
    ;;
    sphenix)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
@@ -2447,8 +2450,11 @@ case "$with_eos" in
    isothermal-gas)
       AC_DEFINE([EOS_ISOTHERMAL_GAS], [1], [Isothermal gas equation of state])
    ;;
-     barotropic-gas)
+   barotropic-gas)
        AC_DEFINE([EOS_BAROTROPIC_GAS], [1], [Barotropic gas equation of state])
+   ;;
+   continuous-barotropic-gas)
+       AC_DEFINE([EOS_CONTINUOUS_BAROTROPIC_GAS], [1], [Barotropic gas equation of state])
    ;;
    planetary)
       AC_DEFINE([EOS_PLANETARY], [1], [All planetary equations of state])
