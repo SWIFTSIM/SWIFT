@@ -64,9 +64,8 @@ void space_regrid(struct space *s, int verbose) {
         if (c->black_holes.h_max > h_max) {
           h_max = c->black_holes.h_max;
         }
-        /* Note: For sinks, r_cut <=> h*kernel_gamma */
-        if (c->sinks.r_cut_max > h_max * kernel_gamma) {
-          h_max = c->sinks.r_cut_max / kernel_gamma;
+        if (c->sinks.h_max > h_max) {
+          h_max = c->sinks.h_max;
         }
       }
 
@@ -83,10 +82,8 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->black_holes.h_max > h_max) {
           h_max = c->black_holes.h_max;
         }
-        /* Note: For sinks, r_cut <=> h*kernel_gamma */
-        if (c->nodeID == engine_rank &&
-            c->sinks.r_cut_max > h_max * kernel_gamma) {
-          h_max = c->sinks.r_cut_max / kernel_gamma;
+        if (c->nodeID == engine_rank && c->sinks.h_max > h_max) {
+          h_max = c->sinks.h_max;
         }
       }
 
@@ -102,7 +99,7 @@ void space_regrid(struct space *s, int verbose) {
         if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
       }
       for (size_t k = 0; k < nr_sinks; k++) {
-        if (s->sinks[k].r_cut > h_max) h_max = s->sinks[k].r_cut / kernel_gamma;
+        if (s->sinks[k].h > h_max) h_max = s->sinks[k].h;
       }
     }
   }
@@ -210,6 +207,7 @@ void space_regrid(struct space *s, int verbose) {
       swift_free("local_cells_with_particles_top",
                  s->local_cells_with_particles_top);
       swift_free("cells_top", s->cells_top);
+      swift_free("cells_top_updated", s->cells_top_updated);
       swift_free("multipoles_top", s->multipoles_top);
     }
 
@@ -241,6 +239,11 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to allocate top-level multipoles.");
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
     }
+
+    if (swift_memalign("cells_top_updated", (void **)&s->cells_top_updated,
+                       cell_align, s->nr_cells * sizeof(char)) != 0)
+      error("Failed to allocate top-level cells.");
+    bzero(s->cells_top_updated, s->nr_cells * sizeof(char));
 
     /* Allocate the indices of local cells */
     if (swift_memalign("local_cells_top", (void **)&s->local_cells_top,
@@ -275,6 +278,8 @@ void space_regrid(struct space *s, int verbose) {
     for (int k = 0; k < s->nr_cells; k++) {
       if (lock_init(&s->cells_top[k].hydro.lock) != 0)
         error("Failed to init spinlock for hydro.");
+      if (lock_init(&s->cells_top[k].hydro.extra_sort_lock) != 0)
+        error("Failed to init spinlock for hydro extra sort.");
       if (lock_init(&s->cells_top[k].grav.plock) != 0)
         error("Failed to init spinlock for gravity.");
       if (lock_init(&s->cells_top[k].grav.mlock) != 0)
@@ -306,6 +311,8 @@ void space_regrid(struct space *s, int verbose) {
           c->width[1] = s->width[1];
           c->width[2] = s->width[2];
           c->dmin = dmin;
+          c->h_min_allowed = c->dmin * 0.5 * (1. / kernel_gamma);
+          c->h_max_allowed = c->dmin * (1. / kernel_gamma);
           c->depth = 0;
           c->split = 0;
           c->hydro.count = 0;

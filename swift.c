@@ -788,16 +788,18 @@ int main(int argc, char *argv[]) {
 
   /* How large are the parts? */
   if (myrank == 0) {
-    message("sizeof(part)        is %4zi bytes.", sizeof(struct part));
-    message("sizeof(xpart)       is %4zi bytes.", sizeof(struct xpart));
-    message("sizeof(sink)        is %4zi bytes.", sizeof(struct sink));
-    message("sizeof(spart)       is %4zi bytes.", sizeof(struct spart));
-    message("sizeof(bpart)       is %4zi bytes.", sizeof(struct bpart));
-    message("sizeof(gpart)       is %4zi bytes.", sizeof(struct gpart));
-    message("sizeof(multipole)   is %4zi bytes.", sizeof(struct multipole));
-    message("sizeof(grav_tensor) is %4zi bytes.", sizeof(struct grav_tensor));
-    message("sizeof(task)        is %4zi bytes.", sizeof(struct task));
-    message("sizeof(cell)        is %4zi bytes.", sizeof(struct cell));
+    message("sizeof(part)          is %4zi bytes.", sizeof(struct part));
+    message("sizeof(xpart)         is %4zi bytes.", sizeof(struct xpart));
+    message("sizeof(sink)          is %4zi bytes.", sizeof(struct sink));
+    message("sizeof(spart)         is %4zi bytes.", sizeof(struct spart));
+    message("sizeof(bpart)         is %4zi bytes.", sizeof(struct bpart));
+    message("sizeof(gpart)         is %4zi bytes.", sizeof(struct gpart));
+    message("sizeof(gpart_foreign) is %4zi bytes.",
+            sizeof(struct gpart_foreign));
+    message("sizeof(multipole)     is %4zi bytes.", sizeof(struct multipole));
+    message("sizeof(grav_tensor)   is %4zi bytes.", sizeof(struct grav_tensor));
+    message("sizeof(task)          is %4zi bytes.", sizeof(struct task));
+    message("sizeof(cell)          is %4zi bytes.", sizeof(struct cell));
   }
 
   /* Read the parameter file */
@@ -1174,7 +1176,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the sink properties */
     if (with_sinks) {
       sink_props_init(&sink_properties, &feedback_properties, &prog_const, &us,
-                      params, &cosmo, with_feedback);
+                      params, &hydro_properties, &cosmo, with_feedback);
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
 

@@ -239,7 +239,7 @@ Stellar feedback
 
 Stellar feedback *per se* is not in the sink module but in the feedback one. However, if one uses sink particles with individual stars, the feedback implementation must be adapted. Here is a recap of the GEAR feedback with sink particles. 
 
-All details and explanations about GEAR stellar feedback are provided in the GEAR :ref:`gear_feedback` section. Here, we only provide the changes from the previous model. 
+All details and explanations about GEAR stellar feedback are provided in the GEAR :ref:`gear_stellar_evolution_and_feedback` section. Here, we only provide the changes from the previous model.
 
 In the previous model, star particles represented a population of stars with a defined IMF. Now, we have two kinds of star particles: particles representing a *continuous* portion of the IMF (see the image above) and particles representing a *single* (discrete) star. This new model requires updating the feedback model so that stars eligible for SN feedback can realise this feedback.
 

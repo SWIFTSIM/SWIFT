@@ -63,6 +63,9 @@ struct bpart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
   struct {
 
     /* Number of neighbours. */
@@ -163,6 +166,9 @@ struct bpart {
    * cases where it was aborted because the black hole was already at a
    * lower potential than all eligible neighbours) */
   int number_of_reposition_attempts;
+
+  /* Velocity of most recent reposition jump */
+  float last_repos_vel;
 
   /*! Total number of time steps in which the black hole was active. */
   int number_of_time_steps;

@@ -35,6 +35,9 @@ additional field for each particle. This contains the ``GroupID`` of
 each particle and can be used to find all the particles in a given
 halo and to link them to the information stored in the catalogue.
 
+The particle fields written to the snapshot can be modified using the 
+:ref:`Output_selection_label` options.
+
 .. warning::
 
    Note that since not all particle properties are read in stand-alone

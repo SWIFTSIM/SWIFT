@@ -78,8 +78,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   const double gas_c_phys2 = gas_c_phys * gas_c_phys;
   const float denominator = sqrtf(gas_c_phys2 + gas_v_norm2);
   const float h_min =
-      cosmo->a *
-      min(sink->r_cut, sink->to_collect.minimal_h_gas * kernel_gamma);
+      cosmo->a * kernel_gamma * min(sink->h, sink->to_collect.minimal_h_gas);
   float dt_cfl = 0.0;
 
   /* This case can happen if the sink is just born. */
@@ -167,7 +166,12 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
     struct sink* sp, const struct sink_props* sink_props,
     const struct engine* e) {
 
-  sp->r_cut = sink_props->cut_off_radius;
+  /* Set the smoothing length if it is fixed. Note that, otherwise, the
+     smoothing lengths were read from the ICs. */
+  if (sink_props->use_fixed_r_cut) {
+    sp->h = sink_props->cut_off_radius / kernel_gamma;
+  }
+
   sp->time_bin = 0;
 
   sp->number_of_gas_swallows = 0;
@@ -255,6 +259,9 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
 __attribute__((always_inline)) INLINE static void sink_init_sink(
     struct sink* sp) {
 
+  sp->density.wcount = 0.f;
+  sp->density.wcount_dh = 0.f;
+
   /* Reset to the mass of the sink */
   sp->mass_tot_before_star_spawning = sp->mass;
 
@@ -283,6 +290,16 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
     sp->ids_ngbs_formation[i] = -1;
   sp->num_ngb_formation = 0;
+#endif
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  sp->N_check_density = 0;
+  sp->N_check_density_exact = 0;
+  sp->rho_check = 0.f;
+  sp->rho_check_exact = 0.f;
+  sp->n_check = 0.f;
+  sp->n_check_exact = 0.f;
+  sp->inhibited_check_exact = 0;
 #endif
 }
 
@@ -322,9 +339,10 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
 __attribute__((always_inline)) INLINE static void sink_end_density(
     struct sink* si, const struct cosmology* cosmo) {
 
-  const float h = si->r_cut / kernel_gamma;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  const float h = si->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   /* --- Finish the calculation by inserting the missing h factors --- */
   si->to_collect.rho_gas *= h_inv_dim;
@@ -336,6 +354,15 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
   si->to_collect.velocity_gas[0] *= h_inv_dim * rho_inv;
   si->to_collect.velocity_gas[1] *= h_inv_dim * rho_inv;
   si->to_collect.velocity_gas[2] *= h_inv_dim * rho_inv;
+
+  /* Finish the calculation by inserting the missing h-factors */
+  si->density.wcount *= h_inv_dim;
+  si->density.wcount_dh *= h_inv_dim_plus_one;
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  si->rho_check *= h_inv_dim;
+  si->n_check *= h_inv_dim;
+#endif
 }
 
 /**
@@ -349,15 +376,22 @@ __attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
     struct sink* restrict sp, const struct cosmology* cosmo) {
 
   warning(
-      "Sink particle with ID %lld treated as having no neighbours (r_cut: %g, "
+      "Sink particle with ID %lld treated as having no neighbours (h: %g, "
       "numb_ngbs: %i).",
-      sp->id, sp->r_cut, sp->num_ngbs);
+      sp->id, sp->h, sp->num_ngbs);
+
+  /* Some smoothing length multiples. */
+  const float h = sp->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
   /* Reset problematic values */
   sp->to_collect.velocity_gas[0] = sp->v[0];
   sp->to_collect.velocity_gas[1] = sp->v[1];
   sp->to_collect.velocity_gas[2] = sp->v[2];
-  sp->to_collect.minimal_h_gas = sp->r_cut / kernel_gamma;
+  sp->to_collect.minimal_h_gas = h;
+  sp->density.wcount = kernel_root * h_inv_dim;
+  sp->density.wcount_dh = 0.f;
 }
 
 /**
@@ -548,7 +582,11 @@ INLINE static void sink_copy_properties(
   sink_init_sink(sink);
 
   /* Set a smoothing length */
-  sink->r_cut = sink_props->cut_off_radius;
+  if (sink_props->use_fixed_r_cut) {
+    sink->h = sink_props->cut_off_radius / kernel_gamma;
+  } else {
+    sink->h = p->h;
+  }
 
   /* Flag it as not swallowed */
   sink_mark_sink_as_not_swallowed(&sink->merger_data);
@@ -776,7 +814,7 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
  * @brief Give the #spart a new position.
  *
  * In GEAR: Positions are set by randomly sampling coordinates in an homogeneous
- * sphere centered on the #sink with radius  the sink's r_cut.
+ * sphere centered on the #sink with radius the sink's r_cut.
  *
  * @param e The #engine.
  * @param si The #sink generating a star.
@@ -798,8 +836,9 @@ INLINE static void sink_star_formation_give_new_position(const struct engine* e,
   const double phi =
       2 * M_PI *
       random_unit_interval(sp->id, e->ti_current, (enum random_number_type)3);
-  const double r = si->r_cut * random_unit_interval(sp->id, e->ti_current,
-                                                    (enum random_number_type)4);
+  const float rmax = si->h * kernel_gamma;
+  const double r = rmax * random_unit_interval(sp->id, e->ti_current,
+                                               (enum random_number_type)4);
   const double cos_theta =
       1.0 - 2.0 * random_unit_interval(sp->id, e->ti_current,
                                        (enum random_number_type)5);
@@ -837,8 +876,8 @@ INLINE static void sink_star_formation_give_new_velocity(
      and subtracted from the sink. */
   double v_given[3] = {0.0, 0.0, 0.0};
   const double G_newton = e->physical_constants->const_newton_G;
-  const double sigma_2 =
-      G_newton * si->mass_tot_before_star_spawning / si->r_cut;
+  const float rmax = si->h * kernel_gamma;
+  const double sigma_2 = G_newton * si->mass_tot_before_star_spawning / rmax;
   const double sigma = sink_props->star_spawning_sigma_factor * sqrt(sigma_2);
 
   for (int i = 0; i < 3; ++i) {
@@ -900,7 +939,7 @@ INLINE static void sink_copy_properties_to_star(
   sink_star_formation_give_new_velocity(e, sink, sp, sink_props);
 
   /* Sph smoothing length */
-  sp->h = sink->r_cut;
+  sp->h = sink->h;
 
   /* Feedback related initialisation */
   /* ------------------------------- */
@@ -1205,7 +1244,8 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
   const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
 
   /* Physical accretion radius of sink si */
-  const float r_acc_si = si->r_cut * cosmo->a;
+  const float rmax = si->h * kernel_gamma;
+  const float r_acc_si = rmax * cosmo->a;
 
   /* Comoving distance of particl p */
   const float px[3] = {(float)(p->x[0]), (float)(p->x[1]), (float)(p->x[2])};

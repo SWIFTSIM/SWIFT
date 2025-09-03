@@ -34,7 +34,7 @@ INLINE static void sink_read_particles(struct sink* sinks,
                                        struct io_props* list, int* num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 5;
+  *num_fields = 6;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -45,7 +45,9 @@ INLINE static void sink_read_particles(struct sink* sinks,
                                 sinks, mass);
   list[3] = io_make_input_field("ParticleIDs", LONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, sinks, id);
-  list[4] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
+  list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_LENGTH, sinks, h);
+  list[5] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
                                 sinks, birth_time);
 }
 
@@ -125,7 +127,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 10;
+  *num_fields = 11;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
@@ -144,21 +146,25 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sinks, id,
       /*can convert to comoving=*/0, "Unique ID of the particles");
 
-  list[4] = io_make_physical_output_field(
+  list[4] = io_make_output_field(
+      "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sinks, h,
+      "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
+
+  list[5] = io_make_physical_output_field(
       "NumberOfSinkSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
       number_of_sink_swallows, /*can convert to comoving=*/0,
       "Total number of sink merger events");
 
-  list[5] = io_make_physical_output_field(
+  list[6] = io_make_physical_output_field(
       "NumberOfGasSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
       number_of_gas_swallows, /*can convert to comoving=*/0,
       "Total number of gas merger events");
 
-  list[6] = io_make_output_field_convert_sink(
+  list[7] = io_make_output_field_convert_sink(
       "TargetMass", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
       convert_sink_target_mass, "Sink target mass to spawn star particles");
 
-  list[7] = io_make_physical_output_field(
+  list[8] = io_make_physical_output_field(
       "Nstars", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks, n_stars,
       /*can convert to comoving=*/0,
       "Number of stars spawned by the sink particles");
@@ -166,19 +172,19 @@ INLINE static void sink_write_particles(const struct sink* sinks,
   /* Note: Since the swallowed momentum is computed with the physical velocity,
      i.e. including the Hubble flow term, it is not convertible to comoving
      frame. */
-  list[8] = io_make_physical_output_field_convert_sink(
+  list[9] = io_make_physical_output_field_convert_sink(
       "SwallowedAngularMomentum", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
       sinks,
       /*can convert to comoving=*/0, convert_sink_swallowed_angular_momentum,
       "Physical swallowed angular momentum of the particles");
 
   if (with_cosmology) {
-    list[9] = io_make_physical_output_field(
+    list[10] = io_make_physical_output_field(
         "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
         birth_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the sinks were born");
   } else {
-    list[9] =
+    list[10] =
         io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, sinks,
                              birth_time, "Times at which the sinks were born");
   }
