@@ -188,6 +188,29 @@ void feedback_update_part(struct part* p, struct xpart* xp,
 void feedback_reset_part(struct part* p, struct xpart* xp) {}
 
 /**
+ * @brief Compute age of the star at the end of the current timestep.
+ *
+ * @param sp The #spart to act upon
+ * @param with_cosmology Are we running with the cosmological expansion?
+ * @param cosmo The current cosmological model.
+ * @param time The current time (in double)
+ */
+double compute_star_age_end_of_step(const struct spart* sp, const int with_cosmology,
+                        const struct cosmology* cosmo, const double time) {
+  double star_age_end_of_step;
+  if (with_cosmology) {
+    if (cosmo->a > (double)sp->birth_scale_factor)
+      star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
+          cosmo, (double)sp->birth_scale_factor, cosmo->a);
+    else
+      star_age_end_of_step = 0.;
+  } else {
+    star_age_end_of_step = max(time - (double)sp->birth_time, 0.);
+  }
+  return star_age_end_of_step;
+}
+
+/**
  * @brief Compute the times for the stellar model.
  *
  * This function assumed to be called in the time step task.
@@ -221,16 +244,9 @@ void compute_time(const struct spart* sp, const int with_cosmology,
   }
 
   /* Calculate age of the star at current time */
-  double star_age_end_of_step;
-  if (with_cosmology) {
-    if (cosmo->a > (double)sp->birth_scale_factor)
-      star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
-          cosmo, (double)sp->birth_scale_factor, cosmo->a);
-    else
-      star_age_end_of_step = 0.;
-  } else {
-    star_age_end_of_step = max(time - (double)sp->birth_time, 0.);
-  }
+  const double star_age_end_of_step = compute_star_age_end_of_step(sp,
+                                                                   with_cosmology,
+								   cosmo, time);
 
   /* Get the length of the enrichment time-step */
   *dt_enrichment = feedback_get_enrichment_timestep(sp, with_cosmology, cosmo,

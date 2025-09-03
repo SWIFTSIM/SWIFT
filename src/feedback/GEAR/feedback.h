@@ -47,6 +47,11 @@ void compute_time(const struct spart* sp, const int with_cosmology,
                   const integertime_t ti_current, const double time_base,
                   const double time);
 
+double compute_star_age_end_of_step(const struct spart* sp,
+                                    const int with_cosmology,
+                                    const struct cosmology* cosmo,
+                                    const double time);
+
 void feedback_will_do_feedback(
     struct spart* sp, const struct feedback_props* feedback_props,
     const int with_cosmology, const struct cosmology* cosmo, const double time,
