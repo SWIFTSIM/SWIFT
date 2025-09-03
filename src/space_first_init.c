@@ -193,7 +193,8 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
   /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
 
-    /* Skip inhibited background particles */
+    /* Skip inhibited background particles, this only happens in a zoom when
+     * the background has been truncated. */
     if (gp[k].type == swift_type_dark_matter_background &&
         gp[k].time_bin == time_bin_inhibited)
       continue;
@@ -216,7 +217,8 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    /* Skip inhibited background particles */
+    /* Skip inhibited background particles, this only happens in a zoom when
+     * the background has been truncated. */
     if (gp[k].type == swift_type_dark_matter_background &&
         gp[k].time_bin == time_bin_inhibited)
       continue;
