@@ -1,0 +1,25 @@
+# Intro
+This example consists of a homogeneous and periodic box filled with gas particles of equal mass. An individual star particle lies at the center.
+
+This example tests GEAR subgrid ionization algorithm.
+
+# Configure
+To run this example with the GEAR model,
+
+```
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+```
+
+Then, type
+
+```
+make -j
+```
+
+# ICs
+The run.sh script calls the `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
+
+# Run
+Type run.sh, and let's go!
+
+Note that you can change the cooling from equilibrium mode (GRACKLE_0) to non-equilibrium (GRACKLE_X, X=1, 2 or 3) to test the differences on the phase-space diagram.
