@@ -421,8 +421,8 @@ static int zoom_get_cdim_at_depth(double region_dim, double parent_width,
       floor((region_dim + (0.1 * parent_width)) / parent_width);
 
   /* We now know how many parent cells we have in the region, use this and the
-   * depth of the zoom region to calculate the cdim (the number of parents
-   * times the number of children in a parent. */
+   * depth of the zoom region to calculate the cdim (the number of parents times
+   * the number of children in a parent. */
   return region_parent_cdim * pow(2, child_depth);
 }
 
@@ -470,9 +470,9 @@ void zoom_get_geometry_no_buffer_cells(struct space *s) {
 /**
  * @brief Compute the geometry of the zoom region with buffer cells.
  *
- * This function computes the geometry of the zoom region when buffer cells
- * are enabled. It calculates the bounds, dimensions, and cell widths for both
- * the buffer and zoom regions.
+ * This function computes the geometry of the zoom region when buffer cells are
+ * enabled. It calculates the bounds, dimensions, and cell widths for both the
+ * buffer and zoom regions.
  *
  * Currently, buffer cells are not fully supported and this function will
  * simply through an error if called.
@@ -490,8 +490,7 @@ void zoom_get_geometry_with_buffer_cells(struct space *s) {
   /* Ensure we have a buffer cell depth. */
   if (s->zoom_props->buffer_cell_depth == 0) {
     error(
-        "Current cell structure requires buffer cells but not buffer cell "
-        "has "
+        "Current cell structure requires buffer cells but not buffer cell has "
         "been given. ZoomRegion:buffer_top_level_depth must be greater than "
         "0.");
   }
@@ -820,8 +819,7 @@ void zoom_region_init(struct space *s, const int verbose) {
     warning(
         "The pad region has to be %d times larger than requested. "
         "Either increase ZoomRegion:region_pad_factor, increase the "
-        "number of background cells, or increase the depths of the zoom "
-        "cells.",
+        "number of background cells, or increase the depths of the zoom cells.",
         (int)(s->zoom_props->region_pad_factor / input_pad_factor));
 
   /* If we didn't get an explicit neighbour cell depth we'll match the zoom
