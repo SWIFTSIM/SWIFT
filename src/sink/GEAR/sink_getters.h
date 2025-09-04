@@ -82,7 +82,8 @@ INLINE static double sink_compute_neighbour_rotation_energy_magnitude(
  *
  */
 INLINE static float sink_get_physical_div_v_from_part(
-    const struct part* restrict p) {
+    const struct part* restrict p, const struct cosmology* cosmo
+) {
 
   float div_v = 0.0;
 
@@ -111,8 +112,7 @@ INLINE static float sink_get_physical_div_v_from_part(
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
   float dummy[3], gradvx[3], gradvy[3], gradvz[3];
   hydro_part_get_gradients(p, dummy, gradvx, gradvy, gradvz, dummy);
-  const float divv = gradvx[0] + gradvy[1] + gradvz[2];
-  div_v = div;
+  div_v = gradvx[0] + gradvy[1] + gradvz[2];
 
   /* Add the missing term */
   div_v += hydro_dimension * cosmo->H;
