@@ -1664,8 +1664,10 @@ void DOSELF1_BRANCH_STARS(struct runner *r, const struct cell *c,
 #endif
 
   /* Check that cells are drifted. */
+#if (FUNCTION_TASK_LOOP != TASK_LOOP_DF_FROM_DM) && (FUNCTION_TASK_LOOP != TASK_LOOP_DF_FROM_STARS)
   if (!cell_are_part_drifted(c, e))
     error("Interacting undrifted cell (hydro).");
+#endif
   if (!cell_are_spart_drifted(c, e))
     error("Interacting undrifted cell (stars).");
 
@@ -2082,8 +2084,9 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
   else if (cell_is_active_stars(ci, e)) {
 
     /* Do any of the cells need to be drifted first? */
+#if (FUNCTION_TASK_LOOP != TASK_LOOP_DF_FROM_DM) && (FUNCTION_TASK_LOOP != TASK_LOOP_DF_FROM_STARS)
     if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
-
+#endif
     DOPAIR1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount, cj);
   }
 }
