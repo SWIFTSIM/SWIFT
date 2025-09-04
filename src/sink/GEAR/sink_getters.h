@@ -108,6 +108,14 @@ INLINE static float sink_get_physical_div_v_from_part(
                        p->viscosity.velocity_gradient[2][2]);
 #elif HOPKINS_PU_SPH
   div_v = p->density.div_v;
+#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+  float dummy[3], gradvx[3], gradvy[3], gradvz[3];
+  hydro_part_get_gradients(p, dummy, gradvx, gradvy, gradvz, dummy);
+  const float divv = gradvx[0] + gradvy[1] + gradvz[2];
+  div_v = div;
+
+  /* Add the missing term */
+  div_v += hydro_dimension * cosmo->H;
 #else
 #error \
     "This scheme is not implemented. Note that Different scheme apply the Hubble flow in different places. Be careful about it."
