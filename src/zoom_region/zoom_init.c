@@ -281,7 +281,7 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
   if (verbose)
     message(
         "Computed a truncation distance of %.2f internal units (with %.2f x "
-        "%.2f * (%.1e)^(-1/3))",
+        "%.2f / (%.1e)^(1/3))",
         r_trunc, tidal_factor, zoom_dim, epsilon);
 
   /* If the truncation distance exceeds the box size we can't truncate. */
