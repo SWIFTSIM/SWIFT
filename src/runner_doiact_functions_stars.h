@@ -1271,11 +1271,13 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
 
       if (gj->type == swift_type_dark_matter){
 
+        const double gjx = gj->x[0];
+        const double gjy = gj->x[1];
+        const double gjz = gj->x[2];
+
         /* Compute the pairwise distance. */
-        const float gjx[3] = {(float)(gj->x[0] - cj->loc[0]),
-                              (float)(gj->x[1] - cj->loc[1]),
-                              (float)(gj->x[2] - cj->loc[2])};
-        const float dx[3] = {pix - gjx[0], piy - gjx[1], piz - gjx[2]};
+        float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
+                      (float)(piz - gjz)};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
   #ifdef SWIFT_DEBUG_CHECKS
@@ -1318,11 +1320,13 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
       /* Check we're not trying to interact a spart with itself */
       if (spi->id == sj->id) continue;
 
+      const double sjx = sj->x[0];
+      const double sjy = sj->x[1];
+      const double sjz = sj->x[2];
+
       /* Compute the pairwise distance. */
-      const float sjx[3] = {(float)(sj->x[0] - cj->loc[0]),
-                            (float)(sj->x[1] - cj->loc[1]),
-                            (float)(sj->x[2] - cj->loc[2])};
-      const float dx[3] = {pix - sjx[0], piy - sjx[1], piz - sjx[2]};
+      float dx[3] = {(float)(pix - sjx), (float)(piy - sjy),
+                    (float)(piz - sjz)};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
