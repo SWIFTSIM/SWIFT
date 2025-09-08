@@ -389,11 +389,6 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
       box_wrap(s->bparts[k].x[1], 0.0, s->dim[1]);
       box_wrap(s->bparts[k].x[2], 0.0, s->dim[2]);
     }
-    for (size_t k = 0; k < s->nr_nuparts; k++) {
-      box_wrap(s->nuparts[k].x[0], 0.0, s->dim[0]);
-      box_wrap(s->nuparts[k].x[1], 0.0, s->dim[1]);
-      box_wrap(s->nuparts[k].x[2], 0.0, s->dim[2]);
-    }
   }
 
   if (verbose)
