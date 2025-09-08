@@ -49,6 +49,7 @@ In the following, we always refer to physical quantities. In non-cosmological si
 * :math:`\rho_p = \rho_c/a^3`
 * :math:`\Phi_p = \Phi_c/a + c(a)`
 * :math:`u_p = u_c/a^{3(\gamma -1)}`
+* :math:`\nabla_p = \frac{1}{a} \nabla_c`
 
 
 Here, :math:`H` is the Hubble constant at any redshift, :math:`c(a)` is the potential normalization constant and :math:`\gamma` the gas adiabatic index. Notice that the potential normalization constant has been chosen to be :math:`c(a) = 0`.
