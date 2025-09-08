@@ -343,12 +343,9 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
     }
 
     /* Get the distance from the zoom region centre. */
-    const double dx = s->gparts[k].x[0] + s->zoom_props->zoom_shift[0] -
-                      s->zoom_props->com[0];
-    const double dy = s->gparts[k].x[1] + s->zoom_props->zoom_shift[1] -
-                      s->zoom_props->com[1];
-    const double dz = s->gparts[k].x[2] + s->zoom_props->zoom_shift[2] -
-                      s->zoom_props->com[2];
+    const double dx = s->gparts[k].x[0] - (s->dim[0] / 2.0);
+    const double dy = s->gparts[k].x[1] - (s->dim[1] / 2.0);
+    const double dz = s->gparts[k].x[2] - (s->dim[2] / 2.0);
     const double r = sqrt(dx * dx + dy * dy + dz * dz);
 
     /* Inhibit background particles that are too far away and place them in the
