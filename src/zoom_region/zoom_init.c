@@ -323,11 +323,6 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
       s->bparts[k].x[i] -= lower_bounds[i];
     }
   }
-  for (size_t k = 0; k < s->nr_nuparts; k++) {
-    for (int i = 0; i < 3; i++) {
-      s->nuparts[k].x[i] -= lower_bounds[i];
-    }
-  }
 
   /* Set the new box dimensions. */
   for (int i = 0; i < 3; i++) {
