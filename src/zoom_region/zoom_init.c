@@ -333,8 +333,8 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
 
   /* Loop over all the gparts and inhibit background particles that are
    * further away than the truncation distance. */
-  int ntrunc = 0;
-  int nbkg = 0;
+  size_t ntrunc = 0;
+  size_t nbkg = 0;
   for (size_t k = 0; k < s->nr_gparts; k++) {
 
     /* Skip non-background particles. */
@@ -392,7 +392,7 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
   }
 
   if (verbose)
-    message("Removing %d background particles out of %zu.", ntrunc, nbkg);
+    message("Removing %zu background particles out of %zu.", ntrunc, nbkg);
 
   /* Recalculate the zoom region dimensions and shift (we have changed the
    * box size and shifted the particles). */
