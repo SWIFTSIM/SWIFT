@@ -589,6 +589,8 @@ void feedback_clean(struct feedback_props* feedback) {
  * Note: i = star, j = gas.
  * Note 2: This is scale-factor free --> no conversion needed from/to comoving.
  *
+ * Reference: https://arxiv.org/abs/1707.07010
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -675,6 +677,8 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
  * compute the vector weights.
  *
  * Note: This is scale-factor free --> no conversion needed from/to comoving.
+ *
+ * Reference: https://arxiv.org/abs/1707.07010
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -777,6 +781,8 @@ feedback_compute_vector_weight_non_normalized(const float r2, const float* dx,
  *
  * This is scale-factor free --> no conversion needed from/to comoving.
  *
+ * Reference: https://arxiv.org/abs/1707.07010
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -834,12 +840,12 @@ __attribute__((always_inline)) INLINE double feedback_get_physical_SN_terminal_m
                       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   const double ten_to_51 = 1e51;
 
-  /* Get velocity factor. Currently, this is = 1. See PAPER 2024. */
+  /* Get velocity factor. Currently, this is = 1. See the attached paper. */
   const double velocity_factor = 1;
 
   /* Get metallicity factor */
   const double Z_mean = sp->feedback_data.weighted_gas_metallicity;
-  const double Z_sun = 0.0134; /* Find the exact value somewhere */
+  const double Z_sun = 0.0134;
   double metallicity_factor = 0.0;
 
   if (Z_mean / Z_sun < 0.01) {
@@ -872,13 +878,11 @@ __attribute__((always_inline)) INLINE double feedback_get_physical_SN_terminal_m
 }
 
 /**
- * @brief Compute the terminal momentum of a SN explosion. This is the momentum
- * the blastwave can give to the gas after the energy-conserving phase.
+ * @brief Compute the physical supernova cooling radius.
  *
  * This function is used if we do not resolve the enery-conserving phase.
  *
- * Note: This function compute the terminal momentum in the same way as in
- * Fire-3 (PAPERS).
+ * Note: This functions is used by the mechanical feedback mode 1.
  *
  * @param sp Star particle undergoing SN explosion.
  * @param p Gas particle receiving the terminal momentum.
@@ -910,6 +914,10 @@ __attribute__((always_inline)) INLINE double feedback_get_physical_SN_cooling_ra
  * timestep.
  *
  * Note: This function is called in feedback_update_part().
+ *
+ * This is scale-factor free --> no conversion needed from/to comoving.
+ *
+ * Reference: https://arxiv.org/abs/2203.00040
  *
  * @param p The #part to correct.
  * @param xp The #xpart.

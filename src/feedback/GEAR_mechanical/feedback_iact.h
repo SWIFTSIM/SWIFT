@@ -222,7 +222,7 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
     return;
   }
 
-  /* Get the feedback properties we want to distribute */
+  /* Get some properties for our computations */
   const float mj = hydro_get_mass(pj);
   const double m_ej = si->feedback_data.mass_ejected;
   const double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
@@ -379,7 +379,7 @@ runner_iact_nonsym_feedback_apply(
   const float mj = hydro_get_mass(pj);
   const double m_ej = si->feedback_data.mass_ejected;
 
-  /* Distribute mass... (the max avoids to have dm=0 and 1.0. divisions) */
+  /* Distribute mass... (the max avoids to have dm=0 and 1/0 divisions) */
   const double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
   const double new_mass = mj + dm;
   xpj->feedback_data.delta_mass += dm;
@@ -390,9 +390,6 @@ runner_iact_nonsym_feedback_apply(
         w_j_bar_norm * si->feedback_data.metal_mass_ejected[i];
   }
 
-  /****************************************************************************
-   * Now we treat the other fluxes distribution differently for each mode
-   ****************************************************************************/
   /* Calculate the velocity with the Hubble flow */
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -412,6 +409,9 @@ runner_iact_nonsym_feedback_apply(
 			  vj_plus_H_flow[1] * cosmo->a_inv,
 			  vj_plus_H_flow[2] * cosmo->a_inv};
 
+  /****************************************************************************
+   * Now we treat the fluxes distribution differently for each mode
+   ****************************************************************************/
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 1
   const float internal_energy_snowplow_exponent = -6.5;
 
@@ -425,7 +425,7 @@ runner_iact_nonsym_feedback_apply(
   double dp_prime[3] = {dp[0] + dm * v_i_p[0], dp[1] + dm * v_i_p[1],
                         dp[2] + dm * v_i_p[2]};
 
-  /* ... Total energy */
+  /* ... physical total energy */
   const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
   const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
                                  dp_prime[1] * dp_prime[1] +
@@ -452,7 +452,7 @@ runner_iact_nonsym_feedback_apply(
   const double E_new = E_old + dE_prime;
   const double U_new = E_new - E_kin_new;
 
-  /* Compute the internal energy */
+  /* Compute the physical internal energy */
   double dU = U_new - U_old;
 
   /* --Now, we take into account for potentially unresolved energy-conserving
@@ -569,6 +569,7 @@ runner_iact_nonsym_feedback_apply(
   }
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
+  /* Note: This is physical internal energy. See feedback_update_part(). */
   xpj->feedback_data.delta_u += dU / new_mass;
   xpj->feedback_data.delta_E_kin += dKE;
   xpj->feedback_data.number_SN += 1;

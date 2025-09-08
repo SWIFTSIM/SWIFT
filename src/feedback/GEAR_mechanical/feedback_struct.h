@@ -37,19 +37,19 @@ struct feedback_part_data {
  * @brief Extra feedback fields carried by each hydro particles
  */
 struct feedback_xpart_data {
-  /*! mass received from supernovae */
+  /*! Mass received from supernovae */
   float delta_mass;
 
-  /*! specific energy received from supernovae */
+  /*! Physical specific energy received from supernovae */
   float delta_u;
 
   /*! Kinetic energy (not specific!) received from supernovae */
   float delta_E_kin;
 
-  /*! Momemtum received from a supernovae */
+  /*! Comoving momemtum received from a supernovae */
   float delta_p[3];
 
-  /* Number of supernovae affecting this particle */
+  /*! Number of supernovae affecting this particle */
   int number_SN;
 };
 
@@ -58,7 +58,7 @@ struct feedback_xpart_data {
  */
 struct feedback_spart_data {
 
-  /* Normalisation factor used for the enrichment. Corresponds to the
+  /*! Normalisation factor used for the enrichment. Corresponds to the
      denominator in eq (9) in https://arxiv.org/abs/1707.07010  */
   float enrichment_weight;
 
@@ -80,28 +80,28 @@ struct feedback_spart_data {
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
 
-  /* Parameters to be accumulated in the feedback loops. Used to compute the
+  /*! Parameters to be accumulated in the feedback loops. Used to compute the
      vector weights (isotropic distribution) */
   double f_sum_plus_term[3];
   double f_sum_minus_term[3];
 
   struct {
-    /* Accumulated value for the total energy available in the SN, taking into
+    /*! Accumulated value for the total energy available in the SN, taking into
        account gas-star motion. This is eq (A4) (lower formula) sum terms in
        https://arxiv.org/abs/2404.16987, without the 0.5*m_ej. */
     double E_total;
 
-    /* Parameters to determine the coupled energy, momentum and internal energy
+    /*! Parameters to determine the coupled energy, momentum and internal energy
        of the SN */
     double beta_1; /* Accumulated value for beta_1 */
     double beta_2; /* Accumulated value for beta_2 */
   } accumulator;
 
-  /* Sum of the weighted gas properties used to compute terminal momentum */
+  /*! Sum of the weighted gas properties used to compute terminal momentum */
   double weighted_gas_density;
   double weighted_gas_metallicity;
 
-  /* Checks that the sum of the fluxes is 0. These ensures the weights are
+  /*! Checks that the sum of the fluxes is 0. These ensures the weights are
      properly constructed. */
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   struct {
