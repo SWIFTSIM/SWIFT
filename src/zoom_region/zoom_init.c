@@ -294,6 +294,41 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
     return 0.0;
   }
 
+  /* Shift the particles inside the new box. */
+  const double box_mid[3] = {s->dim[0] / 2.0, s->dim[1] / 2.0, s->dim[2] / 2.0};
+  const double lower_bounds[3] = {box_mid[0] - r_trunc, box_mid[1] - r_trunc,
+                                  box_mid[2] - r_trunc};
+  for (size_t k = 0; k < s->nr_parts; k++) {
+    for (int i = 0; i < 3; i++) {
+      s->parts[k].x[i] -= lower_bounds[i];
+    }
+  }
+  for (size_t k = 0; k < s->nr_gparts; k++) {
+    for (int i = 0; i < 3; i++) {
+      s->gparts[k].x[i] -= lower_bounds[i];
+    }
+  }
+  for (size_t k = 0; k < s->nr_sinks; k++) {
+    for (int i = 0; i < 3; i++) {
+      s->sinks[k].x[i] -= lower_bounds[i];
+    }
+  }
+  for (size_t k = 0; k < s->nr_sparts; k++) {
+    for (int i = 0; i < 3; i++) {
+      s->sparts[k].x[i] -= lower_bounds[i];
+    }
+  }
+  for (size_t k = 0; k < s->nr_bparts; k++) {
+    for (int i = 0; i < 3; i++) {
+      s->bparts[k].x[i] -= lower_bounds[i];
+    }
+  }
+  for (size_t k = 0; k < s->nr_nuparts; k++) {
+    for (int i = 0; i < 3; i++) {
+      s->nuparts[k].x[i] -= lower_bounds[i];
+    }
+  }
+
   /* Set the new box dimensions. */
   for (int i = 0; i < 3; i++) {
     s->dim[i] = 2.0 * r_trunc;
@@ -304,6 +339,7 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
   /* Loop over all the gparts and inhibit background particles that are
    * further away than the truncation distance. */
   int ntrunc = 0;
+  int nbkg = 0;
   for (size_t k = 0; k < s->nr_gparts; k++) {
 
     /* Skip non-background particles. */
@@ -325,16 +361,48 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
     if (r > r_trunc) {
       s->gparts[k].time_bin = time_bin_inhibited;
       s->nr_inhibited_gparts++;
-      // s->gparts[k].x[0] = s->dim[0] / 2.0;
-      // s->gparts[k].x[1] = s->dim[1] / 2.0;
-      // s->gparts[k].x[2] = s->dim[2] / 2.0;
       ntrunc++;
+    }
+    nbkg++;
+  }
+
+  /* Now do any wrapping that might be needed (we have shifted the
+   * particles). */
+  if (s->periodic) {
+    for (size_t k = 0; k < s->nr_parts; k++) {
+      box_wrap(s->parts[k].x[0], 0.0, s->dim[0]);
+      box_wrap(s->parts[k].x[1], 0.0, s->dim[1]);
+      box_wrap(s->parts[k].x[2], 0.0, s->dim[2]);
+    }
+    for (size_t k = 0; k < s->nr_gparts; k++) {
+      box_wrap(s->gparts[k].x[0], 0.0, s->dim[0]);
+      box_wrap(s->gparts[k].x[1], 0.0, s->dim[1]);
+      box_wrap(s->gparts[k].x[2], 0.0, s->dim[2]);
+    }
+    for (size_t k = 0; k < s->nr_sinks; k++) {
+      box_wrap(s->sinks[k].x[0], 0.0, s->dim[0]);
+      box_wrap(s->sinks[k].x[1], 0.0, s->dim[1]);
+      box_wrap(s->sinks[k].x[2], 0.0, s->dim[2]);
+    }
+    for (size_t k = 0; k < s->nr_sparts; k++) {
+      box_wrap(s->sparts[k].x[0], 0.0, s->dim[0]);
+      box_wrap(s->sparts[k].x[1], 0.0, s->dim[1]);
+      box_wrap(s->sparts[k].x[2], 0.0, s->dim[2]);
+    }
+    for (size_t k = 0; k < s->nr_bparts; k++) {
+      box_wrap(s->bparts[k].x[0], 0.0, s->dim[0]);
+      box_wrap(s->bparts[k].x[1], 0.0, s->dim[1]);
+      box_wrap(s->bparts[k].x[2], 0.0, s->dim[2]);
+    }
+    for (size_t k = 0; k < s->nr_nuparts; k++) {
+      box_wrap(s->nuparts[k].x[0], 0.0, s->dim[0]);
+      box_wrap(s->nuparts[k].x[1], 0.0, s->dim[1]);
+      box_wrap(s->nuparts[k].x[2], 0.0, s->dim[2]);
     }
   }
 
   if (verbose)
-    message("Removing %d background particles out of %zu.", ntrunc,
-            s->nr_gparts);
+    message("Removing %d background particles out of %zu.", ntrunc, nbkg);
 
   /* Recalculate the zoom region dimensions and shift (we have changed the
    * box size and shifted the particles). */
