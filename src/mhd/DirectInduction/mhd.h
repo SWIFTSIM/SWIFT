@@ -501,6 +501,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     p->mhd_data.dedner_B_source[k] = 0.0f;
     p->mhd_data.physical_resistivity_B_source[k] = 0.0f;
     p->mhd_data.artificial_resistivity_B_source[k] = 0.0f;
+
+    p->mhd_data.stretching_B_source_correction[k] = 0.0f;
   }
 }
 

@@ -105,6 +105,8 @@ struct mhd_part_data {
 
   float artificial_resistivity_B_source[3];
 
+  float stretching_B_source_correction[3];
+
   /* Error tracking */
   float symmetric_gradient_err[3];
   float symmetric_gradient_err_fij[3];
