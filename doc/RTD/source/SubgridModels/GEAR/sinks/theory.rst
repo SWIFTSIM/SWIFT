@@ -108,8 +108,11 @@ Some criteria are *optional* and can be *deactivated*. By default, they are all 
 
    The :math:`p` subscript is to recall that we are using physical quantities to compute energies.
 
-   Here, the potential is retrieved from the gravity solver. 
+   Here, the potential is retrieved from the gravity solver.
 
+.. note::
+   Currently, only the following hydro schemes are compatible: SPHENIX, Gadget2, minimal SPH, Gasoline-2, Pressure-Energy, GIZMO MFV and GIZMO MFM. These schemes are also the ones compatible with *GEAR star formation scheme*.
+   Implementing the other hydro schemes is not complicated but requires some careful thinking about the cosmological terms in the definition of the velocity divergence (comoving vs non comoving coordinates and if the Hubble flow is included or not).
 
 Some comments about the criteria:
 
