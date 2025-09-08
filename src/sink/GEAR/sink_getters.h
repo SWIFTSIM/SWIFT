@@ -82,8 +82,7 @@ INLINE static double sink_compute_neighbour_rotation_energy_magnitude(
  *
  */
 INLINE static float sink_get_physical_div_v_from_part(
-    const struct part* restrict p, const struct cosmology* cosmo
-) {
+    const struct part* restrict p, const struct cosmology* cosmo) {
 
   float div_v = 0.0;
 
