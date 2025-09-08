@@ -114,6 +114,9 @@ INLINE static float sink_get_physical_div_v_from_part(
   hydro_part_get_gradients(p, dummy, gradvx, gradvy, gradvz, dummy);
   div_v = gradvx[0] + gradvy[1] + gradvz[2];
 
+  /* Multiply by the missing scale factors */
+  div_v *= cosmo->a2_inv;
+
   /* Add the missing term */
   div_v += hydro_dimension * cosmo->H;
 #else

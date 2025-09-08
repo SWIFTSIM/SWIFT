@@ -455,6 +455,9 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
   hydro_part_get_gradients(p, dummy, gradvx, gradvy, gradvz, dummy);
   float div_v = gradvx[0] + gradvy[1] + gradvz[2];
 
+  /* Multiply by the missing scale factors */
+  div_v *= cosmo->a2_inv;
+
   /* Add the missing term */
   div_v += hydro_dimension * cosmo->H;
   xp->sf_data.div_v = div_v;
