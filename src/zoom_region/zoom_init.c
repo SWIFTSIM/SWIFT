@@ -296,31 +296,32 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
 
   /* Shift the particles inside the new box. */
   const double box_mid[3] = {s->dim[0] / 2.0, s->dim[1] / 2.0, s->dim[2] / 2.0};
-  const double lower_bounds[3] = {box_mid[0] - r_trunc, box_mid[1] - r_trunc,
-                                  box_mid[2] - r_trunc};
+  s->zoom_props->truncate_shift[0] = -box_mid[0] - r_trunc;
+  s->zoom_props->truncate_shift[1] = -box_mid[1] - r_trunc;
+  s->zoom_props->truncate_shift[2] = -box_mid[2] - r_trunc;
   for (size_t k = 0; k < s->nr_parts; k++) {
     for (int i = 0; i < 3; i++) {
-      s->parts[k].x[i] -= lower_bounds[i];
+      s->parts[k].x[i] += s->zoom_props->truncate_shift[i];
     }
   }
   for (size_t k = 0; k < s->nr_gparts; k++) {
     for (int i = 0; i < 3; i++) {
-      s->gparts[k].x[i] -= lower_bounds[i];
+      s->gparts[k].x[i] += s->zoom_props->truncate_shift[i];
     }
   }
   for (size_t k = 0; k < s->nr_sinks; k++) {
     for (int i = 0; i < 3; i++) {
-      s->sinks[k].x[i] -= lower_bounds[i];
+      s->sinks[k].x[i] += s->zoom_props->truncate_shift[i];
     }
   }
   for (size_t k = 0; k < s->nr_sparts; k++) {
     for (int i = 0; i < 3; i++) {
-      s->sparts[k].x[i] -= lower_bounds[i];
+      s->sparts[k].x[i] += s->zoom_props->truncate_shift[i];
     }
   }
   for (size_t k = 0; k < s->nr_bparts; k++) {
     for (int i = 0; i < 3; i++) {
-      s->bparts[k].x[i] -= lower_bounds[i];
+      s->bparts[k].x[i] += s->zoom_props->truncate_shift[i];
     }
   }
 
