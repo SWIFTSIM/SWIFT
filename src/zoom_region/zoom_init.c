@@ -343,21 +343,14 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
       continue;
     }
 
-    /* Is it inside the box? */
-    int inside = 1;
+    /* Inhibit background particles that are too far away. */
     for (int i = 0; i < 3; i++) {
       if (s->gparts[k].x[i] < 0.0 || s->gparts[k].x[i] > s->dim[i]) {
-        inside = 0;
+        s->gparts[k].time_bin = time_bin_inhibited;
+        s->nr_inhibited_gparts++;
+        ntrunc++;
         break;
       }
-    }
-
-    /* Inhibit background particles that are too far away and place them in the
-     * centre of the box to avoid any issues with periodicity. */
-    if (!inside) {
-      s->gparts[k].time_bin = time_bin_inhibited;
-      s->nr_inhibited_gparts++;
-      ntrunc++;
     }
     nbkg++;
   }
