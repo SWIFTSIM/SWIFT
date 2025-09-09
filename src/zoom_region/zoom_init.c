@@ -343,9 +343,15 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
       continue;
     }
 
+    /* Account for any initial shift. */
+    double pos[3];
+    for (int i = 0; i < 3; i++) {
+      pos[i] = s->gparts[k].x[i] + s->zoom_props->zoom_shift[i];
+    }
+
     /* Inhibit background particles that are too far away. */
     for (int i = 0; i < 3; i++) {
-      if (s->gparts[k].x[i] < 0.0 || s->gparts[k].x[i] > s->dim[i]) {
+      if (pos[i] < 0.0 || pos[i] > s->dim[i]) {
         s->gparts[k].time_bin = time_bin_inhibited;
         s->nr_inhibited_gparts++;
         ntrunc++;
@@ -694,6 +700,12 @@ void zoom_report_cell_properties(const struct space *s) {
   message("%28s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
   message("%28s = [%f, %f, %f]", "Zoom Region Shift", zoom_props->zoom_shift[0],
           zoom_props->zoom_shift[1], zoom_props->zoom_shift[2]);
+  if (zoom_props->truncate_background)
+    message("%28s = [%f, %f, %f]", "Truncation Shift",
+            zoom_props->truncate_shift[0], zoom_props->truncate_shift[1],
+            zoom_props->truncate_shift[2]);
+  message("%28s = [%f, %f, %f]", "Zoom Region COM", zoom_props->com[0],
+          zoom_props->com[1], zoom_props->com[2]);
   message("%28s = [%f, %f, %f]", "Zoom Region Center",
           zoom_props->region_lower_bounds[0] + (zoom_props->dim[0] / 2.0),
           zoom_props->region_lower_bounds[1] + (zoom_props->dim[1] / 2.0),
