@@ -9,7 +9,7 @@ This example's purpose is to test the isotropy distribution of fluxes (metal, mo
 To run this example with the GEAR model,
 
 ```
-CFLAGS="-DSWIFT_TEST_FEEDBACK_ISOTROPY_CHECK" ./configure --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=X --with-kernel=wendland-C2 --with-adaptive-softening=yes --with-grackle=/Users/roduit/local
+CFLAGS="-DSWIFT_TEST_FEEDBACK_ISOTROPY_CHECK" ./configure --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=X --with-kernel=wendland-C2 --with-adaptive-softening=yes --with-grackle=/path/to/grackle
 ```
 
 where X can be:
