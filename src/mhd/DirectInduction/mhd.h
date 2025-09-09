@@ -257,7 +257,12 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_init_part(
-    struct part *p) {}
+    struct part *p) {
+    p->mhd_data.Nneigh = 0;
+    for (int k = 0; k < 3; k++) {
+        p->mhd_data.rcm_ratio[k]=0.0f;
+    }
+}
 
 /**
  * @brief Finishes the density calculation.
@@ -273,7 +278,13 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_density(
-    struct part *p, const struct cosmology *cosmo) {}
+    struct part *p, const struct cosmology *cosmo) {
+
+    for (int k = 0; k < 3; k++) {
+        p->mhd_data.rcm_ratio[k]/=(p->mhd_data.Nneigh*p->h);
+    }
+
+}
 
 /**
  * @brief Prepare a particle for the gradient calculation.

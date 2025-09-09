@@ -111,6 +111,8 @@ struct mhd_part_data {
   float symmetric_gradient_err[3];
   float symmetric_gradient_err_fij[3];
   float antisymmetric_gradient_err_fij[3];
+  float rcm_ratio[3];
+  int Nneigh;
 };
 
 /**

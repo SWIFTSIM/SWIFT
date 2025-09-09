@@ -35,7 +35,16 @@
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float mu_0,
-    const float a, const float H) {}
+    const float a, const float H) {
+
+
+    pi->mhd_data.Nneigh += 1;
+    pj->mhd_data.Nneigh += 1;
+    for (int k = 0; k < 3; k++) {
+        pi->mhd_data.rcm_ratio[k]+=(pj->x[k] - pi->x[k]);
+        pj->mhd_data.rcm_ratio[k]+=(pi->x[k] - pj->x[k]);
+    }
+}
 
 /**
  * @brief MHD-Density interaction between two particles. (non-symmetric)
@@ -55,7 +64,14 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                const float hi, const float hj,
                                struct part *restrict pi,
                                const struct part *restrict pj, const float mu_0,
-                               const float a, const float H) {}
+                               const float a, const float H) {
+
+    pi->mhd_data.Nneigh += 1;
+    for (int k = 0; k < 3; k++) {
+        pi->mhd_data.rcm_ratio[k]+=(pj->x[k] - pi->x[k]);
+    }
+
+}
 
 /**
  * @brief Calculate the MHD-gradient interaction between particle i and particle

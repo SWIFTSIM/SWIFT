@@ -530,8 +530,16 @@ INLINE static int mhd_write_particles(const struct part* parts,
   list[29] = io_make_output_field(
       "antisymmetric_gradient_err_fij", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.0f, parts,
       mhd_data.antisymmetric_gradient_err_fij, " antisymmetric_gradient_err_fij ");
- 
-  return 30;
+
+  list[30] = io_make_output_field(
+      "rcm_ratio", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.0f, parts,
+      mhd_data.rcm_ratio, " rcm_ratio ");
+
+  list[31] = io_make_output_field(
+      "nneigh", INT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+      mhd_data.Nneigh, " Nneigh ");
+
+  return 32;
 }
 
 /**
