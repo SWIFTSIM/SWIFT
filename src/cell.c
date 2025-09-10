@@ -1310,16 +1310,8 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
                     const int with_grav) {
   /* Are we in a cell which is either the hydro or gravity super? */
   if (super == NULL && ((with_hydro && c->hydro.super != NULL) ||
-                        (with_grav && c->grav.super != NULL))) {
-    if (c->grav.count == 0)
-      message(
-          "Setting super to cell at depth %d with no gparts (%s/%s) "
-          "with_hydro=%d with_grav=%d c->hydro.super=%p c->grav.super=%p, c=%p",
-          c->depth, cellID_names[c->type], subcellID_names[c->subtype],
-          with_hydro, with_grav, (void *)c->hydro.super, (void *)c->grav.super,
-          (void *)c);
+                        (with_grav && c->grav.super != NULL)))
     super = c;
-  }
 
   /* Set the super-cell */
   c->super = super;
@@ -1362,13 +1354,15 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   /* Are we in a cell with some kind of self/pair task ? */
   if (super_gravity == NULL && (c->grav.grav != NULL || c->grav.mm != NULL)) {
-    if (c->grav.count == 0) {
-      message(
-          "Setting super_gravity to cell at depth %d with no gparts (%s/%s) "
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->grav.count == 0 && c->subtype != cell_subtype_void)
+      error(
+          "Setting super_gravity to non-void cell at depth %d with no gparts "
+          "(%s/%s) "
           "c->grav.grav=%p c->grav.mm=%p, c=%p",
           c->depth, cellID_names[c->type], subcellID_names[c->subtype],
           (void *)c->grav.grav, (void *)c->grav.mm, (void *)c);
-    }
+#endif
     super_gravity = c;
   }
 
