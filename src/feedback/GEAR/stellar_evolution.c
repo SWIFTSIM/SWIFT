@@ -351,19 +351,17 @@ void stellar_evolution_compute_preSN_properties(struct spart* restrict sp, const
 
   /* Get the log of the metallicity normalised by solar metallicity */
   const float metallicity = chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
-  float log_metallicity = log10(metallicity / stellar_evolution_get_solar_abundance(sm,"Metals"));
+  const float log_metallicity = log10(metallicity / stellar_evolution_get_solar_abundance(sm,"Metals"));
+  const float log_m = log10(m_beg_step);
 
   /* If the star particle is single_star the calculation is straight forward */
   if (sp->star_type == single_star) {
-    const float log_m = log10(m_beg_step);
-    double energy_per_unit_time = stellar_wind_get_ejected_energy(&sm->sw,log_m,log_metallicity);
+    const double energy_per_unit_time = stellar_wind_get_ejected_energy(&sm->sw,log_m,log_metallicity);
     sp->feedback_data.preSN.energy_ejected = energy_per_unit_time;
 
   } else {    
-
-    float log_m_beg = log10(m_beg_step);  
-    double energy_per_unit_time_per_progenitor_mass = stellar_wind_get_ejected_energy_IMF(&sm->sw,log_m_beg,log_metallicity);
-    double energy_per_unit_time = energy_per_unit_time_per_progenitor_mass * m_init;
+    const double energy_per_unit_time_per_progenitor_mass = stellar_wind_get_ejected_energy_IMF(&sm->sw,log_m,log_metallicity);
+    const double energy_per_unit_time = energy_per_unit_time_per_progenitor_mass * m_init;
     sp->feedback_data.preSN.energy_ejected = energy_per_unit_time;
   }
 }
@@ -1200,7 +1198,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
   /* Compute the initial mass. The initial mass is different if the star
      particle is of type 'star_population' or
      'star_population_continuous_IMF'. The function call treats both cases. */
-  float m_init = stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+  const float m_init = stellar_evolution_compute_initial_mass(sp, sm, phys_const);
 
    /* initialize */
   sp->feedback_data.preSN.energy_ejected = 0;
