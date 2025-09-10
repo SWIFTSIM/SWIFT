@@ -939,65 +939,68 @@ void zoom_region_init(struct space *s, const int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure all particles are within the box boundaries (sanity check for
-   * truncation and shifting). */
-  for (size_t k = 0; k < s->nr_parts; k++) {
-    if (s->parts[k].time_bin == time_bin_inhibited) continue;
-    for (int i = 0; i < 3; i++) {
-      if (s->parts[k].x[i] < 0.0 || s->parts[k].x[i] >= s->dim[i]) {
-        error(
-            "Particle %zu is out of bounds after zoom region setup! "
-            "(x=[%f, %f, %f], dim=[%f, %f, %f])",
-            k, s->parts[k].x[0], s->parts[k].x[1], s->parts[k].x[2], s->dim[0],
-            s->dim[1], s->dim[2]);
+   * truncation and shifting, if not truncated we don't need to wrap here as
+   * it is done in the main code). */
+  if (zoom_props->truncate_background) {
+    for (size_t k = 0; k < s->nr_parts; k++) {
+      if (s->parts[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->parts[k].x[i] < 0.0 || s->parts[k].x[i] >= s->dim[i]) {
+          error(
+              "Particle %zu is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, s->parts[k].x[0], s->parts[k].x[1], s->parts[k].x[2],
+              s->dim[0], s->dim[1], s->dim[2]);
+        }
       }
     }
-  }
-  for (size_t k = 0; k < s->nr_gparts; k++) {
-    if (s->gparts[k].time_bin == time_bin_inhibited) continue;
-    for (int i = 0; i < 3; i++) {
-      if (s->gparts[k].x[i] < 0.0 || s->gparts[k].x[i] >= s->dim[i]) {
-        error(
-            "gpart %zu (%s) is out of bounds after zoom region setup! "
-            "(x=[%f, %f, %f], dim=[%f, %f, %f])",
-            k, part_type_names[s->gparts[k].type], s->gparts[k].x[0],
-            s->gparts[k].x[1], s->gparts[k].x[2], s->dim[0], s->dim[1],
-            s->dim[2]);
+    for (size_t k = 0; k < s->nr_gparts; k++) {
+      if (s->gparts[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->gparts[k].x[i] < 0.0 || s->gparts[k].x[i] >= s->dim[i]) {
+          error(
+              "gpart %zu (%s) is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, part_type_names[s->gparts[k].type], s->gparts[k].x[0],
+              s->gparts[k].x[1], s->gparts[k].x[2], s->dim[0], s->dim[1],
+              s->dim[2]);
+        }
       }
     }
-  }
-  for (size_t k = 0; k < s->nr_sparts; k++) {
-    if (s->sparts[k].time_bin == time_bin_inhibited) continue;
-    for (int i = 0; i < 3; i++) {
-      if (s->sparts[k].x[i] < 0.0 || s->sparts[k].x[i] >= s->dim[i]) {
-        error(
-            "SPart %zu is out of bounds after zoom region setup! "
-            "(x=[%f, %f, %f], dim=[%f, %f, %f])",
-            k, s->sparts[k].x[0], s->sparts[k].x[1], s->sparts[k].x[2],
-            s->dim[0], s->dim[1], s->dim[2]);
+    for (size_t k = 0; k < s->nr_sparts; k++) {
+      if (s->sparts[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->sparts[k].x[i] < 0.0 || s->sparts[k].x[i] >= s->dim[i]) {
+          error(
+              "SPart %zu is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, s->sparts[k].x[0], s->sparts[k].x[1], s->sparts[k].x[2],
+              s->dim[0], s->dim[1], s->dim[2]);
+        }
       }
     }
-  }
-  for (size_t k = 0; k < s->nr_bparts; k++) {
-    if (s->bparts[k].time_bin == time_bin_inhibited) continue;
-    for (int i = 0; i < 3; i++) {
-      if (s->bparts[k].x[i] < 0.0 || s->bparts[k].x[i] >= s->dim[i]) {
-        error(
-            "BPart %zu is out of bounds after zoom region setup! "
-            "(x=[%f, %f, %f], dim=[%f, %f, %f])",
-            k, s->bparts[k].x[0], s->bparts[k].x[1], s->bparts[k].x[2],
-            s->dim[0], s->dim[1], s->dim[2]);
+    for (size_t k = 0; k < s->nr_bparts; k++) {
+      if (s->bparts[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->bparts[k].x[i] < 0.0 || s->bparts[k].x[i] >= s->dim[i]) {
+          error(
+              "BPart %zu is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, s->bparts[k].x[0], s->bparts[k].x[1], s->bparts[k].x[2],
+              s->dim[0], s->dim[1], s->dim[2]);
+        }
       }
     }
-  }
-  for (size_t k = 0; k < s->nr_sinks; k++) {
-    if (s->sinks[k].time_bin == time_bin_inhibited) continue;
-    for (int i = 0; i < 3; i++) {
-      if (s->sinks[k].x[i] < 0.0 || s->sinks[k].x[i] >= s->dim[i]) {
-        error(
-            "Sink %zu is out of bounds after zoom region setup! "
-            "(x=[%f, %f, %f], dim=[%f, %f, %f])",
-            k, s->sinks[k].x[0], s->sinks[k].x[1], s->sinks[k].x[2], s->dim[0],
-            s->dim[1], s->dim[2]);
+    for (size_t k = 0; k < s->nr_sinks; k++) {
+      if (s->sinks[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->sinks[k].x[i] < 0.0 || s->sinks[k].x[i] >= s->dim[i]) {
+          error(
+              "Sink %zu is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, s->sinks[k].x[0], s->sinks[k].x[1], s->sinks[k].x[2],
+              s->dim[0], s->dim[1], s->dim[2]);
+        }
       }
     }
   }
