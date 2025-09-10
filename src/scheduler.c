@@ -1725,10 +1725,10 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
     /* Create a self for all progeny beyond the first. */
     for (int i = 1; i < 8; i++) {
 
-      /* Skip any empty non-void progeny. */
-      if (ci->progeny[i]->subtype != cell_subtype_void &&
-          ci->progeny[i]->grav.count == 0)
-        continue;
+      // /* Skip any empty non-void progeny. */
+      // if (ci->progeny[i]->subtype != cell_subtype_void &&
+      //     ci->progeny[i]->grav.count == 0)
+      //   continue;
 
       /* Create the self task. */
       zoom_scheduler_splittask_gravity_void_self(
