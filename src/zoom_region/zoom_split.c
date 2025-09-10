@@ -85,6 +85,14 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
 
+    /* If this top level cell is empty, don't link it in. */
+    if (zoom_cell->grav.count == 0 && zoom_cell->hydro.count == 0 &&
+        zoom_cell->stars.count == 0 && zoom_cell->sinks.count == 0 &&
+        zoom_cell->black_holes.count == 0) {
+      c->progeny[k] = NULL;
+      continue;
+    }
+
     /* Link this nested cell into the void cell hierarchy. */
     c->progeny[k] = zoom_cell;
 
