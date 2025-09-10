@@ -307,21 +307,28 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
       const int idy = y_k;
       const float fy = y_k - idy;
 
+      int current_cell = i * Ny + j;
+      if (current_cell >= Nx * Ny) {
+        error("Index %d out of boundaries for interp->data", current_cell);
+      }
       /* Extrapolate? */
       if (idx < 0 || idx + 1 >= N_data_x || idy < 0 || idy + 1 >= N_data_y) {
+        
         switch (boundary_condition) {
           case boundary_condition_error:
             error("Cannot extrapolate");
             break;
           case boundary_condition_zero:
-            interp->data[i * Ny + j] = 0;
+            interp->data[current_cell] = 0;
             break;
           case boundary_condition_const:
             const int midx = max(idx, 0);
             const int midy = max(idy, 0);
-            interp->data[i * Ny + j] = data[
-              min(midx, N_data_x - 1) * N_data_y +
-              min(midy, N_data_y - 1)];
+            int cell_to_get = min(midx, N_data_x - 1) * N_data_y + min(midy, N_data_y - 1);
+            if (cell_to_get >= N_data_x * N_data_y){
+              error("Index %d is out of boundary for the target data", cell_to_get);
+            }
+            interp->data[current_cell] = data[cell_to_get];
             break;
           default:
             error("Interpolation type not implemented");
@@ -332,7 +339,7 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
       /* Interpolate data[i][j] <=> data[i * Ny + j] */
       const float fx1 = data[idx * N_data_y + idy] * (1. - fx) + data[(idx + 1) * N_data_y + idy] * fx;
       const float fx2 = data[idx * N_data_y + idy + 1] * (1. - fx) + data[(idx + 1) * N_data_y + idy + 1] * fx;
-      interp->data[i * Ny + j] = fx1 * (1. - fy) + fx2 * fy;
+      interp->data[current_cell] = fx1 * (1. - fy) + fx2 * fy;
     }
   }
 }
@@ -348,8 +355,7 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
 */
 __attribute__((always_inline)) static INLINE double interpolate_2d(
   const struct interpolation_2d *interp, 
-  float log_x, float log_y, 
-  enum interpolate_boundary_condition boundary_condition) {
+  float log_x, float log_y) {
 
   /* Find indices */
   const float i = (log_x - interp->xmin) / interp->dx;
@@ -358,6 +364,7 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
 
   const int Nx = interp->Nx;
   const int Ny = interp->Ny;
+  const int array_size = Nx * Ny;
 
   const float j = (log_y - interp->ymin) / interp->dy;
   const int idy = j;
@@ -365,7 +372,7 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
 
   /* Extrapolate? */
   if (idx < 0 || idx + 1 >= Nx || idy < 0 || idy + 1 >= Ny) {
-    switch (boundary_condition) {
+    switch (interp->boundary_condition) {
       case boundary_condition_error:
         error("Cannot extrapolate");
         break;
@@ -374,15 +381,20 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
       case boundary_condition_const:
         const int midx = max(idx, 0);
         const int midy = max(idy, 0);
-        return interp->data[
-          min(midx, Nx - 1) * Ny +
-          min(midy, Ny - 1)];
+        int cell_to_get = min(midx, Nx - 1) * Ny + min(midy, Ny - 1);
+        if (cell_to_get >= array_size){
+          error("Index %d is out of boundary for the target data", cell_to_get);
+        }
+        return interp->data[cell_to_get];
       default:
         error("Interpolation type not implemented");
     }
   }
   
   /* interpolate */
+  if((idx * Ny + idy) >= array_size || ((idx + 1) * Ny + idy) >= array_size || (idx * Ny + idy + 1) >= array_size || ((idx + 1) * Ny + idy + 1) >= array_size){
+    error("Index is out of boundaries for the interpolation");
+  }
   const float fx1 = interp->data[idx * Ny + idy] * (1. - dx) + interp->data[(idx + 1) * Ny + idy] * dx;
   const float fx2 = interp->data[idx * Ny + idy + 1] * (1. - dx) + interp->data[(idx + 1) * Ny + idy + 1] * dx;
   return fx1 * (1. - dy) + fx2 * dy;
