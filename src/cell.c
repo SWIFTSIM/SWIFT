@@ -1314,9 +1314,10 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
     if (c->grav.count == 0)
       message(
           "Setting super to cell at depth %d with no gparts (%s/%s) "
-          "with_hydro=%d with_grav=%d c->hydro.super=%p c->grav.super=%p",
+          "with_hydro=%d with_grav=%d c->hydro.super=%p c->grav.super=%p, c=%p",
           c->depth, cellID_names[c->type], subcellID_names[c->subtype],
-          with_hydro, with_grav, (void *)c->hydro.super, (void *)c->grav.super);
+          with_hydro, with_grav, (void *)c->hydro.super, (void *)c->grav.super,
+          (void *)c);
     super = c;
   }
 
