@@ -1739,17 +1739,17 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
 
     /* Create pair tasks for all pairs of progeny. */
     for (int j = 0; j < 8; j++) {
-      /* Skip any empty non-void progeny. */
-      if (ci->progeny[j]->subtype != cell_subtype_void &&
-          ci->progeny[j]->grav.count == 0)
-        continue;
+      // /* Skip any empty non-void progeny. */
+      // if (ci->progeny[j]->subtype != cell_subtype_void &&
+      //     ci->progeny[j]->grav.count == 0)
+      //   continue;
 
       for (int k = j + 1; k < 8; k++) {
 
-        /* Skip any empty non-void progeny. */
-        if (ci->progeny[k]->subtype != cell_subtype_void &&
-            ci->progeny[k]->grav.count == 0)
-          continue;
+        // /* Skip any empty non-void progeny. */
+        // if (ci->progeny[k]->subtype != cell_subtype_void &&
+        //     ci->progeny[k]->grav.count == 0)
+        //   continue;
 
         /* Create the pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
