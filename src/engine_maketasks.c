@@ -1299,6 +1299,15 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   /* Are we in a super-cell ? */
   if (c->super == c) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->grav.count == 0)
+      message(
+          "Warning: making hierarchical tasks for a cell with no "
+          "particles. c->depth=%d c->count=%d (%s/%s)",
+          c->depth, c->grav.count, cellID_names[c->type],
+          subcellID_names[c->subtype]);
+#endif
+
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
