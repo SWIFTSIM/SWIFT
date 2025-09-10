@@ -252,7 +252,8 @@ struct interpolation_2d {
 
 
 /**
- * @brief Initialize the #interpolation_2d. Store the data (with "Data limits" proportion) into a flattened 1D array (with "Interpolation limits" proportion).
+ * @brief Initialize the #interpolation_2d. 
+ * Store the data (with "Data limits" proportion) into a flattened 1D array (with "Interpolation limits" proportion).
  *
  * @param interp The #interpolation_2d result, stored in swift.
  * @param log_xmin Minimal value of x to (in log).  Interpolation limits
@@ -328,7 +329,7 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
             const int col = min(midy, N_data_y - 1);
             const int cell_to_get = row * N_data_y + col;
             if (cell_to_get >= N_data_x * N_data_y){
-              error("Index %d is out of boundary for the target data", cell_to_get);
+              error("Index row=%d col=%d is out of boundary for the target data which has dimension row=%d col=%d", row, col, N_data_x, N_data_y);
             }
             interp->data[current_cell] = data[cell_to_get];
             break;

@@ -943,7 +943,7 @@ void stellar_evolution_compute_SN_feedback_spart(
   /* Star particles representing only the continuous part of the IMF need a
   special treatment. They do not contain stars above the mass that separate the
   IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
-  module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
+  module). So, if m_end_step > minimal_discrete_mass_Msun, you don't do
   feedback. Note that the sm structure contains different information for the
   'first stars' and the 'late stars'. The right sm data is passed to this
   function so we do not need any special treatment here. */
