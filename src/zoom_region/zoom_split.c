@@ -239,6 +239,9 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     /* Get the progenitor */
     struct cell *cp = c->progeny[k];
 
+    /* Skip NULL progeny. */
+    if (cp == NULL) continue;
+
     /* If the progeny is a void cell, we need to recurse. */
     if (cp->subtype == cell_subtype_void) {
 
