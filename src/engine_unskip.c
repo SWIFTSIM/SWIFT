@@ -410,11 +410,6 @@ void engine_unskip(struct engine *e) {
     /* Skip empty cells (void cells are never empty). */
     if (cell_is_empty(c) && !(c->subtype == cell_subtype_void)) continue;
 
-    /* We do need to skip void cells without tasks though. */
-    if (c->subtype == cell_subtype_void && c->grav.mm == NULL &&
-        c->grav.grav == NULL)
-      continue;
-
     if ((with_hydro && cell_is_active_hydro(c, e)) ||
         (with_self_grav && cell_is_active_gravity(c, e)) ||
         (with_ext_grav && c->nodeID == nodeID &&
