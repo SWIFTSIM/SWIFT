@@ -356,7 +356,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   /* Ensure all zoom cells are linked into the tree. */
   notlinked = 0;
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-    if (cells_top[k].void_parent == NULL && cells_top[k].grav->count > 0)
+    if (cells_top[k].void_parent == NULL && cells_top[k].grav.count > 0)
       notlinked++;
   }
   if (notlinked > 0)
