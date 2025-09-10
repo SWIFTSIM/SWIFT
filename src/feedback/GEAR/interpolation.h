@@ -324,7 +324,9 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
           case boundary_condition_const:
             const int midx = max(idx, 0);
             const int midy = max(idy, 0);
-            int cell_to_get = min(midx, N_data_x - 1) * N_data_y + min(midy, N_data_y - 1);
+            const int row = min(midx, N_data_x - 1);
+            const int col = min(midy, N_data_y - 1);
+            const int cell_to_get = row * N_data_y + col;
             if (cell_to_get >= N_data_x * N_data_y){
               error("Index %d is out of boundary for the target data", cell_to_get);
             }
@@ -381,7 +383,9 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
       case boundary_condition_const:
         const int midx = max(idx, 0);
         const int midy = max(idy, 0);
-        int cell_to_get = min(midx, Nx - 1) * Ny + min(midy, Ny - 1);
+        const int row = min(midx, Nx - 1);
+        const int col = min(midy, Ny - 1);
+        const int cell_to_get = row * Ny + col;
         if (cell_to_get >= array_size){
           error("Index %d is out of boundary for the target data", cell_to_get);
         }
