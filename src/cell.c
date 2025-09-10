@@ -1310,8 +1310,15 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
                     const int with_grav) {
   /* Are we in a cell which is either the hydro or gravity super? */
   if (super == NULL && ((with_hydro && c->hydro.super != NULL) ||
-                        (with_grav && c->grav.super != NULL)))
+                        (with_grav && c->grav.super != NULL))) {
+    if (c->grav.count == 0)
+      message(
+          "Setting super to cell at depth %d with no gparts (%s/%s) "
+          "with_hydro=%d with_grav=%d c->hydro.super=%p c->grav.super=%p",
+          c->depth, cellID_names[c->type], subcellID_names[c->subtype],
+          with_hydro, with_grav, (void *)c->hydro.super, (void *)c->grav.super);
     super = c;
+  }
 
   /* Set the super-cell */
   c->super = super;
