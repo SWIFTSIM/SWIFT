@@ -205,6 +205,8 @@ def parse_options():
                         help="Format of the output image (recognized by Matplotlib).")
     parser.add_argument("--dpi", type=float, default=300,
                         help="Resolution of output images.")
+    parser.add_argument("--step", type=float, default=0.01,
+                        help="Step for binning.")
     parser.add_argument("--stylesheet", type=str,
                         default=None, help="Matplotlib stylesheet.")
 
@@ -225,11 +227,22 @@ P_0 = opt.P_0      # Background Pressure
 E_0 = opt.E_0      # Energy of the explosion
 gas_gamma = 5.0 / 3.0  # Gas polytropic index
 n_shock = 1.5  # Shock index
+step = opt.step
 
 # Ensure the file exists
 file = opt.file
 try:
     with h5py.File(file, "r") as sim:
+        # Read unit conversion factors from the snapshot
+        try:
+            U_M = sim["/InternalCodeUnits"].attrs.get("Unit mass in cgs (U_M)", 1.0)[0]
+            U_L = sim["/InternalCodeUnits"].attrs.get("Unit length in cgs (U_L)", 1.0)[0]
+            U_t = sim["/InternalCodeUnits"].attrs.get("Unit time in cgs (U_t)", 1.0)[0]
+            
+        except KeyError:
+            print("Warning: /Units group not found. Assuming CGS units.")
+            pass # Continue with default CGS-like conversion factors
+
         # Read global simulation metadata
         box_size = sim["/Header"].attrs.get("BoxSize", [np.nan])[0]
         time = sim["/Header"].attrs.get("Time", np.nan)
@@ -256,14 +269,23 @@ try:
         # Compute radial velocity component
         v_r = (x * vel[:, 0] + y * vel[:, 1] + z * vel[:, 2]) / r
 
-        # Check optional fields
-        plot_diffusion = "/PartType0/DiffusionParameters" in sim
-        plot_viscosity = "/PartType0/ViscosityParameters" in sim
-
-        if plot_diffusion:
-            diffusion = sim["/PartType0/DiffusionParameters"][:]
-        if plot_viscosity:
-            viscosity = sim["/PartType0/ViscosityParameters"][:]
+        # --- CONVERT ALL DATA TO CGS IN PLACE ---
+        box_size *= U_L
+        time *= U_t
+        pos *= U_L
+        r *= U_L
+        vel *= U_L / U_t
+        v_r *= U_L / U_t
+        u *= U_L**2 / U_t**2
+        P *= U_M / (U_L * U_t**2)
+        rho *= U_M / (U_L**3)
+        mass *= U_M
+        
+        # We also need to convert the initial guess values from the command line
+        rho_0 = rho_0 * U_M / (U_L**3)
+        P_0 = P_0 * U_M / (U_L * U_t**2)
+        E_0 = E_0 * U_M * U_L**2 / U_t**2
+        step = step * U_L
 
 except FileNotFoundError:
     sys.exit(f"Error: File '{file}' not found.")
@@ -271,9 +293,9 @@ except KeyError as e:
     sys.exit(f"Error: Missing expected dataset {e} in file '{file}'.")
 except Exception as e:
     sys.exit(f"Unexpected error: {e}")
-
+    
 # Bin the data
-r_bin_edge = np.arange(0.0, r.max(), 0.05)
+r_bin_edge = np.arange(0.0, r.max(), step)
 r_bin = 0.5 * (r_bin_edge[1:] + r_bin_edge[:-1])
 rho_bin, _, _ = stats.binned_statistic(
     r, rho, statistic="mean", bins=r_bin_edge)
@@ -291,28 +313,27 @@ S2_bin, _, _ = stats.binned_statistic(
     r, S ** 2, statistic="mean", bins=r_bin_edge)
 u2_bin, _, _ = stats.binned_statistic(
     r, u ** 2, statistic="mean", bins=r_bin_edge)
+
+# Remove unwanted values
+valid_mask = np.isfinite(rho_bin) & np.isfinite(P_bin) & np.isfinite(v_bin)
+r_bin = r_bin[valid_mask]
+rho_bin = rho_bin[valid_mask]
+v_bin = v_bin[valid_mask]
+P_bin = P_bin[valid_mask]
+S_bin = S_bin[valid_mask]
+u_bin = u_bin[valid_mask]
+rho2_bin = rho2_bin[valid_mask]
+v2_bin = v2_bin[valid_mask]
+P2_bin = P2_bin[valid_mask]
+S2_bin = S2_bin[valid_mask]
+u2_bin = u2_bin[valid_mask]
+
+# Compute sigma
 rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
 v_sigma_bin = np.sqrt(v2_bin - v_bin ** 2)
 P_sigma_bin = np.sqrt(P2_bin - P_bin ** 2)
 u_sigma_bin = np.sqrt(u2_bin - u_bin ** 2)
 
-if plot_diffusion:
-    alpha_diff_bin, _, _ = stats.binned_statistic(
-        r, diffusion, statistic="mean", bins=r_bin_edge
-    )
-    alpha2_diff_bin, _, _ = stats.binned_statistic(
-        r, diffusion ** 2, statistic="mean", bins=r_bin_edge
-    )
-    alpha_diff_sigma_bin = np.sqrt(alpha2_diff_bin - alpha_diff_bin ** 2)
-
-if plot_viscosity:
-    alpha_visc_bin, _, _ = stats.binned_statistic(
-        r, viscosity, statistic="mean", bins=r_bin_edge
-    )
-    alpha2_visc_bin, _, _ = stats.binned_statistic(
-        r, viscosity ** 2, statistic="mean", bins=r_bin_edge
-    )
-    alpha_visc_sigma_bin = np.sqrt(alpha2_visc_bin - alpha_visc_bin ** 2)
 
 ################################
 # Now, work our the solution....
@@ -444,49 +465,68 @@ def sedov_fit_model(r, E_0, rho_0, P_0, time, g=1.4, nu=3):
     # Flatten and return as a single vector
     return np.hstack((rho_fit, P_fit, v_fit))
 
-# Initial guess for the parameters (E_0, rho_0, P_0)
-print(E_0, rho_0, P_0)
+rho_0_guess = np.median(rho)
+P_0_guess = np.median(P)
 
-P_0 = np.min(P)
-rho_0 = np.min(rho)
-# E_0 = 0.5*np.min(mass)*np.min(v_r)*np.min(v_r)
+# Step 1: Create a more robust initial guess from the data itself.
+# Find the point of maximum change in density to estimate the shock radius.
+d_rho_bin = np.gradient(rho_bin)
+r_shock_guess = r_bin[np.argmax(d_rho_bin)]
 
-# print(np.min(u))
-# print( P_0 / (rho_0 * (gas_gamma - 1.0)) )  # internal energy
-# print( P_0 / (np.max(rho) * (gas_gamma - 1.0)) )  # internal energy
+# Guess E_0 using a known analytical relationship for a Sedov explosion.
+# nu is the dimension, which is 3 here.
+nu = 3
+# A dimensionless constant for E_0, approx 1.15 for nu=3, g=5/3
+E_0_guess = rho_0_guess * (r_shock_guess ** 5) / (time ** 2)
+E_0_guess = E_0_guess[0]
 
-print(E_0, rho_0, P_0)
+initial_guess = [E_0_guess, rho_0_guess, P_0_guess]
 
-initial_guess = [E_0, rho_0, P_0]
+print("Improved Initial Guess:", initial_guess)
 
-# Bounds to ensure the solutions ares non-negative
-bounds = ([1e-20, 1e-20, 1e-20], [np.inf, np.inf, np.inf])
+data = np.hstack((rho_bin, P_bin, v_bin))
 
-# x = r # y : v_r, P, rho
-data = np.vstack((rho, P, v_r)).T
-data = data.ravel().T
 
-# popt, pcov = curve_fit(lambda r, E_0, rho_0, P_0: sedov_fit_model(r, E_0, rho_0, P_0, time, gas_gamma), 
-#                        r, data, p0=initial_guess, bounds=bounds)
+# Check for NaNs and Infs in your data
+print("Number of NaNs in rho_bin:", np.sum(np.isnan(rho_bin)))
+print("Number of NaNs in P_bin:", np.sum(np.isnan(P_bin)))
+print("Number of NaNs in v_bin:", np.sum(np.isnan(v_bin)))
+print("Number of Infs in data:", np.sum(np.isinf(data)))
 
-# Fit parameters using logarithmic scaling
-log_initial_guess = np.log(initial_guess)
-log_bounds = (np.log(bounds[0]), np.log(bounds[1]))
+valid_mask = np.isfinite(rho_bin) & np.isfinite(P_bin) & np.isfinite(v_bin)
+r_bin = r_bin[valid_mask]
+rho_bin = rho_bin[valid_mask]
+P_bin = P_bin[valid_mask]
+v_bin = v_bin[valid_mask]
 
-log_popt, log_pcov = curve_fit(
-    lambda r, log_E_0, log_rho_0, log_P_0: sedov_fit_model(r, np.exp(log_E_0), np.exp(log_rho_0), np.exp(log_P_0), time, gas_gamma), 
-    r, np.log(data), 
-    p0=log_initial_guess, 
-    bounds=log_bounds
-)
+print("Number of NaNs in rho_bin:", np.sum(np.isnan(rho_bin)))
+print("Number of NaNs in P_bin:", np.sum(np.isnan(P_bin)))
+print("Number of NaNs in v_bin:", np.sum(np.isnan(v_bin)))
+print("Number of Infs in data:", np.sum(np.isinf(data)))
 
-popt = np.exp(log_popt)
+data = np.hstack((rho_bin, P_bin, v_bin))
+
+# Step 2: Use the standard deviation (sigma) to weight the fit.
+# This guides the fit to prioritize regions with less scatter.
+sigma_data = np.hstack((rho_sigma_bin, P_sigma_bin, v_sigma_bin))
+
+# We must ensure no zero or near-zero sigmas
+sigma_data = np.maximum(sigma_data, 1e-15)
+
+popt, pcov = curve_fit(
+        lambda r_fit, E_0, rho_0, P_0: sedov_fit_model(r_fit, E_0, rho_0, P_0, time, gas_gamma, nu),
+        r_bin,
+        data,
+        p0=initial_guess,
+        sigma=sigma_data,  # Pass the uncertainties here
+        absolute_sigma=True, # Treat sigma as absolute errors
+    )
 
 # Extract the fitted parameters
 E_0_fit, rho_0_fit, P_0_fit = popt
 
-print(E_0_fit, rho_0_fit, P_0_fit)
-print(E_0, rho_0, P_0)
+print("Initial guess: ", E_0, rho_0, P_0)
+print("Fitted values: ", E_0_fit, rho_0_fit, P_0_fit)
 
 E_0, rho_0, P_0 = E_0_fit, rho_0_fit, P_0_fit
 
