@@ -252,9 +252,9 @@ struct interpolation_2d {
 
 
 /**
- * @brief Initialize the #interpolation_2d. Stock the data (with "Data limits" proportion) into a flattened 1D array (with "Interpolation limits" proportion).
+ * @brief Initialize the #interpolation_2d. Store the data (with "Data limits" proportion) into a flattened 1D array (with "Interpolation limits" proportion).
  *
- * @param interp The #interpolation_2d.
+ * @param interp The #interpolation_2d result, stored in swift.
  * @param log_xmin Minimal value of x to (in log).  Interpolation limits
  * @param log_xmax Maximal value of x (in log).   Interpolation limts
  * @param Nx Requested number of values in x axes.  Interpolation limits
@@ -267,7 +267,7 @@ struct interpolation_2d {
  * @param log_step_size_y The size of the y steps (in log).   Data limits
  * @param N_data_x The number of element in the data x axis. Data limits
  * @param N_data_y The number of element in the data y axis. Data limits
- * @param data The data to interpolate (y).
+ * @param data The data  coming from hdf5 table to interpolate.
  * @param boundary_condition The type of #interpolate_boundary_condition.
  */
 __attribute__((always_inline)) static INLINE void interpolate_2d_init(
@@ -317,8 +317,6 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
             interp->data[i * Ny + j] = 0;
             break;
           case boundary_condition_const:
-            // Choose appropriate fallback here
-            /*! there these midx and midy are used to don't have problem with encapsuled min(max(...)...) macro in C... TODO: see if otherwise is possible */
             const int midx = max(idx, 0);
             const int midy = max(idy, 0);
             interp->data[i * Ny + j] = data[
@@ -374,8 +372,6 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
       case boundary_condition_zero:
         return 0;
       case boundary_condition_const:
-        // Choose appropriate fallback here
-        /*! there these midx and midy are used to don't have problem with encapsuled min(max(...)...) macro in C... TODO: see if otherwise is possible */
         const int midx = max(idx, 0);
         const int midy = max(idy, 0);
         return interp->data[

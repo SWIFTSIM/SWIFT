@@ -142,7 +142,10 @@ runner_iact_nonsym_feedback_apply(
 
   /* Distribute pre-SN */
   if (e_preSN != 0.0) {
-    /* Energy received */
+    /* Energy received */ 
+    /* Here the new mass correspond to the mass added by supernovae 
+    in the case where both supernovae and pre-SN feedback occur . 
+    The pre-SN feedback does not yet implement a change in the mass !*/
     const double du = (e_preSN) * weight / new_mass;
     xpj->feedback_data.delta_u += du;
   }
