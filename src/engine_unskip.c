@@ -407,7 +407,13 @@ void engine_unskip(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
+    /* Skip empty cells (void cells are never empty). */
     if (cell_is_empty(c) && !(c->subtype == cell_subtype_void)) continue;
+
+    /* We do need to skip void cells without tasks though. */
+    if (c->subtype == cell_subtype_void && c->grav.mm == NULL &&
+        c->grav.grav == NULL)
+      continue;
 
     if ((with_hydro && cell_is_active_hydro(c, e)) ||
         (with_self_grav && cell_is_active_gravity(c, e)) ||
