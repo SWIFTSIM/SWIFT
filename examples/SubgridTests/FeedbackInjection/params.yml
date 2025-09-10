@@ -19,15 +19,15 @@ Gravity:
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.      # The starting time of the simulation (in internal units).
-  time_end:          6.1e-3  # The end time of the simulation (in internal units).
+  time_end:          6.2e-3  # The end time of the simulation (in internal units).
   dt_min:            1e-10   # The minimal time-step size of the simulation (in internal units).
-  dt_max:            1e-3    # The maximal time-step size of the simulation (in internal units).
+  dt_max:            2e-4    # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
   subdir:     snap
   basename:   snapshot      # Common part of the name of output files
-  time_first: 5.9e-3        # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  time_first: 6.2e-3        # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 1e-6          # Time difference between consecutive outputs (in internal units)
 
 Scheduler:

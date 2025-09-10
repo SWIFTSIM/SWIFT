@@ -1,5 +1,5 @@
 # Intro
-This example consists of a periodic box filled with gas particles of equal mass. In the (xy) midplane (i.e. centre of the box), the particles are placed with a uniform probability distribution and in the z-axis, the particles are placed with a Gaussian distribution function \rho(z) = \exp(-z^2 / 2 h^2), where h is the means inter-particle separation in the midplane.
+This example consists of a periodic box filled with gas particles of equal mass. In the (xy) midplane (i.e. centre of the box), the particles are placed with a uniform probability distribution and in the z-axis, the particles are placed with a Gaussian distribution function \rho(z) = \exp(-z^2 / 2 h^2), where h is the mean inter-particle separation in the midplane.
 
 An individual star particle lies at the center, ready to explode as a supernova.
 
