@@ -241,6 +241,13 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
       maxdepth = max(maxdepth, cp->maxdepth);
     }
 
+    /* If we have an empty non-void progeny cell, skip it, we don't want to
+     * include it in the timestep calculation. */
+    if (cp->subtype != cell_subtype_void &&
+        (cp->grav.count == 0 && cp->hydro.count == 0 && cp->stars.count == 0 &&
+         cp->sinks.count == 0 && cp->black_holes.count == 0))
+      continue;
+
     /* Update the timestep information. */
     ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
     ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
