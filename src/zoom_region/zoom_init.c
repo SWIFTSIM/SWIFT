@@ -941,7 +941,7 @@ void zoom_region_init(struct space *s, const int verbose) {
   /* Ensure all particles are within the box boundaries (sanity check for
    * truncation and shifting, if not truncated we don't need to wrap here as
    * it is done in the main code). */
-  if (zoom_props->truncate_background) {
+  if (s->zoom_props->truncate_background) {
     for (size_t k = 0; k < s->nr_parts; k++) {
       if (s->parts[k].time_bin == time_bin_inhibited) continue;
       for (int i = 0; i < 3; i++) {
