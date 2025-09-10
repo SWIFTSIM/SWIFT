@@ -1080,7 +1080,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(struct spart* rest
     const struct phys_const* phys_const, const integertime_t ti_begin,
 							   const double star_age_beg_step, const double dt) {
 
-  /* Check that this function is called for individual stars (REDUNDANT) */
+  /* Check that this function is called for individual stars */
   if (sp->star_type != single_star) {
     error("This function can only be called for single/individual star!");
   }

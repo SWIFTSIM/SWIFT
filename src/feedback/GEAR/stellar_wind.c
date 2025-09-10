@@ -181,7 +181,7 @@ void stellar_wind_init(struct stellar_wind *sw, struct swift_params *params,
  *
  * @return energy per unit time in [erg/yr].
  */
-double stellar_wind_get_ejected_energy(const struct stellar_wind *sw, double log_m, float log_z) {
+double stellar_wind_get_ejected_energy(const struct stellar_wind *sw, float log_m, float log_z) {
   return pow(10,interpolate_2d(&sw->raw.ejected_energy, log_z, log_m));
 };
 
@@ -194,7 +194,7 @@ double stellar_wind_get_ejected_energy(const struct stellar_wind *sw, double log
  *
  * @return energy per progenitor mass per unit time in [erg/yr].
  */
-double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw, double log_m, float log_z) {
+double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw, float log_m, float log_z) {
   return pow(10,interpolate_2d(&sw->integrated.ejected_energy_per_progenitor_mass, log_z, log_m));
 };
 
