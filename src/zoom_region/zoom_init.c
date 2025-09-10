@@ -957,10 +957,11 @@ void zoom_region_init(struct space *s, const int verbose) {
     for (int i = 0; i < 3; i++) {
       if (s->gparts[k].x[i] < 0.0 || s->gparts[k].x[i] >= s->dim[i]) {
         error(
-            "GPart %zu is out of bounds after zoom region setup! "
+            "gpart %zu (%s) is out of bounds after zoom region setup! "
             "(x=[%f, %f, %f], dim=[%f, %f, %f])",
-            k, s->gparts[k].x[0], s->gparts[k].x[1], s->gparts[k].x[2],
-            s->dim[0], s->dim[1], s->dim[2]);
+            k, part_type_names[s->gparts[k].type], s->gparts[k].x[0],
+            s->gparts[k].x[1], s->gparts[k].x[2], s->dim[0], s->dim[1],
+            s->dim[2]);
       }
     }
   }
