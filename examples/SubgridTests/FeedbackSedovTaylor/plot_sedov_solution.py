@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 import h5py
 from scipy import stats
 from scipy.special import gamma as Gamma
-from scipy.optimize import curve_fit
+from scipy.optimize import minimize
 from scipy.interpolate import interp1d
 import astropy.units as units
 
@@ -332,6 +332,28 @@ def sedov_fit_model(r, E_0, rho_0, P_0, time, g=1.4, nu=3):
     return np.hstack((rho_fit, P_fit, v_fit))
 
 
+def cost_function(log_params, r_bin, data, sigma_data, time, gas_gamma):
+    """
+    Calculate the sum of squared residuals for the Sedov fit in log-space.
+    """
+    # Unpack the log-transformed parameters
+    log_E_0, log_rho_0, log_P_0 = log_params
+
+    # Convert back to linear space
+    E_0 = np.exp(log_E_0)
+    rho_0 = np.exp(log_rho_0)
+    P_0 = np.exp(log_P_0)
+
+    # Calculate the model values
+    model_data = sedov_fit_model(r_bin, E_0, rho_0, P_0, time, gas_gamma)
+
+    # Calculate the weighted residuals, handling potential NaNs
+    residuals = (data - model_data) / sigma_data
+    residuals[np.isnan(residuals)] = 1e10
+
+    return np.sum(residuals**2)
+
+
 class ExplicitDefaultsHelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
     """Formatter that prints default arguments if provided."""
 
@@ -555,7 +577,7 @@ else:
 if P_0 is None:
     P_0_guess = np.median(P)
 else:
-    P_0_guess = rho_0
+    P_0_guess = P_0
 
 if E_0 is None:
     # For E_0, find the point of maximum change in density to estimate the shock
@@ -581,20 +603,35 @@ sigma_data = np.hstack((rho_sigma_bin, P_sigma_bin, v_sigma_bin))
 # We must ensure no zero or near-zero sigmas
 sigma_data = np.maximum(sigma_data, 1e-15)
 
-popt, pcov = curve_fit(
-    lambda r_fit, E_0, rho_0, P_0: sedov_fit_model(
-        r_fit, E_0, rho_0, P_0, time, gas_gamma, nu=3
-    ),
-    r_bin,
-    data,
-    p0=initial_guess,
-    sigma=sigma_data,
-    absolute_sigma=True,
+# Transform them into log-space
+initial_guess_log = [np.log(E_0_guess), np.log(rho_0_guess), np.log(P_0_guess)]
+
+bounds_log = [
+    (np.log(1e45), np.log(1e55)),
+    (np.log(1e-30), np.log(1e-15)),
+    (np.log(1e-20), np.log(1e-10)),
+]
+
+result = minimize(
+    cost_function,
+    initial_guess_log,
+    args=(r_bin, data, sigma_data, time, gas_gamma),
+    method="L-BFGS-B",
+    bounds=bounds_log,
 )
 
-# Extract the fitted parameters
-E_0_fit, rho_0_fit, P_0_fit = popt
-print(f"Fitted values: (E_0, rho_0, P_0) = ({E_0_fit}, {rho_0_fit}, {P_0_fit})")
+# Check if the minimization was successful
+if result.success:
+    log_popt = result.x
+    E_0_fit = np.exp(log_popt[0])
+    rho_0_fit = np.exp(log_popt[1])
+    P_0_fit = np.exp(log_popt[2])
+
+    # E_0_fit, rho_0_fit, P_0_fit = popt
+    print("Fitted values: ", E_0_fit, rho_0_fit, P_0_fit)
+else:
+    print("Optimization failed. Reason:", result.message)
+    E_0_fit, rho_0_fit, P_0_fit = E_0_guess, rho_0_guess, P_0_guess
 
 # The main properties of the solution
 r_s, P_s, rho_s, v_s, _, r_shock, _, _, _, _ = sedov(
@@ -729,7 +766,6 @@ ax.set_xlim(0, n_shock * r_shock_plot)
 plt.tight_layout()
 
 if output_filename is not None:
-    output_name = output_filename + "." + image_format
-    plt.savefig(output_name, format=image_format, dpi=dpi)
+    plt.savefig(output_filename, format=image_format, dpi=dpi)
 else:
     plt.show()
