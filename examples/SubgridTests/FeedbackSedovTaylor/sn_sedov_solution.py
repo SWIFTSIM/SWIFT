@@ -435,17 +435,27 @@ u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 # Now, work out the solution....
 ################################
 
-rho_0_guess = np.median(rho)
-P_0_guess = np.median(P)
+if rho_0 is None:
+    rho_0_guess = np.median(rho)
+else:
+    rho_0_guess = rho_0
 
-# For E_0, find the point of maximum change in density to estimate the shock
-# radius.
-d_rho_bin = np.gradient(rho_bin)
-r_shock_guess = r_bin[np.argmax(d_rho_bin)]
+if P_0 is None:
+    P_0_guess = np.median(P)
+else:
+    P_0_guess = rho_0
 
-# Guess E_0 using a known analytical relationship for a Sedov explosion.
-E_0_guess = rho_0_guess * (r_shock_guess**5) / (time**2)
-E_0_guess = E_0_guess[0]
+if E_0 is None:
+    # For E_0, find the point of maximum change in density to estimate the shock
+    # radius.
+    d_rho_bin = np.gradient(rho_bin)
+    r_shock_guess = r_bin[np.argmax(d_rho_bin)]
+
+    # Guess E_0 using a known analytical relationship for a Sedov explosion.
+    E_0_guess = rho_0_guess * (r_shock_guess**5) / (time**2)
+    E_0_guess = E_0_guess[0]
+else:
+    E_0_guess = E_0
 
 initial_guess = [E_0_guess, rho_0_guess, P_0_guess]
 print("Initial Guess:", initial_guess)
