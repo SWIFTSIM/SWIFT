@@ -433,6 +433,10 @@ n_shock = 1.5  # Shock index
 # Ensure the file exists
 file = opt.file
 
+output_filename = opt.output_filename
+image_format = opt.image_format
+dpi = opt.dpi
+
 try:
     with h5py.File(file, "r") as sim:
         # Read unit conversion factors from the snapshot
@@ -539,7 +543,6 @@ v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
 P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
 u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 
-
 ################################
 # Now, work out the solution....
 ################################
@@ -567,7 +570,7 @@ else:
     E_0_guess = E_0
 
 initial_guess = [E_0_guess, rho_0_guess, P_0_guess]
-print("Initial Guess:", initial_guess)
+print(f"Initial Guess: (E_0, rho_0, P_0) = {initial_guess}")
 
 # Gather the binned data
 data = np.hstack((rho_bin, P_bin, v_bin))
@@ -591,7 +594,7 @@ popt, pcov = curve_fit(
 
 # Extract the fitted parameters
 E_0_fit, rho_0_fit, P_0_fit = popt
-print("Fitted values: ", E_0_fit, rho_0_fit, P_0_fit)
+print(f"Fitted values: (E_0, rho_0, P_0) = ({E_0_fit}, {rho_0_fit}, {P_0_fit})")
 
 # The main properties of the solution
 r_s, P_s, rho_s, v_s, _, r_shock, _, _, _, _ = sedov(
@@ -724,4 +727,9 @@ ax.set_xlim(0, n_shock * r_shock_plot)
 
 # Adjust layout and save figure
 plt.tight_layout()
-plt.savefig("Sedov.pdf", format="pdf", dpi=300)
+
+if output_filename is not None:
+    output_name = output_filename + "." + image_format
+    plt.savefig(output_name, format=image_format, dpi=dpi)
+else:
+    plt.show()
