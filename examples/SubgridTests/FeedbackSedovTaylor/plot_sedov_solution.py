@@ -33,9 +33,20 @@ import astropy.units as units
 
 def calc_a(g, nu=3):
     """
-    exponents of the polynomials of the sedov solution
-    g - the polytropic gamma
-    nu - the dimension
+    Calculate the exponents of the polynomials for the Sedov solution.
+
+    Parameters
+    ----------
+    g : float
+        The polytropic gas gamma.
+    nu : int, optional
+        The dimension of the explosion. The default is 3.
+
+    Returns
+    -------
+    list
+        A list of 8 coefficients for the Sedov solution.
+
     """
     a = [0] * 8
 
@@ -55,10 +66,22 @@ def calc_a(g, nu=3):
 
 def calc_beta(v, g, nu=3):
     """
-    beta values for the sedov solution (coefficients of the polynomials of the similarity variables)
-    v - the similarity variable
-    g - the polytropic gamma
-    nu- the dimension
+    Calculate the coefficients of the polynomials for the similarity variables.
+
+    Parameters
+    ----------
+    v : numpy.ndarray
+        The similarity variable array.
+    g : float
+        The polytropic gas gamma.
+    nu : int, optional
+        The dimension of the explosion. The default is 3.
+
+    Returns
+    -------
+    numpy.ndarray
+        A 4xN array of beta values for the Sedov solution.
+
     """
 
     beta = (
@@ -94,14 +117,40 @@ def calc_beta(v, g, nu=3):
 
 def sedov(t, E0, rho0, g, n=1000, nu=3):
     """
-    TODO: Provide better docstring
-    solve the sedov problem
-    t - the time
-    E0 - the initial energy
-    rho0 - the initial density
-    n - number of points (10000)
-    nu - the dimension
-    g - the polytropic gas gamma
+    Solve the standard Sedov blast wave problem.
+
+    This function computes the analytical solution for a blast wave in a uniform
+    medium, returning the profiles for radius, pressure, density, and velocity.
+
+    Parameters
+    ----------
+    t : float
+        The time of the blast wave.
+    E0 : float
+        The initial explosion energy.
+    rho0 : float
+        The initial background density.
+    g : float
+        The polytropic gas gamma.
+    n : int, optional
+        The number of points in the similarity variable array. The default is 1000.
+    nu : int, optional
+        The dimension of the explosion. The default is 3.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - r (numpy.ndarray): Radial position profile.
+        - p (numpy.ndarray): Pressure profile.
+        - rho (numpy.ndarray): Density profile.
+        - u (numpy.ndarray): Specific internal energy profile.
+        - v (numpy.ndarray): Velocity profile.
+        - r_s (float): Shock radius.
+        - p_s (float): Post-shock pressure.
+        - rho_s (float): Post-shock density.
+        - u_s (float): Post-shock specific internal energy.
+        - shock_speed (float): The speed of the shock front.
     """
     # the similarity variable
     v_min = 2.0 / ((nu + 2) * g)
@@ -163,16 +212,45 @@ def sedov(t, E0, rho0, g, n=1000, nu=3):
     return r, p, rho, u, v, r_s, p_s, rho_s, u_s, shock_speed
 
 
-def sedov_extended(t, E0, rho0, P0, g, n=1000, nu=3):
+def sedov_solution(t, E0, rho0, P0, g, n=1000, nu=3):
     """
-    TODO: Provide better docstring
-    solve the sedov problem
-    t - the time
-    E0 - the initial energy
-    rho0 - the initial density
-    n - number of points (10000)
-    nu - the dimension
-    g - the polytropic gas gamma
+    Solve the Sedov blast wave problem and extend the solution past the shock front.
+
+    This function calls the standard Sedov solver and then appends ambient
+    conditions to the solution arrays to represent the region outside the
+    blast wave.
+
+    Parameters
+    ----------
+    t : float
+        The time of the blast wave.
+    E0 : float
+        The initial explosion energy.
+    rho0 : float
+        The initial background density.
+    P0 : float
+        The initial background pressure.
+    g : float
+        The polytropic gas gamma.
+    n : int, optional
+        The number of points for the standard Sedov solution. The default is 1000.
+    nu : int, optional
+        The dimension of the explosion. The default is 3.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the extended analytical profiles and post-shock values:
+        - r (numpy.ndarray): Extended radial position profile.
+        - p (numpy.ndarray): Extended pressure profile.
+        - rho (numpy.ndarray): Extended density profile.
+        - u (numpy.ndarray): Extended specific internal energy profile.
+        - r_s (float): Shock radius from the standard solution.
+        - p_s (float): Post-shock pressure from the standard solution.
+        - rho_s (float): Post-shock density from the standard solution.
+        - u_s (float): Post-shock specific internal energy from the standard solution.
+        - shock_speed (float): The speed of the shock front.
+
     """
     n_2 = n - 2
 
@@ -192,12 +270,38 @@ def sedov_extended(t, E0, rho0, P0, g, n=1000, nu=3):
 
 def sedov_fit_model(r, E_0, rho_0, P_0, time, g=1.4, nu=3):
     """
-    A wrapper for the Sedov function to be used in curve fitting.
-    Returns interpolated values of rho, P, and v at given radii r.
-    """
+    Return interpolated values for density, pressure, and velocity from a Sedov model.
 
+    This function acts as a wrapper for the Sedov solution, making it suitable
+    for use with `scipy.optimize.curve_fit`. It solves the Sedov problem for
+    the given parameters and returns interpolated values at the input radii.
+
+    Parameters
+    ----------
+    r_fit : numpy.ndarray
+        The array of radii at which to evaluate the model.
+    E_0 : float
+        The fitted explosion energy.
+    rho_0 : float
+        The fitted background density.
+    P_0 : float
+        The fitted background pressure.
+    time : float
+        The time of the blast wave.
+    g : float, optional
+        The polytropic gas gamma. The default is 1.4.
+    nu : int, optional
+        The dimension of the explosion. The default is 3.
+
+    Returns
+    -------
+    numpy.ndarray
+        A flattened array containing the interpolated density, pressure, and
+        velocity values.
+
+    """
     # Solve Sedov blast wave problem
-    r_s, P_s, rho_s, v_s, r_shock, _, _, _, _ = sedov_extended(
+    r_s, P_s, rho_s, v_s, r_shock, _, _, _, _ = sedov_solution(
         t=time, E0=E_0, rho0=rho_0, P0=P_0, g=g, n=len(r), nu=nu
     )
 
@@ -250,8 +354,13 @@ class RawTextArgumentDefaultsHelpFormatter(
 
 def parse_options():
     """
-    Parses command-line arguments for computing the analytical solution
-    of the 3D Sedov blast wave and comparing it to simulation data.
+    Parse command-line arguments for the Sedov blast wave analysis script.
+
+    Returns
+    -------
+    argparse.Namespace
+        An object containing the parsed command-line arguments.
+
     """
     parser = argparse.ArgumentParser(
         description="Compute and analyze the Sedov blast wave from a SWIFT simulation.",
