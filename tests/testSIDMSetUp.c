@@ -122,39 +122,38 @@ int main(int argc, char *argv[]) {
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
 
-    /* pseudo initialization of the hydro properties */
+  /* pseudo initialization of the hydro properties */
   message("Initialization of the gas.");
   hydro_props_init(&hydro_properties, &prog_const, &us, &param_file);
-
 
   /* pseudo initialization of SIDM */
   message("Initialization of the SIDM.");
   sidm_props_init(&sidm_properties, &prog_const, &us, &param_file,
-                      &hydro_properties, &cosmo);
+                  &hydro_properties, &cosmo);
 
   /* pseudo initialization of the space */
   message("Initialization of the space.");
   struct space s;
-  space_init(&s, &param_file, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
-               sparts, bparts, siparts, Ngas, Ngpart, Nsink, Nspart, Nbpart,
-               Nnupart, Nsipart, periodic, 
-               /*replicate=*/1, 
-               /*remap_ids=*/0, 
-               /*generate_gas_in_ics=*/0, 
-               /*with_hydro=*/1,
-               /*with_self_gravity=*/0,
-               /*with_star_formation=*/0,
-               /*with_sinks=*/0,
-               /*with_DM_particles=*/0,
-               /*with_DM_background_particles=*/0,
-               /*with_neutrinos=*/0,
-               /*talking=*/0, /*dry_run=*/0,/*nr_nodes=*/1);
-  
+  space_init(&s, &param_file, &cosmo, dim, &hydro_properties, parts, gparts,
+             sinks, sparts, bparts, siparts, Ngas, Ngpart, Nsink, Nspart,
+             Nbpart, Nnupart, Nsipart, periodic,
+             /*replicate=*/1,
+             /*remap_ids=*/0,
+             /*generate_gas_in_ics=*/0,
+             /*with_hydro=*/1,
+             /*with_self_gravity=*/0,
+             /*with_star_formation=*/0,
+             /*with_sinks=*/0,
+             /*with_DM_particles=*/0,
+             /*with_DM_background_particles=*/0,
+             /*with_neutrinos=*/0,
+             /*talking=*/0, /*dry_run=*/0, /*nr_nodes=*/1);
+
   message("space dimensions are [ %.3f %.3f %.3f ].", s.dim[0], s.dim[1],
-              s.dim[2]);
+          s.dim[2]);
   message("space %s periodic.", s.periodic ? "is" : "isn't");
   message("highest-level cell dimensions are [ %i %i %i ].", s.cdim[0],
-              s.cdim[1], s.cdim[2]);
+          s.cdim[1], s.cdim[2]);
   message("%zi siparts in %i cells.", s.nr_siparts, s.tot_cells);
   message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
 
@@ -176,36 +175,33 @@ int main(int argc, char *argv[]) {
   /* pseudo initialization of the engine */
   message("Initialization of the engine.");
   struct engine e;
-  
+
   e.physical_constants = &prog_const;
 
   /* Initialize the engine with the space and policies. */
-  engine_init(&e, &s, &param_file, &output_options,
-              Ngas,
-              /*Ngparts=*/0,/*Nsinks=*/0,/*Nstars=*/0,
-              /*Nblackholes=*/0,/*Nbackground_gparts=*/0,/*Nnuparts=*/0,
-              Nsipart, engine_policies, 
-              /*talking=*/0, 
-              &us, &prog_const, &cosmo,
-              &hydro_properties, &entropy_floor, &gravity_properties,
-              &stars_properties, &black_holes_properties, &sink_properties,
-              &neutrino_properties, &sidm_properties, &neutrino_response,
-              &feedback_properties, &pressure_floor_props, &rt_properties,
-              &mesh, &pow_data, &potential, &forcing_terms, &cooling_func,
-              &starform, &chemistry, &extra_io_props, &fof_properties,
-              &los_properties, &lightcone_array_properties, &ics_metadata);
+  engine_init(&e, &s, &param_file, &output_options, Ngas,
+              /*Ngparts=*/0, /*Nsinks=*/0, /*Nstars=*/0,
+              /*Nblackholes=*/0, /*Nbackground_gparts=*/0, /*Nnuparts=*/0,
+              Nsipart, engine_policies,
+              /*talking=*/0, &us, &prog_const, &cosmo, &hydro_properties,
+              &entropy_floor, &gravity_properties, &stars_properties,
+              &black_holes_properties, &sink_properties, &neutrino_properties,
+              &sidm_properties, &neutrino_response, &feedback_properties,
+              &pressure_floor_props, &rt_properties, &mesh, &pow_data,
+              &potential, &forcing_terms, &cooling_func, &starform, &chemistry,
+              &extra_io_props, &fof_properties, &los_properties,
+              &lightcone_array_properties, &ics_metadata);
 
-  engine_config(/*restart=*/0, /*fof=*/0, &e, &param_file, 
+  engine_config(/*restart=*/0, /*fof=*/0, &e, &param_file,
                 /*nr_nodes=*/1, /*myrank=*/0, /*nr_threads=*/1,
-                /*nr_pool_threads=*/1, /*with_aff=*/0, /*talking=*/0,
-                NULL, NULL, &reparttype);
+                /*nr_pool_threads=*/1, /*with_aff=*/0, /*talking=*/0, NULL,
+                NULL, &reparttype);
 
   message(
-          "Running on %zu gas particles, %zu sink particles, %zu stars "
-          "particles %zu black hole particles, %zu neutrino particles, "
-          "%zu CDM particles and %zu SIDM particles",
-          Ngas, Nsink, Nspart, Nbpart,
-          Nnupart, Ngpart, Nsipart);
+      "Running on %zu gas particles, %zu sink particles, %zu stars "
+      "particles %zu black hole particles, %zu neutrino particles, "
+      "%zu CDM particles and %zu SIDM particles",
+      Ngas, Nsink, Nspart, Nbpart, Nnupart, Ngpart, Nsipart);
 
   /* Clean-up */
   message("Cleaning memory.");
