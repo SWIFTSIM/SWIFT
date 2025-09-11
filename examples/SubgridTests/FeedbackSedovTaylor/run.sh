@@ -64,6 +64,7 @@ else
 fi
 
 #Do some data analysis to show what's in this box
+echo "Plotting gas density"
 python3 plot_gas_density.py -i 10 -s 'snap/snapshot'
 python3 plot_gas_density.py -i 20 -s 'snap/snapshot'
 python3 plot_gas_density.py -i 30 -s 'snap/snapshot'
@@ -71,8 +72,12 @@ python3 plot_gas_density.py -i 40 -s 'snap/snapshot'
 python3 plot_gas_density.py -i 50 -s 'snap/snapshot'
 python3 plot_gas_density.py -i 100 -s 'snap/snapshot'
 
+# Movie time
+python3 plot_gas_density.py -i 0 -f 100 -s 'snap/snapshot'
+
 # Don't do a phase-space diagram if we are running without cooling
-if [ "$with_cooling" -eq 1 ];
+if [ "$with_cooling" -eq 1 ]; then
+   echo "Plotting phase space diagram"
    python3 rhoTPlot.py -i 10 -s 'snap/snapshot'
    python3 rhoTPlot.py -i 20 -s 'snap/snapshot'
    python3 rhoTPlot.py -i 30 -s 'snap/snapshot'
@@ -80,13 +85,11 @@ if [ "$with_cooling" -eq 1 ];
    python3 rhoTPlot.py -i 50 -s 'snap/snapshot'
    python3 rhoTPlot.py -i 100 -s 'snap/snapshot'
 
+   # Movie time!
    python3 rhoTPlot.py -i 0 -f 100 -s 'snap/snapshot'
-else
 fi
 
-# Do a gas density evolution movie
-python3 plot_gas_density.py -i 0 -f 100 -s 'snap/snapshot'
-
+echo "Plotting radial momentum profile"
 python3 radial_momentum_profile.py snap/snapshot_0010.hdf5 \
 	-o radial_momentum_profile_0010.png
 python3 radial_momentum_profile.py snap/snapshot_0020.hdf5 \
@@ -100,9 +103,19 @@ python3 radial_momentum_profile.py snap/snapshot_0050.hdf5 \
 python3 radial_momentum_profile.py snap/snapshot_0100.hdf5 \
 	-o radial_momentum_profile_0100.png
 
-# python3 sn_sedov_solution.py snap/snapshot_0030.hdf5 --rho_0  2e-4 --P 1e-5 \
-# --E_0 5e-4
+# Plot the Sedov solution
+echo "Plotting Sedov solution fit"
+for ((i=10; i<=100; i+=10)); do
+  SNAP_NUMBER=$(printf "%04d" $i)
+  INPUT_FILE="snap/snapshot_${SNAP_NUMBER}.hdf5"
+  OUTPUT_FILE="sedov_solution_${SNAP_NUMBER}.png"
 
+  echo "Processing ${INPUT_FILE} and saving to ${OUTPUT_FILE}..."
+
+  python3 plot_sedov_solution.py "${INPUT_FILE}" -o "${OUTPUT_FILE}" --step 0.01
+
+  echo "Done with snapshot ${i}."
+done
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."

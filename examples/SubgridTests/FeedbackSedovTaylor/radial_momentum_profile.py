@@ -130,7 +130,7 @@ for base_folder in base_folders:
         fig, ax = plt.subplots()
         ax.scatter(r, p_r.to(u.Msun * u.km/u.s), s=1, alpha=0.5)
         ax.set_xlabel(r"$r$ [kpc]")
-        ax.set_ylabel("p$_r$ [M$_\odot$ km/s]")
+        ax.set_ylabel(r"p$_r$ [M$_\odot$ km/s]")
         ax.grid(True, linestyle="--", alpha=0.6)
 
         # Save plot
