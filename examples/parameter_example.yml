@@ -1023,6 +1023,11 @@ SPHM1RT:
   beta:                   1.245e-15                   # (Conditional) (if useparams=1) The collisional ionization coefficient for hydrogen (cgs)
   reinject:               1                           # (Optional) gather energy around injection radius and re-inject the energy
 
+# Parameters related to stellar winds --------------------------------------------
+
+GEARStellar_wind:
+  interpolation_size_mass:        200       # Size of the mass array of the grid used in stellar winds yields.
+  interpolation_size_metallicity: 110       # Size of the metallicity array of the grid used in stellar winds yields.
 
 # Parameters related to power spectra --------------------------------------------
 

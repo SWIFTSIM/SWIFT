@@ -100,8 +100,8 @@ void stellar_wind_read_yields_array(
     float log_metallicity_max = log_metallicity_min + step_size_z * Nz;
   
     interpolate_2d_init(interp, 
-                        log_metallicity_min, log_metallicity_max, Nz,
-                        log_mass_min, log_mass_max, Nm, 
+                        log_metallicity_min, log_metallicity_max, interpolation_size_z,
+                        log_mass_min, log_mass_max, interpolation_size_m, 
                         log_metallicity_min, log_mass_min, 
                         step_size_z, step_size_m, Nz, Nm, data,
                         boundary_condition_const);
@@ -132,9 +132,9 @@ void stellar_wind_read_yields(struct stellar_wind *sw,
     //TODO this part is not active in fact
     if (!restart) {
     sw->interpolation_size_m = parser_get_opt_param_int(
-    params, "GEARStellar_wind:interpolation_size_m", 200);
+    params, "GEARStellar_wind:interpolation_size_mass", 200);
     sw->interpolation_size_z = parser_get_opt_param_int(
-    params, "GEARStellar_wind:interpolation_size_z", 200);
+    params, "GEARStellar_wind:interpolation_size_metallicity", 110);
     }
 
     /* Open IMF group */
