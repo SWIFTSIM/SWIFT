@@ -46,8 +46,8 @@
  */
 float feedback_compute_spart_timestep(
     const struct spart* const sp, const struct feedback_props* feedback_props,
-    const struct phys_const* phys_const,
-    const int with_cosmology, const struct cosmology* cosmo) {
+    const struct phys_const* phys_const, const int with_cosmology,
+    const struct cosmology* cosmo) {
 
   /* TODO: Compute timestep for feedback */
   const float dt = FLT_MAX;
@@ -271,9 +271,10 @@ void feedback_will_do_feedback(
   sp->feedback_data.preSN.energy_ejected *= feedback_props->preSN_efficiency;
 
   /* Set the particle as doing some feedback */
-  sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.
-                                       || sp->feedback_data.preSN.energy_ejected != 0.
-                                       || !sp->feedback_data.is_dead;
+  sp->feedback_data.will_do_feedback =
+      sp->feedback_data.energy_ejected != 0. ||
+      sp->feedback_data.preSN.energy_ejected != 0. ||
+      !sp->feedback_data.is_dead;
 }
 
 /**

@@ -91,12 +91,12 @@ runner_iact_nonsym_feedback_apply(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const integertime_t ti_current) {
 
-  //message("No feedback applied");
+  // message("No feedback applied");
 
   const double e_sn = si->feedback_data.energy_ejected;
   const double e_preSN = si->feedback_data.preSN.energy_ejected;
 
-  //message("The preSN energy of the particle %lli is : %lf",si->id,e_preSN);
+  // message("The preSN energy of the particle %lli is : %lf",si->id,e_preSN);
 
   const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);
@@ -123,7 +123,7 @@ runner_iact_nonsym_feedback_apply(
   /* Distribute SN */
   if (e_sn != 0.0) {
     /* Energy received */
-    const double du = (e_sn) * weight / new_mass;
+    const double du = (e_sn)*weight / new_mass;
 
     xpj->feedback_data.delta_mass += dm;
     xpj->feedback_data.delta_u += du;
@@ -136,20 +136,19 @@ runner_iact_nonsym_feedback_apply(
     /* Add the metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
       pj->chemistry_data.metal_mass[i] +=
-        weight * si->feedback_data.metal_mass_ejected[i];
+          weight * si->feedback_data.metal_mass_ejected[i];
     }
   }
 
   /* Distribute pre-SN */
   if (e_preSN != 0.0) {
-    /* Energy received */ 
-    /* Here the new mass correspond to the mass added by supernovae 
-    in the case where both supernovae and pre-SN feedback occur . 
+    /* Energy received */
+    /* Here the new mass correspond to the mass added by supernovae
+    in the case where both supernovae and pre-SN feedback occur .
     The pre-SN feedback does not yet implement a change in the mass !*/
-    const double du = (e_preSN) * weight / new_mass;
+    const double du = (e_preSN)*weight / new_mass;
     xpj->feedback_data.delta_u += du;
   }
-
 
   /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);

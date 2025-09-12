@@ -190,7 +190,7 @@ struct stellar_wind {
 
   /*! Yields not integrated */
   struct {
-    
+
     /*! energy ejected by stellar winds. */
     struct interpolation_2d ejected_energy;
   } raw;
@@ -218,7 +218,6 @@ struct stellar_wind {
 
   /*! Number of metallicity element in the interpolation 2d array*/
   int interpolation_size_z;
-
 };
 
 /**
