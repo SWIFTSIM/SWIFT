@@ -43,6 +43,9 @@ struct feedback_props {
 
   /* Metallicity [Fe/H] transition for the first stars */
   float imf_transition_metallicity;
+
+  /*! Pre-supernova feedback energy effectively deposited */
+  float preSN_efficiency;
 };
 
 /**
@@ -75,6 +78,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   /* Print the feedback properties */
   message("Supernovae efficiency = %.2g",
           feedback_props->supernovae_efficiency);
+  message("Pre-Supernovae efficiency = %.2g", feedback_props->preSN_efficiency);
   message("Yields table = %s", feedback_props->stellar_model.yields_table);
 
   /* Print the stellar model */
@@ -111,6 +115,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   double e_efficiency =
       parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
   fp->supernovae_efficiency = e_efficiency;
+
+  /* Pre-Supernovae energy efficiency */
+  double w_efficiency =
+      parser_get_param_double(params, "GEARFeedback:pre_supernovae_efficiency");
+  fp->preSN_efficiency = w_efficiency;
 
   /* filename of the chemistry tables. */
   parser_get_param_string(params, "GEARFeedback:yields_table",

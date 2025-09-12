@@ -218,4 +218,215 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_free(
   interp->data = NULL;
 }
 
+////////////////////////////// Interpolation 2D
+////////////////////////////////////
+
+/**
+ * @brief Structure for the 2D interpolation.
+ */
+struct interpolation_2d {
+  /* Data to interpolate */
+  float *data;
+
+  /* Minimal x */
+  float xmin;
+
+  /* Step size between x points */
+  float dx;
+
+  /* Minimal y */
+  float ymin;
+
+  /* Step size between y points */
+  float dy;
+
+  /* Number of element in the x direction of the data */
+  int Nx;
+
+  /* Number of element in the y direction of the data */
+  int Ny;
+
+  /* Type of boundary conditions. */
+  enum interpolate_boundary_condition boundary_condition;
+};
+
+/**
+ * @brief Initialize the #interpolation_2d.
+ * Store the data (with "Data limits" proportion) into a flattened 1D array
+ * (with "Interpolation limits" proportion).
+ *
+ * @param interp The #interpolation_2d result, stored in swift.
+ * @param log_xmin Minimal value of x to (in log).  Interpolation limits
+ * @param log_xmax Maximal value of x (in log).   Interpolation limts
+ * @param Nx Requested number of values in x axes.  Interpolation limits
+ * @param log_ymin Minimal value of y (in log).   Interpolation limits
+ * @param log_ymax Maximal value of y (in log).   Interpolation limits
+ * @param Ny Requested number of values in y axes.  Interpolation limits
+ * @param log_data_xmin The minimal value of the data in x (in log).  Data
+ * limits
+ * @param log_data_ymin The minimal value of the data in y (in log).  Data
+ * limits
+ * @param log_step_size_x The size of the x steps (in log).   Data limits
+ * @param log_step_size_y The size of the y steps (in log).   Data limits
+ * @param N_data_x The number of element in the data x axis. Data limits
+ * @param N_data_y The number of element in the data y axis. Data limits
+ * @param data The data  coming from hdf5 table to interpolate.
+ * @param boundary_condition The type of #interpolate_boundary_condition.
+ */
+__attribute__((always_inline)) static INLINE void interpolate_2d_init(
+    struct interpolation_2d *interp, float log_xmin, float log_xmax, int Nx,
+    float log_ymin, float log_ymax, int Ny, float log_data_xmin,
+    float log_data_ymin, float log_step_size_x, float log_step_size_y,
+    int N_data_x, int N_data_y, const double *data,
+    enum interpolate_boundary_condition boundary_condition) {
+
+  /* Save the variables */
+  interp->Nx = Nx;
+  interp->xmin = log_xmin;
+  interp->dx = (log_xmax - log_xmin) / (Nx - 1.f);
+  interp->boundary_condition = boundary_condition;
+
+  interp->Ny = Ny;
+  interp->ymin = log_ymin;
+  interp->dy = (log_ymax - log_ymin) / (Ny - 1.f);
+
+  /* Allocate the memory */
+  interp->data = malloc(sizeof(float) * Nx * Ny);
+  if (interp->data == NULL) {
+    error("Failed to allocate memory for the interpolation");
+  }
+
+  /* Interpolate the data */
+  for (int i = 0; i < Nx; i++) {
+    const float log_x = log_xmin + i * interp->dx;
+    const float x_k = (log_x - log_data_xmin) / log_step_size_x;
+
+    for (int j = 0; j < Ny; j++) {
+      const float log_y = log_ymin + j * interp->dy;
+      const float y_k = (log_y - log_data_ymin) / log_step_size_y;
+
+      /* Data indexes */
+      const int idx = x_k;
+      const float fx = x_k - idx;
+      const int idy = y_k;
+      const float fy = y_k - idy;
+
+      int current_cell = i * Ny + j;
+      if (current_cell >= Nx * Ny) {
+        error("Index %d out of boundaries for interp->data", current_cell);
+      }
+      /* Extrapolate? */
+      if (idx < 0 || idx + 1 >= N_data_x || idy < 0 || idy + 1 >= N_data_y) {
+
+        switch (boundary_condition) {
+          case boundary_condition_error:
+            error("Cannot extrapolate");
+            break;
+          case boundary_condition_zero:
+            interp->data[current_cell] = 0;
+            break;
+          case boundary_condition_const:
+            const int midx = max(idx, 0);
+            const int midy = max(idy, 0);
+            const int row = min(midx, N_data_x - 1);
+            const int col = min(midy, N_data_y - 1);
+            const int cell_to_get = row * N_data_y + col;
+            if (cell_to_get >= N_data_x * N_data_y) {
+              error(
+                  "Index row=%d col=%d is out of boundary for the target data "
+                  "which has dimension row=%d col=%d",
+                  row, col, N_data_x, N_data_y);
+            }
+            interp->data[current_cell] = data[cell_to_get];
+            break;
+          default:
+            error("Interpolation type not implemented");
+        }
+        continue;
+      }
+
+      /* Interpolate data[i][j] <=> data[i * Ny + j] */
+      const float fx1 = data[idx * N_data_y + idy] * (1. - fx) +
+                        data[(idx + 1) * N_data_y + idy] * fx;
+      const float fx2 = data[idx * N_data_y + idy + 1] * (1. - fx) +
+                        data[(idx + 1) * N_data_y + idy + 1] * fx;
+      interp->data[current_cell] = fx1 * (1. - fy) + fx2 * fy;
+    }
+  }
+}
+
+/**
+ * @brief Interpolate the data.
+ *
+ * @param interp The #interpolation_2d.
+ * @param x The x value where to interpolate in log.
+ * @param y The y value where to interpolate in log.
+ *
+ * @return The interpolated value.
+ */
+__attribute__((always_inline)) static INLINE double interpolate_2d(
+    const struct interpolation_2d *interp, float log_x, float log_y) {
+
+  /* Find indices */
+  const float i = (log_x - interp->xmin) / interp->dx;
+  const int idx = i;
+  const float dx = i - idx;
+
+  const int Nx = interp->Nx;
+  const int Ny = interp->Ny;
+  const int array_size = Nx * Ny;
+
+  const float j = (log_y - interp->ymin) / interp->dy;
+  const int idy = j;
+  const float dy = j - idy;
+
+  /* Extrapolate? */
+  if (idx < 0 || idx + 1 >= Nx || idy < 0 || idy + 1 >= Ny) {
+    switch (interp->boundary_condition) {
+      case boundary_condition_error:
+        error("Cannot extrapolate");
+        break;
+      case boundary_condition_zero:
+        return 0;
+      case boundary_condition_const:
+        const int midx = max(idx, 0);
+        const int midy = max(idy, 0);
+        const int row = min(midx, Nx - 1);
+        const int col = min(midy, Ny - 1);
+        const int cell_to_get = row * Ny + col;
+        if (cell_to_get >= array_size) {
+          error("Index %d is out of boundary for the target data", cell_to_get);
+        }
+        return interp->data[cell_to_get];
+      default:
+        error("Interpolation type not implemented");
+    }
+  }
+
+  /* interpolate */
+  if ((idx * Ny + idy) >= array_size || ((idx + 1) * Ny + idy) >= array_size ||
+      (idx * Ny + idy + 1) >= array_size ||
+      ((idx + 1) * Ny + idy + 1) >= array_size) {
+    error("Index is out of boundaries for the interpolation");
+  }
+  const float fx1 = interp->data[idx * Ny + idy] * (1. - dx) +
+                    interp->data[(idx + 1) * Ny + idy] * dx;
+  const float fx2 = interp->data[idx * Ny + idy + 1] * (1. - dx) +
+                    interp->data[(idx + 1) * Ny + idy + 1] * dx;
+  return fx1 * (1. - dy) + fx2 * dy;
+}
+
+/**
+ * @brief Cleanup the #interpolation_2d structure.
+ *
+ * @param interp The #interpolation_2d.
+ */
+__attribute__((always_inline)) static INLINE void interpolate_2d_free(
+    struct interpolation_2d *interp) {
+
+  /* Free the allocated memory */
+  free(interp->data);
+  interp->data = NULL;
+}
+
 #endif  // SWIFT_GEAR_INTERPOLATION_H

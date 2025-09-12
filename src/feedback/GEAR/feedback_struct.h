@@ -69,9 +69,12 @@ struct feedback_spart_data {
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
 
-  /* TODO: Add you data in this struct (For clarity purposes :) */
   /*! Pre-SN data struct */
   struct {
+
+    /*! Energy injected in the surrounding particles, needs to be double as the
+     * energy is currently in erg/yr units and is of order 10^40*/ /* TODO:change into float for memory but /!\ change the stellar_wind.c functions in accordance */
+    double energy_ejected;
 
   } preSN;
 };

@@ -46,8 +46,8 @@
  */
 float feedback_compute_spart_timestep(
     const struct spart* const sp, const struct feedback_props* feedback_props,
-    const struct phys_const* phys_const,
-    const int with_cosmology, const struct cosmology* cosmo) {
+    const struct phys_const* phys_const, const int with_cosmology,
+    const struct cosmology* cosmo) {
 
   /* TODO: Compute timestep for feedback */
   const float dt = FLT_MAX;
@@ -70,11 +70,10 @@ float feedback_compute_spart_timestep(
 void feedback_update_part(struct part* p, struct xpart* xp,
                           const struct engine* e) {
 
-  /* TODO: Treat the pre-SN case
-     WARNING: Do not comment out this line, because it will mess-up with
+  /* WARNING: Do not comment out this line, because it will mess-up with
      SF/sinks. (I think it injects something that it should not...) */
   /* Did the particle receive a supernovae */
-  if (xp->feedback_data.delta_mass == 0) return;
+  if (xp->feedback_data.delta_u == 0) return;
 
   const struct cosmology* cosmo = e->cosmology;
   const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
@@ -205,6 +204,7 @@ void feedback_will_do_feedback(
 
   /* Zero the energy of supernovae */
   sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.preSN.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
 
   /* quit if the birth_scale_factor or birth_time is negative */
@@ -267,12 +267,14 @@ void feedback_will_do_feedback(
   /* Apply the energy efficiency factor */
   sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
 
-  /* TODO: See if we need to add something about pre-SN */
-  /* Set the particle as doing some feedback */
-  sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.
-                                       || !sp->feedback_data.is_dead;
+  /* Multiply pre-SN energy by the efficiency */
+  sp->feedback_data.preSN.energy_ejected *= feedback_props->preSN_efficiency;
 
-  /* TODO: Do we want to multiply pre-SN energy bu the efficiency? */
+  /* Set the particle as doing some feedback */
+  sp->feedback_data.will_do_feedback =
+      sp->feedback_data.energy_ejected != 0. ||
+      sp->feedback_data.preSN.energy_ejected != 0. ||
+      !sp->feedback_data.is_dead;
 }
 
 /**
