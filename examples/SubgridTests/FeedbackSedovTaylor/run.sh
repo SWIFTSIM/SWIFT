@@ -6,7 +6,7 @@ set -e
 n_threads=${n_threads:=8}  #Number of threads to use
 level=${level:=6}  #Number of particles = 2^(3*level)
 gas_density=${gas_density:=1} #Gas density in atom/cm^3
-gas_particle_mass=${gas_particle_mass:=10} #Mass of the gas particles
+gas_mass=${gas_mass:=10} #Mass of the gas particles
 star_mass=${star_mass:=29.7} #Mass of the gas particles
 with_cooling=${with_cooling:=0}
 L=${boxsize:=1} #boxsize in kpc
@@ -23,7 +23,7 @@ if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
     python3 makeIC.py --level $level --rho $gas_density --boxsize $L \
-	    --mass $gas_particle_mass --star_mass $star_mass \
+	    --mass $gas_mass --star_mass $star_mass \
 	    -o ICs_homogeneous_box.hdf5
 fi
 
