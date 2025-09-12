@@ -72,7 +72,7 @@ for base_folder in base_folders:
                 momentum_tot = np.sum(gas_momentum + star_momentum, axis=0)
 
                 E_kin = np.linalg.norm(gas_momentum)**2 / (2*data.gas.masses) + np.linalg.norm(star_momentum)**2 / (2*data.stars.masses)
-                E_int = data.gas.internal_energies
+                E_int = data.gas.internal_energies*data.gas.masses
                 
                 # Note: This example is without gravity => no E_pot_grav
                 
