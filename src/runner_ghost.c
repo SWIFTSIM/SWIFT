@@ -2109,11 +2109,7 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct sipart *restrict siparts = c->sidm.parts;
   const struct engine *e = r->e;
-  const struct space *s = e->s;
   const struct cosmology *cosmo = e->cosmology;
-  const struct sidm_props *sidm_props = e->sidm_properties;
-
-  const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   const float sidm_h_max = e->sidm_properties->h_max;
   const float sidm_h_min = e->sidm_properties->h_min;
@@ -2285,7 +2281,7 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
           if (((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old)) &&
-              (h_old < 0.999f * sidm_props->h_max))
+              (h_old < 0.999f * sidm_h_max))
             error(
                 "Smoothing length correction not going in the right direction");
 #endif
