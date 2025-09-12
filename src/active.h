@@ -509,6 +509,33 @@ __attribute__((always_inline)) INLINE static int bpart_is_active(
 }
 
 /**
+ * @brief Is this si-particle finishing its time-step now ?
+ *
+ * @param sp The #sipart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #sipart is active, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int sipart_is_active(
+    const struct sipart *sip, const struct engine *e) {
+
+  const timebin_t max_active_bin = e->max_active_bin;
+  const timebin_t sipart_bin = sip->time_bin;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_end = get_integer_time_end(ti_current, sip->time_bin);
+
+  if (ti_end < ti_current)
+    error(
+        "si-particle in an impossible time-zone! sip->ti_end=%lld "
+        "e->ti_current=%lld",
+        ti_end, ti_current);
+#endif
+
+  return (sipart_bin <= max_active_bin);
+}
+
+/**
  * @brief Has this particle been inhibited?
  *
  * @param p The #part.

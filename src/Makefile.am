@@ -45,7 +45,7 @@ endif
 
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h
-include_HEADERS += cell_hydro.h cell_stars.h cell_grav.h cell_sinks.h cell_black_holes.h cell_rt.h cell_grid.h
+include_HEADERS += cell_hydro.h cell_stars.h cell_grav.h cell_sinks.h cell_sidm.h cell_black_holes.h cell_rt.h cell_grid.h
 include_HEADERS += engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h
 include_HEADERS += common_io.h single_io.h distributed_io.h map.h tools.h  partition_fixed_costs.h
 include_HEADERS += partition.h clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h
@@ -70,7 +70,7 @@ include_HEADERS += feedback.h feedback_new_stars.h feedback_struct.h feedback_pr
 include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
 include_HEADERS += sink.h sink_iact.h sink_struct.h sink_io.h sink_properties.h sink_debug.h
-include_HEADERS += sidm_io.h
+include_HEADERS += sidm.h sidm_io.h sidm_properties.h
 include_HEADERS += particle_splitting.h particle_splitting_struct.h
 include_HEADERS += chemistry_csds.h star_formation_csds.h
 include_HEADERS += mesh_gravity.h mesh_gravity_mpi.h mesh_gravity_patch.h mesh_gravity_sort.h row_major_id.h
@@ -511,6 +511,8 @@ nobase_noinst_HEADERS += fvpm_geometry.h fvpm_geometry_struct.h
 nobase_noinst_HEADERS += fvpm_geometry/None/fvpm_geometry.h fvpm_geometry/None/fvpm_geometry_struct.h
 nobase_noinst_HEADERS += fvpm_geometry/Gizmo/fvpm_geometry.h fvpm_geometry/Gizmo/fvpm_geometry_struct.h
 nobase_noinst_HEADERS += fvpm_geometry/Gizmo/MFM/fvpm_geometry.h fvpm_geometry/Gizmo/MFV/fvpm_geometry.h
+nobase_noinst_HEADERS += sidm/Basic/sidm.h sidm/Basic/sidm_io.h sidm/Basic/sidm_part.h sidm/Basic/sidm_properties.h
+nobase_noinst_HEADERS += sidm/None/sidm.h sidm/None/sidm_io.h sidm/None/sidm_part.h sidm/None/sidm_properties.h
 
 # Sources and special flags for the gravity library
 libgrav_la_SOURCES = runner_doiact_grav.c

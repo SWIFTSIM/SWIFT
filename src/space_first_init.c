@@ -35,6 +35,7 @@
 #include "neutrino.h"
 #include "particle_splitting.h"
 #include "rt.h"
+#include "sidm.h"
 #include "sink.h"
 #include "star_formation.h"
 #include "stars.h"
@@ -516,6 +517,70 @@ void space_first_init_sinks(struct space *s, int verbose) {
     threadpool_map(&s->e->threadpool, space_first_init_sinks_mapper, s->sinks,
                    s->nr_sinks, sizeof(struct sink), threadpool_auto_chunk_size,
                    s);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+void space_first_init_siparts_mapper(void *restrict map_data, int count,
+                                     void *restrict extra_data) {
+
+  struct sipart *restrict sip = (struct sipart *)map_data;
+  const struct space *restrict s = (struct space *)extra_data;
+
+  const struct cosmology *cosmo = s->e->cosmology;
+  const float a_factor_vel = cosmo->a;
+  const struct sidm_props *sidm_props = s->e->sidm_properties;
+
+  /* Convert velocities to internal units */
+  for (int k = 0; k < count; k++) {
+
+    sip[k].v[0] *= a_factor_vel;
+    sip[k].v[1] *= a_factor_vel;
+    sip[k].v[2] *= a_factor_vel;
+
+#ifdef HYDRO_DIMENSION_2D
+    sip[k].x[2] = 0.f;
+    sip[k].v[2] = 0.f;
+#endif
+
+#ifdef HYDRO_DIMENSION_1D
+    sip[k].x[1] = sip[k].x[2] = 0.f;
+    sip[k].v[1] = sip[k].v[2] = 0.f;
+#endif
+  }
+
+  /* Initialise the rest */
+  for (int k = 0; k < count; k++) {
+
+    sidm_first_init_sipart(&sip[k], sidm_props);
+
+#ifdef WITH_CSDS
+    csds_part_data_init(&gp[k].csds_data);
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Initialise the time-integration check variables */
+    sip[k].ti_drift = 0;
+    sip[k].ti_kick = 0;
+    sip[k].ti_kick_mesh = 0;
+#endif
+  }
+}
+
+/**
+ * @brief Initialises all the si-particles by setting them into a valid state
+ *
+ * Calls gravity_first_init_gpart() on all the particles
+ */
+void space_first_init_siparts(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+  if (s->nr_siparts > 0)
+    threadpool_map(&s->e->threadpool, space_first_init_siparts_mapper,
+                   s->siparts, s->nr_siparts, sizeof(struct sipart),
+                   threadpool_auto_chunk_size, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

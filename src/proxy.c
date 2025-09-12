@@ -1180,6 +1180,38 @@ void proxy_sinks_load(struct proxy *p, const struct sink *sinks, int N) {
 }
 
 /**
+ * @brief Load siparts onto a proxy for exchange.
+ *
+ * @param p The #proxy.
+ * @param siparts Pointer to an array of #sipart to send.
+ * @param N The number of siparts.
+ */
+void proxy_siparts_load(struct proxy *p, const struct sipart *siparts, int N) {
+
+  /* Is there enough space in the buffer? */
+  if (p->nr_siparts_out + N > p->size_siparts_out) {
+    do {
+      p->size_siparts_out *= proxy_buffgrow;
+    } while (p->nr_siparts_out + N > p->size_siparts_out);
+    struct sipart *tp;
+    if ((tp = (struct sipart *)swift_malloc(
+             "siparts_out", sizeof(struct sipart) * p->size_siparts_out)) ==
+        NULL)
+      error("Failed to re-allocate siparts_out buffers.");
+    memcpy(tp, p->siparts_out, sizeof(struct sipart) * p->nr_siparts_out);
+    swift_free("siparts_out", p->siparts_out);
+    p->siparts_out = tp;
+  }
+
+  /* Copy the parts and xparts data to the buffer. */
+  memcpy(&p->siparts_out[p->nr_siparts_out], siparts,
+         sizeof(struct sipart) * N);
+
+  /* Increase the counters. */
+  p->nr_siparts_out += N;
+}
+
+/**
  * @brief Frees the memory allocated for the particle proxies and sets their
  * size back to the initial state.
  *

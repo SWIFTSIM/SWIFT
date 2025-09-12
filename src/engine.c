@@ -95,6 +95,7 @@
 #include "restart.h"
 #include "rt_properties.h"
 #include "runner.h"
+#include "sidm_properties.h"
 #include "sink_properties.h"
 #include "sort_part.h"
 #include "star_formation.h"
@@ -1934,6 +1935,7 @@ void engine_first_init_particles(struct engine *e) {
   space_first_init_sparts(e->s, e->verbose);
   space_first_init_bparts(e->s, e->verbose);
   space_first_init_sinks(e->s, e->verbose);
+  space_first_init_siparts(e->s, e->verbose);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3381,6 +3383,7 @@ void engine_numa_policies(int rank, int verbose) {
  * @param Nblackholes total number of black holes in the simulation.
  * @param Nbackground_gparts Total number of background DM particles.
  * @param Nnuparts Total number of neutrino DM particles.
+ * @param Nsidm total number of SIDM particles in the simulation.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param internal_units The system of units used internally.
@@ -3393,6 +3396,7 @@ void engine_numa_policies(int rank, int verbose) {
  * @param black_holes The #black_holes_props used for this run.
  * @param sinks The #sink_props used for this run.
  * @param neutrinos The #neutrino_props used for this run.
+ * @param sidm The #sidm_props used for this run.
  * @param feedback The #feedback_props used for this run.
  * @param mesh The #pm_mesh used for the long-range periodic forces.
  * @param pow_data The properties and pointers for power spectrum calculation.
@@ -3410,14 +3414,14 @@ void engine_init(
     struct engine *e, struct space *s, struct swift_params *params,
     struct output_options *output_options, long long Ngas, long long Ngparts,
     long long Nsinks, long long Nstars, long long Nblackholes,
-    long long Nbackground_gparts, long long Nnuparts, int policy, int verbose,
-    const struct unit_system *internal_units,
+    long long Nbackground_gparts, long long Nnuparts, long long Nsidm,
+    int policy, int verbose, const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
     struct hydro_props *hydro,
     const struct entropy_floor_properties *entropy_floor,
     struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
-    const struct neutrino_props *neutrinos,
+    const struct neutrino_props *neutrinos, const struct sidm_props *sidm,
     struct neutrino_response *neutrino_response,
     struct feedback_props *feedback,
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
@@ -3449,6 +3453,7 @@ void engine_init(
   e->total_nr_bparts = Nblackholes;
   e->total_nr_DM_background_gparts = Nbackground_gparts;
   e->total_nr_neutrino_gparts = Nnuparts;
+  e->total_nr_siparts = Nsidm;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->ti_old = 0;
@@ -3564,6 +3569,7 @@ void engine_init(
   e->black_holes_properties = black_holes;
   e->sink_properties = sinks;
   e->neutrino_properties = neutrinos;
+  e->sidm_properties = sidm;
   e->neutrino_response = neutrino_response;
   e->mesh = mesh;
   e->power_data = pow_data;
@@ -4020,6 +4026,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->pressure_floor_props);
     free((void *)e->rt_props);
     free((void *)e->sink_properties);
+    free((void *)e->sidm_properties);
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
     free((void *)e->neutrino_properties);
@@ -4098,6 +4105,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   rt_struct_dump(e->rt_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   sink_struct_dump(e->sink_properties, stream);
+  sidm_struct_dump(e->sidm_properties, stream);
   neutrino_struct_dump(e->neutrino_properties, stream);
   neutrino_response_struct_dump(e->neutrino_response, stream);
   chemistry_struct_dump(e->chemistry, stream);
@@ -4253,6 +4261,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct neutrino_props *)malloc(sizeof(struct neutrino_props));
   neutrino_struct_restore(neutrino_properties, stream);
   e->neutrino_properties = neutrino_properties;
+
+  struct sidm_props *sidm_properties =
+      (struct sidm_props *)malloc(sizeof(struct sidm_props));
+  sidm_struct_restore(sidm_properties, stream);
+  e->sidm_properties = sidm_properties;
 
   struct neutrino_response *neutrino_response =
       (struct neutrino_response *)malloc(sizeof(struct neutrino_response));
