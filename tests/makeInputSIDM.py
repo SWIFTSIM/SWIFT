@@ -27,17 +27,32 @@ from numpy import *
 periodic = 1  # 1 For periodic box
 boxSize = 1.0
 L = 4  # Number of particles along one axis
+density = 2.0  # Density
+P = 1.0  # Pressure
+gamma = 5.0 / 3.0  # Gas adiabatic index
+material = 0  # Ideal gas
 fileName = "input_SIDM.hdf5"
 
 # ---------------------------------------------------
 numPart = L ** 3
-mass = 1
+mass = boxSize ** 3 * density / numPart
+internalEnergy = P / ((gamma - 1.0) * density)
+
+# chemistry data
+he_density = density * 0.24
 
 # Generate particles
 coords = zeros((numPart, 3))
 v = zeros((numPart, 3))
 m = zeros((numPart, 1))
+h = zeros((numPart, 1))
+u = zeros((numPart, 1))
+rho = zeros((numPart, 1))
 ids = zeros((numPart, 1), dtype="L")
+mat = zeros((numPart, 1), dtype="i")
+
+# chemistry data
+he = zeros((numPart, 1))
 
 for i in range(L):
     for j in range(L):
@@ -55,7 +70,6 @@ for i in range(L):
             m[index] = mass
             ids[index] = index
 
-
 # --------------------------------------------------
 
 # File
@@ -64,9 +78,9 @@ file = h5py.File(fileName, "w")
 # Header
 grp = file.create_group("/Header")
 grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] = [0, 0, 0, 0, 0, 0, 0, numPart]
+grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0, 0, numPart]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [0, 0, 0, 0, 0, 0, 0, numPart]
+grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0, 0, numPart]
 grp.attrs["Time"] = 0.0
 grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -85,8 +99,29 @@ grp.attrs["Unit time in cgs (U_t)"] = 1.0
 grp.attrs["Unit current in cgs (U_I)"] = 1.0
 grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
+# Particle group - gas
+grp = file.create_group("/PartType0")
+ds = grp.create_dataset("Coordinates", (numPart, 3), "d")
+ds[()] = coords
+ds = grp.create_dataset("Velocities", (numPart, 3), "f")
+ds[()] = v
+ds = grp.create_dataset("Masses", (numPart, 1), "f")
+ds[()] = m
+ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
+ds[()] = h
+ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
+ds[()] = u
+ds = grp.create_dataset("Density", (numPart, 1), "f")
+ds[()] = rho
+ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
+ds[()] = ids
+ds = grp.create_dataset("MaterialIDs", (numPart, 1), "i")
+ds[()] = mat
+# chemistry
+ds = grp.create_dataset("HeDensity", (numPart, 1), "f")
+ds[()] = he
 
-# Particle group
+# Particle group - SIDM
 grp = file.create_group("/PartType7")
 ds = grp.create_dataset("Coordinates", (numPart, 3), "d")
 ds[()] = coords

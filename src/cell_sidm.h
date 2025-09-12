@@ -42,6 +42,9 @@ struct cell_sidm {
     /*! Pointer to the #sipart data. */
     struct sipart *parts;
 
+    /*! Pointer to the #sipart data at rebuild time. */
+    struct sipart *parts_rebuild;
+
     /*! The black hole ghost task itself */
     struct task *density_ghost;
 
@@ -65,6 +68,12 @@ struct cell_sidm {
 
     /*! Values of dx_max before the drifts, used for sub-cell tasks. */
     float dx_max_part_old;
+
+    /*! Maximum particle movement in this cell since the last sort. */
+    float dx_max_sort;
+
+    /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
+    float dx_max_sort_old;
 
 #ifdef SIDM_NONE
   };
