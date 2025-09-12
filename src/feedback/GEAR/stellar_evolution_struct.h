@@ -184,6 +184,43 @@ struct supernovae_ii {
 };
 
 /**
+ * @brief Model for Stellar winds.
+ */
+struct stellar_wind {
+
+  /*! Yields not integrated */
+  struct {
+
+    /*! energy ejected by stellar winds. */
+    struct interpolation_2d ejected_energy;
+  } raw;
+
+  /*! Yields integrated */
+  struct {
+    /*! Integrated (over the IMF) energy ejected by stellar winds. */
+    struct interpolation_2d ejected_energy_per_progenitor_mass;
+  } integrated;
+
+  /*! Minimal mass for a SW */
+  float mass_min;
+
+  /*! Maximal mass for a SW */
+  float mass_max;
+
+  /*! Minimal mass for a SW */
+  float metallicity_min;
+
+  /*! Maximal mass for a SW */
+  float metallicity_max;
+
+  /*! Number of mass element in the interpolation 2d array*/
+  int interpolation_size_m;
+
+  /*! Number of metallicity element in the interpolation 2d array*/
+  int interpolation_size_z;
+};
+
+/**
  * @brief The complete stellar model.
  */
 struct stellar_model {
@@ -205,6 +242,9 @@ struct stellar_model {
 
   /*! The supernovae type II */
   struct supernovae_ii snii;
+
+  /*! The stellar wind */
+  struct stellar_wind sw;
 
   /*! Use a discrete yields approach */
   char discrete_yields;
