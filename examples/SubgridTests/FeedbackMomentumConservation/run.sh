@@ -4,7 +4,7 @@
 set -e
 
 n_threads=${n_threads:=8}  #Number of threads to use
-level=${level:=7}  #Number of particles = 2^(3*level)
+level=${level:=6}  #Number of particles = 2^(3*level)
 gas_density=${gas_density:=1} #Gas density in atom/cm^3
 gas_particle_mass=${gas_particle_mass:=10} #Mass of the gas particles
 star_mass=${star_mass:=29.7} #Mass of the gas particles
@@ -20,7 +20,7 @@ fi
 if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
-    python3 makeIC.py --level $level --rho $gas_density \
+    python3 makeIC_disc.py --level $level --rho $gas_density \
 	    --mass $gas_particle_mass --star_mass $star_mass \
 	    -o ICs_homogeneous_box.hdf5
 fi
@@ -50,26 +50,10 @@ else
 fi
 
 printf "Running simulation..."
-../../../swift --hydro --stars --external-gravity --feedback --cooling \
+# NOTE: run without cooling
+../../../swift --hydro --stars --external-gravity --feedback \
 	       --sync --limiter --threads=$n_threads \
 	       params.yml 2>&1 | tee output.log
-
-#Do some data analysis to show what's in this box
-python3 plot_gas_density.py -i 10 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 20 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 30 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 40 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 50 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 100 -s 'snap/snapshot'
-
-python3 rhoTPlot.py -i 10 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 20 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 30 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 40 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 50 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 100 -s 'snap/snapshot'
-
-python3 rhoTPlot.py -i 0 -f 100 -s 'snap/snapshot'
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
