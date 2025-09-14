@@ -1,13 +1,13 @@
 # Intro
 This example consists of a homogeneous and periodic box filled with gas particles of equal mass. 100 individual star particle are distributed randomlt in the box. They will go into supernova one after the other, starting at ~ 7 Myr and separated by 1 Myr.
 
-This example tests the mechanical feedback blastwave for different feedback implementations. It also serves to test different feedback schemes at different resolutions, initial gas metallicities and gas densities.
+This examples tests the momentum conservation after the explosion of each supernova. In this example we u
 
 # Configure
 To run this example with the GEAR model,
 
 ```
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=X --with-cooling=grackle_3 --with-stars=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=X --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-equation-of-state=isothermal-gas --with-hydro=gizmo-mfm --with-riemann-solver=hllc
 ```
 
 where X can be:
