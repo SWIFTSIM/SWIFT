@@ -1718,12 +1718,21 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
     /* Get a handle on the cell involved. */
     const struct cell *ci = t->ci;
 
+    /* Get the first progeny that exists. */
+    int first_child = 0;
+    while (ci->progeny[first_child] == NULL) first_child++;
+
     /* Reuse the task we already have. */
-    t->ci = ci->progeny[0];
+    t->ci = ci->progeny[first_child];
     cell_set_flag(t->ci, cell_flag_has_tasks);
 
     /* Create a self for all progeny beyond the first. */
-    for (int i = 1; i < 8; i++) {
+    for (int i = first_child + 1; i < 8; i++) {
+
+      /* Skip empty progeny. */
+      if (ci->progeny[i] == NULL) continue;
+
+      /* Create the self task. */
       zoom_scheduler_splittask_gravity_void_self(
           scheduler_addtask(s, task_type_self, t->subtype, 0, 0, ci->progeny[i],
                             NULL),
@@ -1732,7 +1741,16 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
 
     /* Create pair tasks for all pairs of progeny. */
     for (int j = 0; j < 8; j++) {
+
+      /* Skip empty progeny. */
+      if (ci->progeny[j] == NULL) continue;
+
       for (int k = j + 1; k < 8; k++) {
+
+        /* Skip empty progeny. */
+        if (ci->progeny[k] == NULL) continue;
+
+        /* Create the pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
             scheduler_addtask(s, task_type_pair, t->subtype, sub_sid_flag[j][k],
                               0, ci->progeny[j], ci->progeny[k]),
