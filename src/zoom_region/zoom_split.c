@@ -85,6 +85,14 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
 
+    /* If this top level cell is empty, don't link it in. */
+    if (zoom_cell->grav.count == 0 && zoom_cell->hydro.count == 0 &&
+        zoom_cell->stars.count == 0 && zoom_cell->sinks.count == 0 &&
+        zoom_cell->black_holes.count == 0) {
+      c->progeny[k] = NULL;
+      continue;
+    }
+
     /* Link this nested cell into the void cell hierarchy. */
     c->progeny[k] = zoom_cell;
 
@@ -231,6 +239,9 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     /* Get the progenitor */
     struct cell *cp = c->progeny[k];
 
+    /* Skip NULL progeny. */
+    if (cp == NULL) continue;
+
     /* If the progeny is a void cell, we need to recurse. */
     if (cp->subtype == cell_subtype_void) {
 
@@ -338,7 +349,8 @@ void zoom_void_space_split(struct space *s, int verbose) {
   /* Ensure all zoom cells are linked into the tree. */
   notlinked = 0;
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-    if (cells_top[k].void_parent == NULL) notlinked++;
+    if (cells_top[k].void_parent == NULL && cells_top[k].grav.count > 0)
+      notlinked++;
   }
   if (notlinked > 0)
     error("%d zoom cells are not linked into a void cell tree!", notlinked);

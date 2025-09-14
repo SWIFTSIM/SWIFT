@@ -1353,8 +1353,21 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
  */
 void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_gravity == NULL && (c->grav.grav != NULL || c->grav.mm != NULL))
+  if (super_gravity == NULL && (c->grav.grav != NULL || c->grav.mm != NULL)) {
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure in zoom land we don't get any confusing empty top level cells
+     * with tasks (this breaks hierarchical task creation) */
+    if (c->grav.count == 0 && c->subtype != cell_subtype_void)
+      error(
+          "Setting super_gravity to non-void cell at depth %d with no gparts "
+          "(%s/%s) "
+          "c->grav.grav=%p c->grav.mm=%p, c=%p",
+          c->depth, cellID_names[c->type], subcellID_names[c->subtype],
+          (void *)c->grav.grav, (void *)c->grav.mm, (void *)c);
+#endif
+
     super_gravity = c;
+  }
 
   /* Set the super-cell */
   c->grav.super = super_gravity;

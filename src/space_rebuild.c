@@ -179,7 +179,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     error("We just repartitioned but still found inhibited bparts.");
   if (repartitioned && count_inhibited_sinks)
     error("We just repartitioned but still found inhibited sinks.");
-
   if (count_extra_parts != s->nr_extra_parts)
     error(
         "Number of extra parts in the part array not matching the space "
@@ -930,6 +929,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   s->nr_cells_with_particles = 0;
   s->nr_local_cells_with_particles = 0;
   s->nr_local_cells = 0;
+  int empty_tl_zooms = 0;
   if (s->with_zoom_region) {
     s->zoom_props->nr_local_zoom_cells = 0;
     s->zoom_props->nr_local_bkg_cells = 0;
@@ -981,6 +981,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       switch (c->type) {
         case cell_type_zoom:
           zoom_cell_particles += c->grav.count;
+          if (c->grav.count == 0) empty_tl_zooms++;
           break;
         case cell_type_buffer:
           buffer_cell_particles += c->grav.count;
@@ -1097,6 +1098,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       if (s->with_hydro && s->zoom_props->nr_wanderers > 0)
         message("Converted %zu wandering particles to dark matter thus far",
                 s->zoom_props->nr_wanderers);
+
+      /* Report if we have any empty top level zoom cells */
+      if (empty_tl_zooms > 0)
+        warning(
+            "Found %d empty top level zoom cells! Is your zoom region "
+            "malformed?",
+            empty_tl_zooms);
     }
   }
 
