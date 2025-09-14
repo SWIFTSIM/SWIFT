@@ -1,7 +1,7 @@
 # Intro
 This example consists of a homogeneous and periodic box filled with gas particles of equal mass. 100 individual star particle are distributed randomlt in the box. They will go into supernova one after the other, starting at ~ 7 Myr and separated by 1 Myr.
 
-This examples tests the momentum conservation after the explosion of each supernova. In this example we u
+This examples tests the momentum conservation after the explosion of each supernova.
 
 # Configure
 To run this example with the GEAR model,
