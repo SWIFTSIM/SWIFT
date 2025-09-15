@@ -55,7 +55,7 @@ printf "Running simulation..."
 	       --sync --limiter --threads=$n_threads \
 	       params.yml 2>&1 | tee output.log
 
-python3 check_conservation.py
+python3 plot_momentum_conservation.py
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
