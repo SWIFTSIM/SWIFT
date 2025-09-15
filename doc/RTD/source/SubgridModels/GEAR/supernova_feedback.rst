@@ -361,6 +361,16 @@ Since the mechanical feedback kicks the gas particles, we update the gas signal 
 
 where :math:`v_\text{sig, new, j}` and :math:`v_\text{sig, old, j}` are the particle's signal velocity immediately before and after the kick, :math:`c_{s, j}` is the particle's speed of sound, :math:`\Delta v` is the norm of the momentum kick and :math:`\beta_V` is a dimensionless constant which in `Borrow et al. (2022) <https://ui.adsabs.harvard.edu/abs/2022MNRAS.511.2367B/abstract>`_ is equal to 3. 
 
+Correction factor when multiple SN occur during the same timestep and affect the same gas particle
+--------------------------------------------------------------------------------------------------
+
+Rename the section title...
+
+Model parameters
+----------------
+
+
+
 References
 ----------
 
