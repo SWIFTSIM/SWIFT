@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
 def load_data(file_path):
     """
     Load data from a specified file path into a pandas DataFrame.
@@ -49,15 +50,46 @@ def load_data(file_path):
     try:
         # Define the column names for the dataset
         columns = [
-            "Step", "Time", "Scale Factor", "Redshift", "Total Mass", "Gas Mass",
-            "Dark Matter Mass", "Sink Mass", "Stellar Mass", "Black Hole Mass",
-            "Gas Metal Mass", "Star Metal Mass", "BH Metal Mass", "Kinetic Energy",
-            "Thermal Energy", "Potential Energy", "Radiated Energy", "Gas Entropy",
-            "CoM_x", "CoM_y", "CoM_z", "Momentum_x", "Momentum_y", "Momentum_z",
-            "AngMom_x", "AngMom_y", "AngMom_z", "BH Accretion Rate", "BH Accreted Mass",
-            "BH Subgrid Mass", "Total H Mass", "Molecular H Mass", "Atomic H Mass",
-            "Total He Mass", "Magnetic Energy", "DivB Error", "Cross Helicity",
-            "Magnetic Helicity", "BH Luminosity", "BH Jet Power"
+            "Step",
+            "Time",
+            "Scale Factor",
+            "Redshift",
+            "Total Mass",
+            "Gas Mass",
+            "Dark Matter Mass",
+            "Sink Mass",
+            "Stellar Mass",
+            "Black Hole Mass",
+            "Gas Metal Mass",
+            "Star Metal Mass",
+            "BH Metal Mass",
+            "Kinetic Energy",
+            "Thermal Energy",
+            "Potential Energy",
+            "Radiated Energy",
+            "Gas Entropy",
+            "CoM_x",
+            "CoM_y",
+            "CoM_z",
+            "Momentum_x",
+            "Momentum_y",
+            "Momentum_z",
+            "AngMom_x",
+            "AngMom_y",
+            "AngMom_z",
+            "BH Accretion Rate",
+            "BH Accreted Mass",
+            "BH Subgrid Mass",
+            "Total H Mass",
+            "Molecular H Mass",
+            "Atomic H Mass",
+            "Total He Mass",
+            "Magnetic Energy",
+            "DivB Error",
+            "Cross Helicity",
+            "Magnetic Helicity",
+            "BH Luminosity",
+            "BH Jet Power",
         ]
 
         # Load the data, ignoring any header comments
@@ -83,15 +115,16 @@ file_path = "./statistics.txt"
 df = load_data(file_path)
 
 # Calculate the total linear momentum
-df["Momentum_Total"] = np.sqrt(df["Momentum_x"]**2 + df["Momentum_y"]**2 + df["Momentum_z"]**2)
+df["Momentum_Total"] = np.sqrt(
+    df["Momentum_x"] ** 2 + df["Momentum_y"] ** 2 + df["Momentum_z"] ** 2
+)
 delta_p = np.abs(np.diff(df["Momentum_Total"]))
 
 # Time to plot!
 fig, axes = plt.subplots(figsize=(11, 4.8), nrows=1, ncols=2)
 
 # Plot the total momentum
-axes[0].plot(df["Time"], df["Momentum_Total"], label="Total Momentum",
-             color="blue")
+axes[0].plot(df["Time"], df["Momentum_Total"], label="Total Momentum", color="blue")
 axes[0].set_xlabel("Time [Gyr]")
 axes[0].set_ylabel(r"Momentum [$10^{10} M_\odot$ km/s]")
 axes[0].set_yscale("log")

@@ -196,7 +196,7 @@ def sedov(t, E0, rho0, g, n=1000, nu=3):
     q = np.inner(de[1:] + de[:-1], np.diff(vol)) * 0.5
 
     # the factor to convert to this particular problem
-    fac = (q * (t**nu) * rho0 / E0) ** (-1.0 / (nu + 2))
+    fac = (q * (t ** nu) * rho0 / E0) ** (-1.0 / (nu + 2))
 
     # shock speed
     shock_speed = fac * (2.0 / (nu + 2))
@@ -351,7 +351,7 @@ def cost_function(log_params, r_bin, data, sigma_data, time, gas_gamma):
     residuals = (data - model_data) / sigma_data
     residuals[np.isnan(residuals)] = 1e10
 
-    return np.sum(residuals**2)
+    return np.sum(residuals ** 2)
 
 
 class ExplicitDefaultsHelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -497,7 +497,7 @@ try:
             pos[:, 1] - box_size / 2,
             pos[:, 2] - box_size / 2,
         )
-        r = np.sqrt(x**2 + y**2 + z**2)
+        r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
 
         # Compute radial velocity component
         v_r = (x * vel[:, 0] + y * vel[:, 1] + z * vel[:, 2]) / r
@@ -509,20 +509,20 @@ try:
         r *= U_L
         vel *= U_L / U_t
         v_r *= U_L / U_t
-        u *= U_L**2 / U_t**2
-        P *= U_M / (U_L * U_t**2)
-        rho *= U_M / (U_L**3)
+        u *= U_L ** 2 / U_t ** 2
+        P *= U_M / (U_L * U_t ** 2)
+        rho *= U_M / (U_L ** 3)
         mass *= U_M
 
         # We also need to convert the initial guess values from the command
         # line
         step = step * U_L
         if rho_0 is not None:
-            rho_0 = rho_0 * U_M / (U_L**3)
+            rho_0 = rho_0 * U_M / (U_L ** 3)
         if P_0 is not None:
-            P_0 = P_0 * U_M / (U_L * U_t**2)
+            P_0 = P_0 * U_M / (U_L * U_t ** 2)
         if E_0 is not None:
-            E_0 = E_0 * U_M * U_L**2 / U_t**2
+            E_0 = E_0 * U_M * U_L ** 2 / U_t ** 2
 
 except FileNotFoundError:
     sys.exit(f"Error: File '{file}' not found.")
@@ -539,11 +539,11 @@ v_bin, _, _ = stats.binned_statistic(r, v_r, statistic="mean", bins=r_bin_edge)
 P_bin, _, _ = stats.binned_statistic(r, P, statistic="mean", bins=r_bin_edge)
 S_bin, _, _ = stats.binned_statistic(r, S, statistic="mean", bins=r_bin_edge)
 u_bin, _, _ = stats.binned_statistic(r, u, statistic="mean", bins=r_bin_edge)
-rho2_bin, _, _ = stats.binned_statistic(r, rho**2, statistic="mean", bins=r_bin_edge)
-v2_bin, _, _ = stats.binned_statistic(r, v_r**2, statistic="mean", bins=r_bin_edge)
-P2_bin, _, _ = stats.binned_statistic(r, P**2, statistic="mean", bins=r_bin_edge)
-S2_bin, _, _ = stats.binned_statistic(r, S**2, statistic="mean", bins=r_bin_edge)
-u2_bin, _, _ = stats.binned_statistic(r, u**2, statistic="mean", bins=r_bin_edge)
+rho2_bin, _, _ = stats.binned_statistic(r, rho ** 2, statistic="mean", bins=r_bin_edge)
+v2_bin, _, _ = stats.binned_statistic(r, v_r ** 2, statistic="mean", bins=r_bin_edge)
+P2_bin, _, _ = stats.binned_statistic(r, P ** 2, statistic="mean", bins=r_bin_edge)
+S2_bin, _, _ = stats.binned_statistic(r, S ** 2, statistic="mean", bins=r_bin_edge)
+u2_bin, _, _ = stats.binned_statistic(r, u ** 2, statistic="mean", bins=r_bin_edge)
 
 # Remove non physical values
 valid_mask = np.isfinite(rho_bin) & np.isfinite(P_bin) & np.isfinite(v_bin)
@@ -560,10 +560,10 @@ S2_bin = S2_bin[valid_mask]
 u2_bin = u2_bin[valid_mask]
 
 # Compute the error bars
-rho_sigma_bin = np.sqrt(rho2_bin - rho_bin**2)
-v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
-P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
-u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
+rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
+v_sigma_bin = np.sqrt(v2_bin - v_bin ** 2)
+P_sigma_bin = np.sqrt(P2_bin - P_bin ** 2)
+u_sigma_bin = np.sqrt(u2_bin - u_bin ** 2)
 
 ################################
 # Now, work out the solution....
@@ -586,7 +586,7 @@ if E_0 is None:
     r_shock_guess = r_bin[np.argmax(d_rho_bin)]
 
     # Guess E_0 using a known analytical relationship for a Sedov explosion.
-    E_0_guess = rho_0_guess * (r_shock_guess**5) / (time**2)
+    E_0_guess = rho_0_guess * (r_shock_guess ** 5) / (time ** 2)
     E_0_guess = E_0_guess[0]
 else:
     E_0_guess = E_0
@@ -658,7 +658,7 @@ u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
 target_units = {
     "length": units.kpc,
     "velocity": units.km / units.s,
-    "density": units.g / units.cm**3,
+    "density": units.g / units.cm ** 3,
     "internal_energy": units.erg,
     "pressure": units.Pa,
 }
@@ -679,11 +679,11 @@ v_s_plot = (v_s * units.cm / units.s).to(target_units["velocity"]).value
 v_sigma_bin_plot = (v_sigma_bin * units.cm / units.s).to(target_units["velocity"]).value
 
 # Convert density from g/cm^3 to g/cm^3 (no change, but explicit for clarity)
-rho_plot = (rho * units.g / units.cm**3).to(target_units["density"]).value
-rho_bin_plot = (rho_bin * units.g / units.cm**3).to(target_units["density"]).value
-rho_s_plot = (rho_s * units.g / units.cm**3).to(target_units["density"]).value
+rho_plot = (rho * units.g / units.cm ** 3).to(target_units["density"]).value
+rho_bin_plot = (rho_bin * units.g / units.cm ** 3).to(target_units["density"]).value
+rho_s_plot = (rho_s * units.g / units.cm ** 3).to(target_units["density"]).value
 rho_sigma_bin_plot = (
-    (rho_sigma_bin * units.g / units.cm**3).to(target_units["density"]).value
+    (rho_sigma_bin * units.g / units.cm ** 3).to(target_units["density"]).value
 )
 
 # Convert specific internal energy to erg/s
@@ -695,13 +695,17 @@ u_sigma_bin_plot = (
 )
 
 # Convert pressure from CGS to Pascals (Pa)
-P_plot = (P * units.g / (units.cm * units.s**2)).to(target_units["pressure"]).value
+P_plot = (P * units.g / (units.cm * units.s ** 2)).to(target_units["pressure"]).value
 P_bin_plot = (
-    (P_bin * units.g / (units.cm * units.s**2)).to(target_units["pressure"]).value
+    (P_bin * units.g / (units.cm * units.s ** 2)).to(target_units["pressure"]).value
 )
-P_s_plot = (P_s * units.g / (units.cm * units.s**2)).to(target_units["pressure"]).value
+P_s_plot = (
+    (P_s * units.g / (units.cm * units.s ** 2)).to(target_units["pressure"]).value
+)
 P_sigma_bin_plot = (
-    (P_sigma_bin * units.g / (units.cm * units.s**2)).to(target_units["pressure"]).value
+    (P_sigma_bin * units.g / (units.cm * units.s ** 2))
+    .to(target_units["pressure"])
+    .value
 )
 
 # Define colors and plot properties

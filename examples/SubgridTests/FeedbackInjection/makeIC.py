@@ -23,6 +23,7 @@ import argparse
 from astropy import units
 from astropy import constants
 
+
 class store_as_array(argparse._StoreAction):
     """Provides numpy array as argparse arguments."""
 
@@ -30,8 +31,11 @@ class store_as_array(argparse._StoreAction):
         values = np.array(values)
         return super().__call__(parser, namespace, values, option_string)
 
+
 def parse_options():
-    parser = argparse.ArgumentParser(description="Generate a homogeneous box with a Jeans unstable configuration and an exponentially decreasing density profile in the z-axis.")
+    parser = argparse.ArgumentParser(
+        description="Generate a homogeneous box with a Jeans unstable configuration and an exponentially decreasing density profile in the z-axis."
+    )
 
     # Arguments
     parser.add_argument(
@@ -83,13 +87,8 @@ def parse_options():
         default="gaussian",
         help="Choose the z-axis density profile: 'gaussian' or 'exponential' (default: exponential).",
     )
-    
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=1,
-        help="Random seed",
-    )
+
+    parser.add_argument("--seed", type=int, default=1, help="Random seed")
 
     parser.add_argument(
         "-o",
@@ -103,10 +102,11 @@ def parse_options():
     args = parser.parse_args()
     return args
 
+
 # Define the z-axis distribution
 def generate_z_coordinates(N, L, z_scale, distribution="exponential"):
     z_center = L / 2  # Center of the box
-    h_mean = L / N**(1 / 3.0)  # Mean inter-particle separation in the midplane
+    h_mean = L / N ** (1 / 3.0)  # Mean inter-particle separation in the midplane
 
     if distribution == "exponential":
         # Exponential distribution
@@ -115,8 +115,10 @@ def generate_z_coordinates(N, L, z_scale, distribution="exponential"):
         z_coords = (z_center + random_signs * z_offsets) % L
     elif distribution == "gaussian":
         # Gaussian distribution
-        z_offsets = np.random.normal(loc=0.0, scale=h_mean, size=N)  # Gaussian distribution
-        z_coords = (z_center + z_offsets) % L 
+        z_offsets = np.random.normal(
+            loc=0.0, scale=h_mean, size=N
+        )  # Gaussian distribution
+        z_coords = (z_center + z_offsets) % L
     else:
         raise ValueError(f"Unknown distribution type: {distribution}")
 
@@ -211,8 +213,8 @@ pos_background = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
 
 # Assign properties to background particles
 vel_background = np.zeros_like(pos_background)  # Zero velocity
-mass_background = np.ones(N_background) * m    # Same mass
-u_background = np.ones(N_background)           # Same internal energy
+mass_background = np.ones(N_background) * m  # Same mass
+u_background = np.ones(N_background)  # Same internal energy
 ids_background = np.arange(N, N + N_background)
 h_background = np.ones(N_background) * (3 * L / (N + N_background) ** (1 / 3.0))
 rho_background = np.ones(N_background) * (rho_mean / N * N_background)  # Adjust
@@ -233,25 +235,25 @@ N_gas_tot = N_background + N
 # Now, take care of the star
 #####################
 N_star = 1
-M_star = opt.star_mass*units.M_sun
+M_star = opt.star_mass * units.M_sun
 pos_star = opt.star_pos
 
 # Convert the star mass to internal units
 M_star = [M_star.to(UnitMass).value]
-print('Mass of the star (internal units)     : {:e}'.format(M_star[0]))
+print("Mass of the star (internal units)     : {:e}".format(M_star[0]))
 
 # If no position was given, place the star at the center of the box
 if pos_star is None:
-    pos_star = np.ones([N_star, 3]) * L/2
+    pos_star = np.ones([N_star, 3]) * L / 2
 
-#Remaining required data
+# Remaining required data
 vel_star = np.zeros([N_star, 3])
-h_star = np.ones(N_star) * 3 * L / N ** (1 / 3.0) # Same as the gas particles
-star_particle_type = np.ones(N_star)*0  # Single star
+h_star = np.ones(N_star) * 3 * L / N ** (1 / 3.0)  # Same as the gas particles
+star_particle_type = np.ones(N_star) * 0  # Single star
 star_id = [N + N_star]
 star_birth_time = np.zeros(N_star)
 
-print('Smoothing length of the star (internal units)     : {:e}'.format(h_star[0]))
+print("Smoothing length of the star (internal units)     : {:e}".format(h_star[0]))
 
 
 #####################

@@ -102,7 +102,7 @@ def get_gas_mu(data: sw.SWIFTDataset) -> np.array:
             H_frac = float(
                 data.metadata.parameters["GrackleCooling:HydrogenFractionByMass"]
             )
-        except KeyError: # Happend when running without cooling
+        except KeyError:  # Happend when running without cooling
             H_frac = 1.0
 
         # Compute T/mu

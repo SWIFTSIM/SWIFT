@@ -158,7 +158,7 @@ def get_sink_and_stars_positions(filename):
     except AttributeError:
         print("No sink found! Skipping them")
         sink_pos = np.empty(shape=(0))
-        
+
     star_pos = data.stars.coordinates
 
     return sink_pos, star_pos

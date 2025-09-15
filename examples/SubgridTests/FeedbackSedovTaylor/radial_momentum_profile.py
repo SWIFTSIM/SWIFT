@@ -26,6 +26,7 @@ import unyt as u
 
 #%%
 
+
 def list_snapshots(folder_path):
     """Lists all snapshot files in the folder."""
     snapshots = [
@@ -38,20 +39,25 @@ def list_snapshots(folder_path):
 
 #%%
 
+
 class ExplicitDefaultsHelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
     """Formatter that prints default arguments if provided."""
 
     def _get_help_string(self, action):
-        if isinstance(action.default, np.ndarray) or action.default not in (None, False):
+        if isinstance(action.default, np.ndarray) or action.default not in (
+            None,
+            False,
+        ):
             return super()._get_help_string(action)
         return action.help
 
 
-class RawTextArgumentDefaultsHelpFormatter(ExplicitDefaultsHelpFormatter,
-                                           argparse.RawTextHelpFormatter):
+class RawTextArgumentDefaultsHelpFormatter(
+    ExplicitDefaultsHelpFormatter, argparse.RawTextHelpFormatter
+):
     """Combines raw text formatting with default argument printing."""
-    pass
 
+    pass
 
 
 def parse_option():
@@ -64,21 +70,23 @@ Examples:
 madr_plot_mdf.py UFD_0172.hdf5 --x_min -20 --x_max 0 --output_location "MDF" --n_bins 100
 
 """
-    parser = argparse.ArgumentParser(description=description, epilog=epilog,
-                                     formatter_class=RawTextArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=description,
+        epilog=epilog,
+        formatter_class=RawTextArgumentDefaultsHelpFormatter,
+    )
 
-    parser.add_argument("files",
-                        nargs="+",
-                        type=str,
-                        help="File name(s).")
+    parser.add_argument("files", nargs="+", type=str, help="File name(s).")
 
-    parser.add_argument("-o",
-                        action="store",
-                        type=str,
-                        dest="output_filename",
-                        default=None,
-                        help="Name of the output file. Use it if you only give ONE input file. Otherwise, "
-                        "all files will have the same name.")
+    parser.add_argument(
+        "-o",
+        action="store",
+        type=str,
+        dest="output_filename",
+        default=None,
+        help="Name of the output file. Use it if you only give ONE input file. Otherwise, "
+        "all files will have the same name.",
+    )
 
     args = parser.parse_args()
     files = args.files
@@ -95,7 +103,9 @@ madr_plot_mdf.py UFD_0172.hdf5 --x_min -20 --x_max 0 --output_location "MDF" --n
 args, files = parse_option()
 
 # Use output location and filename arguments, with defaults
-output_filename = args.output_filename if args.output_filename else "momentum_profile.png"
+output_filename = (
+    args.output_filename if args.output_filename else "momentum_profile.png"
+)
 
 # Parent directory containing multiple runs
 base_folders = ["./"]
@@ -114,9 +124,12 @@ for base_folder in base_folders:
         boxsize = data.metadata.boxsize
 
         # Compute gas momentum
-        gas_momentum = np.vstack((data.gas.masses, data.gas.masses, data.gas.masses)).T * data.gas.velocities
+        gas_momentum = (
+            np.vstack((data.gas.masses, data.gas.masses, data.gas.masses)).T
+            * data.gas.velocities
+        )
 
-        pos = data.gas.coordinates - boxsize/2
+        pos = data.gas.coordinates - boxsize / 2
         vel = data.gas.velocities
         r = np.linalg.norm(pos, axis=1)
 
@@ -124,15 +137,18 @@ for base_folder in base_folders:
         x, y, z = pos[:, 0], pos[:, 1], pos[:, 2]
 
         # Compute radial velocity component
-        p_r = np.abs((x * gas_momentum[:, 0] + y * gas_momentum[:, 1] + z * gas_momentum[:, 2]) / r)
+        p_r = np.abs(
+            (x * gas_momentum[:, 0] + y * gas_momentum[:, 1] + z * gas_momentum[:, 2])
+            / r
+        )
 
         #%% Now plot quantities
         fig, ax = plt.subplots()
-        ax.scatter(r, p_r.to(u.Msun * u.km/u.s), s=1, alpha=0.5)
+        ax.scatter(r, p_r.to(u.Msun * u.km / u.s), s=1, alpha=0.5)
         ax.set_xlabel(r"$r$ [kpc]")
         ax.set_ylabel(r"p$_r$ [M$_\odot$ km/s]")
         ax.grid(True, linestyle="--", alpha=0.6)
 
         # Save plot
         fig.tight_layout()
-        plt.savefig(output_filename, format="png", bbox_inches='tight', dpi=300)
+        plt.savefig(output_filename, format="png", bbox_inches="tight", dpi=300)

@@ -32,6 +32,7 @@ class store_as_array(argparse._StoreAction):
         values = np.array(values)
         return super().__call__(parser, namespace, values, option_string)
 
+
 def parse_options():
 
     usage = "usage: %prog [options] file"
@@ -73,19 +74,22 @@ def parse_options():
         help="Boxzise in kpc",
     )
 
-    parser.add_argument("--star_mass",
-                        action="store",
-                        type=float,
-                        default=29.7,
-                        help="Mass of the star in M_sun")
+    parser.add_argument(
+        "--star_mass",
+        action="store",
+        type=float,
+        default=29.7,
+        help="Mass of the star in M_sun",
+    )
 
-    parser.add_argument("--star_pos",
-                        action=store_as_array,
-                        nargs=3,
-                        type=float,
-                        default=None,
-                        help="Position of the star in internal units. By default, places the star at the center of the box")
-
+    parser.add_argument(
+        "--star_pos",
+        action=store_as_array,
+        nargs=3,
+        type=float,
+        default=None,
+        help="Position of the star in internal units. By default, places the star at the center of the box",
+    )
 
     parser.add_argument(
         "-o",
@@ -96,8 +100,7 @@ def parse_options():
         help="output filename",
     )
 
-
-#Ajouter mass etoile, position. Dans le code, dire que c'est une etoile discrete
+    # Ajouter mass etoile, position. Dans le code, dire que c'est une etoile discrete
     options = parser.parse_args()
     return options
 
@@ -139,11 +142,11 @@ if opt.boxsize is None:
     # If we don't give the boxsize, then we can determine it
     # Gas mass in the box
     M = N * m
-    L = (M / rho) ** (1 / 3.0) 
+    L = (M / rho) ** (1 / 3.0)
 else:
     # If we fixed the boxsize, then the number of particles might change
-    L = opt.boxsize*units.kpc
-    M = rho * L**3
+    L = opt.boxsize * units.kpc
+    M = rho * L ** 3
 
     print(M.to(units.Msun))
     N = int(np.ceil(M.to(units.Msun) / m))
@@ -177,22 +180,22 @@ print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 # Now, take care of the star
 #####################
 N_star = 1
-M_star = opt.star_mass*units.M_sun
+M_star = opt.star_mass * units.M_sun
 pos_star = opt.star_pos
 
 # Convert the star mass to internal units
 M_star = [M_star.to(UnitMass).value]
-print('Mass of the star (internal units)     : {:e}'.format(M_star[0]))
+print("Mass of the star (internal units)     : {:e}".format(M_star[0]))
 
 # If no position was given, place the star at the center of the box
 if pos_star is None:
-    pos_star = np.ones([N_star, 3]) * L/2
+    pos_star = np.ones([N_star, 3]) * L / 2
 
-#Remaining required data
+# Remaining required data
 # vel_star = np.zeros([N_star, 3])
 vel_star = np.zeros([N_star, 3])
-h_star = np.ones(N_star) * 3 * L / N ** (1 / 3.0) # Same as the gas particles
-star_particle_type = np.ones(N_star)*0  # Single star
+h_star = np.ones(N_star) * 3 * L / N ** (1 / 3.0)  # Same as the gas particles
+star_particle_type = np.ones(N_star) * 0  # Single star
 star_id = [N + N_star]
 star_birth_time = np.zeros(N_star)
 
