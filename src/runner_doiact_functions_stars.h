@@ -556,10 +556,10 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 #endif
 
 #ifdef FEEDBACK_GAS_SEE_STARS
-      const float hjg2 = hj * hj * kernel_gamma2;
-      const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
+        const float hjg2 = hj * hj * kernel_gamma2;
+        const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
 #else
-      const int should_apply_feedback = (r2 < hig2);
+        const int should_apply_feedback = (r2 < hig2);
 #endif
 
         /* Hit or miss? */
@@ -737,10 +737,10 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 #endif
 
 #ifdef FEEDBACK_GAS_SEE_STARS
-      const float hig2 = hi * hi * kernel_gamma2;
-      const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
+        const float hig2 = hi * hi * kernel_gamma2;
+        const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
 #else
-      const int should_apply_feedback = (r2 < hjg2);
+        const int should_apply_feedback = (r2 < hjg2);
 #endif
         /* Hit or miss? */
         if (should_apply_feedback && spj_active_feedback) {
@@ -902,10 +902,10 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
 #endif
 
 #ifdef FEEDBACK_GAS_SEE_STARS
-      const float hjg2 = hj * hj * kernel_gamma2;
-      const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
+        const float hjg2 = hj * hj * kernel_gamma2;
+        const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
 #else
-      const int should_apply_feedback = (r2 < hig2);
+        const int should_apply_feedback = (r2 < hig2);
 #endif
 
         /* Hit or miss? */
@@ -973,10 +973,10 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
 #endif
 
 #ifdef FEEDBACK_GAS_SEE_STARS
-      const float hjg2 = hj * hj * kernel_gamma2;
-      const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
+        const float hjg2 = hj * hj * kernel_gamma2;
+        const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
 #else
-      const int should_apply_feedback = (r2 < hig2);
+        const int should_apply_feedback = (r2 < hig2);
 #endif
 
         /* Hit or miss? */
@@ -1352,7 +1352,7 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY ||     \
      FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2 || \
      FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3 || \
      FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
@@ -1435,7 +1435,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3];
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY ||     \
      FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2 || \
      FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3 || \
      FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)

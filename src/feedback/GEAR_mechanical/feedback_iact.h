@@ -21,8 +21,8 @@
 
 /* Local includes */
 #include "feedback.h"
-#include "mechanical_feedback_iact.h"
 #include "hydro.h"
+#include "mechanical_feedback_iact.h"
 #include "random.h"
 #include "timestep_sync_part.h"
 
@@ -117,9 +117,12 @@ runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
   si->feedback_data.f_sum_plus_term[1] += scalar_weight_j * fabs(dx_ij_plus[1]);
   si->feedback_data.f_sum_plus_term[2] += scalar_weight_j * fabs(dx_ij_plus[2]);
 
-  si->feedback_data.f_sum_minus_term[0] += scalar_weight_j * fabs(dx_ij_minus[0]);
-  si->feedback_data.f_sum_minus_term[1] += scalar_weight_j * fabs(dx_ij_minus[1]);
-  si->feedback_data.f_sum_minus_term[2] += scalar_weight_j * fabs(dx_ij_minus[2]);
+  si->feedback_data.f_sum_minus_term[0] +=
+      scalar_weight_j * fabs(dx_ij_minus[0]);
+  si->feedback_data.f_sum_minus_term[1] +=
+      scalar_weight_j * fabs(dx_ij_minus[1]);
+  si->feedback_data.f_sum_minus_term[2] +=
+      scalar_weight_j * fabs(dx_ij_minus[2]);
 }
 
 /**
@@ -230,26 +233,27 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
 
   /* Accumulate (pay attention to the conversions to physical units) */
   const float v_ij[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
-                          pj->v[2] - si->v[2]};
+                         pj->v[2] - si->v[2]};
 
   /* Calculate the velocity with the Hubble flow */
   const float a = cosmo->a;
   const float H = cosmo->H;
   const float a2H = a * a * H;
-  const float v_ij_plus_H_flow[3] = {a2H * dx[0] + v_ij[0], a2H * dx[1] + v_ij[1],
-				     a2H * dx[2] + v_ij[2]};
+  const float v_ij_plus_H_flow[3] = {
+      a2H * dx[0] + v_ij[0], a2H * dx[1] + v_ij[1], a2H * dx[2] + v_ij[2]};
 
   /* Compute the _physical_ relative velocity between the particles */
   const float v_ij_p[3] = {v_ij_plus_H_flow[0] * cosmo->a_inv,
-			   v_ij_plus_H_flow[1] * cosmo->a_inv,
-			   v_ij_plus_H_flow[2] * cosmo->a_inv};
+                           v_ij_plus_H_flow[1] * cosmo->a_inv,
+                           v_ij_plus_H_flow[2] * cosmo->a_inv};
 
   const float v_ij_p_norm_2 =
       v_ij_p[0] * v_ij_p[0] + v_ij_p[1] * v_ij_p[1] + v_ij_p[2] * v_ij_p[2];
 
   /* w_j_bar_hat refers to w_j_bar/|w_j_bar| */
   const double v_ij_p_times_w_j_bar_hat =
-      (v_ij_p[0] * w_j_bar[0] + v_ij_p[1] * w_j_bar[1] + v_ij_p[2] * w_j_bar[2]) /
+      (v_ij_p[0] * w_j_bar[0] + v_ij_p[1] * w_j_bar[1] +
+       v_ij_p[2] * w_j_bar[2]) /
       w_j_bar_norm;
   const double w_prime_ij = w_j_bar_norm / (1 + dm / mj);
 
@@ -395,20 +399,21 @@ runner_iact_nonsym_feedback_apply(
   const float a = cosmo->a;
   const float H = cosmo->H;
   const float a2H = a * a * H;
-  const float vi_plus_H_flow[3] = {a2H * si->x[0] + si->v[0], a2H * si->x[1] + si->v[1],
-				   a2H * si->x[2] + si->v[2]};
+  const float vi_plus_H_flow[3] = {a2H * si->x[0] + si->v[0],
+                                   a2H * si->x[1] + si->v[1],
+                                   a2H * si->x[2] + si->v[2]};
   const float vj_plus_H_flow[3] = {a2H * pj->x[0] + xpj->v_full[0],
-				   a2H * pj->x[1] + xpj->v_full[1],
-				   a2H * pj->x[2] + xpj->v_full[2]};
+                                   a2H * pj->x[1] + xpj->v_full[1],
+                                   a2H * pj->x[2] + xpj->v_full[2]};
 
   /* Compute the _physical_ relative velocity between the particles */
   const float v_i_p[3] = {vi_plus_H_flow[0] * cosmo->a_inv,
-			  vi_plus_H_flow[1] * cosmo->a_inv,
-			  vi_plus_H_flow[2] * cosmo->a_inv};
+                          vi_plus_H_flow[1] * cosmo->a_inv,
+                          vi_plus_H_flow[2] * cosmo->a_inv};
 
   const float v_j_p[3] = {vj_plus_H_flow[0] * cosmo->a_inv,
-			  vj_plus_H_flow[1] * cosmo->a_inv,
-			  vj_plus_H_flow[2] * cosmo->a_inv};
+                          vj_plus_H_flow[1] * cosmo->a_inv,
+                          vj_plus_H_flow[2] * cosmo->a_inv};
 
   /****************************************************************************
    * Now we treat the fluxes distribution differently for each mode
@@ -418,9 +423,8 @@ runner_iact_nonsym_feedback_apply(
   double dp_prime[3] = {0.0, 0.0, 0.0};
 
   runner_iact_nonsym_mechanical_feedback_apply(
-      r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj,
-      dm, new_mass, cosmo, fb_props, phys_const, us,
-      &dU, &dKE, dp_prime);
+      r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
+      new_mass, cosmo, fb_props, phys_const, us, &dU, &dKE, dp_prime);
 
   /* Now we can give momentum, thermal and kinetic energy to the xpart.
      Note: Do not give momentum for the isotropy check test. Momentum pushes
@@ -442,7 +446,7 @@ runner_iact_nonsym_feedback_apply(
      Chaikin et al. (2023) (also implemented in EAGLE_kinetic) */
   const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
                                  dp_prime[1] * dp_prime[1] +
-                                 dp_prime[2] * dp_prime[2];  
+                                 dp_prime[2] * dp_prime[2];
   const float dp_prime_norm = sqrt(dp_prime_norm_2);
   const float dv_phys = dp_prime_norm / new_mass;
   hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);

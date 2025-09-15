@@ -93,7 +93,8 @@ void feedback_update_part(struct part* p, struct xpart* xp,
  * @param p The particle to act upon
  * @param xp The extra particle to act upon
  */
-__attribute__((always_inline)) INLINE void feedback_end_density(struct part* p, struct xpart* xp) {}
+__attribute__((always_inline)) INLINE void feedback_end_density(
+    struct part* p, struct xpart* xp) {}
 
 /**
  * @brief Compute the times for the stellar model.

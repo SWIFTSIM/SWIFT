@@ -115,7 +115,8 @@ void feedback_update_part(struct part* p, struct xpart* xp,
  * @param p The particle to act upon
  * @param xp The extra particle to act upon
  */
-__attribute__((always_inline)) INLINE void feedback_end_density(struct part* p, struct xpart* xp) {
+__attribute__((always_inline)) INLINE void feedback_end_density(
+    struct part* p, struct xpart* xp) {
   p->feedback_data.density.wcount = p->density.wcount;
 }
 
@@ -341,7 +342,6 @@ int feedback_is_active(const struct spart* sp, const struct engine* e) {
 
   return sp->feedback_data.will_do_feedback;
 }
-
 
 /**
  * @brief Should this particle inject anything as feedback?
@@ -634,7 +634,8 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
   dx_ij_minus[1] = min(dx[1], 0.0) / r;
   dx_ij_minus[2] = min(dx[2], 0.0) / r;
 
-  /* This is simply dx/r, i.e the unit vector of dx (scale-factors cancel out) */
+  /* This is simply dx/r, i.e the unit vector of dx (scale-factors cancel out)
+   */
   const double dx_ij_hat[3] = {(dx_ij_plus[0] + dx_ij_minus[0]),
                                (dx_ij_plus[1] + dx_ij_minus[1]),
                                (dx_ij_plus[2] + dx_ij_minus[2])};
@@ -691,28 +692,28 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
  * @param w_j (return) Non-noralized vector weight. Pointer to array of size 3.
  */
 __attribute__((always_inline)) INLINE void
-feedback_compute_vector_weight_non_normalized(const float r2, const float* dx,
-                                              const float hi, const float hj,
-                                              const struct spart* restrict si,
-                                              const struct part* restrict pj,
-                                              double f_plus_i[3],
-                                              double f_minus_i[3], double w_j[3]) {
+feedback_compute_vector_weight_non_normalized(
+    const float r2, const float* dx, const float hi, const float hj,
+    const struct spart* restrict si, const struct part* restrict pj,
+    double f_plus_i[3], double f_minus_i[3], double w_j[3]) {
   double dx_ij_plus[3], dx_ij_minus[3], scalar_weight_j;
   feedback_compute_scalar_weight(r2, dx, hi, hj, si, pj, dx_ij_plus,
                                  dx_ij_minus, &scalar_weight_j);
 
   /* Now, that we have accumulated the sums, we can compute the f_plus and
      f_minus */
-  double value_plus[3] = {
-      1 + (si->feedback_data.f_sum_minus_term[0] * si->feedback_data.f_sum_minus_term[0]) /
-              (si->feedback_data.f_sum_plus_term[0] *
-               si->feedback_data.f_sum_plus_term[0]),
-      1 + (si->feedback_data.f_sum_minus_term[1] * si->feedback_data.f_sum_minus_term[1]) /
-              (si->feedback_data.f_sum_plus_term[1] *
-               si->feedback_data.f_sum_plus_term[1]),
-      1 + (si->feedback_data.f_sum_minus_term[2] * si->feedback_data.f_sum_minus_term[2]) /
-              (si->feedback_data.f_sum_plus_term[2] *
-               si->feedback_data.f_sum_plus_term[2])};
+  double value_plus[3] = {1 + (si->feedback_data.f_sum_minus_term[0] *
+                               si->feedback_data.f_sum_minus_term[0]) /
+                                  (si->feedback_data.f_sum_plus_term[0] *
+                                   si->feedback_data.f_sum_plus_term[0]),
+                          1 + (si->feedback_data.f_sum_minus_term[1] *
+                               si->feedback_data.f_sum_minus_term[1]) /
+                                  (si->feedback_data.f_sum_plus_term[1] *
+                                   si->feedback_data.f_sum_plus_term[1]),
+                          1 + (si->feedback_data.f_sum_minus_term[2] *
+                               si->feedback_data.f_sum_minus_term[2]) /
+                                  (si->feedback_data.f_sum_plus_term[2] *
+                                   si->feedback_data.f_sum_plus_term[2])};
 
   /* In rare cases, f_sum_plus_term can have a component that is 0. Since
      division by 0 will give inf and further operations will give NaNs, give a
@@ -733,17 +734,17 @@ feedback_compute_vector_weight_non_normalized(const float r2, const float* dx,
   f_plus_i[2] = sqrt(0.5 * value_plus[2]);
 
   double value_minus[3] = {1 + (si->feedback_data.f_sum_plus_term[0] *
-                                      si->feedback_data.f_sum_plus_term[0]) /
-                                         (si->feedback_data.f_sum_minus_term[0] *
-                                          si->feedback_data.f_sum_minus_term[0]),
-                                 1 + (si->feedback_data.f_sum_plus_term[1] *
-                                      si->feedback_data.f_sum_plus_term[1]) /
-                                         (si->feedback_data.f_sum_minus_term[1] *
-                                          si->feedback_data.f_sum_minus_term[1]),
-                                 1 + (si->feedback_data.f_sum_plus_term[2] *
-                                      si->feedback_data.f_sum_plus_term[2]) /
-                                         (si->feedback_data.f_sum_minus_term[2] *
-                                          si->feedback_data.f_sum_minus_term[2])};
+                                si->feedback_data.f_sum_plus_term[0]) /
+                                   (si->feedback_data.f_sum_minus_term[0] *
+                                    si->feedback_data.f_sum_minus_term[0]),
+                           1 + (si->feedback_data.f_sum_plus_term[1] *
+                                si->feedback_data.f_sum_plus_term[1]) /
+                                   (si->feedback_data.f_sum_minus_term[1] *
+                                    si->feedback_data.f_sum_minus_term[1]),
+                           1 + (si->feedback_data.f_sum_plus_term[2] *
+                                si->feedback_data.f_sum_plus_term[2]) /
+                                   (si->feedback_data.f_sum_minus_term[2] *
+                                    si->feedback_data.f_sum_minus_term[2])};
 
   /* In rare cases, f_sum_minus_term can have a component that is 0. Since
      division by 0 will give inf and further operations will give NaNs, give a
@@ -811,7 +812,8 @@ feedback_compute_vector_weight_normalized(const float r2, const float* dx,
 
 /**
  * @brief Compute the physical terminal momentum of a SN explosion. This is the
- *  momentum the blastwave can give to the gas after the energy-conserving phase.
+ *  momentum the blastwave can give to the gas after the energy-conserving
+ * phase.
  *
  * This function is used if we do not resolve the enery-conserving phase.
  *
@@ -824,16 +826,19 @@ feedback_compute_vector_weight_normalized(const float r2, const float* dx,
  * @param phys_const The #phys_const.
  * @param us The #unit_system.
  */
-__attribute__((always_inline)) INLINE double feedback_get_physical_SN_terminal_momentum(
-    const struct spart* restrict sp, const struct part* restrict p,
-    const struct xpart* restrict xp, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct cosmology *cosmo) {
+__attribute__((always_inline)) INLINE double
+feedback_get_physical_SN_terminal_momentum(const struct spart* restrict sp,
+                                           const struct part* restrict p,
+                                           const struct xpart* restrict xp,
+                                           const struct phys_const* phys_const,
+                                           const struct unit_system* us,
+                                           const struct cosmology* cosmo) {
 
   /* Terminal momentum 0 (in internal units). Note the 1e-5 term since we want
      it in km and not cm. */
   const double p_terminal_0 =
       2.5e5 * phys_const->const_solar_mass * 1e-5 *
-    units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+      units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
 
   /* In erg */
   const double E_ej = sp->feedback_data.energy_ejected *
@@ -890,14 +895,16 @@ __attribute__((always_inline)) INLINE double feedback_get_physical_SN_terminal_m
  * @param phys_const The #phys_const.
  * @param us The #unit_system.
  */
-__attribute__((always_inline)) INLINE float feedback_get_physical_SN_cooling_radius(
-										     const struct spart* restrict sp, float p_SN_initial, float p_terminal,
-										     const struct cosmology *cosmo) {
+__attribute__((always_inline)) INLINE float
+feedback_get_physical_SN_cooling_radius(const struct spart* restrict sp,
+                                        float p_SN_initial, float p_terminal,
+                                        const struct cosmology* cosmo) {
 
   const float m_ej = sp->feedback_data.mass_ejected;
 
   /* Convert to physical units */
-  const float mean_density = sp->feedback_data.weighted_gas_density*cosmo->a3_inv;
+  const float mean_density =
+      sp->feedback_data.weighted_gas_density * cosmo->a3_inv;
 
   /* Compute the cooling radius */
   const float second_part =

@@ -441,8 +441,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_particle_velocity(
  * physical units (note that dv_phys must be positive or equal to zero)
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_v_sig_based_on_velocity_kick(struct part *p,
-                                       const struct cosmology *cosmo,
+hydro_set_v_sig_based_on_velocity_kick(struct part* p,
+                                       const struct cosmology* cosmo,
                                        const float dv_phys) {
 
   /* Compute the velocity kick in comoving coordinates */

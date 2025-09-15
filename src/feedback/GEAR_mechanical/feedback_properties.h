@@ -24,7 +24,8 @@
 #include "chemistry.h"
 #include "hydro_properties.h"
 
-#define DEFAULT_F_KIN_0 0.28 /* Idealized Sedov solution in a homogenous background*/
+#define DEFAULT_F_KIN_0 \
+  0.28 /* Idealized Sedov solution in a homogenous background*/
 
 /**
  * @brief Properties of the GEAR feedback model.

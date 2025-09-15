@@ -2908,7 +2908,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
 #ifdef EXTRA_STAR_LOOPS_2
         t_star_prep3 = scheduler_addtask(
-	    sched, task_type_pair, task_subtype_stars_prep3, flags, 0, ci, cj);
+            sched, task_type_pair, task_subtype_stars_prep3, flags, 0, ci, cj);
         t_star_prep4 = scheduler_addtask(
             sched, task_type_pair, task_subtype_stars_prep4, flags, 0, ci, cj);
 #endif

@@ -23,9 +23,10 @@
 #include "hydro.h"
 
 __attribute__((always_inline)) INLINE static void
-    mechanical_feedback_accumulate_fluxes_for_conservation_check(
-								 struct spart *si, const double dm, const double dp[3], const double m_ej, const double p_ej, const double E_ej) {
-  #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
+mechanical_feedback_accumulate_fluxes_for_conservation_check(
+    struct spart *si, const double dm, const double dp[3], const double m_ej,
+    const double p_ej, const double E_ej) {
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
   si->feedback_data.fluxes_conservation_check.delta_m += dm;
   si->feedback_data.fluxes_conservation_check.delta_p_norm += sqrt(dp_norm_2);
@@ -79,8 +80,7 @@ runner_iact_nonsym_mechanical_1_feedback_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const double dm, const double new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us,
-    double* dU, double* dKE, double dp_prime[3]) {
+    const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
   // TODO: Convert to an ifdef constant
   const float internal_energy_snowplow_exponent = -6.5;
@@ -88,7 +88,7 @@ runner_iact_nonsym_mechanical_1_feedback_apply(
   /* ... physical momentum */
   const double p_ej = sqrt(2 * m_ej * E_ej);
   const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
-			w_j_bar[2] * p_ej};
+                        w_j_bar[2] * p_ej};
   const double dE = w_j_bar_norm * E_ej;
 
   /* Now boost to the 'laboratory' frame */
@@ -99,8 +99,8 @@ runner_iact_nonsym_mechanical_1_feedback_apply(
   /* ... physical total energy */
   const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
   const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
-				 dp_prime[1] * dp_prime[1] +
-				 dp_prime[2] * dp_prime[2];
+                                 dp_prime[1] * dp_prime[1] +
+                                 dp_prime[2] * dp_prime[2];
   const double dE_prime = dE + 1.0 / (2.0 * dm) * (dp_prime_norm_2 - dp_norm_2);
 
   /* ... physical internal energy */
@@ -109,8 +109,8 @@ runner_iact_nonsym_mechanical_1_feedback_apply(
       mj * mj *
       (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
   const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
-			   mj * v_j_p[1] + dp_prime[1],
-			   mj * v_j_p[2] + dp_prime[2]};
+                           mj * v_j_p[1] + dp_prime[1],
+                           mj * v_j_p[2] + dp_prime[2]};
   const double p_new_norm_2 =
       p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
 
@@ -130,8 +130,8 @@ runner_iact_nonsym_mechanical_1_feedback_apply(
      phase of the SN explosion-- */
 
   const double PdV_work_fraction = sqrt(1 + mj / dm);
-  const double p_terminal =
-    feedback_get_physical_SN_terminal_momentum(si, pj, xpj, phys_const, us, cosmo);
+  const double p_terminal = feedback_get_physical_SN_terminal_momentum(
+      si, pj, xpj, phys_const, us, cosmo);
 
   /* If we can resolve the Taylor Sedov, then we give the right coupled
      momentum (which is by definition <= p_terminal). If we cannot resolve it,
@@ -145,7 +145,8 @@ runner_iact_nonsym_mechanical_1_feedback_apply(
   dp_prime[2] *= p_factor;
 
   /* Compute the comoving cooling radius */
-  const float r_cool = cosmo->a_inv * feedback_get_physical_SN_cooling_radius(si, p_ej, p_terminal, cosmo);
+  const float r_cool = cosmo->a_inv * feedback_get_physical_SN_cooling_radius(
+                                          si, p_ej, p_terminal, cosmo);
 
   /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
   if (r2 > r_cool * r_cool) {
@@ -153,12 +154,12 @@ runner_iact_nonsym_mechanical_1_feedback_apply(
     *dU *= pow(r / r_cool, internal_energy_snowplow_exponent);
 #ifdef SWIFT_DEBUG_CHECKS
     message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.",
-	    r_cool);
+            r_cool);
 #endif /* SWIFT_DEBUG_CHECKS */
   } /* else we do not change dU */
 
-
-  mechanical_feedback_accumulate_fluxes_for_conservation_check(si, dm, dp, m_ej, p_ej, E_ej);
+  mechanical_feedback_accumulate_fluxes_for_conservation_check(si, dm, dp, m_ej,
+                                                               p_ej, E_ej);
 }
 
 #elif FEEDBACK_GEAR_MECHANICAL_MODE == 2
@@ -196,8 +197,7 @@ runner_iact_nonsym_mechanical_2_feedback_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const double dm, const double new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us,
-    double* dU, double* dKE, double dp_prime[3]) {
+    const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
   const double f_kin_0 = fb_props->f_kin_0;
 
@@ -217,8 +217,8 @@ runner_iact_nonsym_mechanical_2_feedback_apply(
      give mostly momentum. The thermal energy will be radiated away because of
      cooling. */
   const double p_available = sqrt(2.0 * epsilon * m_ej);
-  const double p_terminal =
-    feedback_get_physical_SN_terminal_momentum(si, pj, xpj, phys_const, us, cosmo);
+  const double p_terminal = feedback_get_physical_SN_terminal_momentum(
+      si, pj, xpj, phys_const, us, cosmo);
   const double xsi = min(1, p_terminal / (psi * p_available));
 
   /* Finally, the ejected velocity is */
@@ -226,7 +226,7 @@ runner_iact_nonsym_mechanical_2_feedback_apply(
 
   /* Now, we can compute dp */
   const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
-			w_j_bar[2] * p_ej};
+                        w_j_bar[2] * p_ej};
 
   /* Now boost to the 'laboratory' frame */
   dp_prime[0] = dp[0] + dm * v_i_p[0];
@@ -242,10 +242,11 @@ runner_iact_nonsym_mechanical_2_feedback_apply(
 
   /* Compute kinetic energy difference before and after SN */
   const double p_old_norm_2 =
-      mj * mj * (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
+      mj * mj *
+      (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
   const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
-			   mj * v_j_p[1] + dp_prime[1],
-			   mj * v_j_p[2] + dp_prime[2]};
+                           mj * v_j_p[1] + dp_prime[1],
+                           mj * v_j_p[2] + dp_prime[2]};
   const double p_new_norm_2 =
       p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
 
@@ -266,12 +267,13 @@ runner_iact_nonsym_mechanical_2_feedback_apply(
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 
   /* Now we accumulate to verify the conservation of the fluxes. */
-  mechanical_feedback_accumulate_fluxes_for_conservation_check(si, dm, dp, m_ej, p_ej, E_ej);
+  mechanical_feedback_accumulate_fluxes_for_conservation_check(si, dm, dp, m_ej,
+                                                               p_ej, E_ej);
 }
 
 #else
 #error "Mechanical feedback only supports mode 1 and 2"
-#endif  /* FEEDBACK_GEAR_MECHANICAL_MODE */
+#endif /* FEEDBACK_GEAR_MECHANICAL_MODE */
 
 /**
  * @brief Mechanical feedback interaction between two particles (non-symmetric)
@@ -308,18 +310,17 @@ runner_iact_nonsym_mechanical_feedback_apply(
     const double w_j_bar[3], const double w_j_bar_norm, const float v_i_p[3],
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const double dm, const double new_mass, const struct cosmology *cosmo,
-    const struct feedback_props *fb_props,
-    const struct phys_const *phys_const, const struct unit_system *us,
-    double* dU, double* dKE, double dp_prime[3]) {
+    const struct feedback_props *fb_props, const struct phys_const *phys_const,
+    const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 1
   runner_iact_nonsym_mechanical_1_feedback_apply(
-      r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj,
-      dm, new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp_prime);
+      r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
+      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp_prime);
 #elif FEEDBACK_GEAR_MECHANICAL_MODE == 2
   runner_iact_nonsym_mechanical_2_feedback_apply(
-      r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj,
-      dm, new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp_prime);
+      r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
+      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp_prime);
 #else
 #error "Mechanical feedback only supports mode 1 and 2"
 #endif
