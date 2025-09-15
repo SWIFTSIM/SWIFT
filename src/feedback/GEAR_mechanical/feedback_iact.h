@@ -21,6 +21,7 @@
 
 /* Local includes */
 #include "feedback.h"
+#include "mechanical_feedback_iact.h"
 #include "hydro.h"
 #include "random.h"
 #include "timestep_sync_part.h"
@@ -412,151 +413,14 @@ runner_iact_nonsym_feedback_apply(
   /****************************************************************************
    * Now we treat the fluxes distribution differently for each mode
    ****************************************************************************/
-#if FEEDBACK_GEAR_MECHANICAL_MODE == 1
-  const float internal_energy_snowplow_exponent = -6.5;
+  double dU = 0.0;
+  double dKE = 0.0;
+  double dp_prime[3] = {0.0, 0.0, 0.0};
 
-  /* ... physical momentum */
-  const double p_ej = sqrt(2 * m_ej * E_ej);
-  const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
-                        w_j_bar[2] * p_ej};
-  const double dE = w_j_bar_norm * E_ej;
-
-  /* Now boost to the 'laboratory' frame */
-  double dp_prime[3] = {dp[0] + dm * v_i_p[0], dp[1] + dm * v_i_p[1],
-                        dp[2] + dm * v_i_p[2]};
-
-  /* ... physical total energy */
-  const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
-  const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
-                                 dp_prime[1] * dp_prime[1] +
-                                 dp_prime[2] * dp_prime[2];
-  const double dE_prime = dE + 1.0 / (2.0 * dm) * (dp_prime_norm_2 - dp_norm_2);
-
-  /* ... physical internal energy */
-  /* Compute kinetic energy difference before and after SN */
-  const double p_old_norm_2 =
-      mj * mj *
-      (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
-  const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
-                           mj * v_j_p[1] + dp_prime[1],
-                           mj * v_j_p[2] + dp_prime[2]};
-  const double p_new_norm_2 =
-      p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
-
-  const double E_kin_old = p_old_norm_2 / (2.0 * mj);
-  const double E_kin_new = p_new_norm_2 / (2.0 * new_mass);
-  const double dKE = E_kin_new - E_kin_old;
-
-  const double U_old = hydro_get_physical_internal_energy(pj, xpj, cosmo);
-  const double E_old = U_old + E_kin_old;
-  const double E_new = E_old + dE_prime;
-  const double U_new = E_new - E_kin_new;
-
-  /* Compute the physical internal energy */
-  double dU = U_new - U_old;
-
-  /* --Now, we take into account for potentially unresolved energy-conserving
-     phase of the SN explosion-- */
-
-  const double PdV_work_fraction = sqrt(1 + mj / dm);
-  const double p_terminal =
-    feedback_get_physical_SN_terminal_momentum(si, pj, xpj, phys_const, us, cosmo);
-
-  /* If we can resolve the Taylor Sedov, then we give the right coupled
-     momentum (which is by definition <= p_terminal). If we cannot resolve it,
-     then we have reached the p_terminal. This is the upper limit of momentum,
-     since afterwards the cooling is efficient and the thermal energy is
-     radiated away. Thus, the factor to multiply dp_prime is: */
-  const double p_factor = min(PdV_work_fraction, p_terminal / p_ej);
-
-  dp_prime[0] *= p_factor;
-  dp_prime[1] *= p_factor;
-  dp_prime[2] *= p_factor;
-
-  /* Compute the comoving cooling radius */
-  const float r_cool = cosmo->a_inv * feedback_get_physical_SN_cooling_radius(si, p_ej, p_terminal, cosmo);
-
-  /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
-  if (r2 > r_cool * r_cool) {
-    const float r = sqrt(r2);
-    dU *= pow(r / r_cool, internal_energy_snowplow_exponent);
-#ifdef SWIFT_DEBUG_CHECKS
-    message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.",
-            r_cool);
-#endif /* SWIFT_DEBUG_CHECKS */
-  } /* else we do not change dU */
-
-#endif /* FEEDBACK_GEAR_MECHANICAL_MODE == 1 */
-#if FEEDBACK_GEAR_MECHANICAL_MODE == 2
-  const double f_kin_0 = fb_props->f_kin_0;
-
-  /* ... momentum */
-  const double E_tot =
-      E_ej + 0.5 * m_ej * si->feedback_data.accumulator.E_total;
-  const double epsilon = f_kin_0 * E_tot; /* coupled kinetic energy */
-  const double beta_1 =
-      sqrt(m_ej / (2.0 * epsilon)) * si->feedback_data.accumulator.beta_1;
-  const double beta_2 = m_ej * si->feedback_data.accumulator.beta_2;
-
-  /* Compute the PdV work, taking into account gas in/outflows */
-  const double psi = (sqrt(fabs(beta_2 + beta_1 * beta_1)) - beta_1) / beta_2;
-
-  /* Now, we take into account for potentially unresolved energy-conserving
-     phase of the SN explosion (xsi != 1). If we cannot resolve this phase, we
-     give mostly momentum. The thermal energy will be radiated away because of
-     cooling. */
-  const double p_available = sqrt(2.0 * epsilon * m_ej);
-  const double p_terminal =
-    feedback_get_physical_SN_terminal_momentum(si, pj, xpj, phys_const, us, cosmo);
-  const double xsi = min(1, p_terminal / (psi * p_available));
-
-  /* Finally, the ejected velocity is */
-  const double p_ej = psi * xsi * p_available;
-
-  /* Now, we can compute dp */
-  const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
-                        w_j_bar[2] * p_ej};
-
-  /* Now boost to the 'laboratory' frame */
-  double dp_prime[3] = {dp[0] + dm * v_i_p[0], dp[1] + dm * v_i_p[1],
-                        dp[2] + dm * v_i_p[2]};
-  const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
-                                 dp_prime[1] * dp_prime[1] +
-                                 dp_prime[2] * dp_prime[2];
-
-  /* ... physical internal energy */
-  const double factor =
-      (psi * psi * xsi * xsi) * beta_2 + 2.0 * (psi * xsi) * beta_1;
-  const double f_therm = 1.0 - factor * epsilon / E_tot;
-  const double U_tot = f_therm * E_tot;
-  const double dU = w_j_bar_norm * U_tot;
-
-  /* Compute kinetic energy difference before and after SN */
-  const double p_old_norm_2 =
-      mj * mj * (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
-  const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
-                           mj * v_j_p[1] + dp_prime[1],
-                           mj * v_j_p[2] + dp_prime[2]};
-  const double p_new_norm_2 =
-      p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
-
-  const double E_kin_old = p_old_norm_2 / (2.0 * mj);
-  const double E_kin_new = p_new_norm_2 / (2.0 * new_mass);
-  const double dKE = E_kin_new - E_kin_old;
-
-#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
-  const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
-  message(
-      "beta_1 = %e, beta_2 = %e, psi = %e, psi*p_available = %e, p_available = "
-      "%e",
-      beta_1, beta_2, psi, psi * p_available, p_available);
-  message("xsi = %e, p_t = %e", xsi, p_terminal);
-  message(
-      "E_ej = %e, E_tot = %e, U_tot = %e, E_kin_tot = %e, p_ej = %e, "
-      "p_terminal = %e, dU = %e, f_therm = %e",
-      E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, dU, f_therm);
-#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
-#endif /* FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
+  runner_iact_nonsym_mechanical_feedback_apply(
+      r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj,
+      dm, new_mass, cosmo, fb_props, phys_const, us,
+      &dU, &dKE, dp_prime);
 
   /* Now we can give momentum, thermal and kinetic energy to the xpart.
      Note: Do not give momentum for the isotropy check test. Momentum pushes
@@ -576,6 +440,9 @@ runner_iact_nonsym_feedback_apply(
 
   /* Update the signal velocity of gas particles that receive a kick. From
      Chaikin et al. (2023) (also implemented in EAGLE_kinetic) */
+  const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
+                                 dp_prime[1] * dp_prime[1] +
+                                 dp_prime[2] * dp_prime[2];  
   const float dp_prime_norm = sqrt(dp_prime_norm_2);
   const float dv_phys = dp_prime_norm / new_mass;
   hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
@@ -585,27 +452,6 @@ runner_iact_nonsym_feedback_apply(
 
   /* Synchronize the particle on the timeline */
   timestep_sync_part(pj);
-
-  /****************************************************************************
-   * Now we accumulate to verify the conservation of the fluxes.
-   ****************************************************************************/
-#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
-  si->feedback_data.fluxes_conservation_check.delta_m += dm;
-  si->feedback_data.fluxes_conservation_check.delta_p_norm += sqrt(dp_norm_2);
-
-  si->feedback_data.fluxes_conservation_check.delta_p[0] += dp[0];
-  si->feedback_data.fluxes_conservation_check.delta_p[1] += dp[1];
-  si->feedback_data.fluxes_conservation_check.delta_p[2] += dp[2];
-
-  message(
-      "Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum |dp_i| = %e "
-      "(p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e",
-      si->id, si->feedback_data.fluxes_conservation_check.delta_m,
-      si->feedback_data.fluxes_conservation_check.delta_p_norm,
-      si->feedback_data.fluxes_conservation_check.delta_p[0],
-      si->feedback_data.fluxes_conservation_check.delta_p[1],
-      si->feedback_data.fluxes_conservation_check.delta_p[2], m_ej, E_ej, p_ej);
-#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 }
 
 #endif /* SWIFT_GEAR_MECHANICAL_FEEDBACK_IACT_H */
