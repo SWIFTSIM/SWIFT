@@ -77,7 +77,7 @@ def load_data(file_path):
 
 
 # Path to the statistics.txt file
-file_path = "./GEAR_MECH2_vectorial/statistics.txt"
+file_path = "./statistics.txt"
 
 # Load the data
 df = load_data(file_path)
