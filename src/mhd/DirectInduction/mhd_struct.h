@@ -86,6 +86,13 @@ struct mhd_part_data {
 
   /* Laplacian B */
   float Delta_B[3];
+
+  /* RCM error */
+  float rcm_ratio[3];
+  
+  /* Number of neighbors */
+  int Nneigh;
+
 };
 
 /**
