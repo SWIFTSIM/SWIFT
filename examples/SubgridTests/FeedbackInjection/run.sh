@@ -11,20 +11,22 @@ scale_height=${z_scale:=0.1} #Mass of the gas particles
 star_mass=${star_mass:=29.7} #Mass of the gas particles
 seed=${seed:=1} # Random seed for random numbers
 
+ics_filename="ICs_disc.hdf5"
+
 # Remove the ICs
-if [ -e ICs_homogeneous_box.hdf5 ]
+if [ -e $ics_filename ]
 then
-    rm ICs_homogeneous_box.hdf5
+    rm $ics_filename
 fi
 
 #Create the ICs if they do not exist
-if [ ! -e ICs_homogeneous_box.hdf5 ]
+if [ ! -e $ics_filename ]
 then
     echo "Generating initial conditions to run the example..."
     python3 makeIC.py --level $level --rho $gas_density \
 	    --mass $gas_particle_mass --star_mass $star_mass \
 	    --z_scale $scale_height --seed $seed \
-	    -o ICs_homogeneous_box.hdf5
+	    -o $ics_filename
 fi
 
 # Get the Grackle cooling table

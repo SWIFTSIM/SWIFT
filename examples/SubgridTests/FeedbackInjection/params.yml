@@ -38,12 +38,12 @@ Scheduler:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:           1e-5     # Time between statistics output
+  delta_time:           1e-3     # Time between statistics output
   time_first:           0.       # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:          ICs_homogeneous_box.hdf5
+  file_name:          ICs_disc.hdf5
   periodic:                 1    # Are we running with periodic ICs?
   shift:              [0.0,0.0,0.0]
 

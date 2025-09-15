@@ -10,19 +10,21 @@ gas_particle_mass=${gas_particle_mass:=10} #Mass of the gas particles
 star_mass=${star_mass:=29.7} #Mass of the gas particles
 run_name=${run_name:=""}
 
+ics_filename="ICs_disc.hdf5"
+
 # Remove the ICs
-if [ -e ICs_homogeneous_box.hdf5 ]
+if [ -e $ics_filename ]
 then
-    rm ICs_homogeneous_box.hdf5
+    rm $ics_filename
 fi
 
 #Create the ICs if they do not exist
-if [ ! -e ICs_homogeneous_box.hdf5 ]
+if [ ! -e $ics_filename ]
 then
     echo "Generating initial conditions to run the example..."
     python3 makeIC.py --level $level --rho $gas_density \
 	    --mass $gas_particle_mass --star_mass $star_mass \
-	    -o ICs_disc.hdf5
+	    -o $ics_filename
 fi
 
 # Get the Grackle cooling table
