@@ -93,6 +93,9 @@ struct mhd_part_data {
   /* Number of neighbors */
   int Nneigh;
 
+  /* RCM based switch */
+  float rcm_switch;
+
 };
 
 /**
