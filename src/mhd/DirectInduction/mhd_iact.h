@@ -415,6 +415,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Divergence cleaning term */
   /* Manifestly *NOT* symmetric in i <-> j */
 
+  /* Load rcm switch */
+  float rcm_switch_i = pi->mhd_data.rcm_switch;
+  float rcm_switch_j = pj->mhd_data.rcm_switch;
+
   const float monopole_beta = pi->mhd_data.monopole_beta;
 
   const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
@@ -423,8 +427,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float scale_j = 0.125f * (10.0f - plasma_beta_j);
 
-  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
-  const float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, 1.0f));
+  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, (1.0f-0.5f*rcm_switch_i) ));
+  const float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, (1.0f-0.5f*rcm_switch_j)));
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
                        Bri * r_inv * Bi[0] * tensile_correction_scale_i;
@@ -733,11 +737,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Divergence cleaning term */
   /* Manifestly *NOT* symmetric in i <-> j */
 
+  /* Load rcm switch */
+  float rcm_switch_i = pi->mhd_data.rcm_switch;
+
   const float monopole_beta = pi->mhd_data.monopole_beta;
 
   const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
-  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
+  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, (1.0f - 0.5f * rcm_switch_i) ));
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
                        Bri * r_inv * Bi[0] * tensile_correction_scale_i;
