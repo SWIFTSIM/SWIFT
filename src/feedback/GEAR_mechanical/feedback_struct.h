@@ -98,7 +98,7 @@ struct feedback_spart_data {
   } accumulator;
 
   /*! Sum of the weighted gas properties used to compute terminal momentum */
-  double weighted_gas_density;
+  float weighted_gas_density;
   double weighted_gas_metallicity;
 
   /*! Checks that the sum of the fluxes is 0. These ensures the weights are

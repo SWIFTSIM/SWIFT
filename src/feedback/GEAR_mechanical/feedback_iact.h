@@ -224,11 +224,11 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
 
   /* Get some properties for our computations */
   const float mj = hydro_get_mass(pj);
-  const double m_ej = si->feedback_data.mass_ejected;
+  const float m_ej = si->feedback_data.mass_ejected;
   const double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
 
   /* Accumulate (pay attention to the conversions to physical units) */
-  const double v_ij[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
+  const float v_ij[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
                           pj->v[2] - si->v[2]};
 
   /* Calculate the velocity with the Hubble flow */
@@ -243,7 +243,7 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
 			   v_ij_plus_H_flow[1] * cosmo->a_inv,
 			   v_ij_plus_H_flow[2] * cosmo->a_inv};
 
-  const double v_ij_p_norm_2 =
+  const float v_ij_p_norm_2 =
       v_ij_p[0] * v_ij_p[0] + v_ij_p[1] * v_ij_p[1] + v_ij_p[2] * v_ij_p[2];
 
   /* w_j_bar_hat refers to w_j_bar/|w_j_bar| */
@@ -375,9 +375,9 @@ runner_iact_nonsym_feedback_apply(
 
   /* Here just get the feedback properties we want to distribute (in physical
      units) */
-  const double E_ej = si->feedback_data.energy_ejected;
+  const float E_ej = si->feedback_data.energy_ejected;
   const float mj = hydro_get_mass(pj);
-  const double m_ej = si->feedback_data.mass_ejected;
+  const float m_ej = si->feedback_data.mass_ejected;
 
   /* Distribute mass... (the max avoids to have dm=0 and 1/0 divisions) */
   const double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
@@ -474,11 +474,11 @@ runner_iact_nonsym_feedback_apply(
   dp_prime[2] *= p_factor;
 
   /* Compute the comoving cooling radius */
-  const double r_cool = cosmo->a_inv * feedback_get_physical_SN_cooling_radius(si, p_ej, p_terminal, cosmo);
+  const float r_cool = cosmo->a_inv * feedback_get_physical_SN_cooling_radius(si, p_ej, p_terminal, cosmo);
 
   /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
   if (r2 > r_cool * r_cool) {
-    const double r = sqrt(r2);
+    const float r = sqrt(r2);
     dU *= pow(r / r_cool, internal_energy_snowplow_exponent);
 #ifdef SWIFT_DEBUG_CHECKS
     message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.",
@@ -545,7 +545,7 @@ runner_iact_nonsym_feedback_apply(
   const double dKE = E_kin_new - E_kin_old;
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
-  const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
+  const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
   message(
       "beta_1 = %e, beta_2 = %e, psi = %e, psi*p_available = %e, p_available = "
       "%e",

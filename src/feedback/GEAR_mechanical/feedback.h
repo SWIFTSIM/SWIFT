@@ -96,19 +96,19 @@ void feedback_compute_scalar_weight(const float r2, const float* dx,
                                     const float hi, const float hj,
                                     const struct spart* restrict si,
                                     const struct part* restrict pj,
-                                    double* dx_ij_plus, double* dx_ij_minus,
+                                    double dx_ij_plus[3], double dx_ij_minus[3],
                                     double* scalar_weight_j);
 
 void feedback_compute_vector_weight_non_normalized(
     const float r2, const float* dx, const float hi, const float hj,
     const struct spart* restrict si, const struct part* restrict pj,
-    double* f_plus_i, double* f_minus_i, double* w_j);
+    double f_plus_i[3], double f_minus_i[3], double w_j[3]);
 
 void feedback_compute_vector_weight_normalized(const float r2, const float* dx,
                                                const float hi, const float hj,
                                                const struct spart* restrict si,
                                                const struct part* restrict pj,
-                                               double* w_j_bar);
+                                               double w_j_bar[3]);
 
 double feedback_get_physical_SN_terminal_momentum(const struct spart* restrict sp,
                                          const struct part* restrict p,
@@ -117,10 +117,10 @@ double feedback_get_physical_SN_terminal_momentum(const struct spart* restrict s
 						  const struct unit_system* us,
 						  const struct cosmology *cosmo);
 
-double feedback_get_physical_SN_cooling_radius(const struct spart* restrict sp,
-					       double p_SN_initial, double p_terminal,
+float feedback_get_physical_SN_cooling_radius(const struct spart* restrict sp,
+					       float p_SN_initial, float p_terminal,
 					       const struct cosmology *cosmo);
 
 double feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-    struct part* p, struct xpart* xp, double old_mass, double new_mass);
+    struct part* p, struct xpart* xp, float old_mass, float new_mass);
 #endif /* SWIFT_FEEDBACK_GEAR_MECHANICAL_H */

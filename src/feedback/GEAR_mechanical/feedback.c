@@ -606,7 +606,7 @@ void feedback_clean(struct feedback_props* feedback) {
 __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
     const float r2, const float* dx, const float hi, const float hj,
     const struct spart* restrict si, const struct part* restrict pj,
-    double* dx_ij_plus, double* dx_ij_minus, double* scalar_weight_j) {
+    double dx_ij_plus[3], double dx_ij_minus[3], double* scalar_weight_j) {
 
   const float r = sqrtf(r2);
 
@@ -695,8 +695,8 @@ feedback_compute_vector_weight_non_normalized(const float r2, const float* dx,
                                               const float hi, const float hj,
                                               const struct spart* restrict si,
                                               const struct part* restrict pj,
-                                              double* f_plus_i,
-                                              double* f_minus_i, double* w_j) {
+                                              double f_plus_i[3],
+                                              double f_minus_i[3], double w_j[3]) {
   double dx_ij_plus[3], dx_ij_minus[3], scalar_weight_j;
   feedback_compute_scalar_weight(r2, dx, hi, hj, si, pj, dx_ij_plus,
                                  dx_ij_minus, &scalar_weight_j);
@@ -791,14 +791,14 @@ feedback_compute_vector_weight_non_normalized(const float r2, const float* dx,
  * @param pj Second (gas) particle.
  * @param f_plus_i (return) Vector factor f_minus. Pointer to array of size 3.
  * @param f_minus_i (return) Vector factor f_minus. Pointer to array of size 3.
- * @param w_j (return) Non-noralized vector weight. Pointer to array of size 3.
+ * @param w_j_bar (return) Normalized vector weight. Pointer to array of size 3.
  */
 __attribute__((always_inline)) INLINE void
 feedback_compute_vector_weight_normalized(const float r2, const float* dx,
                                           const float hi, const float hj,
                                           const struct spart* restrict si,
                                           const struct part* restrict pj,
-                                          double* w_j_bar) {
+                                          double w_j_bar[3]) {
   double f_plus_i[3], f_minus_i[3], w_j[3];
   feedback_compute_vector_weight_non_normalized(r2, dx, hi, hj, si, pj,
                                                 f_plus_i, f_minus_i, w_j);
@@ -890,19 +890,19 @@ __attribute__((always_inline)) INLINE double feedback_get_physical_SN_terminal_m
  * @param phys_const The #phys_const.
  * @param us The #unit_system.
  */
-__attribute__((always_inline)) INLINE double feedback_get_physical_SN_cooling_radius(
-										     const struct spart* restrict sp, double p_SN_initial, double p_terminal,
+__attribute__((always_inline)) INLINE float feedback_get_physical_SN_cooling_radius(
+										     const struct spart* restrict sp, float p_SN_initial, float p_terminal,
 										     const struct cosmology *cosmo) {
 
-  const double m_ej = sp->feedback_data.mass_ejected;
+  const float m_ej = sp->feedback_data.mass_ejected;
 
   /* Convert to physical units */
-  const double mean_density = sp->feedback_data.weighted_gas_density*cosmo->a3_inv;
+  const float mean_density = sp->feedback_data.weighted_gas_density*cosmo->a3_inv;
 
   /* Compute the cooling radius */
-  const double second_part =
+  const float second_part =
       p_terminal * p_terminal / (p_SN_initial * p_SN_initial) - 1;
-  const double r_cool =
+  const float r_cool =
       pow(3.0 * m_ej * second_part / (4.0 * M_PI * mean_density), 1.0 / 3.0);
 
   return r_cool;
@@ -926,7 +926,7 @@ __attribute__((always_inline)) INLINE double feedback_get_physical_SN_cooling_ra
  */
 __attribute__((always_inline)) INLINE double
 feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-    struct part* p, struct xpart* xp, double old_mass, double new_mass) {
+    struct part* p, struct xpart* xp, float old_mass, float new_mass) {
   const float dm = xp->feedback_data.delta_mass;
 
   const double p_old[3] = {old_mass * xp->v_full[0], old_mass * xp->v_full[1],
