@@ -20,9 +20,9 @@ fi
 if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
-    python3 makeIC_disc.py --level $level --rho $gas_density \
+    python3 makeIC.py --level $level --rho $gas_density \
 	    --mass $gas_particle_mass --star_mass $star_mass \
-	    -o ICs_homogeneous_box.hdf5
+	    -o ICs_disc.hdf5
 fi
 
 # Get the Grackle cooling table
@@ -54,6 +54,8 @@ printf "Running simulation..."
 ../../../swift --hydro --stars --external-gravity --feedback \
 	       --sync --limiter --threads=$n_threads \
 	       params.yml 2>&1 | tee output.log
+
+python3 check_conservation.py
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."

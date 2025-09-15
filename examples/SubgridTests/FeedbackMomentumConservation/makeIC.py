@@ -1,7 +1,6 @@
 ################################################################################
 # This file is part of SWIFT.
-# Copyright (c) 2022 Yves Revaz (yves.revaz@epfl.ch)
-#                         2024 Darwin Roduit (darwin.roduit@epfl.ch)
+# Copyright (c) 2025 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -24,7 +23,6 @@ import argparse
 from astropy import units
 from astropy import constants
 
-
 class store_as_array(argparse._StoreAction):
     """Provides numpy array as argparse arguments."""
 
@@ -32,56 +30,45 @@ class store_as_array(argparse._StoreAction):
         values = np.array(values)
         return super().__call__(parser, namespace, values, option_string)
 
-
 def parse_options():
+    parser = argparse.ArgumentParser(description="Generate a homogeneous box with a Jeans unstable configuration and an exponentially decreasing density profile in the z-axis.")
 
-    usage = "usage: %prog [options] file"
-    parser = argparse.ArgumentParser(description=usage)
-
-    parser.add_argument(
-        "--lJ",
-        action="store",
-        dest="lJ",
-        type=float,
-        default=0.250,
-        help="Jeans wavelength in box size unit",
-    )
-
+    # Arguments
     parser.add_argument(
         "--rho",
-        action="store",
-        dest="rho",
         type=float,
-        default=1,
-        help="Mean gas density in atom/cm3",
+        default=0.1,
+        help="Mean gas density in atom/cm^3 (default: 0.1)",
     )
 
     parser.add_argument(
         "--mass",
-        action="store",
-        dest="mass",
         type=float,
-        default=50,
-        help="Gas particle mass in solar mass",
+        default=50.0,
+        help="Gas particle mass in solar masses (default: 50.0)",
     )
 
     parser.add_argument(
         "--level",
-        action="store",
-        dest="level",
         type=int,
         default=5,
-        help="Resolution level: N = (2**l)**3",
+        help="Resolution level: N = (2**level)^3 (default: 5)",
+    )
+
+    parser.add_argument(
+        "--z_scale",
+        type=float,
+        default=0.01,
+        help="Exponential scale height for density variation in the z-axis (default: 0.1)",
     )
 
     parser.add_argument(
         "--star_mass",
-        action="store",
         type=float,
         default=29.7,
-        help="Star particles mass in solar mass",
+        help="Mass of the star in solar masses (default: 29.7)",
     )
-
+    
     parser.add_argument(
         "--n_star",
         action="store",
@@ -91,19 +78,50 @@ def parse_options():
     )
 
     parser.add_argument(
-        "-o",
-        action="store",
-        dest="outputfilename",
+        "--distribution",
         type=str,
-        default="box.hdf5",
-        help="output filename",
+        choices=["gaussian", "exponential"],
+        default="gaussian",
+        help="Choose the z-axis density profile: 'gaussian' or 'exponential' (default: exponential).",
+    )
+    
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=1,
+        help="Random seed",
     )
 
-    parser.add_argument('--random_positions', default=False, action="store_true",
-                        help="Place the particles randomly in the box.")
+    parser.add_argument(
+        "-o",
+        "--outputfilename",
+        type=str,
+        default="box.dat",
+        help="Output filename (default: 'box.dat')",
+    )
 
-    options = parser.parse_args()
-    return options
+    # Parse the arguments
+    args = parser.parse_args()
+    return args
+
+# Define the z-axis distribution
+def generate_z_coordinates(N, L, z_scale, distribution="exponential"):
+    z_center = L / 2  # Center of the box
+    h_mean = L / N**(1 / 3.0)  # Mean inter-particle separation in the midplane
+
+    if distribution == "exponential":
+        # Exponential distribution
+        random_signs = np.random.choice([-1, 1], N)  # Random direction for Z offset
+        z_offsets = -z_scale * np.log(np.random.uniform(0, 1, N))
+        z_coords = (z_center + random_signs * z_offsets) % L
+    elif distribution == "gaussian":
+        # Gaussian distribution
+        z_offsets = np.random.normal(loc=0.0, scale=h_mean, size=N)  # Gaussian distribution
+        z_coords = (z_center + z_offsets) % L 
+    else:
+        raise ValueError(f"Unknown distribution type: {distribution}")
+
+    return z_coords
 
 
 ########################################
@@ -111,8 +129,9 @@ def parse_options():
 ########################################
 
 opt = parse_options()
+seed = opt.seed
 
-# define standard units
+# Define standard units
 UnitMass_in_cgs = 1.988409870698051e43  # 10^10 M_sun in grams
 UnitLength_in_cgs = 3.0856775814913673e21  # kpc in centimeters
 UnitVelocity_in_cgs = 1e5  # km/s in centimeters per second
@@ -125,14 +144,14 @@ UnitLength = UnitLength_in_cgs * units.cm
 UnitTime = UnitTime_in_cgs * units.s
 UnitVelocity = UnitVelocity_in_cgs * units.cm / units.s
 
-np.random.seed(1)
+np.random.seed(seed)
 
 # Number of particles
 N = (2 ** opt.level) ** 3  # number of particles
 
 # Mean density
-rho = opt.rho  # atom/cc
-rho = rho * constants.m_p / units.cm ** 3
+rho_mean = opt.rho  # atom/cc
+rho_mean = rho_mean * constants.m_p / units.cm ** 3
 
 # Gas particle mass
 m = opt.mass  # in solar mass
@@ -142,54 +161,73 @@ m = m * units.Msun
 M = N * m
 
 # Size of the box
-L = (M / rho) ** (1 / 3.0)
-
-# Jeans wavelength in box size unit
-lJ = opt.lJ
-lJ = lJ * L
+L = (M / rho_mean) ** (1 / 3.0)
 
 # Gravitational constant
 G = constants.G
 
-# Jeans wave number
-kJ = 2 * np.pi / lJ
-
-# Velocity dispersion
-sigma = np.sqrt(4 * np.pi * G * rho) / kJ
-
-print("Boxsize                               : {}".format(L.to(units.kpc)))
 print("Number of particles                   : {}".format(N))
-print("Equivalent velocity dispertion        : {}".format(sigma.to(units.m / units.s)))
 
 # Convert to code units
 m = m.to(UnitMass).value
 L = L.to(UnitLength).value
-rho = rho.to(UnitMass / UnitLength ** 3).value
-sigma = sigma.to(UnitVelocity).value
+rho_mean = rho_mean.to(UnitMass / UnitLength ** 3).value
 
 # Generate the particles
+pos = np.zeros([N, 3])
 
-if opt.random_positions:
-    print("Sampling random positions in the box")
-    pos = np.random.random([N, 3]) * np.array([L, L, L])
-else:
-    points = np.linspace(0, L, 2**opt.level, endpoint=False)
+# Uniform distribution in X and Y
+pos[:, 0] = np.random.random(N) * L
+pos[:, 1] = np.random.random(N) * L
 
-    # Create a meshgrid of these points
-    x, y, z = np.meshgrid(points, points, points)
+# Generate Z-coordinates based on the chosen distribution
+pos[:, 2] = generate_z_coordinates(N, L, opt.z_scale * L, opt.distribution)
 
-    # Reshape the grids into a list of particle positions
-    pos = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
-
+# Other particle properties
 vel = np.zeros([N, 3])
 mass = np.ones(N) * m
-u = np.ones(N) * sigma ** 2
+u = np.ones(N)
 ids = np.arange(N)
 h = np.ones(N) * 3 * L / N ** (1 / 3.0)
-rho = np.ones(N) * rho
+rho = np.ones(N) * rho_mean
 
 print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 
+#####################
+# Add Background particles. These avoid Swift complaining that there are not
+# enough particles in some top cells
+#####################
+
+# Number of background particles
+level_background = opt.level - 1
+N_background = (2 ** level_background) ** 3
+print("Number of background particles         : {}".format(N_background))
+
+# Generate background Cartesian grid
+grid_spacing = L / (2 ** level_background)
+grid_coords = np.linspace(grid_spacing / 2, L - grid_spacing / 2, 2 ** level_background)
+x, y, z = np.meshgrid(grid_coords, grid_coords, grid_coords)
+pos_background = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
+
+# Assign properties to background particles
+vel_background = np.zeros_like(pos_background)  # Zero velocity
+mass_background = np.ones(N_background) * m    # Same mass
+u_background = np.ones(N_background)           # Same internal energy
+ids_background = np.arange(N, N + N_background)
+h_background = np.ones(N_background) * (3 * L / (N + N_background) ** (1 / 3.0))
+rho_background = np.ones(N_background) * (rho_mean / N * N_background)  # Adjust
+# density for background
+
+# Merge the properties
+pos = np.vstack([pos, pos_background])
+vel = np.vstack([vel, vel_background])
+mass = np.concatenate([mass, mass_background])
+u = np.concatenate([u, u_background])
+ids = np.concatenate([ids, ids_background])
+h = np.concatenate([h, h_background])
+rho = np.concatenate([rho, rho_background])
+
+N_gas_tot = N_background + N
 
 #####################
 # Now, take care of the stars
@@ -223,15 +261,14 @@ print("{} saved.".format(opt.outputfilename))
 # Header
 grp = fileOutput.create_group("/Header")
 grp.attrs["BoxSize"] = [L, L, L]
-grp.attrs["NumPart_Total"] = [N, 0, 0, 0, N_star, 0]
+grp.attrs["NumPart_Total"] = [N_gas_tot, 0, 0, 0, N_star, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, N_star, 0]
+grp.attrs["NumPart_ThisFile"] = [N_gas_tot, 0, 0, 0, N_star, 0]
 grp.attrs["Time"] = 0.0
 grp.attrs["NumFileOutputsPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["Dimension"] = 3
-
 
 # Units
 grp = fileOutput.create_group("/Units")
@@ -241,8 +278,7 @@ grp.attrs["Unit time in cgs (U_t)"] = UnitTime_in_cgs
 grp.attrs["Unit current in cgs (U_I)"] = UnitCurrent_in_cgs
 grp.attrs["Unit temperature in cgs (U_T)"] = UnitTemp_in_cgs
 
-
-# Write Gas particle group
+# Particle group
 grp = fileOutput.create_group("/PartType0")
 grp.create_dataset("Coordinates", data=pos, dtype="d")
 grp.create_dataset("Velocities", data=vel, dtype="f")
