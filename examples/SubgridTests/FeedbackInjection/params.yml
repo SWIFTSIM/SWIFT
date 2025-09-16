@@ -6,16 +6,6 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
-# Parameters for the self-gravity scheme
-Gravity:
-  MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
-  epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
-  theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
-  eta:          0.025                      # Constant dimensionless multiplier for time integration.
-  theta:        0.7                        # Opening angle (Multipole acceptance criterion).
-  max_physical_baryon_softening: 0.005     # Physical softening length (in internal units)
-  mesh_side_length:        32
-
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.      # The starting time of the simulation (in internal units).
@@ -51,7 +41,6 @@ InitialConditions:
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 57Ngbs with the Wendland C2 kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  h_min_ratio:           0.1
   minimal_temperature:   1
 
 # Cooling with Grackle 3.0
