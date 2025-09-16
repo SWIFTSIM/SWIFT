@@ -339,6 +339,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
+  /* Load rcm switch */
+  float rcm_switch_i = pi->mhd_data.rcm_switch;
+  float rcm_switch_j = pj->mhd_data.rcm_switch;
+  f_ij *= rcm_switch_i;
+  f_ji *= rcm_switch_j;
+
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
@@ -456,18 +462,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   sph_acc_term_j[2] -= monopole_beta * over_rho2_j * wj_dr * permeability_inv *
                        Brj * r_inv * Bj[2] * tensile_correction_scale_j;
 
-  /* Load rcm switch */
-  float rcm_switch_i = pi->mhd_data.rcm_switch;
-  float rcm_switch_j = pj->mhd_data.rcm_switch;
-
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * sph_acc_term_i[0] * rcm_switch_i;
-  pi->a_hydro[1] -= mj * sph_acc_term_i[1] * rcm_switch_i;
-  pi->a_hydro[2] -= mj * sph_acc_term_i[2] * rcm_switch_i;
+  pi->a_hydro[0] -= mj * sph_acc_term_i[0];
+  pi->a_hydro[1] -= mj * sph_acc_term_i[1];
+  pi->a_hydro[2] -= mj * sph_acc_term_i[2];
 
-  pj->a_hydro[0] -= mi * sph_acc_term_j[0] * rcm_switch_j;
-  pj->a_hydro[1] -= mi * sph_acc_term_j[1] * rcm_switch_j;
-  pj->a_hydro[2] -= mi * sph_acc_term_j[2] * rcm_switch_j;
+  pj->a_hydro[0] -= mi * sph_acc_term_j[0];
+  pj->a_hydro[1] -= mi * sph_acc_term_j[1];
+  pj->a_hydro[2] -= mi * sph_acc_term_j[2];
 
   /* Save forces */
   for (int k = 0; k < 3; k++) {
@@ -670,6 +672,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
+  /* Load rcm switch */
+  float rcm_switch_i = pi->mhd_data.rcm_switch;
+  float rcm_switch_j = pj->mhd_data.rcm_switch;
+  f_ij *= rcm_switch_i;
+  f_ji *= rcm_switch_j;
+
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
@@ -759,13 +767,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                        Brj * r_inv * Bi[2] * tensile_correction_scale_i;
 
 
-  /* Load rcm switch */
-  float rcm_switch_i = pi->mhd_data.rcm_switch;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * sph_acc_term_i[0] * rcm_switch_i;
-  pi->a_hydro[1] -= mj * sph_acc_term_i[1] * rcm_switch_i;
-  pi->a_hydro[2] -= mj * sph_acc_term_i[2] * rcm_switch_i;
+  pi->a_hydro[0] -= mj * sph_acc_term_i[0];
+  pi->a_hydro[1] -= mj * sph_acc_term_i[1];
+  pi->a_hydro[2] -= mj * sph_acc_term_i[2];
 
   /* Save forces */
   for (int k = 0; k < 3; k++) {

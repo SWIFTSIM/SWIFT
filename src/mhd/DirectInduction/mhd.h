@@ -285,7 +285,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   for (int k = 0; k < 3; k++) {
     p->mhd_data.rcm_ratio[k]/=(p->mhd_data.Nneigh*p->h);
   }
-  float rcm_abs = sqrtf(p->mhd_data.rcm_ratio[0]*p->mhd_data.rcm_ratio[0]+p->mhd_data.rcm_ratio[1]*p->mhd_data.rcm_ratio[1]+p->mhd_data.rcm_ratio[2]+p->mhd_data.rcm_ratio[2]);
+  float rcm_abs = sqrtf(p->mhd_data.rcm_ratio[0]*p->mhd_data.rcm_ratio[0]+p->mhd_data.rcm_ratio[1]*p->mhd_data.rcm_ratio[1]+p->mhd_data.rcm_ratio[2]*p->mhd_data.rcm_ratio[2]);
  
   // switch: force on for Rcm<1.0, gradually decreases between 1.0 and 2.0 and off for R>2.0 
   p->mhd_data.rcm_switch = fmaxf( fminf(1.0f, 2.0f -rcm_abs), 0.0f);
