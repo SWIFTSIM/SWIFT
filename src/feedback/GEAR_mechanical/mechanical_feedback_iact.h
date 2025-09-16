@@ -26,6 +26,7 @@ __attribute__((always_inline)) INLINE static void
 mechanical_feedback_accumulate_fluxes_for_conservation_check(
     struct spart *si, const double dm, const double dp[3], const double m_ej,
     const double p_ej, const double E_ej) {
+  /* Reminder: This is not the SWIFT_DEBUG_CHECKS */
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
   si->feedback_data.fluxes_conservation_check.delta_m += dm;
