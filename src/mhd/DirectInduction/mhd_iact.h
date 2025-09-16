@@ -335,15 +335,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
-  /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
-
   /* Load rcm switch */
   float rcm_switch_i = pi->mhd_data.rcm_switch;
   float rcm_switch_j = pj->mhd_data.rcm_switch;
-  f_ij *= rcm_switch_i;
-  f_ji *= rcm_switch_j;
+ 
+  /* Variable smoothing length term */
+  const float f_ij = (1.f - pi->force.f / mj) * rcm_switch_i;
+  const float f_ji = (1.f - pj->force.f / mi) * rcm_switch_j;
 
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
@@ -668,15 +666,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
-  /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
-
   /* Load rcm switch */
   float rcm_switch_i = pi->mhd_data.rcm_switch;
   float rcm_switch_j = pj->mhd_data.rcm_switch;
-  f_ij *= rcm_switch_i;
-  f_ji *= rcm_switch_j;
+ 
+  /* Variable smoothing length term */
+  const float f_ij = (1.f - pi->force.f / mj) * rcm_switch_i;
+  const float f_ji = (1.f - pj->force.f / mi) * rcm_switch_j;
 
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
