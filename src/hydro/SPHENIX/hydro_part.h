@@ -139,6 +139,9 @@ struct part {
     /*! Time differential of velocity divergence */
     float div_v_dt;
 
+    /*! Particle velocity curl. */
+    float rot_v[3];
+
     /*! Particle velocity divergence from previous step */
     float div_v_previous_step;
 
@@ -182,9 +185,6 @@ struct part {
     /*! Derivative of density with respect to h */
     float rho_dh;
 
-    /*! Particle velocity curl. */
-    float rot_v[3];
-
   } density;
 
   /**
@@ -208,14 +208,10 @@ struct part {
     /*! Time derivative of smoothing length  */
     float h_dt;
 
-    /*! Balsara switch */
-    float balsara;
-
     /*! Maximal alpha (viscosity) over neighbours */
     float alpha_visc_max_ngb;
 
   } force;
-  //};
 
   /*! Additional data used for adaptive softening */
   struct adaptive_softening_part_data adaptive_softening_data;

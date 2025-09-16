@@ -1,6 +1,6 @@
 ###############################################################################
 # This file is part of SWIFT.
-# Copyright (c) 2016 Stefan Arridge (stefan.arridge@durham.ac.uk)
+# Copyright (c) 2025 Nikyta Shchutskyi, Orestis Karapiperis, Matthieu Schaller
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -17,7 +17,8 @@
 #
 ##############################################################################
 
-# Halo parameters similar to R. Pakmor, V. Springel, 1212.1452
+# Based on the script from CoolingHalo example, 2016 Stefan Arridge (stefan.arridge@durham.ac.uk)
+# Halo parameters similar to R. Pakmor, V. Springel (see references below)
 
 import h5py
 import sys
@@ -25,7 +26,7 @@ import numpy as np
 import math
 import random
 
-# Generates N particles in a spherically symmetric distribution with density profile ~r^(-2)
+# Generates N particles in a spherically symmetric distribution with NFW density profile
 # usage: python3 makeIC.py 1000: generate 1000 particles
 
 # Some constants cgs
@@ -41,22 +42,21 @@ const_unit_velocity_in_cgs = 1.0e5  # kms^-1
 
 # Cosmological parameters
 OMEGA = 0.3  # Cosmological matter fraction at z = 0
-h = 0.681  # 0.67777  # hubble parameter
+h = 0.704  # 0.67777  # hubble parameter
 # Find H_0, the inverse Hubble time, in cgs
 H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # DM halo parameters
 spin_lambda = 0.05  # spin parameter
-spin_lambda_choice = "Bullock"  # which definition of spin parameter to use
 f_b = 0.17  # baryon fraction
 c_200 = 7.2  # concentration parameter
 
 # Set the magnitude of the uniform seed magnetic field
-B0_Gaussian_Units = 1e-9  # 1e-6  # 1 micro Gauss
+B0_Gaussian_Units = 1e-9  # 1e-3 micro Gauss
 B0_cgs = np.sqrt(CONST_MU0_CGS / (4.0 * np.pi)) * B0_Gaussian_Units
 
 # SPH
-eta = 1.3663  # kernel smoothing
+eta = 1.595  # kernel smoothing
 
 # Additional options
 spin_lambda_choice = (
@@ -64,6 +64,15 @@ spin_lambda_choice = (
 )  # which definition of spin parameter to use (Peebles or Bullock)
 save_to_vtk = False
 plot_v_distribution = False
+
+AMP = (
+    "Bullock"
+)  # sets angular momentum profile to be a function of M(r) or r^s or the one from Bullock et al.
+AMPs = 1.3  # angular momentum profile parameter
+
+with_noise = True  # add gaussian uncertainty for particle positions
+noise_sigma = 0.5
+noise_mean = 0.0
 
 # From this we can find the virial radius, the radius within which the average density of the halo is
 # 200. * the mean matter density
@@ -112,9 +121,13 @@ print("G=", const_G)
 
 # Parameters
 periodic = 1  # 1 For periodic box
-boxSize = 4.0
+boxSize = 2.0  # in units of r_200
+R_max = boxSize / 2  # set maximal halo radius (we simulate only part of a halo)
 G = const_G
 N = int(sys.argv[1])  # Number of particles
+N = int(
+    N * 6 / np.pi
+)  # renormalize number of particles to get required N after cutting a sphere
 IAsource = "IAfile"
 
 # Create the file
@@ -190,10 +203,9 @@ coords -= 0.5
 # cut a sphere
 r_uni = np.linalg.norm(coords, axis=1)
 coords = coords[r_uni <= 0.5]
-coords *= boxSize * np.sqrt(3)
+coords *= 2 * R_max
 
 # calculate max distance from the center (units of r_200)
-R_max = np.sqrt(3) * (boxSize / 2)
 r_s = 1 / c_200
 # calculate distances to the center
 r_uni = np.linalg.norm(coords, axis=1)
@@ -301,6 +313,16 @@ r = np.logspace(
     round(10 * N ** (1 / 3)),
 )
 
+# Add noise
+if with_noise:
+    radius = np.sqrt((coords[:, 0]) ** 2 + (coords[:, 1]) ** 2 + (coords[:, 2]) ** 2)
+    l = (
+        gas_particle_mass * M_200_cgs / rho_r(radius, f_b, M_200_cgs, r_200_cgs, c_200)
+    ) ** (1 / 3) / r_200_cgs
+    random_amps = noise_sigma * np.random.randn(len(coords), 3) + noise_mean
+    coords += random_amps * l[:, None]
+
+
 # shift to centre of box
 coords += np.full(coords.shape, boxSize / 2.0)
 print("x range = (%f,%f)" % (np.min(coords[:, 0]), np.max(coords[:, 0])))
@@ -397,11 +419,16 @@ print("j_sp =", j_sp)
 # is proportional to j/r^2
 
 # define specific angular momentum distribution
-def j(r_value, j_max, s, f_b, M_200_cgs, r_200_cgs, c_200):
-    return (
-        j_max
-        * (Mgas_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200) / (M_200_cgs * f_b)) ** s
-    )
+def j(
+    r_value, j_max, s, f_b, M_200_cgs, r_200_cgs, c_200, angular_momentum_profile="M(r)"
+):
+    mass_ratio = Mgas_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200) / (M_200_cgs * f_b)
+    if angular_momentum_profile == "M(r)":
+        return j_max * mass_ratio ** s
+    elif angular_momentum_profile == "r^s":  # for rigid body rotation use r^2
+        return j_max * r_value ** s
+    elif angular_momentum_profile == "Bullock":  # following
+        return j_max * mass_ratio / (s - mass_ratio)
 
 
 omega = np.zeros((N, 3))
@@ -410,16 +437,35 @@ radius_vect = np.zeros((N, 3))
 l = np.zeros((N, 3))
 for i in range(N):
     radius_vect[i, :] = coords[i, :] - boxSize / 2.0
-    omega[i, 2] = j(radius[i], 1, 1, f_b, M_200_cgs, r_200_cgs, c_200) / radius[i] ** 2
+    omega[i, 2] = (
+        j(radius[i], 1, AMPs, f_b, M_200_cgs, r_200_cgs, c_200, AMP) / radius[i] ** 2
+    )
     v[i, :] = np.cross(omega[i, :], radius_vect[i, :])
     B[i, 0] = B0_cgs / const_unit_magnetic_field_in_cgs
     l[i, :] = gas_particle_mass * np.cross(radius_vect[i, :], v[i, :])
 
 # select particles inside R_200
 mask_r_200 = radius <= 1
-Lp_tot = np.sum(l[mask_r_200], axis=0)
-Lp_tot_abs = np.linalg.norm(Lp_tot)
+# Lp_tot = np.sum(l[mask_r_200], axis=0)
+# Lp_tot_abs = np.linalg.norm(Lp_tot)
+# jsp = Lp_tot_abs/gas_mass
 normV = np.linalg.norm(v, axis=1)
+
+# normalize to full halo
+r_analytic = np.logspace(np.log10(1e-6 * R_max), np.log10(1), 1000)
+rho_analytic = rho_r(r_analytic, f_b, M_200_cgs, r_200_cgs, c_200)
+j_1_analytic = j(r_analytic, 1, AMPs, f_b, M_200_cgs, r_200_cgs, c_200, AMP)
+int_dOmega = 8 * np.pi / 3  # integral over angles from axial distance square
+jsp_1_analytic = (
+    np.sum(
+        j_1_analytic[:-1]
+        * rho_analytic[:-1]
+        * int_dOmega
+        * r_analytic[:-1] ** 2
+        * np.diff(r_analytic)
+    )
+) / (np.sum(rho_analytic[:-1] * 4 * np.pi * r_analytic[:-1] ** 2 * np.diff(r_analytic)))
+jsp = jsp_1_analytic
 
 if spin_lambda_choice == "Peebles":
     # Normalize to Peebles spin parameter
@@ -430,17 +476,13 @@ if spin_lambda_choice == "Peebles":
         / (const_unit_velocity_in_cgs ** 2)
     )
     Ep_tot = np.sum(Ep_kin[mask_r_200] + Ep_pot[mask_r_200])
-    calc_spin_par_P = (
-        Lp_tot_abs * np.sqrt(np.abs(Ep_tot)) / const_G / (f_b * 1) ** (5 / 2)
-    )
-    v *= spin_lambda / calc_spin_par_P
-    l *= spin_lambda / calc_spin_par_P
+    jsp_P = const_G * (gas_mass) ** (3 / 2) / np.sqrt(np.abs(Ep_tot))
+    v *= jsp_P / jsp
+
 elif spin_lambda_choice == "Bullock":
     # Normalize to Bullock
-    jp_sp = Lp_tot_abs / (gas_particle_mass * np.sum(mask_r_200))
-    calc_spin_par_B = jp_sp / (np.sqrt(2) * 1 * v_200)
-    v *= spin_lambda / calc_spin_par_B
-    l *= spin_lambda / calc_spin_par_B
+    jsp_B = (np.sqrt(2) * v_200) * spin_lambda
+    v *= jsp_B / jsp
 
 # Draw velocity distribution
 if plot_v_distribution:
@@ -488,9 +530,9 @@ ds[()] = m
 m = np.zeros(1)
 
 # Smoothing lengths
-l = (4.0 * np.pi * radius ** 2 / N) ** (
-    1.0 / 3.0
-)  # local mean inter-particle separation
+l = (
+    gas_particle_mass * M_200_cgs / rho_r(radius, f_b, M_200_cgs, r_200_cgs, c_200)
+) ** (1 / 3) / r_200_cgs
 h = np.full((N,), eta * l)
 ds = grp.create_dataset("SmoothingLength", (N,), "f")
 ds[()] = h
@@ -519,3 +561,8 @@ ds = grp.create_dataset("ParticleIDs", (N,), "L")
 ds[()] = ids
 
 file.close()
+
+
+# References:
+# Rüdiger Pakmor, Volker Springel, Simulations of magnetic fields in isolated disc galaxies, Monthly Notices of the Royal Astronomical Society, Volume 432, Issue 1, 11 June 2013, Pages 176–193
+# Bullock, J. S., Dekel, A., Kolatt, T. S., et al. 2001, ApJ, 555, 240

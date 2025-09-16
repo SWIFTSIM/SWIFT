@@ -27,7 +27,7 @@ whether or not the given particle type is in this category. Types not present
 in either category are ignored entirely.
 
 The second important parameter is the minimal size of groups to retain in
-the catalogues. This is given in terms of number of particles (of all types)
+the catalogues. This is given in terms of number of *linking* particles 
 via the parameter ``min_group_size``. When analysing simulations, to
 identify haloes, the common practice is to set this to ``32`` in order to
 not plague the catalogue with too many small, likely unbound, structures.

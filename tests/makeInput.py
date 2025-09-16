@@ -27,18 +27,19 @@ from numpy import *
 periodic = 1  # 1 For periodic box
 boxSize = 1.0
 L = 4  # Number of particles along one axis
-rho = 2.0  # Density
+density = 2.0  # Density
 P = 1.0  # Pressure
 gamma = 5.0 / 3.0  # Gas adiabatic index
+material = 0  # Ideal gas
 fileName = "input.hdf5"
 
 # ---------------------------------------------------
 numPart = L ** 3
-mass = boxSize ** 3 * rho / numPart
-internalEnergy = P / ((gamma - 1.0) * rho)
+mass = boxSize ** 3 * density / numPart
+internalEnergy = P / ((gamma - 1.0) * density)
 
 # chemistry data
-he_density = rho * 0.24
+he_density = density * 0.24
 
 # Generate particles
 coords = zeros((numPart, 3))
@@ -46,7 +47,9 @@ v = zeros((numPart, 3))
 m = zeros((numPart, 1))
 h = zeros((numPart, 1))
 u = zeros((numPart, 1))
+rho = zeros((numPart, 1))
 ids = zeros((numPart, 1), dtype="L")
+mat = zeros((numPart, 1), dtype="i")
 
 # chemistry data
 he = zeros((numPart, 1))
@@ -67,7 +70,9 @@ for i in range(L):
             m[index] = mass
             h[index] = 2.251 * boxSize / L
             u[index] = internalEnergy
+            rho[index] = density
             ids[index] = index
+            mat[index] = material
             # chemistry data
             he[index] = he_density
 
@@ -114,8 +119,12 @@ ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
 ds[()] = h
 ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
 ds[()] = u
+ds = grp.create_dataset("Density", (numPart, 1), "f")
+ds[()] = rho
 ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
 ds[()] = ids
+ds = grp.create_dataset("MaterialIDs", (numPart, 1), "i")
+ds[()] = mat
 # chemistry
 ds = grp.create_dataset("HeDensity", (numPart, 1), "f")
 ds[()] = he

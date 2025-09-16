@@ -74,10 +74,10 @@
 #include "./hydro/Shadowswift/hydro_debug.h"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_debug.h"
+#elif defined(REMIX_SPH)
+#include "./hydro/REMIX/hydro_debug.h"
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_debug.h"
-#elif defined(MAGMA_SPH)
-#include "./hydro/MAGMA/hydro_debug.h"
 #elif defined(GASOLINE_SPH)
 #include "./hydro/Gasoline/hydro_debug.h"
 #elif defined(ANARCHY_PU_SPH)
