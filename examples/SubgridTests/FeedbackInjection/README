@@ -39,6 +39,6 @@ run_name="GEAR_MECH1" n_runs=100 ./run_multiple.sh
 ```
 
 # Isotropy checking
-To verify how the feedback distributes its quantities, such as metal mass, momentum, and energy, run the Python script `isotropy_check.py`. This script will compute the metal mass flux per solid angle seen by the stars over many runs (see previous section) and plot the median.
+To verify how the feedback distributes its quantities, such as metal mass, momentum, and energy, run the Python script `isotropy_check.py`. This script will compute the metal mass flux per solid angle seen by the stars over many runs (see previous section) and plot the median. Adjust the path of the files accordingly when using the script for a given simualation or to compare multiple feedback prescriptions.
 
 Note: Momentum injection of the mechanical feedback is disabled because it introduces too much movement of the particles and thus biases the computations of the face area in the Python script.

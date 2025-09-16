@@ -9,7 +9,7 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU Lesser General Public License
@@ -138,4 +138,10 @@ axes[1].set_yscale("log")
 axes[1].grid(True)
 axes[1].legend()
 
-plt.show()
+fig.subplots_adjust(
+    left=0.06, right=0.985, top=0.97, bottom=0.12, hspace=0.25, wspace=0
+)
+fig.tight_layout()
+plt.savefig(
+    "momentum_conservation_check.png", format="png", bbox_inches="tight", dpi=300
+)

@@ -247,9 +247,10 @@ def compute_solid_angle(star_position, neighbor_positions, face_area):
 
 # %%
 if __name__ == "__main__":
+    # Here we define some convenient variables.
     # Parent directory containing multiple runs
-    # base_folders = ["./GEAR_MECH1", "./GEAR", "./GEAR_MECH2"]
     base_folders = ["./"]
+    # base_folders = ["./GEAR_MECH1", "./GEAR", "./GEAR_MECH2"]
     plot_labels = ["Mechanical 1", "GEAR", "Mechanical 2"]
     colors = ["red", "blue", "orange"]
     simulation_names = ["Mechanical 1", "GEAR", "Mechanical 2"]
