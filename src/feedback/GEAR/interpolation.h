@@ -317,7 +317,6 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
       }
       /* Extrapolate? */
       if (idx < 0 || idx + 1 >= N_data_x || idy < 0 || idy + 1 >= N_data_y) {
-
         switch (boundary_condition) {
           case boundary_condition_error:
             error("Cannot extrapolate");
@@ -387,6 +386,14 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
         error("Cannot extrapolate");
         break;
       case boundary_condition_zero:
+#if defined(SWIFT_TEST_STELLAR_WIND)
+        message(
+            "interp->Nx=%d interp->Ny=%d interp->xmin=%g interp->ymin=%g "
+            "interp->dx=%g interp->dy=%g idx=%d idy=%d "
+            "out_of_boundary_type=zero",
+            Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx,
+            idy);
+#endif /* !defined SWIFT_TEST_STELLAR_WIND */
         return 0;
       case boundary_condition_const:
         const int midx = max(idx, 0);
@@ -397,6 +404,14 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
         if (cell_to_get >= array_size) {
           error("Index %d is out of boundary for the target data", cell_to_get);
         }
+#if defined(SWIFT_TEST_STELLAR_WIND)
+        message(
+            "interp->Nx=%d interp->Ny=%d interp->xmin=%g interp->ymin=%g "
+            "interp->dx=%g interp->dy=%g idx=%d idy=%d "
+            "out_of_boundary_type=const cell_to_get=%d E[%d][%d]=%g",
+            Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx,
+            idy, cell_to_get, row, col, pow(10, interp->data[cell_to_get]));
+#endif /* !defined SWIFT_TEST_STELLAR_WIND */
         return interp->data[cell_to_get];
       default:
         error("Interpolation type not implemented");
@@ -409,6 +424,19 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
       ((idx + 1) * Ny + idy + 1) >= array_size) {
     error("Index is out of boundaries for the interpolation");
   }
+
+#if defined(SWIFT_TEST_STELLAR_WIND)
+  message(
+      "interp->Nx=%d interp->Ny=%d interp->xmin=%g interp->ymin=%g "
+      "interp->dx=%g interp->dy=%g idx=%d idy=%d out_of_boundary_type=none "
+      "E[idx][idy]=%g E[idx][idy+1]=%g E[idx+1][idy]=%g E[idx+1][idy+1]=%g",
+      Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx, idy,
+      pow(10, interp->data[idx * Ny + idy]),
+      pow(10, interp->data[idx * Ny + idy + 1]),
+      pow(10, interp->data[(idx + 1) * Ny + idy]),
+      pow(10, interp->data[(idx + 1) * Ny + idy + 1]));
+#endif /* !defined SWIFT_TEST_STELLAR_WIND */
+
   const float fx1 = interp->data[idx * Ny + idy] * (1. - dx) +
                     interp->data[(idx + 1) * Ny + idy] * dx;
   const float fx2 = interp->data[idx * Ny + idy + 1] * (1. - dx) +
