@@ -478,13 +478,16 @@ INLINE static int mhd_write_particles(const struct part* parts,
   list[18] = io_make_output_field(
    "RCMMWR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
    mhd_data.rcm_MK_abs, " mass kernel weighted rcm ");
-
   list[19] = io_make_output_field(
+   "SGEfij", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.symmetric_gradient_err_fij_abs, "  ");
+
+  list[20] = io_make_output_field(
    "nneigh", INT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
    mhd_data.N_norm, " Nneigh ");
 
 
-  return 20;
+  return 21;
 }
 
 /**

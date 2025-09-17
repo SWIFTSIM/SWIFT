@@ -87,6 +87,10 @@ struct mhd_part_data {
   /* Laplacian B */
   float Delta_B[3];
 
+  /* Derivative accuracy */
+  float symmetric_gradient_err_fij[3];
+  float symmetric_gradient_err_fij_abs;
+
   /* RCM error */
   float rcm_N_ratio[3];
   float rcm_M_ratio[3];
