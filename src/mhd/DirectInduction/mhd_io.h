@@ -481,13 +481,17 @@ INLINE static int mhd_write_particles(const struct part* parts,
   list[19] = io_make_output_field(
    "SGEfij", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
    mhd_data.symmetric_gradient_err_fij_abs, "  ");
-
   list[20] = io_make_output_field(
+   "RCMSPHR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.rcm_SPH_abs, "  ");
+
+
+  list[21] = io_make_output_field(
    "nneigh", INT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
    mhd_data.N_norm, " Nneigh ");
 
 
-  return 21;
+  return 22;
 }
 
 /**

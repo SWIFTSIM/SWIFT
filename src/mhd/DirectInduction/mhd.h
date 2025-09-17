@@ -296,7 +296,6 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   p->mhd_data.rcm_N_abs = sqrtf(p->mhd_data.rcm_N_ratio[0]*p->mhd_data.rcm_N_ratio[0]+p->mhd_data.rcm_N_ratio[1]*p->mhd_data.rcm_N_ratio[1]+p->mhd_data.rcm_N_ratio[2]*p->mhd_data.rcm_N_ratio[2]);
   p->mhd_data.rcm_M_abs = sqrtf(p->mhd_data.rcm_M_ratio[0]*p->mhd_data.rcm_M_ratio[0]+p->mhd_data.rcm_M_ratio[1]*p->mhd_data.rcm_M_ratio[1]+p->mhd_data.rcm_M_ratio[2]*p->mhd_data.rcm_M_ratio[2]);
   p->mhd_data.rcm_MK_abs = sqrtf(p->mhd_data.rcm_MK_ratio[0]*p->mhd_data.rcm_MK_ratio[0]+p->mhd_data.rcm_MK_ratio[1]*p->mhd_data.rcm_MK_ratio[1]+p->mhd_data.rcm_MK_ratio[2]*p->mhd_data.rcm_MK_ratio[2]);
-
 }
 
 /**
@@ -345,6 +344,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   for (int k = 0; k < 3; k++) {
     p->mhd_data.mean_grad_SPH_err[k] = 0.f;
     p->mhd_data.symmetric_gradient_err_fij[k] = 0.0f;
+    p->mhd_data.rcm_SPH_ratio[k]=0.0f;
   }
 }
 
@@ -367,10 +367,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   for (int k = 0; k < 3; k++) {
     p->mhd_data.symmetric_gradient_err_fij[k] *= p->h * p->rho;
     sge_fij[k] = p->mhd_data.symmetric_gradient_err_fij[k];
+    p->mhd_data.rcm_SPH_ratio[k] *= pow_dimension(1.f / (p->h));
   }
 
   p->mhd_data.symmetric_gradient_err_fij_abs = sqrtf(sge_fij[0]*sge_fij[0]+sge_fij[1]*sge_fij[1]+sge_fij[2]*sge_fij[2]); 
-
+  p->mhd_data.rcm_SPH_abs = sqrtf(p->mhd_data.rcm_SPH_ratio[0]*p->mhd_data.rcm_SPH_ratio[0]+p->mhd_data.rcm_SPH_ratio[1]*p->mhd_data.rcm_SPH_ratio[1]+p->mhd_data.rcm_SPH_ratio[2]*p->mhd_data.rcm_SPH_ratio[2]);
 }
 
 /**

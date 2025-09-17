@@ -95,9 +95,11 @@ struct mhd_part_data {
   float rcm_N_ratio[3];
   float rcm_M_ratio[3];
   float rcm_MK_ratio[3];
+  float rcm_SPH_ratio[3];
   float rcm_N_abs;
   float rcm_M_abs;
   float rcm_MK_abs;
+  float rcm_SPH_abs;
 
   /* Number of neighbors and weight */
   int N_norm;
