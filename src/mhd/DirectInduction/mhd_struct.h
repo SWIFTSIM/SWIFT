@@ -105,6 +105,7 @@ struct mhd_part_data {
   int N_norm;
   float M_norm;
   float MK_norm;
+  float SPH_neigh_norm;
 
 
 };

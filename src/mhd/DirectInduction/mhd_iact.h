@@ -226,6 +226,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   /* Calculate SPH error */
   pi->mhd_data.mean_SPH_err += mj * wi;
   pj->mhd_data.mean_SPH_err += mi * wj;
+
+  pi->mhd_data.SPH_neigh_norm += mj / rhoj * wi;
+  pj->mhd_data.SPH_neigh_norm += mi / rhoi * wj;
+
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.mean_grad_SPH_err[k] +=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
@@ -329,6 +333,9 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   /* Calculate SPH error */
   pi->mhd_data.mean_SPH_err += mj * wi;
+
+  pi->mhd_data.SPH_neigh_norm += mj / rhoj * wi;
+
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.mean_grad_SPH_err[k] +=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
