@@ -132,7 +132,6 @@ void stellar_wind_read_yields(struct stellar_wind *sw,
 
   hsize_t previous_count = 0;
 
-  // TODO this part is not active in fact
   if (!restart) {
     sw->interpolation_size_m = parser_get_opt_param_int(
         params, "GEARStellar_wind:interpolation_size_mass", 200);
