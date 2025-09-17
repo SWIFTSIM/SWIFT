@@ -37,11 +37,41 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
     struct part *restrict pi, struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
-  pi->mhd_data.Nneigh += 1;
-  pj->mhd_data.Nneigh += 1;
+  float wi, wj, wi_dx, wj_dx;
+
+  const float r = sqrtf(r2);
+
+  /* Get the masses. */
+  const float mi = pi->mass;
+  const float mj = pj->mass;
+
+  /* Compute density of pi. */
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+  const float hj_inv = 1.f / hj;
+  const float uj = r * hj_inv;
+
+  kernel_deval(ui, &wi, &wi_dx);
+  kernel_deval(uj, &wj, &wj_dx);
+
+  /* Compute neighbour weight norm */
+  pi->mhd_data.N_norm += 1;
+  pi->mhd_data.M_norm += mj;
+  pi->mhd_data.MK_norm += mj * wi;
+  pj->mhd_data.N_norm += 1;
+  pj->mhd_data.M_norm += mi;
+  pj->mhd_data.MK_norm += mi * wj;
+
+  /* Compute weighted distance sum */
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.rcm_ratio[k]+=(pj->x[k] - pi->x[k]);
-    pj->mhd_data.rcm_ratio[k]+=(pi->x[k] - pj->x[k]);
+  
+      pi->mhd_data.rcm_N_ratio[k]+=(pj->x[k] - pi->x[k]);
+      pi->mhd_data.rcm_M_ratio[k]+=(pj->x[k] - pi->x[k]) * mj;
+      pi->mhd_data.rcm_MK_ratio[k]+=(pj->x[k] - pi->x[k]) * mj * wi;
+      pj->mhd_data.rcm_N_ratio[k]+=(pi->x[k] - pj->x[k]);
+      pj->mhd_data.rcm_M_ratio[k]+=(pi->x[k] - pj->x[k]) * mi;
+      pj->mhd_data.rcm_MK_ratio[k]+=(pi->x[k] - pj->x[k]) * mi * wj;
+
   }
 
 }
@@ -66,10 +96,39 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                const struct part *restrict pj, const float mu_0,
                                const float a, const float H) {
 
-  pi->mhd_data.Nneigh += 1;
+ 
+  float wi, wj, wi_dx, wj_dx;
+
+  const float r = sqrtf(r2);
+
+  /* Get the masses. */
+  const float mi = pi->mass;
+  const float mj = pj->mass;
+
+  /* Compute density of pi. */
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+  const float hj_inv = 1.f / hj;
+  const float uj = r * hj_inv;
+
+  kernel_deval(ui, &wi, &wi_dx);
+  kernel_deval(uj, &wj, &wj_dx);
+
+  /* Compute neighbour weight norm */
+  pi->mhd_data.N_norm += 1;
+  pi->mhd_data.M_norm += mj;
+  pi->mhd_data.MK_norm += mj * wi;
+
+  /* Compute weighted distance sum */
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.rcm_ratio[k]+=(pj->x[k] - pi->x[k]);
+  
+      pi->mhd_data.rcm_N_ratio[k]+=(pj->x[k] - pi->x[k]);
+      pi->mhd_data.rcm_M_ratio[k]+=(pj->x[k] - pi->x[k]) * mj;
+      pi->mhd_data.rcm_MK_ratio[k]+=(pj->x[k] - pi->x[k]) * mj * wi;
+
   }
+
+
 
 }
 

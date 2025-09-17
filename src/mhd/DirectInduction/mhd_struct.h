@@ -88,13 +88,18 @@ struct mhd_part_data {
   float Delta_B[3];
 
   /* RCM error */
-  float rcm_ratio[3];
-  
-  /* Number of neighbors */
-  int Nneigh;
+  float rcm_N_ratio[3];
+  float rcm_M_ratio[3];
+  float rcm_MK_ratio[3];
+  float rcm_N_abs;
+  float rcm_M_abs;
+  float rcm_MK_abs;
 
-  /* RCM based switch */
-  float rcm_switch;
+  /* Number of neighbors and weight */
+  int N_norm;
+  float M_norm;
+  float MK_norm;
+
 
 };
 

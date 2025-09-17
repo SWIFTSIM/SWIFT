@@ -46,12 +46,6 @@ INLINE static void convert_B(const struct engine* e, const struct part* p,
   ret[2] = p->mhd_data.B_over_rho[2] * p->rho;
 }
 
-INLINE static void rcm_ratio(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
-
-  ret[0] = sqrtf(p->mhd_data.rcm_ratio[0]*p->mhd_data.rcm_ratio[0]+p->mhd_data.rcm_ratio[1]*p->mhd_data.rcm_ratio[1]+p->mhd_data.rcm_ratio[2]*p->mhd_data.rcm_ratio[2]);
-}
-
 
 /**
  * @brief Compute the R0 error.
@@ -475,17 +469,22 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
 
-  list[16] = io_make_output_field_convert_part(
-      "RCMRatio", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
-      0.0f, parts, xparts, rcm_ratio,
-      " neighbour rcm ");
-
+  list[16] = io_make_output_field(
+   "RCMNR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.rcm_N_abs, " number weighted rcm ");
   list[17] = io_make_output_field(
+   "RCMMR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.rcm_M_abs, " mass weighted rcm ");
+  list[18] = io_make_output_field(
+   "RCMMWR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.rcm_MK_abs, " mass kernel weighted rcm ");
+
+  list[19] = io_make_output_field(
    "nneigh", INT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
-   mhd_data.Nneigh, " Nneigh ");
+   mhd_data.N_norm, " Nneigh ");
 
 
-  return 18;
+  return 20;
 }
 
 /**
