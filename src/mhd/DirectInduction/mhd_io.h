@@ -484,8 +484,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
    "nneigh", INT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
    mhd_data.Nneigh, " Nneigh ");
 
+  list[18] = io_make_output_field(
+   "rcm_switch", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.rcm_switch, " rcm switch ");
 
-  return 18;
+  return 19;
 }
 
 /**
