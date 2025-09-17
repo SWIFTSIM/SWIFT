@@ -367,7 +367,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   for (int k = 0; k < 3; k++) {
     p->mhd_data.symmetric_gradient_err_fij[k] *= p->h * p->rho;
     sge_fij[k] = p->mhd_data.symmetric_gradient_err_fij[k];
-    p->mhd_data.rcm_SPH_ratio[k] *= pow_dimension(1.f / (p->h));
+    p->mhd_data.rcm_SPH_ratio[k] *= pow_dimension(1.f / (p->h)) / p->h ;
   }
 
   p->mhd_data.symmetric_gradient_err_fij_abs = sqrtf(sge_fij[0]*sge_fij[0]+sge_fij[1]*sge_fij[1]+sge_fij[2]*sge_fij[2]); 
