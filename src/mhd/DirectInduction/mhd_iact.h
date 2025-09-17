@@ -263,14 +263,14 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 const struct part *restrict pj,
                                 const float mu_0, const float a,
                                 const float H) {
-
   /* Define kernel variables */
-  float wi, wi_dx;
+  float wi, wj, wi_dx, wj_dx;
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
+  const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -291,8 +291,16 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   kernel_deval(xi, &wi, &wi_dx);
   const float wi_dr = hid_inv * wi_dx;
 
+  /* Get the kernel for hj. */
+  const float hj_inv = 1.0f / hj;
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+  const float xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
+  const float wj_dr = hjd_inv * wj_dx;
+
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
 
   /* dB cross r */
   float dB_cross_dx[3];
