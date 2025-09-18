@@ -107,6 +107,8 @@ struct mhd_part_data {
   float MK_norm;
   float SPH_neigh_norm;
 
+  /* Neighbour h */
+  float hb_N_avrg;
 
 };
 

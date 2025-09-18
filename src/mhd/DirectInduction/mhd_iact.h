@@ -62,6 +62,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   pj->mhd_data.M_norm += mi;
   pj->mhd_data.MK_norm += mi * wj;
 
+  pi->mhd_data.hb_N_avrg += hj;
+  pj->mhd_data.hb_N_avrg += hi;
+
   /* Compute weighted distance sum */
   for (int k = 0; k < 3; k++) {
   
@@ -119,6 +122,8 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   pi->mhd_data.N_norm += 1;
   pi->mhd_data.M_norm += mj;
   pi->mhd_data.MK_norm += mj * wi;
+
+  pi->mhd_data.hb_N_avrg += hj;
 
   /* Compute weighted distance sum */
   for (int k = 0; k < 3; k++) {
