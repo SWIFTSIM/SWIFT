@@ -1720,7 +1720,16 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
 
     /* Get the first progeny that exists. */
     int first_child = 0;
-    while (ci->progeny[first_child] == NULL) first_child++;
+    while (ci->progeny[first_child] == NULL && first_child < 8) first_child++;
+
+    /* Nothing to split? */
+    if (first_child == 8) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->skip = 1;
+      return;
+    }
 
     /* Reuse the task we already have. */
     t->ci = ci->progeny[first_child];
