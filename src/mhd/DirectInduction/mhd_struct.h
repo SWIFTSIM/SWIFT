@@ -109,6 +109,8 @@ struct mhd_part_data {
 
   /* Neighbour h */
   float hb_N_avrg;
+  float hb_MK_avrg;
+  float hb_SPH_avrg;
 
 };
 

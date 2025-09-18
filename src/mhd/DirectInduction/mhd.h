@@ -263,6 +263,7 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
   p->mhd_data.M_norm = 0.0f;
   p->mhd_data.MK_norm = 0.0f;
   p->mhd_data.hb_N_avrg = 0.0f;
+  p->mhd_data.hb_MK_avrg = 0.0f;
 
   for (int k = 0; k < 3; k++) {
     p->mhd_data.rcm_N_ratio[k]=0.0f;
@@ -289,6 +290,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
     struct part *p, const struct cosmology *cosmo) {
 
   p->mhd_data.hb_N_avrg /= (p->mhd_data.N_norm * p->h);
+  p->mhd_data.hb_MK_avrg /= (p->mhd_data.MK_norm * p->h);
 
   for (int k = 0; k < 3; k++) {
     p->mhd_data.rcm_N_ratio[k]/=(p->mhd_data.N_norm * p->h);
@@ -345,6 +347,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
   p->mhd_data.SPH_neigh_norm = 0.0f;
+  p->mhd_data.hb_SPH_avrg = 0.0f;
   for (int k = 0; k < 3; k++) {
     p->mhd_data.mean_grad_SPH_err[k] = 0.f;
     p->mhd_data.symmetric_gradient_err_fij[k] = 0.0f;
@@ -365,6 +368,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
   /* Finish SPH_1 calculation*/
   p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho;
+
+  p->mhd_data.hb_SPH_avrg /= (p->mhd_data.SPH_neigh_norm * p->h); 
 
   float sge_fij[3]; 
 

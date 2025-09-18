@@ -485,15 +485,20 @@ INLINE static int mhd_write_particles(const struct part* parts,
    "RCMSPHR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
    mhd_data.rcm_SPH_abs, "  ");
   list[21] = io_make_output_field(
-   "hbR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   "hbNR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
    mhd_data.hb_N_avrg, "  ");
-
   list[22] = io_make_output_field(
+   "hbMWR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.hb_MK_avrg, "  ");
+  list[23] = io_make_output_field(
+   "hbSPHR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.hb_SPH_avrg, "  ");
+  list[24] = io_make_output_field(
    "nneigh", INT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
    mhd_data.N_norm, " Nneigh ");
 
 
-  return 23;
+  return 24;
 }
 
 /**

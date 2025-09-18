@@ -63,7 +63,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   pj->mhd_data.MK_norm += mi * wj;
 
   pi->mhd_data.hb_N_avrg += hj;
+  pi->mhd_data.hb_MK_avrg += hj * mj * wi;
   pj->mhd_data.hb_N_avrg += hi;
+  pj->mhd_data.hb_MK_avrg += hi * mi * wj;
 
   /* Compute weighted distance sum */
   for (int k = 0; k < 3; k++) {
@@ -124,6 +126,7 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   pi->mhd_data.MK_norm += mj * wi;
 
   pi->mhd_data.hb_N_avrg += hj;
+  pi->mhd_data.hb_MK_avrg += hj * mj * wi;
 
   /* Compute weighted distance sum */
   for (int k = 0; k < 3; k++) {
@@ -235,6 +238,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   pi->mhd_data.SPH_neigh_norm += mj / rhoj * wi;
   pj->mhd_data.SPH_neigh_norm += mi / rhoi * wj;
 
+  pi->mhd_data.hb_SPH_avrg += hj * mj / rhoj * wi;
+  pj->mhd_data.hb_SPH_avrg += hi * mi / rhoi * wj;
+
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.mean_grad_SPH_err[k] +=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
@@ -340,6 +346,8 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   pi->mhd_data.mean_SPH_err += mj * wi;
 
   pi->mhd_data.SPH_neigh_norm += mj / rhoj * wi;
+
+  pi->mhd_data.hb_SPH_avrg += hj * mj / rhoj * wi;
 
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.mean_grad_SPH_err[k] +=
