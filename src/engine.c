@@ -1052,7 +1052,7 @@ void engine_do_tasks_count_mapper(void *map_data, int num_elements,
 
   /* Add task counts locally */
   for (int k = 0; k < num_elements; k++) {
-    if (tasks[k].skip)
+    if (!tasks[k].skip)
       local_counts[task_type_count] += 1;
     else
       local_counts[(int)tasks[k].type] += 1;
@@ -3413,9 +3413,9 @@ int engine_step(struct engine *e) {
             e->collect_group1.csds_file_size_gb);
 #endif
 
-    /********************************************************/
-    /* OK, we are done with the regular stuff. Time for i/o */
-    /********************************************************/
+  /********************************************************/
+  /* OK, we are done with the regular stuff. Time for i/o */
+  /********************************************************/
 
 #ifdef WITH_LIGHTCONE
   /* Flush lightcone buffers if necessary */
