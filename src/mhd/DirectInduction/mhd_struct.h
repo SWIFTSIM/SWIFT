@@ -112,6 +112,9 @@ struct mhd_part_data {
   float hb_MK_avrg;
   float hb_SPH_avrg;
 
+  /* Switch */
+  float mhdsw;
+
 };
 
 /**

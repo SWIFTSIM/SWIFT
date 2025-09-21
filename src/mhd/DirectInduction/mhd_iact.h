@@ -358,6 +358,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
     pi->mhd_data.symmetric_gradient_err_fij[k] += mj * (wi_dr * f_ij / (rhoi * rhoi) + wj_dr * f_ji / (rhoj * rhoj)) * r_inv * dx[k];
 
   }
+
 }
 
 /**
@@ -436,8 +437,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float wj_dr = hjd_inv * wj_dx;
 
   /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
+  float f_ij = 1.f - pi->force.f / mj;
+  float f_ji = 1.f - pj->force.f / mi;
+
+  /* Switch for fij */
+  //f_ij *= pi->mhd_data.mhdsw;
+  //f_ji *= pj->mhd_data.mhdsw;
 
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
@@ -523,8 +528,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float scale_j = 0.125f * (10.0f - plasma_beta_j);
 
-  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
-  const float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, 1.0f));
+  float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
+  float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, 1.0f));
+
+  /* Switch for tensile correction */
+  tensile_correction_scale_i = fminf(tensile_correction_scale_i, 0.5f * ( 1.0f + pi->mhd_data.mhdsw) );
+  tensile_correction_scale_j = fminf(tensile_correction_scale_j, 0.5f * ( 1.0f + pj->mhd_data.mhdsw) );
+
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
                        Bri * r_inv * Bi[0] * tensile_correction_scale_i;
@@ -763,8 +773,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float wj_dr = hjd_inv * wj_dx;
 
   /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
+  float f_ij = 1.f - pi->force.f / mj;
+  float f_ji = 1.f - pj->force.f / mi;
+
+  /* Switch for fij */
+  //f_ij *= pi->mhd_data.mhdsw;
+  //f_ji *= pj->mhd_data.mhdsw;
 
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
@@ -837,7 +851,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
-  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
+  float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
+
+  /* Switch for tensile correction */
+  tensile_correction_scale_i = fminf(tensile_correction_scale_i, 0.5f * ( 1.0f + pi->mhd_data.mhdsw) );
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
                        Bri * r_inv * Bi[0] * tensile_correction_scale_i;

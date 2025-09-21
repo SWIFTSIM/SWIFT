@@ -381,6 +381,20 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
 
   p->mhd_data.symmetric_gradient_err_fij_abs = sqrtf(sge_fij[0]*sge_fij[0]+sge_fij[1]*sge_fij[1]+sge_fij[2]*sge_fij[2]); 
   p->mhd_data.rcm_SPH_abs = sqrtf(p->mhd_data.rcm_SPH_ratio[0]*p->mhd_data.rcm_SPH_ratio[0]+p->mhd_data.rcm_SPH_ratio[1]*p->mhd_data.rcm_SPH_ratio[1]+p->mhd_data.rcm_SPH_ratio[2]*p->mhd_data.rcm_SPH_ratio[2]);
+
+
+  p->mhd_data.mhdsw = 1.0f;
+
+  /* Switch based on mb Wab weight */
+  //if (p->mhd_data.rcm_MK_abs / p->mhd_data.hb_MK_avrg >= 2.0f ) {
+  //  p->mhd_data.mhdsw = 0.0f;
+  //}
+
+  /* Switch based on mb Wab / rhob weight */
+  if (p->mhd_data.rcm_SPH_abs / p->mhd_data.hb_SPH_avrg >= 1.0f ) {
+    p->mhd_data.mhdsw = 0.0f;
+  } 
+
 }
 
 /**
