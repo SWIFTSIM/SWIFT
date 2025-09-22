@@ -632,11 +632,6 @@ void zoom_region_init(struct space *s, const int verbose) {
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->region_pad_factor;
 
-  /* Compute background cdim from zoom region width. */
-  s->zoom_props->bkg_cdim[0] = (int)ceil(s->dim[0] / max_dim);
-  s->zoom_props->bkg_cdim[1] = (int)ceil(s->dim[1] / max_dim);
-  s->zoom_props->bkg_cdim[2] = (int)ceil(s->dim[2] / max_dim);
-
   /* Define the background grid (we'll treat this as gospel). */
   for (int i = 0; i < 3; i++) {
     s->cdim[i] = s->zoom_props->bkg_cdim[i];
