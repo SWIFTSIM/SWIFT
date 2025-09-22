@@ -442,13 +442,13 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
     }
     if (drift_mpoles && (e->policy & engine_policy_self_gravity)) {
       threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
-                     e->s->zoom_props->local_zoom_cells_with_tasks_top,
-                     e->s->zoom_props->nr_local_zoom_cells_with_tasks,
-                     sizeof(int), threadpool_auto_chunk_size, e);
+                     e->s->zoom_props->local_zoom_cells_top,
+                     e->s->zoom_props->nr_local_zoom_cells, sizeof(int),
+                     threadpool_auto_chunk_size, e);
       threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
-                     e->s->zoom_props->local_bkg_cells_with_tasks_top,
-                     e->s->zoom_props->nr_local_bkg_cells_with_tasks,
-                     sizeof(int), threadpool_auto_chunk_size, e);
+                     e->s->zoom_props->local_bkg_cells_top,
+                     e->s->zoom_props->nr_local_bkg_cells, sizeof(int),
+                     threadpool_auto_chunk_size, e);
     }
 
   } else if (!e->restarting && !e->s->with_zoom_region) {
