@@ -413,11 +413,11 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                      threadpool_auto_chunk_size, e);
     }
     if (e->s->nr_gparts > 0) {
-      threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
+      threadpool_map(&e->threadpool, engine_do_drift_all_zoom_gpart_mapper,
                      e->s->zoom_props->local_zoom_cells_top,
                      e->s->zoom_props->nr_local_zoom_cells, sizeof(int),
                      threadpool_auto_chunk_size, e);
-      threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
+      threadpool_map(&e->threadpool, engine_do_drift_all_bkg_gpart_mapper,
                      e->s->zoom_props->local_bkg_cells_top,
                      e->s->zoom_props->nr_local_bkg_cells, sizeof(int),
                      threadpool_auto_chunk_size, e);
@@ -441,11 +441,11 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                      threadpool_auto_chunk_size, e);
     }
     if (drift_mpoles && (e->policy & engine_policy_self_gravity)) {
-      threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
+      threadpool_map(&e->threadpool, engine_do_drift_all_zoom_multipole_mapper,
                      e->s->zoom_props->local_zoom_cells_top,
                      e->s->zoom_props->nr_local_zoom_cells, sizeof(int),
                      threadpool_auto_chunk_size, e);
-      threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
+      threadpool_map(&e->threadpool, engine_do_drift_all_bkg_multipole_mapper,
                      e->s->zoom_props->local_bkg_cells_top,
                      e->s->zoom_props->nr_local_bkg_cells, sizeof(int),
                      threadpool_auto_chunk_size, e);
@@ -502,11 +502,11 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                      threadpool_auto_chunk_size, e);
     }
     if (e->s->nr_gparts > 0) {
-      threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
+      threadpool_map(&e->threadpool, engine_do_drift_all_zoom_gpart_mapper,
                      e->s->zoom_props->zoom_cells_top,
                      e->s->zoom_props->nr_zoom_cells, sizeof(struct cell),
                      threadpool_auto_chunk_size, e);
-      threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
+      threadpool_map(&e->threadpool, engine_do_drift_all_zoom_gpart_mapper,
                      e->s->zoom_props->bkg_cells_top,
                      e->s->zoom_props->nr_bkg_cells, sizeof(struct cell),
                      threadpool_auto_chunk_size, e);
@@ -530,11 +530,11 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                      threadpool_auto_chunk_size, e);
     }
     if (drift_mpoles && (e->policy & engine_policy_self_gravity)) {
-      threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
+      threadpool_map(&e->threadpool, engine_do_drift_all_zoom_multipole_mapper,
                      e->s->zoom_props->zoom_cells_top,
                      e->s->zoom_props->nr_zoom_cells, sizeof(struct cell),
                      threadpool_auto_chunk_size, e);
-      threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
+      threadpool_map(&e->threadpool, engine_do_drift_all_bkg_multipole_mapper,
                      e->s->zoom_props->bkg_cells_top,
                      e->s->zoom_props->nr_bkg_cells, sizeof(struct cell),
                      threadpool_auto_chunk_size, e);
