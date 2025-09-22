@@ -126,6 +126,36 @@ void engine_do_drift_all_gpart_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Zoom wrapper for engine_do_drift_all_gpart_mapper.
+ *
+ * This exists purely to label threadpool calls correctly when configured
+ * with --enable-threadpool-debugging.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+void engine_do_drift_all_zoom_gpart_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+  engine_do_drift_all_gpart_mapper(map_data, num_elements, extra_data);
+}
+
+/**
+ * @brief Background wrapper for engine_do_drift_all_gpart_mapper.
+ *
+ * This exists purely to label threadpool calls correctly when configured
+ * with --enable-threadpool-debugging.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+void engine_do_drift_all_bkg_gpart_mapper(void *map_data, int num_elements,
+                                          void *extra_data) {
+  engine_do_drift_all_gpart_mapper(map_data, num_elements, extra_data);
+}
+
+/**
  * @brief Mapper function to drift *all* the #spart to the current time.
  *
  * @param map_data An array of #cell%s.
@@ -311,6 +341,36 @@ void engine_do_drift_all_multipole_mapper(void *map_data, int num_elements,
 
     cell_drift_all_multipoles(c, e);
   }
+}
+
+/**
+ * @brief Zoom wrapper for engine_drift_all_multipole_mapper.
+ *
+ * This exists purely to label threadpool calls correctly when
+ * configured with --enable-threadpool-debugging.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+void engine_do_drift_all_zoom_multipole_mapper(void *map_data, int num_elements,
+                                               void *extra_data) {
+  engine_do_drift_all_multipole_mapper(map_data, num_elements, extra_data);
+}
+
+/**
+ * @brief Background wrapper for engine_drift_all_multipole_mapper.
+ *
+ * This exists purely to label threadpool calls correctly when
+ * configured with --enable-threadpool-debugging.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+void engine_do_drift_all_bkg_multipole_mapper(void *map_data, int num_elements,
+                                              void *extra_data) {
+  engine_do_drift_all_multipole_mapper(map_data, num_elements, extra_data);
 }
 
 /**
