@@ -38,8 +38,8 @@ fileName = "sedov.hdf5"
 print(rho0, "cm s^-3")
 
 uL = 1.0e3 * pc
-uM = 1.99e30
-uv = 1.0e10
+uM = 1.99e43
+uv = 1.0e5
 ut = uL / uv
 uU = uv ** 2
 print("ut:", ut / 3.154e7, "yr")

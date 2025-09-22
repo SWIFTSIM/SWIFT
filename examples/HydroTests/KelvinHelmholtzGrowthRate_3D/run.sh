@@ -14,7 +14,7 @@ then
 fi
 
 # Run SWIFT
-../../../swift --hydro --threads=1 kelvinHelmholtzGrowthRate.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=16 kelvinHelmholtzGrowthRate.yml 2>&1 | tee output.log
 
 # Plot the solution
 python3 plotSolution.py 100

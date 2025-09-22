@@ -204,6 +204,27 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
 
+#ifdef MAGMA2_DEBUG_CHECKS
+  if (new_dt < e->dt_min) {
+    error("part (id=%lld) wants a time-step (%e) below dt_min (%e)"
+          "dt_h_change = %e, "
+          "new_dt_hydro = %e, new_dt_mhd = %e, "
+          "new_dt_cooling = %e, new_dt_grav = %e, "
+          "new_dt_forcing = %e, new_dt_chemistry = %e"
+          ", dt_max_RMS_displacement = %e",
+          p->id,
+          new_dt, e->dt_min,
+          dt_h_change * e->cosmology->time_step_factor,
+          new_dt_hydro * e->cosmology->time_step_factor, 
+          new_dt_mhd * e->cosmology->time_step_factor,
+          new_dt_cooling * e->cosmology->time_step_factor, 
+          new_dt_grav * e->cosmology->time_step_factor,
+          new_dt_forcing * e->cosmology->time_step_factor, 
+          new_dt_chemistry * e->cosmology->time_step_factor,
+          e->dt_max_RMS_displacement * e->cosmology->time_step_factor);
+  }
+#endif
+
   if (new_dt < e->dt_min)
     error("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
           new_dt, e->dt_min);

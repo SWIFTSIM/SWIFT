@@ -331,6 +331,18 @@ if test "$enable_debugging_checks" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
 fi
 
+# Check if expensive debugging is on.
+AC_ARG_ENABLE([magma2-debugging-checks],
+   [AS_HELP_STRING([--enable-magma2-debugging-checks],
+     [Activate expensive MAGMA2 debugging checks @<:@yes/no@:>@]
+   )],
+   [enable_magma2_debugging_checks="$enableval"],
+   [enable_magma2_debugging_checks="no"]
+)
+if test "$enable_magma2_debugging_checks" = "yes"; then
+   AC_DEFINE([MAGMA2_DEBUG_CHECKS],1,[Enable expensive MAGMA2 debugging])
+fi
+
 # Check if cell graph is on.
 AC_ARG_ENABLE([cell-graph],
    [AS_HELP_STRING([--enable-cell-graph],
@@ -2223,7 +2235,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, magma2, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -2278,6 +2290,9 @@ case "$with_hydro" in
    ;;
    gasoline)
       AC_DEFINE([GASOLINE_SPH], [1], [Gasoline SPH])
+   ;;
+   magma2)
+      AC_DEFINE([MAGMA2_SPH], [1], [MAGMA2 SPH])
    ;;
    anarchy-du)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
