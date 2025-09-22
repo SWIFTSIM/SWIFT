@@ -1020,7 +1020,7 @@ void space_split(struct space *s, int verbose) {
     threadpool_map(&s->e->threadpool, zoom_space_split_mapper,
                    s->zoom_props->local_zoom_cells_with_particles_top,
                    s->zoom_props->nr_local_zoom_cells_with_particles,
-                   sizeof(int), threadpool_uniform_chunk_size, s);
+                   sizeof(int), threadpool_auto_chunk_size, s);
 
     if (verbose)
       message("Zoom cell tree and multipole construction took %.3f %s.",
@@ -1034,7 +1034,7 @@ void space_split(struct space *s, int verbose) {
       threadpool_map(&s->e->threadpool, buffer_space_split_mapper,
                      s->zoom_props->local_buffer_cells_with_particles_top,
                      s->zoom_props->nr_local_buffer_cells_with_particles,
-                     sizeof(int), threadpool_uniform_chunk_size, s);
+                     sizeof(int), threadpool_auto_chunk_size, s);
 
       if (verbose)
         message("Buffer cell tree and multipole construction took %.3f %s.",
@@ -1047,7 +1047,7 @@ void space_split(struct space *s, int verbose) {
     threadpool_map(&s->e->threadpool, bkg_space_split_mapper,
                    s->zoom_props->local_bkg_cells_with_particles_top,
                    s->zoom_props->nr_local_bkg_cells_with_particles,
-                   sizeof(int), threadpool_uniform_chunk_size, s);
+                   sizeof(int), threadpool_auto_chunk_size, s);
 
     if (verbose)
       message("Background cell tree and multipole construction took %.3f %s.",
