@@ -340,9 +340,61 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                                    e->ti_earliest_undrifted, e->ti_current);
 #endif
 
-  if (!e->restarting) {
+  if (!e->restarting && e->s->with_zoom_region) {
 
-    /* Normal case: We have a list of local cells with tasks to play with */
+    /* Non-restarting Zoom case: we have local cells arrays but we only  need to
+     * loop over zoom and non-zoom cells separately but only zoom cells have
+     * parts, sparts and bparts. */
+
+    if (e->s->nr_parts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_part_mapper,
+                     e->s->zoom_props->local_zoom_cells_top,
+                     e->s->zoom_props->nr_local_zoom_cells, sizeof(int),
+                     threadpool_auto_chunk_size, e);
+    }
+    if (e->s->nr_gparts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
+                     e->s->zoom_props->local_zoom_cells_top,
+                     e->s->zoom_props->nr_local_zoom_cells, sizeof(int),
+                     threadpool_auto_chunk_size, e);
+      threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
+                     e->s->zoom_props->local_bkg_cells_top,
+                     e->s->zoom_props->nr_local_bkg_cells, sizeof(int),
+                     threadpool_auto_chunk_size, e);
+    }
+    if (e->s->nr_sparts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_spart_mapper,
+                     e->s->zoom_props->local_zoom_cells_top,
+                     e->s->zoom_props->nr_local_zoom_cells, sizeof(int),
+                     threadpool_auto_chunk_size, e);
+    }
+    if (e->s->nr_sinks > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_sink_mapper,
+                     e->s->zoom_props->local_zoom_cells_top,
+                     e->s->zoom_props->nr_local_zoom_cells, sizeof(int),
+                     threadpool_auto_chunk_size, e);
+    }
+    if (e->s->nr_bparts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_bpart_mapper,
+                     e->s->zoom_props->local_zoom_cells_top,
+                     e->s->zoom_props->nr_local_zoom_cells, sizeof(int),
+                     threadpool_auto_chunk_size, e);
+    }
+    if (drift_mpoles && (e->policy & engine_policy_self_gravity)) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
+                     e->s->zoom_props->local_zoom_cells_with_tasks_top,
+                     e->s->zoom_props->nr_local_zoom_cells_with_tasks,
+                     sizeof(int), threadpool_auto_chunk_size, e);
+      threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
+                     e->s->zoom_props->local_bkg_cells_with_tasks_top,
+                     e->s->zoom_props->nr_local_bkg_cells_with_tasks,
+                     sizeof(int), threadpool_auto_chunk_size, e);
+    }
+
+  } else if (!e->restarting && !e->s->with_zoom_region) {
+
+    /* Non-restarting uniform case: we have local cells arrays and normal top
+     * level cells. */
 
     if (e->s->nr_parts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_part_mapper,
@@ -376,10 +428,63 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                      threadpool_auto_chunk_size, e);
     }
 
+  } else if (e->restarting && e->s->with_zoom_region) {
+
+    /* Restart Zoom Case: When restarting, the list of local cells with
+     * tasks does not yet exist. We use the raw list of top-level
+     * cells instead but we need to separate zoom and non-zoom cells.
+     * Non-zoom cells also only have gparts. */
+
+    if (e->s->nr_parts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_part_mapper,
+                     e->s->zoom_props->zoom_cells_top,
+                     e->s->zoom_props->nr_zoom_cells, sizeof(struct cell),
+                     threadpool_auto_chunk_size, e);
+    }
+    if (e->s->nr_gparts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
+                     e->s->zoom_props->zoom_cells_top,
+                     e->s->zoom_props->nr_zoom_cells, sizeof(struct cell),
+                     threadpool_auto_chunk_size, e);
+      threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
+                     e->s->zoom_props->bkg_cells_top,
+                     e->s->zoom_props->nr_bkg_cells, sizeof(struct cell),
+                     threadpool_auto_chunk_size, e);
+    }
+    if (e->s->nr_sparts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_spart_mapper,
+                     e->s->zoom_props->zoom_cells_top,
+                     e->s->zoom_props->nr_zoom_cells, sizeof(struct cell),
+                     threadpool_auto_chunk_size, e);
+    }
+    if (e->s->nr_sinks > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_sink_mapper,
+                     e->s->zoom_props->zoom_cells_top,
+                     e->s->zoom_props->nr_zoom_cells, sizeof(struct cell),
+                     threadpool_auto_chunk_size, e);
+    }
+    if (e->s->nr_bparts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_bpart_mapper,
+                     e->s->zoom_props->zoom_cells_top,
+                     e->s->zoom_props->nr_zoom_cells, sizeof(struct cell),
+                     threadpool_auto_chunk_size, e);
+    }
+    if (drift_mpoles && (e->policy & engine_policy_self_gravity)) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
+                     e->s->zoom_props->zoom_cells_top,
+                     e->s->zoom_props->nr_zoom_cells, sizeof(struct cell),
+                     threadpool_auto_chunk_size, e);
+      threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
+                     e->s->zoom_props->bkg_cells_top,
+                     e->s->zoom_props->nr_bkg_cells, sizeof(struct cell),
+                     threadpool_auto_chunk_size, e);
+    }
+
   } else {
 
-    /* When restarting, the list of local cells with tasks does not yet
-       exist. We use the raw list of top-level cells instead */
+    /* Restart Non-Zoom Case: When restarting, the list of local cells with
+     * tasks does not yet exist. We use the raw list of top-level
+     * cells instead. */
 
     if (e->s->nr_parts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_part_mapper,
