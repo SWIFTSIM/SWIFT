@@ -29,6 +29,7 @@
 #include "engine.h"
 #include "gravity_properties.h"
 #include "space.h"
+#include "timers.h"
 #include "zoom.h"
 
 /* mpi headers. */
@@ -85,6 +86,11 @@ void zoom_parse_params(struct swift_params *params,
   zoom_bkg_subdepth_diff_grav =
       parser_get_opt_param_int(params, "ZoomRegion:bkg_subdepth_diff_grav",
                                zoom_bkg_subdepth_diff_grav_default);
+
+  /* Extract the maximum shift of the zoom region we will allow in units of
+   * the zoom region extent. */
+  props->max_part_dim_frac =
+      parser_get_opt_param_float(params, "ZoomRegion:max_com_dx", 0.1);
 }
 
 /**
@@ -97,7 +103,9 @@ void zoom_parse_params(struct swift_params *params,
  *
  * @param s The space
  */
-void zoom_get_region_dim_and_shift(struct space *s) {
+void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
+
+  TIMER_TIC;
 
   /* Initialise values we will need. */
   const size_t nr_gparts = s->nr_gparts;
@@ -229,6 +237,11 @@ void zoom_get_region_dim_and_shift(struct space *s) {
 
   /* Store the particle extent in the zoom properties. */
   for (int i = 0; i < 3; i++) s->zoom_props->part_dim[i] = ini_dims[i];
+
+  if (verbose) {
+    message("Computing high resolution particle dim and shift took %f s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 }
 
 /**
@@ -236,7 +249,9 @@ void zoom_get_region_dim_and_shift(struct space *s) {
  *
  * @param s The space
  */
-void zoom_apply_zoom_shift_to_particles(struct space *s) {
+void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
+
+  TIMER_TIC;
 
   /* If no shift is needed, return. */
   if (s->zoom_props->zoom_shift[0] == 0.0 &&
@@ -301,6 +316,11 @@ void zoom_apply_zoom_shift_to_particles(struct space *s) {
   for (int i = 0; i < 3; i++) {
     s->zoom_props->applied_zoom_shift[i] = s->zoom_props->zoom_shift[i];
     s->zoom_props->applied_zoom_vel_shift[i] = s->zoom_props->zoom_vel_shift[i];
+  }
+
+  iof(verbose) {
+    message("Applying zoom region shift took %f s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 }
 
@@ -696,10 +716,10 @@ void zoom_region_init(struct space *s, const int regridding,
    * s->zoom_props.
    * NOTE: If we are regridding this has already been done in zoom_need_regrid
    * to check if we need to regrid so we skip it here. */
-  if (!regridding) zoom_get_region_dim_and_shift(s);
+  if (!regridding) zoom_get_region_dim_and_shift(s, verbose);
 
   /* Apply the zoom shift to the particles. */
-  zoom_apply_zoom_shift_to_particles(s);
+  zoom_apply_zoom_shift_to_particles(s, verbose);
 
   /* The maximal particle extent is the initial dimensions of
    * the zoom region. */
