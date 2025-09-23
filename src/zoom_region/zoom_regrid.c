@@ -47,6 +47,36 @@
  * @return 1 if a zoom regrid is needed, 0 otherwise.
  */
 int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
+
+  /* Unpack the zoom properties. */
+  const double dx[3] = {s->zoom_props->zoom_shift[0],
+                        s->zoom_props->zoom_shift[1],
+                        s->zoom_props->zoom_shift[2]};
+  const double current_zoom_region_dim[3] = {
+      s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]};
+  const double part_dim[3] = {s->part_dim[0], s->part_dim[1], s->part_dim[2]};
+
+  /* Derive the maximum allowed particle extent from the user specified
+   * target padding fraction, if the particle distribution is more than
+   * this fraction then we are no longer doing what the user asked for. */
+  const double max_part_dim_frac = 1.0 / s->zoom_props->region_pad_factor;
+
+  /* If the particle distribution is more than 90% of the zoom region width
+   * (based on the zoom cells themselves) in any dimension we need to regrid. */
+  for (int k = 0; k < 3; k++) {
+    if (part_dim[k] > max_part_dim_frac * current_zoom_region_dim[k]) {
+      return 1;
+    }
+  }
+
+  /* Have we exceeded the allowed shift of the zoom region? */
+  const double max_shift = s->zoom_props->max_com_dx;
+  if (dx[0] > max_shift * current_zoom_region_dim[0] ||
+      dx[1] > max_shift * current_zoom_region_dim[1] ||
+      dx[2] > max_shift * current_zoom_region_dim[2]) {
+    return 1;
+  }
+
   /* If we are running a zoom do we need to regrid based on the new cdim? */
   return (new_cdim[0] < s->zoom_props->cdim[0] ||
           new_cdim[1] < s->zoom_props->cdim[1] ||
@@ -85,7 +115,7 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
       s->cdim[2]++;
 
       /* Recalculate the zoom region geometry. (silently) */
-      zoom_region_init(s, 0);
+      zoom_region_init(s, /*regridding=*/1, /*verbose=*/0);
     }
 
     /* If this worked we can stop here. */
@@ -96,7 +126,7 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
     /* If it didn't work we'll try increasing the depth of the zoom region (with
      * the original background cdim). */
     s->zoom_props->zoom_cell_depth++;
-    zoom_region_init(s, 0);
+    zoom_region_init(s, /*regridding=*/1, /*verbose=*/0);
   }
 }
 
