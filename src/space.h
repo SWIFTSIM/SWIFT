@@ -395,7 +395,12 @@ struct zoom_region_properties {
   /*! Bulk velocity of the zoom region. */
   double vcom[3];
 
-  /*! Dimensions of the zoom region. */
+  /*! Extent of the high resolution particles. */
+  double part_dim[3];
+
+  /*! Dimensions of the zoom region (includes the part_dim, the padding, and
+   * and any additional padding to make the zoom region fit in the background
+   * void cells). */
   double dim[3];
 
   /*! Dimensions of the buffer region. */
@@ -440,12 +445,18 @@ struct zoom_region_properties {
    * mesh distance). */
   double neighbour_distance;
 
-  /*! Shift applied to particles to centre the high res particles in the box. */
+  /*! Shift to particles needed to centre the high res particles in the box. */
   double zoom_shift[3];
+
+  /*! Shift applied to particles to centre the high res particles in the box. */
+  double applied_zoom_shift[3];
+
+  /*! Velocity shift needed to remove the bulk velocity of the zoom region. */
+  double zoom_vel_shift[3];
 
   /*! Velocity shift applied to particles to remove the bulk velocity of the
    * zoom region. */
-  double zoom_vel_shift[3];
+  double applied_zoom_vel_shift[3];
 
   /*! Vector outlining the zoom region upper boundaries. */
   double region_upper_bounds[3];

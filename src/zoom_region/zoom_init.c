@@ -97,7 +97,7 @@ void zoom_parse_params(struct swift_params *params,
  *
  * @param s The space
  */
-double zoom_get_region_dim_and_shift(struct space *s) {
+void zoom_get_region_dim_and_shift(struct space *s) {
 
   /* Initialise values we will need. */
   const size_t nr_gparts = s->nr_gparts;
@@ -227,11 +227,8 @@ double zoom_get_region_dim_and_shift(struct space *s) {
   for (int i = 0; i < 3; i++)
     s->zoom_props->com[i] += s->zoom_props->zoom_shift[i];
 
-  /* Compute maximum side length of the zoom region, we need zoom dim to be
-   * equal. */
-  double ini_dim = max3(ini_dims[0], ini_dims[1], ini_dims[2]);
-
-  return ini_dim;
+  /* Store the particle extent in the zoom properties. */
+  for (int i = 0; i < 3; i++) s->zoom_props->part_dim[i] = ini_dims[i];
 }
 
 /**
@@ -240,6 +237,23 @@ double zoom_get_region_dim_and_shift(struct space *s) {
  * @param s The space
  */
 void zoom_apply_zoom_shift_to_particles(struct space *s) {
+
+  /* If no shift is needed, return. */
+  if (s->zoom_props->zoom_shift[0] == 0.0 &&
+      s->zoom_props->zoom_shift[1] == 0.0 &&
+      s->zoom_props->zoom_shift[2] == 0.0 &&
+      s->zoom_props->zoom_vel_shift[0] == 0.0 &&
+      s->zoom_props->zoom_vel_shift[1] == 0.0 &&
+      s->zoom_props->zoom_vel_shift[2] == 0.0) {
+
+    /* Store what we applied to write out later. */
+    for (int i = 0; i < 3; i++) {
+      s->zoom_props->applied_zoom_shift[i] = 0.0;
+      s->zoom_props->applied_zoom_vel_shift[i] = 0.0;
+    }
+
+    return;
+  }
 
   /* Apply the shift to the particles. */
   for (size_t k = 0; k < s->nr_parts; k++) {
@@ -281,6 +295,12 @@ void zoom_apply_zoom_shift_to_particles(struct space *s) {
     s->sinks[k].v[0] += s->zoom_props->zoom_vel_shift[0];
     s->sinks[k].v[1] += s->zoom_props->zoom_vel_shift[1];
     s->sinks[k].v[2] += s->zoom_props->zoom_vel_shift[2];
+  }
+
+  /* Store what we applied to write out later. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->applied_zoom_shift[i] = s->zoom_props->zoom_shift[i];
+    s->zoom_props->applied_zoom_vel_shift[i] = s->zoom_props->zoom_vel_shift[i];
   }
 }
 
@@ -651,9 +671,12 @@ void zoom_props_init(struct swift_params *params, struct space *s,
  * cosntruction when zoom_construct_tl_cells.
  *
  * @param s The space.
+ * @param regridding Are we regridding? If so we don't need to compute the
+ *   extent or shift (though we do need to apply the shift to the particles).
  * @param verbose Are we talking?
  */
-void zoom_region_init(struct space *s, const int verbose) {
+void zoom_region_init(struct space *s, const int regridding,
+                      const int verbose) {
 
   /* Nothing to do if we are restarting, just report geometry and move on. */
   if (s->e != NULL && s->e->restarting) {
@@ -668,13 +691,21 @@ void zoom_region_init(struct space *s, const int verbose) {
         s->e->gravity_properties->r_cut_max_ratio;
   }
 
-  /* Compute the extent of the zoom region.
-   * NOTE: this calculates the shift necessary to move the zoom region to
-   * the centre of the box and stores it in s->zoom_props */
-  double ini_dim = zoom_get_region_dim_and_shift(s);
+  /* Compute the extent of the zoom region. This also calculates the shift
+   * necessary to move the zoom region to the centre of the box and stores it in
+   * s->zoom_props.
+   * NOTE: If we are regridding this has already been done in zoom_need_regrid
+   * to check if we need to regrid so we skip it here. */
+  if (!regridding) zoom_get_region_dim_and_shift(s);
 
   /* Apply the zoom shift to the particles. */
   zoom_apply_zoom_shift_to_particles(s);
+
+  /* The maximal particle extent is the initial dimensions of
+   * the zoom region. */
+  const double ini_dim =
+      max3(s->zoom_props->part_dim[0], s->zoom_props->part_dim[1],
+           s->zoom_props->part_dim[2]);
 
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->region_pad_factor;
