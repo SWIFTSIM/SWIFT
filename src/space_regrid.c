@@ -546,7 +546,17 @@ void space_regrid(struct space *s, int verbose) {
   /* When running a zoom region if this is our first regrid then we need to get
    * the zoom region geometry before moving on. */
   if (s->with_zoom_region && s->cells_top == NULL) {
-    zoom_region_init(s, verbose);
+    zoom_region_init(s, /*regridding=*/0, verbose);
+  }
+
+  else if (s->with_zoom_region) {
+
+    /* Otherwise, if we are running a zoom simulation but this is not our first
+     * rodeo we need to update the extent of the zoom region and any shift we
+     * might need to keep the zoom reigon centred on the same location. */
+    if (s->with_zoom_region) {
+      zoom_get_region_dim_and_shift(s, verbose);
+    }
   }
 
   /* Get the new putative cell dimensions. */
