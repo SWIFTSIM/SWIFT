@@ -469,36 +469,48 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
 
+  /* Ratios */
+
   list[16] = io_make_output_field(
-   "RCMNR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
-   mhd_data.rcm_N_abs, " number weighted rcm ");
+   "rcm_over_ha_Nw", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.rcm_over_ha_Nw_abs, " number-weighted rcm / ha");
   list[17] = io_make_output_field(
-   "RCMMR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
-   mhd_data.rcm_M_abs, " mass weighted rcm ");
+   "rcm_over_ha_Kw", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.rcm_over_ha_Kw_abs, " kernel-weighted rcm / ha ");
   list[18] = io_make_output_field(
-   "RCMMWR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
-   mhd_data.rcm_MK_abs, " mass kernel weighted rcm ");
+   "rcm_over_ha_SPHw", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.rcm_over_ha_SPHw_abs, " SPH-weighted rcm / ha ");
+
   list[19] = io_make_output_field(
-   "SGEfij", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
-   mhd_data.symmetric_gradient_err_fij_abs, "  ");
+   "rcm_over_hb_Nw", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.rcm_over_hb_Nw_abs, " number-weighted rcm / hb");
   list[20] = io_make_output_field(
-   "RCMSPHR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
-   mhd_data.rcm_SPH_abs, "  ");
+   "rcm_over_hb_Kw", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.rcm_over_hb_Kw_abs, " kernel-weighted rcm / hb ");
   list[21] = io_make_output_field(
-   "hbNR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
-   mhd_data.hb_N_avrg, "  ");
+   "rcm_over_hb_SPHw", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.rcm_over_hb_SPHw_abs, " SPH-weighted rcm / hb ");
+
   list[22] = io_make_output_field(
-   "hbMWR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
-   mhd_data.hb_MK_avrg, "  ");
+   "hb_over_ha_Nw", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.hb_over_ha_Nw, " number-weighted hb / ha");
   list[23] = io_make_output_field(
-   "hbSPHR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
-   mhd_data.hb_SPH_avrg, "  ");
+   "hb_over_ha_Kw", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.hb_over_ha_Kw, " kernel-weighted hb / ha");
   list[24] = io_make_output_field(
+   "hb_over_ha_SPHw", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.hb_over_ha_SPHw, " SPH-weighted hb / ha");
+
+  list[25] = io_make_output_field(
+   "SGEfij", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
+   mhd_data.symmetric_gradient_err_fij_abs, " Symmetric gradient error estimate ");
+
+  list[26] = io_make_output_field(
    "nneigh", INT, 1, UNIT_CONV_NO_UNITS, 0.0f, parts,
-   mhd_data.N_norm, " Nneigh ");
+   mhd_data.norm_Nw, " Number of neighbors ");
 
 
-  return 24;
+  return 27;
 }
 
 /**

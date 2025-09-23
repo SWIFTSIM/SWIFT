@@ -259,16 +259,14 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 __attribute__((always_inline)) INLINE static void mhd_init_part(
     struct part *p) {
   
-  p->mhd_data.N_norm = 0;
-  p->mhd_data.M_norm = 0.0f;
-  p->mhd_data.MK_norm = 0.0f;
-  p->mhd_data.hb_N_avrg = 0.0f;
-  p->mhd_data.hb_MK_avrg = 0.0f;
+  p->mhd_data.norm_Nw = 0;
+  p->mhd_data.norm_Kw = 0.0f;
+  p->mhd_data.hb_over_ha_Nw = 0.0f;
+  p->mhd_data.hb_over_ha_Kw = 0.0f;
 
   for (int k = 0; k < 3; k++) {
-    p->mhd_data.rcm_N_ratio[k]=0.0f;
-    p->mhd_data.rcm_M_ratio[k]=0.0f;
-    p->mhd_data.rcm_MK_ratio[k]=0.0f;
+    p->mhd_data.rcm_over_ha_Nw[k]=0.0f;
+    p->mhd_data.rcm_over_ha_Kw[k]=0.0f;
   }
 
 }
@@ -289,18 +287,20 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
 __attribute__((always_inline)) INLINE static void mhd_end_density(
     struct part *p, const struct cosmology *cosmo) {
 
-  p->mhd_data.hb_N_avrg /= (p->mhd_data.N_norm * p->h);
-  p->mhd_data.hb_MK_avrg /= (p->mhd_data.MK_norm * p->h);
+  p->mhd_data.hb_over_ha_Nw /= (p->mhd_data.norm_Nw * p->h);
+  p->mhd_data.hb_over_ha_Kw /= (p->mhd_data.norm_Kw * p->h);
 
   for (int k = 0; k < 3; k++) {
-    p->mhd_data.rcm_N_ratio[k]/=(p->mhd_data.N_norm * p->h);
-    p->mhd_data.rcm_M_ratio[k]/=(p->mhd_data.M_norm * p->h);
-    p->mhd_data.rcm_MK_ratio[k]/=(p->mhd_data.MK_norm * p->h);
+    p->mhd_data.rcm_over_ha_Nw[k]/=(p->mhd_data.norm_Nw * p->h);
+    p->mhd_data.rcm_over_ha_Kw[k]/=(p->mhd_data.norm_Kw * p->h);
   }
 
-  p->mhd_data.rcm_N_abs = sqrtf(p->mhd_data.rcm_N_ratio[0]*p->mhd_data.rcm_N_ratio[0]+p->mhd_data.rcm_N_ratio[1]*p->mhd_data.rcm_N_ratio[1]+p->mhd_data.rcm_N_ratio[2]*p->mhd_data.rcm_N_ratio[2]);
-  p->mhd_data.rcm_M_abs = sqrtf(p->mhd_data.rcm_M_ratio[0]*p->mhd_data.rcm_M_ratio[0]+p->mhd_data.rcm_M_ratio[1]*p->mhd_data.rcm_M_ratio[1]+p->mhd_data.rcm_M_ratio[2]*p->mhd_data.rcm_M_ratio[2]);
-  p->mhd_data.rcm_MK_abs = sqrtf(p->mhd_data.rcm_MK_ratio[0]*p->mhd_data.rcm_MK_ratio[0]+p->mhd_data.rcm_MK_ratio[1]*p->mhd_data.rcm_MK_ratio[1]+p->mhd_data.rcm_MK_ratio[2]*p->mhd_data.rcm_MK_ratio[2]);
+  p->mhd_data.rcm_over_ha_Nw_abs = sqrtf(p->mhd_data.rcm_over_ha_Nw[0]*p->mhd_data.rcm_over_ha_Nw[0]+p->mhd_data.rcm_over_ha_Nw[1]*p->mhd_data.rcm_over_ha_Nw[1]+p->mhd_data.rcm_over_ha_Nw[2]*p->mhd_data.rcm_over_ha_Nw[2]);
+  p->mhd_data.rcm_over_ha_Kw_abs = sqrtf(p->mhd_data.rcm_over_ha_Kw[0]*p->mhd_data.rcm_over_ha_Kw[0]+p->mhd_data.rcm_over_ha_Kw[1]*p->mhd_data.rcm_over_ha_Kw[1]+p->mhd_data.rcm_over_ha_Kw[2]*p->mhd_data.rcm_over_ha_Kw[2]);
+
+  p->mhd_data.rcm_over_hb_Nw_abs = p->mhd_data.rcm_over_ha_Nw_abs / p->mhd_data.hb_over_ha_Nw;
+  p->mhd_data.rcm_over_hb_Kw_abs = p->mhd_data.rcm_over_ha_Kw_abs / p->mhd_data.hb_over_ha_Kw;
+
 }
 
 /**
@@ -346,12 +346,13 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
 
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
-  p->mhd_data.SPH_neigh_norm = 0.0f;
-  p->mhd_data.hb_SPH_avrg = 0.0f;
+  p->mhd_data.norm_SPHw = 0.0f;
+  p->mhd_data.hb_over_ha_SPHw = 0.0f;
+
   for (int k = 0; k < 3; k++) {
     p->mhd_data.mean_grad_SPH_err[k] = 0.f;
     p->mhd_data.symmetric_gradient_err_fij[k] = 0.0f;
-    p->mhd_data.rcm_SPH_ratio[k]=0.0f;
+    p->mhd_data.rcm_over_ha_SPHw[k]=0.0f;
   }
 }
 
@@ -369,31 +370,34 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   /* Finish SPH_1 calculation*/
   p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho;
 
-  p->mhd_data.hb_SPH_avrg /= (p->mhd_data.SPH_neigh_norm * p->h); 
+  p->mhd_data.hb_over_ha_SPHw /= (p->mhd_data.norm_SPHw * p->h); 
 
   float sge_fij[3]; 
 
   for (int k = 0; k < 3; k++) {
     p->mhd_data.symmetric_gradient_err_fij[k] *= p->h * p->rho;
     sge_fij[k] = p->mhd_data.symmetric_gradient_err_fij[k];
-    p->mhd_data.rcm_SPH_ratio[k] /= (p->mhd_data.SPH_neigh_norm * p->h);
+    p->mhd_data.rcm_over_ha_SPHw[k] /= (p->mhd_data.norm_SPHw * p->h);
   }
 
   p->mhd_data.symmetric_gradient_err_fij_abs = sqrtf(sge_fij[0]*sge_fij[0]+sge_fij[1]*sge_fij[1]+sge_fij[2]*sge_fij[2]); 
-  p->mhd_data.rcm_SPH_abs = sqrtf(p->mhd_data.rcm_SPH_ratio[0]*p->mhd_data.rcm_SPH_ratio[0]+p->mhd_data.rcm_SPH_ratio[1]*p->mhd_data.rcm_SPH_ratio[1]+p->mhd_data.rcm_SPH_ratio[2]*p->mhd_data.rcm_SPH_ratio[2]);
 
+
+  p->mhd_data.rcm_over_ha_SPHw_abs = sqrtf(p->mhd_data.rcm_over_ha_SPHw[0]*p->mhd_data.rcm_over_ha_SPHw[0]+p->mhd_data.rcm_over_ha_SPHw[1]*p->mhd_data.rcm_over_ha_SPHw[1]+p->mhd_data.rcm_over_ha_SPHw[2]*p->mhd_data.rcm_over_ha_SPHw[2]);
 
   p->mhd_data.mhdsw = 1.0f;
 
-  /* Switch based on mb Wab weight */
-  //if (p->mhd_data.rcm_MK_abs / p->mhd_data.hb_MK_avrg >= 2.0f ) {
+  p->mhd_data.rcm_over_hb_SPHw_abs = p->mhd_data.rcm_over_ha_SPHw_abs / p->mhd_data.hb_over_ha_SPHw;
+
+  /* Switch based on Wab weight */
+  //if (p->mhd_data.rcm_over_hb_Kw_abs >= 2.0f ) {
   //  p->mhd_data.mhdsw = 0.0f;
   //}
 
   /* Switch based on mb Wab / rhob weight */
-  if (p->mhd_data.rcm_SPH_abs / p->mhd_data.hb_SPH_avrg >= 1.0f ) {
-    p->mhd_data.mhdsw = 0.0f;
-  } 
+  //if (p->mhd_data.rcm_over_hb_SPHw_abs >= 1.0f ) {
+  //  p->mhd_data.mhdsw = 0.0f;
+  //} 
 
 }
 

@@ -55,28 +55,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   kernel_deval(uj, &wj, &wj_dx);
 
   /* Compute neighbour weight norm */
-  pi->mhd_data.N_norm += 1;
-  pi->mhd_data.M_norm += mj;
-  pi->mhd_data.MK_norm += mj * wi;
-  pj->mhd_data.N_norm += 1;
-  pj->mhd_data.M_norm += mi;
-  pj->mhd_data.MK_norm += mi * wj;
+  pi->mhd_data.norm_Nw += 1;
+  pi->mhd_data.norm_Kw += wi;
+  pj->mhd_data.norm_Nw += 1;
+  pj->mhd_data.norm_Kw += wj;
 
-  pi->mhd_data.hb_N_avrg += hj;
-  pi->mhd_data.hb_MK_avrg += hj * mj * wi;
-  pj->mhd_data.hb_N_avrg += hi;
-  pj->mhd_data.hb_MK_avrg += hi * mi * wj;
+  pi->mhd_data.hb_over_ha_Nw += hj;
+  pi->mhd_data.hb_over_ha_Kw += hj * wi;
+  pj->mhd_data.hb_over_ha_Nw += hi;
+  pj->mhd_data.hb_over_ha_Kw += hi * wj;
 
   /* Compute weighted distance sum */
   for (int k = 0; k < 3; k++) {
   
-      pi->mhd_data.rcm_N_ratio[k]+=(pj->x[k] - pi->x[k]);
-      pi->mhd_data.rcm_M_ratio[k]+=(pj->x[k] - pi->x[k]) * mj;
-      pi->mhd_data.rcm_MK_ratio[k]+=(pj->x[k] - pi->x[k]) * mj * wi;
+      pi->mhd_data.rcm_over_ha_Nw[k]+=(pj->x[k] - pi->x[k]);
+      pi->mhd_data.rcm_over_ha_Kw[k]+=(pj->x[k] - pi->x[k]) * wi;
 
-      pj->mhd_data.rcm_N_ratio[k]+=(pi->x[k] - pj->x[k]);
-      pj->mhd_data.rcm_M_ratio[k]+=(pi->x[k] - pj->x[k]) * mi;
-      pj->mhd_data.rcm_MK_ratio[k]+=(pi->x[k] - pj->x[k]) * mi * wj;
+      pj->mhd_data.rcm_over_ha_Nw[k]+=(pi->x[k] - pj->x[k]);
+      pj->mhd_data.rcm_over_ha_Kw[k]+=(pi->x[k] - pj->x[k]) * wj;
 
   }
 
@@ -121,19 +117,17 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   kernel_deval(uj, &wj, &wj_dx);
 
   /* Compute neighbour weight norm */
-  pi->mhd_data.N_norm += 1;
-  pi->mhd_data.M_norm += mj;
-  pi->mhd_data.MK_norm += mj * wi;
+  pi->mhd_data.norm_Nw += 1;
+  pi->mhd_data.norm_Kw += wi;
 
-  pi->mhd_data.hb_N_avrg += hj;
-  pi->mhd_data.hb_MK_avrg += hj * mj * wi;
+  pi->mhd_data.hb_over_ha_Nw += hj;
+  pi->mhd_data.hb_over_ha_Kw += hj * wi;
 
   /* Compute weighted distance sum */
   for (int k = 0; k < 3; k++) {
   
-      pi->mhd_data.rcm_N_ratio[k]+=(pj->x[k] - pi->x[k]);
-      pi->mhd_data.rcm_M_ratio[k]+=(pj->x[k] - pi->x[k]) * mj;
-      pi->mhd_data.rcm_MK_ratio[k]+=(pj->x[k] - pi->x[k]) * mj * wi;
+      pi->mhd_data.rcm_over_ha_Nw[k]+=(pj->x[k] - pi->x[k]);
+      pi->mhd_data.rcm_over_ha_Kw[k]+=(pj->x[k] - pi->x[k]) * wi;
 
   }
 
@@ -235,25 +229,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   pi->mhd_data.mean_SPH_err += mj * wi;
   pj->mhd_data.mean_SPH_err += mi * wj;
 
-  pi->mhd_data.SPH_neigh_norm += mj / rhoj * wi;
-  pj->mhd_data.SPH_neigh_norm += mi / rhoi * wj;
+  pi->mhd_data.norm_SPHw += mj / rhoj * wi;
+  pj->mhd_data.norm_SPHw += mi / rhoi * wj;
 
-  pi->mhd_data.hb_SPH_avrg += hj * mj / rhoj * wi;
-  pj->mhd_data.hb_SPH_avrg += hi * mi / rhoi * wj;
+  pi->mhd_data.hb_over_ha_SPHw += hj * mj / rhoj * wi;
+  pj->mhd_data.hb_over_ha_SPHw += hi * mi / rhoi * wj;
 
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.mean_grad_SPH_err[k] +=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
-    pi->mhd_data.rcm_SPH_ratio[k]+=(pj->x[k] - pi->x[k]) * mj / rhoj * wi;
+    pi->mhd_data.rcm_over_ha_SPHw[k]+=(pj->x[k] - pi->x[k]) * mj / rhoj * wi;
     pi->mhd_data.symmetric_gradient_err_fij[k] += mj * (wi_dr * f_ij / (rhoi * rhoi) + wj_dr * f_ji / (rhoj * rhoj)) * r_inv * dx[k];
 
     pj->mhd_data.mean_grad_SPH_err[k] -=
         mi * over_rho_j * wj_dr * r_inv * dx[k];
-    pj->mhd_data.rcm_SPH_ratio[k]+=(pi->x[k] - pj->x[k]) * mi / rhoi * wj;
+    pj->mhd_data.rcm_over_ha_SPHw[k]+=(pi->x[k] - pj->x[k]) * mi / rhoi * wj;
     pj->mhd_data.symmetric_gradient_err_fij[k] -= mi * (wj_dr * f_ji / (rhoj * rhoj) + wi_dr * f_ij / (rhoi * rhoi)) * r_inv * dx[k];
 
 
   }
+
 }
 
 /**
@@ -345,19 +340,18 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Calculate SPH error */
   pi->mhd_data.mean_SPH_err += mj * wi;
 
-  pi->mhd_data.SPH_neigh_norm += mj / rhoj * wi;
+  pi->mhd_data.norm_SPHw += mj / rhoj * wi;
 
-  pi->mhd_data.hb_SPH_avrg += hj * mj / rhoj * wi;
+  pi->mhd_data.hb_over_ha_SPHw += hj * mj / rhoj * wi;
 
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.mean_grad_SPH_err[k] +=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
-
-    pi->mhd_data.rcm_SPH_ratio[k]+=(pj->x[k] - pi->x[k]) * mj / rhoj * wi;
-
+    pi->mhd_data.rcm_over_ha_SPHw[k]+=(pj->x[k] - pi->x[k]) * mj / rhoj * wi;
     pi->mhd_data.symmetric_gradient_err_fij[k] += mj * (wi_dr * f_ij / (rhoi * rhoi) + wj_dr * f_ji / (rhoj * rhoj)) * r_inv * dx[k];
 
   }
+
 
 }
 
@@ -532,8 +526,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, 1.0f));
 
   /* Switch for tensile correction */
-  tensile_correction_scale_i = fminf(tensile_correction_scale_i, 0.5f * ( 1.0f + pi->mhd_data.mhdsw) );
-  tensile_correction_scale_j = fminf(tensile_correction_scale_j, 0.5f * ( 1.0f + pj->mhd_data.mhdsw) );
+  //tensile_correction_scale_i = fminf(tensile_correction_scale_i, 0.5f * ( 1.0f + pi->mhd_data.mhdsw) );
+  //tensile_correction_scale_j = fminf(tensile_correction_scale_j, 0.5f * ( 1.0f + pj->mhd_data.mhdsw) );
 
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
@@ -854,7 +848,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
 
   /* Switch for tensile correction */
-  tensile_correction_scale_i = fminf(tensile_correction_scale_i, 0.5f * ( 1.0f + pi->mhd_data.mhdsw) );
+  //tensile_correction_scale_i = fminf(tensile_correction_scale_i, 0.5f * ( 1.0f + pi->mhd_data.mhdsw) );
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
                        Bri * r_inv * Bi[0] * tensile_correction_scale_i;

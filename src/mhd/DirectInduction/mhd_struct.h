@@ -87,30 +87,36 @@ struct mhd_part_data {
   /* Laplacian B */
   float Delta_B[3];
 
+  /* Ratios */
+
   /* Derivative accuracy */
   float symmetric_gradient_err_fij[3];
   float symmetric_gradient_err_fij_abs;
 
-  /* RCM error */
-  float rcm_N_ratio[3];
-  float rcm_M_ratio[3];
-  float rcm_MK_ratio[3];
-  float rcm_SPH_ratio[3];
-  float rcm_N_abs;
-  float rcm_M_abs;
-  float rcm_MK_abs;
-  float rcm_SPH_abs;
-
   /* Number of neighbors and weight */
-  int N_norm;
-  float M_norm;
-  float MK_norm;
-  float SPH_neigh_norm;
+  int   norm_Nw;
+  float norm_Kw;
+  float norm_SPHw;
+
+  /* rcm_over_ha vector */
+  float rcm_over_ha_Nw[3];
+  float rcm_over_ha_Kw[3];
+  float rcm_over_ha_SPHw[3];
+
+  /* rcm_over_ha abs */
+  float rcm_over_ha_Nw_abs;
+  float rcm_over_ha_Kw_abs;
+  float rcm_over_ha_SPHw_abs;
+
+  /* rcm_over_hb abs */
+  float rcm_over_hb_Nw_abs;
+  float rcm_over_hb_Kw_abs;
+  float rcm_over_hb_SPHw_abs;
 
   /* Neighbour h */
-  float hb_N_avrg;
-  float hb_MK_avrg;
-  float hb_SPH_avrg;
+  float hb_over_ha_Nw;
+  float hb_over_ha_Kw;
+  float hb_over_ha_SPHw;
 
   /* Switch */
   float mhdsw;
