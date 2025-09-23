@@ -630,8 +630,13 @@ void zoom_report_cell_properties(const struct space *s) {
 
   /* Assorted extra zoom properties */
   message("%28s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
-  message("%28s = [%f, %f, %f]", "Zoom Region Shift", zoom_props->zoom_shift[0],
-          zoom_props->zoom_shift[1], zoom_props->zoom_shift[2]);
+  message("%28s = [%f, %f, %f]", "Zoom Region Shift",
+          zoom_props->applied_zoom_shift[0], zoom_props->applied_zoom_shift[1],
+          zoom_props->applied_zoom_shift[2]);
+  message("%28s = [%f, %f, %f]", "Zoom Velocity Shift",
+          zoom_props->applied_zoom_vel_shift[0],
+          zoom_props->applied_zoom_vel_shift[1],
+          zoom_props->applied_zoom_vel_shift[2]);
   message("%28s = [%f, %f, %f]", "Zoom Region Center",
           zoom_props->region_lower_bounds[0] + (zoom_props->dim[0] / 2.0),
           zoom_props->region_lower_bounds[1] + (zoom_props->dim[1] / 2.0),
