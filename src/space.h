@@ -392,6 +392,9 @@ struct zoom_region_properties {
   /*! Centre of mass of the zoom region. */
   double com[3];
 
+  /*! Bulk velocity of the zoom region. */
+  double vcom[3];
+
   /*! Dimensions of the zoom region. */
   double dim[3];
 
@@ -439,6 +442,10 @@ struct zoom_region_properties {
 
   /*! Shift applied to particles to centre the high res particles in the box. */
   double zoom_shift[3];
+
+  /*! Velocity shift applied to particles to remove the bulk velocity of the
+   * zoom region. */
+  double zoom_vel_shift[3];
 
   /*! Vector outlining the zoom region upper boundaries. */
   double region_upper_bounds[3];

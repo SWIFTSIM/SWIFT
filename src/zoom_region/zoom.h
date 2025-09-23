@@ -37,6 +37,8 @@ extern int zoom_bkg_subdepth_diff_grav;
 void zoom_props_init(struct swift_params *params, struct space *s,
                      const int verbose);
 void zoom_region_init(struct space *s, const int verbose);
+double zoom_get_region_dim_and_shift(struct space *s);
+void zoom_apply_zoom_shift_to_particles(struct space *s);
 void zoom_report_cell_properties(const struct space *s);
 
 /* Construct top level cells with a zoom region. */

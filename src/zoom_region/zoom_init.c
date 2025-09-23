@@ -105,6 +105,7 @@ double zoom_get_region_dim_and_shift(struct space *s) {
   double max_bounds[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
   double midpoint[3] = {0.0, 0.0, 0.0};
   double com[3] = {0.0, 0.0, 0.0};
+  double vcom[3] = {0.0, 0.0, 0.0};
   double mtot = 0.0;
   double ini_dims[3] = {0.0, 0.0, 0.0};
   const double box_mid[3] = {s->dim[0] / 2.0, s->dim[1] / 2.0, s->dim[2] / 2.0};
@@ -144,6 +145,11 @@ double zoom_get_region_dim_and_shift(struct space *s) {
     com[0] += x * s->gparts[k].mass;
     com[1] += y * s->gparts[k].mass;
     com[2] += z * s->gparts[k].mass;
+
+    /* Velocity COM. */
+    vcom[0] += s->gparts[k].v_full[0] * s->gparts[k].mass;
+    vcom[1] += s->gparts[k].v_full[1] * s->gparts[k].mass;
+    vcom[2] += s->gparts[k].v_full[2] * s->gparts[k].mass;
   }
 
 #ifdef WITH_MPI
@@ -155,8 +161,9 @@ double zoom_get_region_dim_and_shift(struct space *s) {
   MPI_Allreduce(MPI_IN_PLACE, &max_bounds[1], 3, MPI_DOUBLE, MPI_MAX,
                 MPI_COMM_WORLD);
 
-  /* CoM. */
+  /* CoM and bulk velocity. */
   MPI_Allreduce(MPI_IN_PLACE, com, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, vcom, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &mtot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
@@ -165,6 +172,20 @@ double zoom_get_region_dim_and_shift(struct space *s) {
   com[0] *= imass;
   com[1] *= imass;
   com[2] *= imass;
+  vcom[0] *= imass;
+  vcom[1] *= imass;
+  vcom[2] *= imass;
+
+  /* Store the CoM and bulk velocity in the zoom properties. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->com[i] = com[i];
+    s->zoom_props->vcom[i] = vcom[i];
+  }
+
+  /* Store the velocity shift to be applied to the zoom region. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->zoom_vel_shift[i] = -vcom[i];
+  }
 
   /* Get the initial dimensions and midpoint. */
   for (int i = 0; i < 3; i++) {
@@ -211,6 +232,56 @@ double zoom_get_region_dim_and_shift(struct space *s) {
   double ini_dim = max3(ini_dims[0], ini_dims[1], ini_dims[2]);
 
   return ini_dim;
+}
+
+/**
+ * @brief Apply the zoom shift to all particles in the space.
+ *
+ * @param s The space
+ */
+void zoom_apply_zoom_shift_to_particles(struct space *s) {
+
+  /* Apply the shift to the particles. */
+  for (size_t k = 0; k < s->nr_parts; k++) {
+    s->parts[k].x[0] += s->zoom_props->zoom_shift[0];
+    s->parts[k].x[1] += s->zoom_props->zoom_shift[1];
+    s->parts[k].x[2] += s->zoom_props->zoom_shift[2];
+    s->parts[k].v_full[0] += s->zoom_props->zoom_vel_shift[0];
+    s->parts[k].v_full[1] += s->zoom_props->zoom_vel_shift[1];
+    s->parts[k].v_full[2] += s->zoom_props->zoom_vel_shift[2];
+  }
+  for (size_t k = 0; k < s->nr_gparts; k++) {
+    s->gparts[k].x[0] += s->zoom_props->zoom_shift[0];
+    s->gparts[k].x[1] += s->zoom_props->zoom_shift[1];
+    s->gparts[k].x[2] += s->zoom_props->zoom_shift[2];
+    s->gparts[k].v_full[0] += s->zoom_props->zoom_vel_shift[0];
+    s->gparts[k].v_full[1] += s->zoom_props->zoom_vel_shift[1];
+    s->gparts[k].v_full[2] += s->zoom_props->zoom_vel_shift[2];
+  }
+  for (size_t k = 0; k < s->nr_sparts; k++) {
+    s->sparts[k].x[0] += s->zoom_props->zoom_shift[0];
+    s->sparts[k].x[1] += s->zoom_props->zoom_shift[1];
+    s->sparts[k].x[2] += s->zoom_props->zoom_shift[2];
+    s->sparts[k].v_full[0] += s->zoom_props->zoom_vel_shift[0];
+    s->sparts[k].v_full[1] += s->zoom_props->zoom_vel_shift[1];
+    s->sparts[k].v_full[2] += s->zoom_props->zoom_vel_shift[2];
+  }
+  for (size_t k = 0; k < s->nr_bparts; k++) {
+    s->bparts[k].x[0] += s->zoom_props->zoom_shift[0];
+    s->bparts[k].x[1] += s->zoom_props->zoom_shift[1];
+    s->bparts[k].x[2] += s->zoom_props->zoom_shift[2];
+    s->bparts[k].v_full[0] += s->zoom_props->zoom_vel_shift[0];
+    s->bparts[k].v_full[1] += s->zoom_props->zoom_vel_shift[1];
+    s->bparts[k].v_full[2] += s->zoom_props->zoom_vel_shift[2];
+  }
+  for (size_t k = 0; k < s->nr_sinks; k++) {
+    s->sinks[k].x[0] += s->zoom_props->zoom_shift[0];
+    s->sinks[k].x[1] += s->zoom_props->zoom_shift[1];
+    s->sinks[k].x[2] += s->zoom_props->zoom_shift[2];
+    s->sinks[k].v[0] += s->zoom_props->zoom_vel_shift[0];
+    s->sinks[k].v[1] += s->zoom_props->zoom_vel_shift[1];
+    s->sinks[k].v[2] += s->zoom_props->zoom_vel_shift[2];
+  }
 }
 
 /**
@@ -602,32 +673,8 @@ void zoom_region_init(struct space *s, const int verbose) {
    * the centre of the box and stores it in s->zoom_props */
   double ini_dim = zoom_get_region_dim_and_shift(s);
 
-  /* Apply the shift to the particles. */
-  for (size_t k = 0; k < s->nr_parts; k++) {
-    s->parts[k].x[0] += s->zoom_props->zoom_shift[0];
-    s->parts[k].x[1] += s->zoom_props->zoom_shift[1];
-    s->parts[k].x[2] += s->zoom_props->zoom_shift[2];
-  }
-  for (size_t k = 0; k < s->nr_gparts; k++) {
-    s->gparts[k].x[0] += s->zoom_props->zoom_shift[0];
-    s->gparts[k].x[1] += s->zoom_props->zoom_shift[1];
-    s->gparts[k].x[2] += s->zoom_props->zoom_shift[2];
-  }
-  for (size_t k = 0; k < s->nr_sparts; k++) {
-    s->sparts[k].x[0] += s->zoom_props->zoom_shift[0];
-    s->sparts[k].x[1] += s->zoom_props->zoom_shift[1];
-    s->sparts[k].x[2] += s->zoom_props->zoom_shift[2];
-  }
-  for (size_t k = 0; k < s->nr_bparts; k++) {
-    s->bparts[k].x[0] += s->zoom_props->zoom_shift[0];
-    s->bparts[k].x[1] += s->zoom_props->zoom_shift[1];
-    s->bparts[k].x[2] += s->zoom_props->zoom_shift[2];
-  }
-  for (size_t k = 0; k < s->nr_sinks; k++) {
-    s->sinks[k].x[0] += s->zoom_props->zoom_shift[0];
-    s->sinks[k].x[1] += s->zoom_props->zoom_shift[1];
-    s->sinks[k].x[2] += s->zoom_props->zoom_shift[2];
-  }
+  /* Apply the zoom shift to the particles. */
+  zoom_apply_zoom_shift_to_particles(s);
 
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->region_pad_factor;
