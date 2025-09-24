@@ -275,9 +275,9 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
     s->parts[k].x[0] += s->zoom_props->zoom_shift[0];
     s->parts[k].x[1] += s->zoom_props->zoom_shift[1];
     s->parts[k].x[2] += s->zoom_props->zoom_shift[2];
-    s->parts[k].v_full[0] += s->zoom_props->zoom_vel_shift[0];
-    s->parts[k].v_full[1] += s->zoom_props->zoom_vel_shift[1];
-    s->parts[k].v_full[2] += s->zoom_props->zoom_vel_shift[2];
+    s->parts[k].v[0] += s->zoom_props->zoom_vel_shift[0];
+    s->parts[k].v[1] += s->zoom_props->zoom_vel_shift[1];
+    s->parts[k].v[2] += s->zoom_props->zoom_vel_shift[2];
   }
   for (size_t k = 0; k < s->nr_gparts; k++) {
     s->gparts[k].x[0] += s->zoom_props->zoom_shift[0];
@@ -291,17 +291,17 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
     s->sparts[k].x[0] += s->zoom_props->zoom_shift[0];
     s->sparts[k].x[1] += s->zoom_props->zoom_shift[1];
     s->sparts[k].x[2] += s->zoom_props->zoom_shift[2];
-    s->sparts[k].v_full[0] += s->zoom_props->zoom_vel_shift[0];
-    s->sparts[k].v_full[1] += s->zoom_props->zoom_vel_shift[1];
-    s->sparts[k].v_full[2] += s->zoom_props->zoom_vel_shift[2];
+    s->sparts[k].v[0] += s->zoom_props->zoom_vel_shift[0];
+    s->sparts[k].v[1] += s->zoom_props->zoom_vel_shift[1];
+    s->sparts[k].v[2] += s->zoom_props->zoom_vel_shift[2];
   }
   for (size_t k = 0; k < s->nr_bparts; k++) {
     s->bparts[k].x[0] += s->zoom_props->zoom_shift[0];
     s->bparts[k].x[1] += s->zoom_props->zoom_shift[1];
     s->bparts[k].x[2] += s->zoom_props->zoom_shift[2];
-    s->bparts[k].v_full[0] += s->zoom_props->zoom_vel_shift[0];
-    s->bparts[k].v_full[1] += s->zoom_props->zoom_vel_shift[1];
-    s->bparts[k].v_full[2] += s->zoom_props->zoom_vel_shift[2];
+    s->bparts[k].v[0] += s->zoom_props->zoom_vel_shift[0];
+    s->bparts[k].v[1] += s->zoom_props->zoom_vel_shift[1];
+    s->bparts[k].v[2] += s->zoom_props->zoom_vel_shift[2];
   }
   for (size_t k = 0; k < s->nr_sinks; k++) {
     s->sinks[k].x[0] += s->zoom_props->zoom_shift[0];
