@@ -2035,8 +2035,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addunlock(s, c->super->kick2, c->sinks.sink_in);
         scheduler_addunlock(s, c->sinks.sink_out, c->super->timestep);
         scheduler_addunlock(s, c->top->sinks.sink_formation, c->sinks.sink_in);
-        if (with_timestep_sync)
-          scheduler_addunlock(s, c->sinks.sink_out, c->super->timestep_sync);
 
         if (with_stars &&
             (c->top->hydro.count > 0 || c->top->sinks.count > 0)) {
