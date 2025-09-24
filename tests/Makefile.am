@@ -34,15 +34,15 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
-	    testLog testDistance testTimeline testSIDMSetUp.sh
+        testLog testDistance testTimeline testSIDMSetUp.sh
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
-         testKernel testFFT testInteractions testMaths testRandom testExp \
-         testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
-         testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
-         testRiemannHLLC testMatrixInversion testDump testCSDS \
+		 testKernel testFFT testInteractions testMaths testRandom testExp \
+		 testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
+		 testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
+		 testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \

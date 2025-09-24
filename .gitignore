@@ -166,6 +166,7 @@ tests/test125cellsPerturbed.sh
 tests/testParser.sh
 tests/testReading.sh
 tests/testNeutrinoCosmology.sh
+tests/testSIDMSetUp.sh
 tests/testSelectOutput.sh
 tests/unused_parser_output.yml
 tests/used_parser_output.yml
