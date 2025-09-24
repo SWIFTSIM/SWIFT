@@ -247,6 +247,9 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
     message("Current high resolution particle CoM is [%f, %f, %f]",
             s->zoom_props->com[0], s->zoom_props->com[1],
             s->zoom_props->com[2]);
+    message("Particle shift to box centre is [%f, %f, %f] (not yet applied)",
+            s->zoom_props->zoom_shift[0], s->zoom_props->zoom_shift[1],
+            s->zoom_props->zoom_shift[2]);
   }
 }
 
