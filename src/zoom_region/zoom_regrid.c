@@ -54,7 +54,9 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
                         s->zoom_props->zoom_shift[2]};
   const double current_zoom_region_dim[3] = {
       s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]};
-  const double part_dim[3] = {s->part_dim[0], s->part_dim[1], s->part_dim[2]};
+  const double part_dim[3] = {s->zoom_props->part_dim[0],
+                              s->zoom_props->part_dim[1],
+                              s->zoom_props->part_dim[2]};
 
   /* Derive the maximum allowed particle extent from the user specified
    * target padding fraction, if the particle distribution is more than

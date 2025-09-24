@@ -105,7 +105,7 @@ void zoom_parse_params(struct swift_params *params,
  */
 void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
 
-  TIMER_TIC;
+  const ticks tic = getticks();
 
   /* Initialise values we will need. */
   const size_t nr_gparts = s->nr_gparts;
@@ -251,7 +251,7 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
  */
 void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
 
-  TIMER_TIC;
+  const ticks tic = getticks();
 
   /* If no shift is needed, return. */
   if (s->zoom_props->zoom_shift[0] == 0.0 &&
