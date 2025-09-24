@@ -1,4 +1,4 @@
 #!/bin/bash
 
 python3 @srcdir@/makeInputSIDM.py
-@srcdir@/testSIDMSetUp
+./testSIDMSetUp
