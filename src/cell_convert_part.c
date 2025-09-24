@@ -1075,7 +1075,7 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
   sp->ti_kick = gp->ti_kick;
   gp->ti_drift = sp->ti_drift;
 
-  message("A new sink (%lld) is born !", sp->id);
+  /* message("A new sink (%lld) is born !", sp->id); */
 #endif
 
   /* Here comes the Sink! */
