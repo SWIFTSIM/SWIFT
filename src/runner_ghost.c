@@ -1268,7 +1268,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Prepare the particle for the gradient loop over neighbours
              */
             hydro_reset_gradient(p);
-            mhd_reset_gradient(p);
+            mhd_reset_gradient(p, mu_0);
 
 #else
             /* Calculate the time-step for passing to hydro_prepare_force, used
@@ -1459,7 +1459,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Prepare the particle for the gradient loop over neighbours */
         hydro_reset_gradient(p);
-        mhd_reset_gradient(p);
+        mhd_reset_gradient(p, mu_0);
 
 #else
 
