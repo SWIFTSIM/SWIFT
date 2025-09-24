@@ -2453,15 +2453,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_drift_part:
         cost = wscale * count_i;
         break;
-      case task_type_extra_ghost:
-        if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
-        break;
-      case task_type_stars_ghost:
-        if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
-        break;
-      case task_type_bh_density_ghost:
-        if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
-        break;
       case task_type_init_grav:
         cost = wscale * gcount_i;
         break;
