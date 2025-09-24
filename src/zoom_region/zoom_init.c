@@ -319,7 +319,7 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
   }
 
   if (verbose) {
-    message("Applying zoom region shift took %f s",
+    message("Applying zoom region shift took %f %s",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 }
