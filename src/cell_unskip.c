@@ -1225,15 +1225,17 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
        * But we only need to drift the gas cell if the *other* cell has an
        * active sink */
 
-      /* Activate the drifts if the cells are local. */
-      if (ci->nodeID == engine_rank) cell_activate_drift_sink(ci, s);
-      if (cj->nodeID == engine_rank && ci_active)
-        cell_activate_drift_part(cj, s);
+      if (ci_active || cj_active) {
+	/* Activate the drifts if the cells are local. */
+	if (ci->nodeID == engine_rank) cell_activate_drift_sink(ci, s);
+	if (cj->nodeID == engine_rank && ci_active)
+	  cell_activate_drift_part(cj, s);
 
-      /* Activate the drifts if the cells are local. */
-      if (ci->nodeID == engine_rank && cj_active)
-        cell_activate_drift_part(ci, s);
-      if (cj->nodeID == engine_rank) cell_activate_drift_sink(cj, s);
+	/* Activate the drifts if the cells are local. */
+	if (ci->nodeID == engine_rank && cj_active)
+	  cell_activate_drift_part(ci, s);
+        if (cj->nodeID == engine_rank) cell_activate_drift_sink(cj, s);
+      }
     }
   } /* Otherwise, pair interation */
 }
@@ -3075,7 +3077,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
                                            cell_is_active_hydro(cj, e));
 
-   
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
 	(ci_nodeID == nodeID || cj_nodeID == nodeID)) {
@@ -3097,26 +3098,23 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
     const int ci_active =
-        cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
+      cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
     const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
                                            cell_is_active_hydro(cj, e));
 
-      /* Only activate tasks that involve a local active cell. */
-      if ((ci_active || cj_active) &&
-	  (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
-	scheduler_activate(s, t);
-      }    
-    
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+	(ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+      scheduler_activate(s, t);
+
       if (t->type == task_type_pair) {
-        /* Activate sinks_out for each cell that is part of
-         * a pair/pair task as to not miss any dependencies */
-        if (ci_nodeID == nodeID)
-          scheduler_activate(s, ci->hydro.super->sinks.sink_out);
-        if (cj_nodeID == nodeID)
-          scheduler_activate(s, cj->hydro.super->sinks.sink_out);
+	/* Activate sinks_out for each cell that is part of
+	 * a pair/pair task as to not miss any dependencies */
+	if (ci_nodeID == nodeID)
+	  scheduler_activate(s, ci->hydro.super->sinks.sink_out);
+	if (cj_nodeID == nodeID)
+	  scheduler_activate(s, cj->hydro.super->sinks.sink_out);
       }
-
-
     }
   }
 
@@ -3133,11 +3131,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
   if (c->nodeID == nodeID &&
       (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e))) {
 
-    /* If we don't have pair tasks, then the sink_in and sink_out still
-       * need reactivation. */
-    if (c->sinks.sink_in != NULL) scheduler_activate(s, c->sinks.sink_in);
-    if (c->sinks.sink_out != NULL) scheduler_activate(s, c->sinks.sink_out);
-
+    /* Activate sink formation and star formation */
     if (c->top->sinks.sink_formation != NULL) {
       cell_activate_sink_formation_tasks(c->top, s);
       cell_activate_super_sink_drifts(c->top, s);
@@ -3146,6 +3140,11 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
       cell_activate_super_sink_drifts(c->top, s);
     }
+
+    /* If we don't have pair tasks, then the sink_in and sink_out still
+     * need reactivation. */
+    if (c->sinks.sink_in != NULL) scheduler_activate(s, c->sinks.sink_in);
+    if (c->sinks.sink_out != NULL) scheduler_activate(s, c->sinks.sink_out);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
