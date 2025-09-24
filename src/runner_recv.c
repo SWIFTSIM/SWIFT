@@ -199,8 +199,10 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
       ti_gravity_end_min < ti_current)
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
-        "e->ti_current=%lld. hydro super = %lld, grav super = %lld, top cell = %lld, cell = %lld",
-        ti_gravity_end_min, ti_current, c->hydro.super->cellID, c->grav.super->cellID, c->top->cellID, c->cellID);
+        "e->ti_current=%lld. hydro super = %lld, grav super = %lld, top cell = "
+        "%lld, cell = %lld",
+        ti_gravity_end_min, ti_current, c->hydro.super->cellID,
+        c->grav.super->cellID, c->top->cellID, c->cellID);
 #endif
 
   /* ... and store. */
@@ -288,7 +290,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   const int with_stars = (r->e->policy & engine_policy_stars);
   const int with_star_formation_sink = with_sinks && with_stars;
   if (ti_stars_end_min < ti_current &&
-      (!(r->e->policy & engine_policy_star_formation) || !with_star_formation_sink))
+      (!(r->e->policy & engine_policy_star_formation) ||
+       !with_star_formation_sink))
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
         "e->ti_current=%lld.",
@@ -410,7 +413,7 @@ void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
  * @param timer Are we timing this ?
  */
 void runner_do_recv_sink(struct runner *r, struct cell *c, int clear_sorts,
-                          int timer) {
+                         int timer) {
 
 #ifdef WITH_MPI
 
@@ -461,8 +464,7 @@ void runner_do_recv_sink(struct runner *r, struct cell *c, int clear_sorts,
         ti_sinks_end_min =
             min(ti_sinks_end_min, c->progeny[k]->sinks.ti_end_min);
         h_max = max(h_max, c->progeny[k]->sinks.h_max);
-        h_max_active =
-            max(h_max_active, c->progeny[k]->sinks.h_max_active);
+        h_max_active = max(h_max_active, c->progeny[k]->sinks.h_max_active);
       }
     }
   }

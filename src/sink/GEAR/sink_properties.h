@@ -396,9 +396,8 @@ INLINE static void sink_props_init(
                                  sink_gear_tolerance_sf_timestep_default);
 
   /* Should we disable star formation ? */
-  sp->disable_star_formation =
-      parser_get_opt_param_int(params, "GEARSink:disable_star_formation",
-			       sink_gear_disable_sf_default);
+  sp->disable_star_formation = parser_get_opt_param_int(
+      params, "GEARSink:disable_star_formation", sink_gear_disable_sf_default);
 
   /* Apply unit change */
   sp->temperature_threshold /=
@@ -457,7 +456,7 @@ INLINE static void sink_props_init(
     message("disable_sink_formation                       = %d",
             sp->disable_sink_formation);
     message("disable_star_formation                       = %d",
-	    sp->disable_star_formation);
+            sp->disable_star_formation);
     message("sink_formation_contracting_gas_criterion     = %d",
             sp->sink_formation_contracting_gas_criterion);
     message("sink_formation_smoothing_length_criterion    = %d",

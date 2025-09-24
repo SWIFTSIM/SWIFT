@@ -376,9 +376,9 @@ __attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
     struct sink* restrict sp, const struct cosmology* cosmo) {
 
   /* warning( */
-      /* "Sink particle with ID %lld treated as having no neighbours (h: %g, " */
-      /* "numb_ngbs: %i).", */
-      /* sp->id, sp->h, sp->num_ngbs); */
+  /* "Sink particle with ID %lld treated as having no neighbours (h: %g, " */
+  /* "numb_ngbs: %i).", */
+  /* sp->id, sp->h, sp->num_ngbs); */
 
   /* Some smoothing length multiples. */
   const float h = sp->h;
@@ -704,7 +704,8 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   /*     "Delta_v = [%f, %f, %f] U_V, " */
   /*     "Delta_x = [%f, %f, %f] U_L, " */
   /*     "Delta_v_rad = %f)", */
-  /*     sp->id, p->id, sp->mass, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2], */
+  /*     sp->id, p->id, sp->mass, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1],
+   * -dx[2], */
   /*     (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr); */
 #endif
 }
@@ -905,7 +906,8 @@ INLINE static void sink_star_formation_give_new_velocity(
   sp->gpart->v_full[1] = sp->v[1];
   sp->gpart->v_full[2] = sp->v[2];
   /* message( */
-  /*     "New star velocity: v = (%lf %lf %lf). Sink velocity: v = (%lf %lf %lf). " */
+  /*     "New star velocity: v = (%lf %lf %lf). Sink velocity: v = (%lf %lf
+   * %lf). " */
   /*     "Sigma = %lf", */
   /*     sp->v[0], sp->v[1], sp->v[2], si->v[0], si->v[1], si->v[2], sigma); */
 #else

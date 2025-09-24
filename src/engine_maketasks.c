@@ -77,19 +77,19 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   struct cell *cj, struct task *t_grav_counts,
                                   struct task *t_grav, struct task *t_pack_grav,
                                   struct task *t_fof, struct task *t_pack_fof,
-                                  const int with_fof,
-                                  const int with_sinks,
+                                  const int with_fof, const int with_sinks,
                                   const int with_star_formation,
-				  const int with_star_formation_sink) {
+                                  const int with_star_formation_sink) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
   const int are_particles_forming =
-    (with_star_formation && ci->hydro.count > 0) ||
-    (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0)) ||
-    (with_sinks && ci->hydro.count > 0) ;
+      (with_star_formation && ci->hydro.count > 0) ||
+      (with_star_formation_sink &&
+       (ci->hydro.count > 0 || ci->sinks.count > 0)) ||
+      (with_sinks && ci->hydro.count > 0);
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
@@ -110,7 +110,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     if (with_star_formation && ci->hydro.count > 0) {
       scheduler_addunlock(s, ci->hydro.star_formation, t_grav_counts);
     }
-    if (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+    if (with_star_formation_sink &&
+        (ci->hydro.count > 0 || ci->sinks.count > 0)) {
       scheduler_addunlock(s, ci->sinks.star_formation_sink, t_grav_counts);
     }
     if (with_sinks && ci->hydro.count > 0) {
@@ -157,11 +158,12 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, t_grav, ci->grav.super->grav.down);
 
       /* Star formation */
-      if (with_star_formation && ci->top->hydro.count > 0 )
+      if (with_star_formation && ci->top->hydro.count > 0)
         scheduler_addunlock(s, t_grav, ci->top->hydro.star_formation);
 
       /* Star formation from sinks */
-      if (with_star_formation_sink && (ci->top->hydro.count > 0 || ci->top->sinks.count > 0))
+      if (with_star_formation_sink &&
+          (ci->top->hydro.count > 0 || ci->top->sinks.count > 0))
         scheduler_addunlock(s, t_grav, ci->top->sinks.star_formation_sink);
 
       /* Sink formation */
@@ -187,11 +189,11 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     }
     if (with_star_formation_sink &&
         (ci->top->hydro.count > 0 || ci->top->sinks.count > 0)) {
-      engine_addlink(e, &ci->mpi.send, t_grav_counts);      
-    }      
+      engine_addlink(e, &ci->mpi.send, t_grav_counts);
+    }
     if (with_sinks && ci->hydro.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_grav_counts);
-    }    
+    }
   }
 
   /* Recurse? */
@@ -201,7 +203,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
         engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav_counts,
                                      t_grav, t_pack_grav, t_fof, t_pack_fof,
                                      with_fof, with_sinks, with_star_formation,
-				     with_star_formation_sink);
+                                     with_star_formation_sink);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -428,9 +430,9 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_density,
                                 struct task *t_prep2, struct task *t_sf_counts,
-				/* struct task *t_sf_sink_counts, */
+                                /* struct task *t_sf_sink_counts, */
                                 const int with_star_formation,
-				const int with_star_formation_sink) {
+                                const int with_star_formation_sink) {
 #ifdef WITH_MPI
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
@@ -453,14 +455,14 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                     ci->mpi.tag, 0, ci, cj);
     scheduler_addunlock(s, ci->hydro.star_formation, t_sf_counts);
   }
-  if (t_sf_counts == NULL && with_star_formation_sink
-      && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+  if (t_sf_counts == NULL && with_star_formation_sink &&
+      (ci->hydro.count > 0 || ci->sinks.count > 0)) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
       error(
-	    "Attaching a sf_sink_count task at a non-top level c->depth=%d "
-	    "c->hydro.count=%d c->sinks.count=%d",
-	    ci->depth, ci->hydro.count, ci->sinks.count);
+          "Attaching a sf_sink_count task at a non-top level c->depth=%d "
+          "c->hydro.count=%d c->sinks.count=%d",
+          ci->depth, ci->hydro.count, ci->sinks.count);
 #endif
     t_sf_counts = scheduler_addtask(s, task_type_send, task_subtype_sf_counts,
                                     ci->mpi.tag, 0, ci, cj);
@@ -520,7 +522,8 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 #endif
       }
 
-      if (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+      if (with_star_formation_sink &&
+          (ci->hydro.count > 0 || ci->sinks.count > 0)) {
         scheduler_addunlock(s, t_sf_counts, t_density);
 #ifdef EXTRA_STAR_LOOPS
         scheduler_addunlock(s, t_sf_counts, t_prep2);
@@ -536,7 +539,8 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
 
-    if (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+    if (with_star_formation_sink &&
+        (ci->hydro.count > 0 || ci->sinks.count > 0)) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
   }
@@ -546,7 +550,8 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_stars(e, ci->progeny[k], cj, t_density, t_prep2,
-                                   t_sf_counts, with_star_formation, with_star_formation_sink);
+                                   t_sf_counts, with_star_formation,
+                                   with_star_formation_sink);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -661,15 +666,16 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
  * @param e The #engine.
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
- * @param t_bh_merger The sink swallow comm. task, if it has already been created.
- * @param t_sink_gas_swallow The sink gas swallow comm. task, if it has already been
+ * @param t_bh_merger The sink swallow comm. task, if it has already been
  * created.
+ * @param t_sink_gas_swallow The sink gas swallow comm. task, if it has already
+ * been created.
  */
 void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
-				struct cell *cj, struct task *t_rho,
-				struct task *t_sink_merger,
-				struct task *t_sink_gas_swallow,
-				struct task *t_sink_formation_counts) {
+                                struct cell *cj, struct task *t_rho,
+                                struct task *t_sink_merger,
+                                struct task *t_sink_gas_swallow,
+                                struct task *t_sink_formation_counts) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -684,12 +690,14 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
       error(
-	    "Attaching a sink_formation_count task at a non-top level c->depth=%d "
-	    "c->sinks.count=%d",
-	    ci->depth, ci->sinks.count);
+          "Attaching a sink_formation_count task at a non-top level "
+          "c->depth=%d "
+          "c->sinks.count=%d",
+          ci->depth, ci->sinks.count);
 #endif
-    t_sink_formation_counts = scheduler_addtask(s, task_type_send, task_subtype_sink_formation_counts,
-						ci->mpi.tag, 0, ci, cj);
+    t_sink_formation_counts =
+        scheduler_addtask(s, task_type_send, task_subtype_sink_formation_counts,
+                          ci->mpi.tag, 0, ci, cj);
     scheduler_addunlock(s, ci->sinks.sink_formation, t_sink_formation_counts);
   }
 
@@ -710,8 +718,9 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_sink_rho,
                                 ci->mpi.tag, 0, ci, cj);
 
-      t_sink_gas_swallow = scheduler_addtask(s, task_type_send, task_subtype_sink_gas_swallow,
-                                ci->mpi.tag, 0, ci, cj);
+      t_sink_gas_swallow =
+          scheduler_addtask(s, task_type_send, task_subtype_sink_gas_swallow,
+                            ci->mpi.tag, 0, ci, cj);
 
       t_sink_merger = scheduler_addtask(
           s, task_type_send, task_subtype_sink_merger, ci->mpi.tag, 0, ci, cj);
@@ -728,8 +737,9 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, t_rho, ci->hydro.super->sinks.sink_ghost1);
 
       if (ci->hydro.count > 0) {
-	scheduler_addunlock(s, t_sink_formation_counts, t_rho);
-	/* Maybe we need to add a dependency on sink_ghost1 and/or sink_ghost2 */
+        scheduler_addunlock(s, t_sink_formation_counts, t_rho);
+        /* Maybe we need to add a dependency on sink_ghost1 and/or sink_ghost2
+         */
       }
 
       /* Ghost1 before you send the sink gas swallow */
@@ -741,20 +751,18 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
                           ci->hydro.super->sinks.sink_ghost2);
 
       /* Ghost2 before you send the sink merger */
-      scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost1,
-			  t_sink_merger);
+      scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost1, t_sink_merger);
       /* scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost2, */
-                          /* t_sink_merger); */
+      /* t_sink_merger); */
 
       /* Unlock the sink exit point after sending */
-      scheduler_addunlock(s, t_sink_merger,
-                          ci->hydro.super->sinks.sink_out);
+      scheduler_addunlock(s, t_sink_merger, ci->hydro.super->sinks.sink_out);
 
       /* Now create the dependencies
-	 send_sink_rho --> send_sink_gas_swallow -->
-	 send_sink_merger. These dependencies ensure we do not send before the
-	 previous send task was done. They also ensure that if the sink_ghost
-	 or sink_do_gas, we do not break the dependenvies. */
+         send_sink_rho --> send_sink_gas_swallow -->
+         send_sink_merger. These dependencies ensure we do not send before the
+         previous send task was done. They also ensure that if the sink_ghost
+         or sink_do_gas, we do not break the dependenvies. */
       /* scheduler_addunlock(s, t_rho, t_sink_gas_swallow); */
       /* scheduler_addunlock(s, t_sink_gas_swallow, t_sink_merger); */
     }
@@ -773,7 +781,7 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_sinks(e, ci->progeny[k], cj, t_rho, t_sink_merger,
-				   t_sink_gas_swallow, t_sink_formation_counts);
+                                   t_sink_gas_swallow, t_sink_formation_counts);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -810,8 +818,8 @@ void engine_addtasks_recv_hydro(
     struct task *t_unpack_limiter, struct task *t_rt_gradient,
     struct task *t_rt_transport, struct task *t_rt_sorts,
     struct task *const tend, const int with_feedback,
-    const int with_black_holes, const int with_sinks, const int with_limiter, const int with_sync,
-    const int with_rt) {
+    const int with_black_holes, const int with_sinks, const int with_limiter,
+    const int with_sync, const int with_rt) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -1051,7 +1059,8 @@ void engine_addtasks_recv_hydro(
         engine_addtasks_recv_hydro(
             e, c->progeny[k], t_xv, t_rho, t_gradient, t_prep1, t_limiter,
             t_unpack_limiter, t_rt_gradient, t_rt_transport, t_rt_sorts, tend,
-            with_feedback, with_black_holes, with_sinks, with_limiter, with_sync, with_rt);
+            with_feedback, with_black_holes, with_sinks, with_limiter,
+            with_sync, with_rt);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1140,10 +1149,10 @@ void engine_addtasks_recv_rt_advance_cell_time(struct engine *e, struct cell *c,
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                 struct task *t_density, struct task *t_prep2,
                                 struct task *t_sf_counts,
-				/* struct task *t_sf_sink_counts, */
+                                /* struct task *t_sf_sink_counts, */
                                 struct task *const tend,
                                 const int with_star_formation,
-				const int with_star_formation_sink) {
+                                const int with_star_formation_sink) {
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
@@ -1161,7 +1170,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     t_sf_counts = scheduler_addtask(s, task_type_recv, task_subtype_sf_counts,
                                     c->mpi.tag, 0, c, NULL);
   }
-  if (t_sf_counts == NULL && with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
+  if (t_sf_counts == NULL && with_star_formation_sink &&
+      (c->hydro.count > 0 || c->sinks.count > 0)) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->depth != 0)
       error(
@@ -1199,7 +1209,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #endif
     }
 
-    if (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
+    if (with_star_formation_sink &&
+        (c->hydro.count > 0 || c->sinks.count > 0)) {
 
       /* Receive the stars only once the counts have been received */
       scheduler_addunlock(s, t_sf_counts, c->stars.sorts);
@@ -1219,7 +1230,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
     }
 
-    if (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
+    if (with_star_formation_sink &&
+        (c->hydro.count > 0 || c->sinks.count > 0)) {
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
     }
 
@@ -1270,7 +1282,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_stars(e, c->progeny[k], t_density, t_prep2,
                                    t_sf_counts, tend, with_star_formation,
-				   with_star_formation_sink);
+                                   with_star_formation_sink);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1389,11 +1401,10 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
  * @param tend The top-level time-step communication #task.
  */
 void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
-				struct task *t_rho,
-				struct task *t_sink_merger,
-				struct task *t_sink_gas_swallow,
-				struct task *t_sink_formation_counts,
-				struct task *const tend) {
+                                struct task *t_rho, struct task *t_sink_merger,
+                                struct task *t_sink_gas_swallow,
+                                struct task *t_sink_formation_counts,
+                                struct task *const tend) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -1405,12 +1416,14 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->depth != 0)
       error(
-          "Attaching a sink_formation_count task at a non-top level c->depth=%d "
+          "Attaching a sink_formation_count task at a non-top level "
+          "c->depth=%d "
           "c->sinks.count=%d",
           c->depth, c->sinks.count);
 #endif
-    t_sink_formation_counts = scheduler_addtask(s, task_type_recv, task_subtype_sink_formation_counts,
-						c->mpi.tag, 0, c, NULL);
+    t_sink_formation_counts =
+        scheduler_addtask(s, task_type_recv, task_subtype_sink_formation_counts,
+                          c->mpi.tag, 0, c, NULL);
   }
 
   /* Have we reached a level where there are any sink tasks ? */
@@ -1423,13 +1436,14 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
 
     /* Create the tasks. */
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_sink_rho,
-				  c->mpi.tag, 0, c, NULL);
+                              c->mpi.tag, 0, c, NULL);
 
     t_sink_merger = scheduler_addtask(
         s, task_type_recv, task_subtype_sink_merger, c->mpi.tag, 0, c, NULL);
 
-    t_sink_gas_swallow = scheduler_addtask(
-        s, task_type_recv, task_subtype_sink_gas_swallow, c->mpi.tag, 0, c, NULL);
+    t_sink_gas_swallow =
+        scheduler_addtask(s, task_type_recv, task_subtype_sink_gas_swallow,
+                          c->mpi.tag, 0, c, NULL);
 
     /* Now create the dependencies
        recv_sink_rho --> recv_sink_gas_swallow -->
@@ -1475,12 +1489,10 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
       scheduler_addunlock(s, l->t, t_sink_merger);
     }
 
-    for (struct link *l = c->sinks.do_gas_swallow; l != NULL;
-         l = l->next) {
+    for (struct link *l = c->sinks.do_gas_swallow; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_sink_gas_swallow, l->t);
     }
-    for (struct link *l = c->sinks.do_sink_swallow; l != NULL;
-         l = l->next) {
+    for (struct link *l = c->sinks.do_sink_swallow; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_sink_merger, l->t);
       scheduler_addunlock(s, l->t, tend);
     }
@@ -1491,8 +1503,8 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_sinks(e, c->progeny[k], t_rho, t_sink_merger,
-				   t_sink_gas_swallow, t_sink_formation_counts,
-				   tend);
+                                   t_sink_gas_swallow, t_sink_formation_counts,
+                                   tend);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1515,16 +1527,17 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
                                   struct task *t_grav_counts,
                                   struct task *t_grav, struct task *t_fof,
                                   struct task *const tend, const int with_fof,
-				  const int with_sinks,
+                                  const int with_sinks,
                                   const int with_star_formation,
-				  const int with_star_formation_sink) {
+                                  const int with_star_formation_sink) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
   const int are_particles_forming =
-    (with_star_formation && c->hydro.count > 0) ||
-    (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) ||
-    (with_sinks && c->hydro.count > 0) ;
+      (with_star_formation && c->hydro.count > 0) ||
+      (with_star_formation_sink &&
+       (c->hydro.count > 0 || c->sinks.count > 0)) ||
+      (with_sinks && c->hydro.count > 0);
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -1580,10 +1593,9 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav_counts, t_grav,
-                                     t_fof, tend, with_fof,
-                                     with_sinks, with_star_formation,
-				     with_star_formation_sink);
+        engine_addtasks_recv_gravity(
+            e, c->progeny[k], t_grav_counts, t_grav, t_fof, tend, with_fof,
+            with_sinks, with_star_formation, with_star_formation_sink);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2001,11 +2013,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
     if (with_sinks) {
       c->sinks.sink_ghost1 =
-          scheduler_addtask(s, task_type_sink_ghost1, task_subtype_none,
-                            0, /* implicit =*/1, c, NULL);
+          scheduler_addtask(s, task_type_sink_ghost1, task_subtype_none, 0,
+                            /* implicit =*/1, c, NULL);
       c->sinks.sink_ghost2 =
-          scheduler_addtask(s, task_type_sink_ghost2, task_subtype_none,
-                            0, /* implicit =*/1, c, NULL);
+          scheduler_addtask(s, task_type_sink_ghost2, task_subtype_none, 0,
+                            /* implicit =*/1, c, NULL);
     }
 
     if (with_black_holes) {
@@ -3543,13 +3555,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
                               t_star_feedback);
         }
-	if (with_sink) {
+        if (with_sink) {
           scheduler_addunlock(sched, t_sink_swallow,
                               ci->hydro.super->sinks.sink_ghost1);
-	  scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
-                                t_sink_do_gas_swallow);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
+                              t_sink_do_gas_swallow);
 
-	  scheduler_addunlock(sched, t_sink_do_gas_swallow,
+          scheduler_addunlock(sched, t_sink_do_gas_swallow,
                               ci->hydro.super->sinks.sink_ghost2);
           scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
                               t_sink_do_sink_swallow);
@@ -3722,13 +3734,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_star_feedback);
         }
 
-	if (with_sink) {
+        if (with_sink) {
           scheduler_addunlock(sched, t_sink_swallow,
                               cj->hydro.super->sinks.sink_ghost1);
-	  scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
-                                t_sink_do_gas_swallow);
+          scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
+                              t_sink_do_gas_swallow);
 
-	  scheduler_addunlock(sched, t_sink_do_gas_swallow,
+          scheduler_addunlock(sched, t_sink_do_gas_swallow,
                               cj->hydro.super->sinks.sink_ghost2);
           scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost2,
                               t_sink_do_sink_swallow);
@@ -3987,7 +3999,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
       engine_addtasks_send_stars(e, ci, cj, /*t_density=*/NULL,
                                  /*t_prep2=*/NULL,
                                  /*t_sf_counts=*/NULL, with_star_formation,
-				 with_star_formation_sink);
+                                 with_star_formation_sink);
 
     /* Add the send tasks for the cells in the proxy that have a black holes
      * connection. */
@@ -4000,12 +4012,11 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
 
     /* Add the send tasks for the cells in the proxy that have a sink
      * connection. */
-    if ((e->policy & engine_policy_sinks) &&
-        (type & proxy_cell_type_hydro))
+    if ((e->policy & engine_policy_sinks) && (type & proxy_cell_type_hydro))
       engine_addtasks_send_sinks(e, ci, cj, /*t_rho=*/NULL,
-				 /*t_sink_merger=*/NULL,
-				 /*t_sink_gas_swallow=*/NULL,
-				 /*t_sink_formation_count=*/NULL);
+                                 /*t_sink_merger=*/NULL,
+                                 /*t_sink_gas_swallow=*/NULL,
+                                 /*t_sink_formation_count=*/NULL);
 
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
@@ -4015,7 +4026,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                    /*t_grav=*/NULL, /*t_pack_grav=*/NULL,
                                    /*t_fof=*/NULL, /*t_pack_fof=*/NULL,
                                    with_fof, with_sinks, with_star_formation,
-				   with_star_formation_sink);
+                                   with_star_formation_sink);
   }
 }
 
@@ -4085,8 +4096,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
           e, ci, /*t_xv=*/NULL, /*t_rho=*/NULL, /*t_gradient=*/NULL,
           /*t_prep1=*/NULL, /*t_limiter=*/NULL, /*t_unpack_limiter=*/NULL,
           /*t_rt_gradient=*/NULL, /*t_rt_transport=*/NULL,
-          /*t_rt_sorts=*/NULL, tend, with_feedback, with_black_holes, with_sinks,
-          with_limiter, with_sync, with_rt);
+          /*t_rt_sorts=*/NULL, tend, with_feedback, with_black_holes,
+          with_sinks, with_limiter, with_sync, with_rt);
     }
 
     /* Add the recv tasks for the cells in the proxy that have a stars
@@ -4105,13 +4116,13 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                        /*t_gas_swallow=*/NULL,
                                        /*t_feedback=*/NULL, tend);
 
-    /* Add the recv tasks for the cells in the proxy that have a sink connection. */
-    if ((e->policy & engine_policy_sinks) &&
-        (type & proxy_cell_type_hydro))
+    /* Add the recv tasks for the cells in the proxy that have a sink
+     * connection. */
+    if ((e->policy & engine_policy_sinks) && (type & proxy_cell_type_hydro))
       engine_addtasks_recv_sinks(e, ci, /*t_rho=*/NULL,
-				 /*t_sink_merger*/NULL,
-				 /*t_sink_gas_swallow=*/NULL,
-				 /*t_sink_formation_counts=*/NULL, tend);
+                                 /*t_sink_merger*/ NULL,
+                                 /*t_sink_gas_swallow=*/NULL,
+                                 /*t_sink_formation_counts=*/NULL, tend);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */
@@ -4120,7 +4131,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
       engine_addtasks_recv_gravity(e, ci, /*t_grav_count=*/NULL,
                                    /*t_grav=*/NULL, /*t_fof=*/NULL, tend,
                                    with_fof, with_sinks, with_star_formation,
-				   with_star_formation_sink);
+                                   with_star_formation_sink);
   }
 }
 

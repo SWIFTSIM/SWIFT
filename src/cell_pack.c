@@ -231,7 +231,7 @@ void cell_unpack_bpart_swallow(struct cell *c,
 }
 
 void cell_pack_sink_gas_swallow(const struct cell *c,
-                            struct sink_part_data *data) {
+                                struct sink_part_data *data) {
 
   const size_t count = c->hydro.count;
   const struct part *parts = c->hydro.parts;
@@ -242,7 +242,7 @@ void cell_pack_sink_gas_swallow(const struct cell *c,
 }
 
 void cell_unpack_sink_gas_swallow(struct cell *c,
-                              const struct sink_part_data *data) {
+                                  const struct sink_part_data *data) {
 
   const size_t count = c->hydro.count;
   struct part *parts = c->hydro.parts;
@@ -252,8 +252,7 @@ void cell_unpack_sink_gas_swallow(struct cell *c,
   }
 }
 
-void cell_pack_sink_swallow(const struct cell *c,
-                             struct sink_sink_data *data) {
+void cell_pack_sink_swallow(const struct cell *c, struct sink_sink_data *data) {
 
   const size_t count = c->sinks.count;
   const struct sink *sinks = c->sinks.parts;
@@ -264,7 +263,7 @@ void cell_pack_sink_swallow(const struct cell *c,
 }
 
 void cell_unpack_sink_swallow(struct cell *c,
-                               const struct sink_sink_data *data) {
+                              const struct sink_sink_data *data) {
 
   const size_t count = c->sinks.count;
   struct sink *sinks = c->sinks.parts;
@@ -897,7 +896,6 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 #endif
 }
 
-
 /**
  * @brief Pack the counts for sink formation of the given cell and all it's
  * sub-cells.
@@ -907,7 +905,8 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
  *
  * @return The number of packed cells.
  */
-int cell_pack_sink_formation_counts(struct cell *c, struct pcell_sink_formation_sinks *pcells) {
+int cell_pack_sink_formation_counts(struct cell *c,
+                                    struct pcell_sink_formation_sinks *pcells) {
 
 #ifdef WITH_MPI
 
@@ -953,7 +952,8 @@ int cell_pack_sink_formation_counts(struct cell *c, struct pcell_sink_formation_
  *
  * @return The number of cells created.
  */
-int cell_unpack_sink_formation_counts(struct cell *c, struct pcell_sink_formation_sinks *pcells) {
+int cell_unpack_sink_formation_counts(
+    struct cell *c, struct pcell_sink_formation_sinks *pcells) {
 
 #ifdef WITH_MPI
 

@@ -1243,13 +1243,12 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
     }
 #ifdef WITH_MPI
-  /* sink_formation_count: send and recv              | 2
-     sink_rho: send and recv                          | 2
-     sink_gas_swallow: send and recv                  | 2
-     sink_merger: send and recv                       | 2 */
+    /* sink_formation_count: send and recv              | 2
+       sink_rho: send and recv                          | 2
+       sink_gas_swallow: send and recv                  | 2
+       sink_merger: send and recv                       | 2 */
     n1 += 8;
 #endif
-
   }
   if (e->policy & engine_policy_fof) {
     n1 += 2;
@@ -1833,10 +1832,10 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_sink_swallow ||
         t->subtype == task_subtype_sink_do_sink_swallow ||
         t->subtype == task_subtype_sink_do_gas_swallow ||
-	t->subtype == task_subtype_sink_formation_counts ||
-	t->subtype == task_subtype_sink_rho ||
-	t->subtype == task_subtype_sink_gas_swallow ||
-	t->subtype == task_subtype_sink_merger ||
+        t->subtype == task_subtype_sink_formation_counts ||
+        t->subtype == task_subtype_sink_rho ||
+        t->subtype == task_subtype_sink_gas_swallow ||
+        t->subtype == task_subtype_sink_merger ||
         t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
         t->subtype == task_subtype_spart_density ||
         t->subtype == task_subtype_part_prep1 ||
@@ -2392,7 +2391,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
   scheduler_write_dependencies(&e->sched, e->verbose, e->step);
-  scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step,  e->sched.dependency_graph_cellID);
+  scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step,
+                                    e->sched.dependency_graph_cellID);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
   /* Zero the list of cells that have had their time-step updated */
@@ -2928,18 +2928,18 @@ int engine_step(struct engine *e) {
   if (e->sched.frequency_dependency != 0 &&
       e->step % e->sched.frequency_dependency == 0) {
     scheduler_write_dependencies(&e->sched, e->verbose, e->step);
-    scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step, e->sched.dependency_graph_cellID);
-
+    scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step,
+                                      e->sched.dependency_graph_cellID);
 
     /* HERE do write more cells dependencies */
     const int array_size = 13;
-    const int cellID_debug[13] = {2097157, 262149, 16777221, 4161555,
-				33521683, 2981893, 4161540, 3342355,
-				3047434, 3342355, 3047434, 4063249,
-				2654226} ;
+    const int cellID_debug[13] = {2097157, 262149,  16777221, 4161555, 33521683,
+                                  2981893, 4161540, 3342355,  3047434, 3342355,
+                                  3047434, 4063249, 2654226};
 
-    for (int i = 0 ; i < array_size ; ++i) {
-      scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step, cellID_debug[i]);
+    for (int i = 0; i < array_size; ++i) {
+      scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step,
+                                        cellID_debug[i]);
     }
   }
 

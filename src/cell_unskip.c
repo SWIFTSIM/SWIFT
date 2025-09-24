@@ -1221,19 +1221,19 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
 
     /* Otherwise, activate the sorts and drifts. */
     else {
-      /* Note we need to drift *both* sink cells to deal with sink<->sink swallows
-       * But we only need to drift the gas cell if the *other* cell has an
-       * active sink */
+      /* Note we need to drift *both* sink cells to deal with sink<->sink
+       * swallows But we only need to drift the gas cell if the *other* cell has
+       * an active sink */
 
       if (ci_active || cj_active) {
-	/* Activate the drifts if the cells are local. */
-	if (ci->nodeID == engine_rank) cell_activate_drift_sink(ci, s);
-	if (cj->nodeID == engine_rank && ci_active)
-	  cell_activate_drift_part(cj, s);
+        /* Activate the drifts if the cells are local. */
+        if (ci->nodeID == engine_rank) cell_activate_drift_sink(ci, s);
+        if (cj->nodeID == engine_rank && ci_active)
+          cell_activate_drift_part(cj, s);
 
-	/* Activate the drifts if the cells are local. */
-	if (ci->nodeID == engine_rank && cj_active)
-	  cell_activate_drift_part(ci, s);
+        /* Activate the drifts if the cells are local. */
+        if (ci->nodeID == engine_rank && cj_active)
+          cell_activate_drift_part(ci, s);
         if (cj->nodeID == engine_rank) cell_activate_drift_sink(cj, s);
       }
     }
@@ -2005,7 +2005,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_drift_gpart(cj, s);
         }
 
-	/* Propagating new sink counts? */
+        /* Propagating new sink counts? */
         if (with_sinks) {
           if (ci_active && ci->hydro.count > 0) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_grav_counts);
@@ -2027,7 +2027,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
-	/* Propagating new star counts (star formation sink)? */
+        /* Propagating new star counts (star formation sink)? */
         if (with_star_formation_sink) {
           if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_grav_counts);
@@ -2058,8 +2058,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_drift_gpart(ci, s);
         }
 
-	/* Propagating new sink counts? */
-	if (with_sinks) {
+        /* Propagating new sink counts? */
+        if (with_sinks) {
           if (cj_active && cj->hydro.count > 0) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_grav_counts);
           }
@@ -2080,8 +2080,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
-	/* Propagating new star counts (star formation sink)? */
-	if (with_star_formation_sink) {
+        /* Propagating new star counts (star formation sink)? */
+        if (with_star_formation_sink) {
           if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_grav_counts);
           }
@@ -2089,7 +2089,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_grav_counts,
                                     cj_nodeID);
           }
-        }  /* with_star_formation_sink */
+        } /* with_star_formation_sink */
       } /* cj_nodeID != nodeID */
 #endif
     }
@@ -2860,7 +2860,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       if (t->type == task_type_self) {
         cell_activate_subcell_sinks_tasks(ci, NULL, s, with_timestep_sync);
 
-	/* TODO: Check if we need that. Stars have it, BHs don't */
+        /* TODO: Check if we need that. Stars have it, BHs don't */
         /* cell_activate_drift_sink(ci, s); */
         /* cell_activate_drift_part(ci, s);         */
       }
@@ -2869,8 +2869,8 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       else if (t->type == task_type_pair) {
         cell_activate_subcell_sinks_tasks(ci, cj, s, with_timestep_sync);
 
-	/* TODO: Check if we need that. Stars have it, BHs don't */        
-	/* Activate the drift tasks. */
+        /* TODO: Check if we need that. Stars have it, BHs don't */
+        /* Activate the drift tasks. */
         /* if (ci_nodeID == nodeID) cell_activate_drift_sink(ci, s); */
         /* if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s); */
 
@@ -2878,12 +2878,12 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
         /* if (cj_nodeID == nodeID) cell_activate_drift_sink(cj, s); */
         /* if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s); */
 
-	/* Activate sinks_in for each cell that is part of
+        /* Activate sinks_in for each cell that is part of
          * a pair task as to not miss any dependencies */
         if (ci_nodeID == nodeID)
           scheduler_activate(s, ci->hydro.super->sinks.sink_in);
         if (cj_nodeID == nodeID)
-          scheduler_activate(s, cj->hydro.super->sinks.sink_in);        
+          scheduler_activate(s, cj->hydro.super->sinks.sink_in);
       }
     }
 
@@ -2897,64 +2897,66 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
       if (ci_active) {
         scheduler_activate(s, ci->hydro.super->sinks.sink_ghost1);
-	scheduler_activate(s, ci->hydro.super->sinks.sink_ghost2);
+        scheduler_activate(s, ci->hydro.super->sinks.sink_ghost2);
       }
       if (cj_active) {
         scheduler_activate(s, cj->hydro.super->sinks.sink_ghost1);
-	scheduler_activate(s, cj->hydro.super->sinks.sink_ghost2);
+        scheduler_activate(s, cj->hydro.super->sinks.sink_ghost2);
       }
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
 
-	if ((ci_active || cj_active)) {
-	  /* We must exchange the foreign sinks no matter the activity status */
-	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_rho);
-	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_rho,
-				  ci_nodeID);
+        if ((ci_active || cj_active)) {
+          /* We must exchange the foreign sinks no matter the activity status */
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_rho);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_rho,
+                                  ci_nodeID);
 
-	  /* Drift before you send */
-	  cell_activate_drift_sink(cj, s);
-	}
+          /* Drift before you send */
+          cell_activate_drift_sink(cj, s);
+        }
 
-	if (cj_active) {
+        if (cj_active) {
 
-	  /* Receive the foreign parts to compute sink properties and do
-	   * the swallowing */
-	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
-	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_gas_swallow);
-	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_merger);
+          /* Receive the foreign parts to compute sink properties and do
+           * the swallowing */
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+          scheduler_activate_recv(s, ci->mpi.recv,
+                                  task_subtype_sink_gas_swallow);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_merger);
 
-	  /* We don't send any sink so we don't need to drift. */
-	}
+          /* We don't send any sink so we don't need to drift. */
+        }
 
-	if (ci_active) {
+        if (ci_active) {
 
-	  /* Send the local part information */
-	  scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
-	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_gas_swallow,
-				  ci_nodeID);
-	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_merger,
-				  ci_nodeID);
+          /* Send the local part information */
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send,
+                                  task_subtype_sink_gas_swallow, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_merger,
+                                  ci_nodeID);
 
-	  /* Drift the cell which will be sent; note that not all sent
-	     particles will be drifted, only those that are needed. */
-	  if (cj->hydro.count > 0) cell_activate_drift_part(cj, s);
-	}
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          if (cj->hydro.count > 0) cell_activate_drift_part(cj, s);
+        }
 
-	/* Propagating new sink counts? */
-	if (ci_active && ci->hydro.count > 0) {
-	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_formation_counts);
-	}
-	if (cj_active && cj->hydro.count > 0) {
-	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_formation_counts,
-				  ci_nodeID);
-	}
+        /* Propagating new sink counts? */
+        if (ci_active && ci->hydro.count > 0) {
+          scheduler_activate_recv(s, ci->mpi.recv,
+                                  task_subtype_sink_formation_counts);
+        }
+        if (cj_active && cj->hydro.count > 0) {
+          scheduler_activate_send(
+              s, cj->mpi.send, task_subtype_sink_formation_counts, ci_nodeID);
+        }
 
-	/* TODO: implement sf_sink_counts + same for gravity */
-	/* Propagating new star counts? */
-	if (with_star_formation_sink) {
+        /* TODO: implement sf_sink_counts + same for gravity */
+        /* Propagating new star counts? */
+        if (with_star_formation_sink) {
           if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
           }
@@ -2962,57 +2964,59 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
             scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
                                     ci_nodeID);
           }
-	}
+        }
 
       } else if (cj_nodeID != nodeID) {
 
-	if ((ci_active || cj_active)) {
-	  /* We must exchange the foreign sinks no matter the activity status */
-	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_rho);
-	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_rho,
-				  cj_nodeID);
+        if ((ci_active || cj_active)) {
+          /* We must exchange the foreign sinks no matter the activity status */
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_rho);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_rho,
+                                  cj_nodeID);
 
-	  /* Drift before you send */
-	  cell_activate_drift_sink(ci, s);
-	}
+          /* Drift before you send */
+          cell_activate_drift_sink(ci, s);
+        }
 
-	/* Think carefully if we need the ci or cj count */
-	if (ci_active) {
+        /* Think carefully if we need the ci or cj count */
+        if (ci_active) {
 
-	  /* Receive the foreign parts to compute sink properties and do
-	   * the swallowing */
-	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
-	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_gas_swallow);
-	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_merger);
+          /* Receive the foreign parts to compute sink properties and do
+           * the swallowing */
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+          scheduler_activate_recv(s, cj->mpi.recv,
+                                  task_subtype_sink_gas_swallow);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_merger);
 
-	  /* We don't send any sink so we don't need to drift. */
-	}
+          /* We don't send any sink so we don't need to drift. */
+        }
 
-	if (cj_active) {
+        if (cj_active) {
 
-	  /* Send the local part information */
-	  scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
-	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_gas_swallow,
-				  cj_nodeID);
-	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_merger,
-				  cj_nodeID);
+          /* Send the local part information */
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send,
+                                  task_subtype_sink_gas_swallow, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_merger,
+                                  cj_nodeID);
 
-	  /* Drift the cell which will be sent; note that not all sent
-	     particles will be drifted, only those that are needed. */
-	  if (ci->hydro.count > 0) cell_activate_drift_part(ci, s);
-	}
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          if (ci->hydro.count > 0) cell_activate_drift_part(ci, s);
+        }
 
-	/* Propagating new sink counts? */
-	if (cj_active && cj->hydro.count > 0) {
-	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_formation_counts);
-	}
-	if (ci_active && ci->hydro.count > 0) {
-	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_formation_counts,
-				  cj_nodeID);
-	}
+        /* Propagating new sink counts? */
+        if (cj_active && cj->hydro.count > 0) {
+          scheduler_activate_recv(s, cj->mpi.recv,
+                                  task_subtype_sink_formation_counts);
+        }
+        if (ci_active && ci->hydro.count > 0) {
+          scheduler_activate_send(
+              s, ci->mpi.send, task_subtype_sink_formation_counts, cj_nodeID);
+        }
 
-	/* TODO: implement sf_sink_counts + same for gravity */
-	/* Propagating new star counts? */
+        /* TODO: implement sf_sink_counts + same for gravity */
+        /* Propagating new star counts? */
         if (with_star_formation_sink) {
           if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
@@ -3024,7 +3028,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
         }
       }
 #endif /* WITH_MPI */
-   }
+    }
   }
 
   /* Note: Have a look at parts. They activate the tasks for the foreign cell
@@ -3051,10 +3055,10 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
         cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
     const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
                                            cell_is_active_hydro(cj, e));
-    
+
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
-	(ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
     }
   }
@@ -3079,7 +3083,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
-	(ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
     }
   }
@@ -3098,22 +3102,22 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
     const int ci_active =
-      cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
+        cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
     const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
                                            cell_is_active_hydro(cj, e));
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
-	(ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
 
       if (t->type == task_type_pair) {
-	/* Activate sinks_out for each cell that is part of
-	 * a pair/pair task as to not miss any dependencies */
-	if (ci_nodeID == nodeID)
-	  scheduler_activate(s, ci->hydro.super->sinks.sink_out);
-	if (cj_nodeID == nodeID)
-	  scheduler_activate(s, cj->hydro.super->sinks.sink_out);
+        /* Activate sinks_out for each cell that is part of
+         * a pair/pair task as to not miss any dependencies */
+        if (ci_nodeID == nodeID)
+          scheduler_activate(s, ci->hydro.super->sinks.sink_out);
+        if (cj_nodeID == nodeID)
+          scheduler_activate(s, cj->hydro.super->sinks.sink_out);
       }
     }
   }

@@ -167,7 +167,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
         } /* Loop over local sinks */
 
 #ifdef WITH_MPI
-	/* We could also be in the case of a local gas particle being
+        /* We could also be in the case of a local gas particle being
          * swallowed by a foreign sink. In this case, we won't update the
          * sink but just remove the particle from the local list. */
         if (c->nodeID == e->nodeID && !found) {
@@ -180,8 +180,9 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
             if (sink->id == sink_id) {
 #ifdef SWIFT_DEBUG_CHECKS
-              message("Sink %lld removing gas particle %lld (foreign sink case)",
-                      sink->id, p->id);
+              message(
+                  "Sink %lld removing gas particle %lld (foreign sink case)",
+                  sink->id, p->id);
 #endif /* SWIFT_DEBUG_CHECKS */
 
               lock_lock(&e->s->lock);
@@ -201,7 +202,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
               break;
             }
           } /* Loop over foreign sinks */
-        }   /* Is the cell local? */
+        } /* Is the cell local? */
 #endif
 
         /* If we have a local particle, we must have found the sink in one
@@ -441,8 +442,9 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
               }
 
 #ifdef SWIFT_DEBUG_CHECKS
-              message("Sink %lld swallowing sink particle %lld (foreign sink case)",
-                      sink->id, cell_sp->id);
+              message(
+                  "Sink %lld swallowing sink particle %lld (foreign sink case)",
+                  sink->id, cell_sp->id);
 #endif /* SWIFT_DEBUG_CHECKS */
 
               /* Finally, remove the gas particle from the system */
@@ -452,7 +454,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
               break;
             }
           } /* Loop over foreign sinks */
-        }   /* Is the cell local? */
+        } /* Is the cell local? */
 #endif
 
         /* If we have a local particle, we must have found the sink in one

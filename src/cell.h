@@ -336,7 +336,6 @@ struct pcell_sf_grav {
   int count;
 };
 
-
 /**
  * @brief Cell information to propagate the new counts of sink particles (sink
  * variables).
@@ -583,13 +582,12 @@ void cell_pack_bpart_swallow(const struct cell *c,
 void cell_unpack_bpart_swallow(struct cell *c,
                                const struct black_holes_bpart_data *data);
 void cell_pack_sink_gas_swallow(const struct cell *c,
-                            struct sink_part_data *data);
+                                struct sink_part_data *data);
 void cell_unpack_sink_gas_swallow(struct cell *c,
-                              const struct sink_part_data *data);
-void cell_pack_sink_swallow(const struct cell *c,
-                             struct sink_sink_data *data);
+                                  const struct sink_part_data *data);
+void cell_pack_sink_swallow(const struct cell *c, struct sink_sink_data *data);
 void cell_unpack_sink_swallow(struct cell *c,
-                               const struct sink_sink_data *data);
+                              const struct sink_sink_data *data);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_grid_extra(const struct cell *c,
@@ -609,8 +607,10 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
 int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
 int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
 int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
-int cell_pack_sink_formation_counts(struct cell *c, struct pcell_sink_formation_sinks *pcell);
-int cell_unpack_sink_formation_counts(struct cell *c, struct pcell_sink_formation_sinks *pcell);
+int cell_pack_sink_formation_counts(struct cell *c,
+                                    struct pcell_sink_formation_sinks *pcell);
+int cell_unpack_sink_formation_counts(struct cell *c,
+                                      struct pcell_sink_formation_sinks *pcell);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart_foreign *gparts);
