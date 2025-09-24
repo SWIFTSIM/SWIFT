@@ -426,32 +426,37 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "AR contribution to time derivative of thermal energies of the "
       "particles");
 
+  list[9] = io_make_output_field(
+      "PlasmaBetaMax", FLOAT, 1, UNIT_CONV_NO_UNITS,
+      0.f, parts, mhd_data.plasma_beta_max,
+      "Maximum plasma beta over the particle's neighbours");
+  
   /* Error metrics */
-  list[9] = io_make_output_field_convert_part(
+  list[10] = io_make_output_field_convert_part(
       "R0", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts, calculate_R0,
       "Classical error metric, indicates places with large divergence. "
       "Sensetivity to particle noise depends on signal_to_noise parameter, "
       "default is 10 (if 1 - weak noise filtering, if 100 - strong noise "
       "filtering)");
-  list[10] = io_make_output_field_convert_part(
+  list[11] = io_make_output_field_convert_part(
       "R1", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts, calculate_R1,
       "Error metric, angle between B field and total Fmag. Indicates unpysical "
       "magnetic force. Sensetivity to particle noise depends on "
       "signal_to_noise parameter, default is 10 (if 1 - weak noise filtering, "
       "if 100 - strong noise filtering)");
-  list[11] = io_make_output_field_convert_part(
+  list[12] = io_make_output_field_convert_part(
       "R2", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts, calculate_R2,
       "Error metric, ratio of divB and |curlB|. Estimates upper limit on "
       "B_monopole/B_physical. Sensetivity to particle noise depends on "
       "signal_to_noise parameter, default is 10 (if 1 - weak noise filtering, "
       "if 100 - strong noise filtering)");
-  list[12] = io_make_output_field_convert_part(
+  list[13] = io_make_output_field_convert_part(
       "R3", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts, calculate_R3,
       "Error metric, shows relation of smoothing length to characteristic B "
       "gradient scale. Sensetivity to particle noise depends on "
       "signal_to_noise parameter, default is 10 (if 1 - weak noise filtering, "
       "if 100 - strong noise filtering)");
-  list[13] = io_make_output_field_convert_part(
+  list[14] = io_make_output_field_convert_part(
       "OWTriggers", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_OW_trigger,
       "Trigger, indicates if localy the magnetic field advection is limited by "
@@ -460,15 +465,15 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "enough, the "
       "magnetic field gradients will stay below maximal resolvable gradient"
       "of B/h");
-  list[14] = io_make_output_field_convert_part(
+  list[15] = io_make_output_field_convert_part(
       "TotalEffectiveResistivities", FLOAT, 1, UNIT_CONV_MAGNETIC_DIFFUSIVITY,
       0, parts, xparts, calculate_effective_resistivity,
       "Shows local value of total resistivity of the code");
-  list[15] = io_make_output_field_convert_part(
+  list[16] = io_make_output_field_convert_part(
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
 
-  return 16;
+  return 17;
 }
 
 /**
