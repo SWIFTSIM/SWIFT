@@ -1148,7 +1148,7 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
 
 void scheduler_write_cell_dependencies_debug(struct scheduler *s, int verbose,
                                              int step, const struct cell *c) {
-
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Write the current cell */
   scheduler_write_cell_dependencies(s, verbose, step, c->cellID);
 
@@ -1160,6 +1160,7 @@ void scheduler_write_cell_dependencies_debug(struct scheduler *s, int verbose,
 
   /* Write the top cell */
   scheduler_write_cell_dependencies(s, verbose, step, c->top->cellID);
+#endif  
 }
 
 /**
