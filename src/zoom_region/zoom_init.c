@@ -318,6 +318,17 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
     s->zoom_props->applied_zoom_vel_shift[i] = s->zoom_props->zoom_vel_shift[i];
   }
 
+  if (verbose)
+    message(
+        "Shifting particles positions by [%f, %f, %f] and "
+        "velocities by [%f, %f, %f]",
+        s->zoom_props->applied_zoom_shift[0],
+        s->zoom_props->applied_zoom_shift[1],
+        s->zoom_props->applied_zoom_shift[2],
+        s->zoom_props->applied_zoom_vel_shift[0],
+        s->zoom_props->applied_zoom_vel_shift[1],
+        s->zoom_props->applied_zoom_vel_shift[2]);
+
   if (verbose) {
     message("Applying zoom region shift took %f %s",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
