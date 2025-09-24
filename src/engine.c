@@ -2905,6 +2905,18 @@ int engine_step(struct engine *e) {
       e->step % e->sched.frequency_dependency == 0) {
     scheduler_write_dependencies(&e->sched, e->verbose, e->step);
     scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step, e->sched.dependency_graph_cellID);
+
+
+    /* HERE do write more cells dependencies */
+    const int array_size = 13;
+    const int cellID_debug[13] = {2097157, 262149, 16777221, 4161555,
+				33521683, 2981893, 4161540, 3342355,
+				3047434, 3342355, 3047434, 4063249,
+				2654226} ;
+
+    for (int i = 0 ; i < array_size ; ++i) {
+      scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step, cellID_debug[i]);
+    }
   }
 
   /* Write the task levels */
