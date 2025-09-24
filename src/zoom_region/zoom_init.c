@@ -318,7 +318,7 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
     s->zoom_props->applied_zoom_vel_shift[i] = s->zoom_props->zoom_vel_shift[i];
   }
 
-  iof(verbose) {
+  if (verbose) {
     message("Applying zoom region shift took %f s",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
