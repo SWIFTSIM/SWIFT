@@ -524,7 +524,7 @@ INLINE static int sink_is_forming(
     return 0;
   }
 
-  message("Gas particle %lld can form a sink !", p->id);
+  /* message("Gas particle %lld can form a sink !", p->id); */
   return 1;
 }
 
@@ -697,15 +697,15 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->mass_tot_before_star_spawning = sp->mass;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-  message(
-      "sink %lld swallow gas particle %lld. "
-      "(Mass = %e, "
-      "Delta_v = [%f, %f, %f] U_V, "
-      "Delta_x = [%f, %f, %f] U_L, "
-      "Delta_v_rad = %f)",
-      sp->id, p->id, sp->mass, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2],
-      (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
+  /* const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]); */
+  /* message( */
+  /*     "sink %lld swallow gas particle %lld. " */
+  /*     "(Mass = %e, " */
+  /*     "Delta_v = [%f, %f, %f] U_V, " */
+  /*     "Delta_x = [%f, %f, %f] U_L, " */
+  /*     "Delta_v_rad = %f)", */
+  /*     sp->id, p->id, sp->mass, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2], */
+  /*     (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr); */
 #endif
 }
 
@@ -769,8 +769,8 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
       spj->to_collect.mass_eligible_swallow;
   spi->to_collect.mass_swallowed += spj->to_collect.mass_swallowed;
 
-  message("sink %lld swallows sink particle %lld. New mass: %e.", spi->id,
-          spj->id, spi->mass);
+  /* message("sink %lld swallows sink particle %lld. New mass: %e.", spi->id, */
+  /*         spj->id, spi->mass); */
 }
 
 /**
@@ -904,10 +904,10 @@ INLINE static void sink_star_formation_give_new_velocity(
   sp->gpart->v_full[0] = sp->v[0];
   sp->gpart->v_full[1] = sp->v[1];
   sp->gpart->v_full[2] = sp->v[2];
-  message(
-      "New star velocity: v = (%lf %lf %lf). Sink velocity: v = (%lf %lf %lf). "
-      "Sigma = %lf",
-      sp->v[0], sp->v[1], sp->v[2], si->v[0], si->v[1], si->v[2], sigma);
+  /* message( */
+  /*     "New star velocity: v = (%lf %lf %lf). Sink velocity: v = (%lf %lf %lf). " */
+  /*     "Sigma = %lf", */
+  /*     sp->v[0], sp->v[1], sp->v[2], si->v[0], si->v[1], si->v[2], sigma); */
 #else
   error("Code not compiled with GSL. Can't compute Star new velocity.");
 #endif
@@ -1019,8 +1019,8 @@ INLINE static void sink_update_sink_properties_before_star_formation(
     time we do not update the target_mass_Msun because metal > threshold
     (otherwise we would update it without needing to) */
     sink->has_IMF_changed_from_popIII_to_popII = 1;
-    message("IMF transition : Sink %lld will now spawn Pop II stars.",
-            sink->id);
+    /* message("IMF transition : Sink %lld will now spawn Pop II stars.", */
+    /*         sink->id); */
   }
 }
 
@@ -1054,12 +1054,12 @@ INLINE static void sink_update_sink_properties_during_star_formation(
 
   /* This message must be put carefully after giving the star its mass,
      updated the sink mass and before changing the target_type */
-  message(
-      "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
-      "star_counter=%03d. Sink remaining mass: %e Msol.",
-      sink->id, sp->id, sp->mass / phys_const->const_solar_mass,
-      sink->target_type, star_counter,
-      sink->mass / phys_const->const_solar_mass);
+  /* message( */
+  /*     "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  " */
+  /*     "star_counter=%03d. Sink remaining mass: %e Msol.", */
+  /*     sink->id, sp->id, sp->mass / phys_const->const_solar_mass, */
+  /*     sink->target_type, star_counter, */
+  /*     sink->mass / phys_const->const_solar_mass); */
 
   /* Sample the IMF to the get next target mass */
   sink_update_target_mass(sink, sink_props, e, star_counter);

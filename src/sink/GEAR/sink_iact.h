@@ -473,7 +473,7 @@ runner_iact_nonsym_sinks_gas_swallow(
   /* If the gas falls within f_acc*r_acc, it is accreted without further check
    */
   if (r < f_acc_r_acc) {
-    warning("Gas %lld within sink %lld inner accretion radius", pj->id, si->id);
+    /* warning("Gas %lld within sink %lld inner accretion radius", pj->id, si->id); */
     /* Check if a gas particle has not been already marked to be swallowed by
        another sink particle. */
     if (pj->sink_data.swallow_id < si->id) {
