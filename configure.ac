@@ -3429,7 +3429,7 @@ AC_MSG_RESULT([
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt
-   Self-interacting dark matter model  : $with_sidm
+   SIDM mode            : $with_sidm
    Extra i/o            : $with_extra_io
 
    Atomic operations in tasks  : $enable_atomics_within_tasks
