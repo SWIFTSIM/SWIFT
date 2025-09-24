@@ -2931,6 +2931,7 @@ int engine_step(struct engine *e) {
     scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step,
                                       e->sched.dependency_graph_cellID);
 
+#ifdef SWIFT_DEBUG_CHECKS
     /* HERE do write more cells dependencies */
     const int array_size = 13;
     const int cellID_debug[13] = {2097157, 262149,  16777221, 4161555, 33521683,
@@ -2941,6 +2942,7 @@ int engine_step(struct engine *e) {
       scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step,
                                         cellID_debug[i]);
     }
+#endif
   }
 
   /* Write the task levels */
