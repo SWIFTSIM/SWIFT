@@ -33,61 +33,6 @@
 #include "space_getsid.h"
 #include "timers.h"
 
-void runner_debug(const struct gravity_cache *restrict ci_cache,
-                  const struct gravity_cache *restrict cj_cache,
-                  const int gcount_i, const int gcount_j,
-                  const int gcount_padded_j, const struct engine *restrict e,
-                  const struct gpart *restrict gparts_i,
-                  const struct gpart *restrict gparts_j,
-                  const struct cell *restrict ci,
-                  const struct cell *restrict cj) {
-
-  /* Loop over all particles in ci... */
-  for (int pid = 0; pid < gcount_i; pid++) {
-
-    /* Skip inactive particles */
-    if (!ci_cache->active[pid]) continue;
-
-    /* Skip particle that can use the multipole */
-    if (ci_cache->use_mpole[pid]) continue;
-
-    /* Loop over every particle in the other cell. */
-    for (int pjd = 0; pjd < gcount_padded_j; pjd++) {
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check that particles have been drifted to the current time */
-      if (gparts_i[pid].ti_drift != e->ti_current)
-        error(
-            "gpi not drifted to current time! hydro super = %lld, grav super = "
-            "%lld,"
-            " top = %lld, c = %lld",
-            ci->hydro.super->cellID, ci->grav.super->cellID, ci->top->cellID,
-            ci->cellID);
-      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current &&
-          !gpart_is_inhibited(&gparts_j[pjd], e))
-        error(
-            "gpj not drifted to current time!  hydro super = %lld, grav super "
-            "= %lld,"
-            " top = %lld, c = %lld",
-            cj->hydro.super->cellID, cj->grav.super->cellID, cj->top->cellID,
-            cj->cellID);
-
-        /* Check that we are not updated an inhibited particle */
-        /* if (gpart_is_inhibited(&gparts_i[pid], e)) */
-        /*   error("Updating an inhibited particle!"); */
-
-        /* /\* Check that the particle we interact with was not inhibited *\/ */
-        /* if (pjd < gcount_j && gpart_is_inhibited(&gparts_j[pjd], e) && */
-        /*     mass_j != 0.f) */
-        /*   error("Inhibited particle used as gravity source."); */
-
-        /* /\* Check that the particle was initialised *\/ */
-        /* if (gparts_i[pid].initialised == 0) */
-        /*   error("Adding forces to an un-initialised gpart."); */
-#endif
-    }
-  }
-}
-
 /**
  * @brief Clear the unskip flags of this cell.
  *
@@ -1080,12 +1025,6 @@ static INLINE void runner_dopair_grav_pp_truncated(
         error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
-      /* if (gparts_i[pid].ti_drift != e->ti_current) */
-      /*   error("gpi not drifted to current time"); */
-      /* if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current && */
-      /*     !gpart_is_inhibited(&gparts_j[pjd], e)) */
-      /*   error("gpj not drifted to current time"); */
-      /* Check that particles have been drifted to the current time */
       if (gparts_i[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
 
@@ -1097,12 +1036,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
       if (foreign_j && pjd < gcount_j &&
           gparts_foreign_j[pjd].ti_drift != e->ti_current &&
           !gpart_is_inhibited(&gparts_j[pjd], e))
-        error(
-            "gpj not drifted to current time!  hydro super = %lld, grav super "
-            "= %lld,"
-            " top = %lld, c = %lld",
-            cj->hydro.super->cellID, cj->grav.super->cellID, cj->top->cellID,
-            cj->cellID);
+        error("gpj not drifted to current time");
 
       /* Check that we are not updated an inhibited particle */
       if (gpart_is_inhibited(&gparts_i[pid], e))
@@ -1506,18 +1440,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   if (ci->split || cj->split) error("Running P-P on splitable cells");
 
   /* Let's start by checking things are drifted */
-  if (!cell_are_gpart_drifted(ci, e))
-    error(
-        "Un-drifted gparts, hydro super = %lld, grav super = %lld, top = %lld, "
-        "c = %lld",
-        ci->hydro.super->cellID, ci->grav.super->cellID, ci->top->cellID,
-        ci->cellID);
-  if (!cell_are_gpart_drifted(cj, e))
-    error(
-        "Un-drifted gparts, hydro super = %lld, grav super = %lld, top = %lld, "
-        "c = %lld",
-        cj->hydro.super->cellID, cj->grav.super->cellID, cj->top->cellID,
-        cj->cellID);
+  if (!cell_are_gpart_drifted(ci, e)) error("Un-drifted gparts");
+  if (!cell_are_gpart_drifted(cj, e)) error("Un-drifted gparts");
   if (cj_active && ci->grav.ti_old_multipole != e->ti_current)
     error("Un-drifted multipole");
   if (ci_active && cj->grav.ti_old_multipole != e->ti_current)
@@ -1649,10 +1573,6 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                                           ci->grav.parts, gcount_i, cj);
       }
       if (cj_active && symmetric) {
-
-        /* Debug */
-        runner_debug(ci_cache, cj_cache, gcount_i, gcount_j, gcount_padded_j, e,
-                     ci->grav.parts, cj->grav.parts, ci, cj);
 
         /* First the (truncated) P2P */
         runner_dopair_grav_pp_truncated(
