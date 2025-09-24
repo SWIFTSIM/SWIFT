@@ -88,14 +88,26 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
 /**
  * @brief Find an acceptable geometry given the required zoom cdim.
  *
- * Unlike a uniform box, we have options with a zoom region. We can either
- * increase the background cdim to better resolve the zoom region or we can
- * increase the depth of the zoom region.
+ * This function has multiple use cases:
+ * 1) We are regridding due to the zoom region motion. In this case the
+ * particle distribution itself needs shifting and the cells need to be rebuilt
+ * around it.
+ * 2) We are regridding due to hmax requiring larger cells in the zoom
+ * region. In this case we need to find a new geometry that can accommodate the
+ * new cdim (note that the particles will be shifted in this case too).
  *
- * We'll first try to increase the background cdim a reasonable amount since
- * this will carry less of a performance penalty for small increases than
- * doubling the number of zoom cells. This is also most likely to produce a
- * valid set up in all but the most extreme cases.
+ * If we are doing the first case we simply call zoom_region_init to shift and
+ * recalculate the geometry and we're done. The second case is more complex
+ * and requires changes to the cell dimensions.
+ *
+ * Unlike a uniform box, we have options with a zoom region. We can either
+ * decrease the background cdim to better resolve the zoom region or we can
+ * decrease the depth of the zoom region to increase size of the zoom cells.
+ *
+ * We'll first try to decrease the background cdim a reasonable amount since
+ * this will carry less of a performance penalty than doubling the size of zoom
+ * cells. This is also most likely to produce a valid set up in all but the most
+ * extreme cases.
  *
  * @param s The #space.
  * @param new_cdim The new top-level cell dimensions (based on current hmax).
@@ -103,18 +115,36 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
 void zoom_regrid_find_acceptable_geometry(struct space *s,
                                           const int new_cdim[3]) {
 
-  /* Loop until we've found an acceptable geometry. */
-  while (zoom_need_regrid(s, new_cdim)) {
+  /* If we do not need a regrid just exit. */
+  if (!zoom_need_regrid(s, new_cdim)) {
+    return;
+  }
 
-    /* First try increasing the background cdim to a maximum increase of 50% its
+  /* If the new_cdim is not smaller then we are regridding based on the
+   * zoom regons motion and can call zoom_region_init without further
+   * modifications. */
+  if (!(new_cdim[0] < s->zoom_props->cdim[0]) &&
+      !(new_cdim[1] < s->zoom_props->cdim[1]) &&
+      !(new_cdim[2] < s->zoom_props->cdim[2])) {
+    zoom_region_init(s, /*regridding=*/1, /*verbose=*/0);
+    return;
+  }
+
+  /* Otherwise, we are regridding due to the new cdim derived from hmax
+   * increasing. We need to find an acceptable geometry. */
+
+  /* Loop until we've found an acceptable geometry. */
+  int old_bkg_cdim = s->cdim[0];
+  while (zoom_need_regrid(s, new_cdim) && ntries < 100) {
+
+    /* First try decreasing the background cdim to a minimum of 50% its
      * current value. */
-    int old_bkg_cdim = s->cdim[0];
-    while (zoom_need_regrid(s, new_cdim) && s->cdim[0] < 1.5 * old_bkg_cdim) {
+    while (zoom_need_regrid(s, new_cdim) && s->cdim[0] > 0.5 * old_bkg_cdim) {
 
       /* Increment the background cdim. */
-      s->cdim[0]++;
-      s->cdim[1]++;
-      s->cdim[2]++;
+      s->zoom_props->bkg_cdim[0]--;
+      s->zoom_props->bkg_cdim[1]--;
+      s->zoom_props->bkg_cdim[2]--;
 
       /* Recalculate the zoom region geometry. (silently) */
       zoom_region_init(s, /*regridding=*/1, /*verbose=*/0);
@@ -125,9 +155,25 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
       break;
     }
 
-    /* If it didn't work we'll try increasing the depth of the zoom region (with
-     * the original background cdim). */
-    s->zoom_props->zoom_cell_depth++;
+    /* Reset the background cdim to its original value, we'll try decreasing
+     * the zoom region depth instead. */
+    s->zoom_props->bkg_cdim[0] = old_bkg_cdim;
+    s->zoom_props->bkg_cdim[1] = old_bkg_cdim;
+    s->zoom_props->bkg_cdim[2] = old_bkg_cdim;
+
+    /* If adjusting the background didn't work then decrease the zoom region
+     * depth by one (doubling the zoom cell size). */
+    s->zoom_props->zoom_cell_depth--;
+
+    /* Ensure we don't go below depth 1. */
+    if (s->zoom_props->zoom_cell_depth < 1) {
+      error(
+          "Failed to find an acceptable zoom region before reaching depth=0 "
+          "(i.e. not a zoom). Try to decrease the initial background cell "
+          "size.");
+    }
+
+    /* Recalculate the zoom region geometry. (silently) */
     zoom_region_init(s, /*regridding=*/1, /*verbose=*/0);
   }
 }
