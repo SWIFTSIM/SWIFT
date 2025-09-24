@@ -239,7 +239,7 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
   for (int i = 0; i < 3; i++) s->zoom_props->part_dim[i] = ini_dims[i];
 
   if (verbose) {
-    message("Computing high resolution particle dim and shift took %f s",
+    message("Computing high resolution particle dim and shift took %f %s",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 }
