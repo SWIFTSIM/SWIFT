@@ -89,7 +89,7 @@ void zoom_parse_params(struct swift_params *params,
 
   /* Extract the maximum shift of the zoom region we will allow in units of
    * the zoom region extent. */
-  props->max_part_dim_frac =
+  props->max_com_dx =
       parser_get_opt_param_float(params, "ZoomRegion:max_com_dx", 0.1);
 }
 

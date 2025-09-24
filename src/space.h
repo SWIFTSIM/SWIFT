@@ -395,6 +395,10 @@ struct zoom_region_properties {
   /*! Bulk velocity of the zoom region. */
   double vcom[3];
 
+  /*! The maximum distance the zoom region CoM can move before we recentre
+   * in units of the zoom region extent. */
+  double max_com_dx;
+
   /*! Extent of the high resolution particles. */
   double part_dim[3];
 
