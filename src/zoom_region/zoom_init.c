@@ -100,6 +100,7 @@ void zoom_parse_params(struct swift_params *params,
  * computes the necessary shift to shift the zoom region to the centre of the
  * box. This shift is stored to be applied in space_init and for
  * transformation when writing out.
+ * NOTE: could probably be a threadpool in the future.
  *
  * @param s The space
  */
@@ -246,6 +247,8 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
 
 /**
  * @brief Apply the zoom shift to all particles in the space.
+ *
+ * NOTE: could probably be a threadpool in the future.
  *
  * @param s The space
  */
