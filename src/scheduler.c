@@ -1705,9 +1705,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
                                                        struct scheduler *s) {
 
-  struct space *sp = s->space;
-  struct engine *e = sp->e;
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have a self task. */
   if (t->type != task_type_self) {
@@ -1769,17 +1766,6 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
             s);
       }
     }
-  }
-
-  /* If we have a top level task for a foreign cell we need to kill it off and
-   * exit. */
-  if (t->ci->nodeID != e->nodeID) {
-    t->type = task_type_none;
-    t->subtype = task_subtype_none;
-    t->ci = NULL;
-    t->cj = NULL;
-    t->skip = 1;
-    return;
   }
 
   /* Now we're not in a void cell we can just call the normal splitter.  */
@@ -2440,6 +2426,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           error("Untreated sub-type for pairs: %s",
                 subtaskID_names[t->subtype]);
         }
+        break;
 
       case task_type_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
@@ -2461,6 +2448,18 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_drift_part:
         cost = wscale * count_i;
+        break;
+      case task_type_drift_gpart:
+        cost = wscale * gcount_i;
+        break;
+      case task_type_drift_spart:
+        cost = wscale * scount_i;
+        break;
+      case task_type_drift_sink:
+        cost = wscale * sink_count_i;
+        break;
+      case task_type_drift_bpart:
+        cost = wscale * bcount_i;
         break;
       case task_type_init_grav:
         cost = wscale * gcount_i;
@@ -2885,92 +2884,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_gpart) {
 
           count = t->ci->grav.count;
-          size = count * sizeof(struct gpart);
-          type = gpart_mpi_type;
-          buff = t->ci->grav.parts;
-
-        } else if (t->subtype == task_subtype_spart_density ||
-                   t->subtype == task_subtype_spart_prep2) {
-
-          count = t->ci->stars.count;
-          size = count * sizeof(struct spart);
-          type = spart_mpi_type;
-          buff = t->ci->stars.parts;
-
-        } else if (t->subtype == task_subtype_bpart_rho ||
-                   t->subtype == task_subtype_bpart_feedback) {
-
-          count = t->ci->black_holes.count;
-          size = count * sizeof(struct bpart);
-          type = bpart_mpi_type;
-          buff = t->ci->black_holes.parts;
-
-        } else if (t->subtype == task_subtype_sf_counts) {
-
-          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
-          buff = t->buff = malloc(size);
-          cell_pack_sf_counts(t->ci, (struct pcell_sf_stars *)t->buff);
-
-        } else if (t->subtype == task_subtype_grav_counts) {
-
-          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
-          buff = t->buff = malloc(size);
-          cell_pack_grav_counts(t->ci, (struct pcell_sf_grav *)t->buff);
-
-        } else {
-          error("Unknown communication sub-type");
-        }
-
-        if (size > s->mpi_message_limit) {
-          err = MPI_Isend(buff, count, type, t->cj->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
-        } else {
-          err = MPI_Issend(buff, count, type, t->cj->nodeID, t->flags,
-                           subtaskMPI_comms[t->subtype], &t->req);
-        }
-
-        if (t->subtype == task_subtype_tend) {
-
-          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
-          buff = t->buff = malloc(size);
-          cell_pack_end_step(t->ci, (struct pcell_step *)buff);
-
-        } else if (t->subtype == task_subtype_part_swallow) {
-
-          size = count =
-              t->ci->hydro.count * sizeof(struct black_holes_part_data);
-          buff = t->buff = malloc(size);
-          cell_pack_part_swallow(t->ci, (struct black_holes_part_data *)buff);
-
-        } else if (t->subtype == task_subtype_bpart_merger) {
-
-          size = count =
-              sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
-          buff = t->buff = malloc(size);
-          cell_pack_bpart_swallow(t->ci,
-                                  (struct black_holes_bpart_data *)t->buff);
-
-        } else if (t->subtype == task_subtype_xv ||
-                   t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient ||
-                   t->subtype == task_subtype_rt_gradient ||
-                   t->subtype == task_subtype_rt_transport ||
-                   t->subtype == task_subtype_part_prep1) {
-
-          count = t->ci->hydro.count;
-          size = count * sizeof(struct part);
-          type = part_mpi_type;
-          buff = t->ci->hydro.parts;
-
-        } else if (t->subtype == task_subtype_limiter) {
-
-          size = count = t->ci->hydro.count * sizeof(timebin_t);
-          type = MPI_BYTE;
-          buff = t->buff;
-
-        } else if (t->subtype == task_subtype_gpart) {
-
-          count = t->ci->grav.count;
           size = count * sizeof(struct gpart_foreign);
           type = gpart_foreign_mpi_type;
           buff = t->buff;
@@ -3032,35 +2945,28 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         qid = 0;
       }
-
-        /* And log, if logging enabled. */
-        mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
-                              t->cj->nodeID, t->flags);
-
-        qid = 0;
-    }
 #else
         error("SWIFT was not compiled with MPI support.");
 #endif
-    break;
-    default:
-      qid = -1;
+      break;
+      default:
+        qid = -1;
+    }
+
+    if (qid >= s->nr_queues) error("Bad computed qid.");
+
+    /* If no qid, pick a random queue. */
+    if (qid < 0) qid = rand() % s->nr_queues;
+
+    /* Save qid as owner for next time a task accesses this cell. */
+    if (owner != NULL) *owner = qid;
+
+    /* Increase the waiting counter. */
+    atomic_inc(&s->waiting);
+
+    /* Insert the task into that queue. */
+    queue_insert(&s->queues[qid], t);
   }
-
-  if (qid >= s->nr_queues) error("Bad computed qid.");
-
-  /* If no qid, pick a random queue. */
-  if (qid < 0) qid = rand() % s->nr_queues;
-
-  /* Save qid as owner for next time a task accesses this cell. */
-  if (owner != NULL) *owner = qid;
-
-  /* Increase the waiting counter. */
-  atomic_inc(&s->waiting);
-
-  /* Insert the task into that queue. */
-  queue_insert(&s->queues[qid], t);
-}
 }
 
 /**
