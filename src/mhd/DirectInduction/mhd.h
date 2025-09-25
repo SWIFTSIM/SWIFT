@@ -290,13 +290,18 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   p->mhd_data.hb_over_ha_Nw /= (p->mhd_data.norm_Nw * p->h);
   p->mhd_data.hb_over_ha_Kw /= (p->mhd_data.norm_Kw * p->h);
 
-  for (int k = 0; k < 3; k++) {
-    p->mhd_data.rcm_over_ha_Nw[k]/=(p->mhd_data.norm_Nw * p->h);
-    p->mhd_data.rcm_over_ha_Kw[k]/=(p->mhd_data.norm_Kw * p->h);
-  }
 
   p->mhd_data.rcm_over_ha_Nw_abs = sqrtf(p->mhd_data.rcm_over_ha_Nw[0]*p->mhd_data.rcm_over_ha_Nw[0]+p->mhd_data.rcm_over_ha_Nw[1]*p->mhd_data.rcm_over_ha_Nw[1]+p->mhd_data.rcm_over_ha_Nw[2]*p->mhd_data.rcm_over_ha_Nw[2]);
   p->mhd_data.rcm_over_ha_Kw_abs = sqrtf(p->mhd_data.rcm_over_ha_Kw[0]*p->mhd_data.rcm_over_ha_Kw[0]+p->mhd_data.rcm_over_ha_Kw[1]*p->mhd_data.rcm_over_ha_Kw[1]+p->mhd_data.rcm_over_ha_Kw[2]*p->mhd_data.rcm_over_ha_Kw[2]);
+
+
+  p->mhd_data.rcm_over_ha_Nw_abs /= (p->mhd_data.norm_Nw * p->h);
+  p->mhd_data.rcm_over_ha_Kw_abs /= (p->mhd_data.norm_Kw * p->h);
+
+
+  p->mhd_data.hb_over_ha_Nw /= (p->mhd_data.norm_Nw * p->h);
+  p->mhd_data.hb_over_ha_Kw /= (p->mhd_data.norm_Kw * p->h);
+
 
   p->mhd_data.rcm_over_hb_Nw_abs = p->mhd_data.rcm_over_ha_Nw_abs / p->mhd_data.hb_over_ha_Nw;
   p->mhd_data.rcm_over_hb_Kw_abs = p->mhd_data.rcm_over_ha_Kw_abs / p->mhd_data.hb_over_ha_Kw;
