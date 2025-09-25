@@ -8,7 +8,7 @@
 GEAR supernova feedback
 =======================
 
-When a star goes into a supernova, we compute the amount of internal energy, mass and metals the explosion transfers to the star's neighbouring gas particles. We will group all these in the “fluxes” term.  
+When a star goes into a supernova, we compute the amount of internal energy, mass and metals the explosion transfers to the star's neighbouring gas particles. We will group all these in the “fluxes” term.
 We have two models for the distribution of these fluxes and the subgrid modelling of the supernovae: GEAR model and GEAR mechanical model.
 
 .. note::
@@ -28,7 +28,7 @@ In the GEAR (thermal) model, the fluxes are distributed by weighing with the SPH
 
 for :math:`s` the star and :math:`j` the gas (`Revaz and Jablonka 2012 <https://ui.adsabs.harvard.edu/abs/2012A%26A...538A..82R/abstract>`_).
 
-In the GEAR model, we do not inject momentum, only *internal energy*. Then, internal energy conversion to kinetic energy is left to the hydrodynamic solver, which will compute appropriately the gas density, temperature and velocity.  
+In the GEAR model, we do not inject momentum, only *internal energy*. Then, internal energy conversion to kinetic energy is left to the hydrodynamic solver, which will compute appropriately the gas density, temperature and velocity.
 However, if the cooling radius :math:`R_{\text{cool}}` of the explosion is unresolved, i.e. the cooling radius is smaller than our simulation resolution, the cooling radiates away the internal energy.
 
 To understand why this happens, let us remind the main phases of an SN explosion in a homogeneous medium. We provide a simple picture that is more complicated than the one explained here. See `Haid et al. 2016 <https://ui.adsabs.harvard.edu/abs/2016MNRAS.460.2962H/abstract>`_ or `Thornton et al. 1998 <https://iopscience.iop.org/article/10.1086/305704>`_ for further details.
@@ -44,7 +44,7 @@ GEAR mechanical model
 
 We implemented two mechanical feedback schemes to better model the blast wave expansion by considering the most critical phases of the SN explosion. These two new models are called GEAR mechanical 1 and GEAR mechanical 2.
 
-Our implementations are based on the work of `Hopkins et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H/abstract>`_ and `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_. The first implementation was used in Fire 2 and the second one is a simplified version of the Fire 3 implementation. These two implementations differ in their treatment of energy distribution energy and, thus, momentum to distribute. They will allow us to eliminate the delayed cooling and ensure that feedback events are resolved.  
+Our implementations are based on the work of `Hopkins et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H/abstract>`_ and `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_. The first implementation was used in Fire 2 and the second one is a simplified version of the Fire 3 implementation. These two implementations differ in their treatment of energy distribution energy and, thus, momentum to distribute. They will allow us to eliminate the delayed cooling and ensure that feedback events are resolved.
 
 
 .. note::
@@ -307,7 +307,8 @@ Now, we define the effective kinetic energy:
 .. math::
    \mathcal{\varepsilon}_s \equiv f_{\text{kin}}^0 \mathcal{E}_s  \equiv (1 -  f_{\text{U}}^0) \mathcal{E}_s \; ,
 
-where :math:`f_{\text{U}}^0` and :math:`f_{\text{kin}}^0` are the fractions of the total energy in thermal or kinetic energy. Those fractions are fixed to their values for e.g. an ideal Sedov solution in a homogeneous medium, i.e.  :math:`f_{\text{kin}}^0 = 0.28` (`Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_).
+where :math:`f_{\text{U}}^0` and :math:`f_{\text{kin}}^0` are the fractions of the total energy in thermal or kinetic energy.
+The parameter :math:`f_{\text{U}}^0` is used to define an effective unit of kinetic energy, :math:`\varepsilon_a`, which is a conceptual quantity used to normalize the momentum and energy coupling equations. It is not the actual kinetic energy of the system, but a reference value based on an ideal energy-conserving blastwave model. The actual fraction of kinetic energy can be different from :math:`f_{\text{U}}^0` if there are non-ideal effects like incomplete momentum coupling, which is represented by the term :math:`\chi_s`. The default value of :math:`f_{\text{kin}}^0 = 0.28` is adopted from `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_.
 
 Then, we define the coupled momentum :math:`p_{0, s}` as:
 
@@ -354,22 +355,63 @@ Those formulas are demonstrated in `Hopkins 2024 <https://ui.adsabs.harvard.edu/
 Timestep criteria
 +++++++++++++++++
 
+.. warning::
+
+   We only apply this condition to non-cosmological simulations. It was found to cancel the momentum injection in cosmological simulations and is thus disabled.
+
 Since the mechanical feedback kicks the gas particles, we update the gas signal velocity. The signal velocity is linked to the CFL condition, hence the particle's timestep is also updated. This update ensures the gas does not travel too far before becoming active and thus the feedback effect remains local. We use the same timestep as `Chaikin et al. (2023) <https://ui.adsabs.harvard.edu/abs/2023MNRAS.523.3709C/abstract>`_ :
 
 .. math::
    v_\text{sig, new, j} = \mathrm{max} \left( 2 c_{s, j}, \, v_\text{sig, old, j} + \beta_V \Delta v    \right) \, ,
 
-where :math:`v_\text{sig, new, j}` and :math:`v_\text{sig, old, j}` are the particle's signal velocity immediately before and after the kick, :math:`c_{s, j}` is the particle's speed of sound, :math:`\Delta v` is the norm of the momentum kick and :math:`\beta_V` is a dimensionless constant which in `Borrow et al. (2022) <https://ui.adsabs.harvard.edu/abs/2022MNRAS.511.2367B/abstract>`_ is equal to 3. 
+where :math:`v_\text{sig, new, j}` and :math:`v_\text{sig, old, j}` are the particle's signal velocity immediately before and after the kick, :math:`c_{s, j}` is the particle's speed of sound, :math:`\Delta v` is the norm of the momentum kick and :math:`\beta_V` is a dimensionless constant which in `Borrow et al. (2022) <https://ui.adsabs.harvard.edu/abs/2022MNRAS.511.2367B/abstract>`_ is equal to 3.
 
-Correction factor when multiple SN occur during the same timestep and affect the same gas particle
---------------------------------------------------------------------------------------------------
+Multiple SN Momentum Correction
+-------------------------------
 
-Rename the section title...
+Multiple supernovae can occur near a gas cell within a single time step, leading to a complex momentum and energy update. Simply adding the momentum from each event would incorrectly sum the kinetic energies due to non-linear cross-terms, potentially violating energy conservation.
+
+To solve this, a physically correct solution would be to process events serially or use an impractical implicit solver. Instead, the model can use an approximate corrected momentum update for multiple events. This correction factor, ensures that the total kinetic energy change exactly matches the sum of the kinetic energies from each individual event, thus conserving energy (`Hopkins et al. (2023) <https://ui.adsabs.harvard.edu/abs/2023MNRAS.519.3154H/abstract>`_). The approach is computationally efficient and reduces to the standard update if there is only a single event or if the non-linear effects are negligible.
+
+This method maintains global energy conservation for each gas cell without the computational expense of serial processing.
+
+This behaviour is controlled by ``GEARFeedaback:enable_multiple_SN_momentum_correction_factor`` parameter.
 
 Model parameters
 ----------------
 
+The parameters of the GEAR feedback and mechanical feedback prescriptions are grouped into the ``GEARFeedback`` section of the parameter file. Here we only review the parameters *relevant to supernova energy injection*.
 
+The first two parameters relate to the quantity of energy injected and are available for all feedback presciptions.
+
+* The energy released by a supernova: ``supernovae_energy_erg``. In practice, this is only used by SN Ia as the SNII energy is in the feedback tables ``yields_table_first_stars`` and ``yields_table``.
+* The effective injected energy is multiplied by a factor ``supernovae_efficiency``.
+
+The mechanical feedback defines a few more parameters.
+
+* The maximal radius (in internal units) for energy, momentum and metal injection: ``maximal_radius``. If the star-gas distance is larger than this value, then it is not considered for feedback. This also means that the particle is not considered to compute the weights.
+* Enable or not the momentum correction factor if multiple supernovae occur in a given timestep: ``enable_multiple_SN_momentum_correction_factor``. See the previous section for the motivation. (default: 0)
+* This last parameter is only used for the mechanical feedback mode 2: ``f_kin_0``. It represents the idealized fraction of the SN energy available in kinetic energy. Note this is not the actual coupled kinetic energy fraction (see above). (default: 0.28)
+
+Hence, the full parameter section is:
+
+.. code:: YAML
+
+	  GEARFeedback:
+	    supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
+	    supernovae_efficiency: 0.1                               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
+	    yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
+	    yields_table_first_stars: chemistry-PopIII.hdf5          # Table containing the yields of the first stars.
+	    metallicity_max_first_stars: -1                          # Maximal metallicity (in mass fraction) for a first star (-1 to deactivate).
+	    imf_transition_metallicity: -5                           # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
+	    discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
+	    elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
+	    discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
+
+	    #Mechanical feedback only
+	    maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)
+	    enable_multiple_SN_momentum_correction_factor: 0         # Enable the correction factor to momentum if multiple SN affect a gas particle during one timestep. This factor ensures exact energy conservation in the case of multiple SN. (Default: 0)
+	    f_kin_0: 0.28                                            # Idealized fraction of the SN energy available in kinetic energy. The default value is for an idealized Sedov solution in a homogenous background. Only for GEAR-mechanical_2. (Default: 0.28)
 
 References
 ----------
@@ -381,6 +423,8 @@ References
 - `Thornton et al. (1998) <https://iopscience.iop.org/article/10.1086/305704>`_ 
 
 - `Hopkins et al. (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H/abstract>`_
+
+- `Hopkins et al. (2023) <https://ui.adsabs.harvard.edu/abs/2023MNRAS.519.3154H/abstract>`_
 
 - `Hopkins (2024) <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_
 
