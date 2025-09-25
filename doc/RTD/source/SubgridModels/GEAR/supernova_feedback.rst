@@ -408,7 +408,7 @@ Hence, the full parameter section is:
 	    elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 	    discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
 
-	    #Mechanical feedback only
+	    # Mechanical feedback only
 	    maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)
 	    enable_multiple_SN_momentum_correction_factor: 0         # Enable the correction factor to momentum if multiple SN affect a gas particle during one timestep. This factor ensures exact energy conservation in the case of multiple SN. (Default: 0)
 	    f_kin_0: 0.28                                            # Idealized fraction of the SN energy available in kinetic energy. The default value is for an idealized Sedov solution in a homogenous background. Only for GEAR-mechanical_2. (Default: 0.28)
