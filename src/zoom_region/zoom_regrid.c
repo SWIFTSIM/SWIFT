@@ -57,14 +57,14 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
   /* Derive the maximum allowed particle extent from the user specified
    * target padding fraction, if the particle distribution is more than
    * this fraction then we are no longer doing what the user asked for. */
-  const double max_part_dim_frac = 1.0 / s->zoom_props->region_pad_factor;
+  const double max_part_dim_frac = 1.0 / s->zoom_props->user_region_pad_factor;
 
   /* If the particle distribution is more than 90% of the zoom region width
    * (based on the zoom cells themselves) in any dimension we need to regrid. */
   for (int k = 0; k < 3; k++) {
     if (part_dim[k] > max_part_dim_frac * current_zoom_region_dim[k]) {
       message(
-          "Particle distribution exceeds %.1f of the zoom region in dim %d "
+          "Particle distribution exceeds %.1f%% of the zoom region in dim %d "
           "(part_dim=%.3e, zoom_dim=%.3e).",
           max_part_dim_frac * 100.0, k, part_dim[k],
           current_zoom_region_dim[k]);
@@ -127,11 +127,18 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
   }
 
   /* If the new_cdim is not smaller then we are regridding based on the
-   * zoom regons motion and can call zoom_region_init without further
-   * modifications. */
+   * zoom regons motion and can call zoom_region_init with a reduced number
+   * of background cells. */
   if (!(new_cdim[0] < s->zoom_props->cdim[0]) &&
       !(new_cdim[1] < s->zoom_props->cdim[1]) &&
       !(new_cdim[2] < s->zoom_props->cdim[2])) {
+
+    /* Decrement the background cdim. */
+    s->zoom_props->bkg_cdim[0]--;
+    s->zoom_props->bkg_cdim[1]--;
+    s->zoom_props->bkg_cdim[2]--;
+
+    /* Recalculate the zoom region geometry. (silently) */
     zoom_region_init(s, /*regridding=*/1, /*verbose=*/0);
     return;
   }
@@ -142,13 +149,12 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
   /* Loop until we've found an acceptable geometry. */
   int old_bkg_cdim = s->cdim[0];
   while (zoom_need_regrid(s, new_cdim)) {
-    message("Finding acceptable zoom region geometry...");
 
     /* First try decreasing the background cdim to a minimum of 50% its
      * current value. */
     while (zoom_need_regrid(s, new_cdim) && s->cdim[0] > 0.5 * old_bkg_cdim) {
 
-      /* Increment the background cdim. */
+      /* Decrement the background cdim. */
       s->zoom_props->bkg_cdim[0]--;
       s->zoom_props->bkg_cdim[1]--;
       s->zoom_props->bkg_cdim[2]--;
