@@ -20,6 +20,9 @@
 #ifndef SWIFT_ZOOM_H
 #define SWIFT_ZOOM_H
 
+/* HDF5 header. */
+#include <hdf5.h>
+
 /* Local includes */
 #include "timeline.h"
 
@@ -66,4 +69,9 @@ void zoom_engine_make_hierarchical_void_tasks(struct engine *e);
 
 /* Update the void cell gravity timesteps. */
 void zoom_void_timestep_collect(struct engine *e);
+
+/* Zoom specific IO. */
+void zoom_write_metadata(hid_t root_grp, hid_t head_grp, const struct space *s);
+void zoom_unshift_pos(const struct space *s, double pos[3]);
+
 #endif /* SWIFT_ZOOM_H */

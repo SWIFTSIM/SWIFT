@@ -61,6 +61,7 @@
 #include "units.h"
 #include "version.h"
 #include "xmf.h"
+#include "zoom_region/zoom.h"
 
 /* Are we timing the i/o? */
 // #define IO_SPEED_MEASUREMENT
@@ -605,7 +606,10 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
   io_write_attribute_i(h_grp, "Virtual", 1);
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
-  io_write_attribute_i(h_grp, "ZoomIn", e->s->with_zoom_region);
+
+  /* Write zoom related attributes (only writes ZoomIn=0 to the Header if not a
+   * zoom) */
+  zoom_write_metadata(h_file, h_grp, e->s);
 
   if (subsample_any) {
     io_write_attribute_s(h_grp, "OutputType", "SubSampled");
@@ -1144,7 +1148,10 @@ void write_output_distributed(struct engine* e,
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
   io_write_attribute_i(h_grp, "Virtual", 0);
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
-  io_write_attribute_i(h_grp, "ZoomIn", e->s->with_zoom_region);
+
+  /* Write zoom related attributes (only writes ZoomIn=0 to the Header if not a
+   * zoom) */
+  zoom_write_metadata(h_file, h_grp, e->s);
 
   if (subsample_any) {
     io_write_attribute_s(h_grp, "OutputType", "SubSampled");

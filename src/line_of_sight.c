@@ -19,6 +19,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "zoom_region/zoom.h"
+
 #include <config.h>
 
 /* MPI headers. */
@@ -34,6 +36,7 @@
 #include "line_of_sight.h"
 #include "periodic.h"
 #include "version.h"
+#include "zoom_region/zoom.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -579,8 +582,11 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   io_write_attribute_i(h_grp, "Virtual", 0);
   const int to_write[swift_type_count] = {1}; /* We can only have gas */
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
-  io_write_attribute_i(h_grp, "ZoomIn", e->s->with_zoom_region);
   io_write_attribute_s(h_grp, "OutputType", "LineOfSight");
+
+  /* Write zoom related attributes (only writes ZoomIn=0 to the Header if not a
+   * zoom) */
+  zoom_write_metadata(h_file, h_grp, e->s);
 
   /* Close group */
   H5Gclose(h_grp);

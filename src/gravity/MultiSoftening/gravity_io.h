@@ -29,11 +29,7 @@ INLINE static void convert_gpart_pos(const struct engine* e,
   ret[0] = gp->x[0];
   ret[1] = gp->x[1];
   ret[2] = gp->x[2];
-  if (s->with_zoom_region) {
-    ret[0] -= s->zoom_props->zoom_shift[0];
-    ret[1] -= s->zoom_props->zoom_shift[1];
-    ret[2] -= s->zoom_props->zoom_shift[2];
-  }
+  if (e->s->with_zoom_region) zoom_unshift_pos(e->s, ret);
   if (s->periodic) {
     ret[0] = box_wrap(ret[0], 0.0, s->dim[0]);
     ret[1] = box_wrap(ret[1], 0.0, s->dim[1]);

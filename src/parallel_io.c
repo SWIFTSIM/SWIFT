@@ -64,6 +64,7 @@
 #include "units.h"
 #include "version.h"
 #include "xmf.h"
+#include "zoom_region/zoom.h"
 
 /* The current limit of ROMIO (the underlying MPI-IO layer) is 2GB */
 #define HDF5_PARALLEL_IO_MAX_BYTES 2147000000LL
@@ -1291,7 +1292,10 @@ void prepare_file(struct engine* e, const char* fileName,
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
   io_write_attribute_i(h_grp, "Virtual", 0);
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
-  io_write_attribute_i(h_grp, "ZoomIn", e->s->with_zoom_region);
+
+  /* Write zoom related attributes (only writes ZoomIn=0 to the Header if not a
+   * zoom) */
+  zoom_write_metadata(h_file, h_grp, e->s);
 
   if (subsample_any) {
     io_write_attribute_s(h_grp, "OutputType", "SubSampled");
@@ -1749,8 +1753,8 @@ void write_output_parallel(struct engine* e,
 #if H5_VERSION_GE(1, 10, 0)
   h_err = H5Pset_all_coll_metadata_ops(plist_id, 1);
   if (h_err < 0) error("Error setting collective meta-data on all ops");
-    // h_err = H5Pset_coll_metadata_write(plist_id, 1);
-    // if (h_err < 0) error("Error setting collective meta-data writes");
+  // h_err = H5Pset_coll_metadata_write(plist_id, 1);
+  // if (h_err < 0) error("Error setting collective meta-data writes");
 #endif
 
 #ifdef IO_SPEED_MEASUREMENT
