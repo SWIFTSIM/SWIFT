@@ -136,6 +136,7 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
   /* Loop until we've found an acceptable geometry. */
   int old_bkg_cdim = s->cdim[0];
   while (zoom_need_regrid(s, new_cdim)) {
+    message("Finding acceptable zoom region geometry...");
 
     /* First try decreasing the background cdim to a minimum of 50% its
      * current value. */
