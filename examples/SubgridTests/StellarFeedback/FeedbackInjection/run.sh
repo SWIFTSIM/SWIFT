@@ -51,6 +51,6 @@ fi
 mkdir "$DIR"
     
 printf "Running simulation..."
-../../../swift --hydro --stars --external-gravity --feedback \
+../../../../swift --hydro --stars --external-gravity --feedback \
 	       --sync --limiter --threads=$n_threads \
 	       params.yml 2>&1 | tee output.log
