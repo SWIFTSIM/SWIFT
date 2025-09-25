@@ -37,10 +37,6 @@
  * This function is called in space_regrid in space_regrid.c and provides
  * the zoom specific regrid check.
  *
- * TODO: In the future this check needs to take into account the particle
- * distribution to ensure that the zoom region is sufficiently placed given
- * any bulk motion.
- *
  * @param s The #space.
  * @param new_cdim The new top-level cell dimensions (based on current hmax).
  *
@@ -67,6 +63,11 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
    * (based on the zoom cells themselves) in any dimension we need to regrid. */
   for (int k = 0; k < 3; k++) {
     if (part_dim[k] > max_part_dim_frac * current_zoom_region_dim[k]) {
+      message(
+          "Particle distribution exceeds %.1f of the zoom region in dim %d "
+          "(part_dim=%.3e, zoom_dim=%.3e).",
+          max_part_dim_frac * 100.0, k, part_dim[k],
+          current_zoom_region_dim[k]);
       return 1;
     }
   }
@@ -76,6 +77,11 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
   if (dx[0] > max_shift * current_zoom_region_dim[0] ||
       dx[1] > max_shift * current_zoom_region_dim[1] ||
       dx[2] > max_shift * current_zoom_region_dim[2]) {
+    message(
+        "Zoom region shift exceeds %.1f of the zoom region in at least one "
+        "dimension (shift=(%.3e,%.3e,%.3e), zoom_dim=(%.3e,%.3e,%.3e)).",
+        max_shift * 100.0, dx[0], dx[1], dx[2], current_zoom_region_dim[0],
+        current_zoom_region_dim[1], current_zoom_region_dim[2]);
     return 1;
   }
 

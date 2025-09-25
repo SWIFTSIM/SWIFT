@@ -389,6 +389,9 @@ struct zoom_region_properties {
   /*! The factor used to define the buffer zone size around the zoom region. */
   float region_pad_factor;
 
+  /*! The user specified padding around the high resolution particles. */
+  double user_region_pad_factor;
+
   /*! Centre of mass of the zoom region. */
   double com[3];
 

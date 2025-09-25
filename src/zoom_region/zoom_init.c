@@ -74,7 +74,7 @@ void zoom_parse_params(struct swift_params *params,
 
   /* Extract the zoom width boost factor (used to define the buffer around the
    * zoom region). */
-  props->region_pad_factor =
+  props->user_region_pad_factor =
       parser_get_opt_param_float(params, "ZoomRegion:region_pad_factor", 1.1);
 
   /* Extract the depth we'll split neighbour cells to. */
@@ -755,7 +755,7 @@ void zoom_region_init(struct space *s, const int regridding,
            s->zoom_props->part_dim[2]);
 
   /* Include the requested padding around the high resolution particles. */
-  double max_dim = ini_dim * s->zoom_props->region_pad_factor;
+  double max_dim = ini_dim * s->zoom_props->user_region_pad_factor;
 
   /* Define the background grid (we'll treat this as gospel). */
   for (int i = 0; i < 3; i++) {
@@ -798,7 +798,6 @@ void zoom_region_init(struct space *s, const int regridding,
   zoom_get_geometry_no_buffer_cells(s);
 
   /* Store what the true boost factor ended up being */
-  double input_pad_factor = s->zoom_props->region_pad_factor;
   s->zoom_props->region_pad_factor = s->zoom_props->dim[0] / ini_dim;
 
   /* Ensure we haven't got a zoom region smaller than the high resolution
@@ -812,12 +811,14 @@ void zoom_region_init(struct space *s, const int regridding,
 
   /* Let's be safe and warn if we have drastically changed the size of the
    * requested padding region. */
-  if ((s->zoom_props->region_pad_factor / input_pad_factor) >= 2)
+  if ((s->zoom_props->region_pad_factor /
+       s->zoom_props->user_region_pad_factor) >= 2)
     warning(
         "The pad region has to be %d times larger than requested. "
         "Either increase ZoomRegion:region_pad_factor, increase the "
         "number of background cells, or increase the depths of the zoom cells.",
-        (int)(s->zoom_props->region_pad_factor / input_pad_factor));
+        (int)(s->zoom_props->region_pad_factor /
+              s->zoom_props->user_region_pad_factor));
 
   /* If we didn't get an explicit neighbour cell depth we'll match the zoom
    * depth. */
