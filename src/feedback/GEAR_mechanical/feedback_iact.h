@@ -451,9 +451,6 @@ runner_iact_nonsym_feedback_apply(
   const float dv_phys = dp_prime_norm / new_mass;
   hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
 
-  /* Impose maximal viscosity */
-  hydro_diffusive_feedback_reset(pj);
-
   /* Synchronize the particle on the timeline */
   timestep_sync_part(pj);
 }
