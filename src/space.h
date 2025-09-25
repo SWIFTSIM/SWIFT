@@ -430,6 +430,9 @@ struct zoom_region_properties {
    *  the zoom region. */
   int buffer_cdim[3];
 
+  /*! The cdim of the void cells (cells containing the zoom region). */
+  int void_cdim[3];
+
   /*! The minimum top-level zoom cell width allowed. */
   double cell_min;
 
@@ -562,6 +565,21 @@ struct zoom_region_properties {
 
   /*! Are we treating each grid individually? */
   int separate_decomps;
+
+  /*! Are we truncating the background volume? */
+  int truncate_background;
+
+  /*! The target tolerence for force errors in the background truncation. (Only
+   * applicable if truncate_background is true). */
+  float truncate_epsilon;
+
+  /*! The tidal factor accounting for anisotropies etc. in the background
+   * potential. (Only applicable if truncate_background is true). */
+  float tidal_factor;
+
+  /*! The shift applied to the particles during truncation to shift things into
+   * the new box. (Only applicable if truncate_background is true). */
+  double truncate_shift[3];
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /*! The total number of edges summed over all cells.  */
