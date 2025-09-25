@@ -50,8 +50,8 @@ struct feedback_props {
   /* Comoving maximal radius for feedback injection */
   float r_max;
 
-  /* Fraction of the total energy of the SN available to kinetic energy. It
-     must respect 0 <= f_kin_0 <= 1 */
+  /* Idealized fraction of the total energy of the SN available to kinetic
+     energy. It must respect 0 <= f_kin_0 <= 1 */
   float f_kin_0;
 
   /* Enable the correction factor to momentum if multiple SN affect a gas
