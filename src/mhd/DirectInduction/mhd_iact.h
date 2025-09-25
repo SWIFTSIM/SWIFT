@@ -529,6 +529,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   //tensile_correction_scale_i = fminf(tensile_correction_scale_i, 0.5f * ( 1.0f + pi->mhd_data.mhdsw) );
   //tensile_correction_scale_j = fminf(tensile_correction_scale_j, 0.5f * ( 1.0f + pj->mhd_data.mhdsw) );
 
+  tensile_correction_scale_i = fminf(tensile_correction_scale_i, pi->mhd_data.mhdsw );
+  tensile_correction_scale_j = fminf(tensile_correction_scale_j, pj->mhd_data.mhdsw );
+
+
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
                        Bri * r_inv * Bi[0] * tensile_correction_scale_i;
@@ -849,6 +853,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* Switch for tensile correction */
   //tensile_correction_scale_i = fminf(tensile_correction_scale_i, 0.5f * ( 1.0f + pi->mhd_data.mhdsw) );
+
+  tensile_correction_scale_i = fminf(tensile_correction_scale_i, pi->mhd_data.mhdsw );
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
                        Bri * r_inv * Bi[0] * tensile_correction_scale_i;
