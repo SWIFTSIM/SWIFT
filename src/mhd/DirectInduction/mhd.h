@@ -392,7 +392,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   p->mhd_data.rcm_over_hb_SPHw_abs = p->mhd_data.rcm_over_ha_SPHw_abs / p->mhd_data.hb_over_ha_SPHw;
 
   /* Switch based on Wab weight */
-  if (p->mhd_data.rcm_over_hb_Kw_abs >= 2.0f ) {
+  if (p->mhd_data.symmetric_gradient_err_fij_abs >= 1.0f ) {
     p->mhd_data.mhdsw = 0.0f;
   }
 
