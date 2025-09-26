@@ -143,6 +143,7 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
   if (zoom_need_regrid_hmax(s, new_cdim)) {
     return 1;
   }
+  return 0;
 }
 
 /**
