@@ -32,7 +32,86 @@
 #include "zoom.h"
 
 /**
- * @breif Check whether we need a regrid based on the zoom region.
+ * @brief Check whether we need a regrid based on the zoom region motion.
+ *
+ * If the zoom region has moved more than a certain fraction of its size
+ * in any dimension then we need to regrid. This is to ensure that the
+ * zoom region remains well centred on the particle distribution.
+ *
+ * @param s The #space.
+ * @return 1 if a zoom regrid is needed, 0 otherwise.
+ */
+static int zoom_need_regrid_motion(const struct space *s) {
+
+  const double dx[3] = {s->zoom_props->zoom_shift[0],
+                        s->zoom_props->zoom_shift[1],
+                        s->zoom_props->zoom_shift[2]};
+  const double max_shift = s->zoom_props->max_com_dx;
+  if (dx[0] > max_shift * s->zoom_props->dim[0] ||
+      dx[1] > max_shift * s->zoom_props->dim[1] ||
+      dx[2] > max_shift * s->zoom_props->dim[2]) {
+    message(
+        "Zoom region shift exceeds %.1f%% of the zoom region in at least one "
+        "dimension (shift=(%.3e,%.3e,%.3e), zoom_dim=(%.3e,%.3e,%.3e)).",
+        max_shift * 100.0, dx[0], dx[1], dx[2], s->zoom_props->dim[0],
+        s->zoom_props->dim[1], s->zoom_props->dim[2]);
+    return 1;
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Check whether we need a regrid based on the particle extent.
+ *
+ * If the particle distribution exceeds a certain fraction of the zoom region
+ * size in any dimension then we need to regrid. This is to ensure that the
+ * zoom region remains well centred on the particle distribution.
+ *
+ * @param s The #space.
+ * @return 1 if a zoom regrid is needed, 0 otherwise.
+ */
+static int zoom_need_regrid_extent(const struct space *s) {
+
+  /* Derive the maximum allowed particle extent from the user specified
+   * target padding fraction, if the particle distribution is more than
+   * this fraction then we are no longer doing what the user asked for. */
+  const double max_part_dim_frac = 1.0 / s->zoom_props->user_region_pad_factor;
+
+  /* If the particle distribution is more than 90% of the zoom region width
+   * (based on the zoom cells themselves) in any dimension we need to regrid. */
+  for (int k = 0; k < 3; k++) {
+    if (s->zoom_props->part_dim[k] >
+        max_part_dim_frac * s->zoom_props->current_zoom_region_dim[k]) {
+      message(
+          "Particle distribution exceeds %.1f%% of the zoom region in dim %d "
+          "(part_dim=%.3e, zoom_dim=%.3e).",
+          max_part_dim_frac * 100.0, k, part_dim[k],
+          current_zoom_region_dim[k]);
+      return 1;
+    }
+  }
+  return 0;
+}
+
+/**
+ * @brief Check whether we need a regrid based on hmax requiring larger cells.
+ *
+ * If the current hmax requires larger cells in the zoom region than we
+ * currently have then we need to regrid.
+ *
+ * @param s The #space.
+ * @param new_cdim The new top-level cell dimensions (based on current hmax).
+ * @return 1 if a zoom regrid is needed, 0 otherwise.
+ */
+static int zoom_need_regrid_hmax(const struct space *s, const int new_cdim[3]) {
+  return (new_cdim[0] < s->zoom_props->cdim[0] ||
+          new_cdim[1] < s->zoom_props->cdim[1] ||
+          new_cdim[2] < s->zoom_props->cdim[2]);
+}
+
+/**
+ * @brief Check whether we need a regrid based on the zoom region.
  *
  * This function is called in space_regrid in space_regrid.c and provides
  * the zoom specific regrid check.
@@ -44,51 +123,20 @@
  */
 int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
 
-  /* Unpack the zoom properties. */
-  const double dx[3] = {s->zoom_props->zoom_shift[0],
-                        s->zoom_props->zoom_shift[1],
-                        s->zoom_props->zoom_shift[2]};
-  const double current_zoom_region_dim[3] = {
-      s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]};
-  const double part_dim[3] = {s->zoom_props->part_dim[0],
-                              s->zoom_props->part_dim[1],
-                              s->zoom_props->part_dim[2]};
-
-  /* Derive the maximum allowed particle extent from the user specified
-   * target padding fraction, if the particle distribution is more than
-   * this fraction then we are no longer doing what the user asked for. */
-  const double max_part_dim_frac = 1.0 / s->zoom_props->user_region_pad_factor;
-
-  /* If the particle distribution is more than 90% of the zoom region width
-   * (based on the zoom cells themselves) in any dimension we need to regrid. */
-  for (int k = 0; k < 3; k++) {
-    if (part_dim[k] > max_part_dim_frac * current_zoom_region_dim[k]) {
-      message(
-          "Particle distribution exceeds %.1f%% of the zoom region in dim %d "
-          "(part_dim=%.3e, zoom_dim=%.3e).",
-          max_part_dim_frac * 100.0, k, part_dim[k],
-          current_zoom_region_dim[k]);
-      return 1;
-    }
-  }
-
   /* Have we exceeded the allowed shift of the zoom region? */
-  const double max_shift = s->zoom_props->max_com_dx;
-  if (dx[0] > max_shift * current_zoom_region_dim[0] ||
-      dx[1] > max_shift * current_zoom_region_dim[1] ||
-      dx[2] > max_shift * current_zoom_region_dim[2]) {
-    message(
-        "Zoom region shift exceeds %.1f of the zoom region in at least one "
-        "dimension (shift=(%.3e,%.3e,%.3e), zoom_dim=(%.3e,%.3e,%.3e)).",
-        max_shift * 100.0, dx[0], dx[1], dx[2], current_zoom_region_dim[0],
-        current_zoom_region_dim[1], current_zoom_region_dim[2]);
+  if (zoom_need_regrid_motion(s)) {
     return 1;
   }
 
-  /* If we are running a zoom do we need to regrid based on the new cdim? */
-  return (new_cdim[0] < s->zoom_props->cdim[0] ||
-          new_cdim[1] < s->zoom_props->cdim[1] ||
-          new_cdim[2] < s->zoom_props->cdim[2]);
+  /* Has the particle distribution exceeded the allowed extent? */
+  if (zoom_need_regrid_extent(s)) {
+    return 1;
+  }
+
+  /* Has hmax increased such that we need larger zoom cells? */
+  if (zoom_need_regrid_hmax(s, new_cdim)) {
+    return 1;
+  }
 }
 
 /**
@@ -96,11 +144,11 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
  *
  * This function has multiple use cases:
  * 1) We are regridding due to the zoom region motion. In this case the
- * particle distribution itself needs shifting and the cells need to be rebuilt
- * around it.
- * 2) We are regridding due to hmax requiring larger cells in the zoom
- * region. In this case we need to find a new geometry that can accommodate the
- * new cdim (note that the particles will be shifted in this case too).
+ * particle distribution itself needs shifting and the cells need to be
+ * rebuilt around it. 2) We are regridding due to hmax requiring larger cells
+ * in the zoom region. In this case we need to find a new geometry that can
+ * accommodate the new cdim (note that the particles will be shifted in this
+ * case too).
  *
  * If we are doing the first case we simply call zoom_region_init to shift and
  * recalculate the geometry and we're done. The second case is more complex
@@ -111,9 +159,9 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
  * decrease the depth of the zoom region to increase size of the zoom cells.
  *
  * We'll first try to decrease the background cdim a reasonable amount since
- * this will carry less of a performance penalty than doubling the size of zoom
- * cells. This is also most likely to produce a valid set up in all but the most
- * extreme cases.
+ * this will carry less of a performance penalty than doubling the size of
+ * zoom cells. This is also most likely to produce a valid set up in all but
+ * the most extreme cases.
  *
  * @param s The #space.
  * @param new_cdim The new top-level cell dimensions (based on current hmax).
@@ -126,25 +174,17 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
     return;
   }
 
-  /* If the new_cdim is not smaller then we are regridding based on the
-   * zoom regons motion and can call zoom_region_init with a reduced number
-   * of background cells. */
-  if (!(new_cdim[0] < s->zoom_props->cdim[0]) &&
-      !(new_cdim[1] < s->zoom_props->cdim[1]) &&
-      !(new_cdim[2] < s->zoom_props->cdim[2])) {
-
-    /* Decrement the background cdim. */
-    s->zoom_props->bkg_cdim[0]--;
-    s->zoom_props->bkg_cdim[1]--;
-    s->zoom_props->bkg_cdim[2]--;
+  /* If we are regridding due to motion then just try to recentre the zoom
+   * region. */
+  if (zoom_need_regrid_motion(s) && !zoom_need_regrid_extent(s) &&
+      !zoom_need_regrid_hmax(s, new_cdim)) {
 
     /* Recalculate the zoom region geometry. (silently) */
     zoom_region_init(s, /*regridding=*/1, /*verbose=*/0);
     return;
   }
 
-  /* Otherwise, we are regridding due to the new cdim derived from hmax
-   * increasing. We need to find an acceptable geometry. */
+  /* Otherwise, we need to also adjust input cell geometry. */
 
   /* Loop until we've found an acceptable geometry. */
   int old_bkg_cdim = s->cdim[0];
@@ -168,8 +208,17 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
       break;
     }
 
+    /* If we aren't doing a hmax based regrid we have now failed, adjusting
+     * the zoom region depth won't help us. */
+    if (!zoom_need_regrid_hmax(s, new_cdim)) {
+      error(
+          "Failed to find an acceptable zoom region before reaching 50%% of "
+          "the initial background cell size (i.e. not a hmax based regrid). "
+          "Try to decrease the initial background cell size.");
+    }
+
     /* Reset the background cdim to its original value, we'll try decreasing
-     * the zoom region depth instead. */
+     * the zoom region depth instead, and then loop again. */
     s->zoom_props->bkg_cdim[0] = old_bkg_cdim;
     s->zoom_props->bkg_cdim[1] = old_bkg_cdim;
     s->zoom_props->bkg_cdim[2] = old_bkg_cdim;
