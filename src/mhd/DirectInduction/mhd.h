@@ -378,13 +378,14 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   for (int k = 0; k < 3; k++) {
     p->mhd_data.symmetric_gradient_err_fij[k] *= p->h * p->rho;
     sge_fij[k] = p->mhd_data.symmetric_gradient_err_fij[k];
-    p->mhd_data.rcm_over_ha_SPHw[k] /= (p->mhd_data.norm_SPHw * p->h);
   }
 
   p->mhd_data.symmetric_gradient_err_fij_abs = sqrtf(sge_fij[0]*sge_fij[0]+sge_fij[1]*sge_fij[1]+sge_fij[2]*sge_fij[2]); 
 
 
   p->mhd_data.rcm_over_ha_SPHw_abs = sqrtf(p->mhd_data.rcm_over_ha_SPHw[0]*p->mhd_data.rcm_over_ha_SPHw[0]+p->mhd_data.rcm_over_ha_SPHw[1]*p->mhd_data.rcm_over_ha_SPHw[1]+p->mhd_data.rcm_over_ha_SPHw[2]*p->mhd_data.rcm_over_ha_SPHw[2]);
+
+  p->mhd_data.rcm_over_ha_SPHw_abs /= (p->mhd_data.norm_SPHw * p->h);
 
   p->mhd_data.mhdsw = 1.0f;
 
