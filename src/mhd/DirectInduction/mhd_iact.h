@@ -45,14 +45,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   const float mi = pi->mass;
   const float mj = pj->mass;
 
-  /* Compute density of pi. */
+  /* Compute kernels */
   const float hi_inv = 1.f / hi;
-  const float ui = r * hi_inv;
+  const float xi = r * hi_inv;
   const float hj_inv = 1.f / hj;
-  const float uj = r * hj_inv;
+  const float xj = r * hj_inv;
 
-  kernel_deval(ui, &wi, &wi_dx);
-  kernel_deval(uj, &wj, &wj_dx);
+  kernel_deval(xi, &wi, &wi_dx);
+  kernel_deval(xj, &wj, &wj_dx);
 
   /* Compute neighbour weight norm */
   pi->mhd_data.norm_Nw += 1;
@@ -68,11 +68,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   /* Compute weighted distance sum */
   for (int k = 0; k < 3; k++) {
   
-      pi->mhd_data.rcm_over_ha_Nw[k]+=(pj->x[k] - pi->x[k]);
-      pi->mhd_data.rcm_over_ha_Kw[k]+=(pj->x[k] - pi->x[k]) * wi;
+      pi->mhd_data.rcm_over_ha_Nw[k] -= dx[k];
+      pi->mhd_data.rcm_over_ha_Kw[k] -= dx[k] * wi;
 
-      pj->mhd_data.rcm_over_ha_Nw[k]+=(pi->x[k] - pj->x[k]);
-      pj->mhd_data.rcm_over_ha_Kw[k]+=(pi->x[k] - pj->x[k]) * wj;
+      pj->mhd_data.rcm_over_ha_Nw[k] += dx[k];
+      pj->mhd_data.rcm_over_ha_Kw[k] += dx[k] * wj;
 
   }
 
@@ -98,7 +98,6 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                const struct part *restrict pj, const float mu_0,
                                const float a, const float H) {
 
- 
   float wi, wj, wi_dx, wj_dx;
 
   const float r = sqrtf(r2);
@@ -107,14 +106,14 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   const float mi = pi->mass;
   const float mj = pj->mass;
 
-  /* Compute density of pi. */
+  /* Compute kernels */
   const float hi_inv = 1.f / hi;
-  const float ui = r * hi_inv;
+  const float xi = r * hi_inv;
   const float hj_inv = 1.f / hj;
-  const float uj = r * hj_inv;
+  const float xj = r * hj_inv;
 
-  kernel_deval(ui, &wi, &wi_dx);
-  kernel_deval(uj, &wj, &wj_dx);
+  kernel_deval(xi, &wi, &wi_dx);
+  kernel_deval(xj, &wj, &wj_dx);
 
   /* Compute neighbour weight norm */
   pi->mhd_data.norm_Nw += 1;
@@ -126,8 +125,8 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   /* Compute weighted distance sum */
   for (int k = 0; k < 3; k++) {
   
-      pi->mhd_data.rcm_over_ha_Nw[k]+=(pj->x[k] - pi->x[k]);
-      pi->mhd_data.rcm_over_ha_Kw[k]+=(pj->x[k] - pi->x[k]) * wi;
+      pi->mhd_data.rcm_over_ha_Nw[k] -= dx[k] ;
+      pi->mhd_data.rcm_over_ha_Kw[k] -= dx[k] * wi;
 
   }
 
@@ -238,12 +237,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.mean_grad_SPH_err[k] +=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
-    pi->mhd_data.rcm_over_ha_SPHw[k]+=(pj->x[k] - pi->x[k]) * mj / rhoj * wi;
+    pi->mhd_data.rcm_over_ha_SPHw[k] -= dx[k] * mj / rhoj * wi;
     pi->mhd_data.symmetric_gradient_err_fij[k] += mj * (wi_dr * f_ij / (rhoi * rhoi) + wj_dr * f_ji / (rhoj * rhoj)) * r_inv * dx[k];
 
     pj->mhd_data.mean_grad_SPH_err[k] -=
         mi * over_rho_j * wj_dr * r_inv * dx[k];
-    pj->mhd_data.rcm_over_ha_SPHw[k]+=(pi->x[k] - pj->x[k]) * mi / rhoi * wj;
+    pj->mhd_data.rcm_over_ha_SPHw[k] += dx[k] * mi / rhoi * wj;
     pj->mhd_data.symmetric_gradient_err_fij[k] -= mi * (wj_dr * f_ji / (rhoj * rhoj) + wi_dr * f_ij / (rhoi * rhoi)) * r_inv * dx[k];
 
 
@@ -347,7 +346,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.mean_grad_SPH_err[k] +=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
-    pi->mhd_data.rcm_over_ha_SPHw[k]+=(pj->x[k] - pi->x[k]) * mj / rhoj * wi;
+    pi->mhd_data.rcm_over_ha_SPHw[k] -= dx[k] * mj / rhoj * wi;
     pi->mhd_data.symmetric_gradient_err_fij[k] += mj * (wi_dr * f_ij / (rhoi * rhoi) + wj_dr * f_ji / (rhoj * rhoj)) * r_inv * dx[k];
 
   }
