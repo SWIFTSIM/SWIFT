@@ -78,16 +78,19 @@ static int zoom_need_regrid_extent(const struct space *s) {
    * this fraction then we are no longer doing what the user asked for. */
   const double max_part_dim_frac = 1.0 / s->zoom_props->user_region_pad_factor;
 
+  /* Get the maximum allowed extent of the particle distribution. */
+  const double max_dim[3] = {s->zoom_props->dim[0] * max_part_dim_frac,
+                             s->zoom_props->dim[1] * max_part_dim_frac,
+                             s->zoom_props->dim[2] * max_part_dim_frac};
+
   /* If the particle distribution is more than 90% of the zoom region width
    * (based on the zoom cells themselves) in any dimension we need to regrid. */
   for (int k = 0; k < 3; k++) {
-    if (s->zoom_props->part_dim[k] >
-        max_part_dim_frac * s->zoom_props->current_zoom_region_dim[k]) {
+    if (s->zoom_props->part_dim[k] > max_dim[k]) {
       message(
           "Particle distribution exceeds %.1f%% of the zoom region in dim %d "
           "(part_dim=%.3e, zoom_dim=%.3e).",
-          max_part_dim_frac * 100.0, k, part_dim[k],
-          current_zoom_region_dim[k]);
+          max_part_dim_frac * 100.0, k, part_dim[k], s->zoom_props->dim[k]);
       return 1;
     }
   }
