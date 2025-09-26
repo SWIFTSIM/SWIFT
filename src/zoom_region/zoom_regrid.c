@@ -122,6 +122,16 @@ static int zoom_need_regrid_hmax(const struct space *s, const int new_cdim[3]) {
  * This function is called in space_regrid in space_regrid.c and provides
  * the zoom specific regrid check.
  *
+ * Unlike a uniform box, in a zoom simulation there are three reasons we might
+ * need to regrid:
+ * 1) The high resolution particle distribution has moved too far from the
+ *   centre of the zoom region.
+ * 2) The high resolution particle distribution has expanded too far and is
+ *  likely to be no longer well contained within the zoom region soon.
+ * 3) [Same as a uniform box] The maximum smoothing length (hmax) has increased
+ * such that the current zoom cells are too small to properly resolve the
+ * hydrodynamics.
+ *
  * @param s The #space.
  * @param new_cdim The new top-level cell dimensions (based on current hmax).
  *
@@ -151,24 +161,23 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
  *
  * This function has multiple use cases:
  * 1) We are regridding due to the zoom region motion. In this case the
- * particle distribution itself needs shifting and the cells need to be
- * rebuilt around it. 2) We are regridding due to hmax requiring larger cells
- * in the zoom region. In this case we need to find a new geometry that can
- * accommodate the new cdim (note that the particles will be shifted in this
- * case too).
+ *  particle distribution itself needs shifting and the cells need to be
+ *  rebuilt around it.
+ * 2) We are regridding due to the zoom region extent. In this case the
+ *  particle distribution itself needs shifting and the cells need to be
+ *  rebuilt around expanding the width of the zoom region.
+ * 3) We are regridding due to hmax requiring larger cells in the zoom region.
+ *  In this case we need to find a new geometry that can accommodate the new
+ *  cdim (note that the particles will be shifted in this case too).
  *
  * If we are doing the first case we simply call zoom_region_init to shift and
- * recalculate the geometry and we're done. The second case is more complex
- * and requires changes to the cell dimensions.
+ * recalculate the geometry and we're done. The second and third cases are more
+ * complex and require changes to the cell dimensions.
  *
- * Unlike a uniform box, we have options with a zoom region. We can either
- * decrease the background cdim to better resolve the zoom region or we can
- * decrease the depth of the zoom region to increase size of the zoom cells.
- *
- * We'll first try to decrease the background cdim a reasonable amount since
- * this will carry less of a performance penalty than doubling the size of
- * zoom cells. This is also most likely to produce a valid set up in all but
- * the most extreme cases.
+ * For the second and third cases we'll first try to decrease the background
+ * cdim a reasonable amount since this will carry less of a performance penalty
+ * than doubling the size of zoom cells. This is also most likely to produce a
+ * valid set up in all but the most extreme cases.
  *
  * @param s The #space.
  * @param new_cdim The new top-level cell dimensions (based on current hmax).
