@@ -51,7 +51,7 @@ static int zoom_need_regrid_motion(const struct space *s) {
       dx[1] > max_shift * s->zoom_props->dim[1] ||
       dx[2] > max_shift * s->zoom_props->dim[2]) {
     message(
-        "Zoom region shift exceeds %.1f%% of the zoom region in at least one "
+        "Zoom region shift exceeds %.2f%% of the zoom region in at least one "
         "dimension (shift=(%.3e,%.3e,%.3e), zoom_dim=(%.3e,%.3e,%.3e)).",
         max_shift * 100.0, dx[0], dx[1], dx[2], s->zoom_props->dim[0],
         s->zoom_props->dim[1], s->zoom_props->dim[2]);
@@ -85,14 +85,17 @@ static int zoom_need_regrid_extent(const struct space *s) {
 
   /* If the particle distribution is more than 90% of the zoom region width
    * (based on the zoom cells themselves) in any dimension we need to regrid. */
-  for (int k = 0; k < 3; k++) {
-    if (s->zoom_props->part_dim[k] > max_dim[k]) {
-      message(
-          "Particle distribution exceeds %.1f%% of the zoom region in dim %d "
-          "(part_dim=%.3e, zoom_dim=%.3e).",
-          max_part_dim_frac * 100.0, k, part_dim[k], s->zoom_props->dim[k]);
-      return 1;
-    }
+  if (s->zoom_props->part_dim[0] > max_dim[0] ||
+      s->zoom_props->part_dim[1] > max_dim[1] ||
+      s->zoom_props->part_dim[2] > max_dim[2]) {
+    message(
+        "Particle distribution exceeds %.2f%% of the zoom region "
+        "in at least one dimension (part_dim=(%.3e,%.3e,%.3e), "
+        "zoom_dim=(%.3e,%.3e,%.3e)).",
+        max_part_dim_frac * 100.0, s->zoom_props->part_dim[0],
+        s->zoom_props->part_dim[1], s->zoom_props->part_dim[2],
+        s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]);
+    return 1;
   }
   return 0;
 }
