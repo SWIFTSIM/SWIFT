@@ -287,10 +287,6 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
 __attribute__((always_inline)) INLINE static void mhd_end_density(
     struct part *p, const struct cosmology *cosmo) {
 
-  p->mhd_data.hb_over_ha_Nw /= (p->mhd_data.norm_Nw * p->h);
-  p->mhd_data.hb_over_ha_Kw /= (p->mhd_data.norm_Kw * p->h);
-
-
   p->mhd_data.rcm_over_ha_Nw_abs = sqrtf(p->mhd_data.rcm_over_ha_Nw[0]*p->mhd_data.rcm_over_ha_Nw[0]+p->mhd_data.rcm_over_ha_Nw[1]*p->mhd_data.rcm_over_ha_Nw[1]+p->mhd_data.rcm_over_ha_Nw[2]*p->mhd_data.rcm_over_ha_Nw[2]);
   p->mhd_data.rcm_over_ha_Kw_abs = sqrtf(p->mhd_data.rcm_over_ha_Kw[0]*p->mhd_data.rcm_over_ha_Kw[0]+p->mhd_data.rcm_over_ha_Kw[1]*p->mhd_data.rcm_over_ha_Kw[1]+p->mhd_data.rcm_over_ha_Kw[2]*p->mhd_data.rcm_over_ha_Kw[2]);
 
