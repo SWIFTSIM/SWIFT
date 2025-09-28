@@ -729,7 +729,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       } else {
 
         /* Recurse, in another call to space_split_recursive(). */
-        threadpool_queue_add(&s->e->threadpool, (void *)cp, 1);
+        void *ptrs[1];
+        ptrs[0] = (void *)cp;
+        threadpool_queue_add(&s->e->threadpool, ptrs, 1);
       }
     }
 
