@@ -195,8 +195,8 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
   if (zoom_need_regrid_motion(s) && !zoom_need_regrid_extent(s) &&
       !zoom_need_regrid_hmax(s, new_cdim)) {
 
-    /* Recalculate the zoom region geometry. (silently) */
-    zoom_region_init(s, /*regridding=*/1, /*verbose=*/0);
+    /* Recalculate the zoom region geometry. */
+    zoom_region_init(s, /*regridding=*/1, /*verbose=*/1);
     return;
   }
 
@@ -205,6 +205,8 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
   /* Loop until we've found an acceptable geometry. */
   int old_bkg_cdim = s->cdim[0];
   while (zoom_need_regrid(s, new_cdim)) {
+
+    message("Finding an acceptable zoom region geometry...");
 
     /* First try decreasing the background cdim to a minimum of 50% its
      * current value. */
@@ -215,8 +217,8 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
       s->zoom_props->bkg_cdim[1]--;
       s->zoom_props->bkg_cdim[2]--;
 
-      /* Recalculate the zoom region geometry. (silently) */
-      zoom_region_init(s, /*regridding=*/1, /*verbose=*/0);
+      /* Recalculate the zoom region geometry. */
+      zoom_region_init(s, /*regridding=*/1, /*verbose=*/1);
     }
 
     /* If this worked we can stop here. */
@@ -251,8 +253,8 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
           "size.");
     }
 
-    /* Recalculate the zoom region geometry. (silently) */
-    zoom_region_init(s, /*regridding=*/1, /*verbose=*/0);
+    /* Recalculate the zoom region geometry. */
+    zoom_region_init(s, /*regridding=*/1, /*verbose=*/1);
   }
 }
 
