@@ -135,11 +135,8 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
       }
 
       /* Log a line to the file. */
-      fprintf(fd,
-              "%s %i %i %lli %lli
-              ", names[nid].name, entry->tid,
-              entry->chunk_size,
-              entry->tic, entry->toc);
+      fprintf(fd, "%s %i %i %lli %lli", names[nid].name, entry->tid,
+              entry->chunk_size, entry->tic, entry->toc);
     }
 
     /* Clear the log if requested. */
