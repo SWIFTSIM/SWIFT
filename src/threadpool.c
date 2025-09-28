@@ -755,18 +755,29 @@ static int threadpool_queue_take(struct tpq_state *s, int tid, void **ptr,
   return 0;
 }
 
-/* Queue-mode work loop. */
+/**
+ * @brief Queue-mode work loop.
+ *
+ * Pops tasks from the local queue, steals if needed, and executes them.
+ * When all queues are empty and no tasks are in flight, wake all sleepers
+ * so everyone can exit and reach the barrier.
+ */
 static void threadpool_chomp_queue(struct threadpool *tp, int tid) {
 
   /* Store the thread ID as thread specific data. */
   int localtid = tid;
   pthread_setspecific(threadpool_tid, &localtid);
 
+  /* Our queue state for this pool. */
   struct tpq_state *s = threadpool_queue_get(tp, 0);
+
   while (1) {
+
+    /* Try to get work: pop locally, then steal. */
     void *ptr;
     int size;
     if (threadpool_queue_take(s, tid, &ptr, &size)) {
+
 #ifdef SWIFT_DEBUG_THREADPOOL
       ticks tic = getticks();
 #endif
@@ -774,12 +785,16 @@ static void threadpool_chomp_queue(struct threadpool *tp, int tid) {
 #ifdef SWIFT_DEBUG_THREADPOOL
       threadpool_log(tp, tid, size, tic, getticks());
 #endif
+
+      /* One task fewer in flight. */
       atomic_dec(&s->tasks_in_flight);
       continue;
     }
 
-    /* Completion test: no tasks in flight and all queues empty. */
+    /* No immediate work; check for global completion. */
     if (s->tasks_in_flight == 0) {
+
+      /* Check that *all* queues are empty. */
       int empty = 1;
       for (int i = 0; i < tp->num_threads; i++) {
         pthread_mutex_lock(&s->queues[i].lock);
@@ -787,13 +802,23 @@ static void threadpool_chomp_queue(struct threadpool *tp, int tid) {
         pthread_mutex_unlock(&s->queues[i].lock);
         if (!empty) break;
       }
-      if (empty) break;
+
+      /* If truly done, wake everyone so they can exit and hit the barrier. */
+      if (empty) {
+        pthread_mutex_lock(&s->sleep_lock);
+        if (s->sleepers > 0) pthread_cond_broadcast(&s->sleep_cv);
+        pthread_mutex_unlock(&s->sleep_lock);
+        break;
+      }
     }
 
     /* Sleep until new work is signalled. */
     pthread_mutex_lock(&s->sleep_lock);
     s->sleepers++;
+
+    /* Spurious wake-ups are fine, we'll just loop again. */
     pthread_cond_wait(&s->sleep_cv, &s->sleep_lock);
+
     s->sleepers--;
     pthread_mutex_unlock(&s->sleep_lock);
   }
