@@ -366,6 +366,10 @@ void space_populate_multipole(struct cell *c) {
 /**
  * @brief Populate the properties of a leaf cell.
  *
+ * This function derives the smoothing length and timestep quantites of a
+ * leaf based on the particles it contains. These properties will be handed
+ * up the tree during the recursion.
+ *
  * @param c The #cell to populate.
  * @param s The #space.
  * @param ti_current The current time.
@@ -408,7 +412,7 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_beg_max = 0;
 
-  /* parts */
+  /* parts: Get dt_min/dt_max and h_max. */
   for (int k = 0; k < count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (parts[k].time_bin == time_bin_not_created)
@@ -416,6 +420,8 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
     if (parts[k].time_bin == time_bin_inhibited)
       error("Inhibited particle present in space_split()");
 #endif
+
+    /* When does this particle's time-step start and end? */
     const timebin_t time_bin = parts[k].time_bin;
     const timebin_t time_bin_rt = parts[k].rt_time_data.time_bin;
     const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
@@ -425,6 +431,11 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
     ti_hydro_beg_max = max(ti_hydro_beg_max, ti_beg);
 
     if (with_rt) {
+      /* Contrary to other physics, RT doesn't have its own particle type.
+       * So collect time step data from particles only when we're running
+       * with RT. Otherwise, we may find cells which are active or in
+       * impossible timezones. Skipping this check results in cells having
+       * RT times = max_nr_timesteps or zero, respecively. */
       const integertime_t ti_rt_end =
           get_integer_time_end(ti_current, time_bin_rt);
       const integertime_t ti_rt_beg =
@@ -442,17 +453,19 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
 
     cell_set_part_h_depth(&parts[k], c);
 
+    /* Collect SFR from the particles after rebuilt */
     star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
                                             &c->stars.sfh);
   }
 
+  /* xparts: Reset x_diff */
   for (int k = 0; k < count; k++) {
     xparts[k].x_diff[0] = 0.f;
     xparts[k].x_diff[1] = 0.f;
     xparts[k].x_diff[2] = 0.f;
   }
 
-  /* gparts */
+  /* gparts: Get dt_min/dt_max. */
   for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (gparts[k].time_bin == time_bin_not_created)
@@ -460,6 +473,8 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
     if (gparts[k].time_bin == time_bin_inhibited)
       error("Inhibited g-particle present in space_split()");
 #endif
+
+    /* When does this particle's time-step start and end? */
     const timebin_t time_bin = gparts[k].time_bin;
     const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
     const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
@@ -468,7 +483,7 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
     ti_gravity_beg_max = max(ti_gravity_beg_max, ti_beg);
   }
 
-  /* sparts */
+  /* sparts: Get dt_min/dt_max */
   for (int k = 0; k < scount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (sparts[k].time_bin == time_bin_not_created)
@@ -476,6 +491,8 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
     if (sparts[k].time_bin == time_bin_inhibited)
       error("Inhibited s-particle present in space_split()");
 #endif
+
+    /* When does this particle's time-step start and end? */
     const timebin_t time_bin = sparts[k].time_bin;
     const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
     const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
@@ -490,12 +507,13 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
 
     cell_set_spart_h_depth(&sparts[k], c);
 
+    /* Reset x_diff */
     sparts[k].x_diff[0] = 0.f;
     sparts[k].x_diff[1] = 0.f;
     sparts[k].x_diff[2] = 0.f;
   }
 
-  /* sinks */
+  /* sinks: Get dt_min/dt_max */
   for (int k = 0; k < sink_count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (sinks[k].time_bin == time_bin_not_created)
@@ -503,6 +521,8 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
     if (sinks[k].time_bin == time_bin_inhibited)
       error("Inhibited sink-particle present in space_split()");
 #endif
+
+    /* When does this particle's time-step start and end? */
     const timebin_t time_bin = sinks[k].time_bin;
     const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
     const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
@@ -517,12 +537,13 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
 
     cell_set_sink_h_depth(&sinks[k], c);
 
+    /* Reset x_diff */
     sinks[k].x_diff[0] = 0.f;
     sinks[k].x_diff[1] = 0.f;
     sinks[k].x_diff[2] = 0.f;
   }
 
-  /* bparts */
+  /* bparts: Get dt_min/dt_max */
   for (int k = 0; k < bcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (bparts[k].time_bin == time_bin_not_created)
@@ -530,6 +551,8 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
     if (bparts[k].time_bin == time_bin_inhibited)
       error("Inhibited b-particle present in space_split()");
 #endif
+
+    /* When does this particle's time-step start and end? */
     const timebin_t time_bin = bparts[k].time_bin;
     const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
     const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
@@ -544,6 +567,7 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
 
     cell_set_bpart_h_depth(&bparts[k], c);
 
+    /* Reset x_diff */
     bparts[k].x_diff[0] = 0.f;
     bparts[k].x_diff[1] = 0.f;
     bparts[k].x_diff[2] = 0.f;
@@ -576,20 +600,29 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
 /**
  * @brief Construct the multipoles of a leaf cell.
  *
+ * This function constructs the multipoles of a leaf cell based on the
+ * particles it contains. These multipoles will be handed up the tree during
+ * the recursion.
+ *
  * @param c The #cell to populate.
  * @param e The #engine.
  */
 static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
 
+  /* Do we have particles? */
   if (c->grav.count > 0) {
 
     gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
                 e->gravity_properties);
 
+    /* Compute the multipole power */
     gravity_multipole_compute_power(&c->grav.multipole->m_pole);
 
   } else {
 
+    /* No gparts in that leaf cell */
+
+    /* Set the values to something sensible */
     gravity_multipole_init(&c->grav.multipole->m_pole);
     if (c->nodeID == engine_rank) {
       c->grav.multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
@@ -599,6 +632,7 @@ static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
     }
   }
 
+  /* Store the value at rebuild time */
   c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
   c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
   c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
@@ -606,7 +640,20 @@ static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
 }
 
 /**
- * @brief Recursively split a cell (build only, no multipoles).
+ * @brief Recursively split a cell.
+ *
+ * @param s The #space in which the cell lives.
+ * @param c The #cell to split recursively.
+ * @param buff A buffer for particle sorting, should be of size at least
+ *        c->hydro.count or @c NULL.
+ * @param sbuff A buffer for particle sorting, should be of size at least
+ *        c->stars.count or @c NULL.
+ * @param bbuff A buffer for particle sorting, should be of size at least
+ *        c->black_holes.count or @c NULL.
+ * @param gbuff A buffer for particle sorting, should be of size at least
+ *        c->grav.count or @c NULL.
+ * @param sink_buff A buffer for particle sorting, should be of size at least
+ *        c->sinks.count or @c NULL.
  */
 void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict buff,
@@ -617,6 +664,7 @@ void space_split_recursive(struct space *s, struct cell *c,
                            const short int tpid) {
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we don't get a void cell here */
   if (c->subtype == cell_subtype_void) {
     error("Void cell in space_split_recursive()");
   }
@@ -634,6 +682,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int neighbour_depth =
       s->with_zoom_region ? s->zoom_props->neighbour_max_tree_depth : 0;
 
+  /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
     error(
         "Exceeded maximum depth (%d) when splitting cells, aborting. This is "
@@ -645,6 +694,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         c->grav.parts[1].x[0]);
   }
 
+  /* Split or let it be? (When running a zoom we split neighbour cells to better
+   * divide interactions between zoom and neighbour cells.)*/
   const int gparts_need_split = with_self_gravity && gcount > space_splitsize;
   const int parts_need_split = !with_self_gravity && count > space_splitsize;
   const int sparts_need_split = !with_self_gravity && scount > space_splitsize;
@@ -653,16 +704,21 @@ void space_split_recursive(struct space *s, struct cell *c,
   if (gparts_need_split || parts_need_split || sparts_need_split ||
       neighbour_need_split) {
 
+    /* Construct the progeny ready to populate with particles and multipoles
+     * (if doing gravity). */
     space_construct_progeny(s, c, tpid);
 
+    /* Split the cell's particle data. */
     cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
                c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
                buff, sbuff, bbuff, gbuff, sink_buff);
 
+    /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
                      *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
                      *progeny_sink_buff = sink_buff;
 
+    /* Define properties we'll compute from the progeny. */
     float h_max = 0.0f;
     float h_max_active = 0.0f;
     float stars_h_max = 0.f;
@@ -680,10 +736,14 @@ void space_split_recursive(struct space *s, struct cell *c,
     integertime_t ti_black_holes_end_min = max_nr_timesteps,
                   ti_black_holes_beg_max = 0;
 
+    /* Loop over progeny, cleaning up or splitting and recursing. */
     for (int k = 0; k < 8; k++) {
 
+      /* Get the progenitor */
       struct cell *cp = c->progeny[k];
 
+      /* Remove any progeny with zero particles as long as they aren't the
+       * void cell. */
       if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
           cp->black_holes.count == 0 && cp->sinks.count == 0) {
 
@@ -692,15 +752,18 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       } else {
 
+        /* Recurse */
         space_split_recursive(s, cp, progeny_buff, progeny_sbuff, progeny_bbuff,
                               progeny_gbuff, progeny_sink_buff, tpid);
 
+        /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
         progeny_gbuff += cp->grav.count;
         progeny_sbuff += cp->stars.count;
         progeny_bbuff += cp->black_holes.count;
         progeny_sink_buff += cp->sinks.count;
 
+        /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
         h_max_active = max(h_max_active, cp->hydro.h_max_active);
         stars_h_max = max(stars_h_max, cp->stars.h_max);
@@ -730,10 +793,17 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
+        /* Increase the depth */
         maxdepth = max(maxdepth, cp->maxdepth);
       }
     }
 
+    /* Deal with the multipole */
+    if (s->with_self_gravity) {
+      space_populate_multipole(c);
+    }
+
+    /* Set the smoothing length and timestep props for this cell. */
     c->hydro.h_max = h_max;
     c->hydro.h_max_active = h_max_active;
     c->hydro.ti_end_min = ti_hydro_end_min;
@@ -757,110 +827,105 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->black_holes.h_max_active = black_holes_h_max_active;
     c->maxdepth = maxdepth;
 
-  } else {
+  } /* Split or let it be? */
+
+  /* Otherwise we're in a leaf, collect the data from the particles in this
+     leaf cell. */
+  else {
+    /* Clear the progeny. */
     bzero(c->progeny, sizeof(struct cell *) * 8);
     c->split = 0;
     maxdepth = c->depth;
 
+    /* Get the time-steps and smoothing lengths for particles in this
+     * leaf and attach them to the leaf cell. */
     space_populate_leaf_props(c, s, ti_current, with_rt);
+
+    /* Construct the multipole and the centre of mass*/
+    if (s->with_self_gravity) {
+      space_construct_leaf_multipole(c, e);
+    }
   }
 
+  /* Set the maximum depth. */
   c->maxdepth = maxdepth;
+
+  /* No runner owns this cell yet. We assign those during scheduling. */
   c->owner = -1;
 
+  /* Store the global max depth */
   if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
 }
 
 /**
- * @brief Recursively build multipoles after splitting.
+ * @brief #threadpool mapper function to split cells if they contain
+ *        too many particles.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
  */
-static void space_build_multipoles_recursive(struct space *s, struct cell *c) {
+static void space_split_mapper(void *map_data, int num_cells,
+                               void *extra_data) {
 
-  struct engine *e = s->e;
-
-  if (!s->with_self_gravity) return;
-
-  if (!c->split) {
-    space_construct_leaf_multipole(c, e);
-    return;
-  }
-
-  for (int k = 0; k < 8; ++k)
-    if (c->progeny[k] != NULL)
-      space_build_multipoles_recursive(s, c->progeny[k]);
-
-  space_populate_multipole(c);
-}
-
-/**
- * @brief #threadpool mapper: build/splitting only (no multipoles).
- */
-static void space_split_mapper_build(void *map_data, int num_cells,
-                                     void *extra_data) {
-
+  /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
 
+  /* Collect some global information about the top-level m-poles */
+  float min_a_grav = FLT_MAX;
+  float max_softening = 0.f;
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+
+  /* Threadpool id of current thread. */
   short int tpid = threadpool_gettid();
 
+  /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
 
+    /* Set the top level cells tpid (this is assigned to sub-cells in
+     * space_get_cells guaranteeing the same tpid as this top level cells). */
     c->tpid = tpid;
 
+    /* Allocate the particle buffers. */
     struct cell_buff *buff = NULL, *sbuff = NULL, *bbuff = NULL, *gbuff = NULL,
                      *sink_buff = NULL;
     space_allocate_and_fill_buffers(c, &buff, &sbuff, &bbuff, &gbuff,
                                     &sink_buff);
 
+    /* Recursively split the cell. */
     space_split_recursive(s, c, buff, sbuff, bbuff, gbuff, sink_buff, tpid);
 
+    /* Free the particle buffers. */
     if (buff != NULL) swift_free("tempbuff", buff);
     if (gbuff != NULL) swift_free("tempgbuff", gbuff);
     if (sbuff != NULL) swift_free("tempsbuff", sbuff);
     if (bbuff != NULL) swift_free("tempbbuff", bbuff);
     if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
+
+    /* Collect the max multipole power from this cell. */
+    if (s->with_self_gravity) {
+      min_a_grav =
+          min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
+      max_softening =
+          max(max_softening, c->grav.multipole->m_pole.max_softening);
+
+      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+        max_mpole_power[n] =
+            max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
+    }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* All cells and particles should have consistent h_max values. */
   for (int ind = 0; ind < num_cells; ind++) {
     int depth = 0;
     const struct cell *c = &cells_top[local_cells_with_particles[ind]];
     if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
   }
 #endif
-}
-
-/**
- * @brief #threadpool mapper: multipoles only (bottom-up), after build pass.
- */
-static void space_split_mapper_multipoles(void *map_data, int num_cells,
-                                          void *extra_data) {
-
-  struct space *s = (struct space *)extra_data;
-  struct cell *cells_top = s->cells_top;
-  int *local_cells_with_particles = (int *)map_data;
-
-  float min_a_grav = FLT_MAX;
-  float max_softening = 0.f;
-  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
-
-  for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[local_cells_with_particles[ind]];
-
-    if (s->with_self_gravity) {
-      space_build_multipoles_recursive(s, c);
-
-      min_a_grav =
-          min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
-      max_softening =
-          max(max_softening, c->grav.multipole->m_pole.max_softening);
-      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-        max_mpole_power[n] =
-            max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
-    }
-  }
 
   atomic_min_f(&s->min_a_grav, min_a_grav);
   atomic_max_f(&s->max_softening, max_softening);
@@ -868,15 +933,53 @@ static void space_split_mapper_multipoles(void *map_data, int num_cells,
     atomic_max_f(&s->max_mpole_power[n], max_mpole_power[n]);
 }
 
+/**
+ * @brief A wrapper for #threadpool mapper function to split background cells if
+ * they contain too many particles.
+ *
+ * The threadpools are split to ensure efficient parallelisation over each cell
+ * grid. This wrapper enables better labelling of these split threadpools when
+ * threadpool debugging is enabled.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
 void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
-  space_split_mapper_build(map_data, num_cells, extra_data);
+  space_split_mapper(map_data, num_cells, extra_data);
 }
+
+/**
+ * @brief A wrapper for #threadpool mapper function to split background cells if
+ * they contain too many particles.
+ *
+ * The threadpools are split to ensure efficient parallelisation over each cell
+ * grid. This wrapper enables better labelling of these split threadpools when
+ * threadpool debugging is enabled.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
 void buffer_space_split_mapper(void *map_data, int num_cells,
                                void *extra_data) {
-  space_split_mapper_build(map_data, num_cells, extra_data);
+  space_split_mapper(map_data, num_cells, extra_data);
 }
+
+/**
+ * @brief A wrapper for #threadpool mapper function to split zoom cells if they
+ * contain too many particles.
+ *
+ * The threadpools are split to ensure efficient parallelisation over each cell
+ * grid. This wrapper enables better labelling of these split threadpools when
+ * threadpool debugging is enabled.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
 void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
-  space_split_mapper_build(map_data, num_cells, extra_data);
+  space_split_mapper(map_data, num_cells, extra_data);
 }
 
 /**
@@ -896,100 +999,58 @@ void space_split(struct space *s, int verbose) {
 
   if (!s->with_zoom_region) {
 
-    ticks tic = getticks();
+    const ticks tic = getticks();
 
-    /* Phase 1: build / splitting only */
-    threadpool_map(&s->e->threadpool, space_split_mapper_build,
+    threadpool_map(&s->e->threadpool, space_split_mapper,
                    s->local_cells_with_particles_top,
                    s->nr_local_cells_with_particles, sizeof(int),
                    threadpool_auto_chunk_size, s);
 
     if (verbose)
-      message("Tree construction took %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
+      message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
+  }
 
-    tic = getticks();
-
-    /* Phase 2: multipoles only */
-    threadpool_map(&s->e->threadpool, space_split_mapper_multipoles,
-                   s->local_cells_with_particles_top,
-                   s->nr_local_cells_with_particles, sizeof(int),
-                   threadpool_auto_chunk_size, s);
-
-    if (verbose)
-      message("Multipole construction took %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
-  } else {
+  /* When running with a zoom region we do each cell grid individually. */
+  else {
 
     ticks tic = getticks();
 
-    /* Build zoom */
+    /* Create the cell tree for zoom cells and populate their multipoles. */
     threadpool_map(&s->e->threadpool, zoom_space_split_mapper,
                    s->zoom_props->local_zoom_cells_with_particles_top,
                    s->zoom_props->nr_local_zoom_cells_with_particles,
                    sizeof(int), threadpool_uniform_chunk_size, s);
 
     if (verbose)
-      message("Zoom tree construction took %.3f %s.",
+      message("Zoom cell tree and multipole construction took %.3f %s.",
               clocks_from_ticks(getticks() - tic), clocks_getunit());
 
     if (s->zoom_props->with_buffer_cells) {
+
       tic = getticks();
 
+      /* Create the background cell trees and populate their multipoles. */
       threadpool_map(&s->e->threadpool, buffer_space_split_mapper,
                      s->zoom_props->local_buffer_cells_with_particles_top,
                      s->zoom_props->nr_local_buffer_cells_with_particles,
                      sizeof(int), threadpool_uniform_chunk_size, s);
 
       if (verbose)
-        message("Buffer tree construction took %.3f %s.",
+        message("Buffer cell tree and multipole construction took %.3f %s.",
                 clocks_from_ticks(getticks() - tic), clocks_getunit());
     }
 
     tic = getticks();
 
+    /* Create the background cell trees and populate their multipoles. */
     threadpool_map(&s->e->threadpool, bkg_space_split_mapper,
                    s->zoom_props->local_bkg_cells_with_particles_top,
                    s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_uniform_chunk_size, s);
 
     if (verbose)
-      message("Background tree construction took %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-    /* Phase 2 for zoom, buffer (if any), and background: reuse the same lists
-     */
-    tic = getticks();
-
-    threadpool_map(&s->e->threadpool, space_split_mapper_multipoles,
-                   s->zoom_props->local_zoom_cells_with_particles_top,
-                   s->zoom_props->nr_local_zoom_cells_with_particles,
-                   sizeof(int), threadpool_uniform_chunk_size, s);
-
-    if (verbose)
-      message("Zoom multipole construction took %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-    if (s->zoom_props->with_buffer_cells) {
-      tic = getticks();
-      threadpool_map(&s->e->threadpool, space_split_mapper_multipoles,
-                     s->zoom_props->local_buffer_cells_with_particles_top,
-                     s->zoom_props->nr_local_buffer_cells_with_particles,
-                     sizeof(int), threadpool_uniform_chunk_size, s);
-      if (verbose)
-        message("Buffer multipole construction took %.3f %s.",
-                clocks_from_ticks(getticks() - tic), clocks_getunit());
-    }
-
-    tic = getticks();
-
-    threadpool_map(&s->e->threadpool, space_split_mapper_multipoles,
-                   s->zoom_props->local_bkg_cells_with_particles_top,
-                   s->zoom_props->nr_local_bkg_cells_with_particles,
-                   sizeof(int), threadpool_uniform_chunk_size, s);
-
-    if (verbose)
-      message("Background multipole construction took %.3f %s.",
+      message("Background cell tree and multipole construction took %.3f %s.",
               clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 }
