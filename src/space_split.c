@@ -61,11 +61,11 @@ void space_allocate_and_fill_buffers(const struct cell *c,
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
   const int sink_count = c->sinks.count;
-  struct part *parts = c->hydro.parts;
-  struct gpart *gparts = c->grav.parts;
-  struct spart *sparts = c->stars.parts;
-  struct bpart *bparts = c->black_holes.parts;
-  struct sink *sinks = c->sinks.parts;
+  // struct part *parts = c->hydro.parts;
+  // struct gpart *gparts = c->grav.parts;
+  // struct spart *sparts = c->stars.parts;
+  // struct bpart *bparts = c->black_holes.parts;
+  // struct sink *sinks = c->sinks.parts;
 
   if (count > 0) {
     if (swift_memalign("tempbuff", (void **)buff, SWIFT_STRUCT_ALIGNMENT,
