@@ -56,7 +56,6 @@ void space_allocate_and_fill_buffers(const struct cell *c,
                                      struct cell_buff **restrict gbuff,
                                      struct cell_buff **restrict sink_buff) {
 
-  /* Unpack particle information we need for the buffers. */
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -68,104 +67,91 @@ void space_allocate_and_fill_buffers(const struct cell *c,
   struct bpart *bparts = c->black_holes.parts;
   struct sink *sinks = c->sinks.parts;
 
-  /* Allocate the buffers. */
   if (count > 0) {
     if (swift_memalign("tempbuff", (void **)buff, SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * count) != 0)
       error("Failed to allocate temporary indices.");
-
-    struct cell_buff *restrict local_buff = *buff;
-
-    for (int k = 0; k < count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
+    struct cell_buff *restrict local_buff = *buff;
+    for (int k = 0; k < count; k++) {
       if (parts[k].time_bin == time_bin_inhibited)
         error("Inhibited particle present in space_split()");
       if (parts[k].time_bin == time_bin_not_created)
         error("Extra particle present in space_split()");
-#endif
       local_buff[k].x[0] = parts[k].x[0];
       local_buff[k].x[1] = parts[k].x[1];
       local_buff[k].x[2] = parts[k].x[2];
     }
+#endif
   }
   if (gcount > 0) {
     if (swift_memalign("tempgbuff", (void **)gbuff, SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * gcount) != 0)
       error("Failed to allocate temporary indices.");
-
-    struct cell_buff *restrict local_gbuff = *gbuff;
-
-    for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
+    struct cell_buff *restrict local_gbuff = *gbuff;
+    for (int k = 0; k < gcount; k++) {
       if (gparts[k].time_bin == time_bin_inhibited)
         error("Inhibited particle present in space_split()");
       if (gparts[k].time_bin == time_bin_not_created)
         error("Extra particle present in space_split()");
-#endif
       local_gbuff[k].x[0] = gparts[k].x[0];
       local_gbuff[k].x[1] = gparts[k].x[1];
       local_gbuff[k].x[2] = gparts[k].x[2];
     }
+#endif
   }
   if (scount > 0) {
     if (swift_memalign("tempsbuff", (void **)sbuff, SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * scount) != 0)
       error("Failed to allocate temporary indices.");
-
-    struct cell_buff *restrict local_sbuff = *sbuff;
-
-    for (int k = 0; k < scount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
+    struct cell_buff *restrict local_sbuff = *sbuff;
+    for (int k = 0; k < scount; k++) {
       if (sparts[k].time_bin == time_bin_inhibited)
         error("Inhibited particle present in space_split()");
       if (sparts[k].time_bin == time_bin_not_created)
         error("Extra particle present in space_split()");
-#endif
       local_sbuff[k].x[0] = sparts[k].x[0];
       local_sbuff[k].x[1] = sparts[k].x[1];
       local_sbuff[k].x[2] = sparts[k].x[2];
     }
+#endif
   }
-
   if (bcount > 0) {
     if (swift_memalign("tempbbuff", (void **)bbuff, SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * bcount) != 0)
       error("Failed to allocate temporary indices.");
-
-    struct cell_buff *restrict local_bbuff = *bbuff;
-
-    for (int k = 0; k < bcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
+    struct cell_buff *restrict local_bbuff = *bbuff;
+    for (int k = 0; k < bcount; k++) {
       if (bparts[k].time_bin == time_bin_inhibited)
         error("Inhibited particle present in space_split()");
       if (bparts[k].time_bin == time_bin_not_created)
         error("Extra particle present in space_split()");
-#endif
       local_bbuff[k].x[0] = bparts[k].x[0];
       local_bbuff[k].x[1] = bparts[k].x[1];
       local_bbuff[k].x[2] = bparts[k].x[2];
     }
+#endif
   }
-
   if (sink_count > 0) {
     if (swift_memalign("temp_sink_buff", (void **)sink_buff,
                        SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * sink_count) != 0)
       error("Failed to allocate temporary indices.");
-
-    struct cell_buff *restrict local_sink_buff = *sink_buff;
-
-    for (int k = 0; k < sink_count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
+    struct cell_buff *restrict local_sink_buff = *sink_buff;
+    for (int k = 0; k < sink_count; k++) {
       if (sinks[k].time_bin == time_bin_inhibited)
         error("Inhibited particle present in space_split()");
       if (sinks[k].time_bin == time_bin_not_created)
         error("Extra particle present in space_split()");
-#endif
       local_sink_buff[k].x[0] = sinks[k].x[0];
       local_sink_buff[k].x[1] = sinks[k].x[1];
       local_sink_buff[k].x[2] = sinks[k].x[2];
     }
+#endif
   }
 }
 

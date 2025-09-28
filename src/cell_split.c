@@ -76,8 +76,14 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   int bucket_offset[9];
 
+#define HYDRO_BUCKET(x)                                        \
+  ((((x)[0] >= pivot[0]) << 2) | (((x)[1] >= pivot[1]) << 1) | \
+   ((x)[2] >= pivot[2]))
+#define STRICT_BUCKET(x)                                     \
+  ((((x)[0] > pivot[0]) << 2) | (((x)[1] > pivot[1]) << 1) | \
+   ((x)[2] > pivot[2]))
+
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the buffs are OK. */
   for (int k = 0; k < count; k++) {
     if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
         buff[k].x[2] != parts[k].x[2])
@@ -105,46 +111,67 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  /* Fill the buffer with the indices. */
+  /* Hydro */
   for (int k = 0; k < count; k++) {
-    const int bid = (buff[k].x[0] >= pivot[0]) * 4 +
-                    (buff[k].x[1] >= pivot[1]) * 2 + (buff[k].x[2] >= pivot[2]);
-    bucket_count[bid]++;
+#if defined(SWIFT_DEBUG_CHECKS)
+    const int bid = HYDRO_BUCKET(buff[k].x);
     buff[k].ind = bid;
+#else
+    const int bid = HYDRO_BUCKET(parts[k].x);
+#endif
+    bucket_count[bid]++;
   }
 
-  /* Set the buffer offsets. */
   bucket_offset[0] = 0;
   for (int k = 1; k <= 8; k++) {
     bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap particles to their correct spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
+
+#if defined(SWIFT_DEBUG_CHECKS)
       int bid = buff[k].ind;
+#else
+      int bid = HYDRO_BUCKET(parts[k].x);
+#endif
       if (bid != bucket) {
         struct part part = parts[k];
         struct xpart xpart = xparts[k];
+#if defined(SWIFT_DEBUG_CHECKS)
         struct cell_buff temp_buff = buff[k];
+#endif
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (buff[j].ind == bid) {
+          while (1) {
+#if defined(SWIFT_DEBUG_CHECKS)
+            if (buff[j].ind != bid) break;
+#else
+            if (HYDRO_BUCKET(parts[j].x) != bid) break;
+#endif
             j++;
             bucket_count[bid]++;
           }
           memswap(&parts[j], &part, sizeof(struct part));
           memswap(&xparts[j], &xpart, sizeof(struct xpart));
+#if defined(SWIFT_DEBUG_CHECKS)
           memswap(&buff[j], &temp_buff, sizeof(struct cell_buff));
+#endif
           if (parts[j].gpart)
             parts[j].gpart->id_or_neg_offset = -(j + parts_offset);
+#if defined(SWIFT_DEBUG_CHECKS)
           bid = temp_buff.ind;
+#else
+          bid = HYDRO_BUCKET(part.x);
+#endif
         }
         parts[k] = part;
         xparts[k] = xpart;
+#if defined(SWIFT_DEBUG_CHECKS)
         buff[k] = temp_buff;
+#endif
         if (parts[k].gpart)
           parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
       }
@@ -152,7 +179,6 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     }
   }
 
-  /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->hydro.count = bucket_count[k];
     c->progeny[k]->hydro.count_total = c->progeny[k]->hydro.count;
@@ -161,15 +187,12 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the buffs are OK. */
   for (int k = 1; k < count; k++) {
     if (buff[k].ind < buff[k - 1].ind) error("Buff not sorted.");
     if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
         buff[k].x[2] != parts[k].x[2])
       error("Inconsistent buff contents (k=%i).", k);
   }
-
-  /* Verify that _all_ the parts have been assigned to a cell. */
   for (int k = 1; k < 8; k++)
     if (&c->progeny[k - 1]->hydro.parts[c->progeny[k - 1]->hydro.count] !=
         c->progeny[k]->hydro.parts)
@@ -180,7 +203,6 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
       &c->hydro.parts[count])
     error("Particle sorting failed (right edge).");
 
-  /* Verify a few sub-cells. */
   for (int k = 0; k < c->progeny[0]->hydro.count; k++)
     if (c->progeny[0]->hydro.parts[k].x[0] >= pivot[0] ||
         c->progeny[0]->hydro.parts[k].x[1] >= pivot[1] ||
@@ -223,46 +245,64 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
       error("Sorting failed (progeny=7).");
 #endif
 
-  /* Now do the same song and dance for the sparts. */
+  /* Stars */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
-
-  /* Fill the buffer with the indices. */
   for (int k = 0; k < scount; k++) {
-    const int bid = (sbuff[k].x[0] > pivot[0]) * 4 +
-                    (sbuff[k].x[1] > pivot[1]) * 2 + (sbuff[k].x[2] > pivot[2]);
-    bucket_count[bid]++;
+#if defined(SWIFT_DEBUG_CHECKS)
+    const int bid = STRICT_BUCKET(sbuff[k].x);
     sbuff[k].ind = bid;
+#else
+    const int bid = STRICT_BUCKET(sparts[k].x);
+#endif
+    bucket_count[bid]++;
   }
 
-  /* Set the buffer offsets. */
   bucket_offset[0] = 0;
   for (int k = 1; k <= 8; k++) {
     bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap particles to their correct spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
+#if defined(SWIFT_DEBUG_CHECKS)
       int bid = sbuff[k].ind;
+#else
+      int bid = STRICT_BUCKET(sparts[k].x);
+#endif
       if (bid != bucket) {
         struct spart spart = sparts[k];
+#if defined(SWIFT_DEBUG_CHECKS)
         struct cell_buff temp_buff = sbuff[k];
+#endif
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (sbuff[j].ind == bid) {
+          while (1) {
+#if defined(SWIFT_DEBUG_CHECKS)
+            if (sbuff[j].ind != bid) break;
+#else
+            if (STRICT_BUCKET(sparts[j].x) != bid) break;
+#endif
             j++;
             bucket_count[bid]++;
           }
           memswap(&sparts[j], &spart, sizeof(struct spart));
+#if defined(SWIFT_DEBUG_CHECKS)
           memswap(&sbuff[j], &temp_buff, sizeof(struct cell_buff));
+#endif
           if (sparts[j].gpart)
             sparts[j].gpart->id_or_neg_offset = -(j + sparts_offset);
+#if defined(SWIFT_DEBUG_CHECKS)
           bid = temp_buff.ind;
+#else
+          bid = STRICT_BUCKET(spart.x);
+#endif
         }
         sparts[k] = spart;
+#if defined(SWIFT_DEBUG_CHECKS)
         sbuff[k] = temp_buff;
+#endif
         if (sparts[k].gpart)
           sparts[k].gpart->id_or_neg_offset = -(k + sparts_offset);
       }
@@ -270,7 +310,6 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     }
   }
 
-  /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->stars.count = bucket_count[k];
     c->progeny[k]->stars.count_total = c->progeny[k]->stars.count;
@@ -278,46 +317,64 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     c->progeny[k]->stars.parts_rebuild = c->progeny[k]->stars.parts;
   }
 
-  /* Now do the same song and dance for the bparts. */
+  /* Black holes */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
-
-  /* Fill the buffer with the indices. */
   for (int k = 0; k < bcount; k++) {
-    const int bid = (bbuff[k].x[0] > pivot[0]) * 4 +
-                    (bbuff[k].x[1] > pivot[1]) * 2 + (bbuff[k].x[2] > pivot[2]);
-    bucket_count[bid]++;
+#if defined(SWIFT_DEBUG_CHECKS)
+    const int bid = STRICT_BUCKET(bbuff[k].x);
     bbuff[k].ind = bid;
+#else
+    const int bid = STRICT_BUCKET(bparts[k].x);
+#endif
+    bucket_count[bid]++;
   }
 
-  /* Set the buffer offsets. */
   bucket_offset[0] = 0;
   for (int k = 1; k <= 8; k++) {
     bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap particles to their correct spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
+#if defined(SWIFT_DEBUG_CHECKS)
       int bid = bbuff[k].ind;
+#else
+      int bid = STRICT_BUCKET(bparts[k].x);
+#endif
       if (bid != bucket) {
         struct bpart bpart = bparts[k];
+#if defined(SWIFT_DEBUG_CHECKS)
         struct cell_buff temp_buff = bbuff[k];
+#endif
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (bbuff[j].ind == bid) {
+          while (1) {
+#if defined(SWIFT_DEBUG_CHECKS)
+            if (bbuff[j].ind != bid) break;
+#else
+            if (STRICT_BUCKET(bparts[j].x) != bid) break;
+#endif
             j++;
             bucket_count[bid]++;
           }
           memswap(&bparts[j], &bpart, sizeof(struct bpart));
+#if defined(SWIFT_DEBUG_CHECKS)
           memswap(&bbuff[j], &temp_buff, sizeof(struct cell_buff));
+#endif
           if (bparts[j].gpart)
             bparts[j].gpart->id_or_neg_offset = -(j + bparts_offset);
+#if defined(SWIFT_DEBUG_CHECKS)
           bid = temp_buff.ind;
+#else
+          bid = STRICT_BUCKET(bpart.x);
+#endif
         }
         bparts[k] = bpart;
+#if defined(SWIFT_DEBUG_CHECKS)
         bbuff[k] = temp_buff;
+#endif
         if (bparts[k].gpart)
           bparts[k].gpart->id_or_neg_offset = -(k + bparts_offset);
       }
@@ -325,54 +382,70 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     }
   }
 
-  /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->black_holes.count = bucket_count[k];
     c->progeny[k]->black_holes.count_total = c->progeny[k]->black_holes.count;
     c->progeny[k]->black_holes.parts = &c->black_holes.parts[bucket_offset[k]];
   }
 
-  /* Now do the same song and dance for the sinks. */
+  /* Sinks */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
-
-  /* Fill the buffer with the indices. */
   for (int k = 0; k < sink_count; k++) {
-    const int bid = (sinkbuff[k].x[0] > pivot[0]) * 4 +
-                    (sinkbuff[k].x[1] > pivot[1]) * 2 +
-                    (sinkbuff[k].x[2] > pivot[2]);
-    bucket_count[bid]++;
+#if defined(SWIFT_DEBUG_CHECKS)
+    const int bid = STRICT_BUCKET(sinkbuff[k].x);
     sinkbuff[k].ind = bid;
+#else
+    const int bid = STRICT_BUCKET(sinks[k].x);
+#endif
+    bucket_count[bid]++;
   }
 
-  /* Set the buffer offsets. */
   bucket_offset[0] = 0;
   for (int k = 1; k <= 8; k++) {
     bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap particles to their correct spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
+#if defined(SWIFT_DEBUG_CHECKS)
       int bid = sinkbuff[k].ind;
+#else
+      int bid = STRICT_BUCKET(sinks[k].x);
+#endif
       if (bid != bucket) {
         struct sink sink = sinks[k];
+#if defined(SWIFT_DEBUG_CHECKS)
         struct cell_buff temp_buff = sinkbuff[k];
+#endif
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (sinkbuff[j].ind == bid) {
+          while (1) {
+#if defined(SWIFT_DEBUG_CHECKS)
+            if (sinkbuff[j].ind != bid) break;
+#else
+            if (STRICT_BUCKET(sinks[j].x) != bid) break;
+#endif
             j++;
             bucket_count[bid]++;
           }
           memswap(&sinks[j], &sink, sizeof(struct sink));
+#if defined(SWIFT_DEBUG_CHECKS)
           memswap(&sinkbuff[j], &temp_buff, sizeof(struct cell_buff));
+#endif
           if (sinks[j].gpart)
             sinks[j].gpart->id_or_neg_offset = -(j + sinks_offset);
+#if defined(SWIFT_DEBUG_CHECKS)
           bid = temp_buff.ind;
+#else
+          bid = STRICT_BUCKET(sink.x);
+#endif
         }
         sinks[k] = sink;
+#if defined(SWIFT_DEBUG_CHECKS)
         sinkbuff[k] = temp_buff;
+#endif
         if (sinks[k].gpart)
           sinks[k].gpart->id_or_neg_offset = -(k + sinks_offset);
       }
@@ -380,7 +453,6 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     }
   }
 
-  /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->sinks.count = bucket_count[k];
     c->progeny[k]->sinks.count_total = c->progeny[k]->sinks.count;
@@ -388,40 +460,52 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     c->progeny[k]->sinks.parts_rebuild = c->progeny[k]->sinks.parts;
   }
 
-  /* Finally, do the same song and dance for the gparts. */
+  /* Gravity */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
-
-  /* Fill the buffer with the indices. */
   for (int k = 0; k < gcount; k++) {
-    const int bid = (gbuff[k].x[0] > pivot[0]) * 4 +
-                    (gbuff[k].x[1] > pivot[1]) * 2 + (gbuff[k].x[2] > pivot[2]);
-    bucket_count[bid]++;
+#if defined(SWIFT_DEBUG_CHECKS)
+    const int bid = STRICT_BUCKET(gbuff[k].x);
     gbuff[k].ind = bid;
+#else
+    const int bid = STRICT_BUCKET(gparts[k].x);
+#endif
+    bucket_count[bid]++;
   }
 
-  /* Set the buffer offsets. */
   bucket_offset[0] = 0;
   for (int k = 1; k <= 8; k++) {
     bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap particles to their correct spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
+#if defined(SWIFT_DEBUG_CHECKS)
       int bid = gbuff[k].ind;
+#else
+      int bid = STRICT_BUCKET(gparts[k].x);
+#endif
       if (bid != bucket) {
         struct gpart gpart = gparts[k];
+#if defined(SWIFT_DEBUG_CHECKS)
         struct cell_buff temp_buff = gbuff[k];
+#endif
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (gbuff[j].ind == bid) {
+          while (1) {
+#if defined(SWIFT_DEBUG_CHECKS)
+            if (gbuff[j].ind != bid) break;
+#else
+            if (STRICT_BUCKET(gparts[j].x) != bid) break;
+#endif
             j++;
             bucket_count[bid]++;
           }
           memswap_unaligned(&gparts[j], &gpart, sizeof(struct gpart));
+#if defined(SWIFT_DEBUG_CHECKS)
           memswap(&gbuff[j], &temp_buff, sizeof(struct cell_buff));
+#endif
           if (gparts[j].type == swift_type_gas) {
             parts[-gparts[j].id_or_neg_offset - parts_offset].gpart =
                 &gparts[j];
@@ -435,10 +519,16 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
             bparts[-gparts[j].id_or_neg_offset - bparts_offset].gpart =
                 &gparts[j];
           }
+#if defined(SWIFT_DEBUG_CHECKS)
           bid = temp_buff.ind;
+#else
+          bid = STRICT_BUCKET(gpart.x);
+#endif
         }
         gparts[k] = gpart;
+#if defined(SWIFT_DEBUG_CHECKS)
         gbuff[k] = temp_buff;
+#endif
         if (gparts[k].type == swift_type_gas) {
           parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
         } else if (gparts[k].type == swift_type_stars) {
@@ -455,13 +545,15 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     }
   }
 
-  /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->grav.count = bucket_count[k];
     c->progeny[k]->grav.count_total = c->progeny[k]->grav.count;
     c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
     c->progeny[k]->grav.parts_rebuild = c->progeny[k]->grav.parts;
   }
+
+#undef HYDRO_BUCKET
+#undef STRICT_BUCKET
 }
 
 /**
