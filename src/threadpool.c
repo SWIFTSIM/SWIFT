@@ -106,8 +106,8 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
   bzero(names, sizeof(struct name_entry) * max_names);
 
   /* Write a header. */
-  fprintf(fd, "# map_function thread_id chunk_size tic toc");
-  fprintf(fd, "# {'num_threads': %i, 'cpufreq': %lli}", tp->num_threads,
+  fprintf(fd, "# map_function thread_id chunk_size tic toc\n");
+  fprintf(fd, "# {'num_threads': %i, 'cpufreq': %lli}\n", tp->num_threads,
           clocks_get_cpufreq());
 
   /* Loop over the per-tid logs and dump them. */
@@ -135,7 +135,7 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
       }
 
       /* Log a line to the file. */
-      fprintf(fd, "%s %i %i %lli %lli", names[nid].name, entry->tid,
+      fprintf(fd, "%s %i %i %lli %lli\n", names[nid].name, entry->tid,
               entry->chunk_size, entry->tic, entry->toc);
     }
 
