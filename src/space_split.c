@@ -675,7 +675,6 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int scount = c->stars.count;
   const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
-  int maxdepth = 0;
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
   const int with_rt = e->policy & engine_policy_rt;
@@ -712,11 +711,6 @@ void space_split_recursive(struct space *s, struct cell *c,
     cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
                c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
                buff, sbuff, bbuff, gbuff, sink_buff);
-
-    /* Buffers for the progenitors */
-    struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
-                     *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
-                     *progeny_sink_buff = sink_buff;
 
     /* Loop over progeny, cleaning up or splitting and recursing. */
     for (int k = 0; k < 8; k++) {
@@ -799,6 +793,24 @@ void space_post_split_recursive(struct space *s, struct cell *c) {
    * divide interactions between zoom and neighbour cells.)*/
   if (c->split) {
 
+    /* Define properties we'll compute from the progeny. */
+    float h_max = 0.0f;
+    float h_max_active = 0.0f;
+    float stars_h_max = 0.f;
+    float stars_h_max_active = 0.f;
+    float black_holes_h_max = 0.f;
+    float black_holes_h_max_active = 0.f;
+    float sinks_h_max = 0.f;
+    float sinks_h_max_active = 0.f;
+    integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+    integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+    integertime_t ti_rt_min_step_size = max_nr_timesteps;
+    integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
+    integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
+    integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
+    integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                  ti_black_holes_beg_max = 0;
+
     /* Loop over progeny, cleaning up or splitting and recursing. */
     for (int k = 0; k < 8; k++) {
 
@@ -810,13 +822,6 @@ void space_post_split_recursive(struct space *s, struct cell *c) {
 
       /* Recurse */
       space_post_split_recursive(s, cp);
-
-      /* Update the pointers in the buffers */
-      progeny_buff += cp->hydro.count;
-      progeny_gbuff += cp->grav.count;
-      progeny_sbuff += cp->stars.count;
-      progeny_bbuff += cp->black_holes.count;
-      progeny_sink_buff += cp->sinks.count;
 
       /* Update the cell-wide properties */
       h_max = max(h_max, cp->hydro.h_max);
