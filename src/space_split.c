@@ -779,15 +779,8 @@ void space_post_split_recursive(struct space *s, struct cell *c) {
   }
 #endif
 
-  const int count = c->hydro.count;
-  const int gcount = c->grav.count;
-  const int scount = c->stars.count;
-  const int with_self_gravity = s->with_self_gravity;
-  const int depth = c->depth;
   int maxdepth = 0;
   struct engine *e = s->e;
-  const integertime_t ti_current = e->ti_current;
-  const int with_rt = e->policy & engine_policy_rt;
 
   /* Split or let it be? (When running a zoom we split neighbour cells to better
    * divide interactions between zoom and neighbour cells.)*/
@@ -1141,13 +1134,13 @@ void space_split(struct space *s, int verbose) {
 
     /* Create the background cell trees and populate their multipoles. */
     threadpool_map_with_queue(&s->e->threadpool, bkg_space_split_build_mapper,
-                              s->bkg_props->bkg_cells_top,
-                              s->bkg_props->nr_bkg_cells, sizeof(struct cell),
+                              s->zoom_props->bkg_cells_top,
+                              s->zoom_props->nr_bkg_cells, sizeof(struct cell),
                               threadpool_auto_chunk_size, s);
     threadpool_map(&s->e->threadpool, bkg_space_split_post_build_mapper,
-                   s->bkg_props->local_bkg_cells_with_particles_top,
-                   s->bkg_props->nr_local_bkg_cells_with_particles, sizeof(int),
-                   threadpool_uniform_chunk_size, s);
+                   s->zoom_props->local_bkg_cells_with_particles_top,
+                   s->zoom_props->nr_local_bkg_cells_with_particles,
+                   sizeof(int), threadpool_uniform_chunk_size, s);
 
     if (verbose)
       message("Background cell tree and multipole construction took %.3f %s.",
