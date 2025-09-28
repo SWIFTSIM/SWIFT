@@ -505,7 +505,7 @@ struct tpq_state {
   pthread_cond_t sleep_cv;
   int sleepers;
   int active;
-  atomic_int tasks_in_flight;
+  int tasks_in_flight;
   /* Cached map params. */
   threadpool_map_function map_function;
   void *map_extra_data;
@@ -544,7 +544,7 @@ static struct tpq_state *threadpool_queue_get(struct threadpool *tp,
   pthread_cond_init(&s->sleep_cv, NULL);
   s->sleepers = 0;
   s->active = 0;
-  atomic_store(&s->tasks_in_flight, 0);
+  &s->tasks_in_flight = 0;
   s->map_function = NULL;
   s->map_extra_data = NULL;
   struct tpq_node *nn = (struct tpq_node *)malloc(sizeof(*nn));
@@ -779,7 +779,7 @@ static void threadpool_chomp_queue(struct threadpool *tp, int tid) {
     }
 
     /* Completion test: no tasks in flight and all queues empty. */
-    if (atomic_get(&s->tasks_in_flight) == 0) {
+    if (s->tasks_in_flight == 0) {
       int empty = 1;
       for (int i = 0; i < tp->num_threads; i++) {
         pthread_mutex_lock(&s->queues[i].lock);
