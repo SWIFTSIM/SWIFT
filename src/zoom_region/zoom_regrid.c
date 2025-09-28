@@ -206,11 +206,15 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
   int old_bkg_cdim = s->cdim[0];
   while (zoom_need_regrid(s, new_cdim)) {
 
-    message("Finding an acceptable zoom region geometry...");
-
     /* First try decreasing the background cdim to a minimum of 50% its
      * current value. */
     while (zoom_need_regrid(s, new_cdim) && s->cdim[0] > 0.5 * old_bkg_cdim) {
+
+      message(
+          "Adjusting background cell size to find acceptable zoom geometry ("
+          "bkg_cdim=(%d,%d,%d)).",
+          s->zoom_props->bkg_cdim[0] - 1, s->zoom_props->bkg_cdim[1] - 1,
+          s->zoom_props->bkg_cdim[2] - 1);
 
       /* Decrement the background cdim. */
       s->zoom_props->bkg_cdim[0]--;
@@ -240,6 +244,11 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
     s->zoom_props->bkg_cdim[0] = old_bkg_cdim;
     s->zoom_props->bkg_cdim[1] = old_bkg_cdim;
     s->zoom_props->bkg_cdim[2] = old_bkg_cdim;
+
+    message(
+        "Adjusting zoom cell size to find acceptable zoom geometry "
+        "(depth=%d).",
+        s->zoom_props->zoom_cell_depth - 1);
 
     /* If adjusting the background didn't work then decrease the zoom region
      * depth by one (doubling the zoom cell size). */
