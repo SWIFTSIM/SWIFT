@@ -209,6 +209,7 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
     error("Failed to allocate memory for zoom region dimension data.");
   }
   bzero(reg_data, sizeof(struct region_dim_data));
+  reg_data->s = s;
 
   /* Find the min/max location in each dimension for each
    * high resolution gravity particle (non-background), and their COM. */
