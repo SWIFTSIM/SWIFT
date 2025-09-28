@@ -544,7 +544,7 @@ static struct tpq_state *threadpool_queue_get(struct threadpool *tp,
   pthread_cond_init(&s->sleep_cv, NULL);
   s->sleepers = 0;
   s->active = 0;
-  &s->tasks_in_flight = 0;
+  s->tasks_in_flight = 0;
   s->map_function = NULL;
   s->map_extra_data = NULL;
   struct tpq_node *nn = (struct tpq_node *)malloc(sizeof(*nn));
