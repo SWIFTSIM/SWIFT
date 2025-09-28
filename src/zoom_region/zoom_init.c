@@ -208,7 +208,15 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
   if (reg_data == NULL) {
     error("Failed to allocate memory for zoom region dimension data.");
   }
-  bzero(reg_data, sizeof(struct region_dim_data));
+
+  /* Initialise the mapper data. */
+  reg_data->mtot = 0.0;
+  for (int i = 0; i < 3; i++) {
+    reg_data->min_bounds[i] = FLT_MAX;
+    reg_data->max_bounds[i] = -FLT_MAX;
+    reg_data->com[i] = 0.0;
+    reg_data->vcom[i] = 0.0;
+  }
   reg_data->s = s;
 
   /* Find the min/max location in each dimension for each
