@@ -902,7 +902,7 @@ void zoom_report_cell_properties(const struct space *s) {
 void zoom_props_init(struct swift_params *params, struct space *s,
                      const int verbose) {
 
-  connst ticks tic = getticks();
+  const ticks tic = getticks();
 
   /* If not, we're done here */
   if (!s->with_zoom_region) {
