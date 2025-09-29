@@ -1016,12 +1016,10 @@ void space_split(struct space *s, int verbose) {
                  threadpool_auto_chunk_size, s);
 
   if (verbose && s->with_self_gravity)
-    message(
-        "Recursively collecting properties and constructing multipoles took "
-        "%.3f %s.",
-        clocks_from_ticks(getticks() - tic), clocks_getunit());
+    message("Collecting properties and constructing multipoles took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
   else if (verbose)
-    message("Recursively collecting properties took %.3f %s.",
+    message("Collecting properties took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   if (verbose)
