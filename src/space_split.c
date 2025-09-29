@@ -667,6 +667,7 @@ void space_split_build_recursive(struct space *s, struct cell *c,
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
+  const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
   int maxdepth = 0;
   struct engine *e = s->e;
@@ -676,10 +677,9 @@ void space_split_build_recursive(struct space *s, struct cell *c,
     error(
         "Exceeded maximum depth (%d) when splitting cells, aborting. This is "
         "most likely due to having too many particles at the exact same "
-        "position, making the construction of a tree impossible. (gcount=%d,"
-        " c->type=%s, c->subtype=%s, gparts[0].x=%.3f, gparts[1].x=%.3f)",
-        space_cell_maxdepth, gcount, cellID_names[c->type],
-        subcellID_names[c->subtype], c->grav.parts[0].x[0],
+        "position, making the construction of a tree impossible. (gcount=%d, "
+        "gparts[0].x=%.3f, gparts[1].x=%.3f)",
+        space_cell_maxdepth, gcount, c->grav.parts[0].x[0],
         c->grav.parts[1].x[0]);
   }
 
@@ -767,12 +767,6 @@ void space_split_build_recursive(struct space *s, struct cell *c,
  */
 void space_split_collect_recursive(struct space *s, struct cell *c) {
 
-  const int count = c->hydro.count;
-  const int gcount = c->grav.count;
-  const int scount = c->stars.count;
-  const int with_self_gravity = s->with_self_gravity;
-  const int depth = c->depth;
-  int maxdepth = 0;
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
   const int with_rt = e->policy & engine_policy_rt;
@@ -1005,7 +999,7 @@ void space_split(struct space *s, int verbose) {
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
-  const ticks tic = getticks();
+  ticks tic = getticks();
 
   threadpool_map(&s->e->threadpool, space_split_build_mapper,
                  s->local_cells_with_particles_top,
