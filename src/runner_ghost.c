@@ -2212,8 +2212,6 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Finish the density calculation */
           sidm_end_density(sip, cosmo);
-          // adaptive_softening_end_density(sip, e->gravity_properties); /*TODO:
-          // confirm this is hydro specific*/
 
           /* Are we using the alternative definition of the
              number of neighbours? */
@@ -2229,9 +2227,7 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
           const float f = n_sum - n_target;
           const float f_prime =
               sip->density.wcount_dh * h_old_dim +
-              hydro_dimension * sip->density.wcount *
-                  h_old_dim_minus_one; /*TODO: should use sidm_dimension instead
-                                          for DMO case*/
+              hydro_dimension * sip->density.wcount * h_old_dim_minus_one;
 
           /* Improve the bisection bounds */
           if (n_sum < n_target)
@@ -2327,7 +2323,6 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Re-initialise everything */
             sidm_init_sipart(sip);
-            // adaptive_softening_init_part(sip);
 
             /* Off we go ! */
             continue;
@@ -2365,10 +2360,6 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
         h_max_active = max(h_max_active, sip->h);
 
         ghost_stats_converged_sidm(&c->ghost_statistics, sip);
-
-        /* Update gravitational softening (in adaptive softening case) */
-        // if (sip->gpart)
-        //   gravity_update_softening(sip->gpart, sip, e->gravity_properties);
       }
 
       /* We now need to treat the particles whose smoothing length had not
