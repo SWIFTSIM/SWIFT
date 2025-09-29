@@ -563,7 +563,9 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
         s->zoom_props->applied_zoom_vel_shift[1],
         s->zoom_props->applied_zoom_vel_shift[2]);
 
-  /* Store the scale factor at which we applied the shift. */
+  /* Store the scale factor at which we applied the shift (if we don't yet
+   * have the engine then we are starting up and will set this in
+   * engine_init). */
   if (s->e != NULL) {
 
     /* Are we doing cosmology? */
@@ -572,14 +574,8 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
     } else {
       s->zoom_props->scale_factor_at_last_shift = 1.0;
     }
-
   } else {
-
-    /* If we don't have the engine yet then we are at the start and can
-     * read the parameter file value (not dangerous if not doing cosmology,
-     * in that case this property will never be touched). */
-    s->zoom_props->scale_factor_at_last_shift =
-        parser_get_opt_param_double(params, "Cosmology:a_begin", 1.0);
+    s->zoom_props->scale_factor_at_last_shift = -1.0;
   }
 
   if (verbose) {

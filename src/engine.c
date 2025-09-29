@@ -3413,9 +3413,9 @@ int engine_step(struct engine *e) {
             e->collect_group1.csds_file_size_gb);
 #endif
 
-    /********************************************************/
-    /* OK, we are done with the regular stuff. Time for i/o */
-    /********************************************************/
+  /********************************************************/
+  /* OK, we are done with the regular stuff. Time for i/o */
+  /********************************************************/
 
 #ifdef WITH_LIGHTCONE
   /* Flush lightcone buffers if necessary */
@@ -4081,6 +4081,13 @@ void engine_init(
     csds_init(e->csds, e, params);
   }
 #endif
+
+  /* If we are running with a zoom region we need to set the initial shift
+   * time, we couldn't do this at the time of the shift becuase the engine
+   * wasn't initialised yet */
+  if (s->with_zoom_region && s->zoom_props->scale_factor_at_last_shift < 0.0) {
+    s->zoom_props->scale_factor_at_last_shift = s->e->cosmology->a_begin;
+  }
 }
 
 /**
