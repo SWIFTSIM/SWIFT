@@ -482,13 +482,6 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
       s->zoom_props->zoom_vel_shift[0] == 0.0 &&
       s->zoom_props->zoom_vel_shift[1] == 0.0 &&
       s->zoom_props->zoom_vel_shift[2] == 0.0) {
-
-    /* Store what we applied to write out later. */
-    for (int i = 0; i < 3; i++) {
-      s->zoom_props->applied_zoom_shift[i] = 0.0;
-      s->zoom_props->applied_zoom_vel_shift[i] = 0.0;
-    }
-
     return;
   }
 
@@ -562,8 +555,9 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
   /* Store what we applied to write out later and zero the shift to avoid
    * pointless reapplication. */
   for (int i = 0; i < 3; i++) {
-    s->zoom_props->applied_zoom_shift[i] = s->zoom_props->zoom_shift[i];
-    s->zoom_props->applied_zoom_vel_shift[i] = s->zoom_props->zoom_vel_shift[i];
+    s->zoom_props->applied_zoom_shift[i] += s->zoom_props->zoom_shift[i];
+    s->zoom_props->applied_zoom_vel_shift[i] +=
+        s->zoom_props->zoom_vel_shift[i];
     s->zoom_props->zoom_shift[i] = 0.0;
     s->zoom_props->zoom_vel_shift[i] = 0.0;
   }
