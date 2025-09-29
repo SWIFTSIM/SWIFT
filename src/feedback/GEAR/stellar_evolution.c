@@ -370,12 +370,6 @@ void stellar_evolution_evolve_individual_star(
     return;
   }
 
-  /* You can use this to help debugging */
-  /* const float mass_Msun = sp->mass / phys_const->const_solar_mass; */
-  /* message("mass = %e, star_age_beg_step_myr = %e, lifetime = %e", */
-  /* mass_Msun, star_age_beg_step_myr, lifetime_myr); */
-
-  /* TODO: Pre-SN feedback (do it until the star is dead) */
   /* Note: You can update the function parameters as needed. */
   stellar_evolution_compute_preSN_feedback_individual_star(
       sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
@@ -426,7 +420,6 @@ void stellar_evolution_evolve_spart(
     return;
   }
 
-  /* TODO: Pre-SN feedback */
   /* Note: You can update the function parameters as needed. */
   stellar_evolution_compute_preSN_feedback_spart(
       sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
@@ -1029,9 +1022,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
     struct spart* restrict sp, const struct stellar_model* sm,
     const struct cosmology* cosmo, const struct unit_system* us,
     const struct phys_const* phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
-  /* TODO */
-}
+    const double star_age_beg_step, const double dt) {}
 
 /**
  * @brief Compute the pre-supernova feedback for a SSP/continuous-IMF #spart.
@@ -1054,6 +1045,4 @@ void stellar_evolution_compute_preSN_feedback_spart(
     struct spart* restrict sp, const struct stellar_model* sm,
     const struct cosmology* cosmo, const struct unit_system* us,
     const struct phys_const* phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
-  /* TODO */
-}
+    const double star_age_beg_step, const double dt) {}

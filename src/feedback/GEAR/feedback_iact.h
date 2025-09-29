@@ -134,8 +134,6 @@ runner_iact_nonsym_feedback_apply(
     }
   }
 
-  /* TODO: Distribute pre-SN */
-
   /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);
 

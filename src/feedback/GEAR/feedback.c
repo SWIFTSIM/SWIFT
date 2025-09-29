@@ -49,7 +49,6 @@ float feedback_compute_spart_timestep(
     const struct phys_const* phys_const, const int with_cosmology,
     const struct cosmology* cosmo) {
 
-  /* TODO: Compute timestep for feedback */
   const float dt = FLT_MAX;
 
   /* If the star is dead, do not limit its timestep */
@@ -70,8 +69,7 @@ float feedback_compute_spart_timestep(
 void feedback_update_part(struct part* p, struct xpart* xp,
                           const struct engine* e) {
 
-  /* TODO: Treat the pre-SN case
-     WARNING: Do not comment out this line, because it will mess-up with
+  /* WARNING: Do not comment out this line, because it will mess-up with
      SF/sinks. (I think it injects something that it should not...) */
   /* Did the particle receive a supernovae */
   if (xp->feedback_data.delta_mass == 0) return;
@@ -267,12 +265,9 @@ void feedback_will_do_feedback(
   /* Apply the energy efficiency factor */
   sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
 
-  /* TODO: See if we need to add something about pre-SN */
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback =
       sp->feedback_data.energy_ejected != 0. || !sp->feedback_data.is_dead;
-
-  /* TODO: Do we want to multiply pre-SN energy bu the efficiency? */
 }
 
 /**
