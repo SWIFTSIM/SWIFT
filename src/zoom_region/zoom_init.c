@@ -618,24 +618,24 @@ static double zoom_compute_bkg_truncate_dist(const double zoom_dim,
 /**
  * @brief Truncate the simulation volume to remove distant background.
  *
- * This removes all cells that are further away from the zoom region than the
- * truncation distance computed with zoom_compute_bkg_truncate_dist.
+ * This removes all particles that are further away from the zoom region than
+ * the truncation distance computed with zoom_compute_bkg_truncate_dist.
  *
  * @param s The #space.
  * @param verbose Whether to be verbose or not.
- * @return The initial maximum dimension of the zoom region (all sides equal).
  */
-double zoom_get_truncated_region_dim_and_shift(struct space *s,
-                                               const int verbose) {
+void zoom_truncate_bkg(struct space *s, const int verbose) {
+
+  const ticks tic = getticks();
 
   /* Extract some useful pointers and information. */
   double tidal_factor = s->zoom_props->tidal_factor;
   double epsilon = s->zoom_props->truncate_epsilon;
 
-  /* Get the initial zoom region dimension (this will calculate the shift
-   * too but we don't care about this shift and will recalculate it later). */
-  const double zoom_dim =
-      zoom_get_region_dim_and_shift(s) * s->zoom_props->region_pad_factor;
+  /* Get the initial zoom region dimensions. */
+  double zoom_dim = max3(s->zoom_props->part_dim[0], s->zoom_props->part_dim[1],
+                         s->zoom_props->part_dim[2]) *
+                    s->zoom_props->user_region_pad_factor;
 
   /* Compute the truncation distance. */
   const double r_trunc =
@@ -657,42 +657,16 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
     return 0.0;
   }
 
-  /* Shift the particles inside the new box. */
+  /* Include the shift needed for truncation with the shift we just calculated
+   * to centre the zoom region. */
   const double box_mid[3] = {s->dim[0] / 2.0, s->dim[1] / 2.0, s->dim[2] / 2.0};
-  s->zoom_props->truncate_shift[0] = -(box_mid[0] - r_trunc);
-  s->zoom_props->truncate_shift[1] = -(box_mid[1] - r_trunc);
-  s->zoom_props->truncate_shift[2] = -(box_mid[2] - r_trunc);
-  for (size_t k = 0; k < s->nr_parts; k++) {
-    for (int i = 0; i < 3; i++) {
-      s->parts[k].x[i] += s->zoom_props->truncate_shift[i];
-    }
-  }
-  for (size_t k = 0; k < s->nr_gparts; k++) {
-    for (int i = 0; i < 3; i++) {
-      s->gparts[k].x[i] += s->zoom_props->truncate_shift[i];
-    }
-  }
-  for (size_t k = 0; k < s->nr_sinks; k++) {
-    for (int i = 0; i < 3; i++) {
-      s->sinks[k].x[i] += s->zoom_props->truncate_shift[i];
-    }
-  }
-  for (size_t k = 0; k < s->nr_sparts; k++) {
-    for (int i = 0; i < 3; i++) {
-      s->sparts[k].x[i] += s->zoom_props->truncate_shift[i];
-    }
-  }
-  for (size_t k = 0; k < s->nr_bparts; k++) {
-    for (int i = 0; i < 3; i++) {
-      s->bparts[k].x[i] += s->zoom_props->truncate_shift[i];
-    }
-  }
+  s->zoom_props->zoom_shift[0] += -(box_mid[0] - r_trunc);
+  s->zoom_props->zoom_shift[1] += -(box_mid[1] - r_trunc);
+  s->zoom_props->zoom_shift[2] += -(box_mid[2] - r_trunc);
 
   /* Set the new box dimensions. */
   for (int i = 0; i < 3; i++) {
     s->dim[i] = 2.0 * r_trunc;
-    s->width[i] = s->dim[i] / s->zoom_props->bkg_cdim[i];
-    s->iwidth[i] = 1.0 / s->width[i];
   }
 
   /* Loop over all the gparts and inhibit background particles that are
@@ -724,42 +698,11 @@ double zoom_get_truncated_region_dim_and_shift(struct space *s,
     nbkg++;
   }
 
-  /* Now do any wrapping that might be needed (we have shifted the
-   * particles). */
-  if (s->periodic) {
-    for (size_t k = 0; k < s->nr_parts; k++) {
-      box_wrap(s->parts[k].x[0], 0.0, s->dim[0]);
-      box_wrap(s->parts[k].x[1], 0.0, s->dim[1]);
-      box_wrap(s->parts[k].x[2], 0.0, s->dim[2]);
-    }
-    for (size_t k = 0; k < s->nr_gparts; k++) {
-      box_wrap(s->gparts[k].x[0], 0.0, s->dim[0]);
-      box_wrap(s->gparts[k].x[1], 0.0, s->dim[1]);
-      box_wrap(s->gparts[k].x[2], 0.0, s->dim[2]);
-    }
-    for (size_t k = 0; k < s->nr_sinks; k++) {
-      box_wrap(s->sinks[k].x[0], 0.0, s->dim[0]);
-      box_wrap(s->sinks[k].x[1], 0.0, s->dim[1]);
-      box_wrap(s->sinks[k].x[2], 0.0, s->dim[2]);
-    }
-    for (size_t k = 0; k < s->nr_sparts; k++) {
-      box_wrap(s->sparts[k].x[0], 0.0, s->dim[0]);
-      box_wrap(s->sparts[k].x[1], 0.0, s->dim[1]);
-      box_wrap(s->sparts[k].x[2], 0.0, s->dim[2]);
-    }
-    for (size_t k = 0; k < s->nr_bparts; k++) {
-      box_wrap(s->bparts[k].x[0], 0.0, s->dim[0]);
-      box_wrap(s->bparts[k].x[1], 0.0, s->dim[1]);
-      box_wrap(s->bparts[k].x[2], 0.0, s->dim[2]);
-    }
-  }
-
-  if (verbose)
+  if (verbose) {
     message("Removing %zu background particles out of %zu.", ntrunc, nbkg);
-
-  /* Recalculate the zoom region dimensions and shift (we have changed the
-   * box size and shifted the particles). */
-  return zoom_get_region_dim_and_shift(s);
+    message("Truncating the box took %f %s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 }
 
 /**
@@ -1167,11 +1110,14 @@ void zoom_region_init(struct space *s, const int regridding,
    * to check if we need to regrid so we skip it here. */
   if (!regridding) zoom_get_region_dim_and_shift(s, verbose);
 
+  /* Are we truncating the background? (Only applicable when starting up, i.e.
+   * not regridding) */
+  if (s->zoom_props->truncate_background && !regridding) {
+    zoom_truncate_bkg(s, verbose);
+  }
+
   /* Apply the zoom shift to the particles. */
   zoom_apply_zoom_shift_to_particles(s, verbose);
-
-  /* Are we truncating the background? (If so this will shift everything
-   * again to move the particles to lie between 0 and the new box size). */
 
   /* The maximal particle extent is the initial dimensions of
    * the zoom region. */
