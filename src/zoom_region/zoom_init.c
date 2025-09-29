@@ -654,7 +654,6 @@ void zoom_truncate_bkg(struct space *s, const int verbose) {
         "You probably don't need truncation in this case, turn off "
         "ZoomRegion:truncate_background.",
         r_trunc * 2, fmin(s->dim[0], fmin(s->dim[1], s->dim[2])));
-    return 0.0;
   }
 
   /* Include the shift needed for truncation with the shift we just calculated
