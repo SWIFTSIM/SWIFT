@@ -27,7 +27,6 @@
 #include "stars.h"
 #include "units.h"
 
-
 /**
  * @brief Computes the time-step length of a given star particle from feedback
  * physics
@@ -39,10 +38,12 @@
  * @param cosmo The current cosmological model (used if running with
  * cosmology).
  */
-__attribute__((always_inline)) INLINE static float feedback_compute_spart_timestep(
-    const struct spart* const sp, const struct feedback_props* feedback_props,
-    const struct phys_const* phys_const,
-    const int with_cosmology, const struct cosmology* cosmo) {
+__attribute__((always_inline)) INLINE static float
+feedback_compute_spart_timestep(const struct spart* const sp,
+                                const struct feedback_props* feedback_props,
+                                const struct phys_const* phys_const,
+                                const int with_cosmology,
+                                const struct cosmology* cosmo) {
   return FLT_MAX;
 }
 

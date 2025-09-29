@@ -130,7 +130,7 @@ runner_iact_nonsym_feedback_apply(
     /* Add the metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
       pj->chemistry_data.metal_mass[i] +=
-        weight * si->feedback_data.metal_mass_ejected[i];
+          weight * si->feedback_data.metal_mass_ejected[i];
     }
   }
 

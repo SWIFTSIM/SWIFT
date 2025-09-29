@@ -32,8 +32,8 @@
 
 float feedback_compute_spart_timestep(
     const struct spart* const sp, const struct feedback_props* feedback_props,
-    const struct phys_const* phys_const,
-    const int with_cosmology, const struct cosmology* cosmo);
+    const struct phys_const* phys_const, const int with_cosmology,
+    const struct cosmology* cosmo);
 
 void feedback_update_part(struct part* p, struct xpart* xp,
                           const struct engine* e);

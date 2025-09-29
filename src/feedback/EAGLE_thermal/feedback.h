@@ -47,10 +47,12 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
  * @param cosmo The current cosmological model (used if running with
  * cosmology).
  */
-__attribute__((always_inline)) INLINE static float feedback_compute_spart_timestep(
-    const struct spart* const sp, const struct feedback_props* feedback_props,
-    const struct phys_const* phys_const,
-    const int with_cosmology, const struct cosmology* cosmo) {
+__attribute__((always_inline)) INLINE static float
+feedback_compute_spart_timestep(const struct spart* const sp,
+                                const struct feedback_props* feedback_props,
+                                const struct phys_const* phys_const,
+                                const int with_cosmology,
+                                const struct cosmology* cosmo) {
   return FLT_MAX;
 }
 
