@@ -46,8 +46,6 @@
  */
 void space_allocate_extras(struct space *s, int verbose) {
 
-  const ticks tick = getticks();
-
   const int local_nodeID = s->e->nodeID;
 
   /* Anything to do here? (Abort if we don't want extras)*/
@@ -609,6 +607,4 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Free the list of local cells */
   free(local_cells);
-
-  if (verbose) message("allocating extras took %f seconds", getticks() - tick);
 }
