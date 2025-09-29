@@ -34,20 +34,20 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
-	    testLog testDistance testTimeline
+        testLog testDistance testTimeline testSIDMSetUp.sh
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
-         testKernel testFFT testInteractions testMaths testRandom testExp \
-         testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
-         testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
-         testRiemannHLLC testMatrixInversion testDump testCSDS \
+		 testKernel testFFT testInteractions testMaths testRandom testExp \
+		 testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
+		 testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
+		 testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline
+		 testNeutrinoFermiDirac testLog testTimeline testSIDMSetUp
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -162,6 +162,8 @@ testTimeline_SOURCES = testTimeline.c
 
 testHydroMPIrules = testHydroMPIrules.c
 
+testSIDMSetUp_SOURCES = testSIDMSetUp.c
+
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              test27cells.sh test27cellsPerturbed.sh testParser.sh testPeriodicBC.sh \
@@ -175,4 +177,4 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              output_list_scale_factor.txt testEOS_plot.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
-             testNeutrinoCosmology.dat testNeutrinoCosmology.sh
+             testNeutrinoCosmology.dat testNeutrinoCosmology.sh testSIDMSetUp.sh makeInputSIDM.py testSIDM.yml
