@@ -568,7 +568,7 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
 
     /* Are we doing cosmology? */
     if (s->e->policy & engine_policy_cosmology) {
-      s->zoom_props->scale_factor_at_last_shift = s->e->cosmology.a;
+      s->zoom_props->scale_factor_at_last_shift = s->e->cosmology->a;
     } else {
       s->zoom_props->scale_factor_at_last_shift = 1.0;
     }
