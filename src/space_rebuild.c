@@ -106,8 +106,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   const size_t b_index_size = size_bparts + space_expected_max_nr_strays;
   const size_t sink_index_size = size_sinks + space_expected_max_nr_strays;
 
-  ticks tic1 = getticks();
-
   /* Allocate arrays to store the indices of the cells where particles
      belong. We allocate extra space to allow for particles we may
      receive from other nodes */
@@ -146,10 +144,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     cell_bpart_counts[i] = 0;
     cell_sink_counts[i] = 0;
   }
-
-  if (verbose)
-    message("Allocating cell look up arrays took %.3f %s.",
-            clocks_from_ticks(getticks() - tic1), clocks_getunit());
 
   /* Run through the particles and get their cell index. */
   if (nr_parts > 0)
