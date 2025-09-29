@@ -860,7 +860,6 @@ void space_split_collect_recursive(struct space *s, struct cell *c) {
     c->black_holes.ti_beg_max = ti_black_holes_beg_max;
     c->black_holes.h_max = black_holes_h_max;
     c->black_holes.h_max_active = black_holes_h_max_active;
-    c->maxdepth = maxdepth;
 
   } /* Split or leaf? */
 
