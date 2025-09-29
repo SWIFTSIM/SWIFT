@@ -670,7 +670,6 @@ void space_split_build_recursive(struct space *s, struct cell *c,
   const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
   int maxdepth = 0;
-  struct engine *e = s->e;
 
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
