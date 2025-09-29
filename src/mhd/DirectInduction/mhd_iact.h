@@ -41,10 +41,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
 
   const float r = sqrtf(r2);
 
-  /* Get the masses. */
-  const float mi = pi->mass;
-  const float mj = pj->mass;
-
   /* Compute kernels */
   const float hi_inv = 1.f / hi;
   const float xi = r * hi_inv;
@@ -101,10 +97,6 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   float wi, wj, wi_dx, wj_dx;
 
   const float r = sqrtf(r2);
-
-  /* Get the masses. */
-  const float mi = pi->mass;
-  const float mj = pj->mass;
 
   /* Compute kernels */
   const float hi_inv = 1.f / hi;
