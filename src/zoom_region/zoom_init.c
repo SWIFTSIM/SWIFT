@@ -563,6 +563,25 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
         s->zoom_props->applied_zoom_vel_shift[1],
         s->zoom_props->applied_zoom_vel_shift[2]);
 
+  /* Store the scale factor at which we applied the shift. */
+  if (s->e != NULL) {
+
+    /* Are we doing cosmology? */
+    if (s->e->policy & engine_policy_cosmology) {
+      s->zoom_props->scale_factor_at_last_shift = s->e->cosmo.a;
+    } else {
+      s->zoom_props->scale_factor_at_last_shift = 1.0;
+    }
+
+  } else {
+
+    /* If we don't have the engine yet then we are at the start and can
+     * read the parameter file value (not dangerous if not doing cosmology,
+     * in that case this property will never be touched). */
+    s->zoom_props->scale_factor_at_last_shift =
+        parser_get_opt_param_double(params, "Cosmology:a_begin", 1.0);
+  }
+
   if (verbose) {
     message("Applying zoom region shift took %f %s",
             clocks_from_ticks(getticks() - tic), clocks_getunit());

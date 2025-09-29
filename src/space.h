@@ -461,6 +461,9 @@ struct zoom_region_properties {
   /*! Velocity shift needed to remove the bulk velocity of the zoom region. */
   double zoom_vel_shift[3];
 
+  /*! Scale factor of the last shift applied to the particles. */
+  double scale_factor_at_last_shift;
+
   /*! Velocity shift applied to particles to remove the bulk velocity of the
    * zoom region. */
   double applied_zoom_vel_shift[3];

@@ -70,7 +70,7 @@ void zoom_write_metadata(hid_t root_grp, hid_t head_grp,
 
   /* Write out the rest of the data.*/
   io_write_attribute(h_zoom, "CentreOfMass", DOUBLE, center, 3);
-  io_write_attribute(h_zoom, "Shift", DOUBLE, zp->zoom_shift, 3);
+  io_write_attribute(h_zoom, "Shift", DOUBLE, zp->applied_zoom_shift, 3);
   io_write_attribute(h_zoom, "Size", DOUBLE, zp->dim, 3);
   io_write_attribute(h_zoom, "CDim", INT, zp->cdim, 3);
   io_write_attribute_i(h_zoom, "NZoomCells", zp->nr_zoom_cells);
@@ -80,6 +80,17 @@ void zoom_write_metadata(hid_t root_grp, hid_t head_grp,
                      zp->region_upper_bounds, 3);
   io_write_attribute(h_zoom, "InternalCenter", DOUBLE, internal_center, 3);
   io_write_attribute_i(h_zoom, "Depth", zp->zoom_cell_depth);
+
+  /* Write out the velocity shift dependant on cosmology */
+  if (s->e->policy & engine_policy_cosmology) {
+    io_write_attribute(h_zoom, "ComovingVelocityShift", FLOAT,
+                       zp->applied_zoom_vel_shift, 3);
+    io_write_attribute(h_zoom, "ScaleFactorLastShift", DOUBLE,
+                       &zp->scale_factor_at_last_shift, 1);
+  } else {
+    io_write_attribute(h_zoom, "VelocityShift", FLOAT,
+                       zp->applied_zoom_vel_shift, 3);
+  }
 
   H5Gclose(h_zoom);
 }
