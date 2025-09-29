@@ -902,6 +902,8 @@ void zoom_report_cell_properties(const struct space *s) {
 void zoom_props_init(struct swift_params *params, struct space *s,
                      const int verbose) {
 
+  cost ticks tic = getticks();
+
   /* If not, we're done here */
   if (!s->with_zoom_region) {
     return;
@@ -1083,5 +1085,11 @@ void zoom_region_init(struct space *s, const int regridding,
   /* Report what we have done */
   if (verbose) {
     zoom_report_cell_properties(s);
+  }
+
+  /* Report how long it took. */
+  if (verbose) {
+    message("Zoom region initialisation took %f %s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 }
