@@ -25,6 +25,7 @@
 
 /* Local includes. */
 #include "common_io.h"
+#include "engine.h"
 #include "error.h"
 #include "space.h"
 #include "zoom.h"
