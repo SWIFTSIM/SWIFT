@@ -1221,47 +1221,20 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
 
     /* Otherwise, activate the sorts and drifts. */
     else {
+      /* Note we need to drift *both* sink cells to deal with sink<->sink
+       * swallows But we only need to drift the gas cell if the *other* cell has
+       * an active sink */
 
-      /* For the sink mergers */
-      if (ci->nodeID == engine_rank) {
-        cell_activate_drift_sink(ci, s);
-        cell_activate_sink_formation_tasks(ci->top, s);
-      }
-      if (cj->nodeID == engine_rank) {
-        cell_activate_drift_sink(cj, s);
-        if (ci->top != cj->top) {
-          cell_activate_sink_formation_tasks(cj->top, s);
-        }
-      }
-
-      if (ci_active) {
-
-        /* We are going to interact this pair, so store some values. */
-        atomic_or(&cj->hydro.requires_sorts, 1 << sid);
-        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+      if (ci_active || cj_active) {
+        /* Activate the drifts if the cells are local. */
+        if (ci->nodeID == engine_rank) cell_activate_drift_sink(ci, s);
+        if (cj->nodeID == engine_rank && ci_active)
+          cell_activate_drift_part(cj, s);
 
         /* Activate the drifts if the cells are local. */
-        if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
-        if (cj->nodeID == engine_rank && with_timestep_sync)
-          cell_activate_sync_part(cj, s);
-
-        /* Do we need to sort the cells? */
-        cell_activate_hydro_sorts(cj, sid, s);
-      }
-
-      if (cj_active) {
-
-        /* We are going to interact this pair, so store some values. */
-        atomic_or(&ci->hydro.requires_sorts, 1 << sid);
-        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-
-        /* Activate the drifts if the cells are local. */
-        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
-        if (ci->nodeID == engine_rank && with_timestep_sync)
-          cell_activate_sync_part(ci, s);
-
-        /* Do we need to sort the cells? */
-        cell_activate_hydro_sorts(ci, sid, s);
+        if (ci->nodeID == engine_rank && cj_active)
+          cell_activate_drift_part(ci, s);
+        if (cj->nodeID == engine_rank) cell_activate_drift_sink(cj, s);
       }
     }
   } /* Otherwise, pair interation */
