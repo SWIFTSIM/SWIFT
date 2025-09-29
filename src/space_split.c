@@ -639,6 +639,10 @@ static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
 /**
  * @brief Recursively split a cell.
  *
+ * This function just constructs the tree recursively, splitting cells
+ * based on particle counts. It will also keep track of the maximum depth
+ * of the tree.
+ *
  * @param s The #space in which the cell lives.
  * @param c The #cell to split recursively.
  * @param buff A buffer for particle sorting, should be of size at least
@@ -652,23 +656,20 @@ static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
  * @param sink_buff A buffer for particle sorting, should be of size at least
  *        c->sinks.count or @c NULL.
  */
-void space_split_recursive(struct space *s, struct cell *c,
-                           struct cell_buff *restrict buff,
-                           struct cell_buff *restrict sbuff,
-                           struct cell_buff *restrict bbuff,
-                           struct cell_buff *restrict gbuff,
-                           struct cell_buff *restrict sink_buff,
-                           const short int tpid) {
+void space_split_build_recursive(struct space *s, struct cell *c,
+                                 struct cell_buff *restrict buff,
+                                 struct cell_buff *restrict sbuff,
+                                 struct cell_buff *restrict bbuff,
+                                 struct cell_buff *restrict gbuff,
+                                 struct cell_buff *restrict sink_buff,
+                                 const short int tpid) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
-  const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
   int maxdepth = 0;
   struct engine *e = s->e;
-  const integertime_t ti_current = e->ti_current;
-  const int with_rt = e->policy & engine_policy_rt;
 
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
@@ -702,6 +703,83 @@ void space_split_recursive(struct space *s, struct cell *c,
                      *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
                      *progeny_sink_buff = sink_buff;
 
+    /* Loop over progeny, cleaning up or splitting and recursing. */
+    for (int k = 0; k < 8; k++) {
+
+      /* Get the progenitor */
+      struct cell *cp = c->progeny[k];
+
+      /* Remove any progeny with zero particles as long as they aren't the
+       * void cell. */
+      if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
+          cp->black_holes.count == 0 && cp->sinks.count == 0) {
+
+        space_recycle(s, cp);
+        c->progeny[k] = NULL;
+
+      } else {
+
+        /* Recurse */
+        space_split_build_recursive(s, cp, progeny_buff, progeny_sbuff,
+                                    progeny_bbuff, progeny_gbuff,
+                                    progeny_sink_buff, tpid);
+
+        /* Update the pointers in the buffers */
+        progeny_buff += cp->hydro.count;
+        progeny_gbuff += cp->grav.count;
+        progeny_sbuff += cp->stars.count;
+        progeny_bbuff += cp->black_holes.count;
+        progeny_sink_buff += cp->sinks.count;
+
+        /* Increase the depth */
+        maxdepth = max(maxdepth, cp->maxdepth);
+      }
+    }
+  } /* Split or let it be? */
+
+  /* Otherwise we're in a leaf, collect the data from the particles in this
+     leaf cell. */
+  else {
+    /* Nothing to see here: clear the progeny. */
+    bzero(c->progeny, sizeof(struct cell *) * 8);
+    c->split = 0;
+    maxdepth = c->depth;
+  }
+
+  /* Set the maximum depth. */
+  c->maxdepth = maxdepth;
+
+  /* No runner owns this cell yet. We assign those during scheduling. */
+  c->owner = -1;
+
+  /* Store the global max depth */
+  if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
+}
+
+/**
+ * @brief Recurse through the tree, and collect properties from progeny.
+ *
+ * If running with self-gravity, this function will also construct the
+ * multipoles and interact them up the tree.
+ *
+ * @param s The #space in which the cell lives.
+ * @param c The #cell to split recursively.
+ */
+void space_split_post_build_recursive(struct space *s, struct cell *c) {
+
+  const int count = c->hydro.count;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
+  const int with_self_gravity = s->with_self_gravity;
+  const int depth = c->depth;
+  int maxdepth = 0;
+  struct engine *e = s->e;
+  const integertime_t ti_current = e->ti_current;
+  const int with_rt = e->policy & engine_policy_rt;
+
+  /* Split or leaf? */
+  if (c->split) {
+
     /* Define properties we'll compute from the progeny. */
     float h_max = 0.0f;
     float h_max_active = 0.0f;
@@ -720,65 +798,46 @@ void space_split_recursive(struct space *s, struct cell *c,
     integertime_t ti_black_holes_end_min = max_nr_timesteps,
                   ti_black_holes_beg_max = 0;
 
-    /* Loop over progeny, cleaning up or splitting and recursing. */
+    /* Loop over progeny, recursing where necessary. */
     for (int k = 0; k < 8; k++) {
 
       /* Get the progenitor */
       struct cell *cp = c->progeny[k];
 
-      /* Remove any progeny with zero particles as long as they aren't the
-       * void cell. */
-      if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
-          cp->black_holes.count == 0 && cp->sinks.count == 0) {
+      /* Skip empty progeny. */
+      if (cp == NULL) continue;
 
-        space_recycle(s, cp);
-        c->progeny[k] = NULL;
+      /* Recurse */
+      space_split_post_build_recursive(s, cp);
 
-      } else {
+      /* Update the cell-wide properties */
+      h_max = max(h_max, cp->hydro.h_max);
+      h_max_active = max(h_max_active, cp->hydro.h_max_active);
+      stars_h_max = max(stars_h_max, cp->stars.h_max);
+      stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
+      black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
+      black_holes_h_max_active =
+          max(black_holes_h_max_active, cp->black_holes.h_max_active);
+      sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
+      sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
+      ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
+      ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+      ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
+      ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
+      ti_rt_min_step_size =
+          min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
+      ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
+      ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
+      ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+      ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
+      ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
+      ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
+      ti_black_holes_end_min =
+          min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
+      ti_black_holes_beg_max =
+          max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
 
-        /* Recurse */
-        space_split_recursive(s, cp, progeny_buff, progeny_sbuff, progeny_bbuff,
-                              progeny_gbuff, progeny_sink_buff, tpid);
-
-        /* Update the pointers in the buffers */
-        progeny_buff += cp->hydro.count;
-        progeny_gbuff += cp->grav.count;
-        progeny_sbuff += cp->stars.count;
-        progeny_bbuff += cp->black_holes.count;
-        progeny_sink_buff += cp->sinks.count;
-
-        /* Update the cell-wide properties */
-        h_max = max(h_max, cp->hydro.h_max);
-        h_max_active = max(h_max_active, cp->hydro.h_max_active);
-        stars_h_max = max(stars_h_max, cp->stars.h_max);
-        stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
-        black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
-        black_holes_h_max_active =
-            max(black_holes_h_max_active, cp->black_holes.h_max_active);
-        sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
-        sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
-        ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
-        ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
-        ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
-        ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
-        ti_rt_min_step_size =
-            min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
-        ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
-        ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
-        ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-        ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
-        ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
-        ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
-        ti_black_holes_end_min =
-            min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
-        ti_black_holes_beg_max =
-            max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
-
-        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
-
-        /* Increase the depth */
-        maxdepth = max(maxdepth, cp->maxdepth);
-      }
+      star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
     }
 
     /* Deal with the multipole */
@@ -810,34 +869,20 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->black_holes.h_max_active = black_holes_h_max_active;
     c->maxdepth = maxdepth;
 
-  } /* Split or let it be? */
+  } /* Split or leaf? */
 
-  /* Otherwise we're in a leaf, collect the data from the particles in this
-     leaf cell. */
+  /* We're in a leaf. */
   else {
-    /* Clear the progeny. */
-    bzero(c->progeny, sizeof(struct cell *) * 8);
-    c->split = 0;
-    maxdepth = c->depth;
 
     /* Get the time-steps and smoothing lengths for particles in this
      * leaf and attach them to the leaf cell. */
     space_populate_leaf_props(c, s, ti_current, with_rt);
 
-    /* Construct the multipole and the centre of mass*/
+    /* Construct the multipole and the centre of mass. */
     if (s->with_self_gravity) {
       space_construct_leaf_multipole(c, e);
     }
   }
-
-  /* Set the maximum depth. */
-  c->maxdepth = maxdepth;
-
-  /* No runner owns this cell yet. We assign those during scheduling. */
-  c->owner = -1;
-
-  /* Store the global max depth */
-  if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
 }
 
 /**
@@ -848,18 +893,13 @@ void space_split_recursive(struct space *s, struct cell *c,
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-static void space_split_mapper(void *map_data, int num_cells,
-                               void *extra_data) {
+static void space_split_build_mapper(void *map_data, int num_cells,
+                                     void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
-
-  /* Collect some global information about the top-level m-poles */
-  float min_a_grav = FLT_MAX;
-  float max_softening = 0.f;
-  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
 
   /* Threadpool id of current thread. */
   short int tpid = threadpool_gettid();
@@ -879,7 +919,8 @@ static void space_split_mapper(void *map_data, int num_cells,
                                     &sink_buff);
 
     /* Recursively split the cell. */
-    space_split_recursive(s, c, buff, sbuff, bbuff, gbuff, sink_buff, tpid);
+    space_split_build_recursive(s, c, buff, sbuff, bbuff, gbuff, sink_buff,
+                                tpid);
 
     /* Free the particle buffers. */
     if (buff != NULL) swift_free("tempbuff", buff);
@@ -887,6 +928,37 @@ static void space_split_mapper(void *map_data, int num_cells,
     if (sbuff != NULL) swift_free("tempsbuff", sbuff);
     if (bbuff != NULL) swift_free("tempbbuff", bbuff);
     if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
+  }
+}
+
+/**
+ * @brief #threadpool mapper function to traverse cell trees, collecting
+ *        properties and (if needed) constructing multipoles.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+static void space_split_post_build_mapper(void *map_data, int num_cells,
+                                          void *extra_data) {
+
+  /* Unpack the inputs. */
+  struct space *s = (struct space *)extra_data;
+  struct cell *cells_top = s->cells_top;
+  int *local_cells_with_particles = (int *)map_data;
+
+  /* Collect some global information about the top-level m-poles */
+  float min_a_grav = FLT_MAX;
+  float max_softening = 0.f;
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+
+  /* Loop over the non-empty cells */
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[local_cells_with_particles[ind]];
+
+    /* Recurse the cell tree, collecting properties and constructing
+     * multipoles if running with self-gravity. */
+    space_split_post_build_recursive(s, c);
 
     /* Collect the max multipole power from this cell. */
     if (s->with_self_gravity) {
@@ -927,18 +999,40 @@ static void space_split_mapper(void *map_data, int num_cells,
  */
 void space_split(struct space *s, int verbose) {
 
+  const ticks tot_tic = getticks();
+
   s->min_a_grav = FLT_MAX;
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
   const ticks tic = getticks();
 
-  threadpool_map(&s->e->threadpool, space_split_mapper,
+  threadpool_map(&s->e->threadpool, space_split_build_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
                  threadpool_auto_chunk_size, s);
 
   if (verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+    message("Building cell tree took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  threadpool_map(&s->e->threadpool, space_split_post_build_mapper,
+                 s->local_cells_with_particles_top,
+                 s->nr_local_cells_with_particles, sizeof(int),
+                 threadpool_auto_chunk_size, s);
+
+  if (verbose && s->with_self_gravity)
+    message(
+        "Recursively collecting properties and constructing multipoles took "
+        "%.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+  else if (verbose)
+    message("Recursively collecting properties took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tot_tic),
             clocks_getunit());
 }
