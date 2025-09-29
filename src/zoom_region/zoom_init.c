@@ -1003,10 +1003,6 @@ void zoom_report_cell_properties(const struct space *s) {
 
   /* Assorted extra zoom properties */
   message("%28s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
-  if (zoom_props->truncate_background)
-    message("%28s = [%f, %f, %f]", "Truncation Shift",
-            zoom_props->truncate_shift[0], zoom_props->truncate_shift[1],
-            zoom_props->truncate_shift[2]);
   message("%28s = [%f, %f, %f]", "Zoom Region Shift",
           zoom_props->applied_zoom_shift[0], zoom_props->applied_zoom_shift[1],
           zoom_props->applied_zoom_shift[2]);

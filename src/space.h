@@ -605,10 +605,6 @@ struct zoom_region_properties {
    * potential. (Only applicable if truncate_background is true). */
   float tidal_factor;
 
-  /*! The shift applied to the particles during truncation to shift things into
-   * the new box. (Only applicable if truncate_background is true). */
-  double truncate_shift[3];
-
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /*! The total number of edges summed over all cells.  */
   int nr_edges;
