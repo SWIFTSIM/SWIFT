@@ -29,6 +29,7 @@
 #include "engine.h"
 #include "gravity_properties.h"
 #include "space.h"
+#include "timers.h
 #include "zoom.h"
 
 /* mpi headers. */
@@ -73,7 +74,7 @@ void zoom_parse_params(struct swift_params *params,
 
   /* Extract the zoom width boost factor (used to define the buffer around the
    * zoom region). */
-  props->region_pad_factor =
+  props->user_region_pad_factor =
       parser_get_opt_param_float(params, "ZoomRegion:region_pad_factor", 1.1);
 
   /* Extract the depth we'll split neighbour cells to. */
@@ -101,46 +102,58 @@ void zoom_parse_params(struct swift_params *params,
     props->tidal_factor = 0.0;
     props->truncate_epsilon = 0.0;
   }
+
+  /* Extract the maximum shift of the zoom region we will allow in units of
+   * the zoom region extent. */
+  props->max_com_dx =
+      parser_get_opt_param_float(params, "ZoomRegion:max_com_dx", 0.1);
 }
 
-/**
- * @brief Compute the zoom region centre and boundaries.
- *
- * Finds the dimensions of the high resolution particle distribution and
- * computes the necessary shift to shift the zoom region to the centre of the
- * box. This shift is stored to be applied in space_init and for
- * transformation when writing out.
- *
- * @param s The space
- *
- * @return The initial maximum dimension of the zoom region (all sides equal).
- */
-double zoom_get_region_dim_and_shift(struct space *s) {
+struct region_dim_data {
+  double min_bounds[3];
+  double max_bounds[3];
+  double com[3];
+  double vcom[3];
+  double mtot;
+  struct space *s;
+};
 
-  /* Initialise values we will need. */
-  const size_t nr_gparts = s->nr_gparts;
+/**
+ * @brief Mapper to calculate the CoM and boundaries of the high resolution
+ * particle distribution.
+ *
+ * @param map_data The #gpart array.
+ * @param num_elements The number of g-particles.
+ * @param extra_data  The #region_dim_data struct to store the results in.
+ */
+void zoom_get_region_dim_and_shift_mapper(void *map_data, int num_elements,
+                                          void *extra_data) {
+
+  /* Unpack the mapper data. */
+  struct gpart *gparts = (struct gpart *)map_data;
+  struct region_dim_data *data = (struct region_dim_data *)extra_data;
+  struct space *s = data->s;
+
+  /* Set up local values to update. */
   double min_bounds[3] = {FLT_MAX, FLT_MAX, FLT_MAX};
   double max_bounds[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
-  double midpoint[3] = {0.0, 0.0, 0.0};
   double com[3] = {0.0, 0.0, 0.0};
+  double vcom[3] = {0.0, 0.0, 0.0};
   double mtot = 0.0;
-  double ini_dims[3] = {0.0, 0.0, 0.0};
-  const double box_mid[3] = {s->dim[0] / 2.0, s->dim[1] / 2.0, s->dim[2] / 2.0};
 
-  /* Find the min/max location in each dimension for each
-   * high resolution gravity particle (non-background), and their COM. */
-  for (size_t k = 0; k < nr_gparts; k++) {
+  /* Loop over the particles. */
+  for (int k = 0; k < num_elements; k++) {
     /* Skip background particles. */
-    if (s->gparts[k].type == swift_type_dark_matter_background) {
+    if (gparts[k].type == swift_type_dark_matter_background) {
       continue;
     }
 
-    /* Unpack the particle positions.
-     * NOTE: these will have already been shifted by the user requested amount
+    /* Unpack the particle positions. */
+    /* NOTE: these will have already been shifted by the user requested amount
      * in space_init if shift in the parameter file is non-zero. */
-    const double x = s->gparts[k].x[0];
-    const double y = s->gparts[k].x[1];
-    const double z = s->gparts[k].x[2];
+    const double x = gparts[k].x[0];
+    const double y = gparts[k].x[1];
+    const double z = gparts[k].x[2];
 
     /* Wrap if periodic. */
     if (s->periodic) {
@@ -159,10 +172,87 @@ double zoom_get_region_dim_and_shift(struct space *s) {
 
     /* Total up mass and position for COM. */
     mtot += s->gparts[k].mass;
-    com[0] += x * s->gparts[k].mass;
-    com[1] += y * s->gparts[k].mass;
-    com[2] += z * s->gparts[k].mass;
+    com[0] += x * gparts[k].mass;
+    com[1] += y * gparts[k].mass;
+    com[2] += z * gparts[k].mass;
+
+    /* Velocity COM. */
+    vcom[0] += gparts[k].v_full[0] * gparts[k].mass;
+    vcom[1] += gparts[k].v_full[1] * gparts[k].mass;
+    vcom[2] += gparts[k].v_full[2] * gparts[k].mass;
   }
+
+  /* Atomically update the results. */
+  atomic_add_d(&data->mtot, mtot);
+  atomic_add_d(&data->com[0], com[0]);
+  atomic_add_d(&data->com[1], com[1]);
+  atomic_add_d(&data->com[2], com[2]);
+  atomic_add_d(&data->vcom[0], vcom[0]);
+  atomic_add_d(&data->vcom[1], vcom[1]);
+  atomic_add_d(&data->vcom[2], vcom[2]);
+  atomic_min_d(&data->min_bounds[0], min_bounds[0]);
+  atomic_min_d(&data->min_bounds[1], min_bounds[1]);
+  atomic_min_d(&data->min_bounds[2], min_bounds[2]);
+  atomic_max_d(&data->max_bounds[0], max_bounds[0]);
+  atomic_max_d(&data->max_bounds[1], max_bounds[1]);
+  atomic_max_d(&data->max_bounds[2], max_bounds[2]);
+}
+
+/**
+ * @brief Compute the zoom region centre and boundaries.
+ *
+ * Finds the dimensions of the high resolution particle distribution and
+ * computes the necessary shift to shift the zoom region to the centre of the
+ * box. This shift is stored to be applied in space_init and for
+ * transformation when writing out.
+ *
+ * @param s The space
+ */
+void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Initialise values we will need. */
+  const size_t nr_gparts = s->nr_gparts;
+  double midpoint[3] = {0.0, 0.0, 0.0};
+  double ini_dims[3] = {0.0, 0.0, 0.0};
+  const double box_mid[3] = {s->dim[0] / 2.0, s->dim[1] / 2.0, s->dim[2] / 2.0};
+
+  /* Allocate the mapper data. */
+  struct region_dim_data *reg_data =
+      (struct region_dim_data *)malloc(sizeof(struct region_dim_data));
+  if (reg_data == NULL) {
+    error("Failed to allocate memory for zoom region dimension data.");
+  }
+
+  /* Initialise the mapper data. */
+  reg_data->mtot = 0.0;
+  for (int i = 0; i < 3; i++) {
+    reg_data->min_bounds[i] = FLT_MAX;
+    reg_data->max_bounds[i] = -FLT_MAX;
+    reg_data->com[i] = 0.0;
+    reg_data->vcom[i] = 0.0;
+  }
+  reg_data->s = s;
+
+  /* Find the min/max location in each dimension for each
+   * high resolution gravity particle (non-background), and their COM. */
+  /* If we don't have the engine yet we have to call the mapper in serial. */
+  if (s->e == NULL) {
+    zoom_get_region_dim_and_shift_mapper(s->gparts, nr_gparts, reg_data);
+  } else {
+    struct engine *e = s->e;
+    threadpool_map(&e->threadpool, zoom_get_region_dim_and_shift_mapper,
+                   s->gparts, nr_gparts, sizeof(struct gpart),
+                   threadpool_auto_chunk_size, reg_data);
+  }
+
+  /* Unpack the results. */
+  double *min_bounds = reg_data->min_bounds;
+  double *max_bounds = reg_data->max_bounds;
+  double *com = reg_data->com;
+  double *vcom = reg_data->vcom;
+  double mtot = reg_data->mtot;
 
 #ifdef WITH_MPI
   /* Share answers amoungst nodes. */
@@ -173,8 +263,9 @@ double zoom_get_region_dim_and_shift(struct space *s) {
   MPI_Allreduce(MPI_IN_PLACE, &max_bounds[1], 3, MPI_DOUBLE, MPI_MAX,
                 MPI_COMM_WORLD);
 
-  /* CoM. */
+  /* CoM and bulk velocity. */
   MPI_Allreduce(MPI_IN_PLACE, com, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, vcom, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &mtot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
@@ -183,6 +274,20 @@ double zoom_get_region_dim_and_shift(struct space *s) {
   com[0] *= imass;
   com[1] *= imass;
   com[2] *= imass;
+  vcom[0] *= imass;
+  vcom[1] *= imass;
+  vcom[2] *= imass;
+
+  /* Store the CoM and bulk velocity in the zoom properties. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->com[i] = com[i];
+    s->zoom_props->vcom[i] = vcom[i];
+  }
+
+  /* Store the velocity shift to be applied to the zoom region. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->zoom_vel_shift[i] = -vcom[i];
+  }
 
   /* Get the initial dimensions and midpoint. */
   for (int i = 0; i < 3; i++) {
@@ -224,11 +329,275 @@ double zoom_get_region_dim_and_shift(struct space *s) {
   for (int i = 0; i < 3; i++)
     s->zoom_props->com[i] = com[i] + s->zoom_props->zoom_shift[i];
 
-  /* Compute maximum side length of the zoom region, we need zoom dim to be
-   * equal. */
-  double ini_dim = max3(ini_dims[0], ini_dims[1], ini_dims[2]);
+  /* Store the particle extent in the zoom properties. */
+  for (int i = 0; i < 3; i++) s->zoom_props->part_dim[i] = ini_dims[i];
 
-  return ini_dim;
+  if (verbose) {
+    message("Computing high resolution particle dim and shift took %f %s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    message("Current high resolution particle extent is [%f, %f, %f]",
+            ini_dims[0], ini_dims[1], ini_dims[2]);
+    message("Current high resolution particle CoM is [%f, %f, %f]",
+            s->zoom_props->com[0], s->zoom_props->com[1],
+            s->zoom_props->com[2]);
+    message("Particle shift to box centre is [%f, %f, %f] (not yet applied)",
+            s->zoom_props->zoom_shift[0], s->zoom_props->zoom_shift[1],
+            s->zoom_props->zoom_shift[2]);
+  }
+
+  free(reg_data);
+}
+
+/**
+ * @brief Mapper function to apply the zoom shift to parts.
+ *
+ * @param map_data The #part array.
+ * @param num_elements The number of particles.
+ * @param extra_data The zoom properties struct.
+ */
+void zoom_apply_zoom_shift_to_part_mapper(void *map_data, int num_elements,
+                                          void *extra_data) {
+
+  struct part *parts = (struct part *)map_data;
+  struct zoom_region_properties *zp =
+      (struct zoom_region_properties *)extra_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    parts[k].x[0] += zp->zoom_shift[0];
+    parts[k].x[1] += zp->zoom_shift[1];
+    parts[k].x[2] += zp->zoom_shift[2];
+    parts[k].v[0] += zp->zoom_vel_shift[0];
+    parts[k].v[1] += zp->zoom_vel_shift[1];
+    parts[k].v[2] += zp->zoom_vel_shift[2];
+  }
+}
+
+/**
+ * @brief Mapper function to apply the zoom shift to gparts.
+ *
+ * @param map_data The #gpart array.
+ * @param num_elements The number of particles.
+ * @param extra_data The zoom properties struct.
+ */
+void zoom_apply_zoom_shift_to_gpart_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+  struct gpart *gparts = (struct gpart *)map_data;
+  struct zoom_region_properties *zp =
+      (struct zoom_region_properties *)extra_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    gparts[k].x[0] += zp->zoom_shift[0];
+    gparts[k].x[1] += zp->zoom_shift[1];
+    gparts[k].x[2] += zp->zoom_shift[2];
+    gparts[k].v_full[0] += zp->zoom_vel_shift[0];
+    gparts[k].v_full[1] += zp->zoom_vel_shift[1];
+    gparts[k].v_full[2] += zp->zoom_vel_shift[2];
+  }
+}
+
+/**
+ * @brief Mapper function to apply the zoom shift to sparts.
+ *
+ * @param map_data The #spart array.
+ * @param num_elements The number of particles.
+ * @param extra_data The zoom properties struct.
+ */
+void zoom_apply_zoom_shift_to_spart_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+  struct spart *sparts = (struct spart *)map_data;
+  struct zoom_region_properties *zp =
+      (struct zoom_region_properties *)extra_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    sparts[k].x[0] += zp->zoom_shift[0];
+    sparts[k].x[1] += zp->zoom_shift[1];
+    sparts[k].x[2] += zp->zoom_shift[2];
+    sparts[k].v[0] += zp->zoom_vel_shift[0];
+    sparts[k].v[1] += zp->zoom_vel_shift[1];
+    sparts[k].v[2] += zp->zoom_vel_shift[2];
+  }
+}
+
+/**
+ * @brief Mapper function to apply the zoom shift to bparts.
+ *
+ * @param map_data The #bpart array.
+ * @param num_elements The number of particles.
+ * @param extra_data The zoom properties struct.
+ */
+void zoom_apply_zoom_shift_to_bpart_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+  struct bpart *bparts = (struct bpart *)map_data;
+  struct zoom_region_properties *zp =
+      (struct zoom_region_properties *)extra_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    bparts[k].x[0] += zp->zoom_shift[0];
+    bparts[k].x[1] += zp->zoom_shift[1];
+    bparts[k].x[2] += zp->zoom_shift[2];
+    bparts[k].v[0] += zp->zoom_vel_shift[0];
+    bparts[k].v[1] += zp->zoom_vel_shift[1];
+    bparts[k].v[2] += zp->zoom_vel_shift[2];
+  }
+}
+
+/**
+ * @brief Mapper function to apply the zoom shift to sinks.
+ *
+ * @param map_data The #sink array.
+ * @param num_elements The number of particles.
+ * @param extra_data The zoom properties struct.
+ */
+void zoom_apply_zoom_shift_to_sink_mapper(void *map_data, int num_elements,
+                                          void *extra_data) {
+  struct sink *sinks = (struct sink *)map_data;
+  struct zoom_region_properties *zp =
+      (struct zoom_region_properties *)extra_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    sinks[k].x[0] += zp->zoom_shift[0];
+    sinks[k].x[1] += zp->zoom_shift[1];
+    sinks[k].x[2] += zp->zoom_shift[2];
+    sinks[k].v[0] += zp->zoom_vel_shift[0];
+    sinks[k].v[1] += zp->zoom_vel_shift[1];
+    sinks[k].v[2] += zp->zoom_vel_shift[2];
+  }
+}
+
+/**
+ * @brief Apply the zoom shift to all particles in the space.
+ *
+ * NOTE: could probably be a threadpool in the future.
+ *
+ * @param s The space
+ */
+void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
+
+  const ticks tic = getticks();
+
+  /* If no shift is needed, return. */
+  if (s->zoom_props->zoom_shift[0] == 0.0 &&
+      s->zoom_props->zoom_shift[1] == 0.0 &&
+      s->zoom_props->zoom_shift[2] == 0.0 &&
+      s->zoom_props->zoom_vel_shift[0] == 0.0 &&
+      s->zoom_props->zoom_vel_shift[1] == 0.0 &&
+      s->zoom_props->zoom_vel_shift[2] == 0.0) {
+
+    /* Store what we applied to write out later. */
+    for (int i = 0; i < 3; i++) {
+      s->zoom_props->applied_zoom_shift[i] = 0.0;
+      s->zoom_props->applied_zoom_vel_shift[i] = 0.0;
+    }
+
+    return;
+  }
+
+  /* Apply the shift to the particles (if we don't have the engine yet we
+   * have to loop over in serial). */
+  if (s->e == NULL) {
+    for (size_t i = 0; i < s->nr_parts; i++) {
+      s->parts[i].x[0] += s->zoom_props->zoom_shift[0];
+      s->parts[i].x[1] += s->zoom_props->zoom_shift[1];
+      s->parts[i].x[2] += s->zoom_props->zoom_shift[2];
+      s->parts[i].v[0] += s->zoom_props->zoom_vel_shift[0];
+      s->parts[i].v[1] += s->zoom_props->zoom_vel_shift[1];
+      s->parts[i].v[2] += s->zoom_props->zoom_vel_shift[2];
+    }
+    for (size_t i = 0; i < s->nr_gparts; i++) {
+      s->gparts[i].x[0] += s->zoom_props->zoom_shift[0];
+      s->gparts[i].x[1] += s->zoom_props->zoom_shift[1];
+      s->gparts[i].x[2] += s->zoom_props->zoom_shift[2];
+      s->gparts[i].v_full[0] += s->zoom_props->zoom_vel_shift[0];
+      s->gparts[i].v_full[1] += s->zoom_props->zoom_vel_shift[1];
+      s->gparts[i].v_full[2] += s->zoom_props->zoom_vel_shift[2];
+    }
+    for (size_t i = 0; i < s->nr_sparts; i++) {
+      s->sparts[i].x[0] += s->zoom_props->zoom_shift[0];
+      s->sparts[i].x[1] += s->zoom_props->zoom_shift[1];
+      s->sparts[i].x[2] += s->zoom_props->zoom_shift[2];
+      s->sparts[i].v[0] += s->zoom_props->zoom_vel_shift[0];
+      s->sparts[i].v[1] += s->zoom_props->zoom_vel_shift[1];
+      s->sparts[i].v[2] += s->zoom_props->zoom_vel_shift[2];
+    }
+    for (size_t i = 0; i < s->nr_bparts; i++) {
+      s->bparts[i].x[0] += s->zoom_props->zoom_shift[0];
+      s->bparts[i].x[1] += s->zoom_props->zoom_shift[1];
+      s->bparts[i].x[2] += s->zoom_props->zoom_shift[2];
+      s->bparts[i].v[0] += s->zoom_props->zoom_vel_shift[0];
+      s->bparts[i].v[1] += s->zoom_props->zoom_vel_shift[1];
+      s->bparts[i].v[2] += s->zoom_props->zoom_vel_shift[2];
+    }
+    for (size_t i = 0; i < s->nr_sinks; i++) {
+      s->sinks[i].x[0] += s->zoom_props->zoom_shift[0];
+      s->sinks[i].x[1] += s->zoom_props->zoom_shift[1];
+      s->sinks[i].x[2] += s->zoom_props->zoom_shift[2];
+      s->sinks[i].v[0] += s->zoom_props->zoom_vel_shift[0];
+      s->sinks[i].v[1] += s->zoom_props->zoom_vel_shift[1];
+      s->sinks[i].v[2] += s->zoom_props->zoom_vel_shift[2];
+    }
+  } else {
+    struct engine *e = s->e;
+    if (s->nr_parts > 0)
+      threadpool_map(&e->threadpool, zoom_apply_zoom_shift_to_part_mapper,
+                     s->parts, s->nr_parts, sizeof(struct part),
+                     threadpool_auto_chunk_size, s->zoom_props);
+    if (s->nr_gparts > 0)
+      threadpool_map(&e->threadpool, zoom_apply_zoom_shift_to_gpart_mapper,
+                     s->gparts, s->nr_gparts, sizeof(struct gpart),
+                     threadpool_auto_chunk_size, s->zoom_props);
+    if (s->nr_sparts > 0)
+      threadpool_map(&e->threadpool, zoom_apply_zoom_shift_to_spart_mapper,
+                     s->sparts, s->nr_sparts, sizeof(struct spart),
+                     threadpool_auto_chunk_size, s->zoom_props);
+    if (s->nr_bparts > 0)
+      threadpool_map(&e->threadpool, zoom_apply_zoom_shift_to_bpart_mapper,
+                     s->bparts, s->nr_bparts, sizeof(struct bpart),
+                     threadpool_auto_chunk_size, s->zoom_props);
+    if (s->nr_sinks > 0)
+      threadpool_map(&e->threadpool, zoom_apply_zoom_shift_to_sink_mapper,
+                     s->sinks, s->nr_sinks, sizeof(struct sink),
+                     threadpool_auto_chunk_size, s->zoom_props);
+  }
+
+  /* Store what we applied to write out later and zero the shift to avoid
+   * pointless reapplication. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->applied_zoom_shift[i] = s->zoom_props->zoom_shift[i];
+    s->zoom_props->applied_zoom_vel_shift[i] = s->zoom_props->zoom_vel_shift[i];
+    s->zoom_props->zoom_shift[i] = 0.0;
+    s->zoom_props->zoom_vel_shift[i] = 0.0;
+  }
+
+  if (verbose)
+    message(
+        "Shifting particles positions by [%f, %f, %f] and "
+        "velocities by [%f, %f, %f]",
+        s->zoom_props->applied_zoom_shift[0],
+        s->zoom_props->applied_zoom_shift[1],
+        s->zoom_props->applied_zoom_shift[2],
+        s->zoom_props->applied_zoom_vel_shift[0],
+        s->zoom_props->applied_zoom_vel_shift[1],
+        s->zoom_props->applied_zoom_vel_shift[2]);
+
+  /* Store the scale factor at which we applied the shift (if we don't yet
+   * have the engine then we are starting up and will set this in
+   * engine_init). */
+  if (s->e != NULL) {
+
+    /* Are we doing cosmology? */
+    if (s->e->policy & engine_policy_cosmology) {
+      s->zoom_props->scale_factor_at_last_shift = s->e->cosmology->a;
+    } else {
+      s->zoom_props->scale_factor_at_last_shift = 1.0;
+    }
+  } else {
+    s->zoom_props->scale_factor_at_last_shift = -1.0;
+  }
+
+  if (verbose) {
+    message("Applying zoom region shift took %f %s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 }
 
 /**
@@ -698,14 +1067,17 @@ void zoom_report_cell_properties(const struct space *s) {
 
   /* Assorted extra zoom properties */
   message("%28s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
-  message("%28s = [%f, %f, %f]", "Zoom Region Shift", zoom_props->zoom_shift[0],
-          zoom_props->zoom_shift[1], zoom_props->zoom_shift[2]);
   if (zoom_props->truncate_background)
     message("%28s = [%f, %f, %f]", "Truncation Shift",
             zoom_props->truncate_shift[0], zoom_props->truncate_shift[1],
             zoom_props->truncate_shift[2]);
-  message("%28s = [%f, %f, %f]", "Zoom Region COM", zoom_props->com[0],
-          zoom_props->com[1], zoom_props->com[2]);
+  message("%28s = [%f, %f, %f]", "Zoom Region Shift",
+          zoom_props->applied_zoom_shift[0], zoom_props->applied_zoom_shift[1],
+          zoom_props->applied_zoom_shift[2]);
+  message("%28s = [%f, %f, %f]", "Zoom Velocity Shift",
+          zoom_props->applied_zoom_vel_shift[0],
+          zoom_props->applied_zoom_vel_shift[1],
+          zoom_props->applied_zoom_vel_shift[2]);
   message("%28s = [%f, %f, %f]", "Zoom Region Center",
           zoom_props->region_lower_bounds[0] + (zoom_props->dim[0] / 2.0),
           zoom_props->region_lower_bounds[1] + (zoom_props->dim[1] / 2.0),
@@ -725,6 +1097,8 @@ void zoom_report_cell_properties(const struct space *s) {
  */
 void zoom_props_init(struct swift_params *params, struct space *s,
                      const int verbose) {
+
+  const ticks tic = getticks();
 
   /* If not, we're done here */
   if (!s->with_zoom_region) {
@@ -756,6 +1130,11 @@ void zoom_props_init(struct swift_params *params, struct space *s,
 
   /* Parse the parameter file and populate the properties struct. */
   zoom_parse_params(params, s->zoom_props);
+
+  if (verbose) {
+    message("Initialising zoom region properties took %f %s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 }
 
 /**
@@ -765,9 +1144,14 @@ void zoom_props_init(struct swift_params *params, struct space *s,
  * cosntruction when zoom_construct_tl_cells.
  *
  * @param s The space.
+ * @param regridding Are we regridding? If so we don't need to compute the
+ *   extent or shift (though we do need to apply the shift to the particles).
  * @param verbose Are we talking?
  */
-void zoom_region_init(struct space *s, const int verbose) {
+void zoom_region_init(struct space *s, const int regridding,
+                      const int verbose) {
+
+  const ticks tic = getticks();
 
   /* Nothing to do if we are restarting, just report geometry and move on. */
   if (s->e != NULL && s->e->restarting) {
@@ -782,47 +1166,27 @@ void zoom_region_init(struct space *s, const int verbose) {
         s->e->gravity_properties->r_cut_max_ratio;
   }
 
-  /* Compute the extent of the zoom region and truncate the background if
-   * requested.
-   * NOTE: this calculates the shift necessary to move the zoom region to
-   * the centre of the box and stores it in s->zoom_props to be applied below.
-   */
-  double ini_dim;
-  if (s->zoom_props->truncate_background) {
-    ini_dim = zoom_get_truncated_region_dim_and_shift(s, verbose);
-  } else {
-    ini_dim = zoom_get_region_dim_and_shift(s);
-  }
+  /* Compute the extent of the zoom region. This also calculates the shift
+   * necessary to move the zoom region to the centre of the box and stores it in
+   * s->zoom_props.
+   * NOTE: If we are regridding this has already been done in zoom_need_regrid
+   * to check if we need to regrid so we skip it here. */
+  if (!regridding) zoom_get_region_dim_and_shift(s, verbose);
 
-  /* Apply the shift to the particles. */
-  for (size_t k = 0; k < s->nr_parts; k++) {
-    s->parts[k].x[0] += s->zoom_props->zoom_shift[0];
-    s->parts[k].x[1] += s->zoom_props->zoom_shift[1];
-    s->parts[k].x[2] += s->zoom_props->zoom_shift[2];
-  }
-  for (size_t k = 0; k < s->nr_gparts; k++) {
-    s->gparts[k].x[0] += s->zoom_props->zoom_shift[0];
-    s->gparts[k].x[1] += s->zoom_props->zoom_shift[1];
-    s->gparts[k].x[2] += s->zoom_props->zoom_shift[2];
-  }
-  for (size_t k = 0; k < s->nr_sparts; k++) {
-    s->sparts[k].x[0] += s->zoom_props->zoom_shift[0];
-    s->sparts[k].x[1] += s->zoom_props->zoom_shift[1];
-    s->sparts[k].x[2] += s->zoom_props->zoom_shift[2];
-  }
-  for (size_t k = 0; k < s->nr_bparts; k++) {
-    s->bparts[k].x[0] += s->zoom_props->zoom_shift[0];
-    s->bparts[k].x[1] += s->zoom_props->zoom_shift[1];
-    s->bparts[k].x[2] += s->zoom_props->zoom_shift[2];
-  }
-  for (size_t k = 0; k < s->nr_sinks; k++) {
-    s->sinks[k].x[0] += s->zoom_props->zoom_shift[0];
-    s->sinks[k].x[1] += s->zoom_props->zoom_shift[1];
-    s->sinks[k].x[2] += s->zoom_props->zoom_shift[2];
-  }
+  /* Apply the zoom shift to the particles. */
+  zoom_apply_zoom_shift_to_particles(s, verbose);
+
+  /* Are we truncating the background? (If so this will shift everything
+   * again to move the particles to lie between 0 and the new box size). */
+
+  /* The maximal particle extent is the initial dimensions of
+   * the zoom region. */
+  const double ini_dim =
+      max3(s->zoom_props->part_dim[0], s->zoom_props->part_dim[1],
+           s->zoom_props->part_dim[2]);
 
   /* Include the requested padding around the high resolution particles. */
-  double max_dim = ini_dim * s->zoom_props->region_pad_factor;
+  double max_dim = ini_dim * s->zoom_props->user_region_pad_factor;
 
   /* Define the background grid (we'll treat this as gospel). */
   for (int i = 0; i < 3; i++) {
@@ -865,7 +1229,6 @@ void zoom_region_init(struct space *s, const int verbose) {
   zoom_get_geometry_no_buffer_cells(s);
 
   /* Store what the true boost factor ended up being */
-  double input_pad_factor = s->zoom_props->region_pad_factor;
   s->zoom_props->region_pad_factor = s->zoom_props->dim[0] / ini_dim;
 
   /* Ensure we haven't got a zoom region smaller than the high resolution
@@ -879,12 +1242,14 @@ void zoom_region_init(struct space *s, const int verbose) {
 
   /* Let's be safe and warn if we have drastically changed the size of the
    * requested padding region. */
-  if ((s->zoom_props->region_pad_factor / input_pad_factor) >= 2)
+  if ((s->zoom_props->region_pad_factor /
+       s->zoom_props->user_region_pad_factor) >= 2)
     warning(
         "The pad region has to be %d times larger than requested. "
         "Either increase ZoomRegion:region_pad_factor, increase the "
         "number of background cells, or increase the depths of the zoom cells.",
-        (int)(s->zoom_props->region_pad_factor / input_pad_factor));
+        (int)(s->zoom_props->region_pad_factor /
+              s->zoom_props->user_region_pad_factor));
 
   /* If we didn't get an explicit neighbour cell depth we'll match the zoom
    * depth. */
@@ -1005,4 +1370,9 @@ void zoom_region_init(struct space *s, const int verbose) {
     }
   }
 #endif /* SWIFT_DEBUG_CHECKS */
+  /* Report how long it took. */
+  if (verbose) {
+    message("Zoom region initialisation took %f %s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 }
