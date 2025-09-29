@@ -934,6 +934,11 @@ void zoom_props_init(struct swift_params *params, struct space *s,
 
   /* Parse the parameter file and populate the properties struct. */
   zoom_parse_params(params, s->zoom_props);
+
+  if (verbose) {
+    message("Initialising zoom region properties took %f %s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 }
 
 /**
@@ -949,6 +954,8 @@ void zoom_props_init(struct swift_params *params, struct space *s,
  */
 void zoom_region_init(struct space *s, const int regridding,
                       const int verbose) {
+
+  const ticks tic = getticks();
 
   /* Nothing to do if we are restarting, just report geometry and move on. */
   if (s->e != NULL && s->e->restarting) {
