@@ -2814,7 +2814,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
-
       scheduler_activate(s, t);
 
       /* Store current values of dx_max and h_max. */
@@ -2825,18 +2824,18 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_pair) {
         cell_activate_subcell_sinks_tasks(ci, cj, s, with_timestep_sync);
+
+        /* Activate sinks_in for each cell that is part of
+         * a pair task as to not miss any dependencies */
+        if (ci_nodeID == nodeID)
+          scheduler_activate(s, ci->hydro.super->sinks.sink_in);
+        if (cj_nodeID == nodeID)
+          scheduler_activate(s, cj->hydro.super->sinks.sink_in);
       }
     }
 
     /* Only interested in pair interactions as of here. */
     if (t->type == task_type_pair) {
-
-      /* Activate sink_in for each cell that is part of
-       * a pair task as to not miss any dependencies */
-      if (ci_nodeID == nodeID)
-        scheduler_activate(s, ci->hydro.super->sinks.sink_in);
-      if (cj_nodeID == nodeID)
-        scheduler_activate(s, cj->hydro.super->sinks.sink_in);
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
@@ -2851,32 +2850,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
   /* Un-skip the swallow tasks involved with this cell. */
   for (struct link *l = c->sinks.swallow; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
-#ifdef WITH_MPI
-    const int ci_nodeID = ci->nodeID;
-    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
-#else
-    const int ci_nodeID = nodeID;
-    const int cj_nodeID = nodeID;
-#endif
-
-    const int ci_active =
-        cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
-    const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
-                                           cell_is_active_hydro(cj, e));
-
-    /* Only activate tasks that involve a local active cell. */
-    if ((ci_active || cj_active) &&
-        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
-
-      scheduler_activate(s, t);
-    }
-  }
-
-  /* Un-skip the do_sink_swallow tasks involved with this cell. */
-  for (struct link *l = c->sinks.do_sink_swallow; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
@@ -2922,6 +2895,31 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
+    }
+  }
+
+  /* Un-skip the do_sink_swallow tasks involved with this cell. */
+  for (struct link *l = c->sinks.do_sink_swallow; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    const int ci_active =
+        cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
+    const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
+                                           cell_is_active_hydro(cj, e));
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+      scheduler_activate(s, t);
 
       if (t->type == task_type_pair) {
         /* Activate sinks_out for each cell that is part of
@@ -2935,25 +2933,32 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Unskip all the other task types. */
-  if (c->nodeID == nodeID &&
-      (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e))) {
-
-    if (c->sinks.sink_in != NULL) scheduler_activate(s, c->sinks.sink_in);
-    if (c->top->sinks.sink_formation != NULL) {
-      cell_activate_sink_formation_tasks(c->top, s);
-      cell_activate_super_sink_drifts(c->top, s);
-    }
+  if (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e)) {
+    /* Activate the ghosts */
     if (c->sinks.density_ghost != NULL)
       scheduler_activate(s, c->sinks.density_ghost);
     if (c->sinks.sink_ghost1 != NULL)
       scheduler_activate(s, c->sinks.sink_ghost1);
     if (c->sinks.sink_ghost2 != NULL)
       scheduler_activate(s, c->sinks.sink_ghost2);
-    if (c->sinks.sink_out != NULL) scheduler_activate(s, c->sinks.sink_out);
+  }
+  if (c->nodeID == nodeID &&
+      (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e))) {
+
+    /* Activate sink formation and star formation */
+    if (c->top->sinks.sink_formation != NULL) {
+      cell_activate_sink_formation_tasks(c->top, s);
+      cell_activate_super_sink_drifts(c->top, s);
+    }
     if (c->top->sinks.star_formation_sink != NULL) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
       cell_activate_super_sink_drifts(c->top, s);
     }
+
+    /* If we don't have pair tasks, then the sink_in and sink_out still
+     * need reactivation. */
+    if (c->sinks.sink_in != NULL) scheduler_activate(s, c->sinks.sink_in);
+    if (c->sinks.sink_out != NULL) scheduler_activate(s, c->sinks.sink_out);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
