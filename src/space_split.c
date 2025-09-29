@@ -765,7 +765,7 @@ void space_split_build_recursive(struct space *s, struct cell *c,
  * @param s The #space in which the cell lives.
  * @param c The #cell to split recursively.
  */
-void space_split_post_build_recursive(struct space *s, struct cell *c) {
+void space_split_collect_recursive(struct space *s, struct cell *c) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
@@ -808,7 +808,7 @@ void space_split_post_build_recursive(struct space *s, struct cell *c) {
       if (cp == NULL) continue;
 
       /* Recurse */
-      space_split_post_build_recursive(s, cp);
+      space_split_collect_recursive(s, cp);
 
       /* Update the cell-wide properties */
       h_max = max(h_max, cp->hydro.h_max);
@@ -939,8 +939,8 @@ static void space_split_build_mapper(void *map_data, int num_cells,
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-static void space_split_post_build_mapper(void *map_data, int num_cells,
-                                          void *extra_data) {
+static void space_split_collect_mapper(void *map_data, int num_cells,
+                                       void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
@@ -958,7 +958,7 @@ static void space_split_post_build_mapper(void *map_data, int num_cells,
 
     /* Recurse the cell tree, collecting properties and constructing
      * multipoles if running with self-gravity. */
-    space_split_post_build_recursive(s, c);
+    space_split_collect_recursive(s, c);
 
     /* Collect the max multipole power from this cell. */
     if (s->with_self_gravity) {
@@ -1018,7 +1018,7 @@ void space_split(struct space *s, int verbose) {
 
   tic = getticks();
 
-  threadpool_map(&s->e->threadpool, space_split_post_build_mapper,
+  threadpool_map(&s->e->threadpool, space_split_collect_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
                  threadpool_auto_chunk_size, s);
