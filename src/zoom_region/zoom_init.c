@@ -29,7 +29,7 @@
 #include "engine.h"
 #include "gravity_properties.h"
 #include "space.h"
-#include "timers.h
+#include "timers.h"
 #include "zoom.h"
 
 /* mpi headers. */
