@@ -255,7 +255,7 @@ Restarts:
 # Parameters governing domain decomposition
 DomainDecomposition:
   initial_type:     memory    # (Optional) The initial decomposition strategy: "grid",
-                              #            "region", "memory", or "vectorized".
+                              #            "region", "memory", "wedge" or "vectorized".
   initial_grid: [10,10,10]    # (Optional) Grid sizes if the "grid" strategy is chosen.
 
   synchronous:      0         # (Optional) Use synchronous MPI requests to redistribute, uses less system memory, but slower.
@@ -273,6 +273,7 @@ DomainDecomposition:
   use_fixed_costs:  0         # If 1 then use any compiled in fixed costs for
                               # task weights in first repartition, if 0 only use task timings, if > 1 only use
                               # fixed costs, unless none are available.
+  wedges_per_rank:  8         # (Optional) Number of wedges per MPI rank when using the "wedge" initial decomposition strategy.
 
 # Structure finding options (requires velociraptor)
 StructureFinding:
