@@ -10,10 +10,10 @@ f["Header"].attrs.create("NumPart_Total_HighWord", [0, 0, 0, 0, 0, 0])
 
 N = f["Header"].attrs.get("NumPart_ThisFile")[0]
 
-B = f["/PartType0/MagneticField"][:, :] 
+B = f["/PartType0/MagneticField"][:, :]
 B *= 81 / 3.409e-11
 
-f["/PartType0"].create_dataset("SmoothingLength", (N,), 'f', data=np.ones(N) * 0.001)
-f["/PartType0"].create_dataset("MagneticFluxDensities", (N, 3), 'f', data=B)
+f["/PartType0"].create_dataset("SmoothingLength", (N,), "f", data=np.ones(N) * 0.001)
+f["/PartType0"].create_dataset("MagneticFluxDensities", (N, 3), "f", data=B)
 
 f.close()

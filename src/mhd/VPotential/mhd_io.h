@@ -156,8 +156,8 @@ INLINE static void calculate_R2(const struct engine* e, const struct part* p,
                                 const struct xpart* xp, float* ret) {
 
   /* Calculate R2 error metric */
-  const float curlB[3] = {p->mhd_data.curlB[0], p->mhd_data.curlB[1],
-                          p->mhd_data.curlB[2]};
+  const float curlB[3] = {p->mhd_data.curl_B[0], p->mhd_data.curl_B[1],
+                          p->mhd_data.curl_B[2]};
   const float curlB_abs =
       sqrtf(curlB[0] * curlB[0] + curlB[1] * curlB[1] + curlB[2] * curlB[2]);
 
@@ -208,8 +208,8 @@ INLINE static void calculate_R3(const struct engine* e, const struct part* p,
                       p->mhd_data.BPred[2]};
   const float B_abs = sqrtf(B[0] * B[0] + B[1] * B[1] + B[2] * B[2]);
 
-  const float curlB[3] = {p->mhd_data.curlB[0], p->mhd_data.curlB[1],
-                          p->mhd_data.curlB[2]};
+  const float curlB[3] = {p->mhd_data.curl_B[0], p->mhd_data.curl_B[1],
+                          p->mhd_data.curl_B[2]};
   const float curlB_abs =
       sqrtf(curlB[0] * curlB[0] + curlB[1] * curlB[1] + curlB[2] * curlB[2]);
 
@@ -263,7 +263,7 @@ INLINE static void calculate_OW_trigger(const struct engine* e,
   const float Abs_Diff_A = sqrtf(Diff_A[0] * Diff_A[0] + Diff_A[1] * Diff_A[1] +
                                  Diff_A[2] * Diff_A[2]);
 
-  /* Estimating local magnetic Reynolds number*/
+  /* Estimating local magnetic Reynolds number*/  /// XXX WRONG!
 
   const float Rm_local = Abs_Adv_A / (Abs_Diff_A + FLT_MIN);
 

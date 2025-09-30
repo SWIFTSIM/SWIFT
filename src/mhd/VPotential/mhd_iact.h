@@ -36,7 +36,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
   float wi, wj, wi_dx, wj_dx;
@@ -151,7 +151,7 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
   /* Define kernel variables */
@@ -203,15 +203,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   pi->mhd_data.divB += mj * B_mon_i;
   pj->mhd_data.divB += mi * B_mon_j;
 
-  /* Smooth the Magnetic field */
-  for (int i = 0; i < 3; i++) {
-    pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
-    pj->mhd_data.BSmooth[i] += pi->mass * wj * pi->mhd_data.BPred[i];
-  }
-  /* calculate the weights */
-  pi->mhd_data.Q0 += pj->mass * wi;
-  pj->mhd_data.Q0 += pi->mass * wj;
-
   /* dB */
   float dB[3];
   for (int k = 0; k < 3; ++k) dB[k] = Bi[k] - Bj[k];
@@ -224,8 +215,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
 
   /* Calculate Curl */
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.curlB[k] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[k];
-    pj->mhd_data.curlB[k] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[k];
+    pi->mhd_data.curl_B[k] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[k];
+    pj->mhd_data.curl_B[k] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[k];
+    pi->mhd_data.BSmooth[k] += mj * wi * Bi[k];
+    pj->mhd_data.BSmooth[k] += mi * wj * Bj[k];
+  }
+  /* calculate the weights */
+  pi->mhd_data.Q0 += pj->mass * wi;
+  pj->mhd_data.Q0 += pi->mass * wj;
+  /* Calculate gradient of B tensor */
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      pi->mhd_data.grad_B_tensor[i][j] -=
+          mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
+      pj->mhd_data.grad_B_tensor[i][j] -=
+          mi * over_rho_j * wj_dr * r_inv * dB[i] * dx[j];
+    }
   }
 
   /* Calculate SPH error */
@@ -262,7 +267,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 const float hi, const float hj,
                                 struct part *restrict pi,
                                 const struct part *restrict pj,
-                                const double mu_0, const float a,
+                                const float mu_0, const float a,
                                 const float H) {
 
   /* Define kernel variables */
@@ -302,12 +307,6 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
   pi->mhd_data.divB += mj * B_mon_i;
 
-  /* Smooth the Magnetic field */
-  for (int i = 0; i < 3; i++)
-    pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
-  /* calculate the weights */
-  pi->mhd_data.Q0 += pj->mass * wi;
-
   /* dB */
   float dB[3];
   for (int k = 0; k < 3; ++k) dB[k] = Bi[k] - Bj[k];
@@ -320,7 +319,17 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   /* Calculate Curl */
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.curlB[k] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[k];
+    pi->mhd_data.curl_B[k] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[k];
+    pi->mhd_data.BSmooth[k] += mj * wi * Bi[k];
+  }
+  /* calculate the weights */
+  pi->mhd_data.Q0 += pj->mass * wi;
+  /* Calculate gradient of B tensor */
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      pi->mhd_data.grad_B_tensor[i][j] -=
+          mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
+    }
   }
 
   /* Calculate SPH error */
@@ -346,7 +355,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
   /* Get r and 1/r. */
@@ -356,7 +365,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Recover some data */
   const float mi = pi->mass;
   const float mj = pj->mass;
-
+  const float Pi = pi->force.pressure;
+  const float Pj = pj->force.pressure;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
@@ -393,6 +403,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
   }
+  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
+  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
 
   ///////////////////////////// FORCE MAXWELL TENSOR
   for (int i = 0; i < 3; i++)
@@ -404,6 +416,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     mm_i[j][j] -= 0.5 * (Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2]);
     mm_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
   }
+
+  const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
+  const float plasma_beta_j = B2j != 0.0f ? 2.0f * mu_0 * Pj / B2j : FLT_MAX;
+
+  const float scale_i = 0.125f * (10.0f - plasma_beta_i);
+  const float scale_j = 0.125f * (10.0f - plasma_beta_j);
+
+  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
+  const float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, 1.0f));
+
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
@@ -411,9 +433,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
       pj->a_hydro[i] -=
           mi * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pi->a_hydro[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
+      pi->a_hydro[i] -= mj * Bi[i] * tensile_correction_scale_i *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
-      pj->a_hydro[i] += pj->mhd_data.Q0 * mi * Bj[i] *
+      pj->a_hydro[i] += mi * Bj[i] * tensile_correction_scale_j *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
 
@@ -424,12 +446,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
       pj->mhd_data.tot_mag_F[i] -=
           mi * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pi->mhd_data.tot_mag_F[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
-                                   (Bi[j] * mag_faci + Bj[j] * mag_facj) *
-                                   dx[j];
-      pj->mhd_data.tot_mag_F[i] += pj->mhd_data.Q0 * mi * Bj[i] *
-                                   (Bi[j] * mag_faci + Bj[j] * mag_facj) *
-                                   dx[j];
+      pi->mhd_data.tot_mag_F[i] -=
+          mj * Bi[i] * (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
+      pj->mhd_data.tot_mag_F[i] +=
+          mi * Bj[i] * (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
   }
 
@@ -498,7 +518,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const double mu_0,
+    struct part *restrict pi, const struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
   /* Cosmological factors entering the EoMs */
@@ -511,12 +531,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Recover some data */
   const float mi = pi->mass;
   const float mj = pj->mass;
-
+  const float Pi = pi->force.pressure;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-
-  // const float pressurei = pi->force.pressure;
-  // const float pressurej = pj->force.pressure;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -551,6 +568,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
   }
+  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
 
   ///////////////////////////// FORCE MAXWELL TENSOR
   for (int i = 0; i < 3; i++)
@@ -562,12 +580,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     mm_i[j][j] -= 0.5 * (Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2]);
     mm_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
   }
+
+  const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
+  const float scale_i = 0.125f * (10.0f - plasma_beta_i);
+  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
+
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
       pi->a_hydro[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pi->a_hydro[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
+      pi->a_hydro[i] -= mj * Bi[i] * tensile_correction_scale_i *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
 
@@ -576,9 +599,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     for (int j = 0; j < 3; j++) {
       pi->mhd_data.tot_mag_F[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pi->mhd_data.tot_mag_F[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
-                                   (Bi[j] * mag_faci + Bj[j] * mag_facj) *
-                                   dx[j];
+      pi->mhd_data.tot_mag_F[i] -=
+          mj * Bi[i] * (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
   }
 
