@@ -82,15 +82,11 @@ void zoom_write_metadata(hid_t root_grp, hid_t head_grp,
   io_write_attribute(h_zoom, "InternalCenter", DOUBLE, internal_center, 3);
   io_write_attribute_i(h_zoom, "Depth", zp->zoom_cell_depth);
 
-  /* Write out the velocity shift dependant on cosmology */
+  /* If we are running with cosmology write out the scale factor at the
+   * last shift */
   if (s->e->policy & engine_policy_cosmology) {
-    io_write_attribute(h_zoom, "ComovingVelocityShift", FLOAT,
-                       zp->applied_zoom_vel_shift, 3);
     io_write_attribute(h_zoom, "ScaleFactorLastShift", DOUBLE,
                        &zp->scale_factor_at_last_shift, 1);
-  } else {
-    io_write_attribute(h_zoom, "VelocityShift", FLOAT,
-                       zp->applied_zoom_vel_shift, 3);
   }
 
   H5Gclose(h_zoom);

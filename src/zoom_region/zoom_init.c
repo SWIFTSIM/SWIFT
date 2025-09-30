@@ -91,13 +91,17 @@ void zoom_parse_params(struct swift_params *params,
    * the zoom region extent. */
   props->max_com_dx =
       parser_get_opt_param_float(params, "ZoomRegion:max_com_dx", 0.1);
+
+  /* Set the initial scale factor we last shifted to the starting scale factor
+   * (not dangerous if not running a cosmological sim, just won't be used). */
+  props->scale_factor_at_last_shift =
+      parser_get_opt_param_float(params, "Cosmology:a_begin", -1.0);
 }
 
 struct region_dim_data {
   double min_bounds[3];
   double max_bounds[3];
   double com[3];
-  double vcom[3];
   double mtot;
   struct space *s;
 };
@@ -122,7 +126,6 @@ void zoom_get_region_dim_and_shift_mapper(void *map_data, int num_elements,
   double min_bounds[3] = {FLT_MAX, FLT_MAX, FLT_MAX};
   double max_bounds[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
   double com[3] = {0.0, 0.0, 0.0};
-  double vcom[3] = {0.0, 0.0, 0.0};
   double mtot = 0.0;
 
   /* Loop over the particles. */
@@ -159,11 +162,6 @@ void zoom_get_region_dim_and_shift_mapper(void *map_data, int num_elements,
     com[0] += x * gparts[k].mass;
     com[1] += y * gparts[k].mass;
     com[2] += z * gparts[k].mass;
-
-    /* Velocity COM. */
-    vcom[0] += gparts[k].v_full[0] * gparts[k].mass;
-    vcom[1] += gparts[k].v_full[1] * gparts[k].mass;
-    vcom[2] += gparts[k].v_full[2] * gparts[k].mass;
   }
 
   /* Atomically update the results. */
@@ -171,9 +169,6 @@ void zoom_get_region_dim_and_shift_mapper(void *map_data, int num_elements,
   atomic_add_d(&data->com[0], com[0]);
   atomic_add_d(&data->com[1], com[1]);
   atomic_add_d(&data->com[2], com[2]);
-  atomic_add_d(&data->vcom[0], vcom[0]);
-  atomic_add_d(&data->vcom[1], vcom[1]);
-  atomic_add_d(&data->vcom[2], vcom[2]);
   atomic_min_d(&data->min_bounds[0], min_bounds[0]);
   atomic_min_d(&data->min_bounds[1], min_bounds[1]);
   atomic_min_d(&data->min_bounds[2], min_bounds[2]);
@@ -187,8 +182,8 @@ void zoom_get_region_dim_and_shift_mapper(void *map_data, int num_elements,
  *
  * Finds the dimensions of the high resolution particle distribution and
  * computes the necessary shift to shift the zoom region to the centre of the
- * box. This shift is stored to be applied in space_init and for
- * transformation when writing out.
+ * box. This shift is stored to be applied in
+ * zoom_apply_zoom_shift_to_particles and for transformation when writing out.
  *
  * @param s The space
  */
@@ -215,7 +210,6 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
     reg_data->min_bounds[i] = FLT_MAX;
     reg_data->max_bounds[i] = -FLT_MAX;
     reg_data->com[i] = 0.0;
-    reg_data->vcom[i] = 0.0;
   }
   reg_data->s = s;
 
@@ -235,7 +229,6 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
   double *min_bounds = reg_data->min_bounds;
   double *max_bounds = reg_data->max_bounds;
   double *com = reg_data->com;
-  double *vcom = reg_data->vcom;
   double mtot = reg_data->mtot;
 
 #ifdef WITH_MPI
@@ -247,9 +240,8 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
   MPI_Allreduce(MPI_IN_PLACE, &max_bounds[1], 3, MPI_DOUBLE, MPI_MAX,
                 MPI_COMM_WORLD);
 
-  /* CoM and bulk velocity. */
+  /* CoM */
   MPI_Allreduce(MPI_IN_PLACE, com, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, vcom, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &mtot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
@@ -258,19 +250,10 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
   com[0] *= imass;
   com[1] *= imass;
   com[2] *= imass;
-  vcom[0] *= imass;
-  vcom[1] *= imass;
-  vcom[2] *= imass;
 
-  /* Store the CoM and bulk velocity in the zoom properties. */
+  /* Store the CoM in the zoom properties. */
   for (int i = 0; i < 3; i++) {
     s->zoom_props->com[i] = com[i];
-    s->zoom_props->vcom[i] = vcom[i];
-  }
-
-  /* Store the velocity shift to be applied to the zoom region. */
-  for (int i = 0; i < 3; i++) {
-    s->zoom_props->zoom_vel_shift[i] = -vcom[i];
   }
 
   /* Get the initial dimensions and midpoint. */
@@ -350,9 +333,6 @@ void zoom_apply_zoom_shift_to_part_mapper(void *map_data, int num_elements,
     parts[k].x[0] += zp->zoom_shift[0];
     parts[k].x[1] += zp->zoom_shift[1];
     parts[k].x[2] += zp->zoom_shift[2];
-    parts[k].v[0] += zp->zoom_vel_shift[0];
-    parts[k].v[1] += zp->zoom_vel_shift[1];
-    parts[k].v[2] += zp->zoom_vel_shift[2];
   }
 }
 
@@ -373,9 +353,6 @@ void zoom_apply_zoom_shift_to_gpart_mapper(void *map_data, int num_elements,
     gparts[k].x[0] += zp->zoom_shift[0];
     gparts[k].x[1] += zp->zoom_shift[1];
     gparts[k].x[2] += zp->zoom_shift[2];
-    gparts[k].v_full[0] += zp->zoom_vel_shift[0];
-    gparts[k].v_full[1] += zp->zoom_vel_shift[1];
-    gparts[k].v_full[2] += zp->zoom_vel_shift[2];
   }
 }
 
@@ -396,9 +373,6 @@ void zoom_apply_zoom_shift_to_spart_mapper(void *map_data, int num_elements,
     sparts[k].x[0] += zp->zoom_shift[0];
     sparts[k].x[1] += zp->zoom_shift[1];
     sparts[k].x[2] += zp->zoom_shift[2];
-    sparts[k].v[0] += zp->zoom_vel_shift[0];
-    sparts[k].v[1] += zp->zoom_vel_shift[1];
-    sparts[k].v[2] += zp->zoom_vel_shift[2];
   }
 }
 
@@ -419,9 +393,6 @@ void zoom_apply_zoom_shift_to_bpart_mapper(void *map_data, int num_elements,
     bparts[k].x[0] += zp->zoom_shift[0];
     bparts[k].x[1] += zp->zoom_shift[1];
     bparts[k].x[2] += zp->zoom_shift[2];
-    bparts[k].v[0] += zp->zoom_vel_shift[0];
-    bparts[k].v[1] += zp->zoom_vel_shift[1];
-    bparts[k].v[2] += zp->zoom_vel_shift[2];
   }
 }
 
@@ -442,16 +413,11 @@ void zoom_apply_zoom_shift_to_sink_mapper(void *map_data, int num_elements,
     sinks[k].x[0] += zp->zoom_shift[0];
     sinks[k].x[1] += zp->zoom_shift[1];
     sinks[k].x[2] += zp->zoom_shift[2];
-    sinks[k].v[0] += zp->zoom_vel_shift[0];
-    sinks[k].v[1] += zp->zoom_vel_shift[1];
-    sinks[k].v[2] += zp->zoom_vel_shift[2];
   }
 }
 
 /**
  * @brief Apply the zoom shift to all particles in the space.
- *
- * NOTE: could probably be a threadpool in the future.
  *
  * @param s The space
  */
@@ -462,10 +428,7 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
   /* If no shift is needed, return. */
   if (s->zoom_props->zoom_shift[0] == 0.0 &&
       s->zoom_props->zoom_shift[1] == 0.0 &&
-      s->zoom_props->zoom_shift[2] == 0.0 &&
-      s->zoom_props->zoom_vel_shift[0] == 0.0 &&
-      s->zoom_props->zoom_vel_shift[1] == 0.0 &&
-      s->zoom_props->zoom_vel_shift[2] == 0.0) {
+      s->zoom_props->zoom_shift[2] == 0.0) {
     return;
   }
 
@@ -476,41 +439,26 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
       s->parts[i].x[0] += s->zoom_props->zoom_shift[0];
       s->parts[i].x[1] += s->zoom_props->zoom_shift[1];
       s->parts[i].x[2] += s->zoom_props->zoom_shift[2];
-      s->parts[i].v[0] += s->zoom_props->zoom_vel_shift[0];
-      s->parts[i].v[1] += s->zoom_props->zoom_vel_shift[1];
-      s->parts[i].v[2] += s->zoom_props->zoom_vel_shift[2];
     }
     for (size_t i = 0; i < s->nr_gparts; i++) {
       s->gparts[i].x[0] += s->zoom_props->zoom_shift[0];
       s->gparts[i].x[1] += s->zoom_props->zoom_shift[1];
       s->gparts[i].x[2] += s->zoom_props->zoom_shift[2];
-      s->gparts[i].v_full[0] += s->zoom_props->zoom_vel_shift[0];
-      s->gparts[i].v_full[1] += s->zoom_props->zoom_vel_shift[1];
-      s->gparts[i].v_full[2] += s->zoom_props->zoom_vel_shift[2];
     }
     for (size_t i = 0; i < s->nr_sparts; i++) {
       s->sparts[i].x[0] += s->zoom_props->zoom_shift[0];
       s->sparts[i].x[1] += s->zoom_props->zoom_shift[1];
       s->sparts[i].x[2] += s->zoom_props->zoom_shift[2];
-      s->sparts[i].v[0] += s->zoom_props->zoom_vel_shift[0];
-      s->sparts[i].v[1] += s->zoom_props->zoom_vel_shift[1];
-      s->sparts[i].v[2] += s->zoom_props->zoom_vel_shift[2];
     }
     for (size_t i = 0; i < s->nr_bparts; i++) {
       s->bparts[i].x[0] += s->zoom_props->zoom_shift[0];
       s->bparts[i].x[1] += s->zoom_props->zoom_shift[1];
       s->bparts[i].x[2] += s->zoom_props->zoom_shift[2];
-      s->bparts[i].v[0] += s->zoom_props->zoom_vel_shift[0];
-      s->bparts[i].v[1] += s->zoom_props->zoom_vel_shift[1];
-      s->bparts[i].v[2] += s->zoom_props->zoom_vel_shift[2];
     }
     for (size_t i = 0; i < s->nr_sinks; i++) {
       s->sinks[i].x[0] += s->zoom_props->zoom_shift[0];
       s->sinks[i].x[1] += s->zoom_props->zoom_shift[1];
       s->sinks[i].x[2] += s->zoom_props->zoom_shift[2];
-      s->sinks[i].v[0] += s->zoom_props->zoom_vel_shift[0];
-      s->sinks[i].v[1] += s->zoom_props->zoom_vel_shift[1];
-      s->sinks[i].v[2] += s->zoom_props->zoom_vel_shift[2];
     }
   } else {
     struct engine *e = s->e;
@@ -540,41 +488,33 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
    * pointless reapplication. */
   for (int i = 0; i < 3; i++) {
     s->zoom_props->applied_zoom_shift[i] += s->zoom_props->zoom_shift[i];
-    s->zoom_props->applied_zoom_vel_shift[i] +=
-        s->zoom_props->zoom_vel_shift[i];
     s->zoom_props->zoom_shift[i] = 0.0;
-    s->zoom_props->zoom_vel_shift[i] = 0.0;
   }
 
   if (verbose)
     message(
-        "Shifting particles positions by [%f, %f, %f] and "
-        "velocities by [%f, %f, %f]",
+        "Shifting particles positions by [%f, %f, %f]",
         s->zoom_props->applied_zoom_shift[0],
         s->zoom_props->applied_zoom_shift[1],
         s->zoom_props->applied_zoom_shift[2],
-        s->zoom_props->applied_zoom_vel_shift[0],
-        s->zoom_props->applied_zoom_vel_shift[1],
-        s->zoom_props->applied_zoom_vel_shift[2]);
 
   /* Store the scale factor at which we applied the shift (if we don't yet
    * have the engine then we are starting up and will set this in
    * engine_init). */
   if (s->e != NULL) {
-
-    /* Are we doing cosmology? */
-    if (s->e->policy & engine_policy_cosmology) {
-      s->zoom_props->scale_factor_at_last_shift = s->e->cosmology->a;
-    } else {
-      s->zoom_props->scale_factor_at_last_shift = 1.0;
-    }
+      /* Are we doing cosmology? */
+      if (s->e->policy & engine_policy_cosmology) {
+        s->zoom_props->scale_factor_at_last_shift = s->e->cosmology->a;
+      } else {
+        s->zoom_props->scale_factor_at_last_shift = 1.0;
+      }
   } else {
-    s->zoom_props->scale_factor_at_last_shift = -1.0;
+      s->zoom_props->scale_factor_at_last_shift = -1.0;
   }
 
   if (verbose) {
-    message("Applying zoom region shift took %f %s",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+      message("Applying zoom region shift took %f %s",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 }
 
@@ -887,10 +827,6 @@ void zoom_report_cell_properties(const struct space *s) {
   message("%28s = [%f, %f, %f]", "Zoom Region Shift",
           zoom_props->applied_zoom_shift[0], zoom_props->applied_zoom_shift[1],
           zoom_props->applied_zoom_shift[2]);
-  message("%28s = [%f, %f, %f]", "Zoom Velocity Shift",
-          zoom_props->applied_zoom_vel_shift[0],
-          zoom_props->applied_zoom_vel_shift[1],
-          zoom_props->applied_zoom_vel_shift[2]);
   message("%28s = [%f, %f, %f]", "Zoom Region Center",
           zoom_props->region_lower_bounds[0] + (zoom_props->dim[0] / 2.0),
           zoom_props->region_lower_bounds[1] + (zoom_props->dim[1] / 2.0),
