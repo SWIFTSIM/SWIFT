@@ -340,6 +340,7 @@ int partition_get_wedge_index(struct partition *p, struct space *s,
       ((int)floor(theta / theta_width) + theta_nwedges) % theta_nslices;
   return theta_ind * phi_nwedges + phi_ind;
 #endif /* WITH_MPI */
+  return 0;
 }
 
 /**
@@ -437,6 +438,7 @@ static int partition_radial_wedges(struct partition *initial_partition,
 
   return check_complete(s, (s->e->nodeID == 0), nregions);
 #endif /* WITH_MPI */
+  return 0;
 }
 
 /* METIS/ParMETIS support (optional)
