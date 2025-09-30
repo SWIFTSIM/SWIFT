@@ -126,9 +126,11 @@ j.convert_to_units(j_units)
 n_H = rho / (m_H_cgs * unyt.g)
 
 # filter galaxy
-z = coords_center[:,2]
-r_xy = np.linalg.norm(coords_center[:,:2], axis=1)
-mask_galaxy = ((r_xy.to(r_units)<30) & (np.abs(z).to(r_units)<2)) # r_xy < 10 & |z|< 1 galaxy
+z = coords_center[:, 2]
+r_xy = np.linalg.norm(coords_center[:, :2], axis=1)
+mask_galaxy = (r_xy.to(r_units) < 30) & (
+    np.abs(z).to(r_units) < 2
+)  # r_xy < 10 & |z|< 1 galaxy
 
 print(sum(mask_galaxy))
 
@@ -143,14 +145,20 @@ fig, axs = plt.subplots(ny, nx, figsize=((10 * nx, 5 * ny)))
 fig.subplots_adjust(hspace=0.1)
 
 # plot density
-axs[0].scatter(radius[~mask_galaxy].to(r_units), rho[~mask_galaxy].to(rho_units), s=0.1, color="black")
+axs[0].scatter(
+    radius[~mask_galaxy].to(r_units),
+    rho[~mask_galaxy].to(rho_units),
+    s=0.1,
+    color="black",
+)
 axs[0].set_yscale("log")
-#axs[0].set_yticks(np.logspace(-7, 2, 10))
-#axs[0].set_ylim(1e-7, 1e2)
+# axs[0].set_yticks(np.logspace(-7, 2, 10))
+# axs[0].set_ylim(1e-7, 1e2)
 
 # plot density
 axs[1].scatter(radius[~mask_galaxy].to(r_units), T[~mask_galaxy], s=0.1, color="black")
 axs[1].set_yscale("log")
+
 
 def rho(r, pars):
     """ 
@@ -163,38 +171,40 @@ def rho(r, pars):
     """
 
     # Define density profiles
-    if pars['profile']=='uniform':
+    if pars["profile"] == "uniform":
         # Constant density profile
-        rho0 = pars['rho0']
-        density= rho0 * np.ones_like(r)
-    elif pars['profile']=='isothermal':
+        rho0 = pars["rho0"]
+        density = rho0 * np.ones_like(r)
+    elif pars["profile"] == "isothermal":
         # Isothermal profile
-        rho0 = pars['rho0']
-        r0 = pars['r0']
-        density = rho0 / (1 + (r/r0)**2)
-    elif pars['profile']=='beta':
+        rho0 = pars["rho0"]
+        r0 = pars["r0"]
+        density = rho0 / (1 + (r / r0) ** 2)
+    elif pars["profile"] == "beta":
         # Beta profile
-        rho0 = pars['rho0']
-        r0 = pars['r0']
-        beta = pars['beta']
-        density = rho0 * (1 + (r/r0)**2)**( - 3 * beta / 2)
-   
+        rho0 = pars["rho0"]
+        r0 = pars["r0"]
+        beta = pars["beta"]
+        density = rho0 * (1 + (r / r0) ** 2) ** (-3 * beta / 2)
+
     return density
 
 
-r_analytic = np.logspace(-3,2,1000) * r_units
+r_analytic = np.logspace(-3, 2, 1000) * r_units
 
 parameters = []
 rho0 = 5e-26 * rho_units
-R_max = 50 * r_units # maximal radius in kpc
+R_max = 50 * r_units  # maximal radius in kpc
 
 
-pars = {'density':{'profile': 'beta', 'rho0': rho0, 'r0': 0.33 * r_units, 'beta': 2/3 }}
-          # form parameter dict
+pars = {
+    "density": {"profile": "beta", "rho0": rho0, "r0": 0.33 * r_units, "beta": 2 / 3}
+}
+# form parameter dict
 
-rho_analytic = rho(r_analytic, pars['density'])
+rho_analytic = rho(r_analytic, pars["density"])
 
-#print(rho_analytic[12:])
+# print(rho_analytic[12:])
 
 # plot density
 axs[0].plot(
@@ -205,13 +215,13 @@ axs[0].plot(
 )
 axs[0].set_yscale("log")
 axs[0].set_xscale("log")
-#axs[0].set_xlim([rmin, rmax])
+# axs[0].set_xlim([rmin, rmax])
 axs[0].legend()
 
 
 axs[1].set_yscale("log")
 axs[1].set_xscale("log")
-#axs[0].set_xlim([rmin, rmax])
+# axs[0].set_xlim([rmin, rmax])
 axs[1].legend()
 
 
