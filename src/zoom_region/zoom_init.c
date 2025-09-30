@@ -830,6 +830,8 @@ void zoom_report_cell_properties(const struct space *s) {
           zoom_props->region_lower_bounds[0] + (zoom_props->dim[0] / 2.0),
           zoom_props->region_lower_bounds[1] + (zoom_props->dim[1] / 2.0),
           zoom_props->region_lower_bounds[2] + (zoom_props->dim[2] / 2.0));
+  message("%28s = [%f, %f, %f]", "Zoom Region CoM", zoom_props->com[0],
+          zoom_props->com[1], zoom_props->com[2]);
 }
 
 /**
