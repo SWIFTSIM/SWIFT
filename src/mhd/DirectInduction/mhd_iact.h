@@ -565,8 +565,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float sph_acc_term_i_abs_pr = ( err_vec_i[0] * sph_acc_term_i[0] + err_vec_i[1] * sph_acc_term_i[1] + err_vec_i[2] * sph_acc_term_i[2] ) / (err_vec_i[0]*err_vec_i[0] + err_vec_i[1]*err_vec_i[1] + err_vec_i[2]*err_vec_i[2]);
   const float sph_acc_term_j_abs_pr = ( err_vec_j[0] * sph_acc_term_j[0] + err_vec_j[1] * sph_acc_term_j[1] + err_vec_j[2] * sph_acc_term_j[2] ) / (err_vec_j[0]*err_vec_j[0] + err_vec_j[1]*err_vec_j[1] + err_vec_j[2]*err_vec_j[2]);
   for (int k = 0; k < 3; k++) {  
-    sph_acc_term_i[k] -= sph_acc_term_i_abs_pr * err_vec_i[k];
-    sph_acc_term_j[k] -= sph_acc_term_j_abs_pr * err_vec_j[k];
+    sph_acc_term_i[k] -= sph_acc_term_i_abs_pr * err_vec_i[k] * (1.0f -  pi->mhd_data.mhdsw);
+    sph_acc_term_j[k] -= sph_acc_term_j_abs_pr * err_vec_j[k] * (1.0f -  pj->mhd_data.mhdsw);
   }
 */
   /* Use the force Luke ! */
@@ -883,7 +883,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   }
   const float sph_acc_term_i_abs_pr = ( err_vec_i[0] * sph_acc_term_i[0] + err_vec_i[1] * sph_acc_term_i[1] + err_vec_i[2] * sph_acc_term_i[2] ) / (err_vec_i[0]*err_vec_i[0] + err_vec_i[1]*err_vec_i[1] + err_vec_i[2]*err_vec_i[2]);
   for (int k = 0; k < 3; k++) {  
-    sph_acc_term_i[k] -= sph_acc_term_i_abs_pr * err_vec_i[k];
+    sph_acc_term_i[k] -= sph_acc_term_i_abs_pr * err_vec_i[k] * (1.0f -  pi->mhd_data.mhdsw);
   }
 */
 
