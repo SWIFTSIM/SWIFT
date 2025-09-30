@@ -50,11 +50,6 @@ static int zoom_need_regrid_motion(const struct space *s) {
   if (dx[0] > max_shift * s->zoom_props->dim[0] ||
       dx[1] > max_shift * s->zoom_props->dim[1] ||
       dx[2] > max_shift * s->zoom_props->dim[2]) {
-    message(
-        "Zoom region shift exceeds %.2f%% of the zoom region in at least one "
-        "dimension (shift=(%.3e,%.3e,%.3e), zoom_dim=(%.3e,%.3e,%.3e)).",
-        max_shift * 100.0, dx[0], dx[1], dx[2], s->zoom_props->dim[0],
-        s->zoom_props->dim[1], s->zoom_props->dim[2]);
     return 1;
   }
 
@@ -88,13 +83,6 @@ static int zoom_need_regrid_extent(const struct space *s) {
   if (s->zoom_props->part_dim[0] > max_dim[0] ||
       s->zoom_props->part_dim[1] > max_dim[1] ||
       s->zoom_props->part_dim[2] > max_dim[2]) {
-    message(
-        "Particle distribution exceeds %.2f%% of the zoom region "
-        "in at least one dimension (part_dim=(%.3e,%.3e,%.3e), "
-        "zoom_dim=(%.3e,%.3e,%.3e)).",
-        max_part_dim_frac * 100.0, s->zoom_props->part_dim[0],
-        s->zoom_props->part_dim[1], s->zoom_props->part_dim[2],
-        s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]);
     return 1;
   }
   return 0;
@@ -298,12 +286,6 @@ void zoom_prepare_cells(struct space *s, const int zoom_cdim[3], int verbose) {
 
     /* Find an acceptable geometry given the required zoom cdim. */
     zoom_regrid_find_acceptable_geometry(s, zoom_cdim);
-
-    /* The above function found the geometry silently, if we're running in
-     * verbose mode print the cell properties report. */
-    if (verbose) {
-      zoom_report_cell_properties(s);
-    }
   }
 
   /* Count the number of top level cells. */
