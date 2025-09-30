@@ -335,9 +335,9 @@ int partition_get_wedge_index(struct partition *p, struct space *s,
   double phi = acos(dz / r);
 
   /* Find this wedge index. */
-  int phi_ind = ((int)floor(phi / phi_width) + phi_nwedges) % phi_nslices;
+  int phi_ind = ((int)floor(phi / phi_width) + phi_nwedges) % phi_nwedges;
   int theta_ind =
-      ((int)floor(theta / theta_width) + theta_nwedges) % theta_nslices;
+      ((int)floor(theta / theta_width) + theta_nwedges) % theta_nwedges;
   return theta_ind * phi_nwedges + phi_ind;
 #endif /* WITH_MPI */
   return 0;
