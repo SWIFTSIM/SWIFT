@@ -2200,8 +2200,8 @@ void partition_initial_partition(struct partition *initial_partition,
 
   } else if (initial_partition->type == INITPART_WEDGE) {
     /* The wedge technique can fail, so check for this before proceeding. */
-    if (!partition_radial_wedge(initial_partition, s, nr_nodes, s->cells_top,
-                                s->nr_cells)) {
+    if (!partition_radial_wedges(initial_partition, s, nr_nodes, s->cells_top,
+                                 s->nr_cells)) {
       if (nodeID == 0)
         message("Wedge initial partition failed, using a vectorised partition");
       initial_partition->type = INITPART_VECTORIZE;
