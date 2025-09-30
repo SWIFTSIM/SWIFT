@@ -425,7 +425,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   float f_ij = 1.f - pi->force.f / mj;
   float f_ji = 1.f - pj->force.f / mi;
 
-  /* Switch for fij */
+  /* Mitigation: switching fij to 0 */
   //f_ij *= pi->mhd_data.mhdsw;
   //f_ji *= pj->mhd_data.mhdsw;
 
@@ -516,7 +516,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
   float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, 1.0f));
 
-  /* Switch for tensile correction */
+  /* Mitigation: switching tensile correction to 0.5 */
   //tensile_correction_scale_i = fminf(tensile_correction_scale_i, 0.5f * ( 1.0f + pi->mhd_data.mhdsw) );
   //tensile_correction_scale_j = fminf(tensile_correction_scale_j, 0.5f * ( 1.0f + pj->mhd_data.mhdsw) );
 
@@ -551,6 +551,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   sph_acc_term_j[2] -= monopole_beta * over_rho2_j * wj_dr * permeability_inv *
                        Brj * r_inv * Bj[2] * tensile_correction_scale_j;
 
+
+  /* Mitigation: switching off force component parallel to the chosen error variable */
+/*
+  float err_vec_i[3];
+  float err_vec_j[3];
+  for (int k = 0; k < 3; k++) {  
+    err_vec_i[k] = pi->mhd_data.rcm_over_ha_Kw[k];
+    err_vec_j[k] = pj->mhd_data.rcm_over_ha_Kw[k];
+    // err_vec_i[k] = pi->mhd_data.symmetric_gradient_err_fij[k];
+    // err_vec_j[k] = pi->mhd_data.symmetric_gradient_err_fij[k];
+  }
+  const float sph_acc_term_i_abs_pr = ( err_vec_i[0] * sph_acc_term_i[0] + err_vec_i[1] * sph_acc_term_i[1] + err_vec_i[2] * sph_acc_term_i[2] ) / (err_vec_i[0]*err_vec_i[0] + err_vec_i[1]*err_vec_i[1] + err_vec_i[2]*err_vec_i[2]);
+  const float sph_acc_term_j_abs_pr = ( err_vec_j[0] * sph_acc_term_j[0] + err_vec_j[1] * sph_acc_term_j[1] + err_vec_j[2] * sph_acc_term_j[2] ) / (err_vec_j[0]*err_vec_j[0] + err_vec_j[1]*err_vec_j[1] + err_vec_j[2]*err_vec_j[2]);
+  for (int k = 0; k < 3; k++) {  
+    sph_acc_term_i[k] -= sph_acc_term_i_abs_pr * err_vec_i[k];
+    sph_acc_term_j[k] -= sph_acc_term_j_abs_pr * err_vec_j[k];
+  }
+*/
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * sph_acc_term_i[0];
   pi->a_hydro[1] -= mj * sph_acc_term_i[1];
@@ -761,7 +779,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   float f_ij = 1.f - pi->force.f / mj;
   float f_ji = 1.f - pj->force.f / mi;
 
-  /* Switch for fij */
+  /* Mitigation: switching fij to 0 */
   //f_ij *= pi->mhd_data.mhdsw;
   //f_ji *= pj->mhd_data.mhdsw;
 
@@ -838,7 +856,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
 
-  /* Switch for tensile correction */
+  /* Mitigation: switching tensile correction to 0.5 */
   //tensile_correction_scale_i = fminf(tensile_correction_scale_i, 0.5f * ( 1.0f + pi->mhd_data.mhdsw) );
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
@@ -855,6 +873,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                        Bri * r_inv * Bi[2] * tensile_correction_scale_i;
   sph_acc_term_i[2] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
                        Brj * r_inv * Bi[2] * tensile_correction_scale_i;
+
+  /* Mitigation: switching off force component parallel to the chosen error variable */
+/*
+  float err_vec_i[3];
+  for (int k = 0; k < 3; k++) {  
+    err_vec_i[k] = pi->mhd_data.rcm_over_ha_Kw[k];
+    // err_vec_i[k] = pi->mhd_data.symmetric_gradient_err_fij[k];
+  }
+  const float sph_acc_term_i_abs_pr = ( err_vec_i[0] * sph_acc_term_i[0] + err_vec_i[1] * sph_acc_term_i[1] + err_vec_i[2] * sph_acc_term_i[2] ) / (err_vec_i[0]*err_vec_i[0] + err_vec_i[1]*err_vec_i[1] + err_vec_i[2]*err_vec_i[2]);
+  for (int k = 0; k < 3; k++) {  
+    sph_acc_term_i[k] -= sph_acc_term_i_abs_pr * err_vec_i[k];
+  }
+*/
+
+
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * sph_acc_term_i[0];
   pi->a_hydro[1] -= mj * sph_acc_term_i[1];
