@@ -135,12 +135,13 @@ void zoom_get_region_dim_and_shift_mapper(void *map_data, int num_elements,
       continue;
     }
 
-    /* Unpack the particle positions. */
+    /* Unpack the particle properties. */
     /* NOTE: these will have already been shifted by the user requested amount
      * in space_init if shift in the parameter file is non-zero. */
     const double x = gparts[k].x[0];
     const double y = gparts[k].x[1];
     const double z = gparts[k].x[2];
+    const double mass = gparts[k].mass;
 
     /* Wrap if periodic. */
     if (s->periodic) {
@@ -158,10 +159,10 @@ void zoom_get_region_dim_and_shift_mapper(void *map_data, int num_elements,
     if (z < min_bounds[2]) min_bounds[2] = z;
 
     /* Total up mass and position for COM. */
-    mtot += s->gparts[k].mass;
-    com[0] += x * gparts[k].mass;
-    com[1] += y * gparts[k].mass;
-    com[2] += z * gparts[k].mass;
+    mtot += mass;
+    com[0] += x * mass;
+    com[1] += y * mass;
+    com[2] += z * mass;
   }
 
   /* Atomically update the results. */
