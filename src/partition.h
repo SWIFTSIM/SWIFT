@@ -44,6 +44,11 @@ struct partition {
   enum partition_type type;
   int grid[3];
   int usemetis;
+  int nr_wedges;
+  int nr_theta_slices;
+  int nr_phi_slices;
+  double theta_width;
+  double phi_width;
 };
 
 /* Repartition type to use. */
