@@ -420,7 +420,7 @@ static int partition_radial_wedges(struct partition *initial_partition,
   }
 
   /* Now lets tell each cell where it is. */
-  for (int cid = start; cid < start + ncells; cid++) {
+  for (int cid = 0; cid < ncells; cid++) {
 
     /* Get the cell. */
     struct cell *c = &s->cells_top[cid];
