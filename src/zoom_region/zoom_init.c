@@ -291,11 +291,6 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
     }
   }
 
-  /* Let's shift the COM.
-   * NOTE: boundaries are recalculated relative to box centre later. */
-  for (int i = 0; i < 3; i++)
-    s->zoom_props->com[i] += s->zoom_props->zoom_shift[i];
-
   /* Store the particle extent in the zoom properties. */
   for (int i = 0; i < 3; i++) s->zoom_props->part_dim[i] = ini_dims[i];
 
@@ -482,6 +477,11 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
       threadpool_map(&e->threadpool, zoom_apply_zoom_shift_to_sink_mapper,
                      s->sinks, s->nr_sinks, sizeof(struct sink),
                      threadpool_auto_chunk_size, s->zoom_props);
+  }
+
+  /* Shift the CoM. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->com[i] += s->zoom_props->zoom_shift[i];
   }
 
   /* Store what we applied to write out later and zero the shift to avoid
