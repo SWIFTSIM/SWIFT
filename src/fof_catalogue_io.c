@@ -31,6 +31,7 @@
 #include "hydro_io.h"
 #include "tools.h"
 #include "version.h"
+#include "zoom_region/zoom.h"
 
 void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
                            const long long num_groups_total,
@@ -118,8 +119,11 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   io_write_attribute_i(h_grp, "Virtual", virtual_file);
   const int to_write[swift_type_count] = {0};
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
-  io_write_attribute_i(h_grp, "ZoomIn", e->s->with_zoom_region);
   io_write_attribute_s(h_grp, "OutputType", "FOF");
+
+  /* Write zoom related attributes (only writes ZoomIn=0 to the Header if not a
+   * zoom) */
+  zoom_write_metadata(h_file, h_grp, e->s);
 
   /* FOF-specific counters */
   io_write_attribute_ll(h_grp, "NumGroups_Total", num_groups_total);

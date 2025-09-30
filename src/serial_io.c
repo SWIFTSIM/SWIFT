@@ -62,6 +62,7 @@
 #include "units.h"
 #include "version.h"
 #include "xmf.h"
+#include "zoom_region/zoom.h"
 
 /* Max number of entries that can be written for a given particle type */
 static const int io_max_size_output_list = 100;
@@ -1269,7 +1270,10 @@ void write_output_serial(struct engine* e,
     io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
     io_write_attribute_i(h_grp, "Virtual", 0);
     io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
-    io_write_attribute_i(h_grp, "ZoomIn", e->s->with_zoom_region);
+
+    /* Write zoom related attributes (only writes ZoomIn=0 to the Header if not
+     * a zoom) */
+    zoom_write_metadata(h_file, h_grp, e->s);
 
     if (subsample_any) {
       io_write_attribute_s(h_grp, "OutputType", "SubSampled");

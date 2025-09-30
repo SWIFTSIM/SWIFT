@@ -166,7 +166,7 @@ endif
 ZOOM_REGION_SOURCES = zoom_region/zoom_init.c zoom_region/zoom_cell.c \
     zoom_region/zoom_regrid.c zoom_region/zoom_maketasks.c \
     zoom_region/zoom_split.c zoom_region/zoom_proxy.c \ 
-    zoom_region/zoom_partition.c
+    zoom_region/zoom_partition.c zoom_region/zoom_io.c
 
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c
