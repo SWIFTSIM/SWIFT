@@ -305,9 +305,9 @@ static void partition_vector(int nr_nodes, struct space *s) {
  *
  * @return The wedge index.
  */
-#ifdef WITH_MPI
 int partition_get_wedge_index(struct partition *p, struct space *s,
                               struct cell *c) {
+#ifdef WITH_MPI
 
   /* The number of wedges in theta. */
   int theta_nwedges = p->nr_theta_slices;
@@ -339,8 +339,8 @@ int partition_get_wedge_index(struct partition *p, struct space *s,
   int theta_ind =
       ((int)floor(theta / theta_width) + theta_nwedges) % theta_nslices;
   return theta_ind * phi_nwedges + phi_ind;
-}
 #endif /* WITH_MPI */
+}
 
 /**
  * @brief Partition the into radial wedges.
@@ -356,10 +356,10 @@ int partition_get_wedge_index(struct partition *p, struct space *s,
  * @param cells The list of cells to partition.
  * @param ncells The number of cells to partition.
  */
-#ifdef WITH_MPI
 static int partition_radial_wedges(struct partition *initial_partition,
                                    struct space *s, int nregions,
                                    struct cell *cells, int ncells) {
+#ifdef WITH_MPI
 
   /* Get useful information */
   int nwedges = initial_partition->nr_wedges;
@@ -436,8 +436,8 @@ static int partition_radial_wedges(struct partition *initial_partition,
   free(region_weights);
 
   return check_complete(s, (s->e->nodeID == 0), nregions);
-}
 #endif /* WITH_MPI */
+}
 
 /* METIS/ParMETIS support (optional)
  * =================================
