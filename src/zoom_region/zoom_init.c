@@ -492,29 +492,28 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
   }
 
   if (verbose)
-    message(
-        "Shifting particles positions by [%f, %f, %f]",
-        s->zoom_props->applied_zoom_shift[0],
-        s->zoom_props->applied_zoom_shift[1],
-        s->zoom_props->applied_zoom_shift[2],
+    message("Shifting particles positions by [%f, %f, %f]",
+            s->zoom_props->applied_zoom_shift[0],
+            s->zoom_props->applied_zoom_shift[1],
+            s->zoom_props->applied_zoom_shift[2]);
 
   /* Store the scale factor at which we applied the shift (if we don't yet
    * have the engine then we are starting up and will set this in
    * engine_init). */
   if (s->e != NULL) {
-      /* Are we doing cosmology? */
-      if (s->e->policy & engine_policy_cosmology) {
-        s->zoom_props->scale_factor_at_last_shift = s->e->cosmology->a;
-      } else {
-        s->zoom_props->scale_factor_at_last_shift = 1.0;
-      }
+    /* Are we doing cosmology? */
+    if (s->e->policy & engine_policy_cosmology) {
+      s->zoom_props->scale_factor_at_last_shift = s->e->cosmology->a;
+    } else {
+      s->zoom_props->scale_factor_at_last_shift = 1.0;
+    }
   } else {
-      s->zoom_props->scale_factor_at_last_shift = -1.0;
+    s->zoom_props->scale_factor_at_last_shift = -1.0;
   }
 
   if (verbose) {
-      message("Applying zoom region shift took %f %s",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
+    message("Applying zoom region shift took %f %s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 }
 
