@@ -1,0 +1,63 @@
+MetaData:
+  run_name:   LeidenProtostellarJetComparisonProject
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98841e33       # 1Msun in grams
+  UnitLength_in_cgs:   3.08567758149e18 # 1pc in centimeters
+  UnitVelocity_in_cgs: 1e2              # 1m/s in cm/s
+  UnitCurrent_in_cgs:  1e10             # Amperes
+  UnitTemp_in_cgs:     1                # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.         # The starting time of the simulation (in internal units).
+  time_end:   1.25e-04   # The end time of the simulation (in internal units).
+  dt_min:     1e-14      # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-5       # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            jet_comparison_project # Common part of the name of output files
+  time_first:          0.                     # Time of the first output (in internal units)
+  delta_time:          1.67e-08               # Time difference between consecutive outputs (in internal units)
+  compression:         1
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          0.00001 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target h in units of the mean inter-particle separation
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_max:		 0.1
+
+# Parameters for MHD scheme
+MHD:
+  monopole_subtraction:   1.0
+  artificial_diffusion:   1.0
+  hyperbolic_dedner:      1.0
+  hyperbolic_dedner_divv: 0.5
+  parabolic_dedner:       1.0
+  resistive_eta:          0.0
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                0.025
+  MAC:                adaptive
+  theta_cr:           0.7
+  epsilon_fmm:        0.001
+  max_physical_baryon_softening: 0.000005    # Physical softening length (in internal units).
+  mesh_side_length:   64
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  M1_R0.01296_Z1_S0_A0_B0.1_I1_Res43_n2_sol0.5_42.hdf5
+  periodic:   1
+
+# Parameters related to the barotropic equation of state
+EoS:
+  barotropic_vacuum_sound_speed:   200             # 0.2 km/s in internal system of units (aka. m/s)
+  barotropic_core_density:         1.478e9         # 10^13 g / cm^3 in internal system of units (aka. Msun / pc**3)
+  external_pressure:               5.9e13          # rho_0 * c_s0^2 in internal units (aka. Msun / pc / (pc/(m/s))^2)

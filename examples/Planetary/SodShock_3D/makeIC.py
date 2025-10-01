@@ -66,6 +66,7 @@ vol_R = 0.25
 v = zeros((numPart, 3))
 ids = linspace(1, numPart, numPart)
 m = zeros(numPart)
+rho = zeros(numPart)
 u = zeros(numPart)
 mat = zeros(numPart)
 
@@ -75,10 +76,12 @@ for i in range(numPart):
     if x < 0:  # left
         u[i] = P_L / (rho_L * (gamma - 1.0))
         m[i] = rho_L * vol_L / numPart_L
+        rho[i] = rho_L
         v[i, 0] = v_L
     else:  # right
         u[i] = P_R / (rho_R * (gamma - 1.0))
         m[i] = rho_R * vol_R / numPart_R
+        rho[i] = rho_R
         v[i, 0] = v_R
 
 # Shift particles
@@ -112,6 +115,7 @@ grp = file.create_group("/PartType0")
 grp.create_dataset("Coordinates", data=pos, dtype="d")
 grp.create_dataset("Velocities", data=v, dtype="f")
 grp.create_dataset("Masses", data=m, dtype="f")
+grp.create_dataset("Density", data=rho, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
