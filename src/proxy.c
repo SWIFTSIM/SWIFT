@@ -50,6 +50,48 @@
 MPI_Datatype pcell_mpi_type;
 #endif
 
+struct tag_mapper_data {
+  int *tags_out, *tags_in;
+  int *offset_out, *offset_in;
+  struct cell *space_cells;
+};
+
+#ifdef WITH_MPI
+
+void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
+                                     void *extra_data) {
+
+  struct cell *cells = (struct cell *)map_data;
+  struct tag_mapper_data *data = (struct tag_mapper_data *)extra_data;
+  int *restrict tags_out = data->tags_out;
+  const int *restrict offset_out = data->offset_out;
+  struct cell *space_cells = data->space_cells;
+  const size_t delta = cells - space_cells;
+
+  for (int k = 0; k < num_elements; k++) {
+    if (cells[k].mpi.sendto) {
+      cell_pack_tags(&cells[k], &tags_out[offset_out[k + delta]]);
+    }
+  }
+}
+
+void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
+                                       void *extra_data) {
+
+  int *restrict cids_in = (int *)map_data;
+  struct tag_mapper_data *data = (struct tag_mapper_data *)extra_data;
+  const int *restrict offset_in = data->offset_in;
+  int *restrict tags_in = data->tags_in;
+  struct cell *space_cells = data->space_cells;
+
+  for (int k = 0; k < num_elements; k++) {
+    const int cid = cids_in[k];
+    cell_unpack_tags(&tags_in[offset_in[cid]], &space_cells[cid]);
+  }
+}
+
+#endif
+
 /**
  * @brief Exchange tags between nodes.
  *
@@ -65,7 +107,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
 #ifdef WITH_MPI
 
-  ticks tic2 = getticks();
+  /* ticks tic2 = getticks(); */
 
   /* Run through the cells and get the size of the tags that will be sent off.
    */
@@ -103,16 +145,21 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                      sizeof(int) * count_out) != 0)
     error("Failed to allocate tags buffers.");
 
-  /* Pack the local tags. */
-  for (int k = 0; k < s->nr_cells; k++) {
-    if (s->cells_top[k].mpi.sendto) {
-      cell_pack_tags(&s->cells_top[k], &tags_out[offset_out[k]]);
-    }
-  }
+  struct tag_mapper_data extra_data;
+  extra_data.tags_out = tags_out;
+  extra_data.offset_out = offset_out;
+  extra_data.space_cells = s->cells_top;
 
-  if (s->e->verbose)
-    message("Cell pack tags took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  /* Pack the local tags. */
+  threadpool_map(&s->e->threadpool, proxy_tags_exchange_pack_mapper,
+                 s->cells_top, s->nr_cells, sizeof(struct cell),
+                 threadpool_auto_chunk_size, &extra_data);
+
+  /* if (s->e->verbose) */
+  /*   message("Cell pack tags took %.3f %s.", */
+  /*           clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
+
+  /* tic2 = getticks(); */
 
   /* Allocate the incoming and outgoing request handles. */
   int num_reqs_out = 0;
@@ -153,22 +200,33 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     }
   }
 
-  tic2 = getticks();
+  /* if (s->e->verbose) */
+  /*   message("Emitting Send/Recv for tags took %.3f %s.", */
+  /*           clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
 
-  /* Wait for each recv and unpack the tags into the local cells. */
-  for (int k = 0; k < num_reqs_in; k++) {
-    int pid = MPI_UNDEFINED;
-    MPI_Status status;
-    if (MPI_Waitany(num_reqs_in, reqs_in, &pid, &status) != MPI_SUCCESS ||
-        pid == MPI_UNDEFINED)
-      error("MPI_Waitany failed.");
-    const int cid = cids_in[pid];
-    cell_unpack_tags(&tags_in[offset_in[cid]], &s->cells_top[cid]);
-  }
+  /* tic2 = getticks(); */
 
-  if (s->e->verbose)
-    message("Cell unpack tags took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  /* Wait for all the sends to have completed. */
+  if (MPI_Waitall(num_reqs_in, reqs_in, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+    error("MPI_Waitall on sends failed.");
+
+  /* if (s->e->verbose) */
+  /*   message("WaitAll on tags took %.3f %s.", */
+  /*           clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
+
+  /* tic2 = getticks(); */
+
+  /* Unpack the tags we received */
+  extra_data.tags_in = tags_in;
+  extra_data.offset_in = offset_in;
+  extra_data.space_cells = s->cells_top;
+  threadpool_map(&s->e->threadpool, proxy_tags_exchange_unpack_mapper, cids_in,
+                 num_reqs_in, sizeof(int), threadpool_auto_chunk_size,
+                 &extra_data);
+
+  /* if (s->e->verbose) */
+  /*   message("Cell unpack tags took %.3f %s.", */
+  /*           clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
 
   /* Wait for all the sends to have completed. */
   if (MPI_Waitall(num_reqs_out, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)

@@ -831,9 +831,13 @@ void engine_config(int restart, int fof, struct engine *e,
      * on restart. */
     e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);
 
-    /* Read the number of Lustre OSTs to distribute the restart files over */
-    e->restart_lustre_OST_count =
-        parser_get_opt_param_int(params, "Restarts:lustre_OST_count", 0);
+    /* Lustre OST options. Disabled by default. */
+    e->restart_lustre_OST_checks =
+        parser_get_opt_param_int(params, "Restarts:lustre_OST_checks", 0);
+    e->restart_lustre_OST_free =
+        parser_get_opt_param_int(params, "Restarts:lustre_OST_free", 0);
+    e->restart_lustre_OST_test =
+        parser_get_opt_param_int(params, "Restarts:lustre_OST_test", 0);
 
     /* Hours between restart dumps. Can be changed on restart. */
     float dhours =

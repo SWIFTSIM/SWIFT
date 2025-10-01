@@ -18,8 +18,8 @@ GYR_IN_CGS = 3.1536e16  # gigayear
 # First set unit velocity and then the circular velocity parameter for the isothermal potential
 const_unit_velocity_in_cgs = 1.0e5  # kms^-1
 
-h = 0.681  # 0.67777  # hubble parameter
-H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
+h_dim = 0.704  # 0.681  # 0.67777  # hubble parameter
+H_0_cgs = 100.0 * h_dim * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # From this we can find the virial radius, the radius within which the average density of the halo is
 # 200. * the mean matter density
@@ -28,7 +28,7 @@ H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 f_b = 0.17
 c_200 = 7.2
 spin_lambda = 0.05
-nH_max_cgs = 1e0
+nH_max_cgs = 1e2
 M_200_cgs = 1e12 * MSOL_IN_CGS
 rhoc_cgs = 3 * H_0_cgs ** 2 / (8 * np.pi * CONST_G_CGS)
 r_200_cgs = (3 * M_200_cgs / (4 * np.pi * rhoc_cgs * 200)) ** (1 / 3)
@@ -79,76 +79,53 @@ n_gas = data.metadata.n_gas
 rho = data.gas.densities
 m = data.gas.masses
 coords = data.gas.coordinates
+coords_center = coords - data.metadata.boxsize / 2
+radius = np.linalg.norm(coords_center, axis=1)
 velocities = data.gas.velocities
-l = np.vstack([m, m, m]).T * np.cross(
-    (coords - data.metadata.boxsize / 2), velocities
-)  # specific angular momentum
-rho.convert_to_units(unyt.g * unyt.cm ** (-3))
+
+# calculate specific angular momentum j(r)
+rotation_axis = np.array([0, 0, 1])
+e_phi = np.cross(rotation_axis[None, :], coords_center)
+e_phi = e_phi / np.linalg.norm(e_phi, axis=1)[:, None]
+v_phi = (
+    velocities[:, 0] * e_phi[:, 0]
+    + velocities[:, 1] * e_phi[:, 1]
+    + velocities[:, 2] * e_phi[:, 2]
+)
+e_r = np.cross(e_phi, rotation_axis[None, :])
+axis_dist = (
+    coords_center[:, 0] * e_r[:, 0]
+    + coords_center[:, 1] * e_r[:, 1]
+    + coords_center[:, 2] * e_r[:, 2]
+)
+j = v_phi * radius ** 2 / axis_dist
+omega = v_phi / axis_dist
+Jtot = np.sum(omega * axis_dist ** 2 * m)
 
 P = data.gas.pressures
 T = data.gas.temperatures
-
 B = data.gas.magnetic_flux_densities
-
 Bx, By = B[:, 0], B[:, 1]
-
 normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
-
 divB = data.gas.magnetic_divergences
-
 h = data.gas.smoothing_lengths
-
 errB = np.log10(h * abs(divB) / normB)
 
-# Generate mass weighted maps of quantities of interest
-data.gas.mass_weighted_densities = data.gas.masses * rho
 
-data.gas.mass_weighted_pressures = data.gas.masses * P
-
-data.gas.mass_weighted_Bx = data.gas.masses * Bx
-
-data.gas.mass_weighted_By = data.gas.masses * By
-
-data.gas.mass_weighted_errB = data.gas.masses * errB
-
-data.gas.mass_weighted_T = data.gas.masses * T
-
-common_arguments = dict(
-    data=data, z_slice=0.5 * data.metadata.boxsize[2], resolution=512, parallel=True
+rho_units = unyt.g * unyt.cm ** (-3)
+r_units = 1e3 * PARSEC_IN_CGS * unyt.cm
+P_units = (
+    MSOL_IN_CGS / PARSEC_IN_CGS / GYR_IN_CGS ** 2 * (unyt.g / (unyt.cm * unyt.s ** 2))
 )
+j_units = (1e3 * PARSEC_IN_CGS) / GYR_IN_CGS * (unyt.cm ** 2 / unyt.s)
+nH_units = unyt.cm ** (-3)
 
-mass_map = slice_gas(**common_arguments, project="masses")
+rho.convert_to_units(rho_units)
+P.convert_to_units(P_units)
+j.convert_to_units(j_units)
+n_H = rho / (m_H_cgs * unyt.g)
 
-mass_weighted_density_map = slice_gas(
-    **common_arguments, project="mass_weighted_densities"
-)
-
-mass_weighted_pressure_map = slice_gas(
-    **common_arguments, project="mass_weighted_pressures"
-)
-
-mass_weighted_Bx_map = slice_gas(**common_arguments, project="mass_weighted_Bx")
-
-mass_weighted_By_map = slice_gas(**common_arguments, project="mass_weighted_By")
-
-mass_weighted_errB_map = slice_gas(**common_arguments, project="mass_weighted_errB")
-mass_weighted_T_map = slice_gas(**common_arguments, project="mass_weighted_T")
-
-# Take out mass dependence
-density_map = mass_weighted_density_map / mass_map
-pressure_map = mass_weighted_pressure_map / mass_map
-Bx_map = mass_weighted_Bx_map / mass_map
-By_map = mass_weighted_By_map / mass_map
-errB_map = mass_weighted_errB_map / mass_map
-T_map = mass_weighted_T_map / mass_map
-
-map_pixel_length = len(mass_map)
-
-n_H = density_map / m_H_cgs
-
-x = np.linspace(0.0, 1.0, map_pixel_length)
-slice_ind = int(np.round(y0 * map_pixel_length, 0))
-
+radius = np.linalg.norm(coords_center, axis=1)
 
 # Plot maps
 plt.rcParams.update({"font.size": 16})
@@ -158,42 +135,19 @@ ny = 4
 fig, axs = plt.subplots(ny, nx, figsize=((10 * nx, 5 * ny)))
 fig.subplots_adjust(hspace=0.1)
 
-Lbox_kpc = data.metadata.boxsize.to(PARSEC_IN_CGS * 1e3 * unyt.cm).value[0]
-# locs = [map_pixel_length / 4, map_pixel_length / 2, 3 * map_pixel_length / 4]
-# labels = [-Lbox_kpc / 4, 0, Lbox_kpc / 4]
-x = np.linspace(-Lbox_kpc / 2, Lbox_kpc / 2, map_pixel_length)
-slice_ind = int(np.floor(y0 * map_pixel_length))
-
 # plot density
-axs[0].plot(x, n_H[:, slice_ind], "k-", color="black")
+axs[0].scatter(radius.to(r_units), n_H.to(nH_units), s=0.1, color="black")
 axs[0].set_yscale("log")
 axs[0].set_yticks(np.logspace(-7, 2, 10))
 axs[0].set_ylim(1e-7, 1e2)
 
-# plot temperature
-P = pressure_map[:, slice_ind].to(
-    MSOL_IN_CGS * unyt.g / (PARSEC_IN_CGS * unyt.cm * (GYR_IN_CGS * unyt.s) ** 2)
-)
-axs[1].plot(x, P, "k-", color="black")
+# plot Pressure
+axs[1].scatter(radius.to(r_units), P.to(P_units), s=0.1, color="black")
 axs[1].set_yscale("log")
 
-# plot mass
-coords = coords.to(1e3 * PARSEC_IN_CGS * unyt.cm).value - Lbox_kpc / 2
-r_values = np.logspace(np.log10(1e-6), np.log10(Lbox_kpc / 2), 100)
-rp_kpc = np.linalg.norm(coords, axis=1)
-m = data.gas.masses.to(MSOL_IN_CGS * unyt.g).value
-M_x = np.array([np.sum(m[rp_kpc <= r_values[i]]) for i in range(len(r_values))])
-axs[2].scatter(r_values, M_x, color="black", marker="+", s=100)
-
 # plot specific angular momentum
-l_units_cgs = (
-    const_unit_mass_in_cgs * const_unit_length_in_cgs * const_unit_velocity_in_cgs
-)
-l = l.to(l_units_cgs * unyt.g * unyt.cm ** 2 / unyt.s).value
-L_r = np.array([np.sum(l[rp_kpc <= r_values[i]], axis=0) for i in range(len(r_values))])
-norm_L_r = np.sqrt(L_r[:, 0] ** 2 + L_r[:, 1] ** 2 + L_r[:, 2] ** 2)
-# axs[3].scatter(r_values,norm_L_r,color='black', marker='+',s=100)
-
+axs[2].scatter(radius.to(r_units), j.to(j_units), s=0.1, color="black")
+axs[2].set_yscale("log")
 
 # NFW-like gas density profile
 def rho_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200):
@@ -274,99 +228,187 @@ def T_vs_r(P0_cgs, r_value, r_max, f_b, M_200_cgs, r_200_cgs, c_200):
     return result_cgs
 
 
-r_200_kpc = r_200_cgs / (PARSEC_IN_CGS * 1e3)
-n_H_analytic = rho_r(np.abs(x) / r_200_kpc, f_b, M_200_cgs, r_200_cgs, c_200) / m_H_cgs
-M_gas_analytic = (
-    Mgas_r(np.abs(x) / r_200_kpc, f_b, M_200_cgs, r_200_cgs, c_200) / MSOL_IN_CGS
-)
+# define specific angular momentum distribution
+def j(r_value, j_max, s, f_b, M_200_cgs, r_200_cgs, c_200):
+    return (
+        j_max
+        * (Mgas_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200) / (M_200_cgs * f_b)) ** s
+    )
 
-# Angular momentum
-Total_E = v_200 ** 2 / 2.0
-J_cgs = (
-    spin_lambda
-    * const_G
-    / np.sqrt(Total_E)
-    * const_unit_length_in_cgs
-    * const_unit_velocity_in_cgs
-)
 
-L_200_cgs = (
-    J_cgs * M_200_cgs * f_b
-)  # np.linalg.norm(np.sum(l[rp_kpc<=r_200_kpc],axis=0))
-Mass_ratio = Mgas_r(np.abs(x) / r_200_kpc, f_b, M_200_cgs, r_200_cgs, c_200) / (
-    f_b * M_200_cgs
-)
-L_analytic = Mass_ratio * L_200_cgs / l_units_cgs
+def jsimple(r_value, j_max, s, f_b, M_200_cgs, r_200_cgs, c_200):
+    return j_max * r_value ** s
 
-# Gas parameters
-gamma = 5.0 / 3.0
+
+rmax = (r_200_cgs * unyt.cm).to(radius.units)  # np.max(radius)
+rmin = np.min(radius)
+r_analytic = (
+    np.logspace(np.log10(rmin.value), np.log10(rmax.value), 1000) * radius.units
+)
+# r_analytic = np.linspace(rmin.value,rmax.value,10000)*radius.units
+rho_analytic = rho_r(
+    (r_analytic / (r_200_cgs * unyt.cm)).value, f_b, M_200_cgs, r_200_cgs, c_200
+)
+Mgas_analytic = Mgas_r(
+    (r_analytic / (r_200_cgs * unyt.cm)).value, f_b, M_200_cgs, r_200_cgs, c_200
+)
+nH_analytic = rho_analytic / m_H_cgs * nH_units
+
+
 T0_cgs = (
     T_200_cgs
 )  # 1e5 # gas temperature on the edge of the box (if we want to set this manually)
+rho0_cgs = rho_r((rmax / (r_200_cgs * unyt.cm)).value, f_b, M_200_cgs, r_200_cgs, c_200)
 
-rho0_cgs = rho_r(
-    Lbox_kpc / r_200_kpc * np.sqrt(3) / 2, f_b, M_200_cgs, r_200_cgs, c_200
-)  # gas density on the edge
 P0_cgs = rho0_cgs * kb_cgs * T0_cgs / m_H_cgs  # gas pressure on the edge of the box
+P_analytic = np.array(
+    [
+        P_vs_r(
+            P0_cgs,
+            (r_analytic[i] / (r_200_cgs * unyt.cm)).value,
+            (rmax / (r_200_cgs * unyt.cm)).value,
+            f_b,
+            M_200_cgs,
+            r_200_cgs,
+            c_200,
+        )
+        for i in range(len(r_analytic))
+    ]
+) * (
+    unyt.g / (unyt.cm * unyt.s ** 2)
+)  # gas particle internal energies
 
-Pressure_UNIT = MSOL_IN_CGS / PARSEC_IN_CGS / GYR_IN_CGS ** 2
-P_analytic = [
-    P_vs_r(
-        P0_cgs,
-        np.abs(x[i] / r_200_kpc),
-        Lbox_kpc / r_200_kpc * np.sqrt(3) / 2,
-        f_b,
-        M_200_cgs,
-        r_200_cgs,
-        c_200,
+# Normalize to Bullock
+mask_r200 = radius <= (r_200_cgs * unyt.cm)
+Jtot = np.sum(omega[mask_r200] * axis_dist[mask_r200] ** 2 * m[mask_r200])
+jsp = Jtot / np.sum(m[mask_r200])
+
+jsp_B = (
+    (np.sqrt(2) * v_200_cgs * (unyt.cm / unyt.s)) * r_200_cgs * (unyt.cm) * spin_lambda
+)
+print("Total spin ratio: ", jsp_B.to(j_units).value / jsp.to(j_units).value)
+
+############
+
+j_1_analytic = j(
+    (r_analytic / (r_200_cgs * unyt.cm)).value, 1, 1, f_b, M_200_cgs, r_200_cgs, c_200
+)
+j_1_analytic_simple = jsimple(
+    (r_analytic / (r_200_cgs * unyt.cm)).value, 1, 2, f_b, M_200_cgs, r_200_cgs, c_200
+)
+
+int_dOmega = (
+    8 * np.pi / 3
+)  # integral over angles from axial distance squared: int Sin^2 (theta)dphi d Cos (theta)
+
+jsp_1_analytic = (
+    np.sum(
+        j_1_analytic[:-1]
+        * rho_analytic[:-1]
+        * (unyt.g / unyt.cm ** 3)
+        * int_dOmega
+        * r_analytic[:-1] ** 2
+        * np.diff(r_analytic)
     )
-    / Pressure_UNIT
-    for i in range(map_pixel_length)
-]  # gas particle internal energies
-# T_analytic = [T_vs_r(P0_cgs, np.abs(x[i]/r_200_kpc), Lbox_kpc/r_200_kpc*np.sqrt(3)/2, f_b, M_200_cgs, r_200_cgs, c_200) for i in range(map_pixel_length)] # gas particle internal energies
+) / (
+    np.sum(
+        rho_analytic[:-1]
+        * (unyt.g / unyt.cm ** 3)
+        * 4
+        * np.pi
+        * r_analytic[:-1] ** 2
+        * np.diff(r_analytic)
+    )
+)
+jsp_1_analytic_simple = (
+    np.sum(
+        j_1_analytic_simple[:-1]
+        * rho_analytic[:-1]
+        * (unyt.g / unyt.cm ** 3)
+        * int_dOmega
+        * r_analytic[:-1] ** 2
+        * np.diff(r_analytic)
+    )
+) / (
+    np.sum(
+        rho_analytic[:-1]
+        * (unyt.g / unyt.cm ** 3)
+        * 4
+        * np.pi
+        * r_analytic[:-1] ** 2
+        * np.diff(r_analytic)
+    )
+)
+
+j_analytic = j_1_analytic / jsp_1_analytic * jsp_B
+
+j_analytic_simple = j_1_analytic_simple / jsp_1_analytic_simple * jsp_B
 
 
-# locs = [map_pixel_length / 4, map_pixel_length / 2, 3 * map_pixel_length / 4, map_pixel_length]
-# labels = np.array([Lbox_kpc / 4, Lbox_kpc / 2, 3*Lbox_kpc / 4, Lbox_kpc])
-locs = np.linspace(0, 400, 9)
-labels = np.round(locs, 0)
-
-axs[0].set_xlabel(r"$r$ [kpc]")
-axs[0].set_xticks(locs, labels)
-axs[0].set_xlim(0, map_pixel_length / 2)
-axs[0].plot(x, n_H_analytic, "k-", color="red")
-axs[0].set_ylabel(r"$n_H(r)$ $[cm^{-3}]$")
-axs[0].axvline(x=r_200_kpc, color="gray", ls="dashed", label="$R_200$")
+#
+# plot density
+axs[0].plot(
+    r_analytic.to(r_units),
+    nH_analytic.to(nH_units),
+    color="red",
+    label=r"$\rho_{\rm NFW}^{gas}(r)$",
+)
+axs[0].set_yscale("log")
 axs[0].set_xscale("log")
-axs[0].set_xlim(0.5, 300)
+axs[0].set_xlim([rmin, rmax])
+axs[0].legend()
 
-axs[1].set_xlabel(r"$r$ [kpc]")
-axs[1].set_xticks(locs, labels)
-axs[1].set_xlim(0, map_pixel_length / 2)
-axs[1].plot(x, P_analytic, "k-", color="red")
-axs[1].set_ylabel(r"$P(r)$ $[M_{sol} \cdot pc^{-1} \cdot Gyr^{-2}]$")
+# plot Pressure
+axs[1].plot(
+    r_analytic.to(r_units),
+    P_analytic.to(P_units),
+    color="red",
+    label=r"$P_{hyd. eq.}(r)$",
+)
 axs[1].set_yscale("log")
-axs[1].set_yticks(np.logspace(3, 8, 6))
-axs[1].set_ylim(1e3, 1e8)
-axs[1].axvline(x=r_200_kpc, color="gray", ls="dashed", label="$R_200$")
 axs[1].set_xscale("log")
-axs[1].set_xlim(0.5, 300)
+axs[1].set_xlim([rmin, rmax])
+axs[1].legend()
 
-axs[2].set_xlabel(r"$r$ [kpc]")
-axs[2].set_xticks(locs, labels)
-axs[2].set_xlim(0, map_pixel_length / 2)
-axs[2].plot(x, M_gas_analytic, "k-", color="red")
-axs[2].set_ylabel(r"$M_{gas}(<r)$ $[M_{sol}]$")
-axs[2].set_yscale("log")
-axs[2].set_yticks(np.logspace(7, 12, 6))
-axs[2].set_ylim(1e7, 1e12)
-axs[2].axvline(x=r_200_kpc, color="gray", ls="dashed", label="$R_200$")
-axs[2].axhline(
-    y=f_b * M_200_cgs / (MSOL_IN_CGS), color="gray", ls="dashed", label="$M_200$"
+# plot j(r)
+axs[2].plot(
+    r_analytic.to(r_units),
+    j_analytic.to(j_units),
+    color="red",
+    label=r"$\rm j(r)\sim M(r)$",
+)
+axs[2].plot(
+    r_analytic.to(r_units),
+    j_analytic_simple.to(j_units),
+    color="red",
+    linestyle="dashed",
+    label=r"$\rm j(r)\sim r^2$",
 )
 axs[2].set_xscale("log")
-axs[2].set_xlim(0.5, 300)
+axs[2].set_xlim([rmin, rmax])
+axs[2].legend()
 
+# limits
+axs[0].set_ylim(1e-7, 1e2)
+axs[0].set_yticks(np.logspace(-7, 2, 10))
+axs[1].set_ylim(1e1, 1e9)
+axs[1].set_yticks(np.logspace(1, 9, 9))
+axs[2].set_ylim(1e18, 1e27)
+axs[2].set_yticks(np.logspace(18, 27, 10))
+
+axs[0].set_xlim(1e-2, 1e3)
+axs[1].set_xlim(1e-2, 1e3)
+axs[2].set_xlim(1e-2, 1e3)
+
+# add labels
+axs[0].set_ylabel(r"$n_H(r)$ $[cm^{-3}]$")
+axs[1].set_ylabel(r"$P(r)$ $[\rm M_{sol} \cdot pc^{-1} \cdot Gyr^{-2}]$")
+axs[2].set_ylabel(r"$j(r)$ $[\rm kpc^{2} \cdot Gyr^{-1} ]$")
+
+# vertical lines
+axs[0].axvline(x=(r_200_cgs * unyt.cm).to(r_units), color="gray", label=r"$R_{200}$")
+axs[1].axvline(x=(r_200_cgs * unyt.cm).to(r_units), color="gray", label=r"$R_{200}$")
+axs[2].axvline(x=(r_200_cgs * unyt.cm).to(r_units), color="gray", label=r"$R_{200}$")
 
 Ninfo = 3
 text_common_args = dict(
@@ -374,10 +416,7 @@ text_common_args = dict(
 )
 
 axs[Ninfo].text(
-    0.5,
-    0.8,
-    r"Cooling Halo with Spin at $t=%.2f$, $y_0 = %.4f$" % (data.metadata.time, y0),
-    **text_common_args,
+    0.5, 0.8, r"Cooling Halo with Spin, IC quality check.", **text_common_args
 )
 axs[Ninfo].text(0.5, 0.7, r"SWIFT %s" % git.decode("utf-8"), **text_common_args)
 axs[Ninfo].text(0.5, 0.6, r"Branch %s" % gitBranch.decode("utf-8"), **text_common_args)
@@ -389,16 +428,7 @@ axs[Ninfo].text(
     **text_common_args,
 )
 axs[Ninfo].text(
-    0.5, 0.3, r"Artificial diffusion: $%.2f$ " % (artDiffusion), **text_common_args
-)
-axs[Ninfo].text(
-    0.5,
-    0.2,
-    r"Dedner Hyp, Hyp_div(v), Par: $%.2f,%.2f,%.2f$ " % (dedHyp, dedHypDivv, dedPar),
-    **text_common_args,
-)
-axs[Ninfo].text(
-    0.5, 0.1, r"Physical resistivity: $\eta$: $%.2f$ " % (eta), **text_common_args
+    0.5, 0.3, r"Dimenstionless hubble constant: $%.3f$ " % h_dim, **text_common_args
 )
 axs[Ninfo].text(
     0.5, 0.0, r"Number of particles: $N_p$: $%.0f$ " % (n_gas), **text_common_args
