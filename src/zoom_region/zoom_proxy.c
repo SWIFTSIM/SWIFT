@@ -61,11 +61,17 @@ void zoom_engine_makeproxies(struct engine *e) {
     /* Get the cell */
     struct cell *ci = &cells[cid];
 
+    /* Skip void cells (these will never need a proxy). */
+    if (ci->subtype == cell_subtype_void) continue;
+
     /* Loop over the prospective neighbours. */
     for (int cjd = cid + 1; cjd < s->nr_cells; cjd++) {
 
       /* Get the cell */
       struct cell *cj = &cells[cjd];
+
+      /* Skip void cells (these will never need a proxy). */
+      if (cj->subtype == cell_subtype_void) continue;
 
       /* Early abort (both same node) -> Nigel is happy */
       if (ci->nodeID == nodeID && cj->nodeID == nodeID) return;
@@ -77,22 +83,25 @@ void zoom_engine_makeproxies(struct engine *e) {
 
       /* Calculate the maximum distance based on the diagonal distance of the
        * pair. */
-      const double width[3] = {fmax(ci->width[0], cj->width[0]),
-                               fmax(ci->width[1], cj->width[1]),
-                               fmax(ci->width[2], cj->width[2])};
-      const double r_diag2 =
-          width[0] * width[0] + width[1] * width[1] + width[2] * width[2];
-      const double r_diag = 0.5 * sqrt(r_diag2);
-      const double r_max = 2.0 * r_diag;
+      const double ir_diag2 = ci->width[0] * ci->width[0] +
+                              ci->width[1] * ci->width[1] +
+                              ci->width[2] * ci->width[2];
+      const double ir_diag = 0.5 * sqrt(ir_diag2);
+      const double jr_diag2 = cj->width[0] * cj->width[0] +
+                              cj->width[1] * cj->width[1] +
+                              cj->width[2] * cj->width[2];
+      const double jr_diag = 0.5 * sqrt(jr_diag2);
+
+      /* Calculate the maximum distance between the cells. */
+      const double r_max = ir_diag + jr_diag;
 
       /* Get the proxy type. We only need to do the direct check if both
        * cells are the same type. Note, the cdim is only used if
        * icdim == jcdim and we're doing a direct check. */
       int proxy_type = engine_get_proxy_type(e, ci, cj, r_max);
 
-      // /* Abort if not in range at all */
-      if (proxy_type == proxy_cell_type_none)
-        proxy_type = proxy_cell_type_gravity;
+      /* Abort if not in range at all */
+      if (proxy_type == proxy_cell_type_none) return;
 
       /* Ok, we need to add a proxy. */
       engine_add_proxy(e, ci, cj, proxy_type);
