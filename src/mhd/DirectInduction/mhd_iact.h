@@ -863,7 +863,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Physical resistivity */
 
   const float resistive_eta_i = pi->mhd_data.resistive_eta+pi->mhd_data.eta_OWAR;
-
   const float rho_term_PR = 1.0f / (rhoi * rhoj);
   const float grad_term_PR = f_ij * wi_dr + f_ji * wj_dr;
 
