@@ -74,10 +74,10 @@ void zoom_engine_makeproxies(struct engine *e) {
       if (cj->subtype == cell_subtype_void) continue;
 
       /* Early abort (both same node) -> Nigel is happy */
-      if (ci->nodeID == nodeID && cj->nodeID == nodeID) return;
+      if (ci->nodeID == nodeID && cj->nodeID == nodeID) continue;
 
       /* Early abort (both foreign node) -> Nigel is angry */
-      if (ci->nodeID != nodeID && cj->nodeID != nodeID) return;
+      if (ci->nodeID != nodeID && cj->nodeID != nodeID) continue;
 
       /* We might need a proxy, one cell is foreign (Like Nigel and his wife).*/
 
