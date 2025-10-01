@@ -90,8 +90,8 @@ void zoom_engine_makeproxies(struct engine *e) {
        * icdim == jcdim and we're doing a direct check. */
       int proxy_type = engine_get_proxy_type(e, ci, cj, r_max);
 
-      /* Abort if not in range at all */
-      if (proxy_type == proxy_cell_type_none) return;
+      // /* Abort if not in range at all */
+      // if (proxy_type == proxy_cell_type_none) return;
 
       /* Ok, we need to add a proxy. */
       engine_add_proxy(e, ci, cj, proxy_type);
