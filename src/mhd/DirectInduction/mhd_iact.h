@@ -645,7 +645,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   float dB_dt_j[3];
   dB_dt_j[0] = - (Brj - Brj_corr_gradj) * dv[0];
-  dB_dt_j[1] = - (Brj - Brj_corr_gradj)* dv[1];
+  dB_dt_j[1] = - (Brj - Brj_corr_gradj) * dv[1];
   dB_dt_j[2] = - (Brj - Brj_corr_gradj) * dv[2];
 
   /* */
@@ -726,9 +726,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi * (dx[1]-dx_corr_gradi[1]);
   pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi * (dx[2]-dx_corr_gradi[2]);
 
-  pj->mhd_data.B_over_rho_dt[0] += mi * grad_psi * (dx[0]-dx_corr_gradi[0]);
-  pj->mhd_data.B_over_rho_dt[1] += mi * grad_psi * (dx[1]-dx_corr_gradi[1]);
-  pj->mhd_data.B_over_rho_dt[2] += mi * grad_psi * (dx[2]-dx_corr_gradi[2]);
+  pj->mhd_data.B_over_rho_dt[0] += mi * grad_psi * (dx[0]-dx_corr_gradj[0]);
+  pj->mhd_data.B_over_rho_dt[1] += mi * grad_psi * (dx[1]-dx_corr_gradj[1]);
+  pj->mhd_data.B_over_rho_dt[2] += mi * grad_psi * (dx[2]-dx_corr_gradj[2]);
 
   /* Save induction sources */
   const float dB_dt_pref_Lap_i = 2.0f * r_inv / rhoj;
@@ -865,7 +865,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   const float asym_grad_term_i = f_ij * wi_dr * r_inv / rhoi;
 
-  const float divB_i = dBdr * asym_grad_term_i;
+  const float divB_i = (dBdr - dBdr_corr_gradi) * asym_grad_term_i;
 
   pi->mhd_data.divB -= mj * divB_i;
 
