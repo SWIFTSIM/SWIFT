@@ -571,15 +571,6 @@ void engine_exchange_top_multipoles(struct engine *e) {
   if (err != MPI_SUCCESS)
     mpi_error(err, "Failed to all-reduce the top-level multipoles.");
 
-  /* In zoom-land, we zero the void multipoles since they'll be reconstructed
-   * shortly from the zoom cells anyway. */
-  if (e->s->with_zoom_region) {
-    for (int i = 0; i < e->s->zoom_props->nr_void_cells; ++i) {
-      const int vid = e->s->zoom_props->void_cell_indices[i];
-      bzero(&e->s->multipoles_top[vid], sizeof(struct gravity_tensors));
-    }
-  }
-
 #ifdef SWIFT_DEBUG_CHECKS
   long long counter = 0;
 
