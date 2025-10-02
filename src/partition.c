@@ -2108,7 +2108,7 @@ static int partition_radial_wedges(struct partition *initial_partition,
   bzero(wedge_weights, sizeof(double) * nwedges);
 
   /* Accumulate the weights in each wedge. */
-  for (int cid = 0; cid < ncells; cid++) {
+  for (int cid = 0; cid < s->nr_cells; cid++) {
 
     /* Get the cell. */
     struct cell *c = &s->cells_top[cid];
@@ -2154,7 +2154,7 @@ static int partition_radial_wedges(struct partition *initial_partition,
   }
 
   /* Now lets tell each cell where it is. */
-  for (int cid = 0; cid < ncells; cid++) {
+  for (int cid = 0; cid < s->nr_cells; cid++) {
 
     /* Get the cell. */
     struct cell *c = &s->cells_top[cid];
