@@ -451,7 +451,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 }
 #endif
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI)
 struct counts_mapper_data {
   double *counts;
   size_t size;
@@ -642,7 +642,9 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
     for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
   }
 }
+#endif
 
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Make edge weights from the accumulated particle sizes per cell.
  *
