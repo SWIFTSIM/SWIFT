@@ -2480,8 +2480,8 @@ void partition_init(struct partition *partition,
    * partition->type == INITPART_WEDGE). */
   partition->nr_theta_slices = (int)sqrt((double)partition->nr_wedges / 2.0);
   partition->nr_phi_slices = partition->nr_wedges / partition->nr_theta_slices;
-  partition->theta_width = M_PI / (double)partition->nr_theta_slices;
-  partition->phi_width = 2.0 * M_PI / (double)partition->nr_phi_slices;
+  partition->theta_width = 2.0 * M_PI / (double)partition->nr_theta_slices;
+  partition->phi_width = M_PI / (double)partition->nr_phi_slices;
 
   /* Check if this is true or required and initialise them. */
   if (repartition->use_fixed_costs || repartition->trigger > 1) {
