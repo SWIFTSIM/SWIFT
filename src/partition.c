@@ -95,6 +95,10 @@ static double repartition_costs[task_type_count][task_subtype_count];
 static int repart_init_fixed_costs(void);
 #endif
 
+#ifndef IDX_MAX
+#define IDX_MAX 9223372036854775807LL
+#endif
+
 /*  Grid support */
 /*  ============ */
 
