@@ -44,8 +44,8 @@ struct mhd_part_data {
   float monopole_beta;
 
   /* Local plasma beta mean square and its normalising factor */
-  float plasma_beta_mean_square;
-  float plasma_beta_mean_square_norm;
+  float plasma_beta_rms;
+  float plasma_beta_rms_norm;
   
   /* Artifical resistivity multiplicative prefactor */
   float art_diff_beta;

@@ -131,11 +131,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float plasma_beta_i = Pi * Pmagi_inv; 
   const float plasma_beta_j = Pj * Pmagj_inv; 
 
-  pi->mhd_data.plasma_beta_mean_square_norm += 1.0f;
-  pj->mhd_data.plasma_beta_mean_square_norm += 1.0f;
+  pi->mhd_data.plasma_beta_rms_norm += 1.0f;
+  pj->mhd_data.plasma_beta_rms_norm += 1.0f;
   
-  pi->mhd_data.plasma_beta_mean_square += plasma_beta_j * plasma_beta_j;
-  pj->mhd_data.plasma_beta_mean_square += plasma_beta_i * plasma_beta_i;
+  pi->mhd_data.plasma_beta_rms += plasma_beta_j * plasma_beta_j;
+  pj->mhd_data.plasma_beta_rms += plasma_beta_i * plasma_beta_i;
   
   /* dB cross r */
   float dB_cross_dx[3];
@@ -240,9 +240,9 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   const float plasma_beta_j = Pj * Pmagj_inv;
 
-  pi->mhd_data.plasma_beta_mean_square_norm += 1.0f;
+  pi->mhd_data.plasma_beta_rms_norm += 1.0f;
 
-  pi->mhd_data.plasma_beta_mean_square += plasma_beta_j * plasma_beta_j;
+  pi->mhd_data.plasma_beta_rms += plasma_beta_j * plasma_beta_j;
   
   /* dB cross r */
   float dB_cross_dx[3];
@@ -429,8 +429,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   const float monopole_beta = pi->mhd_data.monopole_beta;
 
-  const float plasma_beta_i = sqrtf(pi->mhd_data.plasma_beta_mean_square);
-  const float plasma_beta_j = sqrtf(pj->mhd_data.plasma_beta_mean_square);
+  const float plasma_beta_i = pi->mhd_data.plasma_beta_rms;
+  const float plasma_beta_j = pj->mhd_data.plasma_beta_rms;
 
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float scale_j = 0.125f * (10.0f - plasma_beta_j);
@@ -746,7 +746,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   const float monopole_beta = pi->mhd_data.monopole_beta;
 
-  const float plasma_beta_i = sqrtf(pi->mhd_data.plasma_beta_mean_square);
+  const float plasma_beta_i = pi->mhd_data.plasma_beta_rms;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
 
