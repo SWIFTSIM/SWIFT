@@ -293,158 +293,6 @@ static void partition_vector(int nr_nodes, struct space *s) {
 }
 #endif
 
-/*  Radial wedge support */
-/*  ===================== */
-
-/**
- * @brief Get the wedge index for a cell.
- *
- * Wedges are centred on the box centre.
- *
- * @param p The partition structure.
- * @param s The #space.
- * @param c The cell to get the wedge index for.
- *
- * @return The wedge index.
- */
-int partition_get_wedge_index(struct partition *p, struct space *s,
-                              struct cell *c) {
-#ifdef WITH_MPI
-
-  /* The number of wedges in theta. */
-  int theta_nwedges = p->nr_theta_slices;
-  int phi_nwedges = p->nr_phi_slices;
-
-  /* Calculate the size of a slice in theta and phi. */
-  double theta_width = p->theta_width;
-  double phi_width = p->phi_width;
-
-  /* Center cell coordinates. */
-  double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
-  double dy = c->loc[1] - (s->dim[1] / 2) + c->width[1] / 2;
-  double dz = c->loc[2] - (s->dim[2] / 2) + c->width[2] / 2;
-
-  /* Handle the central cell, just put it in wedge 0, there won't
-   * be particles here anyway. */
-  if (dx < (c->width[0] / 2) && dy < (c->width[1] / 2) &&
-      dz < (c->width[2] / 2)) {
-    return 0;
-  }
-
-  /* Calculate the spherical version of these coordinates. */
-  double r = sqrt(dx * dx + dy * dy + dz * dz);
-  double theta = atan2(dy, dx) + M_PI;
-  double phi = acos(dz / r);
-
-  /* Find this wedge index. */
-  int phi_ind = ((int)floor(phi / phi_width) + phi_nwedges) % phi_nwedges;
-  int theta_ind =
-      ((int)floor(theta / theta_width) + theta_nwedges) % theta_nwedges;
-  return theta_ind * phi_nwedges + phi_ind;
-#endif /* WITH_MPI */
-  return 0;
-}
-
-/**
- * @brief Partition the into radial wedges.
- *
- * This partitions the space into a number of radial wedges, each
- * with approximately equal numbers of particles and assigns these
- * to nodes in a round-robin fashion. These wedges are centred on
- * the box centre.
- *
- * @param initial_partition The initial partition structure.
- * @param s The #space.
- * @param nregions The number of regions to partition into.
- * @param cells The list of cells to partition.
- * @param ncells The number of cells to partition.
- */
-static int partition_radial_wedges(struct partition *initial_partition,
-                                   struct space *s, int nregions,
-                                   struct cell *cells, int ncells) {
-#ifdef WITH_MPI
-
-  /* Get useful information */
-  int nwedges = initial_partition->nr_wedges;
-
-  /* Set up an array to store slice weights. */
-  double tot_weight = 0;
-  double *wedge_weights;
-  if ((wedge_weights = (double *)malloc(sizeof(double) * nwedges)) == NULL)
-    error("Failed to allocate wedge_weights buffer.");
-  bzero(wedge_weights, sizeof(double) * nwedges);
-
-  /* Get the weight of each slice. */
-
-  /* Loop over all cells in range */
-  for (int cid = 0; cid < ncells; cid++) {
-
-    /* Get the cell. */
-    struct cell *c = &s->cells_top[cid];
-
-    /* Get this cells weight. */
-    double w = c->grav.count + c->hydro.count + c->stars.count +
-               c->black_holes.count + c->sinks.count;
-
-    /* Get the wedge index. */
-    int wedge_ind = partition_get_wedge_index(initial_partition, s, c);
-
-    /* Add this cell to its wedge. */
-    tot_weight += w;
-    wedge_weights[wedge_ind] += w;
-  }
-
-  /* What would a perfectly distributed weight look like? */
-  double split_weight = tot_weight / nregions;
-
-  /* Set up an array dictating where each wedge ends up. */
-  int *wedgelist;
-  double *region_weights;
-  if ((wedgelist = (int *)malloc(sizeof(int) * nwedges)) == NULL)
-    error("Failed to allocate wedgelist");
-  if ((region_weights = (double *)malloc(sizeof(double) * nregions)) == NULL)
-    error("Failed to allocate region_weights buffer.");
-  bzero(region_weights, sizeof(double) * nregions);
-
-  /* Lets distribute these wedges. */
-  int select = 0;
-  for (int iwedge = 0; iwedge < nwedges; iwedge++) {
-
-    /* Assign this slice and include its weight. */
-    wedgelist[iwedge] = select;
-    region_weights[select] += wedge_weights[iwedge];
-    message("Wedge %d weight %f assigned to region %d total weight %f", iwedge,
-            wedge_weights[iwedge], select, region_weights[select]);
-
-    /* Have we filled this region/rank? */
-    if (region_weights[select] > split_weight) {
-      select++;
-      select = select % nregions;
-    }
-  }
-
-  /* Now lets tell each cell where it is. */
-  for (int cid = 0; cid < ncells; cid++) {
-
-    /* Get the cell. */
-    struct cell *c = &s->cells_top[cid];
-
-    /* Get the wedge index. */
-    int wedge_ind = partition_get_wedge_index(initial_partition, s, c);
-
-    /* Assign the nodeID we have found. */
-    s->cells_top[cid].nodeID = wedgelist[wedge_ind];
-  }
-
-  free(wedge_weights);
-  free(wedgelist);
-  free(region_weights);
-
-  return check_complete(s, (s->e->nodeID == 0), nregions);
-#endif /* WITH_MPI */
-  return 0;
-}
-
 /* METIS/ParMETIS support (optional)
  * =================================
  *
@@ -2173,6 +2021,161 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 #endif
 }
 
+/*  Radial wedge support */
+/*  ===================== */
+
+/**
+ * @brief Get the wedge index for a cell.
+ *
+ * Wedges are centred on the box centre.
+ *
+ * @param p The partition structure.
+ * @param s The #space.
+ * @param c The cell to get the wedge index for.
+ *
+ * @return The wedge index.
+ */
+int partition_get_wedge_index(struct partition *p, struct space *s,
+                              struct cell *c) {
+#ifdef WITH_MPI
+
+  /* The number of wedges in theta. */
+  int theta_nwedges = p->nr_theta_slices;
+  int phi_nwedges = p->nr_phi_slices;
+
+  /* Calculate the size of a slice in theta and phi. */
+  double theta_width = p->theta_width;
+  double phi_width = p->phi_width;
+
+  /* Center cell coordinates. */
+  double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
+  double dy = c->loc[1] - (s->dim[1] / 2) + c->width[1] / 2;
+  double dz = c->loc[2] - (s->dim[2] / 2) + c->width[2] / 2;
+
+  /* Handle the central cell, just put it in wedge 0, there won't
+   * be particles here anyway. */
+  if (dx < (c->width[0] / 2) && dy < (c->width[1] / 2) &&
+      dz < (c->width[2] / 2)) {
+    return 0;
+  }
+
+  /* Calculate the spherical version of these coordinates. */
+  double r = sqrt(dx * dx + dy * dy + dz * dz);
+  double theta = atan2(dy, dx) + M_PI;
+  double phi = acos(dz / r);
+
+  /* Find this wedge index. */
+  int phi_ind = ((int)floor(phi / phi_width) + phi_nwedges) % phi_nwedges;
+  int theta_ind =
+      ((int)floor(theta / theta_width) + theta_nwedges) % theta_nwedges;
+  return theta_ind * phi_nwedges + phi_ind;
+#endif /* WITH_MPI */
+  return 0;
+}
+
+/**
+ * @brief Partition the into radial wedges.
+ *
+ * This partitions the space into a number of radial wedges, each
+ * with approximately equal numbers of particles and assigns these
+ * to nodes in a round-robin fashion. These wedges are centred on
+ * the box centre.
+ *
+ * @param initial_partition The initial partition structure.
+ * @param s The #space.
+ * @param nregions The number of regions to partition into.
+ */
+static int partition_radial_wedges(struct partition *initial_partition,
+                                   struct space *s, int nregions) {
+#ifdef WITH_MPI
+
+  /* Get useful information */
+  int nwedges = initial_partition->nr_wedges;
+
+  /* Space for counts of particle memory use per cell. */
+  double *weights = NULL;
+  if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+    error("Failed to allocate cell weights buffer.");
+
+  /* Check each particle and accumulate the sizes per cell. */
+  accumulate_sizes(s, s->e->verbose, weights);
+
+  /* Set up an array to store slice weights. */
+  double tot_weight = 0;
+  double *wedge_weights;
+  if ((wedge_weights = (double *)malloc(sizeof(double) * nwedges)) == NULL)
+    error("Failed to allocate wedge_weights buffer.");
+  bzero(wedge_weights, sizeof(double) * nwedges);
+
+  /* Accumulate the weights in each wedge. */
+  for (int cid = 0; cid < ncells; cid++) {
+
+    /* Get the cell. */
+    struct cell *c = &s->cells_top[cid];
+
+    /* Get this cells weight. */
+    double w = weights[cid];
+
+    /* Get the wedge index. */
+    int wedge_ind = partition_get_wedge_index(initial_partition, s, c);
+
+    /* Add this cell to its wedge. */
+    tot_weight += w;
+    wedge_weights[wedge_ind] += w;
+  }
+
+  /* What would a perfectly distributed weight look like? */
+  double split_weight = tot_weight / nregions;
+
+  /* Set up an array dictating where each wedge ends up. */
+  int *wedgelist;
+  double *region_weights;
+  if ((wedgelist = (int *)malloc(sizeof(int) * nwedges)) == NULL)
+    error("Failed to allocate wedgelist");
+  if ((region_weights = (double *)malloc(sizeof(double) * nregions)) == NULL)
+    error("Failed to allocate region_weights buffer.");
+  bzero(region_weights, sizeof(double) * nregions);
+
+  /* Lets distribute these wedges. */
+  int select = 0;
+  for (int iwedge = 0; iwedge < nwedges; iwedge++) {
+
+    /* Assign this slice and include its weight. */
+    wedgelist[iwedge] = select;
+    region_weights[select] += wedge_weights[iwedge];
+    message("Wedge %d weight %f assigned to region %d total weight %f", iwedge,
+            wedge_weights[iwedge], select, region_weights[select]);
+
+    /* Have we filled this region/rank? */
+    if (region_weights[select] > split_weight) {
+      select++;
+      select = select % nregions;
+    }
+  }
+
+  /* Now lets tell each cell where it is. */
+  for (int cid = 0; cid < ncells; cid++) {
+
+    /* Get the cell. */
+    struct cell *c = &s->cells_top[cid];
+
+    /* Get the wedge index. */
+    int wedge_ind = partition_get_wedge_index(initial_partition, s, c);
+
+    /* Assign the nodeID we have found. */
+    s->cells_top[cid].nodeID = wedgelist[wedge_ind];
+  }
+
+  free(weights);
+  free(wedge_weights);
+  free(wedgelist);
+  free(region_weights);
+
+  return check_complete(s, (s->e->nodeID == 0), nregions);
+#endif /* WITH_MPI */
+  return 0;
+}
+
 /**
  * @brief Initial partition of space cells.
  *
@@ -2206,8 +2209,7 @@ void partition_initial_partition(struct partition *initial_partition,
 
   } else if (initial_partition->type == INITPART_WEDGE) {
     /* The wedge technique can fail, so check for this before proceeding. */
-    if (!partition_radial_wedges(initial_partition, s, nr_nodes, s->cells_top,
-                                 s->nr_cells)) {
+    if (!partition_radial_wedges(initial_partition, s, nr_nodes)) {
       if (nodeID == 0)
         message("Wedge initial partition failed, using a vectorised partition");
       initial_partition->type = INITPART_VECTORIZE;
