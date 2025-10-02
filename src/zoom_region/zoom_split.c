@@ -95,7 +95,7 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
         zoom_cell->sinks.count == 0 && zoom_cell->black_holes.count == 0) {
       empty = 1;
     } else if (s->with_self_gravity &&
-               zoom_cell->grav.multipole->m_pole_M_000 == 0.f) {
+               zoom_cell->grav.multipole->m_pole.M_000 == 0.f) {
       empty = 1;
     }
 
