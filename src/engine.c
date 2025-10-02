@@ -571,6 +571,15 @@ void engine_exchange_top_multipoles(struct engine *e) {
   if (err != MPI_SUCCESS)
     mpi_error(err, "Failed to all-reduce the top-level multipoles.");
 
+  /* In zoom-land, we zero the void multipoles since they'll be reconstructed
+   * shortly from the zoom cells anyway. */
+  if (e->s->with_zoom_region) {
+    for (int i = 0; i < e->s->zoom_props->nr_void_cells; ++i) {
+      const int vid = e->s->zoom_props->void_cell_indices[i];
+      bzero(&e->s->multipoles_top[vid], sizeof(struct gravity_tensors));
+    }
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
   long long counter = 0;
 
@@ -3413,9 +3422,9 @@ int engine_step(struct engine *e) {
             e->collect_group1.csds_file_size_gb);
 #endif
 
-    /********************************************************/
-    /* OK, we are done with the regular stuff. Time for i/o */
-    /********************************************************/
+  /********************************************************/
+  /* OK, we are done with the regular stuff. Time for i/o */
+  /********************************************************/
 
 #ifdef WITH_LIGHTCONE
   /* Flush lightcone buffers if necessary */
