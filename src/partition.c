@@ -68,10 +68,12 @@
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
-    "axis aligned grids of cells", "vectorized point associated cells",
+    "axis aligned grids of cells",
+    "vectorized point associated cells",
     "memory balanced, using particle weighted cells",
     "similar sized regions, using unweighted cells",
-    "memory and edge balanced cells using particle weights"};
+    "memory and edge balanced cells using particle weights",
+    "box-centered wedges"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
