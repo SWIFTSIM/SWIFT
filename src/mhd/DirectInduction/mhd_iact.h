@@ -472,8 +472,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     dx_corr_gradi[ki] = 0.0f;
     dx_corr_gradj[ki] = 0.0f;
     for (int kj = 0; kj < 3; kj++) {
-       dx_corr_gradi[ki] += pi->err_proj_tensor[ki][kj] * dx[kj]
-       dx_corr_gradj[ki] += pj->err_proj_tensor[ki][kj] * dx[kj]
+       dx_corr_gradi[ki] += pi->err_proj_tensor[ki][kj] * dx[kj];
+       dx_corr_gradj[ki] += pj->err_proj_tensor[ki][kj] * dx[kj];
      }
   }
   const float Bri_corr_gradi = Bi[0] * dx_corr_gradi[0] + Bi[1] * dx_corr_gradi[1] + Bi[2] * dx_corr_gradi[2];
@@ -844,8 +844,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     dx_corr_gradi[ki] = 0.0f;
     dx_corr_gradj[ki] = 0.0f;
     for (int kj = 0; kj < 3; kj++) {
-       dx_corr_gradi[ki] += pi->err_proj_tensor[ki][kj] * dx[kj]
-       dx_corr_gradj[ki] += pj->err_proj_tensor[ki][kj] * dx[kj]
+       dx_corr_gradi[ki] += pi->err_proj_tensor[ki][kj] * dx[kj];
+       dx_corr_gradj[ki] += pj->err_proj_tensor[ki][kj] * dx[kj];
      }
   }
   const float Bri_corr_gradi = Bi[0] * dx_corr_gradi[0] + Bi[1] * dx_corr_gradi[1] + Bi[2] * dx_corr_gradi[2];
