@@ -312,6 +312,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   if (ratio >= threshold ) {
     p->mhd_data.mhdsw = 0.0f;
   }
+  //p->mhd_data.mhdsw = fmaxf(1.0f-ratio, 0.0f);
 
   /* Error projector tensor */
   for (int ki = 0; ki < 3; ki++) {
