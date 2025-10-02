@@ -91,13 +91,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
+  const float Pi = pi->force.pressure;
+  const float Pj = pj->force.pressure;
 
   float Bi[3], Bj[3];
-  for (int i = 0; i < 3; ++i) {
-    Bi[i] = pi->mhd_data.B_over_rho[i] * rhoi;
-    Bj[i] = pj->mhd_data.B_over_rho[i] * rhoj;
+  for (int k = 0; k < 3; k++) {
+    Bi[k] = pi->mhd_data.B_over_rho[k] * rhoi;
+    Bj[k] = pj->mhd_data.B_over_rho[k] * rhoj;
   }
 
+  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
+  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
+  
   float dB[3];
   for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
 
@@ -119,6 +124,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
+  /* Compute local plasma beta mean square */
+  const float Pmagi_inv = B2i ? 2.0f * mu_0 / B2i : FLT_MAX;
+  const float Pmagj_inv = B2j ? 2.0f * mu_0 / B2j : FLT_MAX;
+ 
+  const float plasma_beta_i = Pi * Pmagi_inv; 
+  const float plasma_beta_j = Pj * Pmagj_inv; 
+
+  pi->mhd_data.plasma_beta_mean_square_norm += 1.0f;
+  pj->mhd_data.plasma_beta_mean_square_norm += 1.0f;
+  
+  pi->mhd_data.plasma_beta_mean_square += plasma_beta_j * plasma_beta_j;
+  pj->mhd_data.plasma_beta_mean_square += plasma_beta_i * plasma_beta_i;
+  
   /* dB cross r */
   float dB_cross_dx[3];
   dB_cross_dx[0] = dB[1] * dx[2] - dB[2] * dx[1];
@@ -194,13 +212,16 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-
+  const float Pj = pj->force.pressure;
+  
   float Bi[3], Bj[3];
-  for (int i = 0; i < 3; ++i) {
-    Bi[i] = pi->mhd_data.B_over_rho[i] * rhoi;
-    Bj[i] = pj->mhd_data.B_over_rho[i] * rhoj;
+  for (int k = 0; k < 3; k++) {
+    Bi[k] = pi->mhd_data.B_over_rho[k] * rhoi;
+    Bj[k] = pj->mhd_data.B_over_rho[k] * rhoj;
   }
 
+  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
+  
   float dB[3];
   for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
 
@@ -214,6 +235,15 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
 
+  /* Compute local plasma beta mean square */
+  const float Pmagj_inv = B2j ? 2.0f * mu_0 / B2j : FLT_MAX;
+
+  const float plasma_beta_j = Pj * Pmagj_inv;
+
+  pi->mhd_data.plasma_beta_mean_square_norm += 1.0f;
+
+  pi->mhd_data.plasma_beta_mean_square += plasma_beta_j * plasma_beta_j;
+  
   /* dB cross r */
   float dB_cross_dx[3];
   dB_cross_dx[0] = dB[1] * dx[2] - dB[2] * dx[1];
@@ -269,8 +299,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Recover some data */
   const float mi = pi->mass;
   const float mj = pj->mass;
-  const float Pi = pi->force.pressure;
-  const float Pj = pj->force.pressure;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
@@ -401,8 +429,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   const float monopole_beta = pi->mhd_data.monopole_beta;
 
-  const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
-  const float plasma_beta_j = B2j != 0.0f ? 2.0f * mu_0 * Pj / B2j : FLT_MAX;
+  const float plasma_beta_i = sqrtf(pi->mhd_data.plasma_beta_mean_square);
+  const float plasma_beta_j = sqrtf(pj->mhd_data.plasma_beta_mean_square);
 
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float scale_j = 0.125f * (10.0f - plasma_beta_j);
@@ -597,7 +625,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Recover some data */
   const float mi = pi->mass;
   const float mj = pj->mass;
-  const float Pi = pi->force.pressure;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
@@ -719,7 +746,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   const float monopole_beta = pi->mhd_data.monopole_beta;
 
-  const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
+  const float plasma_beta_i = sqrtf(pi->mhd_data.plasma_beta_mean_square);
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
 

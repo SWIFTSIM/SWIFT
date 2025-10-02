@@ -316,6 +316,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     }
   }
 
+  p->mhd_data.plasma_beta_mean_square = 0.0f;
+  p->mhd_data.plasma_beta_mean_square_norm = 0.0f;
+
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
   for (int k = 0; k < 3; k++) {
@@ -331,9 +334,31 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
-    struct part *p) {
+    struct part *p, const float mu_0) {
+
+  /* Recover some data */
+  const float rho = p->rho;
+  const float P = p->force.pressure;
+
+  float B[3];
+  for (int k = 0; k < 3; k++) {
+    B[k] = p->mhd_data.B_over_rho[k] * rho;
+  }
+
+  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+    
+  /* Finalise local plasma beta mean square calculation */
+  const float Pmag_inv = B2 ? 2.0f * mu_0 / B2 : FLT_MAX;
+  const float plasma_beta = P * Pmag_inv;
+
+  p->mhd_data.plasma_beta_mean_square_norm += 1.0f;
+  p->mhd_data.plasma_beta_mean_square += plasma_beta * plasma_beta; 
+
+  p->mhd_data.plasma_beta_mean_square /= p->mhd_data.plasma_beta_mean_square_norm; /* Divisor guaranteed to be strictly positive */ 
+  
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
+
   /* Finish SPH_1 calculation*/
   p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho;
 }
