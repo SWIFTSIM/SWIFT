@@ -413,6 +413,8 @@ static int partition_radial_wedges(struct partition *initial_partition,
     /* Assign this slice and include its weight. */
     wedgelist[iwedge] = select;
     region_weights[select] += wedge_weights[iwedge];
+    message("Wedge %d weight %f assigned to region %d total weight %f", iwedge,
+            wedge_weights[iwedge], select, region_weights[select]);
 
     /* Have we filled this region/rank? */
     if (region_weights[select] > split_weight) {
