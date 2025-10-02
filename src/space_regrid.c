@@ -53,6 +53,8 @@ static float space_get_current_hmax(
     const int nr_local_cells_with_particles, const int nr_cells,
     const double cell_min, const int verbose) {
 
+  const ticks tic = getticks();
+
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
@@ -126,7 +128,11 @@ static float space_get_current_hmax(
     h_max = buff;
   }
 #endif
-  if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, cell_min);
+  if (verbose) {
+    message("h_max is %.3e (cell_min=%.3e).", h_max, cell_min);
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+  }
 
   return h_max;
 }
