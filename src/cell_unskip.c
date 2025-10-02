@@ -2952,7 +2952,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     }
     if (c->top->sinks.star_formation_sink != NULL) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
-      cell_activate_super_sink_drifts(c->top, s);
+      cell_activate_super_spart_drifts(c->top, s);
     }
 
     /* If we don't have pair tasks, then the sink_in and sink_out still
