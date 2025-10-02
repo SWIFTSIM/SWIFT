@@ -4,7 +4,7 @@ Stasyszyn et al., 2013
 Seo J. & Ryu D., 2023
 
 This test requires setting mu_0 = 1 and gamma = 7/5.
-We recommend running with a quartic spline kernel ;
+We recommend running with a quintic spline kernel ;
 the parameters in the .yml file are chosen to work best	in that	configuration.
 
 It is also possible to automatically compile and run the test for all available
