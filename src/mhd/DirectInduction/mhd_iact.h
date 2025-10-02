@@ -131,8 +131,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float plasma_beta_i = Pi * Pmagi_inv; 
   const float plasma_beta_j = Pj * Pmagj_inv; 
 
-  pi->mhd_data.plasma_beta_rms_norm += 1.0f;
-  pj->mhd_data.plasma_beta_rms_norm += 1.0f;
+  pi->mhd_data.neighbour_number += 1.0f;
+  pj->mhd_data.neighbour_number += 1.0f;
   
   pi->mhd_data.plasma_beta_rms += plasma_beta_j * plasma_beta_j;
   pj->mhd_data.plasma_beta_rms += plasma_beta_i * plasma_beta_i;
@@ -240,7 +240,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   const float plasma_beta_j = Pj * Pmagj_inv;
 
-  pi->mhd_data.plasma_beta_rms_norm += 1.0f;
+  pi->mhd_data.neighbour_number += 1.0f;
 
   pi->mhd_data.plasma_beta_rms += plasma_beta_j * plasma_beta_j;
   

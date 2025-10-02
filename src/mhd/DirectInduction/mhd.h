@@ -317,7 +317,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   }
 
   p->mhd_data.plasma_beta_rms = 0.0f;
-  p->mhd_data.plasma_beta_rms_norm = 0.0f;
+  p->mhd_data.neighbour_number = 0.0f;
 
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
@@ -351,10 +351,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   const float Pmag_inv = B2 ? 2.0f * mu_0 / B2 : FLT_MAX;
   const float plasma_beta = P * Pmag_inv;
 
-  p->mhd_data.plasma_beta_rms_norm += 1.0f;
+  p->mhd_data.neighbour_number += 1.0f;
   p->mhd_data.plasma_beta_rms += plasma_beta * plasma_beta; 
 
-  p->mhd_data.plasma_beta_rms = sqrtf(p->mhd_data.plasma_beta_rms / p->mhd_data.plasma_beta_rms_norm); /* Divisor guaranteed to be strictly positive */ 
+  p->mhd_data.plasma_beta_rms = sqrtf(p->mhd_data.plasma_beta_rms / p->mhd_data.neighbour_number); /* Divisor guaranteed to be strictly positive */ 
   
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
