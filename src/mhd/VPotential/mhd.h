@@ -343,6 +343,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
 __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     struct part *p) {
 
+  /* Div B*/
   p->mhd_data.divB = 0.f;
   /* Curl B*/
   for (int k = 0; k < 3; k++) p->mhd_data.curl_B[k] = 0.f;
@@ -452,7 +453,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *restrict p) {
-  p->mhd_data.divB = 0.0f;
   /* Zeroes Induction equation */
   p->mhd_data.dAdt[0] = 0.0f;
   p->mhd_data.dAdt[1] = 0.0f;

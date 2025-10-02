@@ -26,7 +26,7 @@ Statistics:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.2   # Target smoothing length in units of the mean inter-particle separation
+  resolution_eta:        1.595    # Target smoothing length in units of the mean inter-particle separation
   CFL_condition:         0.075    # Courant-Friedrich-Levy condition for time integration.
 
 # Parameters for MHD schemes
