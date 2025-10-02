@@ -206,8 +206,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     dx_corr_gradi[ki] = 0.0f;
     dx_corr_gradj[ki] = 0.0f;
     for (int kj = 0; kj < 3; kj++) {
-       dx_corr_gradi[ki] += pi->err_proj_tensor[ki][kj] * dx[kj]
-       dx_corr_gradj[ki] += pj->err_proj_tensor[ki][kj] * dx[kj]
+       dx_corr_gradi[ki] += pi->mhd_data.err_proj_tensor[ki][kj] * dx[kj];
+       dx_corr_gradj[ki] += pj->mhd_data.err_proj_tensor[ki][kj] * dx[kj];
      }
   }
   float dB_cross_dx_corri[3];
@@ -342,7 +342,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   for (int ki = 0; ki < 3; ki++) {
     dx_corr_gradi[ki] = 0.0f;
     for (int kj = 0; kj < 3; kj++) {
-       dx_corr_gradi[ki] += pi->err_proj_tensor[ki][kj] * dx[kj]
+       dx_corr_gradi[ki] += pi->mhd_data.err_proj_tensor[ki][kj] * dx[kj];
      }
   }
   float dB_cross_dx_corri[3];
@@ -472,8 +472,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     dx_corr_gradi[ki] = 0.0f;
     dx_corr_gradj[ki] = 0.0f;
     for (int kj = 0; kj < 3; kj++) {
-       dx_corr_gradi[ki] += pi->err_proj_tensor[ki][kj] * dx[kj];
-       dx_corr_gradj[ki] += pj->err_proj_tensor[ki][kj] * dx[kj];
+       dx_corr_gradi[ki] += pi->mhd_data.err_proj_tensor[ki][kj] * dx[kj];
+       dx_corr_gradj[ki] += pj->mhd_data.err_proj_tensor[ki][kj] * dx[kj];
      }
   }
   const float Bri_corr_gradi = Bi[0] * dx_corr_gradi[0] + Bi[1] * dx_corr_gradi[1] + Bi[2] * dx_corr_gradi[2];
@@ -844,12 +844,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     dx_corr_gradi[ki] = 0.0f;
     dx_corr_gradj[ki] = 0.0f;
     for (int kj = 0; kj < 3; kj++) {
-       dx_corr_gradi[ki] += pi->err_proj_tensor[ki][kj] * dx[kj];
-       dx_corr_gradj[ki] += pj->err_proj_tensor[ki][kj] * dx[kj];
+       dx_corr_gradi[ki] += pi->mhd_data.err_proj_tensor[ki][kj] * dx[kj];
+       dx_corr_gradj[ki] += pj->mhd_data.err_proj_tensor[ki][kj] * dx[kj];
      }
   }
   const float Bri_corr_gradi = Bi[0] * dx_corr_gradi[0] + Bi[1] * dx_corr_gradi[1] + Bi[2] * dx_corr_gradi[2];
-  const float Bri_corr_gradj = Bi[0] * dx_corr_gradj[0] + Bi[1] * dx_corr_gradj[1] + Bi[2] * dx_corr_gradj[2];
   const float Brj_corr_gradi = Bj[0] * dx_corr_gradi[0] + Bj[1] * dx_corr_gradi[1] + Bj[2] * dx_corr_gradi[2];
   const float Brj_corr_gradj = Bj[0] * dx_corr_gradj[0] + Bj[1] * dx_corr_gradj[1] + Bj[2] * dx_corr_gradj[2];
   const float dBdr_corr_gradi = Bri_corr_gradi - Brj_corr_gradi;
