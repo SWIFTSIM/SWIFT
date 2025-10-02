@@ -121,6 +121,10 @@ struct mhd_part_data {
   /* Switch */
   float mhdsw;
 
+  /* Error projector tensor */
+  float err_proj_tensor[3][3];
+
+
 };
 
 /**

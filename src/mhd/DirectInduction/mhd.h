@@ -302,6 +302,16 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   p->mhd_data.rcm_over_hb_Nw_abs = p->mhd_data.rcm_over_ha_Nw_abs / p->mhd_data.hb_over_ha_Nw;
   p->mhd_data.rcm_over_hb_Kw_abs = p->mhd_data.rcm_over_ha_Kw_abs / p->mhd_data.hb_over_ha_Kw;
 
+
+  /* Error projector tensor */
+  for (int ki = 0; ki < 3; ki++) {
+    for (int kj = 0; kj < 3; kj++) {
+       p->err_proj_tensor[ki][kj]=p->mhd_data.rcm_over_ha_Kw[ki]*p->mhd_data.rcm_over_ha_Kw[kj] / (p->mhd_data.rcm_over_ha_Kw_abs * p->mhd_data.rcm_over_ha_Kw_abs) * (1.0f -  p->mhd_data.mhdsw);
+     }
+  }
+
+
+
 }
 
 /**
@@ -398,6 +408,17 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   if (ratio >= threshold ) {
     p->mhd_data.mhdsw = 0.0f;
   }
+
+ 
+
+
+  /* Error projector tensor */
+//  for (int ki = 0; ki < 3; ki++) {
+//    for (int kj = 0; kj < 3; kj++) {
+//       p->err_proj_tensor[ki][kj]=p->mhd_data.rcm_over_ha_Kw[ki]*p->mhd_data.rcm_over_ha_Kw[kj] / (p->mhd_data.rcm_over_ha_Kw_abs * p->mhd_data.rcm_over_ha_Kw_abs) * (1.0f -  p->mhd_data.mhdsw);
+//     }
+//  }
+
 
 }
 

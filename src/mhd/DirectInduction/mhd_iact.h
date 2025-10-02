@@ -198,21 +198,43 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float over_rho_i = 1.0f / rhoi * f_ij;
   const float over_rho_j = 1.0f / rhoj * f_ji;
 
+
+  /* Error corrections */
+  float dx_corr_gradi[3];
+  float dx_corr_gradj[3];
+  for (int ki = 0; ki < 3; ki++) {
+    dx_corr_gradi[ki] = 0.0f;
+    dx_corr_gradj[ki] = 0.0f;
+    for (int kj = 0; kj < 3; kj++) {
+       dx_corr_gradi[ki] += pi->err_proj_tensor[ki][kj] * dx[kj]
+       dx_corr_gradj[ki] += pj->err_proj_tensor[ki][kj] * dx[kj]
+     }
+  }
+  float dB_cross_dx_corri[3];
+  float dB_cross_dx_corrj[3];
+  dB_cross_dx_corri[0] = dB[1] * dx_corr_gradi[2] - dB[2] * dx_corr_gradi[1];
+  dB_cross_dx_corri[1] = dB[2] * dx_corr_gradi[0] - dB[0] * dx_corr_gradi[2];
+  dB_cross_dx_corri[2] = dB[0] * dx_corr_gradi[1] - dB[1] * dx_corr_gradi[0];
+  dB_cross_dx_corrj[0] = dB[1] * dx_corr_gradj[2] - dB[2] * dx_corr_gradj[1];
+  dB_cross_dx_corrj[1] = dB[2] * dx_corr_gradj[0] - dB[0] * dx_corr_gradj[2];
+  dB_cross_dx_corrj[2] = dB[0] * dx_corr_gradj[1] - dB[1] * dx_corr_gradj[0];
+
+
   /* Calculate curl */
-  pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];
-  pi->mhd_data.curl_B[1] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[1];
-  pi->mhd_data.curl_B[2] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[2];
-  pj->mhd_data.curl_B[0] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[0];
-  pj->mhd_data.curl_B[1] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[1];
-  pj->mhd_data.curl_B[2] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[2];
+  pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * (dB_cross_dx[0]-dB_cross_dx_corri[0]);
+  pi->mhd_data.curl_B[1] += mj * over_rho_i * wi_dr * r_inv * (dB_cross_dx[1]-dB_cross_dx_corri[1]);
+  pi->mhd_data.curl_B[2] += mj * over_rho_i * wi_dr * r_inv * (dB_cross_dx[2]-dB_cross_dx_corri[2]);
+  pj->mhd_data.curl_B[0] += mi * over_rho_j * wj_dr * r_inv * (dB_cross_dx[0]-dB_cross_dx_corrj[0]);
+  pj->mhd_data.curl_B[1] += mi * over_rho_j * wj_dr * r_inv * (dB_cross_dx[1]-dB_cross_dx_corrj[1]);
+  pj->mhd_data.curl_B[2] += mi * over_rho_j * wj_dr * r_inv * (dB_cross_dx[2]-dB_cross_dx_corrj[2]);
 
   /* Calculate gradient of B tensor */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       pi->mhd_data.grad_B_tensor[i][j] -=
-          mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
+          mj * over_rho_i * wi_dr * r_inv * dB[i] * (dx[j] - dx_corr_gradi[j]);
       pj->mhd_data.grad_B_tensor[i][j] -=
-          mi * over_rho_j * wj_dr * r_inv * dB[i] * dx[j];
+          mi * over_rho_j * wj_dr * r_inv * dB[i] * (dx[j] - dx_corr_gradj[j]);
     }
   }
 
@@ -315,16 +337,29 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Compute gradient terms */
   const float over_rho_i = 1.0f / rhoi * f_ij;
 
+  /* Error corrections */
+  float dx_corr_gradi[3];
+  for (int ki = 0; ki < 3; ki++) {
+    dx_corr_gradi[ki] = 0.0f;
+    for (int kj = 0; kj < 3; kj++) {
+       dx_corr_gradi[ki] += pi->err_proj_tensor[ki][kj] * dx[kj]
+     }
+  }
+  float dB_cross_dx_corri[3];
+  dB_cross_dx_corri[0] = dB[1] * dx_corr_gradi[2] - dB[2] * dx_corr_gradi[1];
+  dB_cross_dx_corri[1] = dB[2] * dx_corr_gradi[0] - dB[0] * dx_corr_gradi[2];
+  dB_cross_dx_corri[2] = dB[0] * dx_corr_gradi[1] - dB[1] * dx_corr_gradi[0];
+
   /* Calculate curl */
-  pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];
-  pi->mhd_data.curl_B[1] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[1];
-  pi->mhd_data.curl_B[2] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[2];
+  pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * (dB_cross_dx[0]-dB_cross_dx_corri[0]);
+  pi->mhd_data.curl_B[1] += mj * over_rho_i * wi_dr * r_inv * (dB_cross_dx[1]-dB_cross_dx_corri[1]);
+  pi->mhd_data.curl_B[2] += mj * over_rho_i * wi_dr * r_inv * (dB_cross_dx[2]-dB_cross_dx_corri[2]);
 
   /* Calculate gradient of B tensor */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       pi->mhd_data.grad_B_tensor[i][j] -=
-          mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
+          mj * over_rho_i * wi_dr * r_inv * dB[i] * (dx[j] - dx_corr_gradi[j]);
     }
   }
 
@@ -425,14 +460,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   float f_ij = 1.f - pi->force.f / mj;
   float f_ji = 1.f - pj->force.f / mi;
 
-  /* Mitigation: switching fij to 0 */
-  //f_ij *= pi->mhd_data.mhdsw;
-  //f_ji *= pj->mhd_data.mhdsw;
-
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
   const float dBdr = Bri - Brj;
+
+  /* Error corrections */
+  float dx_corr_gradi[3];
+  float dx_corr_gradj[3];
+  for (int ki = 0; ki < 3; ki++) {
+    dx_corr_gradi[ki] = 0.0f;
+    dx_corr_gradj[ki] = 0.0f;
+    for (int kj = 0; kj < 3; kj++) {
+       dx_corr_gradi[ki] += pi->err_proj_tensor[ki][kj] * dx[kj]
+       dx_corr_gradj[ki] += pj->err_proj_tensor[ki][kj] * dx[kj]
+     }
+  }
+  const float Bri_corr_gradi = Bi[0] * dx_corr_gradi[0] + Bi[1] * dx_corr_gradi[1] + Bi[2] * dx_corr_gradi[2];
+  const float Bri_corr_gradj = Bi[0] * dx_corr_gradj[0] + Bi[1] * dx_corr_gradj[1] + Bi[2] * dx_corr_gradj[2];
+  const float Brj_corr_gradi = Bj[0] * dx_corr_gradi[0] + Bj[1] * dx_corr_gradi[1] + Bj[2] * dx_corr_gradi[2];
+  const float Brj_corr_gradj = Bj[0] * dx_corr_gradj[0] + Bj[1] * dx_corr_gradj[1] + Bj[2] * dx_corr_gradj[2];
+  const float dBdr_corr_gradi = Bri_corr_gradi - Brj_corr_gradi;
+  const float dBdr_corr_gradj = Brj_corr_gradj - Bri_corr_gradj;
 
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
@@ -445,8 +494,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float asym_grad_term_i = f_ij * wi_dr * r_inv / rhoi;
   const float asym_grad_term_j = f_ji * wj_dr * r_inv / rhoj;
 
-  const float divB_i = dBdr * asym_grad_term_i;
-  const float divB_j = dBdr * asym_grad_term_j;
+  const float divB_i = (dBdr-dBdr_corr_gradi) * asym_grad_term_i;
+  const float divB_j = (dBdr-dBdr_corr_gradj) * asym_grad_term_j;
 
   pi->mhd_data.divB -= mj * divB_i;
   pj->mhd_data.divB -= mi * divB_j;
@@ -458,43 +507,43 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /* Isotropic MHD pressure term */
   sph_acc_term_i[0] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[0];
+      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * (dx[0]-dx_corr_gradi[0]);
   sph_acc_term_i[0] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[0];
+      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * (dx[0]-dx_corr_gradj[0]);
 
   /* Anisotropic MHD term */
   sph_acc_term_i[0] +=
-      -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[0];
+      -1.f * over_rho2_i * wi_dr * (Bri - Bri_corr_gradi) * permeability_inv * r_inv * Bi[0];
   sph_acc_term_i[0] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[0];
+      -1.f * over_rho2_j * wj_dr * (Brj - Brj_corr_gradj) * permeability_inv * r_inv * Bj[0];
 
   /* Accelerations along Y */
 
   /* Isotropic MHD pressure term */
   sph_acc_term_i[1] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[1];
+      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * (dx[1]-dx_corr_gradi[1]);
   sph_acc_term_i[1] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[1];
+      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * (dx[1]-dx_corr_gradj[1]);
 
   /* Anisotropic MHD term */
   sph_acc_term_i[1] +=
-      -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[1];
+      -1.f * over_rho2_i * wi_dr * (Bri - Bri_corr_gradi) * permeability_inv * r_inv * Bi[1];
   sph_acc_term_i[1] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[1];
+      -1.f * over_rho2_j * wj_dr * (Brj - Brj_corr_gradj) * permeability_inv * r_inv * Bj[1];
 
   /* Accelerations along Z */
 
   /* Isotropic MHD pressure term */
   sph_acc_term_i[2] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[2];
+      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * (dx[2]-dx_corr_gradi[2]);
   sph_acc_term_i[2] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[2];
+      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * (dx[2]-dx_corr_gradj[2]);
 
   /* Anisotropic MHD term */
   sph_acc_term_i[2] +=
-      -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[2];
+      -1.f * over_rho2_i * wi_dr * (Bri - Bri_corr_gradi) * permeability_inv * r_inv * Bi[2];
   sph_acc_term_i[2] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[2];
+      -1.f * over_rho2_j * wj_dr * (Brj - Brj_corr_gradj) * permeability_inv * r_inv * Bj[2];
 
   /* SPH acceleration term in x direction, j_th particle */
   float sph_acc_term_j[3];
@@ -522,34 +571,34 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[0] * tensile_correction_scale_i;
+                       (Bri - Bri_corr_gradi) * r_inv * Bi[0] * tensile_correction_scale_i;
   sph_acc_term_i[0] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[0] * tensile_correction_scale_i;
+                       (Brj - Brj_corr_gradj) * r_inv * Bi[0] * tensile_correction_scale_i;
 
   sph_acc_term_i[1] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[1] * tensile_correction_scale_i;
+                       (Bri - Bri_corr_gradi) * r_inv * Bi[1] * tensile_correction_scale_i;
   sph_acc_term_i[1] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[1] * tensile_correction_scale_i;
+                       (Brj - Brj_corr_gradj) * r_inv * Bi[1] * tensile_correction_scale_i;
 
   sph_acc_term_i[2] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[2] * tensile_correction_scale_i;
+                       (Bri - Bri_corr_gradi) * r_inv * Bi[2] * tensile_correction_scale_i;
   sph_acc_term_i[2] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[2] * tensile_correction_scale_i;
+                       (Brj - Brj_corr_gradj) * r_inv * Bi[2] * tensile_correction_scale_i;
 
   sph_acc_term_j[0] -= monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bj[0] * tensile_correction_scale_j;
+                       (Bri - Bri_corr_gradi) * r_inv * Bj[0] * tensile_correction_scale_j;
   sph_acc_term_j[0] -= monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bj[0] * tensile_correction_scale_j;
+                       (Brj - Brj_corr_gradj) * r_inv * Bj[0] * tensile_correction_scale_j;
 
   sph_acc_term_j[1] -= monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bj[1] * tensile_correction_scale_j;
+                       (Bri - Bri_corr_gradi) * r_inv * Bj[1] * tensile_correction_scale_j;
   sph_acc_term_j[1] -= monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bj[1] * tensile_correction_scale_j;
+                       (Brj - Brj_corr_gradj) * r_inv * Bj[1] * tensile_correction_scale_j;
 
   sph_acc_term_j[2] -= monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bj[2] * tensile_correction_scale_j;
+                       (Bri - Bri_corr_gradi) * r_inv * Bj[2] * tensile_correction_scale_j;
   sph_acc_term_j[2] -= monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bj[2] * tensile_correction_scale_j;
+                       (Brj - Brj_corr_gradj) * r_inv * Bj[2] * tensile_correction_scale_j;
 
 
   /* Mitigation: switching off force component parallel to the chosen error variable */
@@ -590,14 +639,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /* */
   float dB_dt_i[3];
-  dB_dt_i[0] = -Bri * dv[0];
-  dB_dt_i[1] = -Bri * dv[1];
-  dB_dt_i[2] = -Bri * dv[2];
+  dB_dt_i[0] = - (Bri - Bri_corr_gradi) * dv[0];
+  dB_dt_i[1] = - (Bri - Bri_corr_gradi) * dv[1];
+  dB_dt_i[2] = - (Bri - Bri_corr_gradi) * dv[2];
 
   float dB_dt_j[3];
-  dB_dt_j[0] = -Brj * dv[0];
-  dB_dt_j[1] = -Brj * dv[1];
-  dB_dt_j[2] = -Brj * dv[2];
+  dB_dt_j[0] = - (Brj - Brj_corr_gradj) * dv[0];
+  dB_dt_j[1] = - (Brj - Brj_corr_gradj)* dv[1];
+  dB_dt_j[2] = - (Brj - Brj_corr_gradj) * dv[2];
 
   /* */
   pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
@@ -673,13 +722,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   float grad_psi = grad_term_i * psi_over_ch_i * vsig_Dedner_i;
   grad_psi += grad_term_j * psi_over_ch_j * vsig_Dedner_j;
 
-  pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi * dx[0];
-  pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi * dx[1];
-  pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi * dx[2];
+  pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi * (dx[0]-dx_corr_gradi[0]);
+  pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi * (dx[1]-dx_corr_gradi[1]);
+  pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi * (dx[2]-dx_corr_gradi[2]);
 
-  pj->mhd_data.B_over_rho_dt[0] += mi * grad_psi * dx[0];
-  pj->mhd_data.B_over_rho_dt[1] += mi * grad_psi * dx[1];
-  pj->mhd_data.B_over_rho_dt[2] += mi * grad_psi * dx[2];
+  pj->mhd_data.B_over_rho_dt[0] += mi * grad_psi * (dx[0]-dx_corr_gradi[0]);
+  pj->mhd_data.B_over_rho_dt[1] += mi * grad_psi * (dx[1]-dx_corr_gradi[1]);
+  pj->mhd_data.B_over_rho_dt[2] += mi * grad_psi * (dx[2]-dx_corr_gradi[2]);
 
   /* Save induction sources */
   const float dB_dt_pref_Lap_i = 2.0f * r_inv / rhoj;
@@ -788,6 +837,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
   const float dBdr = Bri - Brj;
 
+  /* Error corrections */
+  float dx_corr_gradi[3];
+  float dx_corr_gradj[3];
+  for (int ki = 0; ki < 3; ki++) {
+    dx_corr_gradi[ki] = 0.0f;
+    dx_corr_gradj[ki] = 0.0f;
+    for (int kj = 0; kj < 3; kj++) {
+       dx_corr_gradi[ki] += pi->err_proj_tensor[ki][kj] * dx[kj]
+       dx_corr_gradj[ki] += pj->err_proj_tensor[ki][kj] * dx[kj]
+     }
+  }
+  const float Bri_corr_gradi = Bi[0] * dx_corr_gradi[0] + Bi[1] * dx_corr_gradi[1] + Bi[2] * dx_corr_gradi[2];
+  const float Bri_corr_gradj = Bi[0] * dx_corr_gradj[0] + Bi[1] * dx_corr_gradj[1] + Bi[2] * dx_corr_gradj[2];
+  const float Brj_corr_gradi = Bj[0] * dx_corr_gradi[0] + Bj[1] * dx_corr_gradi[1] + Bj[2] * dx_corr_gradi[2];
+  const float Brj_corr_gradj = Bj[0] * dx_corr_gradj[0] + Bj[1] * dx_corr_gradj[1] + Bj[2] * dx_corr_gradj[2];
+  const float dBdr_corr_gradi = Bri_corr_gradi - Brj_corr_gradi;
+
+
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
   const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
@@ -809,43 +876,43 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* Isotropic MHD pressure term */
   sph_acc_term_i[0] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[0];
+      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * (dx[0]-dx_corr_gradi[0]);
   sph_acc_term_i[0] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[0];
+      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * (dx[0]-dx_corr_gradj[0]);
 
   /* Anisotropic MHD term */
   sph_acc_term_i[0] +=
-      -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[0];
+      -1.f * over_rho2_i * wi_dr * (Bri-Bri_corr_gradi) * permeability_inv * r_inv * Bi[0];
   sph_acc_term_i[0] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[0];
+      -1.f * over_rho2_j * wj_dr * (Brj-Brj_corr_gradj) * permeability_inv * r_inv * Bj[0];
 
   /* Accelerations along Y */
 
   /* Isotropic MHD pressure term */
   sph_acc_term_i[1] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[1];
+      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * (dx[1]-dx_corr_gradi[1]);
   sph_acc_term_i[1] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[1];
+      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * (dx[1]-dx_corr_gradj[1]);
 
   /* Anisotropic MHD term */
   sph_acc_term_i[1] +=
-      -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[1];
+      -1.f * over_rho2_i * wi_dr * (Bri-Bri_corr_gradi) * permeability_inv * r_inv * Bi[1];
   sph_acc_term_i[1] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[1];
+      -1.f * over_rho2_j * wj_dr * (Brj-Brj_corr_gradj) * permeability_inv * r_inv * Bj[1];
 
   /* Accelerations along Z */
 
   /* Isotropic MHD pressure term */
   sph_acc_term_i[2] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[2];
+      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * (dx[2]-dx_corr_gradi[2]);
   sph_acc_term_i[2] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[2];
+      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * (dx[2]-dx_corr_gradj[2]);
 
   /* Anisotropic MHD term */
   sph_acc_term_i[2] +=
-      -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[2];
+      -1.f * over_rho2_i * wi_dr * (Bri-Bri_corr_gradi) * permeability_inv * r_inv * Bi[2];
   sph_acc_term_i[2] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[2];
+      -1.f * over_rho2_j * wj_dr * (Brj-Brj_corr_gradj) * permeability_inv * r_inv * Bj[2];
 
   /* Divergence cleaning term */
   /* Manifestly *NOT* symmetric in i <-> j */
@@ -860,19 +927,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   //tensile_correction_scale_i = fminf(tensile_correction_scale_i, 0.5f * ( 1.0f + pi->mhd_data.mhdsw) );
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[0] * tensile_correction_scale_i;
+                       (Bri-Bri_corr_gradi) * r_inv * Bi[0] * tensile_correction_scale_i;
   sph_acc_term_i[0] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[0] * tensile_correction_scale_i;
+                       (Brj-Brj_corr_gradj) * r_inv * Bi[0] * tensile_correction_scale_i;
 
   sph_acc_term_i[1] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[1] * tensile_correction_scale_i;
+                       (Bri-Bri_corr_gradi) * r_inv * Bi[1] * tensile_correction_scale_i;
   sph_acc_term_i[1] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[1] * tensile_correction_scale_i;
+                       (Brj-Brj_corr_gradj) * r_inv * Bi[1] * tensile_correction_scale_i;
 
   sph_acc_term_i[2] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[2] * tensile_correction_scale_i;
+                       (Bri-Bri_corr_gradi) * r_inv * Bi[2] * tensile_correction_scale_i;
   sph_acc_term_i[2] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[2] * tensile_correction_scale_i;
+                       (Brj-Brj_corr_gradj) * r_inv * Bi[2] * tensile_correction_scale_i;
 
   /* Mitigation: switching off force component parallel to the chosen error variable */
 /*
@@ -903,9 +970,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* */
   float dB_dt_i[3];
-  dB_dt_i[0] = -Bri * dv[0];
-  dB_dt_i[1] = -Bri * dv[1];
-  dB_dt_i[2] = -Bri * dv[2];
+  dB_dt_i[0] = - (Bri-Bri_corr_gradi) * dv[0];
+  dB_dt_i[1] = - (Bri-Bri_corr_gradi) * dv[1];
+  dB_dt_i[2] = - (Bri-Bri_corr_gradi) * dv[2];
 
   /* */
   pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
@@ -962,9 +1029,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   float grad_psi = grad_term_i * psi_over_ch_i * vsig_Dedner_i;
   grad_psi += grad_term_j * psi_over_ch_j * vsig_Dedner_j;
 
-  pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi * dx[0];
-  pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi * dx[1];
-  pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi * dx[2];
+  pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi * (dx[0]-dx_corr_gradi[0]);
+  pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi * (dx[1]-dx_corr_gradi[1]);
+  pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi * (dx[2]-dx_corr_gradi[2]);
 
   /* Save induction sources */
   const float dB_dt_pref_Lap = 2.0f * r_inv / rhoj;
