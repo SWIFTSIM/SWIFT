@@ -1092,3 +1092,4 @@ ZoomRegion:
   buffer_cell_depth:          0      # (Optional, only used when buffer cells are needed) The depth of the top level buffer cells in a single background cell. (default: 0)
   neighbour_max_tree_depth:   2      # (Optional) The depth of the cell trees neighbouring the zoom region (default: -1)
   bkg_subdepth_diff_grav:     3      # The minimum difference between the leaf depth and the task depth for background cells.
+  max_com_dx:                 0.1    # (Optional) The maximum allowed displacement of the centre of mass of the zoom region from the centre of the box in units of the zoom region extent. When this is exceeded, we rebuild the zoom region.
