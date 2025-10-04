@@ -69,7 +69,7 @@ float feedback_compute_spart_timestep(
   const int is_first_star = metallicity < threshold;
   const struct stellar_model* sm =
       is_first_star ? &feedback_props->stellar_model_first_stars
-		    : &feedback_props->stellar_model;
+                    : &feedback_props->stellar_model;
 
   /* Compute the times */
   double star_age_beg_step = 0;
@@ -77,17 +77,18 @@ float feedback_compute_spart_timestep(
   double dt_enrichment = 0;
   integertime_t ti_begin = 0;
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-	       &ti_begin, ti_current, time_base, time);
-  double star_age_end_step = compute_star_age_end_of_step(sp, with_cosmology, cosmo, time);
+               &ti_begin, ti_current, time_base, time);
+  double star_age_end_step =
+      compute_star_age_end_of_step(sp, with_cosmology, cosmo, time);
 
   /* Convert mass to M_sun. The lifetime function assumes solar masses */
   const float log_mass =
       (sp->star_type == single_star)
-	  ? log10(sp->sf_data.birth_mass / phys_const->const_solar_mass)
-	  : log10(1.0);
+          ? log10(sp->sf_data.birth_mass / phys_const->const_solar_mass)
+          : log10(1.0);
 
   const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
-					 &sm->lifetime, log_mass, metallicity));
+                                         &sm->lifetime, log_mass, metallicity));
   const float lifetime = lifetime_myr * 1e6 * phys_const->const_year;
 
   /* Adapt the factor depending on the star lifetime to provide adequate
@@ -106,11 +107,10 @@ float feedback_compute_spart_timestep(
       star_age_beg_step < 0 ? star_age_end_step : star_age_beg_step;
 
   /* To avoid very small timesteps for star_age_beg_step, take the mean */
-  const double star_age = 0.5*(star_age_beg_step_safe + star_age_end_step);
+  const double star_age = 0.5 * (star_age_beg_step_safe + star_age_end_step);
 
-  float dt_evolution = (star_age_beg_step <= 0)
-			   ? FLT_MAX
-			   : star_age / (factor * lifetime);
+  float dt_evolution =
+      (star_age_beg_step <= 0) ? FLT_MAX : star_age / (factor * lifetime);
   /*----------------------------------------*/
 
   /* If the star is dead, do not limit its timestep */
@@ -130,7 +130,7 @@ float feedback_compute_spart_timestep(
  * @param e The #engine.
  */
 void feedback_update_part(struct part* p, struct xpart* xp,
-			  const struct engine* e) {
+                          const struct engine* e) {
   const struct cosmology* cosmo = e->cosmology;
   const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
 
@@ -203,8 +203,10 @@ void feedback_reset_part(struct part* p, struct xpart* xp) {}
  * @param cosmo The current cosmological model.
  * @param time The current time (in double)
  */
-double compute_star_age_end_of_step(const struct spart* sp, const int with_cosmology,
-                        const struct cosmology* cosmo, const double time) {
+double compute_star_age_end_of_step(const struct spart* sp,
+                                    const int with_cosmology,
+                                    const struct cosmology* cosmo,
+                                    const double time) {
   double star_age_end_of_step;
   if (with_cosmology) {
     if (cosmo->a > (double)sp->birth_scale_factor)
@@ -252,9 +254,8 @@ void compute_time(const struct spart* sp, const int with_cosmology,
   }
 
   /* Calculate age of the star at current time */
-  const double star_age_end_of_step = compute_star_age_end_of_step(sp,
-                                                                   with_cosmology,
-								   cosmo, time);
+  const double star_age_end_of_step =
+      compute_star_age_end_of_step(sp, with_cosmology, cosmo, time);
 
   /* Get the length of the enrichment time-step */
   *dt_enrichment = feedback_get_enrichment_timestep(sp, with_cosmology, cosmo,
