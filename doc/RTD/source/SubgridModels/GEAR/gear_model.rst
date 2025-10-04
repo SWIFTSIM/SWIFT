@@ -50,8 +50,9 @@ If ``GEARStarFormation:star_formation_mode`` is set to ``agora``, the condition 
 
 A star will be able to form if a randomly drawn number is below :math:`\frac{m_g}{m_\star}\left(1 - \exp\left(-c_\star \Delta t / t_\textrm{ff}\right)\right)` where :math:`t_\textrm{ff}` is the free fall time, :math:`\Delta t` is the time step of the particle and :math:`c_\star` is the star formation coefficient (``GEARStarFormation:star_formation_efficiency``), :math:`m_g` the mass of the gas particle and :math:`m_\star` the mass of the possible future star. The mass of the star is computed from the average gas mass in the initial conditions divided by the number of possible stars formed per gas particle (``GEARStarFormation:n_stars_per_particle``). When we cannot have enough mass to form a second star (defined with the fraction of mass ``GEARStarFormation:min_mass_frac``), we fully convert the gas particle into a stellar particle. Once the star is formed, we move it a bit in a random direction and fraction of the smoothing length in order to avoid any division by 0.
 
-Currently, only the following hydro schemes are compatible: SPHENIX, Gadget2, minimal SPH, Gasoline-2 and Pressure-Energy.
-Implementing the other hydro schemes is not complicated but requires some careful thinking about the cosmological terms in the definition of the velocity divergence (comoving vs non comoving coordinates and if the Hubble flow is included or not).
+.. note::
+   Currently, only the following hydro schemes are compatible: SPHENIX, Gadget2, minimal SPH, Gasoline-2, Pressure-Energy, GIZMO MFV and GIZMO MFM. These schemes are also the ones compatible with *GEAR sink scheme*.
+   Implementing the other hydro schemes is not complicated but requires some careful thinking about the cosmological terms in the definition of the velocity divergence (comoving vs non comoving coordinates and if the Hubble flow is included or not).
 
 .. code:: YAML
 
