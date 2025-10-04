@@ -107,6 +107,7 @@ Gravity:
 ForceChecks:
   only_when_all_active: 1  # (Optional) Only compute exact forces during timesteps when all gparts are active (default: 0).
   only_at_snapshots:    1  # (Optional) Only compute exact forces during timesteps when a snapshot is being dumped (default: 0).
+  exact_gravity_check_types:     [0, 1, 0, 0, 0, 0, 0] # (Optional) What particle types to check for in the exact gravity N^2 algorithm. (defaults to all types)
 
 # Parameters related to the Friends-Of-Friends halo finding
 FOF:
