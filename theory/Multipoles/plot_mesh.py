@@ -201,13 +201,13 @@ plot(r_rs, 1.0 - corr_short_swift, "-", lw=1.4, color=colors[3])
 plot(r_rs, 1.0 - corr_short_swift2, ":", lw=1.4, color=colors[3])
 plot(r_rs, np.ones(np.size(r)) * 0.01, "k-.", alpha=0.5, lw=0.5)
 plot([1.0, 1.0], [-1e5, 1e5], "k-.", alpha=0.5, lw=0.5)
-plot([-1, -1], [-1, -1], "k-", lw=1.2, label="${\mathrm{Exact}~e^x}$")
+plot([-1, -1], [-1, -1], "k-", lw=1.2, label=r"${\mathrm{Exact}~e^x}$")
 plot(
     [-1, -1],
     [-1, -1],
     "k:",
     lw=1.2,
-    label="${6^\mathrm{th}~\mathrm{order~series}~e^x}$",
+    label=r"${6^\mathrm{th}~\mathrm{order~series}~e^x}$",
 )
 
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
@@ -274,13 +274,13 @@ plot(
     [-1, -1],
     "k:",
     lw=1.2,
-    label="${6^\mathrm{th}~\mathrm{order~series}~e^x}$",
+    label=r"${6^\mathrm{th}~\mathrm{order~series}~e^x}$",
 )
 
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
 xlim(1.1 * r_min / r_s, 0.9 * r_max / r_s)
 ylim(3e-3, 1.5)
-ylabel("$|\mathbf{f}_s(r)|\\times r^2$", labelpad=-2)
+ylabel(r"$|\mathbf{f}_s(r)|\times r^2$", labelpad=-2)
 
 legend(
     loc="center left", frameon=False, handletextpad=0.3, handlelength=1.6, fontsize=7
@@ -298,7 +298,7 @@ plot(r_rs, np.ones(np.size(r)) * 0.01, "k-.", alpha=0.5, lw=0.5)
 
 xlim(1.1 * r_min / r_s, 0.9 * r_max / r_s)
 ylim(3e-3, 1.5)
-ylabel("$1 - |\mathbf{f}_s(r)|\\times r^2$", labelpad=-3)
+ylabel(r"$1 - |\mathbf{f}_s(r)|\times r^2$", labelpad=-3)
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
 xlabel("$r / r_s$", labelpad=1)
 
