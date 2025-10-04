@@ -117,6 +117,11 @@ GEARFeedback:
   metallicity_max_first_stars: -5                          # Maximal metallicity (in mass fraction) for a first star (-1 to deactivate).
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]             # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
+  # Radiation
+  do_photoionization: 1                         # Whether to fo run the subgrid photoionization model to mimick Strömgren sphere. 1: Do photoionization, 0: do not. (Default: 0)
+  radiation_pressure_efficiency: 1              # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
+
+
 GEARChemistry:
   initial_metallicity: 1
   scale_initial_metallicity: 1
