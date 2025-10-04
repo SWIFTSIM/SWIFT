@@ -1969,7 +1969,7 @@ void engine_synchronize_times(struct engine *e) {
 
 #ifdef WITH_MPI
 
-  const ticks tic = getticks();
+  const ticks tic_start = getticks();
 
   /* Collect which top-level cells have been updated */
   MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR,
@@ -1988,7 +1988,7 @@ void engine_synchronize_times(struct engine *e) {
 
   if (e->verbose)
     message("Gathering and activating tend took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+            clocks_from_ticks(getticks() - tic_start), clocks_getunit());
 
   TIMER_TIC;
   engine_launch(e, "tend");
