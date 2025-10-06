@@ -800,7 +800,8 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
  * @param s The task #scheduler.
  * @param with_timestep_limiter Are we running with time-step limiting on?
  */
-void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
+void cell_activate_subcell_hydro_tasks(struct cell *restrict ci,
+                                       struct cell *restrict cj,
                                        struct scheduler *s,
                                        const int with_timestep_limiter) {
   const struct engine *e = s->space->e;
@@ -821,15 +822,19 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 
     /* Recurse? */
     if (cell_can_recurse_in_self_hydro_task(ci)) {
+
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
           cell_activate_subcell_hydro_tasks(ci->progeny[j], NULL, s,
                                             with_timestep_limiter);
-          for (int k = j + 1; k < 8; k++)
-            if (ci->progeny[k] != NULL)
+
+          for (int k = j + 1; k < 8; k++) {
+            if (ci->progeny[k] != NULL) {
               cell_activate_subcell_hydro_tasks(ci->progeny[j], ci->progeny[k],
                                                 s, with_timestep_limiter);
+            }
+          }
         }
       }
     } else {
@@ -841,6 +846,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 
   /* Otherwise, pair interation */
   else {
+
     /* Should we even bother? */
     if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
     if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
@@ -852,13 +858,19 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     /* recurse? */
     if (cell_can_recurse_in_pair_hydro_task(ci) &&
         cell_can_recurse_in_pair_hydro_task(cj)) {
+
+      /* Get the list of pairs at the lower level that can interact
+       * just based on the gemeotry */
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
+
+      /* Loop over possible pairs and recurse where possible */
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
-        if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+        if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) {
           cell_activate_subcell_hydro_tasks(ci->progeny[pid], cj->progeny[pjd],
                                             s, with_timestep_limiter);
+        }
       }
     }
 
@@ -884,6 +896,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
       cell_activate_hydro_sorts(ci, sid, s);
       cell_activate_hydro_sorts(cj, sid, s);
     }
+
   } /* Otherwise, pair interation */
 }
 
@@ -1617,6 +1630,100 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
   }
 }
 
+int cell_hydro_pair_will_act_on_part(struct cell *restrict ci,
+                                     struct cell *restrict cj,
+                                     const struct engine *e) {
+
+  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
+  ci->hydro.h_max_old = ci->hydro.h_max;
+  cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
+  cj->hydro.h_max_old = cj->hydro.h_max;
+
+  /* Should we even bother? */
+  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return 0;
+  if (ci->hydro.count == 0 || cj->hydro.count == 0) return 0;
+
+  /* Get the orientation of the pair. */
+  double shift[3];
+  const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
+
+  /* recurse? */
+  if (cell_can_recurse_in_pair_hydro_task(ci) &&
+      cell_can_recurse_in_pair_hydro_task(cj)) {
+
+    /* Get the list of pairs at the lower level that can interact
+     * just based on the gemeotry */
+    const struct cell_split_pair *csp = &cell_split_pairs[sid];
+
+    int sum = 0;
+
+    /* Loop over possible pairs and recurse where possible */
+    for (int k = 0; k < csp->count; k++) {
+      const int pid = csp->pairs[k].pid;
+      const int pjd = csp->pairs[k].pjd;
+      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) {
+
+        sum += cell_hydro_pair_will_act_on_part(ci->progeny[pid],
+                                                cj->progeny[pjd], e);
+      }
+    }
+    return sum;
+  } else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+/**
+ * @brief Will a gravity pair task acting on two cells access any #gpart?
+ *
+ * Note: This performs a check at the level of the two cells called. No
+ * recursion is performed. If the gravity pair cannot use M-M , we do not check
+ * whether progenies could. We assume particles will be touched in this case.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param e The #engine.
+ *
+ * @return 1 if the pair action will require access to some #gpart, 0 otherwise.
+ */
+int cell_grav_pair_will_act_on_gpart(const struct cell *restrict ci,
+                                     const struct cell *restrict cj,
+                                     const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID == cj->nodeID) error("Acting on two local cells");
+#endif
+
+  /* Is there anything to do here? */
+  const int do_ci = cell_is_active_gravity(ci, e);
+  const int do_cj = cell_is_active_gravity(cj, e);
+  if (!do_ci && !do_cj) return 0;
+  if (ci->grav.count == 0 || cj->grav.count == 0) return 0;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!cell_is_multipole_drifted(ci, e)) error("Multipole ci is not drifted");
+  if (!cell_is_multipole_drifted(cj, e)) error("Multipole cj is not drifted");
+#endif
+
+  /* Can we use multipoles ? */
+  if (cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/0,
+                           /*is_tree_walk=*/1)) {
+
+    /* Ok, no particle will be touched. */
+    return 0;
+  } else {
+
+    /* Note: A more refined version of this function could recurse here
+     * and verify whether the progenies will access particles or not.
+     * Such an implementation would require to drift more multipoles
+     * in engine_drift_boundary_multipoles(). */
+
+    return 1;
+  }
+}
+
 /**
  * @brief Un-skips all the hydro tasks associated with a given cell and checks
  * if the space needs to be rebuilt.
@@ -1669,6 +1776,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_pair) {
+
         cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
 
         /* Activate the drift tasks. */
@@ -1685,15 +1793,29 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
     /* Only interested in pair interactions as of here. */
     if (t->type == task_type_pair) {
+
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
       if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
 
 #ifdef WITH_MPI
+
+      /* Verify whether the pair will actually involve any particle
+       * interaction.
+       * If not, the pair involves multipoles only, which don't need comms.
+       * Note that we are only interested in the case where the pair
+       * goes over domain boundaries */
+      int pair_will_act_on_particles = 0;
+      if ((ci_nodeID != nodeID) || (cj_nodeID != nodeID)) {
+        pair_will_act_on_particles =
+            cell_hydro_pair_will_act_on_part(ci, cj, e);
+      }
+
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
+
         /* If the local cell is active, receive data from the foreign cell. */
-        if (cj_active) {
+        if (cj_active && pair_will_act_on_particles) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
           if (ci_active) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
@@ -1703,10 +1825,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+
         /* If the local cell is inactive and the remote cell is active, we
          * still need to receive stuff to be able to do the force interaction
          * on this node as well. */
-        else if (ci_active) {
+        else if (ci_active && pair_will_act_on_particles) {
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
           /* NOTE: (yuyttenh, 09/2022) Since the particle communications send
            * over whole particles currently, just activating the gradient
@@ -1726,13 +1849,13 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the foreign cell is active, we want its particles for the limiter
          */
-        if (ci_active && with_timestep_limiter) {
+        if (ci_active && with_timestep_limiter && pair_will_act_on_particles) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
           scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
         }
 
         /* Is the foreign cell active and will need stuff from us? */
-        if (ci_active) {
+        if (ci_active && pair_will_act_on_particles) {
 
           scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
 
@@ -1752,10 +1875,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+
         /* If the foreign cell is inactive, but the local cell is active,
          * we still need to send stuff to be able to do the force interaction
          * on both nodes */
-        else if (cj_active) {
+        else if (cj_active && pair_will_act_on_particles) {
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
           /* See NOTE on line 1542 */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
@@ -1772,7 +1896,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its particles for the limiting. */
-        if (cj_active && with_timestep_limiter) {
+        if (cj_active && with_timestep_limiter && pair_will_act_on_particles) {
           scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
                                   ci_nodeID);
           scheduler_activate_pack(s, cj->mpi.pack, task_subtype_limiter,
@@ -1791,8 +1915,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
       } else if (cj_nodeID != nodeID) {
+
         /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active) {
+        if (ci_active && pair_will_act_on_particles) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
           if (cj_active) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
@@ -1802,10 +1927,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+
         /* If the local cell is inactive and the remote cell is active, we
          * still need to receive stuff to be able to do the force interaction
          * on this node as well. */
-        else if (cj_active) {
+        else if (cj_active && pair_will_act_on_particles) {
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
           /* See NOTE on line 1542. */
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
@@ -1819,13 +1945,13 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the foreign cell is active, we want its particles for the limiter
          */
-        if (cj_active && with_timestep_limiter) {
+        if (cj_active && with_timestep_limiter && pair_will_act_on_particles) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
           scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
         }
 
         /* Is the foreign cell active and will need stuff from us? */
-        if (cj_active) {
+        if (cj_active && pair_will_act_on_particles) {
 
           scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
 
@@ -1846,10 +1972,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+
         /* If the foreign cell is inactive, but the local cell is active,
          * we still need to send stuff to be able to do the force interaction
          * on both nodes */
-        else if (ci_active) {
+        else if (ci_active && pair_will_act_on_particles) {
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
           /* See NOTE on line 1542. */
           scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
@@ -1866,7 +1993,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its particles for the limiting. */
-        if (ci_active && with_timestep_limiter) {
+        if (ci_active && with_timestep_limiter && pair_will_act_on_particles) {
           scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
                                   cj_nodeID);
           scheduler_activate_pack(s, ci->mpi.pack, task_subtype_limiter,
@@ -2010,14 +2137,28 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
     if (t->type == task_type_pair) {
 #ifdef WITH_MPI
+
+      /* Verify whether the pair will actually involve any particle
+       * interaction.
+       * If not, the pair involves multipoles only, which don't need comms.
+       * Note that we are only interested in the case where the pair
+       * goes over domain boundaries */
+      int pair_will_act_on_particles = 0;
+      if ((ci_nodeID != nodeID) || (cj_nodeID != nodeID)) {
+        pair_will_act_on_particles =
+            cell_grav_pair_will_act_on_gpart(ci, cj, e);
+      }
+
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
+
         /* If the local cell is active, receive data from the foreign cell. */
-        if (cj_active)
+        if (cj_active && pair_will_act_on_particles) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
+        }
 
         /* Is the foreign cell active and will need stuff from us? */
-        if (ci_active) {
+        if (ci_active && pair_will_act_on_particles) {
 
           scheduler_activate_pack(s, cj->mpi.pack, task_subtype_gpart,
                                   ci_nodeID);
@@ -2043,12 +2184,14 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         }
 
       } else if (cj_nodeID != nodeID) {
+
         /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active)
+        if (ci_active && pair_will_act_on_particles) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
+        }
 
         /* Is the foreign cell active and will need stuff from us? */
-        if (cj_active) {
+        if (cj_active && pair_will_act_on_particles) {
 
           scheduler_activate_pack(s, ci->mpi.pack, task_subtype_gpart,
                                   cj_nodeID);
