@@ -67,6 +67,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);
 
+  const ticks alloc_tic = getticks();
+
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
   const int local_nodeID = s->e->nodeID;
@@ -144,6 +146,12 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     cell_bpart_counts[i] = 0;
     cell_sink_counts[i] = 0;
   }
+
+  if (verbose)
+    message(
+        "Allocating rebuild cell counts and particle cell indices took %.3f "
+        "%s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Run through the particles and get their cell index. */
   if (nr_parts > 0)
@@ -640,9 +648,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* WITH_MPI */
 
   /* Sort the parts according to their cells. */
-  if (nr_parts > 0)
+  if (nr_parts > 0) {
+    const ticks part_sort_tic = getticks();
     space_parts_sort(s->parts, s->xparts, h_index, cell_part_counts,
                      s->nr_cells, 0);
+    if (verbose)
+      message("Sorting %zu particles took %.3f %s.", nr_parts,
+              clocks_from_ticks(getticks() - part_sort_tic), clocks_getunit());
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
@@ -669,8 +682,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Sort the sparts according to their cells. */
-  if (nr_sparts > 0)
+  if (nr_sparts > 0) {
+    const ticks spart_sort_tic = getticks();
     space_sparts_sort(s->sparts, s_index, cell_spart_counts, s->nr_cells, 0);
+    if (verbose)
+      message("Sorting %zu star particles took %.3f %s.", nr_sparts,
+              clocks_from_ticks(getticks() - spart_sort_tic), clocks_getunit());
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
@@ -697,8 +715,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Sort the bparts according to their cells. */
-  if (nr_bparts > 0)
+  if (nr_bparts > 0) {
+    const ticks bpart_sort_tic = getticks();
     space_bparts_sort(s->bparts, b_index, cell_bpart_counts, s->nr_cells, 0);
+    if (verbose)
+      message("Sorting %zu black hole particles took %.3f %s.", nr_bparts,
+              clocks_from_ticks(getticks() - bpart_sort_tic), clocks_getunit());
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the bpart have been sorted correctly. */
@@ -725,8 +748,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Sort the sink according to their cells. */
-  if (nr_sinks > 0)
+  if (nr_sinks > 0) {
+    const ticks sink_sort_tic = getticks();
     space_sinks_sort(s->sinks, sink_index, cell_sink_counts, s->nr_cells, 0);
+    if (verbose)
+      message("Sorting %zu sink particles took %.3f %s.", nr_sinks,
+              clocks_from_ticks(getticks() - sink_sort_tic), clocks_getunit());
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the sink have been sorted correctly. */
@@ -753,6 +781,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("sink not sorted into the right top-level cell!");
   }
 #endif /* SWIFT_DEBUG_CHECKS */
+
+  const ticks cell_count_tic = getticks();
 
   /* Extract the cell counts from the sorted indices. Deduct the extra
    * particles. */
@@ -812,6 +842,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   swift_free("sink_index", sink_index);
   swift_free("cell_sink_counts", cell_sink_counts);
 
+  if (verbose)
+    message("Updating cell counts (excluding gparts) took %.3f %s.",
+            clocks_from_ticks(getticks() - cell_count_tic), clocks_getunit());
+
   /* Update the slice of unique IDs. */
   space_update_unique_id(s);
 
@@ -856,9 +890,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   s->nr_inhibited_sinks = 0;
 
   /* Sort the gparts according to their cells. */
-  if (nr_gparts > 0)
+  if (nr_gparts > 0) {
+    const ticks gpart_sort_tic = getticks();
     space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts,
                       g_index, cell_gpart_counts, s->nr_cells);
+    if (verbose)
+      message("Sorting gparts took %.3f %s.",
+              clocks_from_ticks(getticks() - gpart_sort_tic), clocks_getunit());
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -888,6 +927,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
+  const ticks gpart_count_tic = getticks();
+
   /* Extract the cell counts from the sorted indices. Deduct the extra
    * particles. */
   size_t last_gindex = 0;
@@ -904,6 +945,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   swift_free("g_index", g_index);
   swift_free("cell_gpart_counts", cell_gpart_counts);
 
+  if (verbose)
+    message("Updating cell gpart counts took %.3f %s.",
+            clocks_from_ticks(getticks() - gpart_count_tic), clocks_getunit());
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
   if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0) ||
@@ -912,6 +957,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                       nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
                       verbose);
 #endif
+
+  const ticks collect_tic = getticks();
 
   /* Define variables to count particles in cell types */
   size_t bkg_cell_particles = 0;
@@ -1106,6 +1153,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
             "malformed?",
             empty_tl_zooms);
     }
+    message("Collecting cell particles took %.3f %s.",
+            clocks_from_ticks(getticks() - collect_tic), clocks_getunit());
   }
 
   /* Re-order the extra particles such that they are at the end of their cell's

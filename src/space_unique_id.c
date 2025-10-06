@@ -43,6 +43,9 @@
  * @param s The #space.
  */
 void space_update_unique_id(struct space *s) {
+
+  const ticks tic = getticks();
+
   /* Do we need unique IDs? */
   if (!star_formation_need_unique_id && !sink_need_unique_id) {
     return;
@@ -106,6 +109,10 @@ void space_update_unique_id(struct space *s) {
     error("Overflow for the unique IDs.");
   }
   s->unique_id.global_next_id += shift;
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
