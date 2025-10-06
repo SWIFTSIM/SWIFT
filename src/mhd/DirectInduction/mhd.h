@@ -303,7 +303,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
-    struct part *p) {
+    struct part *p, const float mu_0) {
 
   /* Zero the fields updated by the mhd gradient loop */
   p->mhd_data.curl_B[0] = 0.0f;
@@ -316,6 +316,19 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     }
   }
 
+  /* Initialise max over neighbours' plasma beta to individual particle value */
+  const float rho = p->rho;
+  const float P = p->force.pressure;
+  float B[3];
+  for (int k = 0; k < 3; k++) {
+    B[k] = p->mhd_data.B_over_rho[k] * rho;
+  }
+  
+  const float B2 = B[0]*B[0] + B[1]*B[1] + B[2]*B[2];
+  const float Pmag_inv = B2 ? 2.0f * mu_0 / B2 : FLT_MAX;
+
+  p->mhd_data.plasma_beta_max = P * Pmag_inv;
+  
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
   for (int k = 0; k < 3; k++) {

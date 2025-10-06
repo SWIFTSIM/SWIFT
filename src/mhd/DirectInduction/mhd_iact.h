@@ -91,13 +91,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-
+  const float Pi = pi->force.pressure;
+  const float Pj = pj->force.pressure;
+  
   float Bi[3], Bj[3];
   for (int i = 0; i < 3; ++i) {
     Bi[i] = pi->mhd_data.B_over_rho[i] * rhoi;
     Bj[i] = pj->mhd_data.B_over_rho[i] * rhoj;
   }
 
+  const float B2i = Bi[0]*Bi[0] + Bi[1]*Bi[1] + Bi[2]*Bi[2];
+  const float B2j = Bj[0]*Bj[0] + Bj[1]*Bj[1] + Bj[2]*Bj[2];
+  
   float dB[3];
   for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
 
@@ -129,6 +134,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float over_rho_i = 1.0f / rhoi * f_ij;
   const float over_rho_j = 1.0f / rhoj * f_ji;
 
+  /* Compute magnetic pressures and take max over neighbours of the plasma beta */ 
+  const float Pmagi_inv = B2i ? 2.0f * mu_0 / B2i : FLT_MAX;
+  const float Pmagj_inv = B2j ? 2.0f * mu_0 / B2j : FLT_MAX;
+
+  pi->mhd_data.plasma_beta_max = fmaxf(pi->mhd_data.plasma_beta_max, Pj * Pmagj_inv);
+  pj->mhd_data.plasma_beta_max = fmaxf(pj->mhd_data.plasma_beta_max, Pi * Pmagi_inv);
+  
   /* Calculate curl */
   pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];
   pi->mhd_data.curl_B[1] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[1];
@@ -194,13 +206,16 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-
+  const float Pj = pj->force.pressure;
+  
   float Bi[3], Bj[3];
   for (int i = 0; i < 3; ++i) {
     Bi[i] = pi->mhd_data.B_over_rho[i] * rhoi;
     Bj[i] = pj->mhd_data.B_over_rho[i] * rhoj;
   }
 
+  const float B2j = Bj[0]*Bj[0] + Bj[1]*Bj[1] + Bj[2]*Bj[2];
+  
   float dB[3];
   for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
 
@@ -223,6 +238,11 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Compute gradient terms */
   const float over_rho_i = 1.0f / rhoi * f_ij;
 
+  /* Compute magnetic pressures and take max over neighbours of the plasma beta */
+  const float Pmagj_inv = B2j ? 2.0f * mu_0 / B2j : FLT_MAX;
+
+  pi->mhd_data.plasma_beta_max = fmaxf(pi->mhd_data.plasma_beta_max, Pj * Pmagj_inv);
+  
   /* Calculate curl */
   pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];
   pi->mhd_data.curl_B[1] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[1];
@@ -269,8 +289,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Recover some data */
   const float mi = pi->mass;
   const float mj = pj->mass;
-  const float Pi = pi->force.pressure;
-  const float Pj = pj->force.pressure;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
@@ -401,8 +419,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   const float monopole_beta = pi->mhd_data.monopole_beta;
 
-  const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
-  const float plasma_beta_j = B2j != 0.0f ? 2.0f * mu_0 * Pj / B2j : FLT_MAX;
+  const float plasma_beta_i = pi->mhd_data.plasma_beta_max;
+  const float plasma_beta_j = pj->mhd_data.plasma_beta_max;
 
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float scale_j = 0.125f * (10.0f - plasma_beta_j);
@@ -597,7 +615,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Recover some data */
   const float mi = pi->mass;
   const float mj = pj->mass;
-  const float Pi = pi->force.pressure;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
@@ -719,7 +736,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   const float monopole_beta = pi->mhd_data.monopole_beta;
 
-  const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
+  const float plasma_beta_i = pi->mhd_data.plasma_beta_max;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
 
