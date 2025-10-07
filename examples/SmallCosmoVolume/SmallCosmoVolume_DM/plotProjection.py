@@ -17,7 +17,7 @@ from matplotlib.colors import LogNorm
 
 from swiftsimio import load
 from swiftsimio.visualisation.projection import project_pixel_grid
-from swiftsimio.visualisation.smoothing_length_generation import (
+from swiftsimio.visualisation.smoothing_length import (
     generate_smoothing_lengths,
 )
 
