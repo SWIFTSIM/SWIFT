@@ -128,9 +128,16 @@ chemistry_get_physical_shear_tensor(const struct part* restrict p,
 }
 
 /**
- * @brief Regularize the shear tensor as described in Balarac et al. (2013).
+ * @brief Regularize the shear tensor as described in Balarac et al. (2013) to
+ * be positive definite
  *
- * This needs to be checked.
+ * We want the diffusion to *smooth* out metals:
+ *             d (rho Z)/dt = - div F, F = - K grad Z.
+ * So K must be positive definite. If K is negative definite, it will flip
+ * the sign of the flux and thus the diffusion *sharpens* metals instead of
+ * smoothing them. The flux must always points down the gradient to smooth.
+ *
+ * TODO: Check this function. Add a unit test for the diagonalisation.
  *
  * @param S (return) Pointer to a 3x3 matrix shear tensor.
  */
@@ -150,19 +157,19 @@ chemistry_regularize_shear_tensor(double S[3][3]) {
       {eigenvector0[0], eigenvector1[0], eigenvector2[0]},
       {eigenvector0[1], eigenvector1[1], eigenvector2[1]},
       {eigenvector0[2], eigenvector1[2], eigenvector2[2]}};
-  double S_minus[3][3] = {{0.0}};
+  double S_plus[3][3] = {{0.0}};
 
   /* Compute S_minus as the sum of min(0, lambda^(k)) * e_i^(k) * e_j^(k) */
   for (int k = 0; k < 3; k++) {
     const double lambda_k = eigenvalues[k];  // Get the k-th eigenvalue
-    const double lambda_k_minus =
-        fmin(0.0, lambda_k);  // Take min(0, lambda^(k))
+    const double lambda_k_plus =
+        fmax(0.0, lambda_k);  // Take max(0, lambda^(k))
 
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
         const double e_ik = eigenvectors[i][k];
         const double e_jk = eigenvectors[j][k];
-        S_minus[i][j] += lambda_k_minus * e_ik * e_jk;
+        S_plus[i][j] += lambda_k_plus * e_ik * e_jk;
       }
     }
   }
