@@ -118,6 +118,13 @@ chemistry_get_physical_shear_tensor(const struct part* restrict p,
   S[0][0] += cosmo->H;
   S[1][1] += cosmo->H;
   S[2][2] += cosmo->H;
+
+  /* The trace encode volume changes (compression and expansion). We do not
+     consider these are turbulences so we remove them. */
+  const double trace = S[0][0] + S[1][1] + S[2][2];
+  S[0][0] -= trace/3.0;
+  S[1][1] -= trace/3.0;
+  S[2][2] -= trace/3.0;
 }
 
 /**
@@ -258,13 +265,6 @@ chemistry_compute_diffusion_coefficient(
     /* Get the physical shear tensor */
     double S[3][3];
     chemistry_get_physical_shear_tensor(p, cosmo, S);
-
-    /* In the smagorinsky model, we remove the trace from S */
-    const double trace = S[0][0] + S[1][1] + S[2][2];
-
-    S[0][0] -= trace;
-    S[1][1] -= trace;
-    S[2][2] -= trace;
 
     return chem_data->diffusion_coefficient * kernel_gamma2 * h2_p * rho *
            chemistry_get_matrix_norm(S);
