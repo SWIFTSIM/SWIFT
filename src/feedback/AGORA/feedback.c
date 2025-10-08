@@ -30,7 +30,6 @@
 
 #include <strings.h>
 
-
 /**
  * @brief Computes the time-step length of a given star particle from feedback
  * physics

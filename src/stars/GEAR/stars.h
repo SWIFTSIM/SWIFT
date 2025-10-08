@@ -19,8 +19,8 @@
 #ifndef SWIFT_GEAR_STARS_H
 #define SWIFT_GEAR_STARS_H
 
-#include "minmax.h"
 #include "feedback.h"
+#include "minmax.h"
 
 #include <float.h>
 
@@ -90,8 +90,9 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
      anymore so they don't need to be waken up often.
   */
 
-  const float dt_feedback =
-    feedback_compute_spart_timestep(sp, feedback_props, phys_const, us, with_cosmology, cosmo, ti_current, time, time_base);
+  const float dt_feedback = feedback_compute_spart_timestep(
+      sp, feedback_props, phys_const, us, with_cosmology, cosmo, ti_current,
+      time, time_base);
 
   float dt_age = 0.0;
   /* What age category are we in? */

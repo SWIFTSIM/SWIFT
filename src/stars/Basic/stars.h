@@ -19,8 +19,8 @@
 #ifndef SWIFT_BASIC_STARS_H
 #define SWIFT_BASIC_STARS_H
 
-#include "minmax.h"
 #include "feedback_properties.h"
+#include "minmax.h"
 
 #include <float.h>
 
