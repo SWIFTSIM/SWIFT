@@ -30,10 +30,15 @@
  *
  * @param sp Pointer to the s-particle data.
  * @param stars_properties Properties of the stars model.
+ * @param feedback_props Properties of the feedback model.
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
  * @param with_cosmology Are we running with cosmological time integration.
  * @param cosmo The current cosmological model (used if running with
  * cosmology).
+ * @param ti_current The current time (in integer).
  * @param time The current time (used if running without cosmology).
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static float stars_compute_timestep(
     const struct spart* const sp, const struct stars_props* stars_properties,
