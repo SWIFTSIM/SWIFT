@@ -20,24 +20,32 @@
 #define SWIFT_EAGLE_STARS_H
 
 #include "exp10.h"
+#include "feedback_properties.h"
 
 #include <float.h>
 
 /**
- * @brief Computes the time-step length of a given star particle from stars
+ * @brief Computes the time-step length of a given star particle from star
  * physics
  *
  * @param sp Pointer to the s-particle data.
  * @param stars_properties Properties of the stars model.
+ * @param feedback_props Properties of the feedback model.
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
  * @param with_cosmology Are we running with cosmological time integration.
  * @param cosmo The current cosmological model (used if running with
  * cosmology).
+ * @param ti_current The current time (in integer).
  * @param time The current time (used if running without cosmology).
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static float stars_compute_timestep(
     const struct spart* const sp, const struct stars_props* stars_properties,
+    const struct feedback_props* feedback_props,
+    const struct phys_const* phys_const, const struct unit_system* us,
     const int with_cosmology, const struct cosmology* cosmo,
-    const double time) {
+    const integertime_t ti_current, const double time, const double time_base) {
 
   /* Background star particles have no time-step limits */
   if (sp->birth_time == -1.) {
