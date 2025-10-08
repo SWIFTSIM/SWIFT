@@ -130,6 +130,9 @@ struct part {
   /*! Particle density. */
   float rho;
 
+  /* lily -> split flag */
+  int split_flag;
+  
   /* Store viscosity information in a separate struct. */
   struct {
 

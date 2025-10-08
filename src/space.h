@@ -49,8 +49,9 @@ struct hydro_props;
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
 #define space_grid_split_threshold_default 400
-#define space_extra_parts_default 0
-#define space_extra_gparts_default 200
+//lily added more particle children, changed 0->1000
+#define space_extra_parts_default 400
+#define space_extra_gparts_default 400
 #define space_extra_sparts_default 200
 #define space_extra_bparts_default 0
 #define space_extra_sinks_default 0
@@ -106,6 +107,10 @@ struct space {
   /*! Are we doing hydrodynamics? */
   int with_hydro;
 
+  //lily
+  int with_hydro_splitting;
+  int splitting_need_unique_id;
+  
   /*! Are we doing gravity? */
   int with_self_gravity;
 

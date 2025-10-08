@@ -1205,12 +1205,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           chemistry_end_density(p, chemistry, cosmo);
           star_formation_end_density(p, xp, star_formation, cosmo);
 
-          /* Are we using the alternative definition of the
-             number of neighbours? */
+	  /* Are we using the alternative definition of the
+	     number of neighbours? */
           if (use_mass_weighted_num_ngb) {
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
             error(
-                "Can't use alternative neighbour definition with this scheme!");
+		  "Can't use alternative neighbour definition with this scheme!");
 #else
             const float inv_mass = 1.f / hydro_get_mass(p);
             p->density.wcount = p->rho * inv_mass;

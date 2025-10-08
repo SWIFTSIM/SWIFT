@@ -103,6 +103,9 @@ struct bpart {
    *  hot particles. */
   float rho_gas_hot;
 
+  /*! Internal energy of the gas surrounding the black hole. */
+  float internal_energy_gas;
+  
   /*! Smoothed sound speed of the gas surrounding the black hole. */
   float sound_speed_gas;
 

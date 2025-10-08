@@ -310,6 +310,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
 
       /* Check that the particles have the same mass */
       if (gparts[k].mass != hydro_get_mass(part))
+	
         error(
             "Linked particles do not have the same mass!\n"
             "gp->m=%e p->m=%e",

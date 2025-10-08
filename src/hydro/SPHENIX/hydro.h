@@ -1094,10 +1094,41 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * @param p The particle to act upon
  * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part *restrict p, const struct cosmology *cosmo) {
 
+//#include "cell.h"
+//struct engine;
+//__attribute__((always_inline)) INLINE static void hydro_end_force(struct engine *e, struct cell *const c, struct xpart *xp,
+//								  struct part *restrict p, const struct cosmology *cosmo,
+//								  double time) {
+INLINE static void hydro_end_force(struct part *restrict p, const struct cosmology *cosmo) {
   p->force.h_dt *= p->h * hydro_dimension_inv;
+
+  /* testing splitting general */
+  /*
+  if ((p->split_flag != 1) && ((double)random() / (double)RAND_MAX < 0) && (time > 0)) {
+    double pos_offset[3] = {0.25*p->h, 0, 0}; // small offset for the child and parent particle
+    double new_h = p->h;  // or modify as needed
+    message("Split check: id=%llu, flag=%d, min_ngb_bin=%d", p->id, p->split_flag, p->limiter_data.min_ngb_time_bin);
+    
+    struct part *new_p = cell_spawn_new_part_from_part(e, c, p, xp, p->mass / 2.0, pos_offset, new_h);
+    if (new_p) {
+      // Halve mass of parent and child
+      // Offset the parent in the opposite direction
+      //p->x[0] -= pos_offset[0];
+      //p->x[1] -= pos_offset[1];
+      //p->x[2] -= pos_offset[2];
+      //keep parent the same so we can distinguish for now
+      p->mass /= 2.0;
+      new_p->mass = p->mass;
+
+      // Mark both as split
+      p->split_flag = 1;
+      new_p->split_flag = 2;
+
+      message("Particle split in hydro_end_force\n");
+    }}
+  */
+
 }
 
 /**

@@ -47,7 +47,7 @@
 void space_allocate_extras(struct space *s, int verbose) {
 
   const int local_nodeID = s->e->nodeID;
-
+  
   /* Anything to do here? (Abort if we don't want extras)*/
   if (space_extra_parts == 0 && space_extra_gparts == 0 &&
       space_extra_sparts == 0 && space_extra_bparts == 0 &&
@@ -100,7 +100,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   const size_t expected_num_extra_sparts = nr_local_cells * space_extra_sparts;
   const size_t expected_num_extra_bparts = nr_local_cells * space_extra_bparts;
   const size_t expected_num_extra_sinks = nr_local_cells * space_extra_sinks;
-
+  
   if (verbose) {
     message("Currently have %zd/%zd/%zd/%zd/%zd real particles.",
             nr_actual_parts, nr_actual_gparts, nr_actual_sinks,

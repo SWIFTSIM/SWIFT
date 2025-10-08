@@ -65,7 +65,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   space_regrid(s, verbose);
 
   /* Allocate extra space for particles that will be created */
-  if (s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);
+  if (s->with_hydro_splitting || s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);
 
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
@@ -932,13 +932,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       /* Store the state at rebuild time */
       c->stars.parts_rebuild = c->stars.parts;
       c->grav.parts_rebuild = c->grav.parts;
-
+      
       c->hydro.count_total = c->hydro.count + space_extra_parts;
       c->grav.count_total = c->grav.count + space_extra_gparts;
       c->stars.count_total = c->stars.count + space_extra_sparts;
       c->sinks.count_total = c->sinks.count + space_extra_sinks;
       c->black_holes.count_total = c->black_holes.count + space_extra_bparts;
-
+      
       finger = &finger[c->hydro.count_total];
       xfinger = &xfinger[c->hydro.count_total];
       gfinger = &gfinger[c->grav.count_total];
@@ -970,8 +970,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-order the extra particles such that they are at the end of their cell's
      memory pool. */
-  if (s->with_star_formation || s->with_sink) space_reorder_extras(s, verbose);
-
+  //lily
+  if (s->with_hydro_splitting|| s->with_star_formation || s->with_sink) space_reorder_extras(s, verbose);
+  
   /* At this point, we have the upper-level cells. Now recursively split each
      cell to get the full AMR grid. */
   space_split(s, verbose);

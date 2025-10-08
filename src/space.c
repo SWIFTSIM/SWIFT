@@ -178,7 +178,7 @@ void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
   int *local_cells = (int *)map_data;
   struct space *s = (struct space *)extra_data;
   struct cell *cells_top = s->cells_top;
-
+  
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells[ind]];
     cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks, s->bparts);
@@ -223,12 +223,13 @@ void space_reorder_extra_sinks_mapper(void *map_data, int num_cells,
  */
 void space_reorder_extras(struct space *s, int verbose) {
 
+  
   /* Re-order the gas particles */
   if (space_extra_parts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_parts_mapper,
                    s->local_cells_top, s->nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, s);
-
+  
   /* Re-order the gravity particles */
   if (space_extra_gparts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_gparts_mapper,
@@ -1262,7 +1263,7 @@ void space_init(struct space *s, struct swift_params *params,
       params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
   space_extra_sinks = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_sinks", space_extra_sinks_default);
-
+  
   engine_max_parts_per_ghost =
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
                                engine_max_parts_per_ghost_default);
@@ -1443,7 +1444,8 @@ void space_init(struct space *s, struct swift_params *params,
   if (!(star_formation || with_sink) ||
       !swift_star_formation_model_creates_stars) {
     space_extra_sparts = 0;
-    space_extra_gparts = 0;
+    //lily wuz here
+    //space_extra_gparts = 0;
     space_extra_sinks = 0;
   }
 
@@ -1470,8 +1472,10 @@ void space_init(struct space *s, struct swift_params *params,
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);
 
+  //lily hard coded
+  s->splitting_need_unique_id = 1;
   /* Compute the max id for the generation of unique id. */
-  if (create_sparts) {
+  if (create_sparts || s->splitting_need_unique_id) {
     space_init_unique_id(s, nr_nodes);
   }
 }
@@ -2244,6 +2248,7 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
 
     if (parts[k].gpart != NULL) {
       if (parts[k].time_bin != parts[k].gpart->time_bin) {
+	message("Mismatch at %zu for id %zu: part=%i, gpart=%i", (unsigned long)k, (unsigned long)parts[k].id, parts[k].time_bin, parts[k].gpart->time_bin);
         error("Gpart not on the same time-bin as part %i %i", parts[k].time_bin,
               parts[k].gpart->time_bin);
       }
@@ -2282,14 +2287,19 @@ void space_check_part_swallow_mapper(void *map_data, int nr_parts,
 
   /* Verify that all particles have been swallowed or are untouched */
   for (int k = 0; k < nr_parts; k++) {
-
-    if (parts[k].time_bin == time_bin_inhibited) continue;
+    // changed this to ignore dummy particles
+    if ((parts[k].time_bin == time_bin_inhibited) || (parts[k].id < 0)) continue;
 
     const long long swallow_id =
         black_holes_get_part_swallow_id(&parts[k].black_holes_data);
 
-    if (swallow_id != -1)
+    if (swallow_id != -1){
+      message("[DEBUG] Failed swallow check:");
+      message("    id = %lld", parts[k].id);
+      message("    mass = %g", parts[k].mass);
+      message("    x = %g %g %g", parts[k].x[0], parts[k].x[1], parts[k].x[2]);
       error("Particle has not been swallowed! id=%lld", parts[k].id);
+    }
   }
 #else
   error("Calling debugging code without debugging flag activated.");

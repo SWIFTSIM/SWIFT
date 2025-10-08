@@ -171,7 +171,7 @@ gravity_compute_timestep_self(const struct gpart* const gp,
 
   const float dt = sqrtf(2. * kernel_gravity_softening_plummer_equivalent_inv *
                          cosmo->a * grav_props->eta * epsilon * ac_inv);
-
+  
   return dt;
 }
 

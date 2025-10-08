@@ -741,7 +741,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
           error("Got integer time step <= 0? %lld %lld",
                 get_part_rt_timestep(p, xp, e), ti_new_step);
 #endif
-
+	
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
@@ -752,6 +752,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
             e->cosmology, e->hydro_properties, e->cooling_func, e->time,
             old_time_step_length, e->snapshot_recording_triggers_started_part);
 
+	
         /* Number of updated particles */
         updated++;
         if (p->gpart != NULL) g_updated++;
@@ -1210,6 +1211,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
 
   /* Early stop if we are at the super level.
    * The time-step task would have set things at this level already */
+
   if (c->super == c) return;
 
   /* Counters for the different quantities. */

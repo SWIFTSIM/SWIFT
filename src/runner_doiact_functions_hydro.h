@@ -1377,13 +1377,15 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
     if (fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
             1.0e-4 * max(fabsf(d), ci->hydro.dx_max_sort_old) &&
         fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
-            ci->width[0] * 1.0e-10)
+	ci->width[0] * 1.0e-10)
+
       error(
           "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
           "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->hydro.dx_max_sort=%e "
           "ci->hydro.dx_max_sort_old=%e",
           ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->hydro.dx_max_sort,
           ci->hydro.dx_max_sort_old);
+    
   }
   for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
     const struct part *p = &cj->hydro.parts[sort_j[pjd].i];
