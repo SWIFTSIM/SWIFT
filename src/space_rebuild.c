@@ -151,7 +151,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     message(
         "Allocating rebuild cell counts and particle cell indices took %.3f "
         "%s.",
-        clocks_from_ticks(getticks() - tic), clocks_getunit());
+        clocks_from_ticks(getticks() - alloc_tic), clocks_getunit());
 
   /* Run through the particles and get their cell index. */
   if (nr_parts > 0)
