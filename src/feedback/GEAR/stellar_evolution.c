@@ -361,13 +361,17 @@ void stellar_evolution_compute_preSN_properties(
   if (sp->star_type == single_star) {
     const double energy_per_unit_time =
         stellar_wind_get_ejected_energy(&sm->sw, log_m, log_metallicity);
+    const double mass_ejected_per_unit_time =
+        stellar_wind_get_ejected_mass(&sm->sw, log_m, log_metallicity);
     sp->feedback_data.preSN.energy_ejected = energy_per_unit_time;
+    sp->feedback_data.preSN.mass_ejected = mass_ejected_per_unit_time;
 
 #if defined(SWIFT_TEST_STELLAR_WIND)
     message(
         "Star_type=single init_mass[M_odot]=%g metallicity[Z_odot]=%g "
-        "Energy[erg/yr]=%g",
-        pow(10, log_m), pow(10, log_metallicity), energy_per_unit_time);
+        "Energy[erg/yr]=%g Mass_ejected[Msol/yr]=%g",
+        pow(10, log_m), pow(10, log_metallicity), energy_per_unit_time, mass_ejected_per_unit_time);
+
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
 
   } else {
@@ -376,13 +380,18 @@ void stellar_evolution_compute_preSN_properties(
     const double energy_per_unit_time =
         energy_per_unit_time_per_progenitor_mass * m_init;
     sp->feedback_data.preSN.energy_ejected = energy_per_unit_time;
+    const double mass_ejected_per_unit_time_per_progenitor_mass = 
+        stellar_wind_get_ejected_mass_IMF(&sm->sw, log_m, log_metallicity);
+    const double mass_ejected_per_unit_time = 
+        mass_ejected_per_unit_time_per_progenitor_mass * m_init;
+    sp->feedback_data.preSN.mass_ejected = mass_ejected_per_unit_time;
 
 #if defined(SWIFT_TEST_STELLAR_WIND)
     message(
         "Star_type=continuous init_mass[M_odot]=%g metallicity[Z_odot]=%g "
-        "Energy[erg/yr]=%g",
+        "Energy_per_progenitor_mass[erg/yr/Msol]=%g Mass_ejected_per_progenitor_mass[Msol/yr/Msol]=%g",
         pow(10, log_m), pow(10, log_metallicity),
-        energy_per_unit_time / m_init);
+        energy_per_unit_time_per_progenitor_mass, mass_ejected_per_unit_time_per_progenitor_mass);
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
   }
 }
@@ -1132,6 +1141,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
 
   /* initialize */
   sp->feedback_data.preSN.energy_ejected = 0;
+  sp->feedback_data.preSN.mass_ejected = 0;
 
   /* The duration of the preSN feedback in yr*/
   const float feedback_duration_yr =
@@ -1143,10 +1153,12 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
 
   /* The duration of the preSN feedback in yr */
   sp->feedback_data.preSN.energy_ejected *= feedback_duration_yr;
+  sp->feedback_data.preSN.mass_ejected *= feedback_duration_yr;
 
   /* convert to internal units */
   sp->feedback_data.preSN.energy_ejected /=
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+  sp->feedback_data.preSN.mass_ejected *= phys_const->const_solar_mass;
 }
 
 /**
@@ -1226,6 +1238,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
   /* initialize */
   sp->feedback_data.preSN.energy_ejected = 0;
+  sp->feedback_data.preSN.mass_ejected = 0;
 
   /* compute pre-SN properties */
   stellar_evolution_compute_preSN_properties(sp, sm, phys_const, m_beg_step,
@@ -1233,8 +1246,10 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
   /* The duration of the preSN feedback in yr */
   sp->feedback_data.preSN.energy_ejected *= dt_myr * 1e6;
+  sp->feedback_data.preSN.mass_ejected *= dt_myr * 1e6;
 
   /* convert to internal units */
   sp->feedback_data.preSN.energy_ejected /=
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+  sp->feedback_data.preSN.mass_ejected *= phys_const->const_solar_mass;
 }

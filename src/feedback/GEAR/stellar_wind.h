@@ -46,4 +46,10 @@ double stellar_wind_get_ejected_energy(const struct stellar_wind *sw,
 double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw,
                                            float log_m, float log_z);
 
+double stellar_wind_get_ejected_mass(const struct stellar_wind *sw,
+                                     float log_m, float log_z);
+
+double stellar_wind_get_ejected_mass_IMF(const struct stellar_wind *sw,
+                                         float log_m, float log_z);
+
 #endif
