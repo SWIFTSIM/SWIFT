@@ -82,4 +82,30 @@ void stellar_evolution_clean(struct stellar_model* sm);
 float stellar_evolution_compute_initial_mass(
     const struct spart* restrict sp, const struct stellar_model* sm,
     const struct phys_const* phys_consts);
+
+void stellar_evolution_compute_SN_feedback_individual_star(
+    struct spart* restrict sp, const struct stellar_model* sm,
+    const struct cosmology* cosmo, const struct unit_system* us,
+    const struct phys_const* phys_const, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt);
+
+void stellar_evolution_compute_SN_feedback_spart(
+    struct spart* restrict sp, const struct stellar_model* sm,
+    const struct cosmology* cosmo, const struct unit_system* us,
+    const struct phys_const* phys_const, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt);
+
+/* TODO: You can update these two functions parameters as needed */
+void stellar_evolution_compute_preSN_feedback_individual_star(
+    struct spart* restrict sp, const struct stellar_model* sm,
+    const struct cosmology* cosmo, const struct unit_system* us,
+    const struct phys_const* phys_const, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt);
+
+void stellar_evolution_compute_preSN_feedback_spart(
+    struct spart* restrict sp, const struct stellar_model* sm,
+    const struct cosmology* cosmo, const struct unit_system* us,
+    const struct phys_const* phys_const, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt);
+
 #endif  // SWIFT_STELLAR_EVOLUTION_GEAR_H
