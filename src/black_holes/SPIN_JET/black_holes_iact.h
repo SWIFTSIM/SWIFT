@@ -107,6 +107,12 @@ runner_iact_nonsym_bh_gas_density(
     bi->rho_gas_hot += mj * wi;
   }
 
+  /* Neighbour internal energy */
+  const float uj = hydro_get_drifted_comoving_internal_energy(pj);
+
+  /* Contribution to the smoothed internal energy */
+  bi->internal_energy_gas += mj * uj * wi;
+  
   /* Neighbour's (drifted) velocity in the frame of the black hole
    * (we do include a Hubble term) */
   const float dv[3] = {pj->v[0] - bi->v[0], pj->v[1] - bi->v[1],

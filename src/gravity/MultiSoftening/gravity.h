@@ -278,6 +278,7 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
+  message("this debug check should not be run for split children?")
   gp->initialised = 0; /* Ready for next step */
 #endif
 }

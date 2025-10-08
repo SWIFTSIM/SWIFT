@@ -671,6 +671,20 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
                        struct bpart *bp);
 struct spart *cell_add_spart(struct engine *e, struct cell *c);
 struct gpart *cell_add_gpart(struct engine *e, struct cell *c);
+/*** lily ***/
+struct part_pair {
+  struct part *p;
+  struct xpart *xp;
+};
+struct part_pair cell_add_part(struct engine *e, struct cell *c);
+struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
+                                           const struct part *p,
+                                           const struct xpart *xp,
+                                           const double child_mass,
+                                           const double pos_offset[3],
+                                           const double new_h);
+/*** end of lily ***/
+
 struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
                                              const struct part *p,
                                              const struct xpart *xp);

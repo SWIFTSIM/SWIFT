@@ -195,6 +195,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   new_dt = min(new_dt, dt_h_change);
 
+  
   /* Apply the maximal displacement constraint (FLT_MAX if non-cosmological)*/
   new_dt = min(new_dt, e->dt_max_RMS_displacement);
 

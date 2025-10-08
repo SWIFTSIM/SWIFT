@@ -31,6 +31,241 @@
 #include "hydro.h"
 #include "sink_properties.h"
 
+/*************** lily changes ***************************/
+void cell_recursively_shift_parts(struct cell *c,
+                                  const int progeny_list[space_cell_maxdepth],
+                                  const int main_branch) {
+  if (c->split) {
+    /* No need to recurse in progenies located before the insertion point */
+    const int first_progeny = main_branch ? progeny_list[(int)c->depth] : 0;
+
+    for (int k = first_progeny; k < 8; ++k) {
+      if (c->progeny[k] != NULL)
+        cell_recursively_shift_parts(c->progeny[k], progeny_list,
+                                     main_branch && (k == first_progeny));
+    }
+  }
+
+  if (main_branch) {
+    c->hydro.count++;
+
+    /* Invalidate sorting */
+    c->hydro.sorted = 0;
+    cell_free_hydro_sorts(c);
+  } else {
+    c->hydro.parts++;
+    //is this necessary?
+    c->hydro.xparts++;
+  }
+}
+
+//im too lazy to make another cell_add_xpart
+struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
+  struct part_pair result = {NULL, NULL};
+  /* Basic consistency checks */
+  if (c->nodeID != engine_rank) error("Adding gas particle on a foreign node");
+  if (c->hydro.ti_old_part != e->ti_current) error("Undrifted cell!");
+  if (c->split) error("Addition of gas particle performed above the leaf level");
+
+  /* Track progeny for recursive shift */
+  int progeny[space_cell_maxdepth];
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < space_cell_maxdepth; ++i) progeny[i] = -1;
+#endif
+
+  /* Climb to the top-level cell */
+  struct cell *top = c;
+  while (top->parent != NULL) {
+    for (int k = 0; k < 8; ++k)
+      if (top->parent->progeny[k] == top)
+        progeny[(int)top->parent->depth] = k;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (top->hydro.super != NULL && top->hydro.count > 0 &&
+        top->hydro.ti_old_part != e->ti_current)
+      error("Cell had not been correctly drifted before gas addition");
+#endif
+    top = top->parent;
+  }
+
+  
+  /* Lock top-level cell */
+  lock_lock(&top->stars.star_formation_lock);
+  /* Are we out of space? */
+  if (top->hydro.count == top->hydro.count_total) {
+    
+    message("We ran out of free gas particles!");
+    
+    /* Release the local lock before exiting. */
+    if (lock_unlock(&top->stars.star_formation_lock) != 0)
+      error("Failed to unlock the top-level cell.");
+
+    atomic_inc(&e->forcerebuild);
+    return result;
+  }
+
+  /* Calculate number of elements to shift */
+  const size_t n_copy = &top->hydro.parts[top->hydro.count] - c->hydro.parts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.parts + n_copy > top->hydro.parts + top->hydro.count_total){
+    lock_unlock(&top->stars.star_formation_lock);
+    error("Copying beyond allowed range");}
+#endif
+
+  if (n_copy > 0) {
+    // MATTHIEU: This can be improved. We don't need to copy everything, just                                                             
+    // need to swap a few particles.
+
+    memmove(&c->hydro.parts[1], &c->hydro.parts[0],
+            n_copy * sizeof(struct part));
+    memmove(&c->hydro.xparts[1], &c->hydro.xparts[0],
+          n_copy * sizeof(struct xpart));
+
+    /* Update the spart->gpart links (shift by 1) */
+    for (size_t i = 0; i < n_copy; ++i) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (c->hydro.parts[i + 1].gpart == NULL) {
+        error("Incorrectly linked part!");
+      }
+#endif
+      c->hydro.parts[i + 1].gpart->id_or_neg_offset--;}
+  }  
+    
+  /* Recursively shift */
+  cell_recursively_shift_parts(top, progeny, /* main_branch = */ 1);
+
+  /* Mark top cell as drifted */
+  struct cell *top2 = c;
+  while (top2->parent != NULL) {
+    top2->hydro.ti_old_part = e->ti_current;
+    top2 = top2->parent;
+  }
+  top2->hydro.ti_old_part = e->ti_current;
+
+  /* Unlock */
+  lock_unlock(&top->stars.star_formation_lock);
+
+  /* Initialize new particle */
+  struct part *p = &c->hydro.parts[0];
+  struct xpart *xp = &c->hydro.xparts[0];
+  
+  bzero(p, sizeof(struct part));
+  bzero(xp, sizeof(struct xpart));
+  
+  //p->x[0] = c->loc[0] + 0.5 * c->width[0];
+  //p->x[1] = c->loc[1] + 0.5 * c->width[1];
+  //p->x[2] = c->loc[2] + 0.5 * c->width[2];
+ 
+  p->time_bin = e->min_active_bin;
+  
+#ifdef SWIFT_DEBUG_CHECKS
+  p->ti_drift = e->ti_current;
+#endif
+
+  /* Bookkeeping */
+  const size_t one = 1;
+  atomic_sub(&e->s->nr_extra_parts, one);
+
+  result.p = p;
+  result.xp = xp;
+  return result;
+}
+
+//
+struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
+					   const struct part *p,
+					   const struct xpart *xp,
+					   const double child_mass,
+					   const double pos_offset[3],
+					   const double new_h) {
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't spawn a particle in a foreign cell.");
+  
+  // before shifting the cell list make temp copies for later memcopy
+  int parent_index = p - c->hydro.parts;
+
+  /* Create a fresh (empty) part and xpart pair */
+  struct part_pair new_part = cell_add_part(e, c);
+
+  p  = &c->hydro.parts[parent_index + 1]; // +1 if the insertion shifts all elements after parent
+  xp = &c->hydro.xparts[parent_index + 1];
+
+  struct part *new_p = new_part.p;
+  struct xpart *new_xp = new_part.xp;
+    
+  /* Did we run out of free part slots? */
+  if (new_p == NULL) return NULL;
+
+  /* copy over everything */
+  *new_p = *p;
+  *new_xp = *xp;
+  
+  /* Copy over the distance since rebuild */
+  new_xp->x_diff[0] = xp->x_diff[0];
+  new_xp->x_diff[1] = xp->x_diff[1];
+  new_xp->x_diff[2] = xp->x_diff[2];
+  
+  /* ope there goes gravity */
+  if (p->gpart != NULL) {
+    // Allocate a new gpart slot for this child
+    struct gpart *gp = cell_add_gpart(e, c);
+
+    /* Did we run out of free gpart slots? */
+    if (gp == NULL) {
+        /* Remove the particle created */
+        cell_remove_part(e, c, new_p, new_xp);
+        return NULL;
+    }
+
+    /* Copy the parent’s gpart*/
+    *gp = *(p->gpart);
+
+    gp->x[0] = gp->x[0] + pos_offset[0];
+    gp->x[1] = gp->x[1] + pos_offset[1];
+    gp->x[2] = gp->x[2] + pos_offset[2];
+    gp->mass = child_mass;
+    
+    gp->type = swift_type_gas;
+
+    /* Re-link: point the child at its new gpart */
+    new_p->gpart = gp;
+    
+    /* Fix the ID offset so it refers back to the child */
+    gp->id_or_neg_offset = -(new_p - e->s->parts);
+
+    /* Synchronize clocks */
+    gp->time_bin = new_p->time_bin;
+  } else {
+    /* No gpart exists for parent, so child also has none */
+    new_p->gpart = NULL;
+  }
+   
+  /* Synchronize masses, positions and velocities, new ids */
+  new_p->id = space_get_new_unique_id(e->s);
+  new_p->mass = child_mass;
+  new_p->x[0] = p->x[0] + pos_offset[0];
+  new_p->x[1] = p->x[1] + pos_offset[1];
+  new_p->x[2] = p->x[2] + pos_offset[2];
+
+  new_p->v[0] = xp->v_full[0];
+  new_p->v[1] = xp->v_full[1];
+  new_p->v[2] = xp->v_full[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  new_p->ti_kick = p->ti_kick;
+  new_p->ti_drift = p->ti_drift;
+#endif
+
+  /* Set a smoothing length */
+  new_p->h = new_h;
+
+  
+  /* Here comes the BABY! */ 
+  return new_p;
+}
+
 /**
  * @brief Recursively update the pointer and counter for #spart after the
  * addition of a new particle.
@@ -439,8 +674,8 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
   for (int i = 0; i < space_cell_maxdepth; ++i) progeny[i] = -1;
 #endif
 
-  /* Get the top-level this leaf cell is in and compute the progeny indices at
-     each level */
+  /* Get the top-level this leaf cell is in and compute the progeny indices at  
+   each level */
   struct cell *top = c;
   while (top->parent != NULL) {
     /* What is the progeny index of the cell? */
@@ -462,10 +697,10 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
     /* Climb up */
     top = top->parent;
   }
-
+  
   /* Lock the top-level cell as we are going to operate on it */
   lock_lock(&top->grav.star_formation_lock);
-
+  
   /* Are there any extra particles left? */
   if (top->grav.count == top->grav.count_total) {
 

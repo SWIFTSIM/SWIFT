@@ -409,9 +409,10 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     /* Check that particles have been drifted to the current time */
     if (gpi->ti_drift != e->ti_current)
       error("gpi not drifted to current time");
-
+    
     /* Check that the particle was initialised */
     if (gpi->initialised == 0)
+      
       error("Adding forces to an un-initialised gpart.");
 #endif
 

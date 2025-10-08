@@ -22,6 +22,7 @@
 
 #include "adiabatic_index.h"
 #include "black_holes_part.h"
+#include "black_holes_properties.h"
 #include "io_properties.h"
 
 /**
@@ -162,6 +163,19 @@ INLINE static void convert_bpart_gas_velocity_curl(const struct engine* e,
   ret[2] = bp->curl_v_gas[2] * cosmo->a2_inv;
 }
 
+INLINE static void convert_bpart_gas_temperatures(const struct engine* e,
+                                                  const struct bpart* bp,
+                                                  float* ret) {
+
+  const struct black_holes_props* props = e->black_holes_properties;
+  const struct cosmology* cosmo = e->cosmology;
+
+  /* Conversion from specific internal energy to temperature */
+  ret[0] = bp->internal_energy_gas * cosmo->a_factor_internal_energy /
+           props->temp_to_u_factor;
+}
+
+
 /**
  * @brief Specifies which b-particle fields to write to a dataset
  *
@@ -176,7 +190,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 62;
+  *num_fields = 61;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -557,20 +571,13 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "respectively.");
 
   list[59] = io_make_output_field(
-      "LastRepositionVelocities", FLOAT, 1, UNIT_CONV_SPEED, 0.f, bparts,
-      last_repos_vel,
-      "Physical speeds at which the black holes repositioned most recently. "
-      "This is 0 for black holes that have never repositioned, or if the "
-      "simulation has been run without prescribed repositioning speed.");
-
-  list[60] = io_make_output_field(
       "AccretionBoostFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       accretion_boost_factor,
       "Multiplicative factors by which the Bondi-Hoyle-Lyttleton accretion "
       "rates have been increased by the density-dependent Booth & Schaye "
       "(2009) accretion model.");
 
-  list[61] = io_make_output_field_convert_bpart(
+  list[60] = io_make_output_field_convert_bpart(
       "GasTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, bparts,
       convert_bpart_gas_temperatures,
       "Temperature of the gas surrounding the black holes.");

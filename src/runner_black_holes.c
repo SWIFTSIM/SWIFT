@@ -55,7 +55,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
   struct space *s = e->s;
   const struct black_holes_props *props = e->black_holes_properties;
   const int use_nibbling = props->use_nibbling;
-
+  
   struct bpart *bparts = s->bparts;
   const size_t nr_bpart = s->nr_bparts;
 #ifdef WITH_MPI
@@ -113,6 +113,25 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
       const long long swallow_id =
           black_holes_get_part_swallow_id(&p->black_holes_data);
 
+      //lily
+      /* --- Mark particle for splitting --- */
+      /* this assumes one BH! */
+      if (p->split_flag < 1){
+	for (size_t i = 0; i < nr_bpart; ++i) {
+	  struct bpart *bp = &bparts[i];
+	  
+	  // Compute distance to this BH
+	  double dx = p->x[0] - bp->x[0];
+	  double dy = p->x[1] - bp->x[1];
+	  double dz = p->x[2] - bp->x[2];
+	  double dist = sqrt(dx*dx + dy*dy + dz*dz);
+	  
+	  // Within 2*BH smoothing length? Mark for splitting
+	  if (dist <= 2*bp->h) {
+	    p->split_flag = 1;
+	  }
+	}
+      }
       /* Has this particle been flagged for swallowing? */
       if (swallow_id >= 0) {
 
@@ -299,6 +318,13 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
   const size_t nr_bparts_foreign = s->nr_bparts_foreign;
 #endif
 
+  //lily
+  
+  if (e->time > 0){
+    runner_do_particle_split(r,c,timer);
+  }
+  
+  
   struct bpart *cell_bparts = c->black_holes.parts;
 
   /* Early abort?
@@ -376,7 +402,7 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
               black_holes_mark_bpart_as_not_swallowed(&cell_bp->merger_data);
               found = 1;
               break;
-            }
+	    }
 
             /* Lock the space as we are going to work directly on the
              * space's bpart list */

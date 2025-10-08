@@ -279,6 +279,11 @@ void *runner_main(void *data) {
             runner_do_gas_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_do_bh_swallow)
             runner_do_bh_swallow_pair(r, ci, cj, 1);
+
+	  //for future use add splitting task here
+	  //else if (t->subtype == task_subtype_particle_split)
+	  //  runner_do_particle_split_pair(r, ci, cj, 1);
+	  //end of addition
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dopair_branch_bh_feedback(r, ci, cj);
           else if (t->subtype == task_subtype_rt_gradient)

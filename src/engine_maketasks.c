@@ -2488,7 +2488,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_rt_transport = NULL;
   struct task *t_sink_do_sink_swallow = NULL;
   struct task *t_sink_do_gas_swallow = NULL;
-
+  //lily
+  //struct task *t_particle_split = NULL;
+  
   for (int ind = 0; ind < num_elements; ind++) {
 
     struct task *t = &((struct task *)map_data)[ind];
@@ -2856,6 +2858,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               flags, 0, ci, cj);
         t_bh_feedback = scheduler_addtask(
             sched, task_type_pair, task_subtype_bh_feedback, flags, 0, ci, cj);
+
+	//for future:add the splitting as a pair task
+	//t_particle_split = scheduler_addtask(
+	//      sched, task_type_pair, task_subtype_particle_split, flags, 0, ci, cj);
       }
 
       if (with_rt) {
@@ -2921,6 +2927,24 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->sinks.do_gas_swallow, t_sink_do_gas_swallow);
       }
       if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+	//lily
+	/*for future? --- particle split task links ---
+	engine_addlink(e, &ci->black_holes.density, t_particle_split);
+	engine_addlink(e, &cj->black_holes.density, t_particle_split);
+	
+	engine_addlink(e, &ci->black_holes.do_gas_swallow, t_particle_split);
+	engine_addlink(e, &cj->black_holes.do_gas_swallow, t_particle_split);
+	
+	engine_addlink(e, &ci->black_holes.feedback, t_particle_split);
+	engine_addlink(e, &cj->black_holes.feedback, t_particle_split);
+
+	engine_addlink(e, &ci->black_holes.density, t_particle_split);
+	engine_addlink(e, &cj->black_holes.density, t_particle_split);
+	
+	
+	engine_addlink(e, &ci->black_holes.do_gas_swallow, t_particle_split);
+	engine_addlink(e, &cj->black_holes.do_gas_swallow, t_particle_split);
+	*/
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
         engine_addlink(e, &cj->black_holes.density, t_bh_density);
         engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);

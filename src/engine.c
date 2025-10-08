@@ -2769,6 +2769,13 @@ int engine_step(struct engine *e) {
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, "tasks");
+  //lily
+  /*
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
+                    e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
+                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts,
+                    e->verbose);
+  */
   TIMER_TOC(timer_runners);
 
   /* Now record the CPU times used by the tasks. */

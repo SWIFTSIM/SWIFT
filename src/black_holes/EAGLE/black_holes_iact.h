@@ -78,7 +78,7 @@ runner_iact_nonsym_bh_gas_density(
 
   /* Neighbour gas mass */
   const float mj = hydro_get_mass(pj);
-
+  
   /* Contribution to the BH gas density */
   bi->rho_gas += mj * wi;
 
@@ -818,6 +818,8 @@ runner_iact_nonsym_bh_gas_feedback(
       tracers_after_black_holes_feedback(pj, xpj, with_cosmology, cosmo->a,
                                          time, delta_energy);
 
+
+      printf("Injecting particle id=%lld, mass=%g, Δu=%g\n", pj->id, pj->mass, delta_u);
       /* message( */
       /*     "We did some AGN heating! id %llu BH id %llu probability " */
       /*     " %.5e  random_num %.5e du %.5e du/ini %.5e", */
