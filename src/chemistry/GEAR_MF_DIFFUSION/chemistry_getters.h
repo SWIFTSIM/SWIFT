@@ -352,9 +352,7 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
 /**
  * @brief Get the physical hyperbolic diffusion soundspeed.
  *
- * Note: The units are
- *         - Isotropic constant: U_L / U_T^{1/2}
- *         - Smagorinsky and Gradient: [ U_M * U_L^{-1} * U_T^{-1} ]^{1/2}
+ * Note: The units are always U_L/U_T.
  *
  * @param p Particle.
  * @param chem_data The global properties of the chemistry scheme.
@@ -366,11 +364,29 @@ chemistry_get_physical_hyperbolic_soundspeed(
     const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo) {
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  /* Compute diffusion matrix K */
-  double K[3][3];
-  chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
-  const double norm_matrix_K = chemistry_get_matrix_norm(K);
-  return sqrt(norm_matrix_K / p->chemistry_data.tau);
+  if (chem_data->relaxation_time_mode == constant_mode) {
+    double K[3][3];
+    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
+    const double norm_matrix_K = chemistry_get_matrix_norm(K);
+
+    /* Here we simply use the formula c_hyp = sqrt(||K||/tau) */
+    return sqrt(norm_matrix_K / p->chemistry_data.tau);
+  } else {
+    /* Note that 1/|S| ~ time --> we define this as our turbulent relaxation
+       time. Also note that we do not regularize the shear tensor here.
+       (Shall we?) */
+    double S[3][3];
+    chemistry_get_physical_shear_tensor(p, cosmo, S);
+
+    /* TODO: Add the alpha parameter to the code */
+    /* The formula is c_hyp = sqrt(||K||/(rho tau)). We simplify it by hand to
+       reduce rounding errors: c_hyp = sqrt(C/alpha) * gamma_k * h * ||S|| */
+    const double delta_x = kernel_gamma * p->h;
+    const double C_diff = chem_data->diffusion_coefficient;
+    cont double alpha = 1.0;
+    const double c_hyp = sqrt(C_diff/alpha) * delta_x * chemistry_get_matrix_norm(S);
+    return c_hyp;
+  }
 #else
   error("This function cannot be called for the parabolic diffusion mode.");
   return -1.0;
@@ -382,6 +398,8 @@ chemistry_get_physical_hyperbolic_soundspeed(
  *
  * Note: The units are always U_L/U_T.
  *
+ * TODO: CHECK THIS
+ *
  * @param p Particle.
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The current cosmological model.
@@ -392,30 +410,7 @@ chemistry_get_physical_diffusion_speed(
     const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo) {
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  if (chem_data->relaxation_time_mode == constant_mode) {
-    /* Compute diffusion matrix K */
-    double K[3][3];
-    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
-    const double norm_matrix_K = chemistry_get_matrix_norm(K);
-
-    if (chem_data->diffusion_mode == isotropic_constant) {
-      /* ||K|| is in units of  U_L^2/U_T */
-      /* v_diff = c_Hyp / sqrt(tau) */
-      // TODO: Check the units here
-      return sqrt(norm_matrix_K) / p->chemistry_data.tau;
-    } else {
-      /* ||K|| is in units of U_M/(U_L*U_T) => v_diff = c_Hyp / sqrt(rho) */
-      /* Use the filtered.rho for consistency with the philosophy of considering
-         the fluctuations at larger scale than the smoothing length. */
-      const double rho = p->chemistry_data.filtered.rho * cosmo->a3_inv;
-      const double c_hyp =
-          chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
-      return c_hyp / sqrt(rho);
-    }
-  } else {
-    /* We assume that the diffusion cannot be faster than the gas sound speed */
-    return hydro_get_physical_soundspeed(p, cosmo);
-  }
+  return chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
 #else
   /* For the parabolic diffusion, we can estimate the diffusion speed with
                 v_diff ~ ||K|| * || Grad q || / ||U||.
@@ -472,30 +467,17 @@ chemistry_compute_physical_tau(const struct part* restrict p,
      * value. */
     return chem_data->tau;
   } else {
-    /* Tau is proportional to the sound speed => tau varies per particle */
-    /* Compute the diffusion matrix K */
-    double K[3][3];
-    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
-    const double norm_matrix_K = chemistry_get_matrix_norm(K);
+    /* Note that 1/|S| ~ time --> we define this as our turbulent relaxation
+       time. Also note that we do not regularize the shear tensor here. */
+    double S[3][3];
+    chemistry_get_physical_shear_tensor(p, cosmo, S);
+    const double 1_over_S = 1.0 / chemistry_get_matrix_norm(S);
 
-    if (chem_data->diffusion_mode != isotropic_constant) {
-      /* Use the filtered.rho for consistency with the philosophy of considering
-         the fluctuations at larger scale than the smoothing length.
-         Note: it will cancel out with the one inside ||K||. */
-      const double rho = p->chemistry_data.filtered.rho * cosmo->a3_inv;
-
-      /* Get the particle physical diffusion speed */
-      const double v_diff =
-          chemistry_get_physical_diffusion_speed(p, chem_data, cosmo);
-      return norm_matrix_K / (v_diff * v_diff * rho);
-    } else {
-      /* Get the particle physical diffusion speed */
-      const double v_diff =
-          chemistry_get_physical_diffusion_speed(p, chem_data, cosmo);
-      return norm_matrix_K / (v_diff * v_diff);
-    }
+    /* TODO: Add an alpha parameter to calibrate */
+    return 1_over_S;
   }
 #else
+  /* Parabolic diffusion is recovered when tau = 0.0. */
   return 0.0;
 #endif
 }
