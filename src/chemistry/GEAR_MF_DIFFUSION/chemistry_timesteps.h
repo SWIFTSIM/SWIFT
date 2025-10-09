@@ -39,6 +39,7 @@ chemistry_compute_parabolic_timestep(
   const float CFL_condition = chem_data->C_CFL_chemistry;
   const float delta_x = cosmo->a * kernel_gamma * p->h;
 
+  /* TODO: See if we want to keep that or use c_hyp directly */
   /* CFL condition */
   const float dt_cfl =
       CFL_condition * delta_x / p->chemistry_data.timestepvars.vmax;

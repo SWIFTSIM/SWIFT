@@ -292,7 +292,6 @@ runner_iact_chemistry_fluxes_common(
   float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
                (pi->v[2] - pj->v[2]) * dx[2];
   dvdr *= r_inv;
-  /* const float vmax = ci + cj + fabsf(dvdr); */
   const float vmax = ci + cj - min(0.0, dvdr);
 
   /* Store the signal velocity */
