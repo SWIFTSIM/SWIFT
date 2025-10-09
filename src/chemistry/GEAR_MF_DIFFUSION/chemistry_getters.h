@@ -211,12 +211,12 @@ chemistry_get_physical_matrix_K(const struct part* restrict p,
     /* Get the full shear tensor */
     chemistry_get_physical_shear_tensor(p, cosmo, K);
 
-    /* Now regularize the shear tensor by considering only the negative
-       eigenvalues (Balarac et al. (2013)). This is now called the S_minus
+    /* Now regularize the shear tensor by considering only the positive
+       eigenvalues (Balarac et al. (2013)). This is now called the S_plus
        matrix. */
     chemistry_regularize_shear_tensor(K);
 
-    /* K = kappa * S_minus */
+    /* K = kappa * S_plus */
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
         /* kappa is already in physical units */
@@ -400,7 +400,6 @@ chemistry_get_physical_diffusion_speed(
 
     if (chem_data->diffusion_mode == isotropic_constant) {
       /* ||K|| is in units of  U_L^2/U_T */
-      /* return sqrt(norm_matrix_K) / chem_data->tau; */
       /* v_diff = c_Hyp / sqrt(tau) */
       // TODO: Check the units here
       return sqrt(norm_matrix_K) / p->chemistry_data.tau;
