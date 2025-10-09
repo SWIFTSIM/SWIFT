@@ -92,7 +92,7 @@ chemistry_get_part_corrected_metal_mass(const struct part* restrict p,
 }
 
 /**
- * @brief Get the physical shear tensor.
+ * @brief Get the traceless physical shear tensor.
  *
  * @param p Particle.
  * @param cosmo The current cosmological model.
@@ -159,7 +159,7 @@ chemistry_regularize_shear_tensor(double S[3][3]) {
       {eigenvector0[2], eigenvector1[2], eigenvector2[2]}};
   double S_plus[3][3] = {{0.0}};
 
-  /* Compute S_minus as the sum of min(0, lambda^(k)) * e_i^(k) * e_j^(k) */
+  /* Compute S_plus as the sum of max(0, lambda^(k)) * e_i^(k) * e_j^(k) */
   for (int k = 0; k < 3; k++) {
     const double lambda_k = eigenvalues[k];  // Get the k-th eigenvalue
     const double lambda_k_plus =
@@ -174,10 +174,10 @@ chemistry_regularize_shear_tensor(double S[3][3]) {
     }
   }
 
-  /* Copy S_minus back into S (overwriting it) */
+  /* Copy S_plus back into S (overwriting it) */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      S[i][j] = S_minus[i][j];
+      S[i][j] = S_plus[i][j];
     }
   }
 }
