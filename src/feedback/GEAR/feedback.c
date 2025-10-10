@@ -34,6 +34,37 @@
 #include <strings.h>
 
 /**
+ * @brief Computes the time-step length of a given star particle from feedback
+ * physics
+ *
+ * @param sp Pointer to the s-particle data.
+ * @param feedback_props Properties of the feedback model.
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param cosmo The current cosmological model (used if running with
+ * cosmology).
+ * @param ti_current The current time (in integer).
+ * @param time  The current time (in double, used if running without cosmology).
+ * @param time_base The time base.
+ */
+float feedback_compute_spart_timestep(
+    const struct spart* const sp, const struct feedback_props* feedback_props,
+    const struct phys_const* phys_const, const struct unit_system* us,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const integertime_t ti_current, const double time, const double time_base) {
+
+  const float dt = FLT_MAX;
+
+  /* If the star is dead, do not limit its timestep */
+  if (sp->feedback_data.is_dead) {
+    return FLT_MAX;
+  } else {
+    return dt;
+  }
+}
+
+/**
  * @brief Update the properties of the particle due to a supernovae.
  *
  * @param p The #part to consider.
@@ -43,6 +74,8 @@
 void feedback_update_part(struct part* p, struct xpart* xp,
                           const struct engine* e) {
 
+  /* WARNING: Do not comment out this line, because it will mess-up with
+     SF/sinks. (I think it injects something that it should not...) */
   /* Did the particle receive a supernovae */
   if (xp->feedback_data.delta_mass == 0) return;
 
@@ -244,7 +277,8 @@ void feedback_will_do_feedback(
   sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
 
   /* Set the particle as doing some feedback */
-  sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.;
+  sp->feedback_data.will_do_feedback =
+      sp->feedback_data.energy_ejected != 0. || !sp->feedback_data.is_dead;
 }
 
 /**
