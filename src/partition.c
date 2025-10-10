@@ -1448,7 +1448,7 @@ void partition_gather_weights(void *map_data, int num_elements,
         t->type == task_type_stars_ghost ||
         t->type == task_type_bh_density_ghost ||
         t->type == task_type_bh_swallow_ghost2 ||
-	t->type == task_type_sink_density_ghost ||
+        t->type == task_type_sink_density_ghost ||
         t->type == task_type_sink_ghost2 ||
         t->type == task_type_neutrino_weight ||
         t->type == task_type_sink_formation || t->type == task_type_rt_ghost1 ||
@@ -2398,7 +2398,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
         t->type == task_type_stars_ghost ||
         t->type == task_type_bh_density_ghost ||
         t->type == task_type_bh_swallow_ghost2 ||
-	t->type == task_type_sink_density_ghost ||
+        t->type == task_type_sink_density_ghost ||
         t->type == task_type_sink_ghost2 ||
         t->type == task_type_neutrino_weight ||
         t->type == task_type_sink_formation || t->type == task_type_rt_ghost1 ||
