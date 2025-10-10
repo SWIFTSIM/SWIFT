@@ -943,6 +943,8 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_sub_size_self_grav", space_subsize_self_grav);
     space_splitsize = parser_get_opt_param_int(
         params, "Scheduler:cell_split_size", space_splitsize);
+    space_grid_split_threshold = parser_get_opt_param_int(
+        params, "Scheduler:grid_split_threshold", space_grid_split_threshold);
     space_subdepth_diff_grav =
         parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                  space_subdepth_diff_grav_default);
@@ -956,6 +958,10 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
     space_extra_sinks = parser_get_opt_param_int(
         params, "Scheduler:cell_extra_sinks", space_extra_sinks_default);
+#if defined(SWIFT_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
+    space_boundary_parts_interior =
+        parser_get_param_int(params, "Scheduler:boundary_parts_interior");
+#endif
 
     /* Do we want any spare particles for on the fly creation?
        This condition should be the same than in space.c */

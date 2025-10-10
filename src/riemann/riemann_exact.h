@@ -40,30 +40,8 @@
 #include "error.h"
 #include "minmax.h"
 #include "riemann_checks.h"
+#include "riemann_common.h"
 #include "riemann_vacuum.h"
-
-/**
- * @brief Functions (4.6) and (4.7) in Toro.
- *
- * @param p The current guess for the pressure
- * @param W The left or right state vector
- * @param a The left or right sound speed
- */
-__attribute__((always_inline)) INLINE static float riemann_fb(float p,
-                                                              const float* W,
-                                                              float a) {
-
-  float fval;
-  if (p > W[4]) {
-    const float A = hydro_two_over_gamma_plus_one / W[0];
-    const float B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
-    fval = (p - W[4]) * sqrtf(A / (p + B));
-  } else {
-    fval = hydro_two_over_gamma_minus_one * a *
-           (pow_gamma_minus_one_over_two_gamma(p / W[4]) - 1.0f);
-  }
-  return fval;
-}
 
 /**
  * @brief Function (4.5) in Toro
@@ -314,8 +292,9 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
  * @param WR The right state vector
  * @param Whalf Empty state vector in which the result will be stored
  * @param n_unit Normal vector of the interface
+ * @return The pressure of the middle state (P_star).
  */
-__attribute__((always_inline)) INLINE static void riemann_solver_solve(
+__attribute__((always_inline)) INLINE static float riemann_solver_solve(
     const float* WL, const float* WR, float* Whalf, const float* n_unit) {
 
   /* velocity of the left and right state in a frame aligned with n_unit */
@@ -324,12 +303,6 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   float aL, aR;
   /* variables used for finding pstar */
   float p, pguess, fp, fpguess;
-  /* variables used for sampling the solution */
-  float u;
-  float pdpR, SR;
-  float SHR, STR;
-  float pdpL, SL;
-  float SHL, STL;
 
   /* calculate velocities in interface frame */
   vL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
@@ -341,8 +314,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
 
   /* check vacuum (generation) condition */
   if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
-    riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
-    return;
+    return riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
   }
 
   /* values are ok: let's find pstar (riemann_f(pstar) = 0)! */
@@ -385,112 +357,10 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
     p = pguess;
   }
 
-  /* calculate the velocity in the intermediate state */
-  u = 0.5f * (vL + vR) + 0.5f * (riemann_fb(p, WR, aR) - riemann_fb(p, WL, aL));
+  /* Sample the solution using our final estimate for P_star */
+  riemann_sample(WL, WR, n_unit, vL, vR, aL, aR, p, Whalf);
 
-  /* sample the solution */
-  /* This corresponds to the flow chart in Fig. 4.14 in Toro */
-  if (u < 0.0f) {
-    /* advect velocity components */
-    Whalf[1] = WR[1];
-    Whalf[2] = WR[2];
-    Whalf[3] = WR[3];
-    pdpR = p / WR[4];
-    if (p > WR[4]) {
-      /* shockwave */
-      SR = vR + aR * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpR +
-                           hydro_gamma_minus_one_over_two_gamma);
-      if (SR > 0.0f) {
-        Whalf[0] = WR[0] * (pdpR + hydro_gamma_minus_one_over_gamma_plus_one) /
-                   (hydro_gamma_minus_one_over_gamma_plus_one * pdpR + 1.0f);
-        vhalf = u - vR;
-        Whalf[4] = p;
-      } else {
-        Whalf[0] = WR[0];
-        vhalf = 0.0f;
-        Whalf[4] = WR[4];
-      }
-    } else {
-      /* rarefaction wave */
-      SHR = vR + aR;
-      if (SHR > 0.0f) {
-        STR = u + aR * pow_gamma_minus_one_over_two_gamma(pdpR);
-        if (STR <= 0.0f) {
-          Whalf[0] =
-              WR[0] * pow_two_over_gamma_minus_one(
-                          hydro_two_over_gamma_plus_one -
-                          hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
-          vhalf = hydro_two_over_gamma_plus_one *
-                      (-aR + hydro_gamma_minus_one_over_two * vR) -
-                  vR;
-          Whalf[4] =
-              WR[4] * pow_two_gamma_over_gamma_minus_one(
-                          hydro_two_over_gamma_plus_one -
-                          hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
-        } else {
-          Whalf[0] = WR[0] * pow_one_over_gamma(pdpR);
-          vhalf = u - vR;
-          Whalf[4] = p;
-        }
-      } else {
-        Whalf[0] = WR[0];
-        vhalf = 0.0f;
-        Whalf[4] = WR[4];
-      }
-    }
-  } else {
-    Whalf[1] = WL[1];
-    Whalf[2] = WL[2];
-    Whalf[3] = WL[3];
-    pdpL = p / WL[4];
-    if (p > WL[4]) {
-      /* shockwave */
-      SL = vL - aL * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpL +
-                           hydro_gamma_minus_one_over_two_gamma);
-      if (SL < 0.0f) {
-        Whalf[0] = WL[0] * (pdpL + hydro_gamma_minus_one_over_gamma_plus_one) /
-                   (hydro_gamma_minus_one_over_gamma_plus_one * pdpL + 1.0f);
-        vhalf = u - vL;
-        Whalf[4] = p;
-      } else {
-        Whalf[0] = WL[0];
-        vhalf = 0.0f;
-        Whalf[4] = WL[4];
-      }
-    } else {
-      /* rarefaction wave */
-      SHL = vL - aL;
-      if (SHL < 0.0f) {
-        STL = u - aL * pow_gamma_minus_one_over_two_gamma(pdpL);
-        if (STL > 0.0f) {
-          Whalf[0] =
-              WL[0] * pow_two_over_gamma_minus_one(
-                          hydro_two_over_gamma_plus_one +
-                          hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
-          vhalf = hydro_two_over_gamma_plus_one *
-                      (aL + hydro_gamma_minus_one_over_two * vL) -
-                  vL;
-          Whalf[4] =
-              WL[4] * pow_two_gamma_over_gamma_minus_one(
-                          hydro_two_over_gamma_plus_one +
-                          hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
-        } else {
-          Whalf[0] = WL[0] * pow_one_over_gamma(pdpL);
-          vhalf = u - vL;
-          Whalf[4] = p;
-        }
-      } else {
-        Whalf[0] = WL[0];
-        vhalf = 0.0f;
-        Whalf[4] = WL[4];
-      }
-    }
-  }
-
-  /* add the velocity solution along the interface normal to the velocities */
-  Whalf[1] += vhalf * n_unit[0];
-  Whalf[2] += vhalf * n_unit[1];
-  Whalf[3] += vhalf * n_unit[2];
+  return p;
 }
 
 /**
@@ -574,7 +444,7 @@ riemann_solver_solve_middle_state(const float* WL, const float vL,
       0.5f * (vL + vR) + 0.5f * (riemann_fb(p, WR, aR) - riemann_fb(p, WL, aL));
 }
 
-__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
+__attribute__((always_inline)) INLINE static float riemann_solve_for_flux(
     const float* Wi, const float* Wj, const float* n_unit, const float* vij,
     float* totflux) {
 
@@ -583,53 +453,14 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 #endif
 
   float Whalf[5];
-  float flux[5][3];
-  float vtot[3];
-  float rhoe;
-
-  riemann_solver_solve(Wi, Wj, Whalf, n_unit);
-
-  flux[0][0] = Whalf[0] * Whalf[1];
-  flux[0][1] = Whalf[0] * Whalf[2];
-  flux[0][2] = Whalf[0] * Whalf[3];
-
-  vtot[0] = Whalf[1] + vij[0];
-  vtot[1] = Whalf[2] + vij[1];
-  vtot[2] = Whalf[3] + vij[2];
-  flux[1][0] = Whalf[0] * vtot[0] * Whalf[1] + Whalf[4];
-  flux[1][1] = Whalf[0] * vtot[0] * Whalf[2];
-  flux[1][2] = Whalf[0] * vtot[0] * Whalf[3];
-  flux[2][0] = Whalf[0] * vtot[1] * Whalf[1];
-  flux[2][1] = Whalf[0] * vtot[1] * Whalf[2] + Whalf[4];
-  flux[2][2] = Whalf[0] * vtot[1] * Whalf[3];
-  flux[3][0] = Whalf[0] * vtot[2] * Whalf[1];
-  flux[3][1] = Whalf[0] * vtot[2] * Whalf[2];
-  flux[3][2] = Whalf[0] * vtot[2] * Whalf[3] + Whalf[4];
-
-  /* eqn. (15) */
-  /* F_P = \rho e ( \vec{v} - \vec{v_{ij}} ) + P \vec{v} */
-  /* \rho e = P / (\gamma-1) + 1/2 \rho \vec{v}^2 */
-  rhoe = Whalf[4] / hydro_gamma_minus_one +
-         0.5f * Whalf[0] *
-             (vtot[0] * vtot[0] + vtot[1] * vtot[1] + vtot[2] * vtot[2]);
-  flux[4][0] = rhoe * Whalf[1] + Whalf[4] * vtot[0];
-  flux[4][1] = rhoe * Whalf[2] + Whalf[4] * vtot[1];
-  flux[4][2] = rhoe * Whalf[3] + Whalf[4] * vtot[2];
-
-  totflux[0] =
-      flux[0][0] * n_unit[0] + flux[0][1] * n_unit[1] + flux[0][2] * n_unit[2];
-  totflux[1] =
-      flux[1][0] * n_unit[0] + flux[1][1] * n_unit[1] + flux[1][2] * n_unit[2];
-  totflux[2] =
-      flux[2][0] * n_unit[0] + flux[2][1] * n_unit[1] + flux[2][2] * n_unit[2];
-  totflux[3] =
-      flux[3][0] * n_unit[0] + flux[3][1] * n_unit[1] + flux[3][2] * n_unit[2];
-  totflux[4] =
-      flux[4][0] * n_unit[0] + flux[4][1] * n_unit[1] + flux[4][2] * n_unit[2];
+  float P_star = riemann_solver_solve(Wi, Wj, Whalf, n_unit);
+  riemann_flux_from_half_state(Whalf, vij, n_unit, totflux);
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_output(Wi, Wj, n_unit, vij, totflux);
 #endif
+
+  return P_star;
 }
 
 __attribute__((always_inline)) INLINE static void

@@ -31,6 +31,7 @@
 /* Local headers */
 #include "error.h"
 #include "hydro.h"
+#include "periodic.h"
 #include "threadpool.h"
 
 /**
@@ -246,13 +247,15 @@ void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
  * @param nr_sinks The number of #sink in the array.
  * @param nr_sparts The number of #spart in the array.
  * @param nr_bparts The number of #bpart in the array.
+ * @param sdim The dimensions of the space.
+ * @param periodic Are we running with periodic boundary conditions?
  * @param verbose Do we report verbosely in case of success ?
  */
 void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct sink *sinks, struct spart *sparts,
                        struct bpart *bparts, size_t nr_parts, size_t nr_gparts,
                        size_t nr_sinks, size_t nr_sparts, size_t nr_bparts,
-                       int verbose) {
+                       const double *sdim, int periodic, int verbose) {
 
   ticks tic = getticks();
 
@@ -298,15 +301,25 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
       /* Check the reverse link */
       if (part->gpart != &gparts[k]) error("Linking problem!");
 
-      /* Check that the particles are at the same place */
-      if (gparts[k].x[0] != part->x[0] || gparts[k].x[1] != part->x[1] ||
-          gparts[k].x[2] != part->x[2])
+      /* Check that the particles are at the same place
+       * NOTE (yuyttenh, 2024): for some hydro schemes (notably ShadowSWIFT), we
+       * set the gpart position to the actual center of mass of the particle,
+       * which might differ from its x coordinate-vector, so this check becomes
+       * a bit more complicated. */
+      double com[3];
+      hydro_get_center_of_mass(part, com);
+      double gp_loc[3] = {gparts[k].x[0], gparts[k].x[1], gparts[k].x[2]};
+      if (periodic)
+        for (int i = 0; i < 3; i++) {
+          com[i] = box_wrap(com[i], 0., sdim[i]);
+          gp_loc[i] = box_wrap(gp_loc[i], 0., sdim[i]);
+        }
+      if (gp_loc[0] != com[0] || gp_loc[1] != com[1] || gp_loc[2] != com[2])
         error(
             "Linked particles are not at the same position!\n"
             "gp->x=[%e %e %e] p->x=[%e %e %e] diff=[%e %e %e]",
-            gparts[k].x[0], gparts[k].x[1], gparts[k].x[2], part->x[0],
-            part->x[1], part->x[2], gparts[k].x[0] - part->x[0],
-            gparts[k].x[1] - part->x[1], gparts[k].x[2] - part->x[2]);
+            gp_loc[0], gp_loc[1], gp_loc[2], com[0], com[1], com[2],
+            gp_loc[0] - com[0], gp_loc[1] - com[1], gp_loc[2] - com[2]);
 
       /* Check that the particles have the same mass */
       if (gparts[k].mass != hydro_get_mass(part))
@@ -434,10 +447,21 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
         error("Linking problem !");
       }
 
-      /* Check that the particles are at the same place */
-      if (parts[k].x[0] != parts[k].gpart->x[0] ||
-          parts[k].x[1] != parts[k].gpart->x[1] ||
-          parts[k].x[2] != parts[k].gpart->x[2])
+      /* Check that the particles are at the same place
+       * NOTE (yuyttenh, 2024): for some hydro schemes (notably ShadowSWIFT), we
+       * set the gpart position to the actual center of mass of the particle,
+       * which might differ from its x coordinate-vector, so this check becomes
+       * a bit more complicated. */
+      double com[3];
+      hydro_get_center_of_mass(&parts[k], com);
+      double gp_loc[3] = {parts[k].gpart->x[0], parts[k].gpart->x[1],
+                          parts[k].gpart->x[2]};
+      if (periodic)
+        for (int i = 0; i < 3; i++) {
+          com[i] = box_wrap(com[i], 0., sdim[i]);
+          gp_loc[i] = box_wrap(gp_loc[i], 0., sdim[i]);
+        }
+      if (com[0] != gp_loc[0] || com[1] != gp_loc[1] || com[2] != gp_loc[2])
         error("Linked particles are not at the same position !");
 
       /* Check that the particles have the same mass */

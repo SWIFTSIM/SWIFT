@@ -126,6 +126,11 @@ const char *taskID_names[task_type_count] = {
     "rt_advance_cell_time",
     "rt_sorts",
     "rt_collect_times",
+    "grid_construction",
+    "grid_ghost",
+    "slope_estimate_ghost",
+    "slope_limiter_ghost",
+    "flux_ghost",
 };
 
 /* Sub-task type names. */
@@ -134,6 +139,9 @@ const char *subtaskID_names[task_subtype_count] = {
     "density",
     "gradient",
     "force",
+    "slope_estimate",
+    "slope_limiter",
+    "flux",
     "limiter",
     "grav",
     "fof",
@@ -166,6 +174,8 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
+    "grid_sync",
+    "faces",
 };
 
 const char *task_category_names[task_category_count] = {
@@ -726,6 +736,41 @@ int task_lock(struct task *t) {
 
     /* Communication task? */
     case task_type_recv:
+#ifdef WITH_MPI
+      /* Do we need to probe the message to get the size of the buffer for the
+       * recieve? */
+      if (t->req == MPI_REQUEST_NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (subtype != task_subtype_faces)
+          error(
+              "Probing for size of message is only supported for recv faces!");
+#endif
+        /* Probe the task to be able to allocate the buffer for the receive */
+        err = MPI_Iprobe(t->ci->nodeID, t->flags,
+                         subtaskMPI_comms[task_subtype_faces], &res, &stat);
+        if (err != MPI_SUCCESS) mpi_error(err, "Failed to IProbe for message.");
+        if (res) {
+          /* Get size of message */
+          int count;
+          MPI_Get_count(&stat, MPI_BYTE, &count);
+          t->buff = malloc(count);
+          /* Setup Irecv */
+          err = MPI_Irecv(t->buff, count, MPI_BYTE, t->ci->nodeID, t->flags,
+                          subtaskMPI_comms[task_subtype_faces], &t->req);
+          if (err != MPI_SUCCESS) {
+            mpi_error(err, "Failed to emit irecv for particle data.");
+          }
+          /* And log, if logging enabled. */
+          mpiuse_log_allocation(t->type, task_subtype_faces, &t->req, 1, size,
+                                t->ci->nodeID, t->flags);
+        } else {
+          /* IProbe failed, still waiting for ISend to finish... Nothing else to
+           * do here. */
+          return 0;
+        }
+      }
+#endif
+      // fall through
     case task_type_send:
 #ifdef WITH_MPI
       /* Check the status of the MPI request. */
@@ -1204,6 +1249,18 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_sink_do_gas_swallow:
       strcpy(cluster, "DoGasSwallow");
+      break;
+    case task_subtype_grid_sync:
+      strcpy(cluster, "GridSync");
+      break;
+    case task_subtype_slope_estimate:
+      strcpy(cluster, "SlopeEstimate");
+      break;
+    case task_subtype_slope_limiter:
+      strcpy(cluster, "SlopeLimiter");
+      break;
+    case task_subtype_flux:
+      strcpy(cluster, "Flux");
       break;
     default:
       strcpy(cluster, "None");

@@ -101,6 +101,11 @@ int space_extra_gparts = space_extra_gparts_default;
 /*! Number of extra #sink we allocate memory for per top-level cell */
 int space_extra_sinks = space_extra_sinks_default;
 
+#if defined(SWIFT_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
+/*! Number of boundary particles considered interior boundary particles */
+int space_boundary_parts_interior = space_boundary_parts_interior_default;
+#endif
+
 /*! Maximum number of particles per ghost */
 int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
 int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
@@ -630,9 +635,7 @@ void space_synchronize_part_positions_mapper(void *map_data, int nr_parts,
 #endif
 
     /* Synchronize positions, velocities and masses */
-    gp->x[0] = p->x[0];
-    gp->x[1] = p->x[1];
-    gp->x[2] = p->x[2];
+    hydro_get_center_of_mass(p, gp->x);
 
     gp->v_full[0] = xp->v_full[0];
     gp->v_full[1] = xp->v_full[1];
@@ -820,6 +823,28 @@ void space_convert_quantities(struct space *s, int verbose) {
     threadpool_map(&s->e->threadpool, space_convert_quantities_mapper, s->parts,
                    s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
                    s);
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined(SHADOWSWIFT)
+  // Check that the ICs do not contain values considered infinitesimal for rho
+  // or P.
+  const struct hydro_props *hydro_props = s->e->hydro_properties;
+  int count_low_rho = 0;
+  int count_low_P = 0;
+  for (size_t k = 0; k < s->nr_parts; k++) {
+      if (s->parts[k].rho < hydro_props->epsilon_rho) count_low_rho++;
+      if (s->parts[k].P < hydro_props->epsilon_P) count_low_P++;
+  }
+  if (count_low_rho > 0)
+    warning(
+        "Encountered %d particles with initial densities lower than "
+        "SPH:epsilon_rho (%E)! Is this intentional?",
+        count_low_rho, hydro_props->epsilon_rho);
+  if (count_low_P > 0)
+    warning(
+        "Encountered %d particles with initial pressures lower than "
+        "SPH:epsilon_P (%E)! Is this intentional?",
+        count_low_P, hydro_props->epsilon_P);
+#endif
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1201,7 +1226,7 @@ void space_init(struct space *s, struct swift_params *params,
 #ifdef SWIFT_DEBUG_CHECKS
     if (!dry_run)
       part_verify_links(parts, gparts, sinks, sparts, bparts, Npart, Ngpart,
-                        Nsink, Nspart, Nbpart, 1);
+                        Nsink, Nspart, Nbpart, s->dim, s->periodic, 1);
 #endif
   }
 
@@ -1227,7 +1252,7 @@ void space_init(struct space *s, struct swift_params *params,
 
 #ifdef SWIFT_DEBUG_CHECKS
     part_verify_links(parts, gparts, sinks, sparts, bparts, Npart, Ngpart,
-                      Nsink, Nspart, Nbpart, 1);
+                      Nsink, Nspart, Nbpart, s->dim, s->periodic, 1);
 #endif
   }
 
@@ -1244,7 +1269,12 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Check that it is big enough. */
   const double dmin = min3(s->dim[0], s->dim[1], s->dim[2]);
-  int needtcells = 3 * dmax / dmin;
+  int needtcells;
+  if (s->periodic) {
+    needtcells = 3 * dmax / dmin;
+  } else {
+    needtcells = dmax / dmin;
+  }
   if (maxtcells < needtcells)
     error(
         "Scheduler:max_top_level_cells is too small %d, needs to be at "
@@ -1315,6 +1345,10 @@ void space_init(struct space *s, struct swift_params *params,
       params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
   space_extra_sinks = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_sinks", space_extra_sinks_default);
+#if defined(SWIFT_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
+  space_boundary_parts_interior =
+      parser_get_param_int(params, "Scheduler:boundary_parts_interior");
+#endif
 
   engine_max_parts_per_ghost =
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
@@ -1481,7 +1515,7 @@ void space_init(struct space *s, struct swift_params *params,
     bzero(s->xparts, Npart * sizeof(struct xpart));
   }
 
-  hydro_space_init(&s->hs, s);
+  hydro_space_init(&s->hs, s, params);
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
@@ -1702,7 +1736,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   /* Verify that everything is correct */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
                     s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, verbose);
+                    s->nr_bparts, s->dim, s->periodic, verbose);
 #endif
 }
 
@@ -2871,7 +2905,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   /* Verify that everything is correct */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
                     s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, 1);
+                    s->nr_bparts, s->dim, s->periodic, 1);
 #endif
 }
 

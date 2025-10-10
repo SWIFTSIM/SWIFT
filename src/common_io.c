@@ -540,7 +540,7 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
   if (!fof) {
 
     /* Print the SPH parameters */
-    if (e->policy & engine_policy_hydro) {
+    if (e->policy & (engine_policy_hydro | engine_policy_grid_hydro)) {
       h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
                         H5P_DEFAULT);
       if (h_grp < 0) error("Error while creating SPH group");

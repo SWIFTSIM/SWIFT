@@ -391,6 +391,18 @@ if test "$enable_naive_interactions_rt" = "yes"; then
    AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS_RT],1,[Enable use of naive cell interaction functions for stars in RT tasks])
 fi
 
+# Check whether we want to default to naive cell interactions (grid)
+AC_ARG_ENABLE([naive-interactions-grid],
+   [AS_HELP_STRING([--enable-naive-interactions-grid],
+     [Activate use of naive cell interaction functions for grid construction tasks@<:@yes/no@:>@]
+   )],
+   [enable_naive_interactions_grid="$enableval"],
+   [enable_naive_interactions_grid="no"]
+)
+if test "$enable_naive_interactions_grid" = "yes"; then
+   AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS_GRID],1,[Enable use of naive cell interaction functions for grid construction tasks])
+fi
+
 # Check if gravity force checks are on for some particles.
 AC_ARG_ENABLE([gravity-force-checks],
    [AS_HELP_STRING([--enable-gravity-force-checks=<N>],
@@ -2533,6 +2545,9 @@ case "$with_riemann" in
    trrs)
       AC_DEFINE([RIEMANN_SOLVER_TRRS], [1], [Two Rarefaction Riemann Solver])
    ;;
+   tsrs)
+      AC_DEFINE([RIEMANN_SOLVER_TSRS], [1], [Two Shock Riemann Solver])
+   ;;
    hllc)
       AC_DEFINE([RIEMANN_SOLVER_HLLC], [1], [Harten-Lax-van Leer-Contact Riemann solver])
    ;;
@@ -2564,6 +2579,22 @@ if test "$enable_moving_mesh" = "yes"; then
         AC_MSG_ERROR([GSL is required when using moving mesh!])
     fi
     AC_DEFINE([MOVING_MESH], [1], [Unstructured Voronoi mesh])
+fi
+
+# Moving mesh: store cell-face connections (expensive)
+AC_ARG_ENABLE([moving-mesh-cell-face-connections],
+    [AS_HELP_STRING([--enable-moving-mesh-cell-face-connections],
+        [Moving mesh: store cell-face connections (expensive, needed for e.g. mesh de-refinement)]
+    )],
+    [enable_moving_mesh_cell_face_connections="${enableval}"],
+    [enable_moving_mesh_cell_face_connections="no"]
+)
+if test "$enable_moving_mesh_cell_face_connections" = "yes"; then
+    AC_DEFINE([MOVING_MESH_STORE_CELL_FACE_CONNECTIONS], [1],
+        [Moving mesh: store cell-face connections (expensive, needed for e.g. mesh de-refinement)])
+else
+    AC_DEFINE([MOVING_MESH_STORE_CELL_FACE_CONNECTIONS], [0],
+            [Moving mesh: Do not store cell-face connections (expensive, needed for e.g. mesh de-refinement)])
 fi
 
 # Hydro does mass flux?
@@ -3003,6 +3034,9 @@ case "$with_potential" in
    constant)
       AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
    ;;
+   burkert)
+      AC_DEFINE([EXTERNAL_POTENTIAL_BURKERT], [1], [Burkert (1995) potential])
+   ;;
    *)
       AC_MSG_ERROR([Unknown external potential: $with_potential])
    ;;
@@ -3409,21 +3443,23 @@ AC_MSG_RESULT([
    Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
 
-   Atomic operations in tasks  : $enable_atomics_within_tasks
-   Individual timers           : $enable_timers
-   Task debugging              : $enable_task_debugging
-   Threadpool debugging        : $enable_threadpool_debugging
-   Debugging checks            : $enable_debugging_checks
-   Interaction debugging       : $enable_debug_interactions
-   Stars interaction debugging : $enable_debug_interactions_stars
-   Naive interactions          : $enable_naive_interactions
-   Naive stars interactions    : $enable_naive_interactions_stars
-   Gravity checks              : $gravity_force_checks
-   Custom icbrtf               : $enable_custom_icbrtf
-   Boundary particles          : $boundary_particles
-   Fixed boundary particles    : $fixed_boundary_particles
-   Planetary fixed entropy     : $planetary_fixed_entropy
-   Ghost statistics            : $ghost_stats
+   Atomic operations in tasks     : $enable_atomics_within_tasks
+   Individual timers              : $enable_timers
+   Task debugging                 : $enable_task_debugging
+   Threadpool debugging           : $enable_threadpool_debugging
+   Debugging checks               : $enable_debugging_checks
+   Interaction debugging          : $enable_debug_interactions
+   Stars interaction debugging    : $enable_debug_interactions_stars
+   Naive interactions             : $enable_naive_interactions
+   Naive stars interactions       : $enable_naive_interactions_stars
+   Naive grid interactions        : $enable_naive_interactions_grid
+   Gravity checks                 : $gravity_force_checks
+   Custom icbrtf                  : $enable_custom_icbrtf
+   Boundary particles             : $boundary_particles
+   Fixed boundary particles       : $fixed_boundary_particles
+   Planetary fixed entropy        : $planetary_fixed_entropy
+   Ghost statistics               : $ghost_stats
+   Store particle-face connections: $enable_moving_mesh_cell_face_connections
 
    Continuous Sim. Data Stream : $with_csds
 

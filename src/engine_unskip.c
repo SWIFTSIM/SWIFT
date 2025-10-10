@@ -47,6 +47,7 @@ enum task_broad_types {
   task_broad_types_sinks,
   task_broad_types_black_holes,
   task_broad_types_rt,
+  task_broad_types_grid,
   task_broad_types_count,
 };
 
@@ -276,6 +277,76 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e,
 }
 
 /**
+ * @brief Unskip any grid construction tasks associated with active cells.
+ *
+ * @param c The cell.
+ * @param e The engine.
+ */
+static void engine_do_unskip_grid(struct cell *c, struct engine *e) {
+
+  /* Note: we only get this far if engine_policy_grid is flagged. */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!(e->policy & engine_policy_grid))
+    error("Unksipping Moving mesh stuff without the policy being on");
+#endif
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Do we have work to do? */
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Recurse? */
+  if (c->grid.construction_level == NULL) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        engine_do_unskip_grid(cp, e);
+      }
+    }
+  }
+
+  /* Unskip any active tasks. */
+  const int forcerebuild = cell_unskip_grid_tasks(c, &e->sched);
+  if (forcerebuild) atomic_inc(&e->forcerebuild);
+}
+
+/**
+ * @brief Unskip any moving mesh hydro tasks associated with active cells.
+ *
+ * @param c The cell.
+ * @param e The engine.
+ */
+static void engine_do_unskip_grid_hydro(struct cell *c, struct engine *e) {
+
+  /* Note: we only get this far if engine_policy_grid is flagged. */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!(e->policy & engine_policy_grid_hydro))
+    error("Unksipping Moving mesh stuff without the policy being on");
+#endif
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Do we have work to do? */
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        engine_do_unskip_grid_hydro(cp, e);
+      }
+    }
+  }
+
+  /* Unskip any active tasks. */
+  const int forcerebuild = cell_unskip_grid_hydro_tasks(c, &e->sched);
+  if (forcerebuild) atomic_inc(&e->forcerebuild);
+}
+
+/**
  * @brief Mapper function to unskip active tasks.
  *
  * @param map_data An array of #cell%s.
@@ -321,11 +392,12 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
     /* What broad type of tasks are we unskipping? */
     switch (task_types[type]) {
       case task_broad_types_hydro:
-#ifdef SWIFT_DEBUG_CHECKS
-        if (!(e->policy & engine_policy_hydro))
+        if (e->policy & engine_policy_hydro)
+          engine_do_unskip_hydro(c, e);
+        else if (e->policy & engine_policy_grid_hydro)
+          engine_do_unskip_grid_hydro(c, e);
+        else
           error("Trying to unskip hydro tasks in a non-hydro run!");
-#endif
-        engine_do_unskip_hydro(c, e);
         break;
       case task_broad_types_gravity:
 #ifdef SWIFT_DEBUG_CHECKS
@@ -364,6 +436,13 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
 #endif
         engine_do_unskip_rt(c, e, /*sub_cycle=*/0);
         break;
+      case task_broad_types_grid:
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_grid))
+          error("Trying to unskip moving mesh tasks in a gridless run!");
+#endif
+        engine_do_unskip_grid(c, e);
+        break;
       default:
 #ifdef SWIFT_DEBUG_CHECKS
         error("Invalid broad task type!");
@@ -384,7 +463,8 @@ void engine_unskip(struct engine *e) {
   struct space *s = e->s;
   const int nodeID = e->nodeID;
 
-  const int with_hydro = e->policy & engine_policy_hydro;
+  const int with_hydro =
+      e->policy & engine_policy_hydro || e->policy & engine_policy_grid_hydro;
   const int with_self_grav = e->policy & engine_policy_self_gravity;
   const int with_ext_grav = e->policy & engine_policy_external_gravity;
   const int with_stars = e->policy & engine_policy_stars;
@@ -392,6 +472,7 @@ void engine_unskip(struct engine *e) {
   const int with_feedback = e->policy & engine_policy_feedback;
   const int with_black_holes = e->policy & engine_policy_black_holes;
   const int with_rt = e->policy & engine_policy_rt;
+  const int with_grid = e->policy & engine_policy_grid;
 
 #ifdef WITH_PROFILER
   static int count = 0;
@@ -416,7 +497,8 @@ void engine_unskip(struct engine *e) {
         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
         (with_sinks && cell_is_active_sinks(c, e)) ||
         (with_black_holes && cell_is_active_black_holes(c, e)) ||
-        (with_rt && cell_is_rt_active(c, e))) {
+        (with_rt && cell_is_rt_active(c, e)) ||
+        (with_grid && cell_is_active_hydro(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
@@ -450,6 +532,10 @@ void engine_unskip(struct engine *e) {
   }
   if (with_rt) {
     data.task_types[multiplier] = task_broad_types_rt;
+    multiplier++;
+  }
+  if (with_grid) {
+    data.task_types[multiplier] = task_broad_types_grid;
     multiplier++;
   }
 

@@ -112,6 +112,17 @@ struct hydro_props {
   /*! Mean molecular weight above hydrogen ionization temperature */
   float mu_ionised;
 
+  /* ------ Parameters that define near-vacuum ----- */
+  /*! For densities below this value, the code might become less accurate to
+   * maintain robustness */
+  float epsilon_rho;
+  float epsilon_rho_inv;
+
+  /*! For pressures below this value, the code might become less accurate to
+   * maintain robustness */
+  float epsilon_P;
+  float epsilon_P_inv;
+
   /* ------ Particle splitting parameters ---------- */
 
   /*! Is particle splitting activated? */
@@ -126,6 +137,14 @@ struct hydro_props {
   /*! Are we logging the particle splits beyond the limit in a file before
    * reseting? */
   int log_extra_splits_in_file;
+
+  /* ------ Particle de-refinement parameters ------ */
+
+  /*! Is particle de-refinement enabled? */
+  int particle_derefinement;
+
+  /*! Volume threshold below which a particle will be removed */
+  float particle_derefinement_volume_threshold;
 
   /* ------ Viscosity and diffusion ---------------- */
 

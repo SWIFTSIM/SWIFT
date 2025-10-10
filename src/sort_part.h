@@ -89,6 +89,14 @@ static const int sortlistID[27] = {
     /* (  1 ,  1 ,  0 ) */ 1,
     /* (  1 ,  1 ,  1 ) */ 0};
 
+/* Map sid to shift vector */
+static const int sortlist_shift_vector[27][3] = {
+    {-1, -1, -1}, {-1, -1, 0}, {-1, -1, 1}, {-1, 0, -1}, {-1, 0, 0}, {-1, 0, 1},
+    {-1, 1, -1},  {-1, 1, 0},  {-1, 1, 1},  {0, -1, -1}, {0, -1, 0}, {0, -1, 1},
+    {0, 0, -1},   {0, 0, 0},   {0, 0, 1},   {0, 1, -1},  {0, 1, 0},  {0, 1, 1},
+    {1, -1, -1},  {1, -1, 0},  {1, -1, 1},  {1, 0, -1},  {1, 0, 0},  {1, 0, 1},
+    {1, 1, -1},   {1, 1, 0},   {1, 1, 1}};
+
 /* Ratio of particles interacting assuming a uniform distribution */
 static const float sid_scale[13] = {0.1897f, 0.4025f, 0.1897f, 0.4025f, 0.5788f,
                                     0.4025f, 0.1897f, 0.4025f, 0.1897f, 0.4025f,
@@ -146,8 +154,7 @@ __attribute__((always_inline, const)) INLINE static int sort_is_face(
  * @param cell_loc The location of cj.
  * @param cell_width The width of the cells.
  */
-INLINE static double sort_get_cell_min_dist(const int sid,
-                                            const double cell_loc[3],
+INLINE static double sort_get_cell_min_dist(int sid, const double cell_loc[3],
                                             const double cell_width[3]) {
 
   double pos[3];
@@ -295,6 +302,8 @@ INLINE static double sort_get_cell_min_dist(const int sid,
       pos[1] = 0.;
       pos[2] = 0.;
   }
+
+  if (sid > 13) sid = 26 - sid;
 
   return pos[0] * runner_shift[sid][0] + pos[1] * runner_shift[sid][1] +
          pos[2] * runner_shift[sid][2];

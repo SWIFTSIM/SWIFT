@@ -52,6 +52,8 @@
 #include "./potential/point_mass_softened/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_CONSTANT)
 #include "./potential/constant/potential.h"
+#elif defined(EXTERNAL_POTENTIAL_BURKERT)
+#include "./potential/burkert/potential.h"
 #else
 #error "Invalid choice of external potential"
 #endif

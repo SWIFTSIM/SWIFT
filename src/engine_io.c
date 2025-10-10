@@ -264,6 +264,32 @@ int engine_dump_restarts(struct engine *e, const int drifted_all,
   return exit_run;
 }
 
+#ifdef MOVING_MESH
+void cell_write_grid(const struct cell *c, FILE *dfile, FILE *vfile,
+                     size_t *doffset, size_t *voffset, int nodeID) {
+  /* Recurse? */
+  if (c->grid.construction_level == NULL) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        cell_write_grid(c->progeny[k], dfile, vfile, doffset, voffset, nodeID);
+      }
+    }
+    return;
+  }
+
+#ifdef WITH_MPI
+  /* Anything to do here? */
+  if (c->nodeID != nodeID) return;
+#endif
+
+  /* Have voronoi? */
+  if (c->grid.voronoi != NULL) {
+    voronoi_write_grid(c->grid.voronoi, c->hydro.parts, c->hydro.count, vfile,
+                       voffset);
+  }
+}
+#endif /* MOVING_MESH */
+
 /**
  * @brief Writes a snapshot with the current state of the engine
  *
@@ -348,6 +374,40 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
   write_output_single(e, e->internal_units, e->snapshot_units, fof);
 #endif /* WITH_MPI */
 #endif /* WITH_HDF5 */
+
+#if defined(MOVING_MESH) && defined(SHADOWSWIFT_OUTPUT_GRIDS)
+  char fname[50];
+#if WITH_MPI
+  sprintf(fname, "voronoi_N%03d_%04d.txt", e->nodeID,
+          e->snapshot_output_count - 1);
+  FILE *vfile = fopen(fname, "w");
+  if (vfile == NULL)
+    error("Cannot open file to write Voronoi tessellation: %s", fname);
+  sprintf(fname, "delaunay_%03d_%04d.txt", e->nodeID,
+          e->snapshot_output_count - 1);
+  FILE *dfile = fopen(fname, "w");
+  if (dfile == NULL)
+    error("Cannot open file to write Delaunay tessellation: %s", fname);
+#else
+  sprintf(fname, "voronoi%04d.txt", e->snapshot_output_count - 1);
+  FILE *vfile = fopen(fname, "w");
+  if (vfile == NULL)
+    error("Cannot open file to write Voronoi tessellation: %s", fname);
+  sprintf(fname, "delaunay%04d.txt", e->snapshot_output_count - 1);
+  FILE *dfile = fopen(fname, "w");
+  if (dfile == NULL)
+    error("Cannot open file to write Delaunay tessellation: %s", fname);
+#endif
+  size_t offset = 0;
+  size_t voffset = 0;
+  struct space *s = e->s;
+  for (int i = 0; i < s->nr_cells; ++i) {
+    cell_write_grid(&s->cells_top[i], dfile, vfile, &offset, &voffset,
+                    e->nodeID);
+  }
+  fclose(vfile);
+  fclose(dfile);
+#endif
 
   /* Cancel any triggers that are switched on */
   if (num_snapshot_triggers_part > 0 || num_snapshot_triggers_spart > 0 ||

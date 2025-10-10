@@ -50,6 +50,8 @@ SPH:
   minimal_temperature:                 0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
   H_mass_fraction:                     0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
   H_ionization_temperature:            1e4      # (Optional) Temperature of the transition from neutral to ionized Hydrogen for primoridal gas.
+  epsilon_rho:                         1e-13    # (Optional) Densities below which the hydro scheme might choose to degrade accuracy to maintain robustness.
+  epsilon_P:                           1e-13    # (Optional) Pressures below which the hydro scheme might choose to degrade accuracy to maintain robustness.
   viscosity_alpha:                     0.8      # (Optional) Override for the initial value of the artificial viscosity. In schemes that have a fixed AV, this remains as alpha throughout the run.
   viscosity_alpha_max:                 2.0      # (Optional) Maximal value for the artificial viscosity in schemes that allow alpha to vary.
   viscosity_alpha_min:                 0.1      # (Optional) Minimal value for the artificial viscosity in schemes that allow alpha to vary.
@@ -159,6 +161,7 @@ Scheduler:
   free_foreign_during_restart:      0  # (Optional) Should the code free the foreign data when dumping restart files in order to get breathing space?
   free_foreign_during_rebuild:      0  # (Optional) Should the code free the foreign data when calling a rebuld in order to get breathing space?
   deadlock_waiting_time_s:          0. # (Optional) If runners didn't fetch a new task from a queue after this many seconds, assume swift deadlocked and abort. Non-positive values turn the detector off. Needs --enable-debugging-checks and MPI to take effect.
+  boundary_parts_interior:          0  # (Required if compiled with moving mesh and --enable-boundary-particles=<N> or --enable-fixed-boundary-particles=<N>). The number of boundary particles that are treated as being fully interior. Reflective boundaries will be applied to faces between normal boundary particles and fully interior boundary particles.
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
@@ -235,6 +238,9 @@ InitialConditions:
   replicate:  2                     # (Optional) Replicate all particles along each axis a given integer number of times. Default 1.
   remap_ids:  0                     # (Optional) Remap all the particle IDs to the range [1, NumPart].
   metadata_group_name: ICs_parameters # (Optional) Copy this HDF5 group from the initial conditions file to all snapshots, if found
+  inflow_density:               0.  # (Required if (radial) inflow boundary conditions are enabled in const.h) The density of the inflowing gas.
+  inflow_velocity:              0.  # (Required if (radial) inflow boundary conditions are enabled in const.h) The velocity in the x or radial direction of the inflowing gas.
+  inflow_pressure:              0.  # (Required if (radial) inflow boundary conditions are enabled in const.h) The pressure of the inflowing gas.
 
 # Parameters controlling restarts
 Restarts:

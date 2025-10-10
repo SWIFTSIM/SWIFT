@@ -52,7 +52,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, struct part* restrict pj, const float a,
+    struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
   float wi, wj, wi_dx, wj_dx;
@@ -138,7 +138,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, const struct part* restrict pj, const float a,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H) {
 
   float wi, wi_dx;
@@ -203,7 +203,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, struct part* restrict pj, const float a,
+    struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {}
 
 /**
@@ -224,7 +224,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, struct part* restrict pj, const float a,
+    struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {}
 
 /**
@@ -241,7 +241,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, struct part* restrict pj, const float a,
+    struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
   /* Cosmological factors entering the EoMs */
@@ -379,7 +379,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, const struct part* restrict pj, const float a,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H) {
 
   /* Cosmological factors entering the EoMs */
@@ -490,5 +490,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 }
+
+/**
+ * @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift, const struct hydro_props *hydro,
+    int symmetric) {}
+
+/**
+ * @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift, const struct hydro_props *hydro,
+    int symmetric) {}
+
+/**
+ * @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift, const struct hydro_props *hydro,
+    int symmetric) {}
 
 #endif /* SWIFT_PRESSURE_ENERGY_HYDRO_IACT_H */

@@ -82,9 +82,121 @@
 #define const_gizmo_min_wcorr 0.5f
 
 /* Options controlling ShadowSWIFT */
+/* Option to enable gradients for ShadowSWIFT */
+/* If disabled, no gradients are used (first order scheme) */
+#define SHADOWSWIFT_MESHLESS_GRADIENTS
+#ifndef SHADOWSWIFT_MESHLESS_GRADIENTS
+#error "Unimplemented (since switch to fully recursive hydro interactions)"
+#define SHADOWSWIFT_GRADIENTS
+#endif
+/* Always activate the slope limiters if we use gradients (the scheme becomes
+ * unstable otherwise) */
+#ifdef SHADOWSWIFT_GRADIENTS
+/*! @brief Option controlling which type of gradient calculation is used */
+#define SHADOWSWIFT_GRADIENTS_WLS
+/* Always activate the slope limiters if we use gradients (the scheme becomes
+ * unstable otherwise) */
+#define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
+#define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
+#endif
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+#define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
+#define SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
+#endif
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
+#define SHADOWSWIFT_EXTRA_PAIRWISE_LIMITER
+#endif
+#if defined(SHADOWSWIFT_MESHLESS_GRADIENTS) || defined(SHADOWSWIFT_GRADIENTS)
+/*! @brief Option to enable time extrapolation */
+#define SHADOWSWIFT_EXTRAPOLATE_TIME
+#endif
+
+/*! @brief Option to enable extra flux positivity limiter */
+#define SHADOWSWIFT_FLUX_LIMITER
+
+/*! @brief Option controlling output of grids */
+// #define SHADOWSWIFT_OUTPUT_GRIDS
+
 /* Options controlling acceleration strategies*/
 /*! @brief Option enabling a more relaxed completeness criterion */
 #define SHADOWSWIFT_RELAXED_COMPLETENESS
+
+/*! @brief Option to enable the bvh acceleration structure for neighbour
+ * searching */
+#define SHADOWSWIFT_BVH
+#ifdef SHADOWSWIFT_BVH
+#define BVH_MEDIAN_SPLIT 0
+#define BVH_MIDPOINT_SPLIT 1
+/*! @brief The splitting method used during the BVH construction */
+#define BVH_SPLITTING_METHOD BVH_MEDIAN_SPLIT
+/*! @brief Option to insert parts by BFO of the BVH during grid construction. */
+#define SHADOWSWIFT_BVH_INSERT_BFO
+#endif
+#ifndef SHADOWSWIFT_BVH_INSERT_BFO
+/*! @brief Option to enable the hilbert order insertion during the grid
+ * construction */
+#define SHADOWSWIFT_HILBERT_ORDERING
+#endif
+
+/* Options controlling particle movement */
+/*! @brief This option disables cell movement */
+// #define SHADOWSWIFT_FIX_PARTICLES
+/*! @brief This option enables cell steering, i.e. trying to keep the cells
+ * regular by adding a correction to the cell velocities.*/
+#ifndef SHADOWSWIFT_FIX_PARTICLES
+#define SHADOWSWIFT_STEER_MOTION
+#ifdef SHADOWSWIFT_STEER_MOTION
+/*! @brief More agressive cell steering for cold flows, where the other
+ * criterion might become ineffective. */
+// #define SHADOWSWIFT_STEERING_COLD_FLOWS
+#endif
+#endif
+/* Options controlling thermal energy evolution */
+#define THERMAL_ENERGY_SWITCH_NONE 0
+#define THERMAL_ENERGY_SWITCH_SPRINGEL 1
+#define THERMAL_ENERGY_SWITCH_SPRINGEL_MACH 2
+#define THERMAL_ENERGY_SWITCH_ASENSIO 3
+#define SHADOWSWIFT_THERMAL_ENERGY_SWITCH THERMAL_ENERGY_SWITCH_ASENSIO
+
+/* Options controlling derefinement of particles */
+#define SHADOWSWIFT_DEREFINEMENT_WEIGHTS_AREA 1
+#define SHADOWSWIFT_DEREFINEMENT_WEIGHTS_SOLID_ANGLE 2
+#define SHADOWSWIFT_DEREFINEMENT_WEIGHTS_CONE 3
+#define SHADOWSWIFT_DEREFINEMENT_FACE_WEIGHTS \
+  SHADOWSWIFT_DEREFINEMENT_WEIGHTS_AREA
+
+/*! @brief This option enables a (more) exact gravitational work term */
+#ifndef RIEMANN_SOLVER_HLLC
+// #define SHADOWSWIFT_EXACT_GRAV_WORK
+#endif
+
+/*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT
+ * runs */
+#define VACUUM_BC 0
+#define REFLECTIVE_BC 1
+#define OPEN_BC 2
+#define INFLOW_BC 3
+#define RADIAL_INFLOW_BC 4
+#define SHADOWSWIFT_BC REFLECTIVE_BC
+
+/* Options controlling behaviour of the code when unphysical situations are
+ * encountered */
+#ifdef SWIFT_DEBUG_CHECKS
+/*! @brief Whether to show or hide ShadowSWIFT specific warnings*/
+#define SHADOWSWIFT_WARNINGS
+#endif
+/*! @brief This option tries to recover from unphysical situations */
+#define SHADOWSWIFT_UNPHYSICAL_RESCUE
+#ifdef SHADOWSWIFT_UNPHYSICAL_RESCUE
+#ifdef SHADOWSWIFT_WARNINGS
+/*! @brief Show a warning message if an unphysical value was reset */
+#define SHADOWSWIFT_UNPHYSICAL_WARNING
+#endif
+#else
+/*! @brief This option halts the execution in the case of unphysical conditions
+ */
+#define SHADOWSWIFT_UNPHYSICAL_ERROR
+#endif
 
 /* Source terms */
 #define SOURCETERMS_NONE

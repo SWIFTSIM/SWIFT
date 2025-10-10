@@ -460,4 +460,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->entropy_dt += mj * visc_term * r_inv * dvdr;
 }
 
+/**
+ * @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift, const struct hydro_props *hydro,
+    int symmetric) {}
+
+/**
+ * @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift, const struct hydro_props *hydro,
+    int symmetric) {}
+
+/**
+ * @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift, const struct hydro_props *hydro,
+    int symmetric) {}
+
 #endif /* SWIFT_PRESSURE_ENTROPY_HYDRO_IACT_H */

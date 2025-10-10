@@ -54,6 +54,7 @@
 #include "neutrino_properties.h"
 #include "proxy.h"
 #include "rt_properties.h"
+#include "space_getsid.h"
 #include "timers.h"
 
 extern int engine_max_parts_per_ghost;
@@ -588,6 +589,185 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
         engine_addtasks_send_black_holes(e, ci->progeny[k], cj, t_rho,
                                          t_bh_merger, t_gas_swallow,
                                          t_feedback);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Add send tasks for the grid pairs to a hierarchy of cells.
+ *
+ * The only thing we need to send for the grid construction interactions is the
+ * particle positions
+ *
+ * @param e The #engine.
+ * @param ci The sending #cell.
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ */
+void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
+                               struct cell *cj, struct task *t_xv,
+                               struct task *t_rho, struct task *t_limiter,
+                               struct task *t_pack_limiter,
+                               const int with_hydro, const int with_limiter) {
+
+#ifdef WITH_MPI
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
+
+  struct link *l = NULL;
+  struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
+  int added_t_xv = 0;
+
+  /* Check if any of the construction tasks are for the target node, i.e. the
+   * cell for which we will be constructing the grid (t->ci) lives on the target
+   * node. */
+  for (l = ci->grid.sync_out; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID && l->t->type == task_type_pair) break;
+
+  /* Found construction task for target node? If so, attach send tasks. */
+  if (l != NULL) {
+
+#ifdef SWIFSWIFT_DEBUG_CHECKS
+    if (l->t->cj != ci) error("Task incorrectly linked to cell!");
+#endif
+
+    /* Create the send task and its dependencies? */
+    if (t_xv == NULL) {
+      /* Make sure this cell is tagged. */
+      cell_ensure_tagged(ci);
+
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->mpi.tag,
+                               0, ci, cj);
+      /* Drift before you send */
+      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
+      /* The send_xv task should unlock the super_grid-cell's ghost task. */
+      scheduler_addunlock(s, t_xv, ci->hydro.super->hydro.grid_ghost);
+    }
+
+    /* Add them to the local cell. */
+    engine_addlink(e, &ci->mpi.send, t_xv);
+    added_t_xv = 1;
+  }
+
+  if (with_hydro) {
+
+    /* Are we at the construction level, meaning that we might have to send
+     * faces? */
+    if (ci->grid.construction_level == ci) {
+
+      /* We only need to send faces if this cell is directly neighbouring a cell
+       * of the target node. I.e. one of the tasks for constructing *this*
+       * cells grid has a cj from the target node. */
+      for (l = ci->grid.sync_in; l != NULL; l = l->next)
+        if (l->t->type == task_type_pair && l->t->cj->nodeID == nodeID) break;
+
+      /* Found construction task for target node? If so, create send_faces
+       * tasks. */
+      if (l != NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (l->t->ci != ci) error("Incorrectly linked task to grid.sync_in!");
+#endif
+        /* Make sure this cell is tagged. */
+        cell_ensure_tagged(ci);
+
+        struct task *t_faces = scheduler_addtask(
+            s, task_type_send, task_subtype_faces, ci->mpi.tag, 0, ci, cj);
+
+        /* add unlocks  */
+        /* The faces can only be sent after the grid ghost */
+        scheduler_addunlock(s, ci->hydro.super->hydro.grid_ghost, t_faces);
+
+        /* The send_faces unlocks the hydro (flux) ghost */
+        scheduler_addunlock(s, t_faces, ci->hydro.super->hydro.flux_ghost);
+
+        /* Link to cell */
+        engine_addlink(e, &ci->mpi.send, t_faces);
+      }
+
+    } /* At construction level? */
+
+    /* Is this cell linked to any hydro interactions with the target node? */
+    /* Flux? */
+    for (l = ci->hydro.flux; l != NULL; l = l->next)
+      if (l->t->type == task_type_pair &&
+          (l->t->ci->nodeID == nodeID || l->t->cj->nodeID == nodeID))
+        break;
+    /* Gradient? (meshless gradients) */
+    if (l == NULL)
+      for (l = ci->hydro.gradient; l != NULL; l = l->next)
+        if (l->t->ci->nodeID == nodeID ||
+            (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+          break;
+    /* Slope estimate? */
+    if (l == NULL)
+      for (l = ci->hydro.gradient; l != NULL; l = l->next)
+        if (l->t->ci->nodeID == nodeID ||
+            (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+          break;
+
+    /* If so, add t_xv and t_rho task */
+    if (l != NULL) {
+
+      if (t_xv == NULL) {
+        /* Make sure this cell is tagged. */
+        cell_ensure_tagged(ci);
+        t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv,
+                                 ci->mpi.tag, 0, ci, cj);
+        /* Drift before you send */
+        scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
+        /* The send_xv task should unlock the super_grid-cell's ghost task. */
+        scheduler_addunlock(s, t_xv, ci->hydro.super->hydro.grid_ghost);
+      }
+
+      if (t_rho == NULL) {
+        /* Make sure this cell is tagged. */
+        cell_ensure_tagged(ci);
+        t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
+                                  ci->mpi.tag, 0, ci, cj);
+
+        /* The limiter pair tasks follow the same structure as the hydro
+         * gradient pair interactions */
+        if (with_limiter) {
+          t_limiter = scheduler_addtask(s, task_type_send, task_subtype_limiter,
+                                        ci->mpi.tag, 0, ci, cj);
+          t_pack_limiter = scheduler_addtask(
+              s, task_type_pack, task_subtype_limiter, 0, 0, ci, cj);
+
+          scheduler_addunlock(s, t_pack_limiter, t_limiter);
+          scheduler_addunlock(s, ci->super->timestep, t_pack_limiter);
+        }
+        /* recv positions before primitives */
+        scheduler_addunlock(s, t_xv, t_rho);
+        /* kick before you send */
+        scheduler_addunlock(s, ci->super->kick2, t_rho);
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+        /* When rho has been sent, unlock the gradient_ghost */
+        scheduler_addunlock(s, t_rho, ci->hydro.super->hydro.extra_ghost);
+#else
+        /* When rho has been sent, unlock the slope_estimate_ghost */
+        scheduler_addunlock(s, t_rho,
+                            ci->hydro.super->hydro.slope_estimate_ghost);
+#endif
+      }
+
+      /* Add it to the local cell. */
+      if (!added_t_xv) engine_addlink(e, &ci->mpi.send, t_xv);
+      engine_addlink(e, &ci->mpi.send, t_rho);
+      if (with_limiter) {
+        engine_addlink(e, &ci->mpi.send, t_limiter);
+        engine_addlink(e, &ci->mpi.pack, t_pack_limiter);
+      }
+    }
+  }
+
+  /* Recurse? */
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send_grid(e, ci->progeny[k], cj, t_xv, t_rho, t_limiter,
+                                  t_pack_limiter, with_hydro, with_limiter);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1236,6 +1416,203 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 }
 
 /**
+ * @brief Add recv tasks for grid pairs to a hierarchy of cells.
+ *
+ * The only thing we need to receive from the remote node to be able to build
+ * the voronoi grid is the particle positions
+ *
+ * @param e The #engine.
+ * @param c The foreign #cell.
+ * @param t_xv The recv_xv #task, if it has already been created.
+ * @param t_rho The recv_rho #task, if it has already been created.
+ * @param tend The top-level time-step communication #task.
+ * @param with_hydro Flag indicating whether (moving mesh) hydro is enabled.
+ */
+void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
+                               struct task *t_xv, struct task *t_rho,
+                               struct task *t_limiter,
+                               struct task *t_unpack_limiter, struct task *tend,
+                               const int with_hydro, const int with_limiter) {
+
+#ifdef WITH_MPI
+  struct scheduler *s = &e->sched;
+  int nodeID = e->nodeID;
+  struct link *l = NULL;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Flag */
+  int added_t_xv = 0;
+
+  /* Is this cell linked to any local grid construction interactions? */
+  for (l = c->grid.sync_out; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID) break;
+
+  if (l != NULL) {
+    /* Do we still need to create the task? */
+    if (t_xv == NULL) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure this cell has a valid tag. */
+      if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif /* SWIFT_DEBUG_CHECKS */
+
+      t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag,
+                               0, c, NULL);
+      /* Create dependencies */
+      /* t_xv unlocks the sorts */
+      if (c->hydro.super->hydro.sorts != NULL)
+        scheduler_addunlock(s, t_xv, c->hydro.super->hydro.sorts);
+    }
+    /* t_xv unlocks the grid construction tasks that receive particles from c */
+    for (l = c->grid.sync_out; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_xv, l->t);
+    }
+    /* Link to cell */
+    engine_addlink(e, &c->mpi.recv, t_xv);
+    added_t_xv = 1;
+  }
+
+  if (with_hydro) {
+
+    /* Is this cell linked to any hydro interactions, meaning that we have to
+     * receive the particle positions, gradients and primitives? */
+    if (c->hydro.flux != NULL || c->hydro.gradient != NULL ||
+        c->hydro.slope_estimate != NULL) {
+
+      /* Still need to create t_xv? */
+      if (t_xv == NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Make sure this cell has a valid tag. */
+        if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif /* SWIFT_DEBUG_CHECKS */
+
+        t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag,
+                                 0, c, NULL);
+        /* Create dependencies */
+        /* t_xv unlocks the sorts */
+        if (c->hydro.super->hydro.sorts != NULL)
+          scheduler_addunlock(s, t_xv, c->hydro.super->hydro.sorts);
+      }
+
+      /* NOTE (yuyttenh, 08/2023): The t_xv send/recv currently communicates the
+       * entire particle, which means that is not necessary to send the
+       * gradients seperately (they are not updated before the flux interaction,
+       * where they are used) */
+
+      /* Need to create t_rho? */
+      if (t_rho == NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Make sure this cell has a valid tag. */
+        if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif /* SWIFT_DEBUG_CHECKS */
+
+        t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
+                                  c->mpi.tag, 0, c, NULL);
+        /* Don't recv primitives until xv are received */
+        scheduler_addunlock(s, t_xv, t_rho);
+
+        if (with_limiter) {
+          t_limiter = scheduler_addtask(s, task_type_recv, task_subtype_limiter,
+                                        c->mpi.tag, 0, c, NULL);
+          t_unpack_limiter = scheduler_addtask(
+              s, task_type_unpack, task_subtype_limiter, 0, 0, c, NULL);
+
+          scheduler_addunlock(s, t_limiter, t_unpack_limiter);
+        }
+      }
+
+      /* Dependencies */
+      for (l = c->hydro.flux; l != NULL; l = l->next) {
+        /* Once the particles are received, do the pair flux interaction */
+        scheduler_addunlock(s, t_xv, l->t);
+        /* Don't receive updated primitives until after flux interaction*/
+        scheduler_addunlock(s, l->t, t_rho);
+        /* Don't receive updated t_end until after flux interaction */
+        scheduler_addunlock(s, l->t, tend);
+      }
+      for (l = c->hydro.gradient; l != NULL; l = l->next) {
+        /* The primitives unlock the gradient estimate */
+        scheduler_addunlock(s, t_rho, l->t);
+        /* The (pair) gradient unlocks the recv_tend*/
+        scheduler_addunlock(s, l->t, tend);
+      }
+      for (l = c->hydro.slope_estimate; l != NULL; l = l->next) {
+        /* The primitives unlock the slope_estimate */
+        scheduler_addunlock(s, t_rho, l->t);
+      }
+      for (l = c->hydro.slope_limiter; l != NULL; l = l->next) {
+        /* Unlock recv tend once the slope calculation is finished */
+        scheduler_addunlock(s, l->t, tend);
+      }
+      if (with_limiter) {
+        /* The recv_limiter unlocks the limiter pair tasks of the remote cell */
+        for (l = c->hydro.limiter; l != NULL; l = l->next) {
+          scheduler_addunlock(s, t_unpack_limiter, l->t);
+        }
+      }
+
+      /* Add the tasks to the cell */
+      if (!added_t_xv) engine_addlink(e, &c->mpi.recv, t_xv);
+      engine_addlink(e, &c->mpi.recv, t_rho);
+      if (with_limiter) {
+        engine_addlink(e, &c->mpi.recv, t_limiter);
+        engine_addlink(e, &c->mpi.unpack, t_unpack_limiter);
+      }
+    }
+
+    /* Are we at the construction level and is this cell linked to any
+     * incoming construction tasks, meaning that we have to receive faces? */
+    if (c->grid.construction_level == c && c->grid.sync_in != NULL) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure this cell has a valid tag. */
+      if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif /* SWIFT_DEBUG_CHECKS */
+
+      struct task *t_faces = scheduler_addtask(
+          s, task_type_recv, task_subtype_faces, c->mpi.tag, 0, c, NULL);
+
+      /* Dependencies */
+      /* The faces can only be received after positions.
+       * Note that we are certain that t_xv has been created at this point,
+       * since the flux pair interactions are on or above the construction
+       * level. */
+#ifdef SWIFT_DEBUG_CHECKS
+      if (t_xv == NULL) error("t_xv should exist at this point!");
+#endif
+      scheduler_addunlock(s, t_xv, t_faces);
+
+      /* The recv_faces unlocks the flux pair interactions, which are on
+       * or above the construction level of a cell.*/
+      for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+        /* Check if there are flux interactions linked to this cell */
+        for (l = finger->hydro.flux; l != NULL; l = l->next) {
+          if (l->t->type == task_type_pair)
+            scheduler_addunlock(s, t_faces, l->t);
+        }
+      }
+
+      /* Link to cell */
+      engine_addlink(e, &c->mpi.recv, t_faces);
+    }
+  }
+
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_recv_grid(e, c->progeny[k], t_xv, t_rho, t_limiter,
+                                  t_unpack_limiter, tend, with_hydro,
+                                  with_limiter);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
  * i.e. all the O(Npart) tasks -- timestep version
  *
@@ -1415,6 +1792,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
   const int stars_only_gravity =
       (e->policy & engine_policy_stars) && !(e->policy & engine_policy_hydro);
+  const int with_grid_hydro = (e->policy & engine_policy_grid_hydro);
 
   /* Are we in a super-cell ? */
   if (c->grav.super == c) {
@@ -1440,6 +1818,13 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                             task_subtype_none, 0, 0, c, NULL);
 
       scheduler_addunlock(s, c->grav.end_force, c->super->kick2);
+
+      /* When using moving mesh hydro, we update the gpart mass and position
+       * after the flux exchange. We don't want this to be overwritten by the
+       * drift */
+      if (with_grid_hydro && c->hydro.super != NULL) {
+        scheduler_addunlock(s, c->grav.drift, c->hydro.super->hydro.flux_ghost);
+      }
 
       if (is_self_gravity) {
 
@@ -1472,11 +1857,31 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         if (gravity_after_hydro_density && c->hydro.super == c) {
           scheduler_addunlock(s, c->hydro.ghost_out, c->grav.init_out);
         }
+        /* With moving mesh hydro, don't do gravity interactions until mass has
+         * been updated. Here we treat the case where c.hydro.super is on or
+         * above the c.grav.super level. */
+        if (with_grid_hydro && c->hydro.super != NULL) {
+          scheduler_addunlock(s, c->hydro.super->hydro.flux_ghost,
+                              c->grav.drift_out);
+          scheduler_addunlock(s, c->hydro.super->hydro.flux_ghost,
+                              c->grav.init_out);
+        }
 
         /* Link in the implicit tasks */
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+      } else {
+        /* No self-gravity, but external gravity */
+        if (with_grid_hydro) {
+          /* Add implicit task for moving mesh hydro dependencies */
+          c->grav.drift_out = scheduler_addtask(
+              s, task_type_drift_gpart_out, task_subtype_none, 0, 1, c, NULL);
+          if (c->hydro.super != NULL) {
+            scheduler_addunlock(s, c->hydro.super->hydro.flux_ghost,
+                                c->grav.drift_out);
+          }
+        }
       }
     }
   }
@@ -1502,6 +1907,21 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->parent->grav.init_out, c->grav.init_out);
         scheduler_addunlock(s, c->parent->grav.drift_out, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
+        /* With moving mesh hydro, don't do gravity interactions until mass has
+         * been updated. Here we treat only the case where c.hydro.super is
+         * below the c.grav.super level. */
+        if (with_grid_hydro && c->hydro.super == c) {
+          scheduler_addunlock(s, c->hydro.flux_ghost, c->grav.drift_out);
+          scheduler_addunlock(s, c->hydro.flux_ghost, c->grav.init_out);
+        }
+      } else if (with_grid_hydro) {
+        /* No self-gravity, but external gravity.
+         * Add implicit task for moving mesh hydro dependencies */
+        /* NOTE: we are below the gravity super level */
+        if (c->hydro.super != NULL) {
+          scheduler_addunlock(s, c->hydro.flux_ghost,
+                              c->grav.super->grav.drift_out);
+        }
       }
     }
   }
@@ -1564,6 +1984,139 @@ void engine_add_cooling(struct engine *e, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_add_cooling(e, c->progeny[k], cooling_in, cooling_out);
+  }
+}
+
+/**
+ * @brief Recursively add grid hierarchical grid construction tasks to a cell
+ * hierarchy.
+ */
+void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
+  struct scheduler *s = &e->sched;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+
+  /* Only do grid construction for local cells */
+  if (c->nodeID != e->nodeID) return;
+
+  /* Are we on the construction level? */
+  if (c->grid.construction_level == c) {
+
+    c->grid.construction = scheduler_addtask(s, task_type_grid_construction,
+                                             task_subtype_none, 0, 0, c, NULL);
+  }
+  /* Recurse until construction level is reached. */
+  else {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == e->nodeID) {
+      if (c->grid.construction_level != NULL)
+        error("Somehow ended up below grid super level!");
+      if (!c->split) {
+        error("Cell is above grid construction level, but is not split!");
+      }
+    }
+#endif
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_make_hierarchical_tasks_grid(e, c->progeny[k]);
+  }
+}
+
+void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
+                                               struct cell *c) {
+  struct scheduler *s = &e->sched;
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_cooling = (e->policy & engine_policy_cooling);
+  const int with_star_formation = (e->policy & engine_policy_star_formation);
+  const int with_star_formation_sink = (with_sinks && with_stars);
+  const int with_black_holes = (e->policy & engine_policy_black_holes);
+  const int with_rt = (e->policy & engine_policy_rt);
+
+  if (with_rt || with_stars || with_sinks || with_black_holes ||
+      with_feedback || with_star_formation || with_star_formation_sink)
+    error("Only cooling is supported with the moving mesh hydro scheme!");
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+
+  /* Are we in a super-cell ? */
+  if (c->hydro.super == c) {
+
+    /* Add the sort task. */
+    c->hydro.sorts =
+        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+
+      /* Add the drift task. */
+      c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
+                                         task_subtype_none, 0, 0, c, NULL);
+
+      /* Add unlock: drift --> sorts */
+      scheduler_addunlock(s, c->hydro.drift, c->hydro.sorts);
+
+      /* Add the grid-ghost task */
+      c->hydro.grid_ghost = scheduler_addtask(s, task_type_grid_ghost,
+                                              task_subtype_none, 0, 0, c, NULL);
+
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+      /* Add the task finishing the gradient calculation */
+      c->hydro.extra_ghost = scheduler_addtask(
+          s, task_type_extra_ghost, task_subtype_none, 0, 0, c, NULL);
+      scheduler_addunlock(s, c->hydro.extra_ghost, c->super->timestep);
+#else
+#ifdef EXTRA_HYDRO_LOOP
+      /* Add the task finishing the gradient calculation */
+      c->hydro.slope_estimate_ghost = scheduler_addtask(
+          s, task_type_slope_estimate_ghost, task_subtype_none, 0, 0, c, NULL);
+
+      /* Add the task finishing the gradient limiting procedure */
+      c->hydro.slope_limiter_ghost = scheduler_addtask(
+          s, task_type_slope_limiter_ghost, task_subtype_none, 0, 0, c, NULL);
+
+      /* The slope limiting happens before the timestep */
+      scheduler_addunlock(s, c->hydro.slope_limiter_ghost, c->super->timestep);
+#endif
+#endif
+
+      /* Add the task finishing the flux_exchange */
+      c->hydro.flux_ghost = scheduler_addtask(s, task_type_flux_ghost,
+                                              task_subtype_none, 0, 0, c, NULL);
+
+      /* Subgrid tasks: cooling */
+      if (with_cooling) {
+        c->hydro.cooling_in =
+            scheduler_addtask(s, task_type_cooling_in, task_subtype_none, 0,
+                              /*implicit=*/1, c, NULL);
+        c->hydro.cooling_out =
+            scheduler_addtask(s, task_type_cooling_out, task_subtype_none, 0,
+                              /*implicit=*/1, c, NULL);
+        engine_add_cooling(e, c, c->hydro.cooling_in, c->hydro.cooling_out);
+        /* Add unlock */
+        scheduler_addunlock(s, c->hydro.flux_ghost, c->hydro.cooling_in);
+        scheduler_addunlock(s, c->hydro.cooling_out, c->super->kick2);
+      } else {
+        scheduler_addunlock(s, c->hydro.flux_ghost, c->super->kick2);
+      }
+    }
+  }
+  /* Recurse until super level is reached. */
+  else {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == e->nodeID) {
+      if (c->hydro.super != NULL) error("Somehow ended up below super level!");
+      if (!c->split) {
+        error("Cell is above grid super level, but is not split!");
+      }
+    }
+#endif
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_make_hierarchical_tasks_grid_hydro(e, c->progeny[k]);
   }
 }
 
@@ -1927,8 +2480,10 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 
   struct engine *e = (struct engine *)extra_data;
   const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_grid_hydro = (e->policy & engine_policy_grid_hydro);
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
+  const int with_grid = (e->policy & engine_policy_grid);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -1937,6 +2492,12 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* Add the hydro stuff */
     if (with_hydro)
       engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL);
+    if (with_grid) {
+      engine_make_hierarchical_tasks_grid(e, c);
+    }
+    if (with_grid_hydro) {
+      engine_make_hierarchical_tasks_grid_hydro(e, c);
+    }
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);
@@ -2204,6 +2765,12 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav.grav, t);
+      } else if (t_subtype == task_subtype_grid_sync) {
+        engine_addlink(e, &ci->grid.sync_in, t);
+      } else if (t_subtype == task_subtype_flux) {
+        engine_addlink(e, &ci->hydro.flux, t);
+      } else if (t_subtype == task_subtype_gradient) {
+        engine_addlink(e, &ci->hydro.gradient, t);
       }
 
       /* Link pair tasks to cells. */
@@ -2219,6 +2786,15 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
+      } else if (t_subtype == task_subtype_grid_sync) {
+        engine_addlink(e, &ci->grid.sync_in, t);
+        engine_addlink(e, &cj->grid.sync_out, t);
+      } else if (t_subtype == task_subtype_flux) {
+        engine_addlink(e, &ci->hydro.flux, t);
+        engine_addlink(e, &cj->hydro.flux, t);
+      } else if (t_subtype == task_subtype_gradient) {
+        engine_addlink(e, &ci->hydro.gradient, t);
+        engine_addlink(e, &cj->hydro.gradient, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -3495,6 +4071,591 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
   }
 }
 
+void engine_make_grid_construction_tasks_mapper(void *map_data,
+                                                int num_elements,
+                                                void *extra_data) {
+
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+  const int periodic = e->s->periodic;
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+
+    /* Integer indices of the cell in the top-level grid */
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Skip cells without hydro particles */
+    if (ci->hydro.count == 0) continue;
+
+    /* If the cell is local build a self-interaction */
+    if (ci->nodeID == nodeID) {
+      scheduler_addtask(sched, task_type_self, task_subtype_grid_sync, 0, 1, ci,
+                        NULL);
+    }
+
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          struct cell *cj = &cells[cjd];
+
+          /* Is one of the cells local and does the neighbour have gas
+           * particles? Also, only treat pairs once. */
+          if ((cid >= cjd) || (cj->hydro.count == 0) ||
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
+
+          /* Construct a pair task for both directions, since the construction
+           * tasks are asymmetric.
+           * MPI: we construct a pair interaction for both directions, even
+           * though we will only construct the voronoi grid of the local cell
+           * locally. The other pair interaction is very useful for
+           * bookkeeping purposes. */
+          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+          scheduler_addtask(sched, task_type_pair, task_subtype_grid_sync, sid,
+                            1, ci, cj);
+          scheduler_addtask(sched, task_type_pair, task_subtype_grid_sync, sid,
+                            1, cj, ci);
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+          /* Let's cross-check that we had a proxy for that cell */
+          if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[cj->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == cj) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cjd);
+          } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[ci->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == ci) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cid);
+          }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @brief Constructs the top-level tasks for the first hydro loop over
+ * neighbours, for grid-based hydro schemes.
+ *
+ * If meshless gradients are used, we also construct the initial neighbour loops
+ * which do not use the mesh explicitly.
+ *
+ * @param map_data Offset of first two indices disguised as a pointer.
+ * @param num_elements Number of cells to traverse.
+ * @param extra_data The #engine.
+ */
+void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
+                                             void *extra_data) {
+
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+  const int periodic = e->s->periodic;
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+
+    /* Integer indices of the cell in the top-level grid */
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Skip cells without hydro particles */
+    if (ci->hydro.count == 0) continue;
+
+    /* If the cell is local build a self-interaction */
+    if (ci->nodeID == nodeID) {
+      scheduler_addtask(sched, task_type_self, task_subtype_flux, 0, 0, ci,
+                        NULL);
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+      scheduler_addtask(sched, task_type_self, task_subtype_gradient, 0, 0, ci,
+                        NULL);
+#endif
+    }
+
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          struct cell *cj = &cells[cjd];
+
+          /* Is one of the cells local and does the neighbour have gas
+           * particles? Also, only treat pairs once. */
+          if ((cid >= cjd) || (cj->hydro.count == 0) ||
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
+
+          /* Construct a pair task for both directions, since the construction
+           * tasks are asymmetric.
+           * MPI: we construct a pair interaction for both directions, even
+           * though we will only construct the voronoi grid of the local cell
+           * locally. The other pair interaction is very useful for
+           * bookkeeping purposes. */
+          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+          scheduler_addtask(sched, task_type_pair, task_subtype_flux, sid, 0,
+                            ci, cj);
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+          scheduler_addtask(sched, task_type_pair, task_subtype_gradient, sid,
+                            0, ci, cj);
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+          /* Let's cross-check that we had a proxy for that cell */
+          if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[cj->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == cj) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cjd);
+          } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[ci->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == ci) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cid);
+          }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
+        }
+      }
+    }
+  }
+}
+
+#ifdef EXTRA_HYDRO_LOOP
+/**
+ * @brief Construct the right dependencies for the hydro loops of the moving
+ * mesh scheme.
+ *
+ * construction ghost -> slope_estimate -> slope_limiter -> flux
+ *
+ * @param sched
+ * @param c
+ * @param t_slope_estimate
+ * @param t_slope_limiter
+ * @param t_flux
+ * */
+void engine_make_grid_hydroloop_dependencies(struct scheduler *sched,
+                                             struct cell *c,
+                                             struct task *t_slope_estimate,
+                                             struct task *t_slope_limiter,
+                                             struct task *t_flux) {
+  scheduler_addunlock(sched, c->hydro.super->hydro.grid_ghost, t_flux);
+  scheduler_addunlock(sched, t_flux, c->hydro.super->hydro.flux_ghost);
+  scheduler_addunlock(sched, t_slope_estimate,
+                      c->hydro.super->hydro.slope_estimate_ghost);
+  scheduler_addunlock(sched, c->hydro.super->hydro.slope_estimate_ghost,
+                      t_slope_limiter);
+  scheduler_addunlock(sched, t_slope_limiter,
+                      c->hydro.super->hydro.slope_limiter_ghost);
+}
+#else
+void engine_make_grid_hydroloop_dependencies(struct scheduler *sched,
+                                             struct cell *c,
+                                             struct task *t_flux) {
+  scheduler_addunlock(sched, c->hydro.super->hydro.grid_ghost, t_flux);
+  scheduler_addunlock(sched, t_flux, c->hydro.super->hydro.flux_ghost);
+}
+#endif
+
+/**
+ * @brief Duplicates the first hydro-loops to construct other needed neighbour
+ * loops all the hydro loop and adds the right dependencies
+ *
+ * This is done by looping over all the previously constructed tasks
+ * and adding another task involving the same cells but this time
+ * corresponding to the hydro loops over neighbours.
+ * With all the relevant tasks for a given cell available, we also construct
+ * all the dependencies for that cell.
+ */
+void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
+                                                   int num_elements,
+                                                   void *extra_data) {
+  struct engine *e = (struct engine *)extra_data;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int with_timestep_limiter =
+      (e->policy & engine_policy_timestep_limiter);
+#ifndef SHADOWSWIFT_MESHLESS_GRADIENTS
+#ifdef EXTRA_HYDRO_LOOP
+  struct task *t_slope_estimate = NULL;
+  struct task *t_slope_limiter = NULL;
+#endif
+#endif
+  struct task *t_limiter = NULL;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &((struct task *)map_data)[ind];
+
+    /* Escape early */
+    if (t->type == task_type_none) continue;
+    /* TODO: add other checks for star/sinks/... */
+
+    const enum task_types t_type = t->type;
+    const enum task_subtypes t_subtype = t->subtype;
+    const long long flags = t->flags;
+    struct cell *const ci = t->ci;
+    struct cell *const cj = t->cj;
+    const int ci_local = ci->nodeID == nodeID;
+    const int cj_local = cj == NULL ? 0 : cj->nodeID == nodeID;
+
+    /* Grid construction? */
+    if (t_type == task_type_grid_construction) {
+      if (ci_local) {
+        /* Now that we are sure that the hydro.grid_ghost is added, we can
+         * add a dependency here. */
+        scheduler_addunlock(sched, t, ci->hydro.super->hydro.grid_ghost);
+        /* Also unlock the outgoing pair sync tasks for higher level
+         * construction tasks */
+        for (struct cell *finger = ci->parent;
+             finger != NULL && finger->grid.super != NULL;
+             finger = finger->parent)
+          for (struct link *l = finger->grid.sync_out; l != NULL; l = l->next)
+            scheduler_addunlock(sched, t, l->t);
+      }
+    }
+
+    /* Grid sync interaction? */
+    else if (t_subtype == task_subtype_grid_sync) {
+
+      /* Set unlocks for construction sync tasks.
+       * Note that the grid construction will only be run for local ci. */
+      if (!ci_local) continue;
+
+      /* Grid construction sync depends on the drift */
+      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that incoming sync tasks are on the construction level */
+      if (ci->grid.construction_level != ci)
+        error(
+            "Incoming construction sync task, but not on construction level!");
+      /* Check that we have a construction task */
+      if (ci->grid.construction == NULL)
+        error("No construction task for cell on construction level!");
+#endif
+      /* Make construction task depend on incoming sync tasks */
+      scheduler_addunlock(sched, t, ci->grid.construction);
+
+      /* Add additional dependencies for pair tasks */
+      if (t_type == task_type_pair) {
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+        if (cj->hydro.super != ci->hydro.super) {
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
+          if (cj_local) {
+            /* t also depends on the drift of cj (if cj is local) */
+            scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
+          }
+        }
+      }
+    } /* Grid sync interaction? */
+
+    /* Flux interaction: neighbour loop that uses the grid */
+    else if (t_subtype == task_subtype_flux) {
+      /* Construct other neighbour loops that explicitly depend on the grid */
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+      /* No extra neighbour loop that explicitly use the grid */
+      /* Just add dependencies */
+      if (t_type == task_type_self) {
+        if (!ci_local) continue;
+        scheduler_addunlock(sched, ci->hydro.super->hydro.grid_ghost, t);
+        scheduler_addunlock(sched, t, ci->hydro.super->hydro.flux_ghost);
+      } else if (t_type == task_type_pair) {
+        if (ci_local) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.grid_ghost, t);
+          scheduler_addunlock(sched, t, ci->hydro.super->hydro.flux_ghost);
+        }
+        if (cj_local && cj->hydro.super != ci->hydro.super) {
+          scheduler_addunlock(sched, cj->hydro.super->hydro.grid_ghost, t);
+          scheduler_addunlock(sched, t, cj->hydro.super->hydro.flux_ghost);
+        }
+      }
+#ifdef SWIFT_DEBUG_CHECKS
+      else
+        error("Invalid task type for t->subtype == task_subtype_flux!");
+#endif
+#else
+#ifdef EXTRA_HYDRO_LOOP
+      t_slope_estimate = scheduler_addtask(
+          sched, t_type, task_subtype_slope_estimate, flags, 0, ci, cj);
+      t_slope_limiter = scheduler_addtask(
+          sched, t_type, task_subtype_slope_limiter, flags, 0, ci, cj);
+      engine_addlink(e, &ci->hydro.slope_estimate, t_slope_estimate);
+      engine_addlink(e, &ci->hydro.slope_limiter, t_slope_limiter);
+#endif
+
+      if (with_timestep_limiter) {
+        t_limiter = scheduler_addtask(sched, t_type, task_subtype_limiter,
+                                      flags, 0, ci, cj);
+        engine_addlink(e, &ci->hydro.limiter, t_limiter);
+      }
+      /* Add links and dependencies */
+      if (t_type == task_type_self || t_type == task_type_sub_self) {
+#ifdef EXTRA_HYDRO_LOOP
+        engine_make_grid_hydroloop_dependencies(sched, ci, t_slope_estimate,
+                                                t_slope_limiter, t);
+        scheduler_addunlock(sched, ci->super->kick2, t_slope_estimate);
+#else
+        engine_make_grid_hydroloop_dependencies(sched, ci, t);
+#endif
+
+        if (with_timestep_limiter) {
+          scheduler_addunlock(sched, ci->super->timestep, t_limiter);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+          scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+          scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+        }
+      } else if (t_type == task_type_pair || t_type == task_type_sub_pair) {
+        /* Links */
+#ifdef EXTRA_HYDRO_LOOP
+        engine_addlink(e, &cj->hydro.slope_estimate, t_slope_estimate);
+        engine_addlink(e, &cj->hydro.slope_limiter, t_slope_limiter);
+#endif
+
+        if (with_timestep_limiter) {
+          engine_addlink(e, &ci->hydro.limiter, t_limiter);
+          engine_addlink(e, &cj->hydro.limiter, t_limiter);
+        }
+
+        /* Unlocks */
+        if (ci_local) {
+#ifdef EXTRA_HYDRO_LOOP
+          engine_make_grid_hydroloop_dependencies(sched, ci, t_slope_estimate,
+                                                  t_slope_limiter, t);
+          scheduler_addunlock(sched, ci->super->kick2, t_slope_estimate);
+#else
+          engine_make_grid_hydroloop_dependencies(sched, ci, t);
+#endif
+
+          /* Limiter unlocks */
+          if (with_timestep_limiter) {
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+            scheduler_addunlock(sched, ci->super->timestep, t_limiter);
+            scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+            scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+          }
+        }
+        if (cj_local && cj->super != ci->super) {
+#ifdef EXTRA_HYDRO_LOOP
+          scheduler_addunlock(sched, cj->super->kick2, t_slope_estimate);
+#endif
+
+          if (with_timestep_limiter) {
+            scheduler_addunlock(sched, cj->super->timestep, t_limiter);
+            scheduler_addunlock(sched, t_limiter, cj->super->kick1);
+            scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
+          }
+        }
+        if (cj_local && cj->hydro.super != ci->hydro.super) {
+#ifdef EXTRA_HYDRO_LOOP
+          engine_make_grid_hydroloop_dependencies(sched, cj, t_slope_estimate,
+                                                  t_slope_limiter, t);
+#else
+          engine_make_grid_hydroloop_dependencies(sched, cj, t);
+#endif
+
+          if (with_timestep_limiter) {
+            scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t_limiter);
+          }
+        }
+      }
+#endif
+    }
+
+    /* Gradient interaction: neighbour loop that does not use the grid */
+    else if (t_subtype == task_subtype_gradient) {
+      /* Construct other neighbour loops that do NOT depend on the grid.
+       * TODO: Add other kinds of neighbour loops */
+      if (with_timestep_limiter)
+        t_limiter = scheduler_addtask(sched, t_type, task_subtype_limiter,
+                                      flags, 0, ci, cj);
+
+      /* Add links and dependencies */
+      if (t_type == task_type_self) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!ci_local)
+          error("Encountered self-type gradient task for non-local cell!");
+#endif
+        /* Kick2 -> gradient */
+        scheduler_addunlock(sched, ci->super->kick2, t);
+        /* gradient -> extra ghost */
+        scheduler_addunlock(sched, t, ci->hydro.super->hydro.extra_ghost);
+        /* Extra dependencies in case we are recursing this self task: */
+        /* Drift -> gradient */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+        /* sorts -> gradient */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+        if (with_timestep_limiter) {
+          engine_addlink(e, &ci->hydro.limiter, t_limiter);
+          scheduler_addunlock(sched, ci->super->timestep, t_limiter);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+          scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+          scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+        }
+      } else if (t_type == task_type_pair) {
+        /* Links */
+        if (with_timestep_limiter) {
+          engine_addlink(e, &ci->hydro.limiter, t_limiter);
+          engine_addlink(e, &cj->hydro.limiter, t_limiter);
+        }
+
+        /* Unlocks */
+        /* Sort -> pair/gradient */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+        if (ci->hydro.super != cj->hydro.super)
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
+        /* For local cells only */
+        if (ci_local) {
+          /* Drift -> gradient */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+          /* Kick2 -> gradient */
+          scheduler_addunlock(sched, ci->super->kick2, t);
+          /* Gradient -> extra_ghost */
+          scheduler_addunlock(sched, t, ci->hydro.super->hydro.extra_ghost);
+          /* Limiter unlocks */
+          if (with_timestep_limiter) {
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+            scheduler_addunlock(sched, ci->super->timestep, t_limiter);
+            scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+            scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+          }
+        }
+        if (cj_local && cj->super != ci->super) {
+          /* Kick2 -> gradient */
+          scheduler_addunlock(sched, cj->super->kick2, t);
+          if (with_timestep_limiter) {
+            scheduler_addunlock(sched, cj->super->timestep, t_limiter);
+            scheduler_addunlock(sched, t_limiter, cj->super->kick1);
+            scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
+          }
+        }
+        if (cj_local && cj->hydro.super != ci->hydro.super) {
+          /* Drift -> gradient */
+          scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
+          /* Gradient -> extra_ghost */
+          scheduler_addunlock(sched, t, cj->hydro.super->hydro.extra_ghost);
+          if (with_timestep_limiter) {
+            scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t_limiter);
+          }
+        }
+      }
+#ifdef SWIFT_DEBUG_CHECKS
+      else
+        error("Invalid task type for subtype `task_subtype_gradient`!");
+#endif
+    }
+  } /* Loop over tasks */
+}
+
 struct cell_type_pair {
   struct cell *ci, *cj;
   int type;
@@ -3623,6 +4784,13 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                    /*t_grav=*/NULL, /*t_pack_grav=*/NULL,
                                    /*t_fof=*/NULL, /*t_pack_fof=*/NULL,
                                    with_fof, with_star_formation);
+
+    /* Add the send tasks for the cells in the proxy that have a grid
+     * connection */
+    if ((e->policy & engine_policy_grid) && (type & proxy_cell_type_hydro))
+      engine_addtasks_send_grid(e, ci, cj, NULL, NULL, NULL, NULL,
+                                e->policy & engine_policy_grid_hydro,
+                                with_limiter);
   }
 }
 
@@ -3722,6 +4890,13 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
       engine_addtasks_recv_gravity(e, ci, /*t_grav_count=*/NULL,
                                    /*t_grav=*/NULL, /*t_fof=*/NULL, tend,
                                    with_fof, with_star_formation);
+
+    /* Add the send tasks for the cells in the proxy that have a grid
+     * connection */
+    if ((e->policy & engine_policy_grid) && (type & proxy_cell_type_hydro))
+      engine_addtasks_recv_grid(
+          e, ci, /*t_xv*/ NULL, /*t_rho*/ NULL, NULL, NULL, tend,
+          e->policy & engine_policy_grid_hydro, with_limiter);
   }
 }
 
@@ -3894,6 +5069,22 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
+  /* Construct the grid construction tasks */
+  if (e->policy & engine_policy_grid)
+    threadpool_map(&e->threadpool, engine_make_grid_construction_tasks_mapper,
+                   NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+
+  /* Construct the first hydro loop(s) over the neighbours (grid version) */
+  if (e->policy & engine_policy_grid_hydro)
+    threadpool_map(&e->threadpool, engine_make_grid_hydroloop_tasks_mapper,
+                   NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+
+  if (e->verbose)
+    message("Making grid tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity) {
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
@@ -3991,6 +5182,13 @@ void engine_maketasks(struct engine *e) {
     /* threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
      *                sched->tasks, sched->nr_tasks, sizeof(struct task),
      *                threadpool_auto_chunk_size, e); */
+  }
+
+  if (e->policy & engine_policy_grid_hydro) {
+    /* Run through the tasks and construct extra neighbour loops, based on the
+     * existing structure. Also add the right dependencies. */
+    engine_make_extra_grid_hydroloop_tasks_mapper(sched->tasks, sched->nr_tasks,
+                                                  e);
   }
 
   if (e->verbose)

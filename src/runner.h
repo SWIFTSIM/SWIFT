@@ -48,6 +48,9 @@ struct task;
 #define TASK_LOOP_STARS_PREP2 10
 #define TASK_LOOP_RT_GRADIENT 11
 #define TASK_LOOP_RT_TRANSPORT 12
+#define TASK_LOOP_SLOPE_ESTIMATE 13
+#define TASK_LOOP_SLOPE_LIMITER 14
+#define TASK_LOOP_FLUX_EXCHANGE 15
 
 /**
  * @brief A struct representing a runner's thread and its data.
@@ -134,6 +137,11 @@ void runner_do_fof_attach_pair(struct runner *r, struct cell *ci,
                                struct cell *cj, int timer);
 void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer);
 void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer);
+void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer);
+void runner_do_slope_estimate_ghost(struct runner *r, struct cell *c,
+                                    int timer);
+void runner_do_slope_limiter_ghost(struct runner *r, struct cell *c, int timer);
+void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer);
 void runner_do_gas_swallow_self(struct runner *r, struct cell *c, int timer);
 void runner_do_bh_swallow_self(struct runner *r, struct cell *c, int timer);

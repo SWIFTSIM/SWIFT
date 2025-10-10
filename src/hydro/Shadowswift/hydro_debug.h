@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Matthieu Schaller (schaller@strw.leideuniv.nl)
+ * Copyright (c) 2020 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,17 +16,52 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_HYDRO_DEBUG_H
-#define SWIFT_NONE_HYDRO_DEBUG_H
 
-/**
- * @file Shadowswift/hydro_debug.h
- * @brief Empty implementation.
- */
+#ifndef SWIFT_SHADOWSWIFT_HYDRO_DEBUG_H
+#define SWIFT_SHADOWSWIFT_HYDRO_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
     const struct part* p, const struct xpart* xp) {
-  error("Empty implementation");
+  warning(
+      "[PID%lld] x=[%.16e,%.16e,%.16e], "
+      "v=[%.3e,%.3e,%.3e], "
+      "a=[%.3e,%.3e,%.3e], "
+      "h=%.3e, "
+      "time_bin=%d, "
+      "wakeup=%d, "
+      "primitives={"
+      "v=[%.3e,%.3e,%.3e], "
+      "rho=%.3e, "
+      "P=%.3e, "
+      "gradients={"
+      "rho=[%.3e,%.3e,%.3e], "
+      "v=[[%.3e,%.3e,%.3e],[%.3e,%.3e,%.3e],[%.3e,%.3e,%.3e]], "
+      "P=[%.3e,%.3e,%.3e]}, "
+      "limiter={"
+      "rho=[%.3e,%.3e], "
+      "v=[[%.3e,%.3e],[%.3e,%.3e],[%.3e,%.3e]], "
+      "P=[%.3e,%.3e]}}, "
+      "conserved={"
+      "momentum=[%.3e,%.3e,%.3e], "
+      "mass=%.3e, "
+      "energy=%.3e}, "
+      "volume=%.3e, "
+      "timestepvars={"
+      "vmax=%.3e}\n",
+      p->id, p->x[0], p->x[1], p->x[2], xp->v_full[0], xp->v_full[1],
+      xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->h,
+      p->time_bin, p->limiter_data.wakeup, p->v[0], p->v[1], p->v[2], p->rho,
+      p->P, p->gradients.rho[0], p->gradients.rho[1], p->gradients.rho[2],
+      p->gradients.v[0][0], p->gradients.v[0][1], p->gradients.v[0][2],
+      p->gradients.v[1][0], p->gradients.v[1][1], p->gradients.v[1][2],
+      p->gradients.v[2][0], p->gradients.v[2][1], p->gradients.v[2][2],
+      p->gradients.P[0], p->gradients.P[1], p->gradients.P[2],
+      p->limiter.rho[0], p->limiter.rho[1], p->limiter.v[0][0],
+      p->limiter.v[0][1], p->limiter.v[1][0], p->limiter.v[1][1],
+      p->limiter.v[2][0], p->limiter.v[2][1], p->limiter.P[0], p->limiter.P[1],
+      p->conserved.momentum[0], p->conserved.momentum[1],
+      p->conserved.momentum[2], p->conserved.mass, p->conserved.energy,
+      p->geometry.volume, p->timestepvars.vmax);
 }
 
-#endif /* SWIFT_NONE_HYDRO_DEBUG_H */
+#endif /* SWIFT_SHADOWSWIFT_HYDRO_DEBUG_H */

@@ -46,6 +46,8 @@
 #define hydro_props_default_init_temp 0.f
 #define hydro_props_default_min_temp 0.f
 #define hydro_props_default_H_ionization_temperature 1e4
+#define hydro_props_default_epsilon_rho 1e-13f
+#define hydro_props_default_epsilon_P 1e-13f
 
 /**
  * @brief Initialize the global properties of the hydro scheme.
@@ -76,13 +78,6 @@ void hydro_props_init(struct hydro_props *p,
       (pow_dimension(delta_eta) - pow_dimension(p->eta_neighbours)) *
       kernel_norm;
 
-#ifdef SHADOWFAX_SPH
-  /* change the meaning of target_neighbours and delta_neighbours */
-  p->target_neighbours = 1.0f;
-  p->delta_neighbours = 0.0f;
-  p->eta_neighbours = 1.0f;
-#endif
-
   /* Maximal smoothing length */
   p->h_max = parser_get_opt_param_float(params, "SPH:h_max",
                                         hydro_props_default_h_max);
@@ -108,7 +103,7 @@ void hydro_props_init(struct hydro_props *p,
       parser_get_opt_param_int(params, "SPH:use_mass_weighted_num_ngb", 0);
 
   if (p->use_mass_weighted_num_ngb) {
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
     error("Can't use alternative neighbour definition with this scheme!");
 #endif
   }
@@ -195,6 +190,14 @@ void hydro_props_init(struct hydro_props *p,
 
   p->minimal_internal_energy = u_min / mean_molecular_weight;
 
+  /* ------ Parameters that define near-vacuum ----- */
+  p->epsilon_rho = parser_get_opt_param_float(params, "SPH:epsilon_rho",
+                                              hydro_props_default_epsilon_rho);
+  p->epsilon_rho_inv = 1.f / p->epsilon_rho;
+  p->epsilon_P = parser_get_opt_param_float(params, "SPH:epsilon_P",
+                                            hydro_props_default_epsilon_P);
+  p->epsilon_P_inv = 1.f / p->epsilon_P;
+
   /* ------ Particle splitting parameters ---------- */
 
   /* Are we doing particle splitting? */
@@ -211,6 +214,26 @@ void hydro_props_init(struct hydro_props *p,
     p->log_extra_splits_in_file = parser_get_opt_param_int(
         params, "SPH:particle_splitting_log_extra_splits", 0);
   }
+
+  /* ------ Particle de-refinement parameters ------ */
+#if defined(MOVING_MESH)
+  p->particle_derefinement =
+      parser_get_opt_param_int(params, "SPH:particle_derefinement", 0);
+
+  if (p->particle_derefinement) {
+    /* Check that we are compiled with the necessary info in the voronoi
+     * struct, so we can actually derefine particles */
+#if defined(HYDRO_DIMENSION_3D) && !MOVING_MESH_STORE_CELL_FACE_CONNECTIONS
+    error(
+        "De-refine of particles is enabled, but swift was not compiled with "
+        "--enable-moving-mesh-cell-face-connections!");
+#endif
+    p->particle_derefinement_volume_threshold = parser_get_param_float(
+        params, "SPH:particle_derefinement_volume_threshold");
+  }
+#else
+  p->particle_derefinement = 0;
+#endif
 }
 
 /**

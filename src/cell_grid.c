@@ -34,7 +34,7 @@
  *
  * @param c The #cell.
  */
-void cell_free_grid_rec(struct cell *c) {
+void cell_grid_free_rec(struct cell *c) {
 
 #ifndef MOVING_MESH
   /* Nothing to do as we have no tessellations */
@@ -45,7 +45,7 @@ void cell_free_grid_rec(struct cell *c) {
 #endif
   if (c->grid.construction_level == NULL) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_free_grid_rec(c->progeny[k]);
+      if (c->progeny[k] != NULL) cell_grid_free_rec(c->progeny[k]);
 
   } else if (c->grid.construction_level == c) {
     cell_free_grid(c);
@@ -83,13 +83,13 @@ void cell_grid_update_self_completeness(struct cell *c, int force) {
     int all_complete = 1;
 
     /* recurse */
-    for (int i = 0; all_complete && i < 8; i++) {
-      if (c->progeny[i] != NULL) {
-        cell_grid_update_self_completeness(c->progeny[i], force);
+    for (int i = 0; i < 8; i++) {
+      struct cell *cp = c->progeny[i];
+      if (cp != NULL) {
+        cell_grid_update_self_completeness(cp, force);
         /* As long as all progeny is complete, this cell can safely be split for
          * the grid construction (when not considering neighbouring cells) */
-        all_complete &=
-            (c->progeny[i]->grid.self_completeness == grid_complete);
+        all_complete &= cp->grid.self_completeness == grid_complete;
       }
     }
 
@@ -101,6 +101,14 @@ void cell_grid_update_self_completeness(struct cell *c, int force) {
       /* We are done here */
       return;
     }
+  }
+
+  /* Cells containing no hydro particles are incomplete */
+  if (c->hydro.count == 0) {
+    c->grid.self_completeness = grid_incomplete;
+    c->grid.complete = 0;
+    /* Nothing left to do. */
+    return;
   }
 
   /* If this cell is not split, or not all subcells are complete, we need to
@@ -133,6 +141,14 @@ void cell_grid_update_self_completeness(struct cell *c, int force) {
     c->grid.self_completeness = grid_complete;
     c->grid.complete = 1;
   } else {
+//#ifdef SHADOWSWIFT_RELAXED_COMPLETENESS
+//    if (kernel_gamma * c->hydro.h_max < 0.5 * c->dmin &&
+//        c->hydro.dx_max_part < 0.333 * c->dmin) {
+//      c->grid.self_completeness = grid_complete;
+//      c->grid.complete = 1;
+//      return;
+//    }
+//#endif
     c->grid.self_completeness = grid_incomplete;
     c->grid.complete = 0;
   }

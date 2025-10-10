@@ -199,6 +199,7 @@ __attribute__((always_inline, const)) INLINE static float pow_gamma_minus_one(
 __attribute__((always_inline, const)) INLINE static float
 pow_minus_gamma_minus_one(float x) {
 
+  if (x == 0.f) return 0.f;
 #if defined(HYDRO_GAMMA_5_3)
 
 #ifdef WITH_ICBRTF

@@ -1457,8 +1457,8 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 #ifdef SWIFT_DEBUG_CHECKS
   part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
                     e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
-                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts,
-                    e->verbose);
+                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts, e->s->dim,
+                    e->s->periodic, e->verbose);
 #endif
 
   /* Initial cleaning up session ? */
@@ -1466,8 +1466,8 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
   /* Set the initial completeness flag for the moving mesh (before exchange) */
   if (e->policy & engine_policy_grid) {
-    cell_grid_set_self_completeness_mapper(e->s->cells_top, e->s->nr_cells,
-                                           NULL);
+    threadpool_map(&e->threadpool, cell_grid_set_self_completeness_mapper, NULL,
+                   e->s->nr_cells, 1, threadpool_auto_chunk_size, e);
   }
 
 /* If in parallel, exchange the cell structure, top-level and neighbouring
@@ -1803,7 +1803,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
         t->type == task_type_rt_advance_cell_time ||
         t->type == task_type_neutrino_weight || t->type == task_type_csds ||
-        t->subtype == task_subtype_force ||
+        t->type == task_type_slope_estimate_ghost ||
+        t->type == task_type_slope_limiter_ghost ||
+        t->type == task_type_flux_ghost || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_prep1 ||
@@ -1827,7 +1829,10 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_grav_counts ||
         t->subtype == task_subtype_rt_gradient ||
-        t->subtype == task_subtype_rt_transport)
+        t->subtype == task_subtype_rt_transport ||
+        t->subtype == task_subtype_flux ||
+        t->subtype == task_subtype_slope_estimate ||
+        t->subtype == task_subtype_slope_limiter)
       t->skip = 1;
   }
 
@@ -2550,8 +2555,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_check_timesteps(e->s);
   part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
                     e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
-                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts,
-                    e->verbose);
+                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts, e->s->dim,
+                    e->s->periodic, e->verbose);
 #endif
 
   /* Gather the max IDs at this stage */
@@ -2719,7 +2724,7 @@ int engine_step(struct engine *e) {
     gravity_props_update(e->gravity_properties, e->cosmology);
 
   /* Udpate the hydro properties */
-  if (e->policy & engine_policy_hydro)
+  if (e->policy & engine_policy_hydro || e->policy & engine_policy_grid_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 

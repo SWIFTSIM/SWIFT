@@ -19,6 +19,9 @@
 #ifndef SWIFT_HYDRO_SPACE_H
 #define SWIFT_HYDRO_SPACE_H
 
+#include "const.h"
+#include "parser.h"
+
 #include <config.h>
 
 struct space;
@@ -26,18 +29,25 @@ struct space;
 /**
  * @brief Extra space information that is needed for some hydro schemes.
  */
-#ifdef SHADOWFAX_SPH
+#ifdef SHADOWSWIFT
 struct hydro_space {
-  /*! Anchor of the simulation space. */
-  double anchor[3];
+  /* Inflow density */
+  float density;
 
-  /*! Side lengths of the simulation space. */
-  double side[3];
+  /* Inflow velocity */
+  float velocity;
+
+  /* Inflow pressure */
+  float pressure;
+
+  /* Center of the simulation volume */
+  double center[3];
 };
 #else
 struct hydro_space {};
 #endif
 
-void hydro_space_init(struct hydro_space *hs, const struct space *s);
+void hydro_space_init(struct hydro_space* hs, const struct space* s,
+                      struct swift_params* params);
 
 #endif /* SWIFT_HYDRO_SPACE_H */
