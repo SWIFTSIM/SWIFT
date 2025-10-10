@@ -189,7 +189,6 @@ void feedback_init_spart(struct spart* sp) {
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 }
 
-
 /**
  * @brief Prepares a star's feedback field before computing what
  * needs to be distributed.

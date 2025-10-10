@@ -359,8 +359,8 @@ runner_iact_nonsym_feedback_apply(
   double w_j_bar[3];
   feedback_compute_vector_weight_normalized(r2, dx, hi, hj, si, pj, w_j_bar);
   const double w_j_bar_norm_2 = w_j_bar[0] * w_j_bar[0] +
-    w_j_bar[1] * w_j_bar[1] +
-    w_j_bar[2] * w_j_bar[2];
+                                w_j_bar[1] * w_j_bar[1] +
+                                w_j_bar[2] * w_j_bar[2];
   const double w_j_bar_norm = sqrt(w_j_bar_norm_2);
 
   /* If the particle does not contribute, skip the computations. This
@@ -389,7 +389,7 @@ runner_iact_nonsym_feedback_apply(
     /* ... metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
       pj->chemistry_data.metal_mass[i] +=
-        w_j_bar_norm * si->feedback_data.metal_mass_ejected[i];
+          w_j_bar_norm * si->feedback_data.metal_mass_ejected[i];
     }
 
     /* Calculate the velocity with the Hubble flow */
@@ -397,20 +397,20 @@ runner_iact_nonsym_feedback_apply(
     const float H = cosmo->H;
     const float a2H = a * a * H;
     const float vi_plus_H_flow[3] = {a2H * si->x[0] + si->v[0],
-				     a2H * si->x[1] + si->v[1],
-				     a2H * si->x[2] + si->v[2]};
+                                     a2H * si->x[1] + si->v[1],
+                                     a2H * si->x[2] + si->v[2]};
     const float vj_plus_H_flow[3] = {a2H * pj->x[0] + xpj->v_full[0],
-				     a2H * pj->x[1] + xpj->v_full[1],
-				     a2H * pj->x[2] + xpj->v_full[2]};
+                                     a2H * pj->x[1] + xpj->v_full[1],
+                                     a2H * pj->x[2] + xpj->v_full[2]};
 
     /* Compute the _physical_ relative velocity between the particles */
     const float v_i_p[3] = {vi_plus_H_flow[0] * cosmo->a_inv,
-			    vi_plus_H_flow[1] * cosmo->a_inv,
-			    vi_plus_H_flow[2] * cosmo->a_inv};
+                            vi_plus_H_flow[1] * cosmo->a_inv,
+                            vi_plus_H_flow[2] * cosmo->a_inv};
 
     const float v_j_p[3] = {vj_plus_H_flow[0] * cosmo->a_inv,
-			    vj_plus_H_flow[1] * cosmo->a_inv,
-			    vj_plus_H_flow[2] * cosmo->a_inv};
+                            vj_plus_H_flow[1] * cosmo->a_inv,
+                            vj_plus_H_flow[2] * cosmo->a_inv};
 
     /****************************************************************************
      * Now we treat the fluxes distribution differently for each mode
@@ -420,8 +420,8 @@ runner_iact_nonsym_feedback_apply(
     double dp_prime[3] = {0.0, 0.0, 0.0};
 
     runner_iact_nonsym_mechanical_feedback_apply(
-						 r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
-						 new_mass, cosmo, fb_props, phys_const, us, &dU, &dKE, dp_prime);
+        r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj,
+        dm, new_mass, cosmo, fb_props, phys_const, us, &dU, &dKE, dp_prime);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
        Note: Do not give momentum for the isotropy check test. Momentum pushes
@@ -440,7 +440,8 @@ runner_iact_nonsym_feedback_apply(
     xpj->feedback_data.number_SN += 1;
 
     /* Only use this for non-cosmological simulations. In cosmological
-       simulations, this suppresses the momentum effects (to be investigated why). */
+       simulations, this suppresses the momentum effects (to be investigated
+       why). */
     /* Update the signal velocity of gas particles that receive a kick. From
        Chaikin et al. (2023) (also implemented in EAGLE_kinetic) */
     /* const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] + */

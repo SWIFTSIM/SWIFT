@@ -22,9 +22,9 @@
 /* We need to explicitely point to the src/ file to ensure the correct file is
    included for each feedback */
 #include "../../feedback_properties.h"
+#include "hydro_properties.h"
 #include "part.h"
 #include "units.h"
-#include "hydro_properties.h"
 
 /**
  * @file src/feebback/GEAR/feedback_common.h
@@ -62,7 +62,6 @@ void feedback_init_after_star_formation(
 
 void feedback_first_init_spart(struct spart* sp,
                                const struct feedback_props* feedback_props);
-
 
 void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);
 void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);

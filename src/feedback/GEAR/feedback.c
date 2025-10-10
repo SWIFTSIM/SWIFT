@@ -145,7 +145,6 @@ void feedback_init_spart(struct spart* sp) {
 void feedback_reset_feedback(struct spart* sp,
                              const struct feedback_props* feedback_props) {}
 
-
 /**
  * @brief Initialises the s-particles feedback props for the first time
  *

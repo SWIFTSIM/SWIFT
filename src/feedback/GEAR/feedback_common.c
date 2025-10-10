@@ -18,11 +18,11 @@
  ******************************************************************************/
 
 /* Include header */
-#include "stellar_evolution.h"
 #include "cosmology.h"
 #include "engine.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "stellar_evolution.h"
 #include "units.h"
 
 /**
