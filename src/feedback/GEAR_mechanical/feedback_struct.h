@@ -58,6 +58,9 @@ struct feedback_xpart_data {
  */
 struct feedback_spart_data {
 
+  /*! Is the star dead? */
+  int is_dead;
+
   /*! Normalisation factor used for the enrichment. Corresponds to the
      denominator in eq (9) in https://arxiv.org/abs/1707.07010  */
   float enrichment_weight;
