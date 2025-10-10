@@ -370,7 +370,7 @@ runner_iact_nonsym_feedback_apply(
   }
 
   /* Do we have supernovae? */
-  if (!feedback_should_inject_SN_feedback(si)) {
+  if (feedback_should_inject_SN_feedback(si)) {
 
     /****************************************************************************
      * Compute the common properties for both modes
