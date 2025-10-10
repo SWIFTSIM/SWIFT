@@ -458,7 +458,7 @@ INLINE static int sink_is_forming(
   const float maximal_density_threshold = sink_props->maximal_density_threshold;
   const float density = hydro_get_physical_density(p, cosmo);
 
-  const float div_v = sink_get_physical_div_v_from_part(p);
+  const float div_v = sink_get_physical_div_v_from_part(p, cosmo);
 
   const float h = p->h;
   const float sink_cut_off_radius = sink_props->cut_off_radius;
