@@ -1,0 +1,28 @@
+# Intro
+This example consists of a homogeneous and periodic box filled with gas particles of equal mass. An individual star particle may be added after some time to first let the system rearrange.
+
+This example tests the bubble propagation for different injection of stellar winds. 
+
+# Configure
+To run this example with the GEAR model,
+
+```
+CFLAGS="-DSWIFT_TEST_STELLAR_WIND" ./configure  --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-sink=GEAR --with-feedback=GEAR --with-kernel=wendland-C2
+```
+
+Then, type
+
+```
+make -j
+```
+
+You can remove the adaptive softening. In this case, you may need to change the default `max_physical_baryon_softening` value.
+
+# ICs
+The run.sh script calls the `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
+
+# run 
+To run the script, once you've changed the parameter you wanted, you can simply make a sbatch or srun on the `run.sh` script. It will automatically create a folder containing the IC and the simulation. Then, the script will call the `gas_profile_movie.py` that make a gif of the bubble's quantities over time and log some parameters' information in a .txt file `radial_peak_position.txt`. Finally, the `bubble_evolution.py` will use the information in the .txt file to plot the evolution of the bubble alongside with some theoretical formulas.
+(Exemple: ./run.sh)
+
+
