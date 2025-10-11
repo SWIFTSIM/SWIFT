@@ -40,7 +40,7 @@ enum chemistry_diffusion_mode {
  */
 enum chemistry_relaxation_time_mode {
   constant_mode,   /* Constant */
-  soundspeed_mode, /* Based on the gas soundspeed: tau = ||K||/(c_s^2 rho) */
+  turbulent_mode,  /* Based on the gas turbulences: tau \propto 1/ ||Shear|| */
 };
 
 /**

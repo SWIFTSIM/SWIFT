@@ -324,17 +324,21 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
                           temp2);
   if (strcmp(temp2, "Constant") == 0)
     data->relaxation_time_mode = constant_mode;
-  else if (strcmp(temp2, "Soundspeed") == 0)
-    data->relaxation_time_mode = soundspeed_mode;
+  else if (strcmp(temp2, "Turbulent") == 0)
+    data->relaxation_time_mode = turbulent_mode;
   else
     error(
         "The chemistry relaxation time mode must be Constant or Soundspeed"
         " not %s",
         temp2);
 
+  /* For the constant tau: this is tau. For the non-const case, this is a
+     multiplicative factor */
   /* Note: This is the physical relaxation time, not comoving */
-  if (data->relaxation_time_mode == constant_mode) {
-    data->tau = parser_get_param_double(parameter_file, "GEARChemistry:tau");
+  data->tau = parser_get_param_double(parameter_file, "GEARChemistry:tau");
+
+  if (data->tau == 0.0) {
+    error("GEARChemistry:tau cannot be set to 0.0! This defeats the hyperbolic diffusion purpose!");
   }
 
   parser_get_param_string(parameter_file, "GEARChemistry:riemann_solver", temp);
