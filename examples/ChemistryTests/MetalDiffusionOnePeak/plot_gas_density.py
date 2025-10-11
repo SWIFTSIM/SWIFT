@@ -222,7 +222,7 @@ def make_single_image(filename, image_resolution):
     ax.text(
         0.7,
         0.95,
-        "$N_{\mathrm{star}}" + " = {}$".format(len(star_pos)),
+        r"$N_{\mathrm{star}}" + " = {}$".format(len(star_pos)),
         transform=ax.transAxes,
         fontsize=7,
         bbox=dict(facecolor="white", alpha=0.8),
@@ -230,7 +230,7 @@ def make_single_image(filename, image_resolution):
     ax.text(
         0.1,
         0.95,
-        "$N_{\mathrm{sink}}" + " = {}$".format(len(sink_pos)),
+        r"$N_{\mathrm{sink}}" + " = {}$".format(len(sink_pos)),
         transform=ax.transAxes,
         fontsize=7,
         bbox=dict(facecolor="white", alpha=0.8),

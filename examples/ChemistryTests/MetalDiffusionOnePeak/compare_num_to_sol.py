@@ -164,9 +164,9 @@ for filename in tqdm(files):
     cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal')
 
     if do_log:
-        cbar.set_label('$\log_{10}(\Sigma$ [g/cm$^2$]$)$', labelpad=1)
+        cbar.set_label(r'$\log_{10}(\Sigma$ [g/cm$^2$]$)$', labelpad=1)
     else:
-        cbar.set_label('$\Sigma$ [g/cm$^2$]', labelpad=1)
+        cbar.set_label(r'$\Sigma$ [g/cm$^2$]', labelpad=1)
     cbar.ax.xaxis.set_label_position('top')
     cbar.ax.xaxis.set_ticks_position('top')
 

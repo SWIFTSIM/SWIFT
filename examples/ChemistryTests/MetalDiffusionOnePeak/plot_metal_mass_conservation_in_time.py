@@ -87,7 +87,7 @@ fig, ax = plt.subplots(ncols=1, nrows=1, figsize=figsize, num=1)
 if log:
     ax.set_yscale("log")
 
-ax.set_ylabel("$M_{\mathrm{Fe}}$ [M$_\odot$]")
+ax.set_ylabel(r"$M_{\mathrm{Fe}}$ [M$_\odot$]")
 ax.set_xlabel("$t$ [Gyr]")
 
 ax.plot(time, m_fe, label='Metal mass')
