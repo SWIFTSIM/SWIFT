@@ -328,7 +328,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
     data->relaxation_time_mode = turbulent_mode;
   else
     error(
-        "The chemistry relaxation time mode must be Constant or Soundspeed"
+        "The chemistry relaxation time mode must be Constant or Turbulent"
         " not %s",
         temp2);
 

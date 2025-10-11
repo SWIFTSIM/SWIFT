@@ -654,7 +654,7 @@ GEARChemistry:
 
   # MFVP hyperbolic diffusion only
   riemann_solver: HLL_hyperbolic_H17  # (Hyperbolic diffusion only) Riemann solver to use: HLL, HLL_parabolic_H17 or HLL_hyperbolic_H17
-  relaxation_time_mode:  Constant     # Relaxation time mode. Constant = constant relaxation time ; Soundspeed = relaxation time based on gas soundspeed.
+  relaxation_time_mode:  Constant     # Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
   tau: 0.1                            # (Hyperbolic diffusion only) Relaxation time (physical and internal units) for the Constant relaxation time mode.
   C_CFL_chemistry: 0.4                # (Hyperbolic diffusion) Courant-Friedrich-Levy condition for time integration of the hyperbolic diffusion.
 
