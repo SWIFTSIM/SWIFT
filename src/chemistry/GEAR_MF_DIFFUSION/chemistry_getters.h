@@ -383,7 +383,7 @@ chemistry_get_physical_hyperbolic_soundspeed(
        reduce rounding errors: c_hyp = sqrt(C/alpha) * gamma_k * h * ||S|| */
     const double delta_x = kernel_gamma * p->h;
     const double C_diff = chem_data->diffusion_coefficient;
-    cont double alpha = 1.0;
+    const double alpha = chem_data->tau;
     const double c_hyp = sqrt(C_diff/alpha) * delta_x * chemistry_get_matrix_norm(S);
     return c_hyp;
   }
@@ -471,10 +471,9 @@ chemistry_compute_physical_tau(const struct part* restrict p,
        time. Also note that we do not regularize the shear tensor here. */
     double S[3][3];
     chemistry_get_physical_shear_tensor(p, cosmo, S);
-    const double 1_over_S = 1.0 / chemistry_get_matrix_norm(S);
+    const double S_norm_inv = 1.0 / chemistry_get_matrix_norm(S);
 
-    /* TODO: Add an alpha parameter to calibrate */
-    return 1_over_S;
+    return chem_data->tau*S_norm_inv;
   }
 #else
   /* Parabolic diffusion is recovered when tau = 0.0. */
