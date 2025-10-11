@@ -91,6 +91,18 @@ python3 metal_projection.py snap/snapshot_*0.hdf5
                         default=1.0,
                         help="Maximal y-axis value. In boxsize units")
 
+    parser.add_argument("--vmin",
+                        action="store",
+                        type=float,
+                        default=None,
+                        help="Minimal colormap value")
+
+    parser.add_argument("--vmax",
+                        action="store",
+                        type=float,
+                        default=None,
+                        help="Maximal colormap value")
+
     parser.parse_args()
     args = parser.parse_args()
     files = args.files
@@ -114,6 +126,8 @@ x_min = args.x_min
 x_max = args.x_max
 y_min = args.y_min
 y_max = args.y_max
+vmin = 10**args.vmin
+vmax = 10**args.vmax
 do_log = args.log
 
 for filename in tqdm(files):
@@ -144,8 +158,6 @@ for filename in tqdm(files):
 
     figsize = (10, 10)
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=figsize, num=1)
-    vmin = None
-    vmax = None
 
     if do_log:
         im = ax.imshow(metal_density_log,  zorder=1,
