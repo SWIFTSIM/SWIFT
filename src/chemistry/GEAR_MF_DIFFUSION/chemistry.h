@@ -48,10 +48,6 @@
 #define DEFAULT_DIFFUSION_NORMALISATION 1
 #define DEFAULT_PSI_RIEMANN_SOLVER 0.1
 #define DEFAULT_EPSILON_RIEMANN_SOLVER 0.1
-#define DEFAULT_USE_SUPERTIMESTEPPING 0
-#define DEFAULT_N_SUBSTEPS 5
-#define DEFAULT_NU_SUPERTIMESTEPPPING 0.04
-#define DEFAULT_C_CFL_CHEMISTRY_SUPERTIMESTEPPPING 0.4
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.
@@ -314,22 +310,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   }
 
   /***************************************************************************/
-  /* Supertimestepping */
-#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  data->use_supertimestepping = parser_get_opt_param_int(
-      parameter_file, "GEARChemistry:use_supertimestepping",
-      DEFAULT_USE_SUPERTIMESTEPPING);
-
-  data->N_substeps = parser_get_opt_param_int(
-      parameter_file, "GEARChemistry:N_substeps", DEFAULT_N_SUBSTEPS);
-
-  data->nu = parser_get_opt_param_float(parameter_file,
-                                        "GEARChemistry:nu_supertimestepping",
-                                        DEFAULT_NU_SUPERTIMESTEPPPING);
-  data->C_CFL_chemistry = parser_get_opt_param_float(
-      parameter_file, "GEARChemistry:C_CFL_chemistry",
-      DEFAULT_C_CFL_CHEMISTRY_SUPERTIMESTEPPPING);
-#else
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Make it mandatory for parabolic diffusion */
   data->C_CFL_chemistry =
       parser_get_param_float(parameter_file, "GEARChemistry:C_CFL_chemistry");
@@ -378,11 +359,6 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
     message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
     message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
     message("C_CFL:                      %e", data->C_CFL_chemistry);
-#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-    message("Use supertimestepping:      %d", data->use_supertimestepping);
-    message("N_substeps:                 %d", data->N_substeps);
-    message("nu:                         %e", data->nu);
-#endif
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     message("Riemann solver:             %d", data->riemann_solver);
     message("Relaxation time mode:       %u", data->relaxation_time_mode);
@@ -394,7 +370,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 /**
  * @brief Computes the chemistry-related timestep constraints.
  *
- * Parabolic constraint proportional to h^2 or supertimestepping.
+ * Parabolic constraint proportional to h^2.
  *
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
@@ -411,113 +387,11 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct chemistry_global_data* chem_data,
     const struct part* restrict p) {
 #if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  if (chem_data->use_supertimestepping) {
-    /* For supertimestepping, use the advective timestep eq (D1) */
-    return chemistry_compute_advective_supertimestep(p, chem_data, cosmo);
-  } else {
-    /* Without supertimestepping, use the parabolic timestep eq (15) */
+    /* Use the parabolic timestep eq (15) */
     return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
-  }
 #else
   /* Use the hyperbolic CFL condition */
   return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
-#endif
-}
-
-/**
- * @brief Do supertimestepping following Alexiades, Amiez and Gremaud (1996)
- * and Hopkins (2017) modifications for individual timestep scheme.
- *
- * @param phys_const The physical constants in internal units.
- * @param cosmo The current cosmological model.
- * @param us The internal system of units.
- * @param hydro_props The properties of the hydro scheme.
- * @param cd The global properties of the chemistry scheme.
- * @param p Pointer to the particle data.
- * @param dt_part Minimal timestep for the other physical processes (hydro,
- * MHD, rt, gravity, ...).
- * @param time_base The system's minimal time-step.
- * @param ti_current The current time on the integer time-line.
- */
-__attribute__((always_inline)) INLINE static float chemistry_supertimestep(
-    const struct phys_const* restrict phys_const,
-    const struct cosmology* restrict cosmo,
-    const struct unit_system* restrict us,
-    const struct hydro_props* hydro_props,
-    const struct chemistry_global_data* cd, struct part* restrict p,
-    const float dt_part, const double time_base, const double ti_current) {
-
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  return FLT_MAX;
-#else
-  struct chemistry_part_data* chd = &p->chemistry_data;
-
-  /* Do not use supertimestepping in the fake timestep */
-  if (cd->use_supertimestepping && p->time_bin != 0) {
-
-    /* If we need to start a new cycle, compute the new explicit timestep */
-    if (chd->timesteps.current_substep == 0) {
-      /* Get the explicit timestep from eq (15) */
-      chd->timesteps.explicit_timestep =
-          chemistry_compute_parabolic_timestep(p, cd, cosmo);
-    }
-
-    /* Compute the current substep */
-    double substep = chemistry_compute_subtimestep(
-        p, cd, chd->timesteps.current_substep + 1);
-    double timestep_to_use = substep;
-
-    if (dt_part <= substep || chd->timesteps.current_substep > 0) {
-      /* If the part timestep is smaller, other constraints beat the
-         substep. We can safely iterate the substep.
-         If we are in the middle of a supertimestepping cycle, iterate. */
-      ++chd->timesteps.current_substep;
-
-      /* Increment substep and loop if it cycles fully */
-      if (chd->timesteps.current_substep >= cd->N_substeps) {
-        chd->timesteps.current_substep = 0;
-      }
-    } else {
-      /* If we are at the beginning of a new cycle (current_substep = 0) and
-      the next substep matters for starting a new cycle (dt_part > substep),
-      think whether to start a cycle */
-
-      /* Apply cosmology correction (This is 1 if non-cosmological) */
-      const double dt_pred = substep * cosmo->time_step_factor;
-
-      /* Convert to integer time.
-         Note: This function is similar to Gizmo code checking for
-         synchronization. */
-      const integertime_t dti_allowed = chemistry_make_integer_timestep(
-          dt_pred, p->time_bin, p->limiter_data.min_ngb_time_bin, ti_current,
-          1.0 / time_base);
-
-      /* Now convert this back to a physical timestep */
-      const timebin_t bin_allowed = get_time_bin(dti_allowed);
-      const double dt_allowed =
-          get_timestep(bin_allowed, time_base) / cosmo->time_step_factor;
-
-      if (substep > 1.5 * dt_allowed) {
-        /* The next allowed timestep is too small to fit the big step part of
-        the supertimestepping cycle. Do not waste our timestep (which will put
-        us into a lower bin and defeat the supertimestep purpose of using bigger
-        timesteps) and use the safe parabolic timestep until the next desired
-        time-bin synchs up */
-        timestep_to_use = chemistry_compute_parabolic_timestep(p, cd, cosmo);
-      } else {
-        /* We can jump up in bins to use our super-step => begin the cycle */
-        ++chd->timesteps.current_substep;
-
-        /* Increment substep and loop if it cycles fully */
-        if (chd->timesteps.current_substep >= cd->N_substeps) {
-          chd->timesteps.current_substep = 0;
-        }
-      } /* substep > 1.5*dt_allowed */
-    }
-    return timestep_to_use;
-  } else { /* No supertimestepping */
-    return FLT_MAX;
-  }
 #endif
 }
 
@@ -814,13 +688,6 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
      is to have a way of remembering that we need more neighbours for this
      particle */
   p->geometry.wcorr = 1.0f;
-
-#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  /* Supertimestepping ----*/
-  /* Set the substep to 0 so that we can compute everything in timestep for the
-     first time. */
-  p->chemistry_data.timesteps.current_substep = 0;
-#endif
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {

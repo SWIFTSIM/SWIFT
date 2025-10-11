@@ -363,30 +363,6 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
 }
 
 /**
- * @brief Do supertimestepping.
- *
- * @param phys_const The physical constants in internal units.
- * @param cosmo The current cosmological model.
- * @param us The internal system of units.
- * @param hydro_props The properties of the hydro scheme.
- * @param cd The global properties of the chemistry scheme.
- * @param p Pointer to the particle data.
- * @param dt_part Minimal timestep for the other physical processes (hydro,
- * MHD, rt, gravity, ...).
- * @param time_base The system's minimal time-step.
- * @param ti_current The current time on the integer time-line.
- */
-__attribute__((always_inline)) INLINE static float chemistry_supertimestep(
-    const struct phys_const* restrict phys_const,
-    const struct cosmology* restrict cosmo,
-    const struct unit_system* restrict us,
-    const struct hydro_props* hydro_props,
-    const struct chemistry_global_data* cd, struct part* restrict p,
-    const float dt_part, const double time_base, const double ti_current) {
-  return FLT_MAX;
-}
-
-/**
  * @brief Initialise the chemistry properties of a black hole with
  * the chemistry properties of the gas it is born from.
  *

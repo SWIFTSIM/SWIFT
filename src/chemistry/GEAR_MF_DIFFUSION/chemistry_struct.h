@@ -101,18 +101,6 @@ struct chemistry_global_data {
       <= epsilon <= 1. */
   float hll_riemann_solver_epsilon;
 
-  /***************************************************************************/
-  /* Supertimestepping */
-
-  /*! Do we want to use supertimestepping? */
-  int use_supertimestepping;
-
-  /* Number of substeps */
-  int N_substeps;
-
-  /* Nu parameter */
-  float nu;
-
   /* CFL coefficient for integration on timesteps larger than the parabolic
      timestep */
   float C_CFL_chemistry;
@@ -207,17 +195,6 @@ struct chemistry_part_data {
     /*! Gradient of tilde(v) */
     float grad_v_tilde[3][3];
   } filtered;
-
-#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  /* Supertimestepping variables (only for parabolic diffusion) */
-  struct {
-    /*! Current substep integer */
-    int current_substep;
-
-    /*! Explicit timestep given by the CFL parabolic condition */
-    float explicit_timestep;
-  } timesteps;
-#endif
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Relaxation time */

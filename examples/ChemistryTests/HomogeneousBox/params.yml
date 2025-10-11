@@ -81,12 +81,7 @@ GEARChemistry:
   relaxation_time_mode:  Constant     # Relaxation time mode. Constant = constant relaxation time ; Soundspeed = relaxation time based on gas soundspeed.
   tau: 1e-1                           # (Optional, hyperbolic diffusion only) Relaxation time for the Isotropic_constant diffusion mode.
   riemann_solver: HLL_parabolic_H17   # (Hyperbolic diffusion only) Riemann solver to use: HLL, HLL_parabolic_H17 or HLL_hyperbolic_H17
-  C_CFL_chemistry: 0.8                # (Optional) Courant-Friedrich-Levy condition for time integration of the supertimestep/hyperbolic diffusion.
-
-  # Supertimestepping parameters
-  use_supertimestepping: 0        # (Optional, parabolic diffusion only) Do we want to use supertimestepping? Supertimestepping can accelerate simulations. (Default: 0)
-  N_substeps: 5                   # (Optional, parabolic diffusion only) Number of substeps in supertimestepping. (Default: 5)
-  nu_supertimestepping: 0.45      # (Optional, parabolic diffusion only) Nu parameter for supertimestep. It's optimal when n >= 1/sqrt(N). (Default: 0.04)
+  C_CFL_chemistry: 0.8                # (Hyperbolic diffusion only) Courant-Friedrich-Levy condition for time integration of the hyperbolic diffusion.
 
 GEARFeedback:
   supernovae_energy_erg: 1e51           # supernovae energy, used only for SNIa
