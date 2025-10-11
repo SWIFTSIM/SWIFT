@@ -442,14 +442,16 @@ runner_iact_nonsym_feedback_apply(
     /* Only use this for non-cosmological simulations. In cosmological
        simulations, this suppresses the momentum effects (to be investigated
        why). */
+    if (cosmo->a == 1.0 && cosmo->a_inv == 1.0 && cosmo->z == 0.0) {
     /* Update the signal velocity of gas particles that receive a kick. From
        Chaikin et al. (2023) (also implemented in EAGLE_kinetic) */
-    /* const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] + */
-    /*                                dp_prime[1] * dp_prime[1] + */
-    /*                                dp_prime[2] * dp_prime[2]; */
-    /* const float dp_prime_norm = sqrt(dp_prime_norm_2); */
-    /* const float dv_phys = dp_prime_norm / new_mass; */
-    /* hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys); */
+      const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
+	dp_prime[1] * dp_prime[1] +
+	dp_prime[2] * dp_prime[2];
+      const float dp_prime_norm = sqrt(dp_prime_norm_2);
+      const float dv_phys = dp_prime_norm / new_mass;
+      hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
+    }
   }
 
   /* Synchronize the particle on the timeline */
