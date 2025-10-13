@@ -16,13 +16,11 @@ Then, type
 make -j
 ```
 
-You can remove the adaptive softening. In this case, you may need to change the default `max_physical_baryon_softening` value.
-
 # ICs
 The run.sh script calls the `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
 
 # run 
-To run the script, once you've changed the parameter you wanted, you can simply make a sbatch or srun on the `run.sh` script. It will automatically create a folder containing the IC and the simulation. Then, the script will call the `gas_profile_movie.py` that make a gif of the bubble's quantities over time and log some parameters' information in a .txt file `radial_peak_position.txt`. Finally, the `bubble_evolution.py` will use the information in the .txt file to plot the evolution of the bubble alongside with some theoretical formulas.
+To run the script, once you've changed the parameter you wanted, you can simply make a sbatch or srun on the `run.sh` script. It will automatically create a folder containing the IC and the simulation. Then, the script will call the `gas_profile_movie.py` that makes a gif of the bubble's quantities over time and log some parameters' information in a .txt file `radial_peak_position.txt`. Finally, the `bubble_evolution.py` will use the information in the .txt file to plot the evolution of the bubble alongside with some theoretical formulas.
 (Exemple: ./run.sh)
 
 
