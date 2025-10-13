@@ -211,6 +211,16 @@ grid_coords = np.linspace(grid_spacing / 2, L - grid_spacing / 2, 2 ** level_bac
 x, y, z = np.meshgrid(grid_coords, grid_coords, grid_coords)
 pos_background = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
 
+# Now randomly shift the whole grid so that it's not at the same location for
+# different seeds.
+shift_x = np.random.uniform(0.0, grid_spacing)
+shift_y = np.random.uniform(0.0, grid_spacing)
+shift_z = np.random.uniform(0.0, grid_spacing)
+
+pos_background[:, 0] = (pos_background[:, 0] + shift_x) % L
+pos_background[:, 1] = (pos_background[:, 1] + shift_y) % L
+pos_background[:, 2] = (pos_background[:, 2] + shift_z) % L
+
 # Assign properties to background particles
 vel_background = np.zeros_like(pos_background)  # Zero velocity
 mass_background = np.ones(N_background) * m  # Same mass
