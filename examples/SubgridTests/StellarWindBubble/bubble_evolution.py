@@ -121,11 +121,6 @@ def plot_peak_quantities_vs_time(log_file_path):
         ax.set_ylabel(q["ylabel"], fontsize=12)
         ax.grid(True, linestyle="--", alpha=0.6)
 
-        # Set titles only for the middle and top plots (optional, can be removed)
-        # if you prefer a single main title.
-        # if q["ax_idx"] == 0:
-        #     ax.set_title(q["title"], fontsize=14)
-
     # Final axis labels and output
     axes1[-1].set_xlabel("Time [Myr]", fontsize=12)
     fig1.suptitle("Evolution of Peak Radial Quantities Over Time", fontsize=16, y=0.99)
@@ -212,11 +207,6 @@ def plot_peak_quantities_vs_time(log_file_path):
         ax.grid(True, linestyle="--", alpha=0.6)
         ax.legend()
 
-        # Set titles only for the middle and top plots (optional, can be removed)
-        # if you prefer a single main title.
-        # if q["ax_idx"] == 0:
-        #     ax.set_title(q["title"], fontsize=14)
-
     # Final axis labels and output
     axes1[-1].set_xlabel("Time [Myr]", fontsize=12)
     fig1.suptitle("Evolution of showckwave Over Time", fontsize=16, y=0.99)
@@ -269,11 +259,6 @@ def plot_peak_quantities_vs_time(log_file_path):
         # Formatting
         ax.set_ylabel(q["ylabel"], fontsize=12)
         ax.grid(True, linestyle="--", alpha=0.6)
-
-        # Set titles only for the middle and top plots (optional, can be removed)
-        # if you prefer a single main title.
-        # if q["ax_idx"] == 0:
-        #     ax.set_title(q["title"], fontsize=14)
 
     # Final axis labels and output
     axes2[-1].set_xlabel("Radius [kpc]", fontsize=12)
@@ -329,11 +314,6 @@ def plot_peak_quantities_vs_time(log_file_path):
         # Formatting
         ax.set_ylabel(q["ylabel"], fontsize=12)
         ax.grid(True, linestyle="--", alpha=0.6)
-
-        # Set titles only for the middle and top plots (optional, can be removed)
-        # if you prefer a single main title.
-        # if q["ax_idx"] == 0:
-        #     ax.set_title(q["title"], fontsize=14)
 
     # Final axis labels and output
     axes2[-1].set_xlabel("Radius [kpc]", fontsize=12)
