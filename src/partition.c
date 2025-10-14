@@ -680,7 +680,7 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  * @brief Partition the given space into a number of connected regions using
  *        ParMETIS.
  *
- * Split the space using PARMETIS to derive a partitions using the
+ * Split the space using PARMETIS to derive a partition using the
  * given edge and vertex weights. If no weights are given then an
  * unweighted partition is performed. If refine is set then an existing
  * partition is assumed to be present from the last call to this routine
@@ -699,6 +699,11 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        of cells * 26 if used, NULL for unit weights. Need to be packed
  *        in CSR format, so same as adjncy array. Need to be in the range of
  *        idx_t.
+ * @param tpwgts desired weight for each region, one per region.
+ * @param permute whether to attempt a permutation to reduce the movement of
+ *        particles. Set this false when pwgts is not uniform,
+ *        i.e. 1/nregions, the region order is important when the regions are
+ *        consider identical.
  * @param refine whether to refine an existing partition, or create a new one.
  * @param adaptive whether to use an adaptive reparitition of an existing
  *        partition or simple refinement. Adaptive repartition is controlled
@@ -711,8 +716,9 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        the old partition on entry.
  */
 static void pick_parmetis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int refine,
-                          int adaptive, float itr, int *celllist) {
+                          double *vertexw, double *edgew, float *tpwgts,
+                          int permute, int refine, int adaptive,
+                          float itr, int *celllist) {
 
   int res;
   MPI_Comm comm;
@@ -994,12 +1000,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
   }
 
-  /* Set up the tpwgts array. This is just 1/nregions. */
-  real_t *tpwgts;
-  if ((tpwgts = (real_t *)malloc(sizeof(real_t) * nregions)) == NULL)
-    error("Failed to allocate tpwgts array");
-  for (int i = 0; i < nregions; i++) tpwgts[i] = 1.0 / (real_t)nregions;
-
   /* Common parameters. */
   idx_t options[4];
   options[0] = 1;
@@ -1016,6 +1016,17 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   real_t ubvec[1];
   ubvec[0] = 1.001;
 
+  /* Copy tpwgts if needed for the element size. */
+  real_t *tpwgts_real = NULL;
+  if (sizeof(real_t) != sizeof(float)) {
+    tpwgts_real = (real_t *)malloc(nregions * sizeof(real_t));
+    for (int k = 0; k < nregions; k++) {
+      tpwgts_real[k] = tpwgts[k];
+    }
+  } else {
+    tpwgts_real = (real_t *)tpwgts;
+  }
+
   if (refine) {
     /* Refine an existing partition, uncouple as we do not have the cells
      * present on their expected ranks. */
@@ -1029,17 +1040,17 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if (adaptive) {
 
       /* Balance between cuts and movement. */
-      real_t itr_real_t = itr;
+      real_t itr_real = itr;
       if (ParMETIS_V3_AdaptiveRepart(
               vtxdist, xadj, adjncy, weights_v, NULL, weights_e, &wgtflag,
-              &numflag, &ncon, &nparts, tpwgts, ubvec, &itr_real_t, options,
-              &edgecut, regionid, &comm) != METIS_OK)
+              &numflag, &ncon, &nparts, tpwgts_real, ubvec,
+              &itr_real, options, &edgecut, regionid, &comm) != METIS_OK)
         error("Call to ParMETIS_V3_AdaptiveRepart failed.");
     } else {
       if (ParMETIS_V3_RefineKway(vtxdist, xadj, adjncy, weights_v, weights_e,
-                                 &wgtflag, &numflag, &ncon, &nparts, tpwgts,
-                                 ubvec, options, &edgecut, regionid,
-                                 &comm) != METIS_OK)
+                                 &wgtflag, &numflag, &ncon, &nparts,
+                                 tpwgts_real, ubvec, options,
+                                 &edgecut, regionid, &comm) != METIS_OK)
         error("Call to ParMETIS_V3_RefineKway failed.");
     }
   } else {
@@ -1056,9 +1067,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       options[2] = clocks_random_seed();
 
       if (ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, weights_v, weights_e,
-                               &wgtflag, &numflag, &ncon, &nparts, tpwgts,
-                               ubvec, options, &edgecut, regionid,
-                               &comm) != METIS_OK)
+                               &wgtflag, &numflag, &ncon, &nparts,
+                               tpwgts_real, ubvec, options,
+                               &edgecut, regionid, &comm) != METIS_OK)
         error("Call to ParMETIS_V3_PartKway failed.");
 
       if (i == 0 || (best_edgecut > edgecut)) {
@@ -1135,11 +1146,13 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
     if (bad) error("Bad node IDs located");
 
-    /* Now check the similarity to the old partition and permute if necessary.
+    /* Now check the similarity to the old partition and permute if allowed.
      * Checks show that refinement can return a permutation of the partition,
-     * we need to check that and correct as necessary. */
-    int permute = 1;
-    if (!refine) {
+     * that can be corrected. When we have none-uniform host weights, the
+     * positioning of the ranks needs to be respected, so in that case we
+     * should not be allowed to permute.
+     */
+    if (!refine && permute) {
 
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. */
@@ -1179,10 +1192,10 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   if (weights_v != NULL) free(weights_v);
   if (weights_e != NULL) free(weights_e);
   free(vtxdist);
-  free(tpwgts);
   free(xadj);
   free(adjncy);
   free(regionid);
+  if (tpwgts_real != (real_t *)tpwgts) free(tpwgts_real);
 }
 #endif
 
@@ -1203,11 +1216,13 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
  *        of cells * 26 if used, NULL for unit weights. Need to be packed
  *        in CSR format, so same as adjncy array. Need to be in the range of
  *        idx_t.
+ * @param tpwgts desired weight for each region, one per region.
  * @param celllist on exit this contains the ids of the selected regions,
  *        sizeof number of cells.
  */
 static void pick_metis(int nodeID, struct space *s, int nregions,
-                       double *vertexw, double *edgew, int *celllist) {
+                       double *vertexw, double *edgew, float *tpwgts,
+                       int *celllist) {
 
   /* Total number of cells. */
   int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
@@ -1302,6 +1317,17 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     int nxadj = 0;
     graph_init(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj);
 
+    /* Copy tpwgts if needed for the element size. */
+    real_t *tpwgts_real = NULL;
+    if (sizeof(real_t) != sizeof(float)) {
+      tpwgts_real = (real_t *)malloc(nregions * sizeof(real_t));
+      for (int k = 0; k < nregions; k++) {
+        tpwgts_real[k] = tpwgts[k];
+      }
+    } else {
+      tpwgts_real = (real_t *)tpwgts;
+    }
+
     /* Set the METIS options. */
     idx_t options[METIS_NOPTIONS];
     METIS_SetDefaultOptions(options);
@@ -1322,8 +1348,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
                    NULL, weights_e);*/
 
     if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
-                            weights_e, &idx_nregions, NULL, NULL, options,
-                            &objval, regionid) != METIS_OK)
+                            weights_e, &idx_nregions, tpwgts_real,
+                            NULL, options, &objval, regionid) != METIS_OK)
       error("Call to METIS_PartGraphKway failed.");
 
     /* Check that the regionids are ok. */
@@ -1341,6 +1367,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     free(xadj);
     free(adjncy);
     free(regionid);
+    if (tpwgts_real != (real_t *)tpwgts) free(tpwgts_real);
   }
 
   /* Calculations all done, now everyone gets a copy. */
@@ -1363,6 +1390,10 @@ struct weights_mapper_data {
   int nr_cells;
   int use_ticks;
   struct cell *cells;
+  float *host_weights;
+  int nr_host_weights;
+  int use_host_weights;
+  double host_weights_sum;
 };
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1394,6 +1425,10 @@ void partition_gather_weights(void *map_data, int num_elements,
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
+  int use_host_weights = mydata->use_host_weights;
+  float *host_weights = mydata->host_weights;
+  int nr_host_weights = mydata->nr_host_weights;
+  double host_weights_sum = mydata->host_weights_sum;
 
   struct cell *cells = mydata->cells;
 
@@ -1405,15 +1440,6 @@ void partition_gather_weights(void *map_data, int num_elements,
     if (t->type == task_type_send || t->type == task_type_recv ||
         t->type == task_type_csds || t->implicit || t->ci == NULL)
       continue;
-
-    /* Get weight for this task. Either based on fixed costs or task timings. */
-    double w = 0.0;
-    if (use_ticks) {
-      w = (double)t->toc - (double)t->tic;
-    } else {
-      w = repartition_costs[t->type][t->subtype];
-    }
-    if (w <= 0.0) continue;
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
@@ -1428,6 +1454,21 @@ void partition_gather_weights(void *map_data, int num_elements,
     } else {
       cj = NULL;
     }
+
+    /* Get weight for this task. Either based on fixed costs or task timings. */
+    double w = 0.0;
+    if (use_ticks) {
+      w = (double)t->toc - (double)t->tic;
+      if (use_host_weights) {
+        // Want the non-normalized weight, could be better ways if have a copy
+        // anyway.
+        w *= host_weights[ci->nodeID] * nr_host_weights * host_weights_sum;
+      }
+
+    } else {
+      w = repartition_costs[t->type][t->subtype];
+    }
+    if (w <= 0.0) continue;
 
     /* Get the cell IDs. */
     int cid = ci - cells;
@@ -1545,7 +1586,7 @@ void partition_gather_weights(void *map_data, int num_elements,
  * @param timebins use timebins as the edge weights.
  * @param repartition the partition struct of the local engine.
  * @param nodeID our nodeID.
- * @param nr_nodes the number of nodes.
+ * @param nr_nodes the number of MPI ranks.
  * @param s the space of cells holding our local particles.
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
@@ -1597,6 +1638,10 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   weights_data.weights_e = weights_e;
   weights_data.weights_v = weights_v;
   weights_data.use_ticks = repartition->use_ticks;
+  weights_data.host_weights = repartition->host_weights;
+  weights_data.nr_host_weights = repartition->nr_host_weights;
+  weights_data.use_host_weights = repartition->use_host_weights;
+  weights_data.host_weights_sum = repartition->host_weights_sum;
 
   ticks tic = getticks();
 
@@ -1710,14 +1755,17 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
-               repartition->celllist);
+               repartition->host_weights, repartition->celllist);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
+    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e,
+                  repartition->host_weights,
+                  repartition->permute, refine,
                   repartition->adaptive, repartition->itr,
                   repartition->celllist);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
+  pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+             repartition->host_weights, repartition->celllist);
 #endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
@@ -1765,7 +1813,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
  *
  * @param repartition the partition struct of the local engine.
  * @param nodeID our nodeID.
- * @param nr_nodes the number of nodes.
+ * @param nr_nodes the number of MPI ranks.
  * @param s the space of cells holding our local particles.
  */
 static void repart_memory_metis(struct repartition *repartition, int nodeID,
@@ -1807,14 +1855,18 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   /* And repartition. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+    pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->host_weights,
+               repartition->celllist);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
-                  repartition->adaptive, repartition->itr,
-                  repartition->celllist);
+    pick_parmetis(nodeID, s, nr_nodes, weights, NULL,
+                  repartition->host_weights,
+                  repartition->permute,
+                  refine, repartition->adaptive,
+                  repartition->itr, repartition->celllist);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+  pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->host_weights,
+             repartition->celllist);
 #endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
@@ -1860,7 +1912,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
  *
  * @param reparttype #repartition struct
  * @param nodeID our nodeID.
- * @param nr_nodes the number of nodes.
+ * @param nr_nodes the number of MPI ranks.
  * @param s the space of cells holding our local particles.
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
@@ -1916,7 +1968,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
  *
  * @param initial_partition the type of partitioning to try.
  * @param nodeID our nodeID.
- * @param nr_nodes the number of nodes.
+ * @param nr_nodes the number of MPI ranks.
  * @param s the space of cells.
  */
 void partition_initial_partition(struct partition *initial_partition,
@@ -1929,9 +1981,9 @@ void partition_initial_partition(struct partition *initial_partition,
     int ind[3];
     struct cell *c;
 
-    /* If we've got the wrong number of nodes, fail. */
+    /* If we've got the wrong number of ranks, fail. */
     if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
-                        initial_partition->grid[2])
+                    initial_partition->grid[2])
       error("Grid size does not match number of nodes.");
 
     /* Run through the cells and set their nodeID. */
@@ -1993,13 +2045,16 @@ void partition_initial_partition(struct partition *initial_partition,
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
-      pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+      pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+                 initial_partition->host_weights, celllist);
     } else {
-      pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0, 0.0f,
-                    celllist);
+      pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e,
+                    initial_partition->host_weights, 0 /* permute */,
+                    0, 0, 0.0f, celllist);
     }
 #else
-    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+               initial_partition->host_weights, celllist);
 #endif
 
     /* And apply to our cells */
@@ -2195,6 +2250,15 @@ void partition_init(struct partition *partition,
   repartition->itr =
       parser_get_opt_param_float(params, "DomainDecomposition:itr", 100.0f);
 
+  /* Use a permutation of the solution if that results in more common cells
+   * between the previous solution and the new one. Only used with ParMETIS. */
+  repartition->permute =
+      parser_get_opt_param_int(params, "DomainDecomposition:permute", 1);
+
+  /* Clear the celllist for use. */
+  repartition->ncelllist = 0;
+  repartition->celllist = NULL;
+
   /* Do we have fixed costs available? These can be used to force
    * repartitioning at any time. Not required if not repartitioning.*/
   repartition->use_fixed_costs = parser_get_opt_param_int(
@@ -2217,6 +2281,112 @@ void partition_init(struct partition *partition,
       }
     }
   }
+
+#if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
+
+  /* Read in the node weights, if available and assign to the MPI ranks.*/
+  // XXX will need freeing.
+  partition->host_weights = (float *) calloc(nr_nodes, sizeof(float));
+  partition->nr_host_weights = nr_nodes;
+  repartition->host_weights = partition->host_weights;
+  repartition->nr_host_weights = nr_nodes;
+
+  char filename[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(params, "DomainDecomposition:host_weights_file",
+                              filename, "none");
+  if (strcmp("none", filename) != 0) {
+
+    if (engine_rank == 0)
+      message("Using non-uniform host weights");
+    partition->use_host_weights = 1;
+    repartition->use_host_weights = 1;
+    repartition->permute = 0;
+
+    /* Get the expected host name for weights of this rank. */
+    char mpiname[MPI_MAX_PROCESSOR_NAME];
+    int mpiname_len = 0;
+    MPI_Get_processor_name(mpiname, &mpiname_len);
+    //message("Processor_name: %s", mpiname);
+
+    /* Now scan for this in the file. */
+    FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+      error("Error opening host weights file: %s", filename);
+    }
+
+    char line[PARSER_MAX_LINE_SIZE];
+    char tmp[PARSER_MAX_LINE_SIZE];
+    float value = 0.0;
+    while (!feof(file)) {
+      if (fgets(line, PARSER_MAX_LINE_SIZE, file) != NULL) {
+        /* Just compare the shorter name. */
+        char *ptr = strchr(line, ' ');
+        int len = (ptr - line) < mpiname_len ? (ptr - line) : mpiname_len;
+        if (strncmp(mpiname, line, len) == 0) {
+          int nread = sscanf(line, "%s %f", tmp, &value);
+          //message("matched: %s %s => %f", mpiname, line, value);
+          if (nread != 2) {
+            error("Failed to read host weight from line: %s", line);
+          }
+          partition->host_weights[engine_rank] = value * 1.0f / (float) nr_nodes;
+          break;
+        }
+      }
+    }
+    if (value == 0.0) {
+      error("Failed to locate a non zero host weight for rank %d on node %s", engine_rank, mpiname);
+    }
+
+    /* Share this across all the nodes. */
+    if (MPI_Allreduce(MPI_IN_PLACE, partition->host_weights, nr_nodes, MPI_FLOAT, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS) {
+      error("Failed to allreduce host rank weights");
+    }
+
+    /* And normalize/check. */
+    double sum = 0.0;
+    for (int k = 0; k < nr_nodes; k++) {
+      if (engine_rank == 0) {
+        if (partition->host_weights[k] <= 0.0) {
+          error("Failed to locate a positive non zero host weight for rank %d on node %d", engine_rank, k);
+        }
+      }
+      sum += partition->host_weights[k];
+    }
+    partition->host_weights_sum = sum;
+    repartition->host_weights_sum = sum;
+    for (int k = 0; k < nr_nodes; k++) {
+      partition->host_weights[k] = partition->host_weights[k] / sum;
+    }
+
+    fclose(file);
+  } else {
+
+    if (engine_rank == 0)
+      message("Using uniform node weights");
+    partition->use_host_weights = 0;
+    repartition->use_host_weights = 0;
+
+    /* Uniform weights across the nodes. */
+    for (int k = 0; k < nr_nodes; k++) {
+      partition->host_weights[k] = 1.0f / (float) nr_nodes;
+    }
+  }
+
+#else
+
+  /* None of these without METIS/ParMETIS. */
+  partition->host_weights = NULL;
+  partition->nr_host_weights = 0;
+  partition->use_host_weights = 0;
+  partition->host_weights_sum = 1.0;
+  repartition->host_weights = NULL;
+  repartition->nr_host_weights = 0;
+  repartition->use_host_weights = 0;
+  repartition->host_weights_sum = 1.0;
+
+#endif // defined(HAVE_METIS) || defined(HAVE_PARMETIS)
+
 
 #else
   error("SWIFT was not compiled with MPI support");
@@ -2629,6 +2799,14 @@ void partition_struct_dump(struct repartition *reparttype, FILE *stream) {
     restart_write_blocks(reparttype->celllist,
                          sizeof(int) * reparttype->ncelllist, 1, stream,
                          "celllist", "repartition celllist");
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /* Also save the host weights. */
+  if (reparttype->nr_host_weights > 0)
+    restart_write_blocks(reparttype->host_weights,
+                         sizeof(float) * reparttype->nr_host_weights, 1, stream,
+                         "host_weights", "repartition host_weights");
+#endif
 }
 
 /**
@@ -2651,4 +2829,16 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
                         sizeof(int) * reparttype->ncelllist, 1, stream, NULL,
                         "repartition celllist");
   }
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /* And the host weights. */
+  if (reparttype->nr_host_weights > 0) {
+    if ((reparttype->host_weights =
+         (float *)malloc(sizeof(float) * reparttype->nr_host_weights)) == NULL)
+      error("Failed to allocate host weights");
+    restart_read_blocks(reparttype->host_weights,
+                        sizeof(float) * reparttype->nr_host_weights, 1, stream, NULL,
+                        "repartition host_weights");
+  }
+#endif
 }
