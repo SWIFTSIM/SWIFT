@@ -505,13 +505,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                 }
 
 #ifdef WITH_CSDS
-                if (spawn_spart) {
-                  /* Set to zero the csds data. */
-                  csds_part_data_init(&sp->csds_data);
+		if (n_spart_to_create == 1 && n_spart_convert == 1) {
+		  /* Copy the properties back to the stellar particle */
+		  sp->csds_data = xp->csds_data;
                 } else {
-                  /* Copy the properties back to the stellar particle */
-                  sp->csds_data = xp->csds_data;
-                }
+		  /* If we create new stars, set to zero the csds data. */
+		  csds_part_data_init(&sp->csds_data);
+		}
 
                 /* Write the s-particle */
                 csds_log_spart(e->csds, sp, e, /* log_all */ 1,
