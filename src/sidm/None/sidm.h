@@ -43,18 +43,7 @@ __attribute__((always_inline)) INLINE static void sidm_first_init_sipart(
  * @param sip The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void sidm_init_sipart(
-    struct sipart* sip) {
-
-  /* TODO - add SIDM debugging */
-  // #ifdef DEBUG_INTERACTIONS_SIDM
-  //   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SIDM; ++i)
-  //     sip->ids_ngbs_density[i] = -1;
-  //   sip->num_ngb_density = 0;
-  // #endif
-
-  sip->density.wcount = 0.f;
-  sip->density.wcount_dh = 0.f;
-}
+    struct sipart* sip) {}
 
 /**
  * @brief Finishes the calculation of density on SIDM
@@ -63,18 +52,7 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sidm_end_density(
-    struct sipart* sip, const struct cosmology* cosmo) {
-
-  /* Some smoothing length multiples. */
-  const float h = sip->h;
-  const float h_inv = 1.0f / h;                       /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
-  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
-
-  /* Finish the calculation by inserting the missing h-factors */
-  sip->density.wcount *= h_inv_dim;
-  sip->density.wcount_dh *= h_inv_dim_plus_one;
-}
+    struct sipart* sip, const struct cosmology* cosmo) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #sipart has 0
@@ -84,21 +62,6 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sidm_sipart_has_no_neighbours(
-    struct sipart* restrict sip, const struct cosmology* cosmo) {
-
-  warning(
-      "SIDM particle with ID %lld treated as having no neighbours (h: %g, "
-      "wcount: %g).",
-      sip->id, sip->h, sip->density.wcount);
-
-  /* Some smoothing length multiples. */
-  const float h = sip->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-
-  /* Re-set problematic values */
-  sip->density.wcount = kernel_root * h_inv_dim;
-  sip->density.wcount_dh = 0.f;
-}
+    struct sipart* restrict sip, const struct cosmology* cosmo) {}
 
 #endif /* SWIFT_NONE_SIDM_H */

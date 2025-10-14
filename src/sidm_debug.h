@@ -24,7 +24,7 @@
 
 /* Import the debug routines of the right SIDM definition */
 #if defined(SIDM_NONE)
-#include "./sidm/Default/sidm_debug.h"
+#include "./sidm/None/sidm_debug.h"
 #elif defined(SIDM_BASIC)
 #include "./sidm/Basic/sidm_debug.h"
 #else
