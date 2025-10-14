@@ -48,6 +48,7 @@
 #include "part.h"
 #include "particle_splitting.h"
 #include "pressure_floor_debug.h"
+#include "sidm_debug.h"
 #include "sink_debug.h"
 #include "space.h"
 #include "star_formation_debug.h"
