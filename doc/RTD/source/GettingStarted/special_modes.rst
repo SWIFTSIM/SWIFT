@@ -73,11 +73,17 @@ Additional modes can be enabled:
 - ``enable_hydro_acceleration: 1`` allows hydrodynamic forces to act on boundary particles.
 - ``enable_grav_acceleration: 1`` allows gravitational forces to act on boundary particles.
 
-Typical use cases for boundary particles include: experiments with fixed
-boundaries; hydrodynamic test scenarios, such as the Rayleigh--Taylor instability
-examples provided in SWIFT; idealised setups with a black hole at the centre of
-a galaxy that accretes gas, but is fixed in place despite the momentum recoil
-that would be caused by the accreted material.
+Typical use cases for boundary particles include experiments with fixed
+boundaries and hydrodynamic test scenarios, such as the Rayleigh--Taylor instability
+examples provided in SWIFT.
+
+Note that certain physics modules may alter boundary particle velocities if they
+update momenta outside of contributions from hydrodynamic or gravitational
+accelerations. One example is the change in black hole momentum due to
+accretion. The configuration option ``--enable-fixed-black-holes=N`` can be used
+to ensure that black hole particles remain completely stationary. When enabled,
+all black hole particles with IDs less than or equal to ``N`` are fully fixed in
+position.
 
 Gravity glasses
 ~~~~~~~~~~~~~~~
