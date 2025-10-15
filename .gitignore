@@ -154,6 +154,8 @@ tests/testRandomCone
 tests/testThreadpool
 tests/testParser
 tests/testFeedback
+tests/testSIDMSetUp
+tests/testSIDMSymmetry
 tests/parser_output.yml
 tests/testPeriodicBC.sh
 tests/testPeriodicBCPerturbed.sh

@@ -19,7 +19,6 @@
 #include <config.h>
 
 /* Local includes. */
-#include "sidm_debug.h"
 #include "swift.h"
 #include "timestep_limiter_iact.h"
 
@@ -99,15 +98,15 @@ void test(void) {
   j_not_ok = memcmp(&pj, &pj2, sizeof(struct sipart));
 
   if (i_not_ok) {
-    sidm_debug_particle(&pi);
-    sidm_debug_particle(&pi2);
+    printSIDMParticle_single(&pi);
+    printSIDMParticle_single(&pi2);
     print_bytes(&pi, sizeof(struct sipart));
     print_bytes(&pi2, sizeof(struct sipart));
     error("Particles 'sipi' do not match after density (byte = %d)", i_not_ok);
   }
   if (j_not_ok) {
-    sidm_debug_particle(&pj);
-    sidm_debug_particle(&pj2);
+    printSIDMParticle_single(&pj);
+    printSIDMParticle_single(&pj2);
     print_bytes(&pj, sizeof(struct sipart));
     print_bytes(&pj2, sizeof(struct sipart));
     error("Particles 'sipj' do not match after density (byte = %d)", j_not_ok);
