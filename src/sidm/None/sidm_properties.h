@@ -50,6 +50,20 @@ struct sidm_props {
   /*! Are we using a fixed cutoff radius? (all smoothing length calculations are
    * disabled if so) */
   char use_fixed_r_cut;
+
+  /*! Maximal smoothing length (internal units) */
+  float h_max;
+
+  /*! Minimal smoothing length expressed as ratio to softening length */
+  float h_min_ratio;
+
+  /*! Minimal smoothing length (internal units) */
+  float h_min;
+
+  /* ------ Neighbour number definition ------------ */
+
+  /*! Are we using the mass-weighted definition of neighbour number? */
+  int use_mass_weighted_num_ngb;
 };
 
 /**

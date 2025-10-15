@@ -99,6 +99,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
                                          int timer);
 void runner_do_sinks_density_ghost(struct runner *r, struct cell *c, int timer);
+void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_init_grav(struct runner *r, struct cell *c, int timer);
 void runner_do_hydro_sort(struct runner *r, struct cell *c, int flag,
                           const int cleanup, const int lock,

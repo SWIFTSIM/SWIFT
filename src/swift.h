@@ -86,6 +86,7 @@
 #include "runner.h"
 #include "scheduler.h"
 #include "serial_io.h"
+#include "sidm.h"
 #include "sidm_properties.h"
 #include "single_io.h"
 #include "sink_iact.h"

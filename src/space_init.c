@@ -33,6 +33,7 @@
 #include "gravity.h"
 #include "mhd.h"
 #include "rt.h"
+#include "sidm.h"
 #include "sink.h"
 #include "star_formation.h"
 #include "stars.h"
@@ -192,6 +193,33 @@ void space_init_sinks(struct space *s, int verbose) {
     threadpool_map(&s->e->threadpool, space_init_sinks_mapper, s->sinks,
                    s->nr_sinks, sizeof(struct sink), threadpool_auto_chunk_size,
                    /*extra_data=*/NULL);
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+void space_init_siparts_mapper(void *restrict map_data, int sicount,
+                               void *restrict extra_data) {
+
+  struct sipart *restrict siparts = (struct sipart *)map_data;
+  for (int k = 0; k < sicount; k++) sidm_init_sipart(&siparts[k]);
+}
+
+/**
+ * @brief Calls the #sipart initialisation function on all particles in the
+ * space.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_init_siparts(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  if (s->nr_siparts > 0)
+    threadpool_map(&s->e->threadpool, space_init_siparts_mapper, s->siparts,
+                   s->nr_siparts, sizeof(struct sipart),
+                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

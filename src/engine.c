@@ -2263,6 +2263,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_sparts(s, e->verbose);
   space_init_bparts(s, e->verbose);
   space_init_sinks(s, e->verbose);
+  space_init_siparts(s, e->verbose);
 
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
@@ -2367,6 +2368,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_sparts(e->s, e->verbose);
   space_init_bparts(e->s, e->verbose);
   space_init_sinks(e->s, e->verbose);
+  space_init_siparts(e->s, e->verbose);
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);

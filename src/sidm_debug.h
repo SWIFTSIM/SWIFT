@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2025 Katy Proctor (katy.proctor@fysik.su.se)
+ * Coypright (c) 2025 Katy Proctor (katy.proctor@fysik.su.se)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,15 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SIDM_BASIC_DEBUG_H
-#define SWIFT_SIDM_BASIC_DEBUG_H
+#ifndef SWIFT_SIDM_DEBUG_H
+#define SWIFT_SIDM_DEBUG_H
 
-__attribute__((always_inline)) INLINE static void sidm_debug_particle(
-    const struct sipart* sip) {
-  warning(
-      "[PID%lld] x=[%.3e,%.3e,%.3e], "
-      "v=[%.3e,%.3e,%.3e] sip->mass=%.3e",
-      sip->id, sip->x[0], sip->x[1], sip->x[2], sip->v[0], sip->v[1], sip->v[2],
-      sip->mass);
-}
-#endif /* SWIFT_SIDM_BASIC_DEBUG_H */
+/* Config parameters. */
+#include <config.h>
+
+/* Import the debug routines of the right SIDM definition */
+#if defined(SIDM_NONE)
+#include "./sidm/None/sidm_debug.h"
+#elif defined(SIDM_BASIC)
+#include "./sidm/Basic/sidm_debug.h"
+#else
+#error "Invalid choice of SIDM model"
+#endif
+
+#endif /* SWIFT_SIDM_DEBUG_H */

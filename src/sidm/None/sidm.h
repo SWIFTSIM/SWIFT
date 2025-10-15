@@ -37,4 +37,31 @@ __attribute__((always_inline)) INLINE static void sidm_first_init_sipart(
   sip->time_bin = 0;
 }
 
+/**
+ * @brief Prepares an si-particle for its interactions
+ *
+ * @param sip The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void sidm_init_sipart(
+    struct sipart* sip) {}
+
+/**
+ * @brief Finishes the calculation of density on SIDM
+ *
+ * @param sip The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void sidm_end_density(
+    struct sipart* sip, const struct cosmology* cosmo) {}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #sipart has 0
+ * ngbs.
+ *
+ * @param sip The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void sidm_sipart_has_no_neighbours(
+    struct sipart* restrict sip, const struct cosmology* cosmo) {}
+
 #endif /* SWIFT_NONE_SIDM_H */

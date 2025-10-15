@@ -16,15 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SIDM_BASIC_DEBUG_H
-#define SWIFT_SIDM_BASIC_DEBUG_H
+#ifndef SWIFT_SIDM_IACT_H
+#define SWIFT_SIDM_IACT_H
 
-__attribute__((always_inline)) INLINE static void sidm_debug_particle(
-    const struct sipart* sip) {
-  warning(
-      "[PID%lld] x=[%.3e,%.3e,%.3e], "
-      "v=[%.3e,%.3e,%.3e] sip->mass=%.3e",
-      sip->id, sip->x[0], sip->x[1], sip->x[2], sip->v[0], sip->v[1], sip->v[2],
-      sip->mass);
-}
-#endif /* SWIFT_SIDM_BASIC_DEBUG_H */
+/* Config parameters. */
+#include <config.h>
+
+/* Select the correct SIDM model */
+#if defined(SIDM_NONE)
+#include "./sidm/None/sidm_iact.h"
+#elif defined(SIDM_BASIC)
+#include "./sidm/Basic/sidm_iact.h"
+#else
+#error "Invalid choice of SIDM model"
+#endif
+
+#endif /* SWIFT_SIDM_IACT_H */
