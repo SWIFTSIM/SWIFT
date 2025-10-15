@@ -3299,6 +3299,15 @@ AM_CONDITIONAL([HAVEEAGLEFLOOR], [test "$with_entropy_floor" = "EAGLE"])
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
 AM_CONDITIONAL([HAVEGEARMECHANICALFEEDBACK], [test "$with_feedback" = "GEAR-mechanical"])
 
+# Check for GEAR and GEAR_MECHANICAL feedback flags to set the common files
+# variable
+AS_IF([test "$with_feedback" = "GEAR" -o "$with_feedback" = "GEAR-mechanical"],
+  [common_gear_needed=yes],
+  [common_gear_needed=no])
+
+# Expose the conditional to Automake
+AM_CONDITIONAL([COMMON_GEAR_NEEDED], [test "x$common_gear_needed" = "xyes"])
+
 # check if using gear feedback
 AM_CONDITIONAL([HAVEAGORAFEEDBACK], [test "$with_feedback" = "AGORA"])
 

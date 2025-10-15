@@ -136,12 +136,16 @@ EAGLE_FLOOR_SOURCES += entropy_floor/EAGLE/entropy_floor.c
 endif
 
 # Common source files for GEAR and GEAR-mechanical feedback
+GEAR_FEEDBACK_SOURCES =
+
+if COMMON_GEAR_NEEDED
 COMMON_GEAR_SOURCES = \
     feedback/GEAR/stellar_evolution.c feedback/GEAR/initial_mass_function.c \
     feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c \
     feedback/GEAR/feedback_common.c
 
-GEAR_FEEDBACK_SOURCES = $(COMMON_GEAR_SOURCES)
+GEAR_FEEDBACK_SOURCES += $(COMMON_GEAR_SOURCES)
+endif
 
 if HAVEGEARFEEDBACK
 GEAR_FEEDBACK_SOURCES += feedback/GEAR/feedback.c
