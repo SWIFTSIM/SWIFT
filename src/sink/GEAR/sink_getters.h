@@ -82,7 +82,7 @@ INLINE static double sink_compute_neighbour_rotation_energy_magnitude(
  *
  */
 INLINE static float sink_get_physical_div_v_from_part(
-    const struct part* restrict p) {
+    const struct part* restrict p, const struct cosmology* cosmo) {
 
   float div_v = 0.0;
 
@@ -108,6 +108,16 @@ INLINE static float sink_get_physical_div_v_from_part(
                        p->viscosity.velocity_gradient[2][2]);
 #elif HOPKINS_PU_SPH
   div_v = p->density.div_v;
+#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+  float dummy[3], gradvx[3], gradvy[3], gradvz[3];
+  hydro_part_get_gradients(p, dummy, gradvx, gradvy, gradvz, dummy);
+  div_v = gradvx[0] + gradvy[1] + gradvz[2];
+
+  /* Multiply by the missing scale factors */
+  div_v *= cosmo->a2_inv;
+
+  /* Add the missing term */
+  div_v += hydro_dimension * cosmo->H;
 #else
 #error \
     "This scheme is not implemented. Note that Different scheme apply the Hubble flow in different places. Be careful about it."

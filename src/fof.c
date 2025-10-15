@@ -82,7 +82,6 @@ enum fof_halo_seeding_props {
 MPI_Datatype fof_mpi_type;
 MPI_Datatype group_length_mpi_type;
 MPI_Datatype fof_final_index_type;
-MPI_Datatype fof_final_mass_type;
 
 /*! Offset between the first particle on this MPI rank and the first particle in
  * the global order */
@@ -250,12 +249,6 @@ void fof_create_mpi_types(void) {
                           &fof_final_index_type) != MPI_SUCCESS ||
       MPI_Type_commit(&fof_final_index_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for fof_final_index.");
-  }
-  /* Define type for sending fof_final_mass struct */
-  if (MPI_Type_contiguous(sizeof(struct fof_final_mass), MPI_BYTE,
-                          &fof_final_mass_type) != MPI_SUCCESS ||
-      MPI_Type_commit(&fof_final_mass_type) != MPI_SUCCESS) {
-    error("Failed to create MPI type for fof_final_mass.");
   }
 #else
   error("Calling an MPI function in non-MPI code.");
@@ -561,25 +554,6 @@ int compare_fof_final_index_global_root(const void *a, const void *b) {
   if (fof_final_index_b->global_root < fof_final_index_a->global_root)
     return 1;
   else if (fof_final_index_b->global_root > fof_final_index_a->global_root)
-    return -1;
-  else
-    return 0;
-}
-
-/**
- * @brief Comparison function for qsort call comparing group global roots
- *
- * @param a The first #fof_final_mass object.
- * @param b The second #fof_final_mass object.
- * @return 1 if the global of the group b is *smaller* than the global group of
- * group a, -1 if a is the smaller one and 0 if they are equal.
- */
-int compare_fof_final_mass_global_root(const void *a, const void *b) {
-  struct fof_final_mass *fof_final_mass_a = (struct fof_final_mass *)a;
-  struct fof_final_mass *fof_final_mass_b = (struct fof_final_mass *)b;
-  if (fof_final_mass_b->global_root < fof_final_mass_a->global_root)
-    return 1;
-  else if (fof_final_mass_b->global_root > fof_final_mass_a->global_root)
     return -1;
   else
     return 0;
@@ -2525,6 +2499,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   long long *final_group_size = props->final_group_size;
   double *group_mass = props->group_mass;
   double *centre_of_mass = props->group_centre_of_mass;
+  float *radii = props->group_radii;
   char *has_black_hole = props->has_black_hole;
   float *max_part_density = props->max_part_density;
 
@@ -2712,6 +2687,37 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     props->final_group_index[i] = i + 1;
   }
 
+  // Calculate the maximum radius for each FOF
+  for (size_t i = 0; i < nr_gparts; i++) {
+
+    /* Ignore particles not in groups */
+    if (gparts[i].fof_data.group_id == group_id_default) continue;
+
+    /* Entry into the global list of group properties */
+    const size_t index = gparts[i].fof_data.group_id - 1;
+
+    /* Set CoM as the origin*/
+    double x[3] = {gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]};
+    for (int k = 0; k < 3; k++) {
+      if (periodic) {
+        x[k] = box_wrap(x[k] + (dim[k] / 2.) - centre_of_mass[index * 3 + k],
+                        0., dim[k]);
+        x[k] -= dim[k] / 2.;
+      } else {
+        x[k] -= centre_of_mass[index * 3 + k];
+      }
+    }
+
+    /* Calculate the radius*/
+    float r = sqrtf((x[0] * x[0]) + (x[1] * x[1]) + (x[2] * x[2]));
+    radii[index] = fmax(radii[index], r);
+  }
+
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, radii, props->num_groups, MPI_FLOAT, MPI_MAX,
+                MPI_COMM_WORLD);
+#endif
+
   /* Free temporary arrays */
   swift_free("max_positions", max_positions);
   swift_free("min_positions", min_positions);
@@ -2882,6 +2888,7 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
   long long *group_index = props->final_group_index;
   double *group_mass = props->group_mass;
   double *group_centre_of_mass = props->group_centre_of_mass;
+  float *group_radii = props->group_radii;
 
   for (int rank = 0; rank < nr_nodes; ++rank) {
 
@@ -2900,9 +2907,9 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
               mode);
 
       if (my_rank == 0) {
-        fprintf(file, "# %8s %12s %12s %12s %12s %12s %12s %24s %24s \n",
-                "Group ID", "Group Size", "Group Mass", "CoM_x", "CoM_y",
-                "CoM_z", "Max Density", "Max Density Local Index",
+        fprintf(file, "# %8s %12s %12s %12s %12s %12s %12s %12s %24s %24s \n",
+                "Group ID", "Group Size", "Group Mass", "Group Radii", "CoM_x",
+                "CoM_y", "CoM_z", "Max Density", "Max Density Local Index",
                 "Particle ID");
         fprintf(file,
                 "#-------------------------------------------------------------"
@@ -2912,9 +2919,10 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
 
       for (int i = 0; i < num_groups; i++) {
 
-        fprintf(file, "  %8lld %12lld %12e %12e %12e %12e %12e %24lld %24lld\n",
+        fprintf(file,
+                "  %8lld %12lld %12e %12e %12e %12e %12e %12e %24lld %24lld\n",
                 group_index[i], final_group_size[i], group_mass[i],
-                group_centre_of_mass[i * 3 + 0],
+                group_radii[i], group_centre_of_mass[i * 3 + 0],
                 group_centre_of_mass[i * 3 + 1],
                 group_centre_of_mass[i * 3 + 2], 0., -1ll, -1ll);
       }
@@ -3896,6 +3904,9 @@ void fof_compute_group_props(struct fof_props *props,
                      (void **)&props->group_centre_of_mass, 32,
                      num_groups * 3 * sizeof(double)) != 0)
     error("Failed to allocate list of group CoM for FOF search.");
+  if (swift_memalign("fof_group_radii", (void **)&props->group_radii, 32,
+                     num_groups * sizeof(float)) != 0)
+    error("Failed to allocate list of group radii for FOF search.");
   if (swift_memalign("fof_max_part_density", (void **)&props->max_part_density,
                      32, num_groups * sizeof(float)) != 0)
     error("Failed to allocate list of max group densities for FOF search.");
@@ -3905,6 +3916,7 @@ void fof_compute_group_props(struct fof_props *props,
   bzero(props->final_group_index, num_groups * sizeof(long long));
   bzero(props->has_black_hole, num_groups * sizeof(char));
   bzero(props->group_centre_of_mass, num_groups * 3 * sizeof(double));
+  bzero(props->group_radii, num_groups * sizeof(float));
   bzero(props->max_part_density, num_groups * sizeof(float));
 
   const ticks tic_props = getticks();
@@ -3967,6 +3979,7 @@ void fof_free_arrays(struct fof_props *props) {
   swift_free("fof_group_size", props->final_group_size);
   swift_free("fof_group_index", props->final_group_index);
   swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
+  swift_free("fof_group_radii", props->group_radii);
   swift_free("fof_max_part_density", props->max_part_density);
   swift_free("fof_has_black_hole", props->has_black_hole);
   swift_free("fof_distance", props->distance_to_link);
@@ -3977,6 +3990,7 @@ void fof_free_arrays(struct fof_props *props) {
   props->final_group_size = NULL;
   props->final_group_index = NULL;
   props->group_centre_of_mass = NULL;
+  props->group_radii = NULL;
   props->max_part_density = NULL;
   props->has_black_hole = NULL;
   props->group_size = NULL;
@@ -4000,6 +4014,7 @@ void fof_struct_dump(const struct fof_props *props, FILE *stream) {
   temp.group_mass = NULL;
   temp.final_group_size = NULL;
   temp.group_centre_of_mass = NULL;
+  temp.group_radii = NULL;
   temp.max_part_density = NULL;
   temp.group_links = NULL;
 
