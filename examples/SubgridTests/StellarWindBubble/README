@@ -23,4 +23,21 @@ The run.sh script calls the `makeIC.py' script with default values. You can expe
 To run the script, once you've changed the parameter you wanted, you can simply make a sbatch or srun on the `run.sh` script. It will automatically create a folder containing the IC and the simulation. Then, the script will call the `gas_profile_movie.py` that makes a gif of the bubble's quantities over time and log some parameters' information in a .txt file `radial_peak_position.txt`. Finally, the `bubble_evolution.py` will use the information in the .txt file to plot the evolution of the bubble alongside with some theoretical formulas.
 (Exemple: ./run.sh)
 
+# Theorethical formulas
+The graphs plot different theoretical formulas coming from the book "Henny J. G. L. M. Lamers, Joseph P. Cassinelli - Introduction to Stellar Winds-Cambridge University Press (1999)" having the formulas for the energy conserving snowplow phase :
+R(t) = 28 * (L_36 / (mu * n_0))^(1/5) * t_6^(3/5)
+v = 17 * (L_36 / (mu * n_0))^(1/5) * t_6^(-2/5)
+T = 1.6 * 10^6 * L_36^(8/35) * n_0^(2/35) * t_6^(-6/35)
+n = 0.01 * L_36^(6/35) * n_0^(19/35) * t_6^(-22/35)
+
+and for the momentum conserving snowplow phase :
+R(t) = 16 * (L_36 / (v_3 * n_0))^(1/4) * t_6^(-1/2)
+v  =7.9 * (L_36 / (v_3 * n_0))^(1/4) * t_6^(-1/2)
+
+with some handsmade terms L_36 = L_w / 10^36 [erg / s], t_6 = t /10^6 [yrs] and v_3 = v_infty / 1000 [km / s]
+
+The two other fit for the radius come from the paper "Formation of star clusters and enrichment by massive stars in simulations of low-metallicity galaxies with a fully sampled initial stellar mass function" by (Lahén et al)
+R = 0.88 * (L_w / rho_0)^(1/5) * t(3/5) for energy conserving snowplow phase
+R = (3 * dot(M) * v_infty / (2 * pi * rho_0))^(1/4) * t^(1/2) for momentum conserving snowplow phase 
+
 
