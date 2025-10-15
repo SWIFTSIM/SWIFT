@@ -135,11 +135,20 @@ if HAVEEAGLEFLOOR
 EAGLE_FLOOR_SOURCES += entropy_floor/EAGLE/entropy_floor.c
 endif
 
-# source files for GEAR feedback
+# Common source files for GEAR and GEAR-mechanical feedback
 GEAR_FEEDBACK_SOURCES =
+
+if COMMON_GEAR_NEEDED
+COMMON_GEAR_SOURCES = \
+    feedback/GEAR/stellar_evolution.c feedback/GEAR/initial_mass_function.c \
+    feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c \
+    feedback/GEAR/feedback_common.c
+
+GEAR_FEEDBACK_SOURCES += $(COMMON_GEAR_SOURCES)
+endif
+
 if HAVEGEARFEEDBACK
-GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedback.c
-GEAR_FEEDBACK_SOURCES += feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
+GEAR_FEEDBACK_SOURCES += feedback/GEAR/feedback.c
 endif
 
 # source files for AGORA feedback
@@ -472,7 +481,7 @@ nobase_noinst_HEADERS += feedback/EAGLE_thermal/feedback_debug.h
 nobase_noinst_HEADERS += feedback/EAGLE/yield_tables.h feedback/EAGLE/imf.h feedback/EAGLE/interpolate.h
 nobase_noinst_HEADERS += feedback/EAGLE/enrichment.h
 nobase_noinst_HEADERS += feedback/GEAR/stellar_evolution_struct.h feedback/GEAR/stellar_evolution.h
-nobase_noinst_HEADERS += feedback/GEAR/feedback.h feedback/GEAR/feedback_iact.h
+nobase_noinst_HEADERS += feedback/GEAR/feedback.h feedback/GEAR/feedback_iact.h feedback/GEAR/feedback_common.h
 nobase_noinst_HEADERS += feedback/GEAR/feedback_properties.h feedback/GEAR/feedback_struct.h
 nobase_noinst_HEADERS += feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h
