@@ -654,7 +654,7 @@ void zoom_truncate_bkg(struct space *s, const int verbose) {
     message(
         "Computed a truncation distance of %.2f internal units (with %.2f x "
         "%.2f / (%.1e)^(1/3))",
-        r_trunc, tidal_factor, zoom_dim, epsilon);
+        r_trunc, tidal_factor, trunc_width, epsilon);
 
   /* If the truncation distance exceeds the box size we can't truncate. */
   if (r_trunc * 2.0 >= fmin(s->dim[0], fmin(s->dim[1], s->dim[2]))) {
