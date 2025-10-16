@@ -295,9 +295,9 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
   /* Store the particle extent in the zoom properties. */
   for (int i = 0; i < 3; i++) s->zoom_props->part_dim[i] = ini_dims[i];
 
+  free(reg_data);
+
   if (verbose) {
-    message("Computing high resolution particle dim and shift took %f %s",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
     message("Current high resolution particle extent is [%f, %f, %f]",
             ini_dims[0], ini_dims[1], ini_dims[2]);
     message("Current high resolution particle CoM is [%f, %f, %f]",
@@ -306,9 +306,9 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
     message("Particle shift to box centre is [%f, %f, %f] (not yet applied)",
             s->zoom_props->zoom_shift[0], s->zoom_props->zoom_shift[1],
             s->zoom_props->zoom_shift[2]);
+    message("Computing high resolution particle dim and shift took %f %s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
-
-  free(reg_data);
 }
 
 /**
