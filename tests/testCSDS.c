@@ -258,12 +258,103 @@ void test_log_timestamps(struct csds_writer *log) {
   }
 }
 
+void test_special_flags(struct csds_writer *log) {
+    struct csds_logfile_writer *d = &log->logfile;
+    struct engine e;
+    struct part p;
+    struct xpart xp;
+    bzero(&p, sizeof(struct part));
+    bzero(&xp, sizeof(struct xpart));
+
+    /* Set some fields */
+    p.x[0] = 4.2;
+    p.v[0] = 1.23f;
+
+    /* Use a nonzero flag ( 2 bytes max) */
+    uint32_t special_flag_value = 0xABCD;    
+
+    /* Write part with special flag */
+    csds_log_part(log, &p, &xp, &e, /* log_all */ 1, csds_flag_create, special_flag_value);
+    printf("Wrote part with special flags at offset %#016zx\n", xp.csds_data.last_offset);
+
+    /* Read back */
+    bzero(&p, sizeof(struct part));
+    size_t offset = xp.csds_data.last_offset;
+    unsigned int mask = csds_read_part(log, &p, &offset, (const char*)d->data);
+
+    /* Check position and velocity are correct */
+    if (p.x[0] != 4.2 || p.v[0] != 1.23f) {
+        printf("FAIL: Could not read part with special flags.\n");
+        abort();
+    }
+
+    /* Optional: verify mask has the special flag bit set */
+    if (!(mask & log->fixed_fields[CSDS_SPECIAL_FLAGS_INDEX].mask)) {
+        printf("FAIL: Special flag bit not set in mask.\n");
+        abort();
+    }
+
+    printf("Special flag test passed, mask = %#04x\n", mask);
+}
+
+
+void test_gas_particle_fields(struct csds_writer *log) {
+    struct csds_logfile_writer *d = &log->logfile;
+    struct engine e;
+    struct part p;
+    struct xpart xp;
+    bzero(&p, sizeof(struct part));
+    bzero(&xp, sizeof(struct xpart));
+
+    // Fill all relevant fields
+    p.x[0] = 1.0; p.x[1] = 1.1; p.x[2] = 1.2;
+    p.v[0] = 0.1f; p.v[1] = 0.2f; p.v[2] = 0.3f;
+    p.mass = 2.0f;
+    p.u = 0.5f;
+    p.h = 1.1f;
+    p.rho = 3.3f;
+    p.id = 42;
+
+    // Log particle
+    csds_log_part(log, &p, &xp, &e, 1, csds_flag_none, 0);
+    printf(
+        "Wrote gas particle at offset %#016zx\n  with  pos = [%f, %f, %f], "
+        "vel = [%f, %f, %f], mass = %f, u = %f, h = %f, rho = %f, id = %lld\n",
+        xp.csds_data.last_offset,
+	p.x[0], p.x[1], p.x[2],
+	p.v[0], p.v[1], p.v[2],
+	p.mass, p.u, p.h, p.rho, p.id); 
+
+    // Read particle back
+    bzero(&p, sizeof(struct part));
+    size_t offset = xp.csds_data.last_offset;
+    unsigned int mask = csds_read_part(log, &p, &offset, (const char*)d->data);
+
+    printf("Recovered gas particle at offset %#016zx with mask %#04x:\n", xp.csds_data.last_offset, mask);
+    printf("  pos = [%f, %f, %f], vel = [%f, %f, %f], mass = %f, u = %f, h = %f, rho = %f, id = %lld\n",
+           p.x[0], p.x[1], p.x[2],
+           p.v[0], p.v[1], p.v[2],
+           p.mass, p.u, p.h, p.rho, p.id);
+
+    // Check values
+    if (p.x[0]!=1.0 || p.x[1]!=1.1 || p.x[2]!=1.2 ||
+        p.v[0]!=0.1f || p.v[1]!=0.2f || p.v[2]!=0.3f ||
+        p.mass!=2.0f || p.u!=0.5f || p.h!=1.1f || p.rho!=3.3f || p.id!=42) {
+        printf("FAIL: Gas particle fields read incorrectly.\n");
+        abort();
+    }
+    printf("Gas particle fields test passed, mask = %#04x\n", mask);
+}
+
+
 int main(int argc, char *argv[]) {
 
   /* Prepare a csds. */
   struct csds_writer log;
   struct swift_params params;
   struct engine e;
+  e.nodeID = 0;
+  e.verbose = 1;  
   e.policy = engine_policy_hydro | engine_policy_self_gravity;
 
   parser_read_file("csds.yml", &params);
@@ -277,6 +368,18 @@ int main(int argc, char *argv[]) {
 
   /* Test writing/reading timestamps. */
   test_log_timestamps(&log);
+
+  /* Test writing/reading the special flags */
+  test_special_flags(&log);
+
+  /* Test writing/reading gas part specific fields */
+  test_gas_particle_fields(&log);
+
+  /* Test writing/reading gpart DM specific fields */  
+  test_dm_particle_fields(&log);
+
+  /* Test writing/reading gpart DM background specific fields */  
+  /* test_background_dm_particle(&log);   */
 
   /* Be clean */
   char filename[256];
