@@ -142,7 +142,6 @@ void zoom_get_region_dim_and_shift_mapper(void *map_data, int num_elements,
   double min_bounds[3] = {FLT_MAX, FLT_MAX, FLT_MAX};
   double max_bounds[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
   double com[3] = {0.0, 0.0, 0.0};
-  double vcom[3] = {0.0, 0.0, 0.0};
   double mtot = 0.0;
 
   /* Loop over the particles. */
@@ -269,20 +268,6 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
   com[0] *= imass;
   com[1] *= imass;
   com[2] *= imass;
-  vcom[0] *= imass;
-  vcom[1] *= imass;
-  vcom[2] *= imass;
-
-  /* Store the CoM and bulk velocity in the zoom properties. */
-  for (int i = 0; i < 3; i++) {
-    s->zoom_props->com[i] = com[i];
-    s->zoom_props->vcom[i] = vcom[i];
-  }
-
-  /* Store the velocity shift to be applied to the zoom region. */
-  for (int i = 0; i < 3; i++) {
-    s->zoom_props->zoom_vel_shift[i] = -vcom[i];
-  }
 
   /* Store the CoM in the zoom properties. */
   for (int i = 0; i < 3; i++) {
