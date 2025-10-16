@@ -710,18 +710,19 @@ void csds_log_gparts(struct csds_writer *log, struct gpart *p, int count,
  * (return) offset of this log.
  */
 void csds_log_timestamp(struct csds_writer *log, integertime_t timestamp,
-                        double time, size_t *offset) {
+			double time, size_t *offset) {
   struct csds_logfile_writer *logfile = &log->logfile;
+
   /* Start by computing the size of the message. */
   const int size =
-      log->list_fields[CSDS_TIMESTAMP_INDEX].size + CSDS_HEADER_SIZE;
+      log->fixed_fields[CSDS_TIMESTAMP_INDEX].size + CSDS_HEADER_SIZE;
 
   /* Allocate a chunk of memory in the logfile of the right size. */
   size_t offset_new;
   char *buff = (char *)csds_logfile_writer_get(logfile, size, &offset_new);
 
   /* Write the header. */
-  unsigned int mask = log->list_fields[CSDS_TIMESTAMP_INDEX].mask;
+  unsigned int mask = log->fixed_fields[CSDS_TIMESTAMP_INDEX].mask;
   buff = csds_write_record_header(buff, &mask, offset, offset_new);
 
   /* Store the timestamp. */
@@ -768,7 +769,7 @@ void csds_ensure_size(struct csds_writer *log, const struct engine *e) {
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+	    clocks_getunit());
 }
 
 /** @brief Generate the name of the logfile files
@@ -781,163 +782,198 @@ void csds_get_logfile_name(struct csds_writer *log, char *filename) {
 }
 
 /**
+ * @brief Initialize the fixed_fields.
+ *
+ * This includes the fields available for all particle types such as position
+ * and velocity.
+ *
+ * @param log The #csds_writer.
+ * @param e The #engine.
+ */
+void csds_init_fixed_mask_fields(struct csds_writer *log, const struct engine *e) {
+
+  /* Special Flags (Index 0, Mask 1 << 0) */
+  if (CSDS_SPECIAL_FLAGS_INDEX != 0) {
+    error("Expecting the special flags to be the first element.");
+  }
+
+  csds_define_common_field(log->fixed_fields[CSDS_SPECIAL_FLAGS_INDEX],
+			   "SpecialFlags", sizeof(uint32_t));
+  log->fixed_fields[CSDS_SPECIAL_FLAGS_INDEX].mask = (1 << CSDS_SPECIAL_FLAGS_INDEX);
+
+  /* Timestamp (Index 1, Mask 1 << 1) */
+  if (CSDS_TIMESTAMP_INDEX != 1) {
+    error("Expecting the timestamp to be the second element.");
+  }
+
+  csds_define_common_field(log->fixed_fields[CSDS_TIMESTAMP_INDEX],
+			   "Timestamp", sizeof(integertime_t) + sizeof(double));
+  log->fixed_fields[CSDS_TIMESTAMP_INDEX].mask = (1u << CSDS_TIMESTAMP_INDEX);
+  log->fixed_fields[CSDS_TIMESTAMP_INDEX].type = mask_for_timestep;
+
+  /* 3. Position (Index 2, Mask 1 << 2) */
+  csds_define_common_field(log->fixed_fields[CSDS_POS_INDEX],
+			   "Coordinates", 3 * sizeof(double));
+  log->fixed_fields[CSDS_POS_INDEX].mask = (1u << CSDS_POS_INDEX);
+
+  /* 4. Velocity (Index 3, Mask 1 << 3) */
+  csds_define_common_field(log->fixed_fields[CSDS_VEL_INDEX],
+			   "Velocity", 3 * sizeof(float));
+  log->fixed_fields[CSDS_VEL_INDEX].mask = (1u << CSDS_VEL_INDEX);
+
+  /* 5. Acceleration (Index 4, Mask 1 << 4) */
+  csds_define_common_field(log->fixed_fields[CSDS_ACCEL_INDEX],
+			   "Acceleration", 3 * sizeof(float));
+  log->fixed_fields[CSDS_ACCEL_INDEX].mask = (1u << CSDS_ACCEL_INDEX);
+}
+
+/**
  * @brief Initialize the variable list_fields.
  *
  * @param log The #csds_writer.
  * @param e The #engine.
  */
 void csds_init_masks(struct csds_writer *log, const struct engine *e) {
-  /* Set the pointers to 0 */
+  /* Initialize all pointers/counts to 0 */
   for (int i = 0; i < swift_type_count; i++) {
-    log->field_pointers[i] = NULL;
+    log->part_type_fields[i] = NULL;
     log->number_fields[i] = 0;
+    log->part_type_total_size[i] = 0;
   }
 
-  struct csds_field list[100];
-  int num_fields = 0;
+  /* Init the fixed fields */
+  csds_init_fixed_mask_fields(log, e);
 
-  /* The next fields must be the two first ones. */
-  /* Add the special flags (written manually => no need of offset) */
-  if (CSDS_SPECIAL_FLAGS_INDEX != 0) {
-    error("Expecting the special flags to be the first element.");
-  }
-  csds_define_common_field(list[CSDS_SPECIAL_FLAGS_INDEX], "SpecialFlags",
-                           sizeof(uint32_t));
-  num_fields += 1;
+  /* --- Define Particle-Type-Specific Masks (Indices 5 to 11) --- */
 
-  /* Add the timestamp */
-  if (CSDS_TIMESTAMP_INDEX != 1) {
-    error("Expecting the timestamp to be the first element.");
-  }
-  csds_define_common_field(list[CSDS_TIMESTAMP_INDEX], "Timestamp",
-                           sizeof(integertime_t) + sizeof(double));
-  list[num_fields].type = mask_for_timestep;  // flag it as timestamp
-  num_fields += 1;
+  /* Temporary buffer for ALL fields defined across ALL types */
+  struct csds_field list[csds_max_size_output_list];
+  bzero(list, csds_max_size_output_list * sizeof(struct csds_field));
 
-  /* Initialize all the particles types */
+  int current_list_index = 0;
+
   for (int i = 0; i < swift_type_count; i++) {
     int tmp_num_fields = 0;
-    struct csds_field *current = &list[num_fields];
+    size_t current_type_size = 0;
+    struct csds_field *current = &list[current_list_index];
     enum mask_for_type mask_for_type;
+    unsigned int type_mask = 0;
 
-    /* Set the pointer */
-    log->field_pointers[i] = current;
+    if (i >= CSDS_PART_MASK_START_INDEX + swift_type_count) continue;
+
+    /* Set the particle type mask (from 1 << 5 onwards) */
+    type_mask = (1u << (CSDS_PART_MASK_START_INDEX + i));
 
     switch (i) {
-      /* Hydro */
-      case swift_type_gas:
-        /* Set the mask type */
-        mask_for_type = mask_for_gas;
+      /* Hydro (swift_type_gas) */
+    case swift_type_gas:
+      mask_for_type = mask_for_gas;
+      tmp_num_fields = csds_hydro_define_fields(current);
+      tmp_num_fields +=
+	csds_chemistry_define_fields_parts(current + tmp_num_fields);
+      break;
 
-        /* Set the masks */
-        tmp_num_fields = csds_hydro_define_fields(current);
-        tmp_num_fields +=
-            csds_chemistry_define_fields_parts(current + tmp_num_fields);
-        // TODO add cooling + SF
-        break;
+      /* Stars (swift_type_stars) */
+    case swift_type_stars:
+      mask_for_type = mask_for_stars;
+      tmp_num_fields = csds_stars_define_fields(current);
+      tmp_num_fields +=
+	csds_chemistry_define_fields_sparts(current + tmp_num_fields);
+      tmp_num_fields +=
+	csds_star_formation_define_fields(current + tmp_num_fields);
+      break;
 
-      /* Stars */
-      case swift_type_stars:
-        /* Set the mask type */
-        mask_for_type = mask_for_stars;
-
-        /* Set the masks */
-        tmp_num_fields = csds_stars_define_fields(current);
-        tmp_num_fields +=
-            csds_chemistry_define_fields_sparts(current + tmp_num_fields);
-        tmp_num_fields +=
-            csds_star_formation_define_fields(current + tmp_num_fields);
-        break;
-
-      case swift_type_dark_matter:
-        /* Set the mask type */
-        mask_for_type = mask_for_dark_matter;
-
-        /* Set the masks */
-        tmp_num_fields = csds_gravity_define_fields(current);
-        break;
-
-      default:
-        log->field_pointers[i] = NULL;
-        break;
-    }
-
-    /* Set the particle type */
-    for (int j = 0; j < tmp_num_fields; j++) {
-      current[j].type = mask_for_type;
-    }
-
-    /* Update the number of fields */
-    num_fields += tmp_num_fields;
-    log->number_fields[i] = tmp_num_fields;
-  }
-
-  /* Set the counter */
-  log->total_number_fields = num_fields;
-
-  /* Set the masks and ensure to have only one for the common fields
-     (e.g. Coordinates).
-     Initially we have (Name, mask, part_type):
-      - Coordinates, 0, 0
-      - Velocity, 0, 0
-      - Coordinates, 0, 1
-
-      And get:
-      - Coordinates, 1, 0
-      - Velocity, 2, 0
-      - Coordinates, 1, 1
-  */
-  int mask = 0;
-  for (int i = 0; i < num_fields; i++) {
-    /* Skip the elements already processed. */
-    if (list[i].mask != 0) {
-      continue;
-    }
-    const char *name = list[i].name;
-    list[i].mask = 1 << mask;
-
-    /* Check if the field exists in the other particle type. */
-    for (int j = i + 1; j < num_fields; j++) {
-      /* Check if the name is the same */
-      if (strcmp(name, list[j].name) == 0) {
-        /* Check if the data are the same */
-        if (list[i].size != list[j].size) {
-          error("Found two same fields but with different data size (%s).",
-                name);
-        }
-
-        list[j].mask = 1 << mask;
+    case swift_type_dark_matter:
+    case swift_type_dark_matter_background:
+      /* Use DM for both DM types, but only run the function once */
+      if (i == swift_type_dark_matter) {
+	mask_for_type = mask_for_dark_matter;
+	tmp_num_fields = csds_gravity_define_fields(current);
+      } else {
+	continue; // Skip the second DM type's definition run
       }
+      break;
+
+    case swift_type_sink:
+      /* TODO */
+      break;
+
+    case mask_for_black_hole:
+      /* TODO */
+      break;
+    default:
+      continue; /* Skip non-defined particle types */
     }
-    mask += 1;
+
+    /* Process the defined fields: filter out fixed fields, sum size, assign collective mask */
+    int fields_to_keep = 0;
+    for (int j = 0; j < tmp_num_fields; j++) {
+      // Check if this field is one of the FIXED fields
+      if (strcmp(current[j].name, log->fixed_fields[CSDS_POS_INDEX].name) == 0 ||
+	  strcmp(current[j].name, log->fixed_fields[CSDS_VEL_INDEX].name) == 0 ||
+	  strcmp(current[j].name, log->fixed_fields[CSDS_ACCEL_INDEX].name) == 0) {
+	continue;
+      }
+
+      /* Move the field to its new position and assign the collective type mask */
+      if (fields_to_keep != j) {
+	current[fields_to_keep] = current[j];
+      }
+
+      current[fields_to_keep].mask = type_mask;
+      current[fields_to_keep].type = mask_for_type;
+
+      current_type_size += current[fields_to_keep].size;
+      fields_to_keep++;
+    }
+
+    /* Finalize the log structure for this particle type. */
+    if (fields_to_keep > 0) {
+	log->part_type_fields[i] = (struct csds_field *)malloc(fields_to_keep * sizeof(struct csds_field));
+	memcpy(log->part_type_fields[i], current, fields_to_keep * sizeof(struct csds_field));
+    } else {
+	log->part_type_fields[i] = NULL;
+    }
+
+    /* Handle both Dark Matter types pointing to the same fields */
+    if (i == swift_type_dark_matter) {
+	// DM and DM_BACKGROUND share the same field list
+	log->part_type_fields[swift_type_dark_matter_background] = log->part_type_fields[swift_type_dark_matter];
+	log->number_fields[swift_type_dark_matter_background] = fields_to_keep;
+	log->part_type_total_size[swift_type_dark_matter_background] = current_type_size;
+	log->part_type_masks[swift_type_dark_matter_background] = type_mask;
+    }
+
+    log->part_type_masks[i] = type_mask;
+    log->part_type_total_size[i] = current_type_size;
+    log->number_fields[i] = fields_to_keep;
+    current_list_index += fields_to_keep;
   }
+
+  log->total_number_fields = CSDS_TOTAL_FIXED_MASKS + current_list_index;
 
   /* Check that we have enough available flags. */
-  if (mask >= 8 * CSDS_MASK_SIZE) {
-    error(
-        "Not enough available flags for all the fields. "
-        "Please reduce the number of output fields.");
-  }
-
-  /* Save the data */
-  size_t size_list = sizeof(struct csds_field) * num_fields;
-  log->list_fields = (struct csds_field *)malloc(size_list);
-  memcpy(log->list_fields, list, size_list);
-
-  /* Update the pointers */
-  for (int i = 0; i < swift_type_count; i++) {
-    if (log->field_pointers[i] != NULL) {
-      log->field_pointers[i] =
-          log->list_fields + (log->field_pointers[i] - list);
-    }
+  int highest_needed_bit = CSDS_PART_MASK_START_INDEX + swift_type_count - 1;
+  if (highest_needed_bit >= (8 * CSDS_MASK_SIZE)) {
+    error("Not enough available flags for all the fixed and particle-type fields.");
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (e->nodeID == 0) {
-    message("The CSDS contains the following masks:");
-    for (int i = 0; i < log->total_number_fields; i++) {
-      message("%20s:\t mask=%03u\t size=%zi", log->list_fields[i].name,
-              log->list_fields[i].mask, log->list_fields[i].size);
+    message("The CSDS contains the following fixed masks:");
+    for (int j = 0; j < CSDS_TOTAL_FIXED_MASKS; ++j) {
+      message("%20s:\t mask=%03u\t size=%zi", log->fixed_fields[j].name,
+	      (unsigned)log->fixed_fields[j].mask, log->fixed_fields[j].size);
+    }
+    message("The CSDS contains the following fields in the particle masks:");
+    for (int t = 0; t < swift_type_count; ++t) {
+      if (log->part_type_fields[t] == NULL) continue;
+      for (int f = 0; f < log->number_fields[t]; ++f) {
+	message("%20s (type %d):\t mask=%03u\t size=%zi",
+		log->part_type_fields[t][f].name, t,
+		(unsigned)log->part_type_fields[t][f].mask,
+		log->part_type_fields[t][f].size);
+      }
     }
   }
 #endif
