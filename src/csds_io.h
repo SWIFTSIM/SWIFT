@@ -29,46 +29,8 @@
 #include "io_properties.h"
 #include "part.h"
 #include "units.h"
+#include "csds_types.h"
 
-/* This enum defines the type of particle to use
-   with a given mask.
-   The values should be the same than in part_type.h. */
-enum mask_for_type {
-  mask_for_gas = 0,
-  mask_for_dark_matter = 1,
-  /* Only need a single type of dm. */
-  mask_for_stars = 4,
-  mask_for_black_hole = 5,
-  mask_for_timestep = -1,
-} __attribute__((packed));
-
-struct csds_field {
-  /* Name of the field */
-  char name[CSDS_STRING_SIZE];
-
-  /* Mask value. */
-  unsigned int mask;
-
-  /* Type of particle (follow part_type.h and -1 for timestamp). */
-  enum mask_for_type type;
-
-  /* The offset of the field within the particle */
-  size_t offset;
-
-  /* The size of the field */
-  size_t size;
-
-  /* Do we use the xpart or the normal one? */
-  int use_xpart;
-
-  /* Conversion functions (NULL if none) */
-  void *(*conversion_hydro)(const struct part *, const struct xpart *xp,
-                            const struct engine *e, void *buffer);
-  void *(*conversion_grav)(const struct gpart *, const struct engine *e,
-                           void *buffer);
-  void *(*conversion_stars)(const struct spart *, const struct engine *e,
-                            void *buffer);
-};
 
 /**
  * @brief Define a field common to all the simulations
