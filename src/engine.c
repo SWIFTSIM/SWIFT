@@ -1458,9 +1458,9 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
 #ifdef SWIFT_DEBUG_CHECKS
   part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
-                    e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
-                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts,
-                    e->verbose);
+                    e->s->bparts, e->s->siparts, e->s->nr_parts,
+                    e->s->nr_gparts, e->s->nr_sinks, e->s->nr_sparts,
+                    e->s->nr_bparts, e->s->nr_siparts, e->verbose);
 #endif
 
   /* Initial cleaning up session ? */
@@ -2554,9 +2554,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #ifdef SWIFT_DEBUG_CHECKS
   space_check_timesteps(e->s);
   part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
-                    e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
-                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts,
-                    e->verbose);
+                    e->s->bparts, e->s->siparts, e->s->nr_parts,
+                    e->s->nr_gparts, e->s->nr_sinks, e->s->nr_sparts,
+                    e->s->nr_bparts, e->s->nr_siparts, e->verbose);
 #endif
 
   /* Gather the max IDs at this stage */

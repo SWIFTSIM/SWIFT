@@ -1107,7 +1107,10 @@ void engine_redistribute(struct engine *e) {
 
   /* Now each node knows how many parts, sparts, bparts, sinks and gparts will
    * be transferred to every other node. Get the new numbers of particles for
-   * this node. */
+   * this node.
+   *
+   * TODO: Add computation for the siparts. Only placeholders here for now
+   */
   size_t nr_parts_new = 0, nr_gparts_new = 0, nr_sparts_new = 0,
          nr_bparts_new = 0, nr_sinks_new = 0;
   for (int k = 0; k < nr_nodes; k++)
@@ -1360,10 +1363,14 @@ void engine_redistribute(struct engine *e) {
           k, cells[cid].nodeID);
   }
 
-  /* Verify that the links are correct */
+  /* Verify that the links are correct
+   *
+   * TODO: Use the correct siparts counter when implementation is ready!!
+   */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                    nr_parts_new, nr_gparts_new, nr_sinks_new, nr_sparts_new,
-                    nr_bparts_new, e->verbose);
+                    s->siparts, nr_parts_new, nr_gparts_new, nr_sinks_new,
+                    nr_sparts_new, nr_bparts_new, /*nr_siparts_new=*/0,
+                    e->verbose);
 
 #endif
 

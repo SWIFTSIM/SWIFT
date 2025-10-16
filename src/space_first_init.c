@@ -564,7 +564,6 @@ void space_first_init_siparts_mapper(void *restrict map_data, int count,
     /* Initialise the time-integration check variables */
     sip[k].ti_drift = 0;
     sip[k].ti_kick = 0;
-    sip[k].ti_kick_mesh = 0;
 #endif
   }
 }

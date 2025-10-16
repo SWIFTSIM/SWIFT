@@ -422,9 +422,9 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
       e->s, e->ti_current,
       drift_mpoles && (e->policy & engine_policy_self_gravity));
   part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
-                    e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
-                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts,
-                    e->verbose);
+                    e->s->bparts, e->s->siparts, e->s->nr_parts,
+                    e->s->nr_gparts, e->s->nr_sinks, e->s->nr_sparts,
+                    e->s->nr_bparts, e->s->nr_siparts, e->verbose);
 #endif
 
   /* All particles have now been drifted to ti_current */

@@ -65,6 +65,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   size_t nr_bparts = s->nr_bparts;
+  size_t nr_siparts = s->nr_siparts;
   size_t nr_sinks = s->nr_sinks;
 
   /* The current number of actual particles */
@@ -586,10 +587,11 @@ void space_allocate_extras(struct space *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
   if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0) ||
-      (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0))
+      (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0) ||
+      (nr_gparts > 0 && nr_siparts > 0))
     part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                      nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
-                      verbose);
+                      s->siparts, nr_parts, nr_gparts, nr_sinks, nr_sparts,
+                      nr_bparts, nr_siparts, verbose);
 #endif
 
   /* Free the list of local cells */

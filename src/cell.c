@@ -953,6 +953,10 @@ void cell_check_bpart_drift_point(struct cell *c, void *data) {
 #endif
 }
 
+void cell_check_sipart_drift_point(struct cell *c, void *data) {
+  error("Implementation missing! Please code me up!");
+}
+
 /**
  * @brief Checks that the multipole of a cell is at the current point in time
  *

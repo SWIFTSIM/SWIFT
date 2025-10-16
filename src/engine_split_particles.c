@@ -428,8 +428,8 @@ void engine_split_gas_particles(struct engine *e) {
   /* Verify that whatever reallocation happened we are still having correct
    * links */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, e->verbose);
+                    s->siparts, s->nr_parts, s->nr_gparts, s->nr_sinks,
+                    s->nr_sparts, s->nr_bparts, s->nr_siparts, e->verbose);
 #endif
 
   /* We now have enough memory in the part array to accomodate the new
