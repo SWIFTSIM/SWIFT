@@ -922,9 +922,9 @@ void csds_init_masks(struct csds_writer *log, const struct engine *e) {
         /* TODO */
         break;
 
-    case mask_for_neutrino:
+      case mask_for_neutrino:
         /* TODO */
-        break;        
+        break;
       default:
         continue; /* Skip non-defined particle types */
     }

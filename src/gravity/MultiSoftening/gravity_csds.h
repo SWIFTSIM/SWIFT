@@ -65,7 +65,7 @@ INLINE static int csds_gravity_define_fields(struct csds_field *fields) {
                              id_or_neg_offset);
 
   /* Type of gpart (to distinguish background DM from DM) */
-  csds_define_standard_field(fields[2], "GravityTypes", struct gpart, type);  
+  csds_define_standard_field(fields[2], "GravityTypes", struct gpart, type);
 
   return 3;
 }
