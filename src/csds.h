@@ -145,6 +145,9 @@ void csds_log_gparts(struct csds_writer *log, struct gpart *gp, int count,
                      const enum csds_special_flags flag, const int flag_data);
 void csds_init(struct csds_writer *log, const struct engine *e,
                struct swift_params *params);
+void csds_init_fixed_mask_fields(struct csds_writer *log, const struct engine *e);
+void csds_init_masks(struct csds_writer *log, const struct engine *e);
+
 void csds_free(struct csds_writer *log);
 void csds_log_timestamp(struct csds_writer *log, integertime_t t, double time,
                         size_t *offset);
@@ -157,6 +160,12 @@ int csds_read_gpart(const struct csds_writer *log, struct gpart *p,
                     size_t *offset, const char *buff);
 int csds_read_timestamp(const struct csds_writer *log, integertime_t *t,
                         double *time, size_t *offset, const char *buff);
+
+void csds_compute_total_record_size_and_mask(const struct csds_writer *log,
+                                             const int type,
+                                             const enum csds_special_flags flag,
+                                             size_t *size, unsigned int *mask);
+
 void csds_struct_dump(const struct csds_writer *log, FILE *stream);
 void csds_struct_restore(struct csds_writer *log, FILE *stream);
 
