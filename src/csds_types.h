@@ -45,6 +45,7 @@ enum mask_for_type {
   mask_for_sinks = 3,
   mask_for_stars = 4,
   mask_for_black_hole = 5,
+  mask_for_neutrino = 6,  
   mask_for_timestep = -1,
 } __attribute__((packed));
 
