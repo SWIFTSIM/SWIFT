@@ -1014,6 +1014,7 @@ void space_split(struct space *s, int verbose) {
   /* When running with a zoom region we do each cell grid individually. */
   else {
 
+    const ticks tot_tic = getticks();
     ticks tic = getticks();
 
     /* Create the cell tree for zoom cells and populate their multipoles. */
@@ -1052,5 +1053,9 @@ void space_split(struct space *s, int verbose) {
     if (verbose)
       message("Background cell tree and multipole construction took %.3f %s.",
               clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    if (verbose)
+      message("took %.3f %s.", clocks_from_ticks(getticks() - tot_tic),
+              clocks_getunit());
   }
 }

@@ -1174,8 +1174,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
             clocks_from_ticks(getticks() - collect_tic), clocks_getunit());
   }
 
-  const ticks final_ops_tic = getticks();
-
   /* Re-order the extra particles such that they are at the end of their cell's
      memory pool. */
   if (s->with_star_formation || s->with_sink) space_reorder_extras(s, verbose);
@@ -1195,8 +1193,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   space_free_buff_sort_indices(s);
 
   if (verbose) {
-    message("Final operations and space splitting took %.3f %s.",
-            clocks_from_ticks(getticks() - final_ops_tic), clocks_getunit());
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
   }
