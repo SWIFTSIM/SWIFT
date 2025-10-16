@@ -83,11 +83,12 @@ int main(int argc, char *argv[]) {
 
   strcpy(ics_metadata.group_name, "NoSUCH");
 
+  if (argc < 2) error("Missing filename argument!");
+
   /* parse parameters */
   message("Reading parameters.");
   struct swift_params param_file;
-  const char *input_file = "testSIDM.yml";
-  parser_read_file(input_file, &param_file);
+  parser_read_file(argv[1], &param_file);
 
   /* Default unit system */
   message("Initialization of the unit system.");
