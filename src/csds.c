@@ -987,7 +987,7 @@ void csds_init_masks(struct csds_writer *log, const struct engine *e) {
  * @param params The #swift_params
  */
 void csds_init(struct csds_writer *log, const struct engine *e,
-               struct swift_params *params) {
+	       struct swift_params *params) {
 
   ticks tic = getticks();
 
@@ -995,8 +995,8 @@ void csds_init(struct csds_writer *log, const struct engine *e,
   /* Should be safe, but better to check */
   if (e->nr_nodes >= 1 << 16)
     error(
-        "The special flag does not contain enough bits"
-        "to store the information about the ranks.");
+	"The special flag does not contain enough bits"
+	"to store the information about the ranks.");
 #endif
 
   /* read parameters. */
@@ -1017,24 +1017,43 @@ void csds_init(struct csds_writer *log, const struct engine *e,
   char csds_name_file[PARSER_MAX_LINE_SIZE];
   csds_get_logfile_name(log, csds_name_file);
 
+  /* TODO: Check that and compare with the old code */
   /* Compute max size for a particle record. */
-  int max_size = CSDS_OFFSET_SIZE + CSDS_MASK_SIZE;
+  /* int max_size = CSDS_OFFSET_SIZE + CSDS_MASK_SIZE; */
 
-  /* Loop over all fields except timestamp. */
-  for (int i = 0; i < log->total_number_fields; i++) {
-    /* Skip the timestamp */
+  /* NOTE: max_size should be the max record size, which is CSDS_HEADER_SIZE +
+     (max fixed fields size) + (max part type fields size). */
+
+  /* Calculate the size of ALL fixed fields */
+  int fixed_fields_size = 0;
+  for (int i = 0; i < CSDS_TOTAL_FIXED_MASKS; i++) {
+    /* Skip the timestamp field, as it is logged separately and is not part of
+       a particle record */
     if (i == CSDS_TIMESTAMP_INDEX) continue;
-
-    max_size += log->list_fields[i].size;
+    fixed_fields_size += log->fixed_fields[i].size;
   }
-  log->max_record_size = max_size;
+
+  /* Determine the particle type with the largest total field size.
+     We start with the fixed field size as the minimum possible record size
+     (for a particle with no type-specific fields). */
+  size_t max_total_fields_size = (size_t)fixed_fields_size;
+
+  for (int i = 0; i < swift_type_count; i++) {
+    size_t current_field_size = (size_t)fixed_fields_size + log->part_type_total_size[i];
+    if (current_field_size > max_total_fields_size) {
+      max_total_fields_size = current_field_size;
+    }
+  }
+
+  /* The max record size is the max field size plus the header size. */
+  log->max_record_size = max_total_fields_size + CSDS_HEADER_SIZE;
 
   /* init logfile. */
   csds_logfile_writer_init(&log->logfile, csds_name_file, buffer_size);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+	    clocks_getunit());
 }
 
 /**
@@ -1045,8 +1064,16 @@ void csds_init(struct csds_writer *log, const struct engine *e,
 void csds_free(struct csds_writer *log) {
   csds_logfile_writer_close(&log->logfile);
 
-  free(log->list_fields);
-  log->list_fields = NULL;
+  /* Free the dynamically allocated field arrays for each particle type. */
+  for (int i = 0; i < swift_type_count; i++) {
+      /* Only free the pointer if it was allocated, and skip the DM_BACKGROUND
+       * as it shares the same pointer as DM and is freed below. */
+      if (log->part_type_fields[i] != NULL && i != swift_type_dark_matter_background) {
+	  free(log->part_type_fields[i]);
+      }
+      log->part_type_fields[i] = NULL;
+  }
+
   log->total_number_fields = 0;
 }
 
@@ -1057,74 +1084,105 @@ void csds_free(struct csds_writer *log) {
  *
  */
 void csds_write_file_header(struct csds_writer *log) {
-
-  /* get required variables. */
   struct csds_logfile_writer *logfile = &log->logfile;
 
-  /* Write the beginning of the header */
-  char *offset_first_record =
-      csds_logfile_writer_write_begining_header(logfile);
+  /* Write header beginning and get pointer to write first-record-offset later */
+  char *offset_first_record = csds_logfile_writer_write_begining_header(logfile);
 
-  /* placeholder to write the number of unique masks. */
+  /* We'll fill the number of unique masks later */
   size_t file_offset = 0;
-  char *skip_unique_masks =
-      csds_logfile_writer_get(logfile, sizeof(unsigned int), &file_offset);
+  char *ptr_num_unique_masks = csds_logfile_writer_get(logfile, sizeof(unsigned int), &file_offset);
 
-  /* write masks. */
-  // loop over all mask type.
-  unsigned int unique_mask = 0;
-  for (int i = 0; i < log->total_number_fields; i++) {
-    /* Check if the mask was not already written */
-    int is_written = 0;
-    for (int j = 0; j < i; j++) {
-      if (log->list_fields[i].mask == log->list_fields[j].mask) {
-        is_written = 1;
-        break;
-      }
-    }
+  /* Build a list of unique masks (we will write: name + size for each unique mask) */
+  /* For the new layout, unique masks are:
+       - fixed_fields[0..CSDS_TOTAL_FIXED_MASKS-1] (names and sizes)
+       - then one mask per particle-type group that has fields (we use a representative name)
+  */
+  /* Prepare temp vectors */
+  const int MAX_UNIQUE = CSDS_TOTAL_FIXED_MASKS + swift_type_count;
+  char unique_names[MAX_UNIQUE][CSDS_STRING_SIZE];
+  unsigned int unique_sizes[MAX_UNIQUE];
+  unsigned int unique_mask_bits[MAX_UNIQUE]; /* store the mask bit (for mapping) */
+  int unique_count = 0;
 
-    if (is_written) {
-      continue;
-    }
-
-    unique_mask += 1;
-
-    // mask name.
-    csds_write_data(logfile, &file_offset, CSDS_STRING_SIZE,
-                    (const char *)&log->list_fields[i].name);
-
-    // mask size.
-    csds_write_data(logfile, &file_offset, sizeof(unsigned int),
-                    (const char *)&log->list_fields[i].size);
-  }
-  memcpy(skip_unique_masks, &unique_mask, sizeof(unsigned int));
-
-  /* Write the number of fields per particle */
-  csds_write_data(logfile, &file_offset, sizeof(log->number_fields),
-                  (const char *)log->number_fields);
-
-  /* Now write the order for each particle type */
-  for (int i = 0; i < swift_type_count; i++) {
-    int number_fields = log->number_fields[i];
-    if (number_fields == 0) continue;
-
-    struct csds_field *field = log->field_pointers[i];
-
-    /* Loop over all the fields from this particle type */
-    for (int k = 0; k < number_fields; k++) {
-      unsigned int current_mask = field[k].mask;
-
-      /* Find the index among all the fields. */
-      for (int m = 0; m < log->total_number_fields; m++) {
-        if (log->list_fields[m].mask == current_mask) {
-          csds_write_data(logfile, &file_offset, sizeof(int), (const char *)&m);
-          break;
-        }
-      }
-    }
+  /* 1) Add fixed fields first in order */
+  for (int i = 0; i < CSDS_TOTAL_FIXED_MASKS; ++i) {
+    strncpy(unique_names[unique_count], log->fixed_fields[i].name, CSDS_STRING_SIZE);
+    unique_names[unique_count][CSDS_STRING_SIZE-1] = '\0';
+    unique_sizes[unique_count] = (unsigned int)log->fixed_fields[i].size;
+    unique_mask_bits[unique_count] = log->fixed_fields[i].mask;
+    unique_count++;
   }
 
-  /* Write the end of the header. */
+  /* 2) Add particle-type grouped masks (one entry per type that has nonzero fields) */
+  for (int t = 0; t < swift_type_count; ++t) {
+    if (log->number_fields[t] == 0) continue;
+    if (t == swift_type_dark_matter_background) continue; /* alias */
+
+    /* representative name: use first field's name prefixed with type */
+    char repr[CSDS_STRING_SIZE];
+    snprintf(repr, CSDS_STRING_SIZE, "%s_Type_%d", log->part_type_fields[t][0].name, t);
+    strncpy(unique_names[unique_count], repr, CSDS_STRING_SIZE);
+    unique_names[unique_count][CSDS_STRING_SIZE-1] = '\0';
+
+    unique_sizes[unique_count] = (unsigned int)log->part_type_total_size[t];
+    unique_mask_bits[unique_count] = log->part_type_masks[t];
+    unique_count++;
+  }
+
+  /* Write the number of unique masks */
+  csds_write_data(logfile, &file_offset, sizeof(unsigned int), (const char *)&unique_count);
+
+  /* Write each unique mask: name + size (size in bytes) */
+  for (int i = 0; i < unique_count; ++i) {
+    csds_write_data(logfile, &file_offset, CSDS_STRING_SIZE, unique_names[i]);
+    csds_write_data(logfile, &file_offset, sizeof(unsigned int), (const char *)&unique_sizes[i]);
+  }
+
+  /* Write the number of fields per particle (array of swift_type_count ints) */
+  csds_write_data(logfile, &file_offset, sizeof(log->number_fields), (const char *)log->number_fields);
+
+  /* Now write the order indices for each particle type.
+     Each index refers to the position (0..unique_count-1) of the entry written above.
+     For a particle type, its record order is:
+       [ indices for fixed fields (in the order we wrote them above) ] followed by
+       [ single index for its grouped particle-type mask ]
+  */
+  for (int t = 0; t < swift_type_count; ++t) {
+    int nfields = log->number_fields[t];
+    if (nfields == 0) continue;
+
+    /* First write fixed field indices. We wrote fixed fields at indices 0..CSDS_TOTAL_FIXED_MASKS-1 */
+    for (int ff = 0; ff < CSDS_TOTAL_FIXED_MASKS; ++ff) {
+      int idx = ff; /* fixed field index in unique list */
+      csds_write_data(logfile, &file_offset, sizeof(int), (const char *)&idx);
+    }
+
+    /* Now write the index corresponding to the grouped particle-type mask */
+    /* Find the unique index that has mask bit == log->part_type_masks[t] */
+    int group_index = -1;
+    for (int u = CSDS_TOTAL_FIXED_MASKS; u < unique_count; ++u) {
+      if (unique_mask_bits[u] == log->part_type_masks[t]) {
+	group_index = u;
+	break;
+      }
+    }
+    if (group_index == -1) {
+      /* no grouped fields for this type — but number_fields[t] > 0 would have prevented that */
+      error("CSDS: could not find group mask index for type %d", t);
+    }
+
+    /* The particle's 'field order' needs to list the individual fields that compose the group.
+       For backward-compatible reading, we will repeat the *group index* 'nfields' times,
+       and the reader will expand it to the known field list for the particle type.
+       (Reader must be updated to interpret that repeated index as "expand the group into its fields in defined order".)
+    */
+    for (int k = 0; k < nfields; ++k) {
+      csds_write_data(logfile, &file_offset, sizeof(int), (const char *)&group_index);
+    }
+  }
+
+  /* Finalize header (write offset to first record) */
   csds_logfile_writer_write_end_header(logfile, offset_first_record);
 }
 
@@ -1140,12 +1198,31 @@ void csds_write_file_header(struct csds_writer *log) {
  */
 __attribute__((always_inline)) INLINE static int csds_read_record_header(
     const char *buff, unsigned int *mask, size_t *offset, size_t cur_offset) {
-  memcpy(mask, buff, CSDS_MASK_SIZE);
-  buff += CSDS_MASK_SIZE;
 
-  *offset = 0;
-  memcpy(offset, buff, CSDS_OFFSET_SIZE);
-  *offset = cur_offset - *offset;
+  /* Read mask (CSDS_MASK_SIZE bytes little-endian) */
+  uint64_t mask_val = 0;
+  for (int i = 0; i < CSDS_MASK_SIZE; ++i) {
+    mask_val |= ((uint64_t)(unsigned char)buff[i]) << (8 * i);
+  }
+  buff += CSDS_MASK_SIZE;
+  /* Truncate to unsigned int */
+  const uint64_t mask_limit = (1ULL << (8 * CSDS_MASK_SIZE));
+  if (mask_val >= mask_limit) {
+    /* should not happen, but be defensive */
+    error("CSDS: mask value out of range in record header");
+  }
+  *mask = (unsigned int)mask_val;
+
+  /* Read offset diff (CSDS_OFFSET_SIZE bytes little-endian) */
+  uint64_t diff = 0;
+  for (int i = 0; i < CSDS_OFFSET_SIZE; ++i) {
+    diff |= ((uint64_t)(unsigned char)buff[i]) << (8 * i);
+  }
+  buff += CSDS_OFFSET_SIZE;
+
+  /* Convert back to absolute offset using the same convention the writer used:
+     previous = cur_offset - diff */
+  *offset = cur_offset - (size_t)diff;
 
   return CSDS_MASK_SIZE + CSDS_OFFSET_SIZE;
 }
@@ -1161,7 +1238,7 @@ __attribute__((always_inline)) INLINE static int csds_read_record_header(
  * @return The mask containing the values read.
  */
 int csds_read_part(const struct csds_writer *log, struct part *p,
-                   size_t *offset, const char *buff) {
+		   size_t *offset, const char *buff) {
 
   /* Jump to the offset. */
   buff = &buff[*offset];
