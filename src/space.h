@@ -605,6 +605,10 @@ struct zoom_region_properties {
    * potential. (Only applicable if truncate_background is true). */
   float tidal_factor;
 
+  /*! The size of the gravity mesh is not accessible so we attach the size
+   * of a mesh cell here for the background truncation calculation. */
+  float grav_mesh_width;
+
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /*! The total number of edges summed over all cells.  */
   int nr_edges;

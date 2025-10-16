@@ -601,18 +601,19 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
  * to find the distance from the zoom region at which the contributions from the
  * background drop below the desired accuracy.
  *
- * @param zoom_dim The zoom region dimensions.
+ * @param width The width of "element" being considered (e.g. the zoom region
+ *   for non-periodic (very conservative) and a mesh cell for periodic).
  * @param tidal_factor The tidal factor accounting for anisotropies in the
  *     background (>1, higher means more background preserved, i.e. more
  *     accurate).
  * @param epsilon The desired accuracy.
  * @return The truncation distance.
  */
-static double zoom_compute_bkg_truncate_dist(const double zoom_dim,
+static double zoom_compute_bkg_truncate_dist(const double width,
                                              const double tidal_factor,
                                              const double epsilon) {
 
-  return tidal_factor * zoom_dim / pow(epsilon, 1.0 / 3.0);
+  return tidal_factor * width / pow(epsilon, 1.0 / 3.0);
 }
 
 /**
@@ -632,14 +633,22 @@ void zoom_truncate_bkg(struct space *s, const int verbose) {
   double tidal_factor = s->zoom_props->tidal_factor;
   double epsilon = s->zoom_props->truncate_epsilon;
 
-  /* Get the initial zoom region dimensions. */
-  double zoom_dim = max3(s->zoom_props->part_dim[0], s->zoom_props->part_dim[1],
-                         s->zoom_props->part_dim[2]) *
-                    s->zoom_props->user_region_pad_factor;
+  /* Get the truncation width (this is the width of the "element" of mass
+   * we are considering the truncation at r_trunc for). */
+  double trunc_width;
+  if (s->periodic) {
+    /* For periodic boxes we consider the mesh cell size. */
+    trunc_width = s->zoom_props->grav_mesh_width;
+  } else {
+    /* For non-periodic boxes we consider the zoom cell size. */
+    trunc_width = max3(s->zoom_props->part_dim[0], s->zoom_props->part_dim[1],
+                       s->zoom_props->part_dim[2]) *
+                  s->zoom_props->user_region_pad_factor;
+  }
 
-  /* Compute the truncation distance. */
+  /* Compute the truncation distance based on the width. */
   const double r_trunc =
-      zoom_compute_bkg_truncate_dist(zoom_dim, tidal_factor, epsilon);
+      zoom_compute_bkg_truncate_dist(trunc_width, tidal_factor, epsilon);
 
   if (verbose)
     message(
@@ -650,7 +659,8 @@ void zoom_truncate_bkg(struct space *s, const int verbose) {
   /* If the truncation distance exceeds the box size we can't truncate. */
   if (r_trunc * 2.0 >= fmin(s->dim[0], fmin(s->dim[1], s->dim[2]))) {
     error(
-        "Truncation distance (%.2e) exceeds box size (%.2e), cannot truncate. "
+        "Truncation distance (%.2e) exceeds box size (%.2e), cannot "
+        "truncate. "
         "You probably don't need truncation in this case, turn off "
         "ZoomRegion:truncate_background.",
         r_trunc * 2, fmin(s->dim[0], fmin(s->dim[1], s->dim[2])));
@@ -784,8 +794,8 @@ static int zoom_get_cdim_at_depth(double region_dim, double parent_width,
       floor((region_dim + (0.1 * parent_width)) / parent_width);
 
   /* We now know how many parent cells we have in the region, use this and the
-   * depth of the zoom region to calculate the cdim (the number of parents times
-   * the number of children in a parent. */
+   * depth of the zoom region to calculate the cdim (the number of parents
+   * times the number of children in a parent. */
   return region_parent_cdim * pow(2, child_depth);
 }
 
@@ -833,9 +843,9 @@ void zoom_get_geometry_no_buffer_cells(struct space *s) {
 /**
  * @brief Compute the geometry of the zoom region with buffer cells.
  *
- * This function computes the geometry of the zoom region when buffer cells are
- * enabled. It calculates the bounds, dimensions, and cell widths for both the
- * buffer and zoom regions.
+ * This function computes the geometry of the zoom region when buffer cells
+ * are enabled. It calculates the bounds, dimensions, and cell widths for both
+ * the buffer and zoom regions.
  *
  * Currently, buffer cells are not fully supported and this function will
  * simply through an error if called.
@@ -853,7 +863,8 @@ void zoom_get_geometry_with_buffer_cells(struct space *s) {
   /* Ensure we have a buffer cell depth. */
   if (s->zoom_props->buffer_cell_depth == 0) {
     error(
-        "Current cell structure requires buffer cells but not buffer cell has "
+        "Current cell structure requires buffer cells but not buffer cell "
+        "has "
         "been given. ZoomRegion:buffer_top_level_depth must be greater than "
         "0.");
   }
@@ -1063,6 +1074,16 @@ void zoom_props_init(struct swift_params *params, struct space *s,
   /* Parse the parameter file and populate the properties struct. */
   zoom_parse_params(params, s->zoom_props);
 
+  /* Compute the size of a grabity mesh cell. This isn't accessible on the
+   * first pass through since we don't have the engine yet so we just attach
+   * it to be used in truncation considerations (only applicable to periodic
+   * boxes). */
+  if (s->periodic) {
+    s->zoom_props->grav_mesh_width = s->dim[0] / mesh_size;
+  } else {
+    s->zoom_props->grav_mesh_width = 0.0;
+  }
+
   if (verbose) {
     message("Initialising zoom region properties took %f %s",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -1099,10 +1120,9 @@ void zoom_region_init(struct space *s, const int regridding,
   }
 
   /* Compute the extent of the zoom region. This also calculates the shift
-   * necessary to move the zoom region to the centre of the box and stores it in
-   * s->zoom_props.
-   * NOTE: If we are regridding this has already been done in zoom_need_regrid
-   * to check if we need to regrid so we skip it here. */
+   * necessary to move the zoom region to the centre of the box and stores it
+   * in s->zoom_props. NOTE: If we are regridding this has already been done
+   * in zoom_need_regrid to check if we need to regrid so we skip it here. */
   if (!regridding) zoom_get_region_dim_and_shift(s, verbose);
 
   /* Are we truncating the background? (Only applicable when starting up, i.e.
@@ -1182,7 +1202,8 @@ void zoom_region_init(struct space *s, const int regridding,
     warning(
         "The pad region has to be %d times larger than requested. "
         "Either increase ZoomRegion:region_pad_factor, increase the "
-        "number of background cells, or increase the depths of the zoom cells.",
+        "number of background cells, or increase the depths of the zoom "
+        "cells.",
         (int)(s->zoom_props->region_pad_factor /
               s->zoom_props->user_region_pad_factor));
 
