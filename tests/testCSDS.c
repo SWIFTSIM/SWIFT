@@ -30,7 +30,7 @@
 #include <unistd.h>
 
 /* Local headers. */
-#include "csds/src/csds_logfile_writer.h"
+#include "csds/src/logfile_writer.h"
 #include "swift.h"
 
 void test_log_parts(struct csds_writer *log) {
