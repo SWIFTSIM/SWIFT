@@ -115,7 +115,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
       //lily
       /* --- Mark particle for splitting --- */
-      /* this assumes one BH! */
+      /* this assumes one BH!*/
       if (p->split_flag < 1){
 	for (size_t i = 0; i < nr_bpart; ++i) {
 	  struct bpart *bp = &bparts[i];
@@ -132,6 +132,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
 	  }
 	}
       }
+      
       /* Has this particle been flagged for swallowing? */
       if (swallow_id >= 0) {
 
@@ -317,13 +318,6 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
   struct bpart *bparts_foreign = s->bparts_foreign;
   const size_t nr_bparts_foreign = s->nr_bparts_foreign;
 #endif
-
-  //lily
-  
-  if (e->time > 0){
-    runner_do_particle_split(r,c,timer);
-  }
-  
   
   struct bpart *cell_bparts = c->black_holes.parts;
 

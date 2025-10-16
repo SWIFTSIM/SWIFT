@@ -545,6 +545,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
   }
 
+  //lily
   bp->use_nibbling = parser_get_param_int(params, "SPINJETAGN:use_nibbling");
   if (bp->use_nibbling) {
     bp->min_gas_mass_for_nibbling = parser_get_param_float(
@@ -552,12 +553,14 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     bp->min_gas_mass_for_nibbling *= phys_const->const_solar_mass;
   }
 
-  if ((bp->min_gas_mass_for_nibbling < 1e-5 * bp->subgrid_seed_mass) ||
-      (bp->min_gas_mass_for_nibbling > 1e5 * bp->subgrid_seed_mass)) {
-    error(
-        "The BH seeding mass and minimal gas mass for nibbling differ by more "
-        "than 10^5. That is probably indicating a typo in the parameter file.");
-  }
+  //edited so swallowing can be turned on...
+  if (bp->use_nibbling) {
+    if ((bp->min_gas_mass_for_nibbling < 1e-5 * bp->subgrid_seed_mass) ||
+	(bp->min_gas_mass_for_nibbling > 1e5 * bp->subgrid_seed_mass)) {
+      error(
+	    "The BH seeding mass and minimal gas mass for nibbling differ by more "
+	    "than 10^5. That is probably indicating a typo in the parameter file.");
+    }}
 
   /* Feedback parameters ---------------------------------- */
 
