@@ -360,6 +360,83 @@ ghost_stats_no_ngb_hydro_converged(struct ghost_stats *restrict gstats) {
 }
 
 /**
+ * @brief Account for the SIDM particles that are still under consideration at
+ * the start of a ghost decision loop (so after the neighbour loop but before
+ * the smoothing length is updated).
+ *
+ * @param gstats Ghost stats struct to update.
+ * @param iteration_number Iteration number in the high-level ghost iteration
+ * scheme.
+ * @param sicount Number of SIDM particles still under consideration (smoothing
+ * length has not converged yet or will do so during this iteration).
+ * @param siparts SIDM particle array.
+ * @param pid Indices of active SIDM particles in the array.
+ */
+__attribute__((always_inline)) INLINE static void ghost_stats_account_for_sidm(
+    struct ghost_stats *restrict gstats, int iteration_number, int sicount,
+    struct sipart *restrict siparts, int *pid) {
+
+  /* accumulate in highest bin, so we can spot out-of-bounds values */
+  int binidx = min(iteration_number, SWIFT_GHOST_STATS - 1);
+  struct ghost_stats_entry *restrict sibin = &gstats->sidm[binidx];
+  sibin->count += sicount;
+  for (int i = 0; i < sicount; i++) {
+    const float hi = siparts[pid[i]].h;
+    sibin->hmin = min(sibin->hmin, hi);
+    sibin->hmax = max(sibin->hmax, hi);
+    sibin->hsum += hi;
+    sibin->hsum2 += hi * hi;
+  }
+}
+
+/**
+ * @brief Account for the properties of the a converged SIDM particle.
+ *
+ * @param gstats Ghost stats struct to update.
+ * @param sip SIDM particle that has a converged smoothing length.
+ */
+__attribute__((always_inline)) INLINE static void ghost_stats_converged_sidm(
+    struct ghost_stats *restrict gstats, struct sipart *restrict sip) {
+
+  struct ghost_stats_entry *restrict sibin = &gstats->sidm[SWIFT_GHOST_STATS];
+  ++sibin->count;
+  const float hi = sip->h;
+  sibin->hmin = min(sibin->hmin, hi);
+  sibin->hmax = max(sibin->hmax, hi);
+  sibin->hsum += hi;
+  sibin->hsum2 += hi * hi;
+}
+
+/**
+ * @brief Register the occurrence of a "no neighbour" event during the current
+ * SIDM iteration step.
+ *
+ * @param gstats Ghost stats struct to update.
+ * @param iteration_number Number of the current iteration.
+ */
+__attribute__((always_inline)) INLINE static void
+ghost_stats_no_ngb_sidm_iteration(struct ghost_stats *restrict gstats,
+                                  int iteration_number) {
+
+  int binidx = min(iteration_number, SWIFT_GHOST_STATS - 1);
+  struct ghost_stats_entry *restrict sibin = &gstats->sidm[binidx];
+  ++sibin->count_no_ngb;
+}
+
+/**
+ * @brief Register the occurrence of a converged SIDM particle without
+ * neighbours.
+ *
+ * @param gstats Ghost stats struct to update.
+ */
+__attribute__((always_inline)) INLINE static void
+ghost_stats_no_ngb_sidm_converged(struct ghost_stats *restrict gstats) {
+
+  struct ghost_stats_entry *restrict sibin = &gstats->sidm[SWIFT_GHOST_STATS];
+  ++sibin->count_no_ngb;
+}
+
+/**
  * @brief Write the header of a ghost statistics file.
  *
  * @param f File to write to.
@@ -478,6 +555,21 @@ ghost_stats_no_ngb_hydro_iteration(struct ghost_stats *restrict gstats,
 
 __attribute__((always_inline)) INLINE static void
 ghost_stats_no_ngb_hydro_converged(struct ghost_stats *restrict gstats) {}
+
+/* SIDM */
+__attribute__((always_inline)) INLINE static void ghost_stats_account_for_sidm(
+    struct ghost_stats *restrict gstats, int iteration_number, int sicount,
+    struct sipart *restrict siparts, int *pid) {}
+
+__attribute__((always_inline)) INLINE static void ghost_stats_converged_sidm(
+    struct ghost_stats *restrict gstats, struct sipart *restrict sip) {}
+
+__attribute__((always_inline)) INLINE static void
+ghost_stats_no_ngb_sidm_iteration(struct ghost_stats *restrict gstats,
+                                  int iteration_number) {}
+
+__attribute__((always_inline)) INLINE static void
+ghost_stats_no_ngb_sidm_converged(struct ghost_stats *restrict gstats) {}
 
 /// cell interface
 

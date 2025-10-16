@@ -25,8 +25,10 @@
 /* Select the correct SIDM model */
 #if defined(SIDM_NONE)
 #include "./sidm/None/sidm.h"
+#include "./sidm/None/sidm_iact.h"
 #elif defined(SIDM_BASIC)
 #include "./sidm/Basic/sidm.h"
+#include "./sidm/Basic/sidm_iact.h"
 #else
 #error "Invalid choice of SIDM model"
 #endif
