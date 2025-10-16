@@ -96,45 +96,34 @@ INLINE static void *csds_hydro_convert_secondary(const struct part *p,
  */
 INLINE static int csds_hydro_define_fields(struct csds_field *fields) {
 
-  /* Positions */
-  csds_define_hydro_standard_field(fields[0], "Coordinates", struct part, x,
-                                   /* saving_xpart */ 0);
-
-  /* Velocities */
-  csds_define_hydro_standard_field(fields[1], "Velocities", struct part, v,
-                                   /* saving_xpart */ 0);
-
-  /* Accelerations */
-  struct part p;
-  csds_define_field_from_function_hydro(
-      fields[2], "Accelerations", csds_hydro_convert_acc, sizeof(p.a_hydro));
+  /* Positions, velocities and Accelerations are now common fields for all
+     particles */
 
   /* Masses */
-  csds_define_hydro_standard_field(fields[3], "Masses", struct part, mass,
+  csds_define_hydro_standard_field(fields[0], "Masses", struct part, mass,
                                    /* saving_xpart */ 0);
 
   /* Smoothing lengths */
-  csds_define_hydro_standard_field(fields[4], "SmoothingLengths", struct part,
+  csds_define_hydro_standard_field(fields[1], "SmoothingLengths", struct part,
                                    h, /* saving_xpart */ 0);
 
   /* Internal energies */
-  csds_define_hydro_standard_field(fields[5], "InternalEnergies", struct part,
+  csds_define_hydro_standard_field(fields[2], "InternalEnergies", struct part,
                                    u, /* saving_xpart */ 0);
 
   /* Particle IDs */
-  csds_define_hydro_standard_field(fields[6], "ParticleIDs", struct part, id,
+  csds_define_hydro_standard_field(fields[3], "ParticleIDs", struct part, id,
                                    /* saving_xpart */ 0);
 
   /* Densities */
-  csds_define_hydro_standard_field(fields[7], "Densities", struct part, rho,
+  csds_define_hydro_standard_field(fields[4], "Densities", struct part, rho,
                                    /* saving_xpart */ 0);
 
   /* Grouped field */
-  csds_define_field_from_function_hydro(fields[8], "SPHENIXSecondaryFields",
+  csds_define_field_from_function_hydro(fields[5], "SPHENIXSecondaryFields",
                                         csds_hydro_convert_secondary,
                                         7 * sizeof(float));
-
-  return 9;
+  return 6;
 }
 
 #endif  // WITH_CSDS

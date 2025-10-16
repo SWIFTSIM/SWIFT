@@ -55,28 +55,20 @@ INLINE static void *csds_stars_convert_acc(const struct spart *sp,
  */
 INLINE static int csds_stars_define_fields(struct csds_field *fields) {
 
-  /* Positions */
-  csds_define_standard_field(fields[0], "Coordinates", struct spart, x);
-
-  /* Velocities */
-  csds_define_standard_field(fields[1], "Velocities", struct spart, v);
-
-  /* Accelerations */
-  struct gpart p;
-  csds_define_field_from_function_stars(
-      fields[2], "Accelerations", csds_stars_convert_acc, sizeof(p.a_grav));
-
+  /* Positions, velocities and Accelerations are now common fields for all
+     particles */
+  
   /* Masses */
-  csds_define_standard_field(fields[3], "Masses", struct spart, mass);
+  csds_define_standard_field(fields[0], "Masses", struct spart, mass);
 
   /* Smoothing lengths */
-  csds_define_standard_field(fields[4], "SmoothingLengths", struct spart, h);
+  csds_define_standard_field(fields[1], "SmoothingLengths", struct spart, h);
 
   /* Particle IDs */
-  csds_define_standard_field(fields[5], "ParticleIDs", struct spart, id);
+  csds_define_standard_field(fields[2], "ParticleIDs", struct spart, id);
 
   /* Birth Time */
-  csds_define_standard_field(fields[6], "BirthTimes", struct spart, birth_time);
+  csds_define_standard_field(fields[3], "BirthTimes", struct spart, birth_time);
 
   return 7;
 }

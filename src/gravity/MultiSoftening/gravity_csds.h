@@ -54,25 +54,17 @@ INLINE static void *csds_gravity_convert_acc(const struct gpart *gp,
  */
 INLINE static int csds_gravity_define_fields(struct csds_field *fields) {
 
-  /* Positions */
-  csds_define_standard_field(fields[0], "Coordinates", struct gpart, x);
-
-  /* Velocities */
-  csds_define_standard_field(fields[1], "Velocities", struct gpart, v_full);
-
-  /* Accelerations */
-  struct gpart p;
-  csds_define_field_from_function_gravity(
-      fields[2], "Accelerations", csds_gravity_convert_acc, sizeof(p.a_grav));
-
+  /* Positions, velocities and Accelerations are now common fields for all
+     particles */
+  
   /* Masses */
-  csds_define_standard_field(fields[3], "Masses", struct gpart, mass);
+  csds_define_standard_field(fields[0], "Masses", struct gpart, mass);
 
   /* Particle IDs */
-  csds_define_standard_field(fields[4], "ParticleIDs", struct gpart,
+  csds_define_standard_field(fields[1], "ParticleIDs", struct gpart,
                              id_or_neg_offset);
 
-  return 5;
+  return 2;
 }
 #endif  // WITH_CSDS
 #endif  // SWIFT_MULTISOFTENING_GRAVITY_CSDS_H
