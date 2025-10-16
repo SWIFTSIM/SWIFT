@@ -64,7 +64,10 @@ INLINE static int csds_gravity_define_fields(struct csds_field *fields) {
   csds_define_standard_field(fields[1], "ParticleIDs", struct gpart,
                              id_or_neg_offset);
 
-  return 2;
+  /* Type of gpart (to distinguish background DM from DM) */
+  csds_define_standard_field(fields[2], "GravityTypes", struct gpart, type);  
+
+  return 3;
 }
 #endif  // WITH_CSDS
 #endif  // SWIFT_MULTISOFTENING_GRAVITY_CSDS_H

@@ -1445,6 +1445,9 @@ int csds_read_gpart(const struct csds_writer *log, struct gpart *p,
       } else if (strcmp("Masses", name) == 0) {
         memcpy(&p->mass, buff, sizeof(float));
         buff += sizeof(float);
+      } else if (strcmp("GravityTypes", name) == 0) {
+        memcpy(&p->type, buff, sizeof(int));
+        buff += sizeof(int);
       } else {
         error("Field '%s' not found for dark matter particle.", name);
       }

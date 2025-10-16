@@ -352,6 +352,88 @@ void test_gas_particle_fields(struct csds_writer *log) {
   printf("Gas particle fields test passed.\n");
 }
 
+void test_dm_particle_fields(struct csds_writer *log) {
+  struct csds_logfile_writer *d = &log->logfile;
+  struct engine e;
+  struct gpart p;
+  bzero(&p, sizeof(struct gpart));
+
+  // Fill all relevant fields
+  p.x[0] = 4.0;
+  p.x[1] = 4.1;
+  p.x[2] = 4.2;
+  p.v_full[0] = 0.4f;
+  p.v_full[1] = 0.5f;
+  p.v_full[2] = 0.6f;
+  p.type = swift_type_dark_matter;
+
+  // Log particle
+  csds_log_gpart(log, &p, &e, 1, csds_flag_none, 0);
+  printf("Wrote DM particle at offset %#016zx\n", p.csds_data.last_offset);
+
+  // Read particle back
+  size_t offset = p.csds_data.last_offset;
+  bzero(&p, sizeof(struct gpart));
+  int mask = csds_read_gpart(log, &p, &offset, (const char *)d->data);
+
+  printf("Recovered DM particle at offset %#016zx with mask %#04x:\n", offset,
+         mask);
+  printf("  pos = [%f, %f, %f], vel = [%f, %f, %f], type = %d\n", p.x[0],
+         p.x[1], p.x[2], p.v_full[0], p.v_full[1], p.v_full[2], p.type);
+
+  // Check values
+  if (p.x[0] != 4.0 || p.x[1] != 4.1 || p.x[2] != 4.2 || p.v_full[0] != 0.4f ||
+      p.v_full[1] != 0.5f || p.v_full[2] != 0.6f ||
+      p.type != swift_type_dark_matter) {
+    printf("FAIL: DM particle fields read incorrectly.\n");
+    abort();
+  }
+
+  printf("DM particle fields test passed.\n");
+}
+
+void test_background_dm_particle(struct csds_writer *log) {
+  struct csds_logfile_writer *d = &log->logfile;
+  struct engine e;
+  struct gpart p;
+  bzero(&p, sizeof(struct gpart));
+
+  // Background DM particle: arbitrary position/velocity and type
+  p.x[0] = 10.0;
+  p.x[1] = 10.1;
+  p.x[2] = 10.2;
+  p.v_full[0] = 1.0f;
+  p.v_full[1] = 1.1f;
+  p.v_full[2] = 1.2f;
+  p.type = swift_type_dark_matter_background;
+
+  /* Log the particle */
+  csds_log_gpart(log, &p, &e, 1, csds_flag_none, 0);
+  printf("Wrote background DM particle at offset %#016zx\n",
+         p.csds_data.last_offset);
+
+  /* Read the particle back */
+  size_t offset = p.csds_data.last_offset;
+  bzero(&p, sizeof(struct gpart));
+  int mask = csds_read_gpart(log, &p, &offset, (const char *)d->data);
+
+  /* Print recovered particle */
+  printf(
+      "Recovered background DM particle at offset %#016zx with mask %#04x:\n",
+      offset, mask);
+  printf("  pos = [%f, %f, %f], vel = [%f, %f, %f], type = %d\n", p.x[0],
+         p.x[1], p.x[2], p.v_full[0], p.v_full[1], p.v_full[2], p.type);
+
+  // Verify correctness
+  if (p.x[0] != 10.0 || p.x[1] != 10.1 || p.x[2] != 10.2 ||
+      p.v_full[0] != 1.0f || p.v_full[1] != 1.1f || p.v_full[2] != 1.2f ||
+      p.type != swift_type_dark_matter_background) {
+    printf("FAIL: Background DM particle fields read incorrectly.\n");
+    abort();
+  }
+
+  printf("Background DM particle test passed.\n");
+}
 
 int main(int argc, char *argv[]) {
 
@@ -385,7 +467,7 @@ int main(int argc, char *argv[]) {
   test_dm_particle_fields(&log);
 
   /* Test writing/reading gpart DM background specific fields */
-  /* test_background_dm_particle(&log);   */
+  test_background_dm_particle(&log);
 
   /* Be clean */
   char filename[256];
