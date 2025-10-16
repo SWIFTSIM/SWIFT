@@ -958,7 +958,7 @@ void csds_init_masks(struct csds_writer *log, const struct engine *e) {
     error("Not enough available flags for all the fixed and particle-type fields.");
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
+/* #ifdef SWIFT_DEBUG_CHECKS */
   if (e->nodeID == 0) {
     message("The CSDS contains the following fixed masks:");
     for (int j = 0; j < CSDS_TOTAL_FIXED_MASKS; ++j) {
@@ -976,7 +976,7 @@ void csds_init_masks(struct csds_writer *log, const struct engine *e) {
       }
     }
   }
-#endif
+/* #endif */
 }
 
 /**
@@ -1248,24 +1248,12 @@ int csds_read_part(const struct csds_writer *log, struct part *p,
   unsigned int mask = 0;
   buff += csds_read_record_header(buff, &mask, offset, cur_offset);
 
-  // We assume the fixed fields are always present and are read first in order.
-  // Check for Fixed Fields based on their mask and read order (0, 2, 3, 4).
-  // NOTE: The field order in the record body is assumed to be:
-  // 1. Flags (Index 0)
-  // 2. Position (Index 2)
-  // 3. Velocity (Index 3)
-  // 4. Acceleration (Index 4)
-
   /* --- 1. Read Fixed Fields --- */
 
-  // Read Special Flags (Index 0) - Always expected
-  /* if (mask & log->fixed_fields[CSDS_SPECIAL_FLAGS_INDEX].mask) { */
-  /*   // Assuming SpecialFlags is uint32_t, but the part struct doesn't have a place for it. */
-  /*   // We must advance the buffer anyway. */
-  /*   buff += sizeof(uint32_t); // Size of fixed_fields[0].size is sizeof(uint32_t) */
-  /* } else { */
-  /*   error("Missing SpecialFlags for particle record."); */
-  /* } */
+  /* Read Special Flags (Index 0) - Always expected */
+  if (mask & log->fixed_fields[CSDS_SPECIAL_FLAGS_INDEX].mask) {
+    buff += log->fixed_fields[CSDS_SPECIAL_FLAGS_INDEX].size;
+  }
 
   // Read Position (Index 2)
   if (mask & log->fixed_fields[CSDS_POS_INDEX].mask) {
@@ -1362,13 +1350,10 @@ int csds_read_gpart(const struct csds_writer *log, struct gpart *p,
 
   /* --- 1. Read Fixed Fields --- */
 
-  // Read Special Flags (Index 0) - Always expected
-  /* if (mask & log->fixed_fields[CSDS_SPECIAL_FLAGS_INDEX].mask) { */
-  /*   // Advance the buffer by the expected size */
-  /*   buff += sizeof(uint32_t); // Size of fixed_fields[0].size is sizeof(uint32_t) */
-  /* } else { */
-  /*     error("Missing SpecialFlags for particle record."); */
-  /* } */
+  /* Read Special Flags (Index 0) - Always expected */
+  if (mask & log->fixed_fields[CSDS_SPECIAL_FLAGS_INDEX].mask) {
+    buff += log->fixed_fields[CSDS_SPECIAL_FLAGS_INDEX].size;
+  }
 
   // Read Position (Index 2)
   if (mask & log->fixed_fields[CSDS_POS_INDEX].mask) {
