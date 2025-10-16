@@ -32,6 +32,8 @@
 #include "timeline.h"
 #include "units.h"
 
+#include "csds_types.h"
+
 /* Include the CSDS */
 #include "csds/src/logfile_writer.h"
 
@@ -85,16 +87,26 @@ struct csds_writer {
   /* Size of a record if every mask are activated. */
   int max_record_size;
 
-  /* Description of all the fields that can be written. */
-  struct csds_field *list_fields;
+  /* Array to hold the DEFINITION of the FIXED fields (Pos, Vel, Accel, etc.). */
+  struct csds_field fixed_fields[CSDS_TOTAL_FIXED_MASKS];
 
-  /* Pointer to the variable list_fields for each module. */
-  struct csds_field *field_pointers[swift_type_count];
+  /* Array of pointers, one for each particle type (swift_type_count).
+     Each pointer holds the list of ALL OTHER fields (not fixed)
+     for that specific particle type (e.g., density, pressure, metallicity).
+     These fields will all share the SAME PARTICLE-TYPE-SPECIFIC MASK. */
+  struct csds_field *part_type_fields[swift_type_count];
 
-  /* Number of fields for each particle type. */
+  /* An array to store the single, collective mask bit for the other fields
+     for each particle type. This is what's written to the header. */
+  unsigned int part_type_masks[swift_type_count];
+
+  /* An array to store the TOTAL SIZE of all 'other' fields for each particle type. */
+  size_t part_type_total_size[swift_type_count];
+
+  /* Number of 'other' fields for each particle type . */
   int number_fields[swift_type_count];
 
-  /* Number of elements in list_fields. */
+  /* Total number of unique fields defined across all types (mostly for error checking/debugging) */
   int total_number_fields;
 
 } SWIFT_STRUCT_ALIGN;
