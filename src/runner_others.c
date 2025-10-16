@@ -66,9 +66,9 @@
 
 #include "kernel_hydro.h"
 
-/**** lily code gas splitting *****/
-/**** locate all nieghbouring leaf cells to bh ****/
-/* future? pair task — gas cell is tested against BHs in the bh cell 
+/**** lily code setup for future task based gas splitting *****/
+/**** locate all neighbouring leaf cells to bh ****/
+/* future? pair task — gas cell is tested against BHs in the bh cell  
 void runner_do_particle_split_pair(struct runner *r, struct cell *ci,
                                    struct cell *cj, int timer) {
     const struct engine *e = r->e;
@@ -85,15 +85,72 @@ void runner_do_particle_split_pair(struct runner *r, struct cell *ci,
     if (ci != cj && cell_is_active_black_holes(ci, e))
       runner_do_particle_split_flag(r, cj, ci, timer);
 }
-*/
 
+
+// @brief Flag particles for splitting based on BH proximity 
+
+void runner_do_particle_split_flag(struct runner *r,struct cell *c,int timer)
+{
+    struct engine *e = r->e;
+    struct space *s = e->s;
+    struct part *parts = c->hydro.parts;
+    struct xpart *xparts = c->hydro.xparts;
+
+    const size_t nr_parts = c->hydro.count;
+    const size_t nr_bpart = s->nr_bparts;
+    struct bpart *bparts = s->bparts;
+
+#ifdef WITH_MPI
+    const size_t nr_bparts_foreign = s->nr_bparts_foreign;
+    struct bpart *bparts_foreign = s->bparts_foreign;
+#endif
+
+    if (nr_parts == 0 || c->hydro.ti_old_part != e->ti_current)
+        return;
+
+    // Loop over progeny cells if split 
+    if (c->split) {
+      for (int k = 0; k < 8; k++) {
+	if (c->progeny[k] != NULL)
+	  struct cell *restrict cp = c->progeny[k];
+	runner_do_particle_split_flag(r, cp, 0);
+      }
+    } else {
+    
+      // Loop over particles in the cell 
+      for (size_t k = 0; k < nr_parts; k++) {
+        struct part *p = &parts[k];
+        struct xpart *xp = &xparts[k];
+	
+        if (part_is_inhibited(p, e)) continue;
+	
+        // Flag particle if within 2 * BH smoothing length 
+        if (p->split_flag < 1) {
+	  for (size_t i = 0; i < nr_bpart; i++) {
+	    struct bpart *bp = &bparts[i];
+	    
+	    double dx = p->x[0] - bp->x[0];
+	    double dy = p->x[1] - bp->x[1];
+	    double dz = p->x[2] - bp->x[2];
+	    double dist = sqrt(dx*dx + dy*dy + dz*dz);
+	    
+	    if (dist <= 2.0 * bp->h) {
+	      p->split_flag = 1;
+	      break;
+	    }
+	  }
+        }
+      }
+    }
+}
+*/
 /**** split gas particles within BH hsml ****/
 void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
   struct engine *e = r->e;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
- 
+
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -131,19 +188,12 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
     while (j < c->hydro.count){
       struct part *p  = &parts[j];
       struct xpart *xp = &xparts[j];
-      
-      
+
       //this only really needs to be calculated once
       const float child_mass = p->mass / n_split;  
       //double new_h = p->h * pow(1.0 / n_split, 1.0 / 3.0);
       double new_h = p->h;
-      // Compute distance between gas particle and BH
-      //double dx = p->x[0] - bh_pos[0];
-      //double dy = p->x[1] - bh_pos[1];
-      //double dz = p->x[2] - bh_pos[2];
-      //double dist = sqrt(dx*dx + dy*dy + dz*dz);
       
-      //guard
       if (p->split_flag == 2){
 	j ++;
 	continue;
@@ -207,21 +257,34 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	c->hydro.parts[parent_index + (n_split-1)].mass = child_mass;
 	c->hydro.parts[parent_index + (n_split-1)].h = new_h;
 	c->hydro.parts[parent_index + (n_split-1)].split_flag = 2;
+	//const int old_timebin = c->hydro.parts[parent_index + (n_split-1)].time_bin;
+	//c->hydro.parts[parent_index + (n_split-1)].time_bin = old_timebin - 1;
 	if (c->hydro.parts[parent_index + (n_split-1)].gpart){
-	  c->hydro.parts[parent_index + (n_split-1)].gpart->mass = child_mass;}
-
+	  c->hydro.parts[parent_index + (n_split-1)].gpart->mass = child_mass;
+	  //c->hydro.parts[parent_index + (n_split-1)].gpart->time_bin = old_timebin - 1;
+	}
+	
 	
 	message("Parent ID after full split: %lld, mass=%e, position=(%g,%g,%g)",
 		c->hydro.parts[parent_index + (n_split-1)].id, c->hydro.parts[parent_index + (n_split-1)].mass,
 		c->hydro.parts[parent_index + (n_split-1)].x[0], c->hydro.parts[parent_index + (n_split-1)].x[1],
 		c->hydro.parts[parent_index + (n_split-1)].x[2]);
-	
-	
+		
       }
       j ++;
     } 
     
-  } 
+  }
+
+  
+  /* If we formed any particles, the hydro sorts are now invalid. We need to                                                           
+   * re-compute them. */
+  if ((c == c->top) && (count != c->hydro.count)) {
+    struct scheduler *s = &e->sched;
+    cell_activate_hydro_sorts(c, 0, s);
+  }
+
+
 }
 
 
@@ -916,6 +979,12 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 #endif
       }
     }
+  }
+
+  if (e->time > 0){
+    runner_do_particle_split(r,c,timer);
+    //mark cell as unsorted                                                                                                                                                  
+    atomic_or(&c->hydro.requires_sorts, 1 << 0);
   }
 
   if (timer) TIMER_TOC(timer_end_hydro_force);

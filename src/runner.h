@@ -93,6 +93,9 @@ struct runner {
 /* Function prototypes. */
 /* lily */
 void runner_do_particle_split(struct runner *r, struct cell *c, int timer);
+//void  runner_do_particle_split_flag(struct runner *r,struct cell *c, int timer);
+//runner_do_particle_split_pair(struct runner *r, struct cell *ci,
+//                                   struct cell *cj, int timer);
 /* end lily */
 void runner_do_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer);

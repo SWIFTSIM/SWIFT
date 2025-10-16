@@ -121,7 +121,7 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
     memmove(&c->hydro.xparts[1], &c->hydro.xparts[0],
           n_copy * sizeof(struct xpart));
 
-    /* Update the spart->gpart links (shift by 1) */
+    /* Update the part->gpart links (shift by 1) */
     for (size_t i = 0; i < n_copy; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -236,7 +236,8 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
     gp->id_or_neg_offset = -(new_p - e->s->parts);
 
     /* Synchronize clocks */
-    gp->time_bin = new_p->time_bin;
+    //reduced timebin
+    //gp->time_bin = p->time_bin - 1;
   } else {
     /* No gpart exists for parent, so child also has none */
     new_p->gpart = NULL;
@@ -260,7 +261,8 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
 
   /* Set a smoothing length */
   new_p->h = new_h;
-
+  //reduce timebin to ensure its active
+  //new_p->time_bin = p->time_bin - 1;
   
   /* Here comes the BABY! */ 
   return new_p;
