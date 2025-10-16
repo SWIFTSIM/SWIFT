@@ -48,6 +48,7 @@
 #include "part.h"
 #include "particle_splitting.h"
 #include "pressure_floor_debug.h"
+#include "sidm_debug.h"
 #include "sink_debug.h"
 #include "space.h"
 #include "star_formation_debug.h"
@@ -102,6 +103,15 @@
 #include "./gravity/MultiSoftening/gravity_debug.h"
 #else
 #error "Invalid choice of gravity variant"
+#endif
+
+/* Select the correct SIDM model */
+#if defined(SIDM_NONE)
+#include "./sidm/None/sidm_debug.h"
+#elif defined(SIDM_BASIC)
+#include "./sidm/Basic/sidm_debug.h"
+#else
+#error "Invalid choice of SIDM model"
 #endif
 
 /**
@@ -179,6 +189,34 @@ void printgParticle(const struct gpart *gparts, const struct part *parts,
 }
 
 /**
+ * @brief Looks for the SIDM particle with the given id and prints its
+ * information to the standard output.
+ *
+ * @param siparts The array of particles.
+ * @param id The id too look for.
+ * @param N The size of the array of particles.
+ *
+ * (Should be used for debugging only as it runs in O(N).)
+ */
+void printSIDMParticle(const struct sipart *siparts, long long int id,
+                       size_t N) {
+
+  int found = 0;
+
+  /* Look for the particle. */
+  for (size_t i = 0; i < N; i++)
+    if (siparts[i].id == id) {
+      warning("[PID%lld] ## Particle[%zu]:\n id=%lld ", siparts[i].id, i,
+              siparts[i].id);
+      sidm_debug_particle(&siparts[i]);
+      found = 1;
+      break;
+    }
+
+  if (!found) printf("## Particles[???] id=%lld not found\n", id);
+}
+
+/**
  * @brief Prints the details of a given particle to stdout
  *
  * @param p The particle to print
@@ -208,10 +246,22 @@ void printParticle_single(const struct part *p, const struct xpart *xp) {
  *
  * @param gp The g-particle to print
  */
-void printgParticle_single(struct gpart *gp) {
+void printgParticle_single(const struct gpart *gp) {
 
   printf("## g-Particle: id=%lld ", gp->id_or_neg_offset);
   gravity_debug_particle(gp);
+  printf("\n");
+}
+
+/**
+ * @brief Prints the details of a given SIDM particle to stdout
+ *
+ * @param si The sidm-particle to print
+ */
+void printSIDMParticle_single(const struct sipart *si) {
+
+  printf("## SIDM-Particle: id=%lld ", si->id);
+  sidm_debug_particle(si);
   printf("\n");
 }
 

@@ -45,7 +45,7 @@ struct cell_sidm {
     /*! Pointer to the #sipart data at rebuild time. */
     struct sipart *parts_rebuild;
 
-    /*! The black hole ghost task itself */
+    /*! The SIDM ghost task itself */
     struct task *density_ghost;
 
     /*! Linked list of the tasks computing this cell's SIDM density. */
@@ -54,7 +54,7 @@ struct cell_sidm {
     /*! Last (integer) time the cell's sipart were drifted forward in time. */
     integertime_t ti_old_part;
 
-    /*! Nr of #sipart this cell can hold after addition of new #bpart. */
+    /*! Nr of #sipart this cell can hold after addition of new #sipart. */
     int count_total;
 
     /*! Max smoothing length of active particles in this cell. */

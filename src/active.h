@@ -295,6 +295,28 @@ __attribute__((always_inline)) INLINE static int cell_is_active_sinks(
 }
 
 /**
+ * @brief Does a cell contain any sink-particle finishing their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_active_sidm(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->sidm.ti_end_min < e->ti_current)
+    error(
+        "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
+        "e->ti_current=%lld (t=%e, a=%e)",
+        c->sidm.ti_end_min, c->sidm.ti_end_min * e->time_base, e->ti_current,
+        e->ti_current * e->time_base, e->cosmology->a);
+#endif
+
+  return (c->sidm.ti_end_min == e->ti_current);
+}
+
+/**
  * @brief Does a cell contain any s-particle finishing their time-step now ?
  *
  * This also considers additional physics modules interacting with stars.
@@ -605,6 +627,18 @@ __attribute__((always_inline)) INLINE static int sink_is_inhibited(
 __attribute__((always_inline)) INLINE static int bpart_is_inhibited(
     const struct bpart *bp, const struct engine *e) {
   return bp->time_bin == time_bin_inhibited;
+}
+
+/**
+ * @brief Has this SIDM particle been inhibited?
+ *
+ * @param sip The #sipart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #sipart is inhibited, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int sipart_is_inhibited(
+    const struct sipart *sip, const struct engine *e) {
+  return sip->time_bin == time_bin_inhibited;
 }
 
 /* Are cells / particles active for kick1 tasks ? */

@@ -53,6 +53,9 @@ struct sipart {
   /*! Particle smoothing length. */
   float h;
 
+  /*! Particle density. */
+  float rho;
+
   struct {
 
     /* Number of neighbours. */
@@ -60,6 +63,9 @@ struct sipart {
 
     /* Number of neighbours spatial derivative. */
     float wcount_dh;
+
+    /*! Derivative of density with respect to h */
+    float rho_dh;
 
   } density;
 

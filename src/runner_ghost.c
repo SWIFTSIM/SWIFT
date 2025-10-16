@@ -34,6 +34,8 @@
 #include "feedback.h"
 #include "mhd.h"
 #include "rt.h"
+#include "sidm.h"
+#include "sidm_properties.h"
 #include "sink.h"
 #include "space_getsid.h"
 #include "star_formation.h"
@@ -2093,4 +2095,367 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
   }
 
   if (timer) TIMER_TOC(timer_do_sinks_ghost);
+}
+
+/**
+ * @brief Intermediate task after the density to check that the smoothing
+ * lengths are correct.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
+
+  struct sipart *restrict siparts = c->sidm.parts;
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+
+  const float sidm_h_max = e->sidm_properties->h_max;
+  const float sidm_h_min = e->sidm_properties->h_min;
+  const float eps = e->sidm_properties->h_tolerance;
+  const float sidm_eta_dim = pow_dimension(e->sidm_properties->eta_neighbours);
+  const int use_mass_weighted_num_ngb =
+      e->sidm_properties->use_mass_weighted_num_ngb;
+  const int max_smoothing_iter = e->sidm_properties->max_smoothing_iterations;
+  int redo = 0, count = 0;
+
+  /* Running value of the maximal smoothing length */
+  float h_max = c->sidm.h_max;
+  float h_max_active = 0.f;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->sidm.count == 0) return;
+  if (!cell_is_active_sidm(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_sidm_density_ghost(r, c->progeny[k], 0);
+
+        /* Update h_max */
+        h_max = max(h_max, c->progeny[k]->sidm.h_max);
+        h_max_active = max(h_max_active, c->progeny[k]->sidm.h_max_active);
+      }
+    }
+  } else {
+
+    /* Init the list of active particles that have to be updated and their
+     * current smoothing lengths. */
+    int *pid = NULL;
+    float *h_0 = NULL;
+    float *left = NULL;
+    float *right = NULL;
+    if ((pid = (int *)malloc(sizeof(int) * c->sidm.count)) == NULL)
+      error("Can't allocate memory for pid.");
+    if ((h_0 = (float *)malloc(sizeof(float) * c->sidm.count)) == NULL)
+      error("Can't allocate memory for h_0.");
+    if ((left = (float *)malloc(sizeof(float) * c->sidm.count)) == NULL)
+      error("Can't allocate memory for left.");
+    if ((right = (float *)malloc(sizeof(float) * c->sidm.count)) == NULL)
+      error("Can't allocate memory for right.");
+    for (int k = 0; k < c->sidm.count; k++)
+      if (sipart_is_active(&siparts[k], e)) {
+        pid[count] = k;
+        h_0[count] = siparts[k].h;
+        left[count] = 0.f;
+        right[count] = sidm_h_max;
+        ++count;
+      }
+
+    /* While there are particles that need to be updated... */
+    for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
+         num_reruns++) {
+
+      ghost_stats_account_for_sidm(&c->ghost_statistics, num_reruns, count,
+                                   siparts, pid);
+
+      /* Reset the redo-count. */
+      redo = 0;
+
+      /* Loop over the remaining active parts in this cell. */
+      for (int i = 0; i < count; i++) {
+
+        /* Get a direct pointer on the part. */
+        struct sipart *sip = &siparts[pid[i]];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Is this part within the timestep? */
+        if (!sipart_is_active(sip, e))
+          error("Ghost applied to inactive particle");
+#endif
+
+        /* Get some useful values */
+        const float h_init = h_0[i];
+        const float h_old = sip->h;
+        const float h_old_dim = pow_dimension(h_old);
+        const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
+
+        float h_new;
+        int has_no_neighbours = 0;
+
+        if (sip->density.wcount <
+            1.e-5 * kernel_root) { /* No neighbours case */
+
+          ghost_stats_no_ngb_sidm_iteration(&c->ghost_statistics, num_reruns);
+
+          /* Flag that there were no neighbours */
+          has_no_neighbours = 1;
+
+          /* Double h and try again */
+          h_new = 2.f * h_old;
+
+        } else {
+
+          /* Finish the density calculation */
+          sidm_end_density(sip, cosmo);
+
+          /* Are we using the alternative definition of the
+             number of neighbours? */
+          if (use_mass_weighted_num_ngb) {
+            const float inv_mass = 1.f / sip->mass;
+            sip->density.wcount = sip->rho * inv_mass;
+            sip->density.wcount_dh = sip->density.rho_dh * inv_mass;
+          }
+
+          /* Compute one step of the Newton-Raphson scheme */
+          const float n_sum = sip->density.wcount * h_old_dim;
+          const float n_target = sidm_eta_dim;
+          const float f = n_sum - n_target;
+          const float f_prime =
+              sip->density.wcount_dh * h_old_dim +
+              hydro_dimension * sip->density.wcount * h_old_dim_minus_one;
+
+          /* Improve the bisection bounds */
+          if (n_sum < n_target)
+            left[i] = max(left[i], h_old);
+          else if (n_sum > n_target)
+            right[i] = min(right[i], h_old);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Check the validity of the left and right bounds */
+          if (left[i] > right[i])
+            error("Invalid left (%e) and right (%e)", left[i], right[i]);
+#endif
+
+          /* Skip if h is already h_max and we don't have enough neighbours */
+          /* Same if we are below h_min */
+          if (((sip->h >= sidm_h_max) && (f < 0.f)) ||
+              ((sip->h <= sidm_h_min) && (f > 0.f))) {
+
+            /* We have a particle whose smoothing length is already set (wants
+             * to be larger but has already hit the maximum OR wants to be
+             * smaller but has already reached the minimum). So, just tidy up
+             * as if the smoothing length had converged correctly  */
+
+            /* Check if h_max has increased */
+            h_max = max(h_max, sip->h);
+            h_max_active = max(h_max_active, sip->h);
+
+            /* Ok, we are done with this particle */
+            continue;
+          }
+
+          /* Normal case: Use Newton-Raphson to get a better value of h */
+
+          /* Avoid floating point exception from f_prime = 0 */
+          h_new = h_old - f / (f_prime + FLT_MIN);
+
+          /* Be verbose about the particles that struggle to converge */
+          if (num_reruns > max_smoothing_iter - 10) {
+
+            message(
+                "Smoothing length convergence problem: iter=%d p->id=%lld "
+                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                num_reruns, sip->id, h_init, h_old, h_new, f, f_prime, n_sum,
+                n_target, left[i], right[i]);
+          }
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old)) &&
+              (h_old < 0.999f * sidm_h_max))
+            error(
+                "Smoothing length correction not going in the right direction");
+#endif
+
+          /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
+          h_new = min(h_new, 2.f * h_old);
+          h_new = max(h_new, 0.5f * h_old);
+
+          /* Verify that we are actually progrssing towards the answer */
+          h_new = max(h_new, left[i]);
+          h_new = min(h_new, right[i]);
+        }
+
+        /* Check whether the particle has an inappropriate smoothing length
+         */
+        if (fabsf(h_new - h_old) > eps * h_old) {
+
+          /* Ok, correct then */
+
+          /* Case where we have been oscillating around the solution */
+          if ((h_new == left[i] && h_old == right[i]) ||
+              (h_old == left[i] && h_new == right[i])) {
+
+            /* Bisect the remaining interval */
+            sip->h = pow_inv_dimension(
+                0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
+
+          } else {
+
+            /* Normal case */
+            sip->h = h_new;
+          }
+
+          /* If within the allowed range, try again */
+          if (sip->h < sidm_h_max && sip->h > sidm_h_min) {
+
+            /* Flag for another round of fun */
+            pid[redo] = pid[i];
+            h_0[redo] = h_0[i];
+            left[redo] = left[i];
+            right[redo] = right[i];
+            redo += 1;
+
+            /* Re-initialise everything */
+            sidm_init_sipart(sip);
+
+            /* Off we go ! */
+            continue;
+
+          } else if (sip->h <= sidm_h_min) {
+
+            /* Ok, this particle is a lost cause... */
+            sip->h = sidm_h_min;
+
+          } else if (sip->h >= sidm_h_max) {
+
+            /* Ok, this particle is a lost cause... */
+            sip->h = sidm_h_max;
+
+            /* Do some damage control if no neighbours at all were found */
+            if (has_no_neighbours) {
+              ghost_stats_no_ngb_sidm_converged(&c->ghost_statistics);
+              sidm_sipart_has_no_neighbours(sip, cosmo);
+            }
+
+          } else {
+            error(
+                "Fundamental problem with the smoothing length iteration "
+                "logic.");
+          }
+        }
+
+        /* We now have a particle whose smoothing length has converged */
+
+        /* Set the correct depth */
+        cell_set_sipart_h_depth(sip, c);
+
+        /* Check if h_max has increased */
+        h_max = max(h_max, sip->h);
+        h_max_active = max(h_max_active, sip->h);
+
+        ghost_stats_converged_sidm(&c->ghost_statistics, sip);
+      }
+
+      /* We now need to treat the particles whose smoothing length had not
+       * converged again */
+
+      /* Re-set the counter for the next loop (potentially). */
+      count = redo;
+      //       if (count > 0) {
+
+      //         /* Climb up the cell hierarchy. */
+      //         for (struct cell *finger = c; finger != NULL; finger =
+      //         finger->parent) {
+
+      //           /* Run through this cell's density interactions. */
+      //           for (struct link *l = finger->sidm.density; l != NULL; l =
+      //           l->next) {
+
+      // #ifdef SWIFT_DEBUG_CHECKS
+      //             if (l->t->ti_run < r->e->ti_current)
+      //               error("Density task should have been run.");
+      // #endif
+
+      //             /* Self-interaction? */
+      //             if (l->t->type == task_type_self) {
+      //               runner_dosub_self_subset_sidm_density(r, finger, parts,
+      //               pid, count, 1);
+      //             }
+
+      //             /* Otherwise, pair interaction? */
+      //             else if (l->t->type == task_type_pair) {
+
+      //               /* Left or right? */
+      //               if (l->t->ci == finger)
+      //                 runner_dosub_pair_subset_sidm_density(r, finger, parts,
+      //                 pid, count,
+      //                                                  l->t->cj, 1);
+      //               else
+      //                 runner_dosub_pair_subset_sidm_density(r, finger, parts,
+      //                 pid, count,
+      //                                                  l->t->ci, 1);
+      //             } else {
+      // #ifdef SWIFT_DEBUG_CHECKS
+      //               error("Invalid sub-type!");
+      // #endif
+      //             }
+      //           }
+      //         }
+      //       }
+    }
+
+    if (count) {
+      warning(
+          "Smoothing length failed to converge for the following SIDM "
+          "particles:");
+      for (int i = 0; i < count; i++) {
+        struct sipart *sip = &siparts[pid[i]];
+        warning("ID: %lld, h: %g, wcount: %g", sip->id, sip->h,
+                sip->density.wcount);
+      }
+
+      error("Smoothing length failed to converge on %i particles.", count);
+    }
+
+    /* Be clean */
+    free(left);
+    free(right);
+    free(pid);
+    free(h_0);
+  }
+
+  /* Update h_max */
+  c->sidm.h_max = h_max;
+  c->sidm.h_max_active = h_max_active;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->sidm.count; ++i) {
+    const struct sipart *sip = &c->sidm.parts[i];
+    const float h = c->sidm.parts[i].h;
+    if (sipart_is_inhibited(sip, e)) continue;
+
+    if (h > c->sidm.h_max)
+      error("Particle has h larger than h_max (id=%lld)", sip->id);
+    if (sipart_is_active(sip, e) && h > c->sidm.h_max_active)
+      error("Active particle has h larger than h_max_active (id=%lld)",
+            sip->id);
+  }
+#endif
+
+  /* The ghost may not always be at the top level.
+   * Therefore we need to update h_max between the super- and top-levels */
+  if (c->sidm.density_ghost) {
+    for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+      atomic_max_f(&tmp->sidm.h_max, h_max);
+      atomic_max_f(&tmp->sidm.h_max_active, h_max_active);
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_do_ghost);
 }
