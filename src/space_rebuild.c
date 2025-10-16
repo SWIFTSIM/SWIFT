@@ -49,6 +49,7 @@ extern unsigned long long last_leaf_cell_id;
 void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   const ticks tic = getticks();
+  const ticks setup_tic = getticks();
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -66,6 +67,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);
+
+  if (verbose)
+    message("Initial setup and regridding took %.3f %s.",
+            clocks_from_ticks(getticks() - setup_tic), clocks_getunit());
 
   const ticks alloc_tic = getticks();
 
@@ -153,6 +158,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         "%s.",
         clocks_from_ticks(getticks() - alloc_tic), clocks_getunit());
 
+  const ticks indexing_tic = getticks();
+
   /* Run through the particles and get their cell index. */
   if (nr_parts > 0)
     space_parts_get_cell_index(s, h_index, cell_part_counts,
@@ -208,6 +215,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         "Number of extra sinks in the sink array not matching the space "
         "counter.");
 #endif
+
+  if (verbose)
+    message("Particle cell indexing took %.3f %s.",
+            clocks_from_ticks(getticks() - indexing_tic), clocks_getunit());
 
   const ticks tic2 = getticks();
 
@@ -487,6 +498,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     error("Counts of inhibited g-particles do not match!");
 #endif /* SWIFT_DEBUG_CHECKS */
 
+  const ticks pre_sort_tic = getticks();
+
 #ifdef WITH_MPI
 
   /* Exchange the strays, note that this potentially re-allocates
@@ -646,6 +659,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   s->nr_sinks = nr_sinks;
 
 #endif /* WITH_MPI */
+
+  if (verbose)
+    message("Particle management and preparation took %.3f %s.",
+            clocks_from_ticks(getticks() - pre_sort_tic), clocks_getunit());
 
   /* Sort the parts according to their cells. */
   if (nr_parts > 0) {
@@ -1157,6 +1174,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
             clocks_from_ticks(getticks() - collect_tic), clocks_getunit());
   }
 
+  const ticks final_ops_tic = getticks();
+
   /* Re-order the extra particles such that they are at the end of their cell's
      memory pool. */
   if (s->with_star_formation || s->with_sink) space_reorder_extras(s, verbose);
@@ -1175,7 +1194,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Clean up any stray sort indices in the cell buffer. */
   space_free_buff_sort_indices(s);
 
-  if (verbose)
+  if (verbose) {
+    message("Final operations and space splitting took %.3f %s.",
+            clocks_from_ticks(getticks() - final_ops_tic), clocks_getunit());
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+  }
 }
