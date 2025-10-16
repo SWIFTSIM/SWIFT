@@ -1096,4 +1096,4 @@ ZoomRegion:
   truncate_background:        0      # (Optional) Whether to truncate the background particle distribution to a fixed distance from the zoom region derived from PM gravity accuracy. (default: 0) 
   truncate_epsilon:           1e-3   # (Optional) The tolerance for the PM gravity accuracy when truncating the background particle distribution. (default: 1e-3, i.e. 0.1% error) 
   truncate_tidal_factor:      1.0    # (Optional) A scaling factor accounting for anisotropies in the background potential when truncating the background particle distribution. Larger means more parent volume is kept, i.e. more accurate. Typically 1-2 (default: 1.0)
-  max_com_dx:                 0.1    # The maximum allowed displacement of the centre of mass of a cell from the centre of the box. When this is exceeded, we rebuild the zoom region.
+  max_com_dx:                 0.1    # (Optional) The maximum allowed displacement of the centre of mass of the zoom region from the centre of the box in units of the zoom region extent. When this is exceeded, we rebuild the zoom region.

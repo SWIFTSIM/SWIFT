@@ -395,9 +395,6 @@ struct zoom_region_properties {
   /*! Centre of mass of the zoom region. */
   double com[3];
 
-  /*! Bulk velocity of the zoom region. */
-  double vcom[3];
-
   /*! The maximum distance the zoom region CoM can move before we recentre
    * in units of the zoom region extent. */
   double max_com_dx;
@@ -461,15 +458,8 @@ struct zoom_region_properties {
   /*! Shift applied to particles to centre the high res particles in the box. */
   double applied_zoom_shift[3];
 
-  /*! Velocity shift needed to remove the bulk velocity of the zoom region. */
-  double zoom_vel_shift[3];
-
   /*! Scale factor of the last shift applied to the particles. */
   double scale_factor_at_last_shift;
-
-  /*! Velocity shift applied to particles to remove the bulk velocity of the
-   * zoom region. */
-  double applied_zoom_vel_shift[3];
 
   /*! Vector outlining the zoom region upper boundaries. */
   double region_upper_bounds[3];
