@@ -57,7 +57,7 @@ INLINE static int csds_stars_define_fields(struct csds_field *fields) {
 
   /* Positions, velocities and Accelerations are now common fields for all
      particles */
-  
+
   /* Masses */
   csds_define_standard_field(fields[0], "Masses", struct spart, mass);
 

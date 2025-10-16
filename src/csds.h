@@ -27,12 +27,11 @@
 /* Includes. */
 #include "align.h"
 #include "common_io.h"
+#include "csds_types.h"
 #include "error.h"
 #include "inline.h"
 #include "timeline.h"
 #include "units.h"
-
-#include "csds_types.h"
 
 /* Include the CSDS */
 #include "csds/src/logfile_writer.h"
@@ -87,7 +86,8 @@ struct csds_writer {
   /* Size of a record if every mask are activated. */
   int max_record_size;
 
-  /* Array to hold the DEFINITION of the FIXED fields (Pos, Vel, Accel, etc.). */
+  /* Array to hold the DEFINITION of the FIXED fields (Pos, Vel, Accel, etc.).
+   */
   struct csds_field fixed_fields[CSDS_TOTAL_FIXED_MASKS];
 
   /* Array of pointers, one for each particle type (swift_type_count).
@@ -100,13 +100,15 @@ struct csds_writer {
      for each particle type. This is what's written to the header. */
   unsigned int part_type_masks[swift_type_count];
 
-  /* An array to store the TOTAL SIZE of all 'other' fields for each particle type. */
+  /* An array to store the TOTAL SIZE of all 'other' fields for each particle
+   * type. */
   size_t part_type_total_size[swift_type_count];
 
   /* Number of 'other' fields for each particle type . */
   int number_fields[swift_type_count];
 
-  /* Total number of unique fields defined across all types (mostly for error checking/debugging) */
+  /* Total number of unique fields defined across all types (mostly for error
+   * checking/debugging) */
   int total_number_fields;
 
 } SWIFT_STRUCT_ALIGN;
@@ -145,7 +147,8 @@ void csds_log_gparts(struct csds_writer *log, struct gpart *gp, int count,
                      const enum csds_special_flags flag, const int flag_data);
 void csds_init(struct csds_writer *log, const struct engine *e,
                struct swift_params *params);
-void csds_init_fixed_mask_fields(struct csds_writer *log, const struct engine *e);
+void csds_init_fixed_mask_fields(struct csds_writer *log,
+                                 const struct engine *e);
 void csds_init_masks(struct csds_writer *log, const struct engine *e);
 
 void csds_free(struct csds_writer *log);

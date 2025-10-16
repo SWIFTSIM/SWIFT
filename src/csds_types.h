@@ -76,9 +76,9 @@ struct csds_field {
   void *(*conversion_hydro)(const struct part *, const struct xpart *xp,
                             const struct engine *e, void *buffer);
   void *(*conversion_grav)(const struct gpart *, const struct engine *e,
-                            void *buffer);
+                           void *buffer);
   void *(*conversion_stars)(const struct spart *, const struct engine *e,
-                             void *buffer);
+                            void *buffer);
 };
 
 #endif /* SWIFT_CSDS_TYPES_H */
