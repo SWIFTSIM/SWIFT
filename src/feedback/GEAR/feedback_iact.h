@@ -138,6 +138,11 @@ runner_iact_nonsym_feedback_apply(
       pj->chemistry_data.metal_mass[i] +=
           weight * si->feedback_data.metal_mass_ejected[i];
     }
+
+    /* Set the indication of SN event for cooling*/
+    xpj->feedback_data.hit_by_SN = 1;
+  }else {
+    xpj->feedback_data.hit_by_SN = 0;
   }
 
   /* Distribute pre-SN */
