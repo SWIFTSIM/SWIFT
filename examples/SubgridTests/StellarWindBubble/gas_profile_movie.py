@@ -9,6 +9,7 @@ import swiftsimio as sw
 from unyt.physical_constants import mh, kboltz_cgs as k_B
 import unyt
 import re
+from scipy.ndimage import gaussian_filter1d
 
 # --- GLOBAL STATE VARIABLES ---
 GLOBAL_DATA_LIST = []
@@ -453,31 +454,45 @@ def write_quantities(
     peak_data = f"{time.value:.4f}"
     r_val = coordinates.value  # r [kpc]
 
+    # Get the indices that would sort the array r_val
+    sort_indices = np.argsort(r_val)
+
+    # Apply the sorting to all arrays
+    r_sorted = r_val[sort_indices]
+    densities_sorted = densities[sort_indices]
+    velocities_value_sorted = velocities.value[sort_indices]
+    temperatures_sorted = temperatures[sort_indices]
+
     # Density Peak
     # Find the index of the maximum density value
-    rho_max = np.max(densities)
+    rho_max = np.max(densities_sorted)
     idx_rho_max = np.argmin(
-        np.where(densities == rho_max, r_val, np.inf)
+        np.where(densities_sorted == rho_max, r_val, np.inf)
     )  # In case of multiple maxima, take the smallest radius, because at the begining the all have the same values
-    r_rho_max = r_val[idx_rho_max]
-    peak_data += f"\t{r_rho_max:.4f}\t{densities[idx_rho_max]:.4f}"
+    r_rho_max = r_sorted[idx_rho_max]
+
+    # The min density correspond to the hot compressed wind region (closer than the shockwave contact surface)
+    rho_min = np.min(densities_sorted)
+    idx_rho_min = np.argmin(np.where(densities_sorted == rho_max, r_val, np.inf))
+    r_rho_min = r_sorted[idx_rho_min]
+    peak_data += f"\t{r_rho_max:.4f}\t{rho_max:.4f}\t{r_rho_min:.4f}\t{rho_min:.4f}"
 
     # Velocity Peak (Using argmax on the magnitude of the velocity array values)
-    idx_v_max = np.argmax(np.abs(velocities.value))
-    r_v_max = r_val[idx_v_max]
-    peak_data += f"\t{r_v_max:.4f}\t{velocities[idx_v_max].value:.4f}"
+    idx_v_max = np.argmax(velocities_value_sorted)
+    r_v_max = r_sorted[idx_v_max]
+    peak_data += f"\t{r_v_max:.4f}\t{velocities_value_sorted[idx_v_max]:.4f}"
 
     # Velocity at shockwave
-    peak_data += f"\t{velocities[idx_rho_max].value:.4f}"
+    peak_data += f"\t{velocities_value_sorted[idx_rho_max]:.4f}"
 
     # Temperature Peak
-    idx_temp_max = np.argmax(temperatures)
-    r_temp_max = r_val[idx_temp_max]
-    peak_data += f"\t{r_temp_max:.4f}\t{temperatures[idx_temp_max]:.4f}"
+    idx_temp_max = np.argmax(temperatures_sorted)
+    r_temp_max = r_sorted[idx_temp_max]
+    peak_data += f"\t{r_temp_max:.4f}\t{temperatures_sorted[idx_temp_max]:.4f}"
 
     # Temperature at shockwave
-    temp_at_rho_peak = temperatures[idx_rho_max]
-    temp_at_v_peak = temperatures[idx_v_max]
+    temp_at_rho_peak = temperatures_sorted[idx_rho_max]
+    temp_at_v_peak = temperatures_sorted[idx_v_max]
     peak_data += f"\t{temp_at_rho_peak:.4f}\t{temp_at_v_peak:.4f}"
 
     # theoretical part
@@ -581,7 +596,7 @@ def main(file_list, log_path):
     try:
         GLOBAL_LOG_FILE = open(log_filename, "w")
         # Write header: Time, R_RhoMax, RhoMax, R_TMax, TMax, R_VMax, VMax
-        header = "# Time [Myr]\tR_RhoMax [kpc]\tRhoMax [H/cm^3]\tR_VMax [kpc]\tVMax [km/s]\tV_R_RhoMAX [km/s]\tR_TMax [kpc]\tTMax [K]\tT_R_RhoMAX [K]\tT_R_vMAX [K]\tR_e [kpc]\tR_p [kpc]\tR_b_e [kpc]\tR_b_p [kpc]\tv_e [km/s]\tv_p [kpc]\tT_e [k]\tRho_e [H/cm^3]\tt_end [Myr]\n"
+        header = "# Time [Myr]\tR_RhoMax [kpc]\tRhoMax [H/cm^3]\tR_RhoMin [kpc]\tRhoMin [H/cm^3]\tR_VMax [kpc]\tVMax [km/s]\tV_R_RhoMAX [km/s]\tR_TMax [kpc]\tTMax [K]\tT_R_RhoMAX [K]\tT_R_vMAX [K]\tR_e [kpc]\tR_p [kpc]\tR_b_e [kpc]\tR_b_p [kpc]\tv_e [km/s]\tv_p [kpc]\tT_e [k]\tRho_e [H/cm^3]\tt_end [Myr]\n"
         GLOBAL_LOG_FILE.write(header)
         print(f"Logging peak data to {log_filename}")
     except Exception as e:
@@ -691,7 +706,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "data_dir",
         type=str,
-        help="Path to the directory containing the simulation. /!\ not the snap/ subdirectory, but the directory before that (because the script also search for the log file there).",
+        help="Path to the directory containing the simulation. /!\\ not the snap/ subdirectory, but the directory before that (because the script also search for the log file there).",
     )
     # Define the command-line argument for the file pattern
     parser.add_argument(
