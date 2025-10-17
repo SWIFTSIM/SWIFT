@@ -487,35 +487,18 @@ elif test "$no_gravity_below_id" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
 fi
 
-# Check if we want to use boundary particles.
-AC_ARG_ENABLE([boundary-particles],
-   [AS_HELP_STRING([--enable-boundary-particles=<N>],
-     [Set all particles with an ID smaller than @<:@N@:>@ as boundary particles (i.e. receive zero gravity + hydro forces).]
+# Check if we want to use fixed black holes.
+AC_ARG_ENABLE([fixed-black-holes],
+   [AS_HELP_STRING([--enable-fixed-black-holes=<N>],
+     [Set all black hole particles with an ID less than or equal to @<:@N@:>@ as fixed particles (i.e. zero velocity).]
    )],
-   [boundary_particles="$enableval"],
-   [boundary_particles="no"]
+   [fixed_black_holes="$enableval"],
+   [fixed_black_holes="no"]
 )
-if test "$boundary_particles" = "yes"; then
-   AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-boundary-particles!)
-elif test "$boundary_particles" != "no"; then
-   AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
-   AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
-fi
-
-# Check if we want to use fixed boundary particles.
-AC_ARG_ENABLE([fixed-boundary-particles],
-   [AS_HELP_STRING([--enable-fixed-boundary-particles=<N>],
-     [Set all particles with an ID smaller than @<:@N@:>@ as fixed boundary particles (i.e. receive zero gravity + hydro forces + zero velocity), this mode enables also --enable-boundary-particles and --enable-no-gravity-below-id.]
-   )],
-   [fixed_boundary_particles="$enableval"],
-   [fixed_boundary_particles="no"]
-)
-if test "$fixed_boundary_particles" = "yes"; then
-   AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-boundary-particles!)
-elif test "$fixed_boundary_particles" != "no"; then
-   AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
-   AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
-   AC_DEFINE_UNQUOTED([SWIFT_FIXED_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
+if test "$fixed_black_holes" = "yes"; then
+   AC_MSG_ERROR(Need to specify the ID less than or equal to which black hole particles have zero velocity, using --enable-fixed-black-holes=N!)
+elif test "$fixed_black_holes" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_FIXED_BLACK_HOLES], [$enableval] ,[Black hole particles with ID less than or equal to this value will be fixed in place.])
 fi
 
 # Check if fixed entropy is on for settling planetary initial conditions
@@ -2934,7 +2917,7 @@ esac
 # Forcing terms
 AC_ARG_WITH([forcing],
    [AS_HELP_STRING([--with-forcing=<term>],
-      [Hydrodynamics forcing terms @<:@none, roberts-flow, roberts-flow-acceleration , abc-flowdefault: none@:>@]
+      [Hydrodynamics forcing terms @<:@none, boundary-particles, roberts-flow, roberts-flow-acceleration, abc-flow, default: none@:>@]
    )],
    [with_forcing="$withval"],
    [with_forcing="none"]
@@ -2942,6 +2925,9 @@ AC_ARG_WITH([forcing],
 case "$with_forcing" in
    none)
       AC_DEFINE([FORCING_NONE], [1], [No external forcing terms])
+   ;;
+   boundary-particles)
+      AC_DEFINE([FORCING_BOUNDARY_PARTICLES], [1], [Boundary particles])
    ;;
    roberts-flow)
       AC_DEFINE([FORCING_ROBERTS_FLOW], [1], [Roberts' flow external forcing terms])
@@ -3427,8 +3413,7 @@ AC_MSG_RESULT([
    Naive stars interactions    : $enable_naive_interactions_stars
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
-   Boundary particles          : $boundary_particles
-   Fixed boundary particles    : $fixed_boundary_particles
+   Fixed black holes           : $fixed_black_holes
    Planetary fixed entropy     : $planetary_fixed_entropy
    Ghost statistics            : $ghost_stats
 

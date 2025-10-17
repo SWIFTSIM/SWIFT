@@ -736,31 +736,8 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
 
         /* Apply the forcing terms (if any) */
-        forcing_terms_apply(e->time, e->forcing_terms, e->s,
-                            e->physical_constants, p, xp);
-
-#ifdef SWIFT_BOUNDARY_PARTICLES
-
-        /* Get the ID of the part */
-        const long long id = p->id;
-
-        /* Cancel hdyro forces of these particles */
-        if (id < SWIFT_BOUNDARY_PARTICLES) {
-
-          /* Don't move ! */
-          hydro_reset_acceleration(p);
-          mhd_reset_acceleration(p);
-
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
-
-          /* Some values need to be reset in the Gizmo case. */
-          hydro_prepare_force(p, &c->hydro.xparts[k], cosmo,
-                              e->hydro_properties, e->pressure_floor_props,
-                              /*dt_alpha=*/0, /*dt_therm=*/0);
-          rt_prepare_force(p);
-#endif
-        }
-#endif
+        forcing_hydro_terms_apply(e->time, e->forcing_terms, e->s,
+                                  e->physical_constants, p, xp);
       }
     }
   }
@@ -821,16 +798,6 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
         gravity_end_force(gp, G_newton, potential_normalisation, periodic,
                           with_self_gravity);
 
-#ifdef SWIFT_MAKE_GRAVITY_GLASS
-
-        /* Negate the gravity forces */
-        gp->a_grav[0] *= -1.f;
-        gp->a_grav[1] *= -1.f;
-        gp->a_grav[2] *= -1.f;
-#endif
-
-#ifdef SWIFT_NO_GRAVITY_BELOW_ID
-
         /* Get the ID of the gpart */
         long long id = 0;
         if (gp->type == swift_type_gas)
@@ -844,6 +811,19 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
         else
           id = gp->id_or_neg_offset;
 
+        /* Apply the forcing terms (if any) */
+        forcing_grav_terms_apply(id, e->forcing_terms, gp);
+
+#ifdef SWIFT_MAKE_GRAVITY_GLASS
+
+        /* Negate the gravity forces */
+        gp->a_grav[0] *= -1.f;
+        gp->a_grav[1] *= -1.f;
+        gp->a_grav[2] *= -1.f;
+#endif
+
+#ifdef SWIFT_NO_GRAVITY_BELOW_ID
+
         /* Cancel gravity forces of these particles */
         if (id < SWIFT_NO_GRAVITY_BELOW_ID) {
 
@@ -851,6 +831,23 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           gp->a_grav[0] = 0.f;
           gp->a_grav[1] = 0.f;
           gp->a_grav[2] = 0.f;
+        }
+#endif
+
+#ifdef SWIFT_FIXED_BLACK_HOLES
+
+        /* Check if particle is a black hole particle */
+        if (gp->type == swift_type_black_hole) {
+
+          /* Cancel gravity forces of black hole particles with ID less than or
+           * equal to value given */
+          if (id <= SWIFT_FIXED_BLACK_HOLES) {
+
+            /* Don't move ! */
+            gp->a_grav[0] = 0.f;
+            gp->a_grav[1] = 0.f;
+            gp->a_grav[2] = 0.f;
+          }
         }
 #endif
 
@@ -868,25 +865,12 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           if (gp->num_interacted !=
               e->total_nr_gparts - e->count_inhibited_gparts) {
 
-            /* Get the ID of the gpart */
-            long long my_id = 0;
-            if (gp->type == swift_type_gas)
-              my_id = e->s->parts[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_stars)
-              my_id = e->s->sparts[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_sink)
-              my_id = e->s->sinks[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_black_hole)
-              error("Unexisting type");
-            else
-              my_id = gp->id_or_neg_offset;
-
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally with all other gparts "
                 "gp->num_interacted=%lld, total_gparts=%lld (local "
                 "num_gparts=%zd inhibited_gparts=%lld)",
-                my_id, part_type_names[gp->type], gp->num_interacted,
+                id, part_type_names[gp->type], gp->num_interacted,
                 e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts);
           }
         }

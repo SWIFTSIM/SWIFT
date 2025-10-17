@@ -86,7 +86,6 @@ NFWPotential:
   bulgefraction:   0.0025           # Bulge mass fraction
   epsilon: 0.3                      # Softening of the NFW potential
 
-
 # Impose primoridal metallicity
 EAGLEChemistry:
   init_abundance_metal:     0.004457      # Inital fraction of particle mass in *all* metals 
