@@ -590,7 +590,7 @@ void space_allocate_extras(struct space *s, int verbose) {
    * TODO: When implementation done, fix s->nr_siparts below!! */
   if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0) ||
       (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0) ||
-      (nr_gparts > 0 && nr_siparts > 0))
+      (nr_gparts > 0 && s->nr_siparts > 0))
     part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
                       s->siparts, nr_parts, nr_gparts, nr_sinks, nr_sparts,
                       nr_bparts, s->nr_siparts, verbose);
