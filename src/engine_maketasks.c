@@ -67,11 +67,16 @@ extern int engine_max_parts_per_cooling;
  * @param e The #engine.
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
- * @param t_pack_grav The grav packing #task, if it has already been created.
+ * @param t_grav_counts The send_grav_counts #task, if it has already been
+ * created.
  * @param t_grav The send_grav #task, if it has already been created.
- * @param t_pack_fof The fof packing #task, if it has already been created.
+ * @param t_pack_grav The grav packing #task, if it has already been created.
  * @param t_fof The send_fof #task, if it has already been created.
+ * @param t_pack_fof The fof packing #task, if it has already been created.
  * @param with_fof Are we running with FOF?
+ * @param with_sinks Are we running with sink particles?
+ * @param with_star_formation Are we running with star formation?
+ * @param with_star_formation_sink Are we running with star formation sink?
  */
 void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   struct cell *cj, struct task *t_grav_counts,
@@ -82,6 +87,11 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   const int with_star_formation_sink) {
 
 #ifdef WITH_MPI
+#if !defined(SWIFT_DEBUG_CHECKS)
+  if (with_sinks) {
+    error("TODO: Sink and star formation sink over MPI");
+  }
+#endif
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
@@ -426,11 +436,11 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  * @param t_prep2 The send_prep2 #task, if it has already been created.
  * @param t_sf_counts The send_sf_counts, if it has been created.
  * @param with_star_formation Are we running with star formation on?
+ * @param with_star_formation_sink Are we running with star formation sink?
  */
 void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_density,
                                 struct task *t_prep2, struct task *t_sf_counts,
-                                /* struct task *t_sf_sink_counts, */
                                 const int with_star_formation,
                                 const int with_star_formation_sink) {
 #ifdef WITH_MPI
@@ -660,15 +670,15 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
 /**
  * @brief Add send tasks for the sinks pairs to a hierarchy of cells.
  *
- * @TODO: Update the doc of this function.
- * @TODO: Take into account the density loop
- *
  * @param e The #engine.
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
- * @param t_bh_merger The sink swallow comm. task, if it has already been
+ * @param t_rho The density comm. task, if it has already been created.
+ * @param t_sink_merge The sink swallow comm. task, if it has already been
  * created.
  * @param t_sink_gas_swallow The sink gas swallow comm. task, if it has already
+ * been created.
+ * @param t_sink_formation_counts The send_sink_formation_counts, if it has
  * been created.
  */
 void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
@@ -808,6 +818,7 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
  * @param tend The top-level time-step communication #task.
  * @param with_feedback Are we running with stellar feedback?
  * @param with_black_holes Are we running with black holes?
+ * @param with_sinks Are we running with sinks?
  * @param with_limiter Are we running with the time-step limiter?
  * @param with_sync Are we running with time-step synchronization?
  * @param with_rt Are we running with radiative transfer?
@@ -822,6 +833,11 @@ void engine_addtasks_recv_hydro(
     const int with_sync, const int with_rt) {
 
 #ifdef WITH_MPI
+#if !defined(SWIFT_DEBUG_CHECKS)
+  if (with_sinks) {
+    error("TODO: Sink and star formation sink over MPI");
+  }
+#endif
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
@@ -1145,6 +1161,7 @@ void engine_addtasks_recv_rt_advance_cell_time(struct engine *e, struct cell *c,
  * @param t_sf_counts The recv_sf_counts, if it has been created.
  * @param tend The top-level time-step communication #task.
  * @param with_star_formation Are we running with star formation on?
+ * @param with_star_formation Are we running with star formation sink on?
  */
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                 struct task *t_density, struct task *t_prep2,
@@ -1394,10 +1411,12 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The foreign #cell.
  * @param t_rho The density comm. task, if it has already been created.
- * @param t_bh_merger The BH swallow comm. task, if it has already been created.
- * @param t_gas_swallow The gas swallow comm. task, if it has already been
+ * @param t_sink_merge The sink swallow comm. task, if it has already been
  * created.
- * @param t_feedback The recv_feed #task, if it has already been created.
+ * @param t_sink_gas_swallow The sink gas swallow comm. task, if it has already
+ * been created.
+ * @param t_sink_formation_counts The send_sink_formation_counts, if it has
+ * been created.
  * @param tend The top-level time-step communication #task.
  */
 void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
@@ -1518,10 +1537,15 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
  *
  * @param e The #engine.
  * @param c The foreign #cell.
+ * @param t_grav_counts The recvh_grav_counts #task, if it has already been
+ * created.
  * @param t_grav The recv_gpart #task, if it has already been created.
  * @param t_fof The recv_fof #task, if it has already been created.
  * @param tend The top-level time-step communication #task.
  * @param with_fof Are we running with FOF?
+ * @param with_sinks Are we running with sink particles?
+ * @param with_star_formation Are we running with star formation?
+ * @param with_star_formation_sink Are we running with star formation sink?
  */
 void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
                                   struct task *t_grav_counts,
@@ -1532,6 +1556,11 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
                                   const int with_star_formation_sink) {
 
 #ifdef WITH_MPI
+#if !defined(SWIFT_DEBUG_CHECKS)
+  if (with_sinks) {
+    error("TODO: Sink and star formation sink over MPI");
+  }
+#endif
   struct scheduler *s = &e->sched;
   const int are_particles_forming =
       (with_star_formation && c->hydro.count > 0) ||
