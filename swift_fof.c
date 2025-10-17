@@ -99,6 +99,7 @@ int main(int argc, char *argv[]) {
   struct spart *sparts = NULL;
   struct sink *sinks = NULL;
   struct bpart *bparts = NULL;
+  struct sipart *siparts = NULL;
   struct unit_system us;
   struct ic_info ics_metadata;
 
@@ -149,6 +150,7 @@ int main(int argc, char *argv[]) {
   int with_stars = 0;
   int with_black_holes = 0;
   int with_hydro = 0;
+  int with_sidm = 0;
   int verbose = 0;
   int nr_threads = 1;
   char *output_parameters_filename = NULL;
@@ -175,6 +177,7 @@ int main(int argc, char *argv[]) {
                   0),
       OPT_BOOLEAN(0, "black-holes", &with_black_holes,
                   "Read black holes from the ICs.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "sidm", &with_sidm, "Run with SIDM.", NULL, 0, 0),
 
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
@@ -466,7 +469,7 @@ int main(int argc, char *argv[]) {
   /* Get ready to read particles of all kinds */
   int flag_entropy_ICs = 0;
   size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nnupart = 0;
-  size_t Nsink = 0, Nspart = 0, Nbpart = 0;
+  size_t Nsink = 0, Nspart = 0, Nbpart = 0, Nsipart = 0;
   double dim[3] = {0., 0., 0.};
 
   /* Prepare struct to store metadata from ICs */
@@ -476,29 +479,32 @@ int main(int argc, char *argv[]) {
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                   &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
-                   &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-                   /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
-                   with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                   /*dry_run=*/0, /*remap_ids=*/0, &ics_metadata);
+  read_ic_parallel(
+      ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts, &bparts, &siparts,
+      &Ngas, &Ngpart, &Ngpart_background, &Nnupart, &Nsink, &Nspart, &Nbpart,
+      &Nsipart, &flag_entropy_ICs, with_hydro,
+      /*with_grav=*/1, with_sinks, with_stars, with_black_holes, with_sidm,
+      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
+      nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+      /*dry_run=*/0, /*remap_ids=*/0, &ics_metadata);
 #else
-  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                 &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart, &Nsink,
-                 &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-                 /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
-                 with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                 /*dry_run=*/0, /*remap_ids=*/0, &ics_metadata);
+  read_ic_serial(
+      ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts, &bparts, &siparts,
+      &Ngas, &Ngpart, &Ngpart_background, &Nnupart, &Nsink, &Nspart, &Nbpart,
+      &Nsipart, &flag_entropy_ICs, with_hydro,
+      /*with_grav=*/1, with_sinks, with_stars, with_black_holes, with_sidm,
+      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
+      nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+      /*dry_run=*/0, /*remap_ids=*/0, &ics_metadata);
 #endif
 #else
-  read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                 &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart, &Nsink,
-                 &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-                 /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
-                 with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                 nr_threads, /*dry_run=*/0, /*remap_ids=*/0, &ics_metadata);
+  read_ic_single(
+      ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts, &bparts, &siparts,
+      &Ngas, &Ngpart, &Ngpart_background, &Nnupart, &Nsink, &Nspart, &Nbpart,
+      &Nsipart, &flag_entropy_ICs, with_hydro,
+      /*with_grav=*/1, with_sinks, with_stars, with_black_holes, with_sidm,
+      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
+      /*dry_run=*/0, /*remap_ids=*/0, &ics_metadata);
 #endif
 #endif
   if (myrank == 0) {
@@ -510,8 +516,8 @@ int main(int argc, char *argv[]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the other links are correctly set */
-  part_verify_links(parts, gparts, sinks, sparts, bparts, Ngas, Ngpart, Nsink,
-                    Nspart, Nbpart, /*verbose=*/1);
+  part_verify_links(parts, gparts, sinks, sparts, bparts, siparts, Ngas, Ngpart,
+                    Nsink, Nspart, Nbpart, Nsipart, /*verbose=*/1);
 #endif
 
   /* Get the total number of particles across all nodes. */
@@ -571,8 +577,8 @@ int main(int argc, char *argv[]) {
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, params, &cosmo, dim, /*hydro_props=*/NULL, parts, gparts,
-             sinks, sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart,
-             Nnupart, periodic, replicate, /*remap_ids=*/0,
+             sinks, sparts, bparts, siparts, Ngas, Ngpart, Nsink, Nspart,
+             Nbpart, Nnupart, Nsipart, periodic, replicate, /*remap_ids=*/0,
              /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
              /*with_star_formation=*/0, /*sink=*/N_total[swift_type_sink],
              with_DM_particles, with_DM_background_particles, with_neutrinos,
@@ -656,11 +662,13 @@ int main(int argc, char *argv[]) {
       N_total[swift_type_count], N_total[swift_type_sink],
       N_total[swift_type_stars], N_total[swift_type_black_hole],
       N_total[swift_type_dark_matter_background], N_total[swift_type_neutrino],
-      engine_policies, talking, &us, &prog_const, &cosmo, &hydro_properties,
+      N_total[swift_type_sidm], engine_policies, talking, &us, &prog_const,
+      &cosmo, &hydro_properties,
       /*entropy_floor=*/NULL, &gravity_properties,
       /*stars_properties=*/NULL, /*black_holes_properties=*/NULL,
       /*sink_properties=*/NULL, &neutrino_properties,
-      /*neutrino_response=*/NULL, /*feedback_properties=*/NULL,
+      /*neutrino_response=*/NULL, /*sidm_properties=*/NULL,
+      /*feedback_properties=*/NULL,
       /*pressure_floor_properties=*/NULL,
       /*rt_properties=*/NULL, &mesh, /*pow_data=*/NULL, /*potential=*/NULL,
       /*forcing_terms=*/NULL,
