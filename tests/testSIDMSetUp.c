@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
               /*talking=*/0, &us, &prog_const, &cosmo, &hydro_properties,
               &entropy_floor, &gravity_properties, &stars_properties,
               &black_holes_properties, &sink_properties, &neutrino_properties,
-              &sidm_properties, &neutrino_response, &feedback_properties,
+              &neutrino_response, &sidm_properties, &feedback_properties,
               &pressure_floor_props, &rt_properties, &mesh, &pow_data,
               &potential, &forcing_terms, &cooling_func, &starform, &chemistry,
               &extra_io_props, &fof_properties, &los_properties,
