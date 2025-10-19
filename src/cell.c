@@ -1366,9 +1366,9 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
       error(
           "Setting super_gravity to non-void cell at depth %d with no gparts "
           "(%s/%s) "
-          "c->grav.grav=%p c->grav.mm=%p, c=%p",
+          "c->grav.grav=%p c->grav.mm=%p, c=%p, c->nodeID=%d",
           c->depth, cellID_names[c->type], subcellID_names[c->subtype],
-          (void *)c->grav.grav, (void *)c->grav.mm, (void *)c);
+          (void *)c->grav.grav, (void *)c->grav.mm, (void *)c, c->nodeID);
 #endif
 
     super_gravity = c;
