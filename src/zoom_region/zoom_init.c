@@ -1043,9 +1043,9 @@ void zoom_region_init(struct space *s, const int regridding,
    * to check if we need to regrid so we skip it here. */
   if (!regridding) zoom_get_region_dim_and_shift(s, verbose);
 
-  /* Are we truncating the background? (Only applicable when starting up, i.e.
-   * not regridding) */
-  if (s->zoom_props->truncate_background && !regridding) {
+  /* Are we truncating the background? (Only applicable when starting up,
+   * s->e == NULL is always true at startup and only then) */
+  if (s->zoom_props->truncate_background && s->e != NULL) {
     zoom_truncate_bkg(s, verbose);
   }
 
