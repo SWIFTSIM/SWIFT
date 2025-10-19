@@ -22,6 +22,7 @@
 #include "exp10.h"
 
 #include <float.h>
+#include <math.h>
 
 /**
  * @brief Computes the time-step length of a given star particle from stars

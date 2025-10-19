@@ -24,6 +24,7 @@
 #include <config.h>
 
 /* Standard header */
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
