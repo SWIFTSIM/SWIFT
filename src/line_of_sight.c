@@ -19,8 +19,6 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "zoom_region/zoom.h"
-
 #include <config.h>
 
 /* MPI headers. */

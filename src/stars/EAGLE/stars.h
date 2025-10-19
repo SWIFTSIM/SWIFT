@@ -19,10 +19,6 @@
 #ifndef SWIFT_EAGLE_STARS_H
 #define SWIFT_EAGLE_STARS_H
 
-/* Code configuration */
-#include <config.h>
-
-/* Local includes */
 #include "exp10.h"
 
 #include <float.h>
