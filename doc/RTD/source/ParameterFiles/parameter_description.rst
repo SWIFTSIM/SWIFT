@@ -1944,13 +1944,15 @@ the "exact" forces of all active gparts are computed during each timestep.
 
 To give a bit more control over this, you can select to only perform the exact
 force computation during the timesteps that all gparts are active, and/or only
-at the timesteps when a snapshot is being dumped, i.e.,
+at the timesteps when a snapshot is being dumped, and/or limit to a subset 
+of particle types, i.e.,
 
 .. code:: YAML
 
   ForceChecks:
     only_when_all_active:   1    # Only compute exact forces during timesteps when all gparts are active.
     only_at_snapshots:      1    # Only compute exact forces during timesteps when a snapshot is being dumped.
+    exact_gravity_check_types:     [0, 1, 0, 0, 0, 0, 0] # Only compute exact forces for PartType1 (dark matter) particles.
 
 If ``only_when_all_active:1`` and ``only_at_snapshots:1`` are enabled together,
 and all the gparts are not active during the timestep of the snapshot dump, the
