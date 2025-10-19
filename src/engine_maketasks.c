@@ -2382,7 +2382,9 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     if (t_type == task_type_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local self task");
+      if (ci_nodeID != nodeID)
+        error("Non-local self task (%s/%s)", cellID_names[ci->type],
+              subcellID_names[ci->subtype]);
 #endif
 
       /* drift ---+-> gravity --> grav_down */
@@ -2397,7 +2399,9 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
              t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local self task");
+      if (ci_nodeID != nodeID)
+        error("Non-local self task (%s/%s)", cellID_names[ci->type],
+              subcellID_names[ci->subtype]);
 #endif
 
       /* drift -----> gravity --> end_gravity_force */
@@ -2432,7 +2436,9 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local sub-self task");
+      if (ci_nodeID != nodeID)
+        error("Non-local sub-self task (%s/%s)", cellID_names[ci->type],
+              subcellID_names[ci->subtype]);
 #endif
       /* drift ---+-> gravity --> grav_down */
       /* init  --/    */
@@ -2446,7 +2452,9 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
              t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local sub-self task");
+      if (ci_nodeID != nodeID)
+        error("Non-local sub-self task (%s/%s)", cellID_names[ci->type],
+              subcellID_names[ci->subtype]);
 #endif
 
       /* drift -----> gravity --> end_force */
