@@ -1653,6 +1653,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
        * have 0 particles but are never "empty"). */
       if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
 
+      /* Skip entirely foreign pairs. */
+      if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
+
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(cpi, cpj, e, sp,
                                /*use_rebuild_data=*/1,
@@ -1763,6 +1766,11 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
 
         /* Skip empty progeny. */
         if (ci->progeny[k] == NULL) continue;
+
+        /* Skip entirely foreign pairs. */
+        if (ci->progeny[j]->nodeID != engine_rank &&
+            ci->progeny[k]->nodeID != engine_rank)
+          continue;
 
         /* Create the pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
