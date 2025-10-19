@@ -1773,6 +1773,15 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
     }
   }
 
+  /* Exit if we ended up with an empty task or a foreign task. */
+  if (t->ci == NULL || t->ci->nodeID != engine_rank) {
+    t->type = task_type_none;
+    t->subtype = task_subtype_none;
+    t->ci = NULL;
+    t->skip = 1;
+    return;
+  }
+
   /* Now we're not in a void cell we can just call the normal splitter.  */
   scheduler_splittask_gravity(t, s);
 }
