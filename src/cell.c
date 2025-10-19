@@ -1382,7 +1382,7 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
     error("Zoom cell has a void cell super-gravity pointer!");
 #endif
 
-  /* Recurse */
+  /* Recurse, but only in local cells */
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL && c->nodeID == engine_rank)
