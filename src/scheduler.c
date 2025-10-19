@@ -1718,9 +1718,11 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
     /* Get a handle on the cell involved. */
     const struct cell *ci = t->ci;
 
-    /* Get the first progeny that exists. */
+    /* Get the first progeny that exists and is local. */
     int first_child = 0;
-    while (ci->progeny[first_child] == NULL && first_child < 8) first_child++;
+    while (ci->progeny[first_child] == NULL &&
+           ci->progeny[first_child]->nodeID != engine_rank && first_child < 8)
+      first_child++;
 
     /* Nothing to split? */
     if (first_child == 8) {
@@ -1740,6 +1742,9 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
 
       /* Skip empty progeny. */
       if (ci->progeny[i] == NULL) continue;
+
+      /* Skip non-local progeny (no such thing as a foreign self task). */
+      if (ci->progeny[i]->nodeID != engine_rank) continue;
 
       /* Create the self task. */
       zoom_scheduler_splittask_gravity_void_self(
