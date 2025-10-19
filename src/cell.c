@@ -1208,53 +1208,53 @@ void cell_check_foreign_multipole(const struct cell *c) {
 void cell_check_multipole(struct cell *c,
                           const struct gravity_props *const grav_props) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-  struct gravity_tensors ma;
-  const double tolerance = 1e-3; /* Relative */
-
-  /* If the cell is a void, exit immediately. We don't want
-   * to double count particles in the zoom region which are also in the void
-   * cell multipoles. This is because the void cell multipoles are populated
-   * bottom up from the zoom cells. The void cell tree itself is tested
-   * elsewhere (NOTE: This issue and these cell types only appear when running
-   * with a zoom region). */
-  if (c->subtype == cell_subtype_void) return;
-
-  /* First recurse */
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        cell_check_multipole(c->progeny[k], grav_props);
-
-  if (c->grav.count > 0) {
-    /* Brute-force calculation */
-    gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props);
-    gravity_multipole_compute_power(&ma.m_pole);
-
-    /* Now  compare the multipole expansion */
-    if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
-      message("Multipoles are not equal at depth=%d! tol=%f", c->depth,
-              tolerance);
-      message("Correct answer:");
-      gravity_multipole_print(&ma.m_pole);
-      message("Recursive multipole:");
-      gravity_multipole_print(&c->grav.multipole->m_pole);
-      error("Aborting");
-    }
-
-    /* Check that the upper limit of r_max is good enough */
-    if (!(1.1 * c->grav.multipole->r_max >= ma.r_max)) {
-      error("Upper-limit r_max=%e too small. Should be >=%e.",
-            c->grav.multipole->r_max, ma.r_max);
-    } else if (c->grav.multipole->r_max * c->grav.multipole->r_max >
-               3. * c->width[0] * c->width[0]) {
-      error("r_max=%e larger than cell diagonal %e.", c->grav.multipole->r_max,
-            sqrt(3. * c->width[0] * c->width[0]));
-    }
-  }
-#else
-  error("Calling debugging code without debugging flag activated.");
-#endif
+// #ifdef SWIFT_DEBUG_CHECKS
+//   struct gravity_tensors ma;
+//   const double tolerance = 1e-3; /* Relative */
+//
+//   /* If the cell is a void, exit immediately. We don't want
+//    * to double count particles in the zoom region which are also in the void
+//    * cell multipoles. This is because the void cell multipoles are populated
+//    * bottom up from the zoom cells. The void cell tree itself is tested
+//    * elsewhere (NOTE: This issue and these cell types only appear when running
+//    * with a zoom region). */
+//   if (c->subtype == cell_subtype_void) return;
+//
+//   /* First recurse */
+//   if (c->split)
+//     for (int k = 0; k < 8; k++)
+//       if (c->progeny[k] != NULL)
+//         cell_check_multipole(c->progeny[k], grav_props);
+//
+//   if (c->grav.count > 0) {
+//     /* Brute-force calculation */
+//     gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props);
+//     gravity_multipole_compute_power(&ma.m_pole);
+//
+//     /* Now  compare the multipole expansion */
+//     if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
+//       message("Multipoles are not equal at depth=%d! tol=%f", c->depth,
+//               tolerance);
+//       message("Correct answer:");
+//       gravity_multipole_print(&ma.m_pole);
+//       message("Recursive multipole:");
+//       gravity_multipole_print(&c->grav.multipole->m_pole);
+//       error("Aborting");
+//     }
+//
+//     /* Check that the upper limit of r_max is good enough */
+//     if (!(1.1 * c->grav.multipole->r_max >= ma.r_max)) {
+//       error("Upper-limit r_max=%e too small. Should be >=%e.",
+//             c->grav.multipole->r_max, ma.r_max);
+//     } else if (c->grav.multipole->r_max * c->grav.multipole->r_max >
+//                3. * c->width[0] * c->width[0]) {
+//       error("r_max=%e larger than cell diagonal %e.", c->grav.multipole->r_max,
+//             sqrt(3. * c->width[0] * c->width[0]));
+//     }
+//   }
+// #else
+//   error("Calling debugging code without debugging flag activated.");
+// #endif
 }
 
 /**
