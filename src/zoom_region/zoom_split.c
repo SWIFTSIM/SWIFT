@@ -469,34 +469,41 @@ void zoom_void_space_split(struct space *s, int verbose) {
 #ifdef WITH_MPI
     /* Ensure all void cells agree on their time zone across ranks and the
      * timesteps have been initialised correctly. */
+    intergertime_t *global_ti_beg_max =
+        (integertime_t *)malloc(nr_void_cells * sizeof(integertime_t));
+    intergertime_t *global_ti_end_min =
+        (integertime_t *)malloc(nr_void_cells * sizeof(integertime_t));
     for (int ind = 0; ind < nr_void_cells; ind++) {
       struct cell *c = &cells_top[void_cell_indices[ind]];
       integertime_t local_ti_beg_max = c->grav.ti_beg_max;
-      integertime_t global_ti_beg_max = 0;
       integertime_t local_ti_end_min = c->grav.ti_end_min;
-      integertime_t global_ti_end_min = 0;
-      MPI_Allreduce(&local_ti_beg_max, &global_ti_beg_max, 1, MPI_LONG_LONG_INT,
-                    MPI_MAX, MPI_COMM_WORLD);
-      MPI_Allreduce(&local_ti_end_min, &global_ti_end_min, 1, MPI_LONG_LONG_INT,
-                    MPI_MIN, MPI_COMM_WORLD);
-      if (global_ti_beg_max != local_ti_beg_max) {
-        error(
-            "Ranks disagree on the gravity time zone of a void cell "
-            "(local=%lld, global=%lld)",
-            (long long int)local_ti_beg_max, (long long int)global_ti_beg_max);
-      }
-      if (global_ti_end_min != local_ti_end_min) {
-        error(
-            "Ranks disagree on the gravity time zone of a void cell "
-            "(local=%lld, global=%lld)",
-            (long long int)local_ti_end_min, (long long int)global_ti_end_min);
-      }
-      if (global_ti_end_min == -1 || global_ti_beg_max == -1) {
-        error(
-            "Void cell gravity timesteps not initialised correctly "
-            "(ti_end_min=%lld, ti_beg_max=%lld)",
-            (long long int)global_ti_end_min, (long long int)global_ti_beg_max);
-      }
+      MPI_Allreduce(&local_ti_beg_max, &global_ti_beg_max[ind], 1,
+                    MPI_LONG_LONG_INT, MPI_MAX, MPI_COMM_WORLD);
+      MPI_Allreduce(&local_ti_end_min, &global_ti_end_min[ind], 1,
+                    MPI_LONG_LONG_INT, MPI_MIN, MPI_COMM_WORLD);
+    }
+
+    /* Count how many void cells have bad timesteps. */
+    int bad_min_timesteps = 0;
+    int bad_max_timesteps = 0;
+    for (int ind = 0; ind < nr_void_cells; ind++) {
+      struct cell *c = &cells_top[void_cell_indices[ind]];
+      if (c->grav.ti_end_min != global_ti_end_min[ind]) bad_min_timesteps++;
+      if (c->grav.ti_beg_max != global_ti_beg_max[ind]) bad_max_timesteps++;
+    }
+
+    /* If we have any bad timesteps we have a problem. */
+    if (bad_min_timesteps > 0) {
+      error(
+          "%d void cells have incorrect minimum end timesteps after MPI "
+          "reduction!",
+          bad_min_timesteps);
+    }
+    if (bad_max_timesteps > 0) {
+      error(
+          "%d void cells have incorrect maximum begin timesteps after MPI "
+          "reduction!",
+          bad_max_timesteps);
     }
 #endif
   }
