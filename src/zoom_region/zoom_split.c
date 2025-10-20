@@ -340,9 +340,35 @@ void zoom_void_space_split(struct space *s, int verbose) {
     zoom_void_split_recursive(s, c, /*tpid*/ 0);
   }
 
-  if (verbose)
-    message("Void cell tree and multipole construction took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+#ifdef WITH_MPI
+  /* Make sure all void cells agree on their gravity timesteps across
+   * ranks. */
+  integertime_t *void_ti_gravity_end_min =
+      (integertime_t *)malloc(nr_void_cells * sizeof(integertime_t));
+  integertime_t *void_ti_gravity_beg_max =
+      (integertime_t *)malloc(nr_void_cells * sizeof(integertime_t));
+  for (int ind = 0; ind < nr_void_cells; ind++) {
+    struct cell *c = &cells_top[void_cell_indices[ind]];
+    void_ti_gravity_end_min[ind] = c->grav.ti_end_min;
+    void_ti_gravity_beg_max[ind] = c->grav.ti_beg_max;
+  }
+
+  /* Reduce the timestep information across ranks. */
+  MPI_Allreduce(MPI_IN_PLACE, void_ti_gravity_end_min, nr_void_cells,
+                MPI_INTEGERTIME_T, MPI_MIN, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, void_ti_gravity_beg_max, nr_void_cells,
+                MPI_INTEGERTIME_T, MPI_MAX, MPI_COMM_WORLD);
+
+  /* Update the void cells with the reduced information. */
+  for (int ind = 0; ind < nr_void_cells; ind++) {
+    struct cell *c = &cells_top[void_cell_indices[ind]];
+    c->grav.ti_end_min = void_ti_gravity_end_min[ind];
+    c->grav.ti_beg_max = void_ti_gravity_beg_max[ind];
+  }
+
+  free(void_ti_gravity_end_min);
+  free(void_ti_gravity_beg_max);
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
 
