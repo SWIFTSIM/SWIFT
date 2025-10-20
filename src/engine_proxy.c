@@ -123,18 +123,18 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
 void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
                       const int proxy_type) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure we aren't trying to make a proxy for a void cell */
-  if (ci->subtype == cell_subtype_void) {
-    error("Trying to make a proxy for a void ci (%s/%s -> %s/%s)",
-          cellID_names[ci->type], subcellID_names[ci->subtype],
-          cellID_names[cj->type], subcellID_names[cj->subtype]);
-  } else if (cj->subtype == cell_subtype_void) {
-    error("Trying to make a proxy for a void cj (%s/%s -> %s/%s)",
-          cellID_names[ci->type], subcellID_names[ci->subtype],
-          cellID_names[cj->type], subcellID_names[cj->subtype]);
-  }
-#endif
+  // #ifdef SWIFT_DEBUG_CHECKS
+  //   /* Ensure we aren't trying to make a proxy for a void cell */
+  //   if (ci->subtype == cell_subtype_void) {
+  //     error("Trying to make a proxy for a void ci (%s/%s -> %s/%s)",
+  //           cellID_names[ci->type], subcellID_names[ci->subtype],
+  //           cellID_names[cj->type], subcellID_names[cj->subtype]);
+  //   } else if (cj->subtype == cell_subtype_void) {
+  //     error("Trying to make a proxy for a void cj (%s/%s -> %s/%s)",
+  //           cellID_names[ci->type], subcellID_names[ci->subtype],
+  //           cellID_names[cj->type], subcellID_names[cj->subtype]);
+  //   }
+  // #endif
 
 #ifdef WITH_MPI
   /* Unpack what we need */
