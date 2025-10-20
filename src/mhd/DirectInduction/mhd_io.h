@@ -386,7 +386,7 @@ INLINE static void calculate_InductionDecomposition(const struct engine* e,
   }
 
   // simple Kronecker delta
-  const float delta[3][3];
+  float delta[3][3];
   for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
           if (i==j) {
@@ -408,11 +408,65 @@ INLINE static void calculate_InductionDecomposition(const struct engine* e,
   }
   
   // Compute Frobenius norms of each component
-  float grad_v_FN;
-  float rotation_t_FN;
-  float 
+  float grad_v_FN=0.0f;
+  float rotation_t_FN=0.0f;
+  float shear_t_FN=0.0f;
+  float compression_t_FN=0.0f;
 
-  ret[0] = Rm_local;
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          grad_v_FN += grad_v_tensor[i][j] * grad_v_tensor[i][j];
+          rotation_t_FN += rotation_tensor[i][j] * rotation_tensor[i][j];
+          shear_t_FN += shear_tensor[i][j] * shear_tensor[i][j];
+          compression_t_FN += compression_tensor[i][j] * compression_tensor[i][j];
+      }
+  }
+
+  grad_v_FN = sqrtf(grad_v_FN);  
+  rotation_t_FN = sqrtf(rotation_t_FN);  
+  shear_t_FN = sqrtf(shear_t_FN);  
+  compression_t_FN = sqrtf(compression_t_FN);  
+
+  // New OW trigger testing
+  const float B[3] = {xp->mhd_data.B_over_rho_full[0] * p->rho,
+                      xp->mhd_data.B_over_rho_full[1] * p->rho,
+                      xp->mhd_data.B_over_rho_full[2] * p->rho};
+  const float Babs = sqrtf(B[0] * B[0] + B[1] * B[1] + B[2] * B[2]);
+
+   float Shear_B[3];
+   for (int i = 0; i < 3; i++) {
+      Shear_B[i]=0.0f;
+      for (int j = 0; j < 3; j++) {
+          Shear_B[i] += B[j] * shear_tensor[j][i];
+      }
+   }
+  const float Delta_B[3] = {p->mhd_data.Delta_B[0], p->mhd_data.Delta_B[1],
+                            p->mhd_data.Delta_B[2]};
+  /* const float Abs_Delta_B =
+      sqrtf(Delta_B[0] * Delta_B[0] + Delta_B[1] * Delta_B[1] +
+            Delta_B[2] * Delta_B[2]);
+*/
+  const float Max_Abs_Delta_B = 2.0f * Babs / (p->h * p->h);
+
+
+  const float Diff_B[3] = {p->mhd_data.Diff_B_source[0],
+                           p->mhd_data.Diff_B_source[1],
+                           p->mhd_data.Diff_B_source[2]};
+
+  const float Abs_Diff_B = sqrtf(Diff_B[0] * Diff_B[0] + Diff_B[1] * Diff_B[1] +
+                                 Diff_B[2] * Diff_B[2]);
+
+
+  const float Shear_B_dot_Delta_B = - (Shear_B[0] * Delta_B[0] + Shear_B[1] * Delta_B[1] + Shear_B[2] * Delta_B[2]);
+
+  const float OW_test = fmaxf(Shear_B_dot_Delta_B,0.0f) / (Abs_Diff_B * Max_Abs_Delta_B); 
+  
+
+  // Return flow type ratios
+  ret[0] = shear_t_FN / grad_v_FN;
+  ret[1] = rotation_t_FN / grad_v_FN;
+  ret[2] = compression_t_FN / grad_v_FN;
+  ret[3] = OW_test;
 }
 
 
@@ -518,6 +572,10 @@ INLINE static int mhd_write_particles(const struct part* parts,
   list[15] = io_make_output_field_convert_part(
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
+
+  list[16] = io_make_output_field_convert_part(
+      "FlowDecompositionTest", FLOAT, 4, UNIT_CONV_NO_UNITS, 0, parts, xparts,
+      calculate_InductionDecomposition, " Testing flow decomposition ratios and new OW ");
 
   return 16;
 }

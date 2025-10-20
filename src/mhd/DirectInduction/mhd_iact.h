@@ -148,7 +148,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   }
 
   /* Calculate gradient of v tensor */
-  float dv[k];
+  float dv[3];
   for (int k = 0; k < 3; k++){
   dv[k] =  pi->v[k] - pj->v[k];
   }
@@ -252,7 +252,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   }
 
   /* Calculate gradient of v tensor */
-  float dv[k];
+  float dv[3];
   for (int k = 0; k < 3; k++){
   dv[k] =  pi->v[k] - pj->v[k];
   }
