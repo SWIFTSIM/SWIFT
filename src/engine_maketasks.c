@@ -4207,6 +4207,11 @@ void engine_maketasks(struct engine *e) {
         send_cell_type_pairs[num_send_cells].ci = p->cells_out[k];
         send_cell_type_pairs[num_send_cells].cj = p->cells_in[0];
         send_cell_type_pairs[num_send_cells++].type = p->cells_out_type[k];
+        if (p->cells_out[k]->type == cell_type_zoom &&
+            p->cells_in[0]->type == cell_type_zoom) {
+          message("Creating sends for zoom pair with type %d",
+                  p->cells_out_type[k]);
+        }
       }
     }
 
