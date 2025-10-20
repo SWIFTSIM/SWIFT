@@ -577,7 +577,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "FlowDecompositionTest", FLOAT, 4, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_InductionDecomposition, " Testing flow decomposition ratios and new OW ");
 
-  return 16;
+  return 17;
 }
 
 /**
