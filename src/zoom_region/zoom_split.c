@@ -353,11 +353,11 @@ void zoom_void_space_split(struct space *s, int verbose) {
     void_ti_gravity_beg_max[ind] = c->grav.ti_beg_max;
   }
 
-  /* Reduce the timestep information across ranks. */
+  /* Reduce the timestep information across ranks (long long). */
   MPI_Allreduce(MPI_IN_PLACE, void_ti_gravity_end_min, nr_void_cells,
-                MPI_INTEGERTIME_T, MPI_MIN, MPI_COMM_WORLD);
+                MPI_LONG_LONG_INT, MPI_MIN, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, void_ti_gravity_beg_max, nr_void_cells,
-                MPI_INTEGERTIME_T, MPI_MAX, MPI_COMM_WORLD);
+                MPI_LONG_LONG_INT, MPI_MAX, MPI_COMM_WORLD);
 
   /* Update the void cells with the reduced information. */
   for (int ind = 0; ind < nr_void_cells; ind++) {
