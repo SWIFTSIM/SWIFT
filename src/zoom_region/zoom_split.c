@@ -336,7 +336,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
     struct cell *c = &s->cells_top[k];
     if (c->nodeID != engine_rank) {
-      zoom_ti_gravity_end_min[k] = e->ti_current;
+      zoom_ti_gravity_end_min[k] = s->e->ti_current;
       zoom_ti_gravity_beg_max[k] = 0;
     } else {
       zoom_ti_gravity_end_min[k] = c->grav.ti_end_min;
