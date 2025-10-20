@@ -43,11 +43,11 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
               const int with_gravity) {
 #ifdef WITH_MPI
 
-  // #ifdef SWIFT_DEBUG_CHECKS
-  //   if (c->subtype == cell_subtype_void) {
-  //     error("Unpacking a void cell shouldn't happen!");
-  //   }
-  // #endif
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->subtype == cell_subtype_void) {
+    error("Unpacking a void cell shouldn't happen!");
+  }
+#endif
 
   /* Start by packing the data of the current cell. */
   pc->hydro.h_max = c->hydro.h_max;
