@@ -1747,7 +1747,9 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
       if (ci->progeny[i] == NULL) continue;
 
       /* Skip non-local progeny (no such thing as a foreign self task). */
-      if (ci->progeny[i]->nodeID != engine_rank) continue;
+      if (ci->progeny[i]->type == cell_type_zoom &&
+          ci->progeny[i]->nodeID != engine_rank)
+        continue;
 
       /* Create the self task. */
       zoom_scheduler_splittask_gravity_void_self(
@@ -1768,7 +1770,9 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
         if (ci->progeny[k] == NULL) continue;
 
         /* Skip entirely foreign pairs. */
-        if (ci->progeny[j]->nodeID != engine_rank &&
+        if ((ci->progeny[j]->type == cell_type_zoom &&
+             ci->progeny[k]->type == cell_type_zoom) &&
+            ci->progeny[j]->nodeID != engine_rank &&
             ci->progeny[k]->nodeID != engine_rank)
           continue;
 
