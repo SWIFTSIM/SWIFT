@@ -2032,9 +2032,12 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (ci_active) {
 
           if (cj->mpi.pack == NULL)
-            error("No pack task for cell %s/%s at depth %d",
-                  cellID_names[cj->type], subcellID_names[cj->subtype],
-                  cj->depth);
+            error(
+                "No pack task for cell %s/%s at depth %d (ci is %s/%s at depth "
+                "%d)",
+                cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
+                cellID_names[ci->type], subcellID_names[ci->subtype],
+                ci->depth);
 
           scheduler_activate_pack(s, cj->mpi.pack, task_subtype_gpart,
                                   ci_nodeID);
@@ -2068,9 +2071,12 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (cj_active) {
 
           if (ci->mpi.pack == NULL)
-            error("No pack task for cell %s/%s at depth %d",
-                  cellID_names[ci->type], subcellID_names[ci->subtype],
-                  ci->depth);
+            error(
+                "No pack task for cell %s/%s at depth %d (cj is %s/%s at depth "
+                "%d)",
+                cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
+                cellID_names[cj->type], subcellID_names[cj->subtype],
+                cj->depth);
 
           scheduler_activate_pack(s, ci->mpi.pack, task_subtype_gpart,
                                   cj_nodeID);
