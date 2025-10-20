@@ -1871,16 +1871,15 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
-      } else {
+      } else if (with_grid_hydro) {
         /* No self-gravity, but external gravity */
-        if (with_grid_hydro) {
-          /* Add implicit task for moving mesh hydro dependencies */
-          c->grav.drift_out = scheduler_addtask(
-              s, task_type_drift_gpart_out, task_subtype_none, 0, 1, c, NULL);
-          if (c->hydro.super != NULL) {
-            scheduler_addunlock(s, c->hydro.super->hydro.flux_ghost,
-                                c->grav.drift_out);
-          }
+        /* Add implicit task for moving mesh hydro dependencies */
+        c->grav.drift_out = scheduler_addtask(
+            s, task_type_drift_gpart_out, task_subtype_none, 0, 1, c, NULL);
+        scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
+        if (c->hydro.super != NULL) {
+          scheduler_addunlock(s, c->hydro.super->hydro.flux_ghost,
+                              c->grav.drift_out);
         }
       }
     }
@@ -1892,6 +1891,13 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
+
+      if (with_grid_hydro && c->hydro.super == c) {
+        /* Make sure the flux-ghost happens after the drift.
+         * Here we treat the case where the hydro super is below the gravity
+         * super. */
+        scheduler_addunlock(s, c->grav.super->grav.drift, c->hydro.flux_ghost);
+      }
 
       if (is_self_gravity) {
 
@@ -1917,10 +1923,12 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
       } else if (with_grid_hydro) {
         /* No self-gravity, but external gravity.
          * Add implicit task for moving mesh hydro dependencies */
-        /* NOTE: we are below the gravity super level */
-        if (c->hydro.super != NULL) {
-          scheduler_addunlock(s, c->hydro.flux_ghost,
-                              c->grav.super->grav.drift_out);
+        c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
+                                              task_subtype_none, 0, 1, c, NULL);
+        scheduler_addunlock(s, c->parent->grav.drift_out, c->grav.drift_out);
+        if (c->hydro.super == c) {
+          /* On the hydro super level: add dependency */
+          scheduler_addunlock(s, c->hydro.flux_ghost, c->grav.drift_out);
         }
       }
     }
@@ -2827,6 +2835,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
+  const int with_grid_hydro = e->policy & engine_policy_grid_hydro;
 
   for (int k = 0; k < num_elements; k++) {
 
@@ -2887,7 +2896,12 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
 #endif
 
       /* drift -----> gravity --> end_gravity_force */
-      scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
+      if (with_grid_hydro) {
+        /* We have to do the flux in between the grav drift and gravity */
+        scheduler_addunlock(sched, ci->grav.super->grav.drift_out, t);
+      } else {
+        scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
+      }
       scheduler_addunlock(sched, t, ci->grav.super->grav.end_force);
     }
 
