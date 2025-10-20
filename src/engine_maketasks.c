@@ -108,8 +108,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
         (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
 
-  if (ci->type == cell_type_zoom &&cj->type == cell_type_zoom &&ci->depth ==
-          0 &&cj -= > depth == 0) {
+  if (ci->type == cell_type_zoom && cj->type == cell_type_zoom &&
+      ci->depth == 0 && cj->depth == 0) {
     message(
         "Adding gravity send tasks for zoom pair l=%p at depth %d "
         "ci->nodeID=%d cj->nodeID=%d, t_grav=%p, ci->grav.ti_end_min=%lld"
