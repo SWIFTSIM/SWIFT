@@ -143,7 +143,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
        distance to the centroid. */
     if (d > 0.9f * etaR || d > p->geometry.min_face_dist) {
       float fac = xi * soundspeed / d;
-      float fac_dt = dt > 0. ? 0.5f * xi / dt : 0.;
+      float fac_dt = dt > 0. ? 0.1f * xi / dt : 0.;
       if (fac_dt < fac) {
         fac = fac_dt;
       } else {
@@ -151,7 +151,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
         /* In very cold flows, the sound speed may be significantly slower than
          * the actual speed of the particles, rendering this scheme ineffective.
          * In this case, use a criterion based on the timestep instead */
-        if (25.f * soundspeed * soundspeed < fluid_v[0] * fluid_v[0] +
+        if (2500.f * soundspeed * soundspeed < fluid_v[0] * fluid_v[0] +
                                                  fluid_v[1] * fluid_v[1] +
                                                  fluid_v[2] * fluid_v[2]) {
           fac = fac_dt;
