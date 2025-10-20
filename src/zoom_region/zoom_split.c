@@ -485,8 +485,12 @@ void zoom_void_space_split(struct space *s, int verbose) {
       struct cell *c = &cells_top[void_cell_indices[ind]];
       integertime_t local_ti_beg_max = c->grav.ti_beg_max;
       integertime_t global_ti_beg_max = 0;
+      integertime_t local_ti_end_min = c->grav.ti_end_min;
+      integertime_t global_ti_end_min = 0;
       MPI_Allreduce(&local_ti_beg_max, &global_ti_beg_max, 1, MPI_LONG_LONG_INT,
                     MPI_MAX, MPI_COMM_WORLD);
+      MPI_Allreduce(&local_ti_end_min, &global_ti_end_min, 1, MPI_LONG_LONG_INT,
+                    MPI_MIN, MPI_COMM_WORLD);
       if (global_ti_beg_max != local_ti_beg_max) {
         error(
             "Ranks disagree on the gravity time zone of a void cell "
