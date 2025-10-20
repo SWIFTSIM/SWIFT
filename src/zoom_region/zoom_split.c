@@ -479,7 +479,8 @@ void zoom_void_space_split(struct space *s, int verbose) {
           nr_gparts_in_void, global_nr_gparts_in_void);
     }
 
-    /* Ensure all void cells agree on their time zone across ranks. */
+    /* Ensure all void cells agree on their time zone across ranks and the
+     * timesteps have been initialised correctly. */
     for (int ind = 0; ind < nr_void_cells; ind++) {
       struct cell *c = &cells_top[void_cell_indices[ind]];
       integertime_t local_ti_beg_max = c->grav.ti_beg_max;
@@ -491,6 +492,18 @@ void zoom_void_space_split(struct space *s, int verbose) {
             "Ranks disagree on the gravity time zone of a void cell "
             "(local=%lld, global=%lld)",
             (long long int)local_ti_beg_max, (long long int)global_ti_beg_max);
+      }
+      if (global_ti_end_min != local_ti_end_min) {
+        error(
+            "Ranks disagree on the gravity time zone of a void cell "
+            "(local=%lld, global=%lld)",
+            (long long int)local_ti_end_min, (long long int)global_ti_end_min);
+      }
+      if (global_ti_end_min == -1 || global_ti_beg_max == -1) {
+        error(
+            "Void cell gravity timesteps not initialised correctly "
+            "(ti_end_min=%lld, ti_beg_max=%lld)",
+            (long long int)global_ti_end_min, (long long int)global_ti_beg_max);
       }
     }
 #endif
