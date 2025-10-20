@@ -1910,6 +1910,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
   /* Run through the cells, and their tasks to mark as unskipped. */
   engine_unskip(e);
+  message("Unskipped tasks after rebuild.");
   if (e->forcerebuild) error("engine_unskip faled after a rebuild!");
 
   /* Print the status of the system */

@@ -433,6 +433,8 @@ void engine_unskip(struct engine *e) {
     }
   }
 
+  message("Unskipping tasks for %d active cells.", num_active_cells);
+
   /* What kind of tasks do we have? */
   struct unskip_data data;
   bzero(&data, sizeof(struct unskip_data));
