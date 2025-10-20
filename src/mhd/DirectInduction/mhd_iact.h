@@ -147,6 +147,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     }
   }
 
+  /* Calculate gradient of v tensor */
+  float dv[k];
+  for (int k = 0; k < 3; k++){
+  dv[k] =  pi->v[k] - pj->v[k];
+  }
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      pi->mhd_data.grad_v_tensor[i][j] -=
+          mj * over_rho_i * wi_dr * r_inv * dv[i] * dx[j];
+      pj->mhd_data.grad_v_tensor[i][j] -=
+          mi * over_rho_j * wj_dr * r_inv * dv[i] * dx[j];
+    }
+  }
+
+
   /* Calculate SPH error */
   pi->mhd_data.mean_SPH_err += mj * wi;
   pj->mhd_data.mean_SPH_err += mi * wj;
@@ -233,6 +248,18 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
     for (int j = 0; j < 3; j++) {
       pi->mhd_data.grad_B_tensor[i][j] -=
           mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
+    }
+  }
+
+  /* Calculate gradient of v tensor */
+  float dv[k];
+  for (int k = 0; k < 3; k++){
+  dv[k] =  pi->v[k] - pj->v[k];
+  }
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      pi->mhd_data.grad_v_tensor[i][j] -=
+          mj * over_rho_i * wi_dr * r_inv * dv[i] * dx[j];
     }
   }
 

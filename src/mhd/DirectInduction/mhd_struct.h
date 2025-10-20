@@ -86,6 +86,10 @@ struct mhd_part_data {
 
   /* Laplacian B */
   float Delta_B[3];
+
+  /* Velocity tensor */
+  float grad_v_tensor[3][3];
+
 };
 
 /**

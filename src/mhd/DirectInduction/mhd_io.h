@@ -367,6 +367,57 @@ INLINE static void calculate_Rm_local(const struct engine* e,
   ret[0] = Rm_local;
 }
 
+INLINE static void calculate_InductionDecomposition(const struct engine* e,
+                                      const struct part* p,
+                                      const struct xpart* xp, float* ret) {
+
+  float grad_v_tensor[3][3];
+  float shear_tensor[3][3];
+  float rotation_tensor[3][3];
+  float compression = 0.0f;
+  float compression_tensor[3][3];
+
+  // copy gradient tensor and compute compression (theta)
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          grad_v_tensor[i][j] = p->mhd_data.grad_v_tensor[i][j];
+      }
+      compression += grad_v_tensor[i][i];
+  }
+
+  // simple Kronecker delta
+  const float delta[3][3];
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          if (i==j) {
+          delta[i][j] = 1.0f;
+          } 
+          else {
+          delta[i][j] = 0.0f;
+          }
+      }
+  }
+
+  // compute rotation, compression and shear tensors
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          rotation_tensor[i][j] = 0.5f * (grad_v_tensor[i][j] - grad_v_tensor[j][i]);
+          shear_tensor[i][j] = 0.5f * (grad_v_tensor[i][j] + grad_v_tensor[j][i])  - (compression / 3.0f) * delta[i][j];
+          compression_tensor[i][j] = - 2.0f * (compression / 3.0f) * delta[i][j];
+      }
+  }
+  
+  // Compute Frobenius norms of each component
+  float grad_v_FN;
+  float rotation_t_FN;
+  float 
+
+  ret[0] = Rm_local;
+}
+
+
+
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *

@@ -315,6 +315,12 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
       p->mhd_data.grad_B_tensor[i][j] = 0.0f;
     }
   }
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      p->mhd_data.grad_v_tensor[i][j] = 0.0f;
+    }
+  }
+
 
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
