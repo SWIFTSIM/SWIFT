@@ -2036,8 +2036,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
                 "No pack task for cell %s/%s at depth %d on rank %d (ci is "
                 "%s/%s at depth "
                 "%d on rank %d cj->grav.count=%d, ci->grav.count=%d, "
-                "ci->grav.ti_end_min=%ld, cj->grav.ti_end_min=%ld, "
-                "e->ti_current=%ld)",
+                "ci->grav.ti_end_min=%lld, cj->grav.ti_end_min=%lld, "
+                "e->ti_current=%lld)",
                 cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
                 cj_nodeID, cellID_names[ci->type], subcellID_names[ci->subtype],
                 ci->depth, ci_nodeID, cj->grav.count, ci->grav.count,
@@ -2079,8 +2079,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
                 "No pack task for cell %s/%s at depth %d on rank %d (cj is "
                 "%s/%s at depth "
                 "%d on rank %d ci->grav.count=%d, cj->grav.count=%d, "
-                "ci->grav.ti_end_min=%ld, cj->grav.ti_end_min=%ld, "
-                "e->ti_current=%ld)",
+                "ci->grav.ti_end_min=%lld, cj->grav.ti_end_min=%lld, "
+                "e->ti_current=%lld)",
                 cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
                 ci_nodeID, cellID_names[cj->type], subcellID_names[cj->subtype],
                 cj->depth, cj_nodeID, ci->grav.count, cj->grav.count,
