@@ -3691,6 +3691,10 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
 
+    if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
+      message("Creating sends for zoom pair with type %d", type);
+    }
+
 #ifdef WITH_MPI
 
     if (!cell_is_empty(ci)) {
