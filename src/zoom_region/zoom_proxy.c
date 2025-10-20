@@ -98,7 +98,8 @@ void zoom_engine_makeproxies(struct engine *e) {
       /* Get the proxy type. We only need to do the direct check if both
        * cells are the same type. Note, the cdim is only used if
        * icdim == jcdim and we're doing a direct check. */
-      int proxy_type = engine_get_proxy_type(e, ci, cj, r_max);
+      // int proxy_type = engine_get_proxy_type(e, ci, cj, r_max);
+      int proxy_type = proxy_cell_type_gravity;
 
       /* Abort if not in range at all */
       if (proxy_type == proxy_cell_type_none) continue;
