@@ -129,20 +129,16 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
 
   /* Have we exceeded the allowed shift of the zoom region? */
   if (zoom_need_regrid_motion(s)) {
-    message("Zoom region regrid needed due to motion.");
     return 1;
   }
 
   /* Has the particle distribution exceeded the allowed extent? */
   if (zoom_need_regrid_extent(s)) {
-    message("Zoom region regrid needed due to extent.");
     return 1;
   }
 
   /* Has hmax increased such that we need larger zoom cells? */
   if (zoom_need_regrid_hmax(s, new_cdim)) {
-    message("Zoom region regrid needed due to hmax (new_cdim=(%d,%d,%d)).",
-            new_cdim[0], new_cdim[1], new_cdim[2]);
     return 1;
   }
   return 0;
