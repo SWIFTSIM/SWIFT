@@ -99,11 +99,11 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
       empty = 1;
     }
 
-    /* If this top level cell is empty, don't link it in. */
-    if (empty) {
-      c->progeny[k] = NULL;
-      continue;
-    }
+    // /* If this top level cell is empty, don't link it in. */
+    // if (empty) {
+    //   c->progeny[k] = NULL;
+    //   continue;
+    // }
 
     /* Link this nested cell into the void cell hierarchy. */
     c->progeny[k] = zoom_cell;
