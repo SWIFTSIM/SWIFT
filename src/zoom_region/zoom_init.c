@@ -131,7 +131,7 @@ void zoom_get_region_dim_and_shift_mapper(void *map_data, int num_elements,
   /* Loop over the particles. */
   for (int k = 0; k < num_elements; k++) {
     /* Skip background particles. */
-    if (gparts[k].type == swift_type_dark_matter_background) {
+    if (gparts[k].type != swift_type_dark_matter) {
       continue;
     }
 
