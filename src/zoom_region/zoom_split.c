@@ -469,9 +469,9 @@ void zoom_void_space_split(struct space *s, int verbose) {
 #ifdef WITH_MPI
     /* Ensure all void cells agree on their time zone across ranks and the
      * timesteps have been initialised correctly. */
-    intergertime_t *global_ti_beg_max =
+    integertime_t *global_ti_beg_max =
         (integertime_t *)malloc(nr_void_cells * sizeof(integertime_t));
-    intergertime_t *global_ti_end_min =
+    integertime_t *global_ti_end_min =
         (integertime_t *)malloc(nr_void_cells * sizeof(integertime_t));
     for (int ind = 0; ind < nr_void_cells; ind++) {
       struct cell *c = &cells_top[void_cell_indices[ind]];
