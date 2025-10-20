@@ -508,3 +508,5 @@ void zoom_void_space_split(struct space *s, int verbose) {
     }
 #endif
   }
+#endif
+}
