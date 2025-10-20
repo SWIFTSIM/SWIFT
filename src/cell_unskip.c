@@ -2031,7 +2031,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
-          if (cj->mpi.pack == NULL)
+          if (cj->mpi.pack == NULL) {
+            engine_check_proxy_exists(e, ci, cj, e->nodeID);
             error(
                 "No pack task for cell %s/%s at depth %d on rank %d (ci is "
                 "%s/%s at depth "
@@ -2043,6 +2044,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
                 ci->depth, ci_nodeID, cj->grav.count, ci->grav.count,
                 ci->grav.ti_end_min, cj->grav.ti_end_min, e->ti_current,
                 cj->grav.grav);
+          }
 
           scheduler_activate_pack(s, cj->mpi.pack, task_subtype_gpart,
                                   ci_nodeID);
@@ -2075,7 +2077,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
 
-          if (ci->mpi.pack == NULL)
+          if (ci->mpi.pack == NULL) {
+            engine_check_proxy_exists(e, cj, ci, e->nodeID);
             error(
                 "No pack task for cell %s/%s at depth %d on rank %d (cj is "
                 "%s/%s at depth "
@@ -2087,6 +2090,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
                 cj->depth, cj_nodeID, ci->grav.count, cj->grav.count,
                 ci->grav.ti_end_min, cj->grav.ti_end_min, e->ti_current,
                 ci->grav.grav);
+          }
 
           scheduler_activate_pack(s, ci->mpi.pack, task_subtype_gpart,
                                   cj_nodeID);
