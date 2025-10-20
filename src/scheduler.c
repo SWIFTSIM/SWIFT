@@ -1603,7 +1603,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 #ifdef WITH_MPI
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have a proxy if we are at the zoom top level. */
-  if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
+  if (ci->type == cell_type_zoom && cj->type == cell_type_zoom &&
+      (ci->nodeID != engine_rank || cj->nodeID != engine_rank)) {
     engine_check_proxy_exists(e, ci, cj, e->nodeID);
   }
 #endif
