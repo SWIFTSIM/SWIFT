@@ -459,13 +459,13 @@ INLINE static void calculate_InductionDecomposition(const struct engine* e,
 
   const float Shear_B_dot_Delta_B = - (Shear_B[0] * Delta_B[0] + Shear_B[1] * Delta_B[1] + Shear_B[2] * Delta_B[2]);
 
-  const float OW_test = fmaxf(Shear_B_dot_Delta_B,0.0f) / (Abs_Diff_B * Max_Abs_Delta_B); 
+  const float OW_test = fmaxf(Shear_B_dot_Delta_B,0.0f) / (Abs_Diff_B * p->rho * Max_Abs_Delta_B + FLT_MIN); 
   
 
   // Return flow type ratios
-  ret[0] = shear_t_FN / grad_v_FN;
-  ret[1] = rotation_t_FN / grad_v_FN;
-  ret[2] = compression_t_FN / grad_v_FN;
+  ret[0] = shear_t_FN / (grad_v_FN + FLT_MIN);
+  ret[1] = rotation_t_FN / (grad_v_FN + FLT_MIN);
+  ret[2] = compression_t_FN / (grad_v_FN + FLT_MIN);
   ret[3] = OW_test;
 }
 
