@@ -124,6 +124,14 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_grav == NULL) {
 
+      if (ci->type == cell_type_zoom && cj->type == cell_type_zoom &&
+          ci->depth == 0 && cj->depth == 0) {
+        message(
+            "Creating gravity send tasks for zoom pair l=%p at depth %d "
+            "ci->nodeID=%d cj->nodeID=%d",
+            (void *)l, ci->depth, ci->nodeID, cj->nodeID);
+      }
+
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
