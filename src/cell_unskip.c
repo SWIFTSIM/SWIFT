@@ -2039,12 +2039,12 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
                 "%d on rank %d cj->grav.count=%d, ci->grav.count=%d, "
                 "ci->grav.ti_end_min=%lld, cj->grav.ti_end_min=%lld, "
                 "e->ti_current=%lld, cj->grav.grav=%p, cj->mpi.send=%p, "
-                "ci->grav.super=%p)",
+                "ci->grav.super=%p, cj->grav.super=%p)",
                 cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
                 cj_nodeID, cellID_names[ci->type], subcellID_names[ci->subtype],
                 ci->depth, ci_nodeID, cj->grav.count, ci->grav.count,
                 ci->grav.ti_end_min, cj->grav.ti_end_min, e->ti_current,
-                cj->grav.grav, cj->mpi.send, ci->grav.super);
+                cj->grav.grav, cj->mpi.send, ci->grav.super, cj->grav.super);
           }
 
           scheduler_activate_pack(s, cj->mpi.pack, task_subtype_gpart,
@@ -2086,12 +2086,12 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
                 "%d on rank %d ci->grav.count=%d, cj->grav.count=%d, "
                 "ci->grav.ti_end_min=%lld, cj->grav.ti_end_min=%lld, "
                 "e->ti_current=%lld, ci->grav.grav=%p, ci->mpi.send=%p, "
-                "cj->grav.super=%p)",
+                "cj->grav.super=%p, ci->grav.super=%p)",
                 cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
                 ci_nodeID, cellID_names[cj->type], subcellID_names[cj->subtype],
                 cj->depth, cj_nodeID, ci->grav.count, cj->grav.count,
                 ci->grav.ti_end_min, cj->grav.ti_end_min, e->ti_current,
-                ci->grav.grav, ci->mpi.send, cj->grav.super);
+                ci->grav.grav, ci->mpi.send, cj->grav.super, ci->grav.super);
           }
 
           scheduler_activate_pack(s, ci->mpi.pack, task_subtype_gpart,
