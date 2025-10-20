@@ -467,18 +467,6 @@ void zoom_void_space_split(struct space *s, int verbose) {
     }
 
 #ifdef WITH_MPI
-    /* Ensure all ranks agree on the number of gparts in the void
-     * multipoles. */
-    int global_nr_gparts_in_void = 0;
-    MPI_Allreduce(&nr_gparts_in_void, &global_nr_gparts_in_void, 1, MPI_INT,
-                  MPI_SUM, MPI_COMM_WORLD);
-    if (global_nr_gparts_in_void != nr_gparts_in_void) {
-      error(
-          "Ranks disagree on the number of gparts in the void multipoles "
-          "(local=%d, global=%d)",
-          nr_gparts_in_void, global_nr_gparts_in_void);
-    }
-
     /* Ensure all void cells agree on their time zone across ranks and the
      * timesteps have been initialised correctly. */
     for (int ind = 0; ind < nr_void_cells; ind++) {
