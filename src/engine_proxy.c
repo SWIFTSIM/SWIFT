@@ -370,7 +370,7 @@ void engine_check_proxy_exists(const struct engine *e, const struct cell *ci,
   struct cell *topj = cj->top;
 
   /* Let's cross-check that we had a proxy for that cell */
-  if (topi->nodeID == nodeID && topj->nodeID != nodeID) {
+  if (topi->nodeID == nodeID && topj->nodeID != engine_rank) {
 
     /* Find the proxy for this node */
     const int proxy_id = e->proxy_ind[topj->nodeID];
@@ -391,7 +391,7 @@ void engine_check_proxy_exists(const struct engine *e, const struct cell *ci,
           "grav task!",
           (int)(e->s->cells_top - topj));
 
-  } else if (topj->nodeID == nodeID && topi->nodeID != nodeID) {
+  } else if (topj->nodeID == nodeID && topi->nodeID != engine_rank) {
 
     /* Find the proxy for this node */
     const int proxy_id = e->proxy_ind[topi->nodeID];
