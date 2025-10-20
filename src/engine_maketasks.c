@@ -4205,7 +4205,7 @@ void engine_maketasks(struct engine *e) {
 
       for (int k = 0; k < p->nr_cells_out; k++) {
         send_cell_type_pairs[num_send_cells].ci = p->cells_out[k];
-        send_cell_type_pairs[num_send_cells].cj = p->cells_in[0];
+        send_cell_type_pairs[num_send_cells].cj = p->cells_in[k];
         send_cell_type_pairs[num_send_cells++].type = p->cells_out_type[k];
       }
     }
