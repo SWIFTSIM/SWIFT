@@ -370,6 +370,10 @@ void zoom_void_space_split(struct space *s, int verbose) {
   free(void_ti_gravity_beg_max);
 #endif
 
+  if (verbose)
+    message("Void cell tree and multipole construction took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Ensure all buffer cells are linked into the tree. */
