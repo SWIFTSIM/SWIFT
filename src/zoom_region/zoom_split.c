@@ -488,8 +488,8 @@ void zoom_void_space_split(struct space *s, int verbose) {
     int bad_max_timesteps = 0;
     for (int ind = 0; ind < nr_void_cells; ind++) {
       struct cell *c = &cells_top[void_cell_indices[ind]];
-      if (c->grav.ti_end_min != global_ti_end_min[ind]) bad_min_timesteps++;
-      if (c->grav.ti_beg_max != global_ti_beg_max[ind]) bad_max_timesteps++;
+      if (c->grav.ti_end_min == -1) bad_min_timesteps++;
+      if (c->grav.ti_beg_max == -1) bad_max_timesteps++;
     }
 
     /* If we have any bad timesteps we have a problem. */
