@@ -465,6 +465,33 @@ void zoom_void_space_split(struct space *s, int verbose) {
             buffer_count, zoom_count);
       }
     }
-  }
+
+#ifdef WITH_MPI
+    /* Ensure all ranks agree on the number of gparts in the void
+     * multipoles. */
+    int global_nr_gparts_in_void = 0;
+    MPI_Allreduce(&nr_gparts_in_void, &global_nr_gparts_in_void, 1, MPI_INT,
+                  MPI_SUM, MPI_COMM_WORLD);
+    if (global_nr_gparts_in_void != nr_gparts_in_void) {
+      error(
+          "Ranks disagree on the number of gparts in the void multipoles "
+          "(local=%d, global=%d)",
+          nr_gparts_in_void, global_nr_gparts_in_void);
+    }
+
+    /* Ensure all void cells agree on their time zone across ranks. */
+    for (int ind = 0; ind < nr_void_cells; ind++) {
+      struct cell *c = &cells_top[void_cell_indices[ind]];
+      integertime_t local_ti_beg_max = c->grav.ti_beg_max;
+      integertime_t global_ti_beg_max = 0;
+      MPI_Allreduce(&local_ti_beg_max, &global_ti_beg_max, 1, MPI_LONG_LONG_INT,
+                    MPI_MAX, MPI_COMM_WORLD);
+      if (global_ti_beg_max != local_ti_beg_max) {
+        error(
+            "Ranks disagree on the gravity time zone of a void cell "
+            "(local=%lld, global=%lld)",
+            (long long int)local_ti_beg_max, (long long int)global_ti_beg_max);
+      }
+    }
 #endif
-}
+  }
