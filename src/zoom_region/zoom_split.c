@@ -326,6 +326,38 @@ void zoom_void_space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
+#ifdef WITH_MPI
+  /* Ensure we have the timesteps for all zoom cells before we split and link
+   * them in. */
+  integertime_t *zoom_ti_gravity_end_min = (integertime_t *)malloc(
+      s->zoom_props->nr_zoom_cells * sizeof(integertime_t));
+  integertime_t *zoom_ti_gravity_beg_max = (integertime_t *)malloc(
+      s->zoom_props->nr_zoom_cells * sizeof(integertime_t));
+  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+    struct cell *c = &s->cells_top[k];
+    zoom_ti_gravity_end_min[k] = c->grav.ti_end_min;
+    zoom_ti_gravity_beg_max[k] = c->grav.ti_beg_max;
+  }
+
+  /* Reduce the timestep information across ranks (long long). */
+  MPI_Allreduce(MPI_IN_PLACE, zoom_ti_gravity_end_min,
+                s->zoom_props->nr_zoom_cells, MPI_LONG_LONG_INT, MPI_MIN,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, zoom_ti_gravity_beg_max,
+                s->zoom_props->nr_zoom_cells, MPI_LONG_LONG_INT, MPI_MAX,
+                MPI_COMM_WORLD);
+
+  /* Update the zoom cells with the reduced information. */
+  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+    struct cell *c = &s->cells_top[k];
+    c->grav.ti_end_min = zoom_ti_gravity_end_min[k];
+    c->grav.ti_beg_max = zoom_ti_gravity_beg_max[k];
+  }
+
+  free(zoom_ti_gravity_end_min);
+  free(zoom_ti_gravity_beg_max);
+#endif
+
   /* Unpack some useful information. */
   struct cell *cells_top = s->cells_top;
   int *void_cell_indices = s->zoom_props->void_cell_indices;
