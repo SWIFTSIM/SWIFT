@@ -85,25 +85,25 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
 
-    // /* Is this zoom progeny empty? Empty means no particles (and if running
-    //  * with self-gravity no multipole mass). When running with self-gravity
-    //  * over MPI we can have 0 particles but we will have multipole mass from
-    //  * the other ranks so we need to keep the cell in the tree. */
-    // int empty = 0;
-    // if (!s->with_self_gravity && zoom_cell->grav.count == 0 &&
-    //     zoom_cell->hydro.count == 0 && zoom_cell->stars.count == 0 &&
-    //     zoom_cell->sinks.count == 0 && zoom_cell->black_holes.count == 0) {
-    //   empty = 1;
-    // } else if (s->with_self_gravity &&
-    //            zoom_cell->grav.multipole->m_pole.M_000 == 0.f) {
-    //   empty = 1;
-    // }
+    /* Is this zoom progeny empty? Empty means no particles (and if running
+     * with self-gravity no multipole mass). When running with self-gravity
+     * over MPI we can have 0 particles but we will have multipole mass from
+     * the other ranks so we need to keep the cell in the tree. */
+    int empty = 0;
+    if (!s->with_self_gravity && zoom_cell->grav.count == 0 &&
+        zoom_cell->hydro.count == 0 && zoom_cell->stars.count == 0 &&
+        zoom_cell->sinks.count == 0 && zoom_cell->black_holes.count == 0) {
+      empty = 1;
+    } else if (s->with_self_gravity &&
+               zoom_cell->grav.multipole->m_pole.M_000 == 0.f) {
+      empty = 1;
+    }
 
-    // /* If this top level cell is empty, don't link it in. */
-    // if (empty) {
-    //   c->progeny[k] = NULL;
-    //   continue;
-    // }
+    /* If this top level cell is empty, don't link it in. */
+    if (empty) {
+      c->progeny[k] = NULL;
+      continue;
+    }
 
     /* Link this nested cell into the void cell hierarchy. */
     c->progeny[k] = zoom_cell;

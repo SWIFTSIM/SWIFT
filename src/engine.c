@@ -1875,9 +1875,12 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   if (e->free_foreign_when_rebuilding)
     engine_allocate_foreign_particles(e, /*fof=*/0);
 #endif
+  message("Reallocated foreign particle buffers after rebuild.");
 
   /* Make the list of top-level cells that have tasks */
   space_list_useful_top_level_cells(e->s);
+
+  message("Made list of useful top-level cells after rebuild.");
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time.
@@ -1886,15 +1889,23 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   space_check_drift_point(e->s, e->ti_current,
                           e->policy & engine_policy_self_gravity);
 
+  message("Checked drift points after rebuild.");
+
   if (e->policy & engine_policy_self_gravity) {
     for (int k = 0; k < e->s->nr_local_cells; k++)
       cell_check_foreign_multipole(&e->s->cells_top[e->s->local_cells_top[k]]);
   }
 
+  message("Checked foreign multipoles after rebuild.");
+
   space_check_sort_flags(e->s);
+
+  message("Checked sort flags after rebuild.");
 
   /* Check whether all the unskip recursion flags are not set */
   space_check_unskip_flags(e->s);
+
+  message("Checked unskip flags after rebuild.");
 #endif
 
   /* Run through the cells, and their tasks to mark as unskipped. */
