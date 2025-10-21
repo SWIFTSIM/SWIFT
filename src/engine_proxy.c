@@ -366,8 +366,8 @@ void engine_check_proxy_exists(const struct engine *e, const struct cell *ci,
                                const struct cell *cj, const int nodeID) {
 #ifdef WITH_MPI
   /* Get the top level cell */
-  struct cell *topi = ci->top;
-  struct cell *topj = cj->top;
+  struct cell *topi = ci;
+  struct cell *topj = cj;
 
   /* Let's cross-check that we had a proxy for that cell */
   if (topi->nodeID == nodeID && topj->nodeID != engine_rank) {

@@ -4252,7 +4252,6 @@ void engine_maketasks(struct engine *e) {
             i, cellID_names[c->type], subcellID_names[c->subtype], c->depth);
       }
     }
-
 #endif
 
     free(send_cell_type_pairs);
