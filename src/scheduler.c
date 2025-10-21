@@ -1562,6 +1562,11 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   const struct space *sp = s->space;
   struct engine *e = sp->e;
 
+  /* We need to consider if we are more than the maximum mesh distance away
+   * when at the zoom top level. */
+  const int use_mesh = e->s->periodic;
+  const double max_mesh_dist2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have a pair task. */
   if (t->type != task_type_pair) {
@@ -1610,6 +1615,25 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   }
 #endif
 #endif
+
+  /* At the zoom top level we may need to consider mesh distances. */
+  if (ci->depth == 0 && cj->depth == 0 && ci->type == cell_type_zoom &&
+      cj->type == cell_type_zoom && use_mesh) {
+
+    /* Minimal distance between any two points in the cells */
+    const double dist2 = cell_min_dist2(ci, cj, e->s->periodic, e->s->dim);
+
+    /* Are we further apart than the maximum mesh distance? */
+    if (dist2 > max_mesh_dist2) {
+      /* Yes, we can skip this interaction. */
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
+      return;
+    }
+  }
 
   /* If neither cell is a void cell, redirect to the normal splitter. */
   if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
