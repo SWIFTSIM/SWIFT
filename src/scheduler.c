@@ -1978,34 +1978,44 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
   /* In zoom land we now need to go over our tasks and make sure we actually
    * need them based on geometry consideration as if they were created at the
    * top level. */
+  if (s->space->with_zoom_region) {
 
-  /* Loop over all tasks. */
-  for (int ind = 0; ind < s->nr_tasks; ind++) {
-    struct task *t = &s->tasks[ind];
+    /* Loop over all tasks. */
+    for (int ind = 0; ind < s->nr_tasks; ind++) {
+      struct task *t = &s->tasks[ind];
 
-    /* Skip empty tasks. */
-    if (t->type == task_type_none) continue;
+      /* Skip empty tasks. */
+      if (t->type == task_type_none) continue;
 
-    /* Skipped tasks. */
-    if (t->skip) continue;
+      /* Skipped tasks. */
+      if (t->skip) continue;
 
-    /* We only care about gravity pairs and gravity MM tasks here. */
-    if (t->type != task_type_pair && t->type != task_type_grav_mm) continue;
+      /* We only care about gravity pairs and gravity MM tasks here. */
+      if (t->type != task_type_pair && t->type != task_type_grav_mm) continue;
 
-    /* We only care about tasks involving zoom cells. */
-    if (t->ci->type != cell_type_zoom && t->cj->type != cell_type_zoom)
-      continue;
+      /* We only care about tasks involving zoom cells. */
+      if (t->ci->type != cell_type_zoom && t->cj->type != cell_type_zoom)
+        continue;
 
-    /* Remove the task if we don't need it based on geometry. */
-    if (!engine_gravity_need_cell_pair_task(s->space->e, t->ci, t->cj,
-                                            s->space->periodic,
-                                            s->space->periodic)) {
-      message("Removing unneeded zoom gravity task");
-      t->type = task_type_none;
-      t->subtype = task_subtype_none;
-      t->ci = NULL;
-      t->cj = NULL;
-      t->skip = 1;
+      /* And if we only have one zoom cell we also only care if the other cell
+       * is at the zoom region depth. */
+      if ((t->ci->type != cell_type_zoom &&
+           t->ci->depth != s->space->zoom_props->zoom_cell_depth) ||
+          (t->cj->type != cell_type_zoom &&
+           t->cj->depth != s->space->zoom_props->zoom_cell_depth))
+        continue;
+
+      /* Remove the task if we don't need it based on geometry. */
+      if (!engine_gravity_need_cell_pair_task(s->space->e, t->ci, t->cj,
+                                              s->space->periodic,
+                                              s->space->periodic)) {
+        message("Removing unneeded zoom gravity task");
+        t->type = task_type_none;
+        t->subtype = task_subtype_none;
+        t->ci = NULL;
+        t->cj = NULL;
+        t->skip = 1;
+      }
     }
   }
 }
