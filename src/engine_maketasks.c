@@ -4229,6 +4229,25 @@ void engine_maketasks(struct engine *e) {
             cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
             cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth);
     }
+
+    /* Loop over cells checking that all cells with pairs to foreign nodes
+     * have send tasks */
+    for (int i = 0; i < nr_cells; i++) {
+      struct cell *c = &cells[i];
+      if (c->nodeID != e->nodeID) continue;
+      for (l = c->grav.grav; l != NULL; l = l->next)
+        if (l->t->ci->nodeID == nodeID ||
+            (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+          break;
+
+      if (l != NULL && c->mpi.send == NULL)
+        error(
+            "Cell %d (type/subtype=%s/%s depth=%d) has foreign gravity pairs "
+            "but "
+            "no send task!",
+            i, cellID_names[c->type], subcellID_names[c->subtype], c->depth);
+    }
+
 #endif
 
     free(send_cell_type_pairs);
