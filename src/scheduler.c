@@ -1608,32 +1608,13 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 #ifdef WITH_MPI
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have a proxy if we are at the zoom top level. */
-  if ((ci->type == cell_type_zoom || cj->type == cell_type_zoom) &&
+  if ((ci->type == cell_type_zoom && cj->type == cell_type_zoom) &&
       (ci->depth == 0 && cj->depth == 0) &&
       (ci->nodeID != engine_rank || cj->nodeID != engine_rank)) {
     engine_check_proxy_exists(e, ci, cj, e->nodeID);
   }
 #endif
 #endif
-
-  /* At the zoom top level we may need to consider mesh distances. */
-  if (ci->depth == 0 && cj->depth == 0 && ci->type == cell_type_zoom &&
-      cj->type == cell_type_zoom && use_mesh) {
-
-    /* Minimal distance between any two points in the cells */
-    const double dist2 = cell_min_dist2(ci, cj, e->s->periodic, e->s->dim);
-
-    /* Are we further apart than the maximum mesh distance? */
-    if (dist2 > max_mesh_dist2) {
-      /* Yes, we can skip this interaction. */
-      t->type = task_type_none;
-      t->subtype = task_subtype_none;
-      t->ci = NULL;
-      t->cj = NULL;
-      t->skip = 1;
-      return;
-    }
-  }
 
   /* If neither cell is a void cell, redirect to the normal splitter. */
   if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
@@ -1997,6 +1978,39 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
     threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
                    s);
+  }
+
+  /* In zoom land we now need to go over our tasks and make sure we actually
+   * need them based on geometry consideration as if they were created at the
+   * top level. */
+
+  /* Loop over all tasks. */
+  for (int ind = 0; ind < s->nr_tasks; ind++) {
+    struct task *t = &s->tasks[ind];
+
+    /* Skip empty tasks. */
+    if (t->type == task_type_none) continue;
+
+    /* Skipped tasks. */
+    if (t->skip) continue;
+
+    /* We only care about gravity pairs and gravity MM tasks here. */
+    if (t->type != task_type_pair && t->type != task_type_grav_mm) continue;
+
+    /* We only care about tasks involving zoom cells. */
+    if (t->ci->type != cell_type_zoom && t->cj->type != cell_type_zoom)
+      continue;
+
+    /* Remove the task if we don't need it based on geometry. */
+    if (!engine_gravity_need_cell_pair_task(s->space->e, t->ci, t->cj,
+                                            s->space->periodic,
+                                            s->space->periodic)) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
+    }
   }
 }
 
