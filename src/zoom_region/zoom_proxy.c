@@ -95,16 +95,16 @@ void zoom_engine_makeproxies(struct engine *e) {
       /* Calculate the maximum distance between the cells. */
       const double r_max = ir_diag + jr_diag;
 
+      /* Get the proxy type. We only need to do the direct check if both
+       * cells are the same type. Note, the cdim is only used if
+       * icdim == jcdim and we're doing a direct check. */
+      int proxy_type = engine_get_proxy_type(e, ci, cj, r_max);
+
       if (cid == 128 && cj->type == cell_type_zoom)
         message(
             "Proxy between cell %d (node %d) and cell %d (node %d): "
             "type=%d",
             cid, ci->nodeID, cjd, cj->nodeID, proxy_type);
-
-      /* Get the proxy type. We only need to do the direct check if both
-       * cells are the same type. Note, the cdim is only used if
-       * icdim == jcdim and we're doing a direct check. */
-      int proxy_type = engine_get_proxy_type(e, ci, cj, r_max);
 
       /* Abort if not in range at all */
       if (proxy_type == proxy_cell_type_none) continue;
