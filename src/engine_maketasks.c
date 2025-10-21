@@ -4235,7 +4235,7 @@ void engine_maketasks(struct engine *e) {
     for (int i = 0; i < nr_cells; i++) {
       struct cell *c = &cells[i];
       if (c->nodeID != e->nodeID) continue;
-      for (l = c->grav.grav; l != NULL; l = l->next)
+      for (struct link *l = c->grav.grav; l != NULL; l = l->next)
         if (l->t->ci->nodeID == nodeID ||
             (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
           break;
