@@ -1991,7 +1991,9 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
       if (t->skip) continue;
 
       /* We only care about gravity pairs and gravity MM tasks here. */
-      if (t->type != task_type_pair && t->type != task_type_grav_mm) continue;
+      if ((t->type != task_type_pair && t->subtype == task_subtype_grav) &&
+          t->type != task_type_grav_mm)
+        continue;
 
       /* We only care about tasks involving zoom cells. */
       if (t->ci->type != cell_type_zoom && t->cj->type != cell_type_zoom)
