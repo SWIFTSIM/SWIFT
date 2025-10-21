@@ -74,7 +74,7 @@ do
       cur_dir=`pwd`
       cd ../../../../
       pwd
-      ./TestAllMHD.sh $IDD "--with-adiabatic-index=7/5"
+      ./TestAllMHD.sh $IDD "--with-adiabatic-index=7/5 --with-kernel=quintic-spline --disable-hand-vec"
       cd $cur_dir
       cp ../../../../sw_$ID .
    fi
@@ -84,7 +84,7 @@ do
 	./sw_$ID --hydro --threads=16 ../FastRotor_schemes.yml 2>&1 > out.log 
 	
 	# Plot the evolution
-	python3 ../plot_schemes.py 0 61 2>&1 > plot.log
+	python3 ../plot_schemes.py 0 15 2>&1 > plot.log
 	EOF
    chmod u+x ./run.sh
    ./run.sh &

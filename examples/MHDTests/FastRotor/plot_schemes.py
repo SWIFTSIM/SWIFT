@@ -24,7 +24,7 @@ def set_colorbar(ax, im):
     return
 
 
-filename_base = "FastRotor_LR_"
+filename_base = "FastRotor_"
 
 nini = int(sys.argv[1])
 nfin = int(sys.argv[2])

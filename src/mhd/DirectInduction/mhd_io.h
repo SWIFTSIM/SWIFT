@@ -333,7 +333,7 @@ INLINE static void calculate_effective_resistivity(const struct engine* e,
   /* Effective resistivity */
 
   const float effective_resistivity =
-      Abs_Diff_B / (Abs_Delta_B / (p->rho + FLT_MIN) + FLT_MIN);
+      Abs_Diff_B / (Abs_Delta_B + FLT_MIN);
 
   ret[0] = effective_resistivity;
 }
@@ -366,6 +366,111 @@ INLINE static void calculate_Rm_local(const struct engine* e,
 
   ret[0] = Rm_local;
 }
+
+INLINE static void calculate_InductionDecomposition(const struct engine* e,
+                                      const struct part* p,
+                                      const struct xpart* xp, float* ret) {
+
+  float grad_v_tensor[3][3];
+  float shear_tensor[3][3];
+  float rotation_tensor[3][3];
+  float compression = 0.0f;
+  float compression_tensor[3][3];
+
+  // copy gradient tensor and compute compression (theta)
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          grad_v_tensor[i][j] = p->mhd_data.grad_v_tensor[i][j];
+      }
+      compression += grad_v_tensor[i][i];
+  }
+
+  // simple Kronecker delta
+  float delta[3][3];
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          if (i==j) {
+          delta[i][j] = 1.0f;
+          } 
+          else {
+          delta[i][j] = 0.0f;
+          }
+      }
+  }
+
+  // compute rotation, compression and shear tensors
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          rotation_tensor[i][j] = 0.5f * (grad_v_tensor[i][j] - grad_v_tensor[j][i]);
+          shear_tensor[i][j] = 0.5f * (grad_v_tensor[i][j] + grad_v_tensor[j][i])  - (compression / 3.0f) * delta[i][j];
+          compression_tensor[i][j] = - 2.0f * (compression / 3.0f) * delta[i][j];
+      }
+  }
+  
+  // Compute Frobenius norms of each component
+  float grad_v_FN=0.0f;
+  float rotation_t_FN=0.0f;
+  float shear_t_FN=0.0f;
+  float compression_t_FN=0.0f;
+
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          grad_v_FN += grad_v_tensor[i][j] * grad_v_tensor[i][j];
+          rotation_t_FN += rotation_tensor[i][j] * rotation_tensor[i][j];
+          shear_t_FN += shear_tensor[i][j] * shear_tensor[i][j];
+          compression_t_FN += compression_tensor[i][j] * compression_tensor[i][j];
+      }
+  }
+
+  grad_v_FN = sqrtf(grad_v_FN);  
+  rotation_t_FN = sqrtf(rotation_t_FN);  
+  shear_t_FN = sqrtf(shear_t_FN);  
+  compression_t_FN = sqrtf(compression_t_FN);  
+
+  // New OW trigger testing
+  const float B[3] = {xp->mhd_data.B_over_rho_full[0] * p->rho,
+                      xp->mhd_data.B_over_rho_full[1] * p->rho,
+                      xp->mhd_data.B_over_rho_full[2] * p->rho};
+  const float Babs = sqrtf(B[0] * B[0] + B[1] * B[1] + B[2] * B[2]);
+
+   float Shear_B[3];
+   for (int i = 0; i < 3; i++) {
+      Shear_B[i]=0.0f;
+      for (int j = 0; j < 3; j++) {
+          Shear_B[i] += B[j] * shear_tensor[j][i] / p->rho;
+      }
+   }
+  const float Delta_B[3] = {p->mhd_data.Delta_B[0], p->mhd_data.Delta_B[1],
+                            p->mhd_data.Delta_B[2]};
+  /* const float Abs_Delta_B =
+      sqrtf(Delta_B[0] * Delta_B[0] + Delta_B[1] * Delta_B[1] +
+            Delta_B[2] * Delta_B[2]);
+*/
+  const float Max_Abs_Delta_B = 2.0f * Babs / (p->h * p->h);
+
+
+  const float Diff_B[3] = {p->mhd_data.Diff_B_source[0],
+                           p->mhd_data.Diff_B_source[1],
+                           p->mhd_data.Diff_B_source[2]};
+
+  const float Abs_Diff_B = sqrtf(Diff_B[0] * Diff_B[0] + Diff_B[1] * Diff_B[1] +
+                                 Diff_B[2] * Diff_B[2]);
+
+
+  const float Shear_B_dot_Delta_B = - (Shear_B[0] * Delta_B[0] + Shear_B[1] * Delta_B[1] + Shear_B[2] * Delta_B[2]);
+
+  const float OW_test = fmaxf(Shear_B_dot_Delta_B,0.0f) / (Abs_Diff_B * (Max_Abs_Delta_B / p->rho) + FLT_MIN); 
+  
+
+  // Return flow type ratios
+  ret[0] = shear_t_FN / (grad_v_FN + FLT_MIN);
+  ret[1] = rotation_t_FN / (grad_v_FN + FLT_MIN);
+  ret[2] = compression_t_FN / (grad_v_FN + FLT_MIN);
+  ret[3] = OW_test;
+}
+
+
+
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -468,7 +573,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
 
-  return 16;
+  list[16] = io_make_output_field_convert_part(
+      "FlowDecompositionTest", FLOAT, 4, UNIT_CONV_NO_UNITS, 0, parts, xparts,
+      calculate_InductionDecomposition, " Testing flow decomposition ratios and new OW ");
+
+  return 17;
 }
 
 /**

@@ -147,6 +147,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     }
   }
 
+  /* Calculate gradient of v tensor */
+  float dv[3];
+  for (int k = 0; k < 3; k++){
+  dv[k] =  pi->v[k] - pj->v[k];
+  }
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      pi->mhd_data.grad_v_tensor[i][j] -=
+          mj * over_rho_i * wi_dr * r_inv * dv[i] * dx[j];
+      pj->mhd_data.grad_v_tensor[i][j] -=
+          mi * over_rho_j * wj_dr * r_inv * dv[i] * dx[j];
+    }
+  }
+
+
   /* Calculate SPH error */
   pi->mhd_data.mean_SPH_err += mj * wi;
   pj->mhd_data.mean_SPH_err += mi * wj;
@@ -296,6 +311,18 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
     for (int j = 0; j < 3; j++) {
       pi->mhd_data.grad_B_tensor[i][j] -=
           mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
+    }
+  }
+
+  /* Calculate gradient of v tensor */
+  float dv[3];
+  for (int k = 0; k < 3; k++){
+  dv[k] =  pi->v[k] - pj->v[k];
+  }
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      pi->mhd_data.grad_v_tensor[i][j] -=
+          mj * over_rho_i * wi_dr * r_inv * dv[i] * dx[j];
     }
   }
 
@@ -653,8 +680,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->mhd_data.B_over_rho_dt[2] += mi * grad_psi * dx[2];
 
   /* Save induction sources */
-  const float dB_dt_pref_Lap_i = 2.0f * r_inv / rhoj;
-  const float dB_dt_pref_Lap_j = 2.0f * r_inv / rhoi;
 
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
@@ -662,13 +687,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pi->mhd_data.Adv_B_source[i] -= mj * grad_psi * dx[i];
     pj->mhd_data.Adv_B_source[i] += mi * grad_psi * dx[i];
     pi->mhd_data.Diff_B_source[i] +=
-        mj * resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
+        mj * resistive_eta_i * dB_dt_pref_PR * dB[i];
     pj->mhd_data.Diff_B_source[i] -=
-        mi * resistive_eta_j * mi * dB_dt_pref_PR * dB[i];
+        mi * resistive_eta_j * dB_dt_pref_PR * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
     pj->mhd_data.Diff_B_source[i] -= mi * art_diff_pref * dB[i];
-    pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap_i * wi_dr * dB[i];
-    pj->mhd_data.Delta_B[i] -= mi * dB_dt_pref_Lap_j * wj_dr * dB[i];
+    pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_PR * dB[i];
+    pj->mhd_data.Delta_B[i] -= mi * dB_dt_pref_PR * dB[i];
   }
 }
 
@@ -916,7 +941,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi * dx[2];
 
   /* Save induction sources */
-  const float dB_dt_pref_Lap = 2.0f * r_inv / rhoj;
 
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
@@ -924,7 +948,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     pi->mhd_data.Diff_B_source[i] +=
         resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
-    pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap * wi_dr * dB[i];
+    pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_PR * dB[i];
   }
 }
 

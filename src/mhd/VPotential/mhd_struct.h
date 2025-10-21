@@ -26,32 +26,51 @@ struct mhd_part_data {
 
   /*! Predicted Bfield */
   float BPred[3];
+
   /*! Predicted BSmooth */
   float BSmooth[3];
+
+  /* Alfven speed (=sqrt(B2/(mu_0 * rho))) of the particle drifted to the
+   * current time */
+  float Alfven_speed;
+
   /*! Full step Divergence of B */
   float divB;
-  /*! limiter force */
-  float Q0;
+
+  /* Curl of the magnetic field */
+  float curl_B[3];
+
   /* predicted VPotencial */
   float APred[3];
+
   /* predicted step Gauge, divA */
   float Gau, divA;
+
+  /* Time derivative of Gauge */
+  float Gau_dt;
+
+  /* Spatial gradient tensor of the magnetic field */
+  float grad_B_tensor[3][3];
+
   /* VP evolution */
   float dAdt[3];
+
+  /* mute variable */
+  float Q0;
   /* Resistive Eta */
   float resistive_eta;
-  /* Curl B */
-  float curlB[3];
   /* SPH <1> error */
   float mean_SPH_err;
   /* SPH <grad1> error */
   float mean_grad_SPH_err[3];
   /* Magnetic force */
   float tot_mag_F[3];
+
   /* A advection source */
   float Adv_A_source[3];
   /* B total diffusion source */
   float Diff_A_source[3];
+
   /* Laplacian A */
   float Delta_A[3];
 };
@@ -59,6 +78,12 @@ struct mhd_part_data {
 /**
  * @brief Particle-carried extra fields for the MHD scheme.
  */
-struct mhd_xpart_data {};
+struct mhd_xpart_data {
+  /* Full step magnetic vector potential */
+  float Afull[3];
+
+  /* Full step dedner scalar over divergence cleaning speed */
+  float Gaufull;
+};
 
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_STRUCT_H */
