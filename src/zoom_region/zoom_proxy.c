@@ -93,7 +93,7 @@ void zoom_engine_makeproxies(struct engine *e) {
       const double jr_diag = 0.5 * sqrt(jr_diag2);
 
       /* Calculate the maximum distance between the cells. */
-      const double r_max = 2 * max(ir_diag, jr_diag);
+      const double r_max = 10 * max(ir_diag, jr_diag);
 
       /* Get the proxy type. We only need to do the direct check if both
        * cells are the same type. Note, the cdim is only used if
