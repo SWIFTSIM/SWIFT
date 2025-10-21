@@ -72,7 +72,6 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
 
   /* In the gravity case, check distances using the MAC. */
   if (with_gravity) {
-    return proxy_cell_type_gravity;
 
     /* First just add the direct neighbours. Then look for
        some further out if the opening angle demands it */
