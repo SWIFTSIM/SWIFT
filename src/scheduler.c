@@ -2000,6 +2000,7 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
     if (!engine_gravity_need_cell_pair_task(s->space->e, t->ci, t->cj,
                                             s->space->periodic,
                                             s->space->periodic)) {
+      message("Removing unneeded zoom gravity task");
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->ci = NULL;
