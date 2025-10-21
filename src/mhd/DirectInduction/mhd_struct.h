@@ -93,6 +93,9 @@ struct mhd_part_data {
   /* Velocity tensor */
   float grad_v_tensor[3][3];
 
+  /* Shear tensor */
+  float shear_tensor[3][3];
+
 };
 
 /**

@@ -385,6 +385,38 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
         );
 }
 
+  // Finish calculation by computing shear tensor
+
+  float grad_v_tensor[3][3];
+  float compression = 0.0f;
+
+  // copy gradient tensor and compute compression (theta)
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          grad_v_tensor[i][j] = p->mhd_data.grad_v_tensor[i][j];
+      }
+      compression += grad_v_tensor[i][i];
+  }
+
+  // simple Kronecker delta
+  float delta[3][3];
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          if (i==j) {
+          delta[i][j] = 1.0f;
+          } 
+          else {
+          delta[i][j] = 0.0f;
+          }
+      }
+  }
+
+  // leave only shear tensor
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          p->mhd_data.shear_tensor[i][j] = 0.5f * (grad_v_tensor[i][j] + grad_v_tensor[j][i])  - (compression / 3.0f) * delta[i][j];
+      }
+  }
  
 }
 

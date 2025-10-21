@@ -682,10 +682,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Save induction sources */
 
   for (int i = 0; i < 3; i++) {
-    pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
-    pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
-    pi->mhd_data.Adv_B_source[i] -= mj * grad_psi * dx[i];
-    pj->mhd_data.Adv_B_source[i] += mi * grad_psi * dx[i];
+    //pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
+    //pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
+    for (int j = 0; j < 3; j++) {
+      pi->mhd_data.Adv_B_source[i] += Bi[j] * pi->mhd_data.shear_tensor[j][i] / rhoi;
+      pj->mhd_data.Adv_B_source[i] += Bj[j] * pj->mhd_data.shear_tensor[j][i] / rhoj;
+    }
+
+    //pi->mhd_data.Adv_B_source[i] -= mj * grad_psi * dx[i];
+    //pj->mhd_data.Adv_B_source[i] += mi * grad_psi * dx[i];
     pi->mhd_data.Diff_B_source[i] +=
         mj * resistive_eta_i * dB_dt_pref_PR * dB[i];
     pj->mhd_data.Diff_B_source[i] -=
@@ -943,8 +948,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Save induction sources */
 
   for (int i = 0; i < 3; i++) {
-    pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
-    pi->mhd_data.Adv_B_source[i] -= mj * grad_psi * dx[i];
+    //pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
+    //pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
+    for (int j = 0; j < 3; j++) {
+      pi->mhd_data.Adv_B_source[i] += Bi[j] * pi->mhd_data.shear_tensor[j][i] / rhoi;
+    }
+    //pi->mhd_data.Adv_B_source[i] -= mj * grad_psi * dx[i];
     pi->mhd_data.Diff_B_source[i] +=
         resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
