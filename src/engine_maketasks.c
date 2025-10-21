@@ -4242,12 +4242,15 @@ void engine_maketasks(struct engine *e) {
             (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
           break;
 
-      if (l != NULL && c->mpi.send == NULL)
+      if (l != NULL && c->mpi.send == NULL) {
+        /* Is it missing a proxy connection ? */
+        engine_check_proxy_exists(e, l->t->ci, l->t->cj, e->nodeID);
         error(
             "Cell %d (type/subtype=%s/%s depth=%d) has foreign gravity pairs "
             "but "
             "no send task!",
             i, cellID_names[c->type], subcellID_names[c->subtype], c->depth);
+      }
     }
 
 #endif
