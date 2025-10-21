@@ -1117,8 +1117,11 @@ __attribute__((always_inline)) INLINE static int cell_is_direct_neighbour(
   const double dist2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
 
   if (fabs(dist2) < min(ci->width[0], cj->width[0]))
-    message("Cells are direct neighbours: dist2=%e, ci_width=%e, cj_width=%e",
-            dist2, ci->width[0], cj->width[0]);
+    message(
+        "Cells are direct neighbours: dist2=%e, ci_width=%e, cj_width=%e, "
+        "ci->loc ={%f,%f,%f}, cj->loc={%f,%f,%f}",
+        dist2, ci->width[0], cj->width[0], ci->loc[0], ci->loc[1], ci->loc[2],
+        cj->loc[0], cj->loc[1], cj->loc[2]);
 
   /* If the cells are direct neighbours, the distance will be 0. We use a
    * tolerance of 1e-10 to be safe and account for floating point errors. */
