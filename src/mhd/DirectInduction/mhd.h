@@ -318,6 +318,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       p->mhd_data.grad_v_tensor[i][j] = 0.0f;
+      p->mhd_data.shear_tensor[i][j] = 0.0f;
     }
   }
 
@@ -327,8 +328,10 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   for (int k = 0; k < 3; k++) {
     p->mhd_data.mean_grad_SPH_err[k] = 0.f;
   }
+
   /* Set zero OW artificial resistivity*/
   p->mhd_data.eta_OWAR = 0.0f; 
+
 }
 
 /**
@@ -351,39 +354,44 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   B[1] = p->mhd_data.B_over_rho[1] * rho;
   B[2] = p->mhd_data.B_over_rho[2] * rho;
 
+  /* Calculate OWAR */
+
   float OW;
   OW = 1.0f;
 
-  float absB;
-  absB = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
+  float Abs_B;
+
+  Abs_B = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
+
   float Adv_B_source[3];
   float Delta_B[3];
+  float Adv_B_times_Delta_B = 0.0f;
+  float MaxDiff_B_source = 2.0f * Abs_B / (p->h*p->h*p->rho + FLT_MIN);
+
   for (int k = 0; k < 3; k++) {
-    Adv_B_source[k] = p->mhd_data.Adv_B_source[k];
+    Adv_B_source[k] = p->mhd_data.AdvS_B_source[k];
     Delta_B[k] = p->mhd_data.Delta_B[k]; 
   }
-  float Abs_Adv_B_source;
-  float Abs_Delta_B;
-  float Cos_Ind_Diff;
-  Abs_Adv_B_source = sqrtf(Adv_B_source[0]*Adv_B_source[0]+Adv_B_source[1]*Adv_B_source[1]+Adv_B_source[2]*Adv_B_source[2]);
-  Abs_Delta_B = sqrtf(Delta_B[0]*Delta_B[0]+Delta_B[1]*Delta_B[1]+Delta_B[2]*Delta_B[2]);
 
+  const float Abs_Delta_B = sqrtf(Delta_B[0]*Delta_B[0]+Delta_B[1]*Delta_B[1]+Delta_B[2]*Delta_B[2]);
   for (int k = 0; k < 3; k++) {
-  Adv_B_source[k] /= (Abs_Adv_B_source+FLT_MIN);
-  Delta_B[k] /= (Abs_Delta_B+FLT_MIN);
+    Delta_B[k] /= (Abs_Delta_B+FLT_MIN);
   }
 
-  Cos_Ind_Diff = (Adv_B_source[0]*Delta_B[0]+Adv_B_source[1]*Delta_B[1]+Adv_B_source[2]*Delta_B[2]);
-  
-  p->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * p->h * p->h / (absB+FLT_MIN)) * 0.5f * fmaxf(0.0f,1.0f-Cos_Ind_Diff) * Abs_Adv_B_source * p->rho * (p->mass * kernel_root);
+  for (int k = 0; k < 3; k++) { 
+    Adv_B_times_Delta_B += Adv_B_source[k] * Delta_B[k];
+  }
 
-  p->mhd_data.eta_OWAR *= pow_dimension(1.0f/p->h) / p->rho;
+  p->mhd_data.eta_OWAR += fmaxf( - Adv_B_times_Delta_B, 0.0f ) / ( OW * MaxDiff_B_source + FLT_MIN) * (p->mass * kernel_root) / p->rho;
+
+  p->mhd_data.eta_OWAR *= pow_dimension(1.0f/p->h);
 
   if (p->mhd_data.eta_OWAR<0.0f){
     error(
         "Error: incorrect OWAR "
         );
-}
+  }
+
 
   // Finish calculation by computing shear tensor
 
@@ -416,6 +424,13 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
       for (int j = 0; j < 3; j++) {
           p->mhd_data.shear_tensor[i][j] = 0.5f * (grad_v_tensor[i][j] + grad_v_tensor[j][i])  - (compression / 3.0f) * delta[i][j];
       }
+  }
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      p->mhd_data.AdvS_B_source[i] = B[j] / (p->rho) * p->mhd_data.shear_tensor[j][i];
+    }
+ 
   }
  
 }

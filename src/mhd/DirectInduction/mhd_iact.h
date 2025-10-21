@@ -177,62 +177,42 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   float OW;
   OW = 1.0f;
 
-  float absBi;
-  absBi = sqrtf(Bi[0]*Bi[0]+Bi[1]*Bi[1]+Bi[2]*Bi[2]);
+  float Abs_Bi;
+  float Abs_Bj;
+
+  Abs_Bi = sqrtf(Bi[0]*Bi[0]+Bi[1]*Bi[1]+Bi[2]*Bi[2]);
+  Abs_Bj = sqrtf(Bj[0]*Bj[0]+Bj[1]*Bj[1]+Bj[2]*Bj[2]);
+
   float Adv_B_sourcei[3];
-  float Delta_Bi[3];
-  for (int k = 0; k < 3; k++) {
-    Adv_B_sourcei[k] = pi->mhd_data.Adv_B_source[k];
-    Delta_Bi[k] = pi->mhd_data.Delta_B[k]; 
-  }
-  float Abs_Adv_B_sourcei;
-  float Abs_Delta_Bi;
-  float Cos_Ind_Diffi;
-  Abs_Adv_B_sourcei = sqrtf(Adv_B_sourcei[0]*Adv_B_sourcei[0]+Adv_B_sourcei[1]*Adv_B_sourcei[1]+Adv_B_sourcei[2]*Adv_B_sourcei[2]);
-
-  Abs_Delta_Bi = sqrtf(Delta_Bi[0]*Delta_Bi[0]+Delta_Bi[1]*Delta_Bi[1]+Delta_Bi[2]*Delta_Bi[2]);
-
-  for (int k = 0; k < 3; k++) {
-  Adv_B_sourcei[k] /= (Abs_Adv_B_sourcei+FLT_MIN);
-  Delta_Bi[k] /= (Abs_Delta_Bi+FLT_MIN);
-  }
-
-  Cos_Ind_Diffi = (Adv_B_sourcei[0]*Delta_Bi[0]+Adv_B_sourcei[1]*Delta_Bi[1]+Adv_B_sourcei[2]*Delta_Bi[2]);
-  pj->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * hi * hi / (absBi+FLT_MIN)) * 0.5f * fmaxf(0.0f,1.0f-Cos_Ind_Diffi) * Abs_Adv_B_sourcei * rhoi * (wj*mi);
-  if (pj->mhd_data.eta_OWAR<0.0f){
-    error(
-        "Error: incorrect OWAR "
-        );
-}
-
-  float absBj;
-  absBj = sqrtf(Bj[0]*Bj[0]+Bj[1]*Bj[1]+Bj[2]*Bj[2]);
   float Adv_B_sourcej[3];
+  float Delta_Bi[3];
   float Delta_Bj[3];
+  float Adv_B_times_Delta_Bi = 0.0f;
+  float Adv_B_times_Delta_Bj = 0.0f;
+  float MaxDiff_B_sourcei = 2.0f * Abs_Bi / (hi*hi*rhoi);
+  float MaxDiff_B_sourcej = 2.0f * Abs_Bj / (hj*hj*rhoj);
+
   for (int k = 0; k < 3; k++) {
-    Adv_B_sourcej[k] = pj->mhd_data.Adv_B_source[k];
+    Adv_B_sourcei[k] = pi->mhd_data.AdvS_B_source[k];
+    Adv_B_sourcej[k] = pj->mhd_data.AdvS_B_source[k];
+    Delta_Bi[k] = pi->mhd_data.Delta_B[k]; 
     Delta_Bj[k] = pj->mhd_data.Delta_B[k]; 
   }
-  float Abs_Adv_B_sourcej;
-  float Abs_Delta_Bj;
-  float Cos_Ind_Diffj;
-  Abs_Adv_B_sourcej = sqrtf(Adv_B_sourcej[0]*Adv_B_sourcej[0]+Adv_B_sourcej[1]*Adv_B_sourcej[1]+Adv_B_sourcej[2]*Adv_B_sourcej[2]);
-  Abs_Delta_Bj = sqrtf(Delta_Bj[0]*Delta_Bj[0]+Delta_Bj[1]*Delta_Bj[1]+Delta_Bj[2]*Delta_Bj[2]);
 
+  const float Abs_Delta_Bi = sqrtf(Delta_Bi[0]*Delta_Bi[0]+Delta_Bi[1]*Delta_Bi[1]+Delta_Bi[2]*Delta_Bi[2]);
+  const float Abs_Delta_Bj = sqrtf(Delta_Bj[0]*Delta_Bj[0]+Delta_Bj[1]*Delta_Bj[1]+Delta_Bj[2]*Delta_Bj[2]);
   for (int k = 0; k < 3; k++) {
-  Adv_B_sourcej[k] /= (Abs_Adv_B_sourcej+FLT_MIN);
-  Delta_Bj[k] /= (Abs_Delta_Bj+FLT_MIN);
+    Delta_Bi[k] /= (Abs_Delta_Bi+FLT_MIN);
+    Delta_Bj[k] /= (Abs_Delta_Bj+FLT_MIN);
   }
 
-  Cos_Ind_Diffj = (Adv_B_sourcej[0]*Delta_Bj[0]+Adv_B_sourcej[1]*Delta_Bj[1]+Adv_B_sourcej[2]*Delta_Bj[2]);
-  pi->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * hj * hj / (absBj+FLT_MIN)) * 0.5f * fmaxf(0.0f,1.0f-Cos_Ind_Diffj) * Abs_Adv_B_sourcej * rhoj * (wi*mj);
-  if (pi->mhd_data.eta_OWAR<0.0f){
-    error(
-        "Error: incorrect OWAR "
-        );
-}
+  for (int k = 0; k < 3; k++) { 
+    Adv_B_times_Delta_Bi += Adv_B_sourcei[k] * Delta_Bi[k];
+    Adv_B_times_Delta_Bj += Adv_B_sourcej[k] * Delta_Bj[k];
+  }
 
-
+  pi->mhd_data.eta_OWAR += fmaxf( - Adv_B_times_Delta_Bj, 0.0f ) / ( OW * MaxDiff_B_sourcej + FLT_MIN) * (wi * mj / rhoj );
+  pj->mhd_data.eta_OWAR += fmaxf( - Adv_B_times_Delta_Bi, 0.0f ) / ( OW * MaxDiff_B_sourcei + FLT_MIN) * (wj * mi / rhoi);
 
 }
 
@@ -338,35 +318,31 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   float OW;
   OW = 1.0f;
 
-  float absBj;
-  absBj = sqrtf(Bj[0]*Bj[0]+Bj[1]*Bj[1]+Bj[2]*Bj[2]);
+  float Abs_Bj;
+
+  Abs_Bj = sqrtf(Bj[0]*Bj[0]+Bj[1]*Bj[1]+Bj[2]*Bj[2]);
+
   float Adv_B_sourcej[3];
   float Delta_Bj[3];
+  float Adv_B_times_Delta_Bj = 0.0f;
+  float MaxDiff_B_sourcej = 2.0f * Abs_Bj / (hj*hj*rhoj);
+
   for (int k = 0; k < 3; k++) {
-    Adv_B_sourcej[k] = pj->mhd_data.Adv_B_source[k];
+    Adv_B_sourcej[k] = pj->mhd_data.AdvS_B_source[k];
     Delta_Bj[k] = pj->mhd_data.Delta_B[k]; 
   }
 
-  float Abs_Adv_B_sourcej;
-  float Abs_Delta_Bj;
-  float Cos_Ind_Diffj;
-
-  Abs_Adv_B_sourcej = sqrtf(Adv_B_sourcej[0]*Adv_B_sourcej[0]+Adv_B_sourcej[1]*Adv_B_sourcej[1]+Adv_B_sourcej[2]*Adv_B_sourcej[2]);
-  Abs_Delta_Bj = sqrtf(Delta_Bj[0]*Delta_Bj[0]+Delta_Bj[1]*Delta_Bj[1]+Delta_Bj[2]*Delta_Bj[2]);
-
+  const float Abs_Delta_Bj = sqrtf(Delta_Bj[0]*Delta_Bj[0]+Delta_Bj[1]*Delta_Bj[1]+Delta_Bj[2]*Delta_Bj[2]);
   for (int k = 0; k < 3; k++) {
-  Adv_B_sourcej[k] /= (Abs_Adv_B_sourcej+FLT_MIN);
-  Delta_Bj[k] /= (Abs_Delta_Bj+FLT_MIN);
+    Delta_Bj[k] /= (Abs_Delta_Bj+FLT_MIN);
   }
 
-  Cos_Ind_Diffj = (Adv_B_sourcej[0]*Delta_Bj[0]+Adv_B_sourcej[1]*Delta_Bj[1]+Adv_B_sourcej[2]*Delta_Bj[2]);
-  
-  pi->mhd_data.eta_OWAR += 1.0f/OW * ( 0.5f * hj * hj / (absBj+FLT_MIN)) * 0.5f * fmaxf(0.0f,1.0f-Cos_Ind_Diffj) * Abs_Adv_B_sourcej * rhoj * (wi*mj);
-  if (pi->mhd_data.eta_OWAR<0.0f){
-    error(
-        "Error: incorrect OWAR "
-        );
-}
+  for (int k = 0; k < 3; k++) { 
+    Adv_B_times_Delta_Bj += Adv_B_sourcej[k] * Delta_Bj[k];
+  }
+
+  pi->mhd_data.eta_OWAR += fmaxf( - Adv_B_times_Delta_Bj, 0.0f ) / ( OW * MaxDiff_B_sourcej + FLT_MIN) * (wi * mj / rhoj);
+
 
 }
 
@@ -682,12 +658,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Save induction sources */
 
   for (int i = 0; i < 3; i++) {
-    //pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
-    //pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
-    for (int j = 0; j < 3; j++) {
-      pi->mhd_data.Adv_B_source[i] += Bi[j] * pi->mhd_data.shear_tensor[j][i] / rhoi;
-      pj->mhd_data.Adv_B_source[i] += Bj[j] * pj->mhd_data.shear_tensor[j][i] / rhoj;
-    }
+    pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
+    pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
+    //for (int j = 0; j < 3; j++) {
+    //  pi->mhd_data.AdvS_B_source[i] += Bi[j] / rhoi * pi->mhd_data.shear_tensor[j][i];
+    //  pj->mhd_data.AdvS_B_source[i] += Bj[j] / rhoj * pj->mhd_data.shear_tensor[j][i];
+    //}
 
     //pi->mhd_data.Adv_B_source[i] -= mj * grad_psi * dx[i];
     //pj->mhd_data.Adv_B_source[i] += mi * grad_psi * dx[i];
@@ -948,11 +924,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Save induction sources */
 
   for (int i = 0; i < 3; i++) {
-    //pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
-    //pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
-    for (int j = 0; j < 3; j++) {
-      pi->mhd_data.Adv_B_source[i] += Bi[j] * pi->mhd_data.shear_tensor[j][i] / rhoi;
-    }
+    pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
+    //for (int j = 0; j < 3; j++) {
+    //  pi->mhd_data.AdvS_B_source[i] += Bi[j] / rhoi * pi->mhd_data.shear_tensor[j][i];
+    //}
     //pi->mhd_data.Adv_B_source[i] -= mj * grad_psi * dx[i];
     pi->mhd_data.Diff_B_source[i] +=
         resistive_eta_i * mj * dB_dt_pref_PR * dB[i];

@@ -95,6 +95,9 @@ struct mhd_part_data {
 
   /* Shear tensor */
   float shear_tensor[3][3];
+  /* B advection source shear*/
+  float AdvS_B_source[3];
+
 
 };
 

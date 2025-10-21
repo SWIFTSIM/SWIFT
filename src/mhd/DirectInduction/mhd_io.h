@@ -431,24 +431,28 @@ INLINE static void calculate_InductionDecomposition(const struct engine* e,
   const float B[3] = {xp->mhd_data.B_over_rho_full[0] * p->rho,
                       xp->mhd_data.B_over_rho_full[1] * p->rho,
                       xp->mhd_data.B_over_rho_full[2] * p->rho};
-  const float Babs = sqrtf(B[0] * B[0] + B[1] * B[1] + B[2] * B[2]);
+  float Abs_B;
 
-   float Shear_B[3];
-   for (int i = 0; i < 3; i++) {
-      Shear_B[i]=0.0f;
-      for (int j = 0; j < 3; j++) {
-          Shear_B[i] += B[j] * shear_tensor[j][i] / p->rho;
-      }
-   }
-  const float Delta_B[3] = {p->mhd_data.Delta_B[0], p->mhd_data.Delta_B[1],
-                            p->mhd_data.Delta_B[2]};
-  /* const float Abs_Delta_B =
-      sqrtf(Delta_B[0] * Delta_B[0] + Delta_B[1] * Delta_B[1] +
-            Delta_B[2] * Delta_B[2]);
-*/
-  const float Max_Abs_Delta_B = 2.0f * Babs / (p->h * p->h);
+  Abs_B = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
 
+  float Adv_B_source[3];
+  float Delta_B[3];
+  float Adv_B_times_Delta_B = 0.0f;
+  float MaxDiff_B_source = 2.0f * Abs_B / (p->h*p->h*p->rho + FLT_MIN);
 
+  for (int k = 0; k < 3; k++) {
+    Adv_B_source[k] = p->mhd_data.AdvS_B_source[k];
+    Delta_B[k] = p->mhd_data.Delta_B[k]; 
+  }
+
+  const float Abs_Delta_B = sqrtf(Delta_B[0]*Delta_B[0]+Delta_B[1]*Delta_B[1]+Delta_B[2]*Delta_B[2]);
+  for (int k = 0; k < 3; k++) {
+    Delta_B[k] /= (Abs_Delta_B+FLT_MIN);
+  }
+
+  for (int k = 0; k < 3; k++) { 
+    Adv_B_times_Delta_B += Adv_B_source[k] * Delta_B[k];
+  }
   const float Diff_B[3] = {p->mhd_data.Diff_B_source[0],
                            p->mhd_data.Diff_B_source[1],
                            p->mhd_data.Diff_B_source[2]};
@@ -457,10 +461,7 @@ INLINE static void calculate_InductionDecomposition(const struct engine* e,
                                  Diff_B[2] * Diff_B[2]);
 
 
-  const float Shear_B_dot_Delta_B = - (Shear_B[0] * Delta_B[0] + Shear_B[1] * Delta_B[1] + Shear_B[2] * Delta_B[2]);
-
-  const float OW_test = fmaxf(Shear_B_dot_Delta_B,0.0f) / (Abs_Diff_B * (Max_Abs_Delta_B / p->rho) + FLT_MIN); 
-  
+  const float OW_test = fmaxf( - Adv_B_times_Delta_B, 0.0f ) / Abs_Diff_B * Abs_Delta_B / (MaxDiff_B_source + FLT_MIN);
 
   // Return flow type ratios
   ret[0] = shear_t_FN / (grad_v_FN + FLT_MIN);
