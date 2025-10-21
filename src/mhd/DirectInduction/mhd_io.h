@@ -333,7 +333,7 @@ INLINE static void calculate_effective_resistivity(const struct engine* e,
   /* Effective resistivity */
 
   const float effective_resistivity =
-      Abs_Diff_B / (Abs_Delta_B / (p->rho + FLT_MIN) + FLT_MIN);
+      Abs_Diff_B / (Abs_Delta_B + FLT_MIN);
 
   ret[0] = effective_resistivity;
 }
@@ -437,7 +437,7 @@ INLINE static void calculate_InductionDecomposition(const struct engine* e,
    for (int i = 0; i < 3; i++) {
       Shear_B[i]=0.0f;
       for (int j = 0; j < 3; j++) {
-          Shear_B[i] += B[j] * shear_tensor[j][i];
+          Shear_B[i] += B[j] * shear_tensor[j][i] / p->rho;
       }
    }
   const float Delta_B[3] = {p->mhd_data.Delta_B[0], p->mhd_data.Delta_B[1],
@@ -459,7 +459,7 @@ INLINE static void calculate_InductionDecomposition(const struct engine* e,
 
   const float Shear_B_dot_Delta_B = - (Shear_B[0] * Delta_B[0] + Shear_B[1] * Delta_B[1] + Shear_B[2] * Delta_B[2]);
 
-  const float OW_test = fmaxf(Shear_B_dot_Delta_B,0.0f) / (Abs_Diff_B * p->rho * Max_Abs_Delta_B + FLT_MIN); 
+  const float OW_test = fmaxf(Shear_B_dot_Delta_B,0.0f) / (Abs_Diff_B * (Max_Abs_Delta_B / p->rho) + FLT_MIN); 
   
 
   // Return flow type ratios
