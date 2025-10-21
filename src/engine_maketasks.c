@@ -4215,6 +4215,20 @@ void engine_maketasks(struct engine *e) {
                    sizeof(struct cell_type_pair), threadpool_auto_chunk_size,
                    e);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Cross-check that all send tasks have been created */
+    for (int n = 0; n < num_send_cells; n++) {
+      struct cell *ci = send_cell_type_pairs[n].ci;
+      struct cell *cj = send_cell_type_pairs[n].cj;
+      const int type = send_cell_type_pairs[n].type;
+      if (type == proxy_cell_type_gravity && ci->nodeID != e->nodeID &&
+          ci->mpi.send == NULL)
+        error(
+            "Missing send task for gravity cell (type/subtype=%s/%s depth=%d)",
+            cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth);
+    }
+#endif
+
     free(send_cell_type_pairs);
 
     if (e->verbose)
