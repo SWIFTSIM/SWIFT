@@ -100,6 +100,10 @@ void zoom_engine_makeproxies(struct engine *e) {
        * icdim == jcdim and we're doing a direct check. */
       int proxy_type = engine_get_proxy_type(e, ci, cj, r_max);
 
+      if (cid == 0)
+        message("Proxy between cell %d (node %d) and cell %d (node %d): "
+                "type=%d"
+
       /* Abort if not in range at all */
       if (proxy_type == proxy_cell_type_none) continue;
 
