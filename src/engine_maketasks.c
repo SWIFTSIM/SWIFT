@@ -4224,8 +4224,10 @@ void engine_maketasks(struct engine *e) {
       if (type == proxy_cell_type_gravity && ci->nodeID != e->nodeID &&
           ci->mpi.send == NULL)
         error(
-            "Missing send task for gravity cell (type/subtype=%s/%s depth=%d)",
-            cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth);
+            "Missing send task for gravity cell ci=(type/subtype=%s/%s "
+            "depth=%d) cj=(type/subtype=%s/%s depth=%d)",
+            cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
+            cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth);
     }
 #endif
 
