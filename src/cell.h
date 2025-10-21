@@ -1118,7 +1118,7 @@ __attribute__((always_inline)) INLINE static int cell_is_direct_neighbour(
 
   /* If the cells are direct neighbours, the distance will be 0. We use a
    * tolerance of 1e-10 to be safe and account for floating point errors. */
-  return fabs(dist2) < min(ci->width[0], cj->width[0]);
+  return fabs(dist2) < 1e-10;
 }
 
 /* Inlined functions (for speed). */
