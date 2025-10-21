@@ -108,6 +108,13 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
         (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
 
+  /* Print the first zoom cell (index 0 in e->s->cells_top). */
+  if (e->s->cells_top - ci == 0) {
+    message("ci->nodeID=%d cj->nodeID=%d link=%p t_grav=%p (%s/%s)", ci->nodeID,
+            cj->nodeID, (void *)l, (void *)t_grav, cellID_names[ci->type],
+            subcellID_names[ci->subtype]);
+  }
+
   /* If so, attach send tasks. */
   if (l != NULL) {
 
@@ -4247,8 +4254,7 @@ void engine_maketasks(struct engine *e) {
         engine_check_proxy_exists(e, l->t->ci, l->t->cj, e->nodeID);
         error(
             "Cell %d (type/subtype=%s/%s depth=%d) has foreign gravity pairs "
-            "but "
-            "no send task!",
+            "but no send task!",
             i, cellID_names[c->type], subcellID_names[c->subtype], c->depth);
       }
     }
