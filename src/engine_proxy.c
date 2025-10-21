@@ -42,7 +42,6 @@
  * @param ci The first #cell.
  * @param cj The second #cell.
  * @param r_max The maximum distance between particles in the cells.
- * @param do_direct_check Whether to check for direct neighbours.
  *
  * @returns proxy_type The proxy type for this pair.
  */

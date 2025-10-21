@@ -1115,6 +1115,7 @@ __attribute__((always_inline)) INLINE static int cell_is_direct_neighbour(
 
   /* Calculate the minimum distance between the two cells */
   const double dist2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
+  message("distance2=%f ", dist2);
 
   /* If the cells are direct neighbours, the distance will be 0. We use a
    * tolerance of 1e-10 to be safe and account for floating point errors. */
