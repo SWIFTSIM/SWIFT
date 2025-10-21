@@ -1113,20 +1113,12 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2(
 __attribute__((always_inline)) INLINE static int cell_is_direct_neighbour(
     const struct space *s, const struct cell *ci, const struct cell *cj) {
 
-  /* Do any edges/corners overlap? */
-  double ci_lower[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
-  double ci_upper[3] = {ci->loc[0] + ci->width[0], ci->loc[1] + ci->width[1],
-                        ci->loc[2] + ci->width[2]};
-  double cj_lower[3] = {cj->loc[0], cj->loc[1], cj->loc[2]};
-  double cj_upper[3] = {cj->loc[0] + cj->width[0], cj->loc[1] + cj->width[1],
-                        cj->loc[2] + cj->width[2]};
+  /* Calculate the minimum distance between the two cells */
+  const double dist2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
 
-  return (fabs(ci_lower[0] - cj_upper[0]) <= 0.0f &&
-          fabs(ci_upper[0] - cj_lower[0]) <= 0.0f &&
-          fabs(ci_lower[1] - cj_upper[1]) <= 0.0f &&
-          fabs(ci_upper[1] - cj_lower[1]) <= 0.0f &&
-          fabs(ci_lower[2] - cj_upper[2]) <= 0.0f &&
-          fabs(ci_upper[2] - cj_lower[2]) <= 0.0f);
+  /* If the cells are direct neighbours, the distance will be 0. We use a
+   * tolerance of 1e-10 to be safe and account for floating point errors. */
+  return fabs(dist2) < min(ci->width[0], cj->width[0]);
 }
 
 /* Inlined functions (for speed). */
