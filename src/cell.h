@@ -1121,18 +1121,12 @@ __attribute__((always_inline)) INLINE static int cell_is_direct_neighbour(
   double cj_upper[3] = {cj->loc[0] + cj->width[0], cj->loc[1] + cj->width[1],
                         cj->loc[2] + cj->width[2]};
 
-  return (ci_lower[0] == cj_upper[0] ||
-          nearest(ci_lower[0] - cj_upper[0], s->dim[0]) == 0.0f ||
-          ci_upper[0] == cj_lower[0] ||
-          nearest(ci_upper[0] - cj_lower[0], s->dim[0]) == 0.0f) &&
-         (ci_lower[1] == cj_upper[1] ||
-          nearest(ci_lower[1] - cj_upper[1], s->dim[1]) == 0.0f ||
-          ci_upper[1] == cj_lower[1] ||
-          nearest(ci_upper[1] - cj_lower[1], s->dim[1]) == 0.0f) &&
-         (ci_lower[2] == cj_upper[2] ||
-          nearest(ci_lower[2] - cj_upper[2], s->dim[2]) == 0.0f ||
-          ci_upper[2] == cj_lower[2] ||
-          nearest(ci_upper[2] - cj_lower[2], s->dim[2]) == 0.0f);
+  return (fabs(ci_lower[0] - cj_upper[0]) <= 0.0f &&
+          fabs(ci_upper[0] - cj_lower[0]) <= 0.0f &&
+          fabs(ci_lower[1] - cj_upper[1]) <= 0.0f &&
+          fabs(ci_upper[1] - cj_lower[1]) <= 0.0f &&
+          fabs(ci_lower[2] - cj_upper[2]) <= 0.0f &&
+          fabs(ci_upper[2] - cj_lower[2]) <= 0.0f);
 }
 
 /* Inlined functions (for speed). */
