@@ -78,9 +78,12 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
     if (cell_is_direct_neighbour(s, ci, cj)) {
       proxy_type |= (int)proxy_cell_type_gravity;
       if (ci->type == cell_type_zoom || cj->type == cell_type_zoom)
-        message("Found direct neighbour gravity proxy between %s/%s and %s/%s",
-                cellID_names[ci->type], subcellID_names[ci->subtype],
-                cellID_names[cj->type], subcellID_names[cj->subtype]);
+        message(
+            "Found direct neighbour gravity proxy between %s/%s (cid=%d) and "
+            "%s/%s (cjd=%d)",
+            cellID_names[ci->type], subcellID_names[ci->subtype],
+            (int)(ci - e->s->cells_top), cellID_names[cj->type],
+            subcellID_names[cj->subtype], (int)(cj - e->s->cells_top));
 
     } else {
 
