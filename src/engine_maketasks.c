@@ -4233,6 +4233,7 @@ void engine_maketasks(struct engine *e) {
     /* Loop over cells checking that all cells with pairs to foreign nodes
      * have send tasks */
     struct link *l = NULL;
+    int nodeID = e->nodeID;
     for (int i = 0; i < nr_cells; i++) {
       struct cell *c = &cells[i];
       if (c->nodeID != e->nodeID) continue;
