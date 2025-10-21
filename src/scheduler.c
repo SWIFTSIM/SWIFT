@@ -1562,11 +1562,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   const struct space *sp = s->space;
   struct engine *e = sp->e;
 
-  /* We need to consider if we are more than the maximum mesh distance away
-   * when at the zoom top level. */
-  const int use_mesh = e->s->periodic;
-  const double max_mesh_dist2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have a pair task. */
   if (t->type != task_type_pair) {
