@@ -4235,9 +4235,10 @@ void engine_maketasks(struct engine *e) {
           ci->mpi.send == NULL)
         error(
             "Missing send task for gravity cell ci=(type/subtype=%s/%s "
-            "depth=%d) cj=(type/subtype=%s/%s depth=%d)",
+            "depth=%d) cj=(type/subtype=%s/%s depth=%d, cjd=%d)!",
             cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
-            cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth);
+            cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
+            (int)(cj - cells));
     }
 
     /* Loop over cells checking that all cells with pairs to foreign nodes
