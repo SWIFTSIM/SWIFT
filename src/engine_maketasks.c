@@ -109,7 +109,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       break;
 
   /* Print the first zoom cell (index 0 in e->s->cells_top). */
-  if (e->s->cells_top[0] == ci) {
+  if (&e->s->cells_top[0] == ci) {
     message("ci->nodeID=%d cj->nodeID=%d link=%p t_grav=%p (%s/%s)", ci->nodeID,
             cj->nodeID, (void *)l, (void *)t_grav, cellID_names[ci->type],
             subcellID_names[ci->subtype]);
