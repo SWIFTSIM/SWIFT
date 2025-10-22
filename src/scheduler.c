@@ -1986,11 +1986,8 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
     for (int ind = 0; ind < s->nr_tasks; ind++) {
       struct task *t = &s->tasks[ind];
 
-      /* Skipped tasks. */
-      if (t->skip) continue;
-
-      message("Examining task %d (%s/%s).", ind, taskID_names[t->type],
-              subtaskID_names[t->subtype]);
+      /* Skip empty tasks. */
+      if (t->type == task_type_none) continue;
 
       /* We only care about gravity pairs and gravity MM tasks here. */
       if ((t->type != task_type_pair && t->subtype == task_subtype_grav) &&
