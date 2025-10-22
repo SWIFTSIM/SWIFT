@@ -70,6 +70,10 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
     proxy_type |= (int)proxy_cell_type_hydro;
   }
 
+  /* Get the indices of the cells */
+  const int cid = (int)(ci - s->cells_top);
+  const int cjd = (int)(cj - s->cells_top);
+
   /* In the gravity case, check distances using the MAC. */
   if (with_gravity) {
 
@@ -77,6 +81,11 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
        some further out if the opening angle demands it */
     if (cell_is_direct_neighbour(s, ci, cj)) {
       proxy_type |= (int)proxy_cell_type_gravity;
+      if (cid == 128 && cjd == 256)
+        message(
+            "Adding direct neighbour gravity proxy between %d and %d "
+            "(proxy_type=%d)",
+            cid, cjd, proxy_type);
     } else {
 
       /* We don't have multipoles yet (or their CoMs) so we will
@@ -94,6 +103,12 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
       /* Are we beyond the distance where the truncated forces are 0
        * but not too far such that M2L can be used? */
       if (s->periodic) {
+
+        if (cid == 128 && cjd == 256)
+          message(
+              "Checking periodic gravity proxy between %d and %d "
+              "(min_dist_CoM2=%f, max_mesh_dist2=%f, r_max=%f, theta_crit=%f)",
+              cid, cjd, min_dist_CoM2, max_mesh_dist2, r_max, theta_crit);
 
         if ((min_dist_CoM2 < max_mesh_dist2) &&
             !(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2))
