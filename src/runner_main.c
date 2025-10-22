@@ -208,13 +208,6 @@ void *runner_main(void *data) {
         error("Void cell with task (%s/%s).", taskID_names[t->type],
               subtaskID_names[t->subtype]);
       }
-
-#ifdef WITH_MPI
-      /* Ensure we have proxies if we have a pair/grav task */
-      if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
-        engine_check_proxy_exists(e, ci, cj, e->nodeID);
-      }
-#endif
 #endif
 
       const ticks task_beg = getticks();
