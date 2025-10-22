@@ -1980,6 +1980,8 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
    * top level. */
   if (s->space->with_zoom_region) {
 
+    const ticks tic = getticks();
+
     /* Loop over all tasks. */
     for (int ind = 0; ind < s->nr_tasks; ind++) {
       struct task *t = &s->tasks[ind];
@@ -2019,6 +2021,10 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
         t->skip = 1;
       }
     }
+
+    if (s->space->e->verbose)
+      message("Cleaning up zoom tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 }
 
