@@ -573,11 +573,12 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
 
-  /* If we have a nested cell the true top level cell where we defined the
-   * interactions is the background void parent cell. */
-  /* TODO: This is a bit of a hack, we should actually have the top pointers set
-   * properly during void tree splitting. */
-  while (top->void_parent != NULL) top = top->void_parent->top;
+  // /* If we have a nested cell the true top level cell where we defined the
+  //  * interactions is the background void parent cell. */
+  // /* TODO: This is a bit of a hack, we should actually have the top pointers
+  // set
+  //  * properly during void tree splitting. */
+  // while (top->void_parent != NULL) top = top->void_parent->top;
 
   /* Call the appropriate interaction function based on the type of the
    * cell in question. */
