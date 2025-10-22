@@ -1994,32 +1994,14 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
           t->type != task_type_grav_mm)
         continue;
 
-      /* Get cell indices. */
-      int cid = (int)(t->ci - s->space->cells_top);
-      int cjd = (int)(t->cj - s->space->cells_top);
-
-      if (cid == 128 && cjd == 256) {
-        message("Found zoom task with cells 128 and 256");
-      }
-
-      /* We only care about tasks involving zoom cells. */
-      if (t->ci->type != cell_type_zoom && t->cj->type != cell_type_zoom)
-        continue;
-
-      /* And if we only have one zoom cell we also only care if the other cell
-       * is at the zoom region depth. */
-      if ((t->ci->type != cell_type_zoom &&
-           t->ci->depth != s->space->zoom_props->zoom_cell_depth) ||
-          (t->cj->type != cell_type_zoom &&
-           t->cj->depth != s->space->zoom_props->zoom_cell_depth))
-        continue;
+      // /* We only care about tasks involving zoom cells. */
+      // if (t->ci->type != cell_type_zoom && t->cj->type != cell_type_zoom)
+      //   continue;
 
       /* Remove the task if we don't need it based on geometry. */
       if (!engine_gravity_need_cell_pair_task(s->space->e, t->ci, t->cj,
                                               s->space->periodic,
                                               s->space->periodic)) {
-        message("Removing unneeded zoom gravity task for cells %d and %d", cid,
-                cjd);
         t->type = task_type_none;
         t->subtype = task_subtype_none;
         t->ci = NULL;
