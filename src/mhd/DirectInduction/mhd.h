@@ -355,7 +355,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   B[2] = p->mhd_data.B_over_rho[2] * rho;
 
   /* Calculate OWAR */
-
+ /*
   float OW;
   OW = 1.0f;
 
@@ -391,7 +391,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
         "Error: incorrect OWAR "
         );
   }
-
+*/
 
   // Finish calculation by computing shear tensor
 
@@ -426,9 +426,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
       }
   }
 
+  
   for (int i = 0; i < 3; i++) {
+    p->mhd_data.AdvS_B_source[i] = 0.0f;
     for (int j = 0; j < 3; j++) {
-      p->mhd_data.AdvS_B_source[i] = B[j] / (p->rho) * p->mhd_data.shear_tensor[j][i];
+      p->mhd_data.AdvS_B_source[i] += B[j] / (p->rho) * p->mhd_data.shear_tensor[j][i];
     }
  
   }
