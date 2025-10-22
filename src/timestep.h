@@ -317,15 +317,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
   if (e->policy & engine_policy_rt)
     new_dt_rt = rt_compute_spart_timestep(sp, e->rt_props, e->cosmology);
 
-  float new_dt_feedback = FLT_MAX;
-  if (e->policy & engine_policy_feedback)
-    new_dt_feedback = feedback_compute_spart_timestep(
-        sp, e->feedback_props, e->physical_constants,
-        (e->policy & engine_policy_cosmology), e->cosmology);
-
   /* Take the minimum of all */
   float new_dt =
-      min5(new_dt_stars, new_dt_self, new_dt_ext, new_dt_rt, new_dt_feedback);
+      min4(new_dt_stars, new_dt_self, new_dt_ext, new_dt_rt);
 
   /* Apply the maximal displacement constraint (FLT_MAX  if non-cosmological)*/
   new_dt = min(new_dt, e->dt_max_RMS_displacement);
