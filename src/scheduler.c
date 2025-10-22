@@ -1995,8 +1995,8 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
         continue;
 
       /* We only care about tasks involving zoom cells. */
-      if (t->ci->type != cell_type_zoom && t->cj->type != cell_type_zoom &&
-          t->ci->depth == 0 && t->cj->depth == 0)
+      if ((t->ci->type != cell_type_zoom || t->cj->type != cell_type_zoom) &&
+          (t->ci->depth != 0 || t->cj->depth != 0))
         continue;
 
       /* Remove the task if we don't need it based on geometry. */
