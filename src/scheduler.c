@@ -2009,6 +2009,12 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
            t->cj->depth != s->space->zoom_props->zoom_cell_depth))
         continue;
 
+      /* Get cell indices. */
+      int cid = (int)(t->ci - s->space->cells_top);
+      int cjd = (int)(t->cj - s->space->cells_top);
+
+      message("Checking zoom gravity task between cells %d and %d.", cid, cjd);
+
       /* Remove the task if we don't need it based on geometry. */
       if (!engine_gravity_need_cell_pair_task(s->space->e, t->ci, t->cj,
                                               s->space->periodic,
