@@ -1997,6 +1997,13 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
           t->type != task_type_grav_mm)
         continue;
 
+      /* Get cell indices. */
+      int cid = (int)(t->ci - s->space->cells_top);
+      int cjd = (int)(t->cj - s->space->cells_top);
+
+      message("Checking zoom gravity task between cells %d and %d (%s/%s).",
+              cid, cjd, taskID_names[t->type], subtaskID_names[t->subtype]);
+
       /* We only care about tasks involving zoom cells. */
       if (t->ci->type != cell_type_zoom && t->cj->type != cell_type_zoom)
         continue;
