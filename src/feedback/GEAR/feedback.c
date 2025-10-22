@@ -51,7 +51,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
 
   /* Turn off the cooling only when SN are involved */
-  if (xp->feedback_data.hit_by_SN == 1){
+  if (xp->feedback_data.hit_by_SN == 1) {
     cooling_set_part_time_cooling_off(p, xp, e->time);
   }
 
