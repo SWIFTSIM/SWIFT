@@ -382,9 +382,9 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     Adv_B_times_Delta_B += Adv_B_source[k] * Delta_B[k];
   }
 
-  p->mhd_data.eta_OWAR += fmaxf( - Adv_B_times_Delta_B, 0.0f ) / ( OW * MaxDiff_B_source + FLT_MIN) * (p->mass * kernel_root) / p->rho;
+  p->mhd_data.eta_OWAR += fmaxf( - Adv_B_times_Delta_B, 0.0f ) / ( OW * MaxDiff_B_source + FLT_MIN); // * (p->mass * kernel_root) / p->rho;
 
-  p->mhd_data.eta_OWAR *= pow_dimension(1.0f/p->h);
+  //p->mhd_data.eta_OWAR *= pow_dimension(1.0f/p->h);
 
   if (p->mhd_data.eta_OWAR<0.0f){
     error(

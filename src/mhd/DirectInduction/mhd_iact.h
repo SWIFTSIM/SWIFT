@@ -174,7 +174,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   }
 
   /* Calculate OWAR */
-
+/*
   float OW;
   OW = 1.0f;
 
@@ -214,6 +214,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
 
   pi->mhd_data.eta_OWAR += fmaxf( - Adv_B_times_Delta_Bj, 0.0f ) / ( OW * MaxDiff_B_sourcej + FLT_MIN) * (wi * mj / rhoj );
   pj->mhd_data.eta_OWAR += fmaxf( - Adv_B_times_Delta_Bi, 0.0f ) / ( OW * MaxDiff_B_sourcei + FLT_MIN) * (wj * mi / rhoi);
+*/
 
 }
 
@@ -317,7 +318,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   }
 
   /* Calculate OWAR */
-
+/*
   float OW;
   OW = 1.0f;
 
@@ -345,7 +346,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   }
 
   pi->mhd_data.eta_OWAR += fmaxf( - Adv_B_times_Delta_Bj, 0.0f ) / ( OW * MaxDiff_B_sourcej + FLT_MIN) * (wi * mj / rhoj);
-
+*/
 
 }
 
