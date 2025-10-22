@@ -1994,9 +1994,10 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
           t->type != task_type_grav_mm)
         continue;
 
-      // /* We only care about tasks involving zoom cells. */
-      // if (t->ci->type != cell_type_zoom && t->cj->type != cell_type_zoom)
-      //   continue;
+      /* We only care about tasks involving zoom cells. */
+      if (t->ci->type != cell_type_zoom &&t->cj->type !=
+              cell_type_zoom &&t->ci->depth = 0 && t->cj->depth == 0)
+        continue;
 
       /* Remove the task if we don't need it based on geometry. */
       if (!engine_gravity_need_cell_pair_task(s->space->e, t->ci, t->cj,
