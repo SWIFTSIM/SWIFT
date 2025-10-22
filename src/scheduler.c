@@ -1998,8 +1998,9 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
       int cid = (int)(t->ci - s->space->cells_top);
       int cjd = (int)(t->cj - s->space->cells_top);
 
-      message("Checking zoom gravity task between cells %d and %d (%s/%s).",
-              cid, cjd, taskID_names[t->type], subtaskID_names[t->subtype]);
+      if (cid == 128 && cjd == 256) {
+        message("Found zoom task with cells 128 and 256");
+      }
 
       /* We only care about tasks involving zoom cells. */
       if (t->ci->type != cell_type_zoom && t->cj->type != cell_type_zoom)
@@ -2017,7 +2018,8 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
       if (!engine_gravity_need_cell_pair_task(s->space->e, t->ci, t->cj,
                                               s->space->periodic,
                                               s->space->periodic)) {
-        message("Removing unneeded zoom gravity task");
+        message("Removing unneeded zoom gravity task for cells %d and %d", cid,
+                cjd);
         t->type = task_type_none;
         t->subtype = task_subtype_none;
         t->ci = NULL;
