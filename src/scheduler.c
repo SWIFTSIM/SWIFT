@@ -1975,46 +1975,46 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
                    s);
   }
 
-  /* In zoom land we now need to go over our tasks and make sure we actually
-   * need them based on geometry consideration as if they were created at the
-   * top level. */
-  if (s->space->with_zoom_region) {
-
-    const ticks tic = getticks();
-
-    /* Loop over all tasks. */
-    for (int ind = 0; ind < s->nr_tasks; ind++) {
-      struct task *t = &s->tasks[ind];
-
-      /* Skip empty tasks. */
-      if (t->type == task_type_none) continue;
-
-      /* We only care about gravity pairs and gravity MM tasks here. */
-      if ((t->type != task_type_pair && t->subtype == task_subtype_grav) &&
-          t->type != task_type_grav_mm)
-        continue;
-
-      /* We only care about tasks involving zoom cells. */
-      if ((t->ci->type != cell_type_zoom || t->cj->type != cell_type_zoom) &&
-          (t->ci->depth != 0 || t->cj->depth != 0))
-        continue;
-
-      /* Remove the task if we don't need it based on geometry. */
-      if (!engine_gravity_need_cell_pair_task(s->space->e, t->ci, t->cj,
-                                              s->space->periodic,
-                                              s->space->periodic)) {
-        t->type = task_type_none;
-        t->subtype = task_subtype_none;
-        t->ci = NULL;
-        t->cj = NULL;
-        t->skip = 1;
-      }
-    }
-
-    if (s->space->e->verbose)
-      message("Cleaning up zoom tasks took %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
-  }
+  // /* In zoom land we now need to go over our tasks and make sure we actually
+  //  * need them based on geometry consideration as if they were created at the
+  //  * top level. */
+  // if (s->space->with_zoom_region) {
+  //
+  //   const ticks tic = getticks();
+  //
+  //   /* Loop over all tasks. */
+  //   for (int ind = 0; ind < s->nr_tasks; ind++) {
+  //     struct task *t = &s->tasks[ind];
+  //
+  //     /* Skip empty tasks. */
+  //     if (t->type == task_type_none) continue;
+  //
+  //     /* We only care about gravity pairs and gravity MM tasks here. */
+  //     if ((t->type != task_type_pair && t->subtype == task_subtype_grav) &&
+  //         t->type != task_type_grav_mm)
+  //       continue;
+  //
+  //     /* We only care about tasks involving zoom cells. */
+  //     if ((t->ci->type != cell_type_zoom || t->cj->type != cell_type_zoom) &&
+  //         (t->ci->depth != 0 || t->cj->depth != 0))
+  //       continue;
+  //
+  //     /* Remove the task if we don't need it based on geometry. */
+  //     if (!engine_gravity_need_cell_pair_task(s->space->e, t->ci, t->cj,
+  //                                             s->space->periodic,
+  //                                             s->space->periodic)) {
+  //       t->type = task_type_none;
+  //       t->subtype = task_subtype_none;
+  //       t->ci = NULL;
+  //       t->cj = NULL;
+  //       t->skip = 1;
+  //     }
+  //   }
+  //
+  //   if (s->space->e->verbose)
+  //     message("Cleaning up zoom tasks took %.3f %s.",
+  //             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  // }
 }
 
 /**
