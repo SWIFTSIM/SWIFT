@@ -126,6 +126,13 @@ void zoom_engine_makeproxies(struct engine *e) {
                   zj->loc[1] < cj->loc[1] + cj->width[1] &&
                   zj->loc[2] >= cj->loc[2] &&
                   zj->loc[2] < cj->loc[2] + cj->width[2]) {
+
+                /* Early abort (both same node) -> Nigel is happy */
+                if (zi->nodeID == nodeID && zj->nodeID == nodeID) continue;
+
+                /* Early abort (both foreign node) -> Nigel is angry */
+                if (zi->nodeID != nodeID && zj->nodeID != nodeID) continue;
+
                 engine_add_proxy(e, zi, zj, proxy_type);
               }
             }
@@ -142,6 +149,9 @@ void zoom_engine_makeproxies(struct engine *e) {
               zi->loc[1] < ci->loc[1] + ci->width[1] &&
               zi->loc[2] >= ci->loc[2] &&
               zi->loc[2] < ci->loc[2] + ci->width[2]) {
+            /* We only care about foreign zoom cells (Nigel is disgusted). */
+            if (zi->nodeID == nodeID) continue;
+
             /* Add the proxy */
             engine_add_proxy(e, zi, cj, proxy_type);
           }
@@ -157,6 +167,9 @@ void zoom_engine_makeproxies(struct engine *e) {
               zj->loc[1] < cj->loc[1] + cj->width[1] &&
               zj->loc[2] >= cj->loc[2] &&
               zj->loc[2] < cj->loc[2] + cj->width[2]) {
+            /* We only care about foreign zoom cells (Nigel is disgusted). */
+            if (zj->nodeID == nodeID) continue;
+
             /* Add the proxy */
             engine_add_proxy(e, ci, zj, proxy_type);
           }
