@@ -56,22 +56,16 @@ void zoom_engine_makeproxies(struct engine *e) {
   e->nr_proxies = 0;
 
   /* Loop over the cells */
-  for (int cid = 0; cid < s->nr_cells; cid++) {
+  for (int cid = s->zoom_props->bkg_cell_offset; cid < s->nr_cells; cid++) {
 
     /* Get the cell */
     struct cell *ci = &cells[cid];
-
-    /* Skip void cells (these will never need a proxy). */
-    if (ci->subtype == cell_subtype_void) continue;
 
     /* Loop over the prospective neighbours. */
     for (int cjd = cid + 1; cjd < s->nr_cells; cjd++) {
 
       /* Get the cell */
       struct cell *cj = &cells[cjd];
-
-      /* Skip void cells (these will never need a proxy). */
-      if (cj->subtype == cell_subtype_void) continue;
 
       /* Early abort (both same node) -> Nigel is happy */
       if (ci->nodeID == nodeID && cj->nodeID == nodeID) continue;
@@ -109,8 +103,66 @@ void zoom_engine_makeproxies(struct engine *e) {
       /* Abort if not in range at all */
       if (proxy_type == proxy_cell_type_none) continue;
 
-      /* Ok, we need to add a proxy. */
-      engine_add_proxy(e, ci, cj, proxy_type);
+      /* If we have a void cell then loop over zoom cells and find those
+       * inside the void cells */
+      if (ci->subtype == cell_subtype_void &&
+          cj->subtype == cell_subtype_void) {
+        for (int zid = 0; zid < s->zoom_props->nr_zoom_regions; zid++) {
+          struct cell *zi = &s->cells_top[zid];
+          /* Is zi inside ci? */
+          if (zi->loc[0] >= ci->loc[0] &&
+              zi->loc[0] < ci->loc[0] + ci->width[0] &&
+              zi->loc[1] >= ci->loc[1] &&
+              zi->loc[1] < ci->loc[1] + ci->width[1] &&
+              zi->loc[2] >= ci->loc[2] &&
+              zi->loc[2] < ci->loc[2] + ci->width[2]) {
+            /* We now need to find the zoom cells in cj */
+            for (int zjd = 0; zjd < s->zoom_props->nr_zoom_regions; zjd++) {
+              struct cell *zj = &s->cells_top[zjd];
+              /* Is zj inside cj? */
+              if (zj->loc[0] >= cj->loc[0] &&
+                  zj->loc[0] < cj->loc[0] + cj->width[0] &&
+                  zj->loc[1] >= cj->loc[1] &&
+                  zj->loc[1] < cj->loc[1] + cj->width[1] &&
+                  zj->loc[2] >= cj->loc[2] &&
+                  zj->loc[2] < cj->loc[2] + cj->width[2]) {
+                engine_add_proxy(e, zi, zj, proxy_type);
+              }
+            }
+          }
+        }
+      } else if (ci->subtype == cell_subtype_void) {
+        /* Only ci is void, loop over zoom cells in cj */
+        for (int zjd = 0; zjd < s->zoom_props->nr_zoom_regions; zjd++) {
+          struct cell *zj = &s->cells_top[zjd];
+          /* Is zj inside cj? */
+          if (zj->loc[0] >= cj->loc[0] &&
+              zj->loc[0] < cj->loc[0] + cj->width[0] &&
+              zj->loc[1] >= cj->loc[1] &&
+              zj->loc[1] < cj->loc[1] + cj->width[1] &&
+              zj->loc[2] >= cj->loc[2] &&
+              zj->loc[2] < cj->loc[2] + cj->width[2]) {
+            engine_add_proxy(e, ci, zj, proxy_type);
+          }
+        }
+      } else if (cj->subtype == cell_subtype_void) {
+        /* Only cj is void, loop over zoom cells in ci */
+        for (int zid = 0; zid < s->zoom_props->nr_zoom_regions; zid++) {
+          struct cell *zi = &s->cells_top[zid];
+          /* Is zi inside ci? */
+          if (zi->loc[0] >= ci->loc[0] &&
+              zi->loc[0] < ci->loc[0] + ci->width[0] &&
+              zi->loc[1] >= ci->loc[1] &&
+              zi->loc[1] < ci->loc[1] + ci->width[1] &&
+              zi->loc[2] >= ci->loc[2] &&
+              zi->loc[2] < ci->loc[2] + ci->width[2]) {
+            engine_add_proxy(e, zi, cj, proxy_type);
+          }
+        }
+      } else {
+        /* Ok, we need to add a proxy. */
+        engine_add_proxy(e, ci, cj, proxy_type);
+      }
     }
   }
 
