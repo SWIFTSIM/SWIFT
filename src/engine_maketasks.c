@@ -4253,8 +4253,8 @@ void engine_maketasks(struct engine *e) {
             (l->t->cj != NULL && l->t->cj->nodeID != nodeID))
           break;
 
-      if (l != NULL && c->mpi.send == NULL) {
-        /* Is it missing a proxy connection ? */
+      if (l != NULL && c->mpi.pack == NULL) {
+        engine_check_proxy_exists(e, l->t->ci->top, l->t->cj->top, e->nodeID);
         const double min_dist_CoM2 =
             cell_min_dist2(l->t->ci, l->t->cj, s->periodic, s->dim);
         error(
