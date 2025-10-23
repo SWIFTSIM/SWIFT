@@ -1836,9 +1836,9 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
     for (int i = 0; i < e->s->nr_cells; ++i) {
 
-      /* Skip the zoom cells, avoids double counting zoom cells. (Only
+      /* Skip the void cells, avoids double counting zoom cells. (Only
        * applicable to zoom sims) */
-      if (e->s->cells_top[i].type == cell_type_zoom) continue;
+      if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
 
       const struct gravity_tensors *m = &e->s->multipoles_top[i];
       counter += m->m_pole.num_gpart;
