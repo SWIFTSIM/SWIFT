@@ -107,7 +107,7 @@ void zoom_engine_makeproxies(struct engine *e) {
        * inside the void cells */
       if (ci->subtype == cell_subtype_void &&
           cj->subtype == cell_subtype_void) {
-        for (int zid = 0; zid < s->zoom_props->nr_zoom_regions; zid++) {
+        for (int zid = 0; zid < s->zoom_props->nr_zoom_cells; zid++) {
           struct cell *zi = &s->cells_top[zid];
           /* Is zi inside ci? */
           if (zi->loc[0] >= ci->loc[0] &&
@@ -117,7 +117,7 @@ void zoom_engine_makeproxies(struct engine *e) {
               zi->loc[2] >= ci->loc[2] &&
               zi->loc[2] < ci->loc[2] + ci->width[2]) {
             /* We now need to find the zoom cells in cj */
-            for (int zjd = 0; zjd < s->zoom_props->nr_zoom_regions; zjd++) {
+            for (int zjd = 0; zjd < s->zoom_props->nr_zoom_cells; zjd++) {
               struct cell *zj = &s->cells_top[zjd];
               /* Is zj inside cj? */
               if (zj->loc[0] >= cj->loc[0] &&
@@ -133,7 +133,7 @@ void zoom_engine_makeproxies(struct engine *e) {
         }
       } else if (ci->subtype == cell_subtype_void) {
         /* Only ci is void, loop over zoom cells in cj */
-        for (int zjd = 0; zjd < s->zoom_props->nr_zoom_regions; zjd++) {
+        for (int zjd = 0; zjd < s->zoom_props->nr_zoom_cells; zjd++) {
           struct cell *zj = &s->cells_top[zjd];
           /* Is zj inside cj? */
           if (zj->loc[0] >= cj->loc[0] &&
@@ -147,7 +147,7 @@ void zoom_engine_makeproxies(struct engine *e) {
         }
       } else if (cj->subtype == cell_subtype_void) {
         /* Only cj is void, loop over zoom cells in ci */
-        for (int zid = 0; zid < s->zoom_props->nr_zoom_regions; zid++) {
+        for (int zid = 0; zid < s->zoom_props->nr_zoom_cells; zid++) {
           struct cell *zi = &s->cells_top[zid];
           /* Is zi inside ci? */
           if (zi->loc[0] >= ci->loc[0] &&
