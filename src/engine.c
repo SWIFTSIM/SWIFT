@@ -1844,7 +1844,10 @@ void engine_rebuild(struct engine *e, const int repartitioned,
       counter += m->m_pole.num_gpart;
     }
     if (counter != e->total_nr_gparts)
-      error("Total particles in multipoles inconsistent with engine");
+      error(
+          "Total particles in multipoles inconsistent with engine "
+          "counter=%lld vs %lld",
+          counter, e->total_nr_gparts);
   }
   if (e->policy & engine_policy_grid) {
     for (int i = 0; i < e->s->nr_cells; i++) {
