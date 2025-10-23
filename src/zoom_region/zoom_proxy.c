@@ -133,7 +133,7 @@ void zoom_engine_makeproxies(struct engine *e) {
         }
       } else if (ci->subtype == cell_subtype_void) {
         /* Only ci is void, loop over zoom cells in ci */
-        for (int zid = 0; zid < s->zoom_props->nr_zoom_cells; zjd++) {
+        for (int zid = 0; zid < s->zoom_props->nr_zoom_cells; zid++) {
           struct cell *zi = &s->cells_top[zjd];
           /* If zi inside ci? */
           if (zi->loc[0] >= ci->loc[0] &&
