@@ -4256,14 +4256,14 @@ void engine_maketasks(struct engine *e) {
       if (l != NULL && c->mpi.pack == NULL) {
         engine_check_proxy_exists(e, l->t->ci->top, l->t->cj->top, e->nodeID);
         const double min_dist_CoM2 =
-            cell_min_dist2(l->t->ci, l->t->cj, s->periodic, s->dim);
+            cell_min_dist2(l->t->ci->top, l->t->cj->top, s->periodic, s->dim);
         error(
             "Cell %d (type/subtype=%s/%s depth=%d) has foreign gravity pairs "
             "(cj=%s/%s cj->nodeID=%d, depth=%d, cjd=%d, min_dist_CoM2=%.3e), "
             "but no send task!",
             i, cellID_names[c->type], subcellID_names[c->subtype], c->depth,
             cellID_names[l->t->cj->type], subcellID_names[l->t->cj->subtype],
-            l->t->cj->nodeID, l->t->cj->depth, (int)(l->t->cj - cells),
+            l->t->cj->nodeID, l->t->cj->depth, (int)(l->t->cj->top - cells),
             min_dist_CoM2);
       }
     }
