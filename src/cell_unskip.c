@@ -2035,7 +2035,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
             const double min_dist_CoM2 =
                 cell_min_dist2(ci, cj, e->s->periodic, e->s->dim);
-            engine_check_proxy_exists(e, ci, cj, e->nodeID);
             error(
                 "No pack task for cell %s/%s at depth %d on rank %d (ci is "
                 "%s/%s at depth "
@@ -2090,7 +2089,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           if (ci->mpi.pack == NULL) {
             const double min_dist_CoM2 =
                 cell_min_dist2(ci, cj, e->s->periodic, e->s->dim);
-            engine_check_proxy_exists(e, cj, ci, e->nodeID);
             error(
                 "No pack task for cell %s/%s at depth %d on rank %d (cj is "
                 "%s/%s at depth "
