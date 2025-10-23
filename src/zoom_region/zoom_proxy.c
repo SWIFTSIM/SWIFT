@@ -132,31 +132,33 @@ void zoom_engine_makeproxies(struct engine *e) {
           }
         }
       } else if (ci->subtype == cell_subtype_void) {
-        /* Only ci is void, loop over zoom cells in cj */
-        for (int zjd = 0; zjd < s->zoom_props->nr_zoom_cells; zjd++) {
-          struct cell *zj = &s->cells_top[zjd];
-          /* Is zj inside cj? */
-          if (zj->loc[0] >= cj->loc[0] &&
-              zj->loc[0] < cj->loc[0] + cj->width[0] &&
-              zj->loc[1] >= cj->loc[1] &&
-              zj->loc[1] < cj->loc[1] + cj->width[1] &&
-              zj->loc[2] >= cj->loc[2] &&
-              zj->loc[2] < cj->loc[2] + cj->width[2]) {
-            engine_add_proxy(e, ci, zj, proxy_type);
-          }
-        }
-      } else if (cj->subtype == cell_subtype_void) {
-        /* Only cj is void, loop over zoom cells in ci */
-        for (int zid = 0; zid < s->zoom_props->nr_zoom_cells; zid++) {
-          struct cell *zi = &s->cells_top[zid];
-          /* Is zi inside ci? */
+        /* Only ci is void, loop over zoom cells in ci */
+        for (int zid = 0; zid < s->zoom_props->nr_zoom_cells; zjd++) {
+          struct cell *zi = &s->cells_top[zjd];
+          /* If zi inside ci? */
           if (zi->loc[0] >= ci->loc[0] &&
               zi->loc[0] < ci->loc[0] + ci->width[0] &&
               zi->loc[1] >= ci->loc[1] &&
               zi->loc[1] < ci->loc[1] + ci->width[1] &&
               zi->loc[2] >= ci->loc[2] &&
               zi->loc[2] < ci->loc[2] + ci->width[2]) {
+            /* Add the proxy */
             engine_add_proxy(e, zi, cj, proxy_type);
+          }
+        }
+      } else if (cj->subtype == cell_subtype_void) {
+        /* Only cj is void, loop over zoom cells in cj */
+        for (int zjd = 0; zjd < s->zoom_props->nr_zoom_cells; zjd++) {
+          struct cell *zj = &s->cells_top[zjd];
+          /* If zj inside cj? */
+          if (zj->loc[0] >= cj->loc[0] &&
+              zj->loc[0] < cj->loc[0] + cj->width[0] &&
+              zj->loc[1] >= cj->loc[1] &&
+              zj->loc[1] < cj->loc[1] + cj->width[1] &&
+              zj->loc[2] >= cj->loc[2] &&
+              zj->loc[2] < cj->loc[2] + cj->width[2]) {
+            /* Add the proxy */
+            engine_add_proxy(e, ci, zj, proxy_type);
           }
         }
       } else {
