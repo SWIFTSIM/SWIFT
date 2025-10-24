@@ -467,9 +467,9 @@ runner_iact_chemistry_fluxes_common(
     /* Use the updated metal masses to ensure that the final result won't be
      * negative */
     const double m_Z_i =
-        chi->metal_mass[m] + chi->diffused_metal_mass_fluxes[m];
+        chi->metal_mass[m] + chi->metal_mass_riemann[m];
     const double m_Z_j =
-        chj->metal_mass[m] + chj->diffused_metal_mass_fluxes[m];
+        chj->metal_mass[m] + chj->metal_mass_riemann[m];
     /* This one seemed to work for a certain time */
     const double upwind_mass = (metal_mass_flux > 0) ? m_Z_i : m_Z_j;
 
@@ -492,9 +492,9 @@ runner_iact_chemistry_fluxes_common(
      * the fluxes are always exchanged symmetrically. Thanks to our sneaky use
      * of flux_dt, we can detect inactive neighbours through their negative time
      * step. */
-    chi->diffused_metal_mass_fluxes[m] -= metal_mass_flux;
+    chi->metal_mass_riemann[m] -= metal_mass_flux;
     if (mode == 1 || (chj->flux_dt < 0.f)) {
-      chj->diffused_metal_mass_fluxes[m] += metal_mass_flux;
+      chj->metal_mass_riemann[m] += metal_mass_flux;
     }
   }
 }
