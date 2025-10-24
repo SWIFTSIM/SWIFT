@@ -38,6 +38,14 @@ chemistry_part_reset_gradients(struct part *restrict p) {
     chd->gradients.Z[i][0] = 0.0f;
     chd->gradients.Z[i][1] = 0.0f;
     chd->gradients.Z[i][2] = 0.0f;
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    for (int i = 0; i < 3; i++) {
+      chd->gradients.F_diff[i][0] = 0.f;
+      chd->gradients.F_diff[i][1] = 0.f;
+      chd->gradients.F_diff[i][2] = 0.f;
+    }
+#endif
   }
 
   chd->gradients.rho[0] = 0.0f;
@@ -165,6 +173,14 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
     chd->gradients.Z[i][0] *= norm;
     chd->gradients.Z[i][1] *= norm;
     chd->gradients.Z[i][2] *= norm;
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    for (int i = 0; i < 3; i++) {
+      chd->gradients.F_diff[i][0] *= norm;
+      chd->gradients.F_diff[i][1] *= norm;
+      chd->gradients.F_diff[i][2] *= norm;
+    }
+#endif
   }
 
   chd->gradients.rho[0] *= norm;
