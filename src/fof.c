@@ -2476,6 +2476,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
  * - Group size,
  * - Group total mass,
  * - Group centre of mass,
+ * - Group radii (maximum distance from COM to a particle),
  * - Maximal gas particle density,
  * - Whether a group has a BH particle or not.
  *
@@ -2490,6 +2491,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   const size_t nr_gparts = s->nr_gparts;
   const struct gpart *gparts = s->gparts;
   const struct part *parts = s->parts;
+  const struct xpart *xparts = s->xparts;
   const size_t group_id_default = props->group_id_default;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -2502,6 +2504,10 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   float *radii = props->group_radii;
   char *has_black_hole = props->has_black_hole;
   float *max_part_density = props->max_part_density;
+
+  // TODO IFDEF
+  float *stellar_mass = props->group_stellar_mass;
+  float *star_formation_rate = props->group_star_formation_rate;
 
   /* Temporary arrays to help with the CoMs */
   float *max_positions, *min_positions;
@@ -2567,11 +2573,18 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
       has_black_hole[index] = 1;
     }
 
-    /* Idntify the densest gas particle in the group */
+    /* Identify the densest gas particle in the group */
     if (gparts[i].type == swift_type_gas) {
       const size_t gas_index = -gparts[i].id_or_neg_offset;
       const float rho_com = hydro_get_comoving_density(&parts[gas_index]);
       max_part_density[index] = fmaxf(rho_com, max_part_density[index]);
+// TODO IFDEF
+      star_formation_rate[index] += star_formation_get_SFR(&parts[gas_index], &xparts[gas_index]);
+    }
+
+    /* Add to the stellar mass */
+    if (gparts[i].type == swift_type_stars) {
+      stellar_mass[index] += gparts[i].mass;
     }
   }
 
@@ -2589,6 +2602,11 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
                 MPI_MAX, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, max_part_density, props->num_groups, MPI_FLOAT,
                 MPI_MAX, MPI_COMM_WORLD);
+  // TODO IFDEF
+  MPI_Allreduce(MPI_IN_PLACE, stellar_mass, props->num_groups, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, star_formation_rate, props->num_groups, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD);
 #endif
 
   *number_of_local_seeds = 0;
@@ -2889,6 +2907,9 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
   double *group_mass = props->group_mass;
   double *group_centre_of_mass = props->group_centre_of_mass;
   float *group_radii = props->group_radii;
+// TODO IFDEF
+  float *group_stellar_mass = props->group_stellar_mass;
+  float *group_star_formation_rate = props->group_star_formation_rate;
 
   for (int rank = 0; rank < nr_nodes; ++rank) {
 
@@ -2907,8 +2928,8 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
               mode);
 
       if (my_rank == 0) {
-        fprintf(file, "# %8s %12s %12s %12s %12s %12s %12s %12s %24s %24s \n",
-                "Group ID", "Group Size", "Group Mass", "Group Radii", "CoM_x",
+        fprintf(file, "# %8s %12s %12s %12s %24s %12s %12s %12s %12s %12s %24s %24s \n",
+                "Group ID", "Group Size", "Group Mass", "Group Radii", "Group Stellar Mass", "Group SFR", "CoM_x",
                 "CoM_y", "CoM_z", "Max Density", "Max Density Local Index",
                 "Particle ID");
         fprintf(file,
@@ -2920,10 +2941,14 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
       for (int i = 0; i < num_groups; i++) {
 
         fprintf(file,
-                "  %8lld %12lld %12e %12e %12e %12e %12e %12e %24lld %24lld\n",
-                group_index[i], final_group_size[i], group_mass[i],
-                group_radii[i], group_centre_of_mass[i * 3 + 0],
-                group_centre_of_mass[i * 3 + 1],
+                "  %8lld %12lld %12e %12e %12e %12e %12e %12e %12e %12e %24lld %24lld\n",
+                group_index[i], final_group_size[i],
+                group_mass[i], group_radii[i],
+// TODO IFDEF
+                group_stellar_mass[i], group_star_formation_rate[i],
+// TODO IFNOTDEF
+                // 0., 0.,
+                group_centre_of_mass[i * 3 + 0], group_centre_of_mass[i * 3 + 1],
                 group_centre_of_mass[i * 3 + 2], 0., -1ll, -1ll);
       }
       fclose(file);
@@ -3919,6 +3944,17 @@ void fof_compute_group_props(struct fof_props *props,
   bzero(props->group_radii, num_groups * sizeof(float));
   bzero(props->max_part_density, num_groups * sizeof(float));
 
+
+// TODO IFDEF
+  if (swift_memalign("fof_group_stellar_mass", (void **)&props->group_stellar_mass, 32,
+                     num_groups * sizeof(float)) != 0)
+    error("Failed to allocate list of group stellar mass for FOF search.");
+  if (swift_memalign("fof_group_star_formation_rate", (void **)&props->group_star_formation_rate, 32,
+                     num_groups * sizeof(float)) != 0)
+    error("Failed to allocate list of group star formation rate for FOF search.");
+  bzero(props->group_stellar_mass, num_groups * sizeof(float));
+  bzero(props->group_star_formation_rate, num_groups * sizeof(float));
+
   const ticks tic_props = getticks();
 
   /* Now, compute all things */
@@ -4001,6 +4037,12 @@ void fof_free_arrays(struct fof_props *props) {
   props->num_on_node = NULL;
   props->first_on_node = NULL;
 #endif
+
+// TODO ifdef
+  swift_free("fof_group_stellar_mass", props->group_stellar_mass);
+  swift_free("fof_group_star_formation_rate", props->group_star_formation_rate);
+  props->group_stellar_mass = NULL;
+  props->group_star_formation_rate = NULL;
 }
 
 void fof_struct_dump(const struct fof_props *props, FILE *stream) {
