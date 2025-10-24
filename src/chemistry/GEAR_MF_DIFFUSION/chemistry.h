@@ -60,7 +60,7 @@ static INLINE void chemistry_print_backend(
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   message("Chemistry function is 'Gear MF hyperbolic diffusion'.");
 #else
-  message("Chemistry function is 'Gear MF diffusion'.");
+  message("Chemistry function is 'Gear MF parabolic diffusion'.");
 #endif
 }
 

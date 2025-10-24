@@ -349,49 +349,6 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
   dvz[2] = p->chemistry_data.gradients.v[2][2];
 }
 
-/**
- * @brief Get the physical hyperbolic diffusion soundspeed.
- *
- * Note: The units are always U_L/U_T.
- *
- * @param p Particle.
- * @param chem_data The global properties of the chemistry scheme.
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_physical_hyperbolic_soundspeed(
-    const struct part* restrict p,
-    const struct chemistry_global_data* chem_data,
-    const struct cosmology* cosmo) {
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  if (chem_data->relaxation_time_mode == constant_mode) {
-    double K[3][3];
-    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
-    const double norm_matrix_K = chemistry_get_matrix_norm(K);
-
-    /* Here we simply use the formula c_hyp = sqrt(||K||/tau) */
-    return sqrt(norm_matrix_K / p->chemistry_data.tau);
-  } else {
-    /* Note that 1/|S| ~ time --> we define this as our turbulent relaxation
-       time. Also note that we do not regularize the shear tensor here.
-       (Shall we?) */
-    double S[3][3];
-    chemistry_get_physical_shear_tensor(p, cosmo, S);
-
-    /* TODO: Add the alpha parameter to the code */
-    /* The formula is c_hyp = sqrt(||K||/(rho tau)). We simplify it by hand to
-       reduce rounding errors: c_hyp = sqrt(C/alpha) * gamma_k * h * ||S|| */
-    const double delta_x = kernel_gamma * p->h;
-    const double C_diff = chem_data->diffusion_coefficient;
-    const double alpha = chem_data->tau;
-    const double c_hyp = sqrt(C_diff/alpha) * delta_x * chemistry_get_matrix_norm(S);
-    return c_hyp;
-  }
-#else
-  error("This function cannot be called for the parabolic diffusion mode.");
-  return -1.0;
-#endif
-}
 
 /**
  * @brief Get the physical diffusion speed.
@@ -447,37 +404,6 @@ chemistry_get_physical_diffusion_speed(
   }
 
   return norm_matrix_K * norm_nabla_q / norm_U;
-#endif
-}
-
-/**
- * @brief Get the physical hyperbolic diffusion relaxation time.
- *
- * @param p Particle.
- * @param chem_data The global properties of the chemistry scheme.
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_compute_physical_tau(const struct part* restrict p,
-                               const struct chemistry_global_data* chem_data,
-                               const struct cosmology* cosmo) {
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  if (chem_data->relaxation_time_mode == constant_mode) {
-    /* Tau is constant and chosen in the parameter file. Hence return this
-     * value. */
-    return chem_data->tau;
-  } else {
-    /* Note that 1/|S| ~ time --> we define this as our turbulent relaxation
-       time. Also note that we do not regularize the shear tensor here. */
-    double S[3][3];
-    chemistry_get_physical_shear_tensor(p, cosmo, S);
-    const double S_norm_inv = 1.0 / chemistry_get_matrix_norm(S);
-
-    return chem_data->tau*S_norm_inv;
-  }
-#else
-  /* Parabolic diffusion is recovered when tau = 0.0. */
-  return 0.0;
 #endif
 }
 
