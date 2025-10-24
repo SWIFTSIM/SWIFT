@@ -97,7 +97,7 @@ struct xpart {
  * variables should be declared in the main part of the part structure,
  */
 struct part {
-
+  float depth_h;
   /*! Particle unique ID. */
   long long id;
 
