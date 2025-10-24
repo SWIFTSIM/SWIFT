@@ -429,7 +429,7 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
     struct cell *top_j = cj->top;
 
     /* Get the appropriate comparison top-level cell */
-    if (ci->type == cell_type_zoom && top_j.type == cell_type_zoom) {
+    if (ci->type == cell_type_zoom && top_j->type == cell_type_zoom) {
       compare_top = ci->top;
     } else {
       compare_top = top;
