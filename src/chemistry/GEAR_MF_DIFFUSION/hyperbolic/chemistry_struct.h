@@ -130,7 +130,7 @@ struct chemistry_part_data {
 
     /*! Flux of the diffusion flux, computed with the Riemann solver */
     double F_diff_flux[3];
-    
+
   } hyperbolic_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   /*! Variables used for timestep calculation. */

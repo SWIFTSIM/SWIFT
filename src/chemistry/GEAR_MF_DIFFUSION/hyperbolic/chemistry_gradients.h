@@ -25,8 +25,6 @@
 #include "chemistry_slope_limiters_face.h"
 #include "chemistry_unphysical.h"
 
-
-
 /**
  * @brief Flux gradients reconstruction. Predict the value at point
  * x_ij given current values at particle positions and gradients at particle
@@ -53,11 +51,12 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   // density, so that it is consistent...
   // Find a modular way to call this (without cyclic dependencies)
   // Similarly with the extrapolate functions...
-  // Probably move the chemistry_predict to a diffusion submodule...  
-/* chemistry_gradients_predict( */
-/*     const struct part *restrict pi, const struct part *restrict pj, int metal, */
-/*     const float dx[3], const float r, const float xij_i[3], double *Ui, */
-/*     double *Uj);   */
+  // Probably move the chemistry_predict to a diffusion submodule...
+  /* chemistry_gradients_predict( */
+  /*     const struct part *restrict pi, const struct part *restrict pj, int
+   * metal, */
+  /*     const float dx[3], const float r, const float xij_i[3], double *Ui, */
+  /*     double *Uj);   */
 
   chemistry_get_physical_flux(pi, metal, Ui);
   chemistry_get_physical_flux(pj, metal, Uj);
@@ -83,7 +82,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   double dUj[3];
   dUj[0] = chemistry_gradients_extrapolate_double(dFx_j, xij_j);
   dUj[1] = chemistry_gradients_extrapolate_double(dFy_j, xij_j);
-  dUj[2] = chemistry_gradients_extrapolate_double(dFz_j, xij_j);  
+  dUj[2] = chemistry_gradients_extrapolate_double(dFz_j, xij_j);
 
   chemistry_slope_limit_face_flux(Ui, Uj, dUi, dUj, xij_i, xij_j, r);
 
@@ -99,5 +98,4 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   /* TODO */
 }
 
-  
 #endif /* SWIFT_CHEMISTRY_GEAR_CHEMISTRY_HYPERBOLIC_GRADIENTS_H */

@@ -26,8 +26,8 @@
 #include "hydro.h"
 #include "sign.h"
 
-
-// TODO: Update arguments to take U[4]... And solve the riemann problem for the flux
+// TODO: Update arguments to take U[4]... And solve the riemann problem for the
+// flux
 /**
  * @brief Hokpins (2017) HLL Riemann solver improved for hyperbolic diffusion.
  *
@@ -190,7 +190,8 @@ chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
 }
 
 // TODO: Same
-// Test again with the hyperbolic soundspeed. Maybe take the max of c_s and c_hyp.
+// Test again with the hyperbolic soundspeed. Maybe take the max of c_s and
+// c_hyp.
 /**
  * @brief HLL riemann solver.
  *
@@ -324,8 +325,9 @@ __attribute__((always_inline)) INLINE static void
 chemistry_riemann_solve_for_flux(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const double UL[4], const double UR[4],
-    const float WL[5], const float WR[5], const float Anorm, const float n_unit[3],
-    const int m, const struct chemistry_global_data *chem_data,
+    const float WL[5], const float WR[5], const float Anorm,
+    const float n_unit[3], const int m,
+    const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double flux_X[3]) {
 
   chemistry_riemann_check_input(WL, WR, UL, UR, n_unit);

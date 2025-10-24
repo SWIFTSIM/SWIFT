@@ -111,7 +111,6 @@ struct chemistry_part_data {
     /*! Gradient of tilde(v) */
     float grad_v_tilde[3][3];
   } filtered;
-
 };
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_MF_PARABOLIC_DIFFUSION_H */

@@ -438,7 +438,7 @@ runner_iact_chemistry_fluxes_common(
 
   /*****************************************/
   // TODO: Probably encapsulate this into a function that calls the right
-  // parabolic/hyperbolic function...  
+  // parabolic/hyperbolic function...
   /* Now solve the Riemann problem for each metal specie */
   /* Helper variable */
   const float a2 = cosmo->a * cosmo->a;

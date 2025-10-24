@@ -117,11 +117,11 @@ chemistry_compute_physical_diffusion_flux(
   } /* end of if else diffusion_mode */
 }
 
-
 // TODO: Add flux_update_left/right methods here. Also add one to the
 // hyperbolic diffusion submodule
 // Well mabe reorganise the entire file...
-//TODO: Add an if def here to either call this function or the hyperbolic version
+// TODO: Add an if def here to either call this function or the hyperbolic
+// version
 /**
  * @brief Compute the metal mass flux for the Riemann problem with the given
  * left and right state, and interface normal, surface area and velocity.

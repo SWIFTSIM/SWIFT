@@ -338,7 +338,9 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   data->tau = parser_get_param_double(parameter_file, "GEARChemistry:tau");
 
   if (data->tau == 0.0) {
-    error("GEARChemistry:tau cannot be set to 0.0! This defeats the hyperbolic diffusion purpose!");
+    error(
+        "GEARChemistry:tau cannot be set to 0.0! This defeats the hyperbolic "
+        "diffusion purpose!");
   }
 
   parser_get_param_string(parameter_file, "GEARChemistry:riemann_solver", temp);
@@ -391,8 +393,8 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct chemistry_global_data* chem_data,
     const struct part* restrict p) {
 #if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-    /* Use the parabolic timestep eq (15) */
-    return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
+  /* Use the parabolic timestep eq (15) */
+  return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
 #else
   /* Use the hyperbolic CFL condition */
   return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);

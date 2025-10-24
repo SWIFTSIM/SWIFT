@@ -38,8 +38,8 @@ enum chemistry_diffusion_mode {
  * @brief The relaxation time mode
  */
 enum chemistry_relaxation_time_mode {
-  constant_mode,   /* Constant */
-  turbulent_mode,  /* Based on the gas turbulences: tau \propto 1/ ||Shear|| */
+  constant_mode,  /* Constant */
+  turbulent_mode, /* Based on the gas turbulences: tau \propto 1/ ||Shear|| */
 };
 
 /**

@@ -122,9 +122,9 @@ chemistry_get_physical_shear_tensor(const struct part* restrict p,
   /* The trace encode volume changes (compression and expansion). We do not
      consider these are turbulences so we remove them. */
   const double trace = S[0][0] + S[1][1] + S[2][2];
-  S[0][0] -= trace/3.0;
-  S[1][1] -= trace/3.0;
-  S[2][2] -= trace/3.0;
+  S[0][0] -= trace / 3.0;
+  S[1][1] -= trace / 3.0;
+  S[2][2] -= trace / 3.0;
 }
 
 /**
@@ -348,7 +348,6 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
   dvz[1] = p->chemistry_data.gradients.v[2][1];
   dvz[2] = p->chemistry_data.gradients.v[2][2];
 }
-
 
 /**
  * @brief Get the physical diffusion speed.

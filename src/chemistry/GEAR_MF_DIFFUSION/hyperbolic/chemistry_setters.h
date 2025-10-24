@@ -35,9 +35,8 @@
  * @param dFz gradient of the z direction flux component
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_flux_gradients(struct part *restrict p,
-				  int metal, float dFx[3], float dFy[3],
-				  float dFz[3]) {
+chemistry_part_update_flux_gradients(struct part *restrict p, int metal,
+                                     float dFx[3], float dFy[3], float dFz[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 

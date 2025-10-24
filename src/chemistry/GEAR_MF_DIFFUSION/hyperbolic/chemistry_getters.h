@@ -60,7 +60,8 @@ chemistry_get_physical_hyperbolic_soundspeed(
     const double delta_x = kernel_gamma * p->h;
     const double C_diff = chem_data->diffusion_coefficient;
     const double alpha = chem_data->tau;
-    const double c_hyp = sqrt(C_diff/alpha) * delta_x * chemistry_get_matrix_norm(S);
+    const double c_hyp =
+        sqrt(C_diff / alpha) * delta_x * chemistry_get_matrix_norm(S);
     return c_hyp;
   }
 }
@@ -87,7 +88,7 @@ chemistry_compute_physical_tau(const struct part* restrict p,
     chemistry_get_physical_shear_tensor(p, cosmo, S);
     const double S_norm_inv = 1.0 / chemistry_get_matrix_norm(S);
 
-    return chem_data->tau*S_norm_inv;
+    return chem_data->tau * S_norm_inv;
   }
 }
 

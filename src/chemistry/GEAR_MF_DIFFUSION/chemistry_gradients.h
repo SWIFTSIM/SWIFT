@@ -20,16 +20,17 @@
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_GRADIENTS_H
 
 #include "chemistry_getters.h"
+#include "chemistry_gradients_extrapolate.h"
 #include "chemistry_setters.h"
 #include "chemistry_slope_limiters_cell.h"
 #include "chemistry_slope_limiters_face.h"
 #include "chemistry_unphysical.h"
-#include "chemistry_gradients_extrapolate.h"
 #include "kernel_hydro.h"
 
 /**
  * @file src/chemistry/GEAR_MFM_diffusion/chemistry_gradients.h
- * @brief Main header file for the GEAR MF diffusion scheme gradient computations.
+ * @brief Main header file for the GEAR MF diffusion scheme gradient
+ * computations.
  */
 
 /**
@@ -139,7 +140,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dU_i[2] = dZ * psii_tilde[2];
 
     chemistry_part_update_metal_mass_fraction_gradients(pi, g, dU_i);
-    
+
     /* Now do the gradients of pj */
     double dU_j[3];
 
@@ -151,14 +152,14 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
 
     chemistry_part_update_metal_mass_fraction_gradients(pj, g, dU_j);
 
-    // TODO: move this to a function inside hyperbolic/gradients    
+    // TODO: move this to a function inside hyperbolic/gradients
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     const float dF_diff[3] = {
         chi->hyperbolic_flux.dF_diff_i[0] - chj->hyperbolic_flux.dF_diff_j[0],
         chi->hyperbolic_flux.dF_diff_i[1] - chj->hyperbolic_flux.dF_diff_j[1],
         chi->hyperbolic_flux.dF_diff_i[2] - chj->hyperbolic_flux.dF_diff_j[2]};
 
-    /* Do the gradients of pi */    
+    /* Do the gradients of pi */
     double dFx_i[3], dFy_i[3], dFz_i[3];
 
     dFx_i[0] = dF_diff[0] * psii_tilde[0];
@@ -172,7 +173,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dFz_i[2] = dF_diff[2] * psii_tilde[2];
     chemistry_part_update_flux_gradients(pi, g, dFx_i, dFy_i, dFz_i);
 
-    /* Now do the gradients of pj */    
+    /* Now do the gradients of pj */
     double dFx_j[3], dFy_j[3], dFz_j[3];
 
     dFx_j[0] = dF_diff[0] * psii_tilde[0];
@@ -353,7 +354,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
         chi->hyperbolic_flux.dF_diff_i[1] - chj->hyperbolic_flux.dF_diff_j[1],
         chi->hyperbolic_flux.dF_diff_i[2] - chj->hyperbolic_flux.dF_diff_j[2]};
 
-    /* Do the gradients of pi */    
+    /* Do the gradients of pi */
     double dFx_i[3], dFy_i[3], dFz_i[3];
 
     dFx_i[0] = dF_diff[0] * psii_tilde[0];
@@ -366,7 +367,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
     dFz_i[1] = dF_diff[2] * psii_tilde[1];
     dFz_i[2] = dF_diff[2] * psii_tilde[2];
     chemistry_part_update_flux_gradients(pi, g, dFx_i, dFy_i, dFz_i);
-#endif    
+#endif
   }
 
   /*****************************************/
