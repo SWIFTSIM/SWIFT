@@ -431,6 +431,12 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
     /* Get the appropriate comparison top-level cell */
     if (ci->type == cell_type_zoom && top_j->type == cell_type_zoom) {
       compare_top = ci->top;
+      message(
+          "Got two zoom cells in long range mesh interaction count! (top "
+          "cells: %s/%s<->%s/%s)",
+          cellID_names[compare_top->type],
+          subcellID_names[compare_top->subtype], cellID_names[top_j->type],
+          subcellID_names[top_j->subtype]);
     } else {
       compare_top = top;
     }
