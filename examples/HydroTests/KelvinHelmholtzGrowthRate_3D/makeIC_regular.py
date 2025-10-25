@@ -28,18 +28,22 @@ gamma = 5.0 / 3.0  # Gas adiabatic index
 P0 = 2.5  # Pressure
 rho0 = 1.0  # Density
 d = 0.0317  # Thickness of the transition layer
-B = 0.0005  # Amplitude of the seed velocity
-N1D = 64  # Number of particles in one dimension
+B = 0.001  # Amplitude of the seed velocity
+#N1D = 64  # Number of particles in one dimension
+N1D = 128  # Number of particles in one dimension
+N1Dz = 24  # Number of particles in one dimension
 
 fileOutputName = "kelvinHelmholtzGrowthRate.hdf5"
 
 # ---------------------------------------------------
 
 N = N1D ** 3
+N = N1D*N1D*N1Dz
 x = np.linspace(0.0, 1.0, N1D + 1)
 x = 0.5 * (x[1:] + x[:-1])
 y = x
-z = x
+z = np.linspace(0.0, 1.0/N1D*N1Dz, N1Dz + 1)
+z = 0.5 * (z[1:] + z[:-1])
 xx, yy, zz = np.meshgrid(x, y, z)
 pos = np.zeros((N, 3))
 pos[:, 0] = xx.reshape((N))
@@ -80,7 +84,7 @@ fileOutput = h5py.File(fileOutputName, "w")
 
 # Header
 grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [1.0, 1.0, 1.0]
+grp.attrs["BoxSize"] = [1.0, 1.0, 1.0*N1Dz/N1D]
 grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]

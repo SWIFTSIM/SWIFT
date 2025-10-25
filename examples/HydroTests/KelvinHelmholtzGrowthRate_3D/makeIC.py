@@ -28,7 +28,7 @@ gamma = 5.0 / 3.0  # Gas adiabatic index
 P0 = 2.5  # Pressure
 rho0 = 1.0  # Density
 d = 0.0317  # Thickness of the transition layer
-B = 0.0005  # Amplitude of the seed velocity
+B = 0.0015  # Amplitude of the seed velocity
 
 fileOutputName = "kelvinHelmholtzGrowthRate.hdf5"
 
