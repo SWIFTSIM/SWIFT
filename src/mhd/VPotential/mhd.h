@@ -262,15 +262,15 @@ __attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
   const float afac2 = pow(c->a, (c->a_factor_sound_speed + 1.f));
 
   /* Hyperbolic term */
-  const float Source_Term = 2.f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
+  const float Source_Term = 1.f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
   /* Parabolic evolution term */
-  const float Damping_Term = 4.f * afac2 * v_sig * Gauge / p->h;
+  const float Damping_Term = 1.f * afac2 * v_sig * Gauge / p->h;
   /* Density change term */
   const float DivV_Term = hydro_get_div_v(p) * Gauge;
   /* Cosmological term */
   const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * Gauge;
 
-  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 0. * c->a * c->a;
+  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 0.f * c->a * c->a;
 }
 
 /**
@@ -285,8 +285,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
 __attribute__((always_inline)) INLINE static void mhd_init_part(
     struct part *p) {
 
-  p->mhd_data.divA = 0.f;
-  for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = 0.f;
+  //p->mhd_data.divA = 0.f;
+  //for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = 0.f;
 }
 
 /**
@@ -304,13 +304,13 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_density(
     struct part *p, const struct cosmology *cosmo) {
-
-  const float h_inv_dim_plus_one =
-      pow_dimension_plus_one(1.f / p->h); /*1/h^(d+1) */
-  const float rho_inv = 1.f / p->rho;
-  p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
-  for (int i = 0; i < 3; i++)
-    p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv;
+//
+//  const float h_inv_dim_plus_one =
+//      pow_dimension_plus_one(1.f / p->h); /*1/h^(d+1) */
+//  const float rho_inv = 1.f / p->rho;
+//  p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
+//  for (int i = 0; i < 3; i++)
+//    p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv;
 }
 
 /**
@@ -462,6 +462,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   p->mhd_data.BPred[0] = p->mhd_data.force.Mat_bz[1] - p->mhd_data.force.Mat_by[2];
   p->mhd_data.BPred[1] = p->mhd_data.force.Mat_bx[2] - p->mhd_data.force.Mat_bz[0];
   p->mhd_data.BPred[2] = p->mhd_data.force.Mat_by[0] - p->mhd_data.force.Mat_bx[1];
+  p->mhd_data.divA = p->mhd_data.force.Mat_bx[0] + p->mhd_data.force.Mat_by[1] + p->mhd_data.force.Mat_bz[2];
   
   get_sym_matrix_from_matrix(&p->mhd_data.force.c_matrix, c_matrix_temp);
 }
