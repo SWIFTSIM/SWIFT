@@ -431,10 +431,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
                                 p->mhd_data.grad.Mat_bz[2]};
 
   p->mhd_data.force.Mat_bx[0] = c_matrix_temp[0][0] * gradient_bx[0] +
-                            c_matrix_temp[0][1] * gradient_bx[1] +
-                            c_matrix_temp[0][2] * gradient_bx[2];
+                                c_matrix_temp[0][1] * gradient_bx[1] +
+                                c_matrix_temp[0][2] * gradient_bx[2];
   p->mhd_data.force.Mat_bx[1] = c_matrix_temp[1][0] * gradient_bx[0] +
-                            c_matrix_temp[1][1] * gradient_bx[1] +
+                                c_matrix_temp[1][1] * gradient_bx[1] +
                             c_matrix_temp[1][2] * gradient_bx[2];
   p->mhd_data.force.Mat_bx[2] = c_matrix_temp[2][0] * gradient_bx[0] +
                             c_matrix_temp[2][1] * gradient_bx[1] +
@@ -457,11 +457,13 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
                             c_matrix_temp[1][1] * gradient_bz[1] +
                             c_matrix_temp[1][2] * gradient_bz[2];
   p->mhd_data.force.Mat_bz[2] = c_matrix_temp[2][0] * gradient_bz[0] +
-                            c_matrix_temp[2][1] * gradient_bz[1] +
-                            c_matrix_temp[2][2] * gradient_bz[2];
+                                c_matrix_temp[2][1] * gradient_bz[1] +
+                                c_matrix_temp[2][2] * gradient_bz[2];
   p->mhd_data.BPred[0] = p->mhd_data.force.Mat_bz[1] - p->mhd_data.force.Mat_by[2];
   p->mhd_data.BPred[1] = p->mhd_data.force.Mat_bx[2] - p->mhd_data.force.Mat_bz[0];
   p->mhd_data.BPred[2] = p->mhd_data.force.Mat_by[0] - p->mhd_data.force.Mat_bx[1];
+  
+  get_sym_matrix_from_matrix(&p->mhd_data.force.c_matrix, c_matrix_temp);
 }
 
 /**
@@ -526,8 +528,10 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 
   const float alpha_AR_max = 1.0;
 
-  p->mhd_data.alpha_AR =
-      normB ? fminf(alpha_AR_max, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+  p->mhd_data.alpha_AR = 
+  	normB ?  fminf(alpha_AR_max, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+
+  
 }
 
 /**
