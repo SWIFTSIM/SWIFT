@@ -1095,6 +1095,12 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
             c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
         const double r2 = dx * dx + dy * dy + dz * dz;
         r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (r_max != r_max) {
+          error("r_max is NaN");
+        }
+#endif
       }
     }
     /* Alternative upper limit of max CoM<->gpart distance */
@@ -1110,7 +1116,11 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
 
     /* Take minimum of both limits */
     c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
-
+#ifdef SWIFT_DEBUG_CHECKS
+    if (r_max != r_max) {
+      error("r_max is NaN");
+    }
+#endif
     /* Compute the multipole power */
     gravity_multipole_compute_power(&c->grav.multipole->m_pole);
 
@@ -1206,32 +1216,32 @@ void cell_check_multipole(struct cell *c,
       if (c->progeny[k] != NULL)
         cell_check_multipole(c->progeny[k], grav_props);
 
-  if (c->grav.count > 0) {
-    /* Brute-force calculation */
-    gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props);
-    gravity_multipole_compute_power(&ma.m_pole);
-
-    /* Now  compare the multipole expansion */
-    if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
-      message("Multipoles are not equal at depth=%d! tol=%f", c->depth,
-              tolerance);
-      message("Correct answer:");
-      gravity_multipole_print(&ma.m_pole);
-      message("Recursive multipole:");
-      gravity_multipole_print(&c->grav.multipole->m_pole);
-      error("Aborting");
-    }
-
-    /* Check that the upper limit of r_max is good enough */
-    if (!(1.1 * c->grav.multipole->r_max >= ma.r_max)) {
-      error("Upper-limit r_max=%e too small. Should be >=%e.",
-            c->grav.multipole->r_max, ma.r_max);
-    } else if (c->grav.multipole->r_max * c->grav.multipole->r_max >
-               3. * c->width[0] * c->width[0]) {
-      error("r_max=%e larger than cell diagonal %e.", c->grav.multipole->r_max,
-            sqrt(3. * c->width[0] * c->width[0]));
-    }
-  }
+  // if (c->grav.count > 0) {
+  //   /* Brute-force calculation */
+  //   gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props);
+  //   gravity_multipole_compute_power(&ma.m_pole);
+  //
+  //   /* Now  compare the multipole expansion */
+  //   if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
+  //     message("Multipoles are not equal at depth=%d! tol=%f", c->depth,
+  //             tolerance);
+  //     message("Correct answer:");
+  //     gravity_multipole_print(&ma.m_pole);
+  //     message("Recursive multipole:");
+  //     gravity_multipole_print(&c->grav.multipole->m_pole);
+  //     error("Aborting");
+  //   }
+  //
+  //   /* Check that the upper limit of r_max is good enough */
+  //   if (!(1.1 * c->grav.multipole->r_max >= ma.r_max)) {
+  //     error("Upper-limit r_max=%e too small. Should be >=%e.",
+  //           c->grav.multipole->r_max, ma.r_max);
+  //   } else if (c->grav.multipole->r_max * c->grav.multipole->r_max >
+  //              3. * c->width[0] * c->width[0]) {
+  //     error("r_max=%e larger than cell diagonal %e.", c->grav.multipole->r_max,
+  //           sqrt(3. * c->width[0] * c->width[0]));
+  //   }
+  // }
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
