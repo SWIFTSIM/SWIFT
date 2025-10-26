@@ -57,55 +57,62 @@ struct mhd_part_data {
   /* VP evolution */
   float dAdt[3];
 
+  /* Artificial resistivity gradient based switch */
+  float alpha_AR;
+
   /* mute variable */
   float Q0;
+
   /* Resistive Eta */
   float resistive_eta;
+
   /* SPH <1> error */
   float mean_SPH_err;
+  
   /* SPH <grad1> error */
   float mean_grad_SPH_err[3];
+  
   /* Magnetic force */
   float tot_mag_F[3];
 
   /* A advection source */
   float Adv_A_source[3];
+
   /* B total diffusion source */
   float Diff_A_source[3];
 
   /* Laplacian A */
   float Delta_A[3];
 
-    struct {
+  struct {
 
     /*! The inverse of 'correction matrix' (e.q. 6) - It's symmetric */
     struct sym_matrix c_matrix_inv;
 
-    /*! Gradient of the x-component of the Bfield */
-    float gradient_bx[3];
+    /*! Gradient of the x-component of the Afield means Bfield*/
+    float Mat_bx[3];
 
-    /*! Gradient of the y-component of the Bfield */
-    float gradient_by[3];
+    /*! Gradient of the y-component of the Afield means Bfield*/
+    float Mat_by[3];
 
-    /*! Gradient of the z-component of the Bfield */
-    float gradient_bz[3];
+    /*! Gradient of the z-component of the Afield means Bfield*/
+    float Mat_bz[3];
 
-
-  } gradient;
+  } grad;
 
   struct {
 
     /*! The 'correction matrix' (e.q. 6) - It's symmetric */
     struct sym_matrix c_matrix;
+    
+    /*! Gradient of the x-component of the Afield means Bfield*/
+    float Mat_bx[3];
 
-    /*! Gradient of the x-component of the Bfield */
-    float gradient_bx[3];
+    /*! Gradient of the y-component of the Afield means Bfield*/
+    float Mat_by[3];
 
-    /*! Gradient of the y-component of the Bfield */
-    float gradient_by[3];
-
-    /*! Gradient of the z-component of the Bfield */
-    float gradient_bz[3];
+    /*! Gradient of the z-component of the Afield means Bfield*/
+    float Mat_bz[3];
 
   } force;
 };

@@ -270,7 +270,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
   /* Cosmological term */
   const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * Gauge;
 
-  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * c->a * c->a;
+  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 0. * c->a * c->a;
 }
 
 /**
@@ -343,8 +343,13 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
 __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     struct part *p) {
 
+  zero_sym_matrix(&p->mhd_data.grad.c_matrix_inv);
+  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bx[i] = 0.f;
+  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_by[i] = 0.f;
+  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bz[i] = 0.f;
   /* Div B*/
   p->mhd_data.divB = 0.f;
+  p->mhd_data.divA = 0.f;
   /* Curl B*/
   for (int k = 0; k < 3; k++) p->mhd_data.curl_B[k] = 0.f;
 
@@ -378,17 +383,85 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     struct part *p) {
 
   // Self Contribution
-  for (int i = 0; i < 3; i++)
-    p->mhd_data.BSmooth[i] += p->mass * kernel_root * p->mhd_data.BPred[i];
+  //for (int i = 0; i < 3; i++)
+  //  p->mhd_data.BSmooth[i] += p->mass * kernel_root * p->mhd_data.BPred[i];
   p->mhd_data.Q0 += p->mass * kernel_root;
 
+//  for (int i = 0; i < 3; i++)
+//    p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
   for (int i = 0; i < 3; i++)
-    p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
+   p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i];
 
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
   /* Finish SPH_1 calculation*/
   p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho;
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Finish the construction of the inverse of the c-matrix by
+   * multiplying in the factors of h coming from W */
+  for (int i = 0; i < 6; ++i) {
+    p->mhd_data.grad.c_matrix_inv.elements[i] *= h_inv_dim;
+  }
+  /* Finish the construction of the inverse of the velocity gradient
+   * multiplying in the factors of h coming from W */
+  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bx[i] *= h_inv_dim;
+  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_by[i] *= h_inv_dim;
+  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bz[i] *= h_inv_dim;
+  /* Invert the c-matrix */
+  float c_matrix_temp[3][3];
+  get_matrix_from_sym_matrix(c_matrix_temp, &p->mhd_data.grad.c_matrix_inv);
+  int res = invert_dimension_by_dimension_matrix(c_matrix_temp);
+  if (res) {
+    sym_matrix_print(&p->mhd_data.grad.c_matrix_inv);
+    error("Error inverting matrix");
+  }
+  /* Finish computation of velocity gradient (eq. 18) */
+  const float gradient_bx[3] = {p->mhd_data.grad.Mat_bx[0],
+                                p->mhd_data.grad.Mat_bx[1],
+                                p->mhd_data.grad.Mat_bx[2]};
+  const float gradient_by[3] = {p->mhd_data.grad.Mat_by[0],
+                                p->mhd_data.grad.Mat_by[1],
+                                p->mhd_data.grad.Mat_by[2]};
+  const float gradient_bz[3] = {p->mhd_data.grad.Mat_bz[0],
+                                p->mhd_data.grad.Mat_bz[1],
+                                p->mhd_data.grad.Mat_bz[2]};
+
+  p->mhd_data.force.Mat_bx[0] = c_matrix_temp[0][0] * gradient_bx[0] +
+                            c_matrix_temp[0][1] * gradient_bx[1] +
+                            c_matrix_temp[0][2] * gradient_bx[2];
+  p->mhd_data.force.Mat_bx[1] = c_matrix_temp[1][0] * gradient_bx[0] +
+                            c_matrix_temp[1][1] * gradient_bx[1] +
+                            c_matrix_temp[1][2] * gradient_bx[2];
+  p->mhd_data.force.Mat_bx[2] = c_matrix_temp[2][0] * gradient_bx[0] +
+                            c_matrix_temp[2][1] * gradient_bx[1] +
+                            c_matrix_temp[2][2] * gradient_bx[2];
+
+  p->mhd_data.force.Mat_by[0] = c_matrix_temp[0][0] * gradient_by[0] +
+                            c_matrix_temp[0][1] * gradient_by[1] +
+                            c_matrix_temp[0][2] * gradient_by[2];
+  p->mhd_data.force.Mat_by[1] = c_matrix_temp[1][0] * gradient_by[0] +
+                            c_matrix_temp[1][1] * gradient_by[1] +
+                            c_matrix_temp[1][2] * gradient_by[2];
+  p->mhd_data.force.Mat_by[2] = c_matrix_temp[2][0] * gradient_by[0] +
+                            c_matrix_temp[2][1] * gradient_by[1] +
+                            c_matrix_temp[2][2] * gradient_by[2];
+
+  p->mhd_data.force.Mat_bz[0] = c_matrix_temp[0][0] * gradient_bz[0] +
+                            c_matrix_temp[0][1] * gradient_bz[1] +
+                            c_matrix_temp[0][2] * gradient_bz[2];
+  p->mhd_data.force.Mat_bz[1] = c_matrix_temp[1][0] * gradient_bz[0] +
+                            c_matrix_temp[1][1] * gradient_bz[1] +
+                            c_matrix_temp[1][2] * gradient_bz[2];
+  p->mhd_data.force.Mat_bz[2] = c_matrix_temp[2][0] * gradient_bz[0] +
+                            c_matrix_temp[2][1] * gradient_bz[1] +
+                            c_matrix_temp[2][2] * gradient_bz[2];
+  p->mhd_data.BPred[0] = p->mhd_data.force.Mat_bz[1] - p->mhd_data.force.Mat_by[2];
+  p->mhd_data.BPred[1] = p->mhd_data.force.Mat_bx[2] - p->mhd_data.force.Mat_bz[0];
+  p->mhd_data.BPred[2] = p->mhd_data.force.Mat_by[0] - p->mhd_data.force.Mat_bx[1];
 }
 
 /**
@@ -433,6 +506,15 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     const struct hydro_props *hydro_props, const float dt_alpha,
     const float mu_0) {
 
+  const float h = p->h;
+  float B[3];
+  B[0] = p->mhd_data.BPred[0];
+  B[1] = p->mhd_data.BPred[1];
+  B[2] = p->mhd_data.BPred[2];
+
+  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+  const float normB = sqrtf(B2);
+
   float grad_B_mean_square = 0.0f;
 
   for (int i = 0; i < 3; i++) {
@@ -441,6 +523,11 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
           p->mhd_data.grad_B_tensor[i][j] * p->mhd_data.grad_B_tensor[i][j];
     }
   }
+
+  const float alpha_AR_max = 1.0;
+
+  p->mhd_data.alpha_AR =
+      normB ? fminf(alpha_AR_max, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
 }
 
 /**

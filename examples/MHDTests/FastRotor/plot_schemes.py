@@ -49,26 +49,26 @@ for ii in range(nini, nfin):
 
     mhdflavour = data.metadata.hydro_scheme["MHD Flavour"]
     mhd_scheme = data.metadata.hydro_scheme["MHD Scheme"]
-    mhdeta = data.metadata.hydro_scheme["Resistive Eta"]
+    mhdeta = data.metadata.hydro_scheme["Resistive Eta"][0]
     git = data.metadata.code["Git Revision"]
     gitBranch = data.metadata.code["Git Branch"]
     scheme = data.metadata.hydro_scheme["Scheme"]
     kernel = data.metadata.hydro_scheme["Kernel function"]
-    neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"]
+    neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"][0]
 
     try:
-        dedhyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"]
-        dedpar = data.metadata.hydro_scheme["Dedner Parabolic Constant"]
+        dedhyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"][0]
+        dedpar = data.metadata.hydro_scheme["Dedner Parabolic Constant"][0]
     except:
         dedhyp = 0.0
         dedpar = 0.0
 
     try:
-        deddivV = data.metadata.hydro_scheme["Dedner Hyperbolic div(v) Constant"]
+        deddivV = data.metadata.hydro_scheme["Dedner Hyperbolic div(v) Constant"][0]
         tensile = data.metadata.hydro_scheme[
             "MHD Tensile Instability Correction Prefactor"
-        ]
-        artdiff = data.metadata.hydro_scheme["Artificial Diffusion Constant"]
+        ][0]
+        artdiff = data.metadata.hydro_scheme["Artificial Diffusion Constant"][0]
     except:
         deddivV = 0.0
         artdiff = 0.0
