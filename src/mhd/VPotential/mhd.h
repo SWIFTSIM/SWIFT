@@ -262,15 +262,15 @@ __attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
   const float afac2 = pow(c->a, (c->a_factor_sound_speed + 1.f));
 
   /* Hyperbolic term */
-  const float Source_Term = 1.f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
+  const float Source_Term = 1.0f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
   /* Parabolic evolution term */
-  const float Damping_Term = 1.f * afac2 * v_sig * Gauge / p->h;
+  const float Damping_Term = 1.0f * afac2 * v_sig * Gauge / p->h;
   /* Density change term */
-  const float DivV_Term = hydro_get_div_v(p) * Gauge;
+  const float DivV_Term = 0.0 * hydro_get_div_v(p) * Gauge;
   /* Cosmological term */
   const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * Gauge;
 
-  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 0.f * c->a * c->a;
+  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 1.f * c->a * c->a;
 }
 
 /**
