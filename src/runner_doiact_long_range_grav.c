@@ -46,19 +46,19 @@
  * @param ci The #cell of interest.
  * @param top The top-level parent of the #cell of interest.
  */
-void runner_do_grav_long_range_uniform_non_periodic(struct runner *r,
-                                                    struct cell *ci,
-                                                    struct cell *top) {
+void runner_do_grav_long_range_uniform_non_periodic(struct runner* r,
+                                                    struct cell* ci,
+                                                    struct cell* top) {
 
-  struct engine *e = r->e;
-  struct space *s = e->s;
+  struct engine* e = r->e;
+  struct space* s = e->s;
 
-  /* Get the mutlipole of the cell we are interacting. */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
+  /* Get the multipole of the cell we are interacting. */
+  struct gravity_tensors* const multi_i = ci->grav.multipole;
 
   /* Recover the list of top-level cells */
-  struct cell *cells = e->s->cells_top;
-  int *cells_with_particles = e->s->cells_with_particles_top;
+  struct cell* cells = e->s->cells_top;
+  int* cells_with_particles = e->s->cells_with_particles_top;
   const int nr_cells_with_particles = e->s->nr_cells_with_particles;
 
   /* Loop over all the top-level cells and go for a M-M interaction if
@@ -66,8 +66,8 @@ void runner_do_grav_long_range_uniform_non_periodic(struct runner *r,
   for (int n = 0; n < nr_cells_with_particles; ++n) {
 
     /* Handle on the top-level cell and it's gravity business*/
-    struct cell *cj = &cells[cells_with_particles[n]];
-    struct gravity_tensors *const multi_j = cj->grav.multipole;
+    struct cell* cj = &cells[cells_with_particles[n]];
+    struct gravity_tensors* const multi_j = cj->grav.multipole;
 
     /* Avoid self contributions */
     if (top == cj) continue;
@@ -107,18 +107,18 @@ void runner_do_grav_long_range_uniform_non_periodic(struct runner *r,
  * @param ci The #cell of interest.
  * @param top The top-level parent of the #cell of interest.
  */
-void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
-                                                 struct cell *ci,
-                                                 struct cell *top) {
+void runner_do_grav_long_range_zoom_non_periodic(struct runner* r,
+                                                 struct cell* ci,
+                                                 struct cell* top) {
 
-  struct engine *e = r->e;
-  struct space *s = e->s;
+  struct engine* e = r->e;
+  struct space* s = e->s;
 
-  /* Get the mutlipole of the cell we are interacting. */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
+  /* Get the multipole of the cell we are interacting. */
+  struct gravity_tensors* const multi_i = ci->grav.multipole;
 
   /* Recover the list of top-level cells */
-  struct cell *bkg_cells = e->s->zoom_props->bkg_cells_top;
+  struct cell* bkg_cells = e->s->zoom_props->bkg_cells_top;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Define counters used to count gparts. */
@@ -131,8 +131,8 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   for (int cjd = 0; cjd < s->zoom_props->nr_bkg_cells; cjd++) {
 
     /* Handle on the top-level cell and it's gravity business*/
-    struct cell *cj = &bkg_cells[cjd];
-    struct gravity_tensors *const multi_j = cj->grav.multipole;
+    struct cell* cj = &bkg_cells[cjd];
+    struct gravity_tensors* const multi_j = cj->grav.multipole;
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
@@ -159,7 +159,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   } /* Loop over top-level cells */
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure we at leasted against all possible gparts. */
+  /* Ensure we at tested against all possible gparts. */
   if (tested_gparts != e->s->nr_gparts) {
     error(
         "Not all gparts were tested in long range gravity task! (tested: %ld, "
@@ -198,12 +198,12 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
  * @param ci The #cell of interest.
  * @param top The top-level parent of the #cell of interest.
  */
-void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
-                                             struct cell *top) {
+void runner_do_grav_long_range_zoom_periodic(struct runner* r, struct cell* ci,
+                                             struct cell* top) {
 
-  struct engine *e = r->e;
-  struct space *s = e->s;
-  struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
+  struct engine* e = r->e;
+  struct space* s = e->s;
+  struct cell* bkg_cells = s->zoom_props->bkg_cells_top;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
 
@@ -211,8 +211,8 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-  /* Get the mutlipole of the cell we are interacting. */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
+  /* Get the multipole of the cell we are interacting. */
+  struct gravity_tensors* const multi_i = ci->grav.multipole;
 
   /* Get the (i,j,k) location of the top-level cell in the grid. */
   int top_i = top->loc[0] * s->iwidth[0];
@@ -238,13 +238,13 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
         const int cell_index = cell_getid(s->cdim, iii, jjj, kkk);
 
         /* Handle on the top-level cell */
-        struct cell *cj = &bkg_cells[cell_index];
+        struct cell* cj = &bkg_cells[cell_index];
 
         /* Avoid self contributions  */
         if (top == cj) continue;
 
         /* Handle on the top-level cell's gravity business*/
-        const struct gravity_tensors *multi_j = cj->grav.multipole;
+        const struct gravity_tensors* multi_j = cj->grav.multipole;
 
         /* Skip empty cells */
         if (multi_j->m_pole.M_000 == 0.f) continue;
@@ -296,13 +296,13 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
  * @param ci The #cell of interest.
  * @param top The top-level parent of the #cell of interest.
  */
-void runner_do_grav_long_range_uniform_periodic(struct runner *r,
-                                                struct cell *ci,
-                                                struct cell *top) {
+void runner_do_grav_long_range_uniform_periodic(struct runner* r,
+                                                struct cell* ci,
+                                                struct cell* top) {
 
-  struct engine *e = r->e;
-  struct space *s = e->s;
-  struct cell *cells = s->cells_top;
+  struct engine* e = r->e;
+  struct space* s = e->s;
+  struct cell* cells = s->cells_top;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
 
@@ -310,8 +310,8 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-  /* Get the mutlipole of the cell we are interacting. */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
+  /* Get the multipole of the cell we are interacting. */
+  struct gravity_tensors* const multi_i = ci->grav.multipole;
 
   /* Get the (i,j,k) location of the top-level cell in the grid. */
   int top_i = top->loc[0] * s->iwidth[0];
@@ -337,13 +337,13 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
         const int cell_index = cell_getid(s->cdim, iii, jjj, kkk);
 
         /* Handle on the top-level cell */
-        struct cell *cj = &cells[cell_index];
+        struct cell* cj = &cells[cell_index];
 
         /* Avoid self contributions  */
         if (top == cj) continue;
 
         /* Handle on the top-level cell's gravity business*/
-        const struct gravity_tensors *multi_j = cj->grav.multipole;
+        const struct gravity_tensors* multi_j = cj->grav.multipole;
 
         /* Skip empty cells */
         if (multi_j->m_pole.M_000 == 0.f) continue;
@@ -391,14 +391,14 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
  * @param ci The #cell of interest.
  * @param top The current top-level cell.
  */
-void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
-                                         struct cell *top) {
+void runner_count_mesh_interactions_zoom(struct runner* r, struct cell* ci,
+                                         struct cell* top) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
-  struct engine *e = r->e;
-  struct space *s = e->s;
-  struct cell *cells = s->cells_top;
+  struct engine* e = r->e;
+  struct space* s = e->s;
+  struct cell* cells = s->cells_top;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
 
@@ -407,12 +407,12 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
   const double max_distance2 = max_distance * max_distance;
 
   /* Get the multipole of the cell we are interacting. */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
+  struct gravity_tensors* const multi_i = ci->grav.multipole;
 
   /* Define the cell we will use for comparisons, this is either going to be
    * the top-level cell or the top-level void parent depending on the cells
    * being considered. */
-  struct cell *compare_top = top;
+  struct cell* compare_top = top;
 
   /* Loop over all cells. */
   for (int n = 0; n < s->nr_cells; n++) {
@@ -422,11 +422,11 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
     if (cells[n].subtype == cell_subtype_void) continue;
 
     /* Handle on the top-level cell and it's gravity business*/
-    struct cell *cj = &cells[n];
-    struct gravity_tensors *const multi_j = cj->grav.multipole;
+    struct cell* cj = &cells[n];
+    struct gravity_tensors* const multi_j = cj->grav.multipole;
 
     /* Get the top level cell of the current cj */
-    struct cell *top_j = cj->top;
+    struct cell* top_j = cj->top;
 
     /* Get the appropriate comparison top-level cell */
     if (ci->type == cell_type_zoom && top_j->type == cell_type_zoom) {
@@ -479,14 +479,14 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
  * @param ci The #cell of interest.
  * @param top The current top-level cell.
  */
-void runner_count_mesh_interactions_uniform(struct runner *r, struct cell *ci,
-                                            struct cell *top) {
+void runner_count_mesh_interactions_uniform(struct runner* r, struct cell* ci,
+                                            struct cell* top) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
-  struct engine *e = r->e;
-  struct space *s = e->s;
-  struct cell *cells = s->cells_top;
+  struct engine* e = r->e;
+  struct space* s = e->s;
+  struct cell* cells = s->cells_top;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
 
@@ -495,14 +495,14 @@ void runner_count_mesh_interactions_uniform(struct runner *r, struct cell *ci,
   const double max_distance2 = max_distance * max_distance;
 
   /* Get the multipole of the cell we are interacting. */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
+  struct gravity_tensors* const multi_i = ci->grav.multipole;
 
   /* Loop over all cells. */
   for (int n = 0; n < s->nr_cells; n++) {
 
     /* Handle on the top-level cell and it's gravity business*/
-    struct cell *cj = &cells[n];
-    struct gravity_tensors *const multi_j = cj->grav.multipole;
+    struct cell* cj = &cells[n];
+    struct gravity_tensors* const multi_j = cj->grav.multipole;
 
     /* Avoid self contributions */
     if (top == cj) continue;
@@ -549,12 +549,12 @@ void runner_count_mesh_interactions_uniform(struct runner *r, struct cell *ci,
  * @param ci The #cell of interest.
  * @param timer Are we timing this ?
  */
-void runner_do_grav_long_range(struct runner *r, struct cell *ci,
+void runner_do_grav_long_range(struct runner* r, struct cell* ci,
                                const int timer) {
 
   TIMER_TIC;
 
-  struct space *s = r->e->s;
+  struct space* s = r->e->s;
 
   /* Is the space periodic? */
   const int periodic = s->periodic;
@@ -570,7 +570,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     cell_drift_multipole(ci, r->e);
 
   /* Find this cell's top-level (great-)parent */
-  struct cell *top = ci;
+  struct cell* top = ci;
   while (top->parent != NULL) top = top->parent;
 
   /* If we have a nested cell the true top level cell where we defined the
