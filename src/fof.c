@@ -4018,6 +4018,9 @@ void fof_free_arrays(struct fof_props *props) {
   swift_free("fof_group_index", props->final_group_index);
   swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
   swift_free("fof_group_radii", props->group_radii);
+  swift_free("fof_group_gas_mass", props->group_gas_mass);
+  swift_free("fof_group_stellar_mass", props->group_stellar_mass);
+  swift_free("fof_group_star_formation_rate", props->group_star_formation_rate);
   swift_free("fof_max_part_density", props->max_part_density);
   swift_free("fof_has_black_hole", props->has_black_hole);
   swift_free("fof_distance", props->distance_to_link);
@@ -4029,6 +4032,9 @@ void fof_free_arrays(struct fof_props *props) {
   props->final_group_index = NULL;
   props->group_centre_of_mass = NULL;
   props->group_radii = NULL;
+  props->group_gas_mass = NULL;
+  props->group_stellar_mass = NULL;
+  props->group_star_formation_rate = NULL;
   props->max_part_density = NULL;
   props->has_black_hole = NULL;
   props->group_size = NULL;
@@ -4040,10 +4046,6 @@ void fof_free_arrays(struct fof_props *props) {
   props->first_on_node = NULL;
 #endif
 
-  swift_free("fof_group_stellar_mass", props->group_stellar_mass);
-  swift_free("fof_group_star_formation_rate", props->group_star_formation_rate);
-  props->group_stellar_mass = NULL;
-  props->group_star_formation_rate = NULL;
 }
 
 void fof_struct_dump(const struct fof_props *props, FILE *stream) {
