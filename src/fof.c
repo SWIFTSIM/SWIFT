@@ -4045,7 +4045,6 @@ void fof_free_arrays(struct fof_props *props) {
   props->num_on_node = NULL;
   props->first_on_node = NULL;
 #endif
-
 }
 
 void fof_struct_dump(const struct fof_props *props, FILE *stream) {
