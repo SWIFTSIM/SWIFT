@@ -275,6 +275,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   /* Vect Potential difference */
   const float Aij[3] = {pj->mhd_data.APred[0] - pi->mhd_data.APred[0], pj->mhd_data.APred[1] - pi->mhd_data.APred[1],
                         pj->mhd_data.APred[2] - pi->mhd_data.APred[2]};
+  const float DAi[3] = 
+  {pi->mhd_data.APred[0] * (pj->v[0] - pi->v[0]),
+   pi->mhd_data.APred[1] * (pj->v[1] - pi->v[2]),
+   pi->mhd_data.APred[2] * (pj->v[2] - pi->v[2])};
+  const float DAj[3] = 
+  {pj->mhd_data.APred[0] * (pj->v[0] - pi->v[0]),
+   pj->mhd_data.APred[1] * (pj->v[1] - pi->v[2]),
+   pj->mhd_data.APred[2] * (pj->v[2] - pi->v[2])};
 
   const float common_term_i = wi * mj / rhoj;
 
@@ -299,6 +307,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   pi->mhd_data.grad.Mat_bz[0] -= common_term_i * Aij[2] * dx[0];
   pi->mhd_data.grad.Mat_bz[1] -= common_term_i * Aij[2] * dx[1];
   pi->mhd_data.grad.Mat_bz[2] -= common_term_i * Aij[2] * dx[2];
+  
+  /* Gradient of v (recall dx is pi - pj), eq. 18 */
+  pi->mhd_data.grad.Mat_dax[0] -= common_term_i * DAi[0] * dx[0];
+  pi->mhd_data.grad.Mat_dax[1] -= common_term_i * DAi[0] * dx[1];
+  pi->mhd_data.grad.Mat_dax[2] -= common_term_i * DAi[0] * dx[2];
+
+  pi->mhd_data.grad.Mat_day[0] -= common_term_i * DAi[1] * dx[0];
+  pi->mhd_data.grad.Mat_day[1] -= common_term_i * DAi[1] * dx[1];
+  pi->mhd_data.grad.Mat_day[2] -= common_term_i * DAi[1] * dx[2];
+
+  pi->mhd_data.grad.Mat_daz[0] -= common_term_i * DAi[2] * dx[0];
+  pi->mhd_data.grad.Mat_daz[1] -= common_term_i * DAi[2] * dx[1];
+  pi->mhd_data.grad.Mat_daz[2] -= common_term_i * DAi[2] * dx[2];
 
   const float common_term_j = wj * mi / rhoi;
 
@@ -323,6 +344,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   pj->mhd_data.grad.Mat_bz[0] -= common_term_j * Aij[2] * dx[0];
   pj->mhd_data.grad.Mat_bz[1] -= common_term_j * Aij[2] * dx[1];
   pj->mhd_data.grad.Mat_bz[2] -= common_term_j * Aij[2] * dx[2];
+  
+  /* Gradient of v (recall dx is pi - pj), eq. 18 */
+  pj->mhd_data.grad.Mat_dax[0] -= common_term_j * DAj[0] * dx[0];
+  pj->mhd_data.grad.Mat_dax[1] -= common_term_j * DAj[0] * dx[1];
+  pj->mhd_data.grad.Mat_dax[2] -= common_term_j * DAj[0] * dx[2];
+
+  pj->mhd_data.grad.Mat_day[0] -= common_term_j * DAj[1] * dx[0];
+  pj->mhd_data.grad.Mat_day[1] -= common_term_j * DAj[1] * dx[1];
+  pj->mhd_data.grad.Mat_day[2] -= common_term_j * DAj[1] * dx[2];
+
+  pj->mhd_data.grad.Mat_daz[0] -= common_term_j * DAj[2] * dx[0];
+  pj->mhd_data.grad.Mat_daz[1] -= common_term_j * DAj[2] * dx[1];
+  pj->mhd_data.grad.Mat_daz[2] -= common_term_j * DAj[2] * dx[2];
 }
 
 /**
@@ -455,6 +489,10 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Vect Potential difference */
   const float Aij[3] = {pj->mhd_data.APred[0] - pi->mhd_data.APred[0], pj->mhd_data.APred[1] - pi->mhd_data.APred[1],
                         pj->mhd_data.APred[2] - pi->mhd_data.APred[2]};
+  const float DAi[3] = 
+  {pi->mhd_data.APred[0] * (pj->v[0] - pi->v[0]),
+   pi->mhd_data.APred[1] * (pj->v[1] - pi->v[2]),
+   pi->mhd_data.APred[2] * (pj->v[2] - pi->v[2])};
 
   const float common_term = wi * mj / rhoj;
 
@@ -480,6 +518,18 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   pi->mhd_data.grad.Mat_bz[1] -= common_term * Aij[2] * dx[1];
   pi->mhd_data.grad.Mat_bz[2] -= common_term * Aij[2] * dx[2];
 
+  /* Gradient of v (recall dx is pi - pj), eq. 18 */
+  pi->mhd_data.grad.Mat_dax[0] -= common_term * DAi[0] * dx[0];
+  pi->mhd_data.grad.Mat_dax[1] -= common_term * DAi[0] * dx[1];
+  pi->mhd_data.grad.Mat_dax[2] -= common_term * DAi[0] * dx[2];
+
+  pi->mhd_data.grad.Mat_day[0] -= common_term * DAi[1] * dx[0];
+  pi->mhd_data.grad.Mat_day[1] -= common_term * DAi[1] * dx[1];
+  pi->mhd_data.grad.Mat_day[2] -= common_term * DAi[1] * dx[2];
+
+  pi->mhd_data.grad.Mat_daz[0] -= common_term * DAi[2] * dx[0];
+  pi->mhd_data.grad.Mat_daz[1] -= common_term * DAi[2] * dx[1];
+  pi->mhd_data.grad.Mat_daz[2] -= common_term * DAi[2] * dx[2];
 }
 
 /**
@@ -657,8 +707,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   float SAj = sourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
 
   for (int i = 0; i < 3; i++) {
-    pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
-    pj->mhd_data.dAdt[i] += mi * mag_VPIndj * SAj * dx[i];
+//    pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
+//    pj->mhd_data.dAdt[i] += mi * mag_VPIndj * SAj * dx[i];
    // pi->mhd_data.dAdt[i] += mj * SAi * G_ij[i] / rhoj *dx[i];
    // pj->mhd_data.dAdt[i] += mi * SAj * G_ij[i] / rhoi *dx[i];
   }
@@ -856,8 +906,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                          dA[2] * pi->v[2]);
 #endif
   float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  for (int i = 0; i < 3; i++)
-    pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
+  //for (int i = 0; i < 3; i++)
+  //  pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
   //  pi->mhd_data.dAdt[i] += mj * SAi * G_ij[i] / rhoj * dx[i];
   /// DISSSIPATION
   const float mag_Disi =

@@ -89,14 +89,14 @@ struct mhd_part_data {
     /*! The inverse of 'correction matrix' (e.q. 6) - It's symmetric */
     struct sym_matrix c_matrix_inv;
 
-    /*! Gradient of the x-component of the Afield means Bfield*/
+    /*! Gradient per component of the Afield means Bfield*/
     float Mat_bx[3];
-
-    /*! Gradient of the y-component of the Afield means Bfield*/
     float Mat_by[3];
-
-    /*! Gradient of the z-component of the Afield means Bfield*/
     float Mat_bz[3];
+    /*! Gradient per component of the dAdt*/
+    float Mat_dax[3];
+    float Mat_day[3];
+    float Mat_daz[3];
 
   } grad;
 
@@ -105,13 +105,9 @@ struct mhd_part_data {
     /*! The 'correction matrix' (e.q. 6) - It's symmetric */
     struct sym_matrix c_matrix;
     
-    /*! Gradient of the x-component of the Afield means Bfield*/
+    /*! Gradient per component of the Afield means Bfield*/
     float Mat_bx[3];
-
-    /*! Gradient of the y-component of the Afield means Bfield*/
     float Mat_by[3];
-
-    /*! Gradient of the z-component of the Afield means Bfield*/
     float Mat_bz[3];
 
   } force;

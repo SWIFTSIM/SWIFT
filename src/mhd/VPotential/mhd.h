@@ -347,6 +347,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bx[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_by[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bz[i] = 0.f;
+  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_dax[i] = 0.f;
+  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_day[i] = 0.f;
+  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_daz[i] = 0.f;
   /* Div B*/
   p->mhd_data.divB = 0.f;
   p->mhd_data.divA = 0.f;
@@ -420,49 +423,91 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     error("Error inverting matrix");
   }
   /* Finish computation of velocity gradient (eq. 18) */
-  const float gradient_bx[3] = {p->mhd_data.grad.Mat_bx[0],
+  const float g_bx[3] = {p->mhd_data.grad.Mat_bx[0],
                                 p->mhd_data.grad.Mat_bx[1],
                                 p->mhd_data.grad.Mat_bx[2]};
-  const float gradient_by[3] = {p->mhd_data.grad.Mat_by[0],
+  const float g_by[3] = {p->mhd_data.grad.Mat_by[0],
                                 p->mhd_data.grad.Mat_by[1],
                                 p->mhd_data.grad.Mat_by[2]};
-  const float gradient_bz[3] = {p->mhd_data.grad.Mat_bz[0],
+  const float g_bz[3] = {p->mhd_data.grad.Mat_bz[0],
                                 p->mhd_data.grad.Mat_bz[1],
                                 p->mhd_data.grad.Mat_bz[2]};
+  const float g_dax[3] = {p->mhd_data.grad.Mat_dax[0],
+                                 p->mhd_data.grad.Mat_dax[1],
+                                 p->mhd_data.grad.Mat_dax[2]};
+  const float g_day[3] = {p->mhd_data.grad.Mat_day[0],
+                                 p->mhd_data.grad.Mat_day[1],
+                                 p->mhd_data.grad.Mat_day[2]};
+  const float g_daz[3] = {p->mhd_data.grad.Mat_daz[0],
+                                 p->mhd_data.grad.Mat_daz[1],
+                                 p->mhd_data.grad.Mat_daz[2]};
 
-  p->mhd_data.force.Mat_bx[0] = c_matrix_temp[0][0] * gradient_bx[0] +
-                                c_matrix_temp[0][1] * gradient_bx[1] +
-                                c_matrix_temp[0][2] * gradient_bx[2];
-  p->mhd_data.force.Mat_bx[1] = c_matrix_temp[1][0] * gradient_bx[0] +
-                                c_matrix_temp[1][1] * gradient_bx[1] +
-                            c_matrix_temp[1][2] * gradient_bx[2];
-  p->mhd_data.force.Mat_bx[2] = c_matrix_temp[2][0] * gradient_bx[0] +
-                            c_matrix_temp[2][1] * gradient_bx[1] +
-                            c_matrix_temp[2][2] * gradient_bx[2];
+  p->mhd_data.force.Mat_bx[0] = c_matrix_temp[0][0] * g_bx[0] +
+                                c_matrix_temp[0][1] * g_bx[1] +
+                                c_matrix_temp[0][2] * g_bx[2];
+  p->mhd_data.force.Mat_bx[1] = c_matrix_temp[1][0] * g_bx[0] +
+                                c_matrix_temp[1][1] * g_bx[1] +
+                                c_matrix_temp[1][2] * g_bx[2];
+  p->mhd_data.force.Mat_bx[2] = c_matrix_temp[2][0] * g_bx[0] +
+                                c_matrix_temp[2][1] * g_bx[1] +
+                                c_matrix_temp[2][2] * g_bx[2];
 
-  p->mhd_data.force.Mat_by[0] = c_matrix_temp[0][0] * gradient_by[0] +
-                            c_matrix_temp[0][1] * gradient_by[1] +
-                            c_matrix_temp[0][2] * gradient_by[2];
-  p->mhd_data.force.Mat_by[1] = c_matrix_temp[1][0] * gradient_by[0] +
-                            c_matrix_temp[1][1] * gradient_by[1] +
-                            c_matrix_temp[1][2] * gradient_by[2];
-  p->mhd_data.force.Mat_by[2] = c_matrix_temp[2][0] * gradient_by[0] +
-                            c_matrix_temp[2][1] * gradient_by[1] +
-                            c_matrix_temp[2][2] * gradient_by[2];
+  p->mhd_data.force.Mat_by[0] = c_matrix_temp[0][0] * g_by[0] + 
+  				c_matrix_temp[0][1] * g_by[1] + 
+				c_matrix_temp[0][2] * g_by[2];
+  p->mhd_data.force.Mat_by[1] = c_matrix_temp[1][0] * g_by[0] +
+                                c_matrix_temp[1][1] * g_by[1] +
+                                c_matrix_temp[1][2] * g_by[2];
+  p->mhd_data.force.Mat_by[2] = c_matrix_temp[2][0] * g_by[0] +
+                                c_matrix_temp[2][1] * g_by[1] +
+                                c_matrix_temp[2][2] * g_by[2];
 
-  p->mhd_data.force.Mat_bz[0] = c_matrix_temp[0][0] * gradient_bz[0] +
-                            c_matrix_temp[0][1] * gradient_bz[1] +
-                            c_matrix_temp[0][2] * gradient_bz[2];
-  p->mhd_data.force.Mat_bz[1] = c_matrix_temp[1][0] * gradient_bz[0] +
-                            c_matrix_temp[1][1] * gradient_bz[1] +
-                            c_matrix_temp[1][2] * gradient_bz[2];
-  p->mhd_data.force.Mat_bz[2] = c_matrix_temp[2][0] * gradient_bz[0] +
-                                c_matrix_temp[2][1] * gradient_bz[1] +
-                                c_matrix_temp[2][2] * gradient_bz[2];
+  p->mhd_data.force.Mat_bz[0] = c_matrix_temp[0][0] * g_bz[0] +
+                                c_matrix_temp[0][1] * g_bz[1] +
+                                c_matrix_temp[0][2] * g_bz[2];
+  p->mhd_data.force.Mat_bz[1] = c_matrix_temp[1][0] * g_bz[0] +
+                                c_matrix_temp[1][1] * g_bz[1] +
+                                c_matrix_temp[1][2] * g_bz[2];
+  p->mhd_data.force.Mat_bz[2] = c_matrix_temp[2][0] * g_bz[0] +
+                                c_matrix_temp[2][1] * g_bz[1] +
+                                c_matrix_temp[2][2] * g_bz[2];
+  
+  p->mhd_data.grad.Mat_dax[0] = c_matrix_temp[0][0] * g_dax[0] +
+                                c_matrix_temp[0][1] * g_dax[1] +
+                                c_matrix_temp[0][2] * g_dax[2];
+  p->mhd_data.grad.Mat_dax[1] = c_matrix_temp[1][0] * g_dax[0] +
+                                c_matrix_temp[1][1] * g_dax[1] +
+                                c_matrix_temp[1][2] * g_dax[2];
+  p->mhd_data.grad.Mat_dax[2] = c_matrix_temp[2][0] * g_dax[0] +
+                                c_matrix_temp[2][1] * g_dax[1] +
+                                c_matrix_temp[2][2] * g_dax[2];
+
+  p->mhd_data.grad.Mat_day[0] = c_matrix_temp[0][0] * g_day[0] + 
+  				c_matrix_temp[0][1] * g_day[1] + 
+				c_matrix_temp[0][2] * g_day[2];
+  p->mhd_data.grad.Mat_day[1] = c_matrix_temp[1][0] * g_day[0] +
+                                c_matrix_temp[1][1] * g_day[1] +
+                                c_matrix_temp[1][2] * g_day[2];
+  p->mhd_data.grad.Mat_day[2] = c_matrix_temp[2][0] * g_day[0] +
+                                c_matrix_temp[2][1] * g_day[1] +
+                                c_matrix_temp[2][2] * g_day[2];
+
+  p->mhd_data.grad.Mat_daz[0] = c_matrix_temp[0][0] * g_daz[0] +
+                                c_matrix_temp[0][1] * g_daz[1] +
+                                c_matrix_temp[0][2] * g_daz[2];
+  p->mhd_data.grad.Mat_daz[1] = c_matrix_temp[1][0] * g_daz[0] +
+                                c_matrix_temp[1][1] * g_daz[1] +
+                                c_matrix_temp[1][2] * g_daz[2];
+  p->mhd_data.grad.Mat_daz[2] = c_matrix_temp[2][0] * g_daz[0] +
+                                c_matrix_temp[2][1] * g_daz[1] +
+                                c_matrix_temp[2][2] * g_daz[2];
+
   p->mhd_data.BPred[0] = p->mhd_data.force.Mat_bz[1] - p->mhd_data.force.Mat_by[2];
   p->mhd_data.BPred[1] = p->mhd_data.force.Mat_bx[2] - p->mhd_data.force.Mat_bz[0];
   p->mhd_data.BPred[2] = p->mhd_data.force.Mat_by[0] - p->mhd_data.force.Mat_bx[1];
-  p->mhd_data.divA = p->mhd_data.force.Mat_bx[0] + p->mhd_data.force.Mat_by[1] + p->mhd_data.force.Mat_bz[2];
+  p->mhd_data.divA = p->mhd_data.force.Mat_bx[0] + 
+  		     p->mhd_data.force.Mat_by[1] + 
+		     p->mhd_data.force.Mat_bz[2];
   
   get_sym_matrix_from_matrix(&p->mhd_data.force.c_matrix, c_matrix_temp);
 }
@@ -549,6 +594,19 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   p->mhd_data.dAdt[0] = 0.0f;
   p->mhd_data.dAdt[1] = 0.0f;
   p->mhd_data.dAdt[2] = 0.0f;
+  /* Zeroes Induction equation */
+  p->mhd_data.dAdt[0] = 
+  p->mhd_data.grad.Mat_dax[0] + 
+  p->mhd_data.grad.Mat_day[0] + 
+  p->mhd_data.grad.Mat_daz[0] ;
+  p->mhd_data.dAdt[1] = 
+  p->mhd_data.grad.Mat_dax[1] + 
+  p->mhd_data.grad.Mat_day[1] + 
+  p->mhd_data.grad.Mat_daz[1] ;
+  p->mhd_data.dAdt[2] = 
+  p->mhd_data.grad.Mat_dax[2] + 
+  p->mhd_data.grad.Mat_day[2] + 
+  p->mhd_data.grad.Mat_daz[2] ;
 
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
