@@ -114,7 +114,9 @@ struct fof_props {
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
 
-  // TODO IFDEF
+  /*! Gas mass of the group a given gpart belongs to. */
+  float *group_gas_mass;
+
   /*! Stellar mass of the group a given gpart belongs to. */
   float *group_stellar_mass;
 
