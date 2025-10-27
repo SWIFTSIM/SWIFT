@@ -4040,7 +4040,6 @@ void fof_free_arrays(struct fof_props *props) {
   props->first_on_node = NULL;
 #endif
 
-// TODO ifdef
   swift_free("fof_group_stellar_mass", props->group_stellar_mass);
   swift_free("fof_group_star_formation_rate", props->group_star_formation_rate);
   props->group_stellar_mass = NULL;
