@@ -382,10 +382,10 @@ void runner_do_grav_long_range_uniform_periodic(struct runner* r,
 }
 
 /**
- * @brief Accumalate the number of particle mesh interactions for debugging
+ * @brief Accumulate the number of particle mesh interactions for debugging
  * purposes.
  *
- * This is the varaint used when running a zoom simulation.
+ * This is the variant used when running a zoom simulation.
  *
  * @param r The thread #runner.
  * @param ci The #cell of interest.
@@ -470,10 +470,10 @@ void runner_count_mesh_interactions_zoom(struct runner* r, struct cell* ci,
 }
 
 /**
- * @brief Accumalate the number of particle mesh interactions for debugging
+ * @brief Accumulate the number of particle mesh interactions for debugging
  * purposes.
  *
- * This is the varaint used when running a uniform box simulation.
+ * This is the variant used when running a uniform box simulation.
  *
  * @param r The thread #runner.
  * @param ci The #cell of interest.
