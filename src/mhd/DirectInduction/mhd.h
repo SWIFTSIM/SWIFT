@@ -329,9 +329,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     p->mhd_data.mean_grad_SPH_err[k] = 0.f;
   }
 
-  /* Set zero OW artificial resistivity*/
-  p->mhd_data.eta_OWAR = 0.0f; 
-
 }
 
 /**
@@ -353,45 +350,6 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   B[0] = p->mhd_data.B_over_rho[0] * rho;
   B[1] = p->mhd_data.B_over_rho[1] * rho;
   B[2] = p->mhd_data.B_over_rho[2] * rho;
-
-  /* Calculate OWAR */
- 
-  float OW;
-  OW = 1.0f;
-
-  float Abs_B;
-
-  Abs_B = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
-
-  float Adv_B_source[3];
-  float Delta_B[3];
-  float Adv_B_times_Delta_B = 0.0f;
-  float MaxDiff_B_source = 2.0f * Abs_B / (p->h*p->h*p->rho + FLT_MIN);
-
-  for (int k = 0; k < 3; k++) {
-    Adv_B_source[k] = p->mhd_data.AdvS_B_source[k];
-    Delta_B[k] = p->mhd_data.Delta_B[k]; 
-  }
-
-  const float Abs_Delta_B = sqrtf(Delta_B[0]*Delta_B[0]+Delta_B[1]*Delta_B[1]+Delta_B[2]*Delta_B[2]);
-  for (int k = 0; k < 3; k++) {
-    Delta_B[k] /= (Abs_Delta_B+FLT_MIN);
-  }
-
-  for (int k = 0; k < 3; k++) { 
-    Adv_B_times_Delta_B += Adv_B_source[k] * Delta_B[k];
-  }
-
-  p->mhd_data.eta_OWAR += fmaxf( - Adv_B_times_Delta_B, 0.0f ) / ( OW * MaxDiff_B_source + FLT_MIN); // * (p->mass * kernel_root) / p->rho;
-
-  //p->mhd_data.eta_OWAR *= pow_dimension(1.0f/p->h);
-
-  if (p->mhd_data.eta_OWAR<0.0f){
-    error(
-        "Error: incorrect OWAR "
-        );
-  }
-
 
   // Finish calculation by computing shear tensor
 
@@ -541,6 +499,11 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 
   p->mhd_data.alpha_AR =
       normB ? fminf(alpha_AR_max, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+
+  /* Set zero OW artificial resistivity*/
+  p->mhd_data.eta_OWAR = 0.0f; 
+
+
 }
 
 /**
@@ -667,6 +630,57 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] *= p->mass;
   }
+
+
+
+  const float rho = p->rho;
+  float B[3];
+  B[0] = p->mhd_data.B_over_rho[0] * rho;
+  B[1] = p->mhd_data.B_over_rho[1] * rho;
+  B[2] = p->mhd_data.B_over_rho[2] * rho;
+
+  /* OWAR action */
+ 
+  float OW;
+  OW = 1.0f;
+
+  float Abs_B;
+
+  Abs_B = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
+
+  float Adv_B_source[3];
+  float Delta_B[3];
+  float Adv_B_times_Delta_B = 0.0f;
+  float MaxDiff_B_source = 2.0f * Abs_B / (p->h*p->h*p->rho + FLT_MIN);
+
+  for (int k = 0; k < 3; k++) {
+    Adv_B_source[k] = p->mhd_data.AdvS_B_source[k];
+    Delta_B[k] = p->mhd_data.Delta_B[k]; 
+  }
+
+  const float Abs_Delta_B = sqrtf(Delta_B[0]*Delta_B[0]+Delta_B[1]*Delta_B[1]+Delta_B[2]*Delta_B[2]);
+  for (int k = 0; k < 3; k++) {
+    Delta_B[k] /= (Abs_Delta_B+FLT_MIN);
+  }
+
+  for (int k = 0; k < 3; k++) { 
+    Adv_B_times_Delta_B += Adv_B_source[k] * Delta_B[k];
+  }
+
+  p->mhd_data.eta_OWAR = fmaxf( - Adv_B_times_Delta_B, 0.0f ) / ( OW * MaxDiff_B_source + FLT_MIN); 
+
+  if (p->mhd_data.eta_OWAR<0.0f){
+    error(
+        "Error: incorrect OWAR "
+        );
+  }
+
+  // Resistivity action & save
+  for (int k = 0; k < 3; k++) {
+  p->mhd_data.B_over_rho_dt[k] += p->mhd_data.eta_OWAR * p->mhd_data.Delta_B[k];
+  p->mhd_data.Diff_B_source[k] += p->mhd_data.eta_OWAR * p->mhd_data.Delta_B[k]; 
+  }
+
 }
 
 /**
