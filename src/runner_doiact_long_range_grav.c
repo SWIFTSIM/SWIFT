@@ -409,6 +409,11 @@ void runner_count_mesh_interactions_zoom(struct runner* r, struct cell* ci,
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors* const multi_i = ci->grav.multipole;
 
+  /* Define the cell we will use for comparisons, this is either going to be
+   * the top-level cell or the top-level void parent depending on the cells
+   * being considered. */
+  struct cell* compare_top = top;
+
   /* Loop over all cells. */
   for (int n = 0; n < s->nr_cells; n++) {
 
@@ -423,14 +428,22 @@ void runner_count_mesh_interactions_zoom(struct runner* r, struct cell* ci,
     /* Get the top level cell of the current cj */
     struct cell* top_j = cj->top;
 
+    /* Get the appropriate comparison top-level cell */
+    if (ci->type == cell_type_zoom && top_j->type == cell_type_zoom) {
+      compare_top = ci->top;
+    } else {
+      compare_top = top;
+    }
+
     /* Avoid self contributions */
-    if (top == top_j) continue;
+    if (compare_top == top_j) continue;
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top, top_j, periodic, dim);
+    const double min_radius2 =
+        cell_min_dist2(compare_top, top_j, periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
@@ -484,6 +497,9 @@ void runner_count_mesh_interactions_uniform(struct runner* r, struct cell* ci,
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors* const multi_i = ci->grav.multipole;
 
+  /* Get the right top level cel to compare */
+  struct cell* compare_top = top;
+
   /* Loop over all cells. */
   for (int n = 0; n < s->nr_cells; n++) {
 
@@ -496,6 +512,14 @@ void runner_count_mesh_interactions_uniform(struct runner* r, struct cell* ci,
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
+
+    /* For a zoom pair we need to compare the zoom top level otherwise just
+     * use the given top level cell. */
+    if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
+      compare_top = ci->top;
+    } else {
+      compare_top = top;
+    }
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
