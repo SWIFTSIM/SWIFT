@@ -149,7 +149,8 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Compute the next timestep (MHD condition) */
   const float new_dt_mhd =
-      mhd_compute_timestep(p, xp, e->hydro_properties, e->cosmology);
+      mhd_compute_timestep(p, xp, e->hydro_properties, e->cosmology,
+                           e->physical_constants->const_vacuum_permeability);
 
   /* Compute the next timestep (cooling condition) */
   float new_dt_cooling = FLT_MAX;
@@ -203,6 +204,13 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
+
+  /* if (new_dt < e->dt_min) { */
+  /*   hydro_debug_particle(p, xp); */
+  /*   mhd_debug_particle(p, xp); */
+  /*   printf(" dt_hydro = %.8f \n dt_mhd = %.8f \n dt_h_change = %.8f \n",
+   * new_dt_hydro, new_dt_mhd, dt_h_change); */
+  /* } */
 
   if (new_dt < e->dt_min)
     error("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
