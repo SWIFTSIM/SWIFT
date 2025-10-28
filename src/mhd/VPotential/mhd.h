@@ -590,11 +590,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *restrict p) {
-  /* Zeroes Induction equation */
-  p->mhd_data.dAdt[0] = 0.0f;
-  p->mhd_data.dAdt[1] = 0.0f;
-  p->mhd_data.dAdt[2] = 0.0f;
-  /* Zeroes Induction equation */
+  /* Sets Induction equation */
   p->mhd_data.dAdt[0] = 
   p->mhd_data.grad.Mat_dax[0] + 
   p->mhd_data.grad.Mat_day[0] + 

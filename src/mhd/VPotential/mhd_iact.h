@@ -640,20 +640,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float scale_j = 0.125f * (10.0f - plasma_beta_j);
 
-  const float tensile_correction_scale_i = fmaxf(0.1f, fminf(scale_i, 1.0f));
-  const float tensile_correction_scale_j = fmaxf(0.1f, fminf(scale_j, 1.0f));
+  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
+  const float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, 1.0f));
 
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
-      //pi->a_hydro[i] +=
-      //    mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * G_ij[j] / rhoj * dx[j];
-      //pj->a_hydro[i] -=
-      //    mi * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * G_ij[j] / rhoi * dx[j];
-      //pi->a_hydro[i] -= mj * Bi[i] * tensile_correction_scale_i *
-      //                  (Bi[j] * mag_faci + Bj[j] * mag_facj) * G_ij[j] / rhoj * dx[j];
-      //pj->a_hydro[i] += mi * Bj[i] * tensile_correction_scale_j *
-      //                  (Bi[j] * mag_faci + Bj[j] * mag_facj) * G_ij[j] / rhoi * dx[j];
       pi->a_hydro[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
       pj->a_hydro[i] -=
@@ -705,10 +697,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 #endif
   float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   float SAj = sourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  SAi = a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  SAj = a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
 
   for (int i = 0; i < 3; i++) {
-//    pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
-//    pj->mhd_data.dAdt[i] += mi * mag_VPIndj * SAj * dx[i];
+    pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
+    pj->mhd_data.dAdt[i] += mi * mag_VPIndj * SAj * dx[i];
    // pi->mhd_data.dAdt[i] += mj * SAi * G_ij[i] / rhoj *dx[i];
    // pj->mhd_data.dAdt[i] += mi * SAj * G_ij[i] / rhoi *dx[i];
   }
@@ -861,7 +855,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
-  const float tensile_correction_scale_i = fmaxf(0.1f, fminf(scale_i, 1.0f));
+  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
 
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
   for (int i = 0; i < 3; i++)
@@ -906,9 +900,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                          dA[2] * pi->v[2]);
 #endif
   float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  //for (int i = 0; i < 3; i++)
-  //  pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
+  SAi = a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  for (int i = 0; i < 3; i++){
+    pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
   //  pi->mhd_data.dAdt[i] += mj * SAi * G_ij[i] / rhoj * dx[i];
+  }
   /// DISSSIPATION
   const float mag_Disi =
       (f_ij * wi_dr + f_ji * wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
