@@ -22,8 +22,9 @@ import h5py as h5
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
 import sys
+import os
 
 
 def do_binning(x, y, x_bin_edges):
@@ -50,13 +51,13 @@ def do_binning(x, y, x_bin_edges):
 max_r = float(sys.argv[1])
 n_radial_bins = int(sys.argv[2])
 n_snaps = int(sys.argv[3])
+output_dir = sys.argv[4]  
 
 # some constants
 OMEGA = 0.3  # Cosmological matter fraction at z = 0
 PARSEC_IN_CGS = 3.0856776e18
 KM_PER_SEC_IN_CGS = 1.0e5
 CONST_G_CGS = 6.672e-8
-CONST_m_H_CGS = 1.67e-24
 h = 0.67777  # hubble parameter
 gamma = 5.0 / 3.0
 eta = 1.2349
@@ -65,7 +66,9 @@ H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 # read some header/parameter information from the first snapshot
 
 filename = "Hydrostatic_0000.hdf5"
-f = h5.File(filename, "r")
+snapshot_path = os.path.join(output_dir, filename)
+f = h5.File(snapshot_path, "r")
+
 params = f["Parameters"]
 unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
 unit_length_cgs = float(params.attrs["InternalUnitSystem:UnitLength_in_cgs"])
@@ -81,10 +84,13 @@ box_centre = np.array(header.attrs["BoxSize"])
 r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
 M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
 
-for i in range(n_snaps):
+for i in range(0, n_snaps+1):
 
     filename = "Hydrostatic_%04d.hdf5" % i
-    f = h5.File(filename, "r")
+    snapshot_path = os.path.join(output_dir, filename)
+
+    f = h5.File(snapshot_path, "r")
+
     coords_dset = f["PartType0/Coordinates"]
     coords = np.array(coords_dset)
 
@@ -100,7 +106,7 @@ for i in range(n_snaps):
     radius_over_virial_radius = radius_cgs / r_vir_cgs
 
     # get the internal energies
-    u_dset = f["PartType0/InternalEnergy"]
+    u_dset = f["PartType0/InternalEnergies"]
     u = np.array(u_dset)
 
     # make dimensionless
@@ -116,16 +122,17 @@ for i in range(n_snaps):
     )
     binned_u = u_totals / hist
 
-    figure()
-    plot(radial_bin_mids, binned_u, "ko", label="Numerical solution")
-    legend(loc="lower right")
-    xlabel(r"$r / r_{vir}$")
-    ylabel(r"$u / (v_c^2 / (2(\gamma - 1)) $")
-    title(
+    plt.figure()
+    plt.plot(radial_bin_mids, binned_u, "ko", label="Numerical solution")
+    plt.legend(loc="lower right")
+    plt.xlabel(r"$r / r_{vir}$")
+    plt.ylabel(r"$u / (v_c^2 / (2(\gamma - 1)) $")
+    plt.title(
         r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$"
         % (snap_time_cgs, N, v_c)
     )
-    ylim((0, 2))
-    plot_filename = "./plots/internal_energy/internal_energy_profile_%03d.png" % i
-    savefig(plot_filename, format="png")
-    close()
+    plt.ylim((0, 2))
+    plot_filename = os.path.join(output_dir, "plots/internal_energy/internal_energy_profile_%03d.png" % i)
+    plt.savefig(plot_filename, format="png")
+    plt.close()
+
