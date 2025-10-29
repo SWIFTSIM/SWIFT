@@ -25,80 +25,77 @@
 
 #define PASTE(x, y) x##_##y
 
-#define _DOSELF1_BH(f) PASTE(runner_doself_bh, f)
-#define DOSELF1_BH _DOSELF1_BH(FUNCTION)
+#define _DOSELF1_STARS_SIDM(f) PASTE(runner_doself_stars_sidm, f)
+#define DOSELF1_STARS_SIDM _DOSELF1_STARS_SIDM(FUNCTION)
 
-#define _DO_SYM_PAIR1_BH(f) PASTE(runner_do_sym_pair_bh, f)
-#define DO_SYM_PAIR1_BH _DO_SYM_PAIR1_BH(FUNCTION)
+#define _DO_SYM_PAIR1_STARS_SIDM(f) PASTE(runner_do_sym_pair_stars_sidm, f)
+#define DO_SYM_PAIR1_STARS_SIDM _DO_SYM_PAIR1_STARS_SIDM(FUNCTION)
 
-#define _DO_NONSYM_PAIR1_BH_NAIVE(f) PASTE(runner_do_nonsym_pair_bh_naive, f)
-#define DO_NONSYM_PAIR1_BH_NAIVE _DO_NONSYM_PAIR1_BH_NAIVE(FUNCTION)
+#define _DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(f) PASTE(runner_do_nonsym_pair_stars_sidm_naive, f)
+#define DO_NONSYM_PAIR1_STARS_SIDM_NAIVE _DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(FUNCTION)
 
-#define _DOPAIR1_BH_NAIVE(f) PASTE(runner_dopair_bh_naive, f)
-#define DOPAIR1_BH_NAIVE _DOPAIR1_BH_NAIVE(FUNCTION)
+#define _DOPAIR1_STARS_SIDM_NAIVE(f) PASTE(runner_dopair_stars_sidm_naive, f)
+#define DOPAIR1_STARS_SIDM_NAIVE _DOPAIR1_STARS_SIDM_NAIVE(FUNCTION)
 
-#define _DOPAIR1_SUBSET_BH(f) PASTE(runner_dopair_subset_bh, f)
-#define DOPAIR1_SUBSET_BH _DOPAIR1_SUBSET_BH(FUNCTION)
+#define _DOPAIR1_SUBSET_STARS_SIDM(f) PASTE(runner_dopair_subset_stars_sidm, f)
+#define DOPAIR1_SUBSET_STARS_SIDM _DOPAIR1_SUBSET_STARS_SIDM(FUNCTION)
 
-#define _DOPAIR1_SUBSET_BH_NAIVE(f) PASTE(runner_dopair_subset_bh_naive, f)
-#define DOPAIR1_SUBSET_BH_NAIVE _DOPAIR1_SUBSET_BH_NAIVE(FUNCTION)
+#define _DOPAIR1_SUBSET_STARS_SIDM_NAIVE(f) PASTE(runner_dopair_subset_stars_sidm_naive, f)
+#define DOPAIR1_SUBSET_STARS_SIDM_NAIVE _DOPAIR1_SUBSET_STARS_SIDM_NAIVE(FUNCTION)
 
-#define _DOSELF1_SUBSET_BH(f) PASTE(runner_doself_subset_bh, f)
-#define DOSELF1_SUBSET_BH _DOSELF1_SUBSET_BH(FUNCTION)
+#define _DOSELF1_SUBSET_STARS_SIDM(f) PASTE(runner_doself_subset_stars_sidm, f)
+#define DOSELF1_SUBSET_STARS_SIDM _DOSELF1_SUBSET_STARS_SIDM(FUNCTION)
 
-#define _DOSELF1_SUBSET_BRANCH_BH(f) PASTE(runner_doself_subset_branch_bh, f)
-#define DOSELF1_SUBSET_BRANCH_BH _DOSELF1_SUBSET_BRANCH_BH(FUNCTION)
+#define _DOSELF1_SUBSET_BRANCH_STARS_SIDM(f) PASTE(runner_doself_subset_branch_stars_sidm, f)
+#define DOSELF1_SUBSET_BRANCH_STARS_SIDM _DOSELF1_SUBSET_BRANCH_STARS_SIDM(FUNCTION)
 
-#define _DOPAIR1_SUBSET_BRANCH_BH(f) PASTE(runner_dopair_subset_branch_bh, f)
-#define DOPAIR1_SUBSET_BRANCH_BH _DOPAIR1_SUBSET_BRANCH_BH(FUNCTION)
+#define _DOPAIR1_SUBSET_BRANCH_STARS_SIDM(f) PASTE(runner_dopair_subset_branch_stars_sidm, f)
+#define DOPAIR1_SUBSET_BRANCH_STARS_SIDM _DOPAIR1_SUBSET_BRANCH_STARS_SIDM(FUNCTION)
 
-#define _DOSUB_SUBSET_BH(f) PASTE(runner_dosub_subset_bh, f)
-#define DOSUB_SUBSET_BH _DOSUB_SUBSET_BH(FUNCTION)
+#define _DOSUB_SUBSET_STARS_SIDM(f) PASTE(runner_dosub_subset_stars_sidm, f)
+#define DOSUB_SUBSET_STARS_SIDM _DOSUB_SUBSET_STARS_SIDM(FUNCTION)
 
-#define _DOSELF1_BRANCH_BH(f) PASTE(runner_doself_branch_bh, f)
-#define DOSELF1_BRANCH_BH _DOSELF1_BRANCH_BH(FUNCTION)
+#define _DOSELF1_BRANCH_STARS_SIDM(f) PASTE(runner_doself_branch_stars_sidm, f)
+#define DOSELF1_BRANCH_STARS_SIDM _DOSELF1_BRANCH_STARS_SIDM(FUNCTION)
 
-#define _DOPAIR1_BRANCH_BH(f) PASTE(runner_dopair_branch_bh, f)
-#define DOPAIR1_BRANCH_BH _DOPAIR1_BRANCH_BH(FUNCTION)
+#define _DOPAIR1_BRANCH_STARS_SIDM(f) PASTE(runner_dopair_branch_stars_sidm, f)
+#define DOPAIR1_BRANCH_STARS_SIDM _DOPAIR1_BRANCH_STARS_SIDM(FUNCTION)
 
-#define _DOSUB_PAIR1_BH(f) PASTE(runner_dosub_pair_bh, f)
-#define DOSUB_PAIR1_BH _DOSUB_PAIR1_BH(FUNCTION)
+#define _DOSUB_PAIR1_STARS_SIDM(f) PASTE(runner_dosub_pair_stars_sidm, f)
+#define DOSUB_PAIR1_STARS_SIDM _DOSUB_PAIR1_STARS_SIDM(FUNCTION)
 
-#define _DOSUB_SELF1_BH(f) PASTE(runner_dosub_self_bh, f)
-#define DOSUB_SELF1_BH _DOSUB_SELF1_BH(FUNCTION)
+#define _DOSUB_SELF1_STARS_SIDM(f) PASTE(runner_dosub_self_stars_sidm, f)
+#define DOSUB_SELF1_STARS_SIDM _DOSUB_SELF1_STARS_SIDM(FUNCTION)
 
-#define _TIMER_DOSELF_BH(f) PASTE(timer_doself_bh, f)
-#define TIMER_DOSELF_BH _TIMER_DOSELF_BH(FUNCTION)
+#define _TIMER_DOSELF_STARS_SIDM(f) PASTE(timer_doself_stars_sidm, f)
+#define TIMER_DOSELF_STARS_SIDM _TIMER_DOSELF_STARS_SIDM(FUNCTION)
 
-#define _TIMER_DOPAIR_BH(f) PASTE(timer_dopair_bh, f)
-#define TIMER_DOPAIR_BH _TIMER_DOPAIR_BH(FUNCTION)
+#define _TIMER_DOPAIR_STARS_SIDM(f) PASTE(timer_dopair_stars_sidm, f)
+#define TIMER_DOPAIR_STARS_SIDM _TIMER_DOPAIR_STARS_SIDM(FUNCTION)
 
-#define _TIMER_DOSUB_SELF_BH(f) PASTE(timer_dosub_self_bh, f)
-#define TIMER_DOSUB_SELF_BH _TIMER_DOSUB_SELF_BH(FUNCTION)
+#define _TIMER_DOSUB_SELF_STARS_SIDM(f) PASTE(timer_dosub_self_stars_sidm, f)
+#define TIMER_DOSUB_SELF_STARS_SIDM _TIMER_DOSUB_SELF_STARS_SIDM(FUNCTION)
 
-#define _TIMER_DOSUB_PAIR_BH(f) PASTE(timer_dosub_pair_bh, f)
-#define TIMER_DOSUB_PAIR_BH _TIMER_DOSUB_PAIR_BH(FUNCTION)
+#define _TIMER_DOSUB_PAIR_STARS_SIDM(f) PASTE(timer_dosub_pair_stars_sidm, f)
+#define TIMER_DOSUB_PAIR_STARS_SIDM _TIMER_DOSUB_PAIR_STARS_SIDM(FUNCTION)
 
-#define _IACT_BH_GAS(f) PASTE(runner_iact_nonsym_bh_gas, f)
-#define IACT_BH_GAS _IACT_BH_GAS(FUNCTION)
+#define _IACT_STARS_SIDM_SIDM(f) PASTE(runner_iact_nonsym_stars_sidm, f)
+#define IACT_STARS_SIDM_SIDM _IACT_STARS_SIDM_SIDM(FUNCTION)
 
-#define _IACT_BH_BH(f) PASTE(runner_iact_nonsym_bh_bh, f)
-#define IACT_BH_BH _IACT_BH_BH(FUNCTION)
+void DOSELF1_BRANCH_STARS_SIDM(struct runner *r, struct cell *c);
+void DOPAIR1_BRANCH_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *cj);
 
-void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c);
-void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj);
-
-void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer);
-void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
+void DOSUB_SELF1_STARS_SIDM(struct runner *r, struct cell *ci, int gettimer);
+void DOSUB_PAIR1_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
                     int gettimer);
 
-void DOSELF1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
+void DOSELF1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, struct cell *restrict ci,
                               struct bpart *restrict bparts, int *restrict ind,
                               const int bcount);
-void DOPAIR1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
+void DOPAIR1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, struct cell *restrict ci,
                               struct bpart *restrict bparts_i,
                               int *restrict ind, int const bcount,
                               struct cell *restrict cj);
 
-void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
+void DOSUB_SUBSET_STARS_SIDM(struct runner *r, struct cell *ci, struct bpart *bparts,
                      int *ind, const int bcount, struct cell *cj, int gettimer);
