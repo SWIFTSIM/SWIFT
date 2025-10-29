@@ -1727,8 +1727,8 @@ void write_output_parallel(struct engine* e,
 #if H5_VERSION_GE(1, 10, 0)
   h_err = H5Pset_all_coll_metadata_ops(plist_id, 1);
   if (h_err < 0) error("Error setting collective meta-data on all ops");
-    // h_err = H5Pset_coll_metadata_write(plist_id, 1);
-    // if (h_err < 0) error("Error setting collective meta-data writes");
+  // h_err = H5Pset_coll_metadata_write(plist_id, 1);
+  // if (h_err < 0) error("Error setting collective meta-data writes");
 #endif
 
 #ifdef IO_SPEED_MEASUREMENT
