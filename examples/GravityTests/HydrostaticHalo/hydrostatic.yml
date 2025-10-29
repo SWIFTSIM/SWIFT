@@ -28,7 +28,7 @@ Snapshots:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.2349   # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
+  resolution_eta:        1.487   # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
 
 # Parameters related to the initial conditions
@@ -39,8 +39,11 @@ InitialConditions:
 # External potential parameters
 IsothermalPotential:
   vrot:            200.          # rotation speed of isothermal potential in internal units
-  epsilon:         1.0
+  epsilon:         1.0           # softening size
   timestep_mult:   0.03          # controls time step
   useabspos:       0             # Centre the halo in the box
   position:        [0., 0., 0.]
 
+# Parameters related to the EOS (REMIX)
+EoS:
+  planetary_use_idg_def:  1 # default ideal gas, material ID 0
