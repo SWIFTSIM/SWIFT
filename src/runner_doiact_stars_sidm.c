@@ -24,40 +24,27 @@
 
 /* Local headers. */
 #include "active.h"
+#include "black_holes_iact.h"
 #include "cell.h"
 #include "engine.h"
-#include "feedback.h"
-#include "feedback_iact.h"
-#include "rt.h"
 #include "runner.h"
 #include "space_getsid.h"
-#include "stars.h"
 #include "timers.h"
 
-/* Import the stars density loop functions. */
+/* Import the black hole density loop functions. */
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
-#include "runner_doiact_functions_stars.h"
+#include "runner_doiact_functions_black_holes.h"
 #include "runner_doiact_undef.h"
 
-/* Import the stars feedback loop functions. */
+/* Import the black hole feedback loop functions. */
+#define FUNCTION swallow
+#define FUNCTION_TASK_LOOP TASK_LOOP_SWALLOW
+#include "runner_doiact_functions_black_holes.h"
+#include "runner_doiact_undef.h"
+
+/* Import the black hole feedback loop functions. */
 #define FUNCTION feedback
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
-#include "runner_doiact_functions_stars.h"
+#include "runner_doiact_functions_black_holes.h"
 #include "runner_doiact_undef.h"
-
-#ifdef EXTRA_STAR_LOOPS
-
-/* Import the stars prepare1 loop functions. */
-#define FUNCTION prep1
-#define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP1
-#include "runner_doiact_functions_stars.h"
-#include "runner_doiact_undef.h"
-
-/* Import the stars prepare2 loop functions. */
-#define FUNCTION prep2
-#define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP2
-#include "runner_doiact_functions_stars.h"
-#include "runner_doiact_undef.h"
-
-#endif /* EXTRA_STAR_LOOPS */
