@@ -24,7 +24,7 @@
    and runner_dosub_FUNCTION calling the pairwise interaction function
    runner_iact_FUNCTION. */
 
-#include "runner_doiact_black_holes.h"
+#include "runner_doiact_stars_sidm.h"
 
 /**
  * @brief Calculate the number density of #part around the #bpart
@@ -33,7 +33,7 @@
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
+void DOSELF1_STARS_SIDM(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank) error("Should be run on a different node");
@@ -102,86 +102,15 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 #endif
 
         if (r2 < hig2) {
-          IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
+          IACT_STARS_SIDM(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
                       e->gravity_properties, e->black_holes_properties,
                       e->entropy_floor, ti_current, e->time);
-
-          if (bi_is_local) {
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-            runner_iact_nonsym_bh_gas_repos(
-                r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
-                e->gravity_properties, e->black_holes_properties,
-                e->entropy_floor, ti_current, e->time);
-#endif
-          }
         }
       } /* loop over the parts in ci. */
     } /* loop over the bparts in ci. */
   } /* Do we have gas particles in the cell? */
 
-  /* When doing BH swallowing, we need a quick loop also over the BH
-   * neighbours */
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-
-  /* Loop over the bparts in ci. */
-  for (int bid = 0; bid < bcount; bid++) {
-
-    /* Get a hold of the ith bpart in ci. */
-    struct bpart *restrict bi = &bparts[bid];
-
-    /* Skip inactive particles */
-    if (!bpart_is_active(bi, e)) continue;
-
-    const float hi = bi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
-    const float bix[3] = {(float)(bi->x[0] - c->loc[0]),
-                          (float)(bi->x[1] - c->loc[1]),
-                          (float)(bi->x[2] - c->loc[2])};
-
-    /* Loop over the parts in cj. */
-    for (int bjd = 0; bjd < bcount; bjd++) {
-
-      /* Skip self interaction */
-      if (bid == bjd) continue;
-
-      /* Get a pointer to the jth particle. */
-      struct bpart *restrict bj = &bparts[bjd];
-      const float hj = bj->h;
-
-      /* Early abort? */
-      if (bpart_is_inhibited(bj, e)) continue;
-
-      /* Compute the pairwise distance. */
-      const float bjx[3] = {(float)(bj->x[0] - c->loc[0]),
-                            (float)(bj->x[1] - c->loc[1]),
-                            (float)(bj->x[2] - c->loc[2])};
-      const float dx[3] = {bix[0] - bjx[0], bix[1] - bjx[1], bix[2] - bjx[2]};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check that particles have been drifted to the current time */
-      if (bi->ti_drift != e->ti_current)
-        error("Particle bi not drifted to current time");
-      if (bj->ti_drift != e->ti_current)
-        error("Particle bj not drifted to current time");
-#endif
-
-      if (r2 < hig2) {
-        IACT_BH_BH(r2, dx, hi, hj, bi, bj, cosmo, e->gravity_properties,
-                   e->black_holes_properties, ti_current);
-
-        if (bi_is_local) {
-          runner_iact_nonsym_bh_bh_repos(r2, dx, hi, hj, bi, bj, cosmo,
-                                         e->gravity_properties,
-                                         e->black_holes_properties, ti_current);
-        }
-      }
-    } /* loop over the bparts in ci. */
-  } /* loop over the bparts in ci. */
-
-#endif /* (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW) */
-
-  TIMER_TOC(TIMER_DOSELF_BH);
+  TIMER_TOC(TIMER_DOSELF_STARS_SIDM);
 }
 
 /**
@@ -191,16 +120,8 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
  * @param ci The first #cell
  * @param cj The second #cell
  */
-void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
+void DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(struct runner *r, struct cell *restrict ci,
                               struct cell *restrict cj) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  if (ci->nodeID != engine_rank) error("Should be run on a different node");
-#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-  if (cj->nodeID != engine_rank) error("Should be run on a different node");
-#endif
-#endif
 
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
@@ -272,108 +193,27 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
         if (r2 < hig2) {
-          IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
+          IACT_STARS_SIDM(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
                       e->gravity_properties, e->black_holes_properties,
                       e->entropy_floor, ti_current, e->time);
-
-          if (bi_is_local) {
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-            runner_iact_nonsym_bh_gas_repos(
-                r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
-                e->gravity_properties, e->black_holes_properties,
-                e->entropy_floor, ti_current, e->time);
-#endif
-          }
         }
       } /* loop over the parts in cj. */
     } /* loop over the bparts in ci. */
   } /* Do we have gas particles in the cell? */
-
-  /* When doing BH swallowing, we need a quick loop also over the BH
-   * neighbours */
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-
-  const int bcount_j = cj->black_holes.count;
-  struct bpart *restrict bparts_j = cj->black_holes.parts;
-
-  /* Loop over the bparts in ci. */
-  for (int bid = 0; bid < bcount_i; bid++) {
-
-    /* Get a hold of the ith bpart in ci. */
-    struct bpart *restrict bi = &bparts_i[bid];
-
-    /* Skip inactive particles */
-    if (!bpart_is_active(bi, e)) continue;
-
-    const float hi = bi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
-    const float bix[3] = {(float)(bi->x[0] - (cj->loc[0] + shift[0])),
-                          (float)(bi->x[1] - (cj->loc[1] + shift[1])),
-                          (float)(bi->x[2] - (cj->loc[2] + shift[2]))};
-
-    /* Loop over the bparts in cj. */
-    for (int bjd = 0; bjd < bcount_j; bjd++) {
-
-      /* Get a pointer to the jth particle. */
-      struct bpart *restrict bj = &bparts_j[bjd];
-      const float hj = bj->h;
-
-      /* Skip inhibited particles. */
-      if (bpart_is_inhibited(bj, e)) continue;
-
-      /* Compute the pairwise distance. */
-      const float bjx[3] = {(float)(bj->x[0] - cj->loc[0]),
-                            (float)(bj->x[1] - cj->loc[1]),
-                            (float)(bj->x[2] - cj->loc[2])};
-      const float dx[3] = {bix[0] - bjx[0], bix[1] - bjx[1], bix[2] - bjx[2]};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check that particles have been drifted to the current time */
-      if (bi->ti_drift != e->ti_current)
-        error("Particle bi not drifted to current time");
-      if (bj->ti_drift != e->ti_current)
-        error("Particle bj not drifted to current time");
-#endif
-
-      if (r2 < hig2) {
-        IACT_BH_BH(r2, dx, hi, hj, bi, bj, cosmo, e->gravity_properties,
-                   e->black_holes_properties, ti_current);
-
-        if (bi_is_local) {
-          runner_iact_nonsym_bh_bh_repos(r2, dx, hi, hj, bi, bj, cosmo,
-                                         e->gravity_properties,
-                                         e->black_holes_properties, ti_current);
-        }
-      }
-    } /* loop over the bparts in cj. */
-  } /* loop over the bparts in ci. */
-
-#endif /* (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW) */
 }
 
-void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
+void DOPAIR1_STARS_SIDM_NAIVE(struct runner *r, struct cell *restrict ci,
                       struct cell *restrict cj, int timer) {
 
   TIMER_TIC;
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   const int do_ci_bh = ci->nodeID == r->e->nodeID;
   const int do_cj_bh = cj->nodeID == r->e->nodeID;
-#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-  /* here we are updating the hydro -> switch ci, cj */
-  const int do_ci_bh = cj->nodeID == r->e->nodeID;
-  const int do_cj_bh = ci->nodeID == r->e->nodeID;
-#else
-  /* The swallow task is executed on both sides */
-  const int do_ci_bh = 1;
-  const int do_cj_bh = 1;
-#endif
 
-  if (do_ci_bh) DO_NONSYM_PAIR1_BH_NAIVE(r, ci, cj);
-  if (do_cj_bh) DO_NONSYM_PAIR1_BH_NAIVE(r, cj, ci);
+  if (do_ci_bh) DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(r, ci, cj);
+  if (do_cj_bh) DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(r, cj, ci);
 
-  TIMER_TOC(TIMER_DOPAIR_BH);
+  TIMER_TOC(TIMER_DOPAIR_STARS_SIDM);
 }
 
 /**
@@ -390,7 +230,7 @@ void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param cj The second #cell.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
+void DOPAIR1_SUBSET_STARS_SIDM_NAIVE(struct runner *r, struct cell *restrict ci,
                              struct bpart *restrict bparts_i, int *restrict ind,
                              const int bcount, struct cell *restrict cj,
                              const double *shift) {
@@ -456,17 +296,9 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
+        IACT_STARS_SIDM(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
                     e->gravity_properties, e->black_holes_properties,
                     e->entropy_floor, ti_current, e->time);
-        if (bi_is_local) {
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-          runner_iact_nonsym_bh_gas_repos(
-              r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
-              e->gravity_properties, e->black_holes_properties,
-              e->entropy_floor, ti_current, e->time);
-#endif
-        }
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -482,7 +314,7 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param bcount The number of particles in @c ind.
  */
-void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
+void DOSELF1_SUBSET_STARS_SIDM(struct runner *r, struct cell *restrict ci,
                        struct bpart *restrict bparts, int *restrict ind,
                        const int bcount) {
 
@@ -543,25 +375,16 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
 
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_BH_GAS(r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
+        IACT_STARS_SIDM(r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
                     e->gravity_properties, e->black_holes_properties,
                     e->entropy_floor, ti_current, e->time);
-
-        if (bi_is_local) {
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-          runner_iact_nonsym_bh_gas_repos(
-              r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
-              e->gravity_properties, e->black_holes_properties,
-              e->entropy_floor, ti_current, e->time);
-#endif
-        }
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
 }
 
 /**
- * @brief Determine which version of DOSELF1_SUBSET_BH needs to be called
+ * @brief Determine which version of DOSELF1_SUBSET_STARS_SIDM needs to be called
  * depending on the optimisation level.
  *
  * @param r The #runner.
@@ -570,16 +393,16 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param bcount The number of particles in @c ind.
  */
-void DOSELF1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
+void DOSELF1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, struct cell *restrict ci,
                               struct bpart *restrict bparts, int *restrict ind,
                               const int bcount) {
 
-  DOSELF1_SUBSET_BH(r, ci, bparts, ind, bcount);
+  DOSELF1_SUBSET_STARS_SIDM(r, ci, bparts, ind, bcount);
 }
 
 /**
- * @brief Determine which version of DOPAIR1_SUBSET_BH needs to be called
- * depending on the orientation of the cells or whether DOPAIR1_SUBSET_BH
+ * @brief Determine which version of DOPAIR1_SUBSET_STARS_SIDM needs to be called
+ * depending on the orientation of the cells or whether DOPAIR1_SUBSET_STARS_SIDM
  * needs to be called at all.
  *
  * @param r The #runner.
@@ -589,7 +412,7 @@ void DOSELF1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
  * @param bcount The number of particles in @c ind.
  * @param cj The second #cell.
  */
-void DOPAIR1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
+void DOPAIR1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, struct cell *restrict ci,
                               struct bpart *restrict bparts_i,
                               int *restrict ind, int const bcount,
                               struct cell *restrict cj) {
@@ -608,10 +431,10 @@ void DOPAIR1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
-  DOPAIR1_SUBSET_BH_NAIVE(r, ci, bparts_i, ind, bcount, cj, shift);
+  DOPAIR1_SUBSET_STARS_SIDM_NAIVE(r, ci, bparts_i, ind, bcount, cj, shift);
 }
 
-void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
+void DOSUB_SUBSET_STARS_SIDM(struct runner *r, struct cell *ci, struct bpart *bparts,
                      int *ind, const int bcount, struct cell *cj,
                      int gettimer) {
 
@@ -646,16 +469,16 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
     if (cell_can_recurse_in_self_black_holes_task(ci)) {
 
       /* Loop over all progeny. */
-      DOSUB_SUBSET_BH(r, sub, bparts, ind, bcount, NULL, 0);
+      DOSUB_SUBSET_STARS_SIDM(r, sub, bparts, ind, bcount, NULL, 0);
       for (int j = 0; j < 8; j++)
         if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
-          DOSUB_SUBSET_BH(r, sub, bparts, ind, bcount, ci->progeny[j], 0);
+          DOSUB_SUBSET_STARS_SIDM(r, sub, bparts, ind, bcount, ci->progeny[j], 0);
 
     }
 
     /* Otherwise, compute self-interaction. */
     else
-      DOSELF1_SUBSET_BRANCH_BH(r, ci, bparts, ind, bcount);
+      DOSELF1_SUBSET_BRANCH_STARS_SIDM(r, ci, bparts, ind, bcount);
   } /* self-interaction. */
 
   /* Otherwise, it's a pair interaction. */
@@ -674,10 +497,10 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
-          DOSUB_SUBSET_BH(r, ci->progeny[pid], bparts, ind, bcount,
+          DOSUB_SUBSET_STARS_SIDM(r, ci->progeny[pid], bparts, ind, bcount,
                           cj->progeny[pjd], 0);
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
-          DOSUB_SUBSET_BH(r, cj->progeny[pjd], bparts, ind, bcount,
+          DOSUB_SUBSET_STARS_SIDM(r, cj->progeny[pjd], bparts, ind, bcount,
                           ci->progeny[pid], 0);
       }
     }
@@ -691,21 +514,21 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
         if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
       }
 
-      DOPAIR1_SUBSET_BRANCH_BH(r, ci, bparts, ind, bcount, cj);
+      DOPAIR1_SUBSET_BRANCH_STARS_SIDM(r, ci, bparts, ind, bcount, cj);
     }
 
   } /* otherwise, pair interaction. */
 }
 
 /**
- * @brief Determine which version of DOSELF1_BH needs to be called depending
+ * @brief Determine which version of DOSELF1_STARS_SIDM needs to be called depending
  * on the optimisation level.
  *
  * @param r #runner
  * @param c #cell c
  *
  */
-void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c) {
+void DOSELF1_BRANCH_STARS_SIDM(struct runner *r, struct cell *c) {
 
   const struct engine *restrict e = r->e;
 
@@ -719,12 +542,12 @@ void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c) {
   if (c->black_holes.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
-  DOSELF1_BH(r, c, 1);
+  DOSELF1_STARS_SIDM(r, c, 1);
 }
 
 /**
- * @brief Determine which version of DOPAIR1_BH needs to be called depending
- * on the orientation of the cells or whether DOPAIR1_BH needs to be called
+ * @brief Determine which version of DOPAIR1_STARS_SIDM needs to be called depending
+ * on the orientation of the cells or whether DOPAIR1_STARS_SIDM needs to be called
  * at all.
  *
  * @param r #runner
@@ -732,24 +555,15 @@ void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c) {
  * @param cj #cell cj
  *
  */
-void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj) {
+void DOPAIR1_BRANCH_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *restrict e = r->e;
 
   const int ci_active = cell_is_active_black_holes(ci, e);
   const int cj_active = cell_is_active_black_holes(cj, e);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  
   const int do_ci_bh = ci->nodeID == e->nodeID;
   const int do_cj_bh = cj->nodeID == e->nodeID;
-#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-  /* here we are updating the hydro -> switch ci, cj */
-  const int do_ci_bh = cj->nodeID == e->nodeID;
-  const int do_cj_bh = ci->nodeID == e->nodeID;
-#else
-  /* The swallow task is executed on both sides */
-  const int do_ci_bh = 1;
-  const int do_cj_bh = 1;
-#endif
 
   const int do_ci = (ci->black_holes.count != 0 && cj->hydro.count != 0 &&
                      ci_active && do_ci_bh);
@@ -769,7 +583,7 @@ void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj) {
     error("Interacting undrifted cells.");
 
   /* No sorted intreactions here -> use the naive ones */
-  DOPAIR1_BH_NAIVE(r, ci, cj, 1);
+  DOPAIR1_STARS_SIDM_NAIVE(r, ci, cj, 1);
 }
 
 /**
@@ -783,7 +597,7 @@ void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj) {
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
-void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
+void DOSUB_PAIR1_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
                     int gettimer) {
 
   TIMER_TIC;
@@ -791,23 +605,11 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
   struct space *s = r->e->s;
   const struct engine *e = r->e;
 
-  /* Should we even bother?
-   * In the swallow case we care about BH-BH and BH-gas
-   * interactions.
-   * In all other cases only BH-gas so we can abort if there is
-   * is no gas in the cell */
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-  const int should_do_ci =
-      ci->black_holes.count != 0 && cell_is_active_black_holes(ci, e);
-  const int should_do_cj =
-      cj->black_holes.count != 0 && cell_is_active_black_holes(cj, e);
-#else
+  /* Should we even bother? */
   const int should_do_ci = ci->black_holes.count != 0 && cj->hydro.count != 0 &&
                            cell_is_active_black_holes(ci, e);
   const int should_do_cj = cj->black_holes.count != 0 && ci->hydro.count != 0 &&
                            cell_is_active_black_holes(cj, e);
-
-#endif
 
   if (!should_do_ci && !should_do_cj) return;
 
@@ -823,25 +625,15 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-        DOSUB_PAIR1_BH(r, ci->progeny[pid], cj->progeny[pjd], 0);
+        DOSUB_PAIR1_STARS_SIDM(r, ci->progeny[pid], cj->progeny[pjd], 0);
     }
   }
 
   /* Otherwise, compute the pair directly. */
   else {
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     const int do_ci_bh = ci->nodeID == e->nodeID;
     const int do_cj_bh = cj->nodeID == e->nodeID;
-#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-    /* Here we are updating the hydro -> switch ci, cj */
-    const int do_ci_bh = cj->nodeID == e->nodeID;
-    const int do_cj_bh = ci->nodeID == e->nodeID;
-#else
-    /* Here we perform the task on both sides */
-    const int do_ci_bh = 1;
-    const int do_cj_bh = 1;
-#endif
 
     const int do_ci = ci->black_holes.count != 0 &&
                       cell_is_active_black_holes(ci, e) && do_ci_bh;
@@ -868,10 +660,10 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
         error("Interacting undrifted cells (bparts).");
     }
 
-    if (do_ci || do_cj) DOPAIR1_BRANCH_BH(r, ci, cj);
+    if (do_ci || do_cj) DOPAIR1_BRANCH_STARS_SIDM(r, ci, cj);
   }
 
-  TIMER_TOC(TIMER_DOSUB_PAIR_BH);
+  TIMER_TOC(TIMER_DOSUB_PAIR_STARS_SIDM);
 }
 
 /**
@@ -881,7 +673,7 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer) {
+void DOSUB_SELF1_STARS_SIDM(struct runner *r, struct cell *ci, int gettimer) {
 
   TIMER_TIC;
 
@@ -892,18 +684,9 @@ void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer) {
     error("This function should not be called on foreign cells");
 #endif
 
-    /* Should we even bother?
-     * In the swallow case we care about BH-BH and BH-gas
-     * interactions.
-     * In all other cases only BH-gas so we can abort if there is
-     * is no gas in the cell */
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-  const int should_do_ci =
-      ci->black_holes.count != 0 && cell_is_active_black_holes(ci, e);
-#else
+    /* Should we even bother? */
   const int should_do_ci = ci->black_holes.count != 0 && ci->hydro.count != 0 &&
                            cell_is_active_black_holes(ci, e);
-#endif
 
   if (!should_do_ci) return;
 
@@ -913,10 +696,10 @@ void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer) {
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL) {
-        DOSUB_SELF1_BH(r, ci->progeny[k], 0);
+        DOSUB_SELF1_STARS_SIDM(r, ci->progeny[k], 0);
         for (int j = k + 1; j < 8; j++)
           if (ci->progeny[j] != NULL)
-            DOSUB_PAIR1_BH(r, ci->progeny[k], ci->progeny[j], 0);
+            DOSUB_PAIR1_STARS_SIDM(r, ci->progeny[k], ci->progeny[j], 0);
       }
   }
 
@@ -929,8 +712,8 @@ void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer) {
     if (ci->hydro.count != 0 && !cell_are_part_drifted(ci, e))
       error("Interacting undrifted cells (bparts).");
 
-    DOSELF1_BRANCH_BH(r, ci);
+    DOSELF1_BRANCH_STARS_SIDM(r, ci);
   }
 
-  TIMER_TOC(TIMER_DOSUB_SELF_BH);
+  TIMER_TOC(TIMER_DOSUB_SELF_STARS_SIDM);
 }

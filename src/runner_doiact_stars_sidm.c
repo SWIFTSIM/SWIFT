@@ -24,27 +24,16 @@
 
 /* Local headers. */
 #include "active.h"
-#include "black_holes_iact.h"
+// #include "black_holes_iact.h" // Eventually we will have "dynamical_friction_iact.h" here, or similar
 #include "cell.h"
 #include "engine.h"
 #include "runner.h"
 #include "space_getsid.h"
 #include "timers.h"
 
-/* Import the black hole density loop functions. */
+/* Import the density loop functions. */
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
-#include "runner_doiact_functions_black_holes.h"
+#include "runner_doiact_functions_stars_sidm.h"
 #include "runner_doiact_undef.h"
 
-/* Import the black hole feedback loop functions. */
-#define FUNCTION swallow
-#define FUNCTION_TASK_LOOP TASK_LOOP_SWALLOW
-#include "runner_doiact_functions_black_holes.h"
-#include "runner_doiact_undef.h"
-
-/* Import the black hole feedback loop functions. */
-#define FUNCTION feedback
-#define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
-#include "runner_doiact_functions_black_holes.h"
-#include "runner_doiact_undef.h"
