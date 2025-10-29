@@ -22,50 +22,29 @@ import h5py as h5
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
 import sys
+import os
 
-
-def do_binning(x, y, x_bin_edges):
-
-    # x and y are arrays, where y = f(x)
-    # returns number of elements of x in each bin, and the total of the y elements corresponding to those x values
-
-    n_bins = x_bin_edges.size - 1
-    count = np.zeros(n_bins)
-    y_totals = np.zeros(n_bins)
-
-    for i in range(n_bins):
-        ind = np.intersect1d(
-            np.where(x > bin_edges[i])[0], np.where(x <= bin_edges[i + 1])[0]
-        )
-        count[i] = ind.size
-        binned_y = y[ind]
-        y_totals[i] = np.sum(binned_y)
-
-    return (count, y_totals)
-
-
-# for the plotting
-max_r = float(sys.argv[1])
-n_radial_bins = int(sys.argv[2])
-n_snaps = int(sys.argv[3])
+n_snaps = int(sys.argv[1])
+output_dir = sys.argv[2]  
+plot_filename = os.path.join(output_dir, "plots/energy_conservation.png")
 
 # some constants
 OMEGA = 0.3  # Cosmological matter fraction at z = 0
 PARSEC_IN_CGS = 3.0856776e18
 KM_PER_SEC_IN_CGS = 1.0e5
 CONST_G_CGS = 6.672e-8
-CONST_m_H_CGS = 1.67e-24
 h = 0.67777  # hubble parameter
-gamma = 5.0 / 3.0
 eta = 1.2349
 H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # read some header/parameter information from the first snapshot
 
 filename = "Hydrostatic_0000.hdf5"
-f = h5.File(filename, "r")
+snapshot_path = os.path.join(output_dir, filename)
+f = h5.File(snapshot_path, "r")
+
 params = f["Parameters"]
 unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
 unit_length_cgs = float(params.attrs["InternalUnitSystem:UnitLength_in_cgs"])
@@ -81,10 +60,17 @@ box_centre = np.array(header.attrs["BoxSize"])
 r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
 M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
 
-for i in range(n_snaps):
+potential_energy_array = []
+internal_energy_array = []
+kinetic_energy_array = []
+time_array_cgs = []
+
+for i in range(0, n_snaps+1):
 
     filename = "Hydrostatic_%04d.hdf5" % i
-    f = h5.File(filename, "r")
+    snapshot_path = os.path.join(output_dir, filename)
+    f = h5.File(snapshot_path, "r")
+
     coords_dset = f["PartType0/Coordinates"]
     coords = np.array(coords_dset)
 
@@ -92,6 +78,7 @@ for i in range(n_snaps):
     header = f["Header"]
     snap_time = header.attrs["Time"]
     snap_time_cgs = snap_time * unit_time_cgs
+    time_array_cgs = np.append(time_array_cgs, snap_time_cgs)
     coords[:, 0] -= box_centre[0] / 2.0
     coords[:, 1] -= box_centre[1] / 2.0
     coords[:, 2] -= box_centre[2] / 2.0
@@ -99,38 +86,39 @@ for i in range(n_snaps):
     radius_cgs = radius * unit_length_cgs
     radius_over_virial_radius = radius_cgs / r_vir_cgs
 
-    # get the internal energies
-    vel_dset = f["PartType0/Velocities"]
-    vel = np.array(vel_dset)
-
-    # make dimensionless
-    vel /= v_c
     r = radius_over_virial_radius
+    total_potential_energy = np.sum(v_c ** 2 * np.log(r))
+    potential_energy_array = np.append(potential_energy_array, total_potential_energy)
 
-    # find radial component of velocity
-    v_r = np.zeros(r.size)
-    for j in range(r.size):
-        v_r[j] = -np.dot(coords[j, :], vel[j, :]) / radius[j]
+    vels_dset = f["PartType0/Velocities"]
+    vels = np.array(vels_dset)
+    speed_squared = vels[:, 0] ** 2 + vels[:, 1] ** 2 + vels[:, 2] ** 2
+    total_kinetic_energy = 0.5 * np.sum(speed_squared)
+    kinetic_energy_array = np.append(kinetic_energy_array, total_kinetic_energy)
 
-    bin_edges = np.linspace(0, max_r, n_radial_bins + 1)
-    (hist, v_r_totals) = do_binning(r, v_r, bin_edges)
+    u_dset = f["PartType0/InternalEnergies"]
+    u = np.array(u_dset)
+    total_internal_energy = np.sum(u)
+    internal_energy_array = np.append(internal_energy_array, total_internal_energy)
 
-    bin_widths = bin_edges[1] - bin_edges[0]
-    radial_bin_mids = np.linspace(
-        bin_widths / 2.0, max_r - bin_widths / 2.0, n_radial_bins
-    )
-    binned_v_r = v_r_totals / hist
+# put energies in units of v_c^2 and rescale by number of particles
+pe = potential_energy_array / (N * v_c ** 2)
+ke = kinetic_energy_array / (N * v_c ** 2)
+ie = internal_energy_array / (N * v_c ** 2)
+te = pe + ke + ie
 
-    figure()
-    plot(radial_bin_mids, binned_v_r, "ko", label="Average radial velocity in shell")
-    legend(loc="upper right")
-    xlabel(r"$r / r_{vir}$")
-    ylabel(r"$v_r / v_c$")
-    title(
-        r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$"
-        % (snap_time_cgs, N, v_c)
-    )
-    ylim((-1, 1))
-    plot_filename = "./plots/radial_velocity_profile/velocity_profile_%03d.png" % i
-    savefig(plot_filename, format="png")
-    close()
+dyn_time_cgs = r_vir_cgs / v_c_cgs
+time_array = time_array_cgs / dyn_time_cgs
+
+plt.figure()
+plt.plot(time_array, ke, label="Kinetic Energy")
+plt.plot(time_array, pe, label="Potential Energy")
+plt.plot(time_array, ie, label="Internal Energy")
+plt.plot(time_array, te, label="Total Energy")
+plt.legend(loc="lower right")
+plt.xlabel(r"$t / t_{dyn}$")
+plt.ylabel(r"$E / v_c^2$")
+plt.title(r"$%d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" % (N, v_c))
+plt.ylim((-2, 2))
+plt.savefig(plot_filename, format="png")
+
