@@ -7,7 +7,7 @@ This example tests the bubble propagation for different injection of stellar win
 To run this example with the GEAR model,
 
 ```
-CFLAGS="-DSWIFT_TEST_STELLAR_WIND" ./configure  --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-sink=GEAR --with-feedback=GEAR --with-kernel=wendland-C2
+CFLAGS="-DSWIFT_TEST_STELLAR_WIND" ./configure  --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-sink=GEAR --with-feedback=GEAR --with-kernel=wendland-C2 --with-grackle=/path/to/grackle
 ```
 
 Then, type
