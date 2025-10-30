@@ -68,10 +68,10 @@ struct mhd_part_data {
 
   /* SPH <1> error */
   float mean_SPH_err;
-  
+
   /* SPH <grad1> error */
   float mean_grad_SPH_err[3];
-  
+
   /* Magnetic force */
   float tot_mag_F[3];
 
@@ -104,7 +104,7 @@ struct mhd_part_data {
 
     /*! The 'correction matrix' (e.q. 6) - It's symmetric */
     struct sym_matrix c_matrix;
-    
+
     /*! Gradient per component of the Afield means Bfield*/
     float Mat_bx[3];
     float Mat_by[3];

@@ -1311,7 +1311,7 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   if (cooling->local_dust_to_gas_ratio > 0)
     chemistry->local_dust_to_gas_ratio = cooling->local_dust_to_gas_ratio;
 
-    /* radiative transfer */
+  /* radiative transfer */
 #if COOLING_GRACKLE_MODE == 0
   if (cooling->use_radiative_transfer)
     error(
