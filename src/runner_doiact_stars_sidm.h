@@ -79,8 +79,8 @@
 #define _TIMER_DOSUB_PAIR_STARS_SIDM(f) PASTE(timer_dosub_pair_stars_sidm, f)
 #define TIMER_DOSUB_PAIR_STARS_SIDM _TIMER_DOSUB_PAIR_STARS_SIDM(FUNCTION)
 
-#define _IACT_STARS_SIDM_SIDM(f) PASTE(runner_iact_nonsym_stars_sidm, f)
-#define IACT_STARS_SIDM_SIDM _IACT_STARS_SIDM_SIDM(FUNCTION)
+#define _IACT_STARS_SIDM(f) PASTE(runner_iact_nonsym_stars_sidm, f)
+#define IACT_STARS_SIDM _IACT_STARS_SIDM(FUNCTION)
 
 void DOSELF1_BRANCH_STARS_SIDM(struct runner *r, struct cell *c);
 void DOPAIR1_BRANCH_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *cj);
