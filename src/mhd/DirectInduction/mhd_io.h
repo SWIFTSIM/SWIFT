@@ -428,9 +428,17 @@ INLINE static void calculate_InductionDecomposition(const struct engine* e,
   compression_t_FN = sqrtf(compression_t_FN);  
 
   // New OW trigger testing
-  const float B[3] = {xp->mhd_data.B_over_rho_full[0] * p->rho,
-                      xp->mhd_data.B_over_rho_full[1] * p->rho,
-                      xp->mhd_data.B_over_rho_full[2] * p->rho};
+  //const float B[3] = {xp->mhd_data.B_over_rho_full[0] * p->rho,
+  //                    xp->mhd_data.B_over_rho_full[1] * p->rho,
+   //                   xp->mhd_data.B_over_rho_full[2] * p->rho};
+
+  const float rho = p->rho;
+  float B[3];
+  B[0] = p->mhd_data.B_over_rho[0] * rho;
+  B[1] = p->mhd_data.B_over_rho[1] * rho;
+  B[2] = p->mhd_data.B_over_rho[2] * rho;
+
+
   float Abs_B;
 
   Abs_B = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
@@ -460,8 +468,9 @@ INLINE static void calculate_InductionDecomposition(const struct engine* e,
   const float Abs_Diff_B = sqrtf(Diff_B[0] * Diff_B[0] + Diff_B[1] * Diff_B[1] +
                                  Diff_B[2] * Diff_B[2]);
 
+  const float eta_OWAR = fmaxf( - Adv_B_times_Delta_B, 0.0f ) / (MaxDiff_B_source + FLT_MIN); 
 
-  const float OW_test = fmaxf( - Adv_B_times_Delta_B, 0.0f ) / Abs_Diff_B * Abs_Delta_B / (MaxDiff_B_source + FLT_MIN);
+  const float OW_test = eta_OWAR * Abs_Delta_B/ (Abs_Diff_B + FLT_MIN);
 
   // Return flow type ratios
   ret[0] = shear_t_FN / (grad_v_FN + FLT_MIN);

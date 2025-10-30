@@ -651,7 +651,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   float Adv_B_source[3];
   float Delta_B[3];
   float Adv_B_times_Delta_B = 0.0f;
-  float MaxDiff_B_source = 2.0f * Abs_B / (p->h*p->h*p->rho + FLT_MIN);
+  const float d_ip = cbrtf(p->mass / p->rho);
+  float MaxDiff_B_source = sqrtf(3.0f) * 2.0f * Abs_B / (d_ip * d_ip * p->rho + FLT_MIN);
 
   for (int k = 0; k < 3; k++) {
     Adv_B_source[k] = p->mhd_data.AdvS_B_source[k];
