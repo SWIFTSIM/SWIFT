@@ -1024,6 +1024,43 @@ cell_can_recurse_in_self_sinks_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair star-sidm task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param ci The #cell with black holes.
+ * @param cj The #cell with hydro parts.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_stars_sidm_task(const struct cell *ci,
+                                          const struct cell *cj) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return ci->split && cj->split &&
+         ((kernel_gamma * ci->stars.h_max_old +
+           ci->stars.dx_max_part_old) < 0.5f * ci->dmin) &&
+         ((kernel_gamma * cj->sidm.h_max_old + cj->sidm.dx_max_part_old) <
+          0.5f * cj->dmin);
+}
+
+/**
+ * @brief Can a sub-self star-sidm task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_stars_sidm_task(const struct cell *c) {
+
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split &&
+         (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin) &&
+         (kernel_gamma * c->sidm.h_max_old < 0.5f * c->dmin);
+}
+
+/**
  * @brief Can a pair hydro task associated with a cell be split into smaller
  * sub-tasks.
  *
