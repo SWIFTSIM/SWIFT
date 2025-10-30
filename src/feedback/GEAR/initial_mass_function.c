@@ -580,7 +580,7 @@ void initial_mass_function_restore(struct initial_mass_function *imf,
 
   /* Restore the mass limits */
   if (imf->mass_limits != NULL) {
-    imf->mass_limits = (float *)malloc(sizeof(float) * imf->n_parts + 1);
+    imf->mass_limits = (float *)malloc(sizeof(float) * (imf->n_parts + 1));
     restart_read_blocks((void *)imf->mass_limits, sizeof(float),
                         imf->n_parts + 1, stream, NULL, "imf_mass_limits");
   }
