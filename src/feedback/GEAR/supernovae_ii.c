@@ -509,4 +509,5 @@ void supernovae_ii_clean(struct supernovae_ii *snii) {
   interpolate_1d_free(&snii->raw.ejected_mass_processed);
   interpolate_1d_free(&snii->integrated.ejected_mass_non_processed);
   interpolate_1d_free(&snii->raw.ejected_mass_non_processed);
+  interpolate_1d_free(&snii->energy_per_progenitor_mass);
 }
