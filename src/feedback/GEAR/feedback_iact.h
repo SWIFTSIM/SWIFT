@@ -141,7 +141,7 @@ runner_iact_nonsym_feedback_apply(
 
     /* Set the indication of SN event for cooling*/
     xpj->feedback_data.hit_by_SN = 1;
-  }else {
+  } else {
     xpj->feedback_data.hit_by_SN = 0;
   }
 

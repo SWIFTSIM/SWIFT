@@ -19,6 +19,7 @@
 #ifndef SWIFT_GEAR_STARS_H
 #define SWIFT_GEAR_STARS_H
 
+#include "feedback.h"
 #include "minmax.h"
 
 #include <float.h>
@@ -29,15 +30,22 @@
  *
  * @param sp Pointer to the s-particle data.
  * @param stars_properties Properties of the stars model.
+ * @param feedback_props Properties of the feedback model.
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
  * @param with_cosmology Are we running with cosmological time integration.
  * @param cosmo The current cosmological model (used if running with
  * cosmology).
+ * @param ti_current The current time (in integer).
  * @param time The current time (used if running without cosmology).
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static float stars_compute_timestep(
     const struct spart* const sp, const struct stars_props* stars_properties,
+    const struct feedback_props* feedback_props,
+    const struct phys_const* phys_const, const struct unit_system* us,
     const int with_cosmology, const struct cosmology* cosmo,
-    const double time) {
+    const integertime_t ti_current, const double time, const double time_base) {
 
   /* Background star particles have no time-step limits */
   if (sp->birth_time == -1.) {
@@ -82,14 +90,20 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
      anymore so they don't need to be waken up often.
   */
 
+  const float dt_feedback = feedback_compute_spart_timestep(
+      sp, feedback_props, phys_const, us, with_cosmology, cosmo, ti_current,
+      time, time_base);
+
+  float dt_age = 0.0;
   /* What age category are we in? */
   if (star_age > stars_properties->age_threshold_unlimited) {
-    return FLT_MAX;
+    dt_age = FLT_MAX;
   } else if (star_age > stars_properties->age_threshold) {
-    return stars_properties->max_time_step_old;
+    dt_age = stars_properties->max_time_step_old;
   } else {
-    return stars_properties->max_time_step_young;
+    dt_age = stars_properties->max_time_step_young;
   }
+  return min(dt_age, dt_feedback);
 }
 
 /**
