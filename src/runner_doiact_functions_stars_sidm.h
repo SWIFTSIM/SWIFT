@@ -45,70 +45,68 @@ void DOSELF1_STARS_SIDM(struct runner *r, struct cell *c, int timer) {
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
-  const int bi_is_local = 1; /* SELF tasks are always local */
+  const int si_is_local = 1; /* SELF tasks are always local */
 
   /* Anything to do here? */
-  if (c->black_holes.count == 0) return;
-  if (!cell_is_active_black_holes(c, e)) return;
+  if (c->stars.count == 0) return;
+  if (!cell_is_active_stars(c, e)) return;
 
-  const int bcount = c->black_holes.count;
-  const int count = c->hydro.count;
-  struct bpart *restrict bparts = c->black_holes.parts;
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
+  const int scount = c->stars.count;
+  const int count = c->sidm.count;
+  struct spart *restrict sparts = c->stars.parts;
+  struct sipart *restrict siparts = c->sidm.parts;
 
-  /* Do we actually have any gas neighbours? */
-  if (c->hydro.count != 0) {
+  /* Do we actually have any sidm neighbours? */
+  if (count != 0) {
 
-    /* Loop over the bparts in ci. */
-    for (int bid = 0; bid < bcount; bid++) {
+    /* Loop over the sparts in ci. */
+    for (int sid = 0; sid < scount; sid++) {
 
-      /* Get a hold of the ith bpart in ci. */
-      struct bpart *restrict bi = &bparts[bid];
+      /* Get a hold of the ith spart in ci. */
+      struct spart *restrict si = &sparts[sid];
 
       /* Skip inactive particles */
-      if (!bpart_is_active(bi, e)) continue;
+      if (!spart_is_active(si, e)) continue;
 
-      const float hi = bi->h;
+      const float hi = si->h;
       const float hig2 = hi * hi * kernel_gamma2;
-      const float bix[3] = {(float)(bi->x[0] - c->loc[0]),
-                            (float)(bi->x[1] - c->loc[1]),
-                            (float)(bi->x[2] - c->loc[2])};
+      const float six[3] = {(float)(si->x[0] - c->loc[0]),
+                            (float)(si->x[1] - c->loc[1]),
+                            (float)(si->x[2] - c->loc[2])};
 
-      /* Loop over the parts in cj. */
-      for (int pjd = 0; pjd < count; pjd++) {
+      /* Loop over the siparts in cj. */
+      for (int sipjd = 0; sipjd < count; sipjd++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts[pjd];
-        struct xpart *restrict xpj = &xparts[pjd];
-        const float hj = pj->h;
+        struct sipart *restrict sipj = &siparts[sipjd];
+        const float hj = sipj->h;
 
         /* Early abort? */
-        if (part_is_inhibited(pj, e)) continue;
+        if (sipart_is_inhibited(sipj, e)) continue;
 
         /* Compute the pairwise distance. */
-        const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
-                              (float)(pj->x[1] - c->loc[1]),
-                              (float)(pj->x[2] - c->loc[2])};
-        const float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+        const float sipjx[3] = {(float)(sipj->x[0] - c->loc[0]),
+                              (float)(sipj->x[1] - c->loc[1]),
+                              (float)(sipj->x[2] - c->loc[2])};
+        const float dx[3] = {six[0] - sipjx[0], six[1] - sipjx[1], six[2] - sipjx[2]};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
-        if (bi->ti_drift != e->ti_current)
-          error("Particle bi not drifted to current time");
+        if (si->ti_drift != e->ti_current)
+          error("Particle si not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
 
         if (r2 < hig2) {
-          IACT_STARS_SIDM(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
-                      e->gravity_properties, e->black_holes_properties,
-                      e->entropy_floor, ti_current, e->time);
+          IACT_STARS_SIDM(r2, dx, hi, hj, si, sipj, with_cosmology, cosmo,
+                      e->gravity_properties, e->stars_properties, 
+                      ti_current, e->time);
         }
-      } /* loop over the parts in ci. */
-    } /* loop over the bparts in ci. */
-  } /* Do we have gas particles in the cell? */
+      } /* loop over the siparts in ci. */
+    } /* loop over the sparts in ci. */
+  } /* Do we have star particles in the cell? */
 
   TIMER_TOC(TIMER_DOSELF_STARS_SIDM);
 }
@@ -127,17 +125,16 @@ void DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(struct runner *r, struct cell *restrict ci
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
-  const int bi_is_local = ci->nodeID == e->nodeID;
+  const int si_is_local = ci->nodeID == e->nodeID;
 
   /* Anything to do here? */
-  if (ci->black_holes.count == 0) return;
-  if (!cell_is_active_black_holes(ci, e)) return;
+  if (ci->stars.count == 0) return;
+  if (!cell_is_active_stars(ci, e)) return;
 
-  const int bcount_i = ci->black_holes.count;
-  const int count_j = cj->hydro.count;
-  struct bpart *restrict bparts_i = ci->black_holes.parts;
-  struct part *restrict parts_j = cj->hydro.parts;
-  struct xpart *restrict xparts_j = cj->hydro.xparts;
+  const int scount_i = ci->stars.count;
+  const int count_j = cj->sidm.count;
+  struct spart *restrict sparts_i = ci->stars.parts;
+  struct sipart *restrict siparts_j = cj->sidm.parts;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -148,57 +145,55 @@ void DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(struct runner *r, struct cell *restrict ci
       shift[k] = -e->s->dim[k];
   }
 
-  /* Do we actually have any gas neighbours? */
-  if (cj->hydro.count != 0) {
+  /* Do we actually have any sidm neighbours? */
+  if (cj->sidm.count != 0) {
 
-    /* Loop over the bparts in ci. */
-    for (int bid = 0; bid < bcount_i; bid++) {
+    /* Loop over the sparts in ci. */
+    for (int sid = 0; sid < scount_i; sid++) {
 
       /* Get a hold of the ith bpart in ci. */
-      struct bpart *restrict bi = &bparts_i[bid];
+      struct spart *restrict si = &sparts_i[sid];
 
       /* Skip inactive particles */
-      if (!bpart_is_active(bi, e)) continue;
+      if (!spart_is_active(si, e)) continue;
 
-      const float hi = bi->h;
+      const float hi = si->h;
       const float hig2 = hi * hi * kernel_gamma2;
-      const float bix[3] = {(float)(bi->x[0] - (cj->loc[0] + shift[0])),
-                            (float)(bi->x[1] - (cj->loc[1] + shift[1])),
-                            (float)(bi->x[2] - (cj->loc[2] + shift[2]))};
+      const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
+                            (float)(si->x[1] - (cj->loc[1] + shift[1])),
+                            (float)(si->x[2] - (cj->loc[2] + shift[2]))};
 
-      /* Loop over the parts in cj. */
-      for (int pjd = 0; pjd < count_j; pjd++) {
+      /* Loop over the siparts in cj. */
+      for (int sipjd = 0; sipjd < count_j; sipjd++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts_j[pjd];
-        struct xpart *restrict xpj = &xparts_j[pjd];
-        const float hj = pj->h;
+        struct sipart *restrict sipj = &siparts_j[sipjd];
+        const float hj = sipj->h;
 
         /* Skip inhibited particles. */
-        if (part_is_inhibited(pj, e)) continue;
+        if (sipart_is_inhibited(sipj, e)) continue;
 
         /* Compute the pairwise distance. */
-        const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
-                              (float)(pj->x[1] - cj->loc[1]),
-                              (float)(pj->x[2] - cj->loc[2])};
-        const float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+        const float sipjx[3] = {(float)(sipj->x[0] - cj->loc[0]),
+                              (float)(sipj->x[1] - cj->loc[1]),
+                              (float)(sipj->x[2] - cj->loc[2])};
+        const float dx[3] = {six[0] - sipjx[0], six[1] - sipjx[1], six[2] - sipjx[2]};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
-        if (bi->ti_drift != e->ti_current)
-          error("Particle bi not drifted to current time");
-        if (pj->ti_drift != e->ti_current)
-          error("Particle pj not drifted to current time");
+        if (si->ti_drift != e->ti_current)
+          error("Particle si not drifted to current time");
+        if (sipj->ti_drift != e->ti_current)
+          error("Particle sipj not drifted to current time");
 #endif
 
         if (r2 < hig2) {
-          IACT_STARS_SIDM(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
-                      e->gravity_properties, e->black_holes_properties,
-                      e->entropy_floor, ti_current, e->time);
+          IACT_STARS_SIDM(r2, dx, hi, hj, si, sipj, with_cosmology, cosmo,
+                      e->gravity_properties, e->stars_properties, ti_current, e->time);
         }
-      } /* loop over the parts in cj. */
-    } /* loop over the bparts in ci. */
+      } /* loop over the siparts in cj. */
+    } /* loop over the sparts in ci. */
   } /* Do we have gas particles in the cell? */
 }
 
@@ -224,15 +219,15 @@ void DOPAIR1_STARS_SIDM_NAIVE(struct runner *r, struct cell *restrict ci,
  *
  * @param r The #runner.
  * @param ci The first #cell.
- * @param bparts_i The #bpart to interact with @c cj.
+ * @param sparts_i The #spart to interact with @c cj.
  * @param ind The list of indices of particles in @c ci to interact with.
- * @param bcount The number of particles in @c ind.
+ * @param scount The number of particles in @c ind.
  * @param cj The second #cell.
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR1_SUBSET_STARS_SIDM_NAIVE(struct runner *r, struct cell *restrict ci,
-                             struct bpart *restrict bparts_i, int *restrict ind,
-                             const int bcount, struct cell *restrict cj,
+                             struct spart *restrict sparts_i, int *restrict ind,
+                             const int scount, struct cell *restrict cj,
                              const double *shift) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -243,65 +238,62 @@ void DOPAIR1_SUBSET_STARS_SIDM_NAIVE(struct runner *r, struct cell *restrict ci,
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
-  const int bi_is_local = ci->nodeID == e->nodeID;
+  const int si_is_local = ci->nodeID == e->nodeID;
 
-  const int count_j = cj->hydro.count;
-  struct part *restrict parts_j = cj->hydro.parts;
-  struct xpart *restrict xparts_j = cj->hydro.xparts;
+  const int count_j = cj->sidm.count;
+  struct sipart *restrict siparts_j = cj->sidm.parts;
 
   /* Early abort? */
   if (count_j == 0) return;
 
-  /* Loop over the parts_i. */
-  for (int bid = 0; bid < bcount; bid++) {
+  /* Loop over the siparts_i. */
+  for (int sid = 0; sid < bcount; sid++) {
 
-    /* Get a hold of the ith part in ci. */
-    struct bpart *restrict bi = &bparts_i[ind[bid]];
+    /* Get a hold of the ith spart in ci. */
+    struct spart *restrict si = &sparts_i[ind[sid]];
 
-    const double bix = bi->x[0] - (shift[0]);
-    const double biy = bi->x[1] - (shift[1]);
-    const double biz = bi->x[2] - (shift[2]);
-    const float hi = bi->h;
+    const double six = si->x[0] - (shift[0]);
+    const double siy = si->x[1] - (shift[1]);
+    const double siz = si->x[2] - (shift[2]);
+    const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!bpart_is_active(bi, e))
+    if (!spart_is_active(si, e))
       error("Trying to correct smoothing length of inactive particle !");
 #endif
 
-    /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count_j; pjd++) {
+    /* Loop over the siparts in cj. */
+    for (int sipjd = 0; sipjd < count_j; sipjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
+      struct sipart *restrict sipj = &siparts_j[sipjd];
 
       /* Skip inhibited particles */
-      if (part_is_inhibited(pj, e)) continue;
+      if (sipart_is_inhibited(sipj, e)) continue;
 
-      const double pjx = pj->x[0];
-      const double pjy = pj->x[1];
-      const double pjz = pj->x[2];
-      const float hj = pj->h;
+      const double sipjx = sipj->x[0];
+      const double sipjy = sipj->x[1];
+      const double sipjz = sipj->x[2];
+      const float hj = sipj->h;
 
       /* Compute the pairwise distance. */
-      const float dx[3] = {(float)(bix - pjx), (float)(biy - pjy),
-                           (float)(biz - pjz)};
+      const float dx[3] = {(float)(six - sipjx), (float)(siy - sipjy),
+                           (float)(siz - sipjz)};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      if (pj->ti_drift != e->ti_current)
-        error("Particle pj not drifted to current time");
+      if (sipj->ti_drift != e->ti_current)
+        error("Particle sipj not drifted to current time");
 #endif
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_STARS_SIDM(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
-                    e->gravity_properties, e->black_holes_properties,
-                    e->entropy_floor, ti_current, e->time);
+        IACT_STARS_SIDM(r2, dx, hi, hj, si, sipj, with_cosmology, cosmo,
+                    e->gravity_properties, e->stars_properties, ti_current, e->time);
       }
-    } /* loop over the parts in cj. */
-  } /* loop over the parts in ci. */
+    } /* loop over the siparts in cj. */
+  } /* loop over the sparts in ci. */
 }
 
 /**
@@ -310,13 +302,13 @@ void DOPAIR1_SUBSET_STARS_SIDM_NAIVE(struct runner *r, struct cell *restrict ci,
  *
  * @param r The #runner.
  * @param ci The first #cell.
- * @param bparts The #bpart to interact.
+ * @param sparts The #spart to interact.
  * @param ind The list of indices of particles in @c ci to interact with.
- * @param bcount The number of particles in @c ind.
+ * @param scount The number of particles in @c ind.
  */
 void DOSELF1_SUBSET_STARS_SIDM(struct runner *r, struct cell *restrict ci,
-                       struct bpart *restrict bparts, int *restrict ind,
-                       const int bcount) {
+                       struct spart *restrict sparts, int *restrict ind,
+                       const int scount) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
@@ -326,61 +318,58 @@ void DOSELF1_SUBSET_STARS_SIDM(struct runner *r, struct cell *restrict ci,
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
-  const int bi_is_local = 1; /* SELF tasks are always local */
+  const int si_is_local = 1; /* SELF tasks are always local */
 
-  const int count_i = ci->hydro.count;
-  struct part *restrict parts_j = ci->hydro.parts;
-  struct xpart *restrict xparts_j = ci->hydro.xparts;
+  const int count_i = ci->stars.count;
+  struct sipart *restrict siparts_j = ci->sidm.parts;
 
   /* Early abort? */
   if (count_i == 0) return;
 
-  /* Loop over the parts in ci. */
-  for (int bid = 0; bid < bcount; bid++) {
+  /* Loop over the sparts in ci. */
+  for (int sid = 0; sid < scount; sid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct bpart *bi = &bparts[ind[bid]];
-    const float bix[3] = {(float)(bi->x[0] - ci->loc[0]),
-                          (float)(bi->x[1] - ci->loc[1]),
-                          (float)(bi->x[2] - ci->loc[2])};
-    const float hi = bi->h;
+    struct spart *si = &sparts[ind[sid]];
+    const float six[3] = {(float)(si->x[0] - ci->loc[0]),
+                          (float)(si->x[1] - ci->loc[1]),
+                          (float)(si->x[2] - ci->loc[2])};
+    const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!bpart_is_active(bi, e)) error("Inactive particle in subset function!");
+    if (!spart_is_active(si, e)) error("Inactive particle in subset function!");
 #endif
 
-    /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count_i; pjd++) {
+    /* Loop over the siparts in cj. */
+    for (int sipjd = 0; sipjd < count_i; sipjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
+      struct sipart *restrict sipj = &siparts_j[sipjd];
 
       /* Early abort? */
-      if (part_is_inhibited(pj, e)) continue;
+      if (sipart_is_inhibited(sipj, e)) continue;
 
       /* Compute the pairwise distance. */
-      const float pjx[3] = {(float)(pj->x[0] - ci->loc[0]),
-                            (float)(pj->x[1] - ci->loc[1]),
-                            (float)(pj->x[2] - ci->loc[2])};
-      const float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+      const float sipjx[3] = {(float)(sipj->x[0] - ci->loc[0]),
+                            (float)(sipj->x[1] - ci->loc[1]),
+                            (float)(sipj->x[2] - ci->loc[2])};
+      const float dx[3] = {six[0] - sipjx[0], six[1] - sipjx[1], six[2] - sipjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      if (pj->ti_drift != e->ti_current)
-        error("Particle pj not drifted to current time");
+      if (sipj->ti_drift != e->ti_current)
+        error("Particle sipj not drifted to current time");
 #endif
 
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_STARS_SIDM(r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
-                    e->gravity_properties, e->black_holes_properties,
-                    e->entropy_floor, ti_current, e->time);
+        IACT_STARS_SIDM(r2, dx, hi, pj->h, si, sipj, with_cosmology, cosmo,
+                    e->gravity_properties, e->stars_properties, ti_current, e->time);
       }
-    } /* loop over the parts in cj. */
-  } /* loop over the parts in ci. */
+    } /* loop over the siparts in cj. */
+  } /* loop over the sparts in ci. */
 }
 
 /**
@@ -389,15 +378,15 @@ void DOSELF1_SUBSET_STARS_SIDM(struct runner *r, struct cell *restrict ci,
  *
  * @param r The #runner.
  * @param ci The first #cell.
- * @param bparts The #bpart to interact.
+ * @param sparts The #spart to interact.
  * @param ind The list of indices of particles in @c ci to interact with.
- * @param bcount The number of particles in @c ind.
+ * @param scount The number of particles in @c ind.
  */
 void DOSELF1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, struct cell *restrict ci,
-                              struct bpart *restrict bparts, int *restrict ind,
-                              const int bcount) {
+                              struct spart *restrict sparts, int *restrict ind,
+                              const int scount) {
 
-  DOSELF1_SUBSET_STARS_SIDM(r, ci, bparts, ind, bcount);
+  DOSELF1_SUBSET_STARS_SIDM(r, ci, sparts, ind, scount);
 }
 
 /**
@@ -407,20 +396,20 @@ void DOSELF1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, struct cell *restrict ci
  *
  * @param r The #runner.
  * @param ci The first #cell.
- * @param bparts_i The #bpart to interact with @c cj.
+ * @param sparts_i The #spart to interact with @c cj.
  * @param ind The list of indices of particles in @c ci to interact with.
- * @param bcount The number of particles in @c ind.
+ * @param scount The number of particles in @c ind.
  * @param cj The second #cell.
  */
 void DOPAIR1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, struct cell *restrict ci,
-                              struct bpart *restrict bparts_i,
-                              int *restrict ind, int const bcount,
+                              struct spart *restrict sparts_i,
+                              int *restrict ind, int const scount,
                               struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
   /* Anything to do here? */
-  if (cj->hydro.count == 0) return;
+  if (cj->sidm.count == 0) return;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -431,30 +420,30 @@ void DOPAIR1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, struct cell *restrict ci
       shift[k] = -e->s->dim[k];
   }
 
-  DOPAIR1_SUBSET_STARS_SIDM_NAIVE(r, ci, bparts_i, ind, bcount, cj, shift);
+  DOPAIR1_SUBSET_STARS_SIDM_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
 }
 
-void DOSUB_SUBSET_STARS_SIDM(struct runner *r, struct cell *ci, struct bpart *bparts,
-                     int *ind, const int bcount, struct cell *cj,
+void DOSUB_SUBSET_STARS_SIDM(struct runner *r, struct cell *ci, struct spart *sparts,
+                     int *ind, const int scount, struct cell *cj,
                      int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
 
   /* Should we even bother? */
-  if (!cell_is_active_black_holes(ci, e) &&
-      (cj == NULL || !cell_is_active_black_holes(cj, e)))
+  if (!cell_is_active_stars(ci, e) &&
+      (cj == NULL || !cell_is_active_stars(cj, e)))
     return;
 
-  /* Find out in which sub-cell of ci the parts are. */
+  /* Find out in which sub-cell of ci the sparts are. */
   struct cell *sub = NULL;
   if (ci->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL) {
-        if (&bparts[ind[0]] >= &ci->progeny[k]->black_holes.parts[0] &&
-            &bparts[ind[0]] <
+        if (&sparts[ind[0]] >= &ci->progeny[k]->stars.parts[0] &&
+            &sparts[ind[0]] <
                 &ci->progeny[k]
-                     ->black_holes.parts[ci->progeny[k]->black_holes.count]) {
+                     ->stars.parts[ci->progeny[k]->stars.count]) {
           sub = ci->progeny[k];
           break;
         }
@@ -466,27 +455,27 @@ void DOSUB_SUBSET_STARS_SIDM(struct runner *r, struct cell *ci, struct bpart *bp
   if (cj == NULL) {
 
     /* Recurse? */
-    if (cell_can_recurse_in_self_black_holes_task(ci)) {
+    if (cell_can_recurse_in_self_stars_sidm_task(ci)) {
 
       /* Loop over all progeny. */
-      DOSUB_SUBSET_STARS_SIDM(r, sub, bparts, ind, bcount, NULL, 0);
+      DOSUB_SUBSET_STARS_SIDM(r, sub, sparts, ind, scount, NULL, 0);
       for (int j = 0; j < 8; j++)
         if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
-          DOSUB_SUBSET_STARS_SIDM(r, sub, bparts, ind, bcount, ci->progeny[j], 0);
+          DOSUB_SUBSET_STARS_SIDM(r, sub, sparts, ind, scount, ci->progeny[j], 0);
 
     }
 
     /* Otherwise, compute self-interaction. */
     else
-      DOSELF1_SUBSET_BRANCH_STARS_SIDM(r, ci, bparts, ind, bcount);
+      DOSELF1_SUBSET_BRANCH_STARS_SIDM(r, ci, sparts, ind, scount);
   } /* self-interaction. */
 
   /* Otherwise, it's a pair interaction. */
   else {
 
     /* Recurse? */
-    if (cell_can_recurse_in_pair_black_holes_task(ci, cj) &&
-        cell_can_recurse_in_pair_black_holes_task(cj, ci)) {
+    if (cell_can_recurse_in_pair_stars_sidm_task(ci, cj) &&
+        cell_can_recurse_in_pair_stars_sidm_task(cj, ci)) {
 
       /* Get the type of pair and flip ci/cj if needed. */
       double shift[3] = {0.0, 0.0, 0.0};
@@ -497,24 +486,24 @@ void DOSUB_SUBSET_STARS_SIDM(struct runner *r, struct cell *ci, struct bpart *bp
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
-          DOSUB_SUBSET_STARS_SIDM(r, ci->progeny[pid], bparts, ind, bcount,
+          DOSUB_SUBSET_STARS_SIDM(r, ci->progeny[pid], sparts, ind, scount,
                           cj->progeny[pjd], 0);
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
-          DOSUB_SUBSET_STARS_SIDM(r, cj->progeny[pjd], bparts, ind, bcount,
+          DOSUB_SUBSET_STARS_SIDM(r, cj->progeny[pjd], sparts, ind, scount,
                           ci->progeny[pid], 0);
       }
     }
 
     /* Otherwise, compute the pair directly. */
-    else if (cell_is_active_black_holes(ci, e) && cj->hydro.count > 0) {
+    else if (cell_is_active_stars(ci, e) && cj->sidm.count > 0) {
 
       /* Do any of the cells need to be drifted first? */
-      if (cell_is_active_black_holes(ci, e)) {
-        if (!cell_are_bpart_drifted(ci, e)) error("Cell should be drifted!");
-        if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
+      if (cell_is_active_stars(ci, e)) {
+        if (!cell_are_spart_drifted(ci, e)) error("Cell should be drifted!");
+        if (!cell_are_sipart_drifted(cj, e)) error("Cell should be drifted!");
       }
 
-      DOPAIR1_SUBSET_BRANCH_STARS_SIDM(r, ci, bparts, ind, bcount, cj);
+      DOPAIR1_SUBSET_BRANCH_STARS_SIDM(r, ci, sparts, ind, scount, cj);
     }
 
   } /* otherwise, pair interaction. */
@@ -533,13 +522,13 @@ void DOSELF1_BRANCH_STARS_SIDM(struct runner *r, struct cell *c) {
   const struct engine *restrict e = r->e;
 
   /* Anything to do here? */
-  if (c->black_holes.count == 0) return;
+  if (c->stars.count == 0) return;
 
   /* Anything to do here? */
-  if (!cell_is_active_black_holes(c, e)) return;
+  if (!cell_is_active_stars(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->black_holes.h_max_old * kernel_gamma > c->dmin)
+  if (c->stars.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   DOSELF1_STARS_SIDM(r, c, 1);
@@ -559,27 +548,27 @@ void DOPAIR1_BRANCH_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *c
 
   const struct engine *restrict e = r->e;
 
-  const int ci_active = cell_is_active_black_holes(ci, e);
-  const int cj_active = cell_is_active_black_holes(cj, e);
+  const int ci_active = cell_is_active_stars(ci, e);
+  const int cj_active = cell_is_active_stars(cj, e);
   
-  const int do_ci_bh = ci->nodeID == e->nodeID;
-  const int do_cj_bh = cj->nodeID == e->nodeID;
+  const int do_ci_stars = ci->nodeID == e->nodeID;
+  const int do_cj_stars = cj->nodeID == e->nodeID;
 
-  const int do_ci = (ci->black_holes.count != 0 && cj->hydro.count != 0 &&
-                     ci_active && do_ci_bh);
-  const int do_cj = (cj->black_holes.count != 0 && ci->hydro.count != 0 &&
-                     cj_active && do_cj_bh);
+  const int do_ci = (ci->stars.count != 0 && cj->sidm.count != 0 &&
+                     ci_active && do_ci_stars);
+  const int do_cj = (cj->stars.count != 0 && ci->sidm.count != 0 &&
+                     cj_active && do_cj_stars);
 
   /* Anything to do here? */
   if (!do_ci && !do_cj) return;
 
   /* Check that cells are drifted. */
   if (do_ci &&
-      (!cell_are_bpart_drifted(ci, e) || !cell_are_part_drifted(cj, e)))
+      (!cell_are_spart_drifted(ci, e) || !cell_are_sipart_drifted(cj, e)))
     error("Interacting undrifted cells.");
 
   if (do_cj &&
-      (!cell_are_part_drifted(ci, e) || !cell_are_bpart_drifted(cj, e)))
+      (!cell_are_sipart_drifted(ci, e) || !cell_are_spart_drifted(cj, e)))
     error("Interacting undrifted cells.");
 
   /* No sorted intreactions here -> use the naive ones */
@@ -606,10 +595,10 @@ void DOSUB_PAIR1_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *e = r->e;
 
   /* Should we even bother? */
-  const int should_do_ci = ci->black_holes.count != 0 && cj->hydro.count != 0 &&
-                           cell_is_active_black_holes(ci, e);
-  const int should_do_cj = cj->black_holes.count != 0 && ci->hydro.count != 0 &&
-                           cell_is_active_black_holes(cj, e);
+  const int should_do_ci = ci->stars.count != 0 && cj->sidm.count != 0 &&
+                           cell_is_active_stars(ci, e);
+  const int should_do_cj = cj->stars.count != 0 && ci->sidm.count != 0 &&
+                           cell_is_active_stars(cj, e);
 
   if (!should_do_ci && !should_do_cj) return;
 
@@ -618,8 +607,8 @@ void DOSUB_PAIR1_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_black_holes_task(ci, cj) &&
-      cell_can_recurse_in_pair_black_holes_task(cj, ci)) {
+  if (cell_can_recurse_in_pair_stars_sidm_task(ci, cj) &&
+      cell_can_recurse_in_pair_stars_sidm_task(cj, ci)) {
     struct cell_split_pair *csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
@@ -632,32 +621,32 @@ void DOSUB_PAIR1_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
   /* Otherwise, compute the pair directly. */
   else {
 
-    const int do_ci_bh = ci->nodeID == e->nodeID;
-    const int do_cj_bh = cj->nodeID == e->nodeID;
+    const int do_ci_stars = ci->nodeID == e->nodeID;
+    const int do_cj_stars = cj->nodeID == e->nodeID;
 
-    const int do_ci = ci->black_holes.count != 0 &&
-                      cell_is_active_black_holes(ci, e) && do_ci_bh;
-    const int do_cj = cj->black_holes.count != 0 &&
-                      cell_is_active_black_holes(cj, e) && do_cj_bh;
+    const int do_ci = ci->stars.count != 0 &&
+                      cell_is_active_stars(ci, e) && do_ci_stars;
+    const int do_cj = cj->stars.count != 0 &&
+                      cell_is_active_stars(cj, e) && do_cj_stars;
 
     if (do_ci) {
 
       /* Make sure both cells are drifted to the current timestep. */
-      if (!cell_are_bpart_drifted(ci, e))
-        error("Interacting undrifted cells (bparts).");
+      if (!cell_are_spart_drifted(ci, e))
+        error("Interacting undrifted cells (sparts).");
 
-      if (cj->hydro.count != 0 && !cell_are_part_drifted(cj, e))
-        error("Interacting undrifted cells (parts).");
+      if (cj->sidm.count != 0 && !cell_are_sipart_drifted(cj, e))
+        error("Interacting undrifted cells (siparts).");
     }
 
     if (do_cj) {
 
       /* Make sure both cells are drifted to the current timestep. */
-      if (ci->hydro.count != 0 && !cell_are_part_drifted(ci, e))
-        error("Interacting undrifted cells (parts).");
+      if (ci->sidm.count != 0 && !cell_are_sipart_drifted(ci, e))
+        error("Interacting undrifted cells (siparts).");
 
-      if (!cell_are_bpart_drifted(cj, e))
-        error("Interacting undrifted cells (bparts).");
+      if (!cell_are_spart_drifted(cj, e))
+        error("Interacting undrifted cells (sparts).");
     }
 
     if (do_ci || do_cj) DOPAIR1_BRANCH_STARS_SIDM(r, ci, cj);
@@ -685,13 +674,13 @@ void DOSUB_SELF1_STARS_SIDM(struct runner *r, struct cell *ci, int gettimer) {
 #endif
 
     /* Should we even bother? */
-  const int should_do_ci = ci->black_holes.count != 0 && ci->hydro.count != 0 &&
-                           cell_is_active_black_holes(ci, e);
+  const int should_do_ci = ci->stars.count != 0 && ci->sidm.count != 0 &&
+                           cell_is_active_stars(ci, e);
 
   if (!should_do_ci) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_self_black_holes_task(ci)) {
+  if (cell_can_recurse_in_self_stars_sidm_task(ci)) {
 
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
@@ -707,10 +696,10 @@ void DOSUB_SELF1_STARS_SIDM(struct runner *r, struct cell *ci, int gettimer) {
   else {
 
     /* Check we did drift to the current time */
-    if (!cell_are_bpart_drifted(ci, e)) error("Interacting undrifted cell.");
+    if (!cell_are_spart_drifted(ci, e)) error("Interacting undrifted cell.");
 
-    if (ci->hydro.count != 0 && !cell_are_part_drifted(ci, e))
-      error("Interacting undrifted cells (bparts).");
+    if (ci->sidm.count != 0 && !cell_are_sipart_drifted(ci, e))
+      error("Interacting undrifted cells (siparts).");
 
     DOSELF1_BRANCH_STARS_SIDM(r, ci);
   }
