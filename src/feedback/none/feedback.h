@@ -27,6 +27,30 @@
 #include "units.h"
 
 /**
+ * @brief Computes the time-step length of a given star particle from feedback
+ * physics
+ *
+ * @param sp Pointer to the s-particle data.
+ * @param feedback_props Properties of the feedback model.
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param cosmo The current cosmological model (used if running with
+ * cosmology).
+ * @param ti_current The current time (in integer)
+ * @param time The current time (in double)
+ * @param time_base The time base.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_compute_spart_timestep(
+    const struct spart* const sp, const struct feedback_props* feedback_props,
+    const struct phys_const* phys_const, const struct unit_system* us,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const integertime_t ti_current, const double time, const double time_base) {
+  return FLT_MAX;
+}
+
+/**
  * @brief Update the properties of a particle fue to feedback effects after
  * the cooling was applied.
  *
