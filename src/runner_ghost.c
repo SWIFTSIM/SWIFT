@@ -2483,17 +2483,17 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
 
-  const float stars_h_max = e->stars_properties->h_max;
-  const float stars_h_min = e->stars_properties->h_min;
-  const float eps = e->stars_properties->h_tolerance;
-  const float stars_eta_dim = pow_dimension(e->stars_properties->eta_neighbours);
+  const float stars_h_max = e->stars_properties->h_max_sidm;
+  const float stars_h_min = e->stars_properties->h_min_sidm;
+  const float eps = e->stars_properties->h_tolerance_sidm;
+  const float stars_eta_dim = pow_dimension(e->stars_properties->eta_neighbours_sidm);
   const int use_mass_weighted_num_ngb =
-      e->stars_properties->use_mass_weighted_num_ngb;
-  const int max_smoothing_iter = e->stars_properties->max_smoothing_iterations;
+      e->stars_properties->use_mass_weighted_num_ngb_sidm;
+  const int max_smoothing_iter = e->stars_properties->max_smoothing_iterations_sidm;
   int redo = 0, count = 0;
 
   /* Running value of the maximal smoothing length */
-  float h_max = c->stars.h_max;
+  float h_max = c->stars.h_max_sidm;
   float h_max_active = 0.f;
 
   TIMER_TIC;
@@ -2509,8 +2509,8 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
         runner_do_sidm_density_ghost(r, c->progeny[k], 0);
 
         /* Update h_max */
-        h_max = max(h_max, c->progeny[k]->stars.h_max);
-        h_max_active = max(h_max_active, c->progeny[k]->stars.h_max_active);
+        h_max = max(h_max, c->progeny[k]->stars.h_max_sidm);
+        h_max_active = max(h_max_active, c->progeny[k]->stars.h_max_active_sidm);
       }
     }
   } else {
@@ -2532,7 +2532,7 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
     for (int k = 0; k < c->stars.count; k++)
       if (sipart_is_active(&sparts[k], e)) {
         pid[count] = k;
-        h_0[count] = sparts[k].h;
+        h_0[count] = sparts[k].h_sidm;
         left[count] = 0.f;
         right[count] = stars_h_max;
         ++count;
@@ -2562,7 +2562,7 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
 
         /* Get some useful values */
         const float h_init = h_0[i];
-        const float h_old = sp->h;
+        const float h_old = sp->h_sidm;
         const float h_old_dim = pow_dimension(h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
 
@@ -2589,17 +2589,17 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
              number of neighbours? */
           if (use_mass_weighted_num_ngb) {
             const float inv_mass = 1.f / sp->mass;
-            sp->density.wcount = sp->rho * inv_mass;
-            sp->density.wcount_dh = sp->density.rho_dh * inv_mass;
+            sp->density_sidm.wcount = sp->rho_sidm * inv_mass;
+            sp->density_sidm.wcount_dh = sp->density_sidm.rho_dh * inv_mass;
           }
 
           /* Compute one step of the Newton-Raphson scheme */
-          const float n_sum = sp->density.wcount * h_old_dim;
+          const float n_sum = sp->density_sidm.wcount * h_old_dim;
           const float n_target = stars_eta_dim;
           const float f = n_sum - n_target;
           const float f_prime =
-              sp->density.wcount_dh * h_old_dim +
-              hydro_dimension * sp->density.wcount * h_old_dim_minus_one;
+              sp->density_sidm.wcount_dh * h_old_dim +
+              hydro_dimension * sp->density_sidm.wcount * h_old_dim_minus_one;
 
           /* Improve the bisection bounds */
           if (n_sum < n_target)
@@ -2615,8 +2615,8 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
 
           /* Skip if h is already h_max and we don't have enough neighbours */
           /* Same if we are below h_min */
-          if (((sp->h >= stars_h_max) && (f < 0.f)) ||
-              ((sp->h <= stars_h_min) && (f > 0.f))) {
+          if (((sp->h_sidm >= stars_h_max) && (f < 0.f)) ||
+              ((sp->h_sidm <= stars_h_min) && (f > 0.f))) {
 
             /* We have a particle whose smoothing length is already set (wants
              * to be larger but has already hit the maximum OR wants to be
@@ -2624,8 +2624,8 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
              * as if the smoothing length had converged correctly  */
 
             /* Check if h_max has increased */
-            h_max = max(h_max, sp->h);
-            h_max_active = max(h_max_active, sp->h);
+            h_max = max(h_max, sp->h_sidm);
+            h_max_active = max(h_max_active, sp->h_sidm);
 
             /* Ok, we are done with this particle */
             continue;
@@ -2674,17 +2674,17 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
               (h_old == left[i] && h_new == right[i])) {
 
             /* Bisect the remaining interval */
-            sp->h = pow_inv_dimension(
+            sp->h_sidm = pow_inv_dimension(
                 0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
 
           } else {
 
             /* Normal case */
-            sp->h = h_new;
+            sp->h_sidm = h_new;
           }
 
           /* If within the allowed range, try again */
-          if (sp->h < stars_h_max && sp->h > stars_h_min) {
+          if (sp->h_sidm < stars_h_max && sp->h_sidm > stars_h_min) {
 
             /* Flag for another round of fun */
             pid[redo] = pid[i];
@@ -2699,15 +2699,15 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
             /* Off we go ! */
             continue;
 
-          } else if (sp->h <= stars_h_min) {
+          } else if (sp->h_sidm <= stars_h_min) {
 
             /* Ok, this particle is a lost cause... */
-            sp->h = stars_h_min;
+            sp->h_sidm = stars_h_min;
 
-          } else if (sp->h >= stars_h_max) {
+          } else if (sp->h_sidm >= stars_h_max) {
 
             /* Ok, this particle is a lost cause... */
-            sp->h = stars_h_max;
+            sp->h_sidm = stars_h_max;
 
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
@@ -2725,11 +2725,11 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
         /* We now have a particle whose smoothing length has converged */
 
         /* Set the correct depth */
-        cell_set_spart_sidm_h_depth(sp, c);
+        cell_set_spart_h_sidm_depth(sp, c);
 
         /* Check if h_max has increased */
-        h_max = max(h_max, sp->h);
-        h_max_active = max(h_max_active, sp->h);
+        h_max = max(h_max, sp->h_sidm);
+        h_max_active = max(h_max_active, sp->h_sidm);
 
         // ghost_stats_converged_sidm(&c->ghost_statistics, sp);
       }
@@ -2786,8 +2786,8 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
           "particles:");
       for (int i = 0; i < count; i++) {
         struct spart *sp = &sparts[pid[i]];
-        warning("ID: %lld, h: %g, wcount: %g", sp->id, sp->h,
-                sp->density.wcount);
+        warning("ID: %lld, h: %g, wcount: %g", sp->id, sp->h_sidm,
+                sp->density_sidm.wcount);
       }
 
       error("Smoothing length failed to converge on %i particles.", count);
@@ -2801,18 +2801,18 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
   }
 
   /* Update h_max */
-  c->stars.h_max = h_max;
-  c->stars.h_max_active = h_max_active;
+  c->stars.h_max_sidm = h_max;
+  c->stars.h_max_active_sidm = h_max_active;
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < c->stars.count; ++i) {
-    const struct sipart *sp = &c->stars.parts[i];
-    const float h = c->stars.parts[i].h;
+    const struct spart *sp = &c->stars.parts[i];
+    const float h = c->stars.parts[i].h_sidm;
     if (sipart_is_inhibited(sp, e)) continue;
 
-    if (h > c->stars.h_max)
+    if (h > c->stars.h_max_sidm)
       error("Particle has h larger than h_max (id=%lld)", sp->id);
-    if (sipart_is_active(sp, e) && h > c->stars.h_max_active)
+    if (sipart_is_active(sp, e) && h > c->stars.h_max_active_sidm)
       error("Active particle has h larger than h_max_active (id=%lld)",
             sp->id);
   }
@@ -2822,8 +2822,8 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->stars.density_sidm_ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
-      atomic_max_f(&tmp->stars.h_max, h_max);
-      atomic_max_f(&tmp->stars.h_max_active, h_max_active);
+      atomic_max_f(&tmp->stars.h_max_sidm, h_max);
+      atomic_max_f(&tmp->stars.h_max_active_sidm, h_max_active);
     }
   }
 

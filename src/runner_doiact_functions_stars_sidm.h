@@ -68,7 +68,7 @@ void DOSELF1_STARS_SIDM(struct runner *r, struct cell *c, int timer) {
       /* Skip inactive particles */
       if (!spart_is_active(si, e)) continue;
 
-      const float hi = si->h;
+      const float hi = si->h_sidm;
       const float hig2 = hi * hi * kernel_gamma2;
       const float six[3] = {(float)(si->x[0] - c->loc[0]),
                             (float)(si->x[1] - c->loc[1]),
@@ -157,7 +157,7 @@ void DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(struct runner *r, struct cell *restrict ci
       /* Skip inactive particles */
       if (!spart_is_active(si, e)) continue;
 
-      const float hi = si->h;
+      const float hi = si->h_sidm;
       const float hig2 = hi * hi * kernel_gamma2;
       const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
                             (float)(si->x[1] - (cj->loc[1] + shift[1])),
@@ -255,7 +255,7 @@ void DOPAIR1_SUBSET_STARS_SIDM_NAIVE(struct runner *r, struct cell *restrict ci,
     const double six = si->x[0] - (shift[0]);
     const double siy = si->x[1] - (shift[1]);
     const double siz = si->x[2] - (shift[2]);
-    const float hi = si->h;
+    const float hi = si->h_sidm;
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -334,7 +334,7 @@ void DOSELF1_SUBSET_STARS_SIDM(struct runner *r, struct cell *restrict ci,
     const float six[3] = {(float)(si->x[0] - ci->loc[0]),
                           (float)(si->x[1] - ci->loc[1]),
                           (float)(si->x[2] - ci->loc[2])};
-    const float hi = si->h;
+    const float hi = si->h_sidm;
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -528,7 +528,7 @@ void DOSELF1_BRANCH_STARS_SIDM(struct runner *r, struct cell *c) {
   if (!cell_is_active_stars(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->stars.h_max_old * kernel_gamma > c->dmin)
+  if (c->stars.h_max_old_sidm * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   DOSELF1_STARS_SIDM(r, c, 1);
