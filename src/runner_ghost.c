@@ -72,12 +72,14 @@
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
+#ifdef STARS_SIDM_INTERACTIONS
 /* Import the stars-sidm density loop functions. */
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_stars_sidm.h"
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
+#endif
 
 /**
  * @brief Intermediate task after the density to check that the smoothing
@@ -2479,6 +2481,8 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
 
+#ifdef STARS_SIDM_INTERACTIONS
+
   struct spart *restrict sparts = c->stars.parts;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -2496,7 +2500,7 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
   float h_max = c->stars.h_max_sidm;
   float h_max_active = 0.f;
 
-  TIMER_TIC;
+  // TIMER_TIC;
 
   /* Anything to do here? */
   if (c->stars.count == 0) return;
@@ -2827,5 +2831,8 @@ void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int ti
     }
   }
 
-  if (timer) TIMER_TOC(timer_do_ghost);
+  // if (timer) TIMER_TOC(timer_do_ghost);
+#else
+  error("SWIFT was not compiled with star-SIDM interactions enabled.");
+#endif
 }
