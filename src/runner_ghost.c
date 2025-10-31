@@ -2479,7 +2479,7 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_stars_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
+void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
 
 #ifdef STARS_SIDM_INTERACTIONS
 
