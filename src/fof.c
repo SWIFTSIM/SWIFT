@@ -43,10 +43,10 @@
 #include "hashmap.h"
 #include "memuse.h"
 #include "proxy.h"
+#include "star_formation.h"
 #include "threadpool.h"
 #include "tools.h"
 #include "tracers.h"
-#include "star_formation.h"
 
 #define fof_props_default_group_id 2147483647
 #define fof_props_default_group_id_offset 1
