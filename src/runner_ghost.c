@@ -1031,7 +1031,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the gradient calculation */
         hydro_end_gradient(p, cosmo, pressure_floor);
-        mhd_end_gradient(p);
+        mhd_end_gradient(p, mu_0);
 
         /* As of here, particle force variables will be set. */
 
