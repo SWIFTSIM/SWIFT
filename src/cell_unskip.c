@@ -2459,6 +2459,35 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     /* Nothing more to do here, all drifts and sorts activated above */
   }
 
+  /* Un-skip the star-SIDM density tasks involved with this cell. */
+  /* NOT FINISHED */
+  for (struct link *l = c->stars.density_sidm; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    error("Stars-SIDM interactions will not work over MPI yet");
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
+
+    const int cj_active =
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+      scheduler_activate(s, t);
+    }
+  }
+
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID) {
     if (cell_need_activating_stars(c, e, with_star_formation,

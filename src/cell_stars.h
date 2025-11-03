@@ -82,6 +82,15 @@ struct cell_stars {
     /*! Implicit tasks marking the exit of the stellar physics block of tasks */
     struct task *stars_out;
 
+#ifdef STARS_SIDM_INTERACTIONS
+    /*! Linked list of the tasks computing this cell's star density from SIDM. */
+    struct link *density_sidm;
+
+    /*! The star-SIDM density ghost task */
+    struct task *density_sidm_ghost;
+
+#endif
+
     /*! Pointer for the sorted indices. */
     struct sort_entry *sort;
 
