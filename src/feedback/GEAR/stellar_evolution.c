@@ -370,7 +370,7 @@ void stellar_evolution_compute_preSN_properties(
     message(
         "Star_type=single init_mass[M_odot]=%g metallicity[Z_odot]=%g "
         "Energy[erg/yr]=%g Mass_ejected[Msol/yr]=%g",
-        pow(10, log_m), pow(10, log_metallicity), energy_per_unit_time,
+        exp10(log_m), exp10(log_metallicity), energy_per_unit_time,
         mass_ejected_per_unit_time);
 
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
@@ -392,7 +392,7 @@ void stellar_evolution_compute_preSN_properties(
         "Star_type=continuous init_mass[M_odot]=%g metallicity[Z_odot]=%g "
         "Energy_per_progenitor_mass[erg/yr/Msol]=%g "
         "Mass_ejected_per_progenitor_mass[Msol/yr/Msol]=%g",
-        pow(10, log_m), pow(10, log_metallicity),
+        exp10(log_m), exp10(log_metallicity),
         energy_per_unit_time_per_progenitor_mass,
         mass_ejected_per_unit_time_per_progenitor_mass);
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
@@ -439,7 +439,7 @@ void stellar_evolution_evolve_individual_star(
 
   const float log_mass =
       log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
-  const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
+  const float lifetime_myr = exp10(lifetime_get_log_lifetime_from_mass(
                                          &sm->lifetime, log_mass, metallicity));
 
   /* Determine if the star is dead */
@@ -847,7 +847,7 @@ void stellar_evolution_compute_SN_feedback_individual_star(
 
   const float log_mass =
       log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
-  const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
+  const float lifetime_myr = exp10(lifetime_get_log_lifetime_from_mass(
                                          &sm->lifetime, log_mass, metallicity));
 
   /* If the star has not reached its death time, don't start the firework */
@@ -1125,7 +1125,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
 
   const float log_mass =
       log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
-  const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
+  const float lifetime_myr = exp10(lifetime_get_log_lifetime_from_mass(
                                          &sm->lifetime, log_mass, metallicity));
 
   /* Check if supernova occurs in the beetween of time steps. If it's the case,

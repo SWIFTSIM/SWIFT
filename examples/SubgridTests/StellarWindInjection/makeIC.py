@@ -2,6 +2,7 @@
 # This file is part of SWIFT.
 # Copyright (c) 2022 Yves Revaz (yves.revaz@epfl.ch)
 #               2025 Darwin Roduit (darwin.roduit@epfl.ch)
+#               2025 Zachary Rey (zachary.rey@epfl.ch)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -21,9 +22,7 @@
 import h5py
 import numpy as np
 import argparse
-from astropy import units
-from astropy import constants
-
+import unyt
 
 class store_as_array(argparse._StoreAction):
     """Provides numpy array as argparse arguments."""
@@ -31,7 +30,6 @@ class store_as_array(argparse._StoreAction):
     def __call__(self, parser, namespace, values, option_string=None):
         values = np.array(values)
         return super().__call__(parser, namespace, values, option_string)
-
 
 def parse_options():
 
@@ -127,7 +125,6 @@ def parse_options():
     options = parser.parse_args()
     return options
 
-
 ########################################
 # main
 ########################################
@@ -142,10 +139,10 @@ UnitCurrent_in_cgs = 1  # Amperes
 UnitTemp_in_cgs = 1  # Kelvin
 UnitTime_in_cgs = UnitLength_in_cgs / UnitVelocity_in_cgs
 
-UnitMass = UnitMass_in_cgs * units.g
-UnitLength = UnitLength_in_cgs * units.cm
-UnitTime = UnitTime_in_cgs * units.s
-UnitVelocity = UnitVelocity_in_cgs * units.cm / units.s
+UnitMass = UnitMass_in_cgs * unyt.g
+UnitLength = UnitLength_in_cgs * unyt.cm
+UnitTime = UnitTime_in_cgs * unyt.s
+UnitVelocity = UnitVelocity_in_cgs * unyt.cm / unyt.s
 
 np.random.seed(1)
 
@@ -154,11 +151,11 @@ N = (2 ** opt.level) ** 3  # number of gas particles
 
 # Mean density
 rho = opt.rho  # atom/cc
-rho = rho * constants.m_p / units.cm ** 3
+rho = rho * unyt.mp / unyt.cm ** 3
 
 # Gas particle mass
 m = opt.mass  # in solar mass
-m = m * units.Msun
+m = m * unyt.Msun
 
 # Gas mass in the box
 M = N * m
@@ -171,7 +168,7 @@ lJ = opt.lJ
 lJ = lJ * L
 
 # Gravitational constant
-G = constants.G
+G = unyt.G
 
 # Jeans wave number
 kJ = 2 * np.pi / lJ
@@ -179,9 +176,9 @@ kJ = 2 * np.pi / lJ
 # Velocity dispersion
 sigma = np.sqrt(4 * np.pi * G * rho) / kJ
 
-print("Boxsize                               : {}".format(L.to(units.kpc)))
+print("Boxsize                               : {}".format(L.to(unyt.kpc)))
 print("Number of particles                   : {}".format(N))
-print("Equivalent velocity dispertion        : {}".format(sigma.to(units.m / units.s)))
+print("Equivalent velocity dispertion        : {}".format(sigma.to(unyt.m / unyt.s)))
 
 # Convert to code units
 m = m.to(UnitMass).value
@@ -211,12 +208,11 @@ rho = np.ones(N) * rho
 
 print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 
-
-#####################
+############################
 # Now, take care of the star
-#####################
+############################
 N_star = opt.num_stars
-M_star = opt.star_mass * units.M_sun
+M_star = opt.star_mass * unyt.Msun
 pos_star = opt.star_pos
 
 # Convert the star mass to internal units
@@ -254,7 +250,6 @@ grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["Dimension"] = 3
 
-
 # Units
 grp = fileOutput.create_group("/Units")
 grp.attrs["Unit length in cgs (U_L)"] = UnitLength_in_cgs
@@ -262,7 +257,6 @@ grp.attrs["Unit mass in cgs (U_M)"] = UnitMass_in_cgs
 grp.attrs["Unit time in cgs (U_t)"] = UnitTime_in_cgs
 grp.attrs["Unit current in cgs (U_I)"] = UnitCurrent_in_cgs
 grp.attrs["Unit temperature in cgs (U_T)"] = UnitTemp_in_cgs
-
 
 # Write Gas particle group
 grp = fileOutput.create_group("/PartType0")
@@ -273,7 +267,6 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("Densities", data=rho, dtype="f")
-
 
 if N_star != 0:
     # Write star particle group

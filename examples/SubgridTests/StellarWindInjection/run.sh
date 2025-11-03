@@ -24,7 +24,7 @@ then
     ./getGrackleCoolingTable.sh
 fi
 
-if [ ! -e POPII.hdf5 ] || [ ! -e POPIII_PISNe ]
+if [ ! -e POPII.hdf5 ] || [ ! -e POPIII_PISNe.hdf5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
     ./getChemistryTable.sh
