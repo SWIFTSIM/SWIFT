@@ -90,12 +90,12 @@ void DOSUB_PAIR1_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
                     int gettimer);
 
 void DOSELF1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, struct cell *restrict ci,
-                              struct bpart *restrict bparts, int *restrict ind,
-                              const int bcount);
+                              struct spart *restrict sparts, int *restrict ind,
+                              const int scount);
 void DOPAIR1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, struct cell *restrict ci,
-                              struct bpart *restrict bparts_i,
-                              int *restrict ind, int const bcount,
+                              struct spart *restrict sparts_i,
+                              int *restrict ind, int const scount,
                               struct cell *restrict cj);
 
-void DOSUB_SUBSET_STARS_SIDM(struct runner *r, struct cell *ci, struct bpart *bparts,
-                     int *ind, const int bcount, struct cell *cj, int gettimer);
+void DOSUB_SUBSET_STARS_SIDM(struct runner *r, struct cell *ci, struct spart *sparts,
+                     int *ind, const int scount, struct cell *cj, int gettimer);
