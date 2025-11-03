@@ -409,11 +409,6 @@ void runner_count_mesh_interactions_zoom(struct runner* r, struct cell* ci,
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors* const multi_i = ci->grav.multipole;
 
-  /* Define the cell we will use for comparisons, this is either going to be
-   * the top-level cell or the top-level void parent depending on the cells
-   * being considered. */
-  struct cell* compare_top = top;
-
   /* Loop over all cells. */
   for (int n = 0; n < s->nr_cells; n++) {
 
@@ -428,22 +423,27 @@ void runner_count_mesh_interactions_zoom(struct runner* r, struct cell* ci,
     /* Get the top level cell of the current cj */
     struct cell* top_j = cj->top;
 
-    // /* Get the appropriate comparison top-level cell */
-    // if (ci->type == cell_type_zoom && top_j->type == cell_type_zoom) {
-    //   compare_top = ci->top;
-    // } else {
-    //   compare_top = top;
-    // }
+    /* If we are in a zoom cell we need to jump up the void hierarchy
+     * to get the top level cell. */
+    if (top_j->void_parent != NULL) {
+      top_j = cj->void_parent->top;
+    }
+
+    /* If we had buffer cells then we may need an extra jump since the
+     * top-level for a zoom cell is at:
+     * zoom->top->void_parent->top->void_parent->top. */
+    if (top_j->void_parent != NULL) {
+      top_j = top_j->void_parent->top;
+    }
 
     /* Avoid self contributions */
-    if (compare_top == top_j) continue;
+    if (top == top_j) continue;
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 =
-        cell_min_dist2(compare_top, top_j, periodic, dim);
+    const double min_radius2 = cell_min_dist2(top, top_j, periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
