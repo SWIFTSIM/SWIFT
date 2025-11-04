@@ -389,11 +389,12 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
  * at the zoom depth between the zoom cell and the background cell.
  *
  * @param ci The #cell whose counter we are updating.
+ * @param cj The #cell we are interacting with.
  * @param zoom_c The zoom #cell.
  * @param bkg_c The background #cell.
  * @param s The #space.
  */
-void runner_count_mesh_interactions_zoom_bkg(struct cell *ci,
+void runner_count_mesh_interactions_zoom_bkg(struct cell *ci, struct cell *cj,
                                              struct cell *zoom_c,
                                              struct cell *bkg_c,
                                              struct space *s) {
@@ -408,17 +409,20 @@ void runner_count_mesh_interactions_zoom_bkg(struct cell *ci,
     /* Recurse down to the zoom depth */
     for (int k = 0; k < 8; k++) {
       if (bkg_c->progeny[k] == NULL) continue;
-      runner_count_mesh_interactions_zoom_bkg(ci, zoom_c, bkg_c->progeny[k], s);
+      runner_count_mesh_interactions_zoom_bkg(ci, cj, zoom_c, bkg_c->progeny[k],
+                                              s);
     }
     return;
   }
 
   /* Ok, we are at the zoom depth, check interaction */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
-  struct gravity_tensors *const multi_j = bkg_c->grav.multipole;
-
-  /* Skip empty cells */
-  if (multi_j->m_pole.M_000 == 0.f) return;
+  struct gravity_tensors *multi_j;
+  if (cj->type == cell_type_zoom) {
+    multi_j = zoom_c->grav.multipole;
+  } else {
+    multi_j = bkg_c->grav.multipole;
+  }
 
   /* Minimal distance between any pair of particles */
   const double min_radius2 = cell_min_dist2(zoom_c, bkg_c, s->periodic, s->dim);
@@ -539,7 +543,7 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
           (ci->type == cell_type_bkg && cj->type == cell_type_zoom)) {
         struct cell *zoom_c = (ci->type == cell_type_zoom) ? ci->top : cj->top;
         struct cell *bkg_c = (ci->type == cell_type_bkg) ? ci->top : cj->top;
-        runner_count_mesh_interactions_zoom_bkg(ci, zoom_c, bkg_c, s);
+        runner_count_mesh_interactions_zoom_bkg(ci, cj, zoom_c, bkg_c, s);
       }
     }
   }
