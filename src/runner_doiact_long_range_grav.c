@@ -488,8 +488,10 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 
     /* What cells should we be comparing? For two top level zoom cells we
      * compare them directly, top level zoom cells interacting with
-     * background cells at the zoom depth should also be compared at this
-     * depth. All other combinations are just top level cells. */
+     * background cells is more complex. First we must check at the
+     * void<->bkg level. Then if we would have made and split a task we need
+     * to check at the zoom level. All other combinations are just top level
+     * cells. */
     if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
       compare_top_i = ci->top;
       compare_top_j = cj->top;
@@ -529,6 +531,16 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 #endif
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
+    } else {
+      /* Ok we made a task here, if this was a zoom<->bkg interaction we need
+       * to recurse down to the zoom depth to find all the missed
+       * interactions. */
+      if ((ci->type == cell_type_zoom && cj->type == cell_type_bkg) ||
+          (ci->type == cell_type_bkg && cj->type == cell_type_zoom)) {
+        struct cell *zoom_c = (ci->type == cell_type_zoom) ? ci->top : cj->top;
+        struct cell *bkg_c = (ci->type == cell_type_bkg) ? ci->top : cj->top;
+        runner_count_mesh_interactions_zoom_bkg(ci, zoom_c, bkg_c, s);
+      }
     }
   }
 #else
