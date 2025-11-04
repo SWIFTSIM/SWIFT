@@ -439,6 +439,9 @@ runner_iact_chemistry_fluxes_common(
   /*****************************************/
   // TODO: Probably encapsulate this into a function that calls the right
   // parabolic/hyperbolic function...
+  // Have a look at RT: Mladen hid some details inside rt_compute_flux. Maybe
+  // only use arrays of size 4 and in the parabolic function only use the 0th
+  // index (for the metal mass flux)
   /* Now solve the Riemann problem for each metal specie */
   /* Helper variable */
   const float a2 = cosmo->a * cosmo->a;
@@ -457,30 +460,12 @@ runner_iact_chemistry_fluxes_common(
     chemistry_compute_flux(dx, pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm, m,
                            chem_data, cosmo, &totflux);
 
-    /* Flux limiter*******************************/
+    /* Flux limiter */
     /* First check that we won't have negative masses. If so, we have a check
        that will ensure masses are not negative and if so, it we set them to be
        positive. Then, we have metal mass creation. If this correction happen
        a lot, we will create a lot of metal mass. */
-    double metal_mass_flux = totflux * mindt;
-
-    /* Use the updated metal masses to ensure that the final result won't be
-     * negative */
-    const double m_Z_i =
-        chi->metal_mass[m] + chi->metal_mass_riemann[m];
-    const double m_Z_j =
-        chj->metal_mass[m] + chj->metal_mass_riemann[m];
-    /* This one seemed to work for a certain time */
-    const double upwind_mass = (metal_mass_flux > 0) ? m_Z_i : m_Z_j;
-
-    /* choose upwind mass to determine a stability bound on the maximum allowed
-     mass exchange, (we do this to prevent negative masses under all
-     circumstances) */
-    if (fabs(metal_mass_flux) > 0.0 &&
-        fabs(metal_mass_flux) > 0.9 * upwind_mass) {
-      const double factor = 0.9 * upwind_mass / fabs(metal_mass_flux);
-      metal_mass_flux *= factor;
-    }
+    chemistry_limit_metal_mass_flux(pi, pj, &totflux, m, mindt);
 
     /* Update V*U ****************************************/
     /* When solving the Riemann problem, we assume pi is left state, and
@@ -492,9 +477,9 @@ runner_iact_chemistry_fluxes_common(
      * the fluxes are always exchanged symmetrically. Thanks to our sneaky use
      * of flux_dt, we can detect inactive neighbours through their negative time
      * step. */
-    chi->metal_mass_riemann[m] -= metal_mass_flux;
+    chemistry_part_update_fluxes_left(pi, &totflux, m, mindt);
     if (mode == 1 || (chj->flux_dt < 0.f)) {
-      chj->metal_mass_riemann[m] += metal_mass_flux;
+      chemistry_part_update_fluxes_right(pj, &totflux, m, mindt);
     }
   }
 }
