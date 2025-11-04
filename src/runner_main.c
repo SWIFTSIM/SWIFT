@@ -271,11 +271,6 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dopair_branch_stars_feedback(r, ci, cj);
-
-	  //lily
-	  //else if (t->subtype == task_subtype_particle_split)                                                                                                                                                                                                                 
-          //runner_do_particle_split_pair(r, ci, cj, 1);                                                                                                                                                                                                                      
-          //end of addition     
           else if (t->subtype == task_subtype_bh_density)
             runner_dopair_branch_bh_density(r, ci, cj);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -455,7 +450,13 @@ void *runner_main(void *data) {
           break;
         case task_type_drift_gpart:
           runner_do_drift_gpart(r, ci, 1);
-          break;
+	  break;
+	  //lily
+        case  task_type_particle_split: 
+	  if (r->e->time > 0){
+            runner_do_particle_split(r, ci,1);
+                }
+	  break;
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);
           break;

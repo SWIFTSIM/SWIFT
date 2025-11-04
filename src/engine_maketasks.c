@@ -1614,6 +1614,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                             0, /* implicit =*/1, c, NULL);
     }
 
+                                                                                                                                                            
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
@@ -1621,10 +1622,19 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
                                          task_subtype_none, 0, 0, c, NULL);
 
+      //<<lily>>: please go work
+      //something about adding this task at the super level whatever that means
+      c->hydro.particle_split = scheduler_addtask(s, task_type_particle_split,
+                                         task_subtype_none, 0, 0, c, NULL);
+
+      scheduler_addunlock(s, c->hydro.super->hydro.drift, c->hydro.particle_split);
+      scheduler_addunlock(s, c->hydro.particle_split, c->hydro.super->hydro.sorts);
+      //
+      
       /* Add the task finishing the force calculation */
       c->hydro.end_force = scheduler_addtask(s, task_type_end_hydro_force,
                                              task_subtype_none, 0, 0, c, NULL);
-
+      
       /* Generate the ghost tasks. */
       c->hydro.ghost_in =
           scheduler_addtask(s, task_type_ghost_in, task_subtype_none, 0,
@@ -2488,8 +2498,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_rt_transport = NULL;
   struct task *t_sink_do_sink_swallow = NULL;
   struct task *t_sink_do_gas_swallow = NULL;
-  //lily
-  //struct task *t_particle_split = NULL;
   
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -2858,10 +2866,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               flags, 0, ci, cj);
         t_bh_feedback = scheduler_addtask(
             sched, task_type_pair, task_subtype_bh_feedback, flags, 0, ci, cj);
-
-	//for future:add the splitting as a pair task
-	//t_particle_split = scheduler_addtask(
-	//      sched, task_type_pair, task_subtype_particle_split, flags, 0, ci, cj);
       }
 
       if (with_rt) {
@@ -2927,24 +2931,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->sinks.do_gas_swallow, t_sink_do_gas_swallow);
       }
       if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-	//lily
-	/*for future? --- particle split task links ---
-	engine_addlink(e, &ci->black_holes.density, t_particle_split);
-	engine_addlink(e, &cj->black_holes.density, t_particle_split);
 	
-	engine_addlink(e, &ci->black_holes.do_gas_swallow, t_particle_split);
-	engine_addlink(e, &cj->black_holes.do_gas_swallow, t_particle_split);
-	
-	engine_addlink(e, &ci->black_holes.feedback, t_particle_split);
-	engine_addlink(e, &cj->black_holes.feedback, t_particle_split);
-
-	engine_addlink(e, &ci->black_holes.density, t_particle_split);
-	engine_addlink(e, &cj->black_holes.density, t_particle_split);
-	
-	
-	engine_addlink(e, &ci->black_holes.do_gas_swallow, t_particle_split);
-	engine_addlink(e, &cj->black_holes.do_gas_swallow, t_particle_split);
-	*/
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
         engine_addlink(e, &cj->black_holes.density, t_bh_density);
         engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);

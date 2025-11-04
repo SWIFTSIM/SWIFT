@@ -34,6 +34,27 @@
 /*! The size of the sorting stack used at the leaf level */
 const int sort_stack_size = 10;
 
+//lily
+void runner_do_hydro_resort(struct runner *r, struct cell *c, const int timer) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != r->e->nodeID) error("Task must be run locally!");
+#endif
+
+  TIMER_TIC;
+
+  /* Did we demand a recalculation of the stars'sorts? */
+  if (cell_get_flag(c, cell_flag_do_hydro_resort)) {
+    
+    runner_do_all_hydro_sort(r, c);
+    cell_clear_flag(c, cell_flag_do_hydro_resort);
+  }
+
+  //gonna be honest not sure if i need a new timer here                                                               
+  if (timer) TIMER_TOC(timer_dosort);
+}
+
+
 /**
  * @brief Sorts again all the stars in a given cell hierarchy.
  *
@@ -58,7 +79,7 @@ void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer) {
     cell_clear_flag(c, cell_flag_do_stars_resort);
   }
 
-  if (timer) TIMER_TOC(timer_do_stars_resort);
+  if (timer) TIMER_TOC(timer_stars_resort);
 }
 
 /**
@@ -210,6 +231,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   float buff[8];
 
   TIMER_TIC;
+  
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.super == NULL) error("Task called above the super level!!!");

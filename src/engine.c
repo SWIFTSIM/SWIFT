@@ -1088,6 +1088,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
      */
     n1 += 38;
     n2 += 2;
+    //lily
+    n2 += 1;  // add 1 for particle_split in normal cells only
 #ifdef WITH_MPI
     n1 += 6;
 #endif

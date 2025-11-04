@@ -325,6 +325,8 @@ struct pcell_sf_grav {
  * exceed the size of the flags variable in the struct cell.
  */
 enum cell_flags {
+  //lily
+  cell_flag_do_hydro_resort = (1UL << 15),
   cell_flag_split = (1UL << 0),
   cell_flag_do_hydro_drift = (1UL << 1),
   cell_flag_do_hydro_sub_drift = (1UL << 2),
@@ -604,6 +606,9 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
                           const timebin_t max_bin);
 void cell_store_pre_drift_values(struct cell *c);
 void cell_set_star_resort_flag(struct cell *c);
+//lily
+void cell_set_hydro_resort_flag(struct cell *c);
+
 void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s,
                                         const int with_feedback);
 void cell_activate_star_formation_sink_tasks(struct cell *c,

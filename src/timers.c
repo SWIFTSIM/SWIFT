@@ -144,6 +144,8 @@ const char* timers_names[timer_count] = {
     "rt_collect_times",
     "do_sync",
     "neutrino_weighting",
+    //lily
+    "particle_split",
 };
 
 /* File to store the timers */

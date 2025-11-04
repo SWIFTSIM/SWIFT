@@ -114,8 +114,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
           black_holes_get_part_swallow_id(&p->black_holes_data);
 
       //lily
-      /* --- Mark particle for splitting --- */
-      /* this assumes one BH!*/
+      /* --- Mark particle for splitting --- 
       if (p->split_flag < 1){
 	for (size_t i = 0; i < nr_bpart; ++i) {
 	  struct bpart *bp = &bparts[i];
@@ -133,7 +132,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
 	}
       }
       
-      /* Has this particle been flagged for swallowing? */
+      Has this particle been flagged for swallowing? */
       if (swallow_id >= 0) {
 
 #ifdef SWIFT_DEBUG_CHECKS

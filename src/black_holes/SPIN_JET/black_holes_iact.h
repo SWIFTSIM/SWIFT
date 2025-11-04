@@ -540,6 +540,23 @@ runner_iact_nonsym_bh_gas_swallow(
     const struct entropy_floor_properties *floor_props,
     const integertime_t ti_current, const double time) {
 
+  //lily                                                                                                                                                                    
+  /* --- Mark particle for splitting --- */
+  if (pj->split_flag < 1){
+
+    // Compute distance to this BH                                                                                                                                           
+    double pdx = pj->x[0] - bi->x[0];
+    double pdy = pj->x[1] - bi->x[1];
+    double pdz = pj->x[2] - bi->x[2];
+    double dist = sqrt(pdx*pdx + pdy*pdy + pdz*pdz);
+
+    // Within 2*BH smoothing length? Mark for splitting                                                                                                                      
+    if (dist <= 2*bi->h) {
+      pj->split_flag = 1;
+    }
+  }
+
+  
   float wi;
 
   /* Get r. */
