@@ -428,9 +428,9 @@ void runner_count_mesh_interactions_zoom(struct runner* r, struct cell* ci,
     struct cell* top_j = cj->top;
 
     /* What cells should we be comparing? For two top level zoom cells we
-     * compare them directly, otherwise, zoom cells need to be compared at
-     * their void parent top level. All other combinations are just top level
-     * cells. */
+     * compare them directly, top level zoom cells interacting with
+     * background cells at the zoom depth should also be compared at this
+     * depth. All other combinations are just top level cells. */
     if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
       compare_top_i = ci->top;
       compare_top_j = cj->top;
