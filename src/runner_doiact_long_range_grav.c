@@ -399,6 +399,7 @@ void runner_count_mesh_interactions_zoom_bkg(struct cell *ci, struct cell *cj,
                                              struct cell *bkg_c,
                                              struct space *s) {
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the maximum distance at which we can have a non-mesh interaction. */
   struct engine *e = s->e;
   const double max_distance = e->mesh->r_cut_max;
@@ -429,10 +430,8 @@ void runner_count_mesh_interactions_zoom_bkg(struct cell *ci, struct cell *cj,
 
   /* Are we beyond the distance where the truncated forces are 0 ?*/
   if (min_radius2 > max_distance2) {
-#ifdef SWIFT_DEBUG_CHECKS
     /* Need to account for the interactions we missed */
     accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
-#endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     /* Need to account for the interactions we missed */
@@ -442,6 +441,9 @@ void runner_count_mesh_interactions_zoom_bkg(struct cell *ci, struct cell *cj,
     /* Record that this multipole received a contribution */
     multi_i->pot.interacted = 1;
   }
+#else
+  error("This function should not be called without debugging checks enabled!");
+#endif
 }
 
 /**
