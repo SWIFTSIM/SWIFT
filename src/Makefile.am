@@ -461,6 +461,7 @@ nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_gradients_extrapo
 
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_struct.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_gradients.h
+nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_flux.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_riemann_HLL.h
 
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry.h

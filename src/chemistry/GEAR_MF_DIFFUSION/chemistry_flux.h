@@ -20,14 +20,18 @@
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_FLUX_H
 
 #include "chemistry_getters.h"
-#include "chemistry_riemann_HLL.h"
-#include "chemistry_unphysical.h"
 
 /**
  * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_flux.h
- * @brief File containing functions dealing with the diffusion fluxes.
+ * @brief Main header dealing with fluxes.
  *
  * */
+
+
+/* TODO:
+ *  - Think about whether upgrading to update_diffusion_fluxes(flux[4])
+ *    instead.
+ */
 
 /**
  * @brief Reset the metal mass fluxes for the given particle.
@@ -36,7 +40,6 @@
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_reset_chemistry_metal_mass_fluxes(struct part* restrict p) {
-
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     p->chemistry_data.metal_mass_riemann[i] = 0.0;
   }
@@ -58,9 +61,9 @@ __attribute__((always_inline)) INLINE void chemistry_get_metal_mass_fluxes(
 }
 
 /**
- * @brief Compute the diffusion flux of given metal group.
+ * @brief Limit the metal mass flux to avoid negative metal masses.
  *
- * F_diss = - K * \nabla \otimes q
+ * TODO: Promote the fluxes to an array of 4 (for hyperbolic diffusion)
  *
  * @param p Particle.
  * @param metal Index of metal specie.
@@ -69,121 +72,41 @@ __attribute__((always_inline)) INLINE void chemistry_get_metal_mass_fluxes(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_compute_physical_diffusion_flux(
-    const struct part* restrict p, int metal, double F_diff[3],
-    const struct chemistry_global_data* chem_data,
-    const struct cosmology* cosmo) {
+chemistry_limit_metal_mass_flux(const struct part* restrict pi,
+				const struct part* restrict pj,
+				double* fluxes, const int metal,
+				const float dt) {
 
-  /* In physical units */
-  const double kappa = p->chemistry_data.kappa;
+  const struct chemistry_part_data *chi = &pi->chemistry_data;
+  const struct chemistry_part_data *chj = &pj->chemistry_data;
 
-  /* The gradient needs to be converted to physical units:
-                                 grad_p = a^{-1} * grad_c.
-     The metallicity is already physical (Z_p = Z_c = Z). */
+  /* Convert the raw riemann mass derivative to mass */
+  double metal_mass_interface = (*fluxes) * dt;
 
-  if (chem_data->diffusion_mode == isotropic_constant) {
-    /* Here, we use grad (rho Z) */
-    double grad_rhoZ[3];
-    chemistry_get_metal_density_gradients(p, metal, grad_rhoZ);
-    const double a_inv_4 =
-        cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
+  /* Use the updated metal masses to ensure that the final result won't be
+   * negative */
+  const double m_Z_i =
+    chi->metal_mass[metal] + chi->metal_mass_riemann[metal];
+  const double m_Z_j = chj->metal_mass[metal] + chj->metal_mass_riemann[metal];
 
-    /* a^-3 for density and a^-1 for gradient */
-    F_diff[0] = -kappa * grad_rhoZ[0] * a_inv_4;
-    F_diff[1] = -kappa * grad_rhoZ[1] * a_inv_4;
-    F_diff[2] = -kappa * grad_rhoZ[2] * a_inv_4;
-  } else if (chem_data->diffusion_mode == isotropic_smagorinsky) {
-    /* Here, we use grad Z */
-    F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0] * cosmo->a_inv;
-    F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1] * cosmo->a_inv;
-    F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2] * cosmo->a_inv;
-  } else {
-    /* Here, we use grad Z */
-    /* Initialise to the flux to 0 */
-    F_diff[0] = 0.0;
-    F_diff[1] = 0.0;
-    F_diff[2] = 0.0;
+  /* This one seemed to work for a certain time */
+  const double upwind_mass = (metal_mass_interface > 0.0) ? m_Z_i : m_Z_j;
 
-    /* Compute diffusion matrix K */
-    double K[3][3];
-    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
-
-    for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 3; ++j) {
-        F_diff[i] -=
-            K[i][j] * p->chemistry_data.gradients.Z[metal][j] * cosmo->a_inv;
-      }
-    } /* End of matrix multiplication */
-  } /* end of if else diffusion_mode */
+  /* Choose upwind mass to determine a stability bound on the maximum allowed
+     mass exchange, (we do this to prevent negative masses under all
+     circumstances) */
+  if (fabs(metal_mass_interface) > 0.0 &&
+      fabs(metal_mass_interface) > 0.9 * upwind_mass) {
+    const double factor = 0.9 * upwind_mass / fabs(metal_mass_interface);
+    *fluxes *= factor;
+  }
 }
 
-// TODO: Add flux_update_left/right methods here. Also add one to the
-// hyperbolic diffusion submodule
-// Well mabe reorganise the entire file...
-// TODO: Add an if def here to either call this function or the hyperbolic
-// version
-/**
- * @brief Compute the metal mass flux for the Riemann problem with the given
- * left and right state, and interface normal, surface area and velocity.
- *
- * @param dx Comoving distance vector between the particles (dx = pi->x -
- * pj->x).
- * @param pi The #part pi.
- * @param pj The #part pj.
- * @param UL Left diffusion state variables (in physical units).
- * @param UR Right diffusion state variables (in physical units).
- * @param WL Left state variables (in physical units).
- * @param WR Right state variables (in physical units).
- * @param n_unit Unit vector of the interface.
- * @param Anorm Surface area of the interface (in physical units).
- * @param metal Metal specie.
- * @param chem_data The global properties of the chemistry scheme.
- * @param cosmo The current cosmological model.
- * @param metal_flux (return) The resulting flux at the interface (of size 1).
- */
-__attribute__((always_inline)) INLINE static void chemistry_compute_flux(
-    const float dx[3], const struct part* restrict pi,
-    const struct part* restrict pj, const double UL, const double UR,
-    const float WL[5], const float WR[5], const float n_unit[3],
-    const float Anorm, const int metal,
-    const struct chemistry_global_data* chem_data,
-    const struct cosmology* cosmo, double* metal_flux) {
-
-#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  /* Note: F_diff_R and F_diff_L are computed with a first order
-         reconstruction */
-  /* Get the diffusion flux */
-  double F_diff_i[3], F_diff_j[3];
-  chemistry_compute_physical_diffusion_flux(pi, metal, F_diff_i, chem_data,
-                                            cosmo);
-  chemistry_compute_physical_diffusion_flux(pj, metal, F_diff_j, chem_data,
-                                            cosmo);
-
+/* Import the right file */
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#include "hyperbolic/chemistry_flux.h"
 #else
-  /* Use the predicted fluxes. They improve metal mass conservation and reduce
-     artificial diffusion. */
-  double F_diff_i[3] = {
-      pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[0],
-      pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[1],
-      pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[2]};
-  double F_diff_j[3] = {
-      pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[0],
-      pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[1],
-      pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[2]};
+#include "parabolic/chemistry_flux.h"
 #endif
-
-  /* Check that the fluxes are meaningful */
-  chemistry_check_unphysical_diffusion_flux(F_diff_i);
-  chemistry_check_unphysical_diffusion_flux(F_diff_j);
-
-  /* While solving the Riemann problem, we shall get a scalar because of the
-     scalar product betwee F_diff_ij^* and A_ij */
-  chemistry_riemann_solve_for_flux(dx, pi, pj, UL, UR, WL, WR, F_diff_i,
-                                   F_diff_j, Anorm, n_unit, metal, chem_data,
-                                   cosmo, metal_flux);
-
-  /* Anorm is already in physical units here. */
-  *metal_flux *= Anorm;
-}
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_FLUX_H  */

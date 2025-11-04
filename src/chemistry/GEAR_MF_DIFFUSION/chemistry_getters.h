@@ -350,6 +350,66 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
 }
 
 /**
+ * @brief Compute the diffusion flux of given metal group.
+ *
+ * F_diss = - K * \nabla \otimes q
+ *
+ * @param p Particle.
+ * @param metal Index of metal specie.
+ * @param F_diff (return) Array to write diffusion flux component into.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_compute_physical_diffusion_flux(
+    const struct part* restrict p, int metal, double F_diff[3],
+    const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo) {
+
+  /* In physical units */
+  const double kappa = p->chemistry_data.kappa;
+
+  /* The gradient needs to be converted to physical units:
+                                 grad_p = a^{-1} * grad_c.
+     The metallicity is already physical (Z_p = Z_c = Z). */
+
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    /* Here, we use grad (rho Z) */
+    double grad_rhoZ[3];
+    chemistry_get_metal_density_gradients(p, metal, grad_rhoZ);
+    const double a_inv_4 =
+        cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
+
+    /* a^-3 for density and a^-1 for gradient */
+    F_diff[0] = -kappa * grad_rhoZ[0] * a_inv_4;
+    F_diff[1] = -kappa * grad_rhoZ[1] * a_inv_4;
+    F_diff[2] = -kappa * grad_rhoZ[2] * a_inv_4;
+  } else if (chem_data->diffusion_mode == isotropic_smagorinsky) {
+    /* Here, we use grad Z */
+    F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0] * cosmo->a_inv;
+    F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1] * cosmo->a_inv;
+    F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2] * cosmo->a_inv;
+  } else {
+    /* Here, we use grad Z */
+    /* Initialise to the flux to 0 */
+    F_diff[0] = 0.0;
+    F_diff[1] = 0.0;
+    F_diff[2] = 0.0;
+
+    /* Compute diffusion matrix K */
+    double K[3][3];
+    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
+
+    for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 3; ++j) {
+        F_diff[i] -=
+            K[i][j] * p->chemistry_data.gradients.Z[metal][j] * cosmo->a_inv;
+      }
+    } /* End of matrix multiplication */
+  } /* end of if else diffusion_mode */
+}
+
+/**
  * @brief Get the physical diffusion speed.
  *
  * Note: The units are always U_L/U_T.
