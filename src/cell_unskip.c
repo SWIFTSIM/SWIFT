@@ -32,6 +32,22 @@
 #include "space_getsid.h"
 
 extern int engine_star_resort_task_depth;
+extern int engine_hydro_resort_task_depth;
+
+//lily
+void cell_set_hydro_resort_flag(struct cell *c) {
+
+  cell_set_flag(c, cell_flag_do_hydro_resort);
+
+  /* Abort if we reched the level where the resorting task lives */
+  if (c->depth == engine_hydro_resort_task_depth || c->hydro.super == c) return;
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) cell_set_hydro_resort_flag(c->progeny[k]);
+  }
+}
+
 
 /**
  * @brief Recursively clear the stars_resort flag in a cell hierarchy.
@@ -1933,7 +1949,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #ifdef WITH_CSDS
     if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif
-
+    //lily
+    if (c->hydro.particle_split != NULL)
+      scheduler_activate(s, c->hydro.particle_split);
     if (c->top->hydro.star_formation != NULL) {
       cell_activate_star_formation_tasks(c->top, s, with_feedback);
       cell_activate_super_spart_drifts(c->top, s);
