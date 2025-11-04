@@ -404,7 +404,7 @@ void runner_count_mesh_interactions_zoom_bkg(struct cell* ci,
   const double max_distance2 = max_distance * max_distance;
 
   /* Are we at the zoom depth yet? */
-  if (bkg_c->depth < s->zoom_props->zoom_cell_depth) {
+  if (!cell_pair_is_zoom_tl(zoom_c, bkg_c, s)) {
     /* Recurse down to the zoom depth */
     for (int k = 0; k < 8; k++) {
       if (bkg_c->progeny[k] == NULL) continue;
@@ -493,17 +493,12 @@ void runner_count_mesh_interactions_zoom(struct runner* r, struct cell* ci,
     if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
       compare_top_i = ci->top;
       compare_top_j = cj->top;
-    } else if (cell_pair_is_zoom_tl(top, top_j, s)) {
-      compare_top_i = top;
+    } else if (ci->type == cell_type_zoom) {
+      compare_top_i = ci->top->void_parent->top;
       compare_top_j = top_j;
-    } else if (ci->type == cell_type_zoom &&
-               cj->subtype == cell_subtype_neighbour) {
-      runner_count_mesh_interactions_zoom_bkg(ci, ci->top, top_j, s);
-      continue;
-    } else if (cj->type == cell_type_zoom &&
-               ci->subtype == cell_subtype_neighbour) {
-      runner_count_mesh_interactions_zoom_bkg(ci, cj->top, top, s);
-      continue;
+    } else if (cj->type == cell_type_zoom) {
+      compare_top_i = top;
+      compare_top_j = cj->void_parent->top;
     } else {
       compare_top_i = top;
       compare_top_j = top_j;
