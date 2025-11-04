@@ -127,6 +127,8 @@ enum engine_step_properties {
 #define engine_max_sparts_per_ghost_default 1000
 #define engine_max_parts_per_cooling_default 10000
 #define engine_star_resort_task_depth_default 2
+//lily
+#define engine_hydro_resort_task_depth_default 2
 #define engine_tasks_per_cell_margin 1.2
 #define engine_default_stf_subdir_per_output "."
 #define engine_default_snapshot_subdir "."

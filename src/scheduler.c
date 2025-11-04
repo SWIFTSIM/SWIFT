@@ -2222,6 +2222,11 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                 subtaskID_names[t->subtype]);
         }
         break;
+	//lily
+      case task_type_particle_split:
+	// Assign cost based on number of particles in the cell? this is wrong but whatever
+	cost = wscale * count_i; 
+	break;
       case task_type_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
         break;

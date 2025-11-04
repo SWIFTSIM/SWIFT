@@ -101,6 +101,8 @@ double engine_foreign_alloc_margin = engine_foreign_alloc_margin_default;
 
 /*! Maximal depth at which the stars resort task can be pushed */
 int engine_star_resort_task_depth = engine_star_resort_task_depth_default;
+//lily
+int engine_hydro_resort_task_depth = engine_hydro_resort_task_depth_default;
 
 /*! Expected maximal number of strays received at a rebuild */
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;

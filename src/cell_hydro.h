@@ -103,6 +103,10 @@ struct cell_hydro {
     /*! Task for sorting the stars again after a SF event */
     struct task *stars_resort;
 
+    //lily
+    /*! Task for splitting the particles */
+    struct task *particle_split;
+    
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
 

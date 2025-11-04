@@ -144,6 +144,8 @@ enum {
   timer_do_rt_collect_times,
   timer_do_sync,
   timer_neutrino_weighting,
+  //lily
+  timer_particle_split,
   timer_count,
 };
 

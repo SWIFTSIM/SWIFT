@@ -657,8 +657,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   struct sink *restrict sinks = c->sinks.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
 
+  
   TIMER_TIC;
-            
+  
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
       !cell_is_active_stars(c, e) && !cell_is_active_sinks(c, e) &&
@@ -672,11 +673,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
     c->black_holes.updated = 0;
     c->rt.updated = 0;
     return;
-  }
-
-  //lily   
-  if (e->time > 0){
-    runner_do_particle_split(r,c,timer);
   }
 
   int updated = 0, g_updated = 0, s_updated = 0, sink_updated = 0,
@@ -1467,6 +1463,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
+
 
   TIMER_TIC;
 
