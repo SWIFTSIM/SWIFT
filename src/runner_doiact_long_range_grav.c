@@ -493,12 +493,17 @@ void runner_count_mesh_interactions_zoom(struct runner* r, struct cell* ci,
     if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
       compare_top_i = ci->top;
       compare_top_j = cj->top;
-    } else if (ci->type == cell_type_zoom) {
-      compare_top_i = ci->top;
-      compare_top_j = cj->top;
-    } else if (cj->type == cell_type_zoom) {
+    } else if (cell_pair_is_zoom_tl(top, top_j, s)) {
       compare_top_i = top;
-      compare_top_j = cj->top;
+      compare_top_j = top_j;
+    } else if (ci->type == cell_type_zoom &&
+               cj->subtype == cell_subtype_neighbour) {
+      runner_count_mesh_interactions_zoom_bkg(ci, ci->top, top_j, s);
+      continue;
+    } else if (cj->type == cell_type_zoom &&
+               ci->subtype == cell_subtype_neighbour) {
+      runner_count_mesh_interactions_zoom_bkg(ci, cj->top, top, s);
+      continue;
     } else {
       compare_top_i = top;
       compare_top_j = top_j;
