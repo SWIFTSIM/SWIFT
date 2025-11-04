@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[2025.04],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[2025.10],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 AC_COPYRIGHT
@@ -3265,6 +3265,13 @@ AM_CONDITIONAL([HAVEEAGLEFLOOR], [test "$with_entropy_floor" = "EAGLE"])
 
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
+
+# Check for GEAR and GEAR_MECHANICAL feedback flags to set the common files
+# variable
+AS_IF([test "$with_feedback" = "GEAR"],
+  [common_gear_needed=yes],
+  [common_gear_needed=no])
+AM_CONDITIONAL([COMMON_GEAR_NEEDED], [test "x$common_gear_needed" = "xyes"])
 
 # check if using gear feedback
 AM_CONDITIONAL([HAVEAGORAFEEDBACK], [test "$with_feedback" = "AGORA"])
