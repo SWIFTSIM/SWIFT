@@ -409,6 +409,10 @@ void runner_count_mesh_interactions_zoom(struct runner* r, struct cell* ci,
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors* const multi_i = ci->grav.multipole;
 
+  /* Define a cell pointer to use for the right comparison top level cell */
+  struct cell* compare_top_i = top;
+  struct cell* compare_top_j = NULL;
+
   /* Loop over all cells. */
   for (int n = 0; n < s->nr_cells; n++) {
 
@@ -423,27 +427,33 @@ void runner_count_mesh_interactions_zoom(struct runner* r, struct cell* ci,
     /* Get the top level cell of the current cj */
     struct cell* top_j = cj->top;
 
-    /* If we are in a zoom cell we need to jump up the void hierarchy
-     * to get the top level cell. */
-    if (top_j->void_parent != NULL) {
-      top_j = cj->void_parent->top;
-    }
-
-    /* If we had buffer cells then we may need an extra jump since the
-     * top-level for a zoom cell is at:
-     * zoom->top->void_parent->top->void_parent->top. */
-    if (top_j->void_parent != NULL) {
-      top_j = top_j->void_parent->top;
+    /* What cells should we be comparing? For two top level zoom cells we
+     * compare them directly, otherwise, zoom cells need to be compared at
+     * their void parent top level. All other combinations are just top level
+     * cells. */
+    if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
+      compare_top_i = ci->top;
+      compare_top_j = cj->top;
+    } else if (ci->type == cell_type_zoom) {
+      compare_top_i = ci->top->void_parent->top;
+      compare_top_j = top_j;
+    } else if (cj->type == cell_type_zoom) {
+      compare_top_i = top;
+      compare_top_j = cj->void_parent->top;
+    } else {
+      compare_top_i = top;
+      compare_top_j = top_j;
     }
 
     /* Avoid self contributions */
-    if (top == top_j) continue;
+    if (compare_top_i == compare_top_j) continue;
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top, top_j, periodic, dim);
+    const double min_radius2 =
+        cell_min_dist2(compare_top_i, compare_top_j, periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
