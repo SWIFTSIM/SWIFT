@@ -126,7 +126,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
-  const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f);
+  const float afac_divB = cosmo->a * cosmo->a;
+  // pow(cosmo->a, -mhd_comoving_factor - 0.5f);
   const float afac_resistive = cosmo->a * cosmo->a;
 
   float dt_divB =
@@ -409,11 +410,16 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   for (int i = 0; i < 6; ++i) {
     p->mhd_data.grad.c_matrix_inv.elements[i] *= h_inv_dim;
   }
-  /* Finish the construction of the inverse of the velocity gradient
+  /* Finish the construction of the inverse of the A gradient
    * multiplying in the factors of h coming from W */
   for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bx[i] *= h_inv_dim;
   for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_by[i] *= h_inv_dim;
   for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bz[i] *= h_inv_dim;
+  /* Finish the construction of the inverse of the dAdt
+   * multiplying in the factors of h coming from W */
+  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_dax[i] *= h_inv_dim;
+  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_day[i] *= h_inv_dim;
+  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_daz[i] *= h_inv_dim;
   /* Invert the c-matrix */
   float c_matrix_temp[3][3];
   get_matrix_from_sym_matrix(c_matrix_temp, &p->mhd_data.grad.c_matrix_inv);
@@ -571,10 +577,21 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     }
   }
 
-  const float alpha_AR_max = 1.0;
+  const float alpha_AR_max = 0.0;
 
   p->mhd_data.alpha_AR =
       normB ? fminf(alpha_AR_max, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+
+  /* Sets Induction equation */
+  p->mhd_data.dAdt[0] = p->mhd_data.grad.Mat_dax[0] +
+                        p->mhd_data.grad.Mat_day[0] +
+                        p->mhd_data.grad.Mat_daz[0];
+  p->mhd_data.dAdt[1] = p->mhd_data.grad.Mat_dax[1] +
+                        p->mhd_data.grad.Mat_day[1] +
+                        p->mhd_data.grad.Mat_daz[1];
+  p->mhd_data.dAdt[2] = p->mhd_data.grad.Mat_dax[2] +
+                        p->mhd_data.grad.Mat_day[2] +
+                        p->mhd_data.grad.Mat_daz[2];
 }
 
 /**
@@ -587,16 +604,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *restrict p) {
-  /* Sets Induction equation */
-  p->mhd_data.dAdt[0] = p->mhd_data.grad.Mat_dax[0] +
-                        p->mhd_data.grad.Mat_day[0] +
-                        p->mhd_data.grad.Mat_daz[0];
-  p->mhd_data.dAdt[1] = p->mhd_data.grad.Mat_dax[1] +
-                        p->mhd_data.grad.Mat_day[1] +
-                        p->mhd_data.grad.Mat_daz[1];
-  p->mhd_data.dAdt[2] = p->mhd_data.grad.Mat_dax[2] +
-                        p->mhd_data.grad.Mat_day[2] +
-                        p->mhd_data.grad.Mat_daz[2];
 
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
@@ -653,7 +660,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props, const float mu_0) {
 
-  /* Predict the VP magnetic field */  ///// May we need to predict B? XXX
+  /* Predict the VP magnetic field */
   p->mhd_data.APred[0] += p->mhd_data.dAdt[0] * dt_therm;
   p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm;
   p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
