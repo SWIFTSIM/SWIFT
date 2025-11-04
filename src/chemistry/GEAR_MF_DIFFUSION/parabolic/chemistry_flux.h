@@ -70,8 +70,6 @@ chemistry_part_update_fluxes_right(struct part* restrict p,
   p->chemistry_data.metal_mass_riemann[metal] += *fluxes * dt;
 }
 
-// TODO: Add an if def here to either call this function or the hyperbolic
-// version
 /**
  * @brief Compute the metal mass flux for the Riemann problem with the given
  * left and right state, and interface normal, surface area and velocity.

@@ -437,11 +437,6 @@ runner_iact_chemistry_fluxes_common(
   Wj[4] *= cosmo->a_factor_pressure;
 
   /*****************************************/
-  // TODO: Probably encapsulate this into a function that calls the right
-  // parabolic/hyperbolic function...
-  // Have a look at RT: Mladen hid some details inside rt_compute_flux. Maybe
-  // only use arrays of size 4 and in the parabolic function only use the 0th
-  // index (for the metal mass flux)
   /* Now solve the Riemann problem for each metal specie */
   /* Helper variable */
   const float a2 = cosmo->a * cosmo->a;
