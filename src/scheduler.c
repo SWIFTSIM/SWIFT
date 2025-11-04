@@ -1602,6 +1602,11 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task* t,
 
   /* If neither cell is a void cell, redirect to the normal splitter. */
   if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
+    message(
+        "Redirecting non-void pair task to normal gravity splitter (ci=%s/%s, "
+        "cj=%s/%s)",
+        cellID_names[ci->type], subcellID_names[ci->subtype],
+        cellID_names[cj->type], subcellID_names[cj->subtype]);
     scheduler_splittask_gravity(t, s);
     return;
   }
@@ -1653,12 +1658,12 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task* t,
        * have 0 particles but are never "empty"). */
       if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
 
-      // /* Are we at the zoom top level and if so can we get away with using
-      //  * the mesh here instead of a direct interaction? */
-      // if (cell_pair_is_zoom_tl(cpi, cpj, sp) &&
-      //     engine_gravity_can_use_mesh(e, cpi, cpj)) {
-      //   continue;
-      // }
+      /* Are we at the zoom top level and if so can we get away with using
+       * the mesh here instead of a direct interaction? */
+      if (cell_pair_is_zoom_tl(cpi, cpj, sp) &&
+          engine_gravity_can_use_mesh(e, cpi, cpj)) {
+        continue;
+      }
 
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(cpi, cpj, e, sp,
@@ -1757,13 +1762,13 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task* t,
         /* Skip empty progeny. */
         if (ci->progeny[k] == NULL) continue;
 
-        // /* Check if we are at the zoom top level and if so can we get away
-        //  * with using the mesh here instead of a direct interaction? */
-        // if (cell_pair_is_zoom_tl(ci->progeny[j], ci->progeny[k], s->space) &&
-        //     engine_gravity_can_use_mesh(s->space->e, ci->progeny[j],
-        //                                 ci->progeny[k])) {
-        //   continue;
-        // }
+        /* Check if we are at the zoom top level and if so can we get away
+         * with using the mesh here instead of a direct interaction? */
+        if (cell_pair_is_zoom_tl(ci->progeny[j], ci->progeny[k], s->space) &&
+            engine_gravity_can_use_mesh(s->space->e, ci->progeny[j],
+                                        ci->progeny[k])) {
+          continue;
+        }
 
         /* Create the pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
