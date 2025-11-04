@@ -382,6 +382,65 @@ void runner_do_grav_long_range_uniform_periodic(struct runner* r,
 }
 
 /**
+ * @brief Recurse to the zoom depth in bkg cells accumulating interactions.
+ *
+ * This is a helper function for runner_count_mesh_interactions_zoom.
+ * It will recurse down from the background top level to check interactions
+ * at the zoom depth between the zoom cell and the background cell.
+ *
+ * @param ci The #cell whose counter we are updating.
+ * @param zoom_c The zoom #cell.
+ * @param bkg_c The background #cell.
+ * @param s The #space.
+ */
+void runner_count_mesh_interactions_zoom_bkg(struct cell* ci,
+                                             struct cell* zoom_c,
+                                             struct cell* bkg_c,
+                                             struct space* s) {
+
+  /* Get the maximum distance at which we can have a non-mesh interaction. */
+  struct engine* e = s->e;
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+  /* Are we at the zoom depth yet? */
+  if (bkg_c->depth < s->zoom_props->zoom_cell_depth) {
+    /* Recurse down to the zoom depth */
+    for (int k = 0; k < 8; k++) {
+      if (bkg_c->progeny[k] == NULL) continue;
+      runner_count_mesh_interactions_zoom_bkg(ci, zoom_c, bkg_c->progeny[k], s);
+    }
+    return;
+  }
+
+  /* Ok, we are at the zoom depth, check interaction */
+  struct gravity_tensors* const multi_i = ci->grav.multipole;
+  struct gravity_tensors* const multi_j = bkg_c->grav.multipole;
+
+  /* Skip empty cells */
+  if (multi_j->m_pole.M_000 == 0.f) return;
+
+  /* Minimal distance between any pair of particles */
+  const double min_radius2 = cell_min_dist2(zoom_c, bkg_c, s->periodic, s->dim);
+
+  /* Are we beyond the distance where the truncated forces are 0 ?*/
+  if (min_radius2 > max_distance2) {
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Need to account for the interactions we missed */
+    accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+    /* Need to account for the interactions we missed */
+    accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                      multi_j->m_pole.num_gpart);
+#endif
+    /* Record that this multipole received a contribution */
+    multi_i->pot.interacted = 1;
+  }
+}
+
+/**
  * @brief Accumulate the number of particle mesh interactions for debugging
  * purposes.
  *
@@ -434,12 +493,14 @@ void runner_count_mesh_interactions_zoom(struct runner* r, struct cell* ci,
     if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
       compare_top_i = ci->top;
       compare_top_j = cj->top;
-    } else if (ci->type == cell_type_zoom) {
-      compare_top_i = ci->top->void_parent->top;
-      compare_top_j = top_j;
-    } else if (cj->type == cell_type_zoom) {
-      compare_top_i = top;
-      compare_top_j = cj->void_parent->top;
+    } else if (ci->type == cell_type_zoom &&
+               cj->subtype == cell_subtype_neighbour) {
+      runner_count_mesh_interactions_zoom_bkg(ci, ci->top, cj, s);
+      continue;
+    } else if (cj->type == cell_type_zoom &&
+               ci->subtype == cell_subtype_neighbour) {
+      runner_count_mesh_interactions_zoom_bkg(ci, cj->top, ci, s);
+      continue;
     } else {
       compare_top_i = top;
       compare_top_j = top_j;
