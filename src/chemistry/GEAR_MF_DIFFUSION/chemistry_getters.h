@@ -257,7 +257,7 @@ __attribute__((always_inline)) INLINE static double chemistry_get_matrix_norm(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_compute_diffusion_coefficient(
+chemistry_get_diffusion_coefficient(
     struct part* restrict p, const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo) {
   /* Convert density to physical units. */
@@ -350,7 +350,7 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
 }
 
 /**
- * @brief Compute the diffusion flux of given metal group.
+ * @brief Compute the parabolic diffusion flux of given metal group.
  *
  * F_diss = - K * \nabla \otimes q
  *
@@ -361,7 +361,7 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_compute_physical_diffusion_flux(
+chemistry_get_physical_parabolic_flux(
     const struct part* restrict p, int metal, double F_diff[3],
     const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo) {

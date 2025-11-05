@@ -530,7 +530,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
 
   /* Update the diffusion coefficient for the new loop */
   p->chemistry_data.kappa =
-      chemistry_compute_diffusion_coefficient(p, cd, cosmo);
+      chemistry_get_diffusion_coefficient(p, cd, cosmo);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   p->chemistry_data.tau = chemistry_compute_physical_tau(p, cd, cosmo);
@@ -569,7 +569,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   }
 
   /* Reset the metal mass fluxes now that they have been applied */
-  chemistry_reset_chemistry_metal_mass_fluxes(p);
+  chemistry_part_reset_fluxes(p);
 
   /* Invalidate the particle time-step. It is considered to be inactive until
      dt is set again in hydro_prepare_force() */
@@ -957,7 +957,7 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   chd->filtered.rho_prev = chd->filtered.rho;
 
   /* Update diffusion coefficient */
-  chd->kappa = chemistry_compute_diffusion_coefficient(p, chem_data, cosmo);
+  chd->kappa = chemistry_get_diffusion_coefficient(p, chem_data, cosmo);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Convert the timestep to physical units */
@@ -997,7 +997,7 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   }
 
   /* Reset the metal mass fluxes now that they have been applied */
-  chemistry_reset_chemistry_metal_mass_fluxes(p);
+  chemistry_part_reset_fluxes(p);
 
   /* We don't need to invalidate the part's timestep. The active ones were
      reset in chemistry_end_force() and the inactive do not need an update

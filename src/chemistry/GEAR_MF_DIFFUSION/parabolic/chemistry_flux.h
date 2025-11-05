@@ -27,6 +27,17 @@
  * @brief Header dealing with parabolic diffusion fluxes.
  */
 
+/**
+ * @brief Reset the metal mass fluxes for the given particle.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_part_reset_fluxes(struct part* restrict p) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    p->chemistry_data.metal_mass_riemann[i] = 0.0;
+  }
+}
 
 /**
  * @brief Update the fluxes for the particle with the given contributions,
