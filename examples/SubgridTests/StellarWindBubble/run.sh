@@ -11,7 +11,7 @@ Z=${Z:=2e-3} # Metallicity (not in solar metallicity)
 ################## makeIC constant parameters ##################
 level=${level:=6}  # Number of particles = 2^(3*level)
 jeans_length=${jeans_length:=1}  # Jeans wavelenght in unit of the boxsize
-gas_density=${gas_density:=0.1} # Gas density in atom/cm^3
+gas_density=${gas_density:=1} # Gas density in atom/cm^3
 gas_particle_mass=${gas_particle_mass:=10} # Mass of the gas particles
 num_star=${num_star:=1} # number of stars
 
@@ -40,10 +40,6 @@ echo "coeff = $coeff"
 # Define the directory name based on the parameters
 str="test_Star_Type_${star_type_name}_Star_Mass_${star_mass}_Z_${Z}_Coeff_${coeff}"
 
-if [[ "$1" == "SN" ]]; then
-    str="${str}_with_SN"
-fi
-
 # Create directory if not already present
 if [ -d "$str" ]; then
     echo "$str directory exists. Its content will be removed."
@@ -68,14 +64,28 @@ python3 ../makeIC.py --level $level --lJ $jeans_length --rho $gas_density \
     --star_type $star_type --num_star $num_star \
     -o ICs_homogeneous_box.hdf5
 
+cooling=$true
+
+#--------------------- Run the simulation | no cooling part --------------------#
+mkdir noCooling
+cd noCooling
 # Start the simulation
-echo "Starting simulation"
-if [[ "$2" == "SN" ]]; then
-    ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:supernovae_efficiency:0.1" --param="GEARFeedback:pre_supernovae_efficiency:$coeff" ../params.yml 2>&1 | tee output.log
-else 
-    ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:pre_supernovae_efficiency:$coeff" ../params.yml 2>&1 | tee output.log
-fi
+../../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback  --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:pre_supernovae_efficiency:$coeff" ../../params.yml 2>&1 | tee output.log
+
+# Generate the plots
+python3 ../../gas_profile_movie.py "./" | tee gas_profile_movie.txt
+
+python3 ../../bubble_evolution.py "radial_peak_positions.txt"
 cd ..
-python3 verification.py --verbose "$str/output.log" | tee verification.txt
+#--------------------- Run the simulation | cooling part --------------------#
+mkdir withCooling
+cd withCooling
+# Start the simulation
+../../../../../swift --hydro --sync --limiter --external-gravity --cooling --stars --sinks --feedback  --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:pre_supernovae_efficiency:$coeff" ../../params.yml 2>&1 | tee output.log 
+# Generate the plots
+python3 ../../gas_profile_movie.py "./" | tee gas_profile_movie.txt 
+python3 ../../bubble_evolution.py "radial_peak_positions.txt"
+
+
 
 

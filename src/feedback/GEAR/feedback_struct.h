@@ -38,6 +38,9 @@ struct feedback_xpart_data {
 
   /*! Momemtum received from a supernovae */
   float delta_p[3];
+
+  /*! Indicator if the particule receive energy from SN specifically */
+  char hit_by_SN;
 };
 
 /**
@@ -73,8 +76,13 @@ struct feedback_spart_data {
   struct {
 
     /*! Energy injected in the surrounding particles, needs to be double as the
-     * energy is currently in erg/yr units and is of order 10^40*/ /* TODO:change into float for memory but /!\ change the stellar_wind.c functions in accordance */
+     * energy is momentally passed as energy per unit time in erg/yr units and
+     * is of order 10^40*/ /* TODO:change into float for memory but /!\ change the stellar_wind.c functions in accordance */
     double energy_ejected;
+
+    /*! Mass injected in the surrounding particles, needs to be double as the
+     mass is currently in Msol units and can be of orders 10^-40 */ /* TODO: change into float for memory*/
+    double mass_ejected;
 
   } preSN;
 };
