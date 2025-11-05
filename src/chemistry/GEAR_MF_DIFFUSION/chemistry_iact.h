@@ -443,24 +443,24 @@ runner_iact_chemistry_fluxes_common(
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
 
     /* Predict the diffusion state at the interface to compute fluxes */
-    double Ui, Uj;
-    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, &Ui, &Uj);
+    double Ui[4], Uj[4];
+    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, Ui, Uj);
 
-    /* Convert Ui and Uj to physical units */
-    Ui *= cosmo->a3_inv;
-    Uj *= cosmo->a3_inv;
+    /* Convert Ui[0] and Uj[0] (metal density) to physical units */
+    Ui[0] *= cosmo->a3_inv;
+    Uj[0] *= cosmo->a3_inv;
 
     /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */
-    double totflux = 0.0;
-    chemistry_compute_flux(dx, pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm, m,
-                           chem_data, cosmo, &totflux);
+    double totflux[4] = {0.0, 0.0, 0.0, 0.0};
+    chemistry_compute_flux(dx, pi, pj, m, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm,
+                           chem_data, cosmo, totflux);
 
     /* Flux limiter */
     /* First check that we won't have negative masses. If so, we have a check
        that will ensure masses are not negative and if so, it we set them to be
        positive. Then, we have metal mass creation. If this correction happen
        a lot, we will create a lot of metal mass. */
-    chemistry_limit_metal_mass_flux(pi, pj, &totflux, m, mindt);
+    chemistry_limit_metal_mass_flux(pi, pj, m, totflux, mindt);
 
     /* Update V*U ****************************************/
     /* When solving the Riemann problem, we assume pi is left state, and
@@ -472,9 +472,9 @@ runner_iact_chemistry_fluxes_common(
      * the fluxes are always exchanged symmetrically. Thanks to our sneaky use
      * of flux_dt, we can detect inactive neighbours through their negative time
      * step. */
-    chemistry_part_update_fluxes_left(pi, &totflux, m, mindt);
+    chemistry_part_update_fluxes_left(pi, m, totflux, mindt);
     if (mode == 1 || (chj->flux_dt < 0.f)) {
-      chemistry_part_update_fluxes_right(pj, &totflux, m, mindt);
+      chemistry_part_update_fluxes_right(pj, m, totflux, mindt);
     }
   }
 }

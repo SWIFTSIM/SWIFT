@@ -126,10 +126,19 @@ chemistry_riemann_solver_hopkins2017_HLL(
     qL = chemistry_get_physical_metal_density(pi, m, cosmo);
     qR = chemistry_get_physical_metal_density(pj, m, cosmo);
 
+    /* We need to use arrays of length 4 for this function. Copy the metal
+       density in the array. */
+    double qL_4[4] = {qL, 0.0, 0.0, 0.0};
+    double qR_4[4] = {qR, 0.0, 0.0, 0.0};
+
     const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
     const float xfac = -pi->h / (pi->h + pj->h);
     const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
-    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, &qL, &qR);
+    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, qL_4, qR_4);
+
+    /* Copy the array value back */
+    qL = qL_4[0];
+    qR = qR_4[0];
   } else {
     /* In these cases, U = rho*Z, q = Z */
     qL = chemistry_get_metal_mass_fraction(pi, m);

@@ -49,11 +49,21 @@
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     const struct part *restrict pi, const struct part *restrict pj, int metal,
-    const float dx[3], const float r, const float xij_i[3], double *Ui,
-    double *Uj) {
+    const float dx[3], const float r, const float xij_i[3], double Ui[4],
+    double Uj[4]) {
 
-  *Ui = chemistry_get_comoving_metal_density(pi, metal);
-  *Uj = chemistry_get_comoving_metal_density(pj, metal);
+  /* Metal density */
+  Ui[0] = chemistry_get_comoving_metal_density(pi, metal);
+  Uj[0] = chemistry_get_comoving_metal_density(pj, metal);
+
+  /* Hyperbolic flux. Note for parabolic diffusion this is 0. */
+  Ui[1] = 0.0;
+  Ui[2] = 0.0;
+  Ui[3] = 0.0;
+
+  Uj[1] = 0.0;
+  Uj[2] = 0.0;
+  Uj[3] = 0.0;
   /* No need to check unphysical state here: they haven't been touched since
      the call to chemistry_end_density() */
 
@@ -71,10 +81,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   double dUi = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i);
   double dUj = chemistry_gradients_extrapolate_double(grad_rhoZ_j, xij_j);
 
-  chemistry_slope_limit_face(Ui, Uj, &dUi, &dUj, xij_i, xij_j, r);
+  chemistry_slope_limit_face(&Ui[0], &Uj[0], &dUi, &dUj, xij_i, xij_j, r);
 
-  *Ui += dUi;
-  *Uj += dUj;
+  Ui[0] += dUi;
+  Uj[0] += dUj;
 
   /* Check we have physical masses and that we are not overshooting the
      particle's mass */
@@ -84,21 +94,21 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
       chemistry_get_metal_mass_fraction(pi, metal) * mi;
   const double m_Zj_not_extrapolated =
       chemistry_get_metal_mass_fraction(pj, metal) * mj;
-  double m_Zi = *Ui * mi / hydro_get_comoving_density(pi);
-  double m_Zj = *Uj * mj / hydro_get_comoving_density(pj);
+  double m_Zi = Ui[0] * mi / hydro_get_comoving_density(pi);
+  double m_Zj = Uj[0] * mj / hydro_get_comoving_density(pj);
 
   chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
-                                   /*callloc=*/1, /*element*/ metal, pi->id);
+				   /*callloc=*/1, /*element*/ metal, pi->id);
   chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
-                                   /*callloc=*/1, /*element*/ metal, pj->id);
+				   /*callloc=*/1, /*element*/ metal, pj->id);
 
   /* If the new masses have been changed, do not extrapolate, use 0th order
      reconstruction and update the state vectors */
   if (m_Zi == m_Zi_not_extrapolated) {
-    *Ui = m_Zi_not_extrapolated * hydro_get_comoving_density(pi) / mi;
+    Ui[0] = m_Zi_not_extrapolated * hydro_get_comoving_density(pi) / mi;
   }
   if (m_Zj == m_Zj_not_extrapolated) {
-    *Uj = m_Zj_not_extrapolated * hydro_get_comoving_density(pj) / mj;
+    Uj[0] = m_Zj_not_extrapolated * hydro_get_comoving_density(pj) / mj;
   }
 }
 

@@ -21,6 +21,13 @@
 
 #include "chemistry_getters.h"
 
+/* Import the right file */
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#include "hyperbolic/chemistry_flux.h"
+#else
+#include "parabolic/chemistry_flux.h"
+#endif
+
 /**
  * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_flux.h
  * @brief Main header dealing with fluxes.
@@ -46,8 +53,6 @@ __attribute__((always_inline)) INLINE void chemistry_get_metal_mass_fluxes(
 /**
  * @brief Limit the metal mass flux to avoid negative metal masses.
  *
- * TODO: Promote the fluxes to an array of 4 (for hyperbolic diffusion)
- *
  * @param p Particle.
  * @param metal Index of metal specie.
  * @param F_diff (return) Array to write diffusion flux component into.
@@ -57,14 +62,15 @@ __attribute__((always_inline)) INLINE void chemistry_get_metal_mass_fluxes(
 __attribute__((always_inline)) INLINE static void
 chemistry_limit_metal_mass_flux(const struct part* restrict pi,
 				const struct part* restrict pj,
-				double* fluxes, const int metal,
+				const int metal,
+				double fluxes[4],
 				const float dt) {
 
   const struct chemistry_part_data *chi = &pi->chemistry_data;
   const struct chemistry_part_data *chj = &pj->chemistry_data;
 
   /* Convert the raw riemann mass derivative to mass */
-  double metal_mass_interface = (*fluxes) * dt;
+  double metal_mass_interface = (fluxes[0]) * dt;
 
   /* Use the updated metal masses to ensure that the final result won't be
    * negative */
@@ -81,15 +87,8 @@ chemistry_limit_metal_mass_flux(const struct part* restrict pi,
   if (fabs(metal_mass_interface) > 0.0 &&
       fabs(metal_mass_interface) > 0.9 * upwind_mass) {
     const double factor = 0.9 * upwind_mass / fabs(metal_mass_interface);
-    *fluxes *= factor;
+    fluxes[0] *= factor;
   }
 }
-
-/* Import the right file */
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-#include "hyperbolic/chemistry_flux.h"
-#else
-#include "parabolic/chemistry_flux.h"
-#endif
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_FLUX_H  */

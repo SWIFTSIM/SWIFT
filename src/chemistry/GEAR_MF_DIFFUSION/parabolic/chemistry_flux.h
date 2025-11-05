@@ -48,16 +48,16 @@ chemistry_part_reset_fluxes(struct part* restrict p) {
  * vector.
  *
  * @param p Particle.
- * @param fluxes Fluxes accross the interface.
  * @param metal Metal specie.
+ * @param fluxes Fluxes accross the interface.
  * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_fluxes_left(struct part* restrict p,
-				  const double* fluxes,
 				  const int metal,
+				  const double fluxes[4],
 				  const float dt) {
-  p->chemistry_data.metal_mass_riemann[metal] -= *fluxes * dt;
+  p->chemistry_data.metal_mass_riemann[metal] -= fluxes[0] * dt;
 }
 
 /**
@@ -69,16 +69,16 @@ chemistry_part_update_fluxes_left(struct part* restrict p,
  * vector.
  *
  * @param p Particle.
- * @param fluxes Fluxes accross the interface.
  * @param metal Metal specie.
+ * @param fluxes Fluxes accross the interface.
  * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_fluxes_right(struct part* restrict p,
-                                   const double* fluxes,
 				   const int metal,
+				   const double fluxes[4],
 				   const float dt) {
-  p->chemistry_data.metal_mass_riemann[metal] += *fluxes * dt;
+  p->chemistry_data.metal_mass_riemann[metal] += fluxes[0] * dt;
 }
 
 /**
@@ -89,33 +89,33 @@ chemistry_part_update_fluxes_right(struct part* restrict p,
  * pj->x).
  * @param pi The #part pi.
  * @param pj The #part pj.
+ * @param metal Metal specie.
  * @param UL Left diffusion state variables (in physical units).
  * @param UR Right diffusion state variables (in physical units).
  * @param WL Left state variables (in physical units).
  * @param WR Right state variables (in physical units).
  * @param n_unit Unit vector of the interface.
  * @param Anorm Surface area of the interface (in physical units).
- * @param metal Metal specie.
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The current cosmological model.
- * @param metal_flux (return) The resulting flux at the interface (of size 1).
+ * @param fluxes (return) The resulting flux at the interface (of size 1).
  */
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
     const float dx[3], const struct part* restrict pi,
-    const struct part* restrict pj, const double UL, const double UR,
+    const struct part* restrict pj, const int metal,
+    const double UL[4], const double UR[4],
     const float WL[5], const float WR[5], const float n_unit[3],
-    const float Anorm, const int metal,
-    const struct chemistry_global_data* chem_data,
-    const struct cosmology* cosmo, double* metal_flux) {
+    const float Anorm, const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo, double fluxes[4]) {
 
   /* Note: F_diff_R and F_diff_L are computed with a first order
-         reconstruction */
+	 reconstruction */
   /* Get the diffusion flux */
   double F_diff_i[3], F_diff_j[3];
-  chemistry_compute_physical_diffusion_flux(pi, metal, F_diff_i, chem_data,
-                                            cosmo);
-  chemistry_compute_physical_diffusion_flux(pj, metal, F_diff_j, chem_data,
-                                            cosmo);
+  chemistry_get_physical_parabolic_flux(pi, metal, F_diff_i, chem_data,
+					    cosmo);
+  chemistry_get_physical_parabolic_flux(pj, metal, F_diff_j, chem_data,
+					    cosmo);
 
   /* Check that the fluxes are meaningful */
   chemistry_check_unphysical_diffusion_flux(F_diff_i);
@@ -123,12 +123,12 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
 
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
-  chemistry_riemann_solve_for_flux(dx, pi, pj, UL, UR, WL, WR, F_diff_i,
-                                   F_diff_j, Anorm, n_unit, metal, chem_data,
-                                   cosmo, metal_flux);
+  chemistry_riemann_solve_for_flux(dx, pi, pj, UL[0], UR[0], WL, WR, F_diff_i,
+				   F_diff_j, Anorm, n_unit, metal, chem_data,
+				   cosmo, &fluxes[0]);
 
   /* Anorm is already in physical units here. */
-  *metal_flux *= Anorm;
+  fluxes[0] *= Anorm;
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_PARABOLIC_DIFFUSION_FLUX_H */
