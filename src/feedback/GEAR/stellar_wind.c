@@ -154,6 +154,17 @@ void stellar_wind_read_yields(struct stellar_wind *sw,
       "Integrated_Energy", &previous_count, sw->interpolation_size_m,
       sw->interpolation_size_z);
 
+  /* Read the mass-loss*/
+  stellar_wind_read_yields_array(
+      sw, &sw->raw.mass_loss, sm, group_id, "Mass_Loss", &previous_count,
+      sw->interpolation_size_m, sw->interpolation_size_z);
+
+  /* Read the integrated mass-loss*/
+  stellar_wind_read_yields_array(
+      sw, &sw->integrated.mass_loss_per_progenitor_mass, sm, group_id,
+      "Integrated_Mass_Loss", &previous_count, sw->interpolation_size_m,
+      sw->interpolation_size_z);
+
   /* Cleanup everything */
   h5_close_group(file_id, group_id);
 };
@@ -205,6 +216,35 @@ double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw,
 };
 
 /**
+ * @brief Get the ejected mass given a discrete mass.
+ *
+ * @param sw The #stellar_wind model.
+ * @param log_m The upper mass in log.
+ * @param log_z The metallicity in log.
+ *
+ * @return mass per unit time in [Msol/yr].
+ */
+double stellar_wind_get_ejected_mass(const struct stellar_wind *sw, float log_m,
+                                     float log_z) {
+  return pow(10, interpolate_2d(&sw->raw.mass_loss, log_z, log_m));
+};
+
+/**
+ * @brief Get the ejected mass per progenitor mass.
+ *
+ * @param sw The #stellar_wind model.
+ * @param log_m The upper mass in log.
+ * @param log_z The metallicity in log.
+ *
+ * @return mass per progenitor mass per unit time in [Msol/yr].
+ */
+double stellar_wind_get_ejected_mass_IMF(const struct stellar_wind *sw,
+                                         float log_m, float log_z) {
+  return pow(10, interpolate_2d(&sw->integrated.mass_loss_per_progenitor_mass,
+                                log_z, log_m));
+};
+
+/**
  * @brief Clean the allocated memory.
  *
  * @param sw the #stellar_wind.
@@ -213,4 +253,6 @@ void stellar_wind_clean(struct stellar_wind *sw) {
 
   interpolate_2d_free(&sw->integrated.ejected_energy_per_progenitor_mass);
   interpolate_2d_free(&sw->raw.ejected_energy);
+  interpolate_2d_free(&sw->raw.mass_loss);
+  interpolate_2d_free(&sw->integrated.mass_loss_per_progenitor_mass);
 }

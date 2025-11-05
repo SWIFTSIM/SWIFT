@@ -193,12 +193,18 @@ struct stellar_wind {
 
     /*! energy ejected by stellar winds. */
     struct interpolation_2d ejected_energy;
+
+    /*! mass loss from stellar winds. */
+    struct interpolation_2d mass_loss;
   } raw;
 
   /*! Yields integrated */
   struct {
     /*! Integrated (over the IMF) energy ejected by stellar winds. */
     struct interpolation_2d ejected_energy_per_progenitor_mass;
+
+    /*! Integrated (over the IMF) mass loss from stellar winds */
+    struct interpolation_2d mass_loss_per_progenitor_mass;
   } integrated;
 
   /*! Minimal mass for a SW */
