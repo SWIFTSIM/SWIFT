@@ -537,18 +537,20 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 #endif
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
-    } else {
-      /* Ok we made a task here, if this was a zoom<->bkg interaction we need
-       * to recurse down to the zoom depth to find all the missed
-       * interactions. */
-      if ((ci->type == cell_type_zoom && cj->type == cell_type_bkg) ||
-          (ci->type == cell_type_bkg && cj->type == cell_type_zoom)) {
-        struct cell *zoom_c = (ci->type == cell_type_zoom) ? ci->top : cj->top;
-        struct cell *bkg_c = (ci->type == cell_type_bkg) ? ci->top : cj->top;
-        runner_count_mesh_interactions_zoom_bkg(ci, cj, zoom_c, bkg_c, s);
-      }
     }
+    // else {
+    //   /* Ok we made a task here, if this was a zoom<->bkg interaction we need
+    //    * to recurse down to the zoom depth to find all the missed
+    //    * interactions. */
+    //   if ((ci->type == cell_type_zoom && cj->type == cell_type_bkg) ||
+    //       (ci->type == cell_type_bkg && cj->type == cell_type_zoom)) {
+    //     struct cell *zoom_c = (ci->type == cell_type_zoom) ? ci->top :
+    //     cj->top; struct cell *bkg_c = (ci->type == cell_type_bkg) ? ci->top :
+    //     cj->top; runner_count_mesh_interactions_zoom_bkg(ci, cj, zoom_c,
+    //     bkg_c, s);
+    //   }
   }
+}
 #else
   error(
       "This function should not be called without debugging checks or "
