@@ -1680,8 +1680,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (ci_nodeID == nodeID && with_timestep_limiter)
           cell_activate_limiter(ci, s);
 	//lily
-	if (c->hydro.particle_split)
-	  scheduler_activate(s, c->hydro.particle_split);
+	if (ci->hydro.particle_split)
+	  scheduler_activate(s, ci->hydro.particle_split);
       }
 
       /* Set the correct sorting flags and activate hydro drifts */

@@ -148,12 +148,12 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	message("Parent before splits: id=%lld, mass=%e, pos=(%g,%g,%g)",
 		parent->id, parent->mass, parent->x[0], parent->x[1], parent->x[2]);
 
+	
 	for (int n = 0; n < (n_split-1); n++) { 
 	  double pos_offsets[3] = {offsets[n][0], offsets[n][1], offsets[n][2]};
 	  
 	  struct part *child = cell_spawn_new_part_from_part(e, c, parent, parent_xp, child_mass, pos_offsets, new_h);
 
-          
 	  //update parent
 	  parent =  &c->hydro.parts[parent_index + n + 1];
 	  parent_xp = &c->hydro.xparts[parent_index + n + 1];
@@ -188,8 +188,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	  c->hydro.parts[parent_index + (n_split-1)].gpart->mass = child_mass;
 	  //c->hydro.parts[parent_index + (n_split-1)].gpart->time_bin = old_timebin - 1;
 	}
-	
-	
+		
 	message("Parent ID after full split: %lld, mass=%e, position=(%g,%g,%g)",
 		c->hydro.parts[parent_index + (n_split-1)].id, c->hydro.parts[parent_index + (n_split-1)].mass,
 		c->hydro.parts[parent_index + (n_split-1)].x[0], c->hydro.parts[parent_index + (n_split-1)].x[1],
