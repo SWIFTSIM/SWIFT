@@ -47,12 +47,12 @@
  * @param us The internal system of units.
  * @param dt The time-step of this particle.
  */
-void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
-                           struct rt_props* rt_props,
-                           const struct cosmology* restrict cosmo,
-                           const struct hydro_props* hydro_props,
-                           const struct phys_const* restrict phys_const,
-                           const struct unit_system* restrict us,
+void rt_do_thermochemistry(struct part *restrict p, struct xpart *restrict xp,
+                           struct rt_props *rt_props,
+                           const struct cosmology *restrict cosmo,
+                           const struct hydro_props *hydro_props,
+                           const struct phys_const *restrict phys_const,
+                           const struct unit_system *restrict us,
                            const double dt) {
 
   /* Nothing to do here? */
@@ -61,7 +61,7 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
 
   rt_check_unphysical_elem_spec(p, rt_props);
 
-  struct rt_part_data* rpd = &p->rt_data;
+  struct rt_part_data *rpd = &p->rt_data;
 
   struct RTUserData data; /* data for CVODE */
 
@@ -386,7 +386,7 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
      * memory and specify the Backward Differentiation
      * Formula. Note that CVODE now uses Newton iteration
      * iteration by default, so no need to specify this. */
-    void* cvode_mem;
+    void *cvode_mem;
     cvode_mem = CVodeCreate(CV_BDF);
 
     /* Set the user data for CVode */
@@ -541,11 +541,11 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
  * @param us The internal system of units.
  * @param dt The time-step of this particle.
  */
-void rt_tchem(struct part* restrict p, struct xpart* restrict xp,
-              struct rt_props* rt_props, const struct cosmology* restrict cosmo,
-              const struct hydro_props* hydro_props,
-              const struct phys_const* restrict phys_const,
-              const struct unit_system* restrict us, const double dt) {
+void rt_tchem(struct part *restrict p, struct xpart *restrict xp,
+              struct rt_props *rt_props, const struct cosmology *restrict cosmo,
+              const struct hydro_props *hydro_props,
+              const struct phys_const *restrict phys_const,
+              const struct unit_system *restrict us, const double dt) {
   rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
                         dt);
 }

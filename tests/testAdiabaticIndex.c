@@ -34,7 +34,7 @@
  * @param b Second value
  * @param s String used to identify this check in messages
  */
-void check_value(float a, float b, const char* s) {
+void check_value(float a, float b, const char *s) {
   if (fabsf(a - b) / fabsf(a + b) > 1.e-6f)
     error("Values are inconsistent: %12.15e %12.15e rel=%e (%s)!", a, b,
           fabsf(a - b) / fabsf(a + b), s);
@@ -142,7 +142,7 @@ void check_functions(float x) {
 /**
  * @brief Check adiabatic index constants and power functions
  */
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

@@ -77,8 +77,8 @@ struct forcing_terms {
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static void forcing_terms_apply(
-    const double time, const struct forcing_terms* terms, const struct space* s,
-    const struct phys_const* phys_const, struct part* p, struct xpart* xp) {
+    const double time, const struct forcing_terms *terms, const struct space *s,
+    const struct phys_const *phys_const, struct part *p, struct xpart *xp) {
 
   enum flow Flow_kind = terms->Flow_kind;
   const double L = s->dim[0];
@@ -176,9 +176,9 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
-    double time, const struct forcing_terms* terms,
-    const struct phys_const* phys_const, const struct part* p,
-    const struct xpart* xp) {
+    double time, const struct forcing_terms *terms,
+    const struct phys_const *phys_const, const struct part *p,
+    const struct xpart *xp) {
 
   return FLT_MAX;
 }
@@ -188,7 +188,7 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  *
  * @param terms The #forcing_terms properties of the run.
  */
-static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
+static INLINE void forcing_terms_print(const struct forcing_terms *terms) {
 
   message(
       "Forcing terms is 'Roberts flow using accelerations'. U0: %.5f. nu: "
@@ -206,11 +206,11 @@ static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
  * @param s The #space object.
  * @param terms The forcing term properties to initialize
  */
-static INLINE void forcing_terms_init(struct swift_params* parameter_file,
-                                      const struct phys_const* phys_const,
-                                      const struct unit_system* us,
-                                      const struct space* s,
-                                      struct forcing_terms* terms) {
+static INLINE void forcing_terms_init(struct swift_params *parameter_file,
+                                      const struct phys_const *phys_const,
+                                      const struct unit_system *us,
+                                      const struct space *s,
+                                      struct forcing_terms *terms) {
 
   terms->u0 = parser_get_param_double(parameter_file,
                                       "RobertsFlowAccelerationForcing:u0");

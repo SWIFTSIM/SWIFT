@@ -33,8 +33,8 @@
  *
  * @return num_fields The number of i/o fields to read.
  */
-INLINE static int star_formation_read_particles(struct spart* sparts,
-                                                struct io_props* list) {
+INLINE static int star_formation_read_particles(struct spart *sparts,
+                                                struct io_props *list) {
   return 0;
 }
 
@@ -48,8 +48,8 @@ INLINE static int star_formation_read_particles(struct spart* sparts,
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int star_formation_write_particles(
-    const struct part* parts, const struct xpart* xparts,
-    struct io_props* list) {
+    const struct part *parts, const struct xpart *xparts,
+    struct io_props *list) {
 
   /* No SF-related fields in the Quick Lyman-alpha model */
 
@@ -65,8 +65,8 @@ __attribute__((always_inline)) INLINE static int star_formation_write_particles(
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int
-star_formation_write_sparticles(const struct spart* sparts,
-                                struct io_props* list) {
+star_formation_write_sparticles(const struct spart *sparts,
+                                struct io_props *list) {
 
   /* No SF-related fields in the Quick Lyman-alpha model */
 

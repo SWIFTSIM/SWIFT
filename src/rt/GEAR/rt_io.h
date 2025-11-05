@@ -35,8 +35,8 @@
  *
  * @return Returns the number of fields to read.
  */
-INLINE static int rt_read_particles(const struct part* parts,
-                                    struct io_props* list) {
+INLINE static int rt_read_particles(const struct part *parts,
+                                    struct io_props *list) {
 
   /* List what we want to read */
 
@@ -80,8 +80,8 @@ INLINE static int rt_read_particles(const struct part* parts,
  *
  * @return Returns the number of fields to read.
  */
-INLINE static int rt_read_stars(const struct spart* sparts,
-                                struct io_props* list) {
+INLINE static int rt_read_stars(const struct spart *sparts,
+                                struct io_props *list) {
   return 0;
 }
 
@@ -94,10 +94,10 @@ INLINE static int rt_read_stars(const struct spart* sparts,
  * @param xpart the according xpart to extract data from
  * @param ret (return) the extracted data
  */
-INLINE static void rt_convert_radiation_energies(const struct engine* engine,
-                                                 const struct part* part,
-                                                 const struct xpart* xpart,
-                                                 float* ret) {
+INLINE static void rt_convert_radiation_energies(const struct engine *engine,
+                                                 const struct part *part,
+                                                 const struct xpart *xpart,
+                                                 float *ret) {
 
   for (int g = 0; g < RT_NGROUPS; g++) {
     ret[g] = part->rt_data.radiation[g].energy_density * part->geometry.volume;
@@ -113,10 +113,10 @@ INLINE static void rt_convert_radiation_energies(const struct engine* engine,
  * @param xpart the according xpart to extract data from
  * @param ret (return) the extracted data
  */
-INLINE static void rt_convert_radiation_fluxes(const struct engine* engine,
-                                               const struct part* part,
-                                               const struct xpart* xpart,
-                                               float* ret) {
+INLINE static void rt_convert_radiation_fluxes(const struct engine *engine,
+                                               const struct part *part,
+                                               const struct xpart *xpart,
+                                               float *ret) {
 
   int i = 0;
   for (int g = 0; g < RT_NGROUPS; g++) {
@@ -135,10 +135,10 @@ INLINE static void rt_convert_radiation_fluxes(const struct engine* engine,
  * @param xpart the according xpart to extract data from
  * @param ret (return) the extracted data
  */
-INLINE static void rt_convert_mass_fractions(const struct engine* engine,
-                                             const struct part* part,
-                                             const struct xpart* xpart,
-                                             float* ret) {
+INLINE static void rt_convert_mass_fractions(const struct engine *engine,
+                                             const struct part *part,
+                                             const struct xpart *xpart,
+                                             float *ret) {
 
   ret[0] = part->rt_data.tchem.mass_fraction_HI;
   ret[1] = part->rt_data.tchem.mass_fraction_HII;
@@ -156,8 +156,8 @@ INLINE static void rt_convert_mass_fractions(const struct engine* engine,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int rt_write_particles(const struct part* parts,
-                                     struct io_props* list) {
+INLINE static int rt_write_particles(const struct part *parts,
+                                     struct io_props *list) {
 
   int num_elements = 3;
 
@@ -227,8 +227,8 @@ INLINE static int rt_write_particles(const struct part* parts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int rt_write_stars(const struct spart* sparts,
-                                 struct io_props* list) {
+INLINE static int rt_write_stars(const struct spart *sparts,
+                                 struct io_props *list) {
   int num_elements = 0;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -264,10 +264,10 @@ INLINE static int rt_write_stars(const struct spart* sparts,
  * @param rtp The #rt_props
  */
 INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
-                                    const struct engine* e,
-                                    const struct unit_system* internal_units,
-                                    const struct unit_system* snapshot_units,
-                                    const struct rt_props* rtp) {
+                                    const struct engine *e,
+                                    const struct unit_system *internal_units,
+                                    const struct unit_system *snapshot_units,
+                                    const struct rt_props *rtp) {
 
 #if defined(HAVE_HDF5)
 
