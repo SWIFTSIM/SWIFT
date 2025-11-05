@@ -29,8 +29,7 @@ struct mhd_part_data {
   /*! Predicted Bfield */
   float BPred[3];
 
-  /*! Predicted BSmooth */
-  float BSmooth[3];
+  float JPred[3];
 
   /* Alfven speed (=sqrt(B2/(mu_0 * rho))) of the particle drifted to the
    * current time */
@@ -60,9 +59,6 @@ struct mhd_part_data {
   /* Artificial resistivity gradient based switch */
   float alpha_AR;
 
-  /* mute variable */
-  float Q0;
-
   /* Resistive Eta */
   float resistive_eta;
 
@@ -85,14 +81,22 @@ struct mhd_part_data {
   float Delta_A[3];
 
   struct {
-
-    /*! The inverse of 'correction matrix' (e.q. 6) - It's symmetric */
-    struct sym_matrix c_matrix_inv;
-
-    /*! Gradient per component of the Afield means Bfield*/
+    struct sym_matrix d_matrix_inv;
     float Mat_bx[3];
     float Mat_by[3];
     float Mat_bz[3];
+  } dens;
+
+  struct {
+
+    /*! The inverse of 'correction matrix' (e.q. 6) - It's symmetric */
+    struct sym_matrix c_matrix_inv;
+    struct sym_matrix d_matrix;
+
+    /*! Gradient per component of the Afield means Bfield*/
+    float Mat_bbx[3];
+    float Mat_bby[3];
+    float Mat_bbz[3];
     /*! Gradient per component of the dAdt*/
     float Mat_dax[3];
     float Mat_day[3];

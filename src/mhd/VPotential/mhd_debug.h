@@ -33,10 +33,10 @@ __attribute__((always_inline)) INLINE static void mhd_debug_particle(
       "Bpred=[%.3e,%.3e,%.3e], "
       "Apred=[%.3e,%.3e,%.3e], "
       "dAdt=[%.3e,%.3e,%.3e], \n"
-      "divB=%.3e, divA=%.3e, Q0=%.3e, Gau=%.3e\n",
+      "divB=%.3e, divA=%.3e, Gau=%.3e\n",
       p->mhd_data.BPred[0], p->mhd_data.BPred[1], p->mhd_data.BPred[2],
       p->mhd_data.APred[0], p->mhd_data.APred[1], p->mhd_data.APred[2],
       p->mhd_data.dAdt[0], p->mhd_data.dAdt[1], p->mhd_data.dAdt[2],
-      p->mhd_data.divB, p->mhd_data.divA, p->mhd_data.Q0, p->mhd_data.Gau);
+      p->mhd_data.divB, p->mhd_data.divA, p->mhd_data.Gau);
 }
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_DEBUG_H */
