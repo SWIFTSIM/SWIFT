@@ -26,7 +26,7 @@
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
-    struct part* restrict p) {
+    struct part *restrict p) {
   for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
     p->chemistry_data.metal_mass_fluxes[i] = 0.f;
   }
@@ -46,9 +46,9 @@ __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
  * @param hydro_props Additional hydro properties.
  */
 __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
-    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
-    float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
+    struct part *p, float dt_therm, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props) {
   /* For hydro schemes that exchange mass fluxes between the particles,
    * we want to advect the metals. */
   if (p->flux.dt > 0.) {
@@ -65,7 +65,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     }
 
     /* apply the metal mass fluxes and reset them */
-    const double* metal_fluxes = p->chemistry_data.metal_mass_fluxes;
+    const double *metal_fluxes = p->chemistry_data.metal_mass_fluxes;
     for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
       p->chemistry_data.metal_mass[i] =
           fmax(p->chemistry_data.metal_mass[i] + metal_fluxes[i], 0.);
@@ -100,7 +100,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
  * interaction.
  **/
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
-    struct part* restrict pi, struct part* restrict pj, float mass_flux,
+    struct part *restrict pi, struct part *restrict pj, float mass_flux,
     float flux_dt, int mode) {
 
   const double mass_flux_integrated = mass_flux * flux_dt;

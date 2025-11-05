@@ -30,21 +30,21 @@
 
 struct extra_io_properties {};
 
-INLINE static int extra_io_write_particles(const struct part* parts,
-                                           const struct xpart* xparts,
-                                           struct io_props* list,
+INLINE static int extra_io_write_particles(const struct part *parts,
+                                           const struct xpart *xparts,
+                                           struct io_props *list,
                                            const int with_cosmology) {
   return 0;
 }
 
-INLINE static int extra_io_write_sparticles(const struct spart* sparts,
-                                            struct io_props* list,
+INLINE static int extra_io_write_sparticles(const struct spart *sparts,
+                                            struct io_props *list,
                                             const int with_cosmology) {
   return 0;
 }
 
-INLINE static int extra_io_write_bparticles(const struct bpart* bparts,
-                                            struct io_props* list,
+INLINE static int extra_io_write_bparticles(const struct bpart *bparts,
+                                            struct io_props *list,
                                             const int with_cosmology) {
   return 0;
 }
@@ -53,19 +53,19 @@ INLINE static int extra_io_write_bparticles(const struct bpart* bparts,
 INLINE static void extra_io_write_flavour(hid_t h_grp, hid_t h_grp_columns) {}
 #endif
 
-INLINE static void extra_io_init(struct swift_params* parameter_file,
-                                 const struct unit_system* us,
-                                 const struct phys_const* phys_const,
-                                 const struct cosmology* cosmo,
-                                 struct extra_io_properties* props) {}
+INLINE static void extra_io_init(struct swift_params *parameter_file,
+                                 const struct unit_system *us,
+                                 const struct phys_const *phys_const,
+                                 const struct cosmology *cosmo,
+                                 struct extra_io_properties *props) {}
 
-INLINE static void extra_io_clean(struct extra_io_properties* props) {}
+INLINE static void extra_io_clean(struct extra_io_properties *props) {}
 
-INLINE static void extra_io_struct_dump(const struct extra_io_properties* props,
-                                        FILE* stream) {}
+INLINE static void extra_io_struct_dump(const struct extra_io_properties *props,
+                                        FILE *stream) {}
 
-INLINE static void extra_io_struct_restore(struct extra_io_properties* props,
-                                           FILE* stream) {}
+INLINE static void extra_io_struct_restore(struct extra_io_properties *props,
+                                           FILE *stream) {}
 
 /* In this case there are no extra lightcone map types */
 static const struct lightcone_map_type extra_lightcone_map_types[] = {

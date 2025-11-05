@@ -34,7 +34,7 @@
  * @param argv Unused
  * @return 0 if everything is fine, 1 if random numbers are not random enough.
  */
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

@@ -54,8 +54,8 @@ struct pressure_floor_props {};
  * @return The comoving pressure with the floor.
  */
 static INLINE float pressure_floor_get_comoving_pressure(
-    const struct part* p, const struct pressure_floor_props* pfloor,
-    const float comoving_pressure, const struct cosmology* cosmo) {
+    const struct part *p, const struct pressure_floor_props *pfloor,
+    const float comoving_pressure, const struct cosmology *cosmo) {
   return comoving_pressure;
 }
 
@@ -71,11 +71,11 @@ static INLINE float pressure_floor_get_comoving_pressure(
  * @param hydro_props The propoerties of the hydro scheme.
  * @param props The pressure floor properties to fill.
  */
-static INLINE void pressure_floor_init(struct pressure_floor_props* props,
-                                       const struct phys_const* phys_const,
-                                       const struct unit_system* us,
-                                       const struct hydro_props* hydro_props,
-                                       struct swift_params* params) {}
+static INLINE void pressure_floor_init(struct pressure_floor_props *props,
+                                       const struct phys_const *phys_const,
+                                       const struct unit_system *us,
+                                       const struct hydro_props *hydro_props,
+                                       struct swift_params *params) {}
 
 /**
  * @brief Print the properties of the pressure floor to stdout.
@@ -83,7 +83,7 @@ static INLINE void pressure_floor_init(struct pressure_floor_props* props,
  * @param props The pressure floor properties.
  */
 static INLINE void pressure_floor_print(
-    const struct pressure_floor_props* props) {
+    const struct pressure_floor_props *props) {
 
   message("Pressure floor is 'none'");
 }
@@ -107,7 +107,7 @@ INLINE static void pressure_floor_print_snapshot(hid_t h_grp) {
  * @param stream the file stream
  */
 static INLINE void pressure_floor_struct_dump(
-    const struct pressure_floor_props* pressure_floor, FILE* stream) {}
+    const struct pressure_floor_props *pressure_floor, FILE *stream) {}
 
 /**
  * @brief Restore a pressure_floor struct from the given FILE as a stream of
@@ -117,6 +117,6 @@ static INLINE void pressure_floor_struct_dump(
  * @param stream the file stream
  */
 static INLINE void pressure_floor_struct_restore(
-    struct pressure_floor_props* pressure_floor, FILE* stream) {}
+    struct pressure_floor_props *pressure_floor, FILE *stream) {}
 
 #endif /* SWIFT_PRESSURE_FLOOR_NONE_H */

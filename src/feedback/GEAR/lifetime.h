@@ -28,7 +28,7 @@
  * @param lf The #lifetime.
  */
 __attribute__((always_inline)) INLINE static void lifetime_print(
-    const struct lifetime* lf) {
+    const struct lifetime *lf) {
 
   /* Only the master print */
   if (engine_rank != 0) {
@@ -55,7 +55,7 @@ __attribute__((always_inline)) INLINE static void lifetime_print(
  * @return The star's lifetime (in log10(Myr)).
  */
 __attribute__((always_inline)) INLINE static float
-lifetime_get_log_lifetime_from_mass(const struct lifetime* life, float log_mass,
+lifetime_get_log_lifetime_from_mass(const struct lifetime *life, float log_mass,
                                     float metallicity) {
 
   /* Compute quadratic term */
@@ -85,7 +85,7 @@ lifetime_get_log_lifetime_from_mass(const struct lifetime* life, float log_mass,
  * @return The star's mass (in log10(solMass))
  */
 __attribute__((always_inline)) INLINE static float
-lifetime_get_log_mass_from_lifetime(const struct lifetime* life, float log_time,
+lifetime_get_log_mass_from_lifetime(const struct lifetime *life, float log_time,
                                     float metallicity) {
 
   /* Compute quadratic term */
@@ -127,7 +127,7 @@ lifetime_get_log_mass_from_lifetime(const struct lifetime* life, float log_time,
  * @param filename The filename of the chemistry table.
  */
 __attribute__((always_inline)) INLINE static void lifetime_read_from_tables(
-    struct lifetime* lt, struct swift_params* params, const char* filename) {
+    struct lifetime *lt, struct swift_params *params, const char *filename) {
 
   hid_t file_id, group_id;
 
@@ -135,8 +135,8 @@ __attribute__((always_inline)) INLINE static void lifetime_read_from_tables(
   h5_open_group(filename, "Data/LifeTimes", &file_id, &group_id);
 
   /* Allocate the temporary array */
-  float* tmp;
-  if ((tmp = (float*)malloc(sizeof(float) * 9)) == NULL)
+  float *tmp;
+  if ((tmp = (float *)malloc(sizeof(float) * 9)) == NULL)
     error("Failed to allocate the temporary array.");
 
   /* Read the coefficients */
@@ -165,9 +165,9 @@ __attribute__((always_inline)) INLINE static void lifetime_read_from_tables(
  * @param filename The filename of the chemistry table.
  */
 __attribute__((always_inline)) INLINE static void lifetime_init(
-    struct lifetime* lt, const struct phys_const* phys_const,
-    const struct unit_system* us, struct swift_params* params,
-    const char* filename) {
+    struct lifetime *lt, const struct phys_const *phys_const,
+    const struct unit_system *us, struct swift_params *params,
+    const char *filename) {
 
   /* Read params from yields table */
   lifetime_read_from_tables(lt, params, filename);
@@ -188,7 +188,7 @@ __attribute__((always_inline)) INLINE static void lifetime_init(
  * @param sm The #stellar_model.
  */
 __attribute__((always_inline)) INLINE static void lifetime_dump(
-    const struct lifetime* lt, FILE* stream, const struct stellar_model* sm) {
+    const struct lifetime *lt, FILE *stream, const struct stellar_model *sm) {
 
   /* Nothing to do here */
 }
@@ -205,7 +205,7 @@ __attribute__((always_inline)) INLINE static void lifetime_dump(
  * @param sm The #stellar_model.
  */
 __attribute__((always_inline)) INLINE static void lifetime_restore(
-    struct lifetime* lt, FILE* stream, const struct stellar_model* sm) {
+    struct lifetime *lt, FILE *stream, const struct stellar_model *sm) {
 
   /* Nothing to do here */
 }
@@ -216,6 +216,6 @@ __attribute__((always_inline)) INLINE static void lifetime_restore(
  * @param lifetime the #lifetime.
  */
 __attribute__((always_inline)) INLINE static void lifetime_clean(
-    struct lifetime* lifetime) {}
+    struct lifetime *lifetime) {}
 
 #endif  // SWIFT_LIFETIME_GEAR_H
