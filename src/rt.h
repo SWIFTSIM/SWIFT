@@ -52,7 +52,7 @@
  * @param p The #part.
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_timestep_data(
-    struct part *restrict p) {
+    struct part* restrict p) {
 
   p->rt_time_data.min_ngb_time_bin = num_time_bins + 1;
   p->rt_time_data.time_bin = 0;
@@ -64,7 +64,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_timestep_data(
  * @param p The #part.
  */
 __attribute__((always_inline)) INLINE static void rt_timestep_prepare_force(
-    struct part *restrict p) {
+    struct part* restrict p) {
 
   p->rt_time_data.min_ngb_time_bin = num_time_bins + 1;
 }
@@ -86,7 +86,7 @@ __attribute__((always_inline)) INLINE static void rt_timestep_prepare_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_timebin(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
 #ifndef RT_NONE
@@ -119,7 +119,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_timebin(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_rt_timebin(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
     const float H) {
 
 #ifndef RT_NONE

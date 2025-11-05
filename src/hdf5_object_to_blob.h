@@ -27,8 +27,8 @@
 
 #include <hdf5.h>
 
-void hdf5_object_to_blob(hid_t group_id, char *name, size_t *len, void **data);
-void blob_to_hdf5_object(size_t len, void *data, hid_t dest_id, char *name);
+void hdf5_object_to_blob(hid_t group_id, char* name, size_t* len, void** data);
+void blob_to_hdf5_object(size_t len, void* data, hid_t dest_id, char* name);
 
 #endif /* HAVE_HDF5 */
 

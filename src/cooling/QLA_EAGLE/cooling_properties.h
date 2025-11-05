@@ -27,19 +27,19 @@
 struct cooling_tables {
 
   /* array of heating rates due to metals */
-  float *metal_heating;
+  float* metal_heating;
 
   /* array of heating rates due to hydrogen and helium */
-  float *H_plus_He_heating;
+  float* H_plus_He_heating;
 
   /* array of electron abundances due to hydrogen and helium */
-  float *H_plus_He_electron_abundance;
+  float* H_plus_He_electron_abundance;
 
   /* array of temperatures */
-  float *temperature;
+  float* temperature;
 
   /* array of electron abundances due to metals */
-  float *electron_abundance;
+  float* electron_abundance;
 };
 
 /**
@@ -51,25 +51,25 @@ struct cooling_function_data {
   struct cooling_tables table;
 
   /*! Redshift bins */
-  float *Redshifts;
+  float* Redshifts;
 
   /*! Hydrogen number density bins */
-  float *nH;
+  float* nH;
 
   /*! Temperature bins */
-  float *Temp;
+  float* Temp;
 
   /*! Helium fraction bins */
-  float *HeFrac;
+  float* HeFrac;
 
   /*! Internal energy bins */
-  float *Therm;
+  float* Therm;
 
   /*! Mass fractions of elements for solar abundances (from the tables) */
-  float *SolarAbundances;
+  float* SolarAbundances;
 
   /*! Inverse of the solar mass fractions */
-  float *SolarAbundances_inv;
+  float* SolarAbundances_inv;
 
   /*! Filepath to the directory containing the HDF5 cooling tables */
   char cooling_table_path[qla_eagle_table_path_name_length];

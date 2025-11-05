@@ -53,7 +53,7 @@ struct neutrino_response {
   double delta_log_k;
 
   /*! Table of the neutrino overdensity to cdm & baryon overdensity ratio */
-  double *pt_density_ratio;
+  double* pt_density_ratio;
 
   /*! Size of the transfer function ratio table */
   hsize_t tf_size;
@@ -62,25 +62,25 @@ struct neutrino_response {
   char fixed_bg_density;
 };
 
-void neutrino_response_init(struct neutrino_response *numesh,
-                            struct swift_params *params,
-                            const struct unit_system *us, const double dim[3],
-                            const struct cosmology *c,
-                            const struct neutrino_props *np,
-                            const struct gravity_props *gp, int rank,
+void neutrino_response_init(struct neutrino_response* numesh,
+                            struct swift_params* params,
+                            const struct unit_system* us, const double dim[3],
+                            const struct cosmology* c,
+                            const struct neutrino_props* np,
+                            const struct gravity_props* gp, int rank,
                             int verbose);
-void neutrino_response_clean(struct neutrino_response *numesh);
+void neutrino_response_clean(struct neutrino_response* numesh);
 
 #ifdef HAVE_FFTW
-void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
-                               struct threadpool *tp, fftw_complex *frho,
+void neutrino_response_compute(const struct space* s, struct pm_mesh* mesh,
+                               struct threadpool* tp, fftw_complex* frho,
                                const int slice_offset, const int slice_width,
                                int verbose);
 #endif /* HAVE_FFTW */
 
-void neutrino_response_struct_dump(const struct neutrino_response *numesh,
-                                   FILE *stream);
-void neutrino_response_struct_restore(struct neutrino_response *numesh,
-                                      FILE *stream);
+void neutrino_response_struct_dump(const struct neutrino_response* numesh,
+                                   FILE* stream);
+void neutrino_response_struct_restore(struct neutrino_response* numesh,
+                                      FILE* stream);
 
 #endif /* SWIFT_DEFAULT_NEUTRINO_RESPONSE_H */

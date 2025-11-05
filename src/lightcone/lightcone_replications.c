@@ -35,9 +35,9 @@
  * b The second replication
  *
  */
-static int compare_replication_rmin(const void *a, const void *b) {
-  const struct replication *rep_a = (struct replication *)a;
-  const struct replication *rep_b = (struct replication *)b;
+static int compare_replication_rmin(const void* a, const void* b) {
+  const struct replication* rep_a = (struct replication*)a;
+  const struct replication* rep_b = (struct replication*)b;
   if (rep_a->rmin2 < rep_b->rmin2)
     return -1;
   else if (rep_a->rmin2 > rep_b->rmin2)
@@ -58,7 +58,7 @@ static int compare_replication_rmin(const void *a, const void *b) {
  * @param replication_list Pointer to the struct to initialise.
  */
 
-void replication_list_init(struct replication_list *replication_list,
+void replication_list_init(struct replication_list* replication_list,
                            double boxsize, double cell_width,
                            double observer_position[3], double lightcone_rmin,
                            double lightcone_rmax) {
@@ -117,7 +117,7 @@ void replication_list_init(struct replication_list *replication_list,
             if (ipass == 1) {
               /* Get a pointer to the next replication */
               const int nrep = replication_list->nrep;
-              struct replication *rep = replication_list->replication + nrep;
+              struct replication* rep = replication_list->replication + nrep;
               /* Store info about this replication */
               rep->rmin2 = pow(rep_rmin, 2.0);
               rep->rmax2 = pow(rep_rmax, 2.0);
@@ -135,7 +135,7 @@ void replication_list_init(struct replication_list *replication_list,
     if (ipass == 0) {
       const int nrep = replication_list->nrep;
       if (swift_memalign(
-              "lightcone_replications", (void **)&replication_list->replication,
+              "lightcone_replications", (void**)&replication_list->replication,
               SWIFT_STRUCT_ALIGNMENT, sizeof(struct replication) * nrep) != 0) {
         error("Failed to allocate lightcone replication list");
       }
@@ -157,11 +157,11 @@ void replication_list_init(struct replication_list *replication_list,
  *
  * @param replication_list Pointer to the struct to initialise.
  */
-void replication_list_init_empty(struct replication_list *replication_list) {
+void replication_list_init_empty(struct replication_list* replication_list) {
 
   const int nrep = 0;
   if (swift_memalign(
-          "lightcone_replications", (void **)&replication_list->replication,
+          "lightcone_replications", (void**)&replication_list->replication,
           SWIFT_STRUCT_ALIGNMENT, sizeof(struct replication) * nrep) != 0) {
     error("Failed to allocate lightcone replication list");
   }
@@ -175,7 +175,7 @@ void replication_list_init_empty(struct replication_list *replication_list) {
  *
  * @param replication_list Pointer to the struct to deallocate.
  */
-void replication_list_clean(struct replication_list *replication_list) {
+void replication_list_clean(struct replication_list* replication_list) {
   swift_free("lightcone_replications", replication_list->replication);
   replication_list->replication = NULL;
   replication_list->nrep = 0;
@@ -188,8 +188,8 @@ void replication_list_clean(struct replication_list *replication_list) {
  * @param fd The file to write to
  */
 
-void replication_list_write(struct replication_list *replication_list,
-                            FILE *fd) {
+void replication_list_write(struct replication_list* replication_list,
+                            FILE* fd) {
 
   for (int i = 0; i < replication_list->nrep; i += 1) {
     fprintf(fd, "%e, %e, %e, %e, %e\n",
@@ -212,10 +212,10 @@ void replication_list_write(struct replication_list *replication_list,
  * replication_list_clean().
  *
  */
-void replication_list_subset_for_cell(const struct replication_list *rep_in,
-                                      const struct cell *cell,
+void replication_list_subset_for_cell(const struct replication_list* rep_in,
+                                      const struct cell* cell,
                                       const double observer_position[3],
-                                      struct replication_list *rep_out) {
+                                      struct replication_list* rep_out) {
 
   /* Find centre coordinates of this cell */
   const double cell_centre[] = {cell->loc[0] + 0.5 * cell->width[0],
@@ -229,7 +229,7 @@ void replication_list_subset_for_cell(const struct replication_list *rep_in,
 
   /* Allocate array of replications for the new list */
   const int nrep_max = rep_in->nrep;
-  if (swift_memalign("lightcone_replications", (void **)&rep_out->replication,
+  if (swift_memalign("lightcone_replications", (void**)&rep_out->replication,
                      SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct replication) * nrep_max) != 0) {
     error("Failed to allocate pruned lightcone replication list");
@@ -244,7 +244,7 @@ void replication_list_subset_for_cell(const struct replication_list *rep_in,
   for (int i = 0; i < nrep_max; i += 1) {
 
     /* Get a pointer to this input replication */
-    const struct replication *rep = rep_in->replication + i;
+    const struct replication* rep = rep_in->replication + i;
 
     /* Find coordinates of centre of this replication of the cell relative to
      * the observer */

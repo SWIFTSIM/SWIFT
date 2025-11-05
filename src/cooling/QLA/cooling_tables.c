@@ -48,7 +48,7 @@
  *
  * @param cooling Cooling data structure
  */
-void read_cooling_header(struct cooling_function_data *cooling) {
+void read_cooling_header(struct cooling_function_data* cooling) {
 
 #ifdef HAVE_HDF5
 
@@ -62,64 +62,63 @@ void read_cooling_header(struct cooling_function_data *cooling) {
     error("unable to open file %s\n", cooling->cooling_table_path);
 
   /* allocate arrays of bins */
-  if (posix_memalign((void **)&cooling->Temp, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->Temp, SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_temperature * sizeof(float)) != 0)
     error("Failed to allocate temperature table\n");
 
-  if (posix_memalign((void **)&cooling->Redshifts, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->Redshifts, SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * sizeof(float)) != 0)
     error("Failed to allocate redshift table\n");
 
-  if (posix_memalign((void **)&cooling->nH, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->nH, SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_density * sizeof(float)) != 0)
     error("Failed to allocate density table\n");
 
-  if (posix_memalign((void **)&cooling->Metallicity, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->Metallicity, SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_metallicity * sizeof(float)) != 0)
     error("Failed to allocate metallicity table\n");
 
-  if (posix_memalign((void **)&cooling->Therm, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->Therm, SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_internalenergy * sizeof(float)) != 0)
     error("Failed to allocate internal energy table\n");
 
-  if (posix_memalign((void **)&cooling->LogAbundances, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->LogAbundances, SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_metallicity * qla_cooling_N_elementtypes *
                          sizeof(float)) != 0)
     error("Failed to allocate abundance array\n");
 
-  if (posix_memalign((void **)&cooling->Abundances, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->Abundances, SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_metallicity * qla_cooling_N_elementtypes *
                          sizeof(float)) != 0)
     error("Failed to allocate abundance array\n");
 
-  if (posix_memalign((void **)&cooling->Abundances_inv, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->Abundances_inv, SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_metallicity * qla_cooling_N_elementtypes *
                          sizeof(float)) != 0)
     error("Failed to allocate abundance array\n");
 
-  if (posix_memalign((void **)&cooling->atomicmass, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->atomicmass, SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_elementtypes * sizeof(float)) != 0)
     error("Failed to allocate atomic masses array\n");
 
-  if (posix_memalign((void **)&cooling->atomicmass_inv, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->atomicmass_inv, SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_elementtypes * sizeof(float)) != 0)
     error("Failed to allocate inverse atomic masses array\n");
 
-  if (posix_memalign((void **)&cooling->Zsol, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->Zsol, SWIFT_STRUCT_ALIGNMENT,
                      1 * sizeof(float)) != 0)
     error("Failed to allocate solar metallicity array\n");
 
-  if (posix_memalign((void **)&cooling->Zsol_inv, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->Zsol_inv, SWIFT_STRUCT_ALIGNMENT,
                      1 * sizeof(float)) != 0)
     error("Failed to allocate inverse solar metallicity array\n");
 
-  if (posix_memalign((void **)&cooling->LogMassFractions,
-                     SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->LogMassFractions, SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_metallicity * qla_cooling_N_elementtypes *
                          sizeof(float)) != 0)
     error("Failed to allocate log mass fraction array\n");
 
-  if (posix_memalign((void **)&cooling->MassFractions, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&cooling->MassFractions, SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_metallicity * qla_cooling_N_elementtypes *
                          sizeof(float)) != 0)
     error("Failed to allocate mass fraction array\n");
@@ -234,7 +233,7 @@ void read_cooling_header(struct cooling_function_data *cooling) {
  *
  * @param cooling #cooling_function_data structure
  */
-void read_cooling_tables(struct cooling_function_data *restrict cooling) {
+void read_cooling_tables(struct cooling_function_data* restrict cooling) {
 
 #ifdef HAVE_HDF5
   hid_t dataset;
@@ -249,7 +248,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
   /* Allocate and read arrays to store cooling tables. */
 
   /* Mean particle mass (temperature) */
-  if (swift_memalign("cooling_table.Tmu", (void **)&cooling->table.Tmu,
+  if (swift_memalign("cooling_table.Tmu", (void**)&cooling->table.Tmu,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_temperature *
                          qla_cooling_N_metallicity * qla_cooling_N_density *
@@ -264,7 +263,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
   if (status < 0) error("error closing mean particle mass dataset");
 
   /* Mean particle mass (internal energy) */
-  if (swift_memalign("cooling_table.Umu", (void **)&cooling->table.Umu,
+  if (swift_memalign("cooling_table.Umu", (void**)&cooling->table.Umu,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_internalenergy *
                          qla_cooling_N_metallicity * qla_cooling_N_density *
@@ -279,8 +278,8 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
   if (status < 0) error("error closing mean particle mass dataset");
 
   /* Cooling (temperature) */
-  if (swift_memalign("cooling_table.Tcooling",
-                     (void **)&cooling->table.Tcooling, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("cooling_table.Tcooling", (void**)&cooling->table.Tcooling,
+                     SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_temperature *
                          qla_cooling_N_metallicity * qla_cooling_N_density *
                          qla_cooling_N_cooltypes * sizeof(float)) != 0)
@@ -294,8 +293,8 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
   if (status < 0) error("error closing cooling dataset");
 
   /* Cooling (internal energy) */
-  if (swift_memalign("cooling_table.Ucooling",
-                     (void **)&cooling->table.Ucooling, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("cooling_table.Ucooling", (void**)&cooling->table.Ucooling,
+                     SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_internalenergy *
                          qla_cooling_N_metallicity * qla_cooling_N_density *
                          qla_cooling_N_cooltypes * sizeof(float)) != 0)
@@ -309,8 +308,8 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
   if (status < 0) error("error closing cooling dataset");
 
   /* Heating (temperature) */
-  if (swift_memalign("cooling_table.Theating",
-                     (void **)&cooling->table.Theating, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("cooling_table.Theating", (void**)&cooling->table.Theating,
+                     SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_temperature *
                          qla_cooling_N_metallicity * qla_cooling_N_density *
                          qla_cooling_N_heattypes * sizeof(float)) != 0)
@@ -324,8 +323,8 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
   if (status < 0) error("error closing cooling dataset");
 
   /* Heating (internal energy) */
-  if (swift_memalign("cooling_table.Uheating",
-                     (void **)&cooling->table.Uheating, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("cooling_table.Uheating", (void**)&cooling->table.Uheating,
+                     SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_internalenergy *
                          qla_cooling_N_metallicity * qla_cooling_N_density *
                          qla_cooling_N_heattypes * sizeof(float)) != 0)
@@ -340,7 +339,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
 
   /* Electron fraction (temperature) */
   if (swift_memalign("cooling_table.Tefrac",
-                     (void **)&cooling->table.Telectron_fraction,
+                     (void**)&cooling->table.Telectron_fraction,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_temperature *
                          qla_cooling_N_metallicity * qla_cooling_N_density *
@@ -356,7 +355,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
 
   /* Electron fraction (internal energy) */
   if (swift_memalign("cooling_table.Uefrac",
-                     (void **)&cooling->table.Uelectron_fraction,
+                     (void**)&cooling->table.Uelectron_fraction,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_internalenergy *
                          qla_cooling_N_metallicity * qla_cooling_N_density *
@@ -371,7 +370,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
   if (status < 0) error("error closing cooling dataset");
 
   /* Internal energy from temperature */
-  if (swift_memalign("cooling_table.UfromT", (void **)&cooling->table.U_from_T,
+  if (swift_memalign("cooling_table.UfromT", (void**)&cooling->table.U_from_T,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_temperature *
                          qla_cooling_N_metallicity * qla_cooling_N_density *
@@ -386,7 +385,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
   if (status < 0) error("error closing cooling dataset");
 
   /* Temperature from interal energy */
-  if (swift_memalign("cooling_table.TfromU", (void **)&cooling->table.T_from_U,
+  if (swift_memalign("cooling_table.TfromU", (void**)&cooling->table.T_from_U,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_internalenergy *
                          qla_cooling_N_metallicity * qla_cooling_N_density *
@@ -401,7 +400,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
   if (status < 0) error("error closing cooling dataset");
 
   /* Thermal equilibrium temperature */
-  if (swift_memalign("cooling_table.Teq", (void **)&cooling->table.logTeq,
+  if (swift_memalign("cooling_table.Teq", (void**)&cooling->table.logTeq,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_metallicity *
                          qla_cooling_N_density * sizeof(float)) != 0)
@@ -416,7 +415,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
 
   /* Mean particle mass at thermal equilibrium temperature */
   if (swift_memalign("cooling_table.mueq",
-                     (void **)&cooling->table.meanpartmass_Teq,
+                     (void**)&cooling->table.meanpartmass_Teq,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_metallicity *
                          qla_cooling_N_density * sizeof(float)) != 0)
@@ -431,7 +430,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
 
   /* Hydrogen fractions at thermal equilibirum temperature */
   if (swift_memalign("cooling_table.Hfracs",
-                     (void **)&cooling->table.logHfracs_Teq,
+                     (void**)&cooling->table.logHfracs_Teq,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_metallicity *
                          qla_cooling_N_density * 3 * sizeof(float)) != 0)
@@ -446,7 +445,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
 
   /* All hydrogen fractions */
   if (swift_memalign("cooling_table.Hfracs",
-                     (void **)&cooling->table.logHfracs_all,
+                     (void**)&cooling->table.logHfracs_all,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_temperature *
                          qla_cooling_N_metallicity * qla_cooling_N_density * 3 *
@@ -464,7 +463,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
   H5Fclose(tempfile_id);
 
   /* Pressure at thermal equilibrium temperature */
-  if (swift_memalign("cooling_table.Peq", (void **)&cooling->table.logPeq,
+  if (swift_memalign("cooling_table.Peq", (void**)&cooling->table.logPeq,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_cooling_N_redshifts * qla_cooling_N_metallicity *
                          qla_cooling_N_density * sizeof(float)) != 0)

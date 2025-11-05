@@ -22,16 +22,16 @@
 #include "io_properties.h"
 #include "stars_part.h"
 
-INLINE static void convert_spart_pos(const struct engine *e,
-                                     const struct spart *sp, double *ret) {
+INLINE static void convert_spart_pos(const struct engine* e,
+                                     const struct spart* sp, double* ret) {
   error("Empty implementation!");
   ret[0] = 0.;
   ret[1] = 0.;
   ret[2] = 0.;
 }
 
-INLINE static void convert_spart_vel(const struct engine *e,
-                                     const struct spart *sp, float *ret) {
+INLINE static void convert_spart_vel(const struct engine* e,
+                                     const struct spart* sp, float* ret) {
   error("Empty implementation!");
   ret[0] = 0.f;
   ret[1] = 0.f;
@@ -45,9 +45,9 @@ INLINE static void convert_spart_vel(const struct engine *e,
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-INLINE static void stars_read_particles(struct spart *sparts,
-                                        struct io_props *list,
-                                        int *num_fields) {
+INLINE static void stars_read_particles(struct spart* sparts,
+                                        struct io_props* list,
+                                        int* num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 0;
@@ -60,8 +60,8 @@ INLINE static void stars_read_particles(struct spart *sparts,
  * @param num_fields The number of i/o fields to write.
  * @param with_cosmology Are we running a cosmological simulation?
  */
-INLINE static void stars_write_particles(const struct spart *sparts,
-                                         struct io_props *list, int *num_fields,
+INLINE static void stars_write_particles(const struct spart* sparts,
+                                         struct io_props* list, int* num_fields,
                                          int with_cosmology) {
 
   /* Say how much we want to write */
@@ -80,12 +80,12 @@ INLINE static void stars_write_particles(const struct spart *sparts,
  * @param p The already read-in properties of the hydro scheme.
  * @param cosmo The cosmological model.
  */
-INLINE static void stars_props_init(struct stars_props *sp,
-                                    const struct phys_const *phys_const,
-                                    const struct unit_system *us,
-                                    struct swift_params *params,
-                                    const struct hydro_props *p,
-                                    const struct cosmology *cosmo) {
+INLINE static void stars_props_init(struct stars_props* sp,
+                                    const struct phys_const* phys_const,
+                                    const struct unit_system* us,
+                                    struct swift_params* params,
+                                    const struct hydro_props* p,
+                                    const struct cosmology* cosmo) {
 
   error("Trying to initialise an empty model!");
 }
@@ -95,12 +95,12 @@ INLINE static void stars_props_init(struct stars_props *sp,
  *
  * @param sp The #stars_props.
  */
-INLINE static void stars_props_print(const struct stars_props *sp) {}
+INLINE static void stars_props_print(const struct stars_props* sp) {}
 
 #if defined(HAVE_HDF5)
 INLINE static void stars_props_print_snapshot(hid_t h_grpstars,
                                               hid_t h_grp_columns,
-                                              const struct stars_props *sp) {}
+                                              const struct stars_props* sp) {}
 #endif
 
 /**
@@ -110,7 +110,7 @@ INLINE static void stars_props_print_snapshot(hid_t h_grpstars,
  *
  * @param sp The #stars_props structure.
  */
-INLINE static void stars_props_clean(struct stars_props *sp) {}
+INLINE static void stars_props_clean(struct stars_props* sp) {}
 
 /**
  * @brief Write a #stars_props struct to the given FILE as a stream of bytes.
@@ -118,9 +118,9 @@ INLINE static void stars_props_clean(struct stars_props *sp) {}
  * @param p the struct
  * @param stream the file stream
  */
-INLINE static void stars_props_struct_dump(const struct stars_props *p,
-                                           FILE *stream) {
-  restart_write_blocks((void *)p, sizeof(struct stars_props), 1, stream,
+INLINE static void stars_props_struct_dump(const struct stars_props* p,
+                                           FILE* stream) {
+  restart_write_blocks((void*)p, sizeof(struct stars_props), 1, stream,
                        "starsprops", "stars props");
 }
 
@@ -131,9 +131,9 @@ INLINE static void stars_props_struct_dump(const struct stars_props *p,
  * @param p the struct
  * @param stream the file stream
  */
-INLINE static void stars_props_struct_restore(const struct stars_props *p,
-                                              FILE *stream) {
-  restart_read_blocks((void *)p, sizeof(struct stars_props), 1, stream, NULL,
+INLINE static void stars_props_struct_restore(const struct stars_props* p,
+                                              FILE* stream) {
+  restart_read_blocks((void*)p, sizeof(struct stars_props), 1, stream, NULL,
                       "stars props");
 }
 #endif /* SWIFT_NONE_STAR_IO_H */

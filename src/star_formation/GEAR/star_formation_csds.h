@@ -33,14 +33,14 @@
  *
  * @return Buffer after the bits written.
  */
-INLINE static void *csds_star_formation_convert(const struct spart *sp,
-                                                const struct engine *e,
-                                                void *buffer) {
+INLINE static void* csds_star_formation_convert(const struct spart* sp,
+                                                const struct engine* e,
+                                                void* buffer) {
   /* Write the terms into the buffer */
-  float *out = (float *)buffer;
+  float* out = (float*)buffer;
   out[0] = sp->sf_data.birth_density;
   out[1] = sp->sf_data.birth_mass;
-  long long *id = (long long *)(out + 2);
+  long long* id = (long long*)(out + 2);
   *id = sp->sf_data.progenitor_id;
 
   return id + 1;
@@ -53,7 +53,7 @@ INLINE static void *csds_star_formation_convert(const struct spart *sp,
  *
  * @return The number of fields.
  */
-INLINE static int csds_star_formation_define_fields(struct csds_field *fields) {
+INLINE static int csds_star_formation_define_fields(struct csds_field* fields) {
 
   /* Write all the fields together. */
   csds_define_field_from_function_stars(fields[0], "GEARStarFormation",

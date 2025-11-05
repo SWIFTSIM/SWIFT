@@ -40,47 +40,47 @@ struct cell_sinks {
 #endif
 
     /*! Pointer to the #sink data. */
-    struct sink *parts;
+    struct sink* parts;
 
     /*! Pointer to the #spart data at rebuild time. */
-    struct sink *parts_rebuild;
+    struct sink* parts_rebuild;
 
     /*! Linked list of the tasks computing this cell's sink swallow. */
-    struct link *swallow;
+    struct link* swallow;
 
     /*! Linked list of the tasks computing this cell's sink do_gas_swallow. */
-    struct link *do_gas_swallow;
+    struct link* do_gas_swallow;
 
     /*! Linked list of the tasks computing this cell's sink do_sink_swallow. */
-    struct link *do_sink_swallow;
+    struct link* do_sink_swallow;
 
     /*! The drift task for sinks */
-    struct task *drift;
+    struct task* drift;
 
     /*! Implicit tasks marking the entry of the sink block of tasks */
-    struct task *sink_in;
+    struct task* sink_in;
 
     /*! The sink ghost task itself */
-    struct task *density_ghost;
+    struct task* density_ghost;
 
     /*! Linked list of the tasks computing this cell's sink density. */
-    struct link *density;
+    struct link* density;
 
     /*! Implicit tasks marking the end of sink swallow */
-    struct task *sink_ghost1;
+    struct task* sink_ghost1;
 
     /*! Implicit tasks marking the separation between do_gas_swallow and
      * do_sink_swallow */
-    struct task *sink_ghost2;
+    struct task* sink_ghost2;
 
     /*! Implicit tasks marking the exit of the sink block of tasks */
-    struct task *sink_out;
+    struct task* sink_out;
 
     /*! Task for star formation from sink particles */
-    struct task *star_formation_sink;
+    struct task* star_formation_sink;
 
     /*! Task for sink formation */
-    struct task *sink_formation;
+    struct task* sink_formation;
 
     /*! Last (integer) time the cell's sink were drifted forward in time. */
     integertime_t ti_old_part;

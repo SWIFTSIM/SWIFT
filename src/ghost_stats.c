@@ -29,7 +29,7 @@
  *
  * @param c The #cell to reset.
  */
-void cell_reset_ghost_histograms(struct cell *c) {
+void cell_reset_ghost_histograms(struct cell* c) {
 
   ghost_stats_reset_entries(&c->ghost_statistics);
 
@@ -52,7 +52,7 @@ void cell_reset_ghost_histograms(struct cell *c) {
  * @param cellID ID used to distinguish this cell from its progeny and
  * immediate neigbours (not guaranteed to be unique!).
  */
-void cell_write_ghost_stats(FILE *f, const struct cell *c,
+void cell_write_ghost_stats(FILE* f, const struct cell* c,
                             const long long cellID) {
   if (c == NULL) return;
 
@@ -70,7 +70,7 @@ void cell_write_ghost_stats(FILE *f, const struct cell *c,
  *
  * @param s Space.
  */
-void space_reset_ghost_histograms(struct space *s) {
+void space_reset_ghost_histograms(struct space* s) {
   for (int i = 0; i < s->nr_cells; ++i) {
     cell_reset_ghost_histograms(&s->cells_top[i]);
   }
@@ -88,11 +88,11 @@ void space_reset_ghost_histograms(struct space *s) {
  * @param s Space.
  * @param j First counter in the output file name.
  */
-void space_write_ghost_stats(const struct space *s, int j) {
+void space_write_ghost_stats(const struct space* s, int j) {
   /* Open file */
   char filename[200];
   sprintf(filename, "ghost_stats_%04i_%04i.txt", j, engine_rank);
-  FILE *f = fopen(filename, "w");
+  FILE* f = fopen(filename, "w");
   if (f == NULL) error("Error opening ghost stats file.");
 
   /* Write header */
@@ -100,7 +100,7 @@ void space_write_ghost_stats(const struct space *s, int j) {
 
   /* Write all the top level cells (and their children) */
   for (int i = 0; i < s->nr_cells; i++) {
-    struct cell *c = &s->cells_top[i];
+    struct cell* c = &s->cells_top[i];
     if (c->nodeID == engine_rank) cell_write_ghost_stats(f, c, i);
   }
 

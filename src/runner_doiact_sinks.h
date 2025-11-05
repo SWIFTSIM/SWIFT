@@ -89,21 +89,21 @@
 #define _IACT_SINKS_SINK(f) PASTE(runner_iact_nonsym_sinks_sink, f)
 #define IACT_SINKS_SINK _IACT_SINKS_SINK(FUNCTION)
 
-void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c);
-void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj);
+void DOSELF1_BRANCH_SINKS(struct runner* r, struct cell* c);
+void DOPAIR1_BRANCH_SINKS(struct runner* r, struct cell* ci, struct cell* cj);
 
-void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int gettimer);
-void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
+void DOSUB_SELF1_SINKS(struct runner* r, struct cell* ci, int gettimer);
+void DOSUB_PAIR1_SINKS(struct runner* r, struct cell* ci, struct cell* cj,
                        int gettimer);
 
-void DOSELF1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
-                                 struct sink *restrict sinks, int *restrict ind,
+void DOSELF1_SUBSET_BRANCH_SINKS(struct runner* r, struct cell* restrict ci,
+                                 struct sink* restrict sinks, int* restrict ind,
                                  const int scount);
-void DOPAIR1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
-                                 struct sink *restrict sinks_i,
-                                 int *restrict ind, int const scount,
-                                 struct cell *restrict cj);
+void DOPAIR1_SUBSET_BRANCH_SINKS(struct runner* r, struct cell* restrict ci,
+                                 struct sink* restrict sinks_i,
+                                 int* restrict ind, int const scount,
+                                 struct cell* restrict cj);
 
-void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
-                        int *ind, const int scount, struct cell *cj,
+void DOSUB_SUBSET_SINKS(struct runner* r, struct cell* ci, struct sink* sinks,
+                        int* ind, const int scount, struct cell* cj,
                         int gettimer);

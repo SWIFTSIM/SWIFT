@@ -56,7 +56,7 @@
   __assume_aligned(array, alignment);
 #elif (__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ > 6)
 #define swift_align_information(type, array, alignment) \
-  array = (type *)__builtin_assume_aligned(array, alignment);
+  array = (type*)__builtin_assume_aligned(array, alignment);
 #else
 #define swift_align_information(type, array, alignment) ;
 #endif
@@ -74,7 +74,7 @@
  * @param alignment The alignment in bytes of the array.
  */
 #define swift_declare_aligned_ptr(type, array, ptr, alignment) \
-  type *restrict array = ptr;                                  \
+  type* restrict array = ptr;                                  \
   swift_align_information(type, array, alignment);
 
 /**

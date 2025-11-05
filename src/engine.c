@@ -106,7 +106,7 @@
 #include "units.h"
 #include "velociraptor_interface.h"
 
-const char *engine_policy_names[] = {"none",
+const char* engine_policy_names[] = {"none",
                                      "rand",
                                      "steal",
                                      "keep",
@@ -155,7 +155,7 @@ int engine_current_step;
  *
  * @return The new #link pointer.
  */
-void engine_addlink(struct engine *e, struct link **l, struct task *t) {
+void engine_addlink(struct engine* e, struct link** l, struct task* t) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (t == NULL) {
@@ -170,7 +170,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
         "Link table overflow. Increase the value of "
         "`Scheduler:links_per_tasks`.");
   }
-  struct link *res = &e->links[ind];
+  struct link* res = &e->links[ind];
 
   /* Set it atomically. */
   res->t = t;
@@ -182,7 +182,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
  *
  * @param e The #engine.
  */
-void engine_repartition(struct engine *e) {
+void engine_repartition(struct engine* e) {
 
 #if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
 
@@ -268,7 +268,7 @@ void engine_repartition(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_repartition_trigger(struct engine *e) {
+void engine_repartition_trigger(struct engine* e) {
 
 #ifdef WITH_MPI
 
@@ -407,8 +407,8 @@ void engine_repartition_trigger(struct engine *e) {
 
         /* Keep logs of all CPU times and resident memory size for debugging
          * load issues. */
-        FILE *timelog = NULL;
-        FILE *memlog = NULL;
+        FILE* timelog = NULL;
+        FILE* memlog = NULL;
         if (!opened) {
           timelog = fopen("rank_cpu_balance.log", "w");
           if (timelog == NULL)
@@ -474,7 +474,7 @@ void engine_repartition_trigger(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_exchange_cells(struct engine *e) {
+void engine_exchange_cells(struct engine* e) {
 
 #ifdef WITH_MPI
 
@@ -498,7 +498,7 @@ void engine_exchange_cells(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_exchange_grid_extra(struct engine *e) {
+void engine_exchange_grid_extra(struct engine* e) {
 
 #ifdef WITH_MPI
 
@@ -527,7 +527,7 @@ void engine_exchange_grid_extra(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_exchange_top_multipoles(struct engine *e) {
+void engine_exchange_top_multipoles(struct engine* e) {
 
 #ifdef WITH_MPI
 
@@ -535,7 +535,7 @@ void engine_exchange_top_multipoles(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < e->s->nr_cells; ++i) {
-    const struct gravity_tensors *m = &e->s->multipoles_top[i];
+    const struct gravity_tensors* m = &e->s->multipoles_top[i];
     if (e->s->cells_top[i].nodeID == engine_rank) {
       if (m->m_pole.M_000 > 0.) {
         if (m->CoM[0] < 0. || m->CoM[0] > e->s->dim[0])
@@ -575,7 +575,7 @@ void engine_exchange_top_multipoles(struct engine *e) {
 
   /* Let's check that what we received makes sense */
   for (int i = 0; i < e->s->nr_cells; ++i) {
-    const struct gravity_tensors *m = &e->s->multipoles_top[i];
+    const struct gravity_tensors* m = &e->s->multipoles_top[i];
     counter += m->m_pole.num_gpart;
     if (m->m_pole.num_gpart < 0) {
       error("m->m_pole.num_gpart is negative: %lld", m->m_pole.num_gpart);
@@ -604,7 +604,7 @@ void engine_exchange_top_multipoles(struct engine *e) {
 #endif
 }
 
-void engine_exchange_proxy_multipoles(struct engine *e) {
+void engine_exchange_proxy_multipoles(struct engine* e) {
 
 #ifdef WITH_MPI
 
@@ -620,7 +620,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
   for (int pid = 0; pid < e->nr_proxies; pid++) {
 
     /* Get a handle on the proxy. */
-    const struct proxy *p = &e->proxies[pid];
+    const struct proxy* p = &e->proxies[pid];
 
     /* Now collect the number of requests associated */
     count_recv_requests += p->nr_cells_in;
@@ -635,22 +635,22 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
   }
 
   /* Allocate the buffers for the packed data */
-  struct gravity_tensors *buffer_send = NULL;
-  if (swift_memalign("send_gravity_tensors", (void **)&buffer_send,
+  struct gravity_tensors* buffer_send = NULL;
+  if (swift_memalign("send_gravity_tensors", (void**)&buffer_send,
                      SWIFT_CACHE_ALIGNMENT,
                      count_send_cells * sizeof(struct gravity_tensors)) != 0)
     error("Unable to allocate memory for multipole transactions");
 
-  struct gravity_tensors *buffer_recv = NULL;
-  if (swift_memalign("recv_gravity_tensors", (void **)&buffer_recv,
+  struct gravity_tensors* buffer_recv = NULL;
+  if (swift_memalign("recv_gravity_tensors", (void**)&buffer_recv,
                      SWIFT_CACHE_ALIGNMENT,
                      count_recv_cells * sizeof(struct gravity_tensors)) != 0)
     error("Unable to allocate memory for multipole transactions");
 
   /* Also allocate the MPI requests */
   const int count_requests = count_send_requests + count_recv_requests;
-  MPI_Request *requests =
-      (MPI_Request *)malloc(sizeof(MPI_Request) * count_requests);
+  MPI_Request* requests =
+      (MPI_Request*)malloc(sizeof(MPI_Request) * count_requests);
   if (requests == NULL) error("Unable to allocate memory for MPI requests");
 
   int this_request = 0;
@@ -661,7 +661,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
   for (int pid = 0; pid < e->nr_proxies; pid++) {
 
     /* Get a handle on the proxy. */
-    const struct proxy *p = &e->proxies[pid];
+    const struct proxy* p = &e->proxies[pid];
 
     for (int k = 0; k < p->nr_cells_in; k++) {
 
@@ -699,7 +699,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
   }
 
   /* Wait for all the requests to arrive home */
-  MPI_Status *stats = (MPI_Status *)malloc(count_requests * sizeof(MPI_Status));
+  MPI_Status* stats = (MPI_Status*)malloc(count_requests * sizeof(MPI_Status));
   int res;
   if ((res = MPI_Waitall(count_requests, requests, stats)) != MPI_SUCCESS) {
     for (int k = 0; k < count_requests; ++k) {
@@ -716,7 +716,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
   for (int pid = 0; pid < e->nr_proxies; pid++) {
 
     /* Get a handle on the proxy. */
-    const struct proxy *p = &e->proxies[pid];
+    const struct proxy* p = &e->proxies[pid];
 
     for (int k = 0; k < p->nr_cells_in; k++) {
 
@@ -772,7 +772,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
  * @param e The #engine.
  * @param fof Are we allocating buffers just for FOF?
  */
-void engine_allocate_foreign_particles(struct engine *e, const int fof) {
+void engine_allocate_foreign_particles(struct engine* e, const int fof) {
 
 #ifdef WITH_MPI
 
@@ -782,7 +782,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   const int with_stars = e->policy & engine_policy_stars;
   const int with_black_holes = e->policy & engine_policy_black_holes;
   const int with_sinks = e->policy & engine_policy_sinks;
-  struct space *s = e->s;
+  struct space* s = e->s;
   ticks tic = getticks();
 
   /* Count the number of particles we need to import and re-allocate
@@ -831,7 +831,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   if (!fof && count_parts_in > s->size_parts_foreign) {
     if (s->parts_foreign != NULL) swift_free("parts_foreign", s->parts_foreign);
     s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
-    if (swift_memalign("parts_foreign", (void **)&s->parts_foreign, part_align,
+    if (swift_memalign("parts_foreign", (void**)&s->parts_foreign, part_align,
                        sizeof(struct part) * s->size_parts_foreign) != 0)
       error("Failed to allocate foreign part data.");
   }
@@ -843,7 +843,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       swift_free("gparts_foreign", s->gparts_foreign);
     s->size_gparts_foreign = engine_foreign_alloc_margin * count_gparts_in;
     if (swift_memalign(
-            "gparts_foreign", (void **)&s->gparts_foreign, gpart_align,
+            "gparts_foreign", (void**)&s->gparts_foreign, gpart_align,
             sizeof(struct gpart_foreign) * s->size_gparts_foreign) != 0)
       error("Failed to allocate foreign gpart data.");
   }
@@ -854,7 +854,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       swift_free("gparts_fof_foreign", s->gparts_fof_foreign);
     s->size_gparts_foreign = engine_foreign_alloc_margin * count_gparts_in;
     if (swift_memalign(
-            "gparts_fof_foreign", (void **)&s->gparts_fof_foreign, gpart_align,
+            "gparts_fof_foreign", (void**)&s->gparts_fof_foreign, gpart_align,
             sizeof(struct gpart_fof_foreign) * s->size_gparts_foreign) != 0)
       error("Failed to allocate foreign FOF gpart data.");
   }
@@ -865,7 +865,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
     if (s->sparts_foreign != NULL)
       swift_free("sparts_foreign", s->sparts_foreign);
     s->size_sparts_foreign = engine_foreign_alloc_margin * count_sparts_in;
-    if (swift_memalign("sparts_foreign", (void **)&s->sparts_foreign,
+    if (swift_memalign("sparts_foreign", (void**)&s->sparts_foreign,
                        spart_align,
                        sizeof(struct spart) * s->size_sparts_foreign) != 0)
       error("Failed to allocate foreign spart data.");
@@ -886,7 +886,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
     if (s->bparts_foreign != NULL)
       swift_free("bparts_foreign", s->bparts_foreign);
     s->size_bparts_foreign = engine_foreign_alloc_margin * count_bparts_in;
-    if (swift_memalign("bparts_foreign", (void **)&s->bparts_foreign,
+    if (swift_memalign("bparts_foreign", (void**)&s->bparts_foreign,
                        bpart_align,
                        sizeof(struct bpart) * s->size_bparts_foreign) != 0)
       error("Failed to allocate foreign bpart data.");
@@ -897,7 +897,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   if (!fof && count_sinks_in > s->size_sinks_foreign) {
     if (s->sinks_foreign != NULL) swift_free("sinks_foreign", s->sinks_foreign);
     s->size_sinks_foreign = engine_foreign_alloc_margin * count_sinks_in;
-    if (swift_memalign("sinks_foreign", (void **)&s->sinks_foreign, sink_align,
+    if (swift_memalign("sinks_foreign", (void**)&s->sinks_foreign, sink_align,
                        sizeof(struct sink) * s->size_sinks_foreign) != 0)
       error("Failed to allocate foreign sink data.");
 
@@ -960,12 +960,12 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   tic = getticks();
 
   /* Unpack the cells and link to the particle data. */
-  struct part *parts = s->parts_foreign;
-  struct gpart_foreign *gparts_foreign = s->gparts_foreign;
-  struct gpart_fof_foreign *gparts_fof_foreign = s->gparts_fof_foreign;
-  struct spart *sparts = s->sparts_foreign;
-  struct bpart *bparts = s->bparts_foreign;
-  struct sink *sinks = s->sinks_foreign;
+  struct part* parts = s->parts_foreign;
+  struct gpart_foreign* gparts_foreign = s->gparts_foreign;
+  struct gpart_fof_foreign* gparts_fof_foreign = s->gparts_fof_foreign;
+  struct spart* sparts = s->sparts_foreign;
+  struct bpart* bparts = s->bparts_foreign;
+  struct sink* sinks = s->sinks_foreign;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -1034,11 +1034,11 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 #endif
 }
 
-void engine_do_tasks_count_mapper(void *map_data, int num_elements,
-                                  void *extra_data) {
+void engine_do_tasks_count_mapper(void* map_data, int num_elements,
+                                  void* extra_data) {
 
-  const struct task *tasks = (struct task *)map_data;
-  int *const global_counts = (int *)extra_data;
+  const struct task* tasks = (struct task*)map_data;
+  int* const global_counts = (int*)extra_data;
 
   /* Local accumulator copy */
   int local_counts[task_type_count + 1];
@@ -1063,12 +1063,12 @@ void engine_do_tasks_count_mapper(void *map_data, int num_elements,
  *
  * @param e The #engine.
  */
-void engine_print_task_counts(const struct engine *e) {
+void engine_print_task_counts(const struct engine* e) {
 
   const ticks tic = getticks();
-  const struct scheduler *sched = &e->sched;
+  const struct scheduler* sched = &e->sched;
   const int nr_tasks = sched->nr_tasks;
-  const struct task *const tasks = sched->tasks;
+  const struct task* const tasks = sched->tasks;
 
   /* Global tasks and cells when using MPI. */
 #ifdef WITH_MPI
@@ -1102,8 +1102,8 @@ void engine_print_task_counts(const struct engine *e) {
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
-  threadpool_map((struct threadpool *)&e->threadpool,
-                 engine_do_tasks_count_mapper, (void *)tasks, nr_tasks,
+  threadpool_map((struct threadpool*)&e->threadpool,
+                 engine_do_tasks_count_mapper, (void*)tasks, nr_tasks,
                  sizeof(struct task), threadpool_auto_chunk_size, counts);
 
 #ifdef WITH_MPI
@@ -1153,7 +1153,7 @@ void engine_print_task_counts(const struct engine *e) {
  *
  * @return the estimated total number of tasks
  */
-int engine_estimate_nr_tasks(const struct engine *e) {
+int engine_estimate_nr_tasks(const struct engine* e) {
 
   float tasks_per_cell = e->tasks_per_cell;
   if (tasks_per_cell > 0.0f) {
@@ -1298,7 +1298,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   int ntop = 0;
   int ncells = 0;
   for (int k = 0; k < e->s->nr_cells; k++) {
-    struct cell *c = &e->s->cells_top[k];
+    struct cell* c = &e->s->cells_top[k];
 
     /* Any cells with particles will have tasks (local & foreign). */
     int nparts = c->hydro.count + c->grav.count + c->stars.count +
@@ -1347,7 +1347,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
  * @param clean_smoothing_length_values Are we cleaning up the values of
  * the smoothing lengths before building the tasks ?
  */
-void engine_rebuild(struct engine *e, const int repartitioned,
+void engine_rebuild(struct engine* e, const int repartitioned,
                     const int clean_smoothing_length_values) {
 
   const ticks tic = getticks();
@@ -1487,7 +1487,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     long long counter = 0;
 
     for (int i = 0; i < e->s->nr_cells; ++i) {
-      const struct gravity_tensors *m = &e->s->multipoles_top[i];
+      const struct gravity_tensors* m = &e->s->multipoles_top[i];
       counter += m->m_pole.num_gpart;
     }
     if (counter != e->total_nr_gparts)
@@ -1495,7 +1495,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   }
   if (e->policy & engine_policy_grid) {
     for (int i = 0; i < e->s->nr_cells; i++) {
-      const struct cell *ci = &e->s->cells_top[i];
+      const struct cell* ci = &e->s->cells_top[i];
       if (ci->hydro.count > 0 && !(ci->grid.self_completeness == grid_complete))
         error("Encountered incomplete top level cell!");
     }
@@ -1573,7 +1573,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
  *
  * @return 1 if the function drifted all particles 0 if not.
  */
-int engine_prepare(struct engine *e) {
+int engine_prepare(struct engine* e) {
 
   TIMER_TIC2;
   const ticks tic = getticks();
@@ -1684,7 +1684,7 @@ int engine_prepare(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_barrier(struct engine *e) {
+void engine_barrier(struct engine* e) {
 
   /* Wait at the wait barrier. */
   swift_barrier_wait(&e->wait_barrier);
@@ -1698,7 +1698,7 @@ void engine_barrier(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_print_stats(struct engine *e) {
+void engine_print_stats(struct engine* e) {
 
   const ticks tic = getticks();
 
@@ -1767,14 +1767,14 @@ void engine_print_stats(struct engine *e) {
  *
  * @param e The #engine to act on.
  */
-void engine_skip_force_and_kick(struct engine *e) {
+void engine_skip_force_and_kick(struct engine* e) {
 
-  struct task *tasks = e->sched.tasks;
+  struct task* tasks = e->sched.tasks;
   const int nr_tasks = e->sched.nr_tasks;
 
   for (int i = 0; i < nr_tasks; ++i) {
 
-    struct task *t = &tasks[i];
+    struct task* t = &tasks[i];
 
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
@@ -1841,14 +1841,14 @@ void engine_skip_force_and_kick(struct engine *e) {
  *
  * @param e The #engine to act on.
  */
-void engine_skip_drift(struct engine *e) {
+void engine_skip_drift(struct engine* e) {
 
-  struct task *tasks = e->sched.tasks;
+  struct task* tasks = e->sched.tasks;
   const int nr_tasks = e->sched.nr_tasks;
 
   for (int i = 0; i < nr_tasks; ++i) {
 
-    struct task *t = &tasks[i];
+    struct task* t = &tasks[i];
 
     /* Skip everything that moves the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
@@ -1867,7 +1867,7 @@ void engine_skip_drift(struct engine *e) {
  * @param e The #engine.
  * @param call What kind of tasks are we running? (For time analysis)
  */
-void engine_launch(struct engine *e, const char *call) {
+void engine_launch(struct engine* e, const char* call) {
   const ticks tic = getticks();
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1923,7 +1923,7 @@ void engine_launch(struct engine *e, const char *call) {
  *
  * @param e The #engine.
  */
-void engine_first_init_particles(struct engine *e) {
+void engine_first_init_particles(struct engine* e) {
 
   const ticks tic = getticks();
 
@@ -1944,7 +1944,7 @@ void engine_first_init_particles(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_get_max_ids(struct engine *e) {
+void engine_get_max_ids(struct engine* e) {
 
   e->max_parts_id = space_get_max_parts_id(e->s);
 
@@ -1961,7 +1961,7 @@ void engine_get_max_ids(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_synchronize_times(struct engine *e) {
+void engine_synchronize_times(struct engine* e) {
 
 #ifdef WITH_MPI
 
@@ -1976,7 +1976,7 @@ void engine_synchronize_times(struct engine *e) {
 
     if (e->s->cells_top_updated[i]) {
 
-      struct cell *c = &e->s->cells_top[i];
+      struct cell* c = &e->s->cells_top[i];
       scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
       scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
     }
@@ -2001,7 +2001,7 @@ void engine_synchronize_times(struct engine *e) {
  *
  * @param e The #engine
  **/
-void engine_run_rt_sub_cycles(struct engine *e) {
+void engine_run_rt_sub_cycles(struct engine* e) {
 
   /* Do we have work to do? */
   if (!(e->policy & engine_policy_rt)) return;
@@ -2201,10 +2201,10 @@ void engine_run_rt_sub_cycles(struct engine *e) {
  * contain entropy ?
  * @param clean_h_values Are we cleaning up the values of h before building
  */
-void engine_init_particles(struct engine *e, int flag_entropy_ICs,
+void engine_init_particles(struct engine* e, int flag_entropy_ICs,
                            int clean_h_values) {
 
-  struct space *s = e->s;
+  struct space* s = e->s;
 
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
@@ -2445,8 +2445,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
     /* Sorting should put the same positions next to each other... */
     int failed = 0;
-    double *prev_x = s->parts[0].x;
-    long long *prev_id = &s->parts[0].id;
+    double* prev_x = s->parts[0].x;
+    long long* prev_id = &s->parts[0].id;
     for (size_t k = 1; k < s->nr_parts; k++) {
 
       /* Ignore fake buffer particles for on-the-fly creation */
@@ -2472,7 +2472,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Also check any gparts. This is not supposed to be fatal so only warn. */
   if (s->nr_gparts > 0) {
     int failed = 0;
-    double *prev_x = s->gparts[0].x;
+    double* prev_x = s->gparts[0].x;
     for (size_t k = 1; k < s->nr_gparts; k++) {
 
       /* Ignore fake buffer particles for on-the-fly creation */
@@ -2501,7 +2501,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
    * not be updated until that is done. */
   if (s->cells_top != NULL && s->nr_parts > 0) {
     for (int i = 0; i < s->nr_cells; i++) {
-      struct cell *c = &s->cells_top[i];
+      struct cell* c = &s->cells_top[i];
       if (c->nodeID == engine_rank && c->hydro.count > 0) {
         float part_h_max = c->hydro.parts[0].h;
         for (int k = 1; k < c->hydro.count; k++) {
@@ -2515,7 +2515,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   if (s->cells_top != NULL && s->nr_sparts > 0) {
     for (int i = 0; i < s->nr_cells; i++) {
-      struct cell *c = &s->cells_top[i];
+      struct cell* c = &s->cells_top[i];
       if (c->nodeID == engine_rank && c->stars.count > 0) {
         float spart_h_max = c->stars.parts[0].h;
         for (int k = 1; k < c->stars.count; k++) {
@@ -2529,7 +2529,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   if (s->cells_top != NULL && s->nr_sinks > 0) {
     for (int i = 0; i < s->nr_cells; i++) {
-      struct cell *c = &s->cells_top[i];
+      struct cell* c = &s->cells_top[i];
       if (c->nodeID == engine_rank && c->sinks.count > 0) {
         float sink_h_max = c->sinks.parts[0].h;
         for (int k = 1; k < c->sinks.count; k++) {
@@ -2583,7 +2583,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
  * @param e The #engine.
  * @return Should the run stop after this step?
  */
-int engine_step(struct engine *e) {
+int engine_step(struct engine* e) {
 
   TIMER_TIC2;
 
@@ -2771,7 +2771,7 @@ int engine_step(struct engine *e) {
     size_t nr_gparts = e->s->nr_gparts;
     size_t nr_active_gparts = 0;
     for (size_t i = 0; i < nr_gparts; ++i) {
-      struct gpart *gp = &e->s->gparts[i];
+      struct gpart* gp = &e->s->gparts[i];
       if (gpart_is_active(gp, e)) nr_active_gparts++;
     }
 
@@ -2857,7 +2857,7 @@ int engine_step(struct engine *e) {
 
     /* Look for inactive gparts */
     for (size_t i = 0; i < nr_gparts; ++i) {
-      struct gpart *gp = &e->s->gparts[i];
+      struct gpart* gp = &e->s->gparts[i];
 
       /* If one gpart is inactive we can stop. */
       if (!gpart_is_active(gp, e)) {
@@ -3088,18 +3088,18 @@ int engine_step(struct engine *e) {
 /**
  * @brief Returns 1 if the simulation has reached its end point, 0 otherwise
  */
-int engine_is_done(struct engine *e) {
+int engine_is_done(struct engine* e) {
   return !(e->ti_current < max_nr_timesteps);
 }
 
-void engine_do_reconstruct_multipoles_mapper(void *map_data, int num_elements,
-                                             void *extra_data) {
+void engine_do_reconstruct_multipoles_mapper(void* map_data, int num_elements,
+                                             void* extra_data) {
 
-  struct engine *e = (struct engine *)extra_data;
-  struct cell *cells = (struct cell *)map_data;
+  struct engine* e = (struct engine*)extra_data;
+  struct cell* cells = (struct cell*)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &cells[ind];
+    struct cell* c = &cells[ind];
     if (c != NULL && c->nodeID == e->nodeID) {
 
       /* Construct the multipoles in this cell hierarchy */
@@ -3113,7 +3113,7 @@ void engine_do_reconstruct_multipoles_mapper(void *map_data, int num_elements,
  *
  * @param e The #engine.
  */
-void engine_reconstruct_multipoles(struct engine *e) {
+void engine_reconstruct_multipoles(struct engine* e) {
 
   const ticks tic = getticks();
 
@@ -3144,12 +3144,12 @@ void engine_reconstruct_multipoles(struct engine *e) {
  * @param e The #engine.
  * @param initial_partition structure defining the cell partition technique
  */
-void engine_split(struct engine *e, struct partition *initial_partition) {
+void engine_split(struct engine* e, struct partition* initial_partition) {
 
 #ifdef WITH_MPI
   const ticks tic = getticks();
 
-  struct space *s = e->s;
+  struct space* s = e->s;
 
   /* Do the initial partition of the cells. */
   partition_initial_partition(initial_partition, e->nodeID, e->nr_nodes, s);
@@ -3182,7 +3182,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
  * @brief Exchange the feedback counters between stars
  * @param e The #engine.
  */
-void engine_collect_stars_counter(struct engine *e) {
+void engine_collect_stars_counter(struct engine* e) {
 
 #ifdef WITH_MPI
   if (e->total_nr_sparts > 1e5) {
@@ -3191,7 +3191,7 @@ void engine_collect_stars_counter(struct engine *e) {
   }
 
   /* Get number of sparticles for each rank */
-  size_t *n_sparts = (size_t *)malloc(e->nr_nodes * sizeof(size_t));
+  size_t* n_sparts = (size_t*)malloc(e->nr_nodes * sizeof(size_t));
 
   int err = MPI_Allgather(&e->s->nr_sparts_foreign, 1, MPI_UNSIGNED_LONG,
                           n_sparts, 1, MPI_UNSIGNED_LONG, MPI_COMM_WORLD);
@@ -3199,8 +3199,8 @@ void engine_collect_stars_counter(struct engine *e) {
 
   /* Compute derivated quantities */
   int total = 0;
-  int *n_sparts_int = (int *)malloc(e->nr_nodes * sizeof(int));
-  int *displs = (int *)malloc(e->nr_nodes * sizeof(int));
+  int* n_sparts_int = (int*)malloc(e->nr_nodes * sizeof(int));
+  int* displs = (int*)malloc(e->nr_nodes * sizeof(int));
   for (int i = 0; i < e->nr_nodes; i++) {
     displs[i] = total;
     total += n_sparts[i];
@@ -3208,8 +3208,8 @@ void engine_collect_stars_counter(struct engine *e) {
   }
 
   /* Get all sparticles */
-  struct spart *sparts =
-      (struct spart *)swift_malloc("sparts", total * sizeof(struct spart));
+  struct spart* sparts =
+      (struct spart*)swift_malloc("sparts", total * sizeof(struct spart));
   err = MPI_Allgatherv(e->s->sparts_foreign, e->s->nr_sparts_foreign,
                        spart_mpi_type, sparts, n_sparts_int, displs,
                        spart_mpi_type, MPI_COMM_WORLD);
@@ -3221,7 +3221,7 @@ void engine_collect_stars_counter(struct engine *e) {
   }
 
   /* Update counters */
-  struct spart *local_sparts = e->s->sparts;
+  struct spart* local_sparts = e->s->sparts;
   for (size_t i = 0; i < e->s->nr_sparts; i++) {
     const long long id_i = local_sparts[i].id;
 
@@ -3254,7 +3254,7 @@ void engine_collect_stars_counter(struct engine *e) {
 /**
  * @brief Returns the initial affinity the main thread is using.
  */
-cpu_set_t *engine_entry_affinity(void) {
+cpu_set_t* engine_entry_affinity(void) {
 
   static int use_entry_affinity = 0;
   static cpu_set_t entry_affinity;
@@ -3276,7 +3276,7 @@ cpu_set_t *engine_entry_affinity(void) {
 void engine_pin(void) {
 
 #ifdef HAVE_SETAFFINITY
-  cpu_set_t *entry_affinity = engine_entry_affinity();
+  cpu_set_t* entry_affinity = engine_entry_affinity();
 
   /* Share this affinity with the threadpool, it will use this even when the
    * main thread is otherwise pinned. */
@@ -3304,7 +3304,7 @@ void engine_pin(void) {
 void engine_unpin(void) {
 #ifdef HAVE_SETAFFINITY
   pthread_t main_thread = pthread_self();
-  cpu_set_t *entry_affinity = engine_entry_affinity();
+  cpu_set_t* entry_affinity = engine_entry_affinity();
   pthread_setaffinity_np(main_thread, sizeof(*entry_affinity), entry_affinity);
 #else
   error("SWIFT was not compiled with support for pinning.");
@@ -3326,10 +3326,10 @@ void engine_numa_policies(int rank, int verbose) {
 
   /* Get our affinity mask (on entry), that defines what NUMA nodes we should
    * use. */
-  cpu_set_t *entry_affinity = engine_entry_affinity();
+  cpu_set_t* entry_affinity = engine_entry_affinity();
 
   /* Now convert the affinity mask into NUMA nodemask. */
-  struct bitmask *nodemask = numa_allocate_nodemask();
+  struct bitmask* nodemask = numa_allocate_nodemask();
   int nnuma = numa_num_configured_nodes();
 
   for (unsigned long i = 0; i < CPU_SETSIZE; i++) {
@@ -3406,30 +3406,30 @@ void engine_numa_policies(int rank, int verbose) {
  * @param ics_metadata metadata read from the simulation ICs
  */
 void engine_init(
-    struct engine *e, struct space *s, struct swift_params *params,
-    struct output_options *output_options, long long Ngas, long long Ngparts,
+    struct engine* e, struct space* s, struct swift_params* params,
+    struct output_options* output_options, long long Ngas, long long Ngparts,
     long long Nsinks, long long Nstars, long long Nblackholes,
     long long Nbackground_gparts, long long Nnuparts, int policy, int verbose,
-    const struct unit_system *internal_units,
-    const struct phys_const *physical_constants, struct cosmology *cosmo,
-    struct hydro_props *hydro,
-    const struct entropy_floor_properties *entropy_floor,
-    struct gravity_props *gravity, struct stars_props *stars,
-    const struct black_holes_props *black_holes, const struct sink_props *sinks,
-    const struct neutrino_props *neutrinos,
-    struct neutrino_response *neutrino_response,
-    struct feedback_props *feedback,
-    struct pressure_floor_props *pressure_floor, struct rt_props *rt,
-    struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
-    const struct external_potential *potential,
-    const struct forcing_terms *forcing_terms,
-    struct cooling_function_data *cooling_func,
-    const struct star_formation *starform,
-    const struct chemistry_global_data *chemistry,
-    struct extra_io_properties *io_extra_props,
-    struct fof_props *fof_properties, struct los_props *los_properties,
-    struct lightcone_array_props *lightcone_array_properties,
-    struct ic_info *ics_metadata) {
+    const struct unit_system* internal_units,
+    const struct phys_const* physical_constants, struct cosmology* cosmo,
+    struct hydro_props* hydro,
+    const struct entropy_floor_properties* entropy_floor,
+    struct gravity_props* gravity, struct stars_props* stars,
+    const struct black_holes_props* black_holes, const struct sink_props* sinks,
+    const struct neutrino_props* neutrinos,
+    struct neutrino_response* neutrino_response,
+    struct feedback_props* feedback,
+    struct pressure_floor_props* pressure_floor, struct rt_props* rt,
+    struct pm_mesh* mesh, struct power_spectrum_data* pow_data,
+    const struct external_potential* potential,
+    const struct forcing_terms* forcing_terms,
+    struct cooling_function_data* cooling_func,
+    const struct star_formation* starform,
+    const struct chemistry_global_data* chemistry,
+    struct extra_io_properties* io_extra_props,
+    struct fof_props* fof_properties, struct los_props* los_properties,
+    struct lightcone_array_props* lightcone_array_properties,
+    struct ic_info* ics_metadata) {
 
   struct clocks_time tic, toc;
   if (engine_rank == 0) clocks_gettime(&tic);
@@ -3522,7 +3522,7 @@ void engine_init(
   }
   e->dump_catalogue_when_seeding =
       parser_get_opt_param_int(params, "FOF:dump_catalogue_when_seeding", 0);
-  e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
+  e->snapshot_units = (struct unit_system*)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->free_foreign_when_dumping_restart = parser_get_opt_param_int(
       params, "Scheduler:free_foreign_during_restart", 0);
@@ -3708,7 +3708,7 @@ void engine_init(
   /* Initialize the CSDS (already timed, not need to include it) */
 #if defined(WITH_CSDS)
   if (e->policy & engine_policy_csds) {
-    e->csds = (struct csds_writer *)malloc(sizeof(struct csds_writer));
+    e->csds = (struct csds_writer*)malloc(sizeof(struct csds_writer));
     csds_init(e->csds, e, params);
   }
 #endif
@@ -3719,7 +3719,7 @@ void engine_init(
  *
  * @param e The engine to print information about
  */
-void engine_print_policy(struct engine *e) {
+void engine_print_policy(struct engine* e) {
 
 #ifdef WITH_MPI
   if (e->nodeID == 0) {
@@ -3746,13 +3746,13 @@ void engine_print_policy(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_recompute_displacement_constraint(struct engine *e) {
+void engine_recompute_displacement_constraint(struct engine* e) {
 
   const ticks tic = getticks();
 
   /* Get the cosmological information */
   const int with_cosmology = e->policy & engine_policy_cosmology;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
   const float Ocdm = cosmo->Omega_cdm;
   const float Ob = cosmo->Omega_b;
   const float H0 = cosmo->H0;
@@ -3939,7 +3939,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
  * @param fof Was this a stand-alone FOF run?
  * @param restart Was this a run that was restarted from check-point files?
  */
-void engine_clean(struct engine *e, const int fof, const int restart) {
+void engine_clean(struct engine* e, const int fof, const int restart) {
   /* Start by telling the runners to stop. */
   e->step_props = engine_step_prop_done;
   swift_barrier_wait(&e->run_barrier);
@@ -4011,45 +4011,45 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   /* If the run was restarted, we should also free the memory allocated
      in engine_struct_restore() */
   if (restart) {
-    free((void *)e->parameter_file);
-    free((void *)e->output_options);
-    free((void *)e->external_potential);
-    free((void *)e->forcing_terms);
-    free((void *)e->black_holes_properties);
-    free((void *)e->pressure_floor_props);
-    free((void *)e->rt_props);
-    free((void *)e->sink_properties);
-    free((void *)e->stars_properties);
-    free((void *)e->gravity_properties);
-    free((void *)e->neutrino_properties);
-    free((void *)e->hydro_properties);
-    free((void *)e->physical_constants);
-    free((void *)e->internal_units);
-    free((void *)e->cosmology);
-    free((void *)e->mesh);
-    free((void *)e->power_data);
-    free((void *)e->chemistry);
-    free((void *)e->entropy_floor);
-    free((void *)e->cooling_func);
-    free((void *)e->star_formation);
-    free((void *)e->feedback_props);
-    free((void *)e->io_extra_props);
+    free((void*)e->parameter_file);
+    free((void*)e->output_options);
+    free((void*)e->external_potential);
+    free((void*)e->forcing_terms);
+    free((void*)e->black_holes_properties);
+    free((void*)e->pressure_floor_props);
+    free((void*)e->rt_props);
+    free((void*)e->sink_properties);
+    free((void*)e->stars_properties);
+    free((void*)e->gravity_properties);
+    free((void*)e->neutrino_properties);
+    free((void*)e->hydro_properties);
+    free((void*)e->physical_constants);
+    free((void*)e->internal_units);
+    free((void*)e->cosmology);
+    free((void*)e->mesh);
+    free((void*)e->power_data);
+    free((void*)e->chemistry);
+    free((void*)e->entropy_floor);
+    free((void*)e->cooling_func);
+    free((void*)e->star_formation);
+    free((void*)e->feedback_props);
+    free((void*)e->io_extra_props);
 #ifdef WITH_FOF
-    free((void *)e->fof_properties);
+    free((void*)e->fof_properties);
 #endif
-    free((void *)e->los_properties);
-    free((void *)e->lightcone_array_properties);
-    free((void *)e->ics_metadata);
+    free((void*)e->los_properties);
+    free((void*)e->lightcone_array_properties);
+    free((void*)e->ics_metadata);
 #ifdef WITH_MPI
-    free((void *)e->reparttype);
+    free((void*)e->reparttype);
 #endif
-    if (e->output_list_snapshots) free((void *)e->output_list_snapshots);
-    if (e->output_list_stats) free((void *)e->output_list_stats);
-    if (e->output_list_stf) free((void *)e->output_list_stf);
-    if (e->output_list_los) free((void *)e->output_list_los);
-    if (e->output_list_ps) free((void *)e->output_list_ps);
+    if (e->output_list_snapshots) free((void*)e->output_list_snapshots);
+    if (e->output_list_stats) free((void*)e->output_list_stats);
+    if (e->output_list_stf) free((void*)e->output_list_stf);
+    if (e->output_list_los) free((void*)e->output_list_los);
+    if (e->output_list_ps) free((void*)e->output_list_ps);
 #ifdef WITH_CSDS
-    if (e->policy & engine_policy_csds) free((void *)e->csds);
+    if (e->policy & engine_policy_csds) free((void*)e->csds);
 #endif
     free(e->s);
   }
@@ -4062,7 +4062,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
  * @param e the engine
  * @param stream the file stream
  */
-void engine_struct_dump(struct engine *e, FILE *stream) {
+void engine_struct_dump(struct engine* e, FILE* stream) {
 
   /* Dump the engine. Save the current tasks_per_cell estimate. */
   e->restart_max_tasks = engine_estimate_nr_tasks(e);
@@ -4124,7 +4124,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
  * @param e the engine
  * @param stream the file stream
  */
-void engine_struct_restore(struct engine *e, FILE *stream) {
+void engine_struct_restore(struct engine* e, FILE* stream) {
 
   /* Read the engine. */
   restart_read_blocks(e, sizeof(struct engine), 1, stream, NULL,
@@ -4138,174 +4138,172 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
   /* Now for the other pointers, these use their own restore functions. */
   /* Note all this memory leaks, but is used once. */
-  struct space *s = (struct space *)malloc(sizeof(struct space));
+  struct space* s = (struct space*)malloc(sizeof(struct space));
   space_struct_restore(s, stream);
   e->s = s;
   s->e = e;
 
-  struct unit_system *internal_us =
-      (struct unit_system *)malloc(sizeof(struct unit_system));
+  struct unit_system* internal_us =
+      (struct unit_system*)malloc(sizeof(struct unit_system));
   units_struct_restore(internal_us, stream);
   e->internal_units = internal_us;
 
-  struct unit_system *snap_us =
-      (struct unit_system *)malloc(sizeof(struct unit_system));
+  struct unit_system* snap_us =
+      (struct unit_system*)malloc(sizeof(struct unit_system));
   units_struct_restore(snap_us, stream);
   e->snapshot_units = snap_us;
 
-  struct cosmology *cosmo =
-      (struct cosmology *)malloc(sizeof(struct cosmology));
+  struct cosmology* cosmo = (struct cosmology*)malloc(sizeof(struct cosmology));
   cosmology_struct_restore(e->policy & engine_policy_cosmology, cosmo, stream);
   e->cosmology = cosmo;
 
 #ifdef WITH_MPI
-  struct repartition *reparttype =
-      (struct repartition *)malloc(sizeof(struct repartition));
+  struct repartition* reparttype =
+      (struct repartition*)malloc(sizeof(struct repartition));
   partition_struct_restore(reparttype, stream);
   e->reparttype = reparttype;
 #endif
 
-  struct phys_const *physical_constants =
-      (struct phys_const *)malloc(sizeof(struct phys_const));
+  struct phys_const* physical_constants =
+      (struct phys_const*)malloc(sizeof(struct phys_const));
   phys_const_struct_restore(physical_constants, stream);
   e->physical_constants = physical_constants;
 
-  struct hydro_props *hydro_properties =
-      (struct hydro_props *)malloc(sizeof(struct hydro_props));
+  struct hydro_props* hydro_properties =
+      (struct hydro_props*)malloc(sizeof(struct hydro_props));
   hydro_props_struct_restore(hydro_properties, stream);
   e->hydro_properties = hydro_properties;
 
-  struct entropy_floor_properties *entropy_floor =
-      (struct entropy_floor_properties *)malloc(
+  struct entropy_floor_properties* entropy_floor =
+      (struct entropy_floor_properties*)malloc(
           sizeof(struct entropy_floor_properties));
   entropy_floor_struct_restore(entropy_floor, stream);
   e->entropy_floor = entropy_floor;
 
-  struct gravity_props *gravity_properties =
-      (struct gravity_props *)malloc(sizeof(struct gravity_props));
+  struct gravity_props* gravity_properties =
+      (struct gravity_props*)malloc(sizeof(struct gravity_props));
   gravity_props_struct_restore(gravity_properties, stream);
   e->gravity_properties = gravity_properties;
 
-  struct stars_props *stars_properties =
-      (struct stars_props *)malloc(sizeof(struct stars_props));
+  struct stars_props* stars_properties =
+      (struct stars_props*)malloc(sizeof(struct stars_props));
   stars_props_struct_restore(stars_properties, stream);
   e->stars_properties = stars_properties;
 
-  struct pm_mesh *mesh = (struct pm_mesh *)malloc(sizeof(struct pm_mesh));
+  struct pm_mesh* mesh = (struct pm_mesh*)malloc(sizeof(struct pm_mesh));
   pm_mesh_struct_restore(mesh, stream);
   e->mesh = mesh;
 
-  struct power_spectrum_data *pow_data =
-      (struct power_spectrum_data *)malloc(sizeof(struct power_spectrum_data));
+  struct power_spectrum_data* pow_data =
+      (struct power_spectrum_data*)malloc(sizeof(struct power_spectrum_data));
   power_spectrum_struct_restore(pow_data, stream);
   e->power_data = pow_data;
 
-  struct external_potential *external_potential =
-      (struct external_potential *)malloc(sizeof(struct external_potential));
+  struct external_potential* external_potential =
+      (struct external_potential*)malloc(sizeof(struct external_potential));
   potential_struct_restore(external_potential, stream);
   e->external_potential = external_potential;
 
-  struct forcing_terms *forcing_terms =
-      (struct forcing_terms *)malloc(sizeof(struct forcing_terms));
+  struct forcing_terms* forcing_terms =
+      (struct forcing_terms*)malloc(sizeof(struct forcing_terms));
   forcing_terms_struct_restore(forcing_terms, stream);
   e->forcing_terms = forcing_terms;
 
-  struct cooling_function_data *cooling_func =
-      (struct cooling_function_data *)malloc(
+  struct cooling_function_data* cooling_func =
+      (struct cooling_function_data*)malloc(
           sizeof(struct cooling_function_data));
   cooling_struct_restore(cooling_func, stream, e->cosmology);
   e->cooling_func = cooling_func;
 
-  struct star_formation *star_formation =
-      (struct star_formation *)malloc(sizeof(struct star_formation));
+  struct star_formation* star_formation =
+      (struct star_formation*)malloc(sizeof(struct star_formation));
   starformation_struct_restore(star_formation, stream);
   e->star_formation = star_formation;
 
-  struct feedback_props *feedback_properties =
-      (struct feedback_props *)malloc(sizeof(struct feedback_props));
+  struct feedback_props* feedback_properties =
+      (struct feedback_props*)malloc(sizeof(struct feedback_props));
   feedback_struct_restore(feedback_properties, stream);
   e->feedback_props = feedback_properties;
 
-  struct pressure_floor_props *pressure_floor_properties =
-      (struct pressure_floor_props *)malloc(
-          sizeof(struct pressure_floor_props));
+  struct pressure_floor_props* pressure_floor_properties =
+      (struct pressure_floor_props*)malloc(sizeof(struct pressure_floor_props));
   pressure_floor_struct_restore(pressure_floor_properties, stream);
   e->pressure_floor_props = pressure_floor_properties;
 
-  struct rt_props *rt_properties =
-      (struct rt_props *)malloc(sizeof(struct rt_props));
+  struct rt_props* rt_properties =
+      (struct rt_props*)malloc(sizeof(struct rt_props));
   rt_struct_restore(rt_properties, stream, e->physical_constants,
                     e->internal_units, cosmo);
   e->rt_props = rt_properties;
 
-  struct black_holes_props *black_holes_properties =
-      (struct black_holes_props *)malloc(sizeof(struct black_holes_props));
+  struct black_holes_props* black_holes_properties =
+      (struct black_holes_props*)malloc(sizeof(struct black_holes_props));
   black_holes_struct_restore(black_holes_properties, stream);
   e->black_holes_properties = black_holes_properties;
 
-  struct sink_props *sink_properties =
-      (struct sink_props *)malloc(sizeof(struct sink_props));
+  struct sink_props* sink_properties =
+      (struct sink_props*)malloc(sizeof(struct sink_props));
   sink_struct_restore(sink_properties, stream);
   e->sink_properties = sink_properties;
 
-  struct neutrino_props *neutrino_properties =
-      (struct neutrino_props *)malloc(sizeof(struct neutrino_props));
+  struct neutrino_props* neutrino_properties =
+      (struct neutrino_props*)malloc(sizeof(struct neutrino_props));
   neutrino_struct_restore(neutrino_properties, stream);
   e->neutrino_properties = neutrino_properties;
 
-  struct neutrino_response *neutrino_response =
-      (struct neutrino_response *)malloc(sizeof(struct neutrino_response));
+  struct neutrino_response* neutrino_response =
+      (struct neutrino_response*)malloc(sizeof(struct neutrino_response));
   neutrino_response_struct_restore(neutrino_response, stream);
   e->neutrino_response = neutrino_response;
 
-  struct chemistry_global_data *chemistry =
-      (struct chemistry_global_data *)malloc(
+  struct chemistry_global_data* chemistry =
+      (struct chemistry_global_data*)malloc(
           sizeof(struct chemistry_global_data));
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
 
-  struct extra_io_properties *extra_io_props =
-      (struct extra_io_properties *)malloc(sizeof(struct extra_io_properties));
+  struct extra_io_properties* extra_io_props =
+      (struct extra_io_properties*)malloc(sizeof(struct extra_io_properties));
   extra_io_struct_restore(extra_io_props, stream);
   e->io_extra_props = extra_io_props;
 
 #ifdef WITH_FOF
-  struct fof_props *fof_props =
-      (struct fof_props *)malloc(sizeof(struct fof_props));
+  struct fof_props* fof_props =
+      (struct fof_props*)malloc(sizeof(struct fof_props));
   fof_struct_restore(fof_props, stream);
   e->fof_properties = fof_props;
 #endif
 
-  struct los_props *los_properties =
-      (struct los_props *)malloc(sizeof(struct los_props));
+  struct los_props* los_properties =
+      (struct los_props*)malloc(sizeof(struct los_props));
   los_struct_restore(los_properties, stream);
   e->los_properties = los_properties;
 
-  struct lightcone_array_props *lightcone_array_properties =
-      (struct lightcone_array_props *)malloc(
+  struct lightcone_array_props* lightcone_array_properties =
+      (struct lightcone_array_props*)malloc(
           sizeof(struct lightcone_array_props));
   lightcone_array_struct_restore(lightcone_array_properties, stream);
   e->lightcone_array_properties = lightcone_array_properties;
 
-  struct ic_info *ics_metadata =
-      (struct ic_info *)malloc(sizeof(struct ic_info));
+  struct ic_info* ics_metadata =
+      (struct ic_info*)malloc(sizeof(struct ic_info));
   ic_info_struct_restore(ics_metadata, stream);
   e->ics_metadata = ics_metadata;
 
-  struct swift_params *parameter_file =
-      (struct swift_params *)malloc(sizeof(struct swift_params));
+  struct swift_params* parameter_file =
+      (struct swift_params*)malloc(sizeof(struct swift_params));
   parser_struct_restore(parameter_file, stream);
   e->parameter_file = parameter_file;
 
-  struct output_options *output_options =
-      (struct output_options *)malloc(sizeof(struct output_options));
+  struct output_options* output_options =
+      (struct output_options*)malloc(sizeof(struct output_options));
   output_options_struct_restore(output_options, stream);
   e->output_options = output_options;
 
 #ifdef WITH_CSDS
   if (e->policy & engine_policy_csds) {
-    struct csds_writer *log =
-        (struct csds_writer *)malloc(sizeof(struct csds_writer));
+    struct csds_writer* log =
+        (struct csds_writer*)malloc(sizeof(struct csds_writer));
     csds_struct_restore(log, stream);
     e->csds = log;
   }

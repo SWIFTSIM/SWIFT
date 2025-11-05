@@ -103,11 +103,11 @@ __attribute__((always_inline)) INLINE int element_from_table_to_code(
  * log10(Z / Z_sun).
  */
 __attribute__((always_inline)) INLINE static float abundance_ratio_to_solar(
-    const struct part *p, const struct cooling_function_data *cooling,
+    const struct part* p, const struct cooling_function_data* cooling,
     float ratio_solar[colibre_cooling_N_elementtypes]) {
 
   /* Get the particle's metal mass fractions (M_x / M) */
-  const float *Z_mass_frac = chemistry_get_metal_mass_fraction_for_cooling(p);
+  const float* Z_mass_frac = chemistry_get_metal_mass_fraction_for_cooling(p);
 
   /* Convert mass fractions to abundances (nx/nH) and compute metal mass */
   for (int elem_nr = element_H; elem_nr < element_OA; elem_nr++) {
@@ -239,7 +239,7 @@ __attribute__((always_inline)) INLINE static float abundance_ratio_to_solar(
  */
 __attribute__((always_inline)) INLINE static double
 eagle_helium_reionization_extraheat(
-    double z, double delta_z, const struct cooling_function_data *cooling) {
+    double z, double delta_z, const struct cooling_function_data* cooling) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (delta_z > 0.f) error("Invalid value for delta_z. Should be negative.");
@@ -284,7 +284,7 @@ __attribute__((always_inline)) INLINE static float colibre_convert_u_to_temp(
     const double log_10_u_cgs, const float redshift, const int n_H_index,
     const float d_n_H, const int met_index, const float d_met,
     const int red_index, const float d_red,
-    const struct cooling_function_data *cooling) {
+    const struct cooling_function_data* cooling) {
 
   /* Get index of u along the internal energy axis */
   int u_index;
@@ -342,7 +342,7 @@ __attribute__((always_inline)) INLINE static float colibre_convert_temp_to_u(
     const double log_10_T, const float redshift, const int n_H_index,
     const float d_n_H, const int met_index, const float d_met,
     const int red_index, const float d_red,
-    const struct cooling_function_data *cooling) {
+    const struct cooling_function_data* cooling) {
 
   /* Get index of u along the internal energy axis */
   int T_index;
@@ -397,7 +397,7 @@ INLINE static float colibre_meanparticlemass_temperature(
     const double log_T_cgs, const double redshift, const double n_H_cgs,
     const int n_H_index, const float d_n_H, const int met_index,
     const float d_met, const int red_index, const float d_red,
-    const struct cooling_function_data *cooling) {
+    const struct cooling_function_data* cooling) {
 
   /* Get index of T along the temperature axis */
   int T_index;
@@ -437,7 +437,7 @@ INLINE static float colibre_electron_density(
     const float abundance_ratio[colibre_cooling_N_elementtypes],
     const int n_H_index, const float d_n_H, const int met_index,
     const float d_met, const int red_index, const float d_red,
-    const struct cooling_function_data *cooling) {
+    const struct cooling_function_data* cooling) {
 
   /* Get index of u along the internal energy axis */
   int U_index;
@@ -482,7 +482,7 @@ INLINE static float colibre_electron_density_temperature(
     const float abundance_ratio[colibre_cooling_N_elementtypes],
     const int n_H_index, const float d_n_H, const int met_index,
     const float d_met, const int red_index, const float d_red,
-    const struct cooling_function_data *cooling) {
+    const struct cooling_function_data* cooling) {
 
   /* Get index of u along the internal energy axis */
   int T_index;
@@ -534,7 +534,7 @@ INLINE static double colibre_cooling_rate(
     const float abundance_ratio[colibre_cooling_N_elementtypes],
     const int n_H_index, const float d_n_H, const int met_index,
     const float d_met, const int red_index, const float d_red,
-    const struct cooling_function_data *cooling, const int onlyicool,
+    const struct cooling_function_data* cooling, const int onlyicool,
     const int onlyiheat, const int icool, const int iheat) {
 
   /* Set weights for cooling rates */
@@ -683,7 +683,7 @@ INLINE static double colibre_cooling_rate_temperature(
     const float abundance_ratio[colibre_cooling_N_elementtypes],
     const int n_H_index, const float d_n_H, const int met_index,
     const float d_met, const int red_index, const float d_red,
-    const struct cooling_function_data *cooling, const int onlyicool,
+    const struct cooling_function_data* cooling, const int onlyicool,
     const int onlyiheat, const int icool, const int iheat) {
 
   /* Set weights for cooling rates */

@@ -34,7 +34,7 @@
 
 /* Array to store the list of file names. Order must match profiler_types
  * enumerator and profiler_func_names. */
-const char *profiler_file_names[profiler_length] = {"enginecollecttimesteps",
+const char* profiler_file_names[profiler_length] = {"enginecollecttimesteps",
                                                     "enginedrift",
                                                     "enginerebuild",
                                                     "schedulerreweight",
@@ -54,7 +54,7 @@ const char *profiler_file_names[profiler_length] = {"enginecollecttimesteps",
 
 /* Array to store the list of function names. Order must match profiler_types
  * enumerator and profiler_file_names. */
-const char *profiler_func_names[profiler_length] = {"engine_collect_timesteps",
+const char* profiler_func_names[profiler_length] = {"engine_collect_timesteps",
                                                     "engine_drift",
                                                     "engine_rebuild",
                                                     "scheduler_reweight",
@@ -78,7 +78,7 @@ const char *profiler_func_names[profiler_length] = {"engine_collect_timesteps",
  * @param profiler #profiler object that holds file pointers and
  * function timers.
  */
-void profiler_reset_timers(struct profiler *profiler) {
+void profiler_reset_timers(struct profiler* profiler) {
   /* Iterate over times array and reset values. */
   for (int i = 0; i < profiler_length; i++) profiler->times[i] = 0;
 }
@@ -91,9 +91,9 @@ void profiler_reset_timers(struct profiler *profiler) {
  * @param functionName name of function that is being timed.
  * @param file (return) pointer used to open output file.
  */
-void profiler_write_timing_info_header(const struct engine *e,
-                                       const char *fileName,
-                                       const char *functionName, FILE **file) {
+void profiler_write_timing_info_header(const struct engine* e,
+                                       const char* fileName,
+                                       const char* functionName, FILE** file) {
 
   /* Create the file name in the format: "fileName_(no. of threads)" */
   char fullFileName[200] = "";
@@ -129,8 +129,8 @@ void profiler_write_timing_info_header(const struct engine *e,
  * @param profiler #profiler object that holds file pointers and
  * function timers.
  */
-void profiler_write_all_timing_info_headers(const struct engine *e,
-                                            struct profiler *profiler) {
+void profiler_write_all_timing_info_headers(const struct engine* e,
+                                            struct profiler* profiler) {
   /* Iterate over files array and write file headers. */
   for (int i = 0; i < profiler_length; i++) {
     profiler_write_timing_info_header(
@@ -145,8 +145,8 @@ void profiler_write_all_timing_info_headers(const struct engine *e,
  * @param time Time in ticks to be written to the output file.
  * @param file pointer used to open output file.
  */
-void profiler_write_timing_info(const struct engine *e, ticks time,
-                                FILE *file) {
+void profiler_write_timing_info(const struct engine* e, ticks time,
+                                FILE* file) {
 
   fprintf(file, "  %6d %14e %14e %10lld %10lld %10lld %21.3f\n", e->step,
           e->time, e->time_step, e->updates, e->g_updates, e->s_updates,
@@ -162,8 +162,8 @@ void profiler_write_timing_info(const struct engine *e, ticks time,
  * @param profiler #profiler object that holds file pointers and
  * function timers.
  */
-void profiler_write_all_timing_info(const struct engine *e,
-                                    struct profiler *profiler) {
+void profiler_write_all_timing_info(const struct engine* e,
+                                    struct profiler* profiler) {
 
   /* Iterate over times array and print timing info to files. */
   for (int i = 0; i < profiler_length; i++) {
@@ -180,7 +180,7 @@ void profiler_write_all_timing_info(const struct engine *e,
  * @param profiler #profiler object that holds file pointers and
  * function timers.
  */
-void profiler_close_files(struct profiler *profiler) {
+void profiler_close_files(struct profiler* profiler) {
 
   /* Iterate over files array and close files. */
   for (int i = 0; i < profiler_length; i++) fclose(profiler->files[i]);

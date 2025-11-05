@@ -48,7 +48,7 @@
  * @param offset First particle in the cell to treat (for split tasks).
  * @param increment Interval between successive particles that are treated.
  */
-void DOSELF1_STARS(struct runner *r, const struct cell *c,
+void DOSELF1_STARS(struct runner* r, const struct cell* c,
                    const int limit_min_h, const int limit_max_h) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -57,9 +57,9 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
 
   TIMER_TIC;
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const integertime_t ti_current = e->ti_current;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Anything to do here? */
   if (c->hydro.count == 0 || c->stars.count == 0) return;
@@ -71,10 +71,10 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
 
   const int scount = c->stars.count;
   const int count = c->hydro.count;
-  struct spart *restrict sparts = c->stars.parts;
-  struct part *restrict parts = c->hydro.parts;
+  struct spart* restrict sparts = c->stars.parts;
+  struct part* restrict parts = c->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-  struct xpart *restrict xparts = c->hydro.xparts;
+  struct xpart* restrict xparts = c->hydro.xparts;
 #endif
 
   const int with_rt = WITH_RT;
@@ -93,7 +93,7 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
   for (int sid = 0; sid < scount; sid++) {
 
     /* Get a hold of the ith spart in ci. */
-    struct spart *si = &sparts[sid];
+    struct spart* si = &sparts[sid];
     const char depth_i = si->depth_h;
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -120,9 +120,9 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
     for (int pjd = 0; pjd < count; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts[pjd];
+      struct part* restrict pj = &parts[pjd];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-      struct xpart *restrict xpj = &xparts[pjd];
+      struct xpart* restrict xpj = &xparts[pjd];
 #endif
       const float hj = pj->h;
 
@@ -191,9 +191,9 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
  * @param offset First particle in the cell to treat (for split tasks).
  * @param increment Interval between successive particles that are treated.
  */
-void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
-                                 const struct cell *restrict ci,
-                                 const struct cell *restrict cj,
+void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner* r,
+                                 const struct cell* restrict ci,
+                                 const struct cell* restrict cj,
                                  const int limit_min_h, const int limit_max_h) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -204,9 +204,9 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
 #endif
 #endif
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const integertime_t ti_current = e->ti_current;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Anything to do here? */
   if (cj->hydro.count == 0 || ci->stars.count == 0) return;
@@ -218,10 +218,10 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
 
   const int scount_i = ci->stars.count;
   const int count_j = cj->hydro.count;
-  struct spart *restrict sparts_i = ci->stars.parts;
-  struct part *restrict parts_j = cj->hydro.parts;
+  struct spart* restrict sparts_i = ci->stars.parts;
+  struct part* restrict parts_j = cj->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-  struct xpart *restrict xparts_j = cj->hydro.xparts;
+  struct xpart* restrict xparts_j = cj->hydro.xparts;
 #endif
   const int with_rt = WITH_RT;
 
@@ -252,7 +252,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
   for (int sid = 0; sid < scount_i; sid++) {
 
     /* Get a hold of the ith spart in ci. */
-    struct spart *si = &sparts_i[sid];
+    struct spart* si = &sparts_i[sid];
     const char depth_i = si->depth_h;
 
     /* Skip inhibited particles */
@@ -284,9 +284,9 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
     for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
+      struct part* restrict pj = &parts_j[pjd];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-      struct xpart *restrict xpj = &xparts_j[pjd];
+      struct xpart* restrict xpj = &xparts_j[pjd];
 #endif
       const float hj = pj->h;
 
@@ -356,16 +356,16 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
  * @param offset First particle in the cell to treat (for split tasks).
  * @param increment Interval between successive particles that are treated.
  */
-void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
-                        const struct cell *restrict cj, const int limit_min_h,
+void DO_SYM_PAIR1_STARS(struct runner* r, const struct cell* restrict ci,
+                        const struct cell* restrict cj, const int limit_min_h,
                         const int limit_max_h, const int sid,
                         const double shift[3]) {
 
   TIMER_TIC;
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const integertime_t ti_current = e->ti_current;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -407,8 +407,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
   if (do_ci_stars) {
 
     /* Pick-out the sorted lists. */
-    const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
-    const struct sort_entry *restrict sort_i = cell_get_stars_sorts(ci, sid);
+    const struct sort_entry* restrict sort_j = cell_get_hydro_sorts(cj, sid);
+    const struct sort_entry* restrict sort_i = cell_get_stars_sorts(ci, sid);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Some constants used to checks that the parts are in the right frame */
@@ -428,10 +428,10 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
         min(h_max, ci->stars.h_max_active) * kernel_gamma - rshift;
     const int count_i = ci->stars.count;
     const int count_j = cj->hydro.count;
-    struct spart *sparts_i = ci->stars.parts;
-    struct part *parts_j = cj->hydro.parts;
+    struct spart* sparts_i = ci->stars.parts;
+    struct part* parts_j = cj->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-    struct xpart *xparts_j = cj->hydro.xparts;
+    struct xpart* xparts_j = cj->hydro.xparts;
 #endif
     const double dj_min = sort_j[0].d;
     const float dx_max = (ci->stars.dx_max_sort + cj->hydro.dx_max_sort);
@@ -442,7 +442,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
 
       /* Get a hold of the ith part in ci. */
-      struct spart *spi = &sparts_i[sort_i[pid].i];
+      struct spart* spi = &sparts_i[sort_i[pid].i];
       const char depth_i = spi->depth_h;
       const float hi = spi->h;
 
@@ -479,9 +479,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
 
         /* Recover pj */
-        struct part *pj = &parts_j[sort_j[pjd].i];
+        struct part* pj = &parts_j[sort_j[pjd].i];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        struct xpart *xpj = &xparts_j[sort_j[pjd].i];
+        struct xpart* xpj = &xparts_j[sort_j[pjd].i];
 #endif
 
         /* Skip inhibited particles. */
@@ -572,8 +572,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 
   if (do_cj_stars) {
     /* Pick-out the sorted lists. */
-    const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
-    const struct sort_entry *restrict sort_j = cell_get_stars_sorts(cj, sid);
+    const struct sort_entry* restrict sort_i = cell_get_hydro_sorts(ci, sid);
+    const struct sort_entry* restrict sort_j = cell_get_stars_sorts(cj, sid);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Some constants used to checks that the parts are in the right frame */
@@ -592,10 +592,10 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
     const double hj_max = min(h_max, cj->stars.h_max_active) * kernel_gamma;
     const int count_i = ci->hydro.count;
     const int count_j = cj->stars.count;
-    struct spart *restrict sparts_j = cj->stars.parts;
-    struct part *restrict parts_i = ci->hydro.parts;
+    struct spart* restrict sparts_j = cj->stars.parts;
+    struct part* restrict parts_i = ci->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-    struct xpart *restrict xparts_i = ci->hydro.xparts;
+    struct xpart* restrict xparts_i = ci->hydro.xparts;
 #endif
     const double di_max = sort_i[count_i - 1].d - rshift;
     const float dx_max = (ci->hydro.dx_max_sort + cj->stars.dx_max_sort);
@@ -606,7 +606,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
          pjd++) {
 
       /* Get a hold of the jth part in cj. */
-      struct spart *spj = &sparts_j[sort_j[pjd].i];
+      struct spart* spj = &sparts_j[sort_j[pjd].i];
       const char depth_j = spj->depth_h;
       const float hj = spj->h;
 
@@ -643,9 +643,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
       for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
 
         /* Recover pi */
-        struct part *pi = &parts_i[sort_i[pid].i];
+        struct part* pi = &parts_i[sort_i[pid].i];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        struct xpart *xpi = &xparts_i[sort_i[pid].i];
+        struct xpart* xpi = &xparts_i[sort_i[pid].i];
 #endif
 
         /* Skip inhibited particles. */
@@ -737,8 +737,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
   TIMER_TOC(TIMER_DOPAIR_STARS);
 }
 
-void DOPAIR1_STARS_NAIVE(struct runner *r, const struct cell *restrict ci,
-                         const struct cell *restrict cj, const int limit_min_h,
+void DOPAIR1_STARS_NAIVE(struct runner* r, const struct cell* restrict ci,
+                         const struct cell* restrict cj, const int limit_min_h,
                          const int limit_max_h) {
 
   TIMER_TIC;
@@ -776,27 +776,27 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, const struct cell *restrict ci,
  * @param flipped Flag to check whether the cells have been flipped or not.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
-                          struct spart *restrict sparts_i, const int *ind,
-                          const int scount, const struct cell *restrict cj,
+void DOPAIR1_SUBSET_STARS(struct runner* r, const struct cell* restrict ci,
+                          struct spart* restrict sparts_i, const int* ind,
+                          const int scount, const struct cell* restrict cj,
                           const int sid, const int flipped,
                           const double shift[3]) {
 
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
 
   const int count_j = cj->hydro.count;
-  struct part *restrict parts_j = cj->hydro.parts;
+  struct part* restrict parts_j = cj->hydro.parts;
 
   /* Early abort? */
   if (count_j == 0) return;
 
   /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
+  const struct sort_entry* restrict sort_j = cell_get_hydro_sorts(cj, sid);
   const float dxj = cj->hydro.dx_max_sort;
 
   /* Sparts are on the left? */
@@ -806,7 +806,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
     for (int pid = 0; pid < scount; pid++) {
 
       /* Get a hold of the ith spart in ci. */
-      struct spart *restrict spi = &sparts_i[ind[pid]];
+      struct spart* restrict spi = &sparts_i[ind[pid]];
       const double pix = spi->x[0] - (shift[0]);
       const double piy = spi->x[1] - (shift[1]);
       const double piz = spi->x[2] - (shift[2]);
@@ -819,7 +819,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        struct part* restrict pj = &parts_j[sort_j[pjd].i];
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -869,7 +869,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
     for (int pid = 0; pid < scount; pid++) {
 
       /* Get a hold of the ith spart in ci. */
-      struct spart *restrict spi = &sparts_i[ind[pid]];
+      struct spart* restrict spi = &sparts_i[ind[pid]];
       const double pix = spi->x[0] - (shift[0]);
       const double piy = spi->x[1] - (shift[1]);
       const double piz = spi->x[2] - (shift[2]);
@@ -882,7 +882,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
       for (int pjd = count_j - 1; pjd >= 0 && di < sort_j[pjd].d; pjd--) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        struct part* restrict pj = &parts_j[sort_j[pjd].i];
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -940,25 +940,25 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
  * @param cj The second #cell.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
-                                const struct cell *restrict ci,
-                                struct spart *restrict sparts_i, const int *ind,
-                                const int scount, struct cell *restrict cj,
+void DOPAIR1_SUBSET_STARS_NAIVE(struct runner* r,
+                                const struct cell* restrict ci,
+                                struct spart* restrict sparts_i, const int* ind,
+                                const int scount, struct cell* restrict cj,
                                 const double shift[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
 #endif
 
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
 
   const int count_j = cj->hydro.count;
-  struct part *restrict parts_j = cj->hydro.parts;
+  struct part* restrict parts_j = cj->hydro.parts;
 
   /* Early abort? */
   if (count_j == 0) return;
@@ -967,7 +967,7 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
   for (int pid = 0; pid < scount; pid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct spart *restrict spi = &sparts_i[ind[pid]];
+    struct spart* restrict spi = &sparts_i[ind[pid]];
 
     const double pix = spi->x[0] - (shift[0]);
     const double piy = spi->x[1] - (shift[1]);
@@ -984,7 +984,7 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
     for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
+      struct part* restrict pj = &parts_j[pjd];
 
       /* Skip inhibited particles */
       if (part_is_inhibited(pj, e)) continue;
@@ -1034,22 +1034,22 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param scount The number of particles in @c ind.
  */
-void DOSELF1_SUBSET_STARS(struct runner *r, const struct cell *ci,
-                          struct spart *restrict sparts, const int *const ind,
+void DOSELF1_SUBSET_STARS(struct runner* r, const struct cell* ci,
+                          struct spart* restrict sparts, const int* const ind,
                           const int scount) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
 #endif
 
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
 
   const int count_i = ci->hydro.count;
-  struct part *restrict parts_j = ci->hydro.parts;
+  struct part* restrict parts_j = ci->hydro.parts;
 
   /* Early abort? */
   if (count_i == 0) return;
@@ -1058,7 +1058,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, const struct cell *ci,
   for (int spid = 0; spid < scount; spid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct spart *spi = &sparts[ind[spid]];
+    struct spart* spi = &sparts[ind[spid]];
     const float spix[3] = {(float)(spi->x[0] - ci->loc[0]),
                            (float)(spi->x[1] - ci->loc[1]),
                            (float)(spi->x[2] - ci->loc[2])};
@@ -1074,7 +1074,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, const struct cell *ci,
     for (int pjd = 0; pjd < count_i; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
+      struct part* restrict pj = &parts_j[pjd];
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
@@ -1121,9 +1121,9 @@ void DOSELF1_SUBSET_STARS(struct runner *r, const struct cell *ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param scount The number of particles in @c ind.
  */
-void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, const struct cell *ci,
-                                 struct spart *restrict sparts,
-                                 const int *const ind, const int scount) {
+void DOSELF1_SUBSET_BRANCH_STARS(struct runner* r, const struct cell* ci,
+                                 struct spart* restrict sparts,
+                                 const int* const ind, const int scount) {
 
   DOSELF1_SUBSET_STARS(r, ci, sparts, ind, scount);
 }
@@ -1140,13 +1140,13 @@ void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, const struct cell *ci,
  * @param scount The number of particles in @c ind.
  * @param cj The second #cell.
  */
-void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
-                                 const struct cell *restrict ci,
-                                 struct spart *restrict sparts_i,
-                                 const int *ind, const int scount,
-                                 struct cell *restrict cj) {
+void DOPAIR1_SUBSET_BRANCH_STARS(struct runner* r,
+                                 const struct cell* restrict ci,
+                                 struct spart* restrict sparts_i,
+                                 const int* ind, const int scount,
+                                 struct cell* restrict cj) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   /* Anything to do here? */
   if (cj->hydro.count == 0) return;
@@ -1205,10 +1205,10 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
  * @param offset First particle in the cell to treat (for split tasks).
  * @param increment Interval between successive particles that are treated.
  */
-void DOSELF1_BRANCH_STARS(struct runner *r, const struct cell *c,
+void DOSELF1_BRANCH_STARS(struct runner* r, const struct cell* c,
                           const int limit_min_h, const int limit_max_h) {
 
-  const struct engine *restrict e = r->e;
+  const struct engine* restrict e = r->e;
 
   /* Anything to do here? */
   if (c->stars.count == 0) return;
@@ -1253,10 +1253,10 @@ void DOSELF1_BRANCH_STARS(struct runner *r, const struct cell *c,
  * @param offset First particle in the cell to treat (for split tasks).
  * @param increment Interval between successive particles that are treated.
  */
-void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+void DOPAIR1_BRANCH_STARS(struct runner* r, struct cell* ci, struct cell* cj,
                           const int limit_min_h, const int limit_max_h) {
 
-  const struct engine *restrict e = r->e;
+  const struct engine* restrict e = r->e;
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -1331,12 +1331,12 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
-void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+void DOSUB_PAIR1_STARS(struct runner* r, struct cell* ci, struct cell* cj,
                        int recurse_below_h_max, const int gettimer) {
   TIMER_TIC;
 
-  struct space *s = r->e->s;
-  const struct engine *e = r->e;
+  struct space* s = r->e->s;
+  const struct engine* e = r->e;
 
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
@@ -1456,7 +1456,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     }
 
     /* Recurse to the lower levels. */
-    const struct cell_split_pair *const csp = &cell_split_pairs[sid];
+    const struct cell_split_pair* const csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
@@ -1479,7 +1479,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
  * @param offset First particle in the cell to treat (for split tasks).
  * @param increment Interval between successive particles that are treated.
  */
-void DOSUB_SELF1_STARS(struct runner *r, struct cell *c,
+void DOSUB_SELF1_STARS(struct runner* r, struct cell* c,
                        int recurse_below_h_max, const int gettimer) {
 
   TIMER_TIC;
@@ -1552,9 +1552,9 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *c,
  * @param sparts An array of #spart.
  * @param ind Index of the #spart's in the particle array to find in the subs.
  */
-struct cell *FIND_SUB_STARS(const struct cell *const c,
-                            const struct spart *const sparts,
-                            const int *const ind) {
+struct cell* FIND_SUB_STARS(const struct cell* const c,
+                            const struct spart* const sparts,
+                            const int* const ind) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!c->split) error("Can't search for subs in a non-split cell");
@@ -1577,13 +1577,13 @@ struct cell *FIND_SUB_STARS(const struct cell *const c,
   return NULL;
 }
 
-void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
-                             struct spart *sparts, const int *ind,
-                             const int scount, struct cell *cj,
+void DOSUB_PAIR_SUBSET_STARS(struct runner* r, struct cell* ci,
+                             struct spart* sparts, const int* ind,
+                             const int scount, struct cell* cj,
                              const int gettimer) {
 
-  const struct engine *e = r->e;
-  struct space *s = e->s;
+  const struct engine* e = r->e;
+  struct space* s = e->s;
 
   /* Should we even bother? */
   if (cj->hydro.count == 0) return;
@@ -1595,13 +1595,13 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
       cell_can_recurse_in_pair_stars_task(cj)) {
 
     /* Find in which sub-cell of ci the particles are */
-    struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
+    struct cell* const sub = FIND_SUB_STARS(ci, sparts, ind);
 
     /* Get the type of pair and flip ci/cj if needed. */
     double shift[3];
     const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
-    struct cell_split_pair *csp = &cell_split_pairs[sid];
+    struct cell_split_pair* csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
@@ -1624,11 +1624,11 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
   }
 }
 
-void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
-                             struct spart *sparts, const int *ind,
+void DOSUB_SELF_SUBSET_STARS(struct runner* r, struct cell* ci,
+                             struct spart* sparts, const int* ind,
                              const int scount, const int gettimer) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   /* Should we even bother? */
   if (ci->hydro.count == 0) return;
@@ -1639,7 +1639,7 @@ void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
   if (ci->split && cell_can_recurse_in_self_stars_task(ci)) {
 
     /* Find in which sub-cell of ci the particles are */
-    struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
+    struct cell* const sub = FIND_SUB_STARS(ci, sparts, ind);
 
     /* Loop over all progeny. */
     DOSUB_SELF_SUBSET_STARS(r, sub, sparts, ind, scount, /*gettimer=*/0);

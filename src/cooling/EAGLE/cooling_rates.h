@@ -51,11 +51,11 @@
  * @param ratio_solar (return) Array of ratios to solar abundances.
  */
 __attribute__((always_inline)) INLINE static void abundance_ratio_to_solar(
-    const struct part *p, const struct cooling_function_data *cooling,
+    const struct part* p, const struct cooling_function_data* cooling,
     float ratio_solar[eagle_cooling_N_abundances]) {
 
   /* Get the individual metal mass fractions from the particle */
-  const float *const metal_fraction =
+  const float* const metal_fraction =
       chemistry_get_metal_mass_fraction_for_cooling(p);
 
   ratio_solar[0] = metal_fraction[chemistry_element_H] *
@@ -112,7 +112,7 @@ __attribute__((always_inline)) INLINE static void abundance_ratio_to_solar(
 __attribute__((always_inline)) INLINE double
 eagle_helium_reionization_extraheat(
     const double z, const double delta_z,
-    const struct cooling_function_data *cooling) {
+    const struct cooling_function_data* cooling) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (delta_z > 0.f) error("Invalid value for delta_z. Should be negative.");
@@ -168,7 +168,7 @@ eagle_helium_reionization_extraheat(
 __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
     const double log_10_u_cgs, const float redshift, const int n_H_index,
     const int He_index, const float d_n_H, const float d_He,
-    const struct cooling_function_data *cooling) {
+    const struct cooling_function_data* cooling) {
 
   /* Get index of u along the internal energy axis */
   int u_index;
@@ -224,7 +224,7 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
  * @param electron_abundance The electron abundance.
  */
 __attribute__((always_inline)) INLINE double eagle_Compton_cooling_rate(
-    const struct cooling_function_data *cooling, const double redshift,
+    const struct cooling_function_data* cooling, const double redshift,
     const double n_H_cgs, const double temperature,
     const double electron_abundance) {
 
@@ -308,7 +308,7 @@ INLINE static double eagle_metal_cooling_rate(
     const double log10_u_cgs, const double redshift, const double n_H_cgs,
     const float solar_ratio[eagle_cooling_N_abundances], const int n_H_index,
     const float d_n_H, const int He_index, const float d_He,
-    const struct cooling_function_data *cooling, double *element_lambda) {
+    const struct cooling_function_data* cooling, double* element_lambda) {
 
   /* Temperature */
   const double log_10_T = eagle_convert_u_to_temp(
@@ -532,7 +532,7 @@ INLINE static double eagle_cooling_rate(
     const double log10_u_cgs, const double redshift, const double n_H_cgs,
     const float abundance_ratio[eagle_cooling_N_abundances],
     const int n_H_index, const float d_n_H, const int He_index,
-    const float d_He, const struct cooling_function_data *cooling) {
+    const float d_He, const struct cooling_function_data* cooling) {
 
   return eagle_metal_cooling_rate(log10_u_cgs, redshift, n_H_cgs,
                                   abundance_ratio, n_H_index, d_n_H, He_index,

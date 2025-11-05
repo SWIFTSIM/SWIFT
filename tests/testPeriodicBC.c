@@ -73,18 +73,18 @@ enum velocity_types {
  *of the inter-particle separation.
  * @param vel The type of velocity field (0, random, divergent, rotating)
  */
-struct cell *make_cell(size_t n, double *offset, double size, double h,
-                       double density, long long *partId, double pert,
+struct cell* make_cell(size_t n, double* offset, double size, double h,
+                       double density, long long* partId, double pert,
                        enum velocity_types vel) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
-  struct cell *cell = NULL;
-  if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
+  struct cell* cell = NULL;
+  if (posix_memalign((void**)&cell, cell_align, sizeof(struct cell)) != 0) {
     error("couldn't allocate cell");
   }
   bzero(cell, sizeof(struct cell));
 
-  if (posix_memalign((void **)&cell->hydro.parts, part_align,
+  if (posix_memalign((void**)&cell->hydro.parts, part_align,
                      count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
@@ -93,7 +93,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   float h_max = 0.f;
 
   /* Construct the parts */
-  struct part *part = cell->hydro.parts;
+  struct part* part = cell->hydro.parts;
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
@@ -191,7 +191,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   return cell;
 }
 
-void clean_up(struct cell *ci) {
+void clean_up(struct cell* ci) {
   free(ci->hydro.parts);
   free(ci->hydro.sort);
   free(ci);
@@ -200,7 +200,7 @@ void clean_up(struct cell *ci) {
 /**
  * @brief Initializes all particles field to be ready for a density calculation
  */
-void zero_particle_fields(struct cell *c) {
+void zero_particle_fields(struct cell* c) {
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_init_part(&c->hydro.parts[pid], NULL);
     adaptive_softening_init_part(&c->hydro.parts[pid]);
@@ -211,8 +211,8 @@ void zero_particle_fields(struct cell *c) {
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c, const struct cosmology *cosmo,
-                     const struct gravity_props *gravity_props) {
+void end_calculation(struct cell* c, const struct cosmology* cosmo,
+                     const struct gravity_props* gravity_props) {
 
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_end_density(&c->hydro.parts[pid], cosmo);
@@ -224,9 +224,9 @@ void end_calculation(struct cell *c, const struct cosmology *cosmo,
 /**
  * @brief Dump all the particles to a file
  */
-void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
+void dump_particle_fields(char* fileName, struct cell* main_cell, int i, int j,
                           int k) {
-  FILE *file = fopen(fileName, "a");
+  FILE* file = fopen(fileName, "a");
 
   /* Write header */
   fprintf(file,
@@ -284,7 +284,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
  *
  * @return Non-zero value if difference found, 0 otherwise
  */
-int check_results(struct part *serial_parts, struct part *vec_parts, int count,
+int check_results(struct part* serial_parts, struct part* vec_parts, int count,
                   double threshold) {
   int result = 0;
 
@@ -295,20 +295,20 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
 }
 
 /* Just a forward declaration... */
-void runner_doself1_density_vec(struct runner *r, struct cell *ci);
-void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj, int limit_h_min,
+void runner_doself1_density_vec(struct runner* r, struct cell* ci);
+void runner_dopair1_branch_density(struct runner* r, struct cell* ci,
+                                   struct cell* cj, int limit_h_min,
                                    int limit_h_max);
-void runner_doself1_branch_density(struct runner *r, struct cell *c,
+void runner_doself1_branch_density(struct runner* r, struct cell* c,
                                    int limit_h_min, int limit_h_max);
 
-void test_boundary_conditions(struct cell **cells, struct runner *runner,
+void test_boundary_conditions(struct cell** cells, struct runner* runner,
                               const int loc_i, const int loc_j, const int loc_k,
-                              const int dim, char *swiftOutputFileName,
-                              char *bruteForceOutputFileName) {
+                              const int dim, char* swiftOutputFileName,
+                              char* bruteForceOutputFileName) {
 
   /* Store the main cell for future use */
-  struct cell *main_cell = cells[loc_i * (dim * dim) + loc_j * dim + loc_k];
+  struct cell* main_cell = cells[loc_i * (dim * dim) + loc_j * dim + loc_k];
 
   /* Zero the fields */
   for (int j = 0; j < dim * dim * dim; ++j) zero_particle_fields(cells[j]);
@@ -334,7 +334,7 @@ void test_boundary_conditions(struct cell **cells, struct runner *runner,
         kkk = (kkk + dim) % dim;
 
         /* Get the neighbouring cell */
-        struct cell *cj = cells[iii * (dim * dim) + jjj * dim + kkk];
+        struct cell* cj = cells[iii * (dim * dim) + jjj * dim + kkk];
 
         if (cj != main_cell)
           DOPAIR1(runner, main_cell, cj, /*limit_h_min=*/0,
@@ -373,7 +373,7 @@ void test_boundary_conditions(struct cell **cells, struct runner *runner,
         kkk = (kkk + dim) % dim;
 
         /* Get the neighbouring cell */
-        struct cell *cj = cells[iii * (dim * dim) + jjj * dim + kkk];
+        struct cell* cj = cells[iii * (dim * dim) + jjj * dim + kkk];
 
         if (cj != main_cell) pairs_all_density(runner, main_cell, cj);
       }
@@ -393,7 +393,7 @@ void test_boundary_conditions(struct cell **cells, struct runner *runner,
 }
 
 /* And go... */
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
 #ifdef HAVE_SETAFFINITY
   engine_pin();
@@ -445,7 +445,7 @@ int main(int argc, char *argv[]) {
         strcpy(outputFileNameExtension, optarg);
         break;
       case 'v':
-        sscanf(optarg, "%d", (int *)&vel);
+        sscanf(optarg, "%d", (int*)&vel);
         break;
       case 'a':
         sscanf(optarg, "%lf", &threshold);
@@ -513,7 +513,7 @@ int main(int argc, char *argv[]) {
   engine.physical_constants = &prog_const;
 
   struct runner real_runner;
-  struct runner *runner = &real_runner;
+  struct runner* runner = &real_runner;
   runner->e = &engine;
 
   struct cosmology cosmo;
@@ -537,7 +537,7 @@ int main(int argc, char *argv[]) {
   engine.gravity_properties = &gravity_props;
 
   /* Construct some cells */
-  struct cell *cells[dim * dim * dim];
+  struct cell* cells[dim * dim * dim];
   static long long partId = 0;
   for (int i = 0; i < dim; ++i) {
     for (int j = 0; j < dim; ++j) {

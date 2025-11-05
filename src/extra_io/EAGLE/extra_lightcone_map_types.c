@@ -49,8 +49,8 @@
  * @param c the #cosmology struct
  * @param a_cross expansion factor at which the particle crosses the lightcone
  */
-INLINE static double get_time_since_AGN_injection(const struct xpart *xp,
-                                                  const struct cosmology *c,
+INLINE static double get_time_since_AGN_injection(const struct xpart* xp,
+                                                  const struct cosmology* c,
                                                   double a_cross) {
 
   /* Check for the case where there has been no AGN injection yet */
@@ -72,8 +72,8 @@ INLINE static double get_time_since_AGN_injection(const struct xpart *xp,
 }
 
 INLINE static int exclude_particle(
-    const struct lightcone_props *lightcone_props, const struct engine *e,
-    const struct part *p, const struct xpart *xp, double a_cross) {
+    const struct lightcone_props* lightcone_props, const struct engine* e,
+    const struct part* p, const struct xpart* xp, double a_cross) {
 
   /* Get AGN heating temperature */
   const double AGN_delta_T = e->black_holes_properties->AGN_delta_T_desired;
@@ -111,18 +111,18 @@ INLINE static int exclude_particle(
  * lightcone
  */
 double lightcone_map_xray_erosita_low_intrinsic_photons_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = s->xparts;
 
   switch (gp->type) {
     case swift_type_gas: {
-      const struct part *p = &parts[-gp->id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gp->id_or_neg_offset];
 
       /* Exclude recently AGN heated particles */
       if (exclude_particle(lightcone_props, e, p, xp, a_cross)) return 0.0;
@@ -159,18 +159,18 @@ double lightcone_map_xray_erosita_low_intrinsic_photons_get_value(
  * lightcone
  */
 double lightcone_map_xray_erosita_low_intrinsic_energy_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = s->xparts;
 
   switch (gp->type) {
     case swift_type_gas: {
-      const struct part *p = &parts[-gp->id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gp->id_or_neg_offset];
 
       /* Exclude recently AGN heated particles */
       if (exclude_particle(lightcone_props, e, p, xp, a_cross)) return 0.0;
@@ -207,18 +207,18 @@ double lightcone_map_xray_erosita_low_intrinsic_energy_get_value(
  * lightcone
  */
 double lightcone_map_xray_erosita_high_intrinsic_photons_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = s->xparts;
 
   switch (gp->type) {
     case swift_type_gas: {
-      const struct part *p = &parts[-gp->id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gp->id_or_neg_offset];
 
       /* Exclude recently AGN heated particles */
       if (exclude_particle(lightcone_props, e, p, xp, a_cross)) return 0.0;
@@ -255,18 +255,18 @@ double lightcone_map_xray_erosita_high_intrinsic_photons_get_value(
  * lightcone
  */
 double lightcone_map_xray_erosita_high_intrinsic_energy_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = s->xparts;
 
   switch (gp->type) {
     case swift_type_gas: {
-      const struct part *p = &parts[-gp->id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gp->id_or_neg_offset];
 
       /* Exclude recently AGN heated particles */
       if (exclude_particle(lightcone_props, e, p, xp, a_cross)) return 0.0;
@@ -303,18 +303,18 @@ double lightcone_map_xray_erosita_high_intrinsic_energy_get_value(
  * lightcone
  */
 double lightcone_map_xray_rosat_intrinsic_photons_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = s->xparts;
 
   switch (gp->type) {
     case swift_type_gas: {
-      const struct part *p = &parts[-gp->id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gp->id_or_neg_offset];
 
       /* Exclude recently AGN heated particles */
       if (exclude_particle(lightcone_props, e, p, xp, a_cross)) return 0.0;
@@ -351,18 +351,18 @@ double lightcone_map_xray_rosat_intrinsic_photons_get_value(
  * lightcone
  */
 double lightcone_map_xray_rosat_intrinsic_energy_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = s->xparts;
 
   switch (gp->type) {
     case swift_type_gas: {
-      const struct part *p = &parts[-gp->id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gp->id_or_neg_offset];
 
       /* Exclude recently AGN heated particles */
       if (exclude_particle(lightcone_props, e, p, xp, a_cross)) return 0.0;
@@ -396,25 +396,25 @@ double lightcone_map_xray_rosat_intrinsic_energy_get_value(
  * lightcone
  */
 double lightcone_map_compton_y_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = e->s->xparts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = e->s->xparts;
 
   /* Handle on the physics modules */
-  const struct cosmology *cosmo = e->cosmology;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct unit_system *us = e->internal_units;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct cooling_function_data *cool_func = e->cooling_func;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct hydro_props* hydro_props = e->hydro_properties;
+  const struct unit_system* us = e->internal_units;
+  const struct phys_const* phys_const = e->physical_constants;
+  const struct cooling_function_data* cool_func = e->cooling_func;
 
   switch (gp->type) {
     case swift_type_gas: {
-      const struct part *p = &parts[-gp->id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gp->id_or_neg_offset];
 
       /* Exclude recently AGN heated particles */
       if (exclude_particle(lightcone_props, e, p, xp, a_cross)) return 0.0;
@@ -455,25 +455,25 @@ double lightcone_map_compton_y_get_value(
  * lightcone
  */
 double lightcone_map_doppler_b_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = e->s->xparts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = e->s->xparts;
 
   /* Handle on the physics modules */
-  const struct cosmology *cosmo = e->cosmology;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct unit_system *us = e->internal_units;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct cooling_function_data *cool_func = e->cooling_func;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct hydro_props* hydro_props = e->hydro_properties;
+  const struct unit_system* us = e->internal_units;
+  const struct phys_const* phys_const = e->physical_constants;
+  const struct cooling_function_data* cool_func = e->cooling_func;
 
   switch (gp->type) {
     case swift_type_gas: {
-      const struct part *p = &parts[-gp->id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gp->id_or_neg_offset];
 
       /* Exclude recently AGN heated particles */
       if (exclude_particle(lightcone_props, e, p, xp, a_cross)) return 0.0;
@@ -531,25 +531,25 @@ double lightcone_map_doppler_b_get_value(
  * lightcone
  */
 double lightcone_map_dispersion_meassure_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = e->s->xparts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = e->s->xparts;
 
   /* Handle on the physics modules */
-  const struct cosmology *cosmo = e->cosmology;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct unit_system *us = e->internal_units;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct cooling_function_data *cool_func = e->cooling_func;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct hydro_props* hydro_props = e->hydro_properties;
+  const struct unit_system* us = e->internal_units;
+  const struct phys_const* phys_const = e->physical_constants;
+  const struct cooling_function_data* cool_func = e->cooling_func;
 
   switch (gp->type) {
     case swift_type_gas: {
-      const struct part *p = &parts[-gp->id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gp->id_or_neg_offset];
 
       /* Exclude recently AGN heated particles */
       if (exclude_particle(lightcone_props, e, p, xp, a_cross)) return 0.0;

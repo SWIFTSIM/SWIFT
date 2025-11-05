@@ -33,7 +33,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_timebin(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   /* Update the minimal time-bin */
@@ -60,7 +60,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_timebin(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_timebin(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
     const float H) {
 
   /* Update the minimal time-bin */
@@ -74,7 +74,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_timebin(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_limiter(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   /* Nothing to do here if both particles are active */
@@ -104,7 +104,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_limiter(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   /* Wake up the neighbour? */

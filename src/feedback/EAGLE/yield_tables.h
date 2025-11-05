@@ -66,8 +66,8 @@ static const float log10_min_metallicity = -20;
  * @param element_array array of element names
  * @param n_elements size of element_array
  */
-INLINE static int get_element_index(const char *element_name,
-                                    char **element_array, int n_elements) {
+INLINE static int get_element_index(const char* element_name,
+                                    char** element_array, int n_elements) {
 
   /* Compare element name we are trying to index to names in element_array */
   for (int i = 0; i < n_elements; i++) {
@@ -84,13 +84,13 @@ INLINE static int get_element_index(const char *element_name,
  *
  * @param feedback_props the #feedback_props data struct to read the table into.
  */
-INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
+INLINE static void read_yield_tables(struct feedback_props* feedback_props) {
 
 #ifdef HAVE_HDF5
 
   /* filenames to read HDF5 files */
   char fname[256], setname[100];
-  char **temp;
+  char** temp;
 
   hid_t file_id, dataset, dataset2, datatype, dataspace;
   herr_t status;
@@ -106,7 +106,7 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
   dataspace = H5Dget_space(dataset);
 
-  temp = (char **)malloc(eagle_feedback_SNIa_N_elements * sizeof(char *));
+  temp = (char**)malloc(eagle_feedback_SNIa_N_elements * sizeof(char*));
   status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
   if (status < 0) error("error reading SNIa element names");
 
@@ -160,7 +160,7 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
   dataspace = H5Dget_space(dataset);
 
-  temp = (char **)malloc(eagle_feedback_SNII_N_elements * sizeof(char *));
+  temp = (char**)malloc(eagle_feedback_SNII_N_elements * sizeof(char*));
   status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
   if (status < 0) error("error reading SNII element names");
 
@@ -203,7 +203,7 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
                         [eagle_feedback_SNII_N_masses];
   double temp_ejecta_SNII[eagle_feedback_SNII_N_masses],
       tempmet1[eagle_feedback_SNII_N_masses];
-  char *metallicity_yield_table_name_SNII[eagle_feedback_SNII_N_metals];
+  char* metallicity_yield_table_name_SNII[eagle_feedback_SNII_N_metals];
 
   /* read metallicity names */
   datatype = H5Tcopy(H5T_C_S1);
@@ -293,7 +293,7 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
   dataspace = H5Dget_space(dataset);
 
-  temp = (char **)malloc(eagle_feedback_AGB_N_elements * sizeof(char *));
+  temp = (char**)malloc(eagle_feedback_AGB_N_elements * sizeof(char*));
   status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
   if (status < 0) error("error reading AGB element names");
 
@@ -336,7 +336,7 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
                        [eagle_feedback_AGB_N_masses];
   double temp_ejecta_AGB[eagle_feedback_AGB_N_masses],
       tempmet2[eagle_feedback_AGB_N_masses];
-  char *metallicity_yield_table_name_AGB[eagle_feedback_AGB_N_metals];
+  char* metallicity_yield_table_name_AGB[eagle_feedback_AGB_N_metals];
 
   /* read metallicity names */
   datatype = H5Tcopy(H5T_C_S1);
@@ -459,10 +459,10 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
  * @param feedback_props the #feedback_props data struct to store the tables in
  */
 INLINE static void allocate_yield_tables(
-    struct feedback_props *feedback_props) {
+    struct feedback_props* feedback_props) {
 
   /* Allocate array to store SNIa yield tables */
-  if (swift_memalign("feedback-tables", (void **)&feedback_props->yields_SNIa,
+  if (swift_memalign("feedback-tables", (void**)&feedback_props->yields_SNIa,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_SNIa_N_elements * sizeof(double)) != 0) {
     error("Failed to allocate SNIa yields array");
@@ -470,15 +470,14 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array to store SNIa yield table resampled by IMF mass bins */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_SNIa_IMF_resampled,
+                     (void**)&feedback_props->yield_SNIa_IMF_resampled,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_SNIa_N_elements * sizeof(double)) != 0) {
     error("Failed to allocate SNIa IMF resampled yields array");
   }
 
   /* Allocate array for AGB mass bins */
-  if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_AGB.mass,
+  if (swift_memalign("feedback-tables", (void**)&feedback_props->yield_AGB.mass,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_AGB_N_masses * sizeof(double)) != 0) {
     error("Failed to allocate AGB mass array");
@@ -486,7 +485,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array for AGB metallicity bins */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_AGB.metallicity,
+                     (void**)&feedback_props->yield_AGB.metallicity,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_AGB_N_metals * sizeof(double)) != 0) {
     error("Failed to allocate AGB metallicity array");
@@ -494,7 +493,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array to store AGB yield tables */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_AGB.yield,
+                     (void**)&feedback_props->yield_AGB.yield,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_AGB_N_metals * eagle_feedback_AGB_N_masses *
                          eagle_feedback_AGB_N_elements * sizeof(double)) != 0) {
@@ -503,7 +502,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array to store AGB yield table resampled by IMF mass bins */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_AGB.yield_IMF_resampled,
+                     (void**)&feedback_props->yield_AGB.yield_IMF_resampled,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_AGB_N_metals * eagle_feedback_N_imf_bins *
                          chemistry_element_count * sizeof(double)) != 0) {
@@ -512,7 +511,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array to store AGB ejecta tables */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_AGB.ejecta,
+                     (void**)&feedback_props->yield_AGB.ejecta,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_AGB_N_metals * eagle_feedback_AGB_N_masses *
                          sizeof(double)) != 0) {
@@ -521,7 +520,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array to store AGB ejecta table resampled by IMF mass bins */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_AGB.ejecta_IMF_resampled,
+                     (void**)&feedback_props->yield_AGB.ejecta_IMF_resampled,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_AGB_N_metals * eagle_feedback_N_imf_bins *
                          sizeof(double)) != 0) {
@@ -530,7 +529,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array to store table of total metals released by AGB */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_AGB.total_metals,
+                     (void**)&feedback_props->yield_AGB.total_metals,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_AGB_N_metals * eagle_feedback_AGB_N_masses *
                          sizeof(double)) != 0) {
@@ -541,7 +540,7 @@ INLINE static void allocate_yield_tables(
    * IMF mass bins */
   if (swift_memalign(
           "feedback-tables",
-          (void **)&feedback_props->yield_AGB.total_metals_IMF_resampled,
+          (void**)&feedback_props->yield_AGB.total_metals_IMF_resampled,
           SWIFT_STRUCT_ALIGNMENT,
           eagle_feedback_AGB_N_metals * eagle_feedback_N_imf_bins *
               sizeof(double)) != 0) {
@@ -550,7 +549,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array for SNII mass bins */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_SNII.mass,
+                     (void**)&feedback_props->yield_SNII.mass,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_SNII_N_masses * sizeof(double)) != 0) {
     error("Failed to allocate SNII mass array");
@@ -558,7 +557,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array for SNII metallicity bins */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_SNII.metallicity,
+                     (void**)&feedback_props->yield_SNII.metallicity,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_SNII_N_metals * sizeof(double)) != 0) {
     error("Failed to allocate SNII metallicity array");
@@ -566,7 +565,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array to store SNII yield tables */
   if (swift_memalign(
-          "feedback-tables", (void **)&feedback_props->yield_SNII.yield,
+          "feedback-tables", (void**)&feedback_props->yield_SNII.yield,
           SWIFT_STRUCT_ALIGNMENT,
           eagle_feedback_SNII_N_metals * eagle_feedback_SNII_N_masses *
               eagle_feedback_SNII_N_elements * sizeof(double)) != 0) {
@@ -575,7 +574,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array to store SNII yield table resampled by IMF mass bins */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_SNII.yield_IMF_resampled,
+                     (void**)&feedback_props->yield_SNII.yield_IMF_resampled,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_SNII_N_metals * eagle_feedback_N_imf_bins *
                          chemistry_element_count * sizeof(double)) != 0) {
@@ -584,7 +583,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array to store SNII ejecta tables */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_SNII.ejecta,
+                     (void**)&feedback_props->yield_SNII.ejecta,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_SNII_N_metals *
                          eagle_feedback_SNII_N_masses * sizeof(double)) != 0) {
@@ -593,7 +592,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array to store SNII ejecta table resampled by IMF mass bins */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_SNII.ejecta_IMF_resampled,
+                     (void**)&feedback_props->yield_SNII.ejecta_IMF_resampled,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_SNII_N_metals * eagle_feedback_N_imf_bins *
                          sizeof(double)) != 0) {
@@ -602,7 +601,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array to store table of total metals released by SNII */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_SNII.total_metals,
+                     (void**)&feedback_props->yield_SNII.total_metals,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_SNII_N_metals *
                          eagle_feedback_SNII_N_masses * sizeof(double)) != 0) {
@@ -613,7 +612,7 @@ INLINE static void allocate_yield_tables(
    * IMF mass bins */
   if (swift_memalign(
           "feedback-tables",
-          (void **)&feedback_props->yield_SNII.total_metals_IMF_resampled,
+          (void**)&feedback_props->yield_SNII.total_metals_IMF_resampled,
           SWIFT_STRUCT_ALIGNMENT,
           eagle_feedback_SNII_N_metals * eagle_feedback_N_imf_bins *
               sizeof(double)) != 0) {
@@ -621,8 +620,7 @@ INLINE static void allocate_yield_tables(
   }
 
   /* Allocate array for lifetimes mass bins */
-  if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->lifetimes.mass,
+  if (swift_memalign("feedback-tables", (void**)&feedback_props->lifetimes.mass,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_lifetime_N_masses * sizeof(double)) != 0) {
     error("Failed to allocate lifetime mass array");
@@ -630,7 +628,7 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate array for lifetimes metallicity bins */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->lifetimes.metallicity,
+                     (void**)&feedback_props->lifetimes.metallicity,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_lifetime_N_metals * sizeof(double)) != 0) {
     error("Failed to allocate lifetime metallicity array");
@@ -638,41 +636,41 @@ INLINE static void allocate_yield_tables(
 
   /* Allocate lifetimes array */
   feedback_props->lifetimes.dyingtime =
-      (double **)malloc(eagle_feedback_lifetime_N_metals * sizeof(double *));
+      (double**)malloc(eagle_feedback_lifetime_N_metals * sizeof(double*));
   for (int i = 0; i < eagle_feedback_lifetime_N_metals; i++) {
     feedback_props->lifetimes.dyingtime[i] =
-        (double *)malloc(eagle_feedback_lifetime_N_masses * sizeof(double));
+        (double*)malloc(eagle_feedback_lifetime_N_masses * sizeof(double));
   }
 
   /* Allocate arrays to store names of elements tracked for SNIa, SNII, AGB  */
   feedback_props->SNIa_element_names =
-      (char **)malloc(eagle_feedback_SNIa_N_elements * sizeof(char *));
+      (char**)malloc(eagle_feedback_SNIa_N_elements * sizeof(char*));
   for (int i = 0; i < eagle_feedback_SNIa_N_elements; i++) {
     feedback_props->SNIa_element_names[i] =
-        (char *)malloc(eagle_feedback_element_name_length * sizeof(char));
+        (char*)malloc(eagle_feedback_element_name_length * sizeof(char));
     memset(feedback_props->SNIa_element_names[i], 0,
            eagle_feedback_element_name_length);
   }
   feedback_props->SNII_element_names =
-      (char **)malloc(eagle_feedback_SNII_N_elements * sizeof(char *));
+      (char**)malloc(eagle_feedback_SNII_N_elements * sizeof(char*));
   for (int i = 0; i < eagle_feedback_SNII_N_elements; i++) {
     feedback_props->SNII_element_names[i] =
-        (char *)malloc(eagle_feedback_element_name_length * sizeof(char));
+        (char*)malloc(eagle_feedback_element_name_length * sizeof(char));
     memset(feedback_props->SNII_element_names[i], 0,
            eagle_feedback_element_name_length);
   }
   feedback_props->AGB_element_names =
-      (char **)malloc(eagle_feedback_AGB_N_elements * sizeof(char *));
+      (char**)malloc(eagle_feedback_AGB_N_elements * sizeof(char*));
   for (int i = 0; i < eagle_feedback_AGB_N_elements; i++) {
     feedback_props->AGB_element_names[i] =
-        (char *)malloc(eagle_feedback_element_name_length * sizeof(char));
+        (char*)malloc(eagle_feedback_element_name_length * sizeof(char));
     memset(feedback_props->AGB_element_names[i], 0,
            eagle_feedback_element_name_length);
   }
 
   /* Allocate array of IMF mass bins */
   if (swift_memalign("feedback-tables",
-                     (void **)&feedback_props->yield_mass_bins,
+                     (void**)&feedback_props->yield_mass_bins,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_N_imf_bins * sizeof(double)) != 0) {
     error("Failed to allocate imf mass bins array");
@@ -684,7 +682,7 @@ INLINE static void allocate_yield_tables(
  *
  * @param feedback_props the #feedback_props data struct.
  */
-INLINE static void compute_yields(struct feedback_props *feedback_props) {
+INLINE static void compute_yields(struct feedback_props* feedback_props) {
 
   int flat_index_3d, flat_index_2d;
 
@@ -837,7 +835,7 @@ INLINE static void compute_yields(struct feedback_props *feedback_props) {
  *
  * @param feedback_props the #feedback_props data struct.
  */
-INLINE static void compute_ejecta(struct feedback_props *feedback_props) {
+INLINE static void compute_ejecta(struct feedback_props* feedback_props) {
 
   /* Declare temporary tables to accumulate yields */
   double SNII_ejecta[eagle_feedback_SNII_N_masses];

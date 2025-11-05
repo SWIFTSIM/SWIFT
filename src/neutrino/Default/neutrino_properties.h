@@ -55,11 +55,11 @@ struct neutrino_props {
  * @param cosmo The cosmological model.
  * @param with_neutrinos Are we running with neutrino particles?
  */
-INLINE static void neutrino_props_init(struct neutrino_props *np,
-                                       const struct phys_const *phys_const,
-                                       const struct unit_system *us,
-                                       struct swift_params *params,
-                                       const struct cosmology *cosmo,
+INLINE static void neutrino_props_init(struct neutrino_props* np,
+                                       const struct phys_const* phys_const,
+                                       const struct unit_system* us,
+                                       struct swift_params* params,
+                                       const struct cosmology* cosmo,
                                        const int with_neutrinos) {
 
   np->use_delta_f = parser_get_opt_param_int(params, "Neutrino:use_delta_f", 0);
@@ -91,10 +91,10 @@ INLINE static void neutrino_props_init(struct neutrino_props *np,
  * @param props the neutrino properties struct
  * @param stream the file stream
  */
-INLINE static void neutrino_struct_dump(const struct neutrino_props *props,
-                                        FILE *stream) {
+INLINE static void neutrino_struct_dump(const struct neutrino_props* props,
+                                        FILE* stream) {
 
-  restart_write_blocks((void *)props, sizeof(struct neutrino_props), 1, stream,
+  restart_write_blocks((void*)props, sizeof(struct neutrino_props), 1, stream,
                        "neutrino props", "Neutrino props");
 }
 
@@ -105,9 +105,9 @@ INLINE static void neutrino_struct_dump(const struct neutrino_props *props,
  * @param props the neutrino properties struct
  * @param stream the file stream
  */
-INLINE static void neutrino_struct_restore(const struct neutrino_props *props,
-                                           FILE *stream) {
-  restart_read_blocks((void *)props, sizeof(struct neutrino_props), 1, stream,
+INLINE static void neutrino_struct_restore(const struct neutrino_props* props,
+                                           FILE* stream) {
+  restart_read_blocks((void*)props, sizeof(struct neutrino_props), 1, stream,
                       NULL, "Neutrino props");
 }
 

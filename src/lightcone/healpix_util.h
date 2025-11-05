@@ -42,5 +42,5 @@ struct pixel_range {
 double healpix_max_pixrad(int nside);
 
 void healpix_query_disc_range(int nside, double vec[3], double radius,
-                              pixel_index_t *pix_min, pixel_index_t *pix_max,
-                              int *nr_ranges, struct pixel_range **range);
+                              pixel_index_t* pix_min, pixel_index_t* pix_max,
+                              int* nr_ranges, struct pixel_range** range);

@@ -40,16 +40,16 @@
  * @param filename The file to read.
  * @param cosmo The #cosmology model.
  */
-void output_list_read_file(struct output_list *output_list,
-                           const char *filename, struct cosmology *cosmo) {
+void output_list_read_file(struct output_list* output_list,
+                           const char* filename, struct cosmology* cosmo) {
 
   /* Open file */
-  FILE *file = fopen(filename, "r");
+  FILE* file = fopen(filename, "r");
   if (file == NULL) error("Error opening file '%s'", filename);
 
   /* Count number of lines */
   size_t len = 0;
-  char *line = NULL;
+  char* line = NULL;
   size_t nber_line = 0;
   while (getline(&line, &len, file) != -1) nber_line++;
 
@@ -57,10 +57,10 @@ void output_list_read_file(struct output_list *output_list,
 
   /* Return to start of file and initialize time array */
   fseek(file, 0, SEEK_SET);
-  output_list->times = (double *)malloc(sizeof(double) * output_list->size);
-  output_list->snapshot_labels = (int *)malloc(sizeof(int) * output_list->size);
+  output_list->times = (double*)malloc(sizeof(double) * output_list->size);
+  output_list->snapshot_labels = (int*)malloc(sizeof(int) * output_list->size);
   output_list->select_output_indices =
-      (int *)malloc(sizeof(int) * output_list->size);
+      (int*)malloc(sizeof(int) * output_list->size);
 
   if ((!output_list->times) || (!output_list->select_output_indices)) {
     error(
@@ -146,8 +146,8 @@ void output_list_read_file(struct output_list *output_list,
       select_output_header_default_name;
   while (getline(&line, &len, file) != -1) {
 
-    double *time = &output_list->times[ind];
-    int *label = &output_list->snapshot_labels[ind];
+    double* time = &output_list->times[ind];
+    int* label = &output_list->snapshot_labels[ind];
 
     /* Write data to output_list */
     if (output_list->select_output_on && output_list->alternative_labels_on) {
@@ -250,8 +250,8 @@ void output_list_read_file(struct output_list *output_list,
  * @param name The name of the output (e.g. 'stats', 'snapshots', 'stf')
  * @param ti_next updated to the next output time
  */
-void output_list_read_next_time(struct output_list *t, const struct engine *e,
-                                const char *name, integertime_t *ti_next) {
+void output_list_read_next_time(struct output_list* t, const struct engine* e,
+                                const char* name, integertime_t* ti_next) {
   int is_cosmo = e->policy & engine_policy_cosmology;
 
   /* Find upper-bound on last output */
@@ -340,8 +340,8 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
  * @param t The #output_list
  * @param select_output_name updated to the current Select Output choice.
  **/
-void output_list_get_current_select_output(struct output_list *t,
-                                           char *select_output_name) {
+void output_list_get_current_select_output(struct output_list* t,
+                                           char* select_output_name) {
   strcpy(select_output_name,
          t->select_output_names[t->select_output_indices[t->cur_ind]]);
 }
@@ -354,15 +354,15 @@ void output_list_get_current_select_output(struct output_list *t,
  * @param name The name of the section in the param file.
  * @param delta_time (return) The delta between the first two outputs
  */
-void output_list_init(struct output_list **list, const struct engine *e,
-                      const char *name, double *const delta_time) {
+void output_list_init(struct output_list** list, const struct engine* e,
+                      const char* name, double* const delta_time) {
 
-  struct swift_params *params = e->parameter_file;
+  struct swift_params* params = e->parameter_file;
 
   if (*list != NULL) error("Output list already allocated!");
 
   /* Get cosmo */
-  struct cosmology *cosmo = NULL;
+  struct cosmology* cosmo = NULL;
   if (e->policy & engine_policy_cosmology) cosmo = e->cosmology;
 
   /* Read output on/off */
@@ -374,7 +374,7 @@ void output_list_init(struct output_list **list, const struct engine *e,
   if (!output_list_on) return;
 
   /* Read output_list for snapshots */
-  *list = (struct output_list *)malloc(sizeof(struct output_list));
+  *list = (struct output_list*)malloc(sizeof(struct output_list));
   bzero(*list, sizeof(struct output_list));
   (*list)->output_list_on = output_list_on;
 
@@ -412,8 +412,8 @@ void output_list_init(struct output_list **list, const struct engine *e,
  * @param list the #output_list.
  * @param output_options The #output_options we read in earlier.
  */
-void output_list_check_selection(const struct output_list *list,
-                                 const struct output_options *output_options) {
+void output_list_check_selection(const struct output_list* list,
+                                 const struct output_options* output_options) {
 
   for (size_t i = 0; i < list->size; ++i) {
 
@@ -431,7 +431,7 @@ void output_list_check_selection(const struct output_list *list,
 /**
  * @brief Print an #output_list
  */
-void output_list_print(const struct output_list *output_list) {
+void output_list_print(const struct output_list* output_list) {
 
   printf("/*\t Total number of Select Output options: %d \t */\n",
          output_list->select_output_number_of_names);
@@ -458,7 +458,7 @@ void output_list_print(const struct output_list *output_list) {
 /**
  * @brief Clean an #output_list
  */
-void output_list_clean(struct output_list **output_list) {
+void output_list_clean(struct output_list** output_list) {
   if (*output_list) {
     free((*output_list)->times);
     free((*output_list)->snapshot_labels);
@@ -471,7 +471,7 @@ void output_list_clean(struct output_list **output_list) {
 /**
  * @brief Dump an #output_list in a restart file
  */
-void output_list_struct_dump(struct output_list *list, FILE *stream) {
+void output_list_struct_dump(struct output_list* list, FILE* stream) {
   restart_write_blocks(list, sizeof(struct output_list), 1, stream,
                        "output_list", "output_list struct");
 
@@ -488,19 +488,19 @@ void output_list_struct_dump(struct output_list *list, FILE *stream) {
 /**
  * @brief Restore an #output_list from a restart file
  */
-void output_list_struct_restore(struct output_list *list, FILE *stream) {
+void output_list_struct_restore(struct output_list* list, FILE* stream) {
   restart_read_blocks(list, sizeof(struct output_list), 1, stream, NULL,
                       "output_list struct");
 
-  list->times = (double *)malloc(sizeof(double) * list->size);
+  list->times = (double*)malloc(sizeof(double) * list->size);
   restart_read_blocks(list->times, list->size, sizeof(double), stream, NULL,
                       "times");
 
-  list->select_output_indices = (int *)malloc(sizeof(int) * list->size);
+  list->select_output_indices = (int*)malloc(sizeof(int) * list->size);
   restart_read_blocks(list->select_output_indices, list->size, sizeof(int),
                       stream, NULL, "select_output_indices");
 
-  list->snapshot_labels = (int *)malloc(sizeof(int) * list->size);
+  list->snapshot_labels = (int*)malloc(sizeof(int) * list->size);
   restart_read_blocks(list->snapshot_labels, list->size, sizeof(int), stream,
                       NULL, "snapshot_labels");
 }

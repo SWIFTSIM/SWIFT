@@ -31,7 +31,7 @@
 #define TOLERANCE 1e-6
 #define EXTERNAL_TOLERANCE 1e-5  // comparing against CLASS
 
-void test_params_init(struct swift_params *params, int testnr) {
+void test_params_init(struct swift_params* params, int testnr) {
   switch (testnr) {
     /* One doubly degenerate light neutrino (total 0.10 eV) and one massless */
     case 0:
@@ -97,20 +97,20 @@ void test_params_init(struct swift_params *params, int testnr) {
   parser_set_param(params, "InternalUnitSystem:UnitTemp_in_cgs:1");
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Load a CLASS data table of background quantities for cosmology 0 */
   const int rows = 51;
   const int cols = 3;
   double CLASS_table[rows * cols];
-  FILE *stream = fopen(argv[1], "r");
+  FILE* stream = fopen(argv[1], "r");
   if (stream == NULL) error("Could not open reference solution file!");
   char line[1024];
   int row = 0;
   while (fgets(line, 1024, stream)) {
     if (line[0] == '#') continue;
-    char *tmp = strdup(line);
-    char *ptr = NULL;
+    char* tmp = strdup(line);
+    char* ptr = NULL;
     CLASS_table[0 + row * 3] = strtod(tmp, &ptr);
     CLASS_table[1 + row * 3] = strtod(ptr + 1, &ptr);
     CLASS_table[2 + row * 3] = strtod(ptr + 1, &ptr);

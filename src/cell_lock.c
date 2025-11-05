@@ -34,7 +34,7 @@
  * @param c The #cell.
  * @return 0 on success, 1 on failure
  */
-int cell_locktree(struct cell *c) {
+int cell_locktree(struct cell* c) {
   TIMER_TIC;
 
   /* First of all, try to lock this cell. */
@@ -54,7 +54,7 @@ int cell_locktree(struct cell *c) {
   }
 
   /* Climb up the tree and lock/hold/unlock. */
-  struct cell *finger;
+  struct cell* finger;
   for (finger = c->parent; finger != NULL; finger = finger->parent) {
     /* Lock this cell. */
     if (lock_trylock(&finger->hydro.lock) != 0) break;
@@ -75,7 +75,7 @@ int cell_locktree(struct cell *c) {
   /* Otherwise, we hit a snag. */
   else {
     /* Undo the holds up to finger. */
-    for (struct cell *finger2 = c->parent; finger2 != finger;
+    for (struct cell* finger2 = c->parent; finger2 != finger;
          finger2 = finger2->parent)
       atomic_dec(&finger2->hydro.hold);
 
@@ -94,7 +94,7 @@ int cell_locktree(struct cell *c) {
  * @param c The #cell.
  * @return 0 on success, 1 on failure
  */
-int cell_glocktree(struct cell *c) {
+int cell_glocktree(struct cell* c) {
   TIMER_TIC;
 
   /* First of all, try to lock this cell. */
@@ -114,7 +114,7 @@ int cell_glocktree(struct cell *c) {
   }
 
   /* Climb up the tree and lock/hold/unlock. */
-  struct cell *finger;
+  struct cell* finger;
   for (finger = c->parent; finger != NULL; finger = finger->parent) {
     /* Lock this cell. */
     if (lock_trylock(&finger->grav.plock) != 0) break;
@@ -135,7 +135,7 @@ int cell_glocktree(struct cell *c) {
   /* Otherwise, we hit a snag. */
   else {
     /* Undo the holds up to finger. */
-    for (struct cell *finger2 = c->parent; finger2 != finger;
+    for (struct cell* finger2 = c->parent; finger2 != finger;
          finger2 = finger2->parent)
       atomic_dec(&finger2->grav.phold);
 
@@ -154,7 +154,7 @@ int cell_glocktree(struct cell *c) {
  * @param c The #cell.
  * @return 0 on success, 1 on failure
  */
-int cell_mlocktree(struct cell *c) {
+int cell_mlocktree(struct cell* c) {
   TIMER_TIC;
 
   /* First of all, try to lock this cell. */
@@ -174,7 +174,7 @@ int cell_mlocktree(struct cell *c) {
   }
 
   /* Climb up the tree and lock/hold/unlock. */
-  struct cell *finger;
+  struct cell* finger;
   for (finger = c->parent; finger != NULL; finger = finger->parent) {
     /* Lock this cell. */
     if (lock_trylock(&finger->grav.mlock) != 0) break;
@@ -195,7 +195,7 @@ int cell_mlocktree(struct cell *c) {
   /* Otherwise, we hit a snag. */
   else {
     /* Undo the holds up to finger. */
-    for (struct cell *finger2 = c->parent; finger2 != finger;
+    for (struct cell* finger2 = c->parent; finger2 != finger;
          finger2 = finger2->parent)
       atomic_dec(&finger2->grav.mhold);
 
@@ -214,7 +214,7 @@ int cell_mlocktree(struct cell *c) {
  * @param c The #cell.
  * @return 0 on success, 1 on failure
  */
-int cell_slocktree(struct cell *c) {
+int cell_slocktree(struct cell* c) {
   TIMER_TIC;
 
   /* First of all, try to lock this cell. */
@@ -234,7 +234,7 @@ int cell_slocktree(struct cell *c) {
   }
 
   /* Climb up the tree and lock/hold/unlock. */
-  struct cell *finger;
+  struct cell* finger;
   for (finger = c->parent; finger != NULL; finger = finger->parent) {
     /* Lock this cell. */
     if (lock_trylock(&finger->stars.lock) != 0) break;
@@ -255,7 +255,7 @@ int cell_slocktree(struct cell *c) {
   /* Otherwise, we hit a snag. */
   else {
     /* Undo the holds up to finger. */
-    for (struct cell *finger2 = c->parent; finger2 != finger;
+    for (struct cell* finger2 = c->parent; finger2 != finger;
          finger2 = finger2->parent)
       atomic_dec(&finger2->stars.hold);
 
@@ -274,7 +274,7 @@ int cell_slocktree(struct cell *c) {
  * @param c The #cell.
  * @return 0 on success, 1 on failure
  */
-int cell_sink_locktree(struct cell *c) {
+int cell_sink_locktree(struct cell* c) {
   TIMER_TIC;
 
   /* First of all, try to lock this cell. */
@@ -294,7 +294,7 @@ int cell_sink_locktree(struct cell *c) {
   }
 
   /* Climb up the tree and lock/hold/unlock. */
-  struct cell *finger;
+  struct cell* finger;
   for (finger = c->parent; finger != NULL; finger = finger->parent) {
     /* Lock this cell. */
     if (lock_trylock(&finger->sinks.lock) != 0) break;
@@ -315,7 +315,7 @@ int cell_sink_locktree(struct cell *c) {
   /* Otherwise, we hit a snag. */
   else {
     /* Undo the holds up to finger. */
-    for (struct cell *finger2 = c->parent; finger2 != finger;
+    for (struct cell* finger2 = c->parent; finger2 != finger;
          finger2 = finger2->parent)
       atomic_dec(&finger2->sinks.hold);
 
@@ -334,7 +334,7 @@ int cell_sink_locktree(struct cell *c) {
  * @param c The #cell.
  * @return 0 on success, 1 on failure
  */
-int cell_blocktree(struct cell *c) {
+int cell_blocktree(struct cell* c) {
   TIMER_TIC;
 
   /* First of all, try to lock this cell. */
@@ -354,7 +354,7 @@ int cell_blocktree(struct cell *c) {
   }
 
   /* Climb up the tree and lock/hold/unlock. */
-  struct cell *finger;
+  struct cell* finger;
   for (finger = c->parent; finger != NULL; finger = finger->parent) {
     /* Lock this cell. */
     if (lock_trylock(&finger->black_holes.lock) != 0) break;
@@ -376,7 +376,7 @@ int cell_blocktree(struct cell *c) {
   /* Otherwise, we hit a snag. */
   else {
     /* Undo the holds up to finger. */
-    for (struct cell *finger2 = c->parent; finger2 != finger;
+    for (struct cell* finger2 = c->parent; finger2 != finger;
          finger2 = finger2->parent)
       atomic_dec(&finger2->black_holes.hold);
 
@@ -394,14 +394,14 @@ int cell_blocktree(struct cell *c) {
  *
  * @param c The #cell.
  */
-void cell_unlocktree(struct cell *c) {
+void cell_unlocktree(struct cell* c) {
   TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->hydro.lock) != 0) error("Failed to unlock cell.");
 
   /* Climb up the tree and unhold the parents. */
-  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+  for (struct cell* finger = c->parent; finger != NULL; finger = finger->parent)
     atomic_dec(&finger->hydro.hold);
 
   TIMER_TOC(timer_locktree);
@@ -412,14 +412,14 @@ void cell_unlocktree(struct cell *c) {
  *
  * @param c The #cell.
  */
-void cell_gunlocktree(struct cell *c) {
+void cell_gunlocktree(struct cell* c) {
   TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->grav.plock) != 0) error("Failed to unlock cell.");
 
   /* Climb up the tree and unhold the parents. */
-  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+  for (struct cell* finger = c->parent; finger != NULL; finger = finger->parent)
     atomic_dec(&finger->grav.phold);
 
   TIMER_TOC(timer_locktree);
@@ -430,14 +430,14 @@ void cell_gunlocktree(struct cell *c) {
  *
  * @param c The #cell.
  */
-void cell_munlocktree(struct cell *c) {
+void cell_munlocktree(struct cell* c) {
   TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->grav.mlock) != 0) error("Failed to unlock cell.");
 
   /* Climb up the tree and unhold the parents. */
-  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+  for (struct cell* finger = c->parent; finger != NULL; finger = finger->parent)
     atomic_dec(&finger->grav.mhold);
 
   TIMER_TOC(timer_locktree);
@@ -448,14 +448,14 @@ void cell_munlocktree(struct cell *c) {
  *
  * @param c The #cell.
  */
-void cell_sunlocktree(struct cell *c) {
+void cell_sunlocktree(struct cell* c) {
   TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->stars.lock) != 0) error("Failed to unlock cell.");
 
   /* Climb up the tree and unhold the parents. */
-  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+  for (struct cell* finger = c->parent; finger != NULL; finger = finger->parent)
     atomic_dec(&finger->stars.hold);
 
   TIMER_TOC(timer_locktree);
@@ -466,14 +466,14 @@ void cell_sunlocktree(struct cell *c) {
  *
  * @param c The #cell.
  */
-void cell_sink_unlocktree(struct cell *c) {
+void cell_sink_unlocktree(struct cell* c) {
   TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->sinks.lock) != 0) error("Failed to unlock cell.");
 
   /* Climb up the tree and unhold the parents. */
-  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+  for (struct cell* finger = c->parent; finger != NULL; finger = finger->parent)
     atomic_dec(&finger->sinks.hold);
 
   TIMER_TOC(timer_locktree);
@@ -484,14 +484,14 @@ void cell_sink_unlocktree(struct cell *c) {
  *
  * @param c The #cell.
  */
-void cell_bunlocktree(struct cell *c) {
+void cell_bunlocktree(struct cell* c) {
   TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->black_holes.lock) != 0) error("Failed to unlock cell.");
 
   /* Climb up the tree and unhold the parents. */
-  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+  for (struct cell* finger = c->parent; finger != NULL; finger = finger->parent)
     atomic_dec(&finger->black_holes.hold);
 
   TIMER_TOC(timer_locktree);

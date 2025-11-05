@@ -33,8 +33,8 @@
 #include "version.h"
 
 struct exact_density_data {
-  const struct engine *e;
-  const struct space *s;
+  const struct engine* e;
+  const struct space* s;
   int counter_global;
   int check_force;
 };
@@ -47,15 +47,15 @@ struct exact_density_data {
  * @brief extra_data Pointers to the structure containing global interaction
  * counters.
  */
-void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
-                                        void *extra_data) {
+void hydro_exact_density_compute_mapper(void* map_data, int nr_parts,
+                                        void* extra_data) {
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
 
   /* Unpack the data */
-  struct part *restrict parts = (struct part *)map_data;
-  struct exact_density_data *data = (struct exact_density_data *)extra_data;
-  const struct space *s = data->s;
-  const struct engine *e = data->e;
+  struct part* restrict parts = (struct part*)map_data;
+  struct exact_density_data* data = (struct exact_density_data*)extra_data;
+  const struct space* s = data->s;
+  const struct engine* e = data->e;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int check_force = data->check_force;
@@ -63,7 +63,7 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
 
   for (int i = 0; i < nr_parts; ++i) {
 
-    struct part *pi = &parts[i];
+    struct part* pi = &parts[i];
     const long long id = pi->id;
 
     /* Is the particle active and part of the subset to be tested ? */
@@ -89,7 +89,7 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
       /* Interact it with all other particles in the space.*/
       for (int j = 0; j < (int)s->nr_parts; ++j) {
 
-        const struct part *pj = &s->parts[j];
+        const struct part* pj = &s->parts[j];
         const double hj = pj->h;
         const float hj_inv = 1.f / hj;
         const float hjg2 = hj * hj * kernel_gamma2;
@@ -205,7 +205,7 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
  * @param e The #engine.
  * @param check_force Whether or not to run checks also for the force loop.
  */
-void hydro_exact_density_compute(struct space *s, const struct engine *e,
+void hydro_exact_density_compute(struct space* s, const struct engine* e,
                                  const int check_force) {
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
@@ -239,14 +239,14 @@ void hydro_exact_density_compute(struct space *s, const struct engine *e,
  * @param rel_tol Relative tolerance for the checks
  * @param check_force Whether or not to run checks also for the force loop.
  */
-void hydro_exact_density_check(struct space *s, const struct engine *e,
+void hydro_exact_density_check(struct space* s, const struct engine* e,
                                const float rel_tol, const int check_force) {
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
 
   const ticks tic = getticks();
 
-  const struct part *parts = s->parts;
+  const struct part* parts = s->parts;
   const size_t nr_parts = s->nr_parts;
 
   const int with_limiter = e->policy & engine_policy_timestep_limiter;
@@ -265,7 +265,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   sprintf(file_name_swift, "hydro_checks_swift_step%.4d.dat", e->step);
 
   /* Creare files and write header */
-  FILE *file_swift = fopen(file_name_swift, "w");
+  FILE* file_swift = fopen(file_name_swift, "w");
   if (file_swift == NULL) error("Could not create file '%s'.", file_name_swift);
   fprintf(file_swift, "# Hydro accuracy test - SWIFT DENSITIES\n");
   fprintf(file_swift, "# N= %d\n", SWIFT_HYDRO_DENSITY_CHECKS);
@@ -283,7 +283,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   /* Output particle SWIFT densities */
   for (size_t i = 0; i < nr_parts; ++i) {
 
-    const struct part *pi = &parts[i];
+    const struct part* pi = &parts[i];
     const long long id = pi->id;
     if (pi->limited_part) continue;
 
@@ -312,7 +312,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   sprintf(file_name_exact, "hydro_checks_exact_step%.4d.dat", e->step);
 
   /* Creare files and write header */
-  FILE *file_exact = fopen(file_name_exact, "w");
+  FILE* file_exact = fopen(file_name_exact, "w");
   if (file_exact == NULL) error("Could not create file '%s'.", file_name_exact);
   fprintf(file_exact, "# Hydro accuracy test - EXACT DENSITIES\n");
   fprintf(file_exact, "# N= %d\n", SWIFT_HYDRO_DENSITY_CHECKS);
@@ -338,7 +338,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   /* Output particle SWIFT densities */
   for (size_t i = 0; i < nr_parts; ++i) {
 
-    const struct part *pi = &parts[i];
+    const struct part* pi = &parts[i];
     const long long id = pi->id;
     const int found_inhibited = pi->inhibited_exact;
     const int h_max_limited = pi->h >= 0.99 * h_max;

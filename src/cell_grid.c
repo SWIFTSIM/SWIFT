@@ -34,7 +34,7 @@
  *
  * @param c The #cell.
  */
-void cell_free_grid_rec(struct cell *c) {
+void cell_free_grid_rec(struct cell* c) {
 
 #ifndef MOVING_MESH
   /* Nothing to do as we have no tessellations */
@@ -74,7 +74,7 @@ void cell_free_grid_rec(struct cell *c) {
  * @param force Whether to forcefully recompute the completeness if it was not
  * invalidated.
  * */
-void cell_grid_update_self_completeness(struct cell *c, int force) {
+void cell_grid_update_self_completeness(struct cell* c, int force) {
   if (c == NULL) return;
   if (!force && (c->grid.self_completeness != grid_invalidated_completeness))
     return;
@@ -118,7 +118,7 @@ void cell_grid_update_self_completeness(struct cell *c, int force) {
 #endif
   int flags = 0;
   for (int i = 0; flags != criterion && i < c->hydro.count; i++) {
-    struct part *p = &c->hydro.parts[i];
+    struct part* p = &c->hydro.parts[i];
     int x_bin = (int)(3. * (p->x[0] - c->loc[0]) / c->width[0]);
     int y_bin = (int)(3. * (p->x[1] - c->loc[1]) / c->width[1]);
     int z_bin = (int)(3. * (p->x[2] - c->loc[2]) / c->width[2]);
@@ -145,14 +145,14 @@ void cell_grid_update_self_completeness(struct cell *c, int force) {
  * This function recomputes the self_completeness flag for all cells containing
  * particles.
  */
-void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
-                                            void *extra_data) {
+void cell_grid_set_self_completeness_mapper(void* map_data, int num_elements,
+                                            void* extra_data) {
   /* Extract the engine pointer. */
-  struct engine *e = (struct engine *)extra_data;
+  struct engine* e = (struct engine*)extra_data;
 
-  struct space *s = e->s;
+  struct space* s = e->s;
   const int nodeID = e->nodeID;
-  struct cell *cells = s->cells_top;
+  struct cell* cells = s->cells_top;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -160,7 +160,7 @@ void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
     const int cid = (size_t)(map_data) + ind;
 
     /* Get the cell */
-    struct cell *c = &cells[cid];
+    struct cell* c = &cells[cid];
 
     /* A top level cell can be empty in 1D and 2D simulations, just skip it */
     if (c->hydro.count == 0) {
@@ -193,9 +193,9 @@ void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
  * @param sid The sort_id (direction) of the pair.
  * @param e The #engine.
  * */
-void cell_grid_set_pair_completeness(struct cell *restrict ci,
-                                     struct cell *restrict cj, int sid,
-                                     const struct engine *e) {
+void cell_grid_set_pair_completeness(struct cell* restrict ci,
+                                     struct cell* restrict cj, int sid,
+                                     const struct engine* e) {
 
   int ci_local = ci->nodeID == e->nodeID;
   int cj_local = cj != NULL ? cj->nodeID == e->nodeID : 0;
@@ -233,8 +233,8 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
     if (ci->split && cj->split) {
       /* recurse */
       for (int i = 0; i < pairs.count; i++) {
-        struct cell *ci_sub = ci->progeny[pairs.pairs[i].pid];
-        struct cell *cj_sub = cj->progeny[pairs.pairs[i].pjd];
+        struct cell* ci_sub = ci->progeny[pairs.pairs[i].pid];
+        struct cell* cj_sub = cj->progeny[pairs.pairs[i].pjd];
         if (ci_sub == NULL || cj_sub == NULL) continue;
         double shift[3];
         int sid_sub =
@@ -283,16 +283,16 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
  * self_complete. The Voronoi grid may be constructed at any level in the AMR
  * tree as long as the cell at that level is complete.
  * */
-void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
-                                       void *extra_data) {
+void cell_set_grid_completeness_mapper(void* map_data, int num_elements,
+                                       void* extra_data) {
   /* Extract the engine pointer. */
-  struct engine *e = (struct engine *)extra_data;
+  struct engine* e = (struct engine*)extra_data;
   const int periodic = e->s->periodic;
 
-  struct space *s = e->s;
+  struct space* s = e->s;
   const int nodeID = e->nodeID;
-  const int *cdim = s->cdim;
-  struct cell *cells = s->cells_top;
+  const int* cdim = s->cdim;
+  struct cell* cells = s->cells_top;
 
   /* Loop through the elements, which are just byte offsets from NULL, to set
    * the neighbour flags. */
@@ -306,7 +306,7 @@ void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
     const int k = cid % cdim[2];
 
     /* Get the cell */
-    struct cell *ci = &cells[cid];
+    struct cell* ci = &cells[cid];
 
     /* Anything to do here? */
     if (ci->hydro.count == 0) continue;
@@ -333,7 +333,7 @@ void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
 
           /* Get the neighbouring cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
-          struct cell *cj = &cells[cjd];
+          struct cell* cj = &cells[cjd];
 
           /* Treat pairs only once. */
           const int cj_local = cj->nodeID == nodeID;
@@ -371,8 +371,8 @@ void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
  * construction level, or a pointer to the parent-cell of c at the construction
  * level.
  */
-void cell_set_grid_construction_level(struct cell *c,
-                                      struct cell *construction_level) {
+void cell_set_grid_construction_level(struct cell* c,
+                                      struct cell* construction_level) {
 
   /* Above construction level? */
   if (construction_level == NULL) {
@@ -410,14 +410,14 @@ void cell_set_grid_construction_level(struct cell *c,
     }
 }
 
-void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
-                                             void *extra_data) {
+void cell_set_grid_construction_level_mapper(void* map_data, int num_elements,
+                                             void* extra_data) {
   /* Extract the engine pointer. */
-  struct engine *e = (struct engine *)extra_data;
+  struct engine* e = (struct engine*)extra_data;
 
-  struct space *s = e->s;
+  struct space* s = e->s;
   const int nodeID = e->nodeID;
-  struct cell *cells = s->cells_top;
+  struct cell* cells = s->cells_top;
 
   /* Loop through the elements, which are just byte offsets from NULL, to set
    * the neighbour flags. */
@@ -427,7 +427,7 @@ void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
     const int cid = (size_t)(map_data) + ind;
 
     /* Get the cell */
-    struct cell *ci = &cells[cid];
+    struct cell* ci = &cells[cid];
 
     /* Anything to do here? */
     if (ci->hydro.count == 0) continue;

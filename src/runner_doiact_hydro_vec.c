@@ -59,11 +59,11 @@ static const vector kernel_gamma2_vec = FILL_VEC(kernel_gamma2);
  * interactions have been performed, should be a multiple of the vector length.
  */
 __attribute__((always_inline)) INLINE static void calcRemInteractions(
-    struct c2_cache *const int_cache, const int icount, vector *v_rhoSum,
-    vector *v_rho_dhSum, vector *v_wcountSum, vector *v_wcount_dhSum,
-    vector *v_div_vSum, vector *v_curlvxSum, vector *v_curlvySum,
-    vector *v_curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy,
-    vector v_viz, int *icount_align) {
+    struct c2_cache* const int_cache, const int icount, vector* v_rhoSum,
+    vector* v_rho_dhSum, vector* v_wcountSum, vector* v_wcount_dhSum,
+    vector* v_div_vSum, vector* v_curlvxSum, vector* v_curlvySum,
+    vector* v_curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy,
+    vector v_viz, int* icount_align) {
 
   /* Work out the number of remainder interactions and pad secondary cache. */
   *icount_align = icount;
@@ -152,12 +152,12 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
  * @param v_viz #vector of z velocity of pi.
  */
 __attribute__((always_inline)) INLINE static void storeInteractions(
-    const int mask, const int pjd, vector *v_r2, vector *v_dx, vector *v_dy,
-    vector *v_dz, const struct cache *const cell_cache,
-    struct c2_cache *const int_cache, int *icount, vector *v_rhoSum,
-    vector *v_rho_dhSum, vector *v_wcountSum, vector *v_wcount_dhSum,
-    vector *v_div_vSum, vector *v_curlvxSum, vector *v_curlvySum,
-    vector *v_curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy,
+    const int mask, const int pjd, vector* v_r2, vector* v_dx, vector* v_dy,
+    vector* v_dz, const struct cache* const cell_cache,
+    struct c2_cache* const int_cache, int* icount, vector* v_rhoSum,
+    vector* v_rho_dhSum, vector* v_wcountSum, vector* v_wcount_dhSum,
+    vector* v_div_vSum, vector* v_curlvxSum, vector* v_curlvySum,
+    vector* v_curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy,
     vector v_viz) {
 
 /* Left-pack values needed into the secondary cache using the interaction mask.
@@ -259,16 +259,16 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
  * @param active_cj Is any particle in cell cj active?
  */
 __attribute__((always_inline)) INLINE static void populate_max_index_density(
-    const struct cell *ci, const struct cell *cj,
-    const struct sort_entry *restrict sort_i,
-    const struct sort_entry *restrict sort_j, const float dx_max,
+    const struct cell* ci, const struct cell* cj,
+    const struct sort_entry* restrict sort_i,
+    const struct sort_entry* restrict sort_j, const float dx_max,
     const float rshift, const double hi_max, const double hj_max,
-    const double di_max, const double dj_min, int *max_index_i,
-    int *max_index_j, int *init_pi, int *init_pj,
+    const double di_max, const double dj_min, int* max_index_i,
+    int* max_index_j, int* init_pi, int* init_pj,
     const timebin_t max_active_bin, const int active_ci, const int active_cj) {
 
-  const struct part *restrict parts_i = ci->hydro.parts;
-  const struct part *restrict parts_j = cj->hydro.parts;
+  const struct part* restrict parts_i = ci->hydro.parts;
+  const struct part* restrict parts_j = cj->hydro.parts;
 
   int first_pi = 0, last_pj = cj->hydro.count - 1;
   int temp, active_id;
@@ -297,7 +297,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
       /* Start from the first particle in cell j. */
       temp = 0;
 
-      const struct part *pi = &parts_i[sort_i[first_pi].i];
+      const struct part* pi = &parts_i[sort_i[first_pi].i];
       const float first_di =
           sort_i[first_pi].d + pi->h * kernel_gamma + dx_max - rshift;
 
@@ -355,7 +355,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
       /* Start from the last particle in cell i. */
       temp = ci->hydro.count - 1;
 
-      const struct part *pj = &parts_j[sort_j[last_pj].i];
+      const struct part* pj = &parts_j[sort_j[last_pj].i];
       const float last_dj =
           sort_j[last_pj].d - dx_max - pj->h * kernel_gamma + rshift;
 
@@ -419,16 +419,16 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
  * @param active_cj Is any particle in cell cj active?
  */
 __attribute__((always_inline)) INLINE static void populate_max_index_force(
-    const struct cell *ci, const struct cell *cj,
-    const struct sort_entry *restrict sort_i,
-    const struct sort_entry *restrict sort_j, const float dx_max,
+    const struct cell* ci, const struct cell* cj,
+    const struct sort_entry* restrict sort_i,
+    const struct sort_entry* restrict sort_j, const float dx_max,
     const float rshift, const double hi_max_raw, const double hj_max_raw,
     const double h_max, const double di_max, const double dj_min,
-    int *max_index_i, int *max_index_j, int *init_pi, int *init_pj,
+    int* max_index_i, int* max_index_j, int* init_pi, int* init_pj,
     const timebin_t max_active_bin, const int active_ci, const int active_cj) {
 
-  const struct part *restrict parts_i = ci->hydro.parts;
-  const struct part *restrict parts_j = cj->hydro.parts;
+  const struct part* restrict parts_i = ci->hydro.parts;
+  const struct part* restrict parts_j = cj->hydro.parts;
 
   int first_pi = 0, last_pj = cj->hydro.count - 1;
   int temp, active_id;
@@ -457,7 +457,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
       /* Start from the first particle in cell j. */
       temp = 0;
 
-      const struct part *pi = &parts_i[sort_i[first_pi].i];
+      const struct part* pi = &parts_i[sort_i[first_pi].i];
       const float first_di = sort_i[first_pi].d +
                              max(pi->h, hj_max_raw) * kernel_gamma + dx_max -
                              rshift;
@@ -517,7 +517,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
       /* Start from the last particle in cell i. */
       temp = ci->hydro.count - 1;
 
-      const struct part *pj = &parts_j[sort_j[last_pj].i];
+      const struct part* pj = &parts_j[sort_j[last_pj].i];
       const float last_dj = sort_j[last_pj].d - dx_max -
                             max(pj->h, hi_max_raw) * kernel_gamma + rshift;
 
@@ -579,11 +579,11 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
  * depending whether the cells have been flipped or not.
  */
 __attribute__((always_inline)) INLINE static int populate_max_index_subset(
-    const int count_i, const int count_j, struct part *restrict parts_i,
-    int *restrict ind, const double *total_ci_shift, const float dxj,
+    const int count_i, const int count_j, struct part* restrict parts_i,
+    int* restrict ind, const double* total_ci_shift, const float dxj,
     const double di_shift_correction, const double runner_shift_x,
     const double runner_shift_y, const double runner_shift_z,
-    const struct sort_entry *restrict sort_j, int *max_index_i,
+    const struct sort_entry* restrict sort_j, int* max_index_i,
     const int flipped) {
 
   /* The cell is on the right so read the particles
@@ -595,7 +595,7 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
     int last_pj = 0;
 
     for (int pid = 0; pid < count_i; pid++) {
-      struct part *restrict pi = &parts_i[ind[pid]];
+      struct part* restrict pi = &parts_i[ind[pid]];
       const float pix = pi->x[0] - total_ci_shift[0];
       const float piy = pi->x[1] - total_ci_shift[1];
       const float piz = pi->x[2] - total_ci_shift[2];
@@ -619,7 +619,7 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
     int first_pj = count_j - 1;
 
     for (int pid = 0; pid < count_i; pid++) {
-      struct part *restrict pi = &parts_i[ind[pid]];
+      struct part* restrict pi = &parts_i[ind[pid]];
       const float pix = pi->x[0] - total_ci_shift[0];
       const float piy = pi->x[1] - total_ci_shift[1];
       const float piz = pi->x[2] - total_ci_shift[2];
@@ -646,13 +646,13 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
  * @param r The #runner.
  * @param c The #cell.
  */
-void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
+void runner_doself1_density_vec(struct runner* r, struct cell* restrict c) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
   /* Get some local variables */
-  const struct engine *e = r->e;
-  struct part *restrict parts = c->hydro.parts;
+  const struct engine* e = r->e;
+  struct part* restrict parts = c->hydro.parts;
   const int count = c->hydro.count;
 
   TIMER_TIC;
@@ -673,7 +673,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
-  struct cache *restrict cell_cache = &r->ci_cache;
+  struct cache* restrict cell_cache = &r->ci_cache;
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
@@ -686,7 +686,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
   for (int pid = 0; pid < count; pid++) {
 
     /* Get a pointer to the ith particle. */
-    struct part *restrict pi = &parts[pid];
+    struct part* restrict pi = &parts[pid];
 
     /* Is the i^th particle active? */
     if (!part_is_active(pi, e)) continue;
@@ -881,9 +881,9 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
  * @param ind The list of indices of particles in @c c to interact with.
  * @param pi_count The number of particles in @c ind.
  */
-void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
-                                      struct part *restrict parts,
-                                      int *restrict ind, int pi_count) {
+void runner_doself_subset_density_vec(struct runner* r, struct cell* restrict c,
+                                      struct part* restrict parts,
+                                      int* restrict ind, int pi_count) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
@@ -893,7 +893,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
-  struct cache *restrict cell_cache = &r->ci_cache;
+  struct cache* restrict cell_cache = &r->ci_cache;
 
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
@@ -907,10 +907,10 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
   for (int pid = 0; pid < pi_count; pid++) {
 
     /* Get a pointer to the ith particle. */
-    struct part *pi = &parts[ind[pid]];
+    struct part* pi = &parts[ind[pid]];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    const struct engine *e = r->e;
+    const struct engine* e = r->e;
     if (!part_is_active(pi, e)) error("Inactive particle in subset function!");
 #endif
 
@@ -1000,7 +1000,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Verify that we have no inhibited particles in the interaction cache */
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-        struct part *restrict parts_i = c->hydro.parts;
+        struct part* restrict parts_i = c->hydro.parts;
 
         if (doi_mask & (1 << bit_index)) {
           if (parts_i[pjd + bit_index].time_bin >= time_bin_inhibited) {
@@ -1009,7 +1009,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
         }
       }
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-        struct part *restrict parts_i = c->hydro.parts;
+        struct part* restrict parts_i = c->hydro.parts;
 
         if (doi_mask2 & (1 << bit_index)) {
           if (parts_i[pjd + VEC_SIZE + bit_index].time_bin >=
@@ -1022,7 +1022,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
 
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-        struct part *restrict parts_i = c->hydro.parts;
+        struct part* restrict parts_i = c->hydro.parts;
 
         if (doi_mask & (1 << bit_index)) {
           if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
@@ -1112,13 +1112,13 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
  * @param r The #runner.
  * @param c The #cell.
  */
-void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
+void runner_doself2_force_vec(struct runner* r, struct cell* restrict c) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
-  const struct engine *e = r->e;
-  const struct cosmology *restrict cosmo = e->cosmology;
-  struct part *restrict parts = c->hydro.parts;
+  const struct engine* e = r->e;
+  const struct cosmology* restrict cosmo = e->cosmology;
+  struct part* restrict parts = c->hydro.parts;
   const int count = c->hydro.count;
 
   TIMER_TIC;
@@ -1138,7 +1138,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
-  struct cache *restrict cell_cache = &r->ci_cache;
+  struct cache* restrict cell_cache = &r->ci_cache;
 
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
@@ -1153,7 +1153,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
   for (int pid = 0; pid < count; pid++) {
 
     /* Get a pointer to the ith particle. */
-    struct part *restrict pi = &parts[pid];
+    struct part* restrict pi = &parts[pid];
 
     /* Is the i^th particle active? */
     if (!part_is_active(pi, e)) continue;
@@ -1302,13 +1302,13 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
  * @param sid The direction of the pair
  * @param shift The shift vector to apply to the particles in ci.
  */
-void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
-                                struct cell *cj, const int sid,
-                                const double *shift) {
+void runner_dopair1_density_vec(struct runner* r, struct cell* ci,
+                                struct cell* cj, const int sid,
+                                const double* shift) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
-  const struct engine *restrict e = r->e;
+  const struct engine* restrict e = r->e;
   const timebin_t max_active_bin = e->max_active_bin;
 
   TIMER_TIC;
@@ -1322,16 +1322,16 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
-  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
+  const struct sort_entry* restrict sort_i = cell_get_hydro_sorts(ci, sid);
+  const struct sort_entry* restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
   /* Get some other useful values. */
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
   const double hi_max = ci->hydro.h_max * kernel_gamma - rshift;
   const double hj_max = cj->hydro.h_max * kernel_gamma;
-  struct part *restrict parts_i = ci->hydro.parts;
-  struct part *restrict parts_j = cj->hydro.parts;
+  struct part* restrict parts_i = ci->hydro.parts;
+  struct part* restrict parts_j = cj->hydro.parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
@@ -1356,7 +1356,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (active_ci) {
     for (int pid = count_i - 1;
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
-      const struct part *restrict pi = &parts_i[sort_i[pid].i];
+      const struct part* restrict pi = &parts_i[sort_i[pid].i];
       if (part_is_active_no_debug(pi, max_active_bin)) {
         numActive++;
         break;
@@ -1367,7 +1367,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (!numActive && active_cj) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
          pjd++) {
-      const struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      const struct part* restrict pj = &parts_j[sort_j[pjd].i];
       if (part_is_active_no_debug(pj, max_active_bin)) {
         numActive++;
         break;
@@ -1380,8 +1380,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   /* Get both particle caches from the runner and re-allocate
    * them if they are not big enough for the cells. */
-  struct cache *restrict ci_cache = &r->ci_cache;
-  struct cache *restrict cj_cache = &r->cj_cache;
+  struct cache* restrict ci_cache = &r->ci_cache;
+  struct cache* restrict cj_cache = &r->cj_cache;
   if (ci_cache->count < count_i) cache_init(ci_cache, count_i);
   if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
@@ -1422,7 +1422,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
     for (int pid = count_i - 1; pid >= first_pi_loop; pid--) {
 
       /* Get a hold of the ith part in ci. */
-      struct part *restrict pi = &parts_i[sort_i[pid].i];
+      struct part* restrict pi = &parts_i[sort_i[pid].i];
       if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
       /* Set the cache index. */
@@ -1556,7 +1556,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
     for (int pjd = 0; pjd < last_pj_loop_end; pjd++) {
 
       /* Get a hold of the jth part in cj. */
-      struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      struct part* restrict pj = &parts_j[sort_j[pjd].i];
       if (!part_is_active_no_debug(pj, max_active_bin)) continue;
 
       /* Set the cache index. */
@@ -1714,12 +1714,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
  * @param flipped Flag to check whether the cells have been flipped or not.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void runner_dopair_subset_density_vec(struct runner *r,
-                                      struct cell *restrict ci,
-                                      struct part *restrict parts_i,
-                                      int *restrict ind, int count,
-                                      struct cell *restrict cj, const int sid,
-                                      const int flipped, const double *shift) {
+void runner_dopair_subset_density_vec(struct runner* r,
+                                      struct cell* restrict ci,
+                                      struct part* restrict parts_i,
+                                      int* restrict ind, int count,
+                                      struct cell* restrict cj, const int sid,
+                                      const int flipped, const double* shift) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
@@ -1728,12 +1728,12 @@ void runner_dopair_subset_density_vec(struct runner *r,
   const int count_j = cj->hydro.count;
 
   /* Pick-out the sorted lists. */
-  const struct sort_entry *sort_j = cell_get_hydro_sorts(cj, sid);
+  const struct sort_entry* sort_j = cell_get_hydro_sorts(cj, sid);
   const float dxj = cj->hydro.dx_max_sort;
 
   /* Get both particle caches from the runner and re-allocate
    * them if they are not big enough for the cells. */
-  struct cache *restrict cj_cache = &r->cj_cache;
+  struct cache* restrict cj_cache = &r->cj_cache;
 
   if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
@@ -1754,7 +1754,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
   double rshift = 0.0;
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
-  int *restrict max_index_i SWIFT_CACHE_ALIGN;
+  int* restrict max_index_i SWIFT_CACHE_ALIGN;
   max_index_i = r->ci_cache.max_index;
 
   /* Parts are on the left? */
@@ -1774,7 +1774,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
     for (int pid = 0; pid < count; pid++) {
 
       /* Get a hold of the ith part in ci. */
-      struct part *restrict pi = &parts_i[ind[pid]];
+      struct part* restrict pi = &parts_i[ind[pid]];
       const float pix = pi->x[0] - total_ci_shift[0];
       const float piy = pi->x[1] - total_ci_shift[1];
       const float piz = pi->x[2] - total_ci_shift[2];
@@ -1842,7 +1842,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
         /* Verify that we have no inhibited particles in the interaction cache
          */
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          struct part *restrict parts_j = cj->hydro.parts;
+          struct part* restrict parts_j = cj->hydro.parts;
 
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if ((pjd + bit_index < count_j) &&
@@ -1857,7 +1857,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
 
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          struct part *restrict parts_j = cj->hydro.parts;
+          struct part* restrict parts_j = cj->hydro.parts;
 
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
@@ -1914,7 +1914,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
     for (int pid = 0; pid < count; pid++) {
 
       /* Get a hold of the ith part in ci. */
-      struct part *restrict pi = &parts_i[ind[pid]];
+      struct part* restrict pi = &parts_i[ind[pid]];
       const float pix = pi->x[0] - total_ci_shift[0];
       const float piy = pi->x[1] - total_ci_shift[1];
       const float piz = pi->x[2] - total_ci_shift[2];
@@ -1990,7 +1990,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
         /* Verify that we have no inhibited particles in the interaction cache
          */
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          struct part *restrict parts_j = cj->hydro.parts;
+          struct part* restrict parts_j = cj->hydro.parts;
 
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if ((cj_cache_idx + bit_index < count_j) &&
@@ -2005,7 +2005,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
 
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          struct part *restrict parts_j = cj->hydro.parts;
+          struct part* restrict parts_j = cj->hydro.parts;
 
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
@@ -2056,14 +2056,14 @@ void runner_dopair_subset_density_vec(struct runner *r,
  * @param sid The direction of the pair
  * @param shift The shift vector to apply to the particles in ci.
  */
-void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
-                              struct cell *cj, const int sid,
-                              const double *shift) {
+void runner_dopair2_force_vec(struct runner* r, struct cell* ci,
+                              struct cell* cj, const int sid,
+                              const double* shift) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
-  const struct engine *restrict e = r->e;
-  const struct cosmology *restrict cosmo = e->cosmology;
+  const struct engine* restrict e = r->e;
+  const struct cosmology* restrict cosmo = e->cosmology;
   const timebin_t max_active_bin = e->max_active_bin;
 
   TIMER_TIC;
@@ -2077,8 +2077,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
-  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
+  const struct sort_entry* restrict sort_i = cell_get_hydro_sorts(ci, sid);
+  const struct sort_entry* restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
   /* Get some other useful values. */
   const int count_i = ci->hydro.count;
@@ -2087,8 +2087,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const double hj_max = cj->hydro.h_max * kernel_gamma;
   const double hi_max_raw = ci->hydro.h_max;
   const double hj_max_raw = cj->hydro.h_max;
-  struct part *restrict parts_i = ci->hydro.parts;
-  struct part *restrict parts_j = cj->hydro.parts;
+  struct part* restrict parts_i = ci->hydro.parts;
+  struct part* restrict parts_j = cj->hydro.parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
@@ -2121,7 +2121,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   if (active_ci) {
     for (int pid = count_i - 1;
          pid >= 0 && sort_i[pid].d + h_max + dx_max > dj_min; pid--) {
-      const struct part *restrict pi = &parts_i[sort_i[pid].i];
+      const struct part* restrict pi = &parts_i[sort_i[pid].i];
       if (part_is_active_no_debug(pi, max_active_bin)) {
         numActive++;
         break;
@@ -2132,7 +2132,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   if (!numActive && active_cj) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - h_max - dx_max < di_max;
          pjd++) {
-      const struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      const struct part* restrict pj = &parts_j[sort_j[pjd].i];
       if (part_is_active_no_debug(pj, max_active_bin)) {
         numActive++;
         break;
@@ -2145,8 +2145,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
   /* Get both particle caches from the runner and re-allocate
    * them if they are not big enough for the cells. */
-  struct cache *restrict ci_cache = &r->ci_cache;
-  struct cache *restrict cj_cache = &r->cj_cache;
+  struct cache* restrict ci_cache = &r->ci_cache;
+  struct cache* restrict cj_cache = &r->cj_cache;
   if (ci_cache->count < count_i) cache_init(ci_cache, count_i);
   if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
@@ -2187,7 +2187,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
     for (int pid = count_i - 1; pid >= first_pi_loop; pid--) {
 
       /* Get a hold of the ith part in ci. */
-      struct part *restrict pi = &parts_i[sort_i[pid].i];
+      struct part* restrict pi = &parts_i[sort_i[pid].i];
       if (!part_is_active(pi, e)) continue;
 
       /* Set the cache index. */
@@ -2334,7 +2334,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
     for (int pjd = 0; pjd < last_pj_loop_end; pjd++) {
 
       /* Get a hold of the jth part in cj. */
-      struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      struct part* restrict pj = &parts_j[sort_j[pjd].i];
       if (!part_is_active(pj, e)) continue;
 
       /* Set the cache index. */

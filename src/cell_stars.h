@@ -41,49 +41,49 @@ struct cell_stars {
 #endif
 
     /*! Pointer to the #spart data. */
-    struct spart *parts;
+    struct spart* parts;
 
     /*! Pointer to the #spart data at rebuild time. */
-    struct spart *parts_rebuild;
+    struct spart* parts_rebuild;
 
     /*! The star ghost task itself */
-    struct task *density_ghost;
+    struct task* density_ghost;
 
     /*! The first star ghost task related to kinetic feedback */
-    struct task *prep1_ghost;
+    struct task* prep1_ghost;
 
     /*! The second star ghost task related to kinetic feedback */
-    struct task *prep2_ghost;
+    struct task* prep2_ghost;
 
     /*! Linked list of the tasks computing this cell's star density. */
-    struct link *density;
+    struct link* density;
 
     /*! Linked list of the tasks computing this cell's star 1st prep for kinetic
      * feedback. */
-    struct link *prepare1;
+    struct link* prepare1;
 
     /*! Linked list of the tasks computing this cell's star 2nd prep for kinetic
      * feedback. */
-    struct link *prepare2;
+    struct link* prepare2;
 
     /*! Linked list of the tasks computing this cell's star feedback. */
-    struct link *feedback;
+    struct link* feedback;
 
     /*! The task computing this cell's sorts before the density. */
-    struct task *sorts;
+    struct task* sorts;
 
     /*! The drift task for sparts */
-    struct task *drift;
+    struct task* drift;
 
     /*! Implicit tasks marking the entry of the stellar physics block of tasks
      */
-    struct task *stars_in;
+    struct task* stars_in;
 
     /*! Implicit tasks marking the exit of the stellar physics block of tasks */
-    struct task *stars_out;
+    struct task* stars_out;
 
     /*! Pointer for the sorted indices. */
-    struct sort_entry *sort;
+    struct sort_entry* sort;
 
     /*! Last (integer) time the cell's spart were drifted forward in time. */
     integertime_t ti_old_part;

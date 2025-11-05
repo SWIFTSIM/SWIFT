@@ -77,7 +77,7 @@ float test_cone(int64_t id_bh, const integertime_t ti_current,
   return cos_rand_unit;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

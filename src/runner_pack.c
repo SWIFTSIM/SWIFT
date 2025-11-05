@@ -40,14 +40,14 @@
  * @param buffer The array to allocate and fill.
  * @param timer Are we timing this ?
  */
-void runner_do_pack_limiter(struct runner *r, struct cell *c, void **buffer,
+void runner_do_pack_limiter(struct runner* r, struct cell* c, void** buffer,
                             const int timer) {
 
   const size_t count = c->hydro.count * sizeof(timebin_t);
-  if (posix_memalign((void **)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
+  if (posix_memalign((void**)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
     error("Error allocating timebin send buffer");
 
-  cell_pack_timebin(c, (timebin_t *)*buffer);
+  cell_pack_timebin(c, (timebin_t*)*buffer);
 }
 
 /**
@@ -59,10 +59,10 @@ void runner_do_pack_limiter(struct runner *r, struct cell *c, void **buffer,
  * @param buffer The array to read from and free.
  * @param timer Are we timing this ?
  */
-void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
+void runner_do_unpack_limiter(struct runner* r, struct cell* c, void* buffer,
                               const int timer) {
 
-  cell_unpack_timebin(c, (timebin_t *)buffer);
+  cell_unpack_timebin(c, (timebin_t*)buffer);
 
   free(buffer);
 }
@@ -75,11 +75,11 @@ void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
  * @param buffer The array to allocate and fill.
  * @param timer Are we timing this ?
  */
-void runner_do_pack_gpart(struct runner *r, struct cell *c, void **buffer,
+void runner_do_pack_gpart(struct runner* r, struct cell* c, void** buffer,
                           const int timer) {
 
   const size_t count = c->grav.count * sizeof(struct gpart_foreign);
-  if (posix_memalign((void **)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
+  if (posix_memalign((void**)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
     error("Error allocating gpart send buffer");
 
   cell_pack_gpart(c, *buffer);
@@ -93,11 +93,11 @@ void runner_do_pack_gpart(struct runner *r, struct cell *c, void **buffer,
  * @param buffer The array to allocate and fill.
  * @param timer Are we timing this ?
  */
-void runner_do_pack_fof(struct runner *r, struct cell *c, void **buffer,
+void runner_do_pack_fof(struct runner* r, struct cell* c, void** buffer,
                         const int timer) {
 
   const size_t count = c->grav.count * sizeof(struct gpart_fof_foreign);
-  if (posix_memalign((void **)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
+  if (posix_memalign((void**)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
     error("Error allocating gpart send buffer");
 
   cell_pack_fof_gpart(c, *buffer);

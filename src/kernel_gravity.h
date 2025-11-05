@@ -110,7 +110,7 @@ __attribute__((const)) INLINE static float kernel_grav_force_eval(
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
 __attribute__((always_inline)) INLINE static void kernel_grav_eval_pot_double(
-    double u, double *const W) {
+    double u, double* const W) {
 
 #ifdef GADGET2_SOFTENING_CORRECTION
   if (u < 0.5)
@@ -142,7 +142,7 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval_pot_double(
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
 __attribute__((always_inline)) INLINE static void kernel_grav_eval_force_double(
-    double u, double *const W) {
+    double u, double* const W) {
 
 #ifdef GADGET2_SOFTENING_CORRECTION
   if (u < 0.5)

@@ -40,11 +40,11 @@ struct feedback_props {};
  * @param hydro_props The already read-in properties of the hydro scheme.
  * @param cosmo The cosmological model.
  */
-INLINE static void feedback_props_init(struct feedback_props *fp,
-                                       const struct phys_const *phys_const,
-                                       const struct unit_system *us,
-                                       struct swift_params *params,
-                                       const struct hydro_props *hydro_props,
-                                       const struct cosmology *cosmo) {}
+INLINE static void feedback_props_init(struct feedback_props* fp,
+                                       const struct phys_const* phys_const,
+                                       const struct unit_system* us,
+                                       struct swift_params* params,
+                                       const struct hydro_props* hydro_props,
+                                       const struct cosmology* cosmo) {}
 
 #endif /* SWIFT_NONE_FEEDBACK_PROPERTIES_H */

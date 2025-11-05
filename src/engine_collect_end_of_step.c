@@ -44,7 +44,7 @@ struct end_of_step_data {
   integertime_t ti_stars_end_min, ti_stars_beg_max;
   integertime_t ti_sinks_end_min, ti_sinks_beg_max;
   integertime_t ti_black_holes_end_min, ti_black_holes_beg_max;
-  struct engine *e;
+  struct engine* e;
   struct star_formation_history sfh;
   float runtime;
   int flush_lightcone_maps;
@@ -63,14 +63,14 @@ struct end_of_step_data {
  * on.
  * @param extra_data The #engine.
  */
-void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
-                                       void *extra_data) {
+void engine_collect_end_of_step_mapper(void* map_data, int num_elements,
+                                       void* extra_data) {
 
-  struct end_of_step_data *data = (struct end_of_step_data *)extra_data;
-  const struct engine *e = data->e;
-  struct space *s = e->s;
-  int *local_cells = (int *)map_data;
-  struct star_formation_history *sfh_top = &data->sfh;
+  struct end_of_step_data* data = (struct end_of_step_data*)extra_data;
+  const struct engine* e = data->e;
+  struct space* s = e->s;
+  int* local_cells = (int*)map_data;
+  struct star_formation_history* sfh_top = &data->sfh;
 
   /* Local collectible */
   size_t updated = 0, g_updated = 0, s_updated = 0, sink_updated = 0,
@@ -90,7 +90,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   star_formation_logger_init(&sfh_updated);
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &s->cells_top[local_cells[ind]];
+    struct cell* c = &s->cells_top[local_cells[ind]];
 
     if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 ||
         c->black_holes.count > 0 || c->sinks.count > 0) {
@@ -207,10 +207,10 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
  * @param apply whether to apply the results to the engine or just keep in the
  *              group1 struct.
  */
-void engine_collect_end_of_step(struct engine *e, int apply) {
+void engine_collect_end_of_step(struct engine* e, int apply) {
 
   const ticks tic = getticks();
-  struct space *s = e->s;
+  struct space* s = e->s;
   struct end_of_step_data data;
   data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0;
   data.sink_updated = 0;
@@ -361,18 +361,18 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
  * on.
  * @param extra_data The #engine.
  */
-void engine_collect_end_of_sub_cycle_mapper(void *map_data, int num_elements,
-                                            void *extra_data) {
+void engine_collect_end_of_sub_cycle_mapper(void* map_data, int num_elements,
+                                            void* extra_data) {
 
-  struct engine *e = (struct engine *)extra_data;
-  struct space *s = e->s;
-  int *local_cells = (int *)map_data;
+  struct engine* e = (struct engine*)extra_data;
+  struct space* s = e->s;
+  int* local_cells = (int*)map_data;
 
   /* Local collectible */
   long long rt_updated = 0LL;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &s->cells_top[local_cells[ind]];
+    struct cell* c = &s->cells_top[local_cells[ind]];
 
     if (c->hydro.count > 0) {
 
@@ -395,10 +395,10 @@ void engine_collect_end_of_sub_cycle_mapper(void *map_data, int num_elements,
  *
  * @param e The #engine.
  */
-void engine_collect_end_of_sub_cycle(struct engine *e) {
+void engine_collect_end_of_sub_cycle(struct engine* e) {
 
   const ticks tic = getticks();
-  struct space *s = e->s;
+  struct space* s = e->s;
 
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_sub_cycle_mapper,

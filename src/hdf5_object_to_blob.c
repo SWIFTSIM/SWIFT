@@ -44,7 +44,7 @@
  * @param len Length of the buffer
  *
  */
-static void unique_filename(char *prefix, char *name, size_t len) {
+static void unique_filename(char* prefix, char* name, size_t len) {
 
   /* Get our process ID */
   long pid = (long)getpid();
@@ -82,7 +82,7 @@ static void unique_filename(char *prefix, char *name, size_t len) {
  * a newly allocated array.
  *
  */
-void hdf5_object_to_blob(hid_t group_id, char *name, size_t *len, void **data) {
+void hdf5_object_to_blob(hid_t group_id, char* name, size_t* len, void** data) {
 
   /* Set up property list */
   hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
@@ -132,7 +132,7 @@ void hdf5_object_to_blob(hid_t group_id, char *name, size_t *len, void **data) {
  * the named object to the HDF5 group specified by dest_id.
  *
  */
-void blob_to_hdf5_object(size_t len, void *data, hid_t dest_id, char *name) {
+void blob_to_hdf5_object(size_t len, void* data, hid_t dest_id, char* name) {
 
   /* Set up property list */
   hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);

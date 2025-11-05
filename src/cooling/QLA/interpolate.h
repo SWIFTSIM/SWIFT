@@ -131,8 +131,8 @@ __attribute__((always_inline)) INLINE int row_major_index_5d(
  * @param *dx (return) The difference between x and table[i]
  */
 __attribute__((always_inline)) INLINE void get_index_1d(
-    const float *restrict table, const int size, const float x, int *i,
-    float *restrict dx) {
+    const float* restrict table, const int size, const float x, int* i,
+    float* restrict dx) {
 
   /* Small epsilon to avoid rounding issues leading to out-of-bound
    * access when using the indices later to read data from the tables. */
@@ -189,7 +189,7 @@ __attribute__((always_inline)) INLINE void get_index_1d(
  * the grid spacing.
  */
 __attribute__((always_inline)) INLINE float interpolation_2d(
-    const float *table, const int xi, const int yi, const float dx,
+    const float* table, const int xi, const int yi, const float dx,
     const float dy, const int Nx, const int Ny) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -227,7 +227,7 @@ __attribute__((always_inline)) INLINE float interpolation_2d(
  * the grid spacing.
  */
 __attribute__((always_inline)) INLINE float interpolation_3d(
-    const float *table, const int xi, const int yi, const int zi,
+    const float* table, const int xi, const int yi, const int zi,
     const float dx, const float dy, const float dz, const int Nx, const int Ny,
     const int Nz) {
 
@@ -285,7 +285,7 @@ __attribute__((always_inline)) INLINE float interpolation_3d(
  * the grid spacing.
  */
 __attribute__((always_inline)) INLINE float interpolation_3d_no_z(
-    const float *table, const int xi, const int yi, const int zi,
+    const float* table, const int xi, const int yi, const int zi,
     const float dx, const float dy, const float dz, const int Nx, const int Ny,
     const int Nz) {
 
@@ -346,7 +346,7 @@ __attribute__((always_inline)) INLINE float interpolation_3d_no_z(
  * the grid spacing.
  */
 __attribute__((always_inline)) INLINE float interpolation_3d_no_x(
-    const float *table, const int xi, const int yi, const int zi,
+    const float* table, const int xi, const int yi, const int zi,
     const float dx, const float dy, const float dz, const int Nx, const int Ny,
     const int Nz) {
 
@@ -403,7 +403,7 @@ __attribute__((always_inline)) INLINE float interpolation_3d_no_x(
  * the grid spacing.
  */
 __attribute__((always_inline)) INLINE float interpolation_4d(
-    const float *table, const int xi, const int yi, const int zi, const int wi,
+    const float* table, const int xi, const int yi, const int zi, const int wi,
     const float dx, const float dy, const float dz, const float dw,
     const int Nx, const int Ny, const int Nz, const int Nw) {
 
@@ -493,7 +493,7 @@ __attribute__((always_inline)) INLINE float interpolation_4d(
  * @param Nx, Ny, Nz, Nw, Nv Sizes of array dimensions
  */
 __attribute__((always_inline)) INLINE double interpolation4d_plus_summation(
-    const float *table, const float *weights, const int istart, const int iend,
+    const float* table, const float* weights, const int istart, const int iend,
     const int xi, const int yi, const int zi, const int wi, const float dx,
     const float dy, const float dz, const float dw, const int Nx, const int Ny,
     const int Nz, const int Nw, const int Nv) {
@@ -586,7 +586,7 @@ __attribute__((always_inline)) INLINE double interpolation4d_plus_summation(
  * the grid spacing.
  */
 __attribute__((always_inline)) INLINE float interpolation_4d_no_x(
-    const float *table, const int xi, const int yi, const int zi, const int wi,
+    const float* table, const int xi, const int yi, const int zi, const int wi,
     const float dx, const float dy, const float dz, const float dw,
     const int Nx, const int Ny, const int Nz, const int Nw) {
 
@@ -690,7 +690,7 @@ __attribute__((always_inline)) INLINE float interpolation_4d_no_x(
  * the grid spacing.
  */
 __attribute__((always_inline)) INLINE float interpolation_4d_no_w(
-    const float *table, const int xi, const int yi, const int zi, const int wi,
+    const float* table, const int xi, const int yi, const int zi, const int wi,
     const float dx, const float dy, const float dz, const float dw,
     const int Nx, const int Ny, const int Nz, const int Nw) {
 
@@ -789,7 +789,7 @@ __attribute__((always_inline)) INLINE float interpolation_4d_no_w(
  * the grid spacing.
  */
 __attribute__((always_inline)) INLINE float interpolation_4d_no_z_no_w(
-    const float *table, const int xi, const int yi, const int zi, const int wi,
+    const float* table, const int xi, const int yi, const int zi, const int wi,
     const float dx, const float dy, const float dz, const float dw,
     const int Nx, const int Ny, const int Nz, const int Nw) {
 

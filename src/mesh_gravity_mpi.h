@@ -31,26 +31,26 @@ struct pm_mesh_patch;
 struct neutrino_model;
 
 void accumulate_cell_to_local_patch(const int N, const double fac,
-                                    const double *dim, const struct cell *cell,
-                                    struct pm_mesh_patch *patch,
-                                    const struct neutrino_model *nu_model);
+                                    const double* dim, const struct cell* cell,
+                                    struct pm_mesh_patch* patch,
+                                    const struct neutrino_model* nu_model);
 
 void mpi_mesh_accumulate_gparts_to_local_patches(
-    struct threadpool *tp, const int N, const double fac, const struct space *s,
-    struct pm_mesh_patch *local_patches);
+    struct threadpool* tp, const int N, const double fac, const struct space* s,
+    struct pm_mesh_patch* local_patches);
 
 void mpi_mesh_local_patches_to_slices(const int N, const int local_n0,
-                                      struct pm_mesh_patch *local_patches,
-                                      const int nr_patches, double *mesh,
-                                      struct threadpool *tp, const int verbose);
+                                      struct pm_mesh_patch* local_patches,
+                                      const int nr_patches, double* mesh,
+                                      struct threadpool* tp, const int verbose);
 
 void mpi_mesh_fetch_potential(const int N, const double fac,
-                              const struct space *s, int local_0_start,
-                              int local_n0, double *potential_slice,
-                              struct pm_mesh_patch *local_patches,
-                              struct threadpool *tp, const int verbose);
+                              const struct space* s, int local_0_start,
+                              int local_n0, double* potential_slice,
+                              struct pm_mesh_patch* local_patches,
+                              struct threadpool* tp, const int verbose);
 
-void mpi_mesh_update_gparts(struct pm_mesh_patch *local_patches,
-                            const struct space *s, struct threadpool *tp,
+void mpi_mesh_update_gparts(struct pm_mesh_patch* local_patches,
+                            const struct space* s, struct threadpool* tp,
                             const int N, const double cell_fac);
 #endif

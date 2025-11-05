@@ -50,16 +50,16 @@ enum profiler_types {
 
 /* Profiler that holds file pointers and time taken in functions. */
 struct profiler {
-  FILE *files[profiler_length];
+  FILE* files[profiler_length];
   ticks times[profiler_length];
 };
 
 /* Function prototypes. */
-void profiler_reset_timers(struct profiler *profiler);
-void profiler_write_all_timing_info_headers(const struct engine *e,
-                                            struct profiler *profiler);
-void profiler_write_all_timing_info(const struct engine *e,
-                                    struct profiler *profiler);
-void profiler_close_files(struct profiler *profiler);
+void profiler_reset_timers(struct profiler* profiler);
+void profiler_write_all_timing_info_headers(const struct engine* e,
+                                            struct profiler* profiler);
+void profiler_write_all_timing_info(const struct engine* e,
+                                    struct profiler* profiler);
+void profiler_close_files(struct profiler* profiler);
 
 #endif /* SWIFT_PROFILER_H */

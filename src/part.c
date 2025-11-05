@@ -40,7 +40,7 @@
  * @param N The number of particles to re-link;
  * @param offset The offset of #part%s relative to the global parts list.
  */
-void part_relink_gparts_to_parts(struct part *parts, const size_t N,
+void part_relink_gparts_to_parts(struct part* parts, const size_t N,
                                  const ptrdiff_t offset) {
   for (size_t k = 0; k < N; k++) {
     if (parts[k].gpart) {
@@ -56,7 +56,7 @@ void part_relink_gparts_to_parts(struct part *parts, const size_t N,
  * @param N The number of s-particles to re-link;
  * @param offset The offset of #spart%s relative to the global sparts list.
  */
-void part_relink_gparts_to_sparts(struct spart *sparts, const size_t N,
+void part_relink_gparts_to_sparts(struct spart* sparts, const size_t N,
                                   const ptrdiff_t offset) {
   for (size_t k = 0; k < N; k++) {
     if (sparts[k].gpart) {
@@ -72,7 +72,7 @@ void part_relink_gparts_to_sparts(struct spart *sparts, const size_t N,
  * @param N The number of sink-particles to re-link;
  * @param offset The offset of #sink%s relative to the global sinks list.
  */
-void part_relink_gparts_to_sinks(struct sink *sinks, const size_t N,
+void part_relink_gparts_to_sinks(struct sink* sinks, const size_t N,
                                  const ptrdiff_t offset) {
   for (size_t k = 0; k < N; k++) {
     if (sinks[k].gpart) {
@@ -88,7 +88,7 @@ void part_relink_gparts_to_sinks(struct sink *sinks, const size_t N,
  * @param N The number of s-particles to re-link;
  * @param offset The offset of #bpart%s relative to the global bparts list.
  */
-void part_relink_gparts_to_bparts(struct bpart *bparts, const size_t N,
+void part_relink_gparts_to_bparts(struct bpart* bparts, const size_t N,
                                   const ptrdiff_t offset) {
   for (size_t k = 0; k < N; k++) {
     if (bparts[k].gpart) {
@@ -104,8 +104,8 @@ void part_relink_gparts_to_bparts(struct bpart *bparts, const size_t N,
  * @param N The number of particles to re-link;
  * @param parts The global #part array in which to find the #gpart offsets.
  */
-void part_relink_parts_to_gparts(struct gpart *gparts, const size_t N,
-                                 struct part *parts) {
+void part_relink_parts_to_gparts(struct gpart* gparts, const size_t N,
+                                 struct part* parts) {
   for (size_t k = 0; k < N; k++) {
     if (gparts[k].type == swift_type_gas) {
       parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
@@ -120,8 +120,8 @@ void part_relink_parts_to_gparts(struct gpart *gparts, const size_t N,
  * @param N The number of particles to re-link;
  * @param sparts The global #spart array in which to find the #gpart offsets.
  */
-void part_relink_sparts_to_gparts(struct gpart *gparts, const size_t N,
-                                  struct spart *sparts) {
+void part_relink_sparts_to_gparts(struct gpart* gparts, const size_t N,
+                                  struct spart* sparts) {
   for (size_t k = 0; k < N; k++) {
     if (gparts[k].type == swift_type_stars) {
       sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
@@ -136,8 +136,8 @@ void part_relink_sparts_to_gparts(struct gpart *gparts, const size_t N,
  * @param N The number of particles to re-link;
  * @param bparts The global #bpart array in which to find the #gpart offsets.
  */
-void part_relink_bparts_to_gparts(struct gpart *gparts, const size_t N,
-                                  struct bpart *bparts) {
+void part_relink_bparts_to_gparts(struct gpart* gparts, const size_t N,
+                                  struct bpart* bparts) {
   for (size_t k = 0; k < N; k++) {
     if (gparts[k].type == swift_type_black_hole) {
       bparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
@@ -152,8 +152,8 @@ void part_relink_bparts_to_gparts(struct gpart *gparts, const size_t N,
  * @param N The number of particles to re-link;
  * @param sinks The global #sink array in which to find the #gpart offsets.
  */
-void part_relink_sinks_to_gparts(struct gpart *gparts, const size_t N,
-                                 struct sink *sinks) {
+void part_relink_sinks_to_gparts(struct gpart* gparts, const size_t N,
+                                 struct sink* sinks) {
   for (size_t k = 0; k < N; k++) {
     if (gparts[k].type == swift_type_sink) {
       sinks[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
@@ -165,11 +165,11 @@ void part_relink_sinks_to_gparts(struct gpart *gparts, const size_t N,
  * @brief Helper structure to pass data to the liking mapper functions.
  */
 struct relink_data {
-  struct part *const parts;
-  struct gpart *const garts;
-  struct sink *const sinks;
-  struct spart *const sparts;
-  struct bpart *const bparts;
+  struct part* const parts;
+  struct gpart* const garts;
+  struct sink* const sinks;
+  struct spart* const sparts;
+  struct bpart* const bparts;
 };
 
 /**
@@ -180,16 +180,16 @@ struct relink_data {
  * @brief count The number of #gpart.
  * @brief extra_data the #relink_data containing pointer to the other arrays.
  */
-void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
-                                            void *restrict extra_data) {
+void part_relink_all_parts_to_gparts_mapper(void* restrict map_data, int count,
+                                            void* restrict extra_data) {
 
   /* Un-pack the data */
-  struct relink_data *data = (struct relink_data *)extra_data;
-  struct part *const parts = data->parts;
-  struct spart *const sparts = data->sparts;
-  struct bpart *const bparts = data->bparts;
-  struct gpart *const gparts = (struct gpart *)map_data;
-  struct sink *const sinks = data->sinks;
+  struct relink_data* data = (struct relink_data*)extra_data;
+  struct part* const parts = data->parts;
+  struct spart* const sparts = data->sparts;
+  struct bpart* const bparts = data->bparts;
+  struct gpart* const gparts = (struct gpart*)map_data;
+  struct sink* const sinks = data->sinks;
 
   for (int k = 0; k < count; k++) {
     if (gparts[k].type == swift_type_gas) {
@@ -220,10 +220,10 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
  * @param bparts The global #bpart array in which to find the #gpart offsets.
  * @param tp The #threadpool object.
  */
-void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
-                                     struct part *parts, struct sink *sinks,
-                                     struct spart *sparts, struct bpart *bparts,
-                                     struct threadpool *tp) {
+void part_relink_all_parts_to_gparts(struct gpart* gparts, const size_t N,
+                                     struct part* parts, struct sink* sinks,
+                                     struct spart* sparts, struct bpart* bparts,
+                                     struct threadpool* tp) {
 
   struct relink_data data = {parts, /*gparts=*/NULL, sinks, sparts, bparts};
   threadpool_map(tp, part_relink_all_parts_to_gparts_mapper, gparts, N,
@@ -248,9 +248,9 @@ void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
  * @param nr_bparts The number of #bpart in the array.
  * @param verbose Do we report verbosely in case of success ?
  */
-void part_verify_links(struct part *parts, struct gpart *gparts,
-                       struct sink *sinks, struct spart *sparts,
-                       struct bpart *bparts, size_t nr_parts, size_t nr_gparts,
+void part_verify_links(struct part* parts, struct gpart* gparts,
+                       struct sink* sinks, struct spart* sparts,
+                       struct bpart* bparts, size_t nr_parts, size_t nr_gparts,
                        size_t nr_sinks, size_t nr_sparts, size_t nr_bparts,
                        int verbose) {
 
@@ -293,7 +293,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
         error("Gas gpart not linked to anything!");
 
       /* Find its link */
-      const struct part *part = &parts[-gparts[k].id_or_neg_offset];
+      const struct part* part = &parts[-gparts[k].id_or_neg_offset];
 
       /* Check the reverse link */
       if (part->gpart != &gparts[k]) error("Linking problem!");
@@ -327,7 +327,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
         error("Stars gpart not linked to anything !");
 
       /* Find its link */
-      const struct spart *spart = &sparts[-gparts[k].id_or_neg_offset];
+      const struct spart* spart = &sparts[-gparts[k].id_or_neg_offset];
 
       /* Check the reverse link */
       if (spart->gpart != &gparts[k]) error("Linking problem !");
@@ -361,7 +361,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
         error("Black holes gpart not linked to anything !");
 
       /* Find its link */
-      const struct bpart *bpart = &bparts[-gparts[k].id_or_neg_offset];
+      const struct bpart* bpart = &bparts[-gparts[k].id_or_neg_offset];
 
       /* Check the reverse link */
       if (bpart->gpart != &gparts[k]) error("Linking problem !");
@@ -395,7 +395,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
         error("Sink gpart not linked to anything !");
 
       /* Find its link */
-      const struct sink *sink = &sinks[-gparts[k].id_or_neg_offset];
+      const struct sink* sink = &sinks[-gparts[k].id_or_neg_offset];
 
       /* Check the reverse link */
       if (sink->gpart != &gparts[k]) error("Linking problem !");

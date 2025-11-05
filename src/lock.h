@@ -51,7 +51,7 @@
 #define swift_lock_type volatile int
 #define lock_init(l) (*(l) = 0)
 #define lock_destroy(l) 0
-INLINE static int lock_lock(volatile int *l) {
+INLINE static int lock_lock(volatile int* l) {
   while (atomic_cas(l, 0, 1) != 0) {
     /* Nothing to do here. */
   }

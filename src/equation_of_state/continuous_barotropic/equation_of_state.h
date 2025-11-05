@@ -212,10 +212,10 @@ gas_soundspeed_from_pressure(const float density, const float P) {
  * @param us The internal unit system.
  * @param params The parsed parameters.
  */
-INLINE static void eos_init(struct eos_parameters *e,
-                            const struct phys_const *phys_const,
-                            const struct unit_system *us,
-                            struct swift_params *params) {
+INLINE static void eos_init(struct eos_parameters* e,
+                            const struct phys_const* phys_const,
+                            const struct unit_system* us,
+                            struct swift_params* params) {
 
   const float vacuum_sound_speed =
       parser_get_param_float(params, "EoS:barotropic_vacuum_sound_speed");
@@ -230,7 +230,7 @@ INLINE static void eos_init(struct eos_parameters *e,
  *
  * @param e The #eos_parameters
  */
-INLINE static void eos_print(const struct eos_parameters *e) {
+INLINE static void eos_print(const struct eos_parameters* e) {
 
   message(
       "Equation of state: Continuous barotropic gas with vacuum sound speed "
@@ -249,7 +249,7 @@ INLINE static void eos_print(const struct eos_parameters *e) {
  * @param e The #eos_parameters
  */
 INLINE static void eos_print_snapshot(hid_t h_grpsph,
-                                      const struct eos_parameters *e) {
+                                      const struct eos_parameters* e) {
 
   io_write_attribute_f(h_grpsph, "Adiabatic index", hydro_gamma);
 

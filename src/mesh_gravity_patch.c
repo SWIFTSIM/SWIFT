@@ -41,12 +41,12 @@
  * @param dim Size of the full volume in each dimension
  * @param boundary_size Size of the boundary layer to include
  */
-void pm_mesh_patch_init(struct pm_mesh_patch *patch, const struct cell *cell,
+void pm_mesh_patch_init(struct pm_mesh_patch* patch, const struct cell* cell,
                         const int N, const double fac, const double dim[3],
                         const int boundary_size) {
 
   const int gcount = cell->grav.count;
-  const struct gpart *gparts = cell->grav.parts;
+  const struct gpart* gparts = cell->grav.parts;
 
   patch->N = N;
   patch->fac = fac;
@@ -74,7 +74,7 @@ void pm_mesh_patch_init(struct pm_mesh_patch *patch, const struct cell *cell,
   }
   for (int ipart = 0; ipart < gcount; ipart++) {
 
-    const struct gpart *gp = &gparts[ipart];
+    const struct gpart* gp = &gparts[ipart];
 
     if (gp->time_bin == time_bin_inhibited) continue;
 
@@ -96,7 +96,7 @@ void pm_mesh_patch_init(struct pm_mesh_patch *patch, const struct cell *cell,
   }
 
   /* Allocate the mesh */
-  if (swift_memalign("mesh_patch", (void **)&patch->mesh, SWIFT_CACHE_ALIGNMENT,
+  if (swift_memalign("mesh_patch", (void**)&patch->mesh, SWIFT_CACHE_ALIGNMENT,
                      num_cells * sizeof(double)) != 0)
     error("Failed to allocate array for mesh patch!");
 }
@@ -108,8 +108,8 @@ void pm_mesh_patch_init(struct pm_mesh_patch *patch, const struct cell *cell,
  * @param global_mesh The global mesh to write to.
  * @param patch The #pm_mesh_patch object to write from.
  */
-void pm_add_patch_to_global_mesh(double *const global_mesh,
-                                 const struct pm_mesh_patch *patch) {
+void pm_add_patch_to_global_mesh(double* const global_mesh,
+                                 const struct pm_mesh_patch* patch) {
 
   const int N = patch->N;
   const int size_i = patch->mesh_size[0];
@@ -145,7 +145,7 @@ void pm_add_patch_to_global_mesh(double *const global_mesh,
  *
  * @param patch A pointer to the mesh patch
  */
-void pm_mesh_patch_zero(struct pm_mesh_patch *patch) {
+void pm_mesh_patch_zero(struct pm_mesh_patch* patch) {
 
   /* Remind the compiler that the arrays are nicely aligned */
   swift_declare_aligned_ptr(double, mesh, patch->mesh, SWIFT_CACHE_ALIGNMENT);
@@ -160,7 +160,7 @@ void pm_mesh_patch_zero(struct pm_mesh_patch *patch) {
  *
  * @param patch A pointer to the mesh patch
  */
-void pm_mesh_patch_clean(struct pm_mesh_patch *patch) {
+void pm_mesh_patch_clean(struct pm_mesh_patch* patch) {
 
   if (patch->mesh) swift_free("mesh_patch", patch->mesh);
 

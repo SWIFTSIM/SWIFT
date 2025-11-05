@@ -42,7 +42,7 @@
  *
  * @param s The #space.
  */
-void space_update_unique_id(struct space *s) {
+void space_update_unique_id(struct space* s) {
   /* Do we need unique IDs? */
   if (!star_formation_need_unique_id && !sink_need_unique_id) {
     return;
@@ -51,10 +51,10 @@ void space_update_unique_id(struct space *s) {
   int require_new_batch = s->unique_id.next_batch.current == 0;
 
 #ifdef WITH_MPI
-  const struct engine *e = s->e;
+  const struct engine* e = s->e;
 
   /* Check if the other ranks need a batch. */
-  int *all_requires = (int *)malloc(sizeof(int) * e->nr_nodes);
+  int* all_requires = (int*)malloc(sizeof(int) * e->nr_nodes);
 
   /* Do the communication */
   MPI_Allgather(&require_new_batch, 1, MPI_INT, all_requires, 1, MPI_INT,
@@ -115,7 +115,7 @@ void space_update_unique_id(struct space *s) {
  *
  * @return The new unique ID
  */
-long long space_get_new_unique_id(struct space *s) {
+long long space_get_new_unique_id(struct space* s) {
   /* Do we need unique IDs? */
   if (!star_formation_need_unique_id && !sink_need_unique_id) {
     error("The scheme selected does not seem to use unique ID.");
@@ -165,7 +165,7 @@ long long space_get_new_unique_id(struct space *s) {
  * @param s The #space.
  * @param nr_nodes The number of MPI ranks.
  */
-void space_init_unique_id(struct space *s, int nr_nodes) {
+void space_init_unique_id(struct space* s, int nr_nodes) {
   /* Do we need unique IDs? */
   if (!star_formation_need_unique_id && !sink_need_unique_id) {
     return;

@@ -45,9 +45,9 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_injection_prep(const float r2, const float dx[3],
                                      const float hi, const float hj,
-                                     struct spart *si, const struct part *pj,
-                                     const struct cosmology *cosmo,
-                                     const struct rt_props *rt_props) {
+                                     struct spart* si, const struct part* pj,
+                                     const struct cosmology* cosmo,
+                                     const struct rt_props* rt_props) {
 
   /* If the star doesn't have any neighbours, we
    * have nothing to do here. */
@@ -101,8 +101,8 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, const float a,
-    const float H, const struct rt_props *rt_props) {
+    struct spart* restrict si, struct part* restrict pj, const float a,
+    const float H, const struct rt_props* rt_props) {
 
   /* If the star doesn't have any neighbours, we
    * have nothing to do here. */
@@ -191,12 +191,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
 __attribute__((always_inline)) INLINE static void
 radiation_gradient_loop_function(const float r2, const float dx[3],
                                  const float hi, const float hj,
-                                 struct part *restrict pi,
-                                 struct part *restrict pj, const float a,
+                                 struct part* restrict pi,
+                                 struct part* restrict pj, const float a,
                                  const float H, int mode) {
 
-  struct rt_part_data *rpi = &pi->rt_data;
-  struct rt_part_data *rpj = &pj->rt_data;
+  struct rt_part_data* rpi = &pi->rt_data;
+  struct rt_part_data* rpj = &pj->rt_data;
 
   float wi, wj, wi_dx, wj_dx;
   /* Get r */
@@ -313,7 +313,7 @@ radiation_gradient_loop_function(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
   radiation_gradient_loop_function(r2, dx, hi, hj, pi, pj, a, H, 1);
 }
@@ -335,8 +335,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_gradient(const float r2, const float dx[3],
                                const float hi, const float hj,
-                               struct part *restrict pi,
-                               struct part *restrict pj, const float a,
+                               struct part* restrict pi,
+                               struct part* restrict pj, const float a,
                                const float H) {
   radiation_gradient_loop_function(r2, dx, hi, hj, pi, pj, a, H, 0);
 }
@@ -358,11 +358,11 @@ runner_iact_nonsym_rt_gradient(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H, int mode) {
 
-  struct rt_part_data *rpi = &pi->rt_data;
-  struct rt_part_data *rpj = &pj->rt_data;
+  struct rt_part_data* rpi = &pi->rt_data;
+  struct rt_part_data* rpj = &pj->rt_data;
 
   float wi, wj, wi_dx, wj_dx;
   /* Get r */
@@ -742,7 +742,7 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   radiation_force_loop_function(r2, dx, hi, hj, pi, pj, a, H, 1);
@@ -765,8 +765,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_transport(const float r2, const float dx[3],
                                 const float hi, const float hj,
-                                struct part *restrict pi,
-                                struct part *restrict pj, const float a,
+                                struct part* restrict pi,
+                                struct part* restrict pj, const float a,
                                 const float H) {
 
   radiation_force_loop_function(r2, dx, hi, hj, pi, pj, a, H, 0);

@@ -55,18 +55,18 @@
  *
  * @param e The #engine to act on.
  */
-void engine_finalize_trigger_recordings(struct engine *e) {
+void engine_finalize_trigger_recordings(struct engine* e) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  struct space *s = e->s;
+  struct space* s = e->s;
 
   /* Finish the recording period for part triggers */
   if (num_snapshot_triggers_part) {
     for (size_t k = 0; k < s->nr_parts; ++k) {
 
       /* Get a handle on the part. */
-      struct part *p = &s->parts[k];
-      struct xpart *xp = &s->xparts[k];
+      struct part* p = &s->parts[k];
+      struct xpart* xp = &s->xparts[k];
       const integertime_t ti_begin =
           get_integer_time_begin(e->ti_current, p->time_bin);
 
@@ -100,7 +100,7 @@ void engine_finalize_trigger_recordings(struct engine *e) {
     for (size_t k = 0; k < s->nr_sparts; ++k) {
 
       /* Get a handle on the part. */
-      struct spart *sp = &s->sparts[k];
+      struct spart* sp = &s->sparts[k];
       const integertime_t ti_begin =
           get_integer_time_begin(e->ti_current, sp->time_bin);
 
@@ -134,7 +134,7 @@ void engine_finalize_trigger_recordings(struct engine *e) {
     for (size_t k = 0; k < s->nr_bparts; ++k) {
 
       /* Get a handle on the part. */
-      struct bpart *bp = &s->bparts[k];
+      struct bpart* bp = &s->bparts[k];
       const integertime_t ti_begin =
           get_integer_time_begin(e->ti_current, bp->time_bin);
 
@@ -172,7 +172,7 @@ void engine_finalize_trigger_recordings(struct engine *e) {
  * @param force force a dump, if dumping is enabled.
  * @return Do we want to stop the run altogether?
  */
-int engine_dump_restarts(struct engine *e, const int drifted_all,
+int engine_dump_restarts(struct engine* e, const int drifted_all,
                          const int force) {
 
   /* Are any of the conditions to fully stop a run met? */
@@ -270,7 +270,7 @@ int engine_dump_restarts(struct engine *e, const int drifted_all,
  * @param e The #engine.
  * @param fof Is this a stand-alone FOF call?
  */
-void engine_dump_snapshot(struct engine *e, const int fof) {
+void engine_dump_snapshot(struct engine* e, const int fof) {
 
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
@@ -386,7 +386,7 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
  *
  * @param e The #engine.
  */
-void engine_run_on_dump(struct engine *e) {
+void engine_run_on_dump(struct engine* e) {
   if (e->snapshot_run_on_dump) {
     /* Generate a string containing (optionally) the snapshot number.
      * Note that -1 is used because snapshot_output_count was just
@@ -413,7 +413,7 @@ void engine_run_on_dump(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_io(struct engine *e) {
+void engine_io(struct engine* e) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_stf = (e->policy & engine_policy_structure_finding);
   const int with_los = (e->policy & engine_policy_line_of_sight);
@@ -700,7 +700,7 @@ void engine_io(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_set_and_verify_snapshot_triggers(struct engine *e) {
+void engine_set_and_verify_snapshot_triggers(struct engine* e) {
 
   integertime_t ti_next_snap = e->ti_next_snapshot;
   if (ti_next_snap == -1) ti_next_snap = max_nr_timesteps;
@@ -754,7 +754,7 @@ void engine_set_and_verify_snapshot_triggers(struct engine *e) {
  * @param e The #engine.
  * @param restart Are we calling this upon a restart event?
  */
-void engine_compute_next_snapshot_time(struct engine *e, const int restart) {
+void engine_compute_next_snapshot_time(struct engine* e, const int restart) {
 
   /* Do output_list file case */
   if (e->output_list_snapshots) {
@@ -833,7 +833,7 @@ void engine_compute_next_snapshot_time(struct engine *e, const int restart) {
  *
  * @param e The #engine.
  */
-void engine_compute_next_statistics_time(struct engine *e) {
+void engine_compute_next_statistics_time(struct engine* e) {
   /* Do output_list file case */
   if (e->output_list_stats) {
     output_list_read_next_time(e->output_list_stats, e, "stats",
@@ -904,7 +904,7 @@ void engine_compute_next_statistics_time(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_compute_next_los_time(struct engine *e) {
+void engine_compute_next_los_time(struct engine* e) {
   /* Do output_list file case */
   if (e->output_list_los) {
     output_list_read_next_time(e->output_list_los, e, "line of sights",
@@ -975,7 +975,7 @@ void engine_compute_next_los_time(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_compute_next_stf_time(struct engine *e) {
+void engine_compute_next_stf_time(struct engine* e) {
   /* Do output_list file case */
   if (e->output_list_stf) {
     output_list_read_next_time(e->output_list_stf, e, "stf", &e->ti_next_stf);
@@ -1042,7 +1042,7 @@ void engine_compute_next_stf_time(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_compute_next_fof_time(struct engine *e) {
+void engine_compute_next_fof_time(struct engine* e) {
 
   /* Find upper-bound on last output */
   double time_end;
@@ -1102,7 +1102,7 @@ void engine_compute_next_fof_time(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_compute_next_ps_time(struct engine *e) {
+void engine_compute_next_ps_time(struct engine* e) {
   /* Do output_list file case */
   if (e->output_list_ps) {
     output_list_read_next_time(e->output_list_ps, e, "power spectrum",
@@ -1173,8 +1173,8 @@ void engine_compute_next_ps_time(struct engine *e) {
  * @param e The #engine.
  * @param params The #swift_params.
  */
-void engine_init_output_lists(struct engine *e, struct swift_params *params,
-                              const struct output_options *output_options) {
+void engine_init_output_lists(struct engine* e, struct swift_params* params,
+                              const struct output_options* output_options) {
 
   /* Deal with snapshots */
   e->output_list_snapshots = NULL;
@@ -1279,9 +1279,9 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
  *
  * @param e The #engine.
  */
-void engine_io_check_snapshot_triggers(struct engine *e) {
+void engine_io_check_snapshot_triggers(struct engine* e) {
 
-  struct space *s = e->s;
+  struct space* s = e->s;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   /* Time until the next snapshot */
@@ -1317,8 +1317,8 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
       for (size_t k = 0; k < s->nr_parts; ++k) {
 
         /* Get a handle on the part. */
-        struct part *p = &s->parts[k];
-        struct xpart *xp = &s->xparts[k];
+        struct part* p = &s->parts[k];
+        struct xpart* xp = &s->xparts[k];
         const integertime_t ti_begin =
             get_integer_time_begin(e->ti_current, p->time_bin);
 
@@ -1379,7 +1379,7 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
       for (size_t k = 0; k < s->nr_sparts; ++k) {
 
         /* Get a handle on the spart. */
-        struct spart *sp = &s->sparts[k];
+        struct spart* sp = &s->sparts[k];
         const integertime_t ti_begin =
             get_integer_time_begin(e->ti_current, sp->time_bin);
 
@@ -1439,7 +1439,7 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
       for (size_t k = 0; k < s->nr_bparts; ++k) {
 
         /* Get a handle on the bpart. */
-        struct bpart *bp = &s->bparts[k];
+        struct bpart* bp = &s->bparts[k];
         const integertime_t ti_begin =
             get_integer_time_begin(e->ti_current, bp->time_bin);
 

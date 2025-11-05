@@ -43,7 +43,7 @@ const double displacement_factor = 0.2;
  * @brief Data structure used by the counter mapper function
  */
 struct data_count {
-  const struct engine *const e;
+  const struct engine* const e;
   const float mass_threshold;
   size_t counter;
   long long max_id;
@@ -53,28 +53,28 @@ struct data_count {
  * @brief Data structure used by the split mapper function
  */
 struct data_split {
-  const struct engine *const e;
+  const struct engine* const e;
   const float mass_threshold;
   const int generate_random_ids;
-  size_t *const k_parts;
-  size_t *const k_gparts;
+  size_t* const k_parts;
+  size_t* const k_gparts;
   long long offset_id;
-  long long *count_id;
+  long long* count_id;
   swift_lock_type lock;
-  FILE *extra_split_logger;
+  FILE* extra_split_logger;
 };
 
 /**
  * @brief Mapper function to count the number of #part above the mass threshold
  * for splitting.
  */
-void engine_split_gas_particle_count_mapper(void *restrict map_data, int count,
-                                            void *restrict extra_data) {
+void engine_split_gas_particle_count_mapper(void* restrict map_data, int count,
+                                            void* restrict extra_data) {
 
   /* Unpack the data */
-  struct part *parts = (struct part *)map_data;
-  struct data_count *data = (struct data_count *)extra_data;
-  const struct engine *e = data->e;
+  struct part* parts = (struct part*)map_data;
+  struct data_count* data = (struct data_count*)extra_data;
+  const struct engine* e = data->e;
   const float mass_threshold = data->mass_threshold;
 
   size_t counter = 0;
@@ -82,7 +82,7 @@ void engine_split_gas_particle_count_mapper(void *restrict map_data, int count,
 
   for (int i = 0; i < count; ++i) {
 
-    const struct part *p = &parts[i];
+    const struct part* p = &parts[i];
 
     /* Ignore inhibited particles */
     if (part_is_inhibited(p, e)) continue;
@@ -103,29 +103,29 @@ void engine_split_gas_particle_count_mapper(void *restrict map_data, int count,
 /**
  * @brief Mapper function to split the #part above the mass threshold.
  */
-void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
-                                            void *restrict extra_data) {
+void engine_split_gas_particle_split_mapper(void* restrict map_data, int count,
+                                            void* restrict extra_data) {
 
   /* Unpack the data */
-  struct part *parts = (struct part *)map_data;
-  struct data_split *data = (struct data_split *)extra_data;
+  struct part* parts = (struct part*)map_data;
+  struct data_split* data = (struct data_split*)extra_data;
   const float mass_threshold = data->mass_threshold;
   const int generate_random_ids = data->generate_random_ids;
   const long long offset_id = data->offset_id;
-  long long *count_id = (long long *)data->count_id;
-  const struct engine *e = data->e;
+  long long* count_id = (long long*)data->count_id;
+  const struct engine* e = data->e;
   const int with_gravity = (e->policy & engine_policy_self_gravity) ||
                            (e->policy & engine_policy_external_gravity);
 
   /* Additional thread-global particle arrays */
-  const struct space *s = e->s;
-  struct part *global_parts = s->parts;
-  struct xpart *global_xparts = s->xparts;
-  struct gpart *global_gparts = s->gparts;
+  const struct space* s = e->s;
+  struct part* global_parts = s->parts;
+  struct xpart* global_xparts = s->xparts;
+  struct gpart* global_gparts = s->gparts;
 
   /* xpart array corresponding to the thread-local particle array */
   const ptrdiff_t offset = parts - global_parts;
-  struct xpart *xparts = global_xparts + offset;
+  struct xpart* xparts = global_xparts + offset;
 
   /* RNG seed for this thread's generation of new IDs */
   unsigned int seedp = (unsigned int)offset + e->ti_current % INT_MAX;
@@ -134,7 +134,7 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
   for (int i = 0; i < count; ++i) {
 
     /* Is the mass of this particle larger than the threshold? */
-    struct part *p = &parts[i];
+    struct part* p = &parts[i];
 
     /* Ignore inhibited particles */
     if (part_is_inhibited(p, e)) continue;
@@ -163,8 +163,8 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       /* We now know where to put the new particle we are going to create. */
 
       /* Current other fields associated to this particle */
-      struct xpart *xp = &xparts[i];
-      struct gpart *gp = p->gpart;
+      struct xpart* xp = &xparts[i];
+      struct gpart* gp = p->gpart;
 
       /* Start by copying over the particles */
       memcpy(&global_parts[k_parts], p, sizeof(struct part));
@@ -282,7 +282,7 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
  *
  * @param e The #engine.
  */
-void engine_split_gas_particles(struct engine *e) {
+void engine_split_gas_particles(struct engine* e) {
 
   /* Abort if we are not doing any splitting */
   if (!e->hydro_properties->particle_splitting) return;
@@ -292,7 +292,7 @@ void engine_split_gas_particles(struct engine *e) {
   const ticks tic = getticks();
 
   /* Get useful constants */
-  struct space *s = e->s;
+  struct space* s = e->s;
   const int with_gravity = (e->policy & engine_policy_self_gravity) ||
                            (e->policy & engine_policy_external_gravity);
   const float mass_threshold =
@@ -366,8 +366,8 @@ void engine_split_gas_particles(struct engine *e) {
     if (e->verbose) message("Reallocating the part array!");
 
     /* Allocate a larger array and copy over */
-    struct part *parts_new = NULL;
-    if (swift_memalign("parts", (void **)&parts_new, part_align,
+    struct part* parts_new = NULL;
+    if (swift_memalign("parts", (void**)&parts_new, part_align,
                        sizeof(struct part) * s->size_parts) != 0)
       error("Failed to allocate new part data.");
 
@@ -379,8 +379,8 @@ void engine_split_gas_particles(struct engine *e) {
     swift_free("parts", s->parts);
 
     /* Allocate a larger array and copy over */
-    struct xpart *xparts_new = NULL;
-    if (swift_memalign("xparts", (void **)&xparts_new, xpart_align,
+    struct xpart* xparts_new = NULL;
+    if (swift_memalign("xparts", (void**)&xparts_new, xpart_align,
                        sizeof(struct xpart) * s->size_parts) != 0)
       error("Failed to allocate new part data.");
 
@@ -404,8 +404,8 @@ void engine_split_gas_particles(struct engine *e) {
     if (e->verbose) message("Reallocating the gpart array!");
 
     /* Allocate a larger array and copy over */
-    struct gpart *gparts_new = NULL;
-    if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
+    struct gpart* gparts_new = NULL;
+    if (swift_memalign("gparts", (void**)&gparts_new, gpart_align,
                        sizeof(struct gpart) * s->size_gparts) != 0)
       error("Failed to allocate new gpart data.");
 
@@ -438,7 +438,7 @@ void engine_split_gas_particles(struct engine *e) {
   size_t k_parts = s->nr_parts;
   size_t k_gparts = s->nr_gparts;
 
-  FILE *extra_split_logger = NULL;
+  FILE* extra_split_logger = NULL;
   if (e->hydro_properties->log_extra_splits_in_file) {
     char extra_split_logger_filename[256];
     sprintf(extra_split_logger_filename, "splits/splits_%04d.txt", engine_rank);
@@ -483,7 +483,7 @@ void engine_split_gas_particles(struct engine *e) {
             clocks_getunit());
 }
 
-void engine_init_split_gas_particles(struct engine *e) {
+void engine_init_split_gas_particles(struct engine* e) {
 
   if (e->hydro_properties->log_extra_splits_in_file) {
 
@@ -497,7 +497,7 @@ void engine_init_split_gas_particles(struct engine *e) {
     /* Create the logger files and add a header */
     char extra_split_logger_filename[256];
     sprintf(extra_split_logger_filename, "splits/splits_%04d.txt", engine_rank);
-    FILE *extra_split_logger = fopen(extra_split_logger_filename, "w");
+    FILE* extra_split_logger = fopen(extra_split_logger_filename, "w");
     fprintf(extra_split_logger, "# %12s %20s %20s %20s %20s\n", "Step", "ID",
             "Progenitor", "Count", "Tree");
 

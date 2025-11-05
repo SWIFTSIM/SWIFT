@@ -41,7 +41,7 @@
  * @param main_branch Are we in a cell directly above the leaf where the new
  * particle was added?
  */
-void cell_recursively_shift_sparts(struct cell *c,
+void cell_recursively_shift_sparts(struct cell* c,
                                    const int progeny_list[space_cell_maxdepth],
                                    const int main_branch) {
   if (c->split) {
@@ -81,7 +81,7 @@ void cell_recursively_shift_sparts(struct cell *c,
  * @param main_branch Are we in a cell directly above the leaf where the new
  * particle was added?
  */
-void cell_recursively_shift_sinks(struct cell *c,
+void cell_recursively_shift_sinks(struct cell* c,
                                   const int progeny_list[space_cell_maxdepth],
                                   const int main_branch) {
   if (c->split) {
@@ -115,7 +115,7 @@ void cell_recursively_shift_sinks(struct cell *c,
  * @param main_branch Are we in a cell directly above the leaf where the new
  * particle was added?
  */
-void cell_recursively_shift_gparts(struct cell *c,
+void cell_recursively_shift_gparts(struct cell* c,
                                    const int progeny_list[space_cell_maxdepth],
                                    const int main_branch) {
   if (c->split) {
@@ -153,7 +153,7 @@ void cell_recursively_shift_gparts(struct cell *c,
  * and given a position within the cell as well as set to the minimal active
  * time bin.
  */
-struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
+struct spart* cell_add_spart(struct engine* e, struct cell* const c) {
   /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
   if (c->stars.ti_old_part != e->ti_current) error("Undrifted cell!");
@@ -167,7 +167,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* Get the top-level this leaf cell is in and compute the progeny indices at
      each level */
-  struct cell *top = c;
+  struct cell* top = c;
   while (top->parent != NULL) {
     /* What is the progeny index of the cell? */
     for (int k = 0; k < 8; ++k) {
@@ -238,7 +238,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   /* Make sure the gravity will be recomputed for this particle in the next
    * step
    */
-  struct cell *top2 = c;
+  struct cell* top2 = c;
   while (top2->parent != NULL) {
     top2->stars.ti_old_part = e->ti_current;
     top2 = top2->parent;
@@ -250,7 +250,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
     error("Failed to unlock the top-level cell.");
 
   /* We now have an empty spart as the first particle in that cell */
-  struct spart *sp = &c->stars.parts[0];
+  struct spart* sp = &c->stars.parts[0];
   bzero(sp, sizeof(struct spart));
 
   /* Give it a decent position */
@@ -290,7 +290,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
  * and given a position within the cell as well as set to the minimal active
  * time bin.
  */
-struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
+struct sink* cell_add_sink(struct engine* e, struct cell* const c) {
   /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding sink on a foreign node");
   if (c->sinks.ti_old_part != e->ti_current) error("Undrifted cell!");
@@ -304,7 +304,7 @@ struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
 
   /* Get the top-level this leaf cell is in and compute the progeny indices at
      each level */
-  struct cell *top = c;
+  struct cell* top = c;
   while (top->parent != NULL) {
     /* What is the progeny index of the cell? */
     for (int k = 0; k < 8; ++k) {
@@ -379,7 +379,7 @@ struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
   /* Make sure the gravity will be recomputed for this particle in the next
    * step
    */
-  struct cell *top2 = c;
+  struct cell* top2 = c;
   while (top2->parent != NULL) {
     top2->sinks.ti_old_part = e->ti_current;
     top2 = top2->parent;
@@ -391,7 +391,7 @@ struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
     error("Failed to unlock the top-level cell.");
 
   /* We now have an empty spart as the first particle in that cell */
-  struct sink *sp = &c->sinks.parts[0];
+  struct sink* sp = &c->sinks.parts[0];
   bzero(sp, sizeof(struct sink));
 
   /* Give it a decent position */
@@ -431,13 +431,13 @@ struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
  * and given a position within the cell as well as set to the minimal active
  * time bin.
  */
-struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
+struct gpart* cell_add_gpart(struct engine* e, struct cell* c) {
   /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding gpart on a foreign node");
   if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
   if (c->split) error("Addition of gpart performed above the leaf level");
 
-  struct space *s = e->s;
+  struct space* s = e->s;
 
   /* Progeny number at each level */
   int progeny[space_cell_maxdepth];
@@ -447,7 +447,7 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
 
   /* Get the top-level this leaf cell is in and compute the progeny indices at
      each level */
-  struct cell *top = c;
+  struct cell* top = c;
   while (top->parent != NULL) {
     /* What is the progeny index of the cell? */
     for (int k = 0; k < 8; ++k) {
@@ -500,7 +500,7 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
             n_copy * sizeof(struct gpart));
 
     /* Update the gpart->spart links (shift by 1) */
-    struct gpart *gparts = c->grav.parts;
+    struct gpart* gparts = c->grav.parts;
     for (size_t i = 0; i < n_copy; ++i) {
 
       /* Skip inhibited particles */
@@ -525,7 +525,7 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
   /* Make sure the gravity will be recomputed for this particle in the next
    * step
    */
-  struct cell *top2 = c;
+  struct cell* top2 = c;
   while (top2->parent != NULL) {
     top2->grav.ti_old_part = e->ti_current;
     top2 = top2->parent;
@@ -537,7 +537,7 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
     error("Failed to unlock the top-level cell.");
 
   /* We now have an empty gpart as the first particle in that cell */
-  struct gpart *gp = &c->grav.parts[0];
+  struct gpart* gp = &c->grav.parts[0];
   bzero(gp, sizeof(struct gpart));
 
   /* Give it a decent position */
@@ -571,8 +571,8 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
  * @param p The #part to remove.
  * @param xp The extended data of the particle to remove.
  */
-void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
-                      struct xpart *xp) {
+void cell_remove_part(const struct engine* e, struct cell* c, struct part* p,
+                      struct xpart* xp) {
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
@@ -614,8 +614,8 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
  * @param c The #cell from which to remove the particle.
  * @param gp The #gpart to remove.
  */
-void cell_remove_gpart(const struct engine *e, struct cell *c,
-                       struct gpart *gp) {
+void cell_remove_gpart(const struct engine* e, struct cell* c,
+                       struct gpart* gp) {
 
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
@@ -649,8 +649,8 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
  * @param c The #cell from which to remove the particle.
  * @param sp The #spart to remove.
  */
-void cell_remove_spart(const struct engine *e, struct cell *c,
-                       struct spart *sp) {
+void cell_remove_spart(const struct engine* e, struct cell* c,
+                       struct spart* sp) {
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
@@ -687,8 +687,8 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
  * @param c The #cell from which to remove the particle.
  * @param bp The #bpart to remove.
  */
-void cell_remove_bpart(const struct engine *e, struct cell *c,
-                       struct bpart *bp) {
+void cell_remove_bpart(const struct engine* e, struct cell* c,
+                       struct bpart* bp) {
 
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
@@ -726,8 +726,8 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
  * @param c The #cell from which to remove the particle.
  * @param sp The #sink to remove.
  */
-void cell_remove_sink(const struct engine *e, struct cell *c,
-                      struct sink *sink) {
+void cell_remove_sink(const struct engine* e, struct cell* c,
+                      struct sink* sink) {
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
@@ -772,8 +772,8 @@ void cell_remove_sink(const struct engine *e, struct cell *c,
  * @return Pointer to the #gpart the #part has become. It carries the
  * ID of the #part and has a dark matter type.
  */
-struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
-                                         struct part *p, struct xpart *xp) {
+struct gpart* cell_convert_part_to_gpart(const struct engine* e, struct cell* c,
+                                         struct part* p, struct xpart* xp) {
   /* Quick cross-checks */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
@@ -782,7 +782,7 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
     error("Trying to convert part without gpart friend to dark matter!");
 
   /* Get a handle */
-  struct gpart *gp = p->gpart;
+  struct gpart* gp = p->gpart;
 
   /* Mark the particle as inhibited */
   p->time_bin = time_bin_inhibited;
@@ -821,8 +821,8 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
  * @return Pointer to the #gpart the #spart has become. It carries the
  * ID of the #spart and has a dark matter type.
  */
-struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
-                                          struct cell *c, struct spart *sp) {
+struct gpart* cell_convert_spart_to_gpart(const struct engine* e,
+                                          struct cell* c, struct spart* sp) {
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
@@ -831,7 +831,7 @@ struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
     error("Trying to convert spart without gpart friend to dark matter!");
 
   /* Get a handle */
-  struct gpart *gp = sp->gpart;
+  struct gpart* gp = sp->gpart;
 
   /* Mark the particle as inhibited */
   sp->time_bin = time_bin_inhibited;
@@ -871,8 +871,8 @@ struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
  * @return A fresh #spart with the same ID, position, velocity and
  * time-bin as the original #part.
  */
-struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
-                                         struct part *p, struct xpart *xp) {
+struct spart* cell_convert_part_to_spart(struct engine* e, struct cell* c,
+                                         struct part* p, struct xpart* xp) {
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
@@ -881,7 +881,7 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
     error("Trying to convert part without gpart friend to star!");
 
   /* Create a fresh (empty) spart */
-  struct spart *sp = cell_add_spart(e, c);
+  struct spart* sp = cell_add_spart(e, c);
 
   /* Did we run out of free spart slots? */
   if (sp == NULL) return NULL;
@@ -892,7 +892,7 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
   sp->x_diff[2] = xp->x_diff[2];
 
   /* Destroy the gas particle and get it's gpart friend */
-  struct gpart *gp = cell_convert_part_to_gpart(e, c, p, xp);
+  struct gpart* gp = cell_convert_part_to_gpart(e, c, p, xp);
 
   /* Assign the ID back */
   sp->id = gp->id_or_neg_offset;
@@ -941,9 +941,9 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
  * @return A fresh #spart with a different ID, but same position,
  * velocity and time-bin as the original #part.
  */
-struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
-                                             const struct part *p,
-                                             const struct xpart *xp) {
+struct spart* cell_spawn_new_spart_from_part(struct engine* e, struct cell* c,
+                                             const struct part* p,
+                                             const struct xpart* xp) {
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't spawn a particle in a foreign cell.");
@@ -952,7 +952,7 @@ struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
     error("Trying to create a new spart from a part without gpart friend!");
 
   /* Create a fresh (empty) spart */
-  struct spart *sp = cell_add_spart(e, c);
+  struct spart* sp = cell_add_spart(e, c);
 
   /* Did we run out of free spart slots? */
   if (sp == NULL) return NULL;
@@ -963,7 +963,7 @@ struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
   sp->x_diff[2] = xp->x_diff[2];
 
   /* Create a new gpart */
-  struct gpart *gp = cell_add_gpart(e, c);
+  struct gpart* gp = cell_add_gpart(e, c);
 
   /* Did we run out of free gpart slots? */
   if (gp == NULL) {
@@ -1028,8 +1028,8 @@ struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
  * @return A fresh #sink with the same ID, position, velocity and
  * time-bin as the original #part.
  */
-struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
-                                       struct part *p, struct xpart *xp) {
+struct sink* cell_convert_part_to_sink(struct engine* e, struct cell* c,
+                                       struct part* p, struct xpart* xp) {
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
@@ -1038,7 +1038,7 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
     error("Trying to convert part without gpart friend to sink!");
 
   /* Create a fresh (empty) sink */
-  struct sink *sp = cell_add_sink(e, c);
+  struct sink* sp = cell_add_sink(e, c);
 
   /* Did we run out of free sink slots? */
   if (sp == NULL) return NULL;
@@ -1049,7 +1049,7 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
   sp->x_diff[2] = xp->x_diff[2];
 
   /* Destroy the gas particle and get it's gpart friend */
-  struct gpart *gp = cell_convert_part_to_gpart(e, c, p, xp);
+  struct gpart* gp = cell_convert_part_to_gpart(e, c, p, xp);
 
   /* Assign the ID back */
   sp->id = p->id;
@@ -1093,8 +1093,8 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
  * @return A fresh #spart with a different ID, but same position,
  * velocity and time-bin as the original #sink.
  */
-struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
-                                             const struct sink *s) {
+struct spart* cell_spawn_new_spart_from_sink(struct engine* e, struct cell* c,
+                                             const struct sink* s) {
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't spawn a particle in a foreign cell.");
@@ -1103,7 +1103,7 @@ struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
     error("Trying to create a new spart from a part without gpart friend!");
 
   /* Create a fresh (empty) spart */
-  struct spart *sp = cell_add_spart(e, c);
+  struct spart* sp = cell_add_spart(e, c);
 
   /* Did we run out of free spart slots? */
   if (sp == NULL) return NULL;
@@ -1114,7 +1114,7 @@ struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
   sp->x_diff[2] = s->x_diff[2];
 
   /* Create a new gpart */
-  struct gpart *gp = cell_add_gpart(e, c);
+  struct gpart* gp = cell_add_gpart(e, c);
 
   /* Did we run out of free gpart slots? */
   if (gp == NULL) {

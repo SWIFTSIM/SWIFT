@@ -37,21 +37,21 @@
  */
 struct neutrino_model {
   char use_delta_f_mesh_only;
-  double *M_nu_eV;
-  double *deg_nu;
+  double* M_nu_eV;
+  double* deg_nu;
   int N_nu;
   double fac;
   double inv_mass_factor;
   long long neutrino_seed;
 };
 
-void gather_neutrino_consts(const struct space *s, struct neutrino_model *nm);
-void gpart_neutrino_weight_mesh_only(const struct gpart *gp,
-                                     const struct neutrino_model *nm,
-                                     double *weight);
-void gpart_neutrino_mass_weight(const struct gpart *gp,
-                                const struct neutrino_model *nm, double *mass,
-                                double *weight);
+void gather_neutrino_consts(const struct space* s, struct neutrino_model* nm);
+void gpart_neutrino_weight_mesh_only(const struct gpart* gp,
+                                     const struct neutrino_model* nm,
+                                     double* weight);
+void gpart_neutrino_mass_weight(const struct gpart* gp,
+                                const struct neutrino_model* nm, double* mass,
+                                double* weight);
 
 /* Compute the ratio of macro particle mass in internal mass units to
  * the mass of one microscopic neutrino in eV.
@@ -63,8 +63,8 @@ void gpart_neutrino_mass_weight(const struct gpart *gp,
  * @param nr_nuparts The number of macro neutrino particles
  */
 INLINE static double neutrino_mass_factor(
-    const struct cosmology *cosmo, const struct unit_system *internal_units,
-    const struct phys_const *physical_constants, double volume,
+    const struct cosmology* cosmo, const struct unit_system* internal_units,
+    const struct phys_const* physical_constants, double volume,
     double nr_nuparts) {
   /* Some constants */
   const double k_b = physical_constants->const_boltzmann_k;
@@ -100,15 +100,15 @@ INLINE static double neutrino_mass_factor(
  * @param engine The engine of the run
  */
 __attribute__((always_inline)) INLINE static void gravity_first_init_neutrino(
-    struct gpart *gp, const struct engine *e) {
+    struct gpart* gp, const struct engine* e) {
 
   /* Do we need to do anything? */
   if (!e->neutrino_properties->generate_ics) return;
 
   /* Retrieve physical and cosmological constants */
   const double c_vel = e->physical_constants->const_speed_light_c;
-  const double *m_eV_array = e->cosmology->M_nu_eV;
-  const double *deg_array = e->cosmology->deg_nu;
+  const double* m_eV_array = e->cosmology->M_nu_eV;
+  const double* deg_array = e->cosmology->deg_nu;
   const int N_nu = e->cosmology->N_nu;
   const double T_eV = e->cosmology->T_nu_0_eV;
   const double inv_fac = c_vel * T_eV;
@@ -146,17 +146,17 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_neutrino(
 }
 
 void compute_neutrino_diagnostics(
-    const struct space *s, const struct cosmology *cosmo,
-    const struct phys_const *physical_constants,
-    const struct neutrino_props *neutrino_properties, const int rank, double *r,
-    double *I_df, double *mass_tot);
-void neutrino_check_cosmology(const struct space *s,
-                              const struct cosmology *cosmo,
-                              const struct phys_const *physical_constants,
-                              struct swift_params *params,
-                              const struct neutrino_props *neutrino_props,
+    const struct space* s, const struct cosmology* cosmo,
+    const struct phys_const* physical_constants,
+    const struct neutrino_props* neutrino_properties, const int rank, double* r,
+    double* I_df, double* mass_tot);
+void neutrino_check_cosmology(const struct space* s,
+                              const struct cosmology* cosmo,
+                              const struct phys_const* physical_constants,
+                              struct swift_params* params,
+                              const struct neutrino_props* neutrino_props,
                               const int rank, const int verbose);
 double lightcone_map_neutrino_baseline_value(
-    const struct cosmology *c, const struct lightcone_props *lightcone_props,
-    const struct lightcone_map *map);
+    const struct cosmology* c, const struct lightcone_props* lightcone_props,
+    const struct lightcone_map* map);
 #endif /* SWIFT_DEFAULT_NEUTRINO_H */

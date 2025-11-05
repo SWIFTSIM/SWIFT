@@ -33,10 +33,10 @@ float relative_error(float a, float b) { return fabs((a - b) / b); }
  * from the birth of the star (normalized by the initial stellar mass). Compares
  * these results to those produced by an analogous test in EAGLE.
  */
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Declare relevant structs */
-  struct swift_params *params = malloc(sizeof(struct swift_params));
+  struct swift_params* params = malloc(sizeof(struct swift_params));
   struct unit_system us;
   struct chemistry_global_data chem_data;
   struct part p;
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
   struct feedback_props feedback_properties;
-  char *parametersFileName = "./testFeedback.yml";
+  char* parametersFileName = "./testFeedback.yml";
 
   /* Read the parameter file */
   if (params == NULL) error("Error allocating memory for the parameter file.");
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
   sp.feedback_data.to_distribute.mass = 0.f;
 
   /* Open EAGLE test file for reading  */
-  FILE *EAGLE_test;
+  FILE* EAGLE_test;
   const char EAGLE_fname[75] =
       "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.01/StellarEvolutionTotal.txt";
   if (!(EAGLE_test = fopen(EAGLE_fname, "r"))) {
@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Declare constants necessary for reading EAGLE data */
-  char *line = NULL;
+  char* line = NULL;
   size_t len = 0;
   const int n_fields = 19;
   float tol = 1e-5;
@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
     error("failed to read first line of EAGLE test file");
 
   /* Open file for writing SWIFT feedback test output */
-  FILE *Total_output;
+  FILE* Total_output;
   const char Total_fname[25] = "test_feedback_total.txt";
   if (!(Total_output = fopen(Total_fname, "w"))) {
     error("error in opening file '%s'\n", Total_fname);
@@ -275,6 +275,6 @@ int main(int argc, char *argv[]) {
 #else
 
 /* Don't do anything if not using EAGLE stars */
-int main(int argc, char *argv[]) { return 0; }
+int main(int argc, char* argv[]) { return 0; }
 
 #endif

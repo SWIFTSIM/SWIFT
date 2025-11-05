@@ -34,7 +34,7 @@ struct projected_kernel_table {
   double du;
   double inv_du;
   double u_max;
-  double *value;
+  double* value;
 };
 
 /**
@@ -46,7 +46,7 @@ struct projected_kernel_table {
  * @param u The ratio of the (2D) distance to the smoothing length
  */
 __attribute__((always_inline)) INLINE static double projected_kernel_eval(
-    struct projected_kernel_table *tab, double u) {
+    struct projected_kernel_table* tab, double u) {
 
   /* Check u is in range */
   if (u >= tab->u_max) return 0.0;
@@ -62,8 +62,8 @@ __attribute__((always_inline)) INLINE static double projected_kernel_eval(
   return (1.0 - f) * tab->value[i] + f * tab->value[i + 1];
 }
 
-void projected_kernel_init(struct projected_kernel_table *tab);
-void projected_kernel_clean(struct projected_kernel_table *tab);
+void projected_kernel_init(struct projected_kernel_table* tab);
+void projected_kernel_clean(struct projected_kernel_table* tab);
 void projected_kernel_dump(void);
 
 #endif

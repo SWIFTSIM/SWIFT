@@ -28,7 +28,7 @@
 
 #define NUM_KEYS (26 * 1000 * 1000)
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

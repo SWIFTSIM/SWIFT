@@ -49,7 +49,7 @@
  */
 
 double get_thermal_equilibrium_pressure(
-    const struct cooling_function_data *cooling,
+    const struct cooling_function_data* cooling,
     const float abundance_ratio[colibre_cooling_N_elementtypes],
     const double log_u_cgs, const float log10nH_local, const double rho_cgs,
     const double redshift, const int ired, const int imet, const float dred,
@@ -178,10 +178,10 @@ double get_thermal_equilibrium_pressure(
  * @param isub which subgrid property to calculate
  */
 double compute_subgrid_property(
-    const struct cooling_function_data *cooling,
-    const struct phys_const *phys_const,
-    const struct entropy_floor_properties *floor_props,
-    const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
+    const struct cooling_function_data* cooling,
+    const struct phys_const* phys_const,
+    const struct entropy_floor_properties* floor_props,
+    const struct cosmology* cosmo, const float rho_phys, const float logZZsol,
     const float XH, const float P_phys, const float log10_T,
     const float log10_u_EOS_max_cgs, const int HII_region,
     const float abundance_ratio[colibre_cooling_N_elementtypes],

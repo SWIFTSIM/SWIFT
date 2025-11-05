@@ -37,13 +37,13 @@
  * void* for GSL integrators.
  */
 __attribute__((always_inline)) INLINE static double
-rt_interaction_rates_get_spectrum(const double nu, void *params) {
+rt_interaction_rates_get_spectrum(const double nu, void* params) {
   /* Keep this function in the .c file so you don't have to
    * include the spectra .h files like rt_blackbody.h anywhere
    * else */
 
-  struct rt_spectrum_integration_params *pars =
-      (struct rt_spectrum_integration_params *)params;
+  struct rt_spectrum_integration_params* pars =
+      (struct rt_spectrum_integration_params*)params;
 
   if (pars->spectrum_type == 0) {
     /* Constant spectrum */
@@ -73,7 +73,7 @@ rt_interaction_rates_get_spectrum(const double nu, void *params) {
  * @param params spectrum integration params. Needs to be of type
  * void* for GSL integrators.
  */
-static double spectrum_integrand(double nu, void *params) {
+static double spectrum_integrand(double nu, void* params) {
   return rt_interaction_rates_get_spectrum(nu, params);
 }
 
@@ -85,9 +85,9 @@ static double spectrum_integrand(double nu, void *params) {
  * @param params spectrum integration params. Needs to be of type
  * void* for GSL integrators.
  */
-static double spectrum_over_hnu_integrand(double nu, void *params) {
-  struct rt_spectrum_integration_params *p =
-      (struct rt_spectrum_integration_params *)params;
+static double spectrum_over_hnu_integrand(double nu, void* params) {
+  struct rt_spectrum_integration_params* p =
+      (struct rt_spectrum_integration_params*)params;
   const double E = nu * p->h_planck;
   const double J = rt_interaction_rates_get_spectrum(nu, params);
   if (E > 0.) {
@@ -105,9 +105,9 @@ static double spectrum_over_hnu_integrand(double nu, void *params) {
  * @param params spectrum integration params. Needs to be of type
  * void* for GSL integrators.
  */
-static double spectrum_times_sigma_integrand(double nu, void *params) {
-  struct rt_spectrum_integration_params *p =
-      (struct rt_spectrum_integration_params *)params;
+static double spectrum_times_sigma_integrand(double nu, void* params) {
+  struct rt_spectrum_integration_params* p =
+      (struct rt_spectrum_integration_params*)params;
   const double E = nu * p->h_planck;
   const double sigma =
       photoionization_cross_section(E, p->species, p->cs_params);
@@ -123,9 +123,9 @@ static double spectrum_times_sigma_integrand(double nu, void *params) {
  * @param params spectrum integration params. Needs to be of type
  * void* for GSL integrators.
  */
-static double spectrum_times_sigma_over_hnu_integrand(double nu, void *params) {
-  struct rt_spectrum_integration_params *p =
-      (struct rt_spectrum_integration_params *)params;
+static double spectrum_times_sigma_over_hnu_integrand(double nu, void* params) {
+  struct rt_spectrum_integration_params* p =
+      (struct rt_spectrum_integration_params*)params;
   const double E = nu * p->h_planck;
   const double sigma =
       photoionization_cross_section(E, p->species, p->cs_params);
@@ -142,15 +142,15 @@ static double spectrum_times_sigma_over_hnu_integrand(double nu, void *params) {
  * @param params spectrum integration params.
  * */
 static double rt_cross_sections_integrate_gsl(
-    double (*function)(double, void *), double nu_start, double nu_stop,
-    int npoints, struct rt_spectrum_integration_params *params) {
+    double (*function)(double, void*), double nu_start, double nu_stop,
+    int npoints, struct rt_spectrum_integration_params* params) {
 
   gsl_function F;
-  gsl_integration_workspace *w = gsl_integration_workspace_alloc(npoints);
+  gsl_integration_workspace* w = gsl_integration_workspace_alloc(npoints);
   double result, error;
 
   F.function = function;
-  F.params = (void *)params;
+  F.params = (void*)params;
   /* NOTE: there is an option to use the integrator with an upper limit
    * of infinity, but this is accurate enough for now when setting a
    * high enough maximal frequency. */
@@ -171,17 +171,17 @@ static double rt_cross_sections_integrate_gsl(
  * @param phys_const physical constants struct
  * @param us internal units struct
  **/
-void rt_cross_sections_init(struct rt_props *restrict rt_props,
-                            const struct phys_const *restrict phys_const,
-                            const struct unit_system *restrict us) {
+void rt_cross_sections_init(struct rt_props* restrict rt_props,
+                            const struct phys_const* restrict phys_const,
+                            const struct unit_system* restrict us) {
 
   /* Allocate the space to store the (cross section) integrals */
   /* --------------------------------------------------------- */
 
-  double **cse = malloc(RT_NGROUPS * sizeof(double *));
-  double **csn = malloc(RT_NGROUPS * sizeof(double *));
-  double *av_energy = rt_props->average_photon_energy;
-  double *photon_number_integral = rt_props->photon_number_integral;
+  double** cse = malloc(RT_NGROUPS * sizeof(double*));
+  double** csn = malloc(RT_NGROUPS * sizeof(double*));
+  double* av_energy = rt_props->average_photon_energy;
+  double* photon_number_integral = rt_props->photon_number_integral;
   for (int group = 0; group < RT_NGROUPS; group++) {
     cse[group] = malloc(rt_ionizing_species_count * sizeof(double));
     csn[group] = malloc(rt_ionizing_species_count * sizeof(double));

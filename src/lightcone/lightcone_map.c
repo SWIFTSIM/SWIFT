@@ -41,7 +41,7 @@
 #include <hdf5.h>
 #endif
 
-void lightcone_map_init(struct lightcone_map *map, const int nside,
+void lightcone_map_init(struct lightcone_map* map, const int nside,
                         const pixel_index_t total_nr_pix,
                         const pixel_index_t pix_per_rank,
                         const pixel_index_t local_nr_pix,
@@ -78,7 +78,7 @@ void lightcone_map_init(struct lightcone_map *map, const int nside,
  *
  * @param map the #lightcone_map structure
  */
-void lightcone_map_clean(struct lightcone_map *map) {
+void lightcone_map_clean(struct lightcone_map* map) {
 
   if (map->data) lightcone_map_free_pixels(map);
 }
@@ -89,10 +89,10 @@ void lightcone_map_clean(struct lightcone_map *map) {
  * @param map the #lightcone_map structure
  * @param zero_pixels if true, set allocated pixels to zero
  */
-void lightcone_map_allocate_pixels(struct lightcone_map *map,
+void lightcone_map_allocate_pixels(struct lightcone_map* map,
                                    const int zero_pixels) {
 
-  if (swift_memalign("lightcone_map_pixels", (void **)&map->data,
+  if (swift_memalign("lightcone_map_pixels", (void**)&map->data,
                      SWIFT_STRUCT_ALIGNMENT,
                      sizeof(double) * map->local_nr_pix) != 0)
     error("Failed to allocate lightcone map pixel data");
@@ -102,9 +102,9 @@ void lightcone_map_allocate_pixels(struct lightcone_map *map,
   }
 }
 
-void lightcone_map_free_pixels(struct lightcone_map *map) {
+void lightcone_map_free_pixels(struct lightcone_map* map) {
 
-  swift_free("lightcone_map_pixels", (void *)map->data);
+  swift_free("lightcone_map_pixels", (void*)map->data);
   map->data = NULL;
 }
 
@@ -114,15 +114,15 @@ void lightcone_map_free_pixels(struct lightcone_map *map) {
  * @param map the #lightcone_map structure
  * @param stream The stream to write to.
  */
-void lightcone_map_struct_dump(const struct lightcone_map *map, FILE *stream) {
+void lightcone_map_struct_dump(const struct lightcone_map* map, FILE* stream) {
 
   /* Write the struct */
-  restart_write_blocks((void *)map, sizeof(struct lightcone_map), 1, stream,
+  restart_write_blocks((void*)map, sizeof(struct lightcone_map), 1, stream,
                        "lightcone_map", "lightcone_map");
 
   /* Write the pixel data if it is allocated */
   if (map->data)
-    restart_write_blocks((void *)map->data, sizeof(double), map->local_nr_pix,
+    restart_write_blocks((void*)map->data, sizeof(double), map->local_nr_pix,
                          stream, "lightcone_map_data", "lightcone_map_data");
 }
 
@@ -132,18 +132,18 @@ void lightcone_map_struct_dump(const struct lightcone_map *map, FILE *stream) {
  * @param map the #lightcone_map structure
  * @param stream The stream to read from.
  */
-void lightcone_map_struct_restore(struct lightcone_map *map, FILE *stream) {
+void lightcone_map_struct_restore(struct lightcone_map* map, FILE* stream) {
 
   /* Read the struct */
-  restart_read_blocks((void *)map, sizeof(struct lightcone_map), 1, stream,
-                      NULL, "lightcone_map");
+  restart_read_blocks((void*)map, sizeof(struct lightcone_map), 1, stream, NULL,
+                      "lightcone_map");
 
   /* Read the pixel data if it was allocated.
      map->data from the restart file is not a valid pointer now but we can
      check if it is not null to see if the pixel data block was written out. */
   if (map->data) {
     lightcone_map_allocate_pixels(map, /* zero_pixels = */ 0);
-    restart_read_blocks((void *)map->data, sizeof(double), map->local_nr_pix,
+    restart_read_blocks((void*)map->data, sizeof(double), map->local_nr_pix,
                         stream, NULL, "lightcone_map");
   }
 }
@@ -156,10 +156,10 @@ void lightcone_map_struct_restore(struct lightcone_map *map, FILE *stream) {
  * @param loc a HDF5 file or group identifier to write to
  * @param name the name of the dataset to create
  */
-void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id,
-                         const char *name,
-                         const struct unit_system *internal_units,
-                         const struct unit_system *snapshot_units,
+void lightcone_map_write(struct lightcone_map* map, const hid_t loc_id,
+                         const char* name,
+                         const struct unit_system* internal_units,
+                         const struct unit_system* snapshot_units,
                          const int collective, const int gzip_level,
                          const int chunk_size,
                          enum lossy_compression_schemes compression) {

@@ -35,10 +35,10 @@
  *
  * @return Buffer after the bits written.
  */
-INLINE static void *csds_chemistry_write_part(const struct part *p,
-                                              const struct xpart *xp,
-                                              const struct engine *e,
-                                              void *buffer) {
+INLINE static void* csds_chemistry_write_part(const struct part* p,
+                                              const struct xpart* xp,
+                                              const struct engine* e,
+                                              void* buffer) {
 
   /* Add the smoothed metals */
   const size_t size = sizeof(p->chemistry_data.smoothed_metal_mass_fraction);
@@ -46,7 +46,7 @@ INLINE static void *csds_chemistry_write_part(const struct part *p,
   buffer += size;
 
   /* Add the metal mass */
-  double *metals = buffer;
+  double* metals = buffer;
   const float m = hydro_get_mass(p);
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     metals[i] = p->chemistry_data.metal_mass[i] / m;
@@ -63,7 +63,7 @@ INLINE static void *csds_chemistry_write_part(const struct part *p,
  * @return The number of fields.
  */
 INLINE static int csds_chemistry_define_fields_parts(
-    struct csds_field *fields) {
+    struct csds_field* fields) {
 
   /* Write the metallicities and non smoothed metallicities together. */
   csds_define_field_from_function_hydro(
@@ -81,7 +81,7 @@ INLINE static int csds_chemistry_define_fields_parts(
  * @return The number of fields.
  */
 INLINE static int csds_chemistry_define_fields_sparts(
-    struct csds_field *fields) {
+    struct csds_field* fields) {
 
   csds_define_hydro_standard_field(fields[0], "GEARChemistrySparts",
                                    struct spart,

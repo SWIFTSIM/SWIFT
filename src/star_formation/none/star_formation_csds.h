@@ -30,7 +30,7 @@
  *
  * @return The number of fields.
  */
-INLINE static int csds_star_formation_define_fields(struct csds_field *fields) {
+INLINE static int csds_star_formation_define_fields(struct csds_field* fields) {
   return 0;
 }
 

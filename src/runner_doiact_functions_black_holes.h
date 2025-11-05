@@ -33,7 +33,7 @@
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
+void DOSELF1_BH(struct runner* r, struct cell* c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank) error("Should be run on a different node");
@@ -41,9 +41,9 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const integertime_t ti_current = e->ti_current;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int bi_is_local = 1; /* SELF tasks are always local */
 
@@ -53,9 +53,9 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 
   const int bcount = c->black_holes.count;
   const int count = c->hydro.count;
-  struct bpart *restrict bparts = c->black_holes.parts;
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
+  struct bpart* restrict bparts = c->black_holes.parts;
+  struct part* restrict parts = c->hydro.parts;
+  struct xpart* restrict xparts = c->hydro.xparts;
 
   /* Do we actually have any gas neighbours? */
   if (c->hydro.count != 0) {
@@ -64,7 +64,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
     for (int bid = 0; bid < bcount; bid++) {
 
       /* Get a hold of the ith bpart in ci. */
-      struct bpart *restrict bi = &bparts[bid];
+      struct bpart* restrict bi = &bparts[bid];
 
       /* Skip inactive particles */
       if (!bpart_is_active(bi, e)) continue;
@@ -79,8 +79,8 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
       for (int pjd = 0; pjd < count; pjd++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts[pjd];
-        struct xpart *restrict xpj = &xparts[pjd];
+        struct part* restrict pj = &parts[pjd];
+        struct xpart* restrict xpj = &xparts[pjd];
         const float hj = pj->h;
 
         /* Early abort? */
@@ -127,7 +127,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
   for (int bid = 0; bid < bcount; bid++) {
 
     /* Get a hold of the ith bpart in ci. */
-    struct bpart *restrict bi = &bparts[bid];
+    struct bpart* restrict bi = &bparts[bid];
 
     /* Skip inactive particles */
     if (!bpart_is_active(bi, e)) continue;
@@ -145,7 +145,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
       if (bid == bjd) continue;
 
       /* Get a pointer to the jth particle. */
-      struct bpart *restrict bj = &bparts[bjd];
+      struct bpart* restrict bj = &bparts[bjd];
       const float hj = bj->h;
 
       /* Early abort? */
@@ -191,8 +191,8 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
  * @param ci The first #cell
  * @param cj The second #cell
  */
-void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
-                              struct cell *restrict cj) {
+void DO_NONSYM_PAIR1_BH_NAIVE(struct runner* r, struct cell* restrict ci,
+                              struct cell* restrict cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -202,9 +202,9 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #endif
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const integertime_t ti_current = e->ti_current;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int bi_is_local = ci->nodeID == e->nodeID;
 
@@ -214,9 +214,9 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 
   const int bcount_i = ci->black_holes.count;
   const int count_j = cj->hydro.count;
-  struct bpart *restrict bparts_i = ci->black_holes.parts;
-  struct part *restrict parts_j = cj->hydro.parts;
-  struct xpart *restrict xparts_j = cj->hydro.xparts;
+  struct bpart* restrict bparts_i = ci->black_holes.parts;
+  struct part* restrict parts_j = cj->hydro.parts;
+  struct xpart* restrict xparts_j = cj->hydro.xparts;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -234,7 +234,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
     for (int bid = 0; bid < bcount_i; bid++) {
 
       /* Get a hold of the ith bpart in ci. */
-      struct bpart *restrict bi = &bparts_i[bid];
+      struct bpart* restrict bi = &bparts_i[bid];
 
       /* Skip inactive particles */
       if (!bpart_is_active(bi, e)) continue;
@@ -249,8 +249,8 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       for (int pjd = 0; pjd < count_j; pjd++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts_j[pjd];
-        struct xpart *restrict xpj = &xparts_j[pjd];
+        struct part* restrict pj = &parts_j[pjd];
+        struct xpart* restrict xpj = &xparts_j[pjd];
         const float hj = pj->h;
 
         /* Skip inhibited particles. */
@@ -294,13 +294,13 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
 
   const int bcount_j = cj->black_holes.count;
-  struct bpart *restrict bparts_j = cj->black_holes.parts;
+  struct bpart* restrict bparts_j = cj->black_holes.parts;
 
   /* Loop over the bparts in ci. */
   for (int bid = 0; bid < bcount_i; bid++) {
 
     /* Get a hold of the ith bpart in ci. */
-    struct bpart *restrict bi = &bparts_i[bid];
+    struct bpart* restrict bi = &bparts_i[bid];
 
     /* Skip inactive particles */
     if (!bpart_is_active(bi, e)) continue;
@@ -315,7 +315,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
     for (int bjd = 0; bjd < bcount_j; bjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct bpart *restrict bj = &bparts_j[bjd];
+      struct bpart* restrict bj = &bparts_j[bjd];
       const float hj = bj->h;
 
       /* Skip inhibited particles. */
@@ -352,8 +352,8 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif /* (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW) */
 }
 
-void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
-                      struct cell *restrict cj, int timer) {
+void DOPAIR1_BH_NAIVE(struct runner* r, struct cell* restrict ci,
+                      struct cell* restrict cj, int timer) {
 
   TIMER_TIC;
 
@@ -390,24 +390,24 @@ void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param cj The second #cell.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
-                             struct bpart *restrict bparts_i, int *restrict ind,
-                             const int bcount, struct cell *restrict cj,
-                             const double *shift) {
+void DOPAIR1_SUBSET_BH_NAIVE(struct runner* r, struct cell* restrict ci,
+                             struct bpart* restrict bparts_i, int* restrict ind,
+                             const int bcount, struct cell* restrict cj,
+                             const double* shift) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
 #endif
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const integertime_t ti_current = e->ti_current;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int bi_is_local = ci->nodeID == e->nodeID;
 
   const int count_j = cj->hydro.count;
-  struct part *restrict parts_j = cj->hydro.parts;
-  struct xpart *restrict xparts_j = cj->hydro.xparts;
+  struct part* restrict parts_j = cj->hydro.parts;
+  struct xpart* restrict xparts_j = cj->hydro.xparts;
 
   /* Early abort? */
   if (count_j == 0) return;
@@ -416,7 +416,7 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   for (int bid = 0; bid < bcount; bid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct bpart *restrict bi = &bparts_i[ind[bid]];
+    struct bpart* restrict bi = &bparts_i[ind[bid]];
 
     const double bix = bi->x[0] - (shift[0]);
     const double biy = bi->x[1] - (shift[1]);
@@ -433,8 +433,8 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
     for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
+      struct part* restrict pj = &parts_j[pjd];
+      struct xpart* restrict xpj = &xparts_j[pjd];
 
       /* Skip inhibited particles */
       if (part_is_inhibited(pj, e)) continue;
@@ -482,23 +482,23 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param bcount The number of particles in @c ind.
  */
-void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
-                       struct bpart *restrict bparts, int *restrict ind,
+void DOSELF1_SUBSET_BH(struct runner* r, struct cell* restrict ci,
+                       struct bpart* restrict bparts, int* restrict ind,
                        const int bcount) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
 #endif
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const integertime_t ti_current = e->ti_current;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int bi_is_local = 1; /* SELF tasks are always local */
 
   const int count_i = ci->hydro.count;
-  struct part *restrict parts_j = ci->hydro.parts;
-  struct xpart *restrict xparts_j = ci->hydro.xparts;
+  struct part* restrict parts_j = ci->hydro.parts;
+  struct xpart* restrict xparts_j = ci->hydro.xparts;
 
   /* Early abort? */
   if (count_i == 0) return;
@@ -507,7 +507,7 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
   for (int bid = 0; bid < bcount; bid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct bpart *bi = &bparts[ind[bid]];
+    struct bpart* bi = &bparts[ind[bid]];
     const float bix[3] = {(float)(bi->x[0] - ci->loc[0]),
                           (float)(bi->x[1] - ci->loc[1]),
                           (float)(bi->x[2] - ci->loc[2])};
@@ -522,8 +522,8 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
     for (int pjd = 0; pjd < count_i; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
+      struct part* restrict pj = &parts_j[pjd];
+      struct xpart* restrict xpj = &xparts_j[pjd];
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
@@ -570,8 +570,8 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param bcount The number of particles in @c ind.
  */
-void DOSELF1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
-                              struct bpart *restrict bparts, int *restrict ind,
+void DOSELF1_SUBSET_BRANCH_BH(struct runner* r, struct cell* restrict ci,
+                              struct bpart* restrict bparts, int* restrict ind,
                               const int bcount) {
 
   DOSELF1_SUBSET_BH(r, ci, bparts, ind, bcount);
@@ -589,12 +589,12 @@ void DOSELF1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
  * @param bcount The number of particles in @c ind.
  * @param cj The second #cell.
  */
-void DOPAIR1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
-                              struct bpart *restrict bparts_i,
-                              int *restrict ind, int const bcount,
-                              struct cell *restrict cj) {
+void DOPAIR1_SUBSET_BRANCH_BH(struct runner* r, struct cell* restrict ci,
+                              struct bpart* restrict bparts_i,
+                              int* restrict ind, int const bcount,
+                              struct cell* restrict cj) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   /* Anything to do here? */
   if (cj->hydro.count == 0) return;
@@ -611,12 +611,12 @@ void DOPAIR1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
   DOPAIR1_SUBSET_BH_NAIVE(r, ci, bparts_i, ind, bcount, cj, shift);
 }
 
-void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
-                     int *ind, const int bcount, struct cell *cj,
+void DOSUB_SUBSET_BH(struct runner* r, struct cell* ci, struct bpart* bparts,
+                     int* ind, const int bcount, struct cell* cj,
                      int gettimer) {
 
-  const struct engine *e = r->e;
-  struct space *s = e->s;
+  const struct engine* e = r->e;
+  struct space* s = e->s;
 
   /* Should we even bother? */
   if (!cell_is_active_black_holes(ci, e) &&
@@ -624,7 +624,7 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
     return;
 
   /* Find out in which sub-cell of ci the parts are. */
-  struct cell *sub = NULL;
+  struct cell* sub = NULL;
   if (ci->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL) {
@@ -669,7 +669,7 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
       double shift[3] = {0.0, 0.0, 0.0};
       const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
-      struct cell_split_pair *csp = &cell_split_pairs[sid];
+      struct cell_split_pair* csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
@@ -705,9 +705,9 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
  * @param c #cell c
  *
  */
-void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c) {
+void DOSELF1_BRANCH_BH(struct runner* r, struct cell* c) {
 
-  const struct engine *restrict e = r->e;
+  const struct engine* restrict e = r->e;
 
   /* Anything to do here? */
   if (c->black_holes.count == 0) return;
@@ -732,9 +732,9 @@ void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c) {
  * @param cj #cell cj
  *
  */
-void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj) {
+void DOPAIR1_BRANCH_BH(struct runner* r, struct cell* ci, struct cell* cj) {
 
-  const struct engine *restrict e = r->e;
+  const struct engine* restrict e = r->e;
 
   const int ci_active = cell_is_active_black_holes(ci, e);
   const int cj_active = cell_is_active_black_holes(cj, e);
@@ -783,13 +783,13 @@ void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj) {
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
-void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
+void DOSUB_PAIR1_BH(struct runner* r, struct cell* ci, struct cell* cj,
                     int gettimer) {
 
   TIMER_TIC;
 
-  struct space *s = r->e->s;
-  const struct engine *e = r->e;
+  struct space* s = r->e->s;
+  const struct engine* e = r->e;
 
   /* Should we even bother?
    * In the swallow case we care about BH-BH and BH-gas
@@ -818,7 +818,7 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
   /* Recurse? */
   if (cell_can_recurse_in_pair_black_holes_task(ci, cj) &&
       cell_can_recurse_in_pair_black_holes_task(cj, ci)) {
-    struct cell_split_pair *csp = &cell_split_pairs[sid];
+    struct cell_split_pair* csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
@@ -881,11 +881,11 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer) {
+void DOSUB_SELF1_BH(struct runner* r, struct cell* ci, int gettimer) {
 
   TIMER_TIC;
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank)

@@ -90,8 +90,8 @@ static int ring_num(int nside, double z) {
  *        all rings to the north of this one
  *
  */
-static void pixels_per_ring(int nside, int ring, int *npr, int *kshift,
-                            long long *npnorth) {
+static void pixels_per_ring(int nside, int ring, int* npr, int* kshift,
+                            long long* npnorth) {
 
   /* number of pixels in current ring */
   *npr = nside;
@@ -169,8 +169,8 @@ static double ring2z(int nside, int ir) {
  *
  */
 void healpix_query_disc_range(int nside, double vec[3], double radius,
-                              pixel_index_t *pix_min, pixel_index_t *pix_max,
-                              int *nr_ranges, struct pixel_range **range) {
+                              pixel_index_t* pix_min, pixel_index_t* pix_max,
+                              int* nr_ranges, struct pixel_range** range) {
 
   /* Get normalized disc centre vector */
   double norm = sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
@@ -218,8 +218,7 @@ void healpix_query_disc_range(int nside, double vec[3], double radius,
   int nout_max = 2 * (irmax - irmin + 1);
   if (nout_max < 1) nout_max = 1;
   if (nr_ranges && range) {
-    *range =
-        (struct pixel_range *)malloc(nout_max * sizeof(struct pixel_range));
+    *range = (struct pixel_range*)malloc(nout_max * sizeof(struct pixel_range));
   }
 
   /* Will return min and max pixel indexes in the disk */
@@ -327,7 +326,7 @@ void healpix_query_disc_range(int nside, double vec[3], double radius,
  * @param phi angular coordinate
  *
  */
-static void set_z_phi(double *v, double z, double phi) {
+static void set_z_phi(double* v, double z, double phi) {
 
   double sintheta = sqrt((1.0 - z) * (1.0 + z));
   v[0] = sintheta * cos(phi);

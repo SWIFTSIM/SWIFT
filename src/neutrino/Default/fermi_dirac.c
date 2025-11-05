@@ -48,22 +48,22 @@ struct anyrng {
   int intervalN;
 
   /*! Endpoints of the intervals */
-  double *endpoints;
+  double* endpoints;
 
   /*! Cubic splines of the Fermi-Dirac quantile function */
-  struct spline *splines;
+  struct spline* splines;
 
   /*! Length of the look up tables */
   int tablelen;
 
   /*! Search table to look up enclosing intervals for small u */
-  int *index_table_a;
+  int* index_table_a;
 
   /*! Search table to look up enclosing intervals for intermediate u */
-  int *index_table_b;
+  int* index_table_b;
 
   /*! Search table to look up enclosing intervals for large u */
-  int *index_table_c;
+  int* index_table_c;
 };
 
 static double endpoints[118] = {
@@ -280,7 +280,7 @@ double neutrino_seed_to_fermi_dirac(uint64_t seed) {
   /* Retrieve the endpoints and cubic spline coefficients of this interval */
   const double Fl = anyrng.endpoints[interval];
   const double Fr = anyrng.endpoints[interval + 1];
-  struct spline *iv = &anyrng.splines[interval];
+  struct spline* iv = &anyrng.splines[interval];
 
   /* Evaluate F^-1(u) using the Hermite approximation of F in this interval */
   const double u_tilde = (u - Fl) / (Fr - Fl);

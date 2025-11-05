@@ -26,7 +26,7 @@
  * @brief Test the kick-drift-kick leapfrog integration
  * via a Sun-Earth simulation
  */
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   struct cell c;
   int i;
@@ -62,11 +62,11 @@ int main(int argc, char *argv[]) {
   message("Running for %d steps with dt=%e", N, dt);
 
   /* Create a particle */
-  struct part *parts = NULL;
-  parts = (struct part *)malloc(sizeof(struct part));
+  struct part* parts = NULL;
+  parts = (struct part*)malloc(sizeof(struct part));
   bzero(parts, sizeof(struct part));
-  struct xpart *xparts = NULL;
-  xparts = (struct xpart *)malloc(sizeof(struct xpart));
+  struct xpart* xparts = NULL;
+  xparts = (struct xpart*)malloc(sizeof(struct xpart));
   bzero(xparts, sizeof(struct xpart));
 
   /* Put the particle on the orbit */

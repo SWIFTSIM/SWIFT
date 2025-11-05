@@ -38,9 +38,9 @@
  * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_init(
-    struct part *restrict p) {
+    struct part* restrict p) {
 
-  struct rt_part_data *rtd = &p->rt_data;
+  struct rt_part_data* rtd = &p->rt_data;
 
   for (int g = 0; g < RT_NGROUPS; g++) {
     for (int i = 0; i < 3; i++) {
@@ -64,10 +64,10 @@ __attribute__((always_inline)) INLINE static void rt_gradients_init(
  * @param dFz gradient of the z direction flux component
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_update_part(
-    struct part *restrict p, int g, float dE[3], float dFx[3], float dFy[3],
+    struct part* restrict p, int g, float dE[3], float dFx[3], float dFy[3],
     float dFz[3]) {
 
-  struct rt_part_data *rtd = &p->rt_data;
+  struct rt_part_data* rtd = &p->rt_data;
 
   rtd->gradient[g].energy_density[0] += dE[0];
   rtd->gradient[g].energy_density[1] += dE[1];
@@ -94,7 +94,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_update_part(
  **/
 
 __attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
-    struct part *restrict p) {
+    struct part* restrict p) {
 
   /* add kernel normalization to gradients */
   const float h = p->h;
@@ -110,7 +110,7 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
     norm = hinvdimp1 * volume;
   }
 
-  struct rt_part_data *rtd = &p->rt_data;
+  struct rt_part_data* rtd = &p->rt_data;
   for (int g = 0; g < RT_NGROUPS; g++) {
     rtd->gradient[g].energy_density[0] *= norm;
     rtd->gradient[g].energy_density[1] *= norm;
@@ -139,7 +139,7 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj) {
+    struct part* restrict pi, struct part* restrict pj) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rt_debug_sequence_check(pi, 2, __func__);
@@ -278,7 +278,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj) {
+    struct part* restrict pi, struct part* restrict pj) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rt_debug_sequence_check(pi, 2, __func__);
@@ -385,7 +385,7 @@ __attribute__((always_inline)) INLINE static float rt_gradients_extrapolate(
  * @param xij_i Position of the "interface" w.r.t. position of particle i
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_predict(
-    const struct part *restrict pi, const struct part *restrict pj, float Ui[4],
+    const struct part* restrict pi, const struct part* restrict pj, float Ui[4],
     float Uj[4], int group, const float dx[3], const float r,
     const float xij_i[3]) {
 
@@ -446,7 +446,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
  * @param dx The drift distance
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_predict_drift(
-    const struct part *restrict p, float U[4], int group, const float dx[3]) {
+    const struct part* restrict p, float U[4], int group, const float dx[3]) {
 
   rt_part_get_radiation_state_vector(p, group, U);
   /* No need to check unphysical state here:

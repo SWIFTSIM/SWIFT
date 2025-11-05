@@ -36,24 +36,24 @@ struct mapper_extra_data {
   int N;
 
   /* Buckets */
-  size_t *bucket_counts;
+  size_t* bucket_counts;
 };
 
 /**
  * @param Count how may mesh cells will end up in each x-coord bucket.
  */
-void bucket_sort_mesh_key_value_rho_count_mapper(void *map_data, int nr_parts,
-                                                 void *extra_data) {
+void bucket_sort_mesh_key_value_rho_count_mapper(void* map_data, int nr_parts,
+                                                 void* extra_data) {
 
   /* Unpack the data */
-  const struct mesh_key_value_rho *array_in =
-      (const struct mesh_key_value_rho *)map_data;
-  struct mapper_extra_data *data = (struct mapper_extra_data *)extra_data;
+  const struct mesh_key_value_rho* array_in =
+      (const struct mesh_key_value_rho*)map_data;
+  struct mapper_extra_data* data = (struct mapper_extra_data*)extra_data;
   const int N = data->N;
-  size_t *global_bucket_counts = data->bucket_counts;
+  size_t* global_bucket_counts = data->bucket_counts;
 
   /* Local buckets */
-  size_t *local_bucket_counts = (size_t *)calloc(N, sizeof(size_t));
+  size_t* local_bucket_counts = (size_t*)calloc(N, sizeof(size_t));
 
   /* Count how many items will land in each bucket. */
   for (int i = 0; i < nr_parts; ++i) {
@@ -86,18 +86,18 @@ void bucket_sort_mesh_key_value_rho_count_mapper(void *map_data, int nr_parts,
 /**
  * @param Count how may mesh cells will end up in each x-coord bucket.
  */
-void bucket_sort_mesh_key_value_pot_count_mapper(void *map_data, int nr_parts,
-                                                 void *extra_data) {
+void bucket_sort_mesh_key_value_pot_count_mapper(void* map_data, int nr_parts,
+                                                 void* extra_data) {
 
   /* Unpack the data */
-  const struct mesh_key_value_pot *array_in =
-      (const struct mesh_key_value_pot *)map_data;
-  struct mapper_extra_data *data = (struct mapper_extra_data *)extra_data;
+  const struct mesh_key_value_pot* array_in =
+      (const struct mesh_key_value_pot*)map_data;
+  struct mapper_extra_data* data = (struct mapper_extra_data*)extra_data;
   const int N = data->N;
-  size_t *global_bucket_counts = data->bucket_counts;
+  size_t* global_bucket_counts = data->bucket_counts;
 
   /* Local buckets */
-  size_t *local_bucket_counts = (size_t *)calloc(N, sizeof(size_t));
+  size_t* local_bucket_counts = (size_t*)calloc(N, sizeof(size_t));
 
   /* Count how many items will land in each bucket. */
   for (int i = 0; i < nr_parts; ++i) {
@@ -130,19 +130,19 @@ void bucket_sort_mesh_key_value_pot_count_mapper(void *map_data, int nr_parts,
 /**
  * @param Count how may mesh cells will end up in each cell index
  */
-void bucket_sort_mesh_key_value_pot_index_count_mapper(void *map_data,
+void bucket_sort_mesh_key_value_pot_index_count_mapper(void* map_data,
                                                        int nr_parts,
-                                                       void *extra_data) {
+                                                       void* extra_data) {
 
   /* Unpack the data */
-  const struct mesh_key_value_pot *array_in =
-      (const struct mesh_key_value_pot *)map_data;
-  struct mapper_extra_data *data = (struct mapper_extra_data *)extra_data;
+  const struct mesh_key_value_pot* array_in =
+      (const struct mesh_key_value_pot*)map_data;
+  struct mapper_extra_data* data = (struct mapper_extra_data*)extra_data;
   const int N = data->N;
-  size_t *global_bucket_counts = data->bucket_counts;
+  size_t* global_bucket_counts = data->bucket_counts;
 
   /* Local buckets */
-  size_t *local_bucket_counts = (size_t *)calloc(N, sizeof(size_t));
+  size_t* local_bucket_counts = (size_t*)calloc(N, sizeof(size_t));
 
   /* Count how many items will land in each bucket. */
   for (int i = 0; i < nr_parts; ++i) {
@@ -184,14 +184,14 @@ void bucket_sort_mesh_key_value_pot_index_count_mapper(void *map_data,
  * @param bucket_offsets The offsets in the sorted array where we change x-coord
  * (to be filled).
  */
-void bucket_sort_mesh_key_value_rho(const struct mesh_key_value_rho *array_in,
+void bucket_sort_mesh_key_value_rho(const struct mesh_key_value_rho* array_in,
                                     const size_t count, const int N,
-                                    struct threadpool *tp,
-                                    struct mesh_key_value_rho *array_out,
-                                    size_t *bucket_offsets) {
+                                    struct threadpool* tp,
+                                    struct mesh_key_value_rho* array_out,
+                                    size_t* bucket_offsets) {
 
   /* Create an array of bucket counts and one of offsets */
-  size_t *bucket_counts = (size_t *)malloc(N * sizeof(size_t));
+  size_t* bucket_counts = (size_t*)malloc(N * sizeof(size_t));
   memset(bucket_counts, 0, N * sizeof(size_t));
 
   struct mapper_extra_data extra_data;
@@ -200,7 +200,7 @@ void bucket_sort_mesh_key_value_rho(const struct mesh_key_value_rho *array_in,
 
   /* Collect the number of items that will end up in each bucket */
   threadpool_map(tp, bucket_sort_mesh_key_value_rho_count_mapper,
-                 (void *)array_in, count, sizeof(struct mesh_key_value_rho),
+                 (void*)array_in, count, sizeof(struct mesh_key_value_rho),
                  threadpool_auto_chunk_size, &extra_data);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -274,14 +274,14 @@ void bucket_sort_mesh_key_value_rho(const struct mesh_key_value_rho *array_in,
  * @param bucket_offsets The offsets in the sorted array where we change x-coord
  * (to be filled).
  */
-void bucket_sort_mesh_key_value_pot(const struct mesh_key_value_pot *array_in,
+void bucket_sort_mesh_key_value_pot(const struct mesh_key_value_pot* array_in,
                                     const size_t count, const int N,
-                                    struct threadpool *tp,
-                                    struct mesh_key_value_pot *array_out,
-                                    size_t *bucket_offsets) {
+                                    struct threadpool* tp,
+                                    struct mesh_key_value_pot* array_out,
+                                    size_t* bucket_offsets) {
 
   /* Create an array of bucket counts and one of offsets */
-  size_t *bucket_counts = (size_t *)malloc(N * sizeof(size_t));
+  size_t* bucket_counts = (size_t*)malloc(N * sizeof(size_t));
   memset(bucket_counts, 0, N * sizeof(size_t));
 
   struct mapper_extra_data extra_data;
@@ -290,7 +290,7 @@ void bucket_sort_mesh_key_value_pot(const struct mesh_key_value_pot *array_in,
 
   /* Collect the number of items that will end up in each bucket */
   threadpool_map(tp, bucket_sort_mesh_key_value_pot_count_mapper,
-                 (void *)array_in, count, sizeof(struct mesh_key_value_pot),
+                 (void*)array_in, count, sizeof(struct mesh_key_value_pot),
                  threadpool_auto_chunk_size, &extra_data);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -363,12 +363,12 @@ void bucket_sort_mesh_key_value_pot(const struct mesh_key_value_pot *array_in,
  * @param array_out The sorted array of mesh-key value pairs (to be filled).
  */
 void bucket_sort_mesh_key_value_pot_index(
-    const struct mesh_key_value_pot *array_in, const size_t count, const int N,
-    struct threadpool *tp, struct mesh_key_value_pot *array_out) {
+    const struct mesh_key_value_pot* array_in, const size_t count, const int N,
+    struct threadpool* tp, struct mesh_key_value_pot* array_out) {
 
   /* Create an array of bucket counts and one of offsets */
-  size_t *bucket_counts = (size_t *)malloc(N * sizeof(size_t));
-  size_t *bucket_offsets = (size_t *)malloc(N * sizeof(size_t));
+  size_t* bucket_counts = (size_t*)malloc(N * sizeof(size_t));
+  size_t* bucket_offsets = (size_t*)malloc(N * sizeof(size_t));
   memset(bucket_counts, 0, N * sizeof(size_t));
 
   struct mapper_extra_data extra_data;
@@ -377,7 +377,7 @@ void bucket_sort_mesh_key_value_pot_index(
 
   /* Collect the number of items that will end up in each bucket */
   threadpool_map(tp, bucket_sort_mesh_key_value_pot_index_count_mapper,
-                 (void *)array_in, count, sizeof(struct mesh_key_value_pot),
+                 (void*)array_in, count, sizeof(struct mesh_key_value_pot),
                  threadpool_auto_chunk_size, &extra_data);
 
 #ifdef SWIFT_DEBUG_CHECKS

@@ -33,8 +33,8 @@ const int num_M2L_runs = 1 << 23;
 const int num_M2P_runs = 1 << 23;
 const int num_PP_runs = 1;  // << 8;
 
-void make_cell(struct cell *c, int N, const double loc[3], double width,
-               int id_base, const struct gravity_props *grav_props) {
+void make_cell(struct cell* c, int N, const double loc[3], double width,
+               int id_base, const struct gravity_props* grav_props) {
 
   bzero(c, sizeof(struct cell));
 
@@ -61,7 +61,7 @@ void make_cell(struct cell *c, int N, const double loc[3], double width,
   c->grav.count = N;
   c->grav.count_total = N;
   c->grav.parts = NULL;
-  if (posix_memalign((void **)&c->grav.parts, part_align,
+  if (posix_memalign((void**)&c->grav.parts, part_align,
                      N * sizeof(struct gpart)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)N);
   }
@@ -80,13 +80,13 @@ void make_cell(struct cell *c, int N, const double loc[3], double width,
 
   /* Create the multipoles */
   c->grav.multipole =
-      (struct gravity_tensors *)malloc(sizeof(struct gravity_tensors));
+      (struct gravity_tensors*)malloc(sizeof(struct gravity_tensors));
   gravity_reset(c->grav.multipole);
   gravity_P2M(c->grav.multipole, c->grav.parts, N, grav_props);
   gravity_multipole_compute_power(&c->grav.multipole->m_pole);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -154,12 +154,12 @@ int main(int argc, char *argv[]) {
   message("Number of runs: %d", num_M2L_runs);
 
   /* Construct arrays of multipoles to prevent too much optimization */
-  struct gravity_tensors *tensors_i = NULL;
-  if (posix_memalign((void **)&tensors_i, SWIFT_CACHE_ALIGNMENT,
+  struct gravity_tensors* tensors_i = NULL;
+  if (posix_memalign((void**)&tensors_i, SWIFT_CACHE_ALIGNMENT,
                      num_M2L_runs * sizeof(struct gravity_tensors)) != 0)
     error("Error allocating memory for multipoles array.");
-  struct gravity_tensors *tensors_j = NULL;
-  if (posix_memalign((void **)&tensors_j, SWIFT_CACHE_ALIGNMENT,
+  struct gravity_tensors* tensors_j = NULL;
+  if (posix_memalign((void**)&tensors_j, SWIFT_CACHE_ALIGNMENT,
                      num_M2L_runs * sizeof(struct gravity_tensors)) != 0)
     error("Error allocating memory for multipoles array.");
   for (int n = 0; n < num_M2L_runs; ++n) {

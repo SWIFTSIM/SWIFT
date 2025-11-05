@@ -39,17 +39,17 @@
 #include "particle_buffer.h"
 #include "stars.h"
 
-void lightcone_io_field_list_init(struct lightcone_io_field_list *list) {
+void lightcone_io_field_list_init(struct lightcone_io_field_list* list) {
 
   list->first = NULL;
   list->last = NULL;
   list->num_fields = 0;
 }
 
-void lightcone_io_field_list_clean(struct lightcone_io_field_list *list) {
+void lightcone_io_field_list_clean(struct lightcone_io_field_list* list) {
 
-  struct lightcone_io_field *current;
-  struct lightcone_io_field *next;
+  struct lightcone_io_field* current;
+  struct lightcone_io_field* next;
 
   current = list->first;
   while (current) {
@@ -63,16 +63,16 @@ void lightcone_io_field_list_clean(struct lightcone_io_field_list *list) {
   list->num_fields = 0;
 }
 
-void lightcone_io_field_list_append(struct lightcone_io_field_list *list,
-                                    char *name, enum IO_DATA_TYPE type,
+void lightcone_io_field_list_append(struct lightcone_io_field_list* list,
+                                    char* name, enum IO_DATA_TYPE type,
                                     int dimension, size_t offset,
                                     enum unit_conversion_factor units,
                                     float scale_factor_exponent,
-                                    char *compression) {
+                                    char* compression) {
 
   /* Make the new lightcone_io_field struct */
-  struct lightcone_io_field *r =
-      (struct lightcone_io_field *)malloc(sizeof(struct lightcone_io_field));
+  struct lightcone_io_field* r =
+      (struct lightcone_io_field*)malloc(sizeof(struct lightcone_io_field));
   bzero(r, sizeof(struct lightcone_io_field));
   strcpy(r->name, name);
   r->type = type;
@@ -97,7 +97,7 @@ void lightcone_io_field_list_append(struct lightcone_io_field_list *list,
  * @brief Make a linked list of output fields for gas particles
  */
 void lightcone_io_append_gas_output_fields(
-    struct lightcone_io_field_list *list) {
+    struct lightcone_io_field_list* list) {
 
 #define OFFSET(x) offsetof(struct lightcone_gas_data, x)
   lightcone_io_field_list_append(list, "ParticleIDs", LONGLONG, 1, OFFSET(id),
@@ -158,7 +158,7 @@ void lightcone_io_append_gas_output_fields(
  * @brief Make a linked list of output fields for DM particles
  */
 void lightcone_io_append_dark_matter_output_fields(
-    struct lightcone_io_field_list *list) {
+    struct lightcone_io_field_list* list) {
 
 #define OFFSET(x) offsetof(struct lightcone_dark_matter_data, x)
   lightcone_io_field_list_append(list, "ParticleIDs", LONGLONG, 1, OFFSET(id),
@@ -178,7 +178,7 @@ void lightcone_io_append_dark_matter_output_fields(
  * @brief Make a linked list of output fields for DM background particles
  */
 void lightcone_io_append_dark_matter_background_output_fields(
-    struct lightcone_io_field_list *list) {
+    struct lightcone_io_field_list* list) {
 
 #define OFFSET(x)                             \
   offsetof(struct lightcone_dark_matter_data, \
@@ -200,7 +200,7 @@ void lightcone_io_append_dark_matter_background_output_fields(
  * @brief Make a linked list of output fields for star particles
  */
 void lightcone_io_append_stars_output_fields(
-    struct lightcone_io_field_list *list) {
+    struct lightcone_io_field_list* list) {
 
 #define OFFSET(x) offsetof(struct lightcone_stars_data, x)
   lightcone_io_field_list_append(list, "ParticleIDs", LONGLONG, 1, OFFSET(id),
@@ -256,7 +256,7 @@ void lightcone_io_append_stars_output_fields(
  * @brief Make a linked list of output fields for black hole particles
  */
 void lightcone_io_append_black_hole_output_fields(
-    struct lightcone_io_field_list *list) {
+    struct lightcone_io_field_list* list) {
 
 #define OFFSET(x) offsetof(struct lightcone_black_hole_data, x)
   lightcone_io_field_list_append(list, "ParticleIDs", LONGLONG, 1, OFFSET(id),
@@ -320,7 +320,7 @@ void lightcone_io_append_black_hole_output_fields(
  * @brief Make a linked list of output fields for neutrino particles
  */
 void lightcone_io_append_neutrino_output_fields(
-    struct lightcone_io_field_list *list) {
+    struct lightcone_io_field_list* list) {
 
 #define OFFSET(x) offsetof(struct lightcone_neutrino_data, x)
   lightcone_io_field_list_append(list, "ParticleIDs", LONGLONG, 1, OFFSET(id),
@@ -364,11 +364,11 @@ void lightcone_io_append_neutrino_output_fields(
  * lightcone
  * @param the #lightcone_gas_data struct to update
  */
-int lightcone_store_gas(const struct engine *e, struct lightcone_props *props,
-                        const struct gpart *gp, const struct part *p,
-                        const struct xpart *xp, const double a_cross,
+int lightcone_store_gas(const struct engine* e, struct lightcone_props* props,
+                        const struct gpart* gp, const struct part* p,
+                        const struct xpart* xp, const double a_cross,
                         const double x_cross[3],
-                        struct lightcone_gas_data *data) {
+                        struct lightcone_gas_data* data) {
 
   /*! Check if we're filtering gas particles */
   if (props->gas_filtering_enabled) {
@@ -458,11 +458,11 @@ int lightcone_store_gas(const struct engine *e, struct lightcone_props *props,
  * lightcone
  * @param the #lightcone_dark_matter_data struct to update
  */
-int lightcone_store_dark_matter(const struct engine *e,
-                                struct lightcone_props *props,
-                                const struct gpart *gp, const double a_cross,
+int lightcone_store_dark_matter(const struct engine* e,
+                                struct lightcone_props* props,
+                                const struct gpart* gp, const double a_cross,
                                 const double x_cross[3],
-                                struct lightcone_dark_matter_data *data) {
+                                struct lightcone_dark_matter_data* data) {
   data->id = gp->id_or_neg_offset;
   data->x[0] = x_cross[0];
   data->x[1] = x_cross[1];
@@ -492,10 +492,10 @@ int lightcone_store_dark_matter(const struct engine *e,
  * lightcone
  * @param the #lightcone_stars_data struct to update
  */
-int lightcone_store_stars(const struct engine *e, struct lightcone_props *props,
-                          const struct gpart *gp, const struct spart *sp,
+int lightcone_store_stars(const struct engine* e, struct lightcone_props* props,
+                          const struct gpart* gp, const struct spart* sp,
                           const double a_cross, const double x_cross[3],
-                          struct lightcone_stars_data *data) {
+                          struct lightcone_stars_data* data) {
   data->id = sp->id;
   data->x[0] = x_cross[0];
   data->x[1] = x_cross[1];
@@ -553,11 +553,11 @@ int lightcone_store_stars(const struct engine *e, struct lightcone_props *props,
  * lightcone
  * @param the #lightcone_black_hole_data struct to update
  */
-int lightcone_store_black_hole(const struct engine *e,
-                               struct lightcone_props *props,
-                               const struct gpart *gp, const struct bpart *bp,
+int lightcone_store_black_hole(const struct engine* e,
+                               struct lightcone_props* props,
+                               const struct gpart* gp, const struct bpart* bp,
                                const double a_cross, const double x_cross[3],
-                               struct lightcone_black_hole_data *data) {
+                               struct lightcone_black_hole_data* data) {
   data->id = bp->id;
   data->x[0] = x_cross[0];
   data->x[1] = x_cross[1];
@@ -603,11 +603,11 @@ int lightcone_store_black_hole(const struct engine *e,
  * lightcone
  * @param the #lightcone_neutrino_data struct to update
  */
-int lightcone_store_neutrino(const struct engine *e,
-                             struct lightcone_props *props,
-                             const struct gpart *gp, const double a_cross,
+int lightcone_store_neutrino(const struct engine* e,
+                             struct lightcone_props* props,
+                             const struct gpart* gp, const double a_cross,
                              const double x_cross[3],
-                             struct lightcone_neutrino_data *data) {
+                             struct lightcone_neutrino_data* data) {
 
   /* Compute neutrino weight */
   struct neutrino_model nu_model;
@@ -636,14 +636,14 @@ int lightcone_store_neutrino(const struct engine *e,
  * @brief Write data to a HDF5 dataset, appending along first axis if it already
  * exists
  */
-void append_dataset(const struct unit_system *snapshot_units,
+void append_dataset(const struct unit_system* snapshot_units,
                     enum unit_conversion_factor units,
-                    float scale_factor_exponent, hid_t loc_id, const char *name,
+                    float scale_factor_exponent, hid_t loc_id, const char* name,
                     hid_t mem_type_id, hsize_t chunk_size,
                     int lossy_compression,
                     enum lossy_compression_schemes compression_scheme,
                     int gzip_level, const int rank, const hsize_t dims[2],
-                    const hsize_t num_written, const void *data) {
+                    const hsize_t num_written, const void* data) {
 
   if (rank > 2) error("HDF5 dataset has too may dimensions.");
   if (rank < 1) error("HDF5 dataset must be at least one dimensional");
@@ -761,8 +761,8 @@ void append_dataset(const struct unit_system *snapshot_units,
   H5Dclose(dataset_id);
 }
 
-hid_t init_write(struct lightcone_props *props, hid_t file_id, int ptype,
-                 size_t *num_written, size_t *num_to_write) {
+hid_t init_write(struct lightcone_props* props, hid_t file_id, int ptype,
+                 size_t* num_written, size_t* num_to_write) {
 
   /* Number of particles already written to the file */
   *num_written = props->num_particles_written_to_file[ptype];
@@ -771,7 +771,7 @@ hid_t init_write(struct lightcone_props *props, hid_t file_id, int ptype,
   *num_to_write = particle_buffer_num_elements(&props->buffer[ptype]);
 
   /* Create or open the HDF5 group for this particle type */
-  const char *name = part_type_names[ptype];
+  const char* name = part_type_names[ptype];
   hid_t group_id;
   if (*num_written > 0) {
     group_id = H5Gopen(file_id, name, H5P_DEFAULT);
@@ -786,9 +786,9 @@ hid_t init_write(struct lightcone_props *props, hid_t file_id, int ptype,
 /**
  * @brief Append buffered particles to the output file.
  */
-void lightcone_write_particles(struct lightcone_props *props,
-                               const struct unit_system *internal_units,
-                               const struct unit_system *snapshot_units,
+void lightcone_write_particles(struct lightcone_props* props,
+                               const struct unit_system* internal_units,
+                               const struct unit_system* snapshot_units,
                                int ptype, hid_t file_id) {
 
   if (props->particle_fields[ptype].num_fields > 0) {
@@ -802,7 +802,7 @@ void lightcone_write_particles(struct lightcone_props *props,
     const size_t data_struct_size = lightcone_io_struct_size(ptype);
 
     /* Loop over output fields */
-    struct lightcone_io_field *f = props->particle_fields[ptype].first;
+    struct lightcone_io_field* f = props->particle_fields[ptype].first;
     while (f) {
 
       /* Find output field info */
@@ -818,20 +818,20 @@ void lightcone_write_particles(struct lightcone_props *props,
           units_conversion_factor(internal_units, snapshot_units, f->units);
 
       /* Allocate output buffer */
-      char *outbuf = (char *)malloc(num_to_write * field_size);
+      char* outbuf = (char*)malloc(num_to_write * field_size);
       if (!outbuf) error("Unable to allocate lightcone output buffer");
-      char *outptr = outbuf;
+      char* outptr = outbuf;
 
       /* Loop over blocks of buffered particles and copy to output array */
       size_t num_elements;
-      struct particle_buffer_block *block = NULL;
-      char *block_data;
+      struct particle_buffer_block* block = NULL;
+      char* block_data;
       do {
         particle_buffer_iterate(&props->buffer[ptype], &block, &num_elements,
-                                (void **)&block_data);
+                                (void**)&block_data);
         for (size_t i = 0; i < num_elements; i += 1) {
-          char *src = block_data + i * data_struct_size + f->offset;
-          char *dest = outptr;
+          char* src = block_data + i * data_struct_size + f->offset;
+          char* dest = outptr;
           memcpy(dest, src, field_size);
           outptr += field_size;
         }
@@ -842,22 +842,22 @@ void lightcone_write_particles(struct lightcone_props *props,
         const size_t nr_values = num_to_write * f->dimension;
         switch (f->type) {
           case INT: {
-            int *values = (int *)outbuf;
+            int* values = (int*)outbuf;
             for (size_t i = 0; i < nr_values; i += 1)
               values[i] *= conversion_factor;
           } break;
           case LONGLONG: {
-            long long *values = (long long *)outbuf;
+            long long* values = (long long*)outbuf;
             for (size_t i = 0; i < nr_values; i += 1)
               values[i] *= conversion_factor;
           } break;
           case FLOAT: {
-            float *values = (float *)outbuf;
+            float* values = (float*)outbuf;
             for (size_t i = 0; i < nr_values; i += 1)
               values[i] *= conversion_factor;
           } break;
           case DOUBLE: {
-            double *values = (double *)outbuf;
+            double* values = (double*)outbuf;
             for (size_t i = 0; i < nr_values; i += 1)
               values[i] *= conversion_factor;
           } break;

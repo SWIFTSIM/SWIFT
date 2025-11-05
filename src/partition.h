@@ -33,7 +33,7 @@ enum partition_type {
 };
 
 /* Simple descriptions of types for reports. */
-extern const char *initial_partition_name[];
+extern const char* initial_partition_name[];
 
 /* The selected initial partition type and any related metadata. */
 struct partition {
@@ -65,32 +65,32 @@ struct repartition {
 
   /* The partition as a cell-list. */
   int ncelllist;
-  int *celllist;
+  int* celllist;
 };
 
 /* Simple descriptions of types for reports. */
-extern const char *repartition_name[];
+extern const char* repartition_name[];
 
-void partition_repartition(struct repartition *reparttype, int nodeID,
-                           int nr_nodes, struct space *s, struct task *tasks,
+void partition_repartition(struct repartition* reparttype, int nodeID,
+                           int nr_nodes, struct space* s, struct task* tasks,
                            int nr_tasks);
-void partition_initial_partition(struct partition *initial_partition,
-                                 int nodeID, int nr_nodes, struct space *s);
+void partition_initial_partition(struct partition* initial_partition,
+                                 int nodeID, int nr_nodes, struct space* s);
 
-int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeID,
-                             struct space *s);
-void partition_init(struct partition *partition,
-                    struct repartition *repartition,
-                    struct swift_params *params, int nr_nodes);
+int partition_space_to_space(double* oldh, double* oldcdim, int* oldnodeID,
+                             struct space* s);
+void partition_init(struct partition* partition,
+                    struct repartition* repartition,
+                    struct swift_params* params, int nr_nodes);
 
-void partition_clean(struct partition *partition,
-                     struct repartition *repartition);
+void partition_clean(struct partition* partition,
+                     struct repartition* repartition);
 
 /* Dump/restore. */
-void partition_store_celllist(struct space *s, struct repartition *reparttype);
-void partition_restore_celllist(struct space *s,
-                                struct repartition *reparttype);
-void partition_struct_dump(struct repartition *reparttype, FILE *stream);
-void partition_struct_restore(struct repartition *reparttype, FILE *stream);
+void partition_store_celllist(struct space* s, struct repartition* reparttype);
+void partition_restore_celllist(struct space* s,
+                                struct repartition* reparttype);
+void partition_struct_dump(struct repartition* reparttype, FILE* stream);
+void partition_struct_restore(struct repartition* reparttype, FILE* stream);
 
 #endif /* SWIFT_PARTITION_H */

@@ -39,11 +39,11 @@
  * @param u Internal energy (cgs units)
  * @param ti_current integertime to set cosmo quantities
  */
-void set_quantities(struct part *restrict p, struct xpart *restrict xp,
-                    const struct unit_system *restrict us,
-                    const struct cooling_function_data *restrict cooling,
-                    struct cosmology *restrict cosmo,
-                    const struct phys_const *restrict phys_const, float nh_cgs,
+void set_quantities(struct part* restrict p, struct xpart* restrict xp,
+                    const struct unit_system* restrict us,
+                    const struct cooling_function_data* restrict cooling,
+                    struct cosmology* restrict cosmo,
+                    const struct phys_const* restrict phys_const, float nh_cgs,
                     double u_cgs, integertime_t ti_current) {
   /* calculate density */
   double hydrogen_number_density = nh_cgs / cooling->number_density_to_cgs;
@@ -63,9 +63,9 @@ void set_quantities(struct part *restrict p, struct xpart *restrict xp,
  * @brief Tests cooling integration scheme by comparing EAGLE
  * integration to subcycled explicit equation.
  */
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   // Declare relevant structs
-  struct swift_params *params = malloc(sizeof(struct swift_params));
+  struct swift_params* params = malloc(sizeof(struct swift_params));
   struct unit_system us;
   struct chemistry_global_data chem_data;
   struct part p;
@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
   struct pressure_floor_props pressure_floor;
   struct cooling_function_data cooling;
   struct cosmology cosmo;
-  char *parametersFileName = "./testCooling.yml";
+  char* parametersFileName = "./testCooling.yml";
 
   float nh_cgs;  // hydrogen number density
   double u_cgs;  // internal energy
@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
       exp(M_LN10 * cooling.Therm[0]) * cooling.internal_energy_from_cgs;
 
   /* Calculate abundance ratios */
-  float *abundance_ratio;
+  float* abundance_ratio;
   abundance_ratio = malloc((chemistry_element_count + 2) * sizeof(float));
   abundance_ratio_to_solar(&p, &cooling, abundance_ratio);
 
@@ -246,6 +246,6 @@ int main(int argc, char **argv) {
 
 #else
 
-int main(int argc, char **argv) { return 0; }
+int main(int argc, char** argv) { return 0; }
 
 #endif

@@ -33,8 +33,8 @@
 #include "version.h"
 
 struct exact_density_data {
-  const struct engine *e;
-  const struct space *s;
+  const struct engine* e;
+  const struct space* s;
   int counter_global;
 };
 
@@ -46,22 +46,22 @@ struct exact_density_data {
  * @brief extra_data Pointers to the structure containing global interaction
  * counters.
  */
-void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
-                                        void *extra_data) {
+void stars_exact_density_compute_mapper(void* map_data, int nr_sparts,
+                                        void* extra_data) {
 #ifdef SWIFT_STARS_DENSITY_CHECKS
 
   /* Unpack the data */
-  struct spart *restrict sparts = (struct spart *)map_data;
-  struct exact_density_data *data = (struct exact_density_data *)extra_data;
-  const struct space *s = data->s;
-  const struct engine *e = data->e;
+  struct spart* restrict sparts = (struct spart*)map_data;
+  struct exact_density_data* data = (struct exact_density_data*)extra_data;
+  const struct space* s = data->s;
+  const struct engine* e = data->e;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   int counter = 0;
 
   for (int i = 0; i < nr_sparts; ++i) {
 
-    struct spart *spi = &sparts[i];
+    struct spart* spi = &sparts[i];
     const long long id = spi->id;
 
     /* Is the particle active and part of the subset to be tested ? */
@@ -82,7 +82,7 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
       /* Interact it with all other particles in the space.*/
       for (int j = 0; j < (int)s->nr_parts; ++j) {
 
-        const struct part *pj = &s->parts[j];
+        const struct part* pj = &s->parts[j];
 
         /* Compute the pairwise distance. */
         double dx = pj->x[0] - pix[0];
@@ -151,7 +151,7 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
  * @param s The #space.
  * @param e The #engine.
  */
-void stars_exact_density_compute(struct space *s, const struct engine *e) {
+void stars_exact_density_compute(struct space* s, const struct engine* e) {
 
 #ifdef SWIFT_STARS_DENSITY_CHECKS
 
@@ -182,14 +182,14 @@ void stars_exact_density_compute(struct space *s, const struct engine *e) {
  * @param e The #engine.
  * @param rel_tol Relative tolerance for the checks
  */
-void stars_exact_density_check(struct space *s, const struct engine *e,
+void stars_exact_density_check(struct space* s, const struct engine* e,
                                const double rel_tol) {
 
 #ifdef SWIFT_STARS_DENSITY_CHECKS
 
   const ticks tic = getticks();
 
-  const struct spart *sparts = s->sparts;
+  const struct spart* sparts = s->sparts;
   const size_t nr_sparts = s->nr_sparts;
 
   const double eta = e->stars_properties->eta_neighbours;
@@ -205,7 +205,7 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
   sprintf(file_name_swift, "stars_checks_swift_step%.4d.dat", e->step);
 
   /* Creare files and write header */
-  FILE *file_swift = fopen(file_name_swift, "w");
+  FILE* file_swift = fopen(file_name_swift, "w");
   if (file_swift == NULL) error("Could not create file '%s'.", file_name_swift);
   fprintf(file_swift, "# Stars accuracy test - SWIFT DENSITIES\n");
   fprintf(file_swift, "# N= %d\n", SWIFT_STARS_DENSITY_CHECKS);
@@ -221,7 +221,7 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
   /* Output particle SWIFT densities */
   for (size_t i = 0; i < nr_sparts; ++i) {
 
-    const struct spart *spi = &sparts[i];
+    const struct spart* spi = &sparts[i];
     const long long id = spi->id;
 
     const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
@@ -249,7 +249,7 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
   sprintf(file_name_exact, "stars_checks_exact_step%.4d.dat", e->step);
 
   /* Creare files and write header */
-  FILE *file_exact = fopen(file_name_exact, "w");
+  FILE* file_exact = fopen(file_name_exact, "w");
   if (file_exact == NULL) error("Could not create file '%s'.", file_name_exact);
   fprintf(file_exact, "# Stars accuracy test - EXACT DENSITIES\n");
   fprintf(file_exact, "# N= %d\n", SWIFT_STARS_DENSITY_CHECKS);
@@ -269,7 +269,7 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
   /* Output particle SWIFT densities */
   for (size_t i = 0; i < nr_sparts; ++i) {
 
-    const struct spart *spi = &sparts[i];
+    const struct spart* spi = &sparts[i];
     const long long id = spi->id;
     const int found_inhibited = spi->inhibited_exact;
 

@@ -42,79 +42,79 @@
 
 // SESAME parameters
 struct SESAME_params {
-  float *table_log_rho;
-  float *table_log_T;
-  float *table_log_u_rho_T;
-  float *table_P_rho_T;
-  float *table_c_rho_T;
-  float *table_log_s_rho_T;
+  float* table_log_rho;
+  float* table_log_T;
+  float* table_log_u_rho_T;
+  float* table_P_rho_T;
+  float* table_c_rho_T;
+  float* table_log_s_rho_T;
   int version_date, num_rho, num_T;
   float u_tiny, P_tiny, c_tiny, s_tiny;
   enum eos_planetary_material_id mat_id;
 };
 
 // Parameter values for each material
-INLINE static void set_SESAME_iron(struct SESAME_params *mat,
+INLINE static void set_SESAME_iron(struct SESAME_params* mat,
                                    enum eos_planetary_material_id mat_id) {
   // SESAME 2140
   mat->mat_id = mat_id;
   mat->version_date = 20220714;
 }
-INLINE static void set_SESAME_basalt(struct SESAME_params *mat,
+INLINE static void set_SESAME_basalt(struct SESAME_params* mat,
                                      enum eos_planetary_material_id mat_id) {
   // SESAME 7530
   mat->mat_id = mat_id;
   mat->version_date = 20220714;
 }
-INLINE static void set_SESAME_water(struct SESAME_params *mat,
+INLINE static void set_SESAME_water(struct SESAME_params* mat,
                                     enum eos_planetary_material_id mat_id) {
   // SESAME 7154
   mat->mat_id = mat_id;
   mat->version_date = 20220714;
 }
-INLINE static void set_SS08_water(struct SESAME_params *mat,
+INLINE static void set_SS08_water(struct SESAME_params* mat,
                                   enum eos_planetary_material_id mat_id) {
   // Senft & Stewart (2008)
   mat->mat_id = mat_id;
   mat->version_date = 20220714;
 }
-INLINE static void set_AQUA(struct SESAME_params *mat,
+INLINE static void set_AQUA(struct SESAME_params* mat,
                             enum eos_planetary_material_id mat_id) {
   // Haldemann et al. (2020)
   mat->mat_id = mat_id;
   mat->version_date = 20220714;
 }
-INLINE static void set_CMS19_H(struct SESAME_params *mat,
+INLINE static void set_CMS19_H(struct SESAME_params* mat,
                                enum eos_planetary_material_id mat_id) {
   // Chabrier et al. (2019)
   mat->mat_id = mat_id;
   mat->version_date = 20220905;
 }
-INLINE static void set_CMS19_He(struct SESAME_params *mat,
+INLINE static void set_CMS19_He(struct SESAME_params* mat,
                                 enum eos_planetary_material_id mat_id) {
   // Chabrier et al. (2019)
   mat->mat_id = mat_id;
   mat->version_date = 20220905;
 }
-INLINE static void set_CD21_HHe(struct SESAME_params *mat,
+INLINE static void set_CD21_HHe(struct SESAME_params* mat,
                                 enum eos_planetary_material_id mat_id) {
   // Chabrier & Debras (2021)
   mat->mat_id = mat_id;
   mat->version_date = 20220905;
 }
-INLINE static void set_ANEOS_forsterite(struct SESAME_params *mat,
+INLINE static void set_ANEOS_forsterite(struct SESAME_params* mat,
                                         enum eos_planetary_material_id mat_id) {
   // Stewart et al. (2019)
   mat->mat_id = mat_id;
   mat->version_date = 20220714;
 }
-INLINE static void set_ANEOS_iron(struct SESAME_params *mat,
+INLINE static void set_ANEOS_iron(struct SESAME_params* mat,
                                   enum eos_planetary_material_id mat_id) {
   // Stewart (2020)
   mat->mat_id = mat_id;
   mat->version_date = 20220714;
 }
-INLINE static void set_ANEOS_Fe85Si15(struct SESAME_params *mat,
+INLINE static void set_ANEOS_Fe85Si15(struct SESAME_params* mat,
                                       enum eos_planetary_material_id mat_id) {
   // Stewart (2020)
   mat->mat_id = mat_id;
@@ -122,7 +122,7 @@ INLINE static void set_ANEOS_Fe85Si15(struct SESAME_params *mat,
 }
 
 // Generic user-provided custom materials
-INLINE static void set_custom(struct SESAME_params *mat,
+INLINE static void set_custom(struct SESAME_params* mat,
                               enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->version_date = 0;
@@ -131,7 +131,7 @@ INLINE static void set_custom(struct SESAME_params *mat,
 /*
     Skip a line while reading a file.
 */
-INLINE static int skip_line(FILE *f) {
+INLINE static int skip_line(FILE* f) {
   int c;
 
   // Read each character until reaching the end of the line or file
@@ -145,7 +145,7 @@ INLINE static int skip_line(FILE *f) {
 /*
     Skip n lines while reading a file.
 */
-INLINE static int skip_lines(FILE *f, int n) {
+INLINE static int skip_lines(FILE* f, int n) {
   int c;
 
   for (int i = 0; i < n; i++) c = skip_line(f);
@@ -171,11 +171,11 @@ INLINE static int skip_lines(FILE *f, int n) {
     ...                     ...         ...         ...
     u[num_rho-1, num_T-1]   ...         ...         s[num_rho-1, num_T-1]
 */
-INLINE static void load_table_SESAME(struct SESAME_params *mat,
-                                     char *table_file) {
+INLINE static void load_table_SESAME(struct SESAME_params* mat,
+                                     char* table_file) {
 
   // Load table contents from file
-  FILE *f = fopen(table_file, "r");
+  FILE* f = fopen(table_file, "r");
   if (f == NULL) error("Failed to open the SESAME EoS file '%s'", table_file);
 
   // Skip header lines
@@ -200,16 +200,16 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
   float ignore;
 
   // Allocate table memory
-  mat->table_log_rho = (float *)malloc(mat->num_rho * sizeof(float));
-  mat->table_log_T = (float *)malloc(mat->num_T * sizeof(float));
+  mat->table_log_rho = (float*)malloc(mat->num_rho * sizeof(float));
+  mat->table_log_T = (float*)malloc(mat->num_T * sizeof(float));
   mat->table_log_u_rho_T =
-      (float *)malloc(mat->num_rho * mat->num_T * sizeof(float));
+      (float*)malloc(mat->num_rho * mat->num_T * sizeof(float));
   mat->table_P_rho_T =
-      (float *)malloc(mat->num_rho * mat->num_T * sizeof(float));
+      (float*)malloc(mat->num_rho * mat->num_T * sizeof(float));
   mat->table_c_rho_T =
-      (float *)malloc(mat->num_rho * mat->num_T * sizeof(float));
+      (float*)malloc(mat->num_rho * mat->num_T * sizeof(float));
   mat->table_log_s_rho_T =
-      (float *)malloc(mat->num_rho * mat->num_T * sizeof(float));
+      (float*)malloc(mat->num_rho * mat->num_T * sizeof(float));
 
   // Densities (not log yet)
   for (int i_rho = -1; i_rho < mat->num_rho; i_rho++) {
@@ -258,7 +258,7 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
 }
 
 // Misc. modifications
-INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
+INLINE static void prepare_table_SESAME(struct SESAME_params* mat) {
 
   // Convert densities to log(density)
   for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
@@ -343,8 +343,8 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
 }
 
 // Convert to internal units
-INLINE static void convert_units_SESAME(struct SESAME_params *mat,
-                                        const struct unit_system *us) {
+INLINE static void convert_units_SESAME(struct SESAME_params* mat,
+                                        const struct unit_system* us) {
 
   // Convert input table values from all-SI to internal units
   struct unit_system si;
@@ -400,7 +400,7 @@ INLINE static void convert_units_SESAME(struct SESAME_params *mat,
 
 // gas_internal_energy_from_entropy
 INLINE static float SESAME_internal_energy_from_entropy(
-    const float density, const float entropy, const struct SESAME_params *mat) {
+    const float density, const float entropy, const struct SESAME_params* mat) {
 
   // Return zero if entropy is zero
   if (entropy <= 0.f) {
@@ -493,7 +493,7 @@ INLINE static float SESAME_internal_energy_from_entropy(
 
 // gas_pressure_from_entropy
 INLINE static float SESAME_pressure_from_entropy(
-    const float density, const float entropy, const struct SESAME_params *mat) {
+    const float density, const float entropy, const struct SESAME_params* mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -503,7 +503,7 @@ INLINE static float SESAME_pressure_from_entropy(
 // gas_entropy_from_pressure
 INLINE static float SESAME_entropy_from_pressure(
     const float density, const float pressure,
-    const struct SESAME_params *mat) {
+    const struct SESAME_params* mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -512,7 +512,7 @@ INLINE static float SESAME_entropy_from_pressure(
 
 // gas_soundspeed_from_entropy
 INLINE static float SESAME_soundspeed_from_entropy(
-    const float density, const float entropy, const struct SESAME_params *mat) {
+    const float density, const float entropy, const struct SESAME_params* mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -521,14 +521,14 @@ INLINE static float SESAME_soundspeed_from_entropy(
 
 // gas_entropy_from_internal_energy
 INLINE static float SESAME_entropy_from_internal_energy(
-    const float density, const float u, const struct SESAME_params *mat) {
+    const float density, const float u, const struct SESAME_params* mat) {
 
   return 0.f;
 }
 
 // gas_pressure_from_internal_energy
 INLINE static float SESAME_pressure_from_internal_energy(
-    const float density, const float u, const struct SESAME_params *mat) {
+    const float density, const float u, const struct SESAME_params* mat) {
 
   if (u <= 0.f) {
     return 0.f;
@@ -641,7 +641,7 @@ INLINE static float SESAME_pressure_from_internal_energy(
 
 // gas_internal_energy_from_pressure
 INLINE static float SESAME_internal_energy_from_pressure(
-    const float density, const float P, const struct SESAME_params *mat) {
+    const float density, const float P, const struct SESAME_params* mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -650,7 +650,7 @@ INLINE static float SESAME_internal_energy_from_pressure(
 
 // gas_soundspeed_from_internal_energy
 INLINE static float SESAME_soundspeed_from_internal_energy(
-    const float density, const float u, const struct SESAME_params *mat) {
+    const float density, const float u, const struct SESAME_params* mat) {
 
   // Return zero if internal energy is non-positive
   if (u <= 0.f) {
@@ -765,7 +765,7 @@ INLINE static float SESAME_soundspeed_from_internal_energy(
 
 // gas_soundspeed_from_pressure
 INLINE static float SESAME_soundspeed_from_pressure(
-    const float density, const float P, const struct SESAME_params *mat) {
+    const float density, const float P, const struct SESAME_params* mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -774,7 +774,7 @@ INLINE static float SESAME_soundspeed_from_pressure(
 
 // gas_temperature_from_internal_energy
 INLINE static float SESAME_temperature_from_internal_energy(
-    const float density, const float u, const struct SESAME_params *mat) {
+    const float density, const float u, const struct SESAME_params* mat) {
 
   // Return zero if zero internal energy
   if (u <= 0.f) {
@@ -864,7 +864,7 @@ INLINE static float SESAME_temperature_from_internal_energy(
 
 // gas_density_from_pressure_and_temperature
 INLINE static float SESAME_density_from_pressure_and_temperature(
-    float P, float T, const struct SESAME_params *mat) {
+    float P, float T, const struct SESAME_params* mat) {
 
   // Return zero if pressure is non-positive
   if (P <= 0.f) {
@@ -953,7 +953,7 @@ INLINE static float SESAME_density_from_pressure_and_temperature(
 // gas_density_from_pressure_and_internal_energy
 INLINE static float SESAME_density_from_pressure_and_internal_energy(
     float P, float u, float rho_ref, float rho_sph,
-    const struct SESAME_params *mat) {
+    const struct SESAME_params* mat) {
 
   // Return the unchanged density if u or P is non-positive
   if (u <= 0.f || P <= 0.f) {

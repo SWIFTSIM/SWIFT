@@ -54,18 +54,18 @@
  *separation.
  * @param partId The running counter of IDs.
  */
-struct part *make_particles(size_t count, double *offset, double spacing,
-                            double h, long long *partId) {
+struct part* make_particles(size_t count, double* offset, double spacing,
+                            double h, long long* partId) {
 
-  struct part *particles;
-  if (posix_memalign((void **)&particles, part_align,
+  struct part* particles;
+  if (posix_memalign((void**)&particles, part_align,
                      count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
   bzero(particles, count * sizeof(struct part));
 
   /* Construct the particles */
-  struct part *p;
+  struct part* p;
 
   /* Set test particle at centre of unit sphere. */
   p = &particles[0];
@@ -109,14 +109,14 @@ struct part *make_particles(size_t count, double *offset, double spacing,
 /**
  * @brief Populates particle properties needed for the force calculation.
  */
-void prepare_force(struct part *parts, size_t count) {
+void prepare_force(struct part* parts, size_t count) {
 
 #if !defined(GIZMO_MFV_SPH) && !defined(MINIMAL_SPH) &&              \
     !defined(PLANETARY_SPH) && !defined(HOPKINS_PU_SPH) &&           \
     !defined(HOPKINS_PU_SPH_MONAGHAN) && !defined(ANARCHY_PU_SPH) && \
     !defined(SPHENIX_SPH) && !defined(PHANTOM_SPH) &&                \
     !defined(GASOLINE_SPH) && !defined(REMIX_SPH)
-  struct part *p;
+  struct part* p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];
     p->rho = i + 1;
@@ -132,9 +132,9 @@ void prepare_force(struct part *parts, size_t count) {
 /**
  * @brief Dumps all particle information to a file
  */
-void dump_indv_particle_fields(char *fileName, struct part *p) {
+void dump_indv_particle_fields(char* fileName, struct part* p) {
 
-  FILE *file = fopen(fileName, "a");
+  FILE* file = fopen(fileName, "a");
 
   fprintf(file,
           "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
@@ -171,9 +171,9 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
 /**
  * @brief Creates a header for the output file
  */
-void write_header(char *fileName) {
+void write_header(char* fileName) {
 
-  FILE *file = fopen(fileName, "w");
+  FILE* file = fopen(fileName, "w");
   /* Write header */
   fprintf(file,
           "# %4s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %13s %13s "
@@ -197,8 +197,8 @@ void write_header(char *fileName) {
  *
  * @return Non-zero value if difference found, 0 otherwise
  */
-int check_results(struct part serial_test_part, struct part *serial_parts,
-                  struct part vec_test_part, struct part *vec_parts,
+int check_results(struct part serial_test_part, struct part* serial_parts,
+                  struct part vec_test_part, struct part* vec_parts,
                   int count) {
   int result = 0;
   result += compare_particles(&serial_test_part, &vec_test_part, ACC_THRESHOLD);
@@ -222,8 +222,8 @@ int check_results(struct part serial_test_part, struct part *serial_parts,
  * @param num_vec_proc No. of vectors to use to process interaction
  *
  */
-void test_interactions(struct part test_part, struct part *parts, size_t count,
-                       char *filePrefix, int runs, int num_vec_proc) {
+void test_interactions(struct part test_part, struct part* parts, size_t count,
+                       char* filePrefix, int runs, int num_vec_proc) {
 
   ticks serial_time = 0;
   ticks vec_time = 0;
@@ -427,14 +427,14 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
  * @param runs No. of times to call interactions
  *
  */
-void test_force_interactions(struct part test_part, struct part *parts,
-                             size_t count, char *filePrefix, int runs,
+void test_force_interactions(struct part test_part, struct part* parts,
+                             size_t count, char* filePrefix, int runs,
                              int num_vec_proc) {
 
   ticks serial_time = 0;
   ticks vec_time = 0;
 
-  FILE *file;
+  FILE* file;
   char serial_filename[200] = "";
   char vec_filename[200] = "";
 
@@ -696,7 +696,7 @@ void test_force_interactions(struct part test_part, struct part *parts,
 }
 
 /* And go... */
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   size_t runs = 10000;
   double h = 1.0, spacing = 0.5;
   double offset[3] = {0.0, 0.0, 0.0};
@@ -747,7 +747,7 @@ int main(int argc, char *argv[]) {
   /* Build the infrastructure */
   static long long partId = 0;
   struct part test_particle;
-  struct part *particles = make_particles(count, offset, spacing, h, &partId);
+  struct part* particles = make_particles(count, offset, spacing, h, &partId);
 
   test_particle = particles[0];
   /* Call the non-sym density test. */
@@ -769,6 +769,6 @@ int main(int argc, char *argv[]) {
 
 #else
 
-int main(int argc, char *argv[]) { return 1; }
+int main(int argc, char* argv[]) { return 1; }
 
 #endif

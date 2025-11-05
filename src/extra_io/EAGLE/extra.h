@@ -54,60 +54,60 @@ struct extra_io_properties {
   struct xray_properties {
 
     /* Element masses for the chemistry elements (cgs) */
-    float *element_mass;
+    float* element_mass;
 
     /* Temperature bins from xray table (cgs) */
-    float *Temperatures;
+    float* Temperatures;
 
     /* Minimum and maximum temperature the table exists for */
     float Temperature_min;
     float Temperature_max;
 
     /* Density bins from xray table (physical cgs) */
-    float *Densities;
+    float* Densities;
 
     /* Minimum and maximum density the table exists for */
     float Density_min;
     float Density_max;
 
     /* Helium fraction bins from xray table */
-    float *He_bins;
+    float* He_bins;
 
     /* Redshift bins from xray table */
-    float *Redshifts;
+    float* Redshifts;
 
     /* Maximum redshift the table exists for */
     float Redshift_max;
 
     /* Solar metallicites from xray table */
-    float *Solar_metallicity;
+    float* Solar_metallicity;
 
     /* Log of solar metallicites from xray table */
-    float *Log10_solar_metallicity;
+    float* Log10_solar_metallicity;
 
     /* Integrated photon emissivity in the erosita-low band (0.2-2.3 keV)
      * (physical) */
-    float *emissivity_erosita_low_intrinsic_photons;
+    float* emissivity_erosita_low_intrinsic_photons;
 
     /* Integrated photon emissivity in the erosita-high band (2.3-8.0 keV)
      * (physical) */
-    float *emissivity_erosita_high_intrinsic_photons;
+    float* emissivity_erosita_high_intrinsic_photons;
 
     /* Integrated photon emissivity in the ROSAT band (0.5-2.0 keV) (physical)
      */
-    float *emissivity_ROSAT_intrinsic_photons;
+    float* emissivity_ROSAT_intrinsic_photons;
 
     /* Integrated emissivity in the erosita-low band (0.2-2.3 keV)
      * (physical) */
-    float *emissivity_erosita_low_intrinsic_energies;
+    float* emissivity_erosita_low_intrinsic_energies;
 
     /* Integrated emissivity in the erosita-high band (2.3-8.0 keV)
      * (physical) */
-    float *emissivity_erosita_high_intrinsic_energies;
+    float* emissivity_erosita_high_intrinsic_energies;
 
     /* Integrated emissivity in the ROSAT band (0.5-2.0 keV) (physical)
      */
-    float *emissivity_ROSAT_intrinsic_energies;
+    float* emissivity_ROSAT_intrinsic_energies;
 
     /* Path to the xray table */
     char xray_table_path[500];
@@ -128,8 +128,8 @@ struct extra_io_properties {
  * @param xrays Xray data structure
  * @param fname Xray table path
  */
-INLINE static void read_xray_header(struct xray_properties *xrays,
-                                    const char *fname) {
+INLINE static void read_xray_header(struct xray_properties* xrays,
+                                    const char* fname) {
 
   hid_t tempfile_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
   if (tempfile_id < 0) error("unable to open file %s\n", fname);
@@ -149,7 +149,7 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
         xray_table_date_string);
 
   /* Read temperature bins */
-  if (posix_memalign((void **)&xrays->Temperatures, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&xrays->Temperatures, SWIFT_STRUCT_ALIGNMENT,
                      xray_emission_N_temperature * sizeof(float)) != 0)
     error("Failed to allocate temperatures array\n");
 
@@ -161,7 +161,7 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
   if (status < 0) error("error closing dataset");
 
   /* Read density bins */
-  if (posix_memalign((void **)&xrays->Densities, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&xrays->Densities, SWIFT_STRUCT_ALIGNMENT,
                      xray_emission_N_density * sizeof(float)) != 0)
     error("Failed to allocate densities array\n");
 
@@ -173,7 +173,7 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
   if (status < 0) error("error closing dataset");
 
   /* Read Helium bins */
-  if (posix_memalign((void **)&xrays->He_bins, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&xrays->He_bins, SWIFT_STRUCT_ALIGNMENT,
                      xray_emission_N_helium * sizeof(float)) != 0)
     error("Failed to allocate He_bins array\n");
 
@@ -185,7 +185,7 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
   if (status < 0) error("error closing dataset");
 
   /* Read solar metallicity */
-  if (posix_memalign((void **)&xrays->Log10_solar_metallicity,
+  if (posix_memalign((void**)&xrays->Log10_solar_metallicity,
                      SWIFT_STRUCT_ALIGNMENT,
                      chemistry_element_count * sizeof(float)) != 0)
     error("Failed to allocate Solar_metallicity array\n");
@@ -198,7 +198,7 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
   if (status < 0) error("error closing dataset");
 
   /* Get Solar metallicities from log solar metallicities */
-  if (posix_memalign((void **)&xrays->Solar_metallicity, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&xrays->Solar_metallicity, SWIFT_STRUCT_ALIGNMENT,
                      chemistry_element_count * sizeof(float)) != 0)
     error("Failed to allocate Solar_metallicity array\n");
 
@@ -206,7 +206,7 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
     xrays->Solar_metallicity[i] = exp10f(xrays->Log10_solar_metallicity[i]);
 
   /* Read redshift bins */
-  if (posix_memalign((void **)&xrays->Redshifts, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&xrays->Redshifts, SWIFT_STRUCT_ALIGNMENT,
                      xray_emission_N_redshift * sizeof(float)) != 0)
     error("Failed to allocate Redshifts array\n");
 
@@ -218,7 +218,7 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
   if (status < 0) error("error closing dataset");
 
   /* Read element mass */
-  if (posix_memalign((void **)&xrays->element_mass, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&xrays->element_mass, SWIFT_STRUCT_ALIGNMENT,
                      10 * sizeof(float)) != 0)
     error("Failed to allocate element_mass array\n");
 
@@ -239,15 +239,15 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
  * @param xrays Xray data structure
  * @param fname Xray table path
  */
-INLINE static void read_xray_table(struct xray_properties *xrays,
-                                   const char *fname) {
+INLINE static void read_xray_table(struct xray_properties* xrays,
+                                   const char* fname) {
 
   /* Open File */
   hid_t file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
 
   // erosita-low intrinsic photons
   if (swift_memalign("xrays_table_erosita_low_photons",
-                     (void **)&xrays->emissivity_erosita_low_intrinsic_photons,
+                     (void**)&xrays->emissivity_erosita_low_intrinsic_photons,
                      SWIFT_STRUCT_ALIGNMENT,
                      xray_emission_N_redshift * xray_emission_N_helium *
                          xray_emission_N_element * xray_emission_N_temperature *
@@ -268,7 +268,7 @@ INLINE static void read_xray_table(struct xray_properties *xrays,
 
   /* erosita-high intrinsic photons */
   if (swift_memalign("xrays_table_erosita_high_photons",
-                     (void **)&xrays->emissivity_erosita_high_intrinsic_photons,
+                     (void**)&xrays->emissivity_erosita_high_intrinsic_photons,
                      SWIFT_STRUCT_ALIGNMENT,
                      xray_emission_N_redshift * xray_emission_N_helium *
                          xray_emission_N_element * xray_emission_N_temperature *
@@ -287,7 +287,7 @@ INLINE static void read_xray_table(struct xray_properties *xrays,
 
   /* ROSAT intrinsic photons */
   if (swift_memalign("xray_table_ROSAT_photons",
-                     (void **)&xrays->emissivity_ROSAT_intrinsic_photons,
+                     (void**)&xrays->emissivity_ROSAT_intrinsic_photons,
                      SWIFT_STRUCT_ALIGNMENT,
                      xray_emission_N_redshift * xray_emission_N_helium *
                          xray_emission_N_element * xray_emission_N_temperature *
@@ -304,7 +304,7 @@ INLINE static void read_xray_table(struct xray_properties *xrays,
 
   // erosita-low intrinsic energies
   if (swift_memalign("xrays_table_erosita_low_energies",
-                     (void **)&xrays->emissivity_erosita_low_intrinsic_energies,
+                     (void**)&xrays->emissivity_erosita_low_intrinsic_energies,
                      SWIFT_STRUCT_ALIGNMENT,
                      xray_emission_N_redshift * xray_emission_N_helium *
                          xray_emission_N_element * xray_emission_N_temperature *
@@ -322,13 +322,12 @@ INLINE static void read_xray_table(struct xray_properties *xrays,
   if (status < 0) error("error closing dataset");
 
   /* erosita-high intrinsic energies */
-  if (swift_memalign(
-          "xrays_table_erosita_high_energies",
-          (void **)&xrays->emissivity_erosita_high_intrinsic_energies,
-          SWIFT_STRUCT_ALIGNMENT,
-          xray_emission_N_redshift * xray_emission_N_helium *
-              xray_emission_N_element * xray_emission_N_temperature *
-              xray_emission_N_density * sizeof(float)) != 0)
+  if (swift_memalign("xrays_table_erosita_high_energies",
+                     (void**)&xrays->emissivity_erosita_high_intrinsic_energies,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     xray_emission_N_redshift * xray_emission_N_helium *
+                         xray_emission_N_element * xray_emission_N_temperature *
+                         xray_emission_N_density * sizeof(float)) != 0)
     error(
         "Failed to allocate xray emissivity_erosita_high_intrinsic_energies "
         "array\n");
@@ -343,7 +342,7 @@ INLINE static void read_xray_table(struct xray_properties *xrays,
 
   /* ROSAT intrinsic energies */
   if (swift_memalign("xray_table_ROSAT_energies",
-                     (void **)&xrays->emissivity_ROSAT_intrinsic_energies,
+                     (void**)&xrays->emissivity_ROSAT_intrinsic_energies,
                      SWIFT_STRUCT_ALIGNMENT,
                      xray_emission_N_redshift * xray_emission_N_helium *
                          xray_emission_N_element * xray_emission_N_temperature *
@@ -373,8 +372,8 @@ INLINE static void read_xray_table(struct xray_properties *xrays,
  * @param i (return) index
  * @param dx (return) offset from index bin
  */
-INLINE static void get_index_1d(const float *restrict table, const int size,
-                                const float x, int *i, float *restrict dx) {
+INLINE static void get_index_1d(const float* restrict table, const int size,
+                                const float x, int* i, float* restrict dx) {
 
   const float epsilon = 1e-4f;
 
@@ -404,9 +403,9 @@ INLINE static void get_index_1d(const float *restrict table, const int size,
  * @param i (return) index
  * @param dx (return) offset from index bin
  */
-INLINE static void get_index_1d_irregular(const float *restrict table,
-                                          const int size, const float x, int *i,
-                                          float *restrict dx) {
+INLINE static void get_index_1d_irregular(const float* restrict table,
+                                          const int size, const float x, int* i,
+                                          float* restrict dx) {
   const float epsilon = 1e-6f;
 
   if (x < table[0] + epsilon) {
@@ -479,7 +478,7 @@ __attribute__((always_inline)) INLINE int row_major_index_5d(
  *
  * @return The log10 of the emssisivity
  */
-INLINE static float interpolate_xray(const float *emissivity,
+INLINE static float interpolate_xray(const float* emissivity,
                                      const int element_number,
                                      const int nH_index, const int He_index,
                                      const int T_index, const int z_index,
@@ -622,7 +621,7 @@ INLINE static float interpolate_xray(const float *emissivity,
  * @return The X-ray emmisivity in the corresponding band in CGS units.
  */
 INLINE static float do_xray_interpolation(
-    const struct xray_properties *xrays, const float log10_He_fraction,
+    const struct xray_properties* xrays, const float log10_He_fraction,
     const float log_nH_cgs, const float log_T, const float redshift,
     const float solar_ratio[colibre_cooling_N_elementtypes],
     const enum xray_band_types band) {
@@ -644,7 +643,7 @@ INLINE static float do_xray_interpolation(
                &d_z);
 
   /* Select the table corresponding to this band */
-  float *table;
+  float* table;
   switch (band) {
     case xray_band_types_erosita_low_intrinsic_photons:
       table = xrays->emissivity_erosita_low_intrinsic_photons;
@@ -731,9 +730,9 @@ INLINE static float do_xray_interpolation(
  *
  * @return The emissivity in internal units.
  */
-INLINE static double extra_io_get_xray_fluxes(const struct part *p,
-                                              const struct xpart *xp,
-                                              const struct engine *e,
+INLINE static double extra_io_get_xray_fluxes(const struct part* p,
+                                              const struct xpart* xp,
+                                              const struct engine* e,
                                               const enum xray_band_types band) {
 
   /* Get gas particle temperature */
@@ -761,7 +760,7 @@ INLINE static double extra_io_get_xray_fluxes(const struct part *p,
     return 0.;
 
   /* Get gas particle element mass fractions */
-  const float *const mass_fractions =
+  const float* const mass_fractions =
       chemistry_get_metal_mass_fraction_for_cooling(p);
 
   /* Convert to abundances. For now, ignore Ca and S that are not tracked */
@@ -854,11 +853,11 @@ INLINE static double extra_io_get_xray_fluxes(const struct part *p,
  * @param cosmo The cosmology model
  * @param props #extra_io_properties struct to initialize
  */
-INLINE static void extra_io_init(struct swift_params *parameter_file,
-                                 const struct unit_system *us,
-                                 const struct phys_const *phys_const,
-                                 const struct cosmology *cosmo,
-                                 struct extra_io_properties *props) {
+INLINE static void extra_io_init(struct swift_params* parameter_file,
+                                 const struct unit_system* us,
+                                 const struct phys_const* phys_const,
+                                 const struct cosmology* cosmo,
+                                 struct extra_io_properties* props) {
 
   parser_get_param_string(parameter_file, "XrayEmissivity:xray_table_path",
                           props->xray_data.xray_table_path);
@@ -900,7 +899,7 @@ INLINE static void extra_io_init(struct swift_params *parameter_file,
  *
  * @param props #extra_io_properties struct to clean
  */
-INLINE static void extra_io_clean(struct extra_io_properties *props) {
+INLINE static void extra_io_clean(struct extra_io_properties* props) {
 
   free(props->xray_data.Temperatures);
   free(props->xray_data.Densities);
@@ -930,8 +929,8 @@ INLINE static void extra_io_clean(struct extra_io_properties *props) {
  * @param feedback the struct
  * @param stream the file stream
  */
-INLINE static void extra_io_struct_dump(const struct extra_io_properties *props,
-                                        FILE *stream) {
+INLINE static void extra_io_struct_dump(const struct extra_io_properties* props,
+                                        FILE* stream) {
 
   struct extra_io_properties props_copy = *props;
 
@@ -950,7 +949,7 @@ INLINE static void extra_io_struct_dump(const struct extra_io_properties *props,
   props_copy.xray_data.emissivity_erosita_high_intrinsic_energies = NULL;
   props_copy.xray_data.emissivity_ROSAT_intrinsic_energies = NULL;
 
-  restart_write_blocks((void *)&props_copy, sizeof(struct extra_io_properties),
+  restart_write_blocks((void*)&props_copy, sizeof(struct extra_io_properties),
                        1, stream, "extra_io", "extra i/o properties");
 }
 
@@ -964,10 +963,10 @@ INLINE static void extra_io_struct_dump(const struct extra_io_properties *props,
  * @param feedback the struct
  * @param stream the file stream
  */
-INLINE static void extra_io_struct_restore(struct extra_io_properties *props,
-                                           FILE *stream) {
+INLINE static void extra_io_struct_restore(struct extra_io_properties* props,
+                                           FILE* stream) {
 
-  restart_read_blocks((void *)props, sizeof(struct extra_io_properties), 1,
+  restart_read_blocks((void*)props, sizeof(struct extra_io_properties), 1,
                       stream, NULL, "extra i/o properties");
 
   read_xray_header(&props->xray_data, props->xray_data.xray_table_path);

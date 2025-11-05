@@ -92,26 +92,26 @@ enum velocity_types {
  * @param vel The type of velocity field (0, random, divergent, rotating)
  * @param h_pert The perturbation to apply to the smoothing length.
  */
-struct cell *make_cell(size_t n, double *offset, double size, double h,
-                       double density, long long *partId, double pert,
+struct cell* make_cell(size_t n, double* offset, double size, double h,
+                       double density, long long* partId, double pert,
                        enum velocity_types vel, double h_pert) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
-  struct cell *cell = NULL;
-  if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
+  struct cell* cell = NULL;
+  if (posix_memalign((void**)&cell, cell_align, sizeof(struct cell)) != 0) {
     error("Couldn't allocate the cell");
   }
   bzero(cell, sizeof(struct cell));
 
-  if (posix_memalign((void **)&cell->hydro.parts, part_align,
+  if (posix_memalign((void**)&cell->hydro.parts, part_align,
                      count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
   bzero(cell->hydro.parts, count * sizeof(struct part));
 
   /* Construct the parts */
-  struct part *part = cell->hydro.parts;
+  struct part* part = cell->hydro.parts;
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
@@ -212,7 +212,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   return cell;
 }
 
-void clean_up(struct cell *ci) {
+void clean_up(struct cell* ci) {
   free(ci->hydro.parts);
   free(ci->hydro.sort);
   free(ci);
@@ -221,8 +221,8 @@ void clean_up(struct cell *ci) {
 /**
  * @brief Initializes all particles field to be ready for a density calculation
  */
-void zero_particle_fields(struct cell *c) {
-  struct hydro_space *hspointer = NULL;
+void zero_particle_fields(struct cell* c) {
+  struct hydro_space* hspointer = NULL;
 
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_init_part(&c->hydro.parts[pid], hspointer);
@@ -234,8 +234,8 @@ void zero_particle_fields(struct cell *c) {
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c, const struct cosmology *cosmo,
-                     const struct gravity_props *gravity_props) {
+void end_calculation(struct cell* c, const struct cosmology* cosmo,
+                     const struct gravity_props* gravity_props) {
 
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_end_density(&c->hydro.parts[pid], cosmo);
@@ -251,9 +251,9 @@ void end_calculation(struct cell *c, const struct cosmology *cosmo,
 /**
  * @brief Dump all the particles to a file
  */
-void dump_particle_fields(char *fileName, struct cell *main_cell,
-                          struct cell **cells) {
-  FILE *file = fopen(fileName, "w");
+void dump_particle_fields(char* fileName, struct cell* main_cell,
+                          struct cell** cells) {
+  FILE* file = fopen(fileName, "w");
 
   /* Write header */
   fprintf(file,
@@ -306,7 +306,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 3; ++k) {
-        struct cell *cj = cells[i * 9 + j * 3 + k];
+        struct cell* cj = cells[i * 9 + j * 3 + k];
         if (cj == main_cell) continue;
 
         fprintf(file,
@@ -353,23 +353,23 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 }
 
 /* Just a forward declaration... */
-void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj, int limit_h_min,
+void runner_dopair1_branch_density(struct runner* r, struct cell* ci,
+                                   struct cell* cj, int limit_h_min,
                                    int limit_h_max);
-void runner_doself1_branch_density(struct runner *r, struct cell *c,
+void runner_doself1_branch_density(struct runner* r, struct cell* c,
                                    int limit_h_min, int limit_h_max);
-void runner_dopair_subset_branch_density(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct part *restrict parts_i,
-                                         int *restrict ind, int count,
-                                         struct cell *restrict cj);
-void runner_doself_subset_branch_density(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct part *restrict parts,
-                                         int *restrict ind, int count);
+void runner_dopair_subset_branch_density(struct runner* r,
+                                         struct cell* restrict ci,
+                                         struct part* restrict parts_i,
+                                         int* restrict ind, int count,
+                                         struct cell* restrict cj);
+void runner_doself_subset_branch_density(struct runner* r,
+                                         struct cell* restrict ci,
+                                         struct part* restrict parts,
+                                         int* restrict ind, int count);
 
 /* And go... */
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
 #ifdef HAVE_SETAFFINITY
   engine_pin();
@@ -422,7 +422,7 @@ int main(int argc, char *argv[]) {
         strcpy(outputFileNameExtension, optarg);
         break;
       case 'v':
-        sscanf(optarg, "%d", (int *)&vel);
+        sscanf(optarg, "%d", (int*)&vel);
         break;
       case '?':
         error("Unknown option.");
@@ -514,8 +514,8 @@ int main(int argc, char *argv[]) {
   engine.pressure_floor_props = &pressure_floor;
 
   /* Construct some cells */
-  struct cell *cells[27];
-  struct cell *main_cell;
+  struct cell* cells[27];
+  struct cell* main_cell;
   static long long partId = 0;
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
@@ -554,9 +554,9 @@ int main(int argc, char *argv[]) {
 #endif
 
 #if defined(TEST_DOSELF_SUBSET) || defined(TEST_DOPAIR_SUBSET)
-    int *pid = NULL;
+    int* pid = NULL;
     int count = 0;
-    if ((pid = (int *)malloc(sizeof(int) * main_cell->hydro.count)) == NULL)
+    if ((pid = (int*)malloc(sizeof(int) * main_cell->hydro.count)) == NULL)
       error("Can't allocate memory for pid.");
     for (int k = 0; k < main_cell->hydro.count; k++)
       if (part_is_active(&main_cell->hydro.parts[k], &engine)) {

@@ -42,8 +42,8 @@
  * @param time_base minimal time step in this run
  */
 __attribute__((always_inline)) INLINE static void rt_debugging_check_timestep(
-    const struct part *restrict p, integertime_t *dti_rt,
-    const integertime_t *dti_hydro, int max_nr_rt_subcycles, double time_base) {
+    const struct part* restrict p, integertime_t* dti_rt,
+    const integertime_t* dti_hydro, int max_nr_rt_subcycles, double time_base) {
 
   const integertime_t f = max(max_nr_rt_subcycles, 1);
   *dti_rt = *dti_hydro / f;
@@ -57,7 +57,7 @@ __attribute__((always_inline)) INLINE static void rt_debugging_check_timestep(
  * @param p the particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_debugging_count_subcycle(
-    struct part *restrict p) {
+    struct part* restrict p) {
   p->rt_data.debug_nsubcycles += 1;
 }
 
@@ -68,8 +68,8 @@ __attribute__((always_inline)) INLINE static void rt_debugging_count_subcycle(
  * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void
-rt_debugging_check_nr_subcycles(struct part *restrict p,
-                                const struct rt_props *rt_props) {
+rt_debugging_check_nr_subcycles(struct part* restrict p,
+                                const struct rt_props* rt_props) {
 
   /* TODO: this check may fail when running with limiter/sync. */
 
@@ -134,7 +134,7 @@ rt_debugging_check_nr_subcycles(struct part *restrict p,
  * @param p the particle to work on
  */
 __attribute__((always_inline)) INLINE static void
-rt_debugging_reset_each_subcycle(struct part *restrict p) {
+rt_debugging_reset_each_subcycle(struct part* restrict p) {
 
   p->rt_data.debug_calls_iact_gradient_interaction = 0;
   p->rt_data.debug_calls_iact_transport_interaction = 0;
@@ -148,19 +148,19 @@ rt_debugging_reset_each_subcycle(struct part *restrict p) {
 /**
  * @brief Debugging checks loop over all star particles after each time step
  */
-static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
+static void rt_debugging_end_of_step_stars_mapper(void* restrict map_data,
                                                   int scount,
-                                                  void *restrict extra_data) {
+                                                  void* restrict extra_data) {
 
-  struct spart *restrict sparts = (struct spart *)map_data;
-  const struct engine *e = (struct engine *)extra_data;
+  struct spart* restrict sparts = (struct spart*)map_data;
+  const struct engine* e = (struct engine*)extra_data;
 
   unsigned long long emission_sum_this_step = 0ULL;
   unsigned long long emission_sum_tot = 0ULL;
 
   for (int k = 0; k < scount; k++) {
 
-    struct spart *restrict sp = &sparts[k];
+    struct spart* restrict sp = &sparts[k];
     emission_sum_this_step += sp->rt_data.debug_iact_hydro_inject;
     emission_sum_tot += sp->rt_data.debug_radiation_emitted_tot;
     /* Reset all values here in case stars won't be active next step */
@@ -176,19 +176,19 @@ static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
 /**
  * @brief Debugging checks loop over all hydro particles after each time step
  */
-static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
+static void rt_debugging_end_of_step_hydro_mapper(void* restrict map_data,
                                                   int count,
-                                                  void *restrict extra_data) {
+                                                  void* restrict extra_data) {
 
-  struct part *restrict parts = (struct part *)map_data;
-  const struct engine *e = (struct engine *)extra_data;
+  struct part* restrict parts = (struct part*)map_data;
+  const struct engine* e = (struct engine*)extra_data;
 
   unsigned long long absorption_sum_this_step = 0ULL;
   unsigned long long absorption_sum_tot = 0ULL;
 
   for (int k = 0; k < count; k++) {
 
-    struct part *restrict p = &parts[k];
+    struct part* restrict p = &parts[k];
     absorption_sum_this_step += p->rt_data.debug_iact_stars_inject;
     absorption_sum_tot += p->rt_data.debug_radiation_absorbed_tot;
 
@@ -210,9 +210,9 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
  * @param verbose Are we talkative?
  */
 __attribute__((always_inline)) INLINE static void
-rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
+rt_debugging_checks_end_of_step(struct engine* e, int verbose) {
 
-  struct space *s = e->s;
+  struct space* s = e->s;
   if (!(e->policy & engine_policy_rt)) return;
 
   const ticks tic = getticks();
@@ -281,7 +281,7 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
  * @param function_name: Function name (or message) you want printed on error.
  */
 __attribute__((always_inline)) INLINE static void rt_debug_sequence_check(
-    struct part *restrict p, int loc, const char *function_name) {
+    struct part* restrict p, int loc, const char* function_name) {
 
   /* Note: Checking whether a particle has been drifted at all is not
    * compatible with subcycling. There is no reliable point where to

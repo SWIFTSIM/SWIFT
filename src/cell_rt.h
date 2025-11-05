@@ -37,37 +37,37 @@ struct cell_rt {
 #endif
 
     /*! Radiative transfer ghost in task */
-    struct task *rt_in;
+    struct task* rt_in;
 
     /*! Radiative transfer ghost1 task (finishes up injection) */
-    struct task *rt_ghost1;
+    struct task* rt_ghost1;
 
     /*! Task for self/pair gradient step of radiative transfer */
-    struct link *rt_gradient;
+    struct link* rt_gradient;
 
     /*! Radiative transfer ghost2 task */
-    struct task *rt_ghost2;
+    struct task* rt_ghost2;
 
     /*! Task for self/pair transport step of radiative transfer */
-    struct link *rt_transport;
+    struct link* rt_transport;
 
     /*! Radiative transfer transport out task */
-    struct task *rt_transport_out;
+    struct task* rt_transport_out;
 
     /*! Radiative transfer thermochemistry task */
-    struct task *rt_tchem;
+    struct task* rt_tchem;
 
     /*! Radiative transfer cell time advancement task */
-    struct task *rt_advance_cell_time;
+    struct task* rt_advance_cell_time;
 
     /*! Sort a cell after a recv rt gradients */
-    struct task *rt_sorts;
+    struct task* rt_sorts;
 
     /*! Collect the cell times from the super to the top level */
-    struct task *rt_collect_times;
+    struct task* rt_collect_times;
 
     /*! Radiative transfer ghost out task */
-    struct task *rt_out;
+    struct task* rt_out;
 
     /*! Bit mask of sorts that need to be computed for this cell.
      * Needed to be able to skip sorting undrifted cells. */

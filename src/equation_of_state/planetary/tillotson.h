@@ -44,14 +44,14 @@
 struct Til_params {
   float rho_0, a, b, A, B, u_0, u_iv, u_cv, alpha, beta;
   float eta_min, eta_zero, P_min, C_V;
-  float *A1_u_cold;
+  float* A1_u_cold;
   float rho_cold_min, rho_cold_max;
   float rho_min, rho_max;
   enum eos_planetary_material_id mat_id;
 };
 
 // Parameter values for each material (SI units)
-INLINE static void set_Til_iron(struct Til_params *mat,
+INLINE static void set_Til_iron(struct Til_params* mat,
                                 enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->rho_0 = 7800.0f;
@@ -73,7 +73,7 @@ INLINE static void set_Til_iron(struct Til_params *mat,
   mat->rho_min = 1.0f;
   mat->rho_max = 1.0e5f;
 }
-INLINE static void set_Til_granite(struct Til_params *mat,
+INLINE static void set_Til_granite(struct Til_params* mat,
                                    enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->rho_0 = 2680.0f;
@@ -95,7 +95,7 @@ INLINE static void set_Til_granite(struct Til_params *mat,
   mat->rho_min = 1.0f;
   mat->rho_max = 1.0e5f;
 }
-INLINE static void set_Til_basalt(struct Til_params *mat,
+INLINE static void set_Til_basalt(struct Til_params* mat,
                                   enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->rho_0 = 2700.0f;
@@ -117,7 +117,7 @@ INLINE static void set_Til_basalt(struct Til_params *mat,
   mat->rho_min = 1.0f;
   mat->rho_max = 1.0e5f;
 }
-INLINE static void set_Til_water(struct Til_params *mat,
+INLINE static void set_Til_water(struct Til_params* mat,
                                  enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->rho_0 = 998.0f;
@@ -139,7 +139,7 @@ INLINE static void set_Til_water(struct Til_params *mat,
   mat->rho_min = 1.0f;
   mat->rho_max = 1.0e5f;
 }
-INLINE static void set_Til_ice(struct Til_params *mat,
+INLINE static void set_Til_ice(struct Til_params* mat,
                                enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->rho_0 = 1293.0f;
@@ -173,13 +173,13 @@ INLINE static void set_Til_ice(struct Til_params *mat,
     eta_min (-)  eta_zero (-)  P_min (Pa)  C_V (J kg^-1 K^-1)
     rho_cold_min (kg/m3)  rho_cold_max (kg/m3)  rho_min (kg/m3)  rho_max (kg/m3)
 */
-INLINE static void set_Til_custom(struct Til_params *mat,
+INLINE static void set_Til_custom(struct Til_params* mat,
                                   enum eos_planetary_material_id mat_id,
-                                  char *param_file) {
+                                  char* param_file) {
   mat->mat_id = mat_id;
 
   // Load table contents from file
-  FILE *f = fopen(param_file, "r");
+  FILE* f = fopen(param_file, "r");
   if (f == NULL)
     error("Failed to open the Tillotson EoS file '%s'", param_file);
 
@@ -206,8 +206,8 @@ INLINE static void set_Til_custom(struct Til_params *mat,
 }
 
 // Convert to internal units
-INLINE static void convert_units_Til(struct Til_params *mat,
-                                     const struct unit_system *us) {
+INLINE static void convert_units_Til(struct Til_params* mat,
+                                     const struct unit_system* us) {
 
   struct unit_system si;
   units_init_si(&si);
@@ -261,7 +261,7 @@ INLINE static void convert_units_Til(struct Til_params *mat,
 
 // gas_internal_energy_from_entropy
 INLINE static float Til_internal_energy_from_entropy(
-    const float density, const float entropy, const struct Til_params *mat) {
+    const float density, const float entropy, const struct Til_params* mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -271,7 +271,7 @@ INLINE static float Til_internal_energy_from_entropy(
 // gas_pressure_from_entropy
 INLINE static float Til_pressure_from_entropy(const float density,
                                               const float entropy,
-                                              const struct Til_params *mat) {
+                                              const struct Til_params* mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -281,7 +281,7 @@ INLINE static float Til_pressure_from_entropy(const float density,
 // gas_entropy_from_pressure
 INLINE static float Til_entropy_from_pressure(const float density,
                                               const float pressure,
-                                              const struct Til_params *mat) {
+                                              const struct Til_params* mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -291,7 +291,7 @@ INLINE static float Til_entropy_from_pressure(const float density,
 // gas_soundspeed_from_entropy
 INLINE static float Til_soundspeed_from_entropy(const float density,
                                                 const float entropy,
-                                                const struct Til_params *mat) {
+                                                const struct Til_params* mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -300,14 +300,14 @@ INLINE static float Til_soundspeed_from_entropy(const float density,
 
 // gas_entropy_from_internal_energy
 INLINE static float Til_entropy_from_internal_energy(
-    const float density, const float u, const struct Til_params *mat) {
+    const float density, const float u, const struct Til_params* mat) {
 
   return 0.f;
 }
 
 // gas_pressure_from_internal_energy
 INLINE static float Til_pressure_from_internal_energy(
-    const float density, const float u, const struct Til_params *mat) {
+    const float density, const float u, const struct Til_params* mat) {
 
   const float eta = density / mat->rho_0;
   const float eta_sq = eta * eta;
@@ -354,7 +354,7 @@ INLINE static float Til_pressure_from_internal_energy(
 
 // gas_internal_energy_from_pressure
 INLINE static float Til_internal_energy_from_pressure(
-    const float density, const float P, const struct Til_params *mat) {
+    const float density, const float P, const struct Til_params* mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -363,7 +363,7 @@ INLINE static float Til_internal_energy_from_pressure(
 
 // gas_soundspeed_from_internal_energy
 INLINE static float Til_soundspeed_from_internal_energy(
-    const float density, const float u, const struct Til_params *mat) {
+    const float density, const float u, const struct Til_params* mat) {
 
   const float rho_0_inv = 1.f / mat->rho_0;
   const float eta = density * rho_0_inv;
@@ -427,7 +427,7 @@ INLINE static float Til_soundspeed_from_internal_energy(
 // gas_soundspeed_from_pressure
 INLINE static float Til_soundspeed_from_pressure(const float density,
                                                  const float P,
-                                                 const struct Til_params *mat) {
+                                                 const struct Til_params* mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -436,7 +436,7 @@ INLINE static float Til_soundspeed_from_pressure(const float density,
 
 // Compute u cold
 INLINE static float compute_u_cold(
-    const float density, const struct Til_params *mat,
+    const float density, const struct Til_params* mat,
     const enum eos_planetary_material_id mat_id) {
   const int N = 10000;
   const float rho_0 = mat->rho_0;
@@ -454,7 +454,7 @@ INLINE static float compute_u_cold(
 }
 
 // Compute A1_u_cold
-INLINE static void set_Til_u_cold(struct Til_params *mat,
+INLINE static void set_Til_u_cold(struct Til_params* mat,
                                   enum eos_planetary_material_id mat_id) {
 
   const int N = 10000;
@@ -462,7 +462,7 @@ INLINE static void set_Til_u_cold(struct Til_params *mat,
   const float rho_max = 100000.f;
 
   // Allocate table memory
-  mat->A1_u_cold = (float *)malloc(N * sizeof(float));
+  mat->A1_u_cold = (float*)malloc(N * sizeof(float));
 
   float rho = rho_min;
   const float drho = (rho_max - rho_min) / (N - 1);
@@ -475,7 +475,7 @@ INLINE static void set_Til_u_cold(struct Til_params *mat,
 
 // Compute u cold fast from precomputed values
 INLINE static float compute_fast_u_cold(const float density,
-                                        const struct Til_params *mat) {
+                                        const struct Til_params* mat) {
 
   const int N = 10000;
   const float rho_min = mat->rho_cold_min;
@@ -503,7 +503,7 @@ INLINE static float compute_fast_u_cold(const float density,
 
 // gas_temperature_from_internal_energy
 INLINE static float Til_temperature_from_internal_energy(
-    const float density, const float u, const struct Til_params *mat) {
+    const float density, const float u, const struct Til_params* mat) {
 
   const float u_cold = compute_fast_u_cold(density, mat);
 
@@ -517,7 +517,7 @@ INLINE static float Til_temperature_from_internal_energy(
 
 // gas_pressure_from_density_and_temperature
 INLINE static float Til_pressure_from_temperature(
-    const float density, const float T, const struct Til_params *mat) {
+    const float density, const float T, const struct Til_params* mat) {
 
   const float u = compute_fast_u_cold(density, mat) + mat->C_V * T;
   const float P = Til_pressure_from_internal_energy(density, u, mat);
@@ -527,7 +527,7 @@ INLINE static float Til_pressure_from_temperature(
 
 // gas_density_from_pressure_and_temperature
 INLINE static float Til_density_from_pressure_and_temperature(
-    const float P, const float T, const struct Til_params *mat) {
+    const float P, const float T, const struct Til_params* mat) {
 
   float rho_min = mat->rho_min;
   float rho_max = mat->rho_max;
@@ -582,7 +582,7 @@ INLINE static float Til_density_from_pressure_and_temperature(
 // gas_density_from_pressure_and_internal_energy
 INLINE static float Til_density_from_pressure_and_internal_energy(
     const float P, const float u, const float rho_ref, const float rho_sph,
-    const struct Til_params *mat) {
+    const struct Til_params* mat) {
 
   if (P <= mat->P_min || u == 0) {
     return rho_sph;

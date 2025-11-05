@@ -200,10 +200,10 @@ struct cosmology {
   double N_eff;
 
   /*! Mass of each massive neutrino species in electron-volts */
-  double *M_nu_eV;
+  double* M_nu_eV;
 
   /*! Degeneracy of each massive neutrino species */
-  double *deg_nu;
+  double* deg_nu;
 
   /*! Sum of massive neutrino degeneracies */
   double deg_nu_tot;
@@ -227,25 +227,25 @@ struct cosmology {
   double const_speed_light_c;
 
   /*! Drift factor interpolation table */
-  double *drift_fac_interp_table;
+  double* drift_fac_interp_table;
 
   /*! Kick factor (gravity) interpolation table */
-  double *grav_kick_fac_interp_table;
+  double* grav_kick_fac_interp_table;
 
   /*! Kick factor (hydro) interpolation table */
-  double *hydro_kick_fac_interp_table;
+  double* hydro_kick_fac_interp_table;
 
   /*! Kick factor (hydro correction) interpolation table (GIZMO-MFV only) */
-  double *hydro_kick_corr_interp_table;
+  double* hydro_kick_corr_interp_table;
 
   /*! Time interpolation table */
-  double *time_interp_table;
+  double* time_interp_table;
 
   /*! Scale factor interpolation table */
-  double *scale_factor_interp_table;
+  double* scale_factor_interp_table;
 
   /*! Comoving distance interpolation table */
-  double *comoving_distance_interp_table;
+  double* comoving_distance_interp_table;
 
   /*! Comoving distance from present day (a=1) to a_end */
   double comoving_distance_interp_table_offset;
@@ -254,13 +254,13 @@ struct cosmology {
   double comoving_distance_start_to_end;
 
   /*! Comoving distance inverse interpolation table */
-  double *comoving_distance_inverse_interp_table;
+  double* comoving_distance_inverse_interp_table;
 
   /*! Massive neutrino density interpolation table at early times */
-  double *neutrino_density_early_table;
+  double* neutrino_density_early_table;
 
   /*! Massive neutrino density interpolation table at late times */
-  double *neutrino_density_late_table;
+  double* neutrino_density_late_table;
 
   /*! Time between Big Bang and first entry in the table */
   double time_interp_table_offset;
@@ -272,60 +272,60 @@ struct cosmology {
   double universe_age_at_present_day;
 };
 
-void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
+void cosmology_update(struct cosmology* c, const struct phys_const* phys_const,
                       integertime_t ti_current);
 
-double cosmology_get_drift_factor(const struct cosmology *cosmo,
+double cosmology_get_drift_factor(const struct cosmology* cosmo,
                                   const integertime_t ti_start,
                                   const integertime_t ti_end);
-double cosmology_get_grav_kick_factor(const struct cosmology *cosmo,
+double cosmology_get_grav_kick_factor(const struct cosmology* cosmo,
                                       const integertime_t ti_start,
                                       const integertime_t ti_end);
-double cosmology_get_hydro_kick_factor(const struct cosmology *cosmo,
+double cosmology_get_hydro_kick_factor(const struct cosmology* cosmo,
                                        const integertime_t ti_start,
                                        const integertime_t ti_end);
-double cosmology_get_therm_kick_factor(const struct cosmology *cosmo,
+double cosmology_get_therm_kick_factor(const struct cosmology* cosmo,
                                        const integertime_t ti_start,
                                        const integertime_t ti_end);
-double cosmology_get_corr_kick_factor(const struct cosmology *cosmo,
+double cosmology_get_corr_kick_factor(const struct cosmology* cosmo,
                                       const integertime_t ti_start,
                                       const integertime_t ti_end);
-double cosmology_get_delta_time(const struct cosmology *c,
+double cosmology_get_delta_time(const struct cosmology* c,
                                 const integertime_t ti_start,
                                 const integertime_t ti_end);
-double cosmology_get_neutrino_density(const struct cosmology *c, double a);
+double cosmology_get_neutrino_density(const struct cosmology* c, double a);
 
-double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
+double cosmology_get_delta_time_from_scale_factors(const struct cosmology* c,
                                                    const double a_start,
                                                    const double a_end);
 
-double cosmology_get_timebase(struct cosmology *c,
+double cosmology_get_timebase(struct cosmology* c,
                               const integertime_t ti_current);
 
-double cosmology_get_scale_factor(const struct cosmology *cosmo, double t);
+double cosmology_get_scale_factor(const struct cosmology* cosmo, double t);
 
-double cosmology_get_comoving_distance(const struct cosmology *c,
+double cosmology_get_comoving_distance(const struct cosmology* c,
                                        const double a);
 
-double cosmology_scale_factor_at_comoving_distance(const struct cosmology *c,
+double cosmology_scale_factor_at_comoving_distance(const struct cosmology* c,
                                                    double r);
 
-double cosmology_get_time_since_big_bang(const struct cosmology *c, double a);
-void cosmology_init(struct swift_params *params, const struct unit_system *us,
-                    const struct phys_const *phys_const, struct cosmology *c);
+double cosmology_get_time_since_big_bang(const struct cosmology* c, double a);
+void cosmology_init(struct swift_params* params, const struct unit_system* us,
+                    const struct phys_const* phys_const, struct cosmology* c);
 
-void cosmology_init_no_cosmo(struct cosmology *c);
+void cosmology_init_no_cosmo(struct cosmology* c);
 
-void cosmology_print(const struct cosmology *c);
-void cosmology_clean(struct cosmology *c);
+void cosmology_print(const struct cosmology* c);
+void cosmology_clean(struct cosmology* c);
 
 #ifdef HAVE_HDF5
-void cosmology_write_model(hid_t h_grp, const struct cosmology *c);
+void cosmology_write_model(hid_t h_grp, const struct cosmology* c);
 #endif
 
 /* Dump/restore. */
-void cosmology_struct_dump(const struct cosmology *cosmology, FILE *stream);
-void cosmology_struct_restore(int enabled, struct cosmology *cosmology,
-                              FILE *stream);
+void cosmology_struct_dump(const struct cosmology* cosmology, FILE* stream);
+void cosmology_struct_restore(int enabled, struct cosmology* cosmology,
+                              FILE* stream);
 
 #endif /* SWIFT_COSMOLOGY_H */

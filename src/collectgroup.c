@@ -97,7 +97,7 @@ void collectgroup_init(void) {
  * @param grp1 The #collectgroup1
  * @param e The #engine
  */
-void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
+void collectgroup1_apply(const struct collectgroup1* grp1, struct engine* e) {
 
   e->ti_hydro_end_min = grp1->ti_hydro_end_min;
   e->ti_hydro_beg_max = grp1->ti_hydro_beg_max;
@@ -204,7 +204,7 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
  * @param csds_file_size_gb The current size of the CSDS.
  */
 void collectgroup1_init(
-    struct collectgroup1 *grp1, size_t updated, size_t g_updated,
+    struct collectgroup1* grp1, size_t updated, size_t g_updated,
     size_t s_updated, size_t sink_updated, size_t b_updated, size_t inhibited,
     size_t g_inhibited, size_t s_inhibited, size_t sink_inhibited,
     size_t b_inhibited, integertime_t ti_hydro_end_min,
@@ -261,7 +261,7 @@ void collectgroup1_init(
  * @param grp1 the #collectgroup1 struct already initialised by a call
  *             to collectgroup1_init.
  */
-void collectgroup1_reduce(struct collectgroup1 *grp1) {
+void collectgroup1_reduce(struct collectgroup1* grp1) {
 
 #ifdef WITH_MPI
 
@@ -352,8 +352,8 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
  * @param mpigrp11 the first struct, this is updated on exit.
  * @param mpigrp12 the second struct
  */
-static void doreduce1(struct mpicollectgroup1 *mpigrp11,
-                      const struct mpicollectgroup1 *mpigrp12) {
+static void doreduce1(struct mpicollectgroup1* mpigrp11,
+                      const struct mpicollectgroup1* mpigrp12) {
 
   /* Do what is needed for each part of the collection. */
   /* Sum of updates. */
@@ -431,12 +431,12 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
 /**
  * @brief MPI reduce operator for #mpicollectgroup1 structures.
  */
-static void mpicollectgroup1_reduce(void *in, void *inout, int *len,
-                                    MPI_Datatype *datatype) {
+static void mpicollectgroup1_reduce(void* in, void* inout, int* len,
+                                    MPI_Datatype* datatype) {
 
   for (int i = 0; i < *len; ++i)
-    doreduce1(&((struct mpicollectgroup1 *)inout)[i],
-              &((const struct mpicollectgroup1 *)in)[i]);
+    doreduce1(&((struct mpicollectgroup1*)inout)[i],
+              &((const struct mpicollectgroup1*)in)[i]);
 }
 
 /**

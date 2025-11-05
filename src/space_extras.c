@@ -44,7 +44,7 @@
  * @param s The current #space.
  * @param verbose Are we talkative?
  */
-void space_allocate_extras(struct space *s, int verbose) {
+void space_allocate_extras(struct space* s, int verbose) {
 
   const int local_nodeID = s->e->nodeID;
 
@@ -55,7 +55,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     return;
 
   /* The top-level cells */
-  const struct cell *cells = s->cells_top;
+  const struct cell* cells = s->cells_top;
   const double half_cell_width[3] = {0.5 * cells[0].width[0],
                                      0.5 * cells[0].width[1],
                                      0.5 * cells[0].width[2]};
@@ -81,7 +81,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t size_bparts = s->size_bparts;
   size_t size_sinks = s->size_sinks;
 
-  int *local_cells = (int *)malloc(sizeof(int) * s->nr_cells);
+  int* local_cells = (int*)malloc(sizeof(int) * s->nr_cells);
   if (local_cells == NULL)
     error("Failed to allocate list of local top-level cells");
 
@@ -154,8 +154,8 @@ void space_allocate_extras(struct space *s, int verbose) {
                 size_gparts);
 
       /* Create more space for parts */
-      struct gpart *gparts_new = NULL;
-      if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
+      struct gpart* gparts_new = NULL;
+      if (swift_memalign("gparts", (void**)&gparts_new, gpart_align,
                          sizeof(struct gpart) * size_gparts) != 0)
         error("Failed to allocate new gpart data");
       memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->size_gparts);
@@ -246,8 +246,8 @@ void space_allocate_extras(struct space *s, int verbose) {
                 size_parts);
 
       /* Create more space for parts */
-      struct part *parts_new = NULL;
-      if (swift_memalign("parts", (void **)&parts_new, part_align,
+      struct part* parts_new = NULL;
+      if (swift_memalign("parts", (void**)&parts_new, part_align,
                          sizeof(struct part) * size_parts) != 0)
         error("Failed to allocate new part data");
       memcpy(parts_new, s->parts, sizeof(struct part) * s->size_parts);
@@ -255,8 +255,8 @@ void space_allocate_extras(struct space *s, int verbose) {
       s->parts = parts_new;
 
       /* Same for xparts */
-      struct xpart *xparts_new = NULL;
-      if (swift_memalign("xparts", (void **)&xparts_new, xpart_align,
+      struct xpart* xparts_new = NULL;
+      if (swift_memalign("xparts", (void**)&xparts_new, xpart_align,
                          sizeof(struct xpart) * size_parts) != 0)
         error("Failed to allocate new xpart data");
       memcpy(xparts_new, s->xparts, sizeof(struct xpart) * s->size_parts);
@@ -341,8 +341,8 @@ void space_allocate_extras(struct space *s, int verbose) {
                 size_sinks);
 
       /* Create more space for parts */
-      struct sink *sinks_new = NULL;
-      if (swift_memalign("sinks", (void **)&sinks_new, sink_align,
+      struct sink* sinks_new = NULL;
+      if (swift_memalign("sinks", (void**)&sinks_new, sink_align,
                          sizeof(struct sink) * size_sinks) != 0)
         error("Failed to allocate new sink data");
       memcpy(sinks_new, s->sinks, sizeof(struct sink) * s->size_sinks);
@@ -428,8 +428,8 @@ void space_allocate_extras(struct space *s, int verbose) {
                 size_sparts);
 
       /* Create more space for parts */
-      struct spart *sparts_new = NULL;
-      if (swift_memalign("sparts", (void **)&sparts_new, spart_align,
+      struct spart* sparts_new = NULL;
+      if (swift_memalign("sparts", (void**)&sparts_new, spart_align,
                          sizeof(struct spart) * size_sparts) != 0)
         error("Failed to allocate new spart data");
       memcpy(sparts_new, s->sparts, sizeof(struct spart) * s->size_sparts);
@@ -514,8 +514,8 @@ void space_allocate_extras(struct space *s, int verbose) {
                 size_bparts);
 
       /* Create more space for parts */
-      struct bpart *bparts_new = NULL;
-      if (swift_memalign("bparts", (void **)&bparts_new, bpart_align,
+      struct bpart* bparts_new = NULL;
+      if (swift_memalign("bparts", (void**)&bparts_new, bpart_align,
                          sizeof(struct bpart) * size_bparts) != 0)
         error("Failed to allocate new bpart data");
       memcpy(bparts_new, s->bparts, sizeof(struct bpart) * s->size_bparts);

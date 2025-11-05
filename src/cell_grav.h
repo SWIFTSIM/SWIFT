@@ -38,66 +38,66 @@ struct cell_grav {
   union {
 
     /*! Pointer to the #gpart data. */
-    struct gpart *parts;
+    struct gpart* parts;
 
     /*! or #gpart_foreign data. */
-    struct gpart_foreign *parts_foreign;
+    struct gpart_foreign* parts_foreign;
 
     /*! or #gpart_fof_foreign data. */
-    struct gpart_fof_foreign *parts_fof_foreign;
+    struct gpart_fof_foreign* parts_fof_foreign;
   };
 
   union {
 
     /*! Pointer to the #gpart data at rebuild time. */
-    struct gpart *parts_rebuild;
+    struct gpart* parts_rebuild;
 
     /*! Pointer to the #gpart_foreign data at rebuild time. */
-    struct gpart_foreign *parts_foreign_rebuild;
+    struct gpart_foreign* parts_foreign_rebuild;
 
     /*! Pointer to the #gpart_fof_foreign data at rebuild time. */
-    struct gpart_fof_foreign *parts_fof_foreign_rebuild;
+    struct gpart_fof_foreign* parts_fof_foreign_rebuild;
   };
 
   /*! This cell's multipole. */
-  struct gravity_tensors *multipole;
+  struct gravity_tensors* multipole;
 
   /*! Super cell, i.e. the highest-level parent cell that has a grav pair/self
    * tasks */
-  struct cell *super;
+  struct cell* super;
 
   /*! The drift task for gparts */
-  struct task *drift;
+  struct task* drift;
 
   /*! Implicit task (going up- and down the tree) for the #gpart drifts */
-  struct task *drift_out;
+  struct task* drift_out;
 
   /*! Linked list of the tasks computing this cell's gravity forces. */
-  struct link *grav;
+  struct link* grav;
 
   /*! Linked list of the tasks computing this cell's gravity M-M forces. */
-  struct link *mm;
+  struct link* mm;
 
   /*! The multipole initialistation task */
-  struct task *init;
+  struct task* init;
 
   /*! Implicit task for the gravity initialisation */
-  struct task *init_out;
+  struct task* init_out;
 
   /*! Task computing long range non-periodic gravity interactions */
-  struct task *long_range;
+  struct task* long_range;
 
   /*! Implicit task for the down propagation */
-  struct task *down_in;
+  struct task* down_in;
 
   /*! Task propagating the multipole to the particles */
-  struct task *down;
+  struct task* down;
 
   /*! The task to end the force calculation */
-  struct task *end_force;
+  struct task* end_force;
 
   /*! Task for weighting neutrino particles */
-  struct task *neutrino_weight;
+  struct task* neutrino_weight;
 
   /*! Minimum end of (integer) time step in this cell for gravity tasks. */
   integertime_t ti_end_min;

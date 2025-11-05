@@ -115,13 +115,13 @@ struct los_props {
   char basename[200];
 };
 
-void print_los_info(const struct line_of_sight *Los, const int i);
-void do_line_of_sight(struct engine *e);
-void los_init(const double dim[3], struct los_props *los_params,
-              struct swift_params *params);
-void los_io_output_check(const struct engine *e);
+void print_los_info(const struct line_of_sight* Los, const int i);
+void do_line_of_sight(struct engine* e);
+void los_init(const double dim[3], struct los_props* los_params,
+              struct swift_params* params);
+void los_io_output_check(const struct engine* e);
 
-void los_struct_dump(const struct los_props *internal_los, FILE *stream);
-void los_struct_restore(const struct los_props *internal_los, FILE *stream);
+void los_struct_dump(const struct los_props* internal_los, FILE* stream);
+void los_struct_restore(const struct los_props* internal_los, FILE* stream);
 
 #endif /* SWIFT_LOS_H */

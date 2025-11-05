@@ -60,15 +60,15 @@ struct proxy {
   int mynodeID, nodeID;
 
   /* Incoming cells. */
-  struct cell **cells_in;
-  int *cells_in_type;
-  struct pcell *pcells_in;
+  struct cell** cells_in;
+  int* cells_in_type;
+  struct pcell* pcells_in;
   int nr_cells_in, size_cells_in, size_pcells_in;
 
   /* Outgoing cells. */
-  struct cell **cells_out;
-  int *cells_out_type;
-  struct pcell *pcells_out;
+  struct cell** cells_out;
+  int* cells_out_type;
+  struct pcell* pcells_out;
   int nr_cells_out, size_cells_out, size_pcells_out;
 
   /* The parts and xparts buffers for input and output. */
@@ -108,25 +108,25 @@ struct proxy {
 };
 
 /* Function prototypes. */
-void proxy_init(struct proxy *p, int mynodeID, int nodeID);
-void proxy_clean(struct proxy *p);
-void proxy_parts_load(struct proxy *p, const struct part *parts,
-                      const struct xpart *xparts, int N);
-void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N);
-void proxy_sparts_load(struct proxy *p, const struct spart *sparts, int N);
-void proxy_bparts_load(struct proxy *p, const struct bpart *bparts, int N);
-void proxy_sinks_load(struct proxy *p, const struct sink *sinks, int N);
-void proxy_free_particle_buffers(struct proxy *p);
-void proxy_parts_exchange_first(struct proxy *p);
-void proxy_parts_exchange_second(struct proxy *p);
-void proxy_addcell_in(struct proxy *p, struct cell *c, int type);
-void proxy_addcell_out(struct proxy *p, struct cell *c, int type);
-void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
-                          struct space *s, int with_gravity);
-void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
-                         struct space *s);
-void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
-                               struct space *s);
+void proxy_init(struct proxy* p, int mynodeID, int nodeID);
+void proxy_clean(struct proxy* p);
+void proxy_parts_load(struct proxy* p, const struct part* parts,
+                      const struct xpart* xparts, int N);
+void proxy_gparts_load(struct proxy* p, const struct gpart* gparts, int N);
+void proxy_sparts_load(struct proxy* p, const struct spart* sparts, int N);
+void proxy_bparts_load(struct proxy* p, const struct bpart* bparts, int N);
+void proxy_sinks_load(struct proxy* p, const struct sink* sinks, int N);
+void proxy_free_particle_buffers(struct proxy* p);
+void proxy_parts_exchange_first(struct proxy* p);
+void proxy_parts_exchange_second(struct proxy* p);
+void proxy_addcell_in(struct proxy* p, struct cell* c, int type);
+void proxy_addcell_out(struct proxy* p, struct cell* c, int type);
+void proxy_cells_exchange(struct proxy* proxies, int num_proxies,
+                          struct space* s, int with_gravity);
+void proxy_tags_exchange(struct proxy* proxies, int num_proxies,
+                         struct space* s);
+void proxy_grid_extra_exchange(struct proxy* proxies, int num_proxies,
+                               struct space* s);
 void proxy_create_mpi_type(void);
 void proxy_free_mpi_type(void);
 

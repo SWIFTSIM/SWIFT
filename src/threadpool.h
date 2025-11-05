@@ -37,8 +37,8 @@
 #define threadpool_uniform_chunk_size -1
 
 /* Function type for mappings. */
-typedef void (*threadpool_map_function)(void *map_data, int num_elements,
-                                        void *extra_data);
+typedef void (*threadpool_map_function)(void* map_data, int num_elements,
+                                        void* extra_data);
 
 /* Data for threadpool logging. */
 struct mapper_log_entry {
@@ -58,7 +58,7 @@ struct mapper_log_entry {
 
 struct mapper_log {
   /* Log of threadpool mapper calls. */
-  struct mapper_log_entry *log;
+  struct mapper_log_entry* log;
 
   /* Size of the allocated log. */
   int size;
@@ -71,7 +71,7 @@ struct mapper_log {
 struct threadpool {
 
   /* The threads themselves. */
-  pthread_t *threads;
+  pthread_t* threads;
 
   /* This is where threads go to rest. */
   swift_barrier_t wait_barrier;
@@ -90,23 +90,23 @@ struct threadpool {
   volatile int num_threads_running;
 
 #ifdef SWIFT_DEBUG_THREADPOOL
-  struct mapper_log *logs;
+  struct mapper_log* logs;
 #endif
 };
 
 /* Function prototypes. */
-void threadpool_init(struct threadpool *tp, int num_threads);
-void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
-                    void *map_data, size_t N, int stride, int chunk,
-                    void *extra_data);
+void threadpool_init(struct threadpool* tp, int num_threads);
+void threadpool_map(struct threadpool* tp, threadpool_map_function map_function,
+                    void* map_data, size_t N, int stride, int chunk,
+                    void* extra_data);
 int threadpool_gettid(void);
-void threadpool_clean(struct threadpool *tp);
+void threadpool_clean(struct threadpool* tp);
 #ifdef HAVE_SETAFFINITY
-void threadpool_set_affinity_mask(cpu_set_t *entry_affinity);
+void threadpool_set_affinity_mask(cpu_set_t* entry_affinity);
 #endif
 #ifdef SWIFT_DEBUG_THREADPOOL
-void threadpool_reset_log(struct threadpool *tp);
-void threadpool_dump_log(struct threadpool *tp, const char *filename,
+void threadpool_reset_log(struct threadpool* tp);
+void threadpool_dump_log(struct threadpool* tp, const char* filename,
                          int reset);
 #endif
 

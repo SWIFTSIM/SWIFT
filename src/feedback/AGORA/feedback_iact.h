@@ -43,10 +43,10 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const float hi, const float hj,
-                                    struct spart *si, const struct part *pj,
-                                    const struct xpart *xpj,
-                                    const struct cosmology *cosmo,
-                                    const struct feedback_props *fb_props,
+                                    struct spart* si, const struct part* pj,
+                                    const struct xpart* xpj,
+                                    const struct cosmology* cosmo,
+                                    const struct feedback_props* fb_props,
                                     const integertime_t ti_current) {
 
   /* Get the gas mass. */
@@ -88,9 +88,9 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct spart *si, struct part *pj, struct xpart *xpj,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct feedback_props *fb_props, const integertime_t ti_current) {
+    struct spart* si, struct part* pj, struct xpart* xpj,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct feedback_props* fb_props, const integertime_t ti_current) {
 
   const double e_sn = si->feedback_data.energy_ejected;
 

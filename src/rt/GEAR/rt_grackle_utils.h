@@ -47,8 +47,8 @@
  * needed in the future, which can be implemented into this function.
  */
 __attribute__((always_inline)) INLINE void update_grackle_units_cosmo(
-    code_units *grackle_units, const struct unit_system *us,
-    const struct cosmology *restrict cosmo) {}
+    code_units* grackle_units, const struct unit_system* us,
+    const struct cosmology* restrict cosmo) {}
 
 /**
  * @brief initialize grackle during rt_props_init
@@ -62,11 +62,11 @@ __attribute__((always_inline)) INLINE void update_grackle_units_cosmo(
  * @param us #unit_system struct
  **/
 __attribute__((always_inline)) INLINE static void rt_init_grackle(
-    code_units *grackle_units, chemistry_data *grackle_chemistry_data,
-    chemistry_data_storage *grackle_chemistry_rates,
+    code_units* grackle_units, chemistry_data* grackle_chemistry_data,
+    chemistry_data_storage* grackle_chemistry_rates,
     float hydrogen_mass_fraction, const int grackle_verb,
-    const int case_B_recombination, const struct unit_system *us,
-    const struct cosmology *restrict cosmo) {
+    const int case_B_recombination, const struct unit_system* us,
+    const struct cosmology* restrict cosmo) {
 
   grackle_verbose = grackle_verb;
 
@@ -144,14 +144,14 @@ __attribute__((always_inline)) INLINE static void rt_init_grackle(
  *
  **/
 __attribute__((always_inline)) INLINE static void
-rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
+rt_get_grackle_particle_fields(grackle_field_data* grackle_fields,
                                gr_float density, gr_float internal_energy,
                                gr_float species_densities[6],
                                gr_float iact_rates[5]) {
 
-  int *dimension = malloc(3 * sizeof(int));
-  int *start = malloc(3 * sizeof(int));
-  int *end = malloc(3 * sizeof(int));
+  int* dimension = malloc(3 * sizeof(int));
+  int* start = malloc(3 * sizeof(int));
+  int* end = malloc(3 * sizeof(int));
 
   dimension[0] = FIELD_SIZE;
   dimension[1] = 0;
@@ -264,7 +264,7 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
  *
  **/
 __attribute__((always_inline)) INLINE static void rt_clean_grackle_fields(
-    grackle_field_data *grackle_fields) {
+    grackle_field_data* grackle_fields) {
 
   free(grackle_fields->grid_dimension);
   free(grackle_fields->grid_start);
@@ -327,9 +327,9 @@ __attribute__((always_inline)) INLINE static void rt_clean_grackle_fields(
  * @param field_index grackle field index to print out.
  **/
 __attribute__((always_inline)) INLINE static void
-rt_write_grackle_setup_and_field(FILE *fp, grackle_field_data grackle_fields,
-                                 chemistry_data *grackle_chemistry_data,
-                                 code_units *grackle_units, int field_index) {
+rt_write_grackle_setup_and_field(FILE* fp, grackle_field_data grackle_fields,
+                                 chemistry_data* grackle_chemistry_data,
+                                 code_units* grackle_units, int field_index) {
 
   fprintf(fp, "Grackle chemistry parameters:\n");
 

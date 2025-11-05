@@ -30,30 +30,30 @@ const int array_size = 2048 * 2048;
 const int num_threads = 64;
 const int chunk_size = 64;
 
-void map_function_sum_f(void *data, int num_elements, void *extra_data) {
+void map_function_sum_f(void* data, int num_elements, void* extra_data) {
 
-  float *array = (float *)data;
-  float *sum = (float *)extra_data;
+  float* array = (float*)data;
+  float* sum = (float*)extra_data;
 
   for (int i = 0; i < num_elements; ++i) atomic_add_f(sum, array[i]);
 }
 
-void map_function_sum_ll(void *data, int num_elements, void *extra_data) {
+void map_function_sum_ll(void* data, int num_elements, void* extra_data) {
 
-  long long *array = (long long *)data;
-  long long *sum = (long long *)extra_data;
+  long long* array = (long long*)data;
+  long long* sum = (long long*)extra_data;
 
   for (int i = 0; i < num_elements; ++i) atomic_add(sum, array[i]);
 }
 
-void map_function_inc_ll(void *data, int num_elements, void *extra_data) {
+void map_function_inc_ll(void* data, int num_elements, void* extra_data) {
 
-  long long *sum = (long long *)extra_data;
+  long long* sum = (long long*)extra_data;
 
   for (int i = 0; i < num_elements; ++i) atomic_inc(sum);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -75,8 +75,8 @@ int main(int argc, char *argv[]) {
   threadpool_init(&tp, num_threads);
 
   /* Create some random data */
-  float *array_f = (float *)malloc(array_size * sizeof(float));
-  long long *array_ll = (long long *)malloc(array_size * sizeof(long long));
+  float* array_f = (float*)malloc(array_size * sizeof(float));
+  long long* array_ll = (long long*)malloc(array_size * sizeof(long long));
 
   for (int i = 0; i < array_size; ++i) {
     array_f[i] = rand() / ((float)RAND_MAX);

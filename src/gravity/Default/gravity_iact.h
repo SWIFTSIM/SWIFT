@@ -46,7 +46,7 @@
 __attribute__((always_inline, nonnull)) INLINE static void
 runner_iact_grav_pp_full(const float r2, const float h2, const float h_inv,
                          const float h_inv3, const float mass,
-                         float *restrict f_ij, float *restrict pot_ij) {
+                         float* restrict f_ij, float* restrict pot_ij) {
 
   /* Get the inverse distance */
   const float r_inv = 1.f / sqrtf(r2 + FLT_MIN);
@@ -90,8 +90,8 @@ runner_iact_grav_pp_full(const float r2, const float h2, const float h_inv,
 __attribute__((always_inline, nonnull)) INLINE static void
 runner_iact_grav_pp_truncated(const float r2, const float h2, const float h_inv,
                               const float h_inv3, const float mass,
-                              const float r_s_inv, float *restrict f_ij,
-                              float *restrict pot_ij) {
+                              const float r_s_inv, float* restrict f_ij,
+                              float* restrict pot_ij) {
 
   /* Get the inverse distance */
   const float r_inv = 1.f / sqrtf(r2 + FLT_MIN);
@@ -141,9 +141,9 @@ runner_iact_grav_pp_truncated(const float r2, const float h2, const float h_inv,
 __attribute__((always_inline, nonnull)) INLINE static void
 runner_iact_grav_pm_full(const float r_x, const float r_y, const float r_z,
                          const float r2, const float h, const float h_inv,
-                         const struct multipole *m, float *restrict f_x,
-                         float *restrict f_y, float *restrict f_z,
-                         float *restrict pot) {
+                         const struct multipole* m, float* restrict f_x,
+                         float* restrict f_y, float* restrict f_z,
+                         float* restrict pot) {
 
   /* Use the M2P kernel */
   struct reduced_grav_tensor l;
@@ -181,9 +181,9 @@ runner_iact_grav_pm_full(const float r_x, const float r_y, const float r_z,
 __attribute__((always_inline, nonnull)) INLINE static void
 runner_iact_grav_pm_truncated(const float r_x, const float r_y, const float r_z,
                               const float r2, const float h, const float h_inv,
-                              const float r_s_inv, const struct multipole *m,
-                              float *restrict f_x, float *restrict f_y,
-                              float *restrict f_z, float *restrict pot) {
+                              const float r_s_inv, const struct multipole* m,
+                              float* restrict f_x, float* restrict f_y,
+                              float* restrict f_z, float* restrict pot) {
 
   /* Use the M2P kernel */
   struct reduced_grav_tensor l;

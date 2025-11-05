@@ -667,9 +667,9 @@ INLINE static void rt_compute_explicit_thermochemistry_solution(
     const double alphalist[rt_species_count],
     const double betalist[rt_species_count],
     const double Gammalist[rt_species_count], double sigmalist[3][3],
-    double epsilonlist[3][3], int aindex[3], double *u_new_cgs,
+    double epsilonlist[3][3], int aindex[3], double* u_new_cgs,
     double new_abundances[rt_species_count], double new_ngamma_cgs[3],
-    double *max_relative_change) {
+    double* max_relative_change) {
 
   double absorption_rate[3], chemistry_rates[rt_species_count];
 
@@ -786,6 +786,6 @@ INLINE static void rt_initialize_abundances(
  * @param ydot Vector containing the time derivatives of the variables.
  * @param user_data The #RTUserData struct containing the input data.
  */
-int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data);
+int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void* user_data);
 
 #endif /* SWIFT_RT_SPHM1RT_COOLING_RATES_H */

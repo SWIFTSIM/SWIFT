@@ -35,7 +35,7 @@
  * @param E (return) Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static void
-rt_part_get_comoving_radiation_energy_density(const struct part *restrict p,
+rt_part_get_comoving_radiation_energy_density(const struct part* restrict p,
                                               float E[RT_NGROUPS]) {
 
   for (int g = 0; g < RT_NGROUPS; g++) {
@@ -50,9 +50,9 @@ rt_part_get_comoving_radiation_energy_density(const struct part *restrict p,
  * @param E (return) Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static void
-rt_part_get_physical_radiation_energy_density(const struct part *restrict p,
+rt_part_get_physical_radiation_energy_density(const struct part* restrict p,
                                               float E[RT_NGROUPS],
-                                              const struct cosmology *cosmo) {
+                                              const struct cosmology* cosmo) {
   for (int g = 0; g < RT_NGROUPS; g++) {
     E[g] = cosmo->a3_inv * p->rt_data.radiation[g].energy_density;
   }
@@ -67,7 +67,7 @@ rt_part_get_physical_radiation_energy_density(const struct part *restrict p,
  * @param U Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static void
-rt_part_get_radiation_state_vector(const struct part *restrict p, int group,
+rt_part_get_radiation_state_vector(const struct part* restrict p, int group,
                                    float U[4]) {
 
   U[0] = p->rt_data.radiation[group].energy_density;
@@ -88,7 +88,7 @@ rt_part_get_radiation_state_vector(const struct part *restrict p, int group,
  * @param dFz (return) Array to write flux z component gradient into
  */
 __attribute__((always_inline)) INLINE static void rt_part_get_gradients(
-    const struct part *restrict p, int group, float dE[3], float dFx[3],
+    const struct part* restrict p, int group, float dE[3], float dFx[3],
     float dFy[3], float dFz[3]) {
 
   dE[0] = p->rt_data.gradient[group].energy_density[0];

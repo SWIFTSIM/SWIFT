@@ -39,8 +39,8 @@
  * @param recvbuf The output buffer
  *
  */
-void exchange_structs(size_t *nr_send, void *sendbuf, size_t *nr_recv,
-                      void *recvbuf, size_t element_size) {
+void exchange_structs(size_t* nr_send, void* sendbuf, size_t* nr_recv,
+                      void* recvbuf, size_t element_size) {
 
 #ifdef WITH_MPI
 
@@ -50,22 +50,22 @@ void exchange_structs(size_t *nr_send, void *sendbuf, size_t *nr_recv,
   MPI_Comm_rank(MPI_COMM_WORLD, &nodeID);
 
   /* Compute send offsets */
-  size_t *send_offset = (size_t *)malloc(nr_nodes * sizeof(size_t));
+  size_t* send_offset = (size_t*)malloc(nr_nodes * sizeof(size_t));
   send_offset[0] = 0;
   for (int i = 1; i < nr_nodes; i += 1) {
     send_offset[i] = send_offset[i - 1] + nr_send[i - 1];
   }
 
   /* Compute receive offsets */
-  size_t *recv_offset = (size_t *)malloc(nr_nodes * sizeof(size_t));
+  size_t* recv_offset = (size_t*)malloc(nr_nodes * sizeof(size_t));
   recv_offset[0] = 0;
   for (int i = 1; i < nr_nodes; i += 1) {
     recv_offset[i] = recv_offset[i - 1] + nr_recv[i - 1];
   }
 
   /* Allocate request objects (one send and receive per node) */
-  MPI_Request *request =
-      (MPI_Request *)malloc(2 * sizeof(MPI_Request) * nr_nodes);
+  MPI_Request* request =
+      (MPI_Request*)malloc(2 * sizeof(MPI_Request) * nr_nodes);
 
   /* Make type to communicate the struct */
   MPI_Datatype value_mpi_type;
@@ -87,7 +87,7 @@ void exchange_structs(size_t *nr_send, void *sendbuf, size_t *nr_recv,
       if (nr_send[i] > INT_MAX)
         error("exchange_structs() fails if nr_send > INT_MAX!");
 
-      char *buf = (char *)sendbuf;
+      char* buf = (char*)sendbuf;
       MPI_Isend(&(buf[send_offset[i] * element_size]), (int)nr_send[i],
                 value_mpi_type, i, 0, MPI_COMM_WORLD, &(request[i]));
     } else {
@@ -103,7 +103,7 @@ void exchange_structs(size_t *nr_send, void *sendbuf, size_t *nr_recv,
       if (nr_recv[i] > INT_MAX)
         error("exchange_structs() fails if nr_recv > INT_MAX!");
 
-      char *buf = (char *)recvbuf;
+      char* buf = (char*)recvbuf;
       MPI_Irecv(&(buf[recv_offset[i] * element_size]), (int)nr_recv[i],
                 value_mpi_type, i, 0, MPI_COMM_WORLD, &(request[i + nr_nodes]));
     } else {

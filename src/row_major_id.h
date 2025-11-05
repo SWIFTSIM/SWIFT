@@ -142,8 +142,8 @@ __attribute__((always_inline, const)) INLINE static size_t get_last_n_bits(
  * Performs the opposite operation to cell_index_from_patch_index().
  */
 __attribute__((always_inline)) INLINE static void patch_index_from_cell_index(
-    size_t cell_index, int *restrict patch_index, int *restrict i,
-    int *restrict j, int *restrict k) {
+    size_t cell_index, int* restrict patch_index, int* restrict i,
+    int* restrict j, int* restrict k) {
 
   const size_t kk = get_last_n_bits(cell_index, 12);
   cell_index >>= 12;

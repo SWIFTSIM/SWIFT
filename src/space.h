@@ -174,28 +174,28 @@ struct space {
   int nr_local_cells_with_particles;
 
   /*! The (level 0) cells themselves. */
-  struct cell *cells_top;
+  struct cell* cells_top;
 
   /*! Buffer of unused cells for the sub-cells. One chunk per thread. */
-  struct cell **cells_sub;
+  struct cell** cells_sub;
 
   /*! The multipoles associated with the top-level (level 0) cells */
-  struct gravity_tensors *multipoles_top;
+  struct gravity_tensors* multipoles_top;
 
   /*! Buffer of unused multipoles for the sub-cells. One chunk per thread. */
-  struct gravity_tensors **multipoles_sub;
+  struct gravity_tensors** multipoles_sub;
 
   /*! The indices of the *local* top-level cells */
-  int *local_cells_top;
+  int* local_cells_top;
 
   /*! The indices of the *local* top-level cells with tasks */
-  int *local_cells_with_tasks_top;
+  int* local_cells_with_tasks_top;
 
   /*! The indices of the top-level cells that have >0 particles (of any kind) */
-  int *cells_with_particles_top;
+  int* cells_with_particles_top;
 
   /*! The indices of the top-level cells that have >0 particles (of any kind) */
-  int *local_cells_with_particles_top;
+  int* local_cells_with_particles_top;
 
   /*! The total number of #part in the space. */
   size_t nr_parts;
@@ -261,22 +261,22 @@ struct space {
   size_t nr_extra_sinks;
 
   /*! The particle data (cells have pointers to this). */
-  struct part *parts;
+  struct part* parts;
 
   /*! The extended particle data (cells have pointers to this). */
-  struct xpart *xparts;
+  struct xpart* xparts;
 
   /*! The g-particle data (cells have pointers to this). */
-  struct gpart *gparts;
+  struct gpart* gparts;
 
   /*! The s-particle data (cells have pointers to this). */
-  struct spart *sparts;
+  struct spart* sparts;
 
   /*! The b-particle data (cells have pointers to this). */
-  struct bpart *bparts;
+  struct bpart* bparts;
 
   /*! The sink particle data (cells have pointers to this). */
-  struct sink *sinks;
+  struct sink* sinks;
 
   /*! Minimal mass of all the #part */
   float min_part_mass;
@@ -339,153 +339,153 @@ struct space {
   int nr_queues;
 
   /*! The associated engine. */
-  struct engine *e;
+  struct engine* e;
 
   /*! The group information returned by VELOCIraptor for each #gpart. */
-  struct velociraptor_gpart_data *gpart_group_data;
+  struct velociraptor_gpart_data* gpart_group_data;
 
   /*! Structure dealing with the computation of a unique ID */
   struct unique_id unique_id;
 
   /*! Have the top-level cells' time-steps been updated? */
-  char *cells_top_updated;
+  char* cells_top_updated;
 
 #ifdef WITH_MPI
 
   /*! Buffers for parts that we will receive from foreign cells. */
-  struct part *parts_foreign;
+  struct part* parts_foreign;
   size_t nr_parts_foreign, size_parts_foreign;
 
   /*! Buffers for g-parts that we will receive from foreign cells. */
-  struct gpart_foreign *gparts_foreign;
-  struct gpart_fof_foreign *gparts_fof_foreign;
+  struct gpart_foreign* gparts_foreign;
+  struct gpart_fof_foreign* gparts_fof_foreign;
   size_t nr_gparts_foreign, size_gparts_foreign;
 
   /*! Buffers for s-parts that we will receive from foreign cells. */
-  struct spart *sparts_foreign;
+  struct spart* sparts_foreign;
   size_t nr_sparts_foreign, size_sparts_foreign;
 
   /*! Buffers for b-parts that we will receive from foreign cells. */
-  struct bpart *bparts_foreign;
+  struct bpart* bparts_foreign;
   size_t nr_bparts_foreign, size_bparts_foreign;
 
   /*! Buffers for sink-parts that we will receive from foreign cells. */
-  struct sink *sinks_foreign;
+  struct sink* sinks_foreign;
   size_t nr_sinks_foreign, size_sinks_foreign;
 
 #endif
 };
 
 /* Function prototypes. */
-void space_free_buff_sort_indices(struct space *s);
-void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
-                      int *counts, int num_bins, ptrdiff_t parts_offset);
-void space_gparts_sort(struct gpart *gparts, struct part *parts,
-                       struct sink *sinks, struct spart *sparts,
-                       struct bpart *bparts, int *ind, int *counts,
+void space_free_buff_sort_indices(struct space* s);
+void space_parts_sort(struct part* parts, struct xpart* xparts, int* ind,
+                      int* counts, int num_bins, ptrdiff_t parts_offset);
+void space_gparts_sort(struct gpart* gparts, struct part* parts,
+                       struct sink* sinks, struct spart* sparts,
+                       struct bpart* bparts, int* ind, int* counts,
                        int num_bins);
-void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
+void space_sparts_sort(struct spart* sparts, int* ind, int* counts,
                        int num_bins, ptrdiff_t sparts_offset);
-void space_bparts_sort(struct bpart *bparts, int *ind, int *counts,
+void space_bparts_sort(struct bpart* bparts, int* ind, int* counts,
                        int num_bins, ptrdiff_t bparts_offset);
-void space_sinks_sort(struct sink *sinks, int *ind, int *counts, int num_bins,
+void space_sinks_sort(struct sink* sinks, int* ind, int* counts, int num_bins,
                       ptrdiff_t sinks_offset);
-void space_getcells(struct space *s, int nr_cells, struct cell **cells,
+void space_getcells(struct space* s, int nr_cells, struct cell** cells,
                     const short int tid);
-void space_init(struct space *s, struct swift_params *params,
-                const struct cosmology *cosmo, double dim[3],
-                const struct hydro_props *hydro_properties, struct part *parts,
-                struct gpart *gparts, struct sink *sinks, struct spart *sparts,
-                struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
+void space_init(struct space* s, struct swift_params* params,
+                const struct cosmology* cosmo, double dim[3],
+                const struct hydro_props* hydro_properties, struct part* parts,
+                struct gpart* gparts, struct sink* sinks, struct spart* sparts,
+                struct bpart* bparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int gravity, int star_formation, int with_sink,
                 int with_DM, int with_DM_background, int neutrinos, int verbose,
                 int dry_run, int nr_nodes);
-void space_sanitize(struct space *s);
-void space_map_cells_pre(struct space *s, int full,
-                         void (*fun)(struct cell *c, void *data), void *data);
-void space_map_parts(struct space *s,
-                     void (*fun)(struct part *p, struct cell *c, void *data),
-                     void *data);
-void space_map_parts_xparts(struct space *s,
-                            void (*fun)(struct part *p, struct xpart *xp,
-                                        struct cell *c));
-void space_map_cells_post(struct space *s, int full,
-                          void (*fun)(struct cell *c, void *data), void *data);
-void space_rebuild(struct space *s, int repartitioned, int verbose);
-void space_recycle(struct space *s, struct cell *c);
-void space_recycle_list(struct space *s, struct cell *cell_list_begin,
-                        struct cell *cell_list_end,
-                        struct gravity_tensors *multipole_list_begin,
-                        struct gravity_tensors *multipole_list_end);
-void space_regrid(struct space *s, int verbose);
-void space_allocate_extras(struct space *s, int verbose);
-void space_split(struct space *s, int verbose);
-void space_reorder_extras(struct space *s, int verbose);
-void space_list_useful_top_level_cells(struct space *s);
-void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
-                                size_t *count_inhibited_parts,
-                                size_t *count_extra_parts, int verbose);
-void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
-                                 size_t *count_inhibited_gparts,
-                                 size_t *count_extra_gparts, int verbose);
-void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
-                                 size_t *count_inhibited_sparts,
-                                 size_t *count_extra_sparts, int verbose);
-void space_bparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
-                                 size_t *count_inhibited_bparts,
-                                 size_t *count_extra_bparts, int verbose);
-void space_sinks_get_cell_index(struct space *s, int *sind, int *cell_counts,
-                                size_t *count_inhibited_sinks,
-                                size_t *count_extra_sinks, int verbose);
-void space_synchronize_particle_positions(struct space *s);
-void space_first_init_parts(struct space *s, int verbose);
-void space_first_init_gparts(struct space *s, int verbose);
-void space_first_init_sparts(struct space *s, int verbose);
-void space_first_init_bparts(struct space *s, int verbose);
-void space_first_init_sinks(struct space *s, int verbose);
-void space_collect_mean_masses(struct space *s, int verbose);
-void space_init_parts(struct space *s, int verbose);
-void space_init_gparts(struct space *s, int verbose);
-void space_init_sparts(struct space *s, int verbose);
-void space_init_bparts(struct space *s, int verbose);
-void space_init_sinks(struct space *s, int verbose);
-void space_after_snap_tracer(struct space *s, int verbose);
-void space_mark_cell_as_updated(struct space *s, const struct cell *c);
-void space_convert_quantities(struct space *s, int verbose);
-void space_convert_rt_quantities(struct space *s, int verbose);
-void space_post_init_parts(struct space *s, int verbose);
-void space_link_cleanup(struct space *s);
-void space_check_drift_point(struct space *s, integertime_t ti_drift,
+void space_sanitize(struct space* s);
+void space_map_cells_pre(struct space* s, int full,
+                         void (*fun)(struct cell* c, void* data), void* data);
+void space_map_parts(struct space* s,
+                     void (*fun)(struct part* p, struct cell* c, void* data),
+                     void* data);
+void space_map_parts_xparts(struct space* s,
+                            void (*fun)(struct part* p, struct xpart* xp,
+                                        struct cell* c));
+void space_map_cells_post(struct space* s, int full,
+                          void (*fun)(struct cell* c, void* data), void* data);
+void space_rebuild(struct space* s, int repartitioned, int verbose);
+void space_recycle(struct space* s, struct cell* c);
+void space_recycle_list(struct space* s, struct cell* cell_list_begin,
+                        struct cell* cell_list_end,
+                        struct gravity_tensors* multipole_list_begin,
+                        struct gravity_tensors* multipole_list_end);
+void space_regrid(struct space* s, int verbose);
+void space_allocate_extras(struct space* s, int verbose);
+void space_split(struct space* s, int verbose);
+void space_reorder_extras(struct space* s, int verbose);
+void space_list_useful_top_level_cells(struct space* s);
+void space_parts_get_cell_index(struct space* s, int* ind, int* cell_counts,
+                                size_t* count_inhibited_parts,
+                                size_t* count_extra_parts, int verbose);
+void space_gparts_get_cell_index(struct space* s, int* gind, int* cell_counts,
+                                 size_t* count_inhibited_gparts,
+                                 size_t* count_extra_gparts, int verbose);
+void space_sparts_get_cell_index(struct space* s, int* sind, int* cell_counts,
+                                 size_t* count_inhibited_sparts,
+                                 size_t* count_extra_sparts, int verbose);
+void space_bparts_get_cell_index(struct space* s, int* sind, int* cell_counts,
+                                 size_t* count_inhibited_bparts,
+                                 size_t* count_extra_bparts, int verbose);
+void space_sinks_get_cell_index(struct space* s, int* sind, int* cell_counts,
+                                size_t* count_inhibited_sinks,
+                                size_t* count_extra_sinks, int verbose);
+void space_synchronize_particle_positions(struct space* s);
+void space_first_init_parts(struct space* s, int verbose);
+void space_first_init_gparts(struct space* s, int verbose);
+void space_first_init_sparts(struct space* s, int verbose);
+void space_first_init_bparts(struct space* s, int verbose);
+void space_first_init_sinks(struct space* s, int verbose);
+void space_collect_mean_masses(struct space* s, int verbose);
+void space_init_parts(struct space* s, int verbose);
+void space_init_gparts(struct space* s, int verbose);
+void space_init_sparts(struct space* s, int verbose);
+void space_init_bparts(struct space* s, int verbose);
+void space_init_sinks(struct space* s, int verbose);
+void space_after_snap_tracer(struct space* s, int verbose);
+void space_mark_cell_as_updated(struct space* s, const struct cell* c);
+void space_convert_quantities(struct space* s, int verbose);
+void space_convert_rt_quantities(struct space* s, int verbose);
+void space_post_init_parts(struct space* s, int verbose);
+void space_link_cleanup(struct space* s);
+void space_check_drift_point(struct space* s, integertime_t ti_drift,
                              int multipole);
-void space_check_top_multipoles_drift_point(struct space *s,
+void space_check_top_multipoles_drift_point(struct space* s,
                                             integertime_t ti_drift);
-void space_check_timesteps(const struct space *s);
-void space_check_limiter(struct space *s);
-void space_check_swallow(struct space *s);
-void space_check_sort_flags(struct space *s);
-void space_remap_ids(struct space *s, int nr_nodes, int verbose);
-long long space_get_max_parts_id(struct space *s);
-void space_replicate(struct space *s, int replicate, int verbose);
-void space_generate_gas(struct space *s, const struct cosmology *cosmo,
-                        const struct hydro_props *hydro_properties,
+void space_check_timesteps(const struct space* s);
+void space_check_limiter(struct space* s);
+void space_check_swallow(struct space* s);
+void space_check_sort_flags(struct space* s);
+void space_remap_ids(struct space* s, int nr_nodes, int verbose);
+long long space_get_max_parts_id(struct space* s);
+void space_replicate(struct space* s, int replicate, int verbose);
+void space_generate_gas(struct space* s, const struct cosmology* cosmo,
+                        const struct hydro_props* hydro_properties,
                         const int periodic, const int with_DM_background,
                         const int with_neutrinos, const double dim[3],
                         const int verbose);
-void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
+void space_check_cosmology(struct space* s, const struct cosmology* cosmo,
                            const int with_hydro, const int rank,
                            const int check_neutrinos);
-void space_reset_task_counters(struct space *s);
-void space_clean(struct space *s);
-void space_free_cells(struct space *s);
+void space_reset_task_counters(struct space* s);
+void space_clean(struct space* s);
+void space_free_cells(struct space* s);
 
-void space_free_foreign_parts(struct space *s, const int clear_cell_pointers);
+void space_free_foreign_parts(struct space* s, const int clear_cell_pointers);
 
-void space_struct_dump(struct space *s, FILE *stream);
-void space_struct_restore(struct space *s, FILE *stream);
-void space_write_cell_hierarchy(const struct space *s, int j);
-void space_compute_star_formation_stats(const struct space *s,
-                                        struct star_formation *star_form);
-void space_check_unskip_flags(const struct space *s);
+void space_struct_dump(struct space* s, FILE* stream);
+void space_struct_restore(struct space* s, FILE* stream);
+void space_write_cell_hierarchy(const struct space* s, int j);
+void space_compute_star_formation_stats(const struct space* s,
+                                        struct star_formation* star_form);
+void space_check_unskip_flags(const struct space* s);
 #endif /* SWIFT_SPACE_H */

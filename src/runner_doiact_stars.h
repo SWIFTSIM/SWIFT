@@ -95,34 +95,34 @@
 #define _IACT_STARS(f) PASTE(runner_iact_nonsym_stars, f)
 #define IACT_STARS _IACT_STARS(FUNCTION)
 
-void DOSELF1_BRANCH_STARS(struct runner *r, const struct cell *c,
+void DOSELF1_BRANCH_STARS(struct runner* r, const struct cell* c,
                           const int limit_min_h, const int limit_max_h);
-void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+void DOPAIR1_BRANCH_STARS(struct runner* r, struct cell* ci, struct cell* cj,
                           const int limit_min_h, const int limit_max_h);
 
-void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci,
+void DOSUB_SELF1_STARS(struct runner* r, struct cell* ci,
                        int recurse_below_h_max, const int gettimer);
-void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+void DOSUB_PAIR1_STARS(struct runner* r, struct cell* ci, struct cell* cj,
                        int recurse_below_h_max, const int gettimer);
 
-void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, const struct cell *ci,
-                                 struct spart *restrict sparts, const int *ind,
+void DOSELF1_SUBSET_BRANCH_STARS(struct runner* r, const struct cell* ci,
+                                 struct spart* restrict sparts, const int* ind,
                                  const int scount);
 
-void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
-                                 const struct cell *restrict ci,
-                                 struct spart *restrict sparts_i,
-                                 const int *ind, const int scount,
-                                 struct cell *restrict cj);
+void DOPAIR1_SUBSET_BRANCH_STARS(struct runner* r,
+                                 const struct cell* restrict ci,
+                                 struct spart* restrict sparts_i,
+                                 const int* ind, const int scount,
+                                 struct cell* restrict cj);
 
-void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
-                             struct spart *sparts, const int *ind,
-                             const int scount, struct cell *cj,
+void DOSUB_PAIR_SUBSET_STARS(struct runner* r, struct cell* ci,
+                             struct spart* sparts, const int* ind,
+                             const int scount, struct cell* cj,
                              const int gettimer);
 
-void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
-                             struct spart *sparts, const int *ind,
+void DOSUB_SELF_SUBSET_STARS(struct runner* r, struct cell* ci,
+                             struct spart* sparts, const int* ind,
                              const int scount, const int gettimer);
 
-void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
-                        int *ind, int scount, struct cell *cj, int gettimer);
+void DOSUB_SUBSET_STARS(struct runner* r, struct cell* ci, struct spart* sparts,
+                        int* ind, int scount, struct cell* cj, int gettimer);

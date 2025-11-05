@@ -41,11 +41,11 @@
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer) {
+void runner_do_neutrino_weighting(struct runner* r, struct cell* c, int timer) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  struct gpart *restrict gparts = c->grav.parts;
+  struct gpart* restrict gparts = c->grav.parts;
   const int gcount = c->grav.count;
 
   TIMER_TIC;
@@ -69,7 +69,7 @@ void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer) {
     /* Loop over the gparts in this cell. */
     for (int k = 0; k < gcount; k++) {
       /* Get a handle on the part. */
-      struct gpart *restrict gp = &gparts[k];
+      struct gpart* restrict gp = &gparts[k];
 
       /* Only act on neutrinos that needed to be kicked */
       if (!(gp->type == swift_type_neutrino && gpart_is_starting(gp, e)))

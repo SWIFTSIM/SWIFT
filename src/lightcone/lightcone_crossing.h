@@ -57,8 +57,8 @@
  */
 __attribute__((always_inline)) INLINE static void
 lightcone_check_particle_crosses(
-    const struct engine *e, struct replication_list *replication_list_array,
-    const double *x, const float *v_full, const struct gpart *gp,
+    const struct engine* e, struct replication_list* replication_list_array,
+    const double* x, const float* v_full, const struct gpart* gp,
     const double dt_drift, const integertime_t ti_old,
     const integertime_t ti_current, const double cell_loc[3]) {
 
@@ -77,7 +77,7 @@ lightcone_check_particle_crosses(
   if (nrep_tot == 0) return;
 
   /* Unpack some variables we need */
-  const struct cosmology *c = e->cosmology;
+  const struct cosmology* c = e->cosmology;
 
   /* Determine expansion factor at start and end of the drift */
   const double a_start = c->a_begin * exp(ti_old * c->time_base);
@@ -108,9 +108,9 @@ lightcone_check_particle_crosses(
   for (int lightcone_nr = 0; lightcone_nr < nr_lightcones; lightcone_nr += 1) {
 
     /* Find the current lightcone and its replication list */
-    struct lightcone_props *props =
+    struct lightcone_props* props =
         e->lightcone_array_properties->lightcone + lightcone_nr;
-    struct replication_list *replication_list =
+    struct replication_list* replication_list =
         replication_list_array + lightcone_nr;
 
     /* Consistency check - are our limits on the drift endpoints good? */
@@ -121,10 +121,10 @@ lightcone_check_particle_crosses(
     /* Are there any replications to check at this timestep? */
     const int nreps = replication_list->nrep;
     if (nreps == 0) continue;
-    const struct replication *rep = replication_list->replication;
+    const struct replication* rep = replication_list->replication;
 
     /* Find observer position for this lightcone */
-    const double *observer_position = props->observer_position;
+    const double* observer_position = props->observer_position;
 
     /* Does this drift overlap the lightcone redshift range? If not, nothing to
      * do. */

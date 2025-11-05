@@ -85,21 +85,21 @@ struct pm_mesh {
   double r_cut_min;
 
   /*! Full N*N*N potential field */
-  double *potential_global;
+  double* potential_global;
 };
 
-void pm_mesh_init(struct pm_mesh *mesh, const struct gravity_props *props,
+void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
                   const double dim[3], int nr_threads);
-void pm_mesh_init_no_mesh(struct pm_mesh *mesh, double dim[3]);
-void pm_mesh_compute_potential(struct pm_mesh *mesh, const struct space *s,
-                               struct threadpool *tp, int verbose);
-void pm_mesh_clean(struct pm_mesh *mesh);
+void pm_mesh_init_no_mesh(struct pm_mesh* mesh, double dim[3]);
+void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
+                               struct threadpool* tp, int verbose);
+void pm_mesh_clean(struct pm_mesh* mesh);
 
-void pm_mesh_allocate(struct pm_mesh *mesh);
-void pm_mesh_free(struct pm_mesh *mesh);
+void pm_mesh_allocate(struct pm_mesh* mesh);
+void pm_mesh_free(struct pm_mesh* mesh);
 
 /* Dump/restore. */
-void pm_mesh_struct_dump(const struct pm_mesh *p, FILE *stream);
-void pm_mesh_struct_restore(struct pm_mesh *p, FILE *stream);
+void pm_mesh_struct_dump(const struct pm_mesh* p, FILE* stream);
+void pm_mesh_struct_restore(struct pm_mesh* p, FILE* stream);
 
 #endif /* SWIFT_MESH_GRAVITY_H */

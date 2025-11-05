@@ -36,7 +36,7 @@
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part_extra_kernel(
-    struct part *restrict p) {
+    struct part* restrict p) {
 
   p->m0 = 0.f;
   p->grad_m0[0] = 0.f;
@@ -56,8 +56,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part_extra_kernel(
  * @param wj_dx The norm of the gradient of wj: dW(r, hj)/dr * hj^(d+1).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_runner_iact_density_extra_kernel(struct part *restrict pi,
-                                       struct part *restrict pj,
+hydro_runner_iact_density_extra_kernel(struct part* restrict pi,
+                                       struct part* restrict pj,
                                        const float dx[3], const float wi,
                                        const float wj, const float wi_dx,
                                        const float wj_dx) {
@@ -95,8 +95,8 @@ hydro_runner_iact_density_extra_kernel(struct part *restrict pi,
  * @param wi_dx The norm of the gradient of wi: dW(r, hi)/dr * hi^(d+1).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_density_extra_kernel(struct part *restrict pi,
-                                              const struct part *restrict pj,
+hydro_runner_iact_nonsym_density_extra_kernel(struct part* restrict pi,
+                                              const struct part* restrict pj,
                                               const float dx[3], const float wi,
                                               const float wi_dx) {
 
@@ -123,7 +123,7 @@ hydro_runner_iact_nonsym_density_extra_kernel(struct part *restrict pi,
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_end_density_extra_kernel(struct part *restrict p) {
+hydro_end_density_extra_kernel(struct part* restrict p) {
 
   const float h = p->h;
   const float h_inv = 1.0f / h;                       /* 1/h */
@@ -149,7 +149,7 @@ hydro_end_density_extra_kernel(struct part *restrict p) {
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_gradient_extra_kernel(struct part *restrict p) {
+hydro_prepare_gradient_extra_kernel(struct part* restrict p) {
 
   /* Initialise geometric moment matrices (ij-mean, for linear-order repr.
    * kernel) */
@@ -181,8 +181,8 @@ hydro_prepare_gradient_extra_kernel(struct part *restrict p) {
  * @param wj_dx The norm of the gradient of wj: dW(r, hj)/dr * hj^(d+1).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
-                                        struct part *restrict pj,
+hydro_runner_iact_gradient_extra_kernel(struct part* restrict pi,
+                                        struct part* restrict pj,
                                         const float dx[3], const float wi,
                                         const float wj, const float wi_dx,
                                         const float wj_dx) {
@@ -287,7 +287,7 @@ hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_nonsym_gradient_extra_kernel(
-    struct part *restrict pi, struct part *restrict pj, const float dx[3],
+    struct part* restrict pi, struct part* restrict pj, const float dx[3],
     const float wi, const float wj, const float wi_dx, const float wj_dx) {
 
   /* Get r and 1/r. */
@@ -362,7 +362,7 @@ hydro_runner_iact_nonsym_gradient_extra_kernel(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_end_gradient_extra_kernel(struct part *restrict p) {
+hydro_end_gradient_extra_kernel(struct part* restrict p) {
 
   const float h = p->h;
   const float h_inv = 1.0f / h;                       /* 1/h */
@@ -399,7 +399,7 @@ hydro_end_gradient_extra_kernel(struct part *restrict p) {
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_force_extra_kernel(struct part *restrict p) {
+hydro_prepare_force_extra_kernel(struct part* restrict p) {
 
   if (p->is_h_max) {
     /* Use standard kernal gradients if h=h_max */
@@ -539,8 +539,8 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
  * @param wj_dx The norm of the gradient of wj: dW(r, hj)/dr * hj^(d+1).
  */
 __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
-    float Gi[3], float Gj[3], const struct part *restrict pi,
-    const struct part *restrict pj, const float dx[3], const float wi,
+    float Gi[3], float Gj[3], const struct part* restrict pi,
+    const struct part* restrict pj, const float dx[3], const float wi,
     const float wj, const float wi_dx, const float wj_dx) {
 
   /* Get r and 1/r. */

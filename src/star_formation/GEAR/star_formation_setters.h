@@ -35,7 +35,7 @@
  */
 
 __attribute__((always_inline)) INLINE void
-star_formation_set_spart_birth_density(struct spart *restrict sp,
+star_formation_set_spart_birth_density(struct spart* restrict sp,
                                        const float birth_density) {
   sp->sf_data.birth_density = birth_density;
 }
@@ -48,7 +48,7 @@ star_formation_set_spart_birth_density(struct spart *restrict sp,
  */
 
 __attribute__((always_inline)) INLINE void
-star_formation_set_spart_birth_temperature(struct spart *restrict sp,
+star_formation_set_spart_birth_temperature(struct spart* restrict sp,
                                            const float birth_temperature) {
   sp->sf_data.birth_temperature = birth_temperature;
 }
@@ -61,7 +61,7 @@ star_formation_set_spart_birth_temperature(struct spart *restrict sp,
  */
 
 __attribute__((always_inline)) INLINE void star_formation_set_spart_birth_mass(
-    struct spart *restrict sp, const float birth_mass) {
+    struct spart* restrict sp, const float birth_mass) {
   sp->sf_data.birth_mass = birth_mass;
 }
 
@@ -73,7 +73,7 @@ __attribute__((always_inline)) INLINE void star_formation_set_spart_birth_mass(
  */
 
 __attribute__((always_inline)) INLINE void
-star_formation_set_spart_progenitor_id(struct spart *restrict sp,
+star_formation_set_spart_progenitor_id(struct spart* restrict sp,
                                        const long long progenitor_id) {
   sp->sf_data.progenitor_id = progenitor_id;
 }
@@ -89,7 +89,7 @@ star_formation_set_spart_progenitor_id(struct spart *restrict sp,
 
 __attribute__((always_inline)) INLINE void
 star_formation_set_spart_birth_time_or_scale_factor(
-    struct spart *restrict sp, const float birth_time,
+    struct spart* restrict sp, const float birth_time,
     const float birth_scale_factor, const int with_cosmology) {
   if (with_cosmology) {
     sp->birth_scale_factor = birth_scale_factor;

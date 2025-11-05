@@ -22,10 +22,10 @@
 #include "extra.h"
 #include "io_properties.h"
 
-INLINE static void convert_part_Xray_photons(const struct engine *e,
-                                             const struct part *p,
-                                             const struct xpart *xp,
-                                             double *ret) {
+INLINE static void convert_part_Xray_photons(const struct engine* e,
+                                             const struct part* p,
+                                             const struct xpart* xp,
+                                             double* ret) {
 
   ret[0] = extra_io_get_xray_fluxes(
       p, xp, e, xray_band_types_erosita_low_intrinsic_photons);
@@ -35,10 +35,10 @@ INLINE static void convert_part_Xray_photons(const struct engine *e,
                                     xray_band_types_ROSAT_intrinsic_photons);
 }
 
-INLINE static void convert_part_Xray_energies(const struct engine *e,
-                                              const struct part *p,
-                                              const struct xpart *xp,
-                                              double *ret) {
+INLINE static void convert_part_Xray_energies(const struct engine* e,
+                                              const struct part* p,
+                                              const struct xpart* xp,
+                                              double* ret) {
 
   ret[0] = extra_io_get_xray_fluxes(
       p, xp, e, xray_band_types_erosita_low_intrinsic_energies);
@@ -58,9 +58,9 @@ INLINE static void convert_part_Xray_energies(const struct engine *e,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int extra_io_write_particles(const struct part *parts,
-                                           const struct xpart *xparts,
-                                           struct io_props *list,
+INLINE static int extra_io_write_particles(const struct part* parts,
+                                           const struct xpart* xparts,
+                                           struct io_props* list,
                                            const int with_cosmology) {
 
   list[0] = io_make_physical_output_field_convert_part(
@@ -86,8 +86,8 @@ INLINE static int extra_io_write_particles(const struct part *parts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int extra_io_write_sparticles(const struct spart *sparts,
-                                            struct io_props *list,
+INLINE static int extra_io_write_sparticles(const struct spart* sparts,
+                                            struct io_props* list,
                                             const int with_cosmology) {
 
   return 0;
@@ -101,8 +101,8 @@ INLINE static int extra_io_write_sparticles(const struct spart *sparts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int extra_io_write_bparticles(const struct bpart *bparts,
-                                            struct io_props *list,
+INLINE static int extra_io_write_bparticles(const struct bpart* bparts,
+                                            struct io_props* list,
                                             const int with_cosmology) {
   return 0;
 }
@@ -151,67 +151,67 @@ INLINE static void extra_io_write_flavour(hid_t h_grp, hid_t h_grp_columns) {
    Healpix map of intrinsic erosita-low photons band
 */
 double lightcone_map_xray_erosita_low_intrinsic_photons_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 
 /*
    Healpix map of intrinsic erosita-low energy band
 */
 double lightcone_map_xray_erosita_low_intrinsic_energy_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 
 /*
    Healpix map of intrinsic erosita-high photons band
 */
 double lightcone_map_xray_erosita_high_intrinsic_photons_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 
 /*
    Healpix map of intrinsic erosita-high energy band
 */
 double lightcone_map_xray_erosita_high_intrinsic_energy_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 
 /*
    Healpix map of intrinsic ROSAT photons band
 */
 double lightcone_map_xray_rosat_intrinsic_photons_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 
 /*
    Healpix map of intrinsic ROSAT energy band
 */
 double lightcone_map_xray_rosat_intrinsic_energy_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 /*
    Healpix map of compton y
 */
 int lightcone_map_compton_y_type_contributes(int ptype);
 
 double lightcone_map_compton_y_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 /*
    Healpix map of doppler b
 */
 int lightcone_map_doppler_b_type_contributes(int ptype);
 
 double lightcone_map_doppler_b_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 /*
    Healpix map of dispersion meassure
 */
 int lightcone_map_dispersion_meassure_type_contributes(int ptype);
 
 double lightcone_map_dispersion_meassure_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 
 static const struct lightcone_map_type extra_lightcone_map_types[] = {
     {

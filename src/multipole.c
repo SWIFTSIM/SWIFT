@@ -42,11 +42,11 @@ MPI_Op multipole_mpi_reduce_op;
  * @param a The #gravity_tensors to add to.
  * @param b The #gravity_tensors to add.
  */
-void gravity_binary_xor(struct gravity_tensors *a,
-                        const struct gravity_tensors *b) {
+void gravity_binary_xor(struct gravity_tensors* a,
+                        const struct gravity_tensors* b) {
 
-  char *aa = (char *)a;
-  const char *bb = (const char *)b;
+  char* aa = (char*)a;
+  const char* bb = (const char*)b;
 
   for (size_t i = 0; i < sizeof(struct gravity_tensors); ++i) {
     aa[i] ^= bb[i];
@@ -61,12 +61,12 @@ void gravity_binary_xor(struct gravity_tensors *a,
  * @param len The length of the array.
  * @param datatype The MPI type this function acts upon (unused).
  */
-void gravity_tensors_mpi_reduce(void *invec, void *inoutvec, int *len,
-                                MPI_Datatype *datatype) {
+void gravity_tensors_mpi_reduce(void* invec, void* inoutvec, int* len,
+                                MPI_Datatype* datatype) {
 
   for (int i = 0; i < *len; ++i) {
-    gravity_binary_xor(&((struct gravity_tensors *)inoutvec)[i],
-                       &((const struct gravity_tensors *)invec)[i]);
+    gravity_binary_xor(&((struct gravity_tensors*)inoutvec)[i],
+                       &((const struct gravity_tensors*)invec)[i]);
   }
 }
 

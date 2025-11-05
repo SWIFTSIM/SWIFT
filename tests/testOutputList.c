@@ -41,10 +41,10 @@ const double a_values[Ntest] = {
     0.5,
 };
 
-void test_no_cosmo(struct engine *e, const char *name, const int with_assert) {
+void test_no_cosmo(struct engine* e, const char* name, const int with_assert) {
   message("Testing output time for %s without cosmology", name);
 
-  struct output_list *list = NULL;
+  struct output_list* list = NULL;
   double delta_time = 0;
   double output_time = 0;
 
@@ -81,10 +81,10 @@ void test_no_cosmo(struct engine *e, const char *name, const int with_assert) {
   output_list_clean(&list);
 };
 
-void test_cosmo(struct engine *e, const char *name, const int with_assert) {
+void test_cosmo(struct engine* e, const char* name, const int with_assert) {
   message("Testing output time for %s with cosmology", name);
 
-  struct output_list *list = NULL;
+  struct output_list* list = NULL;
   double delta_time = 0;
   double output_time = 0;
 
@@ -119,7 +119,7 @@ void test_cosmo(struct engine *e, const char *name, const int with_assert) {
   output_list_clean(&list);
 };
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

@@ -34,11 +34,11 @@
  *
  * @return Buffer after the bits written.
  */
-INLINE static void *csds_stars_convert_acc(const struct spart *sp,
-                                           const struct engine *e,
-                                           void *buffer) {
+INLINE static void* csds_stars_convert_acc(const struct spart* sp,
+                                           const struct engine* e,
+                                           void* buffer) {
   /* Compute the acceleration due to hydro and gravity */
-  float *acc = (float *)buffer;
+  float* acc = (float*)buffer;
   acc[0] = sp->gpart->a_grav[0] + sp->gpart->a_grav_mesh[0];
   acc[1] = sp->gpart->a_grav[1] + sp->gpart->a_grav_mesh[1];
   acc[2] = sp->gpart->a_grav[2] + sp->gpart->a_grav_mesh[2];
@@ -53,7 +53,7 @@ INLINE static void *csds_stars_convert_acc(const struct spart *sp,
  *
  * @return The number of fields.
  */
-INLINE static int csds_stars_define_fields(struct csds_field *fields) {
+INLINE static int csds_stars_define_fields(struct csds_field* fields) {
 
   /* Positions */
   csds_define_standard_field(fields[0], "Coordinates", struct spart, x);

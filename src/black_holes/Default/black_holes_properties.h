@@ -64,12 +64,12 @@ struct black_holes_props {
  * @param hydro_props The already read-in properties of the hydro scheme.
  * @param cosmo The cosmological model.
  */
-static INLINE void black_holes_props_init(struct black_holes_props *bp,
-                                          const struct phys_const *phys_const,
-                                          const struct unit_system *us,
-                                          struct swift_params *params,
-                                          const struct hydro_props *hydro_props,
-                                          const struct cosmology *cosmo) {
+static INLINE void black_holes_props_init(struct black_holes_props* bp,
+                                          const struct phys_const* phys_const,
+                                          const struct unit_system* us,
+                                          struct swift_params* params,
+                                          const struct hydro_props* hydro_props,
+                                          const struct cosmology* cosmo) {
 
   /* Kernel properties */
   bp->eta_neighbours = parser_get_opt_param_float(
@@ -111,8 +111,8 @@ static INLINE void black_holes_props_init(struct black_holes_props *bp,
  * @param stream the file stream
  */
 INLINE static void black_holes_struct_dump(
-    const struct black_holes_props *props, FILE *stream) {
-  restart_write_blocks((void *)props, sizeof(struct black_holes_props), 1,
+    const struct black_holes_props* props, FILE* stream) {
+  restart_write_blocks((void*)props, sizeof(struct black_holes_props), 1,
                        stream, "black_holes props", "black holes props");
 }
 
@@ -124,9 +124,9 @@ INLINE static void black_holes_struct_dump(
  * @param stream the file stream
  */
 INLINE static void black_holes_struct_restore(
-    const struct black_holes_props *props, FILE *stream) {
-  restart_read_blocks((void *)props, sizeof(struct black_holes_props), 1,
-                      stream, NULL, "black holes props");
+    const struct black_holes_props* props, FILE* stream) {
+  restart_read_blocks((void*)props, sizeof(struct black_holes_props), 1, stream,
+                      NULL, "black holes props");
 }
 
 #endif /* SWIFT_DEFAULT_BLACK_HOLES_PROPERTIES_H */

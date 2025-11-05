@@ -46,7 +46,7 @@ extern unsigned long long last_leaf_cell_id;
  * @param repartitioned Did we just repartition?
  * @param verbose Print messages to stdout or not
  */
-void space_rebuild(struct space *s, int repartitioned, int verbose) {
+void space_rebuild(struct space* s, int repartitioned, int verbose) {
 
   const ticks tic = getticks();
 
@@ -67,7 +67,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);
 
-  struct cell *cells_top = s->cells_top;
+  struct cell* cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
   const int local_nodeID = s->e->nodeID;
 
@@ -109,27 +109,27 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Allocate arrays to store the indices of the cells where particles
      belong. We allocate extra space to allow for particles we may
      receive from other nodes */
-  int *h_index = (int *)swift_malloc("h_index", sizeof(int) * h_index_size);
-  int *g_index = (int *)swift_malloc("g_index", sizeof(int) * g_index_size);
-  int *s_index = (int *)swift_malloc("s_index", sizeof(int) * s_index_size);
-  int *b_index = (int *)swift_malloc("b_index", sizeof(int) * b_index_size);
-  int *sink_index =
-      (int *)swift_malloc("sink_index", sizeof(int) * sink_index_size);
+  int* h_index = (int*)swift_malloc("h_index", sizeof(int) * h_index_size);
+  int* g_index = (int*)swift_malloc("g_index", sizeof(int) * g_index_size);
+  int* s_index = (int*)swift_malloc("s_index", sizeof(int) * s_index_size);
+  int* b_index = (int*)swift_malloc("b_index", sizeof(int) * b_index_size);
+  int* sink_index =
+      (int*)swift_malloc("sink_index", sizeof(int) * sink_index_size);
   if (h_index == NULL || g_index == NULL || s_index == NULL ||
       b_index == NULL || sink_index == NULL)
     error("Failed to allocate temporary particle indices.");
 
   /* Allocate counters of particles that will land in each cell */
-  int *cell_part_counts =
-      (int *)swift_malloc("cell_part_counts", sizeof(int) * s->nr_cells);
-  int *cell_gpart_counts =
-      (int *)swift_malloc("cell_gpart_counts", sizeof(int) * s->nr_cells);
-  int *cell_spart_counts =
-      (int *)swift_malloc("cell_spart_counts", sizeof(int) * s->nr_cells);
-  int *cell_bpart_counts =
-      (int *)swift_malloc("cell_bpart_counts", sizeof(int) * s->nr_cells);
-  int *cell_sink_counts =
-      (int *)swift_malloc("cell_sink_counts", sizeof(int) * s->nr_cells);
+  int* cell_part_counts =
+      (int*)swift_malloc("cell_part_counts", sizeof(int) * s->nr_cells);
+  int* cell_gpart_counts =
+      (int*)swift_malloc("cell_gpart_counts", sizeof(int) * s->nr_cells);
+  int* cell_spart_counts =
+      (int*)swift_malloc("cell_spart_counts", sizeof(int) * s->nr_cells);
+  int* cell_bpart_counts =
+      (int*)swift_malloc("cell_bpart_counts", sizeof(int) * s->nr_cells);
+  int* cell_sink_counts =
+      (int*)swift_malloc("cell_sink_counts", sizeof(int) * s->nr_cells);
 
   if (cell_part_counts == NULL || cell_gpart_counts == NULL ||
       cell_spart_counts == NULL || cell_bpart_counts == NULL ||
@@ -532,9 +532,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-allocate the index array for the parts if needed.. */
   if (s->nr_parts + 1 > h_index_size) {
-    int *ind_new;
-    if ((ind_new = (int *)swift_malloc(
-             "h_index", sizeof(int) * (s->nr_parts + 1))) == NULL)
+    int* ind_new;
+    if ((ind_new = (int*)swift_malloc("h_index",
+                                      sizeof(int) * (s->nr_parts + 1))) == NULL)
       error("Failed to allocate temporary particle indices.");
     memcpy(ind_new, h_index, sizeof(int) * nr_parts);
     swift_free("h_index", h_index);
@@ -543,8 +543,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-allocate the index array for the sparts if needed.. */
   if (s->nr_sparts + 1 > s_index_size) {
-    int *sind_new;
-    if ((sind_new = (int *)swift_malloc(
+    int* sind_new;
+    if ((sind_new = (int*)swift_malloc(
              "s_index", sizeof(int) * (s->nr_sparts + 1))) == NULL)
       error("Failed to allocate temporary s-particle indices.");
     memcpy(sind_new, s_index, sizeof(int) * nr_sparts);
@@ -554,8 +554,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-allocate the index array for the bparts if needed.. */
   if (s->nr_bparts + 1 > b_index_size) {
-    int *bind_new;
-    if ((bind_new = (int *)swift_malloc(
+    int* bind_new;
+    if ((bind_new = (int*)swift_malloc(
              "b_index", sizeof(int) * (s->nr_bparts + 1))) == NULL)
       error("Failed to allocate temporary b-particle indices.");
     memcpy(bind_new, b_index, sizeof(int) * nr_bparts);
@@ -565,8 +565,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-allocate the index array for the sinks if needed.. */
   if (s->nr_sinks + 1 > sink_index_size) {
-    int *sink_ind_new;
-    if ((sink_ind_new = (int *)swift_malloc(
+    int* sink_ind_new;
+    if ((sink_ind_new = (int*)swift_malloc(
              "sink_index", sizeof(int) * (s->nr_sinks + 1))) == NULL)
       error("Failed to allocate temporary sink-particle indices.");
     memcpy(sink_ind_new, sink_index, sizeof(int) * nr_sinks);
@@ -579,7 +579,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Assign each received part to its cell. */
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
-    const struct part *const p = &s->parts[k];
+    const struct part* const p = &s->parts[k];
     h_index[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
     cell_part_counts[h_index[k]]++;
@@ -593,7 +593,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Assign each received spart to its cell. */
   for (size_t k = nr_sparts; k < s->nr_sparts; k++) {
-    const struct spart *const sp = &s->sparts[k];
+    const struct spart* const sp = &s->sparts[k];
     s_index[k] =
         cell_getid(cdim, sp->x[0] * ih[0], sp->x[1] * ih[1], sp->x[2] * ih[2]);
     cell_spart_counts[s_index[k]]++;
@@ -607,7 +607,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Assign each received bpart to its cell. */
   for (size_t k = nr_bparts; k < s->nr_bparts; k++) {
-    const struct bpart *const bp = &s->bparts[k];
+    const struct bpart* const bp = &s->bparts[k];
     b_index[k] =
         cell_getid(cdim, bp->x[0] * ih[0], bp->x[1] * ih[1], bp->x[2] * ih[2]);
     cell_bpart_counts[b_index[k]]++;
@@ -621,7 +621,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Assign each received sink to its cell. */
   for (size_t k = nr_sinks; k < s->nr_sinks; k++) {
-    const struct sink *const sink = &s->sinks[k];
+    const struct sink* const sink = &s->sinks[k];
     sink_index[k] = cell_getid(cdim, sink->x[0] * ih[0], sink->x[1] * ih[1],
                                sink->x[2] * ih[2]);
     cell_sink_counts[sink_index[k]]++;
@@ -651,7 +651,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
   for (size_t k = 0; k < nr_parts; k++) {
-    const struct part *p = &s->parts[k];
+    const struct part* p = &s->parts[k];
 
     if (p->time_bin == time_bin_inhibited)
       error("Inhibited particle sorted into a cell!");
@@ -662,7 +662,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                    p->x[2] * s->iwidth[2]);
 
     /* New cell of this part */
-    const struct cell *c = &s->cells_top[new_ind];
+    const struct cell* c = &s->cells_top[new_ind];
 
     if (h_index[k] != new_ind)
       error("part's new cell index not matching sorted index.");
@@ -681,7 +681,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
   for (size_t k = 0; k < nr_sparts; k++) {
-    const struct spart *sp = &s->sparts[k];
+    const struct spart* sp = &s->sparts[k];
 
     if (sp->time_bin == time_bin_inhibited)
       error("Inhibited particle sorted into a cell!");
@@ -692,7 +692,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                    sp->x[2] * s->iwidth[2]);
 
     /* New cell of this spart */
-    const struct cell *c = &s->cells_top[new_sind];
+    const struct cell* c = &s->cells_top[new_sind];
 
     if (s_index[k] != new_sind)
       error("spart's new cell index not matching sorted index.");
@@ -711,7 +711,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the bpart have been sorted correctly. */
   for (size_t k = 0; k < nr_bparts; k++) {
-    const struct bpart *bp = &s->bparts[k];
+    const struct bpart* bp = &s->bparts[k];
 
     if (bp->time_bin == time_bin_inhibited)
       error("Inhibited particle sorted into a cell!");
@@ -722,7 +722,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                    bp->x[2] * s->iwidth[2]);
 
     /* New cell of this bpart */
-    const struct cell *c = &s->cells_top[new_bind];
+    const struct cell* c = &s->cells_top[new_bind];
 
     if (b_index[k] != new_bind)
       error("bpart's new cell index not matching sorted index.");
@@ -741,7 +741,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the sink have been sorted correctly. */
   for (size_t k = 0; k < nr_sinks; k++) {
-    const struct sink *sink = &s->sinks[k];
+    const struct sink* sink = &s->sinks[k];
 
     if (sink->time_bin == time_bin_inhibited)
       error("Inhibited particle sorted into a cell!");
@@ -752,7 +752,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                    sink->x[1] * s->iwidth[1], sink->x[2] * s->iwidth[2]);
 
     /* New cell of this sink */
-    const struct cell *c = &s->cells_top[new_sink_ind];
+    const struct cell* c = &s->cells_top[new_sink_ind];
 
     if (sink_index[k] != new_sink_ind)
       error("sink's new cell index not matching sorted index.");
@@ -829,8 +829,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-allocate the index array for the gparts if needed.. */
   if (s->nr_gparts + 1 > g_index_size) {
-    int *gind_new;
-    if ((gind_new = (int *)swift_malloc(
+    int* gind_new;
+    if ((gind_new = (int*)swift_malloc(
              "g_index", sizeof(int) * (s->nr_gparts + 1))) == NULL)
       error("Failed to allocate temporary g-particle indices.");
     memcpy(gind_new, g_index, sizeof(int) * nr_gparts);
@@ -840,7 +840,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Assign each received gpart to its cell. */
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
-    const struct gpart *const p = &s->gparts[k];
+    const struct gpart* const p = &s->gparts[k];
     g_index[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
     cell_gpart_counts[g_index[k]]++;
@@ -874,7 +874,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
   for (size_t k = 0; k < nr_gparts; k++) {
-    const struct gpart *gp = &s->gparts[k];
+    const struct gpart* gp = &s->gparts[k];
 
     if (gp->time_bin == time_bin_inhibited)
       error("Inhibited particle sorted into a cell!");
@@ -885,7 +885,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                    gp->x[2] * s->iwidth[2]);
 
     /* New cell of this gpart */
-    const struct cell *c = &s->cells_top[new_gind];
+    const struct cell* c = &s->cells_top[new_gind];
 
     if (g_index[k] != new_gind)
       error("gpart's new cell index not matching sorted index.");
@@ -924,18 +924,18 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Hook the cells up to the parts. Make list of local and non-empty cells */
   const ticks tic3 = getticks();
-  struct part *finger = s->parts;
-  struct xpart *xfinger = s->xparts;
-  struct gpart *gfinger = s->gparts;
-  struct spart *sfinger = s->sparts;
-  struct bpart *bfinger = s->bparts;
-  struct sink *sink_finger = s->sinks;
+  struct part* finger = s->parts;
+  struct xpart* xfinger = s->xparts;
+  struct gpart* gfinger = s->gparts;
+  struct spart* sfinger = s->sparts;
+  struct bpart* bfinger = s->bparts;
+  struct sink* sink_finger = s->sinks;
   s->nr_cells_with_particles = 0;
   s->nr_local_cells_with_particles = 0;
   s->nr_local_cells = 0;
 
   for (int k = 0; k < s->nr_cells; k++) {
-    struct cell *restrict c = &cells_top[k];
+    struct cell* restrict c = &cells_top[k];
     c->hydro.ti_old_part = ti_current;
     c->grav.ti_old_part = ti_current;
     c->grav.ti_old_multipole = ti_current;

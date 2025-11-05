@@ -36,7 +36,7 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_density(const float r2, const float dx[3],
                                  const float hi, const float hj,
-                                 struct spart *si, const struct part *pj,
+                                 struct spart* si, const struct part* pj,
                                  const float a, const float H) {
 
   float wi, wi_dx;
@@ -69,14 +69,14 @@ runner_iact_nonsym_stars_density(const float r2, const float dx[3],
 
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_prep1(const float r2, const float dx[3],
-                               const float hi, const float hj, struct spart *si,
-                               const struct part *pj, const float a,
+                               const float hi, const float hj, struct spart* si,
+                               const struct part* pj, const float a,
                                const float H) {}
 
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_prep2(const float r2, const float dx[3],
-                               const float hi, const float hj, struct spart *si,
-                               const struct part *pj, const float a,
+                               const float hi, const float hj, struct spart* si,
+                               const struct part* pj, const float a,
                                const float H) {}
 
 /**
@@ -95,7 +95,7 @@ runner_iact_nonsym_stars_prep2(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(const float r2, const float dx[3],
                                   const float hi, const float hj,
-                                  const struct spart *si, struct part *pj,
+                                  const struct spart* si, struct part* pj,
                                   const float a, const float H) {
 
 #ifdef DEBUG_INTERACTIONS_STARS

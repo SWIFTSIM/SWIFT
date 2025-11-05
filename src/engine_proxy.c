@@ -38,7 +38,7 @@
  *
  * @param e The #engine.
  */
-void engine_makeproxies(struct engine *e) {
+void engine_makeproxies(struct engine* e) {
 
 #ifdef WITH_MPI
   /* Let's time this */
@@ -46,11 +46,11 @@ void engine_makeproxies(struct engine *e) {
 
   /* Useful local information */
   const int nodeID = e->nodeID;
-  const struct space *s = e->s;
+  const struct space* s = e->s;
 
   /* Handle on the cells and proxies */
-  struct cell *cells = s->cells_top;
-  struct proxy *proxies = e->proxies;
+  struct cell* cells = s->cells_top;
+  struct proxy* proxies = e->proxies;
 
   /* Some info about the domain */
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
@@ -77,7 +77,7 @@ void engine_makeproxies(struct engine *e) {
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
-    if ((e->proxy_ind = (int *)malloc(sizeof(int) * e->nr_nodes)) == NULL)
+    if ((e->proxy_ind = (int*)malloc(sizeof(int) * e->nr_nodes)) == NULL)
       error("Failed to allocate proxy index.");
   for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
   e->nr_proxies = 0;

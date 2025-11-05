@@ -33,18 +33,18 @@
 struct ic_info {
   char group_name[PARSER_MAX_LINE_SIZE];
   size_t file_image_length;
-  void *file_image_data;
+  void* file_image_data;
 };
 
-void ic_info_init(struct ic_info *ics, struct swift_params *params);
-void ic_info_clean(struct ic_info *ics);
-void ic_info_struct_dump(struct ic_info *ics, FILE *stream);
-void ic_info_struct_restore(struct ic_info *ics, FILE *stream);
-void ic_info_struct_broadcast(struct ic_info *ics, int root);
+void ic_info_init(struct ic_info* ics, struct swift_params* params);
+void ic_info_clean(struct ic_info* ics);
+void ic_info_struct_dump(struct ic_info* ics, FILE* stream);
+void ic_info_struct_restore(struct ic_info* ics, FILE* stream);
+void ic_info_struct_broadcast(struct ic_info* ics, int root);
 
 #ifdef HAVE_HDF5
-void ic_info_read_hdf5(struct ic_info *ics, hid_t file_id);
-void ic_info_write_hdf5(struct ic_info *ics, hid_t file_id);
+void ic_info_read_hdf5(struct ic_info* ics, hid_t file_id);
+void ic_info_write_hdf5(struct ic_info* ics, hid_t file_id);
 #endif
 
 #endif /* SWIFT_IC_INFO_H */

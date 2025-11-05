@@ -93,7 +93,7 @@ enum engine_policy {
   engine_policy_grid_hydro = (1 << 29),
 };
 #define engine_maxpolicy 30
-extern const char *engine_policy_names[engine_maxpolicy + 1];
+extern const char* engine_policy_names[engine_maxpolicy + 1];
 
 /**
  * @brief The different unusual events that can take place in a time-step.
@@ -151,10 +151,10 @@ struct engine {
   int nr_pool_threads;
 
   /* The space with which the runner is associated. */
-  struct space *s;
+  struct space* s;
 
   /* The runner's threads. */
-  struct runner *runners;
+  struct runner* runners;
 
   /* The running policy. */
   int policy;
@@ -330,7 +330,7 @@ struct engine {
   double neutrino_mass_conversion_factor;
 
   /* The internal system of units */
-  const struct unit_system *internal_units;
+  const struct unit_system* internal_units;
 
   /* Snapshot information */
   double a_first_snapshot;
@@ -338,7 +338,7 @@ struct engine {
   double delta_time_snapshot;
 
   /* Output_List for the snapshots */
-  struct output_list *output_list_snapshots;
+  struct output_list* output_list_snapshots;
 
   /* Integer time of the next snapshot */
   integertime_t ti_next_snapshot;
@@ -357,7 +357,7 @@ struct engine {
   int snapshot_invoke_stf;
   int snapshot_invoke_fof;
   int snapshot_invoke_ps;
-  struct unit_system *snapshot_units;
+  struct unit_system* snapshot_units;
   int snapshot_use_delta_from_edge;
   double snapshot_delta_from_edge;
   int snapshot_output_count;
@@ -376,7 +376,7 @@ struct engine {
   int snapshot_recording_triggers_started_bpart[num_snapshot_triggers_bpart];
 
   /* Metadata from the ICs */
-  struct ic_info *ics_metadata;
+  struct ic_info* ics_metadata;
 
   /* Structure finding information */
   double a_first_stf_output;
@@ -384,7 +384,7 @@ struct engine {
   double delta_time_stf;
 
   /* Output_List for the structure finding */
-  struct output_list *output_list_stf;
+  struct output_list* output_list_stf;
 
   /* Integer time of the next stf output */
   integertime_t ti_next_stf;
@@ -413,7 +413,7 @@ struct engine {
   int ps_output_count;
 
   /* Output_List for the power spectrum */
-  struct output_list *output_list_ps;
+  struct output_list* output_list_ps;
 
   /* Integer time of the next ps output */
   integertime_t ti_next_ps;
@@ -424,22 +424,22 @@ struct engine {
   double delta_time_statistics;
 
   /* Output_List for the stats */
-  struct output_list *output_list_stats;
+  struct output_list* output_list_stats;
 
   /* Integer time of the next statistics dump */
   integertime_t ti_next_stats;
 
   /* File handle for the statistics */
-  FILE *file_stats;
+  FILE* file_stats;
 
   /* File handle for the timesteps information */
-  FILE *file_timesteps;
+  FILE* file_timesteps;
 
   /* File handle for the Radiative Transfer sub-cycling information */
-  FILE *file_rt_subcycles;
+  FILE* file_rt_subcycles;
 
   /* File handle for the SFH logger file */
-  FILE *sfh_logger;
+  FILE* sfh_logger;
 
   /* The current step number. */
   int step;
@@ -452,7 +452,7 @@ struct engine {
   int nr_nodes, nodeID;
 
   /* Proxies for the other nodes in this simulation. */
-  struct proxy *proxies;
+  struct proxy* proxies;
   int nr_proxies, *proxy_ind;
 
   /* Tic/toc at the start/end of a step. */
@@ -482,16 +482,16 @@ struct engine {
 
   /* Force the engine to repartition ? */
   int forcerepart;
-  struct repartition *reparttype;
+  struct repartition* reparttype;
 
   /* The Continuous Simulation Data Stream (CSDS) */
-  struct csds_writer *csds;
+  struct csds_writer* csds;
 
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
 
   /* Linked list for cell-task association. */
-  struct link *links;
+  struct link* links;
   size_t nr_links, size_links;
 
   /* Average number of tasks per cell. Used to estimate the sizes
@@ -507,76 +507,76 @@ struct engine {
   int verbose;
 
   /* Physical constants definition */
-  const struct phys_const *physical_constants;
+  const struct phys_const* physical_constants;
 
   /* The cosmological model */
-  struct cosmology *cosmology;
+  struct cosmology* cosmology;
 
   /* Properties of the hydro scheme */
-  struct hydro_props *hydro_properties;
+  struct hydro_props* hydro_properties;
 
   /* Properties of the entropy floor */
-  const struct entropy_floor_properties *entropy_floor;
+  const struct entropy_floor_properties* entropy_floor;
 
   /* Properties of the star model */
-  struct stars_props *stars_properties;
+  struct stars_props* stars_properties;
 
   /* Properties of the black hole model */
-  const struct black_holes_props *black_holes_properties;
+  const struct black_holes_props* black_holes_properties;
 
   /* Properties of the sink model */
-  const struct sink_props *sink_properties;
+  const struct sink_props* sink_properties;
 
   /* Properties of the neutrino model */
-  const struct neutrino_props *neutrino_properties;
+  const struct neutrino_props* neutrino_properties;
 
   /* The linear neutrino response */
-  struct neutrino_response *neutrino_response;
+  struct neutrino_response* neutrino_response;
 
   /* Properties of the self-gravity scheme */
-  struct gravity_props *gravity_properties;
+  struct gravity_props* gravity_properties;
 
   /* The mesh used for long-range gravity forces */
-  struct pm_mesh *mesh;
+  struct pm_mesh* mesh;
 
   /* Properties and pointers for the power spectrum */
-  struct power_spectrum_data *power_data;
+  struct power_spectrum_data* power_data;
 
   /* Properties of external gravitational potential */
-  const struct external_potential *external_potential;
+  const struct external_potential* external_potential;
 
   /* Properties of the hydrodynamics forcing terms */
-  const struct forcing_terms *forcing_terms;
+  const struct forcing_terms* forcing_terms;
 
   /* Properties of the cooling scheme */
-  struct cooling_function_data *cooling_func;
+  struct cooling_function_data* cooling_func;
 
   /* Properties of the starformation law */
-  const struct star_formation *star_formation;
+  const struct star_formation* star_formation;
 
   /* Properties of the sellar feedback model */
-  struct feedback_props *feedback_props;
+  struct feedback_props* feedback_props;
 
   /* Properties of the pressure floor scheme */
-  struct pressure_floor_props *pressure_floor_props;
+  struct pressure_floor_props* pressure_floor_props;
 
   /* Properties of the radiative transfer model */
-  struct rt_props *rt_props;
+  struct rt_props* rt_props;
 
   /* Properties of the chemistry model */
-  const struct chemistry_global_data *chemistry;
+  const struct chemistry_global_data* chemistry;
 
   /* Properties used to compute the extra i/o fields */
-  struct extra_io_properties *io_extra_props;
+  struct extra_io_properties* io_extra_props;
 
   /*! The FOF properties data. */
-  struct fof_props *fof_properties;
+  struct fof_props* fof_properties;
 
   /* The (parsed) parameter file */
-  struct swift_params *parameter_file;
+  struct swift_params* parameter_file;
 
   /* The output selection options */
-  struct output_options *output_options;
+  struct output_options* output_options;
 
   /* Temporary struct to hold a group of deferable properties (in MPI mode
    * these are reduced together, but may not be required just yet). */
@@ -609,10 +609,10 @@ struct engine {
   int free_foreign_when_rebuilding;
 
   /* Name of the restart file directory. */
-  const char *restart_dir;
+  const char* restart_dir;
 
   /* Name of the restart file. */
-  const char *restart_file;
+  const char* restart_file;
 
   /* Flag whether we should resubmit on this step? */
   int resubmit;
@@ -660,13 +660,13 @@ struct engine {
   char stf_this_timestep;
 
   /* Line of sight properties. */
-  struct los_props *los_properties;
+  struct los_props* los_properties;
 
   /* Line of sight properties. */
-  struct lightcone_array_props *lightcone_array_properties;
+  struct lightcone_array_props* lightcone_array_properties;
 
   /* Line of sight outputs information. */
-  struct output_list *output_list_los;
+  struct output_list* output_list_los;
   double a_first_los;
   double time_first_los;
   double delta_time_los;
@@ -692,114 +692,114 @@ struct engine {
 };
 
 /* Function prototypes, engine.c. */
-void engine_addlink(struct engine *e, struct link **l, struct task *t);
-void engine_barrier(struct engine *e);
-void engine_compute_next_snapshot_time(struct engine *e, const int restart);
-void engine_compute_next_stf_time(struct engine *e);
-void engine_compute_next_fof_time(struct engine *e);
-void engine_compute_next_statistics_time(struct engine *e);
-void engine_compute_next_los_time(struct engine *e);
-void engine_compute_next_ps_time(struct engine *e);
-void engine_recompute_displacement_constraint(struct engine *e);
-void engine_unskip(struct engine *e);
-void engine_unskip_rt_sub_cycle(struct engine *e);
-void engine_drift_all(struct engine *e, const int drift_mpoles);
-void engine_drift_top_multipoles(struct engine *e);
-void engine_reconstruct_multipoles(struct engine *e);
-void engine_allocate_foreign_particles(struct engine *e, const int fof);
-void engine_print_stats(struct engine *e);
-void engine_io(struct engine *e);
-void engine_io_check_snapshot_triggers(struct engine *e);
-void engine_collect_end_of_step(struct engine *e, int apply);
-void engine_collect_end_of_sub_cycle(struct engine *e);
-void engine_dump_snapshot(struct engine *e, const int fof);
-void engine_run_on_dump(struct engine *e);
-void engine_init_output_lists(struct engine *e, struct swift_params *params,
-                              const struct output_options *output_options);
+void engine_addlink(struct engine* e, struct link** l, struct task* t);
+void engine_barrier(struct engine* e);
+void engine_compute_next_snapshot_time(struct engine* e, const int restart);
+void engine_compute_next_stf_time(struct engine* e);
+void engine_compute_next_fof_time(struct engine* e);
+void engine_compute_next_statistics_time(struct engine* e);
+void engine_compute_next_los_time(struct engine* e);
+void engine_compute_next_ps_time(struct engine* e);
+void engine_recompute_displacement_constraint(struct engine* e);
+void engine_unskip(struct engine* e);
+void engine_unskip_rt_sub_cycle(struct engine* e);
+void engine_drift_all(struct engine* e, const int drift_mpoles);
+void engine_drift_top_multipoles(struct engine* e);
+void engine_reconstruct_multipoles(struct engine* e);
+void engine_allocate_foreign_particles(struct engine* e, const int fof);
+void engine_print_stats(struct engine* e);
+void engine_io(struct engine* e);
+void engine_io_check_snapshot_triggers(struct engine* e);
+void engine_collect_end_of_step(struct engine* e, int apply);
+void engine_collect_end_of_sub_cycle(struct engine* e);
+void engine_dump_snapshot(struct engine* e, const int fof);
+void engine_run_on_dump(struct engine* e);
+void engine_init_output_lists(struct engine* e, struct swift_params* params,
+                              const struct output_options* output_options);
 void engine_init(
-    struct engine *e, struct space *s, struct swift_params *params,
-    struct output_options *output_options, long long Ngas, long long Ngparts,
+    struct engine* e, struct space* s, struct swift_params* params,
+    struct output_options* output_options, long long Ngas, long long Ngparts,
     long long Nsinks, long long Nstars, long long Nblackholes,
     long long Nbackground_gparts, long long Nnuparts, int policy, int verbose,
-    const struct unit_system *internal_units,
-    const struct phys_const *physical_constants, struct cosmology *cosmo,
-    struct hydro_props *hydro,
-    const struct entropy_floor_properties *entropy_floor,
-    struct gravity_props *gravity, struct stars_props *stars,
-    const struct black_holes_props *black_holes, const struct sink_props *sinks,
-    const struct neutrino_props *neutrinos,
-    struct neutrino_response *neutrino_response,
-    struct feedback_props *feedback,
-    struct pressure_floor_props *pressure_floor, struct rt_props *rt,
-    struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
-    const struct external_potential *potential,
-    const struct forcing_terms *forcing_terms,
-    struct cooling_function_data *cooling_func,
-    const struct star_formation *starform,
-    const struct chemistry_global_data *chemistry,
-    struct extra_io_properties *io_extra_props,
-    struct fof_props *fof_properties, struct los_props *los_properties,
-    struct lightcone_array_props *lightcone_array_properties,
-    struct ic_info *ics_metadata);
-void engine_config(int restart, int fof, struct engine *e,
-                   struct swift_params *params, int nr_nodes, int nodeID,
+    const struct unit_system* internal_units,
+    const struct phys_const* physical_constants, struct cosmology* cosmo,
+    struct hydro_props* hydro,
+    const struct entropy_floor_properties* entropy_floor,
+    struct gravity_props* gravity, struct stars_props* stars,
+    const struct black_holes_props* black_holes, const struct sink_props* sinks,
+    const struct neutrino_props* neutrinos,
+    struct neutrino_response* neutrino_response,
+    struct feedback_props* feedback,
+    struct pressure_floor_props* pressure_floor, struct rt_props* rt,
+    struct pm_mesh* mesh, struct power_spectrum_data* pow_data,
+    const struct external_potential* potential,
+    const struct forcing_terms* forcing_terms,
+    struct cooling_function_data* cooling_func,
+    const struct star_formation* starform,
+    const struct chemistry_global_data* chemistry,
+    struct extra_io_properties* io_extra_props,
+    struct fof_props* fof_properties, struct los_props* los_properties,
+    struct lightcone_array_props* lightcone_array_properties,
+    struct ic_info* ics_metadata);
+void engine_config(int restart, int fof, struct engine* e,
+                   struct swift_params* params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_dir,
-                   const char *restart_file, struct repartition *reparttype);
-void engine_launch(struct engine *e, const char *call);
-int engine_prepare(struct engine *e);
-void engine_run_rt_sub_cycles(struct engine *e);
-void engine_init_particles(struct engine *e, int flag_entropy_ICs,
+                   int verbose, const char* restart_dir,
+                   const char* restart_file, struct repartition* reparttype);
+void engine_launch(struct engine* e, const char* call);
+int engine_prepare(struct engine* e);
+void engine_run_rt_sub_cycles(struct engine* e);
+void engine_init_particles(struct engine* e, int flag_entropy_ICs,
                            int clean_h_values);
-int engine_step(struct engine *e);
-void engine_split(struct engine *e, struct partition *initial_partition);
-void engine_exchange_strays(struct engine *e, const size_t offset_parts,
-                            const int *ind_part, size_t *Npart,
-                            const size_t offset_gparts, const int *ind_gpart,
-                            size_t *Ngpart, const size_t offset_sparts,
-                            const int *ind_spart, size_t *Nspart,
-                            const size_t offset_bparts, const int *ind_bpart,
-                            size_t *Nbpart, const size_t offset_sinks,
-                            const int *ind_sink, size_t *Nsink);
-void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
-void engine_repartition(struct engine *e);
-void engine_repartition_trigger(struct engine *e);
-void engine_makeproxies(struct engine *e);
-void engine_redistribute(struct engine *e);
-void engine_print_policy(struct engine *e);
-int engine_is_done(struct engine *e);
+int engine_step(struct engine* e);
+void engine_split(struct engine* e, struct partition* initial_partition);
+void engine_exchange_strays(struct engine* e, const size_t offset_parts,
+                            const int* ind_part, size_t* Npart,
+                            const size_t offset_gparts, const int* ind_gpart,
+                            size_t* Ngpart, const size_t offset_sparts,
+                            const int* ind_spart, size_t* Nspart,
+                            const size_t offset_bparts, const int* ind_bpart,
+                            size_t* Nbpart, const size_t offset_sinks,
+                            const int* ind_sink, size_t* Nsink);
+void engine_rebuild(struct engine* e, int redistributed, int clean_h_values);
+void engine_repartition(struct engine* e);
+void engine_repartition_trigger(struct engine* e);
+void engine_makeproxies(struct engine* e);
+void engine_redistribute(struct engine* e);
+void engine_print_policy(struct engine* e);
+int engine_is_done(struct engine* e);
 void engine_pin(void);
 void engine_unpin(void);
-void engine_clean(struct engine *e, const int fof, const int restart);
-int engine_estimate_nr_tasks(const struct engine *e);
-void engine_print_task_counts(const struct engine *e);
-void engine_fof(struct engine *e, const int dump_results,
+void engine_clean(struct engine* e, const int fof, const int restart);
+int engine_estimate_nr_tasks(const struct engine* e);
+void engine_print_task_counts(const struct engine* e);
+void engine_fof(struct engine* e, const int dump_results,
                 const int dump_debug_results, const int seed_black_holes,
                 const int foreign_buffers_allocated);
-void engine_activate_gpart_comms(struct engine *e);
-void engine_activate_fof_attach_tasks(struct engine *e);
+void engine_activate_gpart_comms(struct engine* e);
+void engine_activate_fof_attach_tasks(struct engine* e);
 
 /* Function prototypes, engine_maketasks.c. */
-void engine_maketasks(struct engine *e);
+void engine_maketasks(struct engine* e);
 
 /* Function prototypes, engine_maketasks.c. */
-void engine_make_fof_tasks(struct engine *e);
+void engine_make_fof_tasks(struct engine* e);
 
 /* Function prototypes, engine_split_particles.c. */
-void engine_split_gas_particles(struct engine *e);
-void engine_init_split_gas_particles(struct engine *e);
+void engine_split_gas_particles(struct engine* e);
+void engine_init_split_gas_particles(struct engine* e);
 
 #ifdef HAVE_SETAFFINITY
-cpu_set_t *engine_entry_affinity(void);
+cpu_set_t* engine_entry_affinity(void);
 #endif
 void engine_numa_policies(int rank, int verbose);
 
 /* Struct dump/restore support. */
-void engine_struct_dump(struct engine *e, FILE *stream);
-void engine_struct_restore(struct engine *e, FILE *stream);
-int engine_dump_restarts(struct engine *e, int drifted_all, int force);
+void engine_struct_dump(struct engine* e, FILE* stream);
+void engine_struct_restore(struct engine* e, FILE* stream);
+int engine_dump_restarts(struct engine* e, int drifted_all, int force);
 
 /* dev/debug */
-void engine_dump_diagnostic_data(struct engine *e);
+void engine_dump_diagnostic_data(struct engine* e);
 
 #endif /* SWIFT_ENGINE_H */

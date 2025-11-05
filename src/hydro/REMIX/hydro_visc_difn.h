@@ -36,7 +36,7 @@
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_gradient_extra_visc_difn(struct part *restrict p) {
+hydro_prepare_gradient_extra_visc_difn(struct part* restrict p) {
 
   memset(p->du_norm_kernel, 0.f, 3 * sizeof(float));
   memset(p->drho_norm_kernel, 0.f, 3 * sizeof(float));
@@ -57,8 +57,8 @@ hydro_prepare_gradient_extra_visc_difn(struct part *restrict p) {
  * @param wj_dx The norm of the gradient of wj: dW(r, hj)/dr * hj^(d+1).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_runner_iact_gradient_extra_visc_difn(struct part *restrict pi,
-                                           struct part *restrict pj,
+hydro_runner_iact_gradient_extra_visc_difn(struct part* restrict pi,
+                                           struct part* restrict pj,
                                            const float dx[3], const float wi,
                                            const float wj, const float wi_dx,
                                            const float wj_dx) {
@@ -132,7 +132,7 @@ hydro_runner_iact_gradient_extra_visc_difn(struct part *restrict pi,
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_nonsym_gradient_extra_visc_difn(
-    struct part *restrict pi, const struct part *restrict pj, const float dx[3],
+    struct part* restrict pi, const struct part* restrict pj, const float dx[3],
     const float wi, const float wi_dx) {
 
   /* Get r and 1/r. */
@@ -181,7 +181,7 @@ hydro_runner_iact_nonsym_gradient_extra_visc_difn(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_end_gradient_extra_visc_difn(struct part *restrict p) {}
+hydro_end_gradient_extra_visc_difn(struct part* restrict p) {}
 
 /**
  * @brief Returns particle viscous pressures
@@ -195,9 +195,9 @@ hydro_end_gradient_extra_visc_difn(struct part *restrict p) {}
  * @param dx Comoving vector separating both particles (pi - pj).
  */
 __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
-    float *Qi, float *Qj, float *visc_signal_velocity,
-    float *difn_signal_velocity, const struct part *restrict pi,
-    const struct part *restrict pj, const float dx[3]) {
+    float* Qi, float* Qj, float* visc_signal_velocity,
+    float* difn_signal_velocity, const struct part* restrict pi,
+    const struct part* restrict pj, const float dx[3]) {
 
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   const float r = sqrtf(r2);
@@ -335,8 +335,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
  * @param dx Comoving vector separating both particles (pi - pj).
  */
 __attribute__((always_inline)) INLINE static void hydro_set_u_rho_difn(
-    float *utilde_i, float *utilde_j, float *rhotilde_i, float *rhotilde_j,
-    const struct part *restrict pi, const struct part *restrict pj,
+    float* utilde_i, float* utilde_j, float* rhotilde_i, float* rhotilde_j,
+    const struct part* restrict pi, const struct part* restrict pj,
     const float dx[3]) {
 
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];

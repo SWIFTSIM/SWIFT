@@ -82,7 +82,7 @@ typedef struct _hashmap_element {
 typedef struct _hashmap_chunk {
   union {
     hashmap_mask_t masks[HASHMAP_MASKS_PER_CHUNK];
-    void *next;
+    void* next;
   };
   hashmap_element_t data[HASHMAP_ELEMENTS_PER_CHUNK];
 } SWIFT_STRUCT_ALIGN hashmap_chunk_t;
@@ -93,12 +93,12 @@ typedef struct _hashmap {
   size_t table_size;
   size_t size;
   size_t nr_chunks;
-  hashmap_chunk_t *
-      *chunks;  // Pointer to chunks in use, but not densely populated.
-  hashmap_chunk_t
-      *graveyard;  // Pointer to allocated, but currently unused chunks.
+  hashmap_chunk_t**
+      chunks;  // Pointer to chunks in use, but not densely populated.
+  hashmap_chunk_t*
+      graveyard;  // Pointer to allocated, but currently unused chunks.
 
-  void **allocs;        // Pointers to allocated blocks of chunks.
+  void** allocs;        // Pointers to allocated blocks of chunks.
   size_t allocs_size;   // Size of the allocs array.
   size_t allocs_count;  // Number of elements in the allocs array.
 
@@ -112,12 +112,12 @@ typedef struct _hashmap {
  * Pointer to a function that can take a key, a pointer to a value, and a
  * void pointer extra data payload.
  */
-typedef void (*hashmap_mapper_t)(hashmap_key_t, hashmap_value_t *, void *);
+typedef void (*hashmap_mapper_t)(hashmap_key_t, hashmap_value_t*, void*);
 
 /**
  * @brief Initialize a hashmap.
  */
-void hashmap_init(hashmap_t *m);
+void hashmap_init(hashmap_t* m);
 
 /**
  * @brief Re-size the hashmap.
@@ -130,13 +130,13 @@ void hashmap_init(hashmap_t *m);
  * @param new_size New table size. If zero, the current size will be increase
  *                 by a fixed rate.
  */
-void hashmap_grow(hashmap_t *m, size_t new_size);
+void hashmap_grow(hashmap_t* m, size_t new_size);
 
 /**
  * @brief Add a key/value pair to the hashmap, overwriting whatever was
  * previously there.
  */
-extern void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value);
+extern void hashmap_put(hashmap_t* m, hashmap_key_t key, hashmap_value_t value);
 
 /**
  * @brief Get the value for a given key. If no value exists a new one will be
@@ -145,7 +145,7 @@ extern void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value);
  * Note that the returned pointer is volatile and will be invalidated if the
  * hashmap is re-hashed!
  */
-extern hashmap_value_t *hashmap_get(hashmap_t *m, hashmap_key_t key);
+extern hashmap_value_t* hashmap_get(hashmap_t* m, hashmap_key_t key);
 
 /**
  * @brief Get the value for a given key. If no value exists a new one will be
@@ -154,8 +154,8 @@ extern hashmap_value_t *hashmap_get(hashmap_t *m, hashmap_key_t key);
  * Note that the returned pointer is volatile and will be invalidated if the
  * hashmap is re-hashed!
  */
-extern hashmap_value_t *hashmap_get_new(hashmap_t *m, hashmap_key_t key,
-                                        int *created_new_element);
+extern hashmap_value_t* hashmap_get_new(hashmap_t* m, hashmap_key_t key,
+                                        int* created_new_element);
 
 /**
  * @brief Look for the given key and return a pointer to its value or NULL if
@@ -164,7 +164,7 @@ extern hashmap_value_t *hashmap_get_new(hashmap_t *m, hashmap_key_t key,
  * Note that the returned pointer is volatile and will be invalidated if the
  * hashmap is re-hashed!
  */
-extern hashmap_value_t *hashmap_lookup(hashmap_t *m, hashmap_key_t key);
+extern hashmap_value_t* hashmap_lookup(hashmap_t* m, hashmap_key_t key);
 
 /**
  * @brief Iterate the function parameter over each element in the hashmap.
@@ -173,7 +173,7 @@ extern hashmap_value_t *hashmap_lookup(hashmap_t *m, hashmap_key_t key);
  * key and a pointer to the correspondig value, respectively, while the third
  * is the `void *data` argument.
  */
-extern void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data);
+extern void hashmap_iterate(hashmap_t* m, hashmap_mapper_t f, void* data);
 
 /**
  * @brief De-allocate memory associated with this hashmap, clears all the
@@ -182,16 +182,16 @@ extern void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data);
  * After a call to `hashmap_free`, the hashmap cna be re-initialized with
  * `hashmap_init`.
  */
-extern void hashmap_free(hashmap_t *m);
+extern void hashmap_free(hashmap_t* m);
 
 /**
  * Get the current size of a hashmap
  */
-extern size_t hashmap_size(hashmap_t *m);
+extern size_t hashmap_size(hashmap_t* m);
 
 /**
  * @brief Print all sorts of stats on the given hashmap.
  */
-void hashmap_print_stats(hashmap_t *m);
+void hashmap_print_stats(hashmap_t* m);
 
 #endif /* SWIFT_HASHMAP_H */

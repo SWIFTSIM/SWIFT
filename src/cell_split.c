@@ -52,23 +52,23 @@
  * @param sinkbuff A buffer with at least max(c->sinks.count, c->grav.count)
  * entries, used for sorting indices for the sinks.
  */
-void cell_split(struct cell *c, const ptrdiff_t parts_offset,
+void cell_split(struct cell* c, const ptrdiff_t parts_offset,
                 const ptrdiff_t sparts_offset, const ptrdiff_t bparts_offset,
-                const ptrdiff_t sinks_offset, struct cell_buff *restrict buff,
-                struct cell_buff *restrict sbuff,
-                struct cell_buff *restrict bbuff,
-                struct cell_buff *restrict gbuff,
-                struct cell_buff *restrict sinkbuff) {
+                const ptrdiff_t sinks_offset, struct cell_buff* restrict buff,
+                struct cell_buff* restrict sbuff,
+                struct cell_buff* restrict bbuff,
+                struct cell_buff* restrict gbuff,
+                struct cell_buff* restrict sinkbuff) {
 
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
             sink_count = c->sinks.count;
-  struct part *parts = c->hydro.parts;
-  struct xpart *xparts = c->hydro.xparts;
-  struct gpart *gparts = c->grav.parts;
-  struct spart *sparts = c->stars.parts;
-  struct bpart *bparts = c->black_holes.parts;
-  struct sink *sinks = c->sinks.parts;
+  struct part* parts = c->hydro.parts;
+  struct xpart* xparts = c->hydro.xparts;
+  struct gpart* gparts = c->grav.parts;
+  struct spart* sparts = c->stars.parts;
+  struct bpart* bparts = c->black_holes.parts;
+  struct sink* sinks = c->sinks.parts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
                            c->loc[2] + c->width[2] / 2};
@@ -471,9 +471,9 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
  * @param parts_offset The offset between the first #part in the array and the
  * first #part in the global array in the space structure (for re-linking).
  */
-void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
-  struct part *parts = c->hydro.parts;
-  struct xpart *xparts = c->hydro.xparts;
+void cell_reorder_extra_parts(struct cell* c, const ptrdiff_t parts_offset) {
+  struct part* parts = c->hydro.parts;
+  struct xpart* xparts = c->hydro.xparts;
   const int count_real = c->hydro.count;
 
   if (c->depth != 0 || c->nodeID != engine_rank)
@@ -524,8 +524,8 @@ void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
  * the first #spart in the global array in the space structure (for
  * re-linking).
  */
-void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
-  struct spart *sparts = c->stars.parts;
+void cell_reorder_extra_sparts(struct cell* c, const ptrdiff_t sparts_offset) {
+  struct spart* sparts = c->stars.parts;
   const int count_real = c->stars.count;
 
   if (c->depth != 0 || c->nodeID != engine_rank)
@@ -580,8 +580,8 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
  * the first #sink in the global array in the space structure (for
  * re-linking).
  */
-void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset) {
-  struct sink *sinks = c->sinks.parts;
+void cell_reorder_extra_sinks(struct cell* c, const ptrdiff_t sinks_offset) {
+  struct sink* sinks = c->sinks.parts;
   const int count_real = c->sinks.count;
 
   if (c->depth != 0 || c->nodeID != engine_rank)
@@ -636,10 +636,10 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset) {
  * @param sparts The global array of #spart (for re-linking).
  * @param sinks The global array of #sink (for re-linking).
  */
-void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
-                               struct spart *sparts, struct sink *sinks,
-                               struct bpart *bparts) {
-  struct gpart *gparts = c->grav.parts;
+void cell_reorder_extra_gparts(struct cell* c, struct part* parts,
+                               struct spart* sparts, struct sink* sinks,
+                               struct bpart* bparts) {
+  struct gpart* gparts = c->grav.parts;
   const int count_real = c->grav.count;
 
   if (c->depth != 0 || c->nodeID != engine_rank)

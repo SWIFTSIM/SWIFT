@@ -44,10 +44,10 @@
 /**
  * @brief Pre-allocate a number of chunks for the graveyard.
  */
-void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
+void hashmap_allocate_chunks(hashmap_t* m, int num_chunks) {
   /* Allocate a fresh set of chunks. */
-  hashmap_chunk_t *alloc;
-  if ((alloc = (hashmap_chunk_t *)swift_calloc(
+  hashmap_chunk_t* alloc;
+  if ((alloc = (hashmap_chunk_t*)swift_calloc(
            "hashmap", num_chunks, sizeof(hashmap_chunk_t))) == NULL) {
     error("Unable to allocate chunks.");
   }
@@ -56,11 +56,11 @@ void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
   if (m->allocs_count == m->allocs_size) {
     m->allocs_size *= 2;
 
-    void **new_allocs =
-        (void **)swift_malloc("hashmap", sizeof(void *) * m->allocs_size);
+    void** new_allocs =
+        (void**)swift_malloc("hashmap", sizeof(void*) * m->allocs_size);
     if (new_allocs == NULL) error("Unable to allocate new chunks.");
 
-    memcpy(new_allocs, m->allocs, sizeof(void *) * m->allocs_count);
+    memcpy(new_allocs, m->allocs, sizeof(void*) * m->allocs_count);
     swift_free("hashmap", m->allocs);
     m->allocs = new_allocs;
   }
@@ -78,11 +78,11 @@ void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
   m->graveyard = alloc;
 }
 
-void hashmap_init(hashmap_t *m) {
+void hashmap_init(hashmap_t* m) {
   /* Allocate the first (empty) list of chunks. */
   m->nr_chunks = INITIAL_NUM_CHUNKS;
-  if ((m->chunks = (hashmap_chunk_t **)swift_calloc(
-           "hashmap", m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
+  if ((m->chunks = (hashmap_chunk_t**)swift_calloc(
+           "hashmap", m->nr_chunks, sizeof(hashmap_chunk_t*))) == NULL) {
     error("Unable to allocate hashmap chunks.");
   }
 
@@ -92,8 +92,8 @@ void hashmap_init(hashmap_t *m) {
 
   /* Init the array of allocations. */
   m->allocs_size = HASHMAP_ALLOCS_INITIAL_SIZE;
-  if ((m->allocs = (void **)swift_malloc(
-           "hashmap", sizeof(void *) * m->allocs_size)) == NULL) {
+  if ((m->allocs = (void**)swift_malloc(
+           "hashmap", sizeof(void*) * m->allocs_size)) == NULL) {
     error("Unable to allocate allocs pointer array.");
   }
   m->allocs_count = 0;
@@ -115,7 +115,7 @@ void hashmap_init(hashmap_t *m) {
 /**
  * @brief Put a used chunk back into the recycling bin.
  */
-void hashmap_release_chunk(hashmap_t *m, hashmap_chunk_t *chunk) {
+void hashmap_release_chunk(hashmap_t* m, hashmap_chunk_t* chunk) {
   /* Clear all the chunk's data. */
   memset(chunk, 0, sizeof(hashmap_chunk_t));
 
@@ -127,15 +127,15 @@ void hashmap_release_chunk(hashmap_t *m, hashmap_chunk_t *chunk) {
 /**
  * @brief Return a new chunk, either recycled or freshly allocated.
  */
-hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
+hashmap_chunk_t* hashmap_get_chunk(hashmap_t* m) {
   int num_chunks = m->nr_chunks * HASHMAP_ALLOC_SIZE_FRACTION;
   if (!num_chunks) num_chunks = 1;
   if (m->graveyard == NULL) {
     hashmap_allocate_chunks(m, num_chunks);
   }
 
-  hashmap_chunk_t *res = (hashmap_chunk_t *)m->graveyard;
-  m->graveyard = (hashmap_chunk_t *)res->next;
+  hashmap_chunk_t* res = (hashmap_chunk_t*)m->graveyard;
+  m->graveyard = (hashmap_chunk_t*)res->next;
   res->next = NULL;
 
   return res;
@@ -156,8 +156,8 @@ hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
  * is repeated for at most HASHMAP_MAX_CHAIN_LENGTH steps, at which point
  * insertion fails.
  */
-hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
-                                int *chain_length, int *created_new_element) {
+hashmap_element_t* hashmap_find(hashmap_t* m, hashmap_key_t key, int create_new,
+                                int* chain_length, int* created_new_element) {
   /* If full, return immediately */
   if (create_new && m->size > m->table_size * HASHMAP_MAX_FILL_RATIO) {
     if (HASHMAP_DEBUG_OUTPUT) {
@@ -183,7 +183,7 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
     /* Get a new chunk for this offset. */
     m->chunks[chunk_offset] = hashmap_get_chunk(m);
   }
-  hashmap_chunk_t *chunk = m->chunks[chunk_offset];
+  hashmap_chunk_t* chunk = m->chunks[chunk_offset];
 
   /* Count the number of free elements in this chunk and bail if it is too low.
    */
@@ -253,10 +253,10 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
 /**
  * @brief Grows the hashmap and rehashes all the elements
  */
-void hashmap_grow(hashmap_t *m, size_t new_size) {
+void hashmap_grow(hashmap_t* m, size_t new_size) {
   /* Hold on to the old data. */
   const size_t old_table_size = m->table_size;
-  hashmap_chunk_t **old_chunks = m->chunks;
+  hashmap_chunk_t** old_chunks = m->chunks;
 
   /* Re-allocate the chunk array. */
   if (new_size == 0) new_size = m->table_size * HASHMAP_GROWTH_FACTOR;
@@ -270,8 +270,8 @@ void hashmap_grow(hashmap_t *m, size_t new_size) {
             m->table_size, m->table_size * sizeof(hashmap_element_t) / 1024);
   }
 
-  if ((m->chunks = (hashmap_chunk_t **)swift_calloc(
-           "hashmap", m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
+  if ((m->chunks = (hashmap_chunk_t**)swift_calloc(
+           "hashmap", m->nr_chunks, sizeof(hashmap_chunk_t*))) == NULL) {
     error("Unable to allocate hashmap chunks.");
   }
 
@@ -279,7 +279,7 @@ void hashmap_grow(hashmap_t *m, size_t new_size) {
   m->size = 0;
 
   /* Buffer of stray elements, in case we get overflows while re-hashing. */
-  hashmap_element_t *strays = NULL;
+  hashmap_element_t* strays = NULL;
   size_t strays_count = 0;
   size_t strays_size = 0;
 
@@ -287,7 +287,7 @@ void hashmap_grow(hashmap_t *m, size_t new_size) {
   for (size_t cid = 0; cid < old_table_size / HASHMAP_ELEMENTS_PER_CHUNK;
        cid++) {
     /* Skip empty chunks. */
-    hashmap_chunk_t *chunk = old_chunks[cid];
+    hashmap_chunk_t* chunk = old_chunks[cid];
     if (!chunk) continue;
 
     /* Loop over the masks in this chunk. */
@@ -299,11 +299,11 @@ void hashmap_grow(hashmap_t *m, size_t new_size) {
       for (int eid = 0; eid < HASHMAP_BITS_PER_MASK; eid++) {
         hashmap_mask_t element_mask = ((hashmap_mask_t)1) << eid;
         if (chunk->masks[mid] & element_mask) {
-          hashmap_element_t *element =
+          hashmap_element_t* element =
               &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
 
           /* Copy the element over to the new hashmap. */
-          hashmap_element_t *new_element =
+          hashmap_element_t* new_element =
               hashmap_find(m, element->key, /*create_new=*/1,
                            /*chain_length=*/NULL, /*created_new_element=*/NULL);
 
@@ -316,9 +316,9 @@ void hashmap_grow(hashmap_t *m, size_t new_size) {
           else {
             /* (Re)allocate strays buffer? */
             if (strays_count == strays_size) {
-              hashmap_element_t *temp_buff;
+              hashmap_element_t* temp_buff;
               strays_size = strays_size ? strays_size * 2 : 10;
-              if ((temp_buff = (hashmap_element_t *)swift_malloc(
+              if ((temp_buff = (hashmap_element_t*)swift_malloc(
                        "hashmap_strays",
                        sizeof(hashmap_element_t) * strays_size)) == NULL)
                 error("Failed to (re)allocate strays buffer.");
@@ -350,9 +350,9 @@ void hashmap_grow(hashmap_t *m, size_t new_size) {
   }
 }
 
-void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
+void hashmap_put(hashmap_t* m, hashmap_key_t key, hashmap_value_t value) {
   /* Try to find an element for the given key. */
-  hashmap_element_t *element =
+  hashmap_element_t* element =
       hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
                    /*created_new_element=*/NULL);
 
@@ -367,9 +367,9 @@ void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
   element->value = value;
 }
 
-hashmap_value_t *hashmap_get(hashmap_t *m, hashmap_key_t key) {
+hashmap_value_t* hashmap_get(hashmap_t* m, hashmap_key_t key) {
   /* Look for the given key. */
-  hashmap_element_t *element =
+  hashmap_element_t* element =
       hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
                    /*created_new_element=*/NULL);
   while (!element) {
@@ -380,10 +380,10 @@ hashmap_value_t *hashmap_get(hashmap_t *m, hashmap_key_t key) {
   return &element->value;
 }
 
-hashmap_value_t *hashmap_get_new(hashmap_t *m, hashmap_key_t key,
-                                 int *created_new_element) {
+hashmap_value_t* hashmap_get_new(hashmap_t* m, hashmap_key_t key,
+                                 int* created_new_element) {
   /* Look for the given key. */
-  hashmap_element_t *element = hashmap_find(
+  hashmap_element_t* element = hashmap_find(
       m, key, /*create_new=*/1, /*chain_length=*/NULL, created_new_element);
   while (!element) {
     hashmap_grow(m, 0);
@@ -393,17 +393,17 @@ hashmap_value_t *hashmap_get_new(hashmap_t *m, hashmap_key_t key,
   return &element->value;
 }
 
-hashmap_value_t *hashmap_lookup(hashmap_t *m, hashmap_key_t key) {
-  hashmap_element_t *element =
+hashmap_value_t* hashmap_lookup(hashmap_t* m, hashmap_key_t key) {
+  hashmap_element_t* element =
       hashmap_find(m, key, /*create_new=*/0, /*chain_length=*/NULL,
                    /*created_new_element=*/NULL);
   return element ? &element->value : NULL;
 }
 
-void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data) {
+void hashmap_iterate(hashmap_t* m, hashmap_mapper_t f, void* data) {
   /* Loop over the chunks. */
   for (size_t cid = 0; cid < m->nr_chunks; cid++) {
-    hashmap_chunk_t *chunk = m->chunks[cid];
+    hashmap_chunk_t* chunk = m->chunks[cid];
     if (!chunk) continue;
 
     /* Loop over the masks. */
@@ -418,7 +418,7 @@ void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data) {
            eid++) {
         /* If the element exists, call the function on it. */
         if (mask & (((hashmap_mask_t)1) << eid)) {
-          hashmap_element_t *element =
+          hashmap_element_t* element =
               &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
           f(element->key, &element->value, data);
         }
@@ -427,7 +427,7 @@ void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data) {
   }
 }
 
-void hashmap_free(hashmap_t *m) {
+void hashmap_free(hashmap_t* m) {
   /* Free the list of active chunks. Note that the actual chunks will be freed
      as part of the allocs below. */
   swift_free("hashmap", m->chunks);
@@ -446,7 +446,7 @@ void hashmap_free(hashmap_t *m) {
   swift_free("hashmap", m->allocs);
 }
 
-size_t hashmap_size(hashmap_t *m) {
+size_t hashmap_size(hashmap_t* m) {
   if (m != NULL)
     return m->size;
   else
@@ -454,9 +454,9 @@ size_t hashmap_size(hashmap_t *m) {
 }
 
 #if HASHMAP_DEBUG_OUTPUT
-void hashmap_count_chain_lengths(hashmap_key_t key, hashmap_value_t *value,
-                                 void *data) {
-  hashmap_t *m = (hashmap_t *)data;
+void hashmap_count_chain_lengths(hashmap_key_t key, hashmap_value_t* value,
+                                 void* data) {
+  hashmap_t* m = (hashmap_t*)data;
   int count = 0;
   hashmap_find(m, key, /*create_entry=*/0, &count,
                /*created_new_element=*/NULL);
@@ -464,7 +464,7 @@ void hashmap_count_chain_lengths(hashmap_key_t key, hashmap_value_t *value,
 }
 #endif
 
-void hashmap_print_stats(hashmap_t *m) {
+void hashmap_print_stats(hashmap_t* m) {
   /* Basic stats. */
   message("size: %zu, table_size: %zu, nr_chunks: %zu.", m->size, m->table_size,
           m->nr_chunks);
@@ -475,8 +475,8 @@ void hashmap_print_stats(hashmap_t *m) {
     if (m->chunks[k]) chunk_counter += 1;
   }
   int graveyard_counter = 0;
-  for (hashmap_chunk_t *finger = m->graveyard; finger != NULL;
-       finger = (hashmap_chunk_t *)finger->next) {
+  for (hashmap_chunk_t* finger = m->graveyard; finger != NULL;
+       finger = (hashmap_chunk_t*)finger->next) {
     graveyard_counter += 1;
   }
   message(
@@ -511,7 +511,7 @@ void hashmap_print_stats(hashmap_t *m) {
     chunk_fill_ratio_counts[k] = 0;
   }
   for (size_t k = 0; k < m->nr_chunks; k++) {
-    hashmap_chunk_t *chunk = m->chunks[k];
+    hashmap_chunk_t* chunk = m->chunks[k];
     if (!chunk) {
       chunk_fill_ratio_counts[0] += 1;
     } else {

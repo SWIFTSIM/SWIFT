@@ -40,7 +40,7 @@ const double eps = 0.02;
  * @param b Second value
  * @param s String used to identify this check in messages
  */
-void check_value(double a, double b, const char *s) {
+void check_value(double a, double b, const char* s) {
   if (fabs(a - b) / fabs(a + b) > 1e-6 && fabs(a - b) > 1.e-6)
     error("Values are inconsistent: %12.15e %12.15e (%s)!", a, b, s);
 }
@@ -86,7 +86,7 @@ double acceleration(double mass, double r, double H, double rlr) {
   return r * acc * (4. * x * S_prime(2 * x) - 2. * S(2. * x) + 2.);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
   c.grav.ti_old_part = 8;
   c.grav.ti_end_min = 8;
 
-  if (posix_memalign((void **)&c.grav.parts, gpart_align,
+  if (posix_memalign((void**)&c.grav.parts, gpart_align,
                      c.grav.count * sizeof(struct gpart)) != 0)
     error("Impossible to allocate memory for the gparts.");
   bzero(c.grav.parts, c.grav.count * sizeof(struct gpart));
@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
   /* Create the mass-less particles */
   for (int n = 1; n < num_tests + 1; ++n) {
 
-    struct gpart *gp = &c.grav.parts[n];
+    struct gpart* gp = &c.grav.parts[n];
 
     gp->x[0] = n / ((double)num_tests);
     gp->x[1] = 0.5;
@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
 
   /* Verify everything */
   for (int n = 1; n < num_tests + 1; ++n) {
-    const struct gpart *gp = &c.grav.parts[n];
+    const struct gpart* gp = &c.grav.parts[n];
 
     const double epsilon = gravity_get_softening(gp, &props);
 

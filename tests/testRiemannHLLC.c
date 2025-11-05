@@ -150,7 +150,7 @@ void check_riemann_symmetry(void) {
 /**
  * @brief Check the HLLC Riemann solver
  */
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

@@ -30,7 +30,7 @@
  *
  * @param snia The #supernovae_ia.
  */
-void supernovae_ia_print(const struct supernovae_ia *snia) {
+void supernovae_ia_print(const struct supernovae_ia* snia) {
 
   /* Only the master print */
   if (engine_rank != 0) {
@@ -56,7 +56,7 @@ void supernovae_ia_print(const struct supernovae_ia *snia) {
  *
  * @return If the mass is in the range of SNIa.
  */
-int supernovae_ia_can_explode(const struct supernovae_ia *snia, float m_low,
+int supernovae_ia_can_explode(const struct supernovae_ia* snia, float m_low,
                               float m_high) {
 
   if (m_low > snia->mass_max_progenitor) return 0;
@@ -76,7 +76,7 @@ int supernovae_ia_can_explode(const struct supernovae_ia *snia, float m_low,
  *
  * @param snia The #supernovae_ia model.
  */
-const float *supernovae_ia_get_yields(const struct supernovae_ia *snia) {
+const float* supernovae_ia_get_yields(const struct supernovae_ia* snia) {
   return snia->yields;
 }
 
@@ -86,7 +86,7 @@ const float *supernovae_ia_get_yields(const struct supernovae_ia *snia) {
  * @param snia The #supernovae_ia model.
  */
 float supernovae_ia_get_ejected_mass_processed(
-    const struct supernovae_ia *snia) {
+    const struct supernovae_ia* snia) {
   return snia->mass_white_dwarf;
 }
 
@@ -101,7 +101,7 @@ float supernovae_ia_get_ejected_mass_processed(
  *
  * @return The fraction of companion.
  */
-float supernovae_ia_get_companion_fraction(const struct supernovae_ia *snia,
+float supernovae_ia_get_companion_fraction(const struct supernovae_ia* snia,
                                            float m1, float m2,
                                            int companion_type) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -123,7 +123,7 @@ float supernovae_ia_get_companion_fraction(const struct supernovae_ia *snia,
  *
  * @return The number of supernovae Ia per unit of mass.
  */
-float supernovae_ia_get_number_per_unit_mass(const struct supernovae_ia *snia,
+float supernovae_ia_get_number_per_unit_mass(const struct supernovae_ia* snia,
                                              float m1, float m2) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -170,10 +170,10 @@ float supernovae_ia_get_number_per_unit_mass(const struct supernovae_ia *snia,
  * @param sm The #stellar_model.
  * @param filename The filename of the chemistry table.
  */
-void supernovae_ia_read_yields(struct supernovae_ia *snia,
-                               struct swift_params *params,
-                               const struct stellar_model *sm,
-                               const char *filename) {
+void supernovae_ia_read_yields(struct supernovae_ia* snia,
+                               struct swift_params* params,
+                               const struct stellar_model* sm,
+                               const char* filename) {
 
   hid_t file_id, group_id;
 
@@ -188,11 +188,11 @@ void supernovae_ia_read_yields(struct supernovae_ia *snia,
   H5Aclose(attr);
 
   /* Read the yields */
-  float *yields = (float *)malloc(sizeof(float) * nval);
+  float* yields = (float*)malloc(sizeof(float) * nval);
   io_read_array_attribute(group_id, "data", FLOAT, yields, nval);
 
   /* Read the labels */
-  char *labels = (char *)calloc(nval, GEAR_LABELS_SIZE);
+  char* labels = (char*)calloc(nval, GEAR_LABELS_SIZE);
   io_read_string_array_attribute(group_id, "elts", labels, nval,
                                  GEAR_LABELS_SIZE);
 
@@ -202,8 +202,8 @@ void supernovae_ia_read_yields(struct supernovae_ia *snia,
     int found = 0;
     /* Loop over SNIa yields labels */
     for (size_t j = 0; j < nval; j++) {
-      const char *s1 = labels + j * GEAR_LABELS_SIZE;
-      const char *s2 = stellar_evolution_get_element_name(sm, i);
+      const char* s1 = labels + j * GEAR_LABELS_SIZE;
+      const char* s2 = stellar_evolution_get_element_name(sm, i);
       if (strcmp(s1, s2) == 0) {
         found = 1;
         snia->yields[i] = yields[j];
@@ -227,7 +227,7 @@ void supernovae_ia_read_yields(struct supernovae_ia *snia,
 /**
  * @brief Initialize the companion structure in the #supernovae_ia.
  */
-void supernovae_ia_init_companion(struct supernovae_ia *snia) {
+void supernovae_ia_init_companion(struct supernovae_ia* snia) {
 
   /* Get the exponent for the integral */
   const float exp = snia->companion_exponent;
@@ -251,9 +251,9 @@ void supernovae_ia_init_companion(struct supernovae_ia *snia) {
  * @param params The simulation parameters.
  * @param filename The filename of the chemistry table.
  */
-void supernovae_ia_read_from_tables(struct supernovae_ia *snia,
-                                    struct swift_params *params,
-                                    const char *filename) {
+void supernovae_ia_read_from_tables(struct supernovae_ia* snia,
+                                    struct swift_params* params,
+                                    const char* filename) {
 
   hid_t file_id, group_id;
 
@@ -311,11 +311,11 @@ void supernovae_ia_read_from_tables(struct supernovae_ia *snia,
  * @param params The simulation parameters.
  * @param sm The #stellar_model.
  */
-void supernovae_ia_init(struct supernovae_ia *snia,
-                        const struct phys_const *phys_const,
-                        const struct unit_system *us,
-                        struct swift_params *params,
-                        const struct stellar_model *sm) {
+void supernovae_ia_init(struct supernovae_ia* snia,
+                        const struct phys_const* phys_const,
+                        const struct unit_system* us,
+                        struct swift_params* params,
+                        const struct stellar_model* sm) {
 
   /* Read the parameters from the tables */
   supernovae_ia_read_from_tables(snia, params, sm->yields_table);
@@ -350,8 +350,8 @@ void supernovae_ia_init(struct supernovae_ia *snia,
  * @param stream the file stream
  * @param sm The #stellar_model.
  */
-void supernovae_ia_dump(const struct supernovae_ia *snia, FILE *stream,
-                        const struct stellar_model *sm) {
+void supernovae_ia_dump(const struct supernovae_ia* snia, FILE* stream,
+                        const struct stellar_model* sm) {
 
   /* Nothing to do here */
 }
@@ -367,8 +367,8 @@ void supernovae_ia_dump(const struct supernovae_ia *snia, FILE *stream,
  * @param stream the file stream
  * @param sm The #stellar_model.
  */
-void supernovae_ia_restore(struct supernovae_ia *snia, FILE *stream,
-                           const struct stellar_model *sm) {
+void supernovae_ia_restore(struct supernovae_ia* snia, FILE* stream,
+                           const struct stellar_model* sm) {
 
   /* Nothing to do here */
 }
@@ -378,4 +378,4 @@ void supernovae_ia_restore(struct supernovae_ia *snia, FILE *stream,
  *
  * @param snia the #supernovae_ia.
  */
-void supernovae_ia_clean(struct supernovae_ia *snia) {}
+void supernovae_ia_clean(struct supernovae_ia* snia) {}

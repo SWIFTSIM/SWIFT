@@ -38,37 +38,37 @@
 struct gravity_cache {
 
   /*! #gpart x position. */
-  float *restrict x SWIFT_CACHE_ALIGN;
+  float* restrict x SWIFT_CACHE_ALIGN;
 
   /*! #gpart y position. */
-  float *restrict y SWIFT_CACHE_ALIGN;
+  float* restrict y SWIFT_CACHE_ALIGN;
 
   /*! #gpart z position. */
-  float *restrict z SWIFT_CACHE_ALIGN;
+  float* restrict z SWIFT_CACHE_ALIGN;
 
   /*! #gpart softening length. */
-  float *restrict epsilon SWIFT_CACHE_ALIGN;
+  float* restrict epsilon SWIFT_CACHE_ALIGN;
 
   /*! #gpart mass. */
-  float *restrict m SWIFT_CACHE_ALIGN;
+  float* restrict m SWIFT_CACHE_ALIGN;
 
   /*! #gpart x acceleration. */
-  float *restrict a_x SWIFT_CACHE_ALIGN;
+  float* restrict a_x SWIFT_CACHE_ALIGN;
 
   /*! #gpart y acceleration. */
-  float *restrict a_y SWIFT_CACHE_ALIGN;
+  float* restrict a_y SWIFT_CACHE_ALIGN;
 
   /*! #gpart z acceleration. */
-  float *restrict a_z SWIFT_CACHE_ALIGN;
+  float* restrict a_z SWIFT_CACHE_ALIGN;
 
   /*! #gpart potential. */
-  float *restrict pot SWIFT_CACHE_ALIGN;
+  float* restrict pot SWIFT_CACHE_ALIGN;
 
   /*! Is this #gpart active ? */
-  int *restrict active SWIFT_CACHE_ALIGN;
+  int* restrict active SWIFT_CACHE_ALIGN;
 
   /*! Can this #gpart use a M2P interaction ? */
-  int *restrict use_mpole SWIFT_CACHE_ALIGN;
+  int* restrict use_mpole SWIFT_CACHE_ALIGN;
 
   /*! Cache size */
   int count;
@@ -79,7 +79,7 @@ struct gravity_cache {
  *
  * @param c The #gravity_cache to free.
  */
-static INLINE void gravity_cache_clean(struct gravity_cache *c) {
+static INLINE void gravity_cache_clean(struct gravity_cache* c) {
 
   if (c->count > 0) {
     swift_free("gravity_cache", c->x);
@@ -107,7 +107,7 @@ static INLINE void gravity_cache_clean(struct gravity_cache *c) {
  * @param count The number of #gpart to allocated for (space_splitsize is a good
  * choice).
  */
-static INLINE void gravity_cache_init(struct gravity_cache *c,
+static INLINE void gravity_cache_init(struct gravity_cache* c,
                                       const int count) {
 
   /* Size of the gravity cache */
@@ -119,27 +119,27 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
   gravity_cache_clean(c);
 
   int e = 0;
-  e += swift_memalign("gravity_cache", (void **)&c->x, SWIFT_CACHE_ALIGNMENT,
+  e += swift_memalign("gravity_cache", (void**)&c->x, SWIFT_CACHE_ALIGNMENT,
                       sizeBytesF);
-  e += swift_memalign("gravity_cache", (void **)&c->y, SWIFT_CACHE_ALIGNMENT,
+  e += swift_memalign("gravity_cache", (void**)&c->y, SWIFT_CACHE_ALIGNMENT,
                       sizeBytesF);
-  e += swift_memalign("gravity_cache", (void **)&c->z, SWIFT_CACHE_ALIGNMENT,
+  e += swift_memalign("gravity_cache", (void**)&c->z, SWIFT_CACHE_ALIGNMENT,
                       sizeBytesF);
-  e += swift_memalign("gravity_cache", (void **)&c->epsilon,
+  e += swift_memalign("gravity_cache", (void**)&c->epsilon,
                       SWIFT_CACHE_ALIGNMENT, sizeBytesF);
-  e += swift_memalign("gravity_cache", (void **)&c->m, SWIFT_CACHE_ALIGNMENT,
+  e += swift_memalign("gravity_cache", (void**)&c->m, SWIFT_CACHE_ALIGNMENT,
                       sizeBytesF);
-  e += swift_memalign("gravity_cache", (void **)&c->a_x, SWIFT_CACHE_ALIGNMENT,
+  e += swift_memalign("gravity_cache", (void**)&c->a_x, SWIFT_CACHE_ALIGNMENT,
                       sizeBytesF);
-  e += swift_memalign("gravity_cache", (void **)&c->a_y, SWIFT_CACHE_ALIGNMENT,
+  e += swift_memalign("gravity_cache", (void**)&c->a_y, SWIFT_CACHE_ALIGNMENT,
                       sizeBytesF);
-  e += swift_memalign("gravity_cache", (void **)&c->a_z, SWIFT_CACHE_ALIGNMENT,
+  e += swift_memalign("gravity_cache", (void**)&c->a_z, SWIFT_CACHE_ALIGNMENT,
                       sizeBytesF);
-  e += swift_memalign("gravity_cache", (void **)&c->pot, SWIFT_CACHE_ALIGNMENT,
+  e += swift_memalign("gravity_cache", (void**)&c->pot, SWIFT_CACHE_ALIGNMENT,
                       sizeBytesF);
-  e += swift_memalign("gravity_cache", (void **)&c->active,
+  e += swift_memalign("gravity_cache", (void**)&c->active,
                       SWIFT_CACHE_ALIGNMENT, sizeBytesI);
-  e += swift_memalign("gravity_cache", (void **)&c->use_mpole,
+  e += swift_memalign("gravity_cache", (void**)&c->use_mpole,
                       SWIFT_CACHE_ALIGNMENT, sizeBytesI);
 
   if (e != 0) error("Couldn't allocate gravity cache, size: %d", padded_count);
@@ -154,7 +154,7 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
  * @param c The #gravity_cache to zero.
  * @param gcount_padded The padded size of the cache arrays.
  */
-INLINE static void gravity_cache_zero_output(struct gravity_cache *c,
+INLINE static void gravity_cache_zero_output(struct gravity_cache* c,
                                              const int gcount_padded) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -199,10 +199,10 @@ INLINE static void gravity_cache_zero_output(struct gravity_cache *c,
  */
 INLINE static void gravity_cache_populate(
     const timebin_t max_active_bin, const int allow_mpole, const int periodic,
-    const float dim[3], struct gravity_cache *c, const struct gpart *gparts,
+    const float dim[3], struct gravity_cache* c, const struct gpart* gparts,
     const int gcount, const int gcount_padded, const double shift[3],
-    const float CoM[3], const struct gravity_tensors *multipole,
-    const struct cell *cell, const struct gravity_props *grav_props) {
+    const float CoM[3], const struct gravity_tensors* multipole,
+    const struct cell* cell, const struct gravity_props* grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
@@ -314,10 +314,10 @@ INLINE static void gravity_cache_populate(
  * @param grav_props The global gravity properties.
  */
 INLINE static void gravity_cache_populate_foreign(
-    const int periodic, const float dim[3], struct gravity_cache *c,
-    const struct gpart_foreign *gparts_foreign, const int gcount,
-    const int gcount_padded, const double shift[3], const struct cell *cell,
-    const struct gravity_props *grav_props) {
+    const int periodic, const float dim[3], struct gravity_cache* c,
+    const struct gpart_foreign* gparts_foreign, const int gcount,
+    const int gcount_padded, const double shift[3], const struct cell* cell,
+    const struct gravity_props* grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
@@ -403,10 +403,10 @@ INLINE static void gravity_cache_populate_foreign(
  * @param grav_props The global gravity properties.
  */
 INLINE static void gravity_cache_populate_no_mpole(
-    const timebin_t max_active_bin, struct gravity_cache *c,
-    const struct gpart *restrict gparts, const int gcount,
-    const int gcount_padded, const double shift[3], const struct cell *cell,
-    const struct gravity_props *grav_props) {
+    const timebin_t max_active_bin, struct gravity_cache* c,
+    const struct gpart* restrict gparts, const int gcount,
+    const int gcount_padded, const double shift[3], const struct cell* cell,
+    const struct gravity_props* grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
@@ -494,10 +494,10 @@ INLINE static void gravity_cache_populate_no_mpole(
  */
 INLINE static void gravity_cache_populate_all_mpole(
     const timebin_t max_active_bin, const int periodic, const float dim[3],
-    struct gravity_cache *c, const struct gpart *restrict gparts,
-    const int gcount, const int gcount_padded, const struct cell *cell,
-    const float CoM[3], const struct gravity_tensors *multipole,
-    const struct gravity_props *grav_props) {
+    struct gravity_cache* c, const struct gpart* restrict gparts,
+    const int gcount, const int gcount_padded, const struct cell* cell,
+    const float CoM[3], const struct gravity_tensors* multipole,
+    const struct gravity_props* grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
@@ -585,9 +585,9 @@ INLINE static void gravity_cache_populate_all_mpole(
  * @param gparts The #gpart array to write to.
  * @param gcount The number of particles to write.
  */
-INLINE static void gravity_cache_write_back(const struct gravity_cache *c,
-                                            const struct cell *cell,
-                                            struct gpart *restrict gparts,
+INLINE static void gravity_cache_write_back(const struct gravity_cache* c,
+                                            const struct cell* cell,
+                                            struct gpart* restrict gparts,
                                             const int gcount) {
 
 #ifdef SWIFT_DEBUG_CHECKS

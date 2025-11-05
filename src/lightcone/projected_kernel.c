@@ -45,9 +45,9 @@
  * @param param Ratio of distance in the xy plane in units of h
  */
 #ifdef HAVE_LIBGSL
-static double projected_kernel_integrand(double qz, void *param) {
+static double projected_kernel_integrand(double qz, void* param) {
 
-  const double qxy = *((double *)param);
+  const double qxy = *((double*)param);
   const double q = sqrt(pow(qxy, 2.0) + pow(qz, 2.0));
   double W;
   kernel_eval_double(q, &W);
@@ -76,7 +76,7 @@ double projected_kernel_integrate(double u) {
 
   /* Initalise the GSL workspace */
   const size_t workspace_size = 100000;
-  gsl_integration_workspace *space =
+  gsl_integration_workspace* space =
       gsl_integration_workspace_alloc(workspace_size);
 
   /* Compute the integral */
@@ -105,11 +105,11 @@ double projected_kernel_integrate(double u) {
  *
  * @param tab The projected_kernel_table struct
  */
-void projected_kernel_init(struct projected_kernel_table *tab) {
+void projected_kernel_init(struct projected_kernel_table* tab) {
 
   /* Allocate storage */
   tab->n = PROJECTED_KERNEL_NTAB;
-  tab->value = (double *)malloc(sizeof(double) * tab->n);
+  tab->value = (double*)malloc(sizeof(double) * tab->n);
 
   /* Determine range to tabulate */
   tab->u_max = kernel_gamma;
@@ -125,7 +125,7 @@ void projected_kernel_init(struct projected_kernel_table *tab) {
 /**
  * @brief Deallocate the projected kernel table
  */
-void projected_kernel_clean(struct projected_kernel_table *tab) {
+void projected_kernel_clean(struct projected_kernel_table* tab) {
   free(tab->value);
 }
 
@@ -136,7 +136,7 @@ void projected_kernel_dump(void) {
 
   const int N = 5000;
   const double du = kernel_gamma / (N - 1);
-  FILE *fd;
+  FILE* fd;
 
   fd = fopen("projected_kernel.txt", "w");
   fprintf(fd, "u, kernel, projected kernel\n");

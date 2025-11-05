@@ -73,7 +73,7 @@ struct mpiuse_log_entry {
   /* Pointer to the request associated with the call. Needs to be
    * unique and match to the successful */
   union {
-    void *ptr;
+    void* ptr;
     uint8_t vptr[sizeof(uintptr_t)]; /* For rnode keys. */
   };
 
@@ -95,7 +95,7 @@ struct mpiuse_log_entry {
 
 /* The log of activations and handoffs. All volatile as accessed from threads
  * that use the value to synchronise. */
-static struct mpiuse_log_entry *volatile mpiuse_log = NULL;
+static struct mpiuse_log_entry* volatile mpiuse_log = NULL;
 static volatile size_t mpiuse_log_size = 0;
 static volatile size_t mpiuse_log_count = 0;
 static volatile size_t mpiuse_log_done = 0;
@@ -108,7 +108,7 @@ static void mpiuse_log_reallocate(size_t ind) {
   if (ind == 0) {
 
     /* Need to perform initialization. Be generous. */
-    if ((mpiuse_log = (struct mpiuse_log_entry *)malloc(
+    if ((mpiuse_log = (struct mpiuse_log_entry*)malloc(
              sizeof(struct mpiuse_log_entry) * MPIUSE_INITLOG)) == NULL)
       error("Failed to allocate MPI use log.");
 
@@ -116,8 +116,8 @@ static void mpiuse_log_reallocate(size_t ind) {
     mpiuse_log_size = MPIUSE_INITLOG;
 
   } else {
-    struct mpiuse_log_entry *new_log;
-    if ((new_log = (struct mpiuse_log_entry *)malloc(
+    struct mpiuse_log_entry* new_log;
+    if ((new_log = (struct mpiuse_log_entry*)malloc(
              sizeof(struct mpiuse_log_entry) *
              (mpiuse_log_size + MPIUSE_INITLOG))) == NULL)
       error("Failed to re-allocate MPI use log.");
@@ -151,7 +151,7 @@ static void mpiuse_log_reallocate(size_t ind) {
  * @param otherrank other rank associated with the transfer.
  * @param tag the MPI tag.
  */
-void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
+void mpiuse_log_allocation(int type, int subtype, void* ptr, int activation,
                            size_t size, int otherrank, int tag) {
 
   size_t ind = atomic_inc(&mpiuse_log_count);
@@ -187,7 +187,7 @@ void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
  *                  otherwise some locally relative time that might help
  *                  synchronize across ranks.
  */
-void mpiuse_log_dump(const char *filename, ticks stepticks) {
+void mpiuse_log_dump(const char* filename, ticks stepticks) {
 
   /* Skip if nothing logged this step. */
   if (mpiuse_log_count == 0) return;
@@ -195,14 +195,14 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
   // ticks tic = getticks();
 
   /* Create the radix tree root node. */
-  struct memuse_rnode *memuse_rnode_root =
-      (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
+  struct memuse_rnode* memuse_rnode_root =
+      (struct memuse_rnode*)calloc(1, sizeof(struct memuse_rnode));
 
   /* Stop any new logs from being processed while we are dumping. */
   size_t log_count = mpiuse_log_count;
 
   /* Open the output file. */
-  FILE *fd;
+  FILE* fd;
   if ((fd = fopen(filename, "w")) == NULL) {
     message("Failed to create MPI use log file '%s', logs not dumped.",
             filename);
@@ -221,7 +221,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
   for (size_t k = 0; k < log_count; k++) {
 
     /* Check if this address has already been recorded. */
-    struct memuse_rnode *child = memuse_rnode_find_child(
+    struct memuse_rnode* child = memuse_rnode_find_child(
         memuse_rnode_root, 0, mpiuse_log[k].vptr, sizeof(uintptr_t));
 
     if (child != NULL && child->value != -1) {
@@ -242,7 +242,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
       }
 
       /* Free, update the missing fields, size of request is removed. */
-      struct mpiuse_log_entry *oldlog = (struct mpiuse_log_entry *)child->value;
+      struct mpiuse_log_entry* oldlog = (struct mpiuse_log_entry*)child->value;
       mpiuse_log[k].size = -oldlog->size;
       mpiuse_log[k].otherrank = oldlog->otherrank;
       mpiuse_log[k].tag = oldlog->tag;

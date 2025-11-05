@@ -49,8 +49,8 @@ enum eagle_imf_integration_type {
  * @param feedback_props the #feedback_props data struct
  */
 INLINE static void determine_imf_bins(
-    double log10_min_mass, double log10_max_mass, int *i_min, int *i_max,
-    const struct feedback_props *feedback_props) {
+    double log10_min_mass, double log10_max_mass, int* i_min, int* i_max,
+    const struct feedback_props* feedback_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (log10_min_mass > log10_max_mass)
@@ -58,7 +58,7 @@ INLINE static void determine_imf_bins(
 #endif
 
   const int N_bins = eagle_feedback_N_imf_bins;
-  const double *const imf_bins_log10 = feedback_props->imf_mass_bin_log10;
+  const double* const imf_bins_log10 = feedback_props->imf_mass_bin_log10;
 
   /* Check whether lower mass is within the IMF mass bin range */
   log10_min_mass = max(log10_min_mass, imf_bins_log10[0]);
@@ -95,12 +95,12 @@ INLINE static double integrate_imf(
     const double log10_min_mass, const double log10_max_mass,
     const enum eagle_imf_integration_type mode,
     const double stellar_yields[eagle_feedback_N_imf_bins],
-    const struct feedback_props *feedback_props) {
+    const struct feedback_props* feedback_props) {
 
   /* Pull out some common terms */
-  const double *imf = feedback_props->imf;
-  const double *imf_mass_bin = feedback_props->imf_mass_bin;
-  const double *imf_mass_bin_log10 = feedback_props->imf_mass_bin_log10;
+  const double* imf = feedback_props->imf;
+  const double* imf_mass_bin = feedback_props->imf_mass_bin;
+  const double* imf_mass_bin_log10 = feedback_props->imf_mass_bin_log10;
 
   /* IMF mass bin spacing in log10 space. Assumes uniform spacing. */
   const double imf_log10_mass_bin_size =
@@ -196,7 +196,7 @@ INLINE static double integrate_imf(
  *
  * @param feedback_props #feedback_props data structure
  */
-INLINE static void init_imf(struct feedback_props *feedback_props) {
+INLINE static void init_imf(struct feedback_props* feedback_props) {
 
   /* Compute size of mass bins in log10 space */
   const double imf_log10_mass_bin_size =
@@ -205,19 +205,19 @@ INLINE static void init_imf(struct feedback_props *feedback_props) {
       (double)(eagle_feedback_N_imf_bins - 1);
 
   /* Allocate IMF array */
-  if (swift_memalign("imf-tables", (void **)&feedback_props->imf,
+  if (swift_memalign("imf-tables", (void**)&feedback_props->imf,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_N_imf_bins * sizeof(double)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins */
-  if (swift_memalign("imf-tables", (void **)&feedback_props->imf_mass_bin,
+  if (swift_memalign("imf-tables", (void**)&feedback_props->imf_mass_bin,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_N_imf_bins * sizeof(double)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins in log10 space */
-  if (swift_memalign("imf-tables", (void **)&feedback_props->imf_mass_bin_log10,
+  if (swift_memalign("imf-tables", (void**)&feedback_props->imf_mass_bin_log10,
                      SWIFT_STRUCT_ALIGNMENT,
                      eagle_feedback_N_imf_bins * sizeof(double)) != 0)
     error("Failed to allocate IMF bins table");
@@ -273,12 +273,12 @@ INLINE static void init_imf(struct feedback_props *feedback_props) {
  */
 INLINE static double dying_mass_msun(
     const double age_Gyr, const double Z,
-    const struct feedback_props *feedback_props) {
+    const struct feedback_props* feedback_props) {
 
   /* Pull out some common terms */
-  const double *lifetime_Z = feedback_props->lifetimes.metallicity;
-  const double *lifetime_m = feedback_props->lifetimes.mass;
-  double **const dying_times = feedback_props->lifetimes.dyingtime;
+  const double* lifetime_Z = feedback_props->lifetimes.metallicity;
+  const double* lifetime_m = feedback_props->lifetimes.mass;
+  double** const dying_times = feedback_props->lifetimes.dyingtime;
   const int n_Z = eagle_feedback_lifetime_N_metals;
   const int n_m = eagle_feedback_lifetime_N_masses;
 
@@ -430,12 +430,12 @@ INLINE static double dying_mass_msun(
  */
 INLINE static float lifetime_in_Gyr(
     const float mass, const float Z,
-    const struct feedback_props *feedback_props) {
+    const struct feedback_props* feedback_props) {
 
   /* Pull out some common terms */
-  const double *lifetime_Z = feedback_props->lifetimes.metallicity;
-  const double *lifetime_m = feedback_props->lifetimes.mass;
-  double **const dying_times = feedback_props->lifetimes.dyingtime;
+  const double* lifetime_Z = feedback_props->lifetimes.metallicity;
+  const double* lifetime_m = feedback_props->lifetimes.mass;
+  double** const dying_times = feedback_props->lifetimes.dyingtime;
   const int n_Z = eagle_feedback_lifetime_N_metals;
   const int n_m = eagle_feedback_lifetime_N_masses;
 

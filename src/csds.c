@@ -61,7 +61,7 @@
  * @param e The #engine.
  * @param flag The flag to use when writing the particles
  */
-void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
+void csds_log_all_particles(struct csds_writer* log, const struct engine* e,
                             const enum csds_special_flags flag) {
 
   /* Ensure that enough space is available. */
@@ -71,12 +71,12 @@ void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
   ticks tic = getticks();
 
   /* some constants. */
-  const struct space *s = e->s;
+  const struct space* s = e->s;
 
   /* log the parts. */
   for (size_t i = 0; i < s->nr_parts; i++) {
-    struct part *p = &s->parts[i];
-    struct xpart *xp = &s->xparts[i];
+    struct part* p = &s->parts[i];
+    struct xpart* xp = &s->xparts[i];
     if (!part_is_inhibited(p, e) && p->time_bin != time_bin_not_created) {
       csds_log_part(log, p, xp, e, /* log_all_fields */ 1, flag,
                     /* flag_data */ 0);
@@ -85,7 +85,7 @@ void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
 
   /* log the gparts */
   for (size_t i = 0; i < s->nr_gparts; i++) {
-    struct gpart *gp = &s->gparts[i];
+    struct gpart* gp = &s->gparts[i];
     if (!gpart_is_inhibited(gp, e) && gp->time_bin != time_bin_not_created &&
         (gp->type == swift_type_dark_matter ||
          gp->type == swift_type_dark_matter_background)) {
@@ -96,7 +96,7 @@ void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
 
   /* log the parts */
   for (size_t i = 0; i < s->nr_sparts; i++) {
-    struct spart *sp = &s->sparts[i];
+    struct spart* sp = &s->sparts[i];
     if (!spart_is_inhibited(sp, e) && sp->time_bin != time_bin_not_created) {
       csds_log_spart(log, sp, e, /* log_all_fields */ 1, flag,
                      /* flag_data */ 0);
@@ -124,10 +124,10 @@ void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
  * @param buff The buffer to use when writing.
  * @param special_flags The data for the special flags.
  */
-void csds_copy_part_fields(const struct csds_writer *log, const struct part *p,
-                           const struct xpart *xp, const struct engine *e,
-                           unsigned int mask, size_t *offset, size_t offset_new,
-                           char *buff, const uint32_t special_flags) {
+void csds_copy_part_fields(const struct csds_writer* log, const struct part* p,
+                           const struct xpart* xp, const struct engine* e,
+                           unsigned int mask, size_t* offset, size_t offset_new,
+                           char* buff, const uint32_t special_flags) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (mask == 0) {
@@ -148,14 +148,14 @@ void csds_copy_part_fields(const struct csds_writer *log, const struct part *p,
 
   /* Write the hydro fields */
   for (int i = 0; i < log->number_fields[swift_type_gas]; i++) {
-    struct csds_field *field = &log->field_pointers[swift_type_gas][i];
+    struct csds_field* field = &log->field_pointers[swift_type_gas][i];
 
     /* Skip the fields that are not required. */
     if (!(mask & field->mask)) continue;
 
     /* Do we have a conversion function? */
     if (field->conversion_hydro) {
-      char *tmp_buff = field->conversion_hydro(p, xp, e, buff);
+      char* tmp_buff = field->conversion_hydro(p, xp, e, buff);
       /* Check that the correct number of bits are written */
       if ((tmp_buff - buff) != (long int)field->size) {
         error("The field %s wrote an unexpected number of bits", field->name);
@@ -164,9 +164,9 @@ void csds_copy_part_fields(const struct csds_writer *log, const struct part *p,
     /* Write it manually */
     else {
       if (field->use_xpart == 1)
-        memcpy(buff, ((char *)xp) + field->offset, field->size);
+        memcpy(buff, ((char*)xp) + field->offset, field->size);
       else if (field->use_xpart == 0)
-        memcpy(buff, ((char *)p) + field->offset, field->size);
+        memcpy(buff, ((char*)p) + field->offset, field->size);
       else
         error(
             "It seems that you are using the wrong CSDS function in the hydro."
@@ -197,8 +197,8 @@ void csds_copy_part_fields(const struct csds_writer *log, const struct part *p,
  * @param flag The value of the special flags.
  * @param flag_data The data to write for the flag.
  */
-void csds_log_part(struct csds_writer *log, const struct part *p,
-                   struct xpart *xp, const struct engine *e,
+void csds_log_part(struct csds_writer* log, const struct part* p,
+                   struct xpart* xp, const struct engine* e,
                    const int log_all_fields, const enum csds_special_flags flag,
                    const int flag_data) {
 
@@ -214,8 +214,8 @@ void csds_log_part(struct csds_writer *log, const struct part *p,
  * @param size (output) The size of all the fields.
  * @param mask (output) The mask to use.
  */
-void csds_compute_size_and_mask(struct csds_field *fields, int n_fields,
-                                size_t *size, unsigned int *mask) {
+void csds_compute_size_and_mask(struct csds_field* fields, int n_fields,
+                                size_t* size, unsigned int* mask) {
   *size = 0;
   *mask = 0;
   // TODO: write only some fields
@@ -237,8 +237,8 @@ void csds_compute_size_and_mask(struct csds_field *fields, int n_fields,
  * @param flag The value of the special flags.
  * @param flag_data The data to write for the flag.
  */
-void csds_log_parts(struct csds_writer *log, const struct part *p,
-                    struct xpart *xp, int count, const struct engine *e,
+void csds_log_parts(struct csds_writer* log, const struct part* p,
+                    struct xpart* xp, int count, const struct engine* e,
                     const int log_all_fields,
                     const enum csds_special_flags flag, const int flag_data) {
 
@@ -263,13 +263,13 @@ void csds_log_parts(struct csds_writer *log, const struct part *p,
 
   /* Allocate a chunk of memory in the logfile of the right size. */
   size_t offset_new;
-  char *buff =
-      (char *)csds_logfile_writer_get(&log->logfile, size_total, &offset_new);
+  char* buff =
+      (char*)csds_logfile_writer_get(&log->logfile, size_total, &offset_new);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Save the buffer position in order to test if the requested buffer was
    * really used */
-  const char *buff_before = buff;
+  const char* buff_before = buff;
 #endif
 
   /* Write the particles */
@@ -313,10 +313,10 @@ void csds_log_parts(struct csds_writer *log, const struct part *p,
  * @param buff The buffer to use when writing.
  * @param special_flags The data for the special flags.
  */
-void csds_copy_spart_fields(const struct csds_writer *log,
-                            const struct spart *sp, const struct engine *e,
-                            unsigned int mask, size_t *offset,
-                            size_t offset_new, char *buff,
+void csds_copy_spart_fields(const struct csds_writer* log,
+                            const struct spart* sp, const struct engine* e,
+                            unsigned int mask, size_t* offset,
+                            size_t offset_new, char* buff,
                             const uint32_t special_flags) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -338,14 +338,14 @@ void csds_copy_spart_fields(const struct csds_writer *log,
 
   /* Write the stellar fields */
   for (int i = 0; i < log->number_fields[swift_type_stars]; i++) {
-    struct csds_field *field = &log->field_pointers[swift_type_stars][i];
+    struct csds_field* field = &log->field_pointers[swift_type_stars][i];
 
     /* Skip the fields that are not required. */
     if (!(mask & field->mask)) continue;
 
     /* Do we have a conversion function? */
     if (field->conversion_stars) {
-      char *tmp_buff = field->conversion_stars(sp, e, buff);
+      char* tmp_buff = field->conversion_stars(sp, e, buff);
       /* Check that the correct number of bits are written */
       if ((tmp_buff - buff) != (long int)field->size) {
         error("The field %s wrote an unexpected number of bits", field->name);
@@ -353,7 +353,7 @@ void csds_copy_spart_fields(const struct csds_writer *log,
     }
     /* Write it manually */
     else {
-      memcpy(buff, ((char *)sp) + field->offset, field->size);
+      memcpy(buff, ((char*)sp) + field->offset, field->size);
     }
 
     /* Update the variables */
@@ -377,8 +377,8 @@ void csds_copy_spart_fields(const struct csds_writer *log,
  * @param flag The value of the special flags.
  * @param flag_data The data to write for the flag.
  */
-void csds_log_spart(struct csds_writer *log, struct spart *sp,
-                    const struct engine *e, const int log_all_fields,
+void csds_log_spart(struct csds_writer* log, struct spart* sp,
+                    const struct engine* e, const int log_all_fields,
                     const enum csds_special_flags flag, const int flag_data) {
 
   csds_log_sparts(log, sp, /* count */ 1, e, log_all_fields, flag, flag_data);
@@ -395,8 +395,8 @@ void csds_log_spart(struct csds_writer *log, struct spart *sp,
  * @param flag The value of the special flags.
  * @param flag_data The data to write for the flag.
  */
-void csds_log_sparts(struct csds_writer *log, struct spart *sp, int count,
-                     const struct engine *e, const int log_all_fields,
+void csds_log_sparts(struct csds_writer* log, struct spart* sp, int count,
+                     const struct engine* e, const int log_all_fields,
                      const enum csds_special_flags flag, const int flag_data) {
   /* Build the special flag */
   const int size_special_flag = log->list_fields[CSDS_SPECIAL_FLAGS_INDEX].size;
@@ -421,12 +421,12 @@ void csds_log_sparts(struct csds_writer *log, struct spart *sp, int count,
 
   /* Allocate a chunk of memory in the logfile of the right size. */
   size_t offset_new;
-  char *buff =
-      (char *)csds_logfile_writer_get(&log->logfile, size_total, &offset_new);
+  char* buff =
+      (char*)csds_logfile_writer_get(&log->logfile, size_total, &offset_new);
 #ifdef SWIFT_DEBUG_CHECKS
   /* Save the buffer position in order to test if the requested buffer was
    * really used */
-  const char *buff_before = buff;
+  const char* buff_before = buff;
 #endif
 
   for (int i = 0; i < count; i++) {
@@ -467,10 +467,10 @@ void csds_log_sparts(struct csds_writer *log, struct spart *sp, int count,
  * @param buff The buffer to use when writing.
  * @param special_flags The data of the special flag.
  */
-void csds_copy_gpart_fields(const struct csds_writer *log,
-                            const struct gpart *gp, const struct engine *e,
-                            unsigned int mask, size_t *offset,
-                            size_t offset_new, char *buff,
+void csds_copy_gpart_fields(const struct csds_writer* log,
+                            const struct gpart* gp, const struct engine* e,
+                            unsigned int mask, size_t* offset,
+                            size_t offset_new, char* buff,
                             const uint32_t special_flags) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -492,14 +492,14 @@ void csds_copy_gpart_fields(const struct csds_writer *log,
 
   /* Write the gravity fields */
   for (int i = 0; i < log->number_fields[swift_type_dark_matter]; i++) {
-    struct csds_field *field = &log->field_pointers[swift_type_dark_matter][i];
+    struct csds_field* field = &log->field_pointers[swift_type_dark_matter][i];
 
     /* Skip the fields that are not required. */
     if (!(mask & field->mask)) continue;
 
     /* Do we have a conversion function? */
     if (field->conversion_grav) {
-      char *tmp_buff = field->conversion_grav(gp, e, buff);
+      char* tmp_buff = field->conversion_grav(gp, e, buff);
       /* Check that the correct number of bits are written */
       if ((tmp_buff - buff) != (long int)field->size) {
         error("The field %s wrote an unexpected number of bits", field->name);
@@ -507,7 +507,7 @@ void csds_copy_gpart_fields(const struct csds_writer *log,
     }
     /* Write it manually */
     else {
-      memcpy(buff, ((char *)gp) + field->offset, field->size);
+      memcpy(buff, ((char*)gp) + field->offset, field->size);
     }
 
     /* Update the variables */
@@ -532,8 +532,8 @@ void csds_copy_gpart_fields(const struct csds_writer *log,
  * @param flag The value of the special flags.
  * @param flag_data The data to write for the flag.
  */
-void csds_log_gpart(struct csds_writer *log, struct gpart *p,
-                    const struct engine *e, const int log_all_fields,
+void csds_log_gpart(struct csds_writer* log, struct gpart* p,
+                    const struct engine* e, const int log_all_fields,
                     const enum csds_special_flags flag, const int flag_data) {
   csds_log_gparts(log, p, /* count */ 1, e, log_all_fields, flag, flag_data);
 }
@@ -549,8 +549,8 @@ void csds_log_gpart(struct csds_writer *log, struct gpart *p,
  * @param flag The value of the special flags.
  * @param flag_data The data to write for the flag.
  */
-void csds_log_gparts(struct csds_writer *log, struct gpart *p, int count,
-                     const struct engine *e, const int log_all_fields,
+void csds_log_gparts(struct csds_writer* log, struct gpart* p, int count,
+                     const struct engine* e, const int log_all_fields,
                      const enum csds_special_flags flag, const int flag_data) {
   /* Build the special flag */
   const int size_special_flag = log->list_fields[CSDS_SPECIAL_FLAGS_INDEX].size;
@@ -585,12 +585,12 @@ void csds_log_gparts(struct csds_writer *log, struct gpart *p, int count,
 
   /* Allocate a chunk of memory in the logfile of the right size. */
   size_t offset_new;
-  char *buff =
-      (char *)csds_logfile_writer_get(&log->logfile, size_total, &offset_new);
+  char* buff =
+      (char*)csds_logfile_writer_get(&log->logfile, size_total, &offset_new);
 #ifdef SWIFT_DEBUG_CHECKS
   /* Save the buffer position in order to test if the requested buffer was
    * really used */
-  const char *buff_before = buff;
+  const char* buff_before = buff;
 #endif
 
   for (int i = 0; i < count; i++) {
@@ -633,16 +633,16 @@ void csds_log_gparts(struct csds_writer *log, struct gpart *p, int count,
  * @param offset Pointer to the offset of the previous log of this particle;
  * (return) offset of this log.
  */
-void csds_log_timestamp(struct csds_writer *log, integertime_t timestamp,
-                        double time, size_t *offset) {
-  struct csds_logfile_writer *logfile = &log->logfile;
+void csds_log_timestamp(struct csds_writer* log, integertime_t timestamp,
+                        double time, size_t* offset) {
+  struct csds_logfile_writer* logfile = &log->logfile;
   /* Start by computing the size of the message. */
   const int size =
       log->list_fields[CSDS_TIMESTAMP_INDEX].size + CSDS_HEADER_SIZE;
 
   /* Allocate a chunk of memory in the logfile of the right size. */
   size_t offset_new;
-  char *buff = (char *)csds_logfile_writer_get(logfile, size, &offset_new);
+  char* buff = (char*)csds_logfile_writer_get(logfile, size, &offset_new);
 
   /* Write the header. */
   unsigned int mask = log->list_fields[CSDS_TIMESTAMP_INDEX].mask;
@@ -668,7 +668,7 @@ void csds_log_timestamp(struct csds_writer *log, integertime_t timestamp,
  * @param log The #csds_writer
  * @param e The #engine.
  */
-void csds_ensure_size(struct csds_writer *log, const struct engine *e) {
+void csds_ensure_size(struct csds_writer* log, const struct engine* e) {
 
   ticks tic = getticks();
 
@@ -700,7 +700,7 @@ void csds_ensure_size(struct csds_writer *log, const struct engine *e) {
  * @param log The #csds_writer.
  * @param filename The filename of the logfile file.
  */
-void csds_get_logfile_name(struct csds_writer *log, char *filename) {
+void csds_get_logfile_name(struct csds_writer* log, char* filename) {
   sprintf(filename, "%s_%04i.dump", log->base_name, engine_rank);
 }
 
@@ -710,7 +710,7 @@ void csds_get_logfile_name(struct csds_writer *log, char *filename) {
  * @param log The #csds_writer.
  * @param e The #engine.
  */
-void csds_init_masks(struct csds_writer *log, const struct engine *e) {
+void csds_init_masks(struct csds_writer* log, const struct engine* e) {
   /* Set the pointers to 0 */
   for (int i = 0; i < swift_type_count; i++) {
     log->field_pointers[i] = NULL;
@@ -741,7 +741,7 @@ void csds_init_masks(struct csds_writer *log, const struct engine *e) {
   /* Initialize all the particles types */
   for (int i = 0; i < swift_type_count; i++) {
     int tmp_num_fields = 0;
-    struct csds_field *current = &list[num_fields];
+    struct csds_field* current = &list[num_fields];
     enum mask_for_type mask_for_type;
 
     /* Set the pointer */
@@ -817,7 +817,7 @@ void csds_init_masks(struct csds_writer *log, const struct engine *e) {
     if (list[i].mask != 0) {
       continue;
     }
-    const char *name = list[i].name;
+    const char* name = list[i].name;
     list[i].mask = 1 << mask;
 
     /* Check if the field exists in the other particle type. */
@@ -845,7 +845,7 @@ void csds_init_masks(struct csds_writer *log, const struct engine *e) {
 
   /* Save the data */
   size_t size_list = sizeof(struct csds_field) * num_fields;
-  log->list_fields = (struct csds_field *)malloc(size_list);
+  log->list_fields = (struct csds_field*)malloc(size_list);
   memcpy(log->list_fields, list, size_list);
 
   /* Update the pointers */
@@ -874,8 +874,8 @@ void csds_init_masks(struct csds_writer *log, const struct engine *e) {
  * @param e The #engine.
  * @param params The #swift_params
  */
-void csds_init(struct csds_writer *log, const struct engine *e,
-               struct swift_params *params) {
+void csds_init(struct csds_writer* log, const struct engine* e,
+               struct swift_params* params) {
 
   ticks tic = getticks();
 
@@ -930,7 +930,7 @@ void csds_init(struct csds_writer *log, const struct engine *e,
  *
  * @param log The #csds_writer
  */
-void csds_free(struct csds_writer *log) {
+void csds_free(struct csds_writer* log) {
   csds_logfile_writer_close(&log->logfile);
 
   free(log->list_fields);
@@ -944,18 +944,18 @@ void csds_free(struct csds_writer *log) {
  * @param log The #csds_writer
  *
  */
-void csds_write_file_header(struct csds_writer *log) {
+void csds_write_file_header(struct csds_writer* log) {
 
   /* get required variables. */
-  struct csds_logfile_writer *logfile = &log->logfile;
+  struct csds_logfile_writer* logfile = &log->logfile;
 
   /* Write the beginning of the header */
-  char *offset_first_record =
+  char* offset_first_record =
       csds_logfile_writer_write_begining_header(logfile);
 
   /* placeholder to write the number of unique masks. */
   size_t file_offset = 0;
-  char *skip_unique_masks =
+  char* skip_unique_masks =
       csds_logfile_writer_get(logfile, sizeof(unsigned int), &file_offset);
 
   /* write masks. */
@@ -979,24 +979,24 @@ void csds_write_file_header(struct csds_writer *log) {
 
     // mask name.
     csds_write_data(logfile, &file_offset, CSDS_STRING_SIZE,
-                    (const char *)&log->list_fields[i].name);
+                    (const char*)&log->list_fields[i].name);
 
     // mask size.
     csds_write_data(logfile, &file_offset, sizeof(unsigned int),
-                    (const char *)&log->list_fields[i].size);
+                    (const char*)&log->list_fields[i].size);
   }
   memcpy(skip_unique_masks, &unique_mask, sizeof(unsigned int));
 
   /* Write the number of fields per particle */
   csds_write_data(logfile, &file_offset, sizeof(log->number_fields),
-                  (const char *)log->number_fields);
+                  (const char*)log->number_fields);
 
   /* Now write the order for each particle type */
   for (int i = 0; i < swift_type_count; i++) {
     int number_fields = log->number_fields[i];
     if (number_fields == 0) continue;
 
-    struct csds_field *field = log->field_pointers[i];
+    struct csds_field* field = log->field_pointers[i];
 
     /* Loop over all the fields from this particle type */
     for (int k = 0; k < number_fields; k++) {
@@ -1005,7 +1005,7 @@ void csds_write_file_header(struct csds_writer *log) {
       /* Find the index among all the fields. */
       for (int m = 0; m < log->total_number_fields; m++) {
         if (log->list_fields[m].mask == current_mask) {
-          csds_write_data(logfile, &file_offset, sizeof(int), (const char *)&m);
+          csds_write_data(logfile, &file_offset, sizeof(int), (const char*)&m);
           break;
         }
       }
@@ -1027,7 +1027,7 @@ void csds_write_file_header(struct csds_writer *log) {
  * @return Number of bytes read
  */
 __attribute__((always_inline)) INLINE static int csds_read_record_header(
-    const char *buff, unsigned int *mask, size_t *offset, size_t cur_offset) {
+    const char* buff, unsigned int* mask, size_t* offset, size_t cur_offset) {
   memcpy(mask, buff, CSDS_MASK_SIZE);
   buff += CSDS_MASK_SIZE;
 
@@ -1048,8 +1048,8 @@ __attribute__((always_inline)) INLINE static int csds_read_record_header(
  *
  * @return The mask containing the values read.
  */
-int csds_read_part(const struct csds_writer *log, struct part *p,
-                   size_t *offset, const char *buff) {
+int csds_read_part(const struct csds_writer* log, struct part* p,
+                   size_t* offset, const char* buff) {
 
   /* Jump to the offset. */
   buff = &buff[*offset];
@@ -1063,7 +1063,7 @@ int csds_read_part(const struct csds_writer *log, struct part *p,
     if ((mask & log->list_fields[i].mask) &&
         (log->list_fields[i].type == mask_for_gas)) {
 
-      const char *name = log->list_fields[i].name;
+      const char* name = log->list_fields[i].name;
       if (strcmp("Coordinates", name) == 0) {
         memcpy(p->x, buff, 3 * sizeof(double));
         buff += 3 * sizeof(double);
@@ -1111,8 +1111,8 @@ int csds_read_part(const struct csds_writer *log, struct part *p,
  *
  * @return The mask containing the values read.
  */
-int csds_read_gpart(const struct csds_writer *log, struct gpart *p,
-                    size_t *offset, const char *buff) {
+int csds_read_gpart(const struct csds_writer* log, struct gpart* p,
+                    size_t* offset, const char* buff) {
 
   /* Jump to the offset. */
   buff = &buff[*offset];
@@ -1126,7 +1126,7 @@ int csds_read_gpart(const struct csds_writer *log, struct gpart *p,
     if ((mask & log->list_fields[i].mask) &&
         (log->list_fields[i].type == mask_for_dark_matter)) {
 
-      const char *name = log->list_fields[i].name;
+      const char* name = log->list_fields[i].name;
       if (strcmp("Coordinates", name) == 0) {
         memcpy(p->x, buff, 3 * sizeof(double));
         buff += 3 * sizeof(double);
@@ -1164,8 +1164,8 @@ int csds_read_gpart(const struct csds_writer *log, struct gpart *p,
  *
  * @return The mask containing the values read.
  */
-int csds_read_timestamp(const struct csds_writer *log, integertime_t *t,
-                        double *time, size_t *offset, const char *buff) {
+int csds_read_timestamp(const struct csds_writer* log, integertime_t* t,
+                        double* time, size_t* offset, const char* buff) {
 
   /* Jump to the offset. */
   buff = &buff[*offset];
@@ -1200,12 +1200,12 @@ int csds_read_timestamp(const struct csds_writer *log, integertime_t *t,
  * @param log the struct
  * @param stream the file stream
  */
-void csds_struct_dump(const struct csds_writer *log, FILE *stream) {
-  restart_write_blocks((void *)log, sizeof(struct csds_writer), 1, stream,
+void csds_struct_dump(const struct csds_writer* log, FILE* stream) {
+  restart_write_blocks((void*)log, sizeof(struct csds_writer), 1, stream,
                        "csds", "csds");
 
   /* Write the masks */
-  restart_write_blocks((void *)log->list_fields, sizeof(struct csds_field),
+  restart_write_blocks((void*)log->list_fields, sizeof(struct csds_field),
                        log->total_number_fields, stream, "csds_masks",
                        "csds_masks");
 }
@@ -1217,17 +1217,17 @@ void csds_struct_dump(const struct csds_writer *log, FILE *stream) {
  * @param csds the struct
  * @param stream the file stream
  */
-void csds_struct_restore(struct csds_writer *log, FILE *stream) {
+void csds_struct_restore(struct csds_writer* log, FILE* stream) {
   /* Read the block */
-  restart_read_blocks((void *)log, sizeof(struct csds_writer), 1, stream, NULL,
+  restart_read_blocks((void*)log, sizeof(struct csds_writer), 1, stream, NULL,
                       "csds");
 
   /* Read the masks */
-  const struct csds_field *old_list_fields = log->list_fields;
-  log->list_fields = (struct csds_field *)malloc(sizeof(struct csds_field) *
-                                                 log->total_number_fields);
+  const struct csds_field* old_list_fields = log->list_fields;
+  log->list_fields = (struct csds_field*)malloc(sizeof(struct csds_field) *
+                                                log->total_number_fields);
 
-  restart_read_blocks((void *)log->list_fields, sizeof(struct csds_field),
+  restart_read_blocks((void*)log->list_fields, sizeof(struct csds_field),
                       log->total_number_fields, stream, NULL, "csds_masks");
 
   /* Restore the pointers */

@@ -23,12 +23,12 @@
 /* Includes. */
 #include "swift.h"
 
-void select_output_engine_init(struct engine *e, struct space *s,
-                               struct cosmology *cosmo,
-                               struct swift_params *params,
-                               struct output_options *output,
-                               struct cooling_function_data *cooling,
-                               struct hydro_props *hydro_properties) {
+void select_output_engine_init(struct engine* e, struct space* s,
+                               struct cosmology* cosmo,
+                               struct swift_params* params,
+                               struct output_options* output,
+                               struct cooling_function_data* cooling,
+                               struct hydro_props* hydro_properties) {
   /* set structures */
   e->s = s;
   e->cooling_func = cooling;
@@ -48,10 +48,10 @@ void select_output_engine_init(struct engine *e, struct space *s,
   e->snapshot_compression = 0;
 };
 
-void select_output_space_init(struct space *s, double *dim, int periodic,
+void select_output_space_init(struct space* s, double* dim, int periodic,
                               size_t Ngas, size_t Nspart, size_t Ngpart,
-                              struct part *parts, struct spart *sparts,
-                              struct gpart *gparts) {
+                              struct part* parts, struct spart* sparts,
+                              struct gpart* gparts) {
   s->periodic = periodic;
   for (int i = 0; i < 3; i++) {
     s->dim[i] = dim[i];
@@ -67,19 +67,19 @@ void select_output_space_init(struct space *s, double *dim, int periodic,
   s->sparts = sparts;
 
   /* Allocate the extra parts array for the gas particles. */
-  if (posix_memalign((void **)&s->xparts, xpart_align,
+  if (posix_memalign((void**)&s->xparts, xpart_align,
                      Ngas * sizeof(struct xpart)) != 0)
     error("Failed to allocate xparts.");
   bzero(s->xparts, Ngas * sizeof(struct xpart));
 };
 
-void select_output_space_clean(struct space *s) { free(s->xparts); };
+void select_output_space_clean(struct space* s) { free(s->xparts); };
 
-void select_output_engine_clean(struct engine *e) {
+void select_output_engine_clean(struct engine* e) {
   threadpool_clean(&e->threadpool);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -91,18 +91,18 @@ int main(int argc, char *argv[]) {
   int flag_entropy_ICs = -1;
   int periodic = 1;
   double dim[3];
-  struct part *parts = NULL;
-  struct gpart *gparts = NULL;
-  struct spart *sparts = NULL;
-  struct bpart *bparts = NULL;
-  struct sink *sinks = NULL;
+  struct part* parts = NULL;
+  struct gpart* gparts = NULL;
+  struct spart* sparts = NULL;
+  struct bpart* bparts = NULL;
+  struct sink* sinks = NULL;
   struct ic_info ics_metadata;
   strcpy(ics_metadata.group_name, "NoSUCH");
 
   /* parse parameters */
   message("Reading parameters.");
   struct swift_params param_file;
-  const char *input_file = "selectOutputParameters.yml";
+  const char* input_file = "selectOutputParameters.yml";
   parser_read_file(input_file, &param_file);
 
   struct output_options output_options;

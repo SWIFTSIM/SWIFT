@@ -2487,8 +2487,8 @@ gas_density_from_pressure_and_internal_energy(
  * @param params The parsed parameters
  */
 __attribute__((always_inline)) INLINE static void eos_init(
-    struct eos_parameters *e, const struct phys_const *phys_const,
-    const struct unit_system *us, struct swift_params *params) {
+    struct eos_parameters* e, const struct phys_const* phys_const,
+    const struct unit_system* us, struct swift_params* params) {
 
   // Prepare any/all requested EoS: Set the parameters and material IDs, load
   // tables etc., and convert to internal units
@@ -2703,7 +2703,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
  * @param e The #eos_parameters
  */
 __attribute__((always_inline)) INLINE static void eos_print(
-    const struct eos_parameters *e) {
+    const struct eos_parameters* e) {
 
   message("Equation of state: Planetary.");
 }
@@ -2716,7 +2716,7 @@ __attribute__((always_inline)) INLINE static void eos_print(
  * @param e The #eos_parameters
  */
 __attribute__((always_inline)) INLINE static void eos_print_snapshot(
-    hid_t h_grpsph, const struct eos_parameters *e) {
+    hid_t h_grpsph, const struct eos_parameters* e) {
 
   io_write_attribute_s(h_grpsph, "Equation of state", "Planetary");
 }

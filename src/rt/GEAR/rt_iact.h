@@ -47,9 +47,9 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_injection_prep(const float r2, const float dx[3],
                                      const float hi, const float hj,
-                                     struct spart *si, const struct part *pj,
-                                     const struct cosmology *cosmo,
-                                     const struct rt_props *rt_props) {
+                                     struct spart* si, const struct part* pj,
+                                     const struct cosmology* cosmo,
+                                     const struct rt_props* rt_props) {
 
   /* If the star doesn't have any neighbours, we
    * have nothing to do here. */
@@ -98,8 +98,8 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, const float a,
-    const float H, const struct rt_props *rt_props) {
+    struct spart* restrict si, struct part* restrict pj, const float a,
+    const float H, const struct rt_props* rt_props) {
 
   /* If the star doesn't have any neighbours, we
    * have nothing to do here. */
@@ -208,11 +208,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H, int mode) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  const char *func_name = (mode == 1) ? "sym flux iact" : "nonsym flux iact";
+  const char* func_name = (mode == 1) ? "sym flux iact" : "nonsym flux iact";
   rt_debug_sequence_check(pi, 3, func_name);
   pi->rt_data.debug_calls_iact_transport_interaction += 1;
 
@@ -326,8 +326,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
   const float xfac = -hi / (hi + hj);
   const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
 
-  struct rt_part_data *restrict rti = &pi->rt_data;
-  struct rt_part_data *restrict rtj = &pj->rt_data;
+  struct rt_part_data* restrict rti = &pi->rt_data;
+  struct rt_part_data* restrict rtj = &pj->rt_data;
   /* Get the time step for the flux exchange. This is always the smallest time
    * step among the two particles. */
   const float mindt =
@@ -390,7 +390,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   runner_iact_rt_flux_common(r2, dx, hi, hj, pi, pj, a, H, 1);
@@ -415,8 +415,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_transport(const float r2, const float dx[3],
                                 const float hi, const float hj,
-                                struct part *restrict pi,
-                                struct part *restrict pj, const float a,
+                                struct part* restrict pi,
+                                struct part* restrict pj, const float a,
                                 const float H) {
 
   runner_iact_rt_flux_common(r2, dx, hi, hj, pi, pj, a, H, 0);
@@ -440,7 +440,7 @@ runner_iact_nonsym_rt_transport(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   rt_gradients_collect(r2, dx, hi, hj, pi, pj);
@@ -466,8 +466,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_gradient(const float r2, const float dx[3],
                                const float hi, const float hj,
-                               struct part *restrict pi,
-                               struct part *restrict pj, const float a,
+                               struct part* restrict pi,
+                               struct part* restrict pj, const float a,
                                const float H) {
 
   rt_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);

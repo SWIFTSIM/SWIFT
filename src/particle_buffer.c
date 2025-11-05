@@ -45,8 +45,8 @@
  * @param name Name to use when logging memory allocations
  *
  */
-void particle_buffer_init(struct particle_buffer *buffer, size_t element_size,
-                          size_t elements_per_block, char *name) {
+void particle_buffer_init(struct particle_buffer* buffer, size_t element_size,
+                          size_t elements_per_block, char* name) {
 
   buffer->element_size = element_size;
   buffer->elements_per_block = elements_per_block;
@@ -67,11 +67,11 @@ void particle_buffer_init(struct particle_buffer *buffer, size_t element_size,
  * @param buffer The #particle_buffer
  *
  */
-void particle_buffer_free(struct particle_buffer *buffer) {
+void particle_buffer_free(struct particle_buffer* buffer) {
 
-  struct particle_buffer_block *block = buffer->first_block;
+  struct particle_buffer_block* block = buffer->first_block;
   while (block) {
-    struct particle_buffer_block *next = block->next;
+    struct particle_buffer_block* next = block->next;
     swift_free(buffer->name, block->data);
     free(block);
     block = next;
@@ -90,7 +90,7 @@ void particle_buffer_free(struct particle_buffer *buffer) {
  * @param buffer The #particle_buffer
  *
  */
-void particle_buffer_empty(struct particle_buffer *buffer) {
+void particle_buffer_empty(struct particle_buffer* buffer) {
 
   const size_t element_size = buffer->element_size;
   const size_t elements_per_block = buffer->elements_per_block;
@@ -106,22 +106,22 @@ void particle_buffer_empty(struct particle_buffer *buffer) {
  * @param buffer The #particle_buffer
  * @param previous_block The previous final block in the linked list
  */
-static struct particle_buffer_block *allocate_block(
-    struct particle_buffer *buffer,
-    struct particle_buffer_block *previous_block) {
+static struct particle_buffer_block* allocate_block(
+    struct particle_buffer* buffer,
+    struct particle_buffer_block* previous_block) {
 
   const size_t element_size = buffer->element_size;
   const size_t elements_per_block = buffer->elements_per_block;
 
   /* Allocate the struct */
-  struct particle_buffer_block *block = (struct particle_buffer_block *)malloc(
+  struct particle_buffer_block* block = (struct particle_buffer_block*)malloc(
       sizeof(struct particle_buffer_block));
   if (!block)
     error("Failed to allocate new particle buffer block: %s", buffer->name);
 
   /* Allocate data buffer */
-  char *data;
-  if (swift_memalign(buffer->name, (void **)&data, SWIFT_STRUCT_ALIGNMENT,
+  char* data;
+  if (swift_memalign(buffer->name, (void**)&data, SWIFT_STRUCT_ALIGNMENT,
                      element_size * elements_per_block) != 0) {
     error("Failed to allocate particle buffer data block: %s", buffer->name);
   }
@@ -145,7 +145,7 @@ static struct particle_buffer_block *allocate_block(
  * @param data The element to append
  *
  */
-void particle_buffer_append(struct particle_buffer *buffer, void *data) {
+void particle_buffer_append(struct particle_buffer* buffer, void* data) {
 
   const size_t element_size = buffer->element_size;
   const size_t elements_per_block = buffer->elements_per_block;
@@ -154,7 +154,7 @@ void particle_buffer_append(struct particle_buffer *buffer, void *data) {
 
     /* Find the current block (atomic because last_block may be modified by
      * other threads) */
-    struct particle_buffer_block *block =
+    struct particle_buffer_block* block =
         __atomic_load_n(&buffer->last_block, __ATOMIC_SEQ_CST);
 
     /* It may be that no blocks exist yet */
@@ -189,7 +189,7 @@ void particle_buffer_append(struct particle_buffer *buffer, void *data) {
       /* Check no-one else already did it before we got the lock */
       if (!block->next) {
         /* Allocate and initialize the new block */
-        struct particle_buffer_block *new_block = allocate_block(buffer, block);
+        struct particle_buffer_block* new_block = allocate_block(buffer, block);
         __atomic_thread_fence(__ATOMIC_SEQ_CST);
         /* After this store other threads will write to the new block,
            so all initialization must complete before this. */
@@ -211,9 +211,9 @@ void particle_buffer_append(struct particle_buffer *buffer, void *data) {
  * @param data Returns pointer to data in this block
  *
  */
-void particle_buffer_iterate(struct particle_buffer *buffer,
-                             struct particle_buffer_block **block,
-                             size_t *num_elements, void **data) {
+void particle_buffer_iterate(struct particle_buffer* buffer,
+                             struct particle_buffer_block** block,
+                             size_t* num_elements, void** data) {
 
   if (!*block) {
     *block = buffer->first_block;
@@ -238,10 +238,10 @@ void particle_buffer_iterate(struct particle_buffer *buffer,
  * @param buffer The #particle_buffer
  *
  */
-size_t particle_buffer_num_elements(struct particle_buffer *buffer) {
+size_t particle_buffer_num_elements(struct particle_buffer* buffer) {
 
   size_t num_elements = 0;
-  struct particle_buffer_block *block = buffer->first_block;
+  struct particle_buffer_block* block = buffer->first_block;
   while (block) {
     if (block->num_elements < buffer->elements_per_block) {
       /* Non-full block, so block->num_elements is correct */
@@ -261,10 +261,10 @@ size_t particle_buffer_num_elements(struct particle_buffer *buffer) {
  * @param buffer The #particle_buffer
  *
  */
-size_t particle_buffer_memory_use(struct particle_buffer *buffer) {
+size_t particle_buffer_memory_use(struct particle_buffer* buffer) {
 
   size_t num_bytes = 0;
-  struct particle_buffer_block *block = buffer->first_block;
+  struct particle_buffer_block* block = buffer->first_block;
   while (block) {
     num_bytes += (buffer->elements_per_block * buffer->element_size);
     block = block->next;

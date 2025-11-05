@@ -38,7 +38,7 @@
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_drift_part(struct runner *r, struct cell *c, int timer) {
+void runner_do_drift_part(struct runner* r, struct cell* c, int timer) {
 
   TIMER_TIC;
 
@@ -54,7 +54,7 @@ void runner_do_drift_part(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer) {
+void runner_do_drift_gpart(struct runner* r, struct cell* c, int timer) {
 
   TIMER_TIC;
 
@@ -70,7 +70,7 @@ void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_drift_spart(struct runner *r, struct cell *c, int timer) {
+void runner_do_drift_spart(struct runner* r, struct cell* c, int timer) {
 
   TIMER_TIC;
 
@@ -86,7 +86,7 @@ void runner_do_drift_spart(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer) {
+void runner_do_drift_bpart(struct runner* r, struct cell* c, int timer) {
 
   TIMER_TIC;
 
@@ -102,7 +102,7 @@ void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_drift_sink(struct runner *r, struct cell *c, int timer) {
+void runner_do_drift_sink(struct runner* r, struct cell* c, int timer) {
 
   TIMER_TIC;
 

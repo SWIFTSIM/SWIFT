@@ -29,8 +29,8 @@
 #include "../src/atomic.h"
 #include "../src/threadpool.h"
 
-void map_function_first(void *map_data, int num_elements, void *extra_data) {
-  const int *inputs = (int *)map_data;
+void map_function_first(void* map_data, int num_elements, void* extra_data) {
+  const int* inputs = (int*)map_data;
   for (int ind = 0; ind < num_elements; ind++) {
     int input = inputs[ind];
     usleep(rand() % 1000000);
@@ -39,8 +39,8 @@ void map_function_first(void *map_data, int num_elements, void *extra_data) {
   }
 }
 
-void map_function_second(void *map_data, int num_elements, void *extra_data) {
-  const int *inputs = (int *)map_data;
+void map_function_second(void* map_data, int num_elements, void* extra_data) {
+  const int* inputs = (int*)map_data;
   for (int ind = 0; ind < num_elements; ind++) {
     int input = inputs[ind];
     usleep(rand() % 1000000);
@@ -49,14 +49,14 @@ void map_function_second(void *map_data, int num_elements, void *extra_data) {
   }
 }
 
-void map_function_check_uniform(void *map_data, int num_elements,
-                                void *extra_data) {
-  const int *inputs = (int *)map_data;
+void map_function_check_uniform(void* map_data, int num_elements,
+                                void* extra_data) {
+  const int* inputs = (int*)map_data;
   int count = inputs[0];
   if (num_elements == 1) {
     /* Single element. Sum this in the extra_data counter. Should
      * be the sum of counts when threadpool is completed. */
-    atomic_add((int *)extra_data, count);
+    atomic_add((int*)extra_data, count);
   } else {
     for (int ind = 1; ind < num_elements; ind++) {
       if (inputs[ind] != count + 1) {
@@ -70,7 +70,7 @@ void map_function_check_uniform(void *map_data, int num_elements,
   printf("    map_function_check_uniform handled %d elements\n", num_elements);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   // Some constants for this test.
   const int N = 20;

@@ -38,7 +38,7 @@
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj) {
+    struct part* restrict pi, struct part* restrict pj) {
 
   rt_debug_sequence_check(pi, 2, __func__);
   rt_debug_sequence_check(pj, 2, __func__);
@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj) {
+    struct part* restrict pi, struct part* restrict pj) {
 
   rt_debug_sequence_check(pi, 2, __func__);
   pi->rt_data.debug_calls_iact_gradient_interaction += 1;

@@ -26,14 +26,14 @@
 #include <stdlib.h>
 
 /* API. */
-void memuse_use(long *size, long *resident, long *shared, long *text,
-                long *data, long *library, long *dirty);
-const char *memuse_process(int inmb);
+void memuse_use(long* size, long* resident, long* shared, long* text,
+                long* data, long* library, long* dirty);
+const char* memuse_process(int inmb);
 
 #ifdef SWIFT_MEMUSE_REPORTS
-void memuse_log_dump(const char *filename);
+void memuse_log_dump(const char* filename);
 void memuse_log_dump_error(int rank);
-void memuse_log_allocation(const char *label, void *ptr, int allocated,
+void memuse_log_allocation(const char* label, void* ptr, int allocated,
                            size_t size);
 #else
 
@@ -51,7 +51,7 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
  * @param memptr pointer to the memory that will leak.
  */
 __attribute__((always_inline)) inline void swift_ignore_leak(
-    const void *memptr) {
+    const void* memptr) {
   __lsan_ignore_object(memptr);
 }
 #else
@@ -71,8 +71,8 @@ __attribute__((always_inline)) inline void swift_ignore_leak(
  * @param size the quantity of bytes to allocate.
  * @result zero on success, otherwise an error code.
  */
-__attribute__((always_inline)) inline int swift_memalign(const char *label,
-                                                         void **memptr,
+__attribute__((always_inline)) inline int swift_memalign(const char* label,
+                                                         void** memptr,
                                                          size_t alignment,
                                                          size_t size) {
   int result = posix_memalign(memptr, alignment, size);
@@ -98,9 +98,9 @@ __attribute__((always_inline)) inline int swift_memalign(const char *label,
  * @param size the quantity of bytes to allocate.
  * @result pointer to the allocated memory or NULL on failure.
  */
-__attribute__((always_inline)) inline void *swift_malloc(const char *label,
+__attribute__((always_inline)) inline void* swift_malloc(const char* label,
                                                          size_t size) {
-  void *memptr = malloc(size);
+  void* memptr = malloc(size);
 #ifdef SWIFT_MEMUSE_REPORTS
   if (memptr != NULL) {
     memuse_log_allocation(label, memptr, 1, size);
@@ -124,10 +124,10 @@ __attribute__((always_inline)) inline void *swift_malloc(const char *label,
  * @param size the size of each element in bytes.
  * @result pointer to the allocated memory or NULL on failure.
  */
-__attribute__((always_inline)) inline void *swift_calloc(const char *label,
+__attribute__((always_inline)) inline void* swift_calloc(const char* label,
                                                          size_t nmemb,
                                                          size_t size) {
-  void *memptr = calloc(nmemb, size);
+  void* memptr = calloc(nmemb, size);
 #ifdef SWIFT_MEMUSE_REPORTS
   if (memptr != NULL) {
     memuse_log_allocation(label, memptr, 1, size * nmemb);
@@ -151,10 +151,10 @@ __attribute__((always_inline)) inline void *swift_calloc(const char *label,
  * @param size the quantity of bytes that should be available.
  * @result pointer to the allocated memory or NULL on failure.
  */
-__attribute__((always_inline)) inline void *swift_realloc(const char *label,
-                                                          void *ptr,
+__attribute__((always_inline)) inline void* swift_realloc(const char* label,
+                                                          void* ptr,
                                                           size_t size) {
-  void *memptr = realloc(ptr, size);
+  void* memptr = realloc(ptr, size);
 #ifdef SWIFT_MEMUSE_REPORTS
   if (memptr != NULL) {
 
@@ -185,8 +185,8 @@ __attribute__((always_inline)) inline void *swift_realloc(const char *label,
  * @param label a symbolic label for the memory, i.e. "parts".
  * @param ptr pointer to the allocated memory.
  */
-__attribute__((always_inline)) inline void swift_free(const char *label,
-                                                      void *ptr) {
+__attribute__((always_inline)) inline void swift_free(const char* label,
+                                                      void* ptr) {
 #ifdef SWIFT_MEMUSE_REPORTS
   memuse_log_allocation(label, ptr, 0, 0);
 #endif

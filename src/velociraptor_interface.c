@@ -149,7 +149,7 @@ struct siminfo {
   int numcellsperdim;
 
   /*! Locations of top-level cells. */
-  struct cell_loc *cell_loc;
+  struct cell_loc* cell_loc;
 
   /*! Top-level cell width. */
   double cellwidth[3];
@@ -158,7 +158,7 @@ struct siminfo {
   double icellwidth[3];
 
   /*! Holds the node ID of each top-level cell. */
-  int *cellnodeids;
+  int* cellnodeids;
 
   /*! Is this a cosmological simulation? */
   int icosmologicalsim;
@@ -208,24 +208,24 @@ struct vr_return_data {
   int num_gparts_in_groups;
 
   /*! Assignment of particles to groups (must be freed by Swift, may be NULL) */
-  struct groupinfo *group_info;
+  struct groupinfo* group_info;
 
   /*! Number of most bound particles returned */
   int num_most_bound;
 
   /*! Swift gpart indexes of most bound particles (must be freed by Swift, may
    * be NULL) */
-  int *most_bound_index;
+  int* most_bound_index;
 };
 
-int InitVelociraptor(char *config_name, struct unitinfo unit_info,
+int InitVelociraptor(char* config_name, struct unitinfo unit_info,
                      struct siminfo sim_info, const int numthreads);
 
 struct vr_return_data InvokeVelociraptor(
-    const int snapnum, char *output_name, struct cosmoinfo cosmo_info,
+    const int snapnum, char* output_name, struct cosmoinfo cosmo_info,
     struct siminfo sim_info, const size_t num_gravity_parts,
     const size_t num_hydro_parts, const size_t num_star_parts,
-    struct swift_vel_part *swift_parts, const int *cell_node_ids,
+    struct swift_vel_part* swift_parts, const int* cell_node_ids,
     const int numthreads, const int return_group_flags,
     const int return_most_bound);
 
@@ -235,8 +235,8 @@ struct vr_return_data InvokeVelociraptor(
  * @brief Temporary structure used for the data copy mapper.
  */
 struct velociraptor_copy_data {
-  const struct engine *e;
-  struct swift_vel_part *swift_parts;
+  const struct engine* e;
+  struct swift_vel_part* swift_parts;
 };
 
 /**
@@ -246,31 +246,31 @@ struct velociraptor_copy_data {
  * @param nr_gparts The number of #gpart.
  * @param extra_data Pointer to the #engine and to the array to fill.
  */
-void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
-                                           void *extra_data) {
+void velociraptor_convert_particles_mapper(void* map_data, int nr_gparts,
+                                           void* extra_data) {
 
   /* Unpack the data */
-  struct gpart *restrict gparts = (struct gpart *)map_data;
-  struct velociraptor_copy_data *data =
-      (struct velociraptor_copy_data *)extra_data;
-  const struct engine *e = data->e;
-  const struct space *s = e->s;
-  struct swift_vel_part *swift_parts =
+  struct gpart* restrict gparts = (struct gpart*)map_data;
+  struct velociraptor_copy_data* data =
+      (struct velociraptor_copy_data*)extra_data;
+  const struct engine* e = data->e;
+  const struct space* s = e->s;
+  struct swift_vel_part* swift_parts =
       data->swift_parts + (ptrdiff_t)(gparts - s->gparts);
   const ptrdiff_t index_offset = gparts - s->gparts;
 
   /* Handle on the other particle types */
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
-  const struct spart *sparts = s->sparts;
-  const struct bpart *bparts = s->bparts;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = s->xparts;
+  const struct spart* sparts = s->sparts;
+  const struct bpart* bparts = s->bparts;
 
   /* Handle on the physics modules */
-  const struct cosmology *cosmo = e->cosmology;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct unit_system *us = e->internal_units;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct cooling_function_data *cool_func = e->cooling_func;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct hydro_props* hydro_props = e->hydro_properties;
+  const struct unit_system* us = e->internal_units;
+  const struct phys_const* phys_const = e->physical_constants;
+  const struct cooling_function_data* cool_func = e->cooling_func;
 
   /* Convert particle properties into VELOCIraptor units.
    * VELOCIraptor wants:
@@ -302,8 +302,8 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
     switch (gparts[i].type) {
 
       case swift_type_gas: {
-        const struct part *p = &parts[-gparts[i].id_or_neg_offset];
-        const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
+        const struct part* p = &parts[-gparts[i].id_or_neg_offset];
+        const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
 
         convert_part_pos(e, p, xp, swift_parts[i].x);
         convert_part_vel(e, p, xp, swift_parts[i].v);
@@ -314,7 +314,7 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
       } break;
 
       case swift_type_stars: {
-        const struct spart *sp = &sparts[-gparts[i].id_or_neg_offset];
+        const struct spart* sp = &sparts[-gparts[i].id_or_neg_offset];
 
         convert_spart_pos(e, sp, swift_parts[i].x);
         convert_spart_vel(e, sp, swift_parts[i].v);
@@ -324,7 +324,7 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
       } break;
 
       case swift_type_black_hole: {
-        const struct bpart *bp = &bparts[-gparts[i].id_or_neg_offset];
+        const struct bpart* bp = &bparts[-gparts[i].id_or_neg_offset];
 
         convert_bpart_pos(e, bp, swift_parts[i].x);
         convert_bpart_vel(e, bp, swift_parts[i].v);
@@ -356,13 +356,13 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
  *
  * @param e The #engine.
  */
-void velociraptor_init(struct engine *e) {
+void velociraptor_init(struct engine* e) {
 
 #ifdef HAVE_VELOCIRAPTOR
   const ticks tic = getticks();
 
   /* Internal SWIFT units */
-  const struct unit_system *swift_us = e->internal_units;
+  const struct unit_system* swift_us = e->internal_units;
 
   /* CGS units and physical constants in CGS */
   struct unit_system cgs_us;
@@ -455,12 +455,12 @@ void velociraptor_init(struct engine *e) {
  * @param count Number of particles to write on this rank
  *
  */
-void write_orphan_particle_array(hid_t h_file, const char *name,
-                                 const void *buf, const hid_t dtype_id,
-                                 const int ndims, const hsize_t *dims,
-                                 const hsize_t *start, const hsize_t *count,
+void write_orphan_particle_array(hid_t h_file, const char* name,
+                                 const void* buf, const hid_t dtype_id,
+                                 const int ndims, const hsize_t* dims,
+                                 const hsize_t* start, const hsize_t* count,
                                  size_t nr_flagged_all,
-                                 const struct unit_system *snapshot_units,
+                                 const struct unit_system* snapshot_units,
                                  const struct io_props props) {
 
   /* Make dataset transfer property list */
@@ -528,22 +528,22 @@ void write_orphan_particle_array(hid_t h_file, const char *name,
  *
  * @param e The #engine.
  */
-void velociraptor_dump_orphan_particles(struct engine *e,
-                                        char *outputFileName) {
+void velociraptor_dump_orphan_particles(struct engine* e,
+                                        char* outputFileName) {
 
-  const struct space *s = e->s;
+  const struct space* s = e->s;
   const size_t nr_gparts = s->nr_gparts;
-  const struct gpart *gparts = e->s->gparts;
+  const struct gpart* gparts = e->s->gparts;
 
   /* Handle on the other particle types */
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
-  const struct spart *sparts = s->sparts;
-  const struct bpart *bparts = s->bparts;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = s->xparts;
+  const struct spart* sparts = s->sparts;
+  const struct bpart* bparts = s->bparts;
 
   /* Units */
-  const struct unit_system *internal_units = e->internal_units;
-  const struct unit_system *snapshot_units = e->snapshot_units;
+  const struct unit_system* internal_units = e->internal_units;
+  const struct unit_system* snapshot_units = e->snapshot_units;
 
   /* Count how many particles we need to write out */
   size_t nr_flagged = 0;
@@ -552,16 +552,16 @@ void velociraptor_dump_orphan_particles(struct engine *e,
   }
 
   /* Allocate write buffers */
-  double *pos;
-  if (swift_memalign("VR.pos", (void **)&pos, SWIFT_STRUCT_ALIGNMENT,
+  double* pos;
+  if (swift_memalign("VR.pos", (void**)&pos, SWIFT_STRUCT_ALIGNMENT,
                      3 * nr_flagged * sizeof(double)) != 0)
     error("Failed to allocate pos buffer for orphan particles.");
-  float *vel;
-  if (swift_memalign("VR.vel", (void **)&vel, SWIFT_STRUCT_ALIGNMENT,
+  float* vel;
+  if (swift_memalign("VR.vel", (void**)&vel, SWIFT_STRUCT_ALIGNMENT,
                      3 * nr_flagged * sizeof(float)) != 0)
     error("Failed to allocate vel buffer for orphan particles.");
-  long long *ids;
-  if (swift_memalign("VR.ids", (void **)&ids, SWIFT_STRUCT_ALIGNMENT,
+  long long* ids;
+  if (swift_memalign("VR.ids", (void**)&ids, SWIFT_STRUCT_ALIGNMENT,
                      nr_flagged * sizeof(long long)) != 0)
     error("Failed to allocate ids buffer for orphan particles.");
 
@@ -570,20 +570,20 @@ void velociraptor_dump_orphan_particles(struct engine *e,
     if (gparts[i].has_been_most_bound) {
       switch (gparts[i].type) {
         case swift_type_gas: {
-          const struct part *p = &parts[-gparts[i].id_or_neg_offset];
-          const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
+          const struct part* p = &parts[-gparts[i].id_or_neg_offset];
+          const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
           convert_part_pos(e, p, xp, &pos[3 * offset]);
           convert_part_vel(e, p, xp, &vel[3 * offset]);
           ids[offset] = parts[-gparts[i].id_or_neg_offset].id;
         } break;
         case swift_type_stars: {
-          const struct spart *sp = &sparts[-gparts[i].id_or_neg_offset];
+          const struct spart* sp = &sparts[-gparts[i].id_or_neg_offset];
           convert_spart_pos(e, sp, &pos[3 * offset]);
           convert_spart_vel(e, sp, &vel[3 * offset]);
           ids[offset] = sparts[-gparts[i].id_or_neg_offset].id;
         } break;
         case swift_type_black_hole: {
-          const struct bpart *bp = &bparts[-gparts[i].id_or_neg_offset];
+          const struct bpart* bp = &bparts[-gparts[i].id_or_neg_offset];
           convert_bpart_pos(e, bp, &pos[3 * offset]);
           convert_bpart_vel(e, bp, &vel[3 * offset]);
           ids[offset] = bparts[-gparts[i].id_or_neg_offset].id;
@@ -729,17 +729,17 @@ void velociraptor_dump_orphan_particles(struct engine *e,
  * @param e The #engine.
  * @param linked_with_snap Are we running at the same time as a snapshot dump?
  */
-void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
+void velociraptor_invoke(struct engine* e, const int linked_with_snap) {
 
 #ifdef HAVE_VELOCIRAPTOR
 
   /* Handle on the particles */
-  const struct space *s = e->s;
+  const struct space* s = e->s;
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
   const int nr_cells = s->nr_cells;
-  const struct cell *cells_top = s->cells_top;
+  const struct cell* cells_top = s->cells_top;
 
   /* Allow thread to run on any core for the duration of the call to
    * VELOCIraptor so that  when OpenMP threads are spawned
@@ -805,7 +805,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     /* Collect the mass of the non-background gpart */
     double high_res_DM_mass = 0.;
     for (size_t i = 0; i < e->s->nr_gparts; ++i) {
-      const struct gpart *gp = &e->s->gparts[i];
+      const struct gpart* gp = &e->s->gparts[i];
       if (gp->type == swift_type_dark_matter &&
           gp->time_bin != time_bin_inhibited &&
           gp->time_bin != time_bin_not_created) {
@@ -848,7 +848,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Assume all particles have the same mass */
   double DM_mass = 0.;
   for (size_t i = 0; i < e->s->nr_gparts; ++i) {
-    const struct gpart *gp = &e->s->gparts[i];
+    const struct gpart* gp = &e->s->gparts[i];
     if (gp->time_bin != time_bin_inhibited &&
         gp->time_bin != time_bin_not_created) {
       DM_mass = gp->mass;
@@ -880,12 +880,12 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   ticks tic = getticks();
 
   /* Allocate and populate array of cell node IDs and positions. */
-  int *cell_node_ids = NULL;
-  if (swift_memalign("VR.cell_loc", (void **)&sim_info.cell_loc,
+  int* cell_node_ids = NULL;
+  if (swift_memalign("VR.cell_loc", (void**)&sim_info.cell_loc,
                      SWIFT_STRUCT_ALIGNMENT,
                      s->nr_cells * sizeof(struct cell_loc)) != 0)
     error("Failed to allocate top-level cell locations for VELOCIraptor.");
-  if (swift_memalign("VR.cell_nodeID", (void **)&cell_node_ids,
+  if (swift_memalign("VR.cell_nodeID", (void**)&cell_node_ids,
                      SWIFT_STRUCT_ALIGNMENT, nr_cells * sizeof(int)) != 0)
     error("Failed to allocate list of cells node IDs for VELOCIraptor.");
 
@@ -977,8 +977,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Allocate and populate an array of swift_vel_parts to be passed to
    * VELOCIraptor. */
-  struct swift_vel_part *swift_parts = NULL;
-  if (swift_memalign("VR.parts", (void **)&swift_parts, part_align,
+  struct swift_vel_part* swift_parts = NULL;
+  if (swift_memalign("VR.parts", (void**)&swift_parts, part_align,
                      nr_gparts * sizeof(struct swift_vel_part)) != 0)
     error("Failed to allocate array of particles for VELOCIraptor.");
 
@@ -1016,9 +1016,9 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Unpack returned data */
   int num_gparts_in_groups = return_data.num_gparts_in_groups;
-  struct groupinfo *group_info = return_data.group_info;
+  struct groupinfo* group_info = return_data.group_info;
   int num_most_bound = return_data.num_most_bound;
-  int *most_bound_index = return_data.most_bound_index;
+  int* most_bound_index = return_data.most_bound_index;
 
   /* Report that the memory was freed */
   memuse_log_allocation("VR.cell_loc", sim_info.cell_loc, 0, 0);
@@ -1051,12 +1051,12 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Assign the group IDs back to the gparts */
   if (linked_with_snap) {
 
-    if (swift_memalign("VR.group_data", (void **)&s->gpart_group_data,
+    if (swift_memalign("VR.group_data", (void**)&s->gpart_group_data,
                        part_align,
                        nr_gparts * sizeof(struct velociraptor_gpart_data)) != 0)
       error("Failed to allocate array of gpart data for VELOCIraptor i/o.");
 
-    struct velociraptor_gpart_data *data = s->gpart_group_data;
+    struct velociraptor_gpart_data* data = s->gpart_group_data;
 
     /* Zero the array (gparts not in groups have an ID of 0) */
     bzero(data, nr_gparts * sizeof(struct velociraptor_gpart_data));
@@ -1080,7 +1080,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Flag most bound particles */
   if (most_bound_index) {
     for (int i = 0; i < num_most_bound; i++) {
-      struct gpart *const gp = &(e->s->gparts[most_bound_index[i]]);
+      struct gpart* const gp = &(e->s->gparts[most_bound_index[i]]);
       gp->has_been_most_bound = 1;
     }
   }
@@ -1115,17 +1115,17 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
  * option. */
 #ifdef HAVE_DUMMY_VELOCIRAPTOR
 
-int InitVelociraptor(char *config_name, struct unitinfo unit_info,
+int InitVelociraptor(char* config_name, struct unitinfo unit_info,
                      struct siminfo sim_info, const int numthreads) {
   error("This is only a dummy. Call the real one!");
   return 0;
 }
 
 struct vr_return_data InvokeVelociraptor(
-    const int snapnum, char *output_name, struct cosmoinfo cosmo_info,
+    const int snapnum, char* output_name, struct cosmoinfo cosmo_info,
     struct siminfo sim_info, const size_t num_gravity_parts,
     const size_t num_hydro_parts, const size_t num_star_parts,
-    struct swift_vel_part *swift_parts, const int *cell_node_ids,
+    struct swift_vel_part* swift_parts, const int* cell_node_ids,
     const int numthreads, const int return_group_flags,
     const int return_most_bound) {
   error("This is only a dummy. Call the real one!");

@@ -150,7 +150,7 @@ struct potential_derivatives_M2P {
  * @param pot The derivatives of the potential.
  */
 __attribute__((always_inline, nonnull)) INLINE static void
-potential_derivatives_flip_signs(struct potential_derivatives_M2L *pot) {
+potential_derivatives_flip_signs(struct potential_derivatives_M2L* pot) {
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   /* 1st order terms */
@@ -218,7 +218,7 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
                                   const int periodic, const float r_s_inv,
-                                  struct potential_derivatives_M2L *pot) {
+                                  struct potential_derivatives_M2L* pot) {
 
   float Dt_1;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
@@ -517,7 +517,7 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
                                   const int periodic, const float r_s_inv,
-                                  struct potential_derivatives_M2P *pot) {
+                                  struct potential_derivatives_M2P* pot) {
 
   float Dt_1;
   float Dt_2;

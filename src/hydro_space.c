@@ -29,7 +29,7 @@
  */
 #ifdef SHADOWFAX_SPH
 __attribute__((always_inline)) INLINE void hydro_space_init(
-    struct hydro_space *hs, const struct space *s) {
+    struct hydro_space* hs, const struct space* s) {
 
   if (s->periodic) {
     hs->anchor[0] = -0.5f * s->dim[0];
@@ -48,5 +48,5 @@ __attribute__((always_inline)) INLINE void hydro_space_init(
   }
 }
 #else
-void hydro_space_init(struct hydro_space *hs, const struct space *s) {}
+void hydro_space_init(struct hydro_space* hs, const struct space* s) {}
 #endif

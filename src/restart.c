@@ -64,8 +64,8 @@ struct header {
  *
  * @result 0 if the string was large enough.
  */
-int restart_genname(const char *dir, const char *basename, int nodeID,
-                    char *name, int size) {
+int restart_genname(const char* dir, const char* basename, int nodeID,
+                    char* name, int size) {
   int n = snprintf(name, size, "%s/%s_%06d.rst", dir, basename, nodeID);
   return (n >= size);
 }
@@ -82,7 +82,7 @@ int restart_genname(const char *dir, const char *basename, int nodeID,
  *         alphabetically (so make sure the filenames are zero padded to get
  *         numeric ordering). Release by calling restart_locate_free().
  */
-char **restart_locate(const char *dir, const char *basename, int *nfiles) {
+char** restart_locate(const char* dir, const char* basename, int* nfiles) {
   *nfiles = 0;
 
   /* Construct the glob pattern for locating files. */
@@ -91,10 +91,10 @@ char **restart_locate(const char *dir, const char *basename, int *nfiles) {
       FNAMELEN) {
 
     glob_t globbuf;
-    char **files = NULL;
+    char** files = NULL;
     if (glob(pattern, 0, NULL, &globbuf) == 0) {
       *nfiles = globbuf.gl_pathc;
-      files = (char **)malloc(sizeof(char *) * *nfiles);
+      files = (char**)malloc(sizeof(char*) * *nfiles);
       for (int i = 0; i < *nfiles; i++) {
         files[i] = strdup(globbuf.gl_pathv[i]);
       }
@@ -114,7 +114,7 @@ char **restart_locate(const char *dir, const char *basename, int *nfiles) {
  * @param nfiles the number of restart files located.
  * @param files the list of filenames found in call to restart_locate().
  */
-void restart_locate_free(int nfiles, char **files) {
+void restart_locate_free(int nfiles, char** files) {
   for (int i = 0; i < nfiles; i++) {
     free(files[i]);
   }
@@ -127,7 +127,7 @@ void restart_locate_free(int nfiles, char **files) {
  * @param e the engine with our state information.
  * @param filename name of the file to write the restart data to.
  */
-void restart_write(struct engine *e, const char *filename) {
+void restart_write(struct engine* e, const char* filename) {
 
   ticks tic = getticks();
 
@@ -183,21 +183,21 @@ void restart_write(struct engine *e, const char *filename) {
   }
 #endif /* Lustre OST checks. */
 
-  FILE *stream = fopen(filename, "w");
+  FILE* stream = fopen(filename, "w");
   if (stream == NULL)
     error("Failed to open restart file: %s (%s)", filename, strerror(errno));
 
   /* Dump our signature and version. */
-  restart_write_blocks((void *)SWIFT_RESTART_SIGNATURE,
+  restart_write_blocks((void*)SWIFT_RESTART_SIGNATURE,
                        strlen(SWIFT_RESTART_SIGNATURE), 1, stream, "signature",
                        "SWIFT signature");
-  restart_write_blocks((void *)package_version(), strlen(package_version()), 1,
+  restart_write_blocks((void*)package_version(), strlen(package_version()), 1,
                        stream, "version", "SWIFT version");
 
   engine_struct_dump(e, stream);
 
   /* Just an END statement to spot truncated files. */
-  restart_write_blocks((void *)SWIFT_RESTART_END_SIGNATURE,
+  restart_write_blocks((void*)SWIFT_RESTART_END_SIGNATURE,
                        strlen(SWIFT_RESTART_END_SIGNATURE), 1, stream,
                        "endsignature", "SWIFT end signature");
 
@@ -214,11 +214,11 @@ void restart_write(struct engine *e, const char *filename) {
  * @param e the engine to recover from the saved state.
  * @param filename name of the file containing the staved state.
  */
-void restart_read(struct engine *e, const char *filename) {
+void restart_read(struct engine* e, const char* filename) {
 
   const ticks tic = getticks();
 
-  FILE *stream = fopen(filename, "r");
+  FILE* stream = fopen(filename, "r");
   if (stream == NULL)
     error("Failed to open restart file: %s (%s)", filename, strerror(errno));
 
@@ -269,8 +269,8 @@ void restart_read(struct engine *e, const char *filename) {
  *              characters, set to NULL if not required
  * @param errstr a context string to qualify any errors.
  */
-void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
-                         char *label, const char *errstr) {
+void restart_read_blocks(void* ptr, size_t size, size_t nblocks, FILE* stream,
+                         char* label, const char* errstr) {
   if (size > 0) {
     struct header head;
     size_t nread = fread(&head, sizeof(struct header), 1, stream);
@@ -308,8 +308,8 @@ void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
  * @param label a label for the content, can only be 20 characters.
  * @param errstr a context string to qualify any errors.
  */
-void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
-                          const char *label, const char *errstr) {
+void restart_write_blocks(void* ptr, size_t size, size_t nblocks, FILE* stream,
+                          const char* label, const char* errstr) {
   if (size > 0) {
 
     /* Add a preamble header. */
@@ -340,7 +340,7 @@ void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
  *
  * @result 1 if the file was found.
  */
-int restart_stop_now(const char *dir, int cleanup) {
+int restart_stop_now(const char* dir, int cleanup) {
   struct stat buf;
   char filename[FNAMELEN];
   strcpy(filename, dir);
@@ -363,7 +363,7 @@ int restart_stop_now(const char *dir, int cleanup) {
  *
  * @param filename the name of the file to check.
  */
-void restart_save_previous(const char *filename) {
+void restart_save_previous(const char* filename) {
   struct stat buf;
   if (stat(filename, &buf) == 0) {
     char newname[FNAMELEN];
@@ -386,7 +386,7 @@ void restart_save_previous(const char *filename) {
  *
  * @param filename the prefix used when the saved file was created.
  */
-void restart_remove_previous(const char *filename) {
+void restart_remove_previous(const char* filename) {
   struct stat buf;
   char newname[FNAMELEN];
   strcpy(newname, filename);
@@ -406,7 +406,7 @@ void restart_remove_previous(const char *filename) {
  *
  * @param command The command to run in the system's shell.
  */
-void restart_resubmit(const char *command) {
+void restart_resubmit(const char* command) {
 
   /* Let's trust the user's command... */
   const int result = system(command);

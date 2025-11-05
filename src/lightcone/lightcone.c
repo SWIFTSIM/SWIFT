@@ -79,25 +79,25 @@ extern int engine_rank;
  * @param nr_map_types returns the number of map types read
  * @param map_types returns an array of nr_map_types map type structs
  */
-static void read_map_types_file(const char *map_types_file, int *nr_map_types,
-                                struct lightcone_map_type **map_types) {
+static void read_map_types_file(const char* map_types_file, int* nr_map_types,
+                                struct lightcone_map_type** map_types) {
 
   int map_type_nr = 0;
   if (engine_rank == 0) {
 
-    FILE *fd = fopen(map_types_file, "r");
+    FILE* fd = fopen(map_types_file, "r");
     if (!fd)
       error("Failed to open lightcone map types file %s", map_types_file);
 
     /* Count number of non-zero length lines */
     size_t len = 0;
-    char *line = NULL;
+    char* line = NULL;
     int nr_lines = 0;
     while (getline(&line, &len, fd) != -1) nr_lines += 1;
     rewind(fd);
 
     /* Allocate output arrays */
-    *map_types = (struct lightcone_map_type *)calloc(
+    *map_types = (struct lightcone_map_type*)calloc(
         nr_lines, sizeof(struct lightcone_map_type));
 
     /* Read lines */
@@ -123,7 +123,7 @@ static void read_map_types_file(const char *map_types_file, int *nr_map_types,
 #ifdef WITH_MPI
   MPI_Bcast(&map_type_nr, 1, MPI_INT, 0, MPI_COMM_WORLD);
   if (engine_rank != 0)
-    *map_types = (struct lightcone_map_type *)calloc(
+    *map_types = (struct lightcone_map_type*)calloc(
         map_type_nr, sizeof(struct lightcone_map_type));
   MPI_Bcast(*map_types, sizeof(struct lightcone_map_type) * map_type_nr,
             MPI_BYTE, 0, MPI_COMM_WORLD);
@@ -150,7 +150,7 @@ static void read_map_types_file(const char *map_types_file, int *nr_map_types,
  * in the props->map_type array.
  *
  */
-static void lightcone_identify_map_types(struct lightcone_props *props) {
+static void lightcone_identify_map_types(struct lightcone_props* props) {
 
   /* Loop over requested map types */
   for (int map_nr = 0; map_nr < props->nr_maps; map_nr += 1) {
@@ -161,7 +161,7 @@ static void lightcone_identify_map_types(struct lightcone_props *props) {
     /* Places to search for lightcone map types:
        extra map types are provided by various physics modules. */
     const int num_places = 3;
-    const struct lightcone_map_type *map_type_array[] = {
+    const struct lightcone_map_type* map_type_array[] = {
         lightcone_map_types, extra_lightcone_map_types,
         neutrino_lightcone_map_types};
 
@@ -169,7 +169,7 @@ static void lightcone_identify_map_types(struct lightcone_props *props) {
     for (int i = 0; i < num_places; i += 1) {
 
       int type_nr = 0;
-      const struct lightcone_map_type *map_types_to_search = map_type_array[i];
+      const struct lightcone_map_type* map_types_to_search = map_type_array[i];
       while (map_types_to_search[type_nr].update_map) {
         if (strcmp(map_types_to_search[type_nr].name,
                    props->map_type[map_nr].name) == 0) {
@@ -194,7 +194,7 @@ static void lightcone_identify_map_types(struct lightcone_props *props) {
  *
  * @param props the #lightcone_props structure
  */
-static void lightcone_allocate_buffers(struct lightcone_props *props) {
+static void lightcone_allocate_buffers(struct lightcone_props* props) {
 
   /* Initialize particle output buffers */
   const size_t elements_per_block = (size_t)props->buffer_chunk_size;
@@ -242,7 +242,7 @@ static void lightcone_allocate_buffers(struct lightcone_props *props) {
  * @param props the #lightcone_props structure
  * @param stream The stream to write to.
  */
-void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
+void lightcone_struct_dump(const struct lightcone_props* props, FILE* stream) {
 
   /* Don't dump the replication list - will regenerate it as needed */
   struct lightcone_props tmp = *props;
@@ -260,11 +260,11 @@ void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
     tmp.part_type[ptype].map_index = NULL;
 
   /* Dump the lightcone struct */
-  restart_write_blocks((void *)&tmp, sizeof(struct lightcone_props), 1, stream,
+  restart_write_blocks((void*)&tmp, sizeof(struct lightcone_props), 1, stream,
                        "lightcone_props", "lightcone_props");
 
   /* Dump the array of map types */
-  restart_write_blocks((void *)props->map_type,
+  restart_write_blocks((void*)props->map_type,
                        sizeof(struct lightcone_map_type), props->nr_maps,
                        stream, "lightcone_props", "lightcone_props");
 
@@ -274,9 +274,9 @@ void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
   /* For each particle type we have an array of lightcone map indexes to update.
    * Dump these. */
   for (int ptype = 0; ptype < swift_type_count; ptype += 1) {
-    const struct lightcone_particle_type *this_type =
+    const struct lightcone_particle_type* this_type =
         &(props->part_type[ptype]);
-    restart_write_blocks((void *)this_type->map_index, sizeof(int),
+    restart_write_blocks((void*)this_type->map_index, sizeof(int),
                          this_type->nr_maps, stream, "lightcone_props",
                          "lightcone_props");
   }
@@ -287,7 +287,7 @@ void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
  *
  * @param props the #lightcone_props structure
  */
-void lightcone_define_output_fields(struct lightcone_props *props) {
+void lightcone_define_output_fields(struct lightcone_props* props) {
 
   for (int ptype = 0; ptype < swift_type_count; ptype += 1)
     lightcone_io_field_list_init(&props->particle_fields[ptype]);
@@ -314,18 +314,17 @@ void lightcone_define_output_fields(struct lightcone_props *props) {
  * @param props the #lightcone_props structure
  * @param stream The stream to read from.
  */
-void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
+void lightcone_struct_restore(struct lightcone_props* props, FILE* stream) {
 
   /* Restore lightcone struct */
-  restart_read_blocks((void *)props, sizeof(struct lightcone_props), 1, stream,
+  restart_read_blocks((void*)props, sizeof(struct lightcone_props), 1, stream,
                       NULL, "lightcone_props");
 
   /* Read in the map types */
-  props->map_type = (struct lightcone_map_type *)malloc(
+  props->map_type = (struct lightcone_map_type*)malloc(
       sizeof(struct lightcone_map_type) * props->nr_maps);
-  restart_read_blocks((void *)props->map_type,
-                      sizeof(struct lightcone_map_type), props->nr_maps, stream,
-                      NULL, "lightcone_props");
+  restart_read_blocks((void*)props->map_type, sizeof(struct lightcone_map_type),
+                      props->nr_maps, stream, NULL, "lightcone_props");
 
   /* Read in the shells */
   props->shell = lightcone_shell_array_restore(
@@ -334,9 +333,9 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
   /* For each particle type we have an array of lightcone map indexes to update.
    * Restore these. */
   for (int ptype = 0; ptype < swift_type_count; ptype += 1) {
-    struct lightcone_particle_type *this_type = &(props->part_type[ptype]);
-    this_type->map_index = (int *)malloc(sizeof(int) * this_type->nr_maps);
-    restart_read_blocks((void *)this_type->map_index, sizeof(int),
+    struct lightcone_particle_type* this_type = &(props->part_type[ptype]);
+    this_type->map_index = (int*)malloc(sizeof(int) * this_type->nr_maps);
+    restart_read_blocks((void*)this_type->map_index, sizeof(int),
                         this_type->nr_maps, stream, NULL, "lightcone_props");
   }
 
@@ -373,8 +372,8 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
  * @param outbuf returns the parameter value
  *
  */
-static char *find_parameter(struct swift_params *params, const int index,
-                            const char *name, char *outbuf) {
+static char* find_parameter(struct swift_params* params, const int index,
+                            const char* name, char* outbuf) {
 
   char full_name[PARSER_MAX_LINE_SIZE];
 
@@ -405,11 +404,11 @@ static char *find_parameter(struct swift_params *params, const int index,
  * @param physical_constants swift physical constant values
  * @param verbose the verbosity flag
  */
-void lightcone_init(struct lightcone_props *props, const int index,
-                    const struct space *s, const struct cosmology *cosmo,
-                    struct swift_params *params,
-                    const struct unit_system *internal_units,
-                    const struct phys_const *physical_constants,
+void lightcone_init(struct lightcone_props* props, const int index,
+                    const struct space* s, const struct cosmology* cosmo,
+                    struct swift_params* params,
+                    const struct unit_system* internal_units,
+                    const struct phys_const* physical_constants,
                     const int verbose) {
 
 #ifdef HAVE_CHEALPIX
@@ -621,7 +620,7 @@ void lightcone_init(struct lightcone_props *props, const int index,
   const int nr_maps = props->nr_maps;
   for (int ptype = 0; ptype < swift_type_count; ptype += 1) {
 
-    struct lightcone_particle_type *this_type = &(props->part_type[ptype]);
+    struct lightcone_particle_type* this_type = &(props->part_type[ptype]);
 
     /* Count maps updated by this particle type */
     this_type->nr_maps = 0;
@@ -631,14 +630,14 @@ void lightcone_init(struct lightcone_props *props, const int index,
     }
 
     /* Store indexes of maps to update for this particle type */
-    this_type->map_index = (int *)malloc(sizeof(int) * this_type->nr_maps);
+    this_type->map_index = (int*)malloc(sizeof(int) * this_type->nr_maps);
     this_type->nr_maps = 0;
     this_type->nr_smoothed_maps = 0;
     this_type->nr_unsmoothed_maps = 0;
 
     /* First the smoothed maps */
     for (int map_nr = 0; map_nr < nr_maps; map_nr += 1) {
-      const struct lightcone_map_type *map_type = &(props->map_type[map_nr]);
+      const struct lightcone_map_type* map_type = &(props->map_type[map_nr]);
       if (map_type->ptype_contributes(ptype) &&
           map_type->smoothing == map_smoothed) {
         this_type->map_index[this_type->nr_maps] = map_nr;
@@ -649,7 +648,7 @@ void lightcone_init(struct lightcone_props *props, const int index,
 
     /* Then the un-smoothed maps */
     for (int map_nr = 0; map_nr < nr_maps; map_nr += 1) {
-      const struct lightcone_map_type *map_type = &(props->map_type[map_nr]);
+      const struct lightcone_map_type* map_type = &(props->map_type[map_nr]);
       if (map_type->ptype_contributes(ptype) &&
           map_type->smoothing == map_unsmoothed) {
         this_type->map_index[this_type->nr_maps] = map_nr;
@@ -718,7 +717,7 @@ void lightcone_init(struct lightcone_props *props, const int index,
       const double shell_a_min = props->shell[shell_nr].amin;
       const double shell_a_max = props->shell[shell_nr].amax;
       for (int map_nr = 0; map_nr < nr_maps; map_nr += 1) {
-        const struct lightcone_map_type *map_type = &(props->map_type[map_nr]);
+        const struct lightcone_map_type* map_type = &(props->map_type[map_nr]);
         if (map_type->ptype_contributes(i)) {
           if (shell_a_min < props->a_min_search_for_type[i])
             props->a_min_search_for_type[i] = shell_a_min;
@@ -811,7 +810,7 @@ void lightcone_init(struct lightcone_props *props, const int index,
  *        incremented after each restart dump
  * @param comm_rank rank of this MPI communicator
  */
-static void particle_file_name(char *buf, int len, char *subdir, char *basename,
+static void particle_file_name(char* buf, int len, char* subdir, char* basename,
                                int current_file, int comm_rank) {
 
   check_snprintf(buf, len, "%s/%s_particles/%s_%04d.%d.hdf5", subdir, basename,
@@ -834,9 +833,9 @@ static void particle_file_name(char *buf, int len, char *subdir, char *basename,
  * @param end_file if true, subsequent calls write to a new file
  *
  */
-void lightcone_flush_particle_buffers(struct lightcone_props *props, double a,
-                                      const struct unit_system *internal_units,
-                                      const struct unit_system *snapshot_units,
+void lightcone_flush_particle_buffers(struct lightcone_props* props, double a,
+                                      const struct unit_system* internal_units,
+                                      const struct unit_system* snapshot_units,
                                       int flush_all, int end_file) {
 
   ticks tic = getticks();
@@ -1000,8 +999,8 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props, double a,
  * @param tp the swift #threadpool struct to use
  *
  */
-void lightcone_flush_map_updates(struct lightcone_props *props,
-                                 struct threadpool *tp) {
+void lightcone_flush_map_updates(struct lightcone_props* props,
+                                 struct threadpool* tp) {
 
   ticks tic = getticks();
 
@@ -1034,11 +1033,11 @@ void lightcone_flush_map_updates(struct lightcone_props *props,
  * @param need_flush whether there might be buffered updates to apply
  *
  */
-void lightcone_dump_completed_shells(struct lightcone_props *props,
-                                     struct threadpool *tp,
-                                     const struct cosmology *c,
-                                     const struct unit_system *internal_units,
-                                     const struct unit_system *snapshot_units,
+void lightcone_dump_completed_shells(struct lightcone_props* props,
+                                     struct threadpool* tp,
+                                     const struct cosmology* c,
+                                     const struct unit_system* internal_units,
+                                     const struct unit_system* snapshot_units,
                                      const int dump_all, const int need_flush) {
 #ifdef HAVE_HDF5
 
@@ -1199,7 +1198,7 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
  * @param props the #lightcone_props structure.
  *
  */
-void lightcone_clean(struct lightcone_props *props) {
+void lightcone_clean(struct lightcone_props* props) {
 
   /* Deallocate particle buffers */
   for (int i = 0; i < swift_type_count; i += 1) {
@@ -1235,7 +1234,7 @@ void lightcone_clean(struct lightcone_props *props) {
 
   /* Free data associated with particle types */
   for (int ptype = 0; ptype < swift_type_count; ptype += 1) {
-    struct lightcone_particle_type *this_type = &(props->part_type[ptype]);
+    struct lightcone_particle_type* this_type = &(props->part_type[ptype]);
     free(this_type->map_index);
   }
 
@@ -1293,8 +1292,8 @@ void lightcone_clean(struct lightcone_props *props) {
  * @param ti_current End of the timestep
  *
  */
-void lightcone_prepare_for_step(struct lightcone_props *props,
-                                const struct cosmology *cosmo,
+void lightcone_prepare_for_step(struct lightcone_props* props,
+                                const struct cosmology* cosmo,
                                 const integertime_t ti_earliest_undrifted,
                                 const integertime_t ti_current) {
   ticks tic = getticks();
@@ -1358,7 +1357,7 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
   if (engine_rank == 0) {
     char fname[500];
     sprintf(fname, "replication_list.%d.txt", output_nr);
-    FILE *fd_rep = fopen(fname, "w");
+    FILE* fd_rep = fopen(fname, "w");
     fprintf(fd_rep, "# Observer x, y, z\n");
     fprintf(fd_rep, "%e, %e, %e\n", props->observer_position[0],
             props->observer_position[1], props->observer_position[2]);
@@ -1445,7 +1444,7 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
  * @param props The #lightcone_props structure
  *
  */
-int lightcone_trigger_map_update(struct lightcone_props *props) {
+int lightcone_trigger_map_update(struct lightcone_props* props) {
 
   size_t total_updates = 0;
   const int nr_shells = props->nr_shells;
@@ -1469,22 +1468,22 @@ int lightcone_trigger_map_update(struct lightcone_props *props) {
  * @param a_cross Expansion factor of lightcone crossing
  * @param x_cross Position of the gpart at lightcone crossing
  */
-void lightcone_buffer_particle(struct lightcone_props *props,
-                               const struct engine *e, const struct gpart *gp,
+void lightcone_buffer_particle(struct lightcone_props* props,
+                               const struct engine* e, const struct gpart* gp,
                                const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
-  const struct spart *sparts = s->sparts;
-  const struct bpart *bparts = s->bparts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = s->xparts;
+  const struct spart* sparts = s->sparts;
+  const struct bpart* bparts = s->bparts;
 
   switch (gp->type) {
     case swift_type_gas: {
 
-      const struct part *p = &parts[-gp->id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gp->id_or_neg_offset];
       struct lightcone_gas_data data;
       if (lightcone_store_gas(e, props, gp, p, xp, a_cross, x_cross, &data))
         particle_buffer_append(props->buffer + swift_type_gas, &data);
@@ -1493,7 +1492,7 @@ void lightcone_buffer_particle(struct lightcone_props *props,
 
     case swift_type_stars: {
 
-      const struct spart *sp = &sparts[-gp->id_or_neg_offset];
+      const struct spart* sp = &sparts[-gp->id_or_neg_offset];
       struct lightcone_stars_data data;
       if (lightcone_store_stars(e, props, gp, sp, a_cross, x_cross, &data))
         particle_buffer_append(props->buffer + swift_type_stars, &data);
@@ -1502,7 +1501,7 @@ void lightcone_buffer_particle(struct lightcone_props *props,
 
     case swift_type_black_hole: {
 
-      const struct bpart *bp = &bparts[-gp->id_or_neg_offset];
+      const struct bpart* bp = &bparts[-gp->id_or_neg_offset];
       struct lightcone_black_hole_data data;
       if (lightcone_store_black_hole(e, props, gp, bp, a_cross, x_cross, &data))
         particle_buffer_append(props->buffer + swift_type_black_hole, &data);
@@ -1548,7 +1547,7 @@ void lightcone_buffer_particle(struct lightcone_props *props,
  * @param hsml physical smoothing length of the particle
  *
  */
-static double angular_smoothing_scale(const double *pos, const double hsml) {
+static double angular_smoothing_scale(const double* pos, const double hsml) {
 
   /* Compute distance to particle */
   double dist = 0;
@@ -1573,14 +1572,14 @@ static double angular_smoothing_scale(const double *pos, const double hsml) {
  * @param x_cross Position of the gpart at lightcone crossing
  *
  */
-void lightcone_buffer_map_update(struct lightcone_props *props,
-                                 const struct engine *e, const struct gpart *gp,
+void lightcone_buffer_map_update(struct lightcone_props* props,
+                                 const struct engine* e, const struct gpart* gp,
                                  const double a_cross,
                                  const double x_cross[3]) {
 #ifdef HAVE_CHEALPIX
 
   /* Find information on healpix maps this particle type contributes to */
-  const struct lightcone_particle_type *part_type_info =
+  const struct lightcone_particle_type* part_type_info =
       &(props->part_type[gp->type]);
 
   /* If this particle type contributes to no healpix maps, do nothing */
@@ -1593,8 +1592,8 @@ void lightcone_buffer_map_update(struct lightcone_props *props,
   /* Get angular size of the particle */
   double radius;
   if (gp->type == swift_type_gas) {
-    const struct part *parts = e->s->parts;
-    const struct part *p = &parts[-gp->id_or_neg_offset];
+    const struct part* parts = e->s->parts;
+    const struct part* p = &parts[-gp->id_or_neg_offset];
     radius = angular_smoothing_scale(x_cross, p->h);
   } else {
     radius = 0.0;
@@ -1613,8 +1612,8 @@ void lightcone_buffer_map_update(struct lightcone_props *props,
         error("Attempt to update shell which has been written out");
 
       /* Allocate storage for updates and set particle coordinates and radius */
-      union lightcone_map_buffer_entry *data =
-          (union lightcone_map_buffer_entry *)malloc(
+      union lightcone_map_buffer_entry* data =
+          (union lightcone_map_buffer_entry*)malloc(
               part_type_info->buffer_element_size);
       data[0].i = angle_to_int(theta);
       data[1].i = angle_to_int(phi);
@@ -1659,9 +1658,9 @@ void lightcone_buffer_map_update(struct lightcone_props *props,
  * @param pixel_data_bytes returns bytes used to store map pixels
  *
  */
-void lightcone_memory_use(struct lightcone_props *props,
-                          size_t *particle_buffer_bytes,
-                          size_t *map_buffer_bytes, size_t *pixel_data_bytes) {
+void lightcone_memory_use(struct lightcone_props* props,
+                          size_t* particle_buffer_bytes,
+                          size_t* map_buffer_bytes, size_t* pixel_data_bytes) {
 
   *particle_buffer_bytes = 0;
   *map_buffer_bytes = 0;
@@ -1687,7 +1686,7 @@ void lightcone_memory_use(struct lightcone_props *props,
 
     /* Pixel data - one buffer per map per shell */
     for (int map_nr = 0; map_nr < nr_maps; map_nr += 1) {
-      struct lightcone_map *map = &(props->shell[shell_nr].map[map_nr]);
+      struct lightcone_map* map = &(props->shell[shell_nr].map[map_nr]);
       if (map->data) *pixel_data_bytes += map->local_nr_pix * sizeof(double);
     }
   }
@@ -1701,16 +1700,16 @@ void lightcone_memory_use(struct lightcone_props *props,
  * @param snapshot_units swift snapshot unit system
  *
  */
-void lightcone_write_index(struct lightcone_props *props,
-                           const struct unit_system *internal_units,
-                           const struct unit_system *snapshot_units) {
+void lightcone_write_index(struct lightcone_props* props,
+                           const struct unit_system* internal_units,
+                           const struct unit_system* snapshot_units) {
   int comm_size = 1;
 #ifdef WITH_MPI
   MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 #endif
 
   /* Collect current file index on each rank */
-  int *current_file_on_rank = (int *)malloc(sizeof(int) * comm_size);
+  int* current_file_on_rank = (int*)malloc(sizeof(int) * comm_size);
 #ifdef WITH_MPI
   MPI_Gather(&props->current_file, 1, MPI_INT, current_file_on_rank, 1, MPI_INT,
              0, MPI_COMM_WORLD);
@@ -1764,8 +1763,8 @@ void lightcone_write_index(struct lightcone_props *props,
     /* Write the number of shells and their radii */
     const int nr_shells = props->nr_shells;
     io_write_attribute_i(group_id, "nr_shells", nr_shells);
-    double *shell_inner_radii = (double *)malloc(sizeof(double) * nr_shells);
-    double *shell_outer_radii = (double *)malloc(sizeof(double) * nr_shells);
+    double* shell_inner_radii = (double*)malloc(sizeof(double) * nr_shells);
+    double* shell_outer_radii = (double*)malloc(sizeof(double) * nr_shells);
     for (int i = 0; i < nr_shells; i += 1) {
       shell_inner_radii[i] = props->shell[i].rmin * length_conversion_factor;
       shell_outer_radii[i] = props->shell[i].rmax * length_conversion_factor;
@@ -1792,9 +1791,9 @@ void lightcone_write_index(struct lightcone_props *props,
  * @param props the properties of this lightcone
  * @param map the #lightcone_map structure
  */
-void lightcone_map_set_baseline(const struct cosmology *c,
-                                struct lightcone_props *props,
-                                struct lightcone_map *map) {
+void lightcone_map_set_baseline(const struct cosmology* c,
+                                struct lightcone_props* props,
+                                struct lightcone_map* map) {
 
   /* Nothing to do if there is no baseline function */
   if (map->type.baseline_func == NULL) return;

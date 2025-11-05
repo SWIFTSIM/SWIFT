@@ -53,19 +53,19 @@ MPI_Datatype pcell_mpi_type;
 struct tag_mapper_data {
   int *tags_out, *tags_in;
   int *offset_out, *offset_in;
-  struct cell *space_cells;
+  struct cell* space_cells;
 };
 
 #ifdef WITH_MPI
 
-void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
-                                     void *extra_data) {
+void proxy_tags_exchange_pack_mapper(void* map_data, int num_elements,
+                                     void* extra_data) {
 
-  struct cell *cells = (struct cell *)map_data;
-  struct tag_mapper_data *data = (struct tag_mapper_data *)extra_data;
-  int *restrict tags_out = data->tags_out;
-  const int *restrict offset_out = data->offset_out;
-  struct cell *space_cells = data->space_cells;
+  struct cell* cells = (struct cell*)map_data;
+  struct tag_mapper_data* data = (struct tag_mapper_data*)extra_data;
+  int* restrict tags_out = data->tags_out;
+  const int* restrict offset_out = data->offset_out;
+  struct cell* space_cells = data->space_cells;
   const size_t delta = cells - space_cells;
 
   for (int k = 0; k < num_elements; k++) {
@@ -75,14 +75,14 @@ void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
   }
 }
 
-void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
-                                       void *extra_data) {
+void proxy_tags_exchange_unpack_mapper(void* map_data, int num_elements,
+                                       void* extra_data) {
 
-  int *restrict cids_in = (int *)map_data;
-  struct tag_mapper_data *data = (struct tag_mapper_data *)extra_data;
-  const int *restrict offset_in = data->offset_in;
-  int *restrict tags_in = data->tags_in;
-  struct cell *space_cells = data->space_cells;
+  int* restrict cids_in = (int*)map_data;
+  struct tag_mapper_data* data = (struct tag_mapper_data*)extra_data;
+  const int* restrict offset_in = data->offset_in;
+  int* restrict tags_in = data->tags_in;
+  struct cell* space_cells = data->space_cells;
 
   for (int k = 0; k < num_elements; k++) {
     const int cid = cids_in[k];
@@ -102,8 +102,8 @@ void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
  * @param num_proxies The number of proxies.
  * @param s The space into which the tags will be unpacked.
  */
-void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
-                         struct space *s) {
+void proxy_tags_exchange(struct proxy* proxies, int num_proxies,
+                         struct space* s) {
 
 #ifdef WITH_MPI
 
@@ -112,8 +112,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   /* Run through the cells and get the size of the tags that will be sent off.
    */
   int count_out = 0;
-  int *offset_out =
-      (int *)swift_malloc("tags_offsets_out", s->nr_cells * sizeof(int));
+  int* offset_out =
+      (int*)swift_malloc("tags_offsets_out", s->nr_cells * sizeof(int));
   if (offset_out == NULL) error("Error allocating memory for tag offsets");
 
   for (int k = 0; k < s->nr_cells; k++) {
@@ -125,8 +125,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
   /* Run through the proxies and get the count of incoming tags. */
   int count_in = 0;
-  int *offset_in =
-      (int *)swift_malloc("tags_offsets_in", s->nr_cells * sizeof(int));
+  int* offset_in =
+      (int*)swift_malloc("tags_offsets_in", s->nr_cells * sizeof(int));
   if (offset_in == NULL) error("Error allocating memory for tag offsets");
 
   for (int k = 0; k < num_proxies; k++) {
@@ -137,11 +137,11 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   }
 
   /* Allocate the tags. */
-  int *tags_in = NULL;
-  int *tags_out = NULL;
-  if (swift_memalign("tags_in", (void **)&tags_in, SWIFT_CACHE_ALIGNMENT,
+  int* tags_in = NULL;
+  int* tags_out = NULL;
+  if (swift_memalign("tags_in", (void**)&tags_in, SWIFT_CACHE_ALIGNMENT,
                      sizeof(int) * count_in) != 0 ||
-      swift_memalign("tags_out", (void **)&tags_out, SWIFT_CACHE_ALIGNMENT,
+      swift_memalign("tags_out", (void**)&tags_out, SWIFT_CACHE_ALIGNMENT,
                      sizeof(int) * count_out) != 0)
     error("Failed to allocate tags buffers.");
 
@@ -168,15 +168,15 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     num_reqs_in += proxies[k].nr_cells_in;
     num_reqs_out += proxies[k].nr_cells_out;
   }
-  MPI_Request *reqs_in = NULL;
-  int *cids_in = NULL;
-  if ((reqs_in = (MPI_Request *)malloc(sizeof(MPI_Request) *
-                                       (num_reqs_in + num_reqs_out))) == NULL ||
-      (cids_in = (int *)malloc(sizeof(int) * (num_reqs_in + num_reqs_out))) ==
+  MPI_Request* reqs_in = NULL;
+  int* cids_in = NULL;
+  if ((reqs_in = (MPI_Request*)malloc(sizeof(MPI_Request) *
+                                      (num_reqs_in + num_reqs_out))) == NULL ||
+      (cids_in = (int*)malloc(sizeof(int) * (num_reqs_in + num_reqs_out))) ==
           NULL)
     error("Failed to allocate MPI_Request arrays.");
-  MPI_Request *reqs_out = &reqs_in[num_reqs_in];
-  int *cids_out = &cids_in[num_reqs_in];
+  MPI_Request* reqs_out = &reqs_in[num_reqs_in];
+  int* cids_out = &cids_in[num_reqs_in];
 
   /* Emit the sends and recvs. */
   for (int send_rid = 0, recv_rid = 0, k = 0; k < num_proxies; k++) {
@@ -255,8 +255,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
  * @param num_proxies The number of proxies.
  * @param s The space into which the tags will be unpacked.
  */
-void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
-                               struct space *s) {
+void proxy_grid_extra_exchange(struct proxy* proxies, int num_proxies,
+                               struct space* s) {
 #ifdef WITH_MPI
 
   ticks tic2 = getticks();
@@ -264,8 +264,8 @@ void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
   /* Run through the cells and get the size of the info that will be sent off.
    */
   int count_out = 0;
-  int *offset_out =
-      (int *)swift_malloc("info_offsets_out", s->nr_cells * sizeof(int));
+  int* offset_out =
+      (int*)swift_malloc("info_offsets_out", s->nr_cells * sizeof(int));
   if (offset_out == NULL) error("Error allocating memory for info offsets");
 
   for (int k = 0; k < s->nr_cells; k++) {
@@ -277,8 +277,8 @@ void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
 
   /* Run through the proxies and get the count of incoming info. */
   int count_in = 0;
-  int *offset_in =
-      (int *)swift_malloc("info_offsets_in", s->nr_cells * sizeof(int));
+  int* offset_in =
+      (int*)swift_malloc("info_offsets_in", s->nr_cells * sizeof(int));
   if (offset_in == NULL) error("Error allocating memory for info offsets");
 
   for (int k = 0; k < num_proxies; k++) {
@@ -289,12 +289,12 @@ void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
   }
 
   /* Allocate the tags. */
-  enum grid_construction_level *extra_info_in = NULL;
-  enum grid_construction_level *extra_info_out = NULL;
-  if (swift_memalign("extra_info_in", (void **)&extra_info_in,
+  enum grid_construction_level* extra_info_in = NULL;
+  enum grid_construction_level* extra_info_out = NULL;
+  if (swift_memalign("extra_info_in", (void**)&extra_info_in,
                      SWIFT_CACHE_ALIGNMENT,
                      sizeof(enum grid_construction_level) * count_in) != 0 ||
-      swift_memalign("extra_info_out", (void **)&extra_info_out,
+      swift_memalign("extra_info_out", (void**)&extra_info_out,
                      SWIFT_CACHE_ALIGNMENT,
                      sizeof(enum grid_construction_level) * count_out) != 0)
     error("Failed to allocate extra info buffers.");
@@ -317,15 +317,15 @@ void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
     num_reqs_in += proxies[k].nr_cells_in;
     num_reqs_out += proxies[k].nr_cells_out;
   }
-  MPI_Request *reqs_in = NULL;
-  int *cids_in = NULL;
-  if ((reqs_in = (MPI_Request *)malloc(sizeof(MPI_Request) *
-                                       (num_reqs_in + num_reqs_out))) == NULL ||
-      (cids_in = (int *)malloc(sizeof(int) * (num_reqs_in + num_reqs_out))) ==
+  MPI_Request* reqs_in = NULL;
+  int* cids_in = NULL;
+  if ((reqs_in = (MPI_Request*)malloc(sizeof(MPI_Request) *
+                                      (num_reqs_in + num_reqs_out))) == NULL ||
+      (cids_in = (int*)malloc(sizeof(int) * (num_reqs_in + num_reqs_out))) ==
           NULL)
     error("Failed to allocate MPI_Request arrays.");
-  MPI_Request *reqs_out = &reqs_in[num_reqs_in];
-  int *cids_out = &cids_in[num_reqs_in];
+  MPI_Request* reqs_out = &reqs_in[num_reqs_in];
+  int* cids_out = &cids_in[num_reqs_in];
 
   /* Emit the sends and recvs. */
   for (int send_rid = 0, recv_rid = 0, k = 0; k < num_proxies; k++) {
@@ -395,7 +395,7 @@ void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
  *
  * @param p The #proxy.
  */
-void proxy_cells_exchange_first(struct proxy *p) {
+void proxy_cells_exchange_first(struct proxy* p) {
 
 #ifdef WITH_MPI
 
@@ -414,7 +414,7 @@ void proxy_cells_exchange_first(struct proxy *p) {
 
   /* Allocate and fill the pcell buffer. */
   if (p->pcells_out != NULL) swift_free("pcells_out", p->pcells_out);
-  if (swift_memalign("pcells_out", (void **)&p->pcells_out,
+  if (swift_memalign("pcells_out", (void**)&p->pcells_out,
                      SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_out) != 0)
     error("Failed to allocate pcell_out buffer.");
@@ -456,14 +456,13 @@ void proxy_cells_exchange_first(struct proxy *p) {
  *
  * @param p The #proxy.
  */
-void proxy_cells_exchange_second(struct proxy *p) {
+void proxy_cells_exchange_second(struct proxy* p) {
 
 #ifdef WITH_MPI
 
   /* Re-allocate the pcell_in buffer. */
   if (p->pcells_in != NULL) swift_free("pcells_in", p->pcells_in);
-  if (swift_memalign("pcells_in", (void **)&p->pcells_in,
-                     SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("pcells_in", (void**)&p->pcells_in, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_in) != 0)
     error("Failed to allocate pcell_in buffer.");
 
@@ -483,9 +482,9 @@ void proxy_cells_exchange_second(struct proxy *p) {
 
 #ifdef WITH_MPI
 
-void proxy_cells_count_mapper(void *map_data, int num_elements,
-                              void *extra_data) {
-  struct cell *cells = (struct cell *)map_data;
+void proxy_cells_count_mapper(void* map_data, int num_elements,
+                              void* extra_data) {
+  struct cell* cells = (struct cell*)map_data;
 
   for (int k = 0; k < num_elements; k++) {
     if (cells[k].mpi.sendto)
@@ -494,16 +493,16 @@ void proxy_cells_count_mapper(void *map_data, int num_elements,
 }
 
 struct pack_mapper_data {
-  struct space *s;
-  int *offset;
-  struct pcell *pcells;
+  struct space* s;
+  int* offset;
+  struct pcell* pcells;
   int with_gravity;
 };
 
-void proxy_cells_pack_mapper(void *map_data, int num_elements,
-                             void *extra_data) {
-  struct cell *cells = (struct cell *)map_data;
-  struct pack_mapper_data *data = (struct pack_mapper_data *)extra_data;
+void proxy_cells_pack_mapper(void* map_data, int num_elements,
+                             void* extra_data) {
+  struct cell* cells = (struct cell*)map_data;
+  struct pack_mapper_data* data = (struct pack_mapper_data*)extra_data;
 
   for (int k = 0; k < num_elements; k++) {
     if (cells[k].mpi.sendto) {
@@ -514,9 +513,9 @@ void proxy_cells_pack_mapper(void *map_data, int num_elements,
   }
 }
 
-void proxy_cells_exchange_first_mapper(void *map_data, int num_elements,
-                                       void *extra_data) {
-  struct proxy *proxies = (struct proxy *)map_data;
+void proxy_cells_exchange_first_mapper(void* map_data, int num_elements,
+                                       void* extra_data) {
+  struct proxy* proxies = (struct proxy*)map_data;
 
   for (int k = 0; k < num_elements; k++) {
     proxy_cells_exchange_first(&proxies[k]);
@@ -534,17 +533,17 @@ void proxy_cells_exchange_first_mapper(void *map_data, int num_elements,
  * @param with_gravity Are we running with gravity and hence need
  *      to exchange multipoles?
  */
-void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
-                          struct space *s, const int with_gravity) {
+void proxy_cells_exchange(struct proxy* proxies, int num_proxies,
+                          struct space* s, const int with_gravity) {
 
 #ifdef WITH_MPI
 
-  MPI_Request *reqs;
-  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 2 * num_proxies)) ==
+  MPI_Request* reqs;
+  if ((reqs = (MPI_Request*)malloc(sizeof(MPI_Request) * 2 * num_proxies)) ==
       NULL)
     error("Failed to allocate request buffers.");
-  MPI_Request *reqs_in = reqs;
-  MPI_Request *reqs_out = &reqs[num_proxies];
+  MPI_Request* reqs_in = reqs;
+  MPI_Request* reqs_out = &reqs[num_proxies];
 
   ticks tic2 = getticks();
 
@@ -554,8 +553,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
                  s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
                  /*extra_data=*/NULL);
   int count_out = 0;
-  int *offset =
-      (int *)swift_malloc("proxy_cell_offset", s->nr_cells * sizeof(int));
+  int* offset =
+      (int*)swift_malloc("proxy_cell_offset", s->nr_cells * sizeof(int));
   if (offset == NULL) error("Error allocating memory for proxy cell offsets");
 
   for (int k = 0; k < s->nr_cells; k++) {
@@ -568,8 +567,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Allocate the pcells. */
-  struct pcell *pcells = NULL;
-  if (swift_memalign("pcells", (void **)&pcells, SWIFT_CACHE_ALIGNMENT,
+  struct pcell* pcells = NULL;
+  if (swift_memalign("pcells", (void**)&pcells, SWIFT_CACHE_ALIGNMENT,
                      sizeof(struct pcell) * count_out) != 0)
     error("Failed to allocate pcell buffer.");
 
@@ -661,7 +660,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
  * @param c The #cell.
  * @param type Why is this cell in the proxy (hdro, gravity, ...) ?
  */
-void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
+void proxy_addcell_in(struct proxy* p, struct cell* c, int type) {
 
   if (type == proxy_cell_type_none) error("Invalid type for proxy");
 
@@ -679,16 +678,16 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
 
     p->size_cells_in *= proxy_buffgrow;
 
-    struct cell **temp_cell;
-    if ((temp_cell = (struct cell **)swift_malloc(
-             "cells_in", sizeof(struct cell *) * p->size_cells_in)) == NULL)
+    struct cell** temp_cell;
+    if ((temp_cell = (struct cell**)swift_malloc(
+             "cells_in", sizeof(struct cell*) * p->size_cells_in)) == NULL)
       error("Failed to allocate incoming cell list.");
-    memcpy(temp_cell, p->cells_in, sizeof(struct cell *) * p->nr_cells_in);
+    memcpy(temp_cell, p->cells_in, sizeof(struct cell*) * p->nr_cells_in);
     swift_free("cells_in", p->cells_in);
     p->cells_in = temp_cell;
 
-    int *temp_type;
-    if ((temp_type = (int *)swift_malloc(
+    int* temp_type;
+    if ((temp_type = (int*)swift_malloc(
              "cells_in_type", sizeof(int) * p->size_cells_in)) == NULL)
       error("Failed to allocate incoming cell type list.");
     memcpy(temp_type, p->cells_in_type, sizeof(int) * p->nr_cells_in);
@@ -709,7 +708,7 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
  * @param c The #cell.
  * @param type Why is this cell in the proxy (hdro, gravity, ...) ?
  */
-void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
+void proxy_addcell_out(struct proxy* p, struct cell* c, int type) {
 
   if (type == proxy_cell_type_none) error("Invalid type for proxy");
 
@@ -726,16 +725,16 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
   if (p->nr_cells_out == p->size_cells_out) {
     p->size_cells_out *= proxy_buffgrow;
 
-    struct cell **temp_cell;
-    if ((temp_cell = (struct cell **)swift_malloc(
-             "cells_out", sizeof(struct cell *) * p->size_cells_out)) == NULL)
+    struct cell** temp_cell;
+    if ((temp_cell = (struct cell**)swift_malloc(
+             "cells_out", sizeof(struct cell*) * p->size_cells_out)) == NULL)
       error("Failed to allocate outgoing cell list.");
-    memcpy(temp_cell, p->cells_out, sizeof(struct cell *) * p->nr_cells_out);
+    memcpy(temp_cell, p->cells_out, sizeof(struct cell*) * p->nr_cells_out);
     swift_free("cells_out", p->cells_out);
     p->cells_out = temp_cell;
 
-    int *temp_type;
-    if ((temp_type = (int *)swift_malloc(
+    int* temp_type;
+    if ((temp_type = (int*)swift_malloc(
              "cells_out_type", sizeof(int) * p->size_cells_out)) == NULL)
       error("Failed to allocate outgoing cell type list.");
     memcpy(temp_type, p->cells_out_type, sizeof(int) * p->nr_cells_out);
@@ -754,7 +753,7 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
  *
  * @param p The #proxy.
  */
-void proxy_parts_exchange_first(struct proxy *p) {
+void proxy_parts_exchange_first(struct proxy* p) {
 
 #ifdef WITH_MPI
 
@@ -876,7 +875,7 @@ void proxy_parts_exchange_first(struct proxy *p) {
 #endif
 }
 
-void proxy_parts_exchange_second(struct proxy *p) {
+void proxy_parts_exchange_second(struct proxy* p) {
 
 #ifdef WITH_MPI
 
@@ -894,9 +893,9 @@ void proxy_parts_exchange_second(struct proxy *p) {
     } while (p->nr_parts_in > p->size_parts_in);
     swift_free("parts_in", p->parts_in);
     swift_free("xparts_in", p->xparts_in);
-    if ((p->parts_in = (struct part *)swift_malloc(
+    if ((p->parts_in = (struct part*)swift_malloc(
              "parts_in", sizeof(struct part) * p->size_parts_in)) == NULL ||
-        (p->xparts_in = (struct xpart *)swift_malloc(
+        (p->xparts_in = (struct xpart*)swift_malloc(
              "xparts_in", sizeof(struct xpart) * p->size_parts_in)) == NULL)
       error("Failed to re-allocate parts_in buffers.");
   }
@@ -905,7 +904,7 @@ void proxy_parts_exchange_second(struct proxy *p) {
       p->size_gparts_in *= proxy_buffgrow;
     } while (p->nr_gparts_in > p->size_gparts_in);
     swift_free("gparts_in", p->gparts_in);
-    if ((p->gparts_in = (struct gpart *)swift_malloc(
+    if ((p->gparts_in = (struct gpart*)swift_malloc(
              "gparts_in", sizeof(struct gpart) * p->size_gparts_in)) == NULL)
       error("Failed to re-allocate gparts_in buffers.");
   }
@@ -914,7 +913,7 @@ void proxy_parts_exchange_second(struct proxy *p) {
       p->size_sparts_in *= proxy_buffgrow;
     } while (p->nr_sparts_in > p->size_sparts_in);
     swift_free("sparts_in", p->sparts_in);
-    if ((p->sparts_in = (struct spart *)swift_malloc(
+    if ((p->sparts_in = (struct spart*)swift_malloc(
              "sparts_in", sizeof(struct spart) * p->size_sparts_in)) == NULL)
       error("Failed to re-allocate sparts_in buffers.");
   }
@@ -923,7 +922,7 @@ void proxy_parts_exchange_second(struct proxy *p) {
       p->size_bparts_in *= proxy_buffgrow;
     } while (p->nr_bparts_in > p->size_bparts_in);
     swift_free("bparts_in", p->bparts_in);
-    if ((p->bparts_in = (struct bpart *)swift_malloc(
+    if ((p->bparts_in = (struct bpart*)swift_malloc(
              "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
       error("Failed to re-allocate bparts_in buffers.");
   }
@@ -932,7 +931,7 @@ void proxy_parts_exchange_second(struct proxy *p) {
       p->size_sinks_in *= proxy_buffgrow;
     } while (p->nr_sinks_in > p->size_sinks_in);
     swift_free("sinks_in", p->sinks_in);
-    if ((p->sinks_in = (struct sink *)swift_malloc(
+    if ((p->sinks_in = (struct sink*)swift_malloc(
              "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
       error("Failed to re-allocate sinks_in buffers.");
   }
@@ -1028,19 +1027,19 @@ void proxy_parts_exchange_second(struct proxy *p) {
  * @param xparts Pointer to an array of #xpart to send.
  * @param N The number of parts.
  */
-void proxy_parts_load(struct proxy *p, const struct part *parts,
-                      const struct xpart *xparts, int N) {
+void proxy_parts_load(struct proxy* p, const struct part* parts,
+                      const struct xpart* xparts, int N) {
 
   /* Is there enough space in the buffer? */
   if (p->nr_parts_out + N > p->size_parts_out) {
     do {
       p->size_parts_out *= proxy_buffgrow;
     } while (p->nr_parts_out + N > p->size_parts_out);
-    struct part *tp = NULL;
-    struct xpart *txp = NULL;
-    if ((tp = (struct part *)swift_malloc(
+    struct part* tp = NULL;
+    struct xpart* txp = NULL;
+    if ((tp = (struct part*)swift_malloc(
              "parts_out", sizeof(struct part) * p->size_parts_out)) == NULL ||
-        (txp = (struct xpart *)swift_malloc(
+        (txp = (struct xpart*)swift_malloc(
              "xparts_out", sizeof(struct xpart) * p->size_parts_out)) == NULL)
       error("Failed to re-allocate parts_out buffers.");
     memcpy(tp, p->parts_out, sizeof(struct part) * p->nr_parts_out);
@@ -1066,15 +1065,15 @@ void proxy_parts_load(struct proxy *p, const struct part *parts,
  * @param gparts Pointer to an array of #gpart to send.
  * @param N The number of gparts.
  */
-void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N) {
+void proxy_gparts_load(struct proxy* p, const struct gpart* gparts, int N) {
 
   /* Is there enough space in the buffer? */
   if (p->nr_gparts_out + N > p->size_gparts_out) {
     do {
       p->size_gparts_out *= proxy_buffgrow;
     } while (p->nr_gparts_out + N > p->size_gparts_out);
-    struct gpart *tp;
-    if ((tp = (struct gpart *)swift_malloc(
+    struct gpart* tp;
+    if ((tp = (struct gpart*)swift_malloc(
              "gparts_out", sizeof(struct gpart) * p->size_gparts_out)) == NULL)
       error("Failed to re-allocate gparts_out buffers.");
     memcpy(tp, p->gparts_out, sizeof(struct gpart) * p->nr_gparts_out);
@@ -1096,15 +1095,15 @@ void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N) {
  * @param sparts Pointer to an array of #spart to send.
  * @param N The number of sparts.
  */
-void proxy_sparts_load(struct proxy *p, const struct spart *sparts, int N) {
+void proxy_sparts_load(struct proxy* p, const struct spart* sparts, int N) {
 
   /* Is there enough space in the buffer? */
   if (p->nr_sparts_out + N > p->size_sparts_out) {
     do {
       p->size_sparts_out *= proxy_buffgrow;
     } while (p->nr_sparts_out + N > p->size_sparts_out);
-    struct spart *tp;
-    if ((tp = (struct spart *)swift_malloc(
+    struct spart* tp;
+    if ((tp = (struct spart*)swift_malloc(
              "sparts_out", sizeof(struct spart) * p->size_sparts_out)) == NULL)
       error("Failed to re-allocate sparts_out buffers.");
     memcpy(tp, p->sparts_out, sizeof(struct spart) * p->nr_sparts_out);
@@ -1126,15 +1125,15 @@ void proxy_sparts_load(struct proxy *p, const struct spart *sparts, int N) {
  * @param bparts Pointer to an array of #bpart to send.
  * @param N The number of bparts.
  */
-void proxy_bparts_load(struct proxy *p, const struct bpart *bparts, int N) {
+void proxy_bparts_load(struct proxy* p, const struct bpart* bparts, int N) {
 
   /* Is there enough space in the buffer? */
   if (p->nr_bparts_out + N > p->size_bparts_out) {
     do {
       p->size_bparts_out *= proxy_buffgrow;
     } while (p->nr_bparts_out + N > p->size_bparts_out);
-    struct bpart *tp;
-    if ((tp = (struct bpart *)swift_malloc(
+    struct bpart* tp;
+    if ((tp = (struct bpart*)swift_malloc(
              "bparts_out", sizeof(struct bpart) * p->size_bparts_out)) == NULL)
       error("Failed to re-allocate bparts_out buffers.");
     memcpy(tp, p->bparts_out, sizeof(struct bpart) * p->nr_bparts_out);
@@ -1156,15 +1155,15 @@ void proxy_bparts_load(struct proxy *p, const struct bpart *bparts, int N) {
  * @param sinks Pointer to an array of #sink to send.
  * @param N The number of sinks.
  */
-void proxy_sinks_load(struct proxy *p, const struct sink *sinks, int N) {
+void proxy_sinks_load(struct proxy* p, const struct sink* sinks, int N) {
 
   /* Is there enough space in the buffer? */
   if (p->nr_sinks_out + N > p->size_sinks_out) {
     do {
       p->size_sinks_out *= proxy_buffgrow;
     } while (p->nr_sinks_out + N > p->size_sinks_out);
-    struct sink *tp;
-    if ((tp = (struct sink *)swift_malloc(
+    struct sink* tp;
+    if ((tp = (struct sink*)swift_malloc(
              "sinks_out", sizeof(struct sink) * p->size_sinks_out)) == NULL)
       error("Failed to re-allocate sinks_out buffers.");
     memcpy(tp, p->sinks_out, sizeof(struct sink) * p->nr_sinks_out);
@@ -1185,16 +1184,16 @@ void proxy_sinks_load(struct proxy *p, const struct sink *sinks, int N) {
  *
  * @param p The #proxy.
  */
-void proxy_free_particle_buffers(struct proxy *p) {
+void proxy_free_particle_buffers(struct proxy* p) {
 
   if (p->size_parts_out > proxy_buffinit) {
     swift_free("parts_out", p->parts_out);
     swift_free("xparts_out", p->xparts_out);
     p->size_parts_out = proxy_buffinit;
-    if ((p->parts_out = (struct part *)swift_malloc(
+    if ((p->parts_out = (struct part*)swift_malloc(
              "parts_out", sizeof(struct part) * p->size_parts_out)) == NULL)
       error("Failed to allocate parts_out buffers.");
-    if ((p->xparts_out = (struct xpart *)swift_malloc(
+    if ((p->xparts_out = (struct xpart*)swift_malloc(
              "xparts_out", sizeof(struct xpart) * p->size_parts_out)) == NULL)
       error("Failed to allocate xparts_out buffers.");
   }
@@ -1202,10 +1201,10 @@ void proxy_free_particle_buffers(struct proxy *p) {
     swift_free("parts_in", p->parts_in);
     swift_free("xparts_in", p->xparts_in);
     p->size_parts_in = proxy_buffinit;
-    if ((p->parts_in = (struct part *)swift_malloc(
+    if ((p->parts_in = (struct part*)swift_malloc(
              "parts_in", sizeof(struct part) * p->size_parts_in)) == NULL)
       error("Failed to allocate parts_in buffers.");
-    if ((p->xparts_in = (struct xpart *)swift_malloc(
+    if ((p->xparts_in = (struct xpart*)swift_malloc(
              "xparts_in", sizeof(struct xpart) * p->size_parts_in)) == NULL)
       error("Failed to allocate xparts_in buffers.");
   }
@@ -1213,14 +1212,14 @@ void proxy_free_particle_buffers(struct proxy *p) {
   if (p->size_gparts_out > proxy_buffinit) {
     swift_free("gparts_out", p->gparts_out);
     p->size_gparts_out = proxy_buffinit;
-    if ((p->gparts_out = (struct gpart *)swift_malloc(
+    if ((p->gparts_out = (struct gpart*)swift_malloc(
              "gparts_out", sizeof(struct gpart) * p->size_gparts_out)) == NULL)
       error("Failed to allocate gparts_out buffers.");
   }
   if (p->size_gparts_in > proxy_buffinit) {
     swift_free("gparts_in", p->gparts_in);
     p->size_gparts_in = proxy_buffinit;
-    if ((p->gparts_in = (struct gpart *)swift_malloc(
+    if ((p->gparts_in = (struct gpart*)swift_malloc(
              "gparts_in", sizeof(struct gpart) * p->size_gparts_in)) == NULL)
       error("Failed to allocate gparts_in buffers.");
   }
@@ -1228,14 +1227,14 @@ void proxy_free_particle_buffers(struct proxy *p) {
   if (p->size_sparts_out > proxy_buffinit) {
     swift_free("sparts_out", p->sparts_out);
     p->size_sparts_out = proxy_buffinit;
-    if ((p->sparts_out = (struct spart *)swift_malloc(
+    if ((p->sparts_out = (struct spart*)swift_malloc(
              "sparts_out", sizeof(struct spart) * p->size_sparts_out)) == NULL)
       error("Failed to allocate sparts_out buffers.");
   }
   if (p->size_sparts_in > proxy_buffinit) {
     swift_free("sparts_in", p->sparts_in);
     p->size_sparts_in = proxy_buffinit;
-    if ((p->sparts_in = (struct spart *)swift_malloc(
+    if ((p->sparts_in = (struct spart*)swift_malloc(
              "sparts_in", sizeof(struct spart) * p->size_sparts_in)) == NULL)
       error("Failed to allocate sparts_in buffers.");
   }
@@ -1243,14 +1242,14 @@ void proxy_free_particle_buffers(struct proxy *p) {
   if (p->size_bparts_out > proxy_buffinit) {
     swift_free("bparts_out", p->bparts_out);
     p->size_bparts_out = proxy_buffinit;
-    if ((p->bparts_out = (struct bpart *)swift_malloc(
+    if ((p->bparts_out = (struct bpart*)swift_malloc(
              "bparts_out", sizeof(struct bpart) * p->size_bparts_out)) == NULL)
       error("Failed to allocate bparts_out buffers.");
   }
   if (p->size_bparts_in > proxy_buffinit) {
     swift_free("bparts_in", p->bparts_in);
     p->size_bparts_in = proxy_buffinit;
-    if ((p->bparts_in = (struct bpart *)swift_malloc(
+    if ((p->bparts_in = (struct bpart*)swift_malloc(
              "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
       error("Failed to allocate bparts_in buffers.");
   }
@@ -1258,14 +1257,14 @@ void proxy_free_particle_buffers(struct proxy *p) {
   if (p->size_sinks_out > proxy_buffinit) {
     swift_free("sinks_out", p->sinks_out);
     p->size_sinks_out = proxy_buffinit;
-    if ((p->sinks_out = (struct sink *)swift_malloc(
+    if ((p->sinks_out = (struct sink*)swift_malloc(
              "sinks_out", sizeof(struct sink) * p->size_sinks_out)) == NULL)
       error("Failed to allocate sinks_out buffers.");
   }
   if (p->size_sinks_in > proxy_buffinit) {
     swift_free("sinks_in", p->sinks_in);
     p->size_sinks_in = proxy_buffinit;
-    if ((p->sinks_in = (struct sink *)swift_malloc(
+    if ((p->sinks_in = (struct sink*)swift_malloc(
              "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
       error("Failed to allocate sinks_in buffers.");
   }
@@ -1278,7 +1277,7 @@ void proxy_free_particle_buffers(struct proxy *p) {
  * @param mynodeID The node this proxy is running on.
  * @param nodeID The node with which this proxy will communicate.
  */
-void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
+void proxy_init(struct proxy* p, int mynodeID, int nodeID) {
 
   /* Set the nodeID. */
   p->mynodeID = mynodeID;
@@ -1287,20 +1286,20 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the cell send and receive buffers, if needed. */
   if (p->cells_in == NULL) {
     p->size_cells_in = proxy_buffinit;
-    if ((p->cells_in = (struct cell **)swift_malloc(
-             "cells_in", sizeof(void *) * p->size_cells_in)) == NULL)
+    if ((p->cells_in = (struct cell**)swift_malloc(
+             "cells_in", sizeof(void*) * p->size_cells_in)) == NULL)
       error("Failed to allocate cells_in buffer.");
-    if ((p->cells_in_type = (int *)swift_malloc(
+    if ((p->cells_in_type = (int*)swift_malloc(
              "cells_in_type", sizeof(int) * p->size_cells_in)) == NULL)
       error("Failed to allocate cells_in_type buffer.");
   }
   p->nr_cells_in = 0;
   if (p->cells_out == NULL) {
     p->size_cells_out = proxy_buffinit;
-    if ((p->cells_out = (struct cell **)swift_malloc(
-             "cells_out", sizeof(void *) * p->size_cells_out)) == NULL)
+    if ((p->cells_out = (struct cell**)swift_malloc(
+             "cells_out", sizeof(void*) * p->size_cells_out)) == NULL)
       error("Failed to allocate cells_out buffer.");
-    if ((p->cells_out_type = (int *)swift_malloc(
+    if ((p->cells_out_type = (int*)swift_malloc(
              "cells_out_type", sizeof(int) * p->size_cells_out)) == NULL)
       error("Failed to allocate cells_out_type buffer.");
   }
@@ -1309,18 +1308,18 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the part send and receive buffers, if needed. */
   if (p->parts_in == NULL) {
     p->size_parts_in = proxy_buffinit;
-    if ((p->parts_in = (struct part *)swift_malloc(
+    if ((p->parts_in = (struct part*)swift_malloc(
              "parts_in", sizeof(struct part) * p->size_parts_in)) == NULL ||
-        (p->xparts_in = (struct xpart *)swift_malloc(
+        (p->xparts_in = (struct xpart*)swift_malloc(
              "xparts_in", sizeof(struct xpart) * p->size_parts_in)) == NULL)
       error("Failed to allocate parts_in buffers.");
   }
   p->nr_parts_in = 0;
   if (p->parts_out == NULL) {
     p->size_parts_out = proxy_buffinit;
-    if ((p->parts_out = (struct part *)swift_malloc(
+    if ((p->parts_out = (struct part*)swift_malloc(
              "parts_out", sizeof(struct part) * p->size_parts_out)) == NULL ||
-        (p->xparts_out = (struct xpart *)swift_malloc(
+        (p->xparts_out = (struct xpart*)swift_malloc(
              "xparts_out", sizeof(struct xpart) * p->size_parts_out)) == NULL)
       error("Failed to allocate parts_out buffers.");
   }
@@ -1329,14 +1328,14 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the gpart send and receive buffers, if needed. */
   if (p->gparts_in == NULL) {
     p->size_gparts_in = proxy_buffinit;
-    if ((p->gparts_in = (struct gpart *)swift_malloc(
+    if ((p->gparts_in = (struct gpart*)swift_malloc(
              "gparts_in", sizeof(struct gpart) * p->size_gparts_in)) == NULL)
       error("Failed to allocate gparts_in buffers.");
   }
   p->nr_gparts_in = 0;
   if (p->gparts_out == NULL) {
     p->size_gparts_out = proxy_buffinit;
-    if ((p->gparts_out = (struct gpart *)swift_malloc(
+    if ((p->gparts_out = (struct gpart*)swift_malloc(
              "gparts_out", sizeof(struct gpart) * p->size_gparts_out)) == NULL)
       error("Failed to allocate gparts_out buffers.");
   }
@@ -1345,14 +1344,14 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the spart send and receive buffers, if needed. */
   if (p->sparts_in == NULL) {
     p->size_sparts_in = proxy_buffinit;
-    if ((p->sparts_in = (struct spart *)swift_malloc(
+    if ((p->sparts_in = (struct spart*)swift_malloc(
              "sparts_in", sizeof(struct spart) * p->size_sparts_in)) == NULL)
       error("Failed to allocate sparts_in buffers.");
   }
   p->nr_sparts_in = 0;
   if (p->sparts_out == NULL) {
     p->size_sparts_out = proxy_buffinit;
-    if ((p->sparts_out = (struct spart *)swift_malloc(
+    if ((p->sparts_out = (struct spart*)swift_malloc(
              "sparts_out", sizeof(struct spart) * p->size_sparts_out)) == NULL)
       error("Failed to allocate sparts_out buffers.");
   }
@@ -1361,14 +1360,14 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the bpart send and receive buffers, if needed. */
   if (p->bparts_in == NULL) {
     p->size_bparts_in = proxy_buffinit;
-    if ((p->bparts_in = (struct bpart *)swift_malloc(
+    if ((p->bparts_in = (struct bpart*)swift_malloc(
              "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
       error("Failed to allocate bparts_in buffers.");
   }
   p->nr_bparts_in = 0;
   if (p->bparts_out == NULL) {
     p->size_bparts_out = proxy_buffinit;
-    if ((p->bparts_out = (struct bpart *)swift_malloc(
+    if ((p->bparts_out = (struct bpart*)swift_malloc(
              "bparts_out", sizeof(struct bpart) * p->size_bparts_out)) == NULL)
       error("Failed to allocate bparts_out buffers.");
   }
@@ -1377,14 +1376,14 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the sinks send and receive buffers, if needed. */
   if (p->sinks_in == NULL) {
     p->size_sinks_in = proxy_buffinit;
-    if ((p->sinks_in = (struct sink *)swift_malloc(
+    if ((p->sinks_in = (struct sink*)swift_malloc(
              "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
       error("Failed to allocate sinks_in buffers.");
   }
   p->nr_sinks_in = 0;
   if (p->sinks_out == NULL) {
     p->size_sinks_out = proxy_buffinit;
-    if ((p->sinks_out = (struct sink *)swift_malloc(
+    if ((p->sinks_out = (struct sink*)swift_malloc(
              "sinks_out", sizeof(struct sink) * p->size_sinks_out)) == NULL)
       error("Failed to allocate sinks_out buffers.");
   }
@@ -1394,7 +1393,7 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
 /**
  * @brief Free the memory allocated by a #proxy
  */
-void proxy_clean(struct proxy *p) {
+void proxy_clean(struct proxy* p) {
 
   swift_free("cells_in", p->cells_in);
   swift_free("cells_out", p->cells_out);

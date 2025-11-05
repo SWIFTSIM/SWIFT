@@ -38,7 +38,7 @@
  * @param sf the star_formation_history struct of the current cell
  */
 INLINE static void star_formation_logger_log_new_spart(
-    const struct spart *sp, struct star_formation_history *sf) {
+    const struct spart* sp, struct star_formation_history* sf) {
 
   /* Add mass of created sparticle to the total stellar mass in this cell */
   sf->new_stellar_mass += sp->mass;
@@ -57,7 +57,7 @@ INLINE static void star_formation_logger_log_new_spart(
  * @param sf the star_formation_history struct we want to initialize
  */
 INLINE static void star_formation_logger_log_inactive_cell(
-    struct star_formation_history *sf) {
+    struct star_formation_history* sf) {
 
   /* Initialize the stellar mass to zero */
   sf->new_stellar_mass = 0.f;
@@ -71,7 +71,7 @@ INLINE static void star_formation_logger_log_inactive_cell(
  * @param sfh The pointer to the star formation history structure
  */
 INLINE static void star_formation_logger_init(
-    struct star_formation_history *sfh) {
+    struct star_formation_history* sfh) {
   /* Initialize the collecting SFH structure to zero */
   sfh->new_stellar_mass = 0.f;
   sfh->number_new_stars = 0;
@@ -86,8 +86,8 @@ INLINE static void star_formation_logger_init(
  * @param sf_update the star formation structure which we want to update
  */
 INLINE static void star_formation_logger_add(
-    struct star_formation_history *sf_update,
-    const struct star_formation_history *sf_add) {
+    struct star_formation_history* sf_update,
+    const struct star_formation_history* sf_add) {
 
   /* Update the SFH structure */
   sf_update->number_new_stars += sf_add->number_new_stars;
@@ -102,8 +102,8 @@ INLINE static void star_formation_logger_add(
  * @param phys_const Physical constants in internal units
  */
 INLINE static void star_formation_logger_init_log_file(
-    FILE *fp, const struct unit_system *restrict us,
-    const struct phys_const *phys_const) {
+    FILE* fp, const struct unit_system* restrict us,
+    const struct phys_const* phys_const) {
 
   /* Write some general text to the logger file */
   fprintf(fp, "# Star Formation History Logger file\n");
@@ -148,8 +148,8 @@ INLINE static void star_formation_logger_init_log_file(
  * @param dt_star The length of the time-step in physical internal units.
  */
 INLINE static void star_formation_logger_log_active_part(
-    const struct part *p, const struct xpart *xp,
-    struct star_formation_history *sf, const double dt_star) {}
+    const struct part* p, const struct xpart* xp,
+    struct star_formation_history* sf, const double dt_star) {}
 
 /**
  * @brief Add the SFR tracer to the total inactive SFR of this cell as long as
@@ -162,8 +162,8 @@ INLINE static void star_formation_logger_log_active_part(
  * @param sf the SFH logger struct
  */
 INLINE static void star_formation_logger_log_inactive_part(
-    const struct part *p, const struct xpart *xp,
-    struct star_formation_history *sf) {}
+    const struct part* p, const struct xpart* xp,
+    struct star_formation_history* sf) {}
 
 /**
  * @brief add a star formation history struct to an other star formation history
@@ -174,8 +174,8 @@ INLINE static void star_formation_logger_log_inactive_part(
  * @param sf_update the star formation structure which we want to update
  */
 INLINE static void star_formation_logger_add_to_accumulator(
-    struct star_formation_history_accumulator *sf_update,
-    const struct star_formation_history *sf_add) {
+    struct star_formation_history_accumulator* sf_update,
+    const struct star_formation_history* sf_add) {
 
   /* Update the SFH structure */
   sf_update->number_new_stars = sf_add->number_new_stars;
@@ -195,7 +195,7 @@ INLINE static void star_formation_logger_add_to_accumulator(
  * @param step The time-step of the simulation.
  */
 INLINE static void star_formation_logger_write_to_log_file(
-    FILE *fp, const double time, const double a, const double z,
+    FILE* fp, const double time, const double a, const double z,
     struct star_formation_history_accumulator sf, const int step) {
 
   fprintf(fp, "%6d %16e %12.7f %14e %14ld %14e %14ld %14e\n", step, time, a, z,
@@ -210,7 +210,7 @@ INLINE static void star_formation_logger_write_to_log_file(
  * @param sfh the star_formation_history struct we want to initialize
  */
 INLINE static void star_formation_logger_accumulator_init(
-    struct star_formation_history_accumulator *sfh) {
+    struct star_formation_history_accumulator* sfh) {
   /* Initialize all values to zero */
   sfh->new_stellar_mass = 0.f;
   sfh->number_new_stars = 0;

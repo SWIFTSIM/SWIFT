@@ -52,7 +52,7 @@
  * @return the index of key or where it should be inserted.
  */
 static unsigned int memuse_rnode_bsearch(uint8_t keypart,
-                                         struct memuse_rnode **children,
+                                         struct memuse_rnode** children,
                                          unsigned int count) {
 
   /* Search for lower bound. */
@@ -76,9 +76,9 @@ static unsigned int memuse_rnode_bsearch(uint8_t keypart,
  * @param children the list of sorted children.
  * @param count the number of children
  */
-static void memuse_rnode_binsert_child(struct memuse_rnode *child,
-                                       struct memuse_rnode **children,
-                                       unsigned int *count) {
+static void memuse_rnode_binsert_child(struct memuse_rnode* child,
+                                       struct memuse_rnode** children,
+                                       unsigned int* count) {
   unsigned int pos = 0;
   if (*count > 0) {
 
@@ -89,7 +89,7 @@ static void memuse_rnode_binsert_child(struct memuse_rnode *child,
      * after the end. */
     if (pos < *count && children[pos]->keypart != child->keypart) {
       memmove(&children[pos + 1], &children[pos],
-              (*count - pos) * sizeof(struct memuse_rnode *));
+              (*count - pos) * sizeof(struct memuse_rnode*));
     }
   }
 
@@ -105,14 +105,14 @@ static void memuse_rnode_binsert_child(struct memuse_rnode *child,
  * @param node the parent node.
  * @param child the node to add to the parent,
  */
-static void memuse_rnode_add_child(struct memuse_rnode *node,
-                                   struct memuse_rnode *child) {
+static void memuse_rnode_add_child(struct memuse_rnode* node,
+                                   struct memuse_rnode* child) {
 
   /* Extend the children list to include a new entry .*/
-  void *mem = realloc(node->children,
-                      (node->count + 1) * sizeof(struct memuse_rnode *));
+  void* mem =
+      realloc(node->children, (node->count + 1) * sizeof(struct memuse_rnode*));
   if (mem == NULL) error("Failed to reallocate rnodes\n");
-  node->children = (struct memuse_rnode **)mem;
+  node->children = (struct memuse_rnode**)mem;
 
   /* Insert the new child. */
   memuse_rnode_binsert_child(child, node->children, &node->count);
@@ -125,7 +125,7 @@ static void memuse_rnode_add_child(struct memuse_rnode *node,
  * @param keypart the key part of the child.
  * @return NULL if not found.
  */
-static struct memuse_rnode *memuse_rnode_lookup(const struct memuse_rnode *node,
+static struct memuse_rnode* memuse_rnode_lookup(const struct memuse_rnode* node,
                                                 uint8_t keypart) {
 
   /* Locate the key, or where it would be inserted. */
@@ -151,15 +151,15 @@ static struct memuse_rnode *memuse_rnode_lookup(const struct memuse_rnode *node,
  *        NULL value, so storing signed values needs care and we limit the
  *        range of unsigned values.
  */
-void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
-                               uint8_t *key, uint8_t keylen, int64_t value) {
+void memuse_rnode_insert_child(struct memuse_rnode* node, uint8_t depth,
+                               uint8_t* key, uint8_t keylen, int64_t value) {
 
   /* Check if keypart this already exists at this level and add new child if
    * not. */
   uint8_t keypart = key[depth];
-  struct memuse_rnode *child = memuse_rnode_lookup(node, keypart);
+  struct memuse_rnode* child = memuse_rnode_lookup(node, keypart);
   if (child == NULL) {
-    child = (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
+    child = (struct memuse_rnode*)calloc(1, sizeof(struct memuse_rnode));
     child->value = -1;
     child->keypart = keypart;
     memuse_rnode_add_child(node, child);
@@ -191,11 +191,11 @@ void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
  * @param key the full key of the expected child node.
  * @param keylen the number of bytes in the key.
  */
-struct memuse_rnode *memuse_rnode_find_child(struct memuse_rnode *node,
-                                             uint8_t depth, uint8_t *key,
+struct memuse_rnode* memuse_rnode_find_child(struct memuse_rnode* node,
+                                             uint8_t depth, uint8_t* key,
                                              uint8_t keylen) {
   uint8_t keypart = key[depth];
-  struct memuse_rnode *child = NULL;
+  struct memuse_rnode* child = NULL;
   if (node->count > 0) child = memuse_rnode_lookup(node, keypart);
   if (child != NULL && (depth + 1) < keylen) {
     return memuse_rnode_find_child(child, depth + 1, key, keylen);
@@ -208,7 +208,7 @@ struct memuse_rnode *memuse_rnode_find_child(struct memuse_rnode *node,
  *
  * @param node the rnode.
  */
-void memuse_rnode_cleanup(struct memuse_rnode *node) {
+void memuse_rnode_cleanup(struct memuse_rnode* node) {
 
   if (!node) return;
 
@@ -229,7 +229,7 @@ void memuse_rnode_cleanup(struct memuse_rnode *node) {
  * @param full if not zero then nodes that are not storing a value
  *              are also reported.
  */
-void memuse_rnode_dump(int depth, struct memuse_rnode *node, int full) {
+void memuse_rnode_dump(int depth, struct memuse_rnode* node, int full) {
 
   /* Value of the full key, to this depth. Assumes full key is a pointer,
    * so uncomment when using strings. */
@@ -237,7 +237,7 @@ void memuse_rnode_dump(int depth, struct memuse_rnode *node, int full) {
     // uint8_t key[MEMUSE_MAXLABLEN];
     // char ptr[MEMUSE_MAXLABLEN];
     uint8_t key[sizeof(uintptr_t)];
-    void *ptr;
+    void* ptr;
   } keyparts = {{0}};
 
   /* Record keypart at this depth. Root has no keypart. */

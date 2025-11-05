@@ -141,24 +141,24 @@ struct hydro_props {
   struct mhd_global_data mhd;
 };
 
-void hydro_props_print(const struct hydro_props *p);
-void hydro_props_init(struct hydro_props *p,
-                      const struct phys_const *phys_const,
-                      const struct unit_system *us,
-                      struct swift_params *params);
+void hydro_props_print(const struct hydro_props* p);
+void hydro_props_init(struct hydro_props* p,
+                      const struct phys_const* phys_const,
+                      const struct unit_system* us,
+                      struct swift_params* params);
 
-void hydro_props_update(struct hydro_props *p, const struct gravity_props *gp,
-                        const struct cosmology *cosmo);
+void hydro_props_update(struct hydro_props* p, const struct gravity_props* gp,
+                        const struct cosmology* cosmo);
 
 #if defined(HAVE_HDF5)
-void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p);
+void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props* p);
 #endif
 
 /* Dump/restore. */
-void hydro_props_struct_dump(const struct hydro_props *p, FILE *stream);
-void hydro_props_struct_restore(const struct hydro_props *p, FILE *stream);
+void hydro_props_struct_dump(const struct hydro_props* p, FILE* stream);
+void hydro_props_struct_restore(const struct hydro_props* p, FILE* stream);
 
 /* Setup for tests */
-void hydro_props_init_no_hydro(struct hydro_props *p);
+void hydro_props_init_no_hydro(struct hydro_props* p);
 
 #endif /* SWIFT_HYDRO_PROPERTIES */

@@ -24,8 +24,8 @@
 
 #ifdef WITH_FOF
 
-void write_fof_hdf5_catalogue(const struct fof_props *props,
-                              const struct engine *e);
+void write_fof_hdf5_catalogue(const struct fof_props* props,
+                              const struct engine* e);
 
 #endif /* WITH_FOF */
 

@@ -76,7 +76,7 @@ struct ghost_stats {
  * @param bin Ghost stats bin to reset.
  */
 __attribute__((always_inline)) INLINE static void ghost_stats_reset_entry(
-    struct ghost_stats_entry *restrict bin) {
+    struct ghost_stats_entry* restrict bin) {
 
   bin->count = 0;
   bin->count_no_ngb = 0;
@@ -93,7 +93,7 @@ __attribute__((always_inline)) INLINE static void ghost_stats_reset_entry(
  * @param bin Ghost stats bin to write.
  */
 __attribute__((always_inline)) INLINE static void ghost_stats_print_entry(
-    FILE *f, const struct ghost_stats_entry *restrict bin) {
+    FILE* f, const struct ghost_stats_entry* restrict bin) {
 
   if (bin->count > 0) {
     fprintf(f, "\t%i\t%i\t%g\t%g\t%g\t%g", bin->count, bin->count_no_ngb,
@@ -111,7 +111,7 @@ __attribute__((always_inline)) INLINE static void ghost_stats_print_entry(
  * @param gstats Ghost stats struct.
  */
 __attribute__((always_inline)) INLINE static void ghost_stats_reset_entries(
-    struct ghost_stats *restrict gstats) {
+    struct ghost_stats* restrict gstats) {
 
   for (int b = 0; b < SWIFT_GHOST_STATS + 1; ++b) {
     ghost_stats_reset_entry(&gstats->hydro[b]);
@@ -138,12 +138,12 @@ __attribute__((always_inline)) INLINE static void ghost_stats_reset_entries(
  * @param sid Indices of active star particles in the array.
  */
 __attribute__((always_inline)) INLINE static void ghost_stats_account_for_stars(
-    struct ghost_stats *restrict gstats, int iteration_number, int scount,
-    struct spart *restrict sparts, int *sid) {
+    struct ghost_stats* restrict gstats, int iteration_number, int scount,
+    struct spart* restrict sparts, int* sid) {
 
   /* accumulate in highest bin, so we can spot out-of-bounds values */
   int binidx = min(iteration_number, SWIFT_GHOST_STATS - 1);
-  struct ghost_stats_entry *restrict sbin = &gstats->stars[binidx];
+  struct ghost_stats_entry* restrict sbin = &gstats->stars[binidx];
   sbin->count += scount;
   for (int i = 0; i < scount; i++) {
     const float hi = sparts[sid[i]].h;
@@ -161,9 +161,9 @@ __attribute__((always_inline)) INLINE static void ghost_stats_account_for_stars(
  * @param sp Star particle that has a converged smoothing length.
  */
 __attribute__((always_inline)) INLINE static void ghost_stats_converged_star(
-    struct ghost_stats *restrict gstats, struct spart *restrict sp) {
+    struct ghost_stats* restrict gstats, struct spart* restrict sp) {
 
-  struct ghost_stats_entry *restrict sbin = &gstats->stars[SWIFT_GHOST_STATS];
+  struct ghost_stats_entry* restrict sbin = &gstats->stars[SWIFT_GHOST_STATS];
   ++sbin->count;
   const float hi = sp->h;
   sbin->hmin = min(sbin->hmin, hi);
@@ -180,11 +180,11 @@ __attribute__((always_inline)) INLINE static void ghost_stats_converged_star(
  * @param iteration_number Number of the current iteration.
  */
 __attribute__((always_inline)) INLINE static void
-ghost_stats_no_ngb_star_iteration(struct ghost_stats *restrict gstats,
+ghost_stats_no_ngb_star_iteration(struct ghost_stats* restrict gstats,
                                   int iteration_number) {
 
   int binidx = min(iteration_number, SWIFT_GHOST_STATS - 1);
-  struct ghost_stats_entry *restrict sbin = &gstats->stars[binidx];
+  struct ghost_stats_entry* restrict sbin = &gstats->stars[binidx];
   ++sbin->count_no_ngb;
 }
 
@@ -195,9 +195,9 @@ ghost_stats_no_ngb_star_iteration(struct ghost_stats *restrict gstats,
  * @param gstats Ghost stats struct to update.
  */
 __attribute__((always_inline)) INLINE static void
-ghost_stats_no_ngb_star_converged(struct ghost_stats *restrict gstats) {
+ghost_stats_no_ngb_star_converged(struct ghost_stats* restrict gstats) {
 
-  struct ghost_stats_entry *restrict sbin = &gstats->stars[SWIFT_GHOST_STATS];
+  struct ghost_stats_entry* restrict sbin = &gstats->stars[SWIFT_GHOST_STATS];
   ++sbin->count_no_ngb;
 }
 
@@ -215,13 +215,13 @@ ghost_stats_no_ngb_star_converged(struct ghost_stats *restrict gstats) {
  * @param sid Indices of active black hole particles in the array.
  */
 __attribute__((always_inline)) INLINE static void
-ghost_stats_account_for_black_holes(struct ghost_stats *restrict gstats,
+ghost_stats_account_for_black_holes(struct ghost_stats* restrict gstats,
                                     int iteration_number, int bcount,
-                                    struct bpart *restrict bparts, int *sid) {
+                                    struct bpart* restrict bparts, int* sid) {
 
   /* accumulate in highest bin, so we can spot out-of-bounds values */
   int binidx = min(iteration_number, SWIFT_GHOST_STATS - 1);
-  struct ghost_stats_entry *restrict bbin = &gstats->black_holes[binidx];
+  struct ghost_stats_entry* restrict bbin = &gstats->black_holes[binidx];
   bbin->count += bcount;
   for (int i = 0; i < bcount; i++) {
     const float hi = bparts[sid[i]].h;
@@ -239,10 +239,10 @@ ghost_stats_account_for_black_holes(struct ghost_stats *restrict gstats,
  * @param bp Black hole particle that has a converged smoothing length.
  */
 __attribute__((always_inline)) INLINE static void
-ghost_stats_converged_black_hole(struct ghost_stats *restrict gstats,
-                                 struct bpart *restrict bp) {
+ghost_stats_converged_black_hole(struct ghost_stats* restrict gstats,
+                                 struct bpart* restrict bp) {
 
-  struct ghost_stats_entry *restrict bbin =
+  struct ghost_stats_entry* restrict bbin =
       &gstats->black_holes[SWIFT_GHOST_STATS];
   ++bbin->count;
   const float hi = bp->h;
@@ -260,11 +260,11 @@ ghost_stats_converged_black_hole(struct ghost_stats *restrict gstats,
  * @param iteration_number Number of the current iteration.
  */
 __attribute__((always_inline)) INLINE static void
-ghost_stats_no_ngb_black_hole_iteration(struct ghost_stats *restrict gstats,
+ghost_stats_no_ngb_black_hole_iteration(struct ghost_stats* restrict gstats,
                                         int iteration_number) {
 
   int binidx = min(iteration_number, SWIFT_GHOST_STATS - 1);
-  struct ghost_stats_entry *restrict bbin = &gstats->black_holes[binidx];
+  struct ghost_stats_entry* restrict bbin = &gstats->black_holes[binidx];
   ++bbin->count_no_ngb;
 }
 
@@ -275,9 +275,9 @@ ghost_stats_no_ngb_black_hole_iteration(struct ghost_stats *restrict gstats,
  * @param gstats Ghost stats struct to update.
  */
 __attribute__((always_inline)) INLINE static void
-ghost_stats_no_ngb_black_hole_converged(struct ghost_stats *restrict gstats) {
+ghost_stats_no_ngb_black_hole_converged(struct ghost_stats* restrict gstats) {
 
-  struct ghost_stats_entry *restrict bbin =
+  struct ghost_stats_entry* restrict bbin =
       &gstats->black_holes[SWIFT_GHOST_STATS];
   ++bbin->count_no_ngb;
 }
@@ -296,12 +296,12 @@ ghost_stats_no_ngb_black_hole_converged(struct ghost_stats *restrict gstats) {
  * @param sid Indices of active gas particles in the array.
  */
 __attribute__((always_inline)) INLINE static void ghost_stats_account_for_hydro(
-    struct ghost_stats *restrict gstats, int iteration_number, int count,
-    struct part *restrict parts, int *pid) {
+    struct ghost_stats* restrict gstats, int iteration_number, int count,
+    struct part* restrict parts, int* pid) {
 
   /* accumulate in highest bin, so we can spot out-of-bounds values */
   int binidx = min(iteration_number, SWIFT_GHOST_STATS - 1);
-  struct ghost_stats_entry *restrict hbin = &gstats->hydro[binidx];
+  struct ghost_stats_entry* restrict hbin = &gstats->hydro[binidx];
   hbin->count += count;
   for (int i = 0; i < count; i++) {
     const float hi = parts[pid[i]].h;
@@ -319,9 +319,9 @@ __attribute__((always_inline)) INLINE static void ghost_stats_account_for_hydro(
  * @param p Gas particle that has a converged smoothing length.
  */
 __attribute__((always_inline)) INLINE static void ghost_stats_converged_hydro(
-    struct ghost_stats *restrict gstats, struct part *restrict p) {
+    struct ghost_stats* restrict gstats, struct part* restrict p) {
 
-  struct ghost_stats_entry *restrict hbin = &gstats->hydro[SWIFT_GHOST_STATS];
+  struct ghost_stats_entry* restrict hbin = &gstats->hydro[SWIFT_GHOST_STATS];
   ++hbin->count;
   const float hi = p->h;
   hbin->hmin = min(hbin->hmin, hi);
@@ -338,11 +338,11 @@ __attribute__((always_inline)) INLINE static void ghost_stats_converged_hydro(
  * @param iteration_number Number of the current iteration.
  */
 __attribute__((always_inline)) INLINE static void
-ghost_stats_no_ngb_hydro_iteration(struct ghost_stats *restrict gstats,
+ghost_stats_no_ngb_hydro_iteration(struct ghost_stats* restrict gstats,
                                    int iteration_number) {
 
   int binidx = min(iteration_number, SWIFT_GHOST_STATS - 1);
-  struct ghost_stats_entry *restrict hbin = &gstats->hydro[binidx];
+  struct ghost_stats_entry* restrict hbin = &gstats->hydro[binidx];
   ++hbin->count_no_ngb;
 }
 
@@ -353,9 +353,9 @@ ghost_stats_no_ngb_hydro_iteration(struct ghost_stats *restrict gstats,
  * @param gstats Ghost stats struct to update.
  */
 __attribute__((always_inline)) INLINE static void
-ghost_stats_no_ngb_hydro_converged(struct ghost_stats *restrict gstats) {
+ghost_stats_no_ngb_hydro_converged(struct ghost_stats* restrict gstats) {
 
-  struct ghost_stats_entry *restrict hbin = &gstats->hydro[SWIFT_GHOST_STATS];
+  struct ghost_stats_entry* restrict hbin = &gstats->hydro[SWIFT_GHOST_STATS];
   ++hbin->count_no_ngb;
 }
 
@@ -365,7 +365,7 @@ ghost_stats_no_ngb_hydro_converged(struct ghost_stats *restrict gstats) {
  * @param f File to write to.
  */
 __attribute__((always_inline)) INLINE static void ghost_stats_write_header(
-    FILE *f) {
+    FILE* f) {
 
   fprintf(f, "# Ghost statistics\n");
   fprintf(f, "# Values listed in blocks per particle type\n");
@@ -392,7 +392,7 @@ __attribute__((always_inline)) INLINE static void ghost_stats_write_header(
  * @param cellID Cell ID to use to identify the cell.
  */
 __attribute__((always_inline)) INLINE static void ghost_stats_write_cell_stats(
-    FILE *f, const struct ghost_stats *restrict gstats,
+    FILE* f, const struct ghost_stats* restrict gstats,
     const long long cellID) {
 
   if (gstats->hydro[0].count + gstats->stars[0].count > 0) {
@@ -416,8 +416,8 @@ __attribute__((always_inline)) INLINE static void ghost_stats_write_cell_stats(
 
 struct cell;
 
-void cell_reset_ghost_histograms(struct cell *c);
-void cell_write_ghost_stats(FILE *f, const struct cell *c,
+void cell_reset_ghost_histograms(struct cell* c);
+void cell_write_ghost_stats(FILE* f, const struct cell* c,
                             const long long cellID);
 /*******************
  * space interface *
@@ -425,8 +425,8 @@ void cell_write_ghost_stats(FILE *f, const struct cell *c,
 
 struct space;
 
-void space_reset_ghost_histograms(struct space *s);
-void space_write_ghost_stats(const struct space *s, int j);
+void space_reset_ghost_histograms(struct space* s);
+void space_write_ghost_stats(const struct space* s, int j);
 
 #else
 
@@ -434,67 +434,67 @@ struct ghost_stats {};
 
 /* stars */
 __attribute__((always_inline)) INLINE static void ghost_stats_account_for_stars(
-    struct ghost_stats *restrict gstats, int iteration_number, int scount,
-    struct spart *restrict sparts, int *sid) {}
+    struct ghost_stats* restrict gstats, int iteration_number, int scount,
+    struct spart* restrict sparts, int* sid) {}
 
 __attribute__((always_inline)) INLINE static void ghost_stats_converged_star(
-    struct ghost_stats *restrict gstats, struct spart *restrict sp) {}
+    struct ghost_stats* restrict gstats, struct spart* restrict sp) {}
 
 __attribute__((always_inline)) INLINE static void
-ghost_stats_no_ngb_star_iteration(struct ghost_stats *restrict gstats,
+ghost_stats_no_ngb_star_iteration(struct ghost_stats* restrict gstats,
                                   int iteration_number) {}
 
 __attribute__((always_inline)) INLINE static void
-ghost_stats_no_ngb_star_converged(struct ghost_stats *restrict gstats) {}
+ghost_stats_no_ngb_star_converged(struct ghost_stats* restrict gstats) {}
 
 /* black holes */
 __attribute__((always_inline)) INLINE static void
-ghost_stats_account_for_black_holes(struct ghost_stats *restrict gstats,
+ghost_stats_account_for_black_holes(struct ghost_stats* restrict gstats,
                                     int iteration_number, int bcount,
-                                    struct bpart *restrict bparts, int *sid) {}
+                                    struct bpart* restrict bparts, int* sid) {}
 
 __attribute__((always_inline)) INLINE static void
-ghost_stats_converged_black_hole(struct ghost_stats *restrict gstats,
-                                 struct bpart *restrict bp) {}
+ghost_stats_converged_black_hole(struct ghost_stats* restrict gstats,
+                                 struct bpart* restrict bp) {}
 
 __attribute__((always_inline)) INLINE static void
-ghost_stats_no_ngb_black_hole_iteration(struct ghost_stats *restrict gstats,
+ghost_stats_no_ngb_black_hole_iteration(struct ghost_stats* restrict gstats,
                                         int iteration_number) {}
 
 __attribute__((always_inline)) INLINE static void
-ghost_stats_no_ngb_black_hole_converged(struct ghost_stats *restrict gstats) {}
+ghost_stats_no_ngb_black_hole_converged(struct ghost_stats* restrict gstats) {}
 
 /* hydro */
 __attribute__((always_inline)) INLINE static void ghost_stats_account_for_hydro(
-    struct ghost_stats *restrict gstats, int iteration_number, int count,
-    struct part *restrict parts, int *pid) {}
+    struct ghost_stats* restrict gstats, int iteration_number, int count,
+    struct part* restrict parts, int* pid) {}
 
 __attribute__((always_inline)) INLINE static void ghost_stats_converged_hydro(
-    struct ghost_stats *restrict gstats, struct part *restrict p) {}
+    struct ghost_stats* restrict gstats, struct part* restrict p) {}
 
 __attribute__((always_inline)) INLINE static void
-ghost_stats_no_ngb_hydro_iteration(struct ghost_stats *restrict gstats,
+ghost_stats_no_ngb_hydro_iteration(struct ghost_stats* restrict gstats,
                                    int iteration_number) {}
 
 __attribute__((always_inline)) INLINE static void
-ghost_stats_no_ngb_hydro_converged(struct ghost_stats *restrict gstats) {}
+ghost_stats_no_ngb_hydro_converged(struct ghost_stats* restrict gstats) {}
 
 /// cell interface
 
 struct cell;
 
 __attribute__((always_inline)) INLINE static void cell_reset_ghost_histograms(
-    struct cell *c) {}
+    struct cell* c) {}
 
 /// space interface
 
 struct space;
 
 __attribute__((always_inline)) INLINE static void space_reset_ghost_histograms(
-    struct space *s) {}
+    struct space* s) {}
 
 __attribute__((always_inline)) INLINE static void space_write_ghost_stats(
-    const struct space *s, int j) {}
+    const struct space* s, int j) {}
 #endif
 
 #endif /* SWIFT_GHOST_STATS */

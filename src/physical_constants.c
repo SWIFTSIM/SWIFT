@@ -40,8 +40,8 @@
  * @param params The parsed parameter file.
  * @param internal_const The physical constants to initialize.
  */
-void phys_const_init(const struct unit_system *us, struct swift_params *params,
-                     struct phys_const *internal_const) {
+void phys_const_init(const struct unit_system* us, struct swift_params* params,
+                     struct phys_const* internal_const) {
 
   /* Units are declared as {U_M, U_L, U_t, U_I, U_T} */
 
@@ -175,7 +175,7 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
  *
  * @param internal_const The constants in the internal unit system.
  */
-void phys_const_print(const struct phys_const *internal_const) {
+void phys_const_print(const struct phys_const* internal_const) {
 
   message("%25s = %e", "Gravitational constant",
           internal_const->const_newton_G);
@@ -211,7 +211,7 @@ void phys_const_print(const struct phys_const *internal_const) {
  * @param h_file The opened hdf5 file.
  * @param p The physical constants.
  */
-void phys_const_print_snapshot(hid_t h_file, const struct phys_const *p) {
+void phys_const_print_snapshot(hid_t h_file, const struct phys_const* p) {
 
   const hid_t h_grp = H5Gcreate(h_file, "/PhysicalConstants", H5P_DEFAULT,
                                 H5P_DEFAULT, H5P_DEFAULT);
@@ -313,9 +313,9 @@ void phys_const_print_snapshot(hid_t h_file, const struct phys_const *p) {
  * @param internal_const the struct
  * @param stream the file stream
  */
-void phys_const_struct_dump(const struct phys_const *internal_const,
-                            FILE *stream) {
-  restart_write_blocks((void *)internal_const, sizeof(struct phys_const), 1,
+void phys_const_struct_dump(const struct phys_const* internal_const,
+                            FILE* stream) {
+  restart_write_blocks((void*)internal_const, sizeof(struct phys_const), 1,
                        stream, "physconst", "phys_const params");
 }
 
@@ -326,8 +326,8 @@ void phys_const_struct_dump(const struct phys_const *internal_const,
  * @param internal_const the struct
  * @param stream the file stream
  */
-void phys_const_struct_restore(const struct phys_const *internal_const,
-                               FILE *stream) {
-  restart_read_blocks((void *)internal_const, sizeof(struct phys_const), 1,
+void phys_const_struct_restore(const struct phys_const* internal_const,
+                               FILE* stream) {
+  restart_read_blocks((void*)internal_const, sizeof(struct phys_const), 1,
                       stream, NULL, "phys_const params");
 }

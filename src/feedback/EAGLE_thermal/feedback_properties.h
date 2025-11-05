@@ -51,31 +51,31 @@ enum SNII_energy_scalings {
 struct yield_table {
 
   /*! Yield table mass bins */
-  double *mass;
+  double* mass;
 
   /*! Yield table metallicity (metal mass fractions) bins */
-  double *metallicity;
+  double* metallicity;
 
   /*! Array to store yield table (individual metals produced by the star)
      resampled by IMF mass bins */
-  double *yield_IMF_resampled;
+  double* yield_IMF_resampled;
 
   /*! Array to store yield table being read in */
-  double *yield;
+  double* yield;
 
   /*! Array to store table of ejecta (metals alredy in the stars that are
     ejected) resampled by IMF mass bins */
-  double *ejecta_IMF_resampled;
+  double* ejecta_IMF_resampled;
 
   /*! Array to store table of ejecta being read in */
-  double *ejecta;
+  double* ejecta;
 
   /*! Array to store table of total mass released ( metals produced by the star)
     resampled by IMF mass bins */
-  double *total_metals_IMF_resampled;
+  double* total_metals_IMF_resampled;
 
   /* Array to store table of total mass released being read in */
-  double *total_metals;
+  double* total_metals;
 };
 
 /**
@@ -85,13 +85,13 @@ struct yield_table {
 struct lifetime_table {
 
   /* table of masses */
-  double *mass;
+  double* mass;
 
   /* table of metallicities */
-  double *metallicity;
+  double* metallicity;
 
   /* table of lifetimes depending on mass an metallicity */
-  double **dyingtime;
+  double** dyingtime;
 };
 
 /**
@@ -135,17 +135,17 @@ struct feedback_props {
   struct yield_table yield_SNII;
 
   /* Arrays of yield tables for SNIa */
-  double *yield_SNIa_IMF_resampled;
+  double* yield_SNIa_IMF_resampled;
   double yield_SNIa_total_metals_IMF_resampled;
-  double *yields_SNIa;
+  double* yields_SNIa;
 
   /* Arrays for names of elements being tracked for each enrichment channel */
-  char **SNIa_element_names;
-  char **SNII_element_names;
-  char **AGB_element_names;
+  char** SNIa_element_names;
+  char** SNII_element_names;
+  char** AGB_element_names;
 
   /* Array of mass bins for yield calculations */
-  double *yield_mass_bins;
+  double* yield_mass_bins;
 
   /* Location of yield tables */
   char yield_table_path[200];
@@ -211,13 +211,13 @@ struct feedback_props {
   /* ------------- Parameters for IMF --------------- */
 
   /*! Array to store calculated IMF */
-  double *imf;
+  double* imf;
 
   /*! Arrays to store IMF mass bins */
-  double *imf_mass_bin;
+  double* imf_mass_bin;
 
   /*! Arrays to store IMF mass bins (log10)*/
-  double *imf_mass_bin_log10;
+  double* imf_mass_bin_log10;
 
   /*! Minimal stellar mass considered by the IMF (in solar masses) */
   double imf_min_mass_msun;
@@ -315,11 +315,11 @@ struct feedback_props {
   int stellar_evolution_sampling_rate;
 };
 
-void feedback_props_init(struct feedback_props *fp,
-                         const struct phys_const *phys_const,
-                         const struct unit_system *us,
-                         struct swift_params *params,
-                         const struct hydro_props *hydro_props,
-                         const struct cosmology *cosmo);
+void feedback_props_init(struct feedback_props* fp,
+                         const struct phys_const* phys_const,
+                         const struct unit_system* us,
+                         struct swift_params* params,
+                         const struct hydro_props* hydro_props,
+                         const struct cosmology* cosmo);
 
 #endif /* SWIFT_EAGLE_FEEDBACK_PROPERTIES_THERMAL_H */

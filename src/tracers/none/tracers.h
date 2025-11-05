@@ -43,10 +43,10 @@
  * struct).
  */
 static INLINE void tracers_after_init(
-    const struct part *p, struct xpart *xp, const struct unit_system *us,
-    const struct phys_const *phys_const, const int with_cosmology,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct cooling_function_data *cooling, const double time) {}
+    const struct part* p, struct xpart* xp, const struct unit_system* us,
+    const struct phys_const* phys_const, const int with_cosmology,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct cooling_function_data* cooling, const double time) {}
 
 /**
  * @brief Update the particle tracers just after it has been drifted.
@@ -63,10 +63,10 @@ static INLINE void tracers_after_init(
  * struct).
  */
 static INLINE void tracers_after_drift(
-    const struct part *p, struct xpart *xp, const struct unit_system *us,
-    const struct phys_const *phys_const, const int with_cosmology,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct cooling_function_data *cooling, const double time) {}
+    const struct part* p, struct xpart* xp, const struct unit_system* us,
+    const struct phys_const* phys_const, const int with_cosmology,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct cooling_function_data* cooling, const double time) {}
 
 /**
  * @brief Update the particle tracers just after its time-step has been
@@ -89,11 +89,11 @@ static INLINE void tracers_after_drift(
  * num_snapshot_triggers_part)
  */
 static INLINE void tracers_after_timestep_part(
-    const struct part *p, struct xpart *xp, const struct unit_system *us,
-    const struct phys_const *phys_const, const int with_cosmology,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct cooling_function_data *cooling, const double time,
-    const double time_step_length, const int *const tracers_triggers_started) {}
+    const struct part* p, struct xpart* xp, const struct unit_system* us,
+    const struct phys_const* phys_const, const int with_cosmology,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct cooling_function_data* cooling, const double time,
+    const double time_step_length, const int* const tracers_triggers_started) {}
 
 /**
  * @brief Update the star particle tracers just after its time-step has been
@@ -113,10 +113,10 @@ static INLINE void tracers_after_timestep_part(
  * num_snapshot_triggers_spart)
  */
 static INLINE void tracers_after_timestep_spart(
-    struct spart *sp, const struct unit_system *us,
-    const struct phys_const *phys_const, const int with_cosmology,
-    const struct cosmology *cosmo, const double time_step_length,
-    const int *const tracers_triggers_started) {}
+    struct spart* sp, const struct unit_system* us,
+    const struct phys_const* phys_const, const int with_cosmology,
+    const struct cosmology* cosmo, const double time_step_length,
+    const int* const tracers_triggers_started) {}
 
 /**
  * @brief Update the black hole particle tracers just after its time-step has
@@ -136,10 +136,10 @@ static INLINE void tracers_after_timestep_spart(
  * num_snapshot_triggers_bpart)
  */
 static INLINE void tracers_after_timestep_bpart(
-    struct bpart *bp, const struct unit_system *us,
-    const struct phys_const *phys_const, const int with_cosmology,
-    const struct cosmology *cosmo, const double time_step_length,
-    const int *const tracers_triggers_started) {}
+    struct bpart* bp, const struct unit_system* us,
+    const struct phys_const* phys_const, const int with_cosmology,
+    const struct cosmology* cosmo, const double time_step_length,
+    const int* const tracers_triggers_started) {}
 
 /**
  * @brief Initialise the tracer data at the start of a calculation.
@@ -154,10 +154,10 @@ static INLINE void tracers_after_timestep_bpart(
  * struct).
  */
 static INLINE void tracers_first_init_xpart(
-    const struct part *p, struct xpart *xp, const struct unit_system *us,
-    const struct phys_const *phys_const, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props,
-    const struct cooling_function_data *cooling) {}
+    const struct part* p, struct xpart* xp, const struct unit_system* us,
+    const struct phys_const* phys_const, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props,
+    const struct cooling_function_data* cooling) {}
 
 /**
  * @brief Initialise the star tracer data at the start of a calculation.
@@ -171,10 +171,10 @@ static INLINE void tracers_first_init_xpart(
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
  */
-static INLINE void tracers_first_init_spart(struct spart *sp,
-                                            const struct unit_system *us,
-                                            const struct phys_const *phys_const,
-                                            const struct cosmology *cosmo) {}
+static INLINE void tracers_first_init_spart(struct spart* sp,
+                                            const struct unit_system* us,
+                                            const struct phys_const* phys_const,
+                                            const struct cosmology* cosmo) {}
 
 /**
  * @brief Initialise the black hole tracer data at the start of a calculation.
@@ -188,10 +188,10 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
  */
-static INLINE void tracers_first_init_bpart(struct bpart *bp,
-                                            const struct unit_system *us,
-                                            const struct phys_const *phys_const,
-                                            const struct cosmology *cosmo) {}
+static INLINE void tracers_first_init_bpart(struct bpart* bp,
+                                            const struct unit_system* us,
+                                            const struct phys_const* phys_const,
+                                            const struct cosmology* cosmo) {}
 
 /**
  * @brief Update the particles' tracer data after a stellar feedback
@@ -201,7 +201,7 @@ static INLINE void tracers_first_init_bpart(struct bpart *bp,
  *
  * @param xp The extended particle data.
  */
-static INLINE void tracers_after_feedback(struct xpart *xp) {}
+static INLINE void tracers_after_feedback(struct xpart* xp) {}
 
 /**
  * @brief Update the particles' tracer data with values before an AGN feedback
@@ -215,7 +215,7 @@ static INLINE void tracers_after_feedback(struct xpart *xp) {}
  * (internal physical units)
  */
 static INLINE void tracers_before_black_holes_feedback(
-    const struct part *p, struct xpart *xp, const float scale_factor) {}
+    const struct part* p, struct xpart* xp, const float scale_factor) {}
 
 /**
  * @brief Update the particles' tracer data after an AGN feedback
@@ -232,7 +232,7 @@ static INLINE void tracers_before_black_holes_feedback(
  * units)
  */
 static INLINE void tracers_after_black_holes_feedback(
-    const struct part *p, struct xpart *xp, const int with_cosmology,
+    const struct part* p, struct xpart* xp, const int with_cosmology,
     const float scale_factor, const double time, const double delta_energy) {}
 
 /**
@@ -243,8 +243,8 @@ static INLINE void tracers_after_black_holes_feedback(
  * @param p the #part.
  * @param xp the #xpart.
  */
-static INLINE void tracers_after_snapshot_part(const struct part *p,
-                                               struct xpart *xp) {}
+static INLINE void tracers_after_snapshot_part(const struct part* p,
+                                               struct xpart* xp) {}
 
 /**
  * @brief Tracer event called after a snapshot was written.
@@ -253,7 +253,7 @@ static INLINE void tracers_after_snapshot_part(const struct part *p,
  *
  * @param sp the #spart.
  */
-static INLINE void tracers_after_snapshot_spart(struct spart *sp) {}
+static INLINE void tracers_after_snapshot_spart(struct spart* sp) {}
 
 /**
  * @brief Tracer event called after a snapshot was written.
@@ -262,7 +262,7 @@ static INLINE void tracers_after_snapshot_spart(struct spart *sp) {}
  *
  * @param sp the #spart.
  */
-static INLINE void tracers_after_snapshot_bpart(struct bpart *bp) {}
+static INLINE void tracers_after_snapshot_bpart(struct bpart* bp) {}
 
 /**
  * @brief Split the tracer content of a particle into n pieces
@@ -274,5 +274,5 @@ static INLINE void tracers_after_snapshot_bpart(struct bpart *bp) {}
  * @param n The number of pieces to split into.
  */
 __attribute__((always_inline)) INLINE static void tracers_split_part(
-    struct part *p, struct xpart *xp, const double n) {}
+    struct part* p, struct xpart* xp, const double n) {}
 #endif /* SWIFT_TRACERS_NONE_H */

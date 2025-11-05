@@ -48,9 +48,9 @@ __attribute__((always_inline)) INLINE static void
 rt_get_interaction_rates_for_grackle(
     gr_float rates[5], float energy_density[RT_NGROUPS],
     gr_float species_densities[6],
-    const double average_photon_energy[RT_NGROUPS], double **cse, double **csn,
-    const struct phys_const *restrict phys_const,
-    const struct unit_system *restrict us) {
+    const double average_photon_energy[RT_NGROUPS], double** cse, double** csn,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us) {
 
   rates[0] = 0.; /* Needs to be in [erg / s / cm^3 / nHI] for grackle. */
   rates[1] = 0.; /* [1 / time_units] */
@@ -140,9 +140,9 @@ rt_get_interaction_rates_for_grackle(
  **/
 __attribute__((always_inline)) INLINE static void rt_get_absorption_rates(
     double absorption_rates[RT_NGROUPS], gr_float species_densities[6],
-    const double average_photon_energy[RT_NGROUPS], double **csn,
-    const struct phys_const *restrict phys_const,
-    const struct unit_system *restrict us) {
+    const double average_photon_energy[RT_NGROUPS], double** csn,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us) {
 
   for (int g = 0; g < RT_NGROUPS; g++) absorption_rates[g] = 0.;
 

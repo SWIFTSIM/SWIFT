@@ -38,13 +38,13 @@ struct gpart;
 
 /* Type to store pointer to function for updating a healpix map */
 typedef double (*map_update_function_t)(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 
 /* Type to store pointer to function for providing baseline map value */
 typedef double (*map_baseline_function_t)(
-    const struct cosmology *c, const struct lightcone_props *lightcone_props,
-    const struct lightcone_map *map);
+    const struct cosmology* c, const struct lightcone_props* lightcone_props,
+    const struct lightcone_map* map);
 
 /* Type to store pointer to function to check which types contribute to a map */
 typedef int (*map_contrib_function_t)(int ptype);
@@ -77,12 +77,12 @@ int lightcone_map_gas_only(int ptype);
 int lightcone_map_total_mass_type_contributes(int ptype);
 
 double lightcone_map_total_mass_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 
 double lightcone_map_total_mass_baseline_value(
-    const struct cosmology *c, const struct lightcone_props *lightcone_props,
-    const struct lightcone_map *map);
+    const struct cosmology* c, const struct lightcone_props* lightcone_props,
+    const struct lightcone_map* map);
 
 /*
    Healpix map of gas mass
@@ -90,40 +90,40 @@ double lightcone_map_total_mass_baseline_value(
 int lightcone_map_gas_mass_type_contributes(int ptype);
 
 double lightcone_map_gas_mass_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 /*
    Healpix map of dark matter mass
 */
 int lightcone_map_dark_matter_mass_type_contributes(int ptype);
 
 double lightcone_map_dark_matter_mass_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 /*
    Healpix map of stellar mass
 */
 int lightcone_map_stellar_mass_type_contributes(int ptype);
 
 double lightcone_map_stellar_mass_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 /*
    Healpix map of black hole mass
 */
 int lightcone_map_black_hole_mass_type_contributes(int ptype);
 
 double lightcone_map_black_hole_mass_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 /*
    Healpix map of star formation rate
 */
 int lightcone_map_sfr_type_contributes(int ptype);
 
 double lightcone_map_sfr_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]);
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
 
 /*
    This associates map names to the appropriate update function and unit info.

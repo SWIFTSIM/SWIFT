@@ -34,8 +34,8 @@
 #include "riemann_vacuum.h"
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    const float *WL, const float *WR, const float *n, const float *vij,
-    float *totflux) {
+    const float* WL, const float* WR, const float* n, const float* vij,
+    float* totflux) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_input(WL, WR, n, vij);
@@ -173,9 +173,9 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 }
 
 __attribute__((always_inline)) INLINE static void
-riemann_solve_for_middle_state_flux(const float *WL, const float *WR,
-                                    const float *n, const float *vij,
-                                    float *totflux) {
+riemann_solve_for_middle_state_flux(const float* WL, const float* WR,
+                                    const float* n, const float* vij,
+                                    float* totflux) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_input(WL, WR, n, vij);

@@ -39,9 +39,9 @@
  * @brief Information required to compute the particle cell indices.
  */
 struct space_index_data {
-  struct space *s;
-  int *ind;
-  int *cell_counts;
+  struct space* s;
+  int* ind;
+  int* cell_counts;
   size_t count_inhibited_part;
   size_t count_inhibited_gpart;
   size_t count_inhibited_spart;
@@ -61,14 +61,14 @@ struct space_index_data {
  * @param nr_parts The number of particles to treat.
  * @param extra_data Pointers to the space and index list
  */
-void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
-                                       void *extra_data) {
+void space_parts_get_cell_index_mapper(void* map_data, int nr_parts,
+                                       void* extra_data) {
 
   /* Unpack the data */
-  struct part *restrict parts = (struct part *)map_data;
-  struct space_index_data *data = (struct space_index_data *)extra_data;
-  struct space *s = data->s;
-  int *const ind = data->ind + (ptrdiff_t)(parts - s->parts);
+  struct part* restrict parts = (struct part*)map_data;
+  struct space_index_data* data = (struct space_index_data*)extra_data;
+  struct space* s = data->s;
+  int* const ind = data->ind + (ptrdiff_t)(parts - s->parts);
 
   /* Get some constants */
   const double dim_x = s->dim[0];
@@ -80,7 +80,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
-  int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
+  int* cell_counts = (int*)calloc(s->nr_cells, sizeof(int));
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
@@ -94,7 +94,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   for (int k = 0; k < nr_parts; k++) {
 
     /* Get the particle */
-    struct part *restrict p = &parts[k];
+    struct part* restrict p = &parts[k];
 
     double old_pos_x = p->x[0];
     double old_pos_y = p->x[1];
@@ -188,14 +188,14 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
  * @param nr_gparts The number of g-particles to treat.
  * @param extra_data Pointers to the space and index list
  */
-void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
-                                        void *extra_data) {
+void space_gparts_get_cell_index_mapper(void* map_data, int nr_gparts,
+                                        void* extra_data) {
 
   /* Unpack the data */
-  struct gpart *restrict gparts = (struct gpart *)map_data;
-  struct space_index_data *data = (struct space_index_data *)extra_data;
-  struct space *s = data->s;
-  int *const ind = data->ind + (ptrdiff_t)(gparts - s->gparts);
+  struct gpart* restrict gparts = (struct gpart*)map_data;
+  struct space_index_data* data = (struct space_index_data*)extra_data;
+  struct space* s = data->s;
+  int* const ind = data->ind + (ptrdiff_t)(gparts - s->gparts);
 
   /* Get some constants */
   const double dim_x = s->dim[0];
@@ -207,7 +207,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
-  int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
+  int* cell_counts = (int*)calloc(s->nr_cells, sizeof(int));
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
@@ -220,7 +220,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   for (int k = 0; k < nr_gparts; k++) {
 
     /* Get the particle */
-    struct gpart *restrict gp = &gparts[k];
+    struct gpart* restrict gp = &gparts[k];
 
     double old_pos_x = gp->x[0];
     double old_pos_y = gp->x[1];
@@ -320,14 +320,14 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
  * @param nr_sparts The number of s-particles to treat.
  * @param extra_data Pointers to the space and index list
  */
-void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
-                                        void *extra_data) {
+void space_sparts_get_cell_index_mapper(void* map_data, int nr_sparts,
+                                        void* extra_data) {
 
   /* Unpack the data */
-  struct spart *restrict sparts = (struct spart *)map_data;
-  struct space_index_data *data = (struct space_index_data *)extra_data;
-  struct space *s = data->s;
-  int *const ind = data->ind + (ptrdiff_t)(sparts - s->sparts);
+  struct spart* restrict sparts = (struct spart*)map_data;
+  struct space_index_data* data = (struct space_index_data*)extra_data;
+  struct space* s = data->s;
+  int* const ind = data->ind + (ptrdiff_t)(sparts - s->sparts);
 
   /* Get some constants */
   const double dim_x = s->dim[0];
@@ -339,7 +339,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
-  int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
+  int* cell_counts = (int*)calloc(s->nr_cells, sizeof(int));
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
@@ -352,7 +352,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   for (int k = 0; k < nr_sparts; k++) {
 
     /* Get the particle */
-    struct spart *restrict sp = &sparts[k];
+    struct spart* restrict sp = &sparts[k];
 
     double old_pos_x = sp->x[0];
     double old_pos_y = sp->x[1];
@@ -448,14 +448,14 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
  * @param nr_bparts The number of b-particles to treat.
  * @param extra_data Pointers to the space and index list
  */
-void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
-                                        void *extra_data) {
+void space_bparts_get_cell_index_mapper(void* map_data, int nr_bparts,
+                                        void* extra_data) {
 
   /* Unpack the data */
-  struct bpart *restrict bparts = (struct bpart *)map_data;
-  struct space_index_data *data = (struct space_index_data *)extra_data;
-  struct space *s = data->s;
-  int *const ind = data->ind + (ptrdiff_t)(bparts - s->bparts);
+  struct bpart* restrict bparts = (struct bpart*)map_data;
+  struct space_index_data* data = (struct space_index_data*)extra_data;
+  struct space* s = data->s;
+  int* const ind = data->ind + (ptrdiff_t)(bparts - s->bparts);
 
   /* Get some constants */
   const double dim_x = s->dim[0];
@@ -467,7 +467,7 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
   const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
-  int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
+  int* cell_counts = (int*)calloc(s->nr_cells, sizeof(int));
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
@@ -480,7 +480,7 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
   for (int k = 0; k < nr_bparts; k++) {
 
     /* Get the particle */
-    struct bpart *restrict bp = &bparts[k];
+    struct bpart* restrict bp = &bparts[k];
 
     double old_pos_x = bp->x[0];
     double old_pos_y = bp->x[1];
@@ -576,14 +576,14 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
  * @param nr_sinks The number of sink-particles to treat.
  * @param extra_data Pointers to the space and index list
  */
-void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
-                                       void *extra_data) {
+void space_sinks_get_cell_index_mapper(void* map_data, int nr_sinks,
+                                       void* extra_data) {
 
   /* Unpack the data */
-  struct sink *restrict sinks = (struct sink *)map_data;
-  struct space_index_data *data = (struct space_index_data *)extra_data;
-  struct space *s = data->s;
-  int *const ind = data->ind + (ptrdiff_t)(sinks - s->sinks);
+  struct sink* restrict sinks = (struct sink*)map_data;
+  struct space_index_data* data = (struct space_index_data*)extra_data;
+  struct space* s = data->s;
+  int* const ind = data->ind + (ptrdiff_t)(sinks - s->sinks);
 
   /* Get some constants */
   const double dim_x = s->dim[0];
@@ -595,7 +595,7 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
   const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
-  int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
+  int* cell_counts = (int*)calloc(s->nr_cells, sizeof(int));
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
@@ -608,7 +608,7 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
   for (int k = 0; k < nr_sinks; k++) {
 
     /* Get the particle */
-    struct sink *restrict sink = &sinks[k];
+    struct sink* restrict sink = &sinks[k];
 
     double old_pos_x = sink->x[0];
     double old_pos_y = sink->x[1];
@@ -709,9 +709,9 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
  * creation.
  * @param verbose Are we talkative ?
  */
-void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
-                                size_t *count_inhibited_parts,
-                                size_t *count_extra_parts, int verbose) {
+void space_parts_get_cell_index(struct space* s, int* ind, int* cell_counts,
+                                size_t* count_inhibited_parts,
+                                size_t* count_extra_parts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -760,9 +760,9 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
  * creation.
  * @param verbose Are we talkative ?
  */
-void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
-                                 size_t *count_inhibited_gparts,
-                                 size_t *count_extra_gparts, int verbose) {
+void space_gparts_get_cell_index(struct space* s, int* gind, int* cell_counts,
+                                 size_t* count_inhibited_gparts,
+                                 size_t* count_extra_gparts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -811,9 +811,9 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
  * creation.
  * @param verbose Are we talkative ?
  */
-void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
-                                 size_t *count_inhibited_sparts,
-                                 size_t *count_extra_sparts, int verbose) {
+void space_sparts_get_cell_index(struct space* s, int* sind, int* cell_counts,
+                                 size_t* count_inhibited_sparts,
+                                 size_t* count_extra_sparts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -860,9 +860,9 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
  * creation.
  * @param verbose Are we talkative ?
  */
-void space_sinks_get_cell_index(struct space *s, int *sink_ind,
-                                int *cell_counts, size_t *count_inhibited_sinks,
-                                size_t *count_extra_sinks, int verbose) {
+void space_sinks_get_cell_index(struct space* s, int* sink_ind,
+                                int* cell_counts, size_t* count_inhibited_sinks,
+                                size_t* count_extra_sinks, int verbose) {
 
   const ticks tic = getticks();
 
@@ -911,9 +911,9 @@ void space_sinks_get_cell_index(struct space *s, int *sink_ind,
  * creation.
  * @param verbose Are we talkative ?
  */
-void space_bparts_get_cell_index(struct space *s, int *bind, int *cell_counts,
-                                 size_t *count_inhibited_bparts,
-                                 size_t *count_extra_bparts, int verbose) {
+void space_bparts_get_cell_index(struct space* s, int* bind, int* cell_counts,
+                                 size_t* count_inhibited_bparts,
+                                 size_t* count_extra_bparts, int verbose) {
 
   const ticks tic = getticks();
 
