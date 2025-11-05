@@ -34,8 +34,8 @@
  *
  * @return num_fields The number of i/o fields to read.
  */
-INLINE static int star_formation_read_particles(struct spart* sparts,
-                                                struct io_props* list) {
+INLINE static int star_formation_read_particles(struct spart *sparts,
+                                                struct io_props *list) {
 
   /* List what we want to read */
   list[0] = io_make_input_field("BirthMass", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
@@ -54,8 +54,8 @@ INLINE static int star_formation_read_particles(struct spart* sparts,
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int star_formation_write_particles(
-    const struct part* parts, const struct xpart* xparts,
-    struct io_props* list) {
+    const struct part *parts, const struct xpart *xparts,
+    struct io_props *list) {
   /* Nothing to write here */
   return 0;
 }
@@ -69,8 +69,8 @@ __attribute__((always_inline)) INLINE static int star_formation_write_particles(
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int
-star_formation_write_sparticles(const struct spart* sparts,
-                                struct io_props* list) {
+star_formation_write_sparticles(const struct spart *sparts,
+                                struct io_props *list) {
 
   list[0] = io_make_physical_output_field(
       "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
@@ -110,13 +110,13 @@ star_formation_write_sparticles(const struct spart* sparts,
  * @param starform the star formation law properties to initialize
  */
 INLINE static void starformation_init_backend(
-    struct swift_params* parameter_file, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct hydro_props* hydro_props,
-    const struct cosmology* cosmo,
-    const struct entropy_floor_properties* entropy_floor,
-    struct star_formation* starform) {
+    struct swift_params *parameter_file, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct hydro_props *hydro_props,
+    const struct cosmology *cosmo,
+    const struct entropy_floor_properties *entropy_floor,
+    struct star_formation *starform) {
 
-  const char* default_mode = "default";
+  const char *default_mode = "default";
   char temp[32];
   parser_get_opt_param_string(parameter_file,
                               "GEARStarFormation:star_formation_mode", temp,

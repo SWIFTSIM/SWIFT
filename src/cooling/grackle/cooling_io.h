@@ -38,7 +38,7 @@
  */
 __attribute__((always_inline)) INLINE static void cooling_write_flavour(
     hid_t h_grp, hid_t h_grp_columns,
-    const struct cooling_function_data* cooling) {
+    const struct cooling_function_data *cooling) {
 
 #if COOLING_GRACKLE_MODE == 0
   io_write_attribute_s(h_grp, "Cooling Model", "Grackle");
@@ -64,8 +64,8 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
-    const struct part* parts, const struct xpart* xparts,
-    struct io_props* list) {
+    const struct part *parts, const struct xpart *xparts,
+    struct io_props *list) {
 
   int num = 0;
 
@@ -140,8 +140,8 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
  * @param phys_const The #phys_const.
  */
 __attribute__((always_inline)) INLINE static void cooling_read_parameters(
-    struct swift_params* parameter_file, struct cooling_function_data* cooling,
-    const struct phys_const* phys_const, const struct unit_system* us) {
+    struct swift_params *parameter_file, struct cooling_function_data *cooling,
+    const struct phys_const *phys_const, const struct unit_system *us) {
 
   parser_get_param_string(parameter_file, "GrackleCooling:cloudy_table",
                           cooling->cloudy_table);
