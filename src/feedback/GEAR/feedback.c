@@ -50,8 +50,10 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   const struct cosmology* cosmo = e->cosmology;
   const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
 
-  /* Turn off the cooling */
-  cooling_set_part_time_cooling_off(p, xp, e->time);
+  /* Turn off the cooling only when SN are involved */
+  if (xp->feedback_data.hit_by_SN) {
+    cooling_set_part_time_cooling_off(p, xp, e->time);
+  }
 
   /* Update mass */
   const float old_mass = hydro_get_mass(p);

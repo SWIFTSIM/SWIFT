@@ -1,0 +1,55 @@
+# Intro
+This example consists of a homogeneous and periodic box filled with gas particles of equal mass. An individual star particle may be added after some time to first let the system rearrange.
+
+This example tests the bubble propagation for different injection of stellar winds. 
+
+# Configure
+To run this example with the GEAR model,
+
+```
+CFLAGS="-DSWIFT_TEST_STELLAR_WIND" ./configure  --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-sink=GEAR --with-feedback=GEAR --with-kernel=wendland-C2 --with-grackle=/path/to/grackle
+```
+
+Then, type
+
+```
+make -j
+```
+
+# ICs
+The run.sh script calls the `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
+Don't hesitate to change the stellar mass, but also the density and the mass of the gas particle to see the differences.
+
+# run 
+To run the script, once you've changed the parameter you wanted, you can simply make a sbatch or srun on the `run.sh` script. It will automatically create a folder containing the IC and the simulation. Then, the script will call the `gas_profile_movie.py` that makes a gif of the bubble's quantities over time and log some parameters' information in a .txt file `radial_peak_position.txt`. Finally, the `bubble_evolution.py` will use the information in the .txt file to plot the evolution of the bubble alongside with some theoretical formulas.
+(Exemple: ./run.sh)
+
+# Theorethical formulas
+The graphs plot different theoretical formulas coming from the book "Henny J. G. L. M. Lamers, Joseph P. Cassinelli - Introduction to Stellar Winds-Cambridge University Press (1999)" having the formulas for the energy conserving snowplow phase :
+R(t) = 28 * (L_36 / (mu * n_0))^(1/5) * t_6^(3/5)                   (12.11)
+v = 17 * (L_36 / (mu * n_0))^(1/5) * t_6^(-2/5)                     (12.12)
+T2 = 1.6 * 10^6 * L_36^(8/35) * n_0^(2/35) * t_6^(-6/35)            (12.13)
+n2 = 0.01 * L_36^(6/35) * n_0^(19/35) * t_6^(-22/35)                (12.14)
+
+and for the momentum conserving snowplow phase :
+R(t) = 16 * (L_36 / (v_3 * n_0))^(1/4) * t_6^(-1/2)                 (12.18)
+v  =7.9 * (L_36 / (v_3 * n_0))^(1/4) * t_6^(-1/2)                   (12.19)
+
+with some handsmade terms L_36 = L_w / 10^36 [erg / s], t_6 = t /10^6 [yrs] and v_3 = v_infty / 1000 [km / s]
+
+For more information you can also see  "Interstellar bubble" by (castro et al, 1975) : https://ui.adsabs.harvard.edu/abs/1975ApJ...200L.107C/abstract
+
+The two other fit for the radius come from the paper "Formation of star clusters and enrichment by massive stars in simulations of low-metallicity galaxies with a fully sampled initial stellar mass function" by (Lahén et al, 2023) : https://arxiv.org/abs/2211.15705
+R = 0.88 * (L_w / rho_0)^(1/5) * t(3/5)                             (4)         for energy conserving snowplow phase
+R = (3 * dot(M) * v_infty / (2 * pi * rho_0))^(1/4) * t^(1/2)       (6)         for momentum conserving snowplow phase 
+
+The shockwae could be described by 5 different regions:
+    1. The free wind regions, were the ejecta of the winds encounter nothing goes freely at the speed of the winds
+    2. The "hot compressed wind" consisting of shocked stellar wind mixed with a small fraction of the swept-up ISM 
+    3. The contact surface of the shockwave (the actual "shock" part of the shockwave)
+    4. The hot swept-up ISm, the region preceding the shockwave
+    5. The untouched ISM
+
+Be aware that the theoretical formulas for the radius and velocity evolution is the same for both region 2 and 3. Whereas the formulas for the temperature and density correspond only to the region 2. 
+
+
