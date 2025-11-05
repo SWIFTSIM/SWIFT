@@ -22,29 +22,31 @@ import h5py as h5
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
 import sys
+import os
 
 # for the plotting
 max_r = float(sys.argv[1])  # in units of the virial radius
 n_radial_bins = int(sys.argv[2])
 n_snaps = int(sys.argv[3])
+output_dir = sys.argv[4]  
 
 # some constants
 OMEGA = 0.3  # Cosmological matter fraction at z = 0
 PARSEC_IN_CGS = 3.0856776e18
 KM_PER_SEC_IN_CGS = 1.0e5
 CONST_G_CGS = 6.672e-8
-CONST_m_H_CGS = 1.67e-24
 h = 0.67777  # hubble parameter
-gamma = 5.0 / 3.0
 eta = 1.2349
 H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # read some header/parameter information from the first snapshot
 
 filename = "Hydrostatic_0000.hdf5"
-f = h5.File(filename, "r")
+snapshot_path = os.path.join(output_dir, filename)
+
+f = h5.File(snapshot_path, "r")
 params = f["Parameters"]
 unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
 unit_length_cgs = float(params.attrs["InternalUnitSystem:UnitLength_in_cgs"])
@@ -52,8 +54,7 @@ unit_velocity_cgs = float(params.attrs["InternalUnitSystem:UnitVelocity_in_cgs"]
 unit_time_cgs = unit_length_cgs / unit_velocity_cgs
 v_c = float(params.attrs["IsothermalPotential:vrot"])
 v_c_cgs = v_c * unit_velocity_cgs
-# lambda_cgs = float(params.attrs["LambdaCooling:lambda_cgs"])
-# X_H = float(params.attrs["LambdaCooling:hydrogen_mass_abundance"])
+
 header = f["Header"]
 N = header.attrs["NumPart_Total"][0]
 box_centre = np.array(header.attrs["BoxSize"])
@@ -62,10 +63,13 @@ box_centre = np.array(header.attrs["BoxSize"])
 r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
 M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
 
-for i in range(n_snaps):
-
+for i in range(0, n_snaps+1):
+    
     filename = "Hydrostatic_%04d.hdf5" % i
-    f = h5.File(filename, "r")
+
+    snapshot_path = os.path.join(output_dir, filename)
+
+    f = h5.File(snapshot_path, "r")
     coords_dset = f["PartType0/Coordinates"]
     coords = np.array(coords_dset)
 
@@ -80,21 +84,18 @@ for i in range(n_snaps):
     radius_cgs = radius * unit_length_cgs
     radius_over_virial_radius = radius_cgs / r_vir_cgs
 
-    r = radius_over_virial_radius
-
     bin_edges = np.linspace(0.0, max_r, n_radial_bins + 1)
     bin_width = bin_edges[1] - bin_edges[0]
-    hist = np.histogram(r, bins=bin_edges)[0]  # number of particles in each bin
+    histo = np.histogram(radius_over_virial_radius, bins=bin_edges)[0]  # number of particles in each bin
 
     # find the mass in each radial bin
-    mass_dset = f["PartType0/Masses"]
+    mass_dset = f["PartType0/Masses"][:]
 
-    # mass of each particles should be equal
-    part_mass = np.array(mass_dset)[0]
-    part_mass_cgs = part_mass * unit_mass_cgs
-    part_mass_over_virial_mass = part_mass_cgs / M_vir_cgs
+    # mass of each particles are equal, so take first value to then covnert to cgs values
+    part_mass = np.array(mass_dset, dtype=np.float32)[0]
+    part_mass_over_virial_mass = part_mass * (unit_mass_cgs / M_vir_cgs) # NOTE: using this order, we prevent float overflow
 
-    mass_hist = hist * part_mass_over_virial_mass
+    mass_hist = histo * part_mass_over_virial_mass
     radial_bin_mids = np.linspace(
         bin_width / 2.0, max_r - bin_width / 2.0, n_radial_bins
     )
@@ -109,29 +110,32 @@ for i in range(n_snaps):
     rho_analytic = t ** (-2) / (4.0 * np.pi)
 
     # initial analytic density profile
+    plt.figure()
     if i == 0:
         r_0 = radial_bin_mids[0]
         rho_0 = density[0]
         rho_analytic_init = rho_0 * (radial_bin_mids / r_0) ** (-2)
+        plt.plot(t, rho_analytic,label = "Initial analytic density profile")
 
-    figure()
-    plot(
+    plt.plot(
         radial_bin_mids,
         density / rho_analytic_init,
         "ko",
         label="Average density of shell",
     )
-    # plot(t,rho_analytic,label = "Initial analytic density profile")
-    xlabel(r"$r / r_{vir}$")
-    ylabel(r"$\rho / \rho_{init}$")
-    title(
+    
+    plt.xlabel(r"$r / r_{vir}$")
+    plt.ylabel(r"$\rho / \rho_{init}$")
+    plt.title(
         r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$"
         % (snap_time_cgs, N, v_c)
     )
-    xlim((radial_bin_mids[0], max_r))
-    ylim((0, 2))
-    plot((0, max_r), (1, 1))
-    legend(loc="upper right")
-    plot_filename = "./plots/density_profile/density_profile_%03d.png" % i
-    savefig(plot_filename, format="png")
-    close()
+    plt.xlim((radial_bin_mids[0], max_r))
+    # plt.ylim((0, 2))
+    plt.plot((0, max_r), (1, 1))
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.legend(loc="upper right")
+    plot_filename = os.path.join(output_dir, "plots/density_profile/density_profile_%03d.png" % i)
+    plt.savefig(plot_filename, format="png")
+    plt.close()

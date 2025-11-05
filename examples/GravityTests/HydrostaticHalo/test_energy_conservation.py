@@ -22,10 +22,13 @@ import h5py as h5
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
 import sys
+import os
 
 n_snaps = int(sys.argv[1])
+output_dir = sys.argv[2]  
+plot_filename = os.path.join(output_dir, "plots/energy_conservation.png")
 
 # some constants
 OMEGA = 0.3  # Cosmological matter fraction at z = 0
@@ -33,14 +36,15 @@ PARSEC_IN_CGS = 3.0856776e18
 KM_PER_SEC_IN_CGS = 1.0e5
 CONST_G_CGS = 6.672e-8
 h = 0.67777  # hubble parameter
-gamma = 5.0 / 3.0
 eta = 1.2349
 H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # read some header/parameter information from the first snapshot
 
 filename = "Hydrostatic_0000.hdf5"
-f = h5.File(filename, "r")
+snapshot_path = os.path.join(output_dir, filename)
+f = h5.File(snapshot_path, "r")
+
 params = f["Parameters"]
 unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
 unit_length_cgs = float(params.attrs["InternalUnitSystem:UnitLength_in_cgs"])
@@ -61,10 +65,12 @@ internal_energy_array = []
 kinetic_energy_array = []
 time_array_cgs = []
 
-for i in range(n_snaps):
+for i in range(0, n_snaps+1):
 
     filename = "Hydrostatic_%04d.hdf5" % i
-    f = h5.File(filename, "r")
+    snapshot_path = os.path.join(output_dir, filename)
+    f = h5.File(snapshot_path, "r")
+
     coords_dset = f["PartType0/Coordinates"]
     coords = np.array(coords_dset)
 
@@ -90,7 +96,7 @@ for i in range(n_snaps):
     total_kinetic_energy = 0.5 * np.sum(speed_squared)
     kinetic_energy_array = np.append(kinetic_energy_array, total_kinetic_energy)
 
-    u_dset = f["PartType0/InternalEnergy"]
+    u_dset = f["PartType0/InternalEnergies"]
     u = np.array(u_dset)
     total_internal_energy = np.sum(u)
     internal_energy_array = np.append(internal_energy_array, total_internal_energy)
@@ -104,14 +110,15 @@ te = pe + ke + ie
 dyn_time_cgs = r_vir_cgs / v_c_cgs
 time_array = time_array_cgs / dyn_time_cgs
 
-figure()
-plot(time_array, ke, label="Kinetic Energy")
-plot(time_array, pe, label="Potential Energy")
-plot(time_array, ie, label="Internal Energy")
-plot(time_array, te, label="Total Energy")
-legend(loc="lower right")
-xlabel(r"$t / t_{dyn}$")
-ylabel(r"$E / v_c^2$")
-title(r"$%d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" % (N, v_c))
-ylim((-2, 2))
-savefig("energy_conservation.png", format="png")
+plt.figure()
+plt.plot(time_array, ke, label="Kinetic Energy")
+plt.plot(time_array, pe, label="Potential Energy")
+plt.plot(time_array, ie, label="Internal Energy")
+plt.plot(time_array, te, label="Total Energy")
+plt.legend(loc="lower right")
+plt.xlabel(r"$t / t_{dyn}$")
+plt.ylabel(r"$E / v_c^2$")
+plt.title(r"$%d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" % (N, v_c))
+plt.ylim((-2, 2))
+plt.savefig(plot_filename, format="png")
+
