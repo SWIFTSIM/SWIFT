@@ -549,8 +549,8 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
     //     cj->top; runner_count_mesh_interactions_zoom_bkg(ci, cj, zoom_c,
     //     bkg_c, s);
     //   }
+    // }
   }
-}
 #else
   error(
       "This function should not be called without debugging checks or "
