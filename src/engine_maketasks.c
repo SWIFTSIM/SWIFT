@@ -1396,7 +1396,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
         scheduler_addunlock(s, c->stars.drift, c->super->kick2);
       }
-
+      
       c->grav.drift = scheduler_addtask(s, task_type_drift_gpart,
                                         task_subtype_none, 0, 0, c, NULL);
 
@@ -1422,6 +1422,16 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         /* Implicit tasks for the up and down passes */
         c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
                                               task_subtype_none, 0, 1, c, NULL);
+
+
+	
+	/*lily Particle split waits for gravity drift to finish */
+	//if (c->hydro.particle_split) {
+	//  scheduler_addunlock(s, c->grav.drift, c->hydro.particle_split);
+	//  scheduler_addunlock(s, c->grav.drift_out, c->hydro.particle_split);
+	//}
+	//
+ 
         c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
                                              task_subtype_none, 0, 1, c, NULL);
         c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
@@ -1462,10 +1472,18 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
         c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
                                             task_subtype_none, 0, 1, c, NULL);
-
+	
         scheduler_addunlock(s, c->parent->grav.init_out, c->grav.init_out);
         scheduler_addunlock(s, c->parent->grav.drift_out, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
+
+	
+	//lily
+	if (c->hydro.particle_split){
+	  if (c->grav.drift) 
+	    scheduler_addunlock(s, c->grav.drift, c->hydro.particle_split);
+	  if (c->grav.drift_out)
+	    scheduler_addunlock(s, c->grav.drift_out, c->hydro.particle_split);}
       }
     }
   }
@@ -1622,13 +1640,13 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
                                          task_subtype_none, 0, 0, c, NULL);
 
-      //<<lily>>: please go work
-      //something about adding this task at the super level whatever that means
+      //<<lily>>: please work
       c->hydro.particle_split = scheduler_addtask(s, task_type_particle_split,
                                          task_subtype_none, 0, 0, c, NULL);
 
-      scheduler_addunlock(s, c->hydro.super->hydro.drift, c->hydro.particle_split);
-      scheduler_addunlock(s, c->hydro.particle_split, c->hydro.super->hydro.sorts);
+      scheduler_addunlock(s, c->hydro.drift, c->hydro.particle_split);
+      scheduler_addunlock(s, c->hydro.particle_split, c->hydro.sorts);
+
       //
       
       /* Add the task finishing the force calculation */
