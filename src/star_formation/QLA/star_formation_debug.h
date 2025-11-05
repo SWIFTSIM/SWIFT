@@ -20,7 +20,7 @@
 #define SWIFT_STAR_FORMATION_QLA_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void star_formation_debug_particle(
-    const struct part* p, const struct xpart* xp) {
+    const struct part *p, const struct xpart *xp) {
 
   if (xp != NULL) {
     warning("[PID%lld] sf_data:", p->id);

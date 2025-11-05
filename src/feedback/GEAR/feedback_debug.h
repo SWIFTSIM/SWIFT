@@ -20,7 +20,7 @@
 #define SWIFT_FEEDBACK_GEAR_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void feedback_debug_particle(
-    const struct part* p, const struct xpart* xp) {
+    const struct part *p, const struct xpart *xp) {
 
   if (xp != NULL) {
     warning("[PID%lld] feedback_xpart_data:", p->id);

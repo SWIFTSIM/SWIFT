@@ -39,16 +39,16 @@
  * @param xp The #xpart to consider.
  * @param e The #engine.
  */
-void feedback_update_part(struct part* p, struct xpart* xp,
-                          const struct engine* e) {
+void feedback_update_part(struct part *p, struct xpart *xp,
+                          const struct engine *e) {
 
   /* WARNING: Do not comment out this line, because it will mess-up with
      SF/sinks. (I think it injects something that it should not...) */
   /* Did the particle receive a supernovae */
   if (xp->feedback_data.delta_mass == 0) return;
 
-  const struct cosmology* cosmo = e->cosmology;
-  const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
 
   /* Turn off the cooling */
   cooling_set_part_time_cooling_off(p, xp, e->time);
@@ -98,7 +98,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
  * @param xp The extra particle to act upon
  */
 __attribute__((always_inline)) INLINE void feedback_end_density(
-    struct part* p, struct xpart* xp) {}
+    struct part *p, struct xpart *xp) {}
 
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the
@@ -109,7 +109,7 @@ __attribute__((always_inline)) INLINE void feedback_end_density(
  * @param p The particle.
  * @param xp The extended data of the particle.
  */
-void feedback_reset_part(struct part* p, struct xpart* xp) {}
+void feedback_reset_part(struct part *p, struct xpart *xp) {}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?
@@ -117,7 +117,7 @@ void feedback_reset_part(struct part* p, struct xpart* xp) {}
  * @param sp The #spart.
  * @param e The #engine.
  */
-int feedback_is_active(const struct spart* sp, const struct engine* e) {
+int feedback_is_active(const struct spart *sp, const struct engine *e) {
 
   /* the particle is inactive if its birth_scale_factor or birth_time is
    * negative */
@@ -131,7 +131,7 @@ int feedback_is_active(const struct spart* sp, const struct engine* e) {
  *
  * @param sp The particle to act upon
  */
-void feedback_init_spart(struct spart* sp) {
+void feedback_init_spart(struct spart *sp) {
 
   sp->feedback_data.enrichment_weight = 0.f;
 }
@@ -142,8 +142,8 @@ void feedback_init_spart(struct spart* sp) {
  *
  * This is called in the stars ghost.
  */
-void feedback_reset_feedback(struct spart* sp,
-                             const struct feedback_props* feedback_props) {}
+void feedback_reset_feedback(struct spart *sp,
+                             const struct feedback_props *feedback_props) {}
 
 /**
  * @brief Initialises the s-particles feedback props for the first time
@@ -154,8 +154,8 @@ void feedback_reset_feedback(struct spart* sp,
  * @param sp The particle to act upon.
  * @param feedback_props The properties of the feedback model.
  */
-void feedback_prepare_spart(struct spart* sp,
-                            const struct feedback_props* feedback_props) {}
+void feedback_prepare_spart(struct spart *sp,
+                            const struct feedback_props *feedback_props) {}
 
 /**
  * @brief Prepare a #spart for the feedback task.
@@ -176,11 +176,11 @@ void feedback_prepare_spart(struct spart* sp,
  * @param ti_begin The integer time at the beginning of the step.
  * @param with_cosmology Are we running with cosmology on?
  */
-void feedback_prepare_feedback(struct spart* restrict sp,
-                               const struct feedback_props* feedback_props,
-                               const struct cosmology* cosmo,
-                               const struct unit_system* us,
-                               const struct phys_const* phys_const,
+void feedback_prepare_feedback(struct spart *restrict sp,
+                               const struct feedback_props *feedback_props,
+                               const struct cosmology *cosmo,
+                               const struct unit_system *us,
+                               const struct phys_const *phys_const,
                                const double star_age_beg_step, const double dt,
                                const double time, const integertime_t ti_begin,
                                const int with_cosmology) {

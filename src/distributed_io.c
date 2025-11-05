@@ -86,11 +86,11 @@ static const int io_max_size_output_list = 100;
  * the part array will be written once the structures have been stabilized.
  */
 void write_distributed_array(
-    const struct engine* e, hid_t grp, const char* fileName,
-    const char* partTypeGroupName, const struct io_props props, const size_t N,
+    const struct engine *e, hid_t grp, const char *fileName,
+    const char *partTypeGroupName, const struct io_props props, const size_t N,
     const enum lossy_compression_schemes lossy_compression,
-    const struct unit_system* internal_units,
-    const struct unit_system* snapshot_units) {
+    const struct unit_system *internal_units,
+    const struct unit_system *snapshot_units) {
 
 #ifdef IO_SPEED_MEASUREMENT
   const ticks tic_total = getticks();
@@ -102,8 +102,8 @@ void write_distributed_array(
   /* message("Writing '%s' array...", props.name); */
 
   /* Allocate temporary buffer */
-  void* temp = NULL;
-  if (swift_memalign("writebuff", (void**)&temp, IO_BUFFER_ALIGNMENT,
+  void *temp = NULL;
+  if (swift_memalign("writebuff", (void **)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
@@ -290,13 +290,13 @@ void write_distributed_array(
  * @param N_total The total number of particles to write in this array.
  * @param snapshot_units The units used for the data in this snapshot.
  */
-void write_array_virtual(struct engine* e, hid_t grp, const char* fileName_base,
-                         FILE* xmfFile, char* partTypeGroupName,
+void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
+                         FILE *xmfFile, char *partTypeGroupName,
                          struct io_props props, long long N_total,
-                         const long long* N_counts, const int num_ranks,
+                         const long long *N_counts, const int num_ranks,
                          const int ptype,
                          const enum lossy_compression_schemes lossy_compression,
-                         const struct unit_system* snapshot_units) {
+                         const struct unit_system *snapshot_units) {
 
 #if H5_VERSION_GE(1, 10, 0)
 
@@ -466,21 +466,21 @@ void write_array_virtual(struct engine* e, hid_t grp, const char* fileName_base,
  * @param subsample_any Are any fields being subsampled?
  * @param subsample_fraction The subsampling fraction of each particle type.
  */
-void write_virtual_file(struct engine* e, const char* fileName_base,
-                        const char* xmfFileName,
+void write_virtual_file(struct engine *e, const char *fileName_base,
+                        const char *xmfFileName,
                         const long long N_total[swift_type_count],
-                        const long long* N_counts, const int num_ranks,
+                        const long long *N_counts, const int num_ranks,
                         const int to_write[swift_type_count],
                         const int numFields[swift_type_count],
                         char current_selection_name[FIELD_BUFFER_SIZE],
-                        const struct unit_system* internal_units,
-                        const struct unit_system* snapshot_units, const int fof,
+                        const struct unit_system *internal_units,
+                        const struct unit_system *snapshot_units, const int fof,
                         const int subsample_any,
                         const float subsample_fraction[swift_type_count]) {
 
 #if H5_VERSION_GE(1, 10, 0)
 
-  struct output_options* output_options = e->output_options;
+  struct output_options *output_options = e->output_options;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -493,7 +493,7 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
 #endif
   const int with_rt = e->policy & engine_policy_rt;
 
-  FILE* xmfFile = 0;
+  FILE *xmfFile = 0;
   int numFiles = 1;
 
   /* First time, we need to create the XMF file */
@@ -562,7 +562,7 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
 
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);
-  struct tm* timeinfo = localtime(&tm);
+  struct tm *timeinfo = localtime(&tm);
   char snapshot_date[64];
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
   io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
@@ -776,23 +776,23 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
  * If such files already exist, it is erased and replaced by the new one.
  * The companion XMF file is also updated accordingly.
  */
-void write_output_distributed(struct engine* e,
-                              const struct unit_system* internal_units,
-                              const struct unit_system* snapshot_units,
+void write_output_distributed(struct engine *e,
+                              const struct unit_system *internal_units,
+                              const struct unit_system *snapshot_units,
                               const int fof, const int mpi_rank,
                               const int mpi_size, MPI_Comm comm,
                               MPI_Info info) {
 
   hid_t h_file = 0, h_grp = 0;
   int numFiles = mpi_size;
-  const struct part* parts = e->s->parts;
-  const struct xpart* xparts = e->s->xparts;
-  const struct gpart* gparts = e->s->gparts;
-  const struct sink* sinks = e->s->sinks;
-  const struct spart* sparts = e->s->sparts;
-  const struct bpart* bparts = e->s->bparts;
-  struct output_options* output_options = e->output_options;
-  struct output_list* output_list = e->output_list_snapshots;
+  const struct part *parts = e->s->parts;
+  const struct xpart *xparts = e->s->xparts;
+  const struct gpart *gparts = e->s->gparts;
+  const struct sink *sinks = e->s->sinks;
+  const struct spart *sparts = e->s->sparts;
+  const struct bpart *bparts = e->s->bparts;
+  struct output_options *output_options = e->output_options;
+  struct output_list *output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -978,8 +978,8 @@ void write_output_distributed(struct engine* e,
   MPI_Allreduce(N, N_total, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
 
   /* Collect the number of particles written by each rank */
-  long long* N_counts =
-      (long long*)malloc(mpi_size * swift_type_count * sizeof(long long));
+  long long *N_counts =
+      (long long *)malloc(mpi_size * swift_type_count * sizeof(long long));
   MPI_Gather(N, swift_type_count, MPI_LONG_LONG_INT, N_counts, swift_type_count,
              MPI_LONG_LONG_INT, 0, comm);
 
@@ -1095,7 +1095,7 @@ void write_output_distributed(struct engine* e,
 
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);
-  struct tm* timeinfo = localtime(&tm);
+  struct tm *timeinfo = localtime(&tm);
   char snapshot_date[64];
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
   io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
@@ -1210,13 +1210,13 @@ void write_output_distributed(struct engine* e,
     bzero(list, io_max_size_output_list * sizeof(struct io_props));
     size_t Nparticles = 0;
 
-    struct part* parts_written = NULL;
-    struct xpart* xparts_written = NULL;
-    struct gpart* gparts_written = NULL;
-    struct velociraptor_gpart_data* gpart_group_data_written = NULL;
-    struct sink* sinks_written = NULL;
-    struct spart* sparts_written = NULL;
-    struct bpart* bparts_written = NULL;
+    struct part *parts_written = NULL;
+    struct xpart *xparts_written = NULL;
+    struct gpart *gparts_written = NULL;
+    struct velociraptor_gpart_data *gpart_group_data_written = NULL;
+    struct sink *sinks_written = NULL;
+    struct spart *sparts_written = NULL;
+    struct bpart *bparts_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1238,11 +1238,11 @@ void write_output_distributed(struct engine* e,
           Nparticles = Ngas_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("parts_written", (void**)&parts_written,
+          if (swift_memalign("parts_written", (void **)&parts_written,
                              part_align,
                              Ngas_written * sizeof(struct part)) != 0)
             error("Error while allocating temporary memory for parts");
-          if (swift_memalign("xparts_written", (void**)&xparts_written,
+          if (swift_memalign("xparts_written", (void **)&xparts_written,
                              xpart_align,
                              Ngas_written * sizeof(struct xpart)) != 0)
             error("Error while allocating temporary memory for xparts");
@@ -1277,14 +1277,14 @@ void write_output_distributed(struct engine* e,
           Nparticles = Ndm_written;
 
           /* Allocate temporary array */
-          if (swift_memalign("gparts_written", (void**)&gparts_written,
+          if (swift_memalign("gparts_written", (void **)&gparts_written,
                              gpart_align,
                              Ndm_written * sizeof(struct gpart)) != 0)
             error("Error while allocating temporary memory for gparts");
 
           if (with_stf) {
             if (swift_memalign(
-                    "gpart_group_written", (void**)&gpart_group_data_written,
+                    "gpart_group_written", (void **)&gpart_group_data_written,
                     gpart_align,
                     Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
               error(
@@ -1311,14 +1311,14 @@ void write_output_distributed(struct engine* e,
         Nparticles = Ndm_background;
 
         /* Allocate temporary array */
-        if (swift_memalign("gparts_written", (void**)&gparts_written,
+        if (swift_memalign("gparts_written", (void **)&gparts_written,
                            gpart_align,
                            Ndm_background * sizeof(struct gpart)) != 0)
           error("Error while allocating temporart memory for gparts");
 
         if (with_stf) {
           if (swift_memalign(
-                  "gpart_group_written", (void**)&gpart_group_data_written,
+                  "gpart_group_written", (void **)&gpart_group_data_written,
                   gpart_align,
                   Ndm_background * sizeof(struct velociraptor_gpart_data)) != 0)
             error(
@@ -1345,14 +1345,14 @@ void write_output_distributed(struct engine* e,
         Nparticles = Ndm_neutrino;
 
         /* Allocate temporary array */
-        if (swift_memalign("gparts_written", (void**)&gparts_written,
+        if (swift_memalign("gparts_written", (void **)&gparts_written,
                            gpart_align,
                            Ndm_neutrino * sizeof(struct gpart)) != 0)
           error("Error while allocating temporart memory for gparts");
 
         if (with_stf) {
           if (swift_memalign(
-                  "gpart_group_written", (void**)&gpart_group_data_written,
+                  "gpart_group_written", (void **)&gpart_group_data_written,
                   gpart_align,
                   Ndm_neutrino * sizeof(struct velociraptor_gpart_data)) != 0)
             error(
@@ -1388,7 +1388,7 @@ void write_output_distributed(struct engine* e,
           Nparticles = Nsinks_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("sinks_written", (void**)&sinks_written,
+          if (swift_memalign("sinks_written", (void **)&sinks_written,
                              sink_align,
                              Nsinks_written * sizeof(struct sink)) != 0)
             error("Error while allocating temporary memory for sinks");
@@ -1421,7 +1421,7 @@ void write_output_distributed(struct engine* e,
           Nparticles = Nstars_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("sparts_written", (void**)&sparts_written,
+          if (swift_memalign("sparts_written", (void **)&sparts_written,
                              spart_align,
                              Nstars_written * sizeof(struct spart)) != 0)
             error("Error while allocating temporary memory for sparts");
@@ -1454,7 +1454,7 @@ void write_output_distributed(struct engine* e,
           Nparticles = Nblackholes_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("bparts_written", (void**)&bparts_written,
+          if (swift_memalign("bparts_written", (void **)&bparts_written,
                              bpart_align,
                              Nblackholes_written * sizeof(struct bpart)) != 0)
             error("Error while allocating temporary memory for bparts");
