@@ -33,7 +33,7 @@ Statistics:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:          ICs_homogeneous_box.hdf5
+  file_name:          metal_diffusion.hdf5
   periodic:               1       # Are we running with periodic ICs?
   shift:              [0.0,0.0,0.0]
 
@@ -56,10 +56,6 @@ GEARChemistry:
   riemann_solver: HLL_hyperbolic_H17     # (Hyperbolic diffusion only) Riemann solver to use: HLL, HLL_parabolic_H17 or HLL_hyperbolic_H17
   C_CFL_chemistry: 0.8                   # (Hyperbolic diffusion only) Courant-Friedrich-Levy condition for time integration of the hyperbolic diffusion.
 
-  # Supertimestepping parameters
-  use_supertimestepping: 0               # (Optional, parabolic diffusion only) Do we want to use supertimestepping? Supertimestepping can accelerate simulations. (Default: 0)
-  N_substeps: 5                          # (Optional, parabolic diffusion only) Number of substeps in supertimestepping. (Default: 5)
-  nu_supertimestepping: 0.45             # (Optional, parabolic diffusion only) Nu parameter for supertimestep. It's optimal when n >= 1/sqrt(N). (Default: 0.04)
 
 GEARFeedback:
   supernovae_energy_erg: 0.              # supernovae energy, used only for SNIa

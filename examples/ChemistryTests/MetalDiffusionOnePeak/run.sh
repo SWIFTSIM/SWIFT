@@ -18,13 +18,13 @@ epsilon=${epsilon:=0.02} # Size of the sphere of particles containing an initial
 dimension=${dimension:=3} # Dimensionality of the problem.
 
 # Remove the ICs
-if [ -e ICs_homogeneous_box.hdf5 ]
+if [ -e metal_diffusion.hdf5 ]
 then
-    rm ICs_homogeneous_box.hdf5
+    rm metal_diffusion.hdf5
 fi
 
 #Create the ICs if they do not exist
-if [ ! -e ICs_homogeneous_box.hdf5 ]
+if [ ! -e metal_diffusion.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
     random_flag=""
@@ -41,7 +41,7 @@ then
         --mass "$box_mass" \
         --velocity "$vx" "$vy" "$vz" \
         $random_flag \
-        -o ICs_homogeneous_box.hdf5
+        -o metal_diffusion.hdf5
 fi
 
 # Get the Grackle cooling table
@@ -76,12 +76,12 @@ printf "Running simulation..."
 if [ "$with_hydro_MFM" -eq 1 ]; then
     # ./configure --with-hydro=gizmo-mfm --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-stars=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks --with-riemann-solver=hllc && make clean && make -j12
     echo "Running with MFM hydro solver..."
-    ~/swiftsim/swift --hydro --external-gravity --stars \
+    ../../../swift --hydro --external-gravity --stars \
 		     --threads=$n_threads params.yml 2>&1 | tee output.log
 else
     # ./configure --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks
     echo "Running with SPH hydro solver"
-    ~/swiftsim/swift --hydro --external-gravity --stars --feedback \
+    ../../../swift --hydro --external-gravity --stars --feedback \
 		     --threads=$n_threads params.yml 2>&1 | tee output.log
 fi
 
