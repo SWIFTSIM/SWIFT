@@ -388,18 +388,15 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
  * It will recurse down from the background top level to check interactions
  * at the zoom depth between the zoom cell and the background cell.
  *
- * This version is to be used when ci is a zoom cell and needs to be
- * compared to background progeny cells.
- *
  * @param ci The #cell whose counter we are updating.
  * @param zoom_c The zoom #cell.
  * @param bkg_c The background #cell.
  * @param s The #space.
  */
-void runner_count_mesh_interactions_zoom_bkg(struct cell *ci,
-                                             struct cell *zoom_c,
-                                             struct cell *bkg_c,
-                                             struct space *s) {
+void runner_count_mesh_interactions_zoom_bkg_recursive(struct cell *ci,
+                                                       struct cell *zoom_c,
+                                                       struct cell *bkg_c,
+                                                       struct space *s) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Get the maximum distance at which we can have a non-mesh interaction. */
@@ -426,8 +423,15 @@ void runner_count_mesh_interactions_zoom_bkg(struct cell *ci,
     error("Background cell is not of background type!");
 
   /* Ok, we are at the zoom depth, check interaction */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
-  struct gravity_tensors *const multi_j = bkg_c->grav.multipole;
+  struct gravity_tensors *multi_i;
+  struct gravity_tensors *multi_j;
+  if (ci->type == cell_type_zoom) {
+    multi_i = ci->grav.multipole;
+    multi_j = bkg_c->grav.multipole;
+  } else {
+    multi_i = bkg_c->grav.multipole;
+    multi_j = zoom_c->grav.multipole;
+  }
 
   /* Minimal distance between any pair of particles */
   const double min_radius2 = cell_min_dist2(zoom_c, bkg_c, s->periodic, s->dim);
@@ -437,73 +441,6 @@ void runner_count_mesh_interactions_zoom_bkg(struct cell *ci,
     /* Need to account for the interactions we missed */
     accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
 
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    /* Need to account for the interactions we missed */
-    accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                      multi_j->m_pole.num_gpart);
-#endif
-    /* Record that this multipole received a contribution */
-    multi_i->pot.interacted = 1;
-  }
-#else
-  error("This function should not be called without debugging checks enabled!");
-#endif
-}
-
-/**
- * @brief Recurse to the zoom depth in bkg cells accumulating interactions.
- *
- * This is a helper function for runner_count_mesh_interactions_zoom.
- * It will recurse down from the background top level to check interactions
- * at the zoom depth between the background cell and the zoom cell.
- *
- * This version is to be used when ci is a bkg cell and needs to be
- * compared to zoom cells.
- *
- * @param ci The #cell whose counter we are updating.
- * @param zoom_c The zoom #cell.
- * @param bkg_c The background #cell.
- * @param s The #space.
- */
-void runner_count_mesh_interactions_bkg_zoom(struct cell *ci,
-                                             struct cell *bkg_c,
-                                             struct cell *zoom_c,
-                                             struct space *s) {
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Get the maximum distance at which we can have a non-mesh interaction. */
-  struct engine *e = s->e;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
-
-  /* Are we at the zoom depth yet? */
-  if (!cell_pair_is_zoom_tl(zoom_c, bkg_c, s)) {
-    /* Recurse down to the zoom depth */
-    for (int k = 0; k < 8; k++) {
-      if (bkg_c->progeny[k] == NULL) continue;
-      runner_count_mesh_interactions_bkg_zoom(ci, bkg_c->progeny[k], zoom_c, s);
-    }
-    return;
-  }
-
-  /* Make sure we don't end up below the zoom depth */
-  if (zoom_c->depth != 0) error("Zoom cell is deeper than zoom depth!");
-  if (zoom_c->type != cell_type_zoom) error("Zoom cell is not of zoom type!");
-  if (bkg_c->depth > s->zoom_props->zoom_cell_depth)
-    error("Background cell is deeper than zoom depth!");
-  if (bkg_c->subtype != cell_subtype_neighbour)
-    error("Background cell is not of background type!");
-
-  /* Ok, we are at the zoom depth, check interaction */
-  struct gravity_tensors *const multi_i = bkg_c->grav.multipole;
-  struct gravity_tensors *const multi_j = zoom_c->grav.multipole;
-
-  /* Minimal distance between any pair of particles */
-  const double min_radius2 = cell_min_dist2(zoom_c, bkg_c, s->periodic, s->dim);
-
-  /* Are we beyond the distance where the truncated forces are 0 ?*/
-  if (min_radius2 > max_distance2) {
-    /* Need to account for the interactions we missed */
-    accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     /* Need to account for the interactions we missed */
     accumulate_add_ll(&multi_i->pot.num_interacted_pm,
@@ -608,14 +545,14 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 #endif
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
-    } else if (ci->type == cell_type_zoom &&
+    } else if ((ci->type == cell_type_zoom &&
                cj->subtype == cell_subtype_neighbour) {
       /* Ok we made a task here, between a zoom ci and bkg cj. */
-      runner_count_mesh_interactions_zoom_bkg(ci, ci->top, top_j, s);
+      runner_count_mesh_interactions_zoom_bkg_recursive(ci, ci->top, top_j, s);
     } else if (cj->type == cell_type_zoom &&
                ci->subtype == cell_subtype_neighbour) {
       /* Ok we made a task here, between a bkg ci and zoom cj. */
-      runner_count_mesh_interactions_bkg_zoom(ci, ci, cj->top, s);
+      runner_count_mesh_interactions_zoom_bkg_recursive(ci, ci, cj->top, s);
     }
   }
 #else
