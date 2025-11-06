@@ -1393,17 +1393,15 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
  * The task level is defined as space_subdepth_diff_grav above the leaves
  * of the tree.
  *
- * When running a zoom simulation this will use zoom_bkg_subdepth_diff_grav
- * for the background cells while the zoom cells will use the regular
- * threshold.
+ * When running a zoom simulation this will use zoom_bkg_subdepth_diff_grav for
+ * the background cells while the zoom cells will use the regular threshold.
  *
  * When running a zoom we split all tasks involving a void cell, this can lead
  * some cells interacting below space_subdepth_diff_grav to ensure we reach
  * the zoom cells on the void side of the interaction. Cells requiring these
  * tasks carry a flag (tasks_below_diff_grav_depth) to signify this
- * special condition. This flag ensures any task related recursion will
- * continue right down to the lowest point tasks are defined on the cell in
- * question.
+ * special condition. This flag ensures any task related recursion will continue
+ * right down to the lowest point tasks are defined on the cell in question.
  *
  * @param c The #cell.
  */
@@ -1479,8 +1477,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
 __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 
-  /* Is the cut-off radius plus the max distance the parts in both cells have
-   */
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
@@ -1492,21 +1489,21 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 }
 
 /**
- * @brief Have gas particles in a pair of cells moved too much, invalidating
- * the completeness criterion for ci?
+ * @brief Have gas particles in a pair of cells moved too much, invalidating the
+ * completeness criterion for ci?
  *
  * This function returns true the grid completeness criterion from the
  * perspective of ci (the #cell for which the grid will be constructed) is no
  * longer valid.
  *
- * NOTE: This function assumes that the self_completeness flags are up to
- * date. NOTE: This whether a cell needs a rebuild for a grid construction
- * pair is an asymmetric property, so it should always be checked both ways!
+ * NOTE: This function assumes that the self_completeness flags are up to date.
+ * NOTE: This whether a cell needs a rebuild for a grid construction pair is an
+ * asymmetric property, so it should always be checked both ways!
  *
  * @param ci The first #cell. This is the cell for which the grid will be
  * constructed.
- * @param cj The second #cell. This is the neighbouring cell whose particles
- * are used as ghost particles.
+ * @param cj The second #cell. This is the neighbouring cell whose particles are
+ * used as ghost particles.
  * @return Whether completeness of ci is invalidated by the pair (ci, cj).
  */
 __attribute__((always_inline, nonnull)) INLINE static int
@@ -1540,8 +1537,7 @@ cell_grid_pair_invalidates_completeness(struct cell *ci, struct cell *cj) {
 __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
 
-  /* Is the cut-off radius plus the max distance the parts in both cells have
-   */
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) +
@@ -1562,8 +1558,7 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
 __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_sinks_pair(const struct cell *ci, const struct cell *cj) {
 
-  /* Is the cut-off radius plus the max distance the parts in both cells have
-   */
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (max(kernel_gamma * ci->sinks.h_max, kernel_gamma * cj->hydro.h_max) +
@@ -1585,8 +1580,7 @@ __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
                                        const struct cell *cj) {
 
-  /* Is the cut-off radius plus the max distance the parts in both cells have
-   */
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->black_holes.h_max, cj->hydro.h_max) +
@@ -1824,8 +1818,8 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
 }
 
 /**
- * @brief Returns the array of sorted indices for the star particles of a
- * given cell along agiven direction.
+ * @brief Returns the array of sorted indices for the star particles of a given
+ * cell along agiven direction.
  *
  * @param c The #cell.
  * @param sid the direction id.
@@ -2017,8 +2011,8 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
  * We have 15 bits set aside in `cell->cellID` for the top level cells, with
  * 49 remaining. Each progeny cell gets a unique ID by inheriting
  * its parent ID and adding 3 bits on the left side, which are set according
- * to the progeny's location within its parent cell. Finally, a 1 is set as
- * the leading bit such that all recursive children with index (000) are still
+ * to the progeny's location within its parent cell. Finally, a 1 is set as the
+ * leading bit such that all recursive children with index (000) are still
  * recognized as such. This allows us to give IDs to 16 levels of depth
  * uniquely.
  * If the depth exceeds 16, we use the old scheme where we just add up a
@@ -2216,8 +2210,8 @@ __attribute__((always_inline)) static INLINE void cell_set_bpart_h_depth(
 /**
  * @brief Does this cell overlap the zoom region?
  *
- * This will test if there is any overlap whatsoever between the zoom
- * boundaries and the cell boundaries.
+ * This will test if there is any overlap whatsoever between the zoom boundaries
+ * and the cell boundaries.
  *
  * @param c The #cell.
  * @param s The #space.
