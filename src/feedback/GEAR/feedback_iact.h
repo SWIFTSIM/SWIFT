@@ -115,7 +115,7 @@ runner_iact_nonsym_feedback_apply(
                                    : 1. / si->feedback_data.enrichment_weight;
 
   /* Mass received */
-  const double m_ej = si->feedback_data.mass_ejected;
+  const double m_ej = si->feedback_data.mass_ejected; //+ si->feedback_data.preSN.mass_ejected;
   const double weight = mj * wi * si_inv_weight;
   const double dm = m_ej * weight;
   const double new_mass = mj + dm;
@@ -141,22 +141,123 @@ runner_iact_nonsym_feedback_apply(
 
     /* Set the indication of SN event for cooling*/
     xpj->feedback_data.hit_by_SN = 1;
-  }else {
-    xpj->feedback_data.hit_by_SN = 0;
   }
 
   /* Distribute pre-SN */
   if (e_preSN != 0.0) {
-    /* Energy received */
-    /* Here the new mass correspond to the mass added by supernovae
-    in the case where both supernovae and pre-SN feedback occur .
-    The pre-SN feedback does not yet implement a change in the mass !*/
-    const double du = (e_preSN)*weight / new_mass;
-    xpj->feedback_data.delta_u += du;
+
+    /* If the distance is null, no need to use calculation ressources */
+    if (r2 > 0.0){
+      /* -------------------- set to physical quantities -------------------- */
+      /* Cosmology constant */
+      const float a = cosmo->a;
+      const float a_inv = cosmo->a_inv;
+      const float H = cosmo->H;
+      const float a_dot = a * H;
+
+      /* physical velocities */
+      const float v_i_p[3] = {a_dot * si->x[0] + si->v[0] * a_inv,
+                              a_dot * si->x[1] + si->v[1] * a_inv,
+                              a_dot * si->x[2] + si->v[2] * a_inv};
+
+      const float v_j_p[3] = {a_dot * pj->x[0] + xpj->v_full[0] * a_inv,
+                              a_dot * pj->x[1] + xpj->v_full[1] * a_inv,
+                              a_dot * pj->x[2] + xpj->v_full[2] * a_inv};
+
+      /* relative physical speed between feedback source and gas particle */
+      // const float v_p_rel[3] = {v_i_p[0] - v_j_p[0],
+      //                           v_i_p[1] - v_j_p[1],
+      //                           v_i_p[2] - v_j_p[2]};
+
+      const float r_p = sqrtf(r2) * a;
+      const float dx_p[3] = {dx[0] * a,
+                             dx[1] * a,
+                             dx[2] * a}; 
+
+      message("r_p = %e",r_p);
+
+      message("v_i_p[0]=%e, v_i_p[1]=%e, v_i_p[2]=%e",v_i_p[0], v_i_p[1], v_i_p[2]);
+      message("masse_ejected=%e",si->feedback_data.preSN.mass_ejected);
+
+      /* --------------- Compute physical momentum received ---------------------------- */
+      /* Total momentum ejected by the winds during the timestep */
+      const double p_ej = sqrt(2.0 * si->feedback_data.preSN.mass_ejected * si->feedback_data.preSN.energy_ejected);
+      message("Velocitiy ejected=%e",sqrt(2.0 * si->feedback_data.preSN.energy_ejected/si->feedback_data.preSN.mass_ejected));
+      //const double p_ej = si->feedback_data.preSN.energy_ejected;
+      /* norm of physical velocities */
+      const float norm2_v = v_j_p[0] * v_j_p[0]
+                          + v_j_p[1] * v_j_p[1]
+                          + v_j_p[2] * v_j_p[2];
+      const float norm_v = sqrtf(norm2_v);
+
+      double dp_lab_frame[3];
+      //double p_c[3];
+      float cos_theta = 0;
+
+      for (int i = 0; i < 3; i++) {
+        message("xpj delta_p[%d] before SW : %e",i,xpj->feedback_data.delta_p[i]);
+        message("dx[%d]=%e",i, dx[i]);
+        /* momentum in lab frame due to the ejecta */
+        dp_lab_frame[i] = weight * (p_ej + si->feedback_data.preSN.mass_ejected * v_i_p[i]) * (dx_p[i]/r_p);
+
+        /* Transform physical momentum to comoving momentum */
+        //p_c[i] = (-p_lab_frame[i] - (a_dot * pj->x[i] * new_mass)) * a_inv;
+        /* Give the comoving momentum to the gas particle */
+        xpj->feedback_data.delta_p[i] -= dp_lab_frame[i] * a;// * a; /* The minus sign comes from the direction of dx (si - pj) */
+
+        si->feedback_data.preSN.p_tot[i] += weight * p_ej * dx_p[i] / r_p * a;//p_lab_frame[i] * a;
+
+        cos_theta -= v_j_p[i] * dx_p[i] / r_p / norm_v;
+        message("xpj delta_p[%d] after SW : %e",i,xpj->feedback_data.delta_p[i]);
+      }
+
+      const double norm2_dp_lab_frame = dp_lab_frame[0]*dp_lab_frame[0] 
+                               + dp_lab_frame[1]*dp_lab_frame[1] 
+                               + dp_lab_frame[2]*dp_lab_frame[2];
+      const double norm2_dp = weight * weight * p_ej * p_ej;
+
+      message("norm2_dp=%e, norm2_dp_lab_frame=%e",norm2_dp,norm2_dp_lab_frame);
+    
+      /* ------------------ calculate physical Energy and internal Energy received -------------------------- */
+      if (new_mass > 0){
+        message("old_mass=%e, new_mass=%e", pj->mass, new_mass);
+        /* The total energy ejected in the lab frame, and new and old kinetic energies */
+        const double dE_lab_frame = ((weight * e_preSN) + 0.5 * (norm2_dp_lab_frame - norm2_dp) / (weight * si->feedback_data.preSN.mass_ejected));
+        const double old_kinetic_energy = 0.5 * pj->mass * norm2_v;
+
+        /* |a + b|^2 = |a|^2 + |b|^2 + 2*|a|*|b|*cos(theta) */
+        const double norm2_v_predicted = norm2_v 
+                                         + (norm2_dp_lab_frame / new_mass / new_mass) 
+                                         + 2.0 * norm_v * (sqrt(norm2_dp_lab_frame) / new_mass) * cos_theta;
+        message("old velocity = %e, predicted velocity = %e", norm_v, sqrt(norm2_v_predicted));
+
+        const double norm2_p_new = {(pj->mass * v_j_p[0] + dp_lab_frame[0]) * (pj->mass * v_j_p[0] + dp_lab_frame[0]) +
+                                    (pj->mass * v_j_p[1] + dp_lab_frame[1]) * (pj->mass * v_j_p[1] + dp_lab_frame[1]) +
+                                    (pj->mass * v_j_p[2] + dp_lab_frame[2]) * (pj->mass * v_j_p[2] + dp_lab_frame[2])};
+        const double new_kinetic_energy = 0.5 * norm2_p_new / new_mass; // To verify
+        const double new_kinetic_energy_bis = 0.5 * new_mass * norm2_v_predicted;
+
+        const float du =  (old_kinetic_energy + dE_lab_frame - new_kinetic_energy_bis) / new_mass; /* E_new + U_new = E_old + U_old + dE */ 
+        message("dE_lab_frame=%e, old_kinetic_energy=%e, new_kinetic_energy=%e, new_kinetic_energy_bis=%e, du=%e",dE_lab_frame,old_kinetic_energy,new_kinetic_energy,new_kinetic_energy_bis,du);
+        
+        //xpj->feedback_data.delta_u += du;
+
+        if (a == 1.0 && a_inv == 1.0 && cosmo->z == 0.0){
+          // I'm not sure yet why...
+          const float dv_phys = sqrt(norm2_dp_lab_frame) / new_mass;
+          hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
+        }
+
+      } else {
+        message("new_mass <=0, no energy update");
+      }
+
+      xpj->feedback_data.hit_by_preSN = 1;
+    }
   }
 
   /* Impose maximal viscosity */
-  hydro_diffusive_feedback_reset(pj);
+  //hydro_diffusive_feedback_reset(pj);
 
   /* Synchronize the particle on the timeline */
   timestep_sync_part(pj);

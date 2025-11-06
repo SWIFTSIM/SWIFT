@@ -1139,9 +1139,14 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
       but this is not used inside the function. */
   const float m_init = 0;
 
+  message("total momentum ejected by stellar winds : [0]=%e, [1]=%e, [2]=%e", sp->feedback_data.preSN.p_tot[0], sp->feedback_data.preSN.p_tot[1], sp->feedback_data.preSN.p_tot[2]);
+
   /* initialize */
   sp->feedback_data.preSN.energy_ejected = 0;
   sp->feedback_data.preSN.mass_ejected = 0;
+  sp->feedback_data.preSN.p_tot[0] = 0;
+  sp->feedback_data.preSN.p_tot[1] = 0;
+  sp->feedback_data.preSN.p_tot[2] = 0;
 
   /* The duration of the preSN feedback in yr*/
   const float feedback_duration_yr =
@@ -1155,10 +1160,16 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   sp->feedback_data.preSN.energy_ejected *= feedback_duration_yr;
   sp->feedback_data.preSN.mass_ejected *= feedback_duration_yr;
 
+  message("after time M_ej=%e",sp->feedback_data.preSN.mass_ejected);
+
   /* convert to internal units */
   sp->feedback_data.preSN.energy_ejected /=
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   sp->feedback_data.preSN.mass_ejected *= phys_const->const_solar_mass;
+  //sp->feedback_data.preSN.mass_ejected /=
+     // units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  message("The energy ejected in internal units : %e", sp->feedback_data.preSN.energy_ejected);
+  message("The mass ejected in internal units : %e", sp->feedback_data.preSN.mass_ejected);
 }
 
 /**
@@ -1248,8 +1259,14 @@ void stellar_evolution_compute_preSN_feedback_spart(
   sp->feedback_data.preSN.energy_ejected *= dt_myr * 1e6;
   sp->feedback_data.preSN.mass_ejected *= dt_myr * 1e6;
 
+  message("after time M_ej=%e",sp->feedback_data.preSN.mass_ejected);
+
   /* convert to internal units */
   sp->feedback_data.preSN.energy_ejected /=
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   sp->feedback_data.preSN.mass_ejected *= phys_const->const_solar_mass;
+  //sp->feedback_data.preSN.mass_ejected /=
+     // units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  message("The energy ejected in internal units : %e", sp->feedback_data.preSN.energy_ejected);
+  message("The mass ejected in internal units : %e", sp->feedback_data.preSN.mass_ejected);
 }

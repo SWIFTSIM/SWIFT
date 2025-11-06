@@ -73,7 +73,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   /* WARNING: Do not comment out this line, because it will mess-up with
      SF/sinks. (I think it injects something that it should not...) */
   /* Did the particle receive a supernovae */
-  if (xp->feedback_data.delta_u == 0) return;
+  if (xp->feedback_data.hit_by_SN == 0 && xp->feedback_data.hit_by_preSN == 0) return;
 
   const struct cosmology* cosmo = e->cosmology;
   const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
@@ -112,11 +112,16 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   for (int i = 0; i < 3; i++) {
     const float dv = xp->feedback_data.delta_p[i] / new_mass;
 
+    message("old velocity[%d]=%e",i,xp->v_full[i]);
     xp->v_full[i] += dv;
+    message("new velocity[%d]=%e",i,xp->v_full[i]);
     p->v[i] += dv;
 
     xp->feedback_data.delta_p[i] = 0;
   }
+
+  xp->feedback_data.hit_by_SN = 0;
+  xp->feedback_data.hit_by_preSN = 0;
 }
 
 /**
@@ -376,6 +381,12 @@ void feedback_first_init_spart(struct spart* sp,
 
   /* Zero the energy of supernovae */
   sp->feedback_data.energy_ejected = 0;
+  
+  for (int i = 0; i < 3; i++) {
+    message("tot momentum in physical internal units [%d] = %e", i,sp->feedback_data.preSN.p_tot[i]);
+    sp->feedback_data.preSN.p_tot[i] = 0;
+  }
+  
 
   /* Activate the feedback loop for the first step */
   sp->feedback_data.will_do_feedback = 1;

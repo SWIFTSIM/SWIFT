@@ -41,6 +41,8 @@ struct feedback_xpart_data {
 
   /*! Indicator if the particule receive energy from SN specifically */
   int hit_by_SN;
+
+  int hit_by_preSN;
 };
 
 /**
@@ -82,6 +84,8 @@ struct feedback_spart_data {
     /*! Mass injected in the surrounding particles, needs to be double as the mass is
      currently in Msol units and can be of orders 10^-40 */ /* TODO: change into float for memory*/
     double mass_ejected;
+
+    double p_tot[3];
 
   } preSN;
 };
