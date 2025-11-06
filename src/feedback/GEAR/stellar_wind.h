@@ -32,6 +32,9 @@ void stellar_wind_init(struct stellar_wind *sw, struct swift_params *params,
                        const struct stellar_model *sm,
                        const struct unit_system *us);
 
+void stellar_wind_restore(struct stellar_wind *sw, FILE *stream,
+                          const struct stellar_model *sm);
+
 void stellar_wind_read_yields_array(
     struct stellar_wind *sw, struct interpolation_2d *interp,
     const struct stellar_model *sm, hid_t group_id,
