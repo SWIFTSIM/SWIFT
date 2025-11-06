@@ -1027,8 +1027,7 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
 }
 
 /**
- * @brief Compute the square of the distance between the CoMs of two
- * multipoles.
+ * @brief Compute the square of the distance between the CoMs of two multipoles.
  *
  * @param multi_i The first #gravity_tensors.
  * @param multi_j The second #gravity_tensors.
@@ -1139,11 +1138,9 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 
   /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved
-   */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift
-   */
+  /* Note: We use the _old values as these might have been updated by a drift */
   return c->split && ((kernel_gamma * c->hydro.h_max_old +
                        c->hydro.dx_max_part_old) < 0.5f * c->dmin);
 }
@@ -1157,8 +1154,7 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_subpair_hydro_task(const struct cell *c) {
 
-  /* If so, is the cut-off radius plus the max distance the parts have moved
-   */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   return ((kernel_gamma * c->hydro.h_max_active + c->hydro.dx_max_part_old) <
           0.5f * c->dmin);
@@ -1173,8 +1169,7 @@ cell_can_recurse_in_subpair_hydro_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_subpair2_hydro_task(const struct cell *c) {
 
-  /* If so, is the cut-off radius plus the max distance the parts have moved
-   */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   return ((kernel_gamma * c->hydro.h_max + c->hydro.dx_max_part) <
           0.5f * c->dmin);
@@ -1230,11 +1225,9 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 
   /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved
-   */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift
-   */
+  /* Note: We use the _old values as these might have been updated by a drift */
   return c->split && ((kernel_gamma * c->stars.h_max_old +
                        c->stars.dx_max_part_old) < 0.5f * c->dmin);
 }
@@ -1248,8 +1241,7 @@ cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_subpair_stars_task(const struct cell *c) {
 
-  /* If so, is the cut-off radius plus the max distance the parts have moved
-   */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   return ((kernel_gamma * c->stars.h_max_active + c->stars.dx_max_part_old) <
           0.5f * c->dmin);
@@ -1294,11 +1286,9 @@ cell_can_recurse_in_pair_sinks_task(const struct cell *ci,
                                     const struct cell *cj) {
 
   /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved
-   */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift
-   */
+  /* Note: We use the _old values as these might have been updated by a drift */
   return ci->split && cj->split &&
          ((kernel_gamma * ci->sinks.h_max_old + ci->sinks.dx_max_part_old) <
           0.5f * ci->dmin) &&
@@ -1318,11 +1308,9 @@ cell_can_recurse_in_pair_black_holes_task(const struct cell *ci,
                                           const struct cell *cj) {
 
   /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved
-   */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift
-   */
+  /* Note: We use the _old values as these might have been updated by a drift */
   return ci->split && cj->split &&
          ((kernel_gamma * ci->black_holes.h_max_old +
            ci->black_holes.dx_max_part_old) < 0.5f * ci->dmin) &&
