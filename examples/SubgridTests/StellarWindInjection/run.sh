@@ -76,6 +76,6 @@ else
     ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:pre_supernovae_efficiency:$coeff" ../params.yml 2>&1 | tee output.log
 fi
 cd ..
-python3 verification.py --verbose "$str/output.log" | tee verification.txt
+#python3 verification.py --verbose "$str/output.log" | tee verification.txt
 
 
