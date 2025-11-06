@@ -751,6 +751,9 @@ void stellar_evolution_restore(struct stellar_model* sm, FILE* stream) {
 
   /* Restore the supernovae II model */
   supernovae_ii_restore(&sm->snii, stream, sm);
+
+  /* Restore the stellar wind model */
+  stellar_wind_restore(&sm->sw, stream, sm);
 }
 
 /**
