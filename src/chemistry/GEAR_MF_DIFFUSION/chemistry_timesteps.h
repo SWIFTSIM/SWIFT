@@ -35,8 +35,9 @@ chemistry_compute_parabolic_timestep(
     const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo) {
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   const float CFL_condition = chem_data->C_CFL_chemistry;
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   const float delta_x = cosmo->a * kernel_gamma * p->h;
 
   /* TODO: See if we want to keep that or use c_hyp directly */
@@ -103,7 +104,8 @@ chemistry_compute_parabolic_timestep(
     expression = delta_x;
   }
 
-  return expression * expression / norm_matrix_K * norm_U_over_norm_q;
+  const float dt = CFL_condition * expression * expression / norm_matrix_K * norm_U_over_norm_q;
+  return dt;
 #endif
 }
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_TIMESTEPS_H  */

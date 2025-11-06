@@ -310,11 +310,9 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   }
 
   /***************************************************************************/
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Make it mandatory for parabolic diffusion */
   data->C_CFL_chemistry =
       parser_get_param_float(parameter_file, "GEARChemistry:C_CFL_chemistry");
-#endif
   /***************************************************************************/
   /* Hyperbolic diffusion */
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
