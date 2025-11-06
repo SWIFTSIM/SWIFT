@@ -552,7 +552,7 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
     } else if (cj->type == cell_type_zoom &&
                ci->subtype == cell_subtype_neighbour) {
       /* Ok we made a task here, between a bkg ci and zoom cj. */
-      runner_count_mesh_interactions_zoom_bkg_recursive(ci, ci, cj->top, s);
+      runner_count_mesh_interactions_zoom_bkg_recursive(ci, cj->top, ci, s);
     }
   }
 #else
