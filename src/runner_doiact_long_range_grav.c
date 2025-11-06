@@ -470,8 +470,6 @@ void runner_count_mesh_interactions_bkg_zoom(struct cell *ci,
                                              struct cell *zoom_c,
                                              struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
-  message("ci and bkg_c are at depth %d and zoom_c is at depth %d",
-          bkg_c->depth, zoom_c->depth);
   /* Get the maximum distance at which we can have a non-mesh interaction. */
   struct engine *e = s->e;
   const double max_distance = e->mesh->r_cut_max;
@@ -496,7 +494,7 @@ void runner_count_mesh_interactions_bkg_zoom(struct cell *ci,
     error("Background cell is not of background type!");
 
   /* Ok, we are at the zoom depth, check interaction */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
+  struct gravity_tensors *const multi_i = bkg_c->grav.multipole;
   struct gravity_tensors *const multi_j = zoom_c->grav.multipole;
 
   /* Minimal distance between any pair of particles */
