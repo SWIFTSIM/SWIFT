@@ -544,7 +544,6 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
       /* Ok we made a task here, between a zoom ci and bkg cj. */
       runner_count_mesh_interactions_zoom_bkg(ci, ci->top, top_j, s);
   }
-}
 #else
   error(
       "This function should not be called without debugging checks or "
