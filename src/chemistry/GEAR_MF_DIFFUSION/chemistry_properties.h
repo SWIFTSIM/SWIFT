@@ -47,8 +47,6 @@ enum chemistry_relaxation_time_mode {
  */
 enum chemistry_riemann_solver {
   HLL,                       /* Regular HLL solver */
-  HLL_parabolic_Hopkins2017, /* Hopkins (2017) HLL Riemann solver for
-                                parabolic diffusion*/
   HLL_hyperbolic_Hopkins2017 /* Improved Hopkins (2017) HLL Riemann solver for
                                 hyperbolic diffusion*/
 };
@@ -81,7 +79,7 @@ struct chemistry_global_data {
   /*! Relaxation time mode. 0: constant, 1: . */
   enum chemistry_relaxation_time_mode relaxation_time_mode;
 
-  /* 1=Hopkins 2017, 2=HLL, 3=HLLC */
+  /* 1=Hopkins 2017, 2=HLL */
   int riemann_solver;
 #endif
 

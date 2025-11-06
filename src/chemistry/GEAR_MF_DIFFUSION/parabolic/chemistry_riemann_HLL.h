@@ -236,25 +236,9 @@ chemistry_riemann_solver_hopkins2017_HLL(
   const double kappa_mean =
       0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  const float min_dt =
-      (pj->chemistry_data.flux_dt > 0.f)
-          ? fminf(pi->chemistry_data.flux_dt, pj->chemistry_data.flux_dt)
-          : pi->chemistry_data.flux_dt;
-  const double tau_L = pi->chemistry_data.tau;
-  const double tau_R = pj->chemistry_data.tau;
-  const double F_A_left_side[3] = {
-      -min_dt * 0.5 * (F_diff_L[0] / tau_L + F_diff_R[0] / tau_R) -
-          min_dt * kappa_mean * nabla_o_q_dir[0],
-      -min_dt * 0.5 * (F_diff_L[1] / tau_L + F_diff_R[1] / tau_R) -
-          min_dt * kappa_mean * nabla_o_q_dir[1],
-      -min_dt * 0.5 * (F_diff_L[2] / tau_L + F_diff_R[2] / tau_R) -
-          min_dt * kappa_mean * nabla_o_q_dir[2]};
-#else
   const double F_A_left_side[3] = {-kappa_mean * nabla_o_q_dir[0],
                                    -kappa_mean * nabla_o_q_dir[1],
                                    -kappa_mean * nabla_o_q_dir[2]};
-#endif
 
   const double F_A_right_side[3] = {Anorm * dx_p[0] / dx_p_norm,
                                     Anorm * dx_p[1] / dx_p_norm,
@@ -319,33 +303,10 @@ chemistry_riemann_solve_for_flux(
   }
 
   /* No conversion to physical needed, everything is physical here */
-  /* We probably need a mechanism to switch the Riemann solver when tau << 1.*/
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  if (chem_data->riemann_solver == HLL) {
-    /* Regular HLL */
-    chemistry_riemann_solver_HLL(dx, pi, pj, UL, UR, WL, WR, F_diff_L, F_diff_R,
-                                 Anorm, n_unit, m, chem_data, cosmo,
-                                 metal_flux);
-    return;
-
-  } else if (chem_data->riemann_solver == HLL_parabolic_Hopkins2017) {
-    /* Hopkins Hopkins 2017 implementation of HLL */
-    chemistry_riemann_solver_hopkins2017_HLL(dx, pi, pj, UL, UR, WL, WR,
-                                             F_diff_L, F_diff_R, Anorm, n_unit,
-                                             m, chem_data, cosmo, metal_flux);
-    return;
-  } else if (chem_data->riemann_solver == HLL_hyperbolic_Hopkins2017) {
-    chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
-        dx, pi, pj, UL, UR, WL, WR, F_diff_L, F_diff_R, Anorm, n_unit, m,
-        chem_data, cosmo, metal_flux);
-    return;
-  }
-#else
   /* Hopkins Hopkins 2017 implementation of HLL */
   chemistry_riemann_solver_hopkins2017_HLL(dx, pi, pj, UL, UR, WL, WR, F_diff_L,
                                            F_diff_R, Anorm, n_unit, m,
                                            chem_data, cosmo, metal_flux);
-#endif
 
   chemistry_riemann_check_output(WL, WR, UL, UR, n_unit, metal_flux);
 }

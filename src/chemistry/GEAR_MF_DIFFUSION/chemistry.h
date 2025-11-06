@@ -346,8 +346,6 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   parser_get_param_string(parameter_file, "GEARChemistry:riemann_solver", temp);
   if (strcmp(temp, "HLL") == 0)
     data->riemann_solver = HLL;
-  else if (strcmp(temp, "HLL_parabolic_H17") == 0)
-    data->riemann_solver = HLL_parabolic_Hopkins2017;
   else if (strcmp(temp, "HLL_hyperbolic_H17") == 0)
     data->riemann_solver = HLL_hyperbolic_Hopkins2017;
   else

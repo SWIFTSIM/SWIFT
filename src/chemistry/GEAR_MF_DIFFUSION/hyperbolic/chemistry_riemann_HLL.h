@@ -339,19 +339,11 @@ chemistry_riemann_solve_for_flux(
   }
 
   /* No conversion to physical needed, everything is physical here */
-  /* We probably need a mechanism to switch the Riemann solver when tau << 1.*/
   if (chem_data->riemann_solver == HLL) {
     /* Regular HLL */
     chemistry_riemann_solver_HLL(dx, pi, pj, UL, UR, WL, WR, F_diff_L, F_diff_R,
                                  Anorm, n_unit, m, chem_data, cosmo,
                                  metal_flux);
-    return;
-
-  } else if (chem_data->riemann_solver == HLL_parabolic_Hopkins2017) {
-    /* Hopkins Hopkins 2017 implementation of HLL */
-    chemistry_riemann_solver_hopkins2017_HLL(dx, pi, pj, UL, UR, WL, WR,
-                                             F_diff_L, F_diff_R, Anorm, n_unit,
-                                             m, chem_data, cosmo, metal_flux);
     return;
   } else if (chem_data->riemann_solver == HLL_hyperbolic_Hopkins2017) {
     chemistry_riemann_solver_hopkins2017_hyperbolic_HLL(
