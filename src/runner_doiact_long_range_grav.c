@@ -545,7 +545,7 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 #endif
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
-    } else if ((ci->type == cell_type_zoom &&
+    } else if (ci->type == cell_type_zoom &&
                cj->subtype == cell_subtype_neighbour) {
       /* Ok we made a task here, between a zoom ci and bkg cj. */
       runner_count_mesh_interactions_zoom_bkg_recursive(ci, ci->top, top_j, s);
