@@ -186,14 +186,14 @@ void stellar_wind_init(struct stellar_wind *sw, struct swift_params *params,
 }
 
 /**
-  * @brief Restore a stellar_wind struct from the given FILE as a stream of
-  * bytes.
-  *
-  *
-*/
+ * @brief Restore a stellar_wind struct from the given FILE as a stream of
+ * bytes.
+ *
+ *
+ */
 void stellar_wind_restore(struct stellar_wind *sw, FILE *stream,
                           const struct stellar_model *sm) {
-  
+
   stellar_wind_read_yields(sw, NULL, sm, 1);
 }
 

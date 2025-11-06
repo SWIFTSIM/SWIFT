@@ -440,7 +440,7 @@ void stellar_evolution_evolve_individual_star(
   const float log_mass =
       log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
   const float lifetime_myr = exp10(lifetime_get_log_lifetime_from_mass(
-                                         &sm->lifetime, log_mass, metallicity));
+      &sm->lifetime, log_mass, metallicity));
 
   /* Determine if the star is dead */
   const int is_dead = (star_age_beg_step_myr > lifetime_myr);
@@ -851,7 +851,7 @@ void stellar_evolution_compute_SN_feedback_individual_star(
   const float log_mass =
       log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
   const float lifetime_myr = exp10(lifetime_get_log_lifetime_from_mass(
-                                         &sm->lifetime, log_mass, metallicity));
+      &sm->lifetime, log_mass, metallicity));
 
   /* If the star has not reached its death time, don't start the firework */
   if (lifetime_myr > star_age_end_step_myr) return;
@@ -1129,7 +1129,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   const float log_mass =
       log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
   const float lifetime_myr = exp10(lifetime_get_log_lifetime_from_mass(
-                                         &sm->lifetime, log_mass, metallicity));
+      &sm->lifetime, log_mass, metallicity));
 
   /* Check if supernova occurs in the beetween of time steps. If it's the case,
    * continue but only considering the time where the star is alive*/
