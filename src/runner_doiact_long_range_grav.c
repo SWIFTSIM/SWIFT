@@ -388,13 +388,15 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
  * It will recurse down from the background top level to check interactions
  * at the zoom depth between the zoom cell and the background cell.
  *
+ * This version is to be used when ci is a zoom cell and needs to be
+ * compared to background progeny cells.
+ *
  * @param ci The #cell whose counter we are updating.
- * @param cj The #cell we are interacting with.
  * @param zoom_c The zoom #cell.
  * @param bkg_c The background #cell.
  * @param s The #space.
  */
-void runner_count_mesh_interactions_zoom_bkg(struct cell *ci, struct cell *cj,
+void runner_count_mesh_interactions_zoom_bkg(struct cell *ci,
                                              struct cell *zoom_c,
                                              struct cell *bkg_c,
                                              struct space *s) {
@@ -416,14 +418,15 @@ void runner_count_mesh_interactions_zoom_bkg(struct cell *ci, struct cell *cj,
     return;
   }
 
+  /* Make sure we don't end up below the zoom depth */
+  if (zoom_c->depth > s->zoom_props->zoom_cell_depth)
+    error("Zoom cell is deeper than zoom depth!");
+  if (bkg_c->depth > s->zoom_props->zoom_cell_depth)
+    error("Background cell is deeper than zoom depth!");
+
   /* Ok, we are at the zoom depth, check interaction */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
-  struct gravity_tensors *multi_j;
-  if (cj->type == cell_type_zoom) {
-    multi_j = zoom_c->grav.multipole;
-  } else {
-    multi_j = bkg_c->grav.multipole;
-  }
+  struct gravity_tensors *const multi_j = bkg_c->grav.multipole;
 
   /* Minimal distance between any pair of particles */
   const double min_radius2 = cell_min_dist2(zoom_c, bkg_c, s->periodic, s->dim);
@@ -537,20 +540,12 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 #endif
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
-    }
-    // else {
-    //   /* Ok we made a task here, if this was a zoom<->bkg interaction we need
-    //    * to recurse down to the zoom depth to find all the missed
-    //    * interactions. */
-    //   if ((ci->type == cell_type_zoom && cj->type == cell_type_bkg) ||
-    //       (ci->type == cell_type_bkg && cj->type == cell_type_zoom)) {
-    //     struct cell *zoom_c = (ci->type == cell_type_zoom) ? ci->top :
-    //     cj->top; struct cell *bkg_c = (ci->type == cell_type_bkg) ? ci->top :
-    //     cj->top; runner_count_mesh_interactions_zoom_bkg(ci, cj, zoom_c,
-    //     bkg_c, s);
-    //   }
-    // }
+    } else if (ci->type == cell_type_zoom ||
+               cj->subtype == cell_subtype_neighbour)
+      /* Ok we made a task here, between a zoom ci and bkg cj. */
+      runner_count_mesh_interactions_zoom_bkg(ci, ci->top, top_j, s);
   }
+}
 #else
   error(
       "This function should not be called without debugging checks or "
