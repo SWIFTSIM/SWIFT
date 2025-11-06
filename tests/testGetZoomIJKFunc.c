@@ -32,7 +32,7 @@
 #include "swift.h"
 #include "zoom_region/zoom.h"
 
-void make_mock_space(struct space* s) {
+void make_mock_space(struct space *s) {
 
   /* Define the members we need for the test. */
   s->dim[0] = 1000;
@@ -44,8 +44,8 @@ void make_mock_space(struct space* s) {
   s->e = NULL;
 
   /* Allocate memory for the gparts. */
-  struct gpart* gparts = NULL;
-  if (posix_memalign((void**)&gparts, gpart_align,
+  struct gpart *gparts = NULL;
+  if (posix_memalign((void **)&gparts, gpart_align,
                      s->nr_gparts * sizeof(struct gpart)) != 0) {
     error("Failed to allocate memory for gparts");
   }
@@ -84,9 +84,9 @@ void make_mock_space(struct space* s) {
   }
 }
 
-void make_mock_cells(struct space* s) {
+void make_mock_cells(struct space *s) {
   /* Get the zoom properties */
-  struct zoom_region_properties* zoom_props = s->zoom_props;
+  struct zoom_region_properties *zoom_props = s->zoom_props;
 
   /* Calculate the number of cells. */
   s->nr_cells =
@@ -96,7 +96,7 @@ void make_mock_cells(struct space* s) {
           zoom_props->buffer_cdim[2];
 
   /* Allocate cells. */
-  if (posix_memalign((void**)&s->cells_top, cell_align,
+  if (posix_memalign((void **)&s->cells_top, cell_align,
                      s->nr_cells * sizeof(struct cell)) != 0) {
     error("Couldn't allocate the cell");
   }
@@ -113,7 +113,7 @@ void make_mock_cells(struct space* s) {
     for (int j = 0; j < zoom_props->cdim[1]; j++) {
       for (int k = 0; k < zoom_props->cdim[2]; k++) {
         const size_t cid = cell_getid(zoom_props->cdim, i, j, k);
-        struct cell* c = &s->cells_top[cid];
+        struct cell *c = &s->cells_top[cid];
         c->loc[0] = (i * zoom_props->width[0]) + zoom_bounds[0];
         c->loc[1] = (j * zoom_props->width[1]) + zoom_bounds[1];
         c->loc[2] = (k * zoom_props->width[2]) + zoom_bounds[2];
@@ -132,7 +132,7 @@ void make_mock_cells(struct space* s) {
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
         const size_t cid = cell_getid_offset(s->cdim, bkg_cell_offset, i, j, k);
-        struct cell* c = &s->cells_top[cid];
+        struct cell *c = &s->cells_top[cid];
         c->loc[0] = i * s->width[0];
         c->loc[1] = j * s->width[1];
         c->loc[2] = k * s->width[2];
@@ -149,7 +149,7 @@ void make_mock_cells(struct space* s) {
   for (int cid = zoom_props->bkg_cell_offset; cid < s->nr_cells; cid++) {
 
     /* Get the cell */
-    struct cell* c = &s->cells_top[cid];
+    struct cell *c = &s->cells_top[cid];
 
     /* Get the middle of the cell. */
     double mid[3] = {c->loc[0] + 0.5 * c->width[0],
@@ -168,7 +168,7 @@ void make_mock_cells(struct space* s) {
   }
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
   /* Initialise CPU frequency, this also starts time. */
   unsigned long cpu_freq = 0;
@@ -179,7 +179,7 @@ int main(int argc, char* argv[]) {
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
 
-  const char* input_file = argv[1];
+  const char *input_file = argv[1];
 
   /* Create a structure to read file into. */
   struct swift_params param_file;
@@ -213,8 +213,8 @@ int main(int argc, char* argv[]) {
       cell_getid_from_pos(&s, bkg_coords[0], bkg_coords[1], bkg_coords[2]);
 
   /* Get the cells. */
-  const struct cell* zoom_cell = &s.cells_top[zoom_cell_id];
-  const struct cell* bkg_cell = &s.cells_top[bkg_cell_id];
+  const struct cell *zoom_cell = &s.cells_top[zoom_cell_id];
+  const struct cell *bkg_cell = &s.cells_top[bkg_cell_id];
 
   /* Test that the right type of cell was returned. */
   assert(zoom_cell->type == cell_type_zoom);
