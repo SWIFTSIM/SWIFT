@@ -591,9 +591,6 @@ void runner_count_mesh_interactions_uniform(struct runner *r, struct cell *ci,
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
-  /* Get the right top level cel to compare */
-  struct cell *compare_top = top;
-
   /* Loop over all cells. */
   for (int n = 0; n < s->nr_cells; n++) {
 
@@ -601,22 +598,14 @@ void runner_count_mesh_interactions_uniform(struct runner *r, struct cell *ci,
     struct cell *cj = &cells[n];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
-    /* For a zoom pair we need to compare the zoom top level otherwise just
-     * use the given top level cell. */
-    if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
-      compare_top = ci->top;
-    } else {
-      compare_top = top;
-    }
-
     /* Avoid self contributions */
-    if (compare_top == cj) continue;
+    if (top == cj) continue;
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(compare_top, cj, periodic, dim);
+    const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
