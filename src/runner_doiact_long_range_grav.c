@@ -418,10 +418,12 @@ void runner_count_mesh_interactions_zoom_bkg(struct cell *ci,
   }
 
   /* Make sure we don't end up below the zoom depth */
-  if (zoom_c->depth > s->zoom_props->zoom_cell_depth)
-    error("Zoom cell is deeper than zoom depth!");
+  if (zoom_c->depth != 0) error("Zoom cell is deeper than zoom depth!");
+  if (zoom_c->type != cell_type_zoom) error("Zoom cell is not of zoom type!");
   if (bkg_c->depth > s->zoom_props->zoom_cell_depth)
     error("Background cell is deeper than zoom depth!");
+  if (bkg_c->subtype != cell_subtype_neighbour)
+    error("Background cell is not of background type!");
 
   /* Ok, we are at the zoom depth, check interaction */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
@@ -484,10 +486,12 @@ void runner_count_mesh_interactions_bkg_zoom(struct cell *ci,
   }
 
   /* Make sure we don't end up below the zoom depth */
-  if (zoom_c->depth > s->zoom_props->zoom_cell_depth)
-    error("Zoom cell is deeper than zoom depth!");
+  if (zoom_c->depth != 0) error("Zoom cell is deeper than zoom depth!");
+  if (zoom_c->type != cell_type_zoom) error("Zoom cell is not of zoom type!");
   if (bkg_c->depth > s->zoom_props->zoom_cell_depth)
     error("Background cell is deeper than zoom depth!");
+  if (bkg_c->subtype != cell_subtype_neighbour)
+    error("Background cell is not of background type!");
 
   /* Ok, we are at the zoom depth, check interaction */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
@@ -607,10 +611,14 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 #endif
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
-    } else if (ci->type == cell_type_zoom ||
+    } else if (ci->type == cell_type_zoom &&
                cj->subtype == cell_subtype_neighbour) {
       /* Ok we made a task here, between a zoom ci and bkg cj. */
       runner_count_mesh_interactions_zoom_bkg(ci, ci->top, top_j, s);
+    } else if (cj->type == cell_type_zoom &&
+               ci->subtype == cell_subtype_neighbour) {
+      /* Ok we made a task here, between a bkg ci and zoom cj. */
+      runner_count_mesh_interactions_bkg_zoom(ci, ci, cj->top, s);
     }
   }
 #else
