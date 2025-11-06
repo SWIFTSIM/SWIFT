@@ -141,22 +141,81 @@ runner_iact_nonsym_feedback_apply(
 
     /* Set the indication of SN event for cooling*/
     xpj->feedback_data.hit_by_SN = 1;
-  } else {
-    xpj->feedback_data.hit_by_SN = 0;
   }
 
   /* Distribute pre-SN */
-  if (e_preSN != 0.0) {
-    /* Energy received */
-    /* Here the new mass correspond to the mass added by supernovae
-    in the case where both supernovae and pre-SN feedback occur .
-    The pre-SN feedback does not yet implement a change in the mass !*/
-    const double du = (e_preSN)*weight / new_mass;
-    xpj->feedback_data.delta_u += du;
-  }
+  if (e_preSN != 0.0 || weight > 0.0) {
+    /* If the distance is null, no need to use calculation ressources */
+    if (r2 > 0.0){
+      /* -------------------- set to physical quantities -------------------- */
+      /* Cosmology constant */
+      const float a = cosmo->a;
+      const float a_inv = cosmo->a_inv;
+      const float H = cosmo->H;
+      const float a_dot = a * H;
 
-  /* Impose maximal viscosity */
-  hydro_diffusive_feedback_reset(pj);
+      /* physical velocities */
+      const float v_i_p[3] = {a_dot * si->x[0] + si->v[0] * a_inv,
+                              a_dot * si->x[1] + si->v[1] * a_inv,
+                              a_dot * si->x[2] + si->v[2] * a_inv};
+
+      const float v_j_p[3] = {a_dot * pj->x[0] + xpj->v_full[0] * a_inv,
+                              a_dot * pj->x[1] + xpj->v_full[1] * a_inv,
+                              a_dot * pj->x[2] + xpj->v_full[2] * a_inv};
+
+      const float r_p = sqrtf(r2) * a;
+      const float dx_p[3] = {dx[0] * a,
+                             dx[1] * a,
+                             dx[2] * a}; 
+
+      /* --------------- Compute physical momentum received ---------------------------- */
+      /* Total momentum ejected by the winds during the timestep */
+      const double p_ej = sqrt(2.0 * si->feedback_data.preSN.mass_ejected * si->feedback_data.preSN.energy_ejected);
+
+      /* norm of physical velocities */
+      const float norm2_v = v_j_p[0] * v_j_p[0]
+                          + v_j_p[1] * v_j_p[1]
+                          + v_j_p[2] * v_j_p[2];
+
+      double dp_lab_frame[3];
+
+      for (int i = 0; i < 3; i++) {
+        /* momentum in lab frame due to the ejecta */
+        dp_lab_frame[i] = weight * (p_ej + si->feedback_data.preSN.mass_ejected * v_i_p[i]) * (dx_p[i]/r_p);
+
+        /* Give the comoving momentum to the gas particle */
+        xpj->feedback_data.delta_p[i] -= dp_lab_frame[i] * a; /* The minus sign comes from the direction of dx (si - pj) */
+      }
+
+      const double norm2_dp_lab_frame = dp_lab_frame[0]*dp_lab_frame[0] 
+                               + dp_lab_frame[1]*dp_lab_frame[1] 
+                               + dp_lab_frame[2]*dp_lab_frame[2];
+      const double norm2_dp = weight * weight * p_ej * p_ej;
+    
+      /* ------------------ calculate physical Energy and internal Energy received -------------------------- */
+      if (new_mass > 0){
+        /* The total energy ejected in the lab frame, and new and old kinetic energies */
+        const double dE_lab_frame = ((weight * e_preSN) + 0.5 * (norm2_dp_lab_frame - norm2_dp) / (weight * si->feedback_data.preSN.mass_ejected));
+        const double old_kinetic_energy = 0.5 * pj->mass * norm2_v;
+
+        const double norm2_p_new = {(pj->mass * v_j_p[0] + dp_lab_frame[0]) * (pj->mass * v_j_p[0] + dp_lab_frame[0]) +
+                                    (pj->mass * v_j_p[1] + dp_lab_frame[1]) * (pj->mass * v_j_p[1] + dp_lab_frame[1]) +
+                                    (pj->mass * v_j_p[2] + dp_lab_frame[2]) * (pj->mass * v_j_p[2] + dp_lab_frame[2])};
+        const double new_kinetic_energy = 0.5 * norm2_p_new / new_mass; 
+
+        const float du =  (old_kinetic_energy + dE_lab_frame - new_kinetic_energy) / new_mass; /* E_new + U_new = E_old + U_old + dE */ 
+        
+        xpj->feedback_data.delta_u += du;
+
+        if (a == 1.0 && a_inv == 1.0 && cosmo->z == 0.0){
+          const float dv_phys = sqrt(norm2_dp_lab_frame) / new_mass;
+          hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
+        }
+      }
+
+      xpj->feedback_data.hit_by_preSN = 1;
+    }
+  }
 
   /* Synchronize the particle on the timeline */
   timestep_sync_part(pj);
