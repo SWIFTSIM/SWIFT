@@ -568,6 +568,9 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
     if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
       compare_top_i = ci->top;
       compare_top_j = cj->top;
+    } else if (cj->type == cell_type_zoom && cell_pair_is_zoom_tl(ci, cj, s)) {
+      compare_top_i = ci;
+      compare_top_j = cj;
     } else if (ci->type == cell_type_zoom) {
       compare_top_i = ci->top->void_parent->top;
       compare_top_j = top_j;
