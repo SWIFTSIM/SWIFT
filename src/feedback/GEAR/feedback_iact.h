@@ -144,7 +144,7 @@ runner_iact_nonsym_feedback_apply(
   }
 
   /* Distribute pre-SN */
-  if (e_preSN != 0.0 || weight > 0.0) {
+  if (e_preSN != 0.0 && weight > 0.0) {
     /* If the distance is null, no need to use calculation ressources */
     if (r2 > 0.0){
       /* -------------------- set to physical quantities -------------------- */
