@@ -409,7 +409,8 @@ void runner_count_mesh_interactions_zoom_bkg_recursive(struct cell *ci,
     /* Recurse down to the zoom depth */
     for (int k = 0; k < 8; k++) {
       if (bkg_c->progeny[k] == NULL) continue;
-      runner_count_mesh_interactions_zoom_bkg(ci, zoom_c, bkg_c->progeny[k], s);
+      runner_count_mesh_interactions_zoom_bkg_recursive(ci, zoom_c,
+                                                        bkg_c->progeny[k], s);
     }
     return;
   }
