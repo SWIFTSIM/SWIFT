@@ -31,7 +31,7 @@
 #include "swift.h"
 #include "zoom_region/zoom.h"
 
-void make_mock_space(struct space *s, const double zoom_width) {
+void make_mock_space(struct space* s, const double zoom_width) {
 
   /* Define the members we need for the test. */
   s->dim[0] = 1000;
@@ -43,8 +43,8 @@ void make_mock_space(struct space *s, const double zoom_width) {
   s->e = NULL;
 
   /* Allocate memory for the gparts. */
-  struct gpart *gparts =
-      (struct gpart *)malloc(s->nr_gparts * sizeof(struct gpart));
+  struct gpart* gparts =
+      (struct gpart*)malloc(s->nr_gparts * sizeof(struct gpart));
   bzero(gparts, s->nr_gparts * sizeof(struct gpart));
 
   /* Define the corners of the region */
@@ -82,7 +82,7 @@ void make_mock_space(struct space *s, const double zoom_width) {
   s->gparts = gparts;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
 
-  const char *input_file = argv[1];
+  const char* input_file = argv[1];
   const double zoom_width = atof(argv[2]);
 
   /* Create a structure to read file into. */
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
   parser_read_file(input_file, &param_file);
 
   /* Create a space structure. */
-  struct space *s = malloc(sizeof(struct space));
+  struct space* s = malloc(sizeof(struct space));
   bzero(s, sizeof(struct space));
   make_mock_space(s, zoom_width);
 
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
 
   /* Run the zoom_init function. */
   zoom_props_init(&param_file, s, 0);
-  zoom_region_init(s, 0);
+  zoom_region_init(s, /*regridding*/ 0, 0);
 
   /* Test what we've calculated and ensure the centre is in the centre of the
    * box. This ensures the dimensions, bounds and cdims have all been
