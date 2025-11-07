@@ -288,9 +288,9 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
     struct part *p) {
 
   zero_sym_matrix(&p->mhd_data.dens.d_matrix_inv);
-  for (int i = 0; i < 3; ++i) p->mhd_data.dens.Mat_bx[i] = 0.f;
-  for (int i = 0; i < 3; ++i) p->mhd_data.dens.Mat_by[i] = 0.f;
-  for (int i = 0; i < 3; ++i) p->mhd_data.dens.Mat_bz[i] = 0.f;
+  for (int i = 0; i < 3; ++i) 
+     for (int j = 0; j < 3; ++j) 
+        p->mhd_data.dens.Mat_b[j][i] = 0.f;
 
 }
 
@@ -316,14 +316,12 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   
   /* Finish the construction of the inverse of the d-matrix by
    * multiplying in the factors of h coming from W */
-  for (int i = 0; i < 6; ++i) {
-    p->mhd_data.dens.d_matrix_inv.elements[i] *= h_inv_dim;
-  }
+  for (int i = 0; i < 6; ++i) p->mhd_data.dens.d_matrix_inv.elements[i] *= h_inv_dim;
   /* Finish the construction of the inverse of the A gradient
    * multiplying in the factors of h coming from W */
-  for (int i = 0; i < 3; ++i) p->mhd_data.dens.Mat_bx[i] *= h_inv_dim;
-  for (int i = 0; i < 3; ++i) p->mhd_data.dens.Mat_by[i] *= h_inv_dim;
-  for (int i = 0; i < 3; ++i) p->mhd_data.dens.Mat_bz[i] *= h_inv_dim;
+  for (int j = 0; j < 3; ++j) 
+     for (int i = 0; i < 3; ++i) 
+        p->mhd_data.dens.Mat_b[j][i] *= h_inv_dim;
   /* Invert the c-matrix */
   float d_mat_tmp[3][3];
   get_matrix_from_sym_matrix(d_mat_tmp, &p->mhd_data.dens.d_matrix_inv);
@@ -332,37 +330,28 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
     sym_matrix_print(&p->mhd_data.dens.d_matrix_inv);
     error("Error inverting matrix Dens.D");
   }
-  /* Finish computation of velocity gradient (eq. 18) */
-  const float g_bx[3] = {p->mhd_data.dens.Mat_bx[0], p->mhd_data.dens.Mat_bx[1],
-                         p->mhd_data.dens.Mat_bx[2]};
-  const float g_by[3] = {p->mhd_data.dens.Mat_by[0], p->mhd_data.dens.Mat_by[1],
-                         p->mhd_data.dens.Mat_by[2]};
-  const float g_bz[3] = {p->mhd_data.dens.Mat_bz[0], p->mhd_data.dens.Mat_bz[1],
-                         p->mhd_data.dens.Mat_bz[2]};
-
+  
+  const float g_b[3][3] = {
+  {p->mhd_data.dens.Mat_b[0][0], p->mhd_data.dens.Mat_b[0][1], p->mhd_data.dens.Mat_b[0][2]},
+  {p->mhd_data.dens.Mat_b[1][0], p->mhd_data.dens.Mat_b[1][1], p->mhd_data.dens.Mat_b[1][2]},
+  {p->mhd_data.dens.Mat_b[2][0], p->mhd_data.dens.Mat_b[2][1], p->mhd_data.dens.Mat_b[2][2]}
+  };
+  
+  for (int j = 0; j < 3; ++j) 
+    for (int i = 0; i < 3; ++i){ 
+      p->mhd_data.dens.Mat_b[j][i] = 0.f;
+      }
+  
+  for (int j = 0; j < 3; ++j) 
+    for (int i = 0; i < 3; ++i) 
+      p->mhd_data.dens.Mat_b[j][i] += d_mat_tmp[i][j] * g_b[i][j];
+  
   for (int i = 0; i < 3; ++i) 
-      p->mhd_data.dens.Mat_bx[i] = d_mat_tmp[i][0] * g_bx[0] +
-                                   d_mat_tmp[i][1] * g_bx[1] +
-                                   d_mat_tmp[i][2] * g_bx[2];
-  for (int i = 0; i < 3; ++i) 
-      p->mhd_data.dens.Mat_by[i] = d_mat_tmp[i][0] * g_by[0] +
-                                   d_mat_tmp[i][1] * g_by[1] +
-                                   d_mat_tmp[i][2] * g_by[2];
-  for (int i = 0; i < 3; ++i) 
-      p->mhd_data.dens.Mat_bz[i] = d_mat_tmp[i][0] * g_bz[0] +
-                                   d_mat_tmp[i][1] * g_bz[1] +
-                                   d_mat_tmp[i][2] * g_bz[2];
-  //for (int i = 0; i < 3; ++i) 
-  //  p->mhd_data.BPred[i] =
-  //       p->mhd_data.dens.Mat_bz[(i+1)%3] - p->mhd_data.dens.Mat_by[(i+2)%3];
-  p->mhd_data.BPred[0] =
-         p->mhd_data.dens.Mat_bz[1] - p->mhd_data.dens.Mat_by[2];
-  p->mhd_data.BPred[1] =
-         p->mhd_data.dens.Mat_bx[2] - p->mhd_data.dens.Mat_bz[0];
-  p->mhd_data.BPred[2] =
-         p->mhd_data.dens.Mat_by[0] - p->mhd_data.dens.Mat_bx[1];
-  p->mhd_data.divA = p->mhd_data.dens.Mat_bx[0] + p->mhd_data.dens.Mat_by[1] +
-                     p->mhd_data.dens.Mat_bz[2];
+    p->mhd_data.BPred[i] =
+         p->mhd_data.dens.Mat_b[(i+2)%3][(i+1)%3] - p->mhd_data.dens.Mat_b[(i+1)%3][(i+2)%3];
+  
+  p->mhd_data.divA = p->mhd_data.dens.Mat_b[0][0] + p->mhd_data.dens.Mat_b[1][1] +
+                     p->mhd_data.dens.Mat_b[2][2];
   
   get_sym_matrix_from_matrix(&p->mhd_data.grad.d_matrix, d_mat_tmp);
 }
@@ -398,13 +387,11 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     struct part *p) {
 
   zero_sym_matrix(&p->mhd_data.grad.c_matrix_inv);
-  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bbx[i] = 0.f;
-  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bby[i] = 0.f;
-  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bbz[i] = 0.f;
-  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_dax[i] = 0.f;
-  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_day[i] = 0.f;
-  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_daz[i] = 0.f;
-  
+  for (int j = 0; j < 3; ++j) 
+     for (int i = 0; i < 3; ++i){ 
+  	p->mhd_data.grad.Mat_bb[j][i] = 0.f;
+        p->mhd_data.grad.Mat_da[j][i] = 0.f;
+  }
   /* Curl B*/
   for (int k = 0; k < 3; k++) p->mhd_data.curl_B[k] = 0.f;
 
@@ -441,19 +428,18 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
 
   /* Finish the construction of the inverse of the c-matrix by
    * multiplying in the factors of h coming from W */
-  for (int i = 0; i < 6; ++i) {
+  for (int i = 0; i < 6; ++i)
     p->mhd_data.grad.c_matrix_inv.elements[i] *= h_inv_dim;
-  }
   /* Finish the construction of the inverse of the A gradient
    * multiplying in the factors of h coming from W */
-  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bbx[i] *= h_inv_dim;
-  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bby[i] *= h_inv_dim;
-  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_bbz[i] *= h_inv_dim;
+  for (int j = 0; j < 3; ++j) 
+     for (int i = 0; i < 3; ++i) 
+        p->mhd_data.grad.Mat_bb[j][i] *= h_inv_dim;
   /* Finish the construction of the inverse of the dAdt
    * multiplying in the factors of h coming from W */
-  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_dax[i] *= h_inv_dim;
-  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_day[i] *= h_inv_dim;
-  for (int i = 0; i < 3; ++i) p->mhd_data.grad.Mat_daz[i] *= h_inv_dim;
+  for (int j = 0; j < 3; ++j) 
+     for (int i = 0; i < 3; ++i) 
+        p->mhd_data.grad.Mat_da[j][i] *= h_inv_dim;
   /* Invert the c-matrix */
   float c_mat_tmp[3][3];
   get_matrix_from_sym_matrix(c_mat_tmp, &p->mhd_data.grad.c_matrix_inv);
@@ -462,64 +448,35 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     sym_matrix_print(&p->mhd_data.grad.c_matrix_inv);
     error("Error inverting matrix in Grad.C");
   }
-  /* Finish computation of velocity gradient (eq. 18) */
-  const float g_bx[3] = {p->mhd_data.grad.Mat_bbx[0], 
-                         p->mhd_data.grad.Mat_bbx[1],
-                         p->mhd_data.grad.Mat_bbx[2]};
-  const float g_by[3] = {p->mhd_data.grad.Mat_bby[0], 
-                         p->mhd_data.grad.Mat_bby[1],
-                         p->mhd_data.grad.Mat_bby[2]};
-  const float g_bz[3] = {p->mhd_data.grad.Mat_bbz[0], 
-  			  p->mhd_data.grad.Mat_bbz[1],
-                         p->mhd_data.grad.Mat_bbz[2]};
-  const float g_dax[3] = {p->mhd_data.grad.Mat_dax[0],
-                          p->mhd_data.grad.Mat_dax[1],
-                          p->mhd_data.grad.Mat_dax[2]};
-  const float g_day[3] = {p->mhd_data.grad.Mat_day[0],
-                          p->mhd_data.grad.Mat_day[1],
-                          p->mhd_data.grad.Mat_day[2]};
-  const float g_daz[3] = {p->mhd_data.grad.Mat_daz[0],
-                          p->mhd_data.grad.Mat_daz[1],
-                          p->mhd_data.grad.Mat_daz[2]};
+
+  const float g_b[3][3] = { 
+     {p->mhd_data.grad.Mat_bb[0][0], p->mhd_data.grad.Mat_bb[0][1], p->mhd_data.grad.Mat_bb[0][2]},
+     {p->mhd_data.grad.Mat_bb[1][0], p->mhd_data.grad.Mat_bb[1][1], p->mhd_data.grad.Mat_bb[1][2]},
+     {p->mhd_data.grad.Mat_bb[2][0], p->mhd_data.grad.Mat_bb[2][1], p->mhd_data.grad.Mat_bb[2][2]}
+  };
+  const float g_da[3][3] = {
+     {p->mhd_data.grad.Mat_da[0][0], p->mhd_data.grad.Mat_da[0][1], p->mhd_data.grad.Mat_da[0][2]},
+     {p->mhd_data.grad.Mat_da[1][0], p->mhd_data.grad.Mat_da[1][1], p->mhd_data.grad.Mat_da[1][2]},
+     {p->mhd_data.grad.Mat_da[2][0], p->mhd_data.grad.Mat_da[2][1], p->mhd_data.grad.Mat_da[2][2]}
+  };
+
+  for (int j = 0; j < 3; ++j) 
+     for (int i = 0; i < 3; ++i){ 
+       p->mhd_data.force.Mat_b[j][i] = 0.f ;
+       p->mhd_data.grad.Mat_da[j][i] = 0.f;
+  }
+  for (int j = 0; j < 3; ++j) 
+     for (int i = 0; i < 3; ++i){ 
+       p->mhd_data.force.Mat_b[j][i] += c_mat_tmp[i][j] * g_b[i][j];
+       p->mhd_data.grad.Mat_da[j][i] += c_mat_tmp[i][j] * g_da[i][j];
+  }
 
   for (int i = 0; i < 3; ++i) 
-  p->mhd_data.force.Mat_bx[i] = c_mat_tmp[i][0] * g_bx[0] +
-                                c_mat_tmp[i][1] * g_bx[1] +
-                                c_mat_tmp[i][2] * g_bx[2];
-
-  for (int i = 0; i < 3; ++i) 
-  p->mhd_data.force.Mat_by[i] = c_mat_tmp[i][0] * g_by[0] +
-                                c_mat_tmp[i][1] * g_by[1] +
-                                c_mat_tmp[i][2] * g_by[2];
-
-  for (int i = 0; i < 3; ++i) 
-  p->mhd_data.force.Mat_bz[i] = c_mat_tmp[i][0] * g_bz[0] +
-                                c_mat_tmp[i][1] * g_bz[1] +
-                                c_mat_tmp[i][2] * g_bz[2];
-
-  for (int i = 0; i < 3; ++i) 
-  p->mhd_data.grad.Mat_dax[i] = c_mat_tmp[i][0] * g_dax[0] +
-                                c_mat_tmp[i][1] * g_dax[1] +
-                                c_mat_tmp[i][2] * g_dax[2];
-
-  for (int i = 0; i < 3; ++i) 
-  p->mhd_data.grad.Mat_day[i] = c_mat_tmp[i][0] * g_day[0] +
-                                c_mat_tmp[i][1] * g_day[1] +
-                                c_mat_tmp[i][2] * g_day[2];
-
-  for (int i = 0; i < 3; ++i) 
-  p->mhd_data.grad.Mat_daz[i] = c_mat_tmp[i][0] * g_daz[0] +
-                                c_mat_tmp[i][1] * g_daz[1] +
-                                c_mat_tmp[i][2] * g_daz[2];
-
-  p->mhd_data.JPred[0] =
-         p->mhd_data.force.Mat_bz[1] - p->mhd_data.force.Mat_by[2];
-  p->mhd_data.JPred[1] =
-         p->mhd_data.force.Mat_bx[2] - p->mhd_data.force.Mat_bz[0];
-  p->mhd_data.JPred[2] =
-         p->mhd_data.force.Mat_by[0] - p->mhd_data.force.Mat_bx[1];
-  p->mhd_data.divB = p->mhd_data.force.Mat_bx[0] + p->mhd_data.force.Mat_by[1] +
-                     p->mhd_data.force.Mat_bz[2];
+    p->mhd_data.JPred[i] =
+         p->mhd_data.force.Mat_b[(i+2)%3][(i+1)%3] - p->mhd_data.force.Mat_b[(i+1)%3][(i+2)%3];
+  
+  p->mhd_data.divB = p->mhd_data.force.Mat_b[0][0] + p->mhd_data.force.Mat_b[1][1] +
+                     p->mhd_data.force.Mat_b[2][2];
 
   get_sym_matrix_from_matrix(&p->mhd_data.force.c_matrix, c_mat_tmp);
 }
@@ -590,17 +547,17 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
       normB ? fminf(alpha_AR_max, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
 
   /* Sets Induction equation */
-  p->mhd_data.dAdt[0] = p->mhd_data.grad.Mat_dax[0] +
-                        p->mhd_data.grad.Mat_day[0] +
-                        p->mhd_data.grad.Mat_daz[0];
-  p->mhd_data.dAdt[1] = p->mhd_data.grad.Mat_dax[1] +
-                        p->mhd_data.grad.Mat_day[1] +
-                        p->mhd_data.grad.Mat_daz[1];
-  p->mhd_data.dAdt[2] = p->mhd_data.grad.Mat_dax[2] +
-                        p->mhd_data.grad.Mat_day[2] +
-                        p->mhd_data.grad.Mat_daz[2];
-  for (int i = 0; i < 3; i++)
-     p->mhd_data.dAdt[i] -= p->mhd_data.resistive_eta * p->mhd_data.JPred[i];
+  p->mhd_data.dAdt[0] = p->mhd_data.grad.Mat_da[0][0] +
+                        p->mhd_data.grad.Mat_da[1][0] +
+                        p->mhd_data.grad.Mat_da[2][0];
+  p->mhd_data.dAdt[1] = p->mhd_data.grad.Mat_da[1][1] +
+                        p->mhd_data.grad.Mat_da[1][1] +
+                        p->mhd_data.grad.Mat_da[1][1];
+  p->mhd_data.dAdt[2] = p->mhd_data.grad.Mat_da[2][2] +
+                        p->mhd_data.grad.Mat_da[2][2] +
+                        p->mhd_data.grad.Mat_da[2][2];
+  //for (int i = 0; i < 3; i++)
+  //   p->mhd_data.dAdt[i] -= p->mhd_data.resistive_eta * p->mhd_data.JPred[i];
 }
 
 /**
@@ -704,11 +661,6 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
   
-  for (int k = 0; k < 3; k++)
-    p->a_hydro[k] += 1.f/mu_0 * ( 
-    p->mhd_data.JPred[(k+1)%3]*p->mhd_data.BPred[(k+2)%3] - 
-    p->mhd_data.JPred[(k+2)%3]*p->mhd_data.BPred[(k+1)%3] ); 
-
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] *= p->mass;

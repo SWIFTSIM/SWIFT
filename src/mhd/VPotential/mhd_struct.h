@@ -82,9 +82,7 @@ struct mhd_part_data {
 
   struct {
     struct sym_matrix d_matrix_inv;
-    float Mat_bx[3];
-    float Mat_by[3];
-    float Mat_bz[3];
+    float Mat_b[3][3];
   } dens;
 
   struct {
@@ -94,13 +92,9 @@ struct mhd_part_data {
     struct sym_matrix d_matrix;
 
     /*! Gradient per component of the Afield means Bfield*/
-    float Mat_bbx[3];
-    float Mat_bby[3];
-    float Mat_bbz[3];
+    float Mat_bb[3][3];
     /*! Gradient per component of the dAdt*/
-    float Mat_dax[3];
-    float Mat_day[3];
-    float Mat_daz[3];
+    float Mat_da[3][3];
 
   } grad;
 
@@ -110,9 +104,7 @@ struct mhd_part_data {
     struct sym_matrix c_matrix;
 
     /*! Gradient per component of the Afield means Bfield*/
-    float Mat_bx[3];
-    float Mat_by[3];
-    float Mat_bz[3];
+    float Mat_b[3][3];
 
   } force;
 };

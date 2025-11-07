@@ -59,11 +59,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   const float uj = r * hj_inv;
   kernel_deval(uj, &wj, &wj_dx);
 
-  /* Now we need to compute the div terms */
-  //const float r_inv = r ? 1.0f / r : 0.0f;
-  //const float faci = mj * wi_dx * r_inv;
-  //const float facj = mi * wj_dx * r_inv;
-
   /////
   // bi = dj ak - dk aj
   // bj = dk ai - di ak
@@ -91,14 +86,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   pi->mhd_data.dens.d_matrix_inv.xz += common_term_i * dx[0] * dx[2];
   pi->mhd_data.dens.d_matrix_inv.yz += common_term_i * dx[1] * dx[2];
   
-  for (int i = 0; i < 3; ++i)
-  pi->mhd_data.dens.Mat_bx[i] -= common_term_i * Aij[0] * dx[i];
-
-  for (int i = 0; i < 3; ++i)
-  pi->mhd_data.dens.Mat_by[i] -= common_term_i * Aij[1] * dx[i];
-
-  for (int i = 0; i < 3; ++i)
-  pi->mhd_data.dens.Mat_bz[i] -= common_term_i * Aij[2] * dx[i];
+  for (int j = 0; j < 3; ++j)
+     for (int i = 0; i < 3; ++i)
+        pi->mhd_data.dens.Mat_b[j][i] -= common_term_i * Aij[j] * dx[i];
 
   const float common_term_j = wj_dx * mi;
 
@@ -109,14 +99,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   pj->mhd_data.dens.d_matrix_inv.xz += common_term_j * dx[0] * dx[2];
   pj->mhd_data.dens.d_matrix_inv.yz += common_term_j * dx[1] * dx[2];
   
-  for (int i = 0; i < 3; ++i)
-  pj->mhd_data.dens.Mat_bx[i] -= common_term_j * Aij[0] * dx[i];
-
-  for (int i = 0; i < 3; ++i)
-  pj->mhd_data.dens.Mat_by[i] -= common_term_j * Aij[1] * dx[i];
-
-  for (int i = 0; i < 3; ++i)
-  pj->mhd_data.dens.Mat_bz[i] -= common_term_j * Aij[2] * dx[i];
+  for (int j = 0; j < 3; ++j)
+    for (int i = 0; i < 3; ++i)
+      pj->mhd_data.dens.Mat_b[j][i] -= common_term_j * Aij[j] * dx[i];
 
 }
 
@@ -153,13 +138,6 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
 
   kernel_deval(ui, &wi, &wi_dx);
 
-  /* Now we need to compute the div terms */
-  // const float r_inv = r ? 1.0f / r : 0.0f;
-  // const float faci = mj * wi_dx * r_inv;
-
-  //for (int i = 0; i < 3; ++i)
-  //  pi->mhd_data.BPred[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
-  //                                   dA[(i + 2) % 3] * dx[(i + 1) % 3]);
   /* Vect Potential difference */
   const float Aij[3] = {pj->mhd_data.APred[0] - pi->mhd_data.APred[0],
                         pj->mhd_data.APred[1] - pi->mhd_data.APred[1],
@@ -173,14 +151,9 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   pi->mhd_data.dens.d_matrix_inv.xz += common_term_i * dx[0] * dx[2];
   pi->mhd_data.dens.d_matrix_inv.yz += common_term_i * dx[1] * dx[2];
   
-  for (int i = 0; i < 3; ++i)
-    pi->mhd_data.dens.Mat_bx[i] -= common_term_i * Aij[0] * dx[i];
-
-  for (int i = 0; i < 3; ++i)
-    pi->mhd_data.dens.Mat_by[i] -= common_term_i * Aij[1] * dx[i];
-
-  for (int i = 0; i < 3; ++i)
-    pi->mhd_data.dens.Mat_bz[i] -= common_term_i * Aij[2] * dx[i];
+  for (int j = 0; j < 3; ++j)
+    for (int i = 0; i < 3; ++i)
+      pi->mhd_data.dens.Mat_b[j][i] -= common_term_i * Aij[j] * dx[i];
 }
 
 /**
@@ -306,15 +279,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   pi->mhd_data.grad.c_matrix_inv.xz += common_term_i * dx[0] * dx[2];
   pi->mhd_data.grad.c_matrix_inv.yz += common_term_i * dx[1] * dx[2];
 
-  /* Gradient of v (recall dx is pi - pj), eq. 18 */
-  for (int i = 0; i < 3; i++){
-  pi->mhd_data.grad.Mat_bbx[i] -= common_term_i * Bij[0] * dx[i];
-  pi->mhd_data.grad.Mat_bby[i] -= common_term_i * Bij[1] * dx[i];
-  pi->mhd_data.grad.Mat_bbz[i] -= common_term_i * Bij[2] * dx[i];
-
-  pi->mhd_data.grad.Mat_dax[i] -= common_term_i * DAi[0] * dx[i];
-  pi->mhd_data.grad.Mat_day[i] -= common_term_i * DAi[1] * dx[i];
-  pi->mhd_data.grad.Mat_daz[i] -= common_term_i * DAi[2] * dx[i];
+  for (int j = 0; j < 3; j++)
+    for (int i = 0; i < 3; i++){
+       pi->mhd_data.grad.Mat_bb[j][i] -= common_term_i * Bij[j] * dx[i];
+       pi->mhd_data.grad.Mat_da[j][i] -= common_term_i * DAi[j] * dx[i];
   }
   const float common_term_j = wj * mi / rhoi;
 
@@ -327,15 +295,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   pj->mhd_data.grad.c_matrix_inv.xz += common_term_j * dx[0] * dx[2];
   pj->mhd_data.grad.c_matrix_inv.yz += common_term_j * dx[1] * dx[2];
 
-  /* Gradient of v (recall dx is pi - pj), eq. 18 */
-  for (int i = 0; i < 3; i++){
-  pj->mhd_data.grad.Mat_bbx[i] -= common_term_j * Bij[0] * dx[i];
-  pj->mhd_data.grad.Mat_bby[i] -= common_term_j * Bij[1] * dx[i];
-  pj->mhd_data.grad.Mat_bbz[i] -= common_term_j * Bij[2] * dx[i];
-
-  pj->mhd_data.grad.Mat_dax[i] -= common_term_j * DAj[0] * dx[i];
-  pj->mhd_data.grad.Mat_day[i] -= common_term_j * DAj[1] * dx[i];
-  pj->mhd_data.grad.Mat_daz[i] -= common_term_j * DAj[2] * dx[i];
+  /* dB_j dx_i */
+  for (int j = 0; j < 3; j++)
+     for (int i = 0; i < 3; i++){
+     pj->mhd_data.grad.Mat_bb[j][i] -= common_term_j * Bij[j] * dx[i];
+     pj->mhd_data.grad.Mat_da[j][i] -= common_term_j * DAj[j] * dx[i];
   }
 }
 
@@ -455,15 +419,11 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   pi->mhd_data.grad.c_matrix_inv.xz += common_term * dx[0] * dx[2];
   pi->mhd_data.grad.c_matrix_inv.yz += common_term * dx[1] * dx[2];
 
-  /* Gradient of v (recall dx is pi - pj), eq. 18 */
-  for (int i = 0; i < 3; i++){
-  pi->mhd_data.grad.Mat_bbx[i] -= common_term * Bij[0] * dx[i];
-  pi->mhd_data.grad.Mat_bby[i] -= common_term * Bij[1] * dx[i];
-  pi->mhd_data.grad.Mat_bbz[i] -= common_term * Bij[2] * dx[i];
-
-  pi->mhd_data.grad.Mat_dax[i] -= common_term * DAi[0] * dx[i];
-  pi->mhd_data.grad.Mat_day[i] -= common_term * DAi[1] * dx[i];
-  pi->mhd_data.grad.Mat_daz[i] -= common_term * DAi[2] * dx[i];
+  /* dB_j dx_i */
+  for (int j = 0; j < 3; ++j) 
+     for (int i = 0; i < 3; i++){
+        pi->mhd_data.grad.Mat_bb[j][i] -= common_term * Bij[j] * dx[i];
+        pi->mhd_data.grad.Mat_da[j][i] -= common_term * DAi[j] * dx[i];
   }
 }
 
