@@ -114,6 +114,15 @@ struct fof_props {
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
 
+  /*! Gas mass of the group a given gpart belongs to. */
+  float *group_gas_mass;
+
+  /*! Stellar mass of the group a given gpart belongs to. */
+  float *group_stellar_mass;
+
+  /*! SFR of the group a given gpart belongs to. */
+  float *group_star_formation_rate;
+
   /*! Does the group have a black hole? */
   char *has_black_hole;
 

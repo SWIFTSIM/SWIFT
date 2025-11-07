@@ -34,8 +34,8 @@
  *
  * @return Returns the number of fields to read.
  */
-INLINE static int rt_read_particles(const struct part* parts,
-                                    struct io_props* list) {
+INLINE static int rt_read_particles(const struct part *parts,
+                                    struct io_props *list) {
   return 0;
 }
 
@@ -47,8 +47,8 @@ INLINE static int rt_read_particles(const struct part* parts,
  *
  * @return Returns the number of fields to read.
  */
-INLINE static int rt_read_stars(const struct spart* sparts,
-                                struct io_props* list) {
+INLINE static int rt_read_stars(const struct spart *sparts,
+                                struct io_props *list) {
   return 0;
 }
 
@@ -61,8 +61,8 @@ INLINE static int rt_read_stars(const struct spart* sparts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int rt_write_particles(const struct part* parts,
-                                     struct io_props* list) {
+INLINE static int rt_write_particles(const struct part *parts,
+                                     struct io_props *list) {
 
   list[0] =
       io_make_output_field("RTDebugInjectionDone", INT, 1, UNIT_CONV_NO_UNITS,
@@ -111,8 +111,8 @@ INLINE static int rt_write_particles(const struct part* parts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int rt_write_stars(const struct spart* sparts,
-                                 struct io_props* list) {
+INLINE static int rt_write_stars(const struct spart *sparts,
+                                 struct io_props *list) {
 
   list[0] = io_make_output_field("RTDebugHydroIact", INT, 1, UNIT_CONV_NO_UNITS,
                                  0, sparts, rt_data.debug_iact_hydro_inject,
@@ -139,10 +139,10 @@ INLINE static int rt_write_stars(const struct spart* sparts,
  * @param rtp The #rt_props
  */
 INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
-                                    const struct engine* e,
-                                    const struct unit_system* internal_units,
-                                    const struct unit_system* snapshot_units,
-                                    const struct rt_props* rtp) {
+                                    const struct engine *e,
+                                    const struct unit_system *internal_units,
+                                    const struct unit_system *snapshot_units,
+                                    const struct rt_props *rtp) {
 #if defined(HAVE_HDF5)
 
   io_write_attribute_s(h_grp, "RT Scheme", RT_IMPLEMENTATION);

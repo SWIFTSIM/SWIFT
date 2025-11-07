@@ -29,8 +29,8 @@
  * @param sp The #spart.
  * @param props The properties of the stellar model.
  */
-double eagle_feedback_number_of_SNII(const struct spart* sp,
-                                     const struct feedback_props* props) {
+double eagle_feedback_number_of_SNII(const struct spart *sp,
+                                     const struct feedback_props *props) {
 
   /* Note: For a Chabrier 2003 IMF and SNII going off
    * - between 6 and 100 M_sun, the first term is 0.017362 M_sun^-1 (EAGLE)
@@ -50,8 +50,8 @@ double eagle_feedback_number_of_SNII(const struct spart* sp,
  * @param max_dying_mass_Msun Maximal star mass dying this step (in solar
  * masses).
  */
-double eagle_feedback_number_of_sampled_SNII(const struct spart* sp,
-                                             const struct feedback_props* props,
+double eagle_feedback_number_of_sampled_SNII(const struct spart *sp,
+                                             const struct feedback_props *props,
                                              const double min_dying_mass_Msun,
                                              const double max_dying_mass_Msun) {
 
@@ -150,7 +150,7 @@ double eagle_feedback_number_of_sampled_SNII(const struct spart* sp,
  */
 double eagle_feedback_number_of_SNIa(const double M_init, const double t0,
                                      const double t1,
-                                     const struct feedback_props* props) {
+                                     const struct feedback_props *props) {
 
   double num_SNIa_per_Msun = 0.;
 
@@ -207,9 +207,9 @@ double eagle_feedback_number_of_SNIa(const double M_init, const double t0,
  * enrichment channel.
  * @param N_bins The number of metallicity bins for this enrichment channel.
  */
-INLINE static void determine_bin_yields(int* index_Z_low, int* index_Z_high,
-                                        float* dZ, const float log10_Z,
-                                        const double* const log_Z_bins,
+INLINE static void determine_bin_yields(int *index_Z_low, int *index_Z_high,
+                                        float *dZ, const float log10_Z,
+                                        const double *const log_Z_bins,
                                         const int N_bins) {
 
   if (log10_Z > log10_min_metallicity) {
@@ -266,9 +266,9 @@ INLINE static void determine_bin_yields(int* index_Z_low, int* index_Z_high,
  */
 INLINE static void evolve_SNIa(
     const double log10_min_mass, const double log10_max_mass,
-    const double M_init, const double Z, const struct feedback_props* props,
+    const double M_init, const double Z, const struct feedback_props *props,
     double star_age_Gyr, const double dt_Gyr,
-    struct feedback_spart_data* const feedback_data) {
+    struct feedback_spart_data *const feedback_data) {
 
   const double star_age_end_step_Gyr = star_age_Gyr + dt_Gyr;
 
@@ -339,21 +339,21 @@ INLINE static void evolve_SNIa(
  */
 INLINE static void evolve_SNII(
     double log10_min_mass, double log10_max_mass, const double M_init,
-    const double Z, const float* const abundances,
-    const struct feedback_props* props,
-    struct feedback_spart_data* const feedback_data) {
+    const double Z, const float *const abundances,
+    const struct feedback_props *props,
+    struct feedback_spart_data *const feedback_data) {
 
   /* Pull out common arrays */
 
   /* Metal mass produced by the star */
-  const double* const total_yields =
+  const double *const total_yields =
       props->yield_SNII.total_metals_IMF_resampled;
 
   /* Individual elements produced by the star */
-  const double* const metal_yields = props->yield_SNII.yield_IMF_resampled;
+  const double *const metal_yields = props->yield_SNII.yield_IMF_resampled;
 
   /* Elements already in the stars that are ejected */
-  const double* const ejecta = props->yield_SNII.ejecta_IMF_resampled;
+  const double *const ejecta = props->yield_SNII.ejecta_IMF_resampled;
 
   /* If mass at beginning of step is less than tabulated lower bound for IMF,
    * limit it.*/
@@ -511,21 +511,21 @@ INLINE static void evolve_SNII(
  */
 INLINE static void evolve_AGB(const double log10_min_mass,
                               double log10_max_mass, const double M_init,
-                              const double Z, const float* const abundances,
-                              const struct feedback_props* props,
-                              struct feedback_spart_data* const feedback_data) {
+                              const double Z, const float *const abundances,
+                              const struct feedback_props *props,
+                              struct feedback_spart_data *const feedback_data) {
 
   /* Pull out common arrays */
 
   /* Metal mass produced by the star */
-  const double* const total_yields =
+  const double *const total_yields =
       props->yield_AGB.total_metals_IMF_resampled;
 
   /* Individual elements produced by the star */
-  const double* const metal_yields = props->yield_AGB.yield_IMF_resampled;
+  const double *const metal_yields = props->yield_AGB.yield_IMF_resampled;
 
   /* Elements already in the stars that are ejected */
-  const double* const ejecta = props->yield_AGB.ejecta_IMF_resampled;
+  const double *const ejecta = props->yield_AGB.ejecta_IMF_resampled;
 
   /* If mass at end of step is greater than tabulated lower bound for IMF, limit
    * it.*/
@@ -669,7 +669,7 @@ INLINE static void evolve_AGB(const double log10_min_mass,
  * @param table yield_table struct in which pointers to tables
  * set to NULL
  */
-void zero_yield_table_pointers(struct yield_table* table) {
+void zero_yield_table_pointers(struct yield_table *table) {
 
   table->mass = NULL;
   table->metallicity = NULL;
@@ -687,7 +687,7 @@ void zero_yield_table_pointers(struct yield_table* table) {
  *
  * @param fp the #feedback_props structure
  */
-void feedback_restore_tables(struct feedback_props* fp) {
+void feedback_restore_tables(struct feedback_props *fp) {
 
   init_imf(fp);
 

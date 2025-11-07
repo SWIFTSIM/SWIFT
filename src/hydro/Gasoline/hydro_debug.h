@@ -28,7 +28,7 @@
  */
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
-    const struct part* p, const struct xpart* xp) {
+    const struct part *p, const struct xpart *xp) {
   warning("[PID%lld] part:", p->id);
   warning("[PID%lld] x=[%.3e,%.3e,%.3e]", p->id, p->x[0], p->x[1], p->x[2]);
   warning("[PID%lld] v=[%.3e,%.3e,%.3e]", p->id, p->v[0], p->v[1], p->v[2]);

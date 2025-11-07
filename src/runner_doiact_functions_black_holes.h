@@ -892,11 +892,11 @@ void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer) {
     error("This function should not be called on foreign cells");
 #endif
 
-    /* Should we even bother?
-     * In the swallow case we care about BH-BH and BH-gas
-     * interactions.
-     * In all other cases only BH-gas so we can abort if there is
-     * is no gas in the cell */
+  /* Should we even bother?
+   * In the swallow case we care about BH-BH and BH-gas
+   * interactions.
+   * In all other cases only BH-gas so we can abort if there is
+   * is no gas in the cell */
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
   const int should_do_ci =
       ci->black_holes.count != 0 && cell_is_active_black_holes(ci, e);

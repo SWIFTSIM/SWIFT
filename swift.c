@@ -842,7 +842,7 @@ int main(int argc, char *argv[]) {
     error("Cannot reconstruct m-poles every step over MPI (yet).");
 #endif
 
-    /* Temporary early aborts for modes not supported with hand-vec. */
+  /* Temporary early aborts for modes not supported with hand-vec. */
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
     !defined(CHEMISTRY_NONE)
   error(
@@ -1180,7 +1180,7 @@ int main(int argc, char *argv[]) {
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
 
-      /* Initialise the cooling function properties */
+    /* Initialise the cooling function properties */
 #ifdef COOLING_NONE
     if (with_cooling) {
       error(
