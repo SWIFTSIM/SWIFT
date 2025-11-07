@@ -13,7 +13,7 @@
  * correction.
  */
 __attribute__((always_inline)) INLINE static void fvpm_reset_centroids(
-    struct part* restrict p) {}
+    struct part *restrict p) {}
 
 /**
  * @brief Normalise the centroids after the density loop.
@@ -24,7 +24,7 @@ __attribute__((always_inline)) INLINE static void fvpm_reset_centroids(
  * is used here.
  */
 __attribute__((always_inline)) INLINE static void fvpm_normalise_centroid(
-    struct part* restrict p, const float wcount) {}
+    struct part *restrict p, const float wcount) {}
 
 /**
  * @brief Update the centroid with the given contribution, assuming the particle
@@ -36,7 +36,7 @@ __attribute__((always_inline)) INLINE static void fvpm_normalise_centroid(
  * @param w Kernel value at position pj->x.
  */
 __attribute__((always_inline)) INLINE static void fvpm_update_centroid_left(
-    struct part* restrict p, const float* dx, const float w) {}
+    struct part *restrict p, const float *dx, const float w) {}
 
 /**
  * @brief Update the centroid with the given contribution, assuming the particle
@@ -48,7 +48,7 @@ __attribute__((always_inline)) INLINE static void fvpm_update_centroid_left(
  * @param w Kernel value at position pi->x.
  */
 __attribute__((always_inline)) INLINE static void fvpm_update_centroid_right(
-    struct part* restrict p, const float* dx, const float w) {}
+    struct part *restrict p, const float *dx, const float w) {}
 
 /**
  * @brief Check if the gradient matrix for this particle is well behaved.
@@ -57,7 +57,7 @@ __attribute__((always_inline)) INLINE static void fvpm_update_centroid_right(
  * @return 1 if the gradient matrix is well behaved, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int
-fvpm_part_geometry_well_behaved(const struct part* restrict p) {
+fvpm_part_geometry_well_behaved(const struct part *restrict p) {
   return 0;
 }
 
@@ -65,11 +65,11 @@ fvpm_part_geometry_well_behaved(const struct part* restrict p) {
  * @brief Collect the data needed for the matrix construction.
  */
 __attribute__((always_inline)) INLINE static void
-fvpm_accumulate_geometry_and_matrix(struct part* restrict pi, const float wi,
+fvpm_accumulate_geometry_and_matrix(struct part *restrict pi, const float wi,
                                     const float dx[3]) {}
 
 __attribute__((always_inline)) INLINE static void fvpm_geometry_init(
-    struct part* restrict p) {}
+    struct part *restrict p) {}
 
 /**
  * @brief Finish the computation of the matrix.
@@ -78,6 +78,6 @@ __attribute__((always_inline)) INLINE static void fvpm_geometry_init(
  * @param ihdim 1/h^{dim}
  */
 __attribute__((always_inline)) INLINE static void
-fvpm_compute_volume_and_matrix(struct part* restrict p, const float ihdim) {}
+fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {}
 
 #endif /* SWIFT_FVPM_GEOMETRY_NONE_H */

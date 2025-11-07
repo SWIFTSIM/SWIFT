@@ -1,7 +1,7 @@
 # Define the system of units to use internally.
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses 
-  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc 
+  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
   UnitVelocity_in_cgs: 1e5   # km/s
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
@@ -19,15 +19,15 @@ Gravity:
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.    # The starting time of the simulation (in internal units).
-  time_end:          0.5 #0.282   #500 Myr # The end time of the simulation (in internal units).
-  dt_min:            1e-10  # The minimal time-step size of the simulation (in internal units).
+  time_end:          0.5   # 500 Myr # The end time of the simulation (in internal units).
+  dt_min:            1e-10 # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-1  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
   subdir: snap
   basename:   snapshot      # Common part of the name of output files
-  time_first: 0. #230 Myr # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  time_first: 0.            # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 1e-3        # Time difference between consecutive outputs (in internal units)
 
 Scheduler:
@@ -69,7 +69,18 @@ GrackleCooling:
   max_steps: 1000
   convergence_limit: 1e-2
   thermal_time_myr: 5
+  initial_nHII_to_nH_ratio:   2.393761E-004    # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeI_to_nH_ratio:   7.900000E-002    # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeII_to_nH_ratio:  5.692753E-020    # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeIII_to_nH_ratio: 0                # initial nHeIII to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nDI_to_nH_ratio:    2.529538E-005    # initial nDI    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nDII_to_nH_ratio:   4.284496E-009    # initial nDII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHM_to_nH_ratio:    6.509693E-012    # initial nHM    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nH2I_to_nH_ratio:   1.891128E-005    # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nH2II_to_nH_ratio:  4.153181E-005    # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHDI_to_nH_ratio:   3.356904E-006    # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
   maximal_density_Hpcm3: -1    # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+
 
 GEARChemistry:
   initial_metallicity: 1e-6
@@ -86,7 +97,7 @@ GEARFeedback:
 
 GEARSink:
   use_fixed_cut_off_radius: 1                 # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
-  cut_off_radius: 5e-3                        # Cut off radius of all the sinks in internal units. Ignored if use_fixed_cut_off_radius is 0. 
+  cut_off_radius: 5e-3                        # Cut off radius of all the sinks in internal units. Ignored if use_fixed_cut_off_radius is 0.
   f_acc: 1e-2
   temperature_threshold_K: 1000               # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
   density_threshold_Hpcm3: 1e1                # Minimum gas density (in g/cm3) required to form a sink particle.

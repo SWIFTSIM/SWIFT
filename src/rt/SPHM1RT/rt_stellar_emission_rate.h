@@ -40,9 +40,9 @@
  */
 
 __attribute__((always_inline)) INLINE static void rt_set_stellar_emission_rate(
-    struct spart* restrict sp, double age_beg, double age_end,
-    const struct rt_props* rt_props, const struct phys_const* phys_const,
-    const struct unit_system* internal_units) {
+    struct spart *restrict sp, double age_beg, double age_end,
+    const struct rt_props *rt_props, const struct phys_const *phys_const,
+    const struct unit_system *internal_units) {
 
   if (rt_props->use_const_emission_rates) {
     const double dt = (age_end - age_beg);

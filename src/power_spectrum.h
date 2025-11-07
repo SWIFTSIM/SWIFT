@@ -75,23 +75,23 @@ struct power_spectrum_data {
   int shift_centre_small_k_bins;
 
   /*! Array of component types to correlate on the "left" side */
-  enum power_type* types1;
+  enum power_type *types1;
 
   /*! Array of component types to correlate on the "right" side */
-  enum power_type* types2;
+  enum power_type *types2;
 
   /*! Pointer to the grid to be reused */
-  double* powgrid;
+  double *powgrid;
 
   /*! Pointer to a second grid for cross-power spectra */
-  double* powgrid2;
+  double *powgrid2;
 
 #ifdef HAVE_FFTW
   /*! Pointer to the grid in Fourier space */
-  fftw_complex* powgridft;
+  fftw_complex *powgridft;
 
   /*! Pointer to the second grid in Fourier space */
-  fftw_complex* powgridft2;
+  fftw_complex *powgridft2;
 
   /*! The FFT plan to be reused */
   fftw_plan fftplanpow;
@@ -101,16 +101,16 @@ struct power_spectrum_data {
 #endif
 };
 
-void power_init(struct power_spectrum_data* p, struct swift_params* params,
+void power_init(struct power_spectrum_data *p, struct swift_params *params,
                 int nr_threads);
-void calc_all_power_spectra(struct power_spectrum_data* pow_data,
-                            const struct space* s, struct threadpool* tp,
+void calc_all_power_spectra(struct power_spectrum_data *pow_data,
+                            const struct space *s, struct threadpool *tp,
                             const int verbose);
-void power_clean(struct power_spectrum_data* pow_data);
+void power_clean(struct power_spectrum_data *pow_data);
 
 /* Dump/restore. */
-void power_spectrum_struct_dump(const struct power_spectrum_data* p,
-                                FILE* stream);
-void power_spectrum_struct_restore(struct power_spectrum_data* p, FILE* stream);
+void power_spectrum_struct_dump(const struct power_spectrum_data *p,
+                                FILE *stream);
+void power_spectrum_struct_restore(struct power_spectrum_data *p, FILE *stream);
 
 #endif /* SWIFT_POWER_H */
