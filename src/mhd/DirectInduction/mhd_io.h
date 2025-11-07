@@ -381,17 +381,17 @@ INLINE static int mhd_write_particles(const struct part* parts,
 
   list[0] = io_make_output_field_convert_part(
       "MagneticFluxDensities", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
-      -1.5f * hydro_gamma, parts, xparts, convert_B,
+      -2.0f, parts, xparts, convert_B,
       "Magnetic flux densities of the particles");
 
   list[1] = io_make_output_field(
       "MagneticDivergences", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE,
-      -1.5f * hydro_gamma - 1.f, parts, mhd_data.divB,
+      -3.0f, parts, mhd_data.divB,
       "co-moving DivB  of the particle");
 
   list[2] = io_make_output_field(
       "DednerScalarsOverCleaningSpeeds", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
-      -1.5f * hydro_gamma - 1.f, parts, mhd_data.psi_over_ch,
+      -2.0, parts, mhd_data.psi_over_ch,
       "Dedner scalars over cleaning speeds of the particles");
 
   list[3] = io_make_output_field("DednerScalarsOverCleaningSpeedsdt", FLOAT, 1,
@@ -407,11 +407,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
 
   list[5] = io_make_output_field(
       "MagneticFluxCurl", FLOAT, 3, UNIT_CONV_MAGNETIC_CURL,
-      -1.5f * hydro_gamma - 1.f, parts, mhd_data.curl_B,
+      -3.0f, parts, mhd_data.curl_B,
       "The curl of Magnetic flux densities of the particles");
 
   list[6] = io_make_output_field(
-      "AlphaAR", FLOAT, 1, UNIT_CONV_NO_UNITS, 1.f, parts, mhd_data.alpha_AR,
+      "AlphaAR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, mhd_data.alpha_AR,
       "Artificial resistivity switch of the particles");
 
   list[7] = io_make_output_field(

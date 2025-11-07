@@ -128,8 +128,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float Pmagi_inv = B2i ? 2.0f * mu_0 / B2i : FLT_MAX;
   const float Pmagj_inv = B2j ? 2.0f * mu_0 / B2j : FLT_MAX;
  
-  const float plasma_beta_i = Pi * Pmagi_inv; 
-  const float plasma_beta_j = Pj * Pmagj_inv; 
+  const float plasma_beta_i = Pi * Pmagi_inv / a; 
+  const float plasma_beta_j = Pj * Pmagj_inv / a; 
 
   pi->mhd_data.neighbour_number += 1.0f;
   pj->mhd_data.neighbour_number += 1.0f;
@@ -238,7 +238,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Compute local plasma beta mean square */
   const float Pmagj_inv = B2j ? 2.0f * mu_0 / B2j : FLT_MAX;
 
-  const float plasma_beta_j = Pj * Pmagj_inv;
+  const float plasma_beta_j = Pj * Pmagj_inv / a;
 
   pi->mhd_data.neighbour_number += 1.0f;
 
@@ -469,13 +469,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                        Brj * r_inv * Bj[2] * tensile_correction_scale_j;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * sph_acc_term_i[0];
-  pi->a_hydro[1] -= mj * sph_acc_term_i[1];
-  pi->a_hydro[2] -= mj * sph_acc_term_i[2];
+  pi->a_hydro[0] -= mj * a * sph_acc_term_i[0];
+  pi->a_hydro[1] -= mj * a * sph_acc_term_i[1];
+  pi->a_hydro[2] -= mj * a * sph_acc_term_i[2];
 
-  pj->a_hydro[0] -= mi * sph_acc_term_j[0];
-  pj->a_hydro[1] -= mi * sph_acc_term_j[1];
-  pj->a_hydro[2] -= mi * sph_acc_term_j[2];
+  pj->a_hydro[0] -= mi * a * sph_acc_term_j[0];
+  pj->a_hydro[1] -= mi * a * sph_acc_term_j[1];
+  pj->a_hydro[2] -= mi * a * sph_acc_term_j[2];
 
   /* Save forces */
   for (int k = 0; k < 3; k++) {
@@ -540,7 +540,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   const float grad_term = 0.5f * (f_ij * wi_dr + f_ji * wj_dr);
 
-  const float art_diff_pref = alpha_AR * vsig_AR * rhoij2_inv * grad_term;
+  const float art_diff_pref = sqrtf(a) * alpha_AR * vsig_AR * rhoij2_inv * grad_term;
 
   pi->mhd_data.B_over_rho_dt[0] += mj * art_diff_pref * dB[0];
   pi->mhd_data.B_over_rho_dt[1] += mj * art_diff_pref * dB[1];
@@ -550,8 +550,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->mhd_data.B_over_rho_dt[1] -= mi * art_diff_pref * dB[1];
   pj->mhd_data.B_over_rho_dt[2] -= mi * art_diff_pref * dB[2];
 
-  pi->u_dt -= 0.5f * mj * permeability_inv * art_diff_pref * dB_2;
-  pj->u_dt -= 0.5f * mi * permeability_inv * art_diff_pref * dB_2;
+  pi->u_dt -= 0.5f * a * mj * permeability_inv * art_diff_pref * dB_2;
+  pj->u_dt -= 0.5f * a * mi * permeability_inv * art_diff_pref * dB_2;
 
   /* Store AR terms */
   pi->mhd_data.B_over_rho_dt_AR[0] += mj * art_diff_pref * dB[0];
@@ -765,9 +765,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   sph_acc_term_i[2] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
                        Brj * r_inv * Bi[2] * tensile_correction_scale_i;
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * sph_acc_term_i[0];
-  pi->a_hydro[1] -= mj * sph_acc_term_i[1];
-  pi->a_hydro[2] -= mj * sph_acc_term_i[2];
+  pi->a_hydro[0] -= mj * a * sph_acc_term_i[0];
+  pi->a_hydro[1] -= mj * a * sph_acc_term_i[1];
+  pi->a_hydro[2] -= mj * a * sph_acc_term_i[2];
 
   /* Save forces */
   for (int k = 0; k < 3; k++) {
@@ -816,13 +816,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   const float grad_term = 0.5f * (f_ij * wi_dr + f_ji * wj_dr);
 
-  const float art_diff_pref = alpha_AR * vsig_AR * rhoij2_inv * grad_term;
+  const float art_diff_pref = sqrtf(a) * alpha_AR * vsig_AR * rhoij2_inv * grad_term;
 
   pi->mhd_data.B_over_rho_dt[0] += mj * art_diff_pref * dB[0];
   pi->mhd_data.B_over_rho_dt[1] += mj * art_diff_pref * dB[1];
   pi->mhd_data.B_over_rho_dt[2] += mj * art_diff_pref * dB[2];
 
-  pi->u_dt -= 0.5f * mj * permeability_inv * art_diff_pref * dB_2;
+  pi->u_dt -= 0.5f * a * mj * permeability_inv * art_diff_pref * dB_2;
 
   /* Store AR terms */
   pi->mhd_data.B_over_rho_dt_AR[0] += mj * art_diff_pref * dB[0];

@@ -965,7 +965,7 @@ void cooling_Hydrogen_reionization(
 
     hydro_set_physical_internal_energy(p, xp, cosmo, new_u);
     hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, new_u);
-    mhd_set_drifted_physical_internal_energy(p);
+    mhd_set_drifted_physical_internal_energy(p, cosmo->a);
   }
 }
 

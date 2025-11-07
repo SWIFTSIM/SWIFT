@@ -512,7 +512,7 @@ runner_iact_nonsym_feedback_apply(
   hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new_enrich);
   hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
                                              u_new_enrich);
-  mhd_set_drifted_physical_internal_energy(pj);
+  mhd_set_drifted_physical_internal_energy(pj, cosmo->a);
   
   /* Synchronize the particle on the timeline if we've got some extra
    * thermal energy from the SNII kicks that have not occured */

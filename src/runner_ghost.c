@@ -1031,7 +1031,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the gradient calculation */
         hydro_end_gradient(p, cosmo, pressure_floor);
-        mhd_end_gradient(p, mu_0);
+        mhd_end_gradient(p, mu_0, cosmo->a);
 
         /* As of here, particle force variables will be set. */
 
@@ -1268,7 +1268,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Prepare the particle for the gradient loop over neighbours
              */
             hydro_reset_gradient(p);
-            mhd_reset_gradient(p);
+            mhd_reset_gradient(p, cosmo->a);
 
 #else
             /* Calculate the time-step for passing to hydro_prepare_force, used
@@ -1459,7 +1459,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Prepare the particle for the gradient loop over neighbours */
         hydro_reset_gradient(p);
-        mhd_reset_gradient(p);
+        mhd_reset_gradient(p, cosmo->a);
 
 #else
 
