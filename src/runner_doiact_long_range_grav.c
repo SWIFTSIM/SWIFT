@@ -398,7 +398,7 @@ void runner_count_mesh_interactions_zoom_bkg_recursive(struct cell *ci,
                                                        struct cell *bkg_c,
                                                        struct space *s) {
 
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS || defined(SWIFT_GRAVITY_FORCE_CHECKS)
   /* Get the maximum distance at which we can have a non-mesh interaction. */
   struct engine *e = s->e;
   const double max_distance = e->mesh->r_cut_max;
