@@ -998,22 +998,29 @@ __attribute__((always_inline)) INLINE static int cell_pair_is_zoom_tl(
     const struct cell *restrict ci, const struct cell *restrict cj,
     const struct space *restrict s) {
 
+  /* Are the cells zoom top level cells? */
+  int ci_is_zoom_tl = (ci->type == cell_type_zoom && ci->depth == 0);
+  int cj_is_zoom_tl = (cj->type == cell_type_zoom && cj->depth == 0);
+
+  /* Are the cells neighbour background cells at the zoom cell depth? */
+  int ci_is_neighbour_at_zoom_depth =
+      (ci->subtype == cell_subtype_neighbour &&
+       ci->depth == s->zoom_props->zoom_cell_depth);
+  int cj_is_neighbour_at_zoom_depth =
+      (cj->subtype == cell_subtype_neighbour &&
+       cj->depth == s->zoom_props->zoom_cell_depth);
+
   /* If both cells are type zoom and have depth 0 then by definition they are
    * zoom top level cells. */
-  if (ci->type == cell_type_zoom && cj->type == cell_type_zoom &&
-      ci->depth == 0 && cj->depth == 0) {
+  if (ci_is_zoom_tl && cj_is_zoom_tl) {
     return 1;
   }
 
   /* If one cell is zoom type and at depth 0, and the other is a background
    * neighbour cell at the zoom top level cell depth then we also have a zoom
    * top level pair. */
-  if ((ci->type == cell_type_zoom && ci->depth == 0 &&
-       cj->depth == s->zoom_props->zoom_cell_depth &&
-       cj->subtype == cell_subtype_neighbour) ||
-      (cj->type == cell_type_zoom && cj->depth == 0 &&
-       ci->depth == s->zoom_props->zoom_cell_depth &&
-       ci->subtype == cell_subtype_neighbour)) {
+  if ((ci_is_zoom_tl && cj_is_neighbour_at_zoom_depth) ||
+      (cj_is_zoom_tl && ci_is_neighbour_at_zoom_depth)) {
     return 1;
   }
 
