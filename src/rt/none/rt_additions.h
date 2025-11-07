@@ -36,7 +36,7 @@
  * interaction.
  **/
 __attribute__((always_inline)) INLINE static void rt_part_update_mass_fluxes(
-    struct part* restrict pi, struct part* restrict pj, float mass_flux,
+    struct part *restrict pi, struct part *restrict pj, float mass_flux,
     int mode) {}
 
 #endif /* SWIFT_RT_NONE_ADDITIONS_H */

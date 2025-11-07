@@ -29,8 +29,8 @@
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_read_particles(struct part* parts,
-                                           struct io_props* list) {
+INLINE static int chemistry_read_particles(struct part *parts,
+                                           struct io_props *list) {
 
   /* update list according to hydro_io */
 
@@ -48,9 +48,9 @@ INLINE static int chemistry_read_particles(struct part* parts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_write_particles(const struct part* parts,
-                                            const struct xpart* xparts,
-                                            struct io_props* list,
+INLINE static int chemistry_write_particles(const struct part *parts,
+                                            const struct xpart *xparts,
+                                            struct io_props *list,
                                             const int with_cosmology) {
 
   /* update list according to hydro_io */
@@ -67,8 +67,8 @@ INLINE static int chemistry_write_particles(const struct part* parts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_write_sparticles(const struct spart* sparts,
-                                             struct io_props* list) {
+INLINE static int chemistry_write_sparticles(const struct spart *sparts,
+                                             struct io_props *list) {
 
   /* update list according to hydro_io */
 
@@ -84,8 +84,8 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_write_sinkparticles(const struct sink* sinks,
-                                                struct io_props* list) {
+INLINE static int chemistry_write_sinkparticles(const struct sink *sinks,
+                                                struct io_props *list) {
   return 0;
 }
 
@@ -97,8 +97,8 @@ INLINE static int chemistry_write_sinkparticles(const struct sink* sinks,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
-                                             struct io_props* list) {
+INLINE static int chemistry_write_bparticles(const struct bpart *bparts,
+                                             struct io_props *list) {
 
   /* update list according to hydro_io */
 
@@ -115,7 +115,7 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
  * @param e The #engine.
  */
 INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
-                                           const struct engine* e) {
+                                           const struct engine *e) {
 
   io_write_attribute_s(h_grp, "Chemistry Model",
                        "Quick Lyman-alpha (constant primordial)");
