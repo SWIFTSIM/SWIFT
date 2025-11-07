@@ -48,12 +48,12 @@
  * @param sink_buff The buffer for the sink particles to be allocated and
  *                  returned.
  */
-void space_allocate_and_fill_buffers(const struct cell* c,
-                                     struct cell_buff** restrict buff,
-                                     struct cell_buff** restrict sbuff,
-                                     struct cell_buff** restrict bbuff,
-                                     struct cell_buff** restrict gbuff,
-                                     struct cell_buff** restrict sink_buff) {
+void space_allocate_and_fill_buffers(const struct cell *c,
+                                     struct cell_buff **restrict buff,
+                                     struct cell_buff **restrict sbuff,
+                                     struct cell_buff **restrict bbuff,
+                                     struct cell_buff **restrict gbuff,
+                                     struct cell_buff **restrict sink_buff) {
 
   /* Unpack particle information we need for the buffers. */
   const int count = c->hydro.count;
@@ -61,19 +61,19 @@ void space_allocate_and_fill_buffers(const struct cell* c,
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
   const int sink_count = c->sinks.count;
-  struct part* parts = c->hydro.parts;
-  struct gpart* gparts = c->grav.parts;
-  struct spart* sparts = c->stars.parts;
-  struct bpart* bparts = c->black_holes.parts;
-  struct sink* sinks = c->sinks.parts;
+  struct part *parts = c->hydro.parts;
+  struct gpart *gparts = c->grav.parts;
+  struct spart *sparts = c->stars.parts;
+  struct bpart *bparts = c->black_holes.parts;
+  struct sink *sinks = c->sinks.parts;
 
   /* Allocate the buffers. */
   if (count > 0) {
-    if (swift_memalign("tempbuff", (void**)buff, SWIFT_STRUCT_ALIGNMENT,
+    if (swift_memalign("tempbuff", (void **)buff, SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * count) != 0)
       error("Failed to allocate temporary indices.");
 
-    struct cell_buff* restrict local_buff = *buff;
+    struct cell_buff *restrict local_buff = *buff;
 
     for (int k = 0; k < count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -88,11 +88,11 @@ void space_allocate_and_fill_buffers(const struct cell* c,
     }
   }
   if (gcount > 0) {
-    if (swift_memalign("tempgbuff", (void**)gbuff, SWIFT_STRUCT_ALIGNMENT,
+    if (swift_memalign("tempgbuff", (void **)gbuff, SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * gcount) != 0)
       error("Failed to allocate temporary indices.");
 
-    struct cell_buff* restrict local_gbuff = *gbuff;
+    struct cell_buff *restrict local_gbuff = *gbuff;
 
     for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -107,11 +107,11 @@ void space_allocate_and_fill_buffers(const struct cell* c,
     }
   }
   if (scount > 0) {
-    if (swift_memalign("tempsbuff", (void**)sbuff, SWIFT_STRUCT_ALIGNMENT,
+    if (swift_memalign("tempsbuff", (void **)sbuff, SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * scount) != 0)
       error("Failed to allocate temporary indices.");
 
-    struct cell_buff* restrict local_sbuff = *sbuff;
+    struct cell_buff *restrict local_sbuff = *sbuff;
 
     for (int k = 0; k < scount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -127,11 +127,11 @@ void space_allocate_and_fill_buffers(const struct cell* c,
   }
 
   if (bcount > 0) {
-    if (swift_memalign("tempbbuff", (void**)bbuff, SWIFT_STRUCT_ALIGNMENT,
+    if (swift_memalign("tempbbuff", (void **)bbuff, SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * bcount) != 0)
       error("Failed to allocate temporary indices.");
 
-    struct cell_buff* restrict local_bbuff = *bbuff;
+    struct cell_buff *restrict local_bbuff = *bbuff;
 
     for (int k = 0; k < bcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -147,12 +147,12 @@ void space_allocate_and_fill_buffers(const struct cell* c,
   }
 
   if (sink_count > 0) {
-    if (swift_memalign("temp_sink_buff", (void**)sink_buff,
+    if (swift_memalign("temp_sink_buff", (void **)sink_buff,
                        SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * sink_count) != 0)
       error("Failed to allocate temporary indices.");
 
-    struct cell_buff* restrict local_sink_buff = *sink_buff;
+    struct cell_buff *restrict local_sink_buff = *sink_buff;
 
     for (int k = 0; k < sink_count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -175,7 +175,7 @@ void space_allocate_and_fill_buffers(const struct cell* c,
  * @param c The #cell to split.
  * @param tpid The thread ID.
  */
-void space_construct_progeny(struct space* s, struct cell* c,
+void space_construct_progeny(struct space *s, struct cell *c,
                              const short int tpid) {
 
   /* No longer just a leaf. */
@@ -184,7 +184,7 @@ void space_construct_progeny(struct space* s, struct cell* c,
   /* Create the cell's progeny. */
   space_getcells(s, 8, c->progeny, tpid);
   for (int k = 0; k < 8; k++) {
-    struct cell* cp = c->progeny[k];
+    struct cell *cp = c->progeny[k];
     cp->hydro.count = 0;
     cp->grav.count = 0;
     cp->stars.count = 0;
@@ -256,7 +256,7 @@ void space_construct_progeny(struct space* s, struct cell* c,
  *
  * @param c The #cell to populate.
  */
-void space_populate_multipole(struct cell* c) {
+void space_populate_multipole(struct cell *c) {
 
   /* Reset everything */
   gravity_reset(c->grav.multipole);
@@ -270,7 +270,7 @@ void space_populate_multipole(struct cell* c) {
 
   for (int k = 0; k < 8; ++k) {
     if (c->progeny[k] != NULL) {
-      const struct gravity_tensors* m = c->progeny[k]->grav.multipole;
+      const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
 
       mass += m->m_pole.M_000;
 
@@ -314,8 +314,8 @@ void space_populate_multipole(struct cell* c) {
   double r_max = 0.;
   for (int k = 0; k < 8; ++k) {
     if (c->progeny[k] != NULL) {
-      const struct cell* cp = c->progeny[k];
-      const struct multipole* m = &cp->grav.multipole->m_pole;
+      const struct cell *cp = c->progeny[k];
+      const struct multipole *m = &cp->grav.multipole->m_pole;
 
       /* Contribution to multipole */
       gravity_M2M(&temp, m, c->grav.multipole->CoM, cp->grav.multipole->CoM);
@@ -372,11 +372,11 @@ void space_populate_multipole(struct cell* c) {
  * @param ti_current The current time.
  * @param with_rt Are we doing radiative transfer?
  */
-static void space_populate_leaf_props(struct cell* c, struct space* s,
+static void space_populate_leaf_props(struct cell *c, struct space *s,
                                       const integertime_t ti_current,
                                       const int with_rt) {
 
-  struct engine* e = s->e;
+  struct engine *e = s->e;
 
   /* Unpack the particle counts and pointers. */
   const int count = c->hydro.count;
@@ -384,12 +384,12 @@ static void space_populate_leaf_props(struct cell* c, struct space* s,
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
   const int sink_count = c->sinks.count;
-  struct part* parts = c->hydro.parts;
-  struct gpart* gparts = c->grav.parts;
-  struct spart* sparts = c->stars.parts;
-  struct bpart* bparts = c->black_holes.parts;
-  struct xpart* xparts = c->hydro.xparts;
-  struct sink* sinks = c->sinks.parts;
+  struct part *parts = c->hydro.parts;
+  struct gpart *gparts = c->grav.parts;
+  struct spart *sparts = c->stars.parts;
+  struct bpart *bparts = c->black_holes.parts;
+  struct xpart *xparts = c->hydro.xparts;
+  struct sink *sinks = c->sinks.parts;
 
   /* Initialise everything we're about to get. */
   float h_max = 0.0f;
@@ -604,7 +604,7 @@ static void space_populate_leaf_props(struct cell* c, struct space* s,
  * @param c The #cell to populate.
  * @param e The #engine.
  */
-static void space_construct_leaf_multipole(struct cell* c, struct engine* e) {
+static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we actually have a leaf cell */
@@ -662,12 +662,12 @@ static void space_construct_leaf_multipole(struct cell* c, struct engine* e) {
  * @param sink_buff A buffer for particle sorting, should be of size at least
  *        c->sinks.count or @c NULL.
  */
-void space_split_build_recursive(struct space* s, struct cell* c,
-                                 struct cell_buff* restrict buff,
-                                 struct cell_buff* restrict sbuff,
-                                 struct cell_buff* restrict bbuff,
-                                 struct cell_buff* restrict gbuff,
-                                 struct cell_buff* restrict sink_buff,
+void space_split_build_recursive(struct space *s, struct cell *c,
+                                 struct cell_buff *restrict buff,
+                                 struct cell_buff *restrict sbuff,
+                                 struct cell_buff *restrict bbuff,
+                                 struct cell_buff *restrict gbuff,
+                                 struct cell_buff *restrict sink_buff,
                                  const short int tpid) {
 
   const int count = c->hydro.count;
@@ -712,7 +712,7 @@ void space_split_build_recursive(struct space* s, struct cell* c,
     for (int k = 0; k < 8; k++) {
 
       /* Get the progenitor */
-      struct cell* cp = c->progeny[k];
+      struct cell *cp = c->progeny[k];
 
       /* Remove any progeny with zero particles as long as they aren't the
        * void cell. */
@@ -746,7 +746,7 @@ void space_split_build_recursive(struct space* s, struct cell* c,
      leaf cell. */
   else {
     /* Nothing to see here: clear the progeny. */
-    bzero(c->progeny, sizeof(struct cell*) * 8);
+    bzero(c->progeny, sizeof(struct cell *) * 8);
     c->split = 0;
     maxdepth = c->depth;
   }
@@ -770,9 +770,9 @@ void space_split_build_recursive(struct space* s, struct cell* c,
  * @param s The #space in which the cell lives.
  * @param c The #cell to split recursively.
  */
-void space_split_collect_recursive(struct space* s, struct cell* c) {
+void space_split_collect_recursive(struct space *s, struct cell *c) {
 
-  struct engine* e = s->e;
+  struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
   const int with_rt = e->policy & engine_policy_rt;
 
@@ -801,7 +801,7 @@ void space_split_collect_recursive(struct space* s, struct cell* c) {
     for (int k = 0; k < 8; k++) {
 
       /* Get the progenitor */
-      struct cell* cp = c->progeny[k];
+      struct cell *cp = c->progeny[k];
 
       /* Skip empty progeny. */
       if (cp == NULL) continue;
@@ -891,20 +891,20 @@ void space_split_collect_recursive(struct space* s, struct cell* c) {
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-static void space_split_build_mapper(void* map_data, int num_cells,
-                                     void* extra_data) {
+static void space_split_build_mapper(void *map_data, int num_cells,
+                                     void *extra_data) {
 
   /* Unpack the inputs. */
-  struct space* s = (struct space*)extra_data;
-  struct cell* cells_top = s->cells_top;
-  int* local_cells_with_particles = (int*)map_data;
+  struct space *s = (struct space *)extra_data;
+  struct cell *cells_top = s->cells_top;
+  int *local_cells_with_particles = (int *)map_data;
 
   /* Threadpool id of current thread. */
   short int tpid = threadpool_gettid();
 
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell* c = &cells_top[local_cells_with_particles[ind]];
+    struct cell *c = &cells_top[local_cells_with_particles[ind]];
 
     /* Set the top level cells tpid (this is assigned to sub-cells in
      * space_get_cells guaranteeing the same tpid as this top level cells). */
@@ -937,13 +937,13 @@ static void space_split_build_mapper(void* map_data, int num_cells,
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-static void space_split_collect_mapper(void* map_data, int num_cells,
-                                       void* extra_data) {
+static void space_split_collect_mapper(void *map_data, int num_cells,
+                                       void *extra_data) {
 
   /* Unpack the inputs. */
-  struct space* s = (struct space*)extra_data;
-  struct cell* cells_top = s->cells_top;
-  int* local_cells_with_particles = (int*)map_data;
+  struct space *s = (struct space *)extra_data;
+  struct cell *cells_top = s->cells_top;
+  int *local_cells_with_particles = (int *)map_data;
 
   /* Collect some global information about the top-level m-poles */
   float min_a_grav = FLT_MAX;
@@ -952,7 +952,7 @@ static void space_split_collect_mapper(void* map_data, int num_cells,
 
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell* c = &cells_top[local_cells_with_particles[ind]];
+    struct cell *c = &cells_top[local_cells_with_particles[ind]];
 
     /* Recurse the cell tree, collecting properties and constructing
      * multipoles if running with self-gravity. */
@@ -975,7 +975,7 @@ static void space_split_collect_mapper(void* map_data, int num_cells,
   /* All cells and particles should have consistent h_max values. */
   for (int ind = 0; ind < num_cells; ind++) {
     int depth = 0;
-    const struct cell* c = &cells_top[local_cells_with_particles[ind]];
+    const struct cell *c = &cells_top[local_cells_with_particles[ind]];
     if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
   }
 #endif
@@ -995,7 +995,7 @@ static void space_split_collect_mapper(void* map_data, int num_cells,
  * @param s The #space.
  * @param verbose Are we talkative ?
  */
-void space_split(struct space* s, int verbose) {
+void space_split(struct space *s, int verbose) {
 
   const ticks tot_tic = getticks();
 
