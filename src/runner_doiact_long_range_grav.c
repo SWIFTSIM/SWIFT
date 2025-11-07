@@ -440,8 +440,10 @@ void runner_count_mesh_interactions_zoom_bkg_recursive(struct cell *ci,
 
   /* Are we beyond the distance where the truncated forces are 0 ?*/
   if (min_radius2 > max_distance2) {
+#ifdef SWIFT_DEBUG_CHECKS
     /* Need to account for the interactions we missed */
     accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
+#endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     /* Need to account for the interactions we missed */
