@@ -12,6 +12,7 @@ You will need:
 import os
 from argparse import ArgumentParser
 
+import h5py
 import unyt
 from swiftsimio import Writer, load
 
@@ -202,16 +203,6 @@ if snap.metadata.has_type[1]:
 else:
     print("Found no dark matter data in snapshot. Continuing without.")
 
-if snap.metadata.has_type[2]:
-    # Get and write background dark matter
-    print("Adding background dark matter data to ICs.")
-    writer.boundary.coordinates = snap.boundary.coordinates
-    writer.boundary.velocities = snap.boundary.velocities
-    writer.boundary.masses = snap.boundary.masses
-    writer.boundary.particle_ids = snap.boundary.particle_ids
-else:
-    print("Found no background dark matter data in snapshot. Continuing without.")
-
 if snap.metadata.has_type[3]:
     # Get and write sinks
     print("Adding sinks data to ICs.")
@@ -254,3 +245,14 @@ if snap.metadata.has_type[6]:
 
 # Finally, write everything.
 writer.write(output_filename)
+
+# Read and write background dark matter if present
+if snap.metadata.has_type[2]:
+    with h5py.File(filename, "r") as f, h5py.File(output_filename, "a") as out_f:
+        print("Adding background dark matter data to ICs.")
+        grp_in = f["PartType2"]
+        grp_out = out_f.create_group("PartType2")
+
+        for key in out_f["PartType1"].keys():
+            data = grp_in[key][:]
+            grp_out.create_dataset(key, data=data, compression="gzip")
