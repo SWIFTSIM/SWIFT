@@ -2820,22 +2820,22 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       if (t->type == task_type_self) {
         cell_activate_subcell_sinks_tasks(ci, NULL, s, with_timestep_sync);
 
-	/* Particle creation requires requires particles in thise cell to be drifted.
-	   So drift them all! */
-	cell_activate_drift_sink(ci, s);
-	cell_activate_drift_part(ci, s);
+        /* Particle creation requires requires particles in thise cell to be
+           drifted. So drift them all! */
+        cell_activate_drift_sink(ci, s);
+        cell_activate_drift_part(ci, s);
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_pair) {
         cell_activate_subcell_sinks_tasks(ci, cj, s, with_timestep_sync);
 
-	/* Particle creation requires requires particles in thise cell to be drifted.
-	   So drift them all! */
+        /* Particle creation requires requires particles in thise cell to be
+           drifted. So drift them all! */
         if (ci_nodeID == nodeID) cell_activate_drift_sink(ci, s);
         if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
-	if (cj_nodeID == nodeID) cell_activate_drift_sink(cj, s);
+        if (cj_nodeID == nodeID) cell_activate_drift_sink(cj, s);
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
 
         /* Activate sinks_in for each cell that is part of
