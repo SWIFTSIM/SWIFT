@@ -1685,10 +1685,10 @@ void write_output_parallel(struct engine *e,
   double zoom_shift[3] = {0.};
   double width[3] = {e->s->width[0], e->s->width[1], e->s->width[2]};
   int cdim[3] = {e->s->cdim[0], e->s->cdim[1], e->s->cdim[2]};
-  struct cell* cells = e->s->cells_top;
+  struct cell *cells = e->s->cells_top;
   int nr_cells = e->s->nr_cells;
   if (e->s->with_zoom_region) {
-    const struct zoom_region_properties* props = e->s->zoom_props;
+    const struct zoom_region_properties *props = e->s->zoom_props;
     zoom_shift[0] = props->zoom_shift[0];
     zoom_shift[1] = props->zoom_shift[1];
     zoom_shift[2] = props->zoom_shift[2];
