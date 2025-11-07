@@ -9,16 +9,36 @@ You will need:
     + swiftsimio
 """
 
-from swiftsimio import Writer, load
-import numpy as np
-import unyt
 import os
+from argparse import ArgumentParser
+
+import unyt
+from swiftsimio import Writer, load
+
+# Set up arguments
+parser = ArgumentParser(description="Convert SWIFT snapshot to ICs.")
+parser.add_argument(
+    "--snapshot",
+    "-s",
+    type=str,
+    required=True,
+    help="Path to the SWIFT snapshot to convert.",
+)
+parser.add_argument(
+    "--ics",
+    "-o",
+    type=str,
+    default="SWIFTSnapICs.hdf5",
+    help="Path to output IC file.",
+)
+args = parser.parse_args()
+
 
 # Which file to read
-#  filename = "./eagle_0000.hdf5"
-filename = "output_0001.hdf5"
+filename = args.snapshot
+
 # What to call the output IC file
-output_filename = "ICs.hdf5"
+output_filename = args.ics
 
 
 # -----------------------------------------------------------------------
@@ -56,25 +76,24 @@ my_units = unyt.UnitSystem("copiedFromSnapshot", length, mass, time, temperature
 extra_header = {}
 
 if snap.metadata.cosmology is not None:
-
     #  Accessing data through metadata.cosmology_raw works on older snapshots as
     #  well, so let's do it this way.
 
-    extra_header[
-        "snapshot cosmology Critical density [internal_units]"
-    ] = snap.metadata.cosmology_raw["Critical density [internal units]"]
+    extra_header["snapshot cosmology Critical density [internal_units]"] = (
+        snap.metadata.cosmology_raw["Critical density [internal units]"]
+    )
     extra_header["snapshot cosmology H [internal units]"] = snap.metadata.cosmology_raw[
         "H [internal units]"
     ]
-    extra_header[
-        "snapshot cosmology H0 [internal units]"
-    ] = snap.metadata.cosmology_raw["H0 [internal units]"]
-    extra_header[
-        "snapshot cosmology Hubble time [internal units]"
-    ] = snap.metadata.cosmology_raw["Hubble time [internal units]"]
-    extra_header[
-        "snapshot cosmology Lookback time [internal units]"
-    ] = snap.metadata.cosmology_raw["Lookback time [internal units]"]
+    extra_header["snapshot cosmology H0 [internal units]"] = (
+        snap.metadata.cosmology_raw["H0 [internal units]"]
+    )
+    extra_header["snapshot cosmology Hubble time [internal units]"] = (
+        snap.metadata.cosmology_raw["Hubble time [internal units]"]
+    )
+    extra_header["snapshot cosmology Lookback time [internal units]"] = (
+        snap.metadata.cosmology_raw["Lookback time [internal units]"]
+    )
     extra_header["snapshot cosmology N_eff"] = snap.metadata.cosmology_raw["N_eff"]
     extra_header["snapshot cosmology N_nu"] = snap.metadata.cosmology_raw["N_nu"]
     extra_header["snapshot cosmology N_ur"] = snap.metadata.cosmology_raw["N_ur"]
@@ -101,15 +120,15 @@ if snap.metadata.cosmology is not None:
     extra_header["snapshot cosmology T_CMB_0 [K]"] = snap.metadata.cosmology_raw[
         "T_CMB_0 [K]"
     ]
-    extra_header[
-        "snapshot cosmology T_CMB_0 [internal_units]"
-    ] = snap.metadata.cosmology_raw["T_CMB_0 [internal units]"]
+    extra_header["snapshot cosmology T_CMB_0 [internal_units]"] = (
+        snap.metadata.cosmology_raw["T_CMB_0 [internal units]"]
+    )
     extra_header["snapshot cosmology T_nu_0 [eV]"] = snap.metadata.cosmology_raw[
         "T_nu_0 [eV]"
     ]
-    extra_header[
-        "snapshot cosmology T_nu_0 [internal_units]"
-    ] = snap.metadata.cosmology_raw["T_nu_0 [internal units]"]
+    extra_header["snapshot cosmology T_nu_0 [internal_units]"] = (
+        snap.metadata.cosmology_raw["T_nu_0 [internal units]"]
+    )
     extra_header["snapshot cosmology h"] = snap.metadata.cosmology_raw["h"]
     extra_header["snapshot cosmology w"] = snap.metadata.cosmology_raw["w"]
     extra_header["snapshot cosmology w_0"] = snap.metadata.cosmology_raw["w_0"]
@@ -180,6 +199,18 @@ if snap.metadata.has_type[1]:
     writer.dark_matter.particle_ids = snap.dark_matter.particle_ids
 else:
     print("Found no dark matter data in snapshot. Continuing without.")
+
+if snap.metadata.has_type[2]:
+    # Get and write background dark matter
+    print("Adding background dark matter data to ICs.")
+    writer.dark_matter_background.coordinates = snap.dark_matter_background.coordinates
+    writer.dark_matter_background.velocities = snap.dark_matter_background.velocities
+    writer.dark_matter_background.masses = snap.dark_matter_background.masses
+    writer.dark_matter_background.particle_ids = (
+        snap.dark_matter_background.particle_ids
+    )
+else:
+    print("Found no background dark matter data in snapshot. Continuing without.")
 
 if snap.metadata.has_type[3]:
     # Get and write sinks
