@@ -205,12 +205,10 @@ else:
 if snap.metadata.has_type[2]:
     # Get and write background dark matter
     print("Adding background dark matter data to ICs.")
-    writer.dark_matter_background.coordinates = snap.dark_matter_background.coordinates
-    writer.dark_matter_background.velocities = snap.dark_matter_background.velocities
-    writer.dark_matter_background.masses = snap.dark_matter_background.masses
-    writer.dark_matter_background.particle_ids = (
-        snap.dark_matter_background.particle_ids
-    )
+    writer.boundary.coordinates = snap.boundary.coordinates
+    writer.boundary.velocities = snap.boundary.velocities
+    writer.boundary.masses = snap.boundary.masses
+    writer.boundary.particle_ids = snap.boundary.particle_ids
 else:
     print("Found no background dark matter data in snapshot. Continuing without.")
 
