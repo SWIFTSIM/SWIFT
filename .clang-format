@@ -21,4 +21,3 @@ IncludeCategories:
   - Regex:           config.h
     Priority:        1
 ...
-
