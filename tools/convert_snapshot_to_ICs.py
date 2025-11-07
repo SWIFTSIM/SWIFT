@@ -145,8 +145,9 @@ extra_header["snapshot filename"] = snap.metadata.filename
 extra_header["snapshot gas gamma"] = snap.metadata.gas_gamma
 extra_header["snapshot gravity scheme"] = snap.metadata.gravity_scheme
 extra_header["snapshot header"] = snap.metadata.header
-extra_header["snapshot hydro info"] = snap.metadata.hydro_info
-extra_header["snapshot hydro scheme"] = snap.metadata.hydro_scheme
+if snap.metadata.has_type[0]:
+    extra_header["snapshot hydro info"] = snap.metadata.hydro_info
+    extra_header["snapshot hydro scheme"] = snap.metadata.hydro_scheme
 extra_header["snapshot initial mass table"] = snap.metadata.initial_mass_table
 extra_header["snapshot library info"] = snap.metadata.library_info
 extra_header["snapshot mass table"] = snap.metadata.mass_table
