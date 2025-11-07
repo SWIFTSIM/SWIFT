@@ -155,8 +155,9 @@ extra_header["snapshot redshift"] = snap.metadata.redshift
 extra_header["snapshot run name"] = snap.metadata.run_name
 extra_header["snapshot scale_factor"] = snap.metadata.scale_factor
 extra_header["snapshot subgrid scheme"] = snap.metadata.subgrid_scheme
-extra_header["snapshot stars properties"] = snap.metadata.stars_properties
-extra_header["snapshot stars scheme"] = snap.metadata.stars_scheme
+if snap.metadata.has_type[4]:
+    extra_header["snapshot stars properties"] = snap.metadata.stars_properties
+    extra_header["snapshot stars scheme"] = snap.metadata.stars_scheme
 extra_header["snapshot system name"] = snap.metadata.system_name
 extra_header["snapshot time"] = snap.metadata.time
 
