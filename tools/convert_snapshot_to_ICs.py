@@ -165,7 +165,7 @@ extra_header["snapshot time"] = snap.metadata.time
 # Initialize the Writer
 writer = Writer(
     unit_system=my_units,
-    box_size=snap.metadata.boxsize,
+    boxsize=snap.metadata.boxsize,
     dimension=snap.metadata.dimension,
     compress=True,
     extra_header=extra_header,
