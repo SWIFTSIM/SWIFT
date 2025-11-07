@@ -169,7 +169,7 @@ writer = Writer(
     boxsize=snap.metadata.boxsize,
     dimension=snap.metadata.dimension,
     compress=True,
-    extra_header=extra_header,
+    # extra_header=extra_header,
     scale_factor=snap.metadata.scale_factor,
 )
 
