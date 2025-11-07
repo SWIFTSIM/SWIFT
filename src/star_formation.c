@@ -40,13 +40,13 @@
  * simulation.
  * @param starform the properties of the star formation law
  */
-void starformation_init(struct swift_params* parameter_file,
-                        const struct phys_const* phys_const,
-                        const struct unit_system* us,
-                        const struct hydro_props* hydro_props,
-                        const struct cosmology* cosmo,
-                        const struct entropy_floor_properties* entropy_floor,
-                        struct star_formation* starform) {
+void starformation_init(struct swift_params *parameter_file,
+                        const struct phys_const *phys_const,
+                        const struct unit_system *us,
+                        const struct hydro_props *hydro_props,
+                        const struct cosmology *cosmo,
+                        const struct entropy_floor_properties *entropy_floor,
+                        struct star_formation *starform) {
 
   starformation_init_backend(parameter_file, phys_const, us, hydro_props, cosmo,
                              entropy_floor, starform);
@@ -57,7 +57,7 @@ void starformation_init(struct swift_params* parameter_file,
  *
  * @param starform the star formation properties.
  */
-void starformation_print(const struct star_formation* starform) {
+void starformation_print(const struct star_formation *starform) {
 
   starformation_print_backend(starform);
 }
@@ -69,9 +69,9 @@ void starformation_print(const struct star_formation* starform) {
  * @param starform the star formation struct
  * @param stream the file stream
  */
-void starformation_struct_dump(const struct star_formation* starform,
-                               FILE* stream) {
-  restart_write_blocks((void*)starform, sizeof(struct star_formation), 1,
+void starformation_struct_dump(const struct star_formation *starform,
+                               FILE *stream) {
+  restart_write_blocks((void *)starform, sizeof(struct star_formation), 1,
                        stream, "starformation", "star formation");
 }
 
@@ -82,8 +82,8 @@ void starformation_struct_dump(const struct star_formation* starform,
  * @param starform the star formation struct
  * @param stream the file stream
  */
-void starformation_struct_restore(const struct star_formation* starform,
-                                  FILE* stream) {
-  restart_read_blocks((void*)starform, sizeof(struct star_formation), 1, stream,
-                      NULL, "star formation");
+void starformation_struct_restore(const struct star_formation *starform,
+                                  FILE *stream) {
+  restart_read_blocks((void *)starform, sizeof(struct star_formation), 1,
+                      stream, NULL, "star formation");
 }

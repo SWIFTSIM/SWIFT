@@ -41,9 +41,9 @@
  * @param time_base The time base.
  */
 float feedback_compute_spart_timestep(
-    const struct spart* const sp, const struct feedback_props* feedback_props,
-    const struct phys_const* phys_const, const struct unit_system* us,
-    const int with_cosmology, const struct cosmology* cosmo,
+    const struct spart *const sp, const struct feedback_props *feedback_props,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const int with_cosmology, const struct cosmology *cosmo,
     const integertime_t ti_current, const double time, const double time_base) {
 
   const float dt = FLT_MAX;
@@ -73,9 +73,9 @@ float feedback_compute_spart_timestep(
  * @param time The physical time in internal units.
  */
 void feedback_will_do_feedback(
-    struct spart* sp, const struct feedback_props* feedback_props,
-    const int with_cosmology, const struct cosmology* cosmo, const double time,
-    const struct unit_system* us, const struct phys_const* phys_const,
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const int with_cosmology, const struct cosmology *cosmo, const double time,
+    const struct unit_system *us, const struct phys_const *phys_const,
     const integertime_t ti_current, const double time_base) {
 
   /* Zero the energy of supernovae */
@@ -92,7 +92,7 @@ void feedback_will_do_feedback(
 
   /* If metal < threshold, then  sp is a first star particle. */
   const int is_first_star = metal < threshold;
-  const struct stellar_model* model =
+  const struct stellar_model *model =
       is_first_star ? &feedback_props->stellar_model_first_stars
                     : &feedback_props->stellar_model;
 
@@ -163,9 +163,9 @@ void feedback_will_do_feedback(
  * @param time_base The time base.
  * @param time The current time (in double)
  */
-void compute_time(struct spart* sp, const int with_cosmology,
-                  const struct cosmology* cosmo, double* star_age_beg_of_step,
-                  double* dt_enrichment, integertime_t* ti_begin_star,
+void compute_time(struct spart *sp, const int with_cosmology,
+                  const struct cosmology *cosmo, double *star_age_beg_of_step,
+                  double *dt_enrichment, integertime_t *ti_begin_star,
                   const integertime_t ti_current, const double time_base,
                   const double time) {
   const integertime_t ti_step = get_integer_timestep(sp->time_bin);
@@ -211,9 +211,9 @@ void compute_time(struct spart* sp, const int with_cosmology,
  * @param dt_star the length of this particle's time-step in internal units.
  * @return The length of the enrichment step in internal units.
  */
-double feedback_get_enrichment_timestep(const struct spart* sp,
+double feedback_get_enrichment_timestep(const struct spart *sp,
                                         const int with_cosmology,
-                                        const struct cosmology* cosmo,
+                                        const struct cosmology *cosmo,
                                         const double time,
                                         const double dt_star) {
   return dt_star;
@@ -230,7 +230,7 @@ double feedback_get_enrichment_timestep(const struct spart* sp,
  * @param star_type The stellar particle type.
  */
 void feedback_init_after_star_formation(
-    struct spart* sp, const struct feedback_props* feedback_props,
+    struct spart *sp, const struct feedback_props *feedback_props,
     const enum stellar_type star_type) {
 
   feedback_init_spart(sp);
@@ -255,8 +255,8 @@ void feedback_init_after_star_formation(
  * @param sp The particle to act upon.
  * @param feedback_props The properties of the feedback model.
  */
-void feedback_first_init_spart(struct spart* sp,
-                               const struct feedback_props* feedback_props) {
+void feedback_first_init_spart(struct spart *sp,
+                               const struct feedback_props *feedback_props) {
   /* Initialize the feedback struct for the first time */
   feedback_init_spart(sp);
 
@@ -273,9 +273,9 @@ void feedback_first_init_spart(struct spart* sp,
  * @param feedback the struct
  * @param stream the file stream
  */
-void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream) {
+void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
 
-  restart_write_blocks((void*)feedback, sizeof(struct feedback_props), 1,
+  restart_write_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                        stream, "feedback", "feedback function");
 
   stellar_evolution_dump(&feedback->stellar_model, stream);
@@ -291,10 +291,10 @@ void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream) {
  * @param feedback the struct
  * @param stream the file stream
  */
-void feedback_struct_restore(struct feedback_props* feedback, FILE* stream) {
+void feedback_struct_restore(struct feedback_props *feedback, FILE *stream) {
 
-  restart_read_blocks((void*)feedback, sizeof(struct feedback_props), 1, stream,
-                      NULL, "feedback function");
+  restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
+                      stream, NULL, "feedback function");
 
   stellar_evolution_restore(&feedback->stellar_model, stream);
 
@@ -308,7 +308,7 @@ void feedback_struct_restore(struct feedback_props* feedback, FILE* stream) {
  *
  * @param feedback the #feedback_props.
  */
-void feedback_clean(struct feedback_props* feedback) {
+void feedback_clean(struct feedback_props *feedback) {
 
   stellar_evolution_clean(&feedback->stellar_model);
   if (feedback->metallicity_max_first_stars != -1) {

@@ -48,7 +48,7 @@
  * @params log The #csds.
  * @params e The #engine.
  */
-void csds_write_description(struct csds_writer* log, struct engine* e) {
+void csds_write_description(struct csds_writer *log, struct engine *e) {
 
   /* Only the master writes the description */
   if (e->nodeID != 0) {
@@ -60,7 +60,7 @@ void csds_write_description(struct csds_writer* log, struct engine* e) {
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%.100s.yml", e->csds->base_name);
 
   /* Open file */
-  FILE* f = NULL;
+  FILE *f = NULL;
   f = fopen(fileName, "w");
 
   if (f == NULL) {
@@ -95,7 +95,7 @@ void csds_write_description(struct csds_writer* log, struct engine* e) {
   fprintf(f, "\n");
 
   /* Write unit system */
-  const struct unit_system* us = e->internal_units;
+  const struct unit_system *us = e->internal_units;
   fprintf(f, "InternalUnitSystem:\n");
   fprintf(f, "  UnitMass_in_cgs: %g\n", units_get_base_unit(us, UNIT_MASS));
   fprintf(f, "  UnitLength_in_cgs: %g\n", units_get_base_unit(us, UNIT_LENGTH));
