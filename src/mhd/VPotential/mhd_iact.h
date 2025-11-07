@@ -275,10 +275,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
                         pj->mhd_data.APred[1] - pi->mhd_data.APred[1],
                         pj->mhd_data.APred[2] - pi->mhd_data.APred[2]};
   const float DAi[3] = {pi->mhd_data.APred[0] * (pj->v[0] - pi->v[0]),
-                        pi->mhd_data.APred[1] * (pj->v[1] - pi->v[2]),
+                        pi->mhd_data.APred[1] * (pj->v[1] - pi->v[1]),
                         pi->mhd_data.APred[2] * (pj->v[2] - pi->v[2])};
   const float DAj[3] = {pj->mhd_data.APred[0] * (pj->v[0] - pi->v[0]),
-                        pj->mhd_data.APred[1] * (pj->v[1] - pi->v[2]),
+                        pj->mhd_data.APred[1] * (pj->v[1] - pi->v[1]),
                         pj->mhd_data.APred[2] * (pj->v[2] - pi->v[2])};
 
   const float common_term_i = wi * mj / rhoj;
@@ -488,7 +488,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                         pj->mhd_data.APred[1] - pi->mhd_data.APred[1],
                         pj->mhd_data.APred[2] - pi->mhd_data.APred[2]};
   const float DAi[3] = {pi->mhd_data.APred[0] * (pj->v[0] - pi->v[0]),
-                        pi->mhd_data.APred[1] * (pj->v[1] - pi->v[2]),
+                        pi->mhd_data.APred[1] * (pj->v[1] - pi->v[1]),
                         pi->mhd_data.APred[2] * (pj->v[2] - pi->v[2])};
 
   const float common_term = wi * mj / rhoj;

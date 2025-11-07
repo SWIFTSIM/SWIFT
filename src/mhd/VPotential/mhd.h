@@ -271,7 +271,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
   /* Cosmological term */
   const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * Gauge;
 
-  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 1.f * c->a *
+  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 0.f * c->a *
          c->a;
 }
 
