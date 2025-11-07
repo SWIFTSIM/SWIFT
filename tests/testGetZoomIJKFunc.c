@@ -197,7 +197,7 @@ int main(int argc, char *argv[]) {
 
   /* Run the zoom_init function. */
   zoom_props_init(&param_file, &s, 0);
-  zoom_region_init(&s, 0);
+  zoom_region_init(&s, /*regridding*/ 0, /*verbose*/ 0);
 
   /* Make the cells. */
   make_mock_cells(&s);
