@@ -2105,8 +2105,8 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
  *
  * @return 1 if the mesh can be used, 0 otherwise.
  */
-int engine_gravity_can_use_mesh(struct engine *e, struct cell *ci,
-                                struct cell *cj) {
+int engine_gravity_can_use_mesh(struct engine *e, const struct cell *ci,
+                                const struct cell *cj) {
 
   struct space *s = e->s;
   const double max_distance = e->mesh->r_cut_max;
