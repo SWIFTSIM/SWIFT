@@ -30,7 +30,7 @@
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_compute_parabolic_timestep(
+chemistry_diffusion_timestep(
     const struct part *restrict p,
     const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo) {
@@ -40,38 +40,43 @@ chemistry_compute_parabolic_timestep(
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   const float delta_x = cosmo->a * kernel_gamma * p->h;
 
-  /* TODO: See if we want to keep that or use c_hyp directly */
   /* CFL condition */
   const float dt_cfl =
       CFL_condition * delta_x / p->chemistry_data.timestepvars.vmax;
   return dt_cfl;
 #else
   const struct chemistry_part_data *chd = &p->chemistry_data;
+  const float delta_x = kernel_gamma * p->h * cosmo->a;
 
   /* Compute the diffusion matrix K */
   double K[3][3];
   chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
   const float norm_matrix_K = chemistry_get_matrix_norm(K);
 
-  /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...), and q = (Z_1, Z_2,
-     ...). Hence, the term norm(U)/norm(q) in eq (15) is abs(rho). */
-  const float norm_U_over_norm_q = hydro_get_physical_density(p, cosmo);
-
-  /* Some helpful variables */
-  const float delta_x = kernel_gamma * p->h * cosmo->a;
-  float norm_q = 0.0;
-  float norm_nabla_q = 0.0;
-  float expression = 0.0;
-
   /* Prevent pathological cases */
   if (norm_matrix_K == 0.0) {
     return FLT_MAX;
   }
 
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    /* Isotropic constant diffusion has the simple expression: */
+    return delta_x*delta_x/norm_matrix_K;
+  }
+  /* From here, we are either isotropic smagorinksy or anisotropic */
+
+  /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...), and q = (Z_1, Z_2,
+     ...). Hence, the term norm(U)/norm(q) in eq (15) is abs(rho). */
+  const float norm_U_over_norm_q = hydro_get_physical_density(p, cosmo);
+
+  /* Some helpful variables */
+  float norm_q = 0.0;
+  float norm_nabla_q = 0.0;
+  float expression = 0.0;
+
   /* Compute the norms */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     norm_q += chemistry_get_metal_mass_fraction(p, i) *
-              chemistry_get_metal_mass_fraction(p, i);
+	      chemistry_get_metal_mass_fraction(p, i);
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Frobenius norm of \nabla \otimes q = Grad Z */
@@ -89,19 +94,19 @@ chemistry_compute_parabolic_timestep(
     return FLT_MAX;
   }
 
-  if (chem_data->diffusion_mode == isotropic_constant) {
-    /* Isotropic constant diffusion has the simple expression: */
+  if (chem_data->diffusion_mode == isotropic_smagorinsky) {
+    /* We should use the same expression as the anisotropic diffusion below.
+       However, it is overly conservative for isotropic diffusion and slows
+       down the simulations by order of magnitudes...
+       Instead, we use a similar expression to the isotropic constant
+       diffusion. */
     expression = delta_x;
   } else {
     /* Compute the expression in the square bracket in eq (15). Notice that I
-       rewrote it to avoid division by 0 when norm_nabla_q = 0. */
-    /* expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q); */
-
-    /* The expression above is too strict because of feedback metal
-       injection. The code slows by a factor of 10 compared to the following
-       simpler case. Use the expression above if you want to ensure the
-       correctness of parabolic diffusion. */
-    expression = delta_x;
+       rewrote it to avoid division by 0 when norm_nabla_q = 0.
+       This expression ensures the correctness of parabolic diffusion. But at
+       the cost of being nut usable is cosmo simulations... */
+    expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
   }
 
   const float dt = CFL_condition * expression * expression / norm_matrix_K * norm_U_over_norm_q;

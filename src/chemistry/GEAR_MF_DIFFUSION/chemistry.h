@@ -388,13 +388,7 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* chem_data,
     const struct part* restrict p) {
-#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  /* Use the parabolic timestep eq (15) */
-  return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
-#else
-  /* Use the hyperbolic CFL condition */
-  return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
-#endif
+  return chemistry_diffusion_timestep(p, chem_data, cosmo);
 }
 
 /**
