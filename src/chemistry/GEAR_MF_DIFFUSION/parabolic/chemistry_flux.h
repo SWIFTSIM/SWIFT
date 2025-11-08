@@ -32,8 +32,8 @@
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void
-chemistry_part_reset_fluxes(struct part* restrict p) {
+__attribute__((always_inline)) INLINE static void chemistry_part_reset_fluxes(
+    struct part* restrict p) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     p->chemistry_data.metal_mass_riemann[i] = 0.0;
   }
@@ -53,10 +53,8 @@ chemistry_part_reset_fluxes(struct part* restrict p) {
  * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_fluxes_left(struct part* restrict p,
-				  const int metal,
-				  const double fluxes[4],
-				  const float dt) {
+chemistry_part_update_fluxes_left(struct part* restrict p, const int metal,
+                                  const double fluxes[4], const float dt) {
   p->chemistry_data.metal_mass_riemann[metal] -= fluxes[0] * dt;
 }
 
@@ -74,10 +72,8 @@ chemistry_part_update_fluxes_left(struct part* restrict p,
  * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_fluxes_right(struct part* restrict p,
-				   const int metal,
-				   const double fluxes[4],
-				   const float dt) {
+chemistry_part_update_fluxes_right(struct part* restrict p, const int metal,
+                                   const double fluxes[4], const float dt) {
   p->chemistry_data.metal_mass_riemann[metal] += fluxes[0] * dt;
 }
 
@@ -102,20 +98,18 @@ chemistry_part_update_fluxes_right(struct part* restrict p,
  */
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
     const float dx[3], const struct part* restrict pi,
-    const struct part* restrict pj, const int metal,
-    const double UL[4], const double UR[4],
-    const float WL[5], const float WR[5], const float n_unit[3],
-    const float Anorm, const struct chemistry_global_data* chem_data,
+    const struct part* restrict pj, const int metal, const double UL[4],
+    const double UR[4], const float WL[5], const float WR[5],
+    const float n_unit[3], const float Anorm,
+    const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo, double fluxes[4]) {
 
   /* Note: F_diff_R and F_diff_L are computed with a first order
-	 reconstruction */
+         reconstruction */
   /* Get the diffusion flux */
   double F_diff_i[3], F_diff_j[3];
-  chemistry_get_physical_parabolic_flux(pi, metal, F_diff_i, chem_data,
-					    cosmo);
-  chemistry_get_physical_parabolic_flux(pj, metal, F_diff_j, chem_data,
-					    cosmo);
+  chemistry_get_physical_parabolic_flux(pi, metal, F_diff_i, chem_data, cosmo);
+  chemistry_get_physical_parabolic_flux(pj, metal, F_diff_j, chem_data, cosmo);
 
   /* Check that the fluxes are meaningful */
   chemistry_check_unphysical_diffusion_flux(F_diff_i);
@@ -124,8 +118,8 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
   chemistry_riemann_solve_for_flux(dx, pi, pj, UL[0], UR[0], WL, WR, F_diff_i,
-				   F_diff_j, Anorm, n_unit, metal, chem_data,
-				   cosmo, &fluxes[0]);
+                                   F_diff_j, Anorm, n_unit, metal, chem_data,
+                                   cosmo, &fluxes[0]);
 
   /* Anorm is already in physical units here. */
   fluxes[0] *= Anorm;

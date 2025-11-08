@@ -34,7 +34,6 @@
  *
  * */
 
-
 /**
  * @brief Get the metal mass fluxes for the given particle.
  *
@@ -61,13 +60,11 @@ __attribute__((always_inline)) INLINE void chemistry_get_metal_mass_fluxes(
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_limit_metal_mass_flux(const struct part* restrict pi,
-				const struct part* restrict pj,
-				const int metal,
-				double fluxes[4],
-				const float dt) {
+                                const struct part* restrict pj, const int metal,
+                                double fluxes[4], const float dt) {
 
-  const struct chemistry_part_data *chi = &pi->chemistry_data;
-  const struct chemistry_part_data *chj = &pj->chemistry_data;
+  const struct chemistry_part_data* chi = &pi->chemistry_data;
+  const struct chemistry_part_data* chj = &pj->chemistry_data;
 
   /* Convert the raw riemann mass derivative to mass */
   double metal_mass_interface = fluxes[0] * dt;
@@ -84,7 +81,8 @@ chemistry_limit_metal_mass_flux(const struct part* restrict pi,
      mass exchange, (we do this to prevent negative masses under all
      circumstances) */
   const double max_mass = 0.9 * upwind_mass;
-  if (fabs(metal_mass_interface) > 0.0 && fabs(metal_mass_interface) > max_mass) {
+  if (fabs(metal_mass_interface) > 0.0 &&
+      fabs(metal_mass_interface) > max_mass) {
     const double factor = max_mass / fabs(metal_mass_interface);
     fluxes[0] *= factor;
   }

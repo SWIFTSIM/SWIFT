@@ -135,13 +135,13 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_slope_limit_quantity(double gradient[3], const float maxr,
-			       const double value, const double valmin,
-			       const double valmax,
-			       const float condition_number,
-			       const int pos_preserve) {
+                               const double value, const double valmin,
+                               const double valmax,
+                               const float condition_number,
+                               const int pos_preserve) {
 
   double gradtrue = sqrt(gradient[0] * gradient[0] + gradient[1] * gradient[1] +
-			 gradient[2] * gradient[2]);
+                         gradient[2] * gradient[2]);
 
   if (gradtrue != 0.0) {
     gradtrue *= maxr;
@@ -151,13 +151,13 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
 
     /* Stability factor based on condition number (better than 1.0) */
     const double beta_2 =
-	min(1.0, const_gizmo_max_condition_number / condition_number);
+        min(1.0, const_gizmo_max_condition_number / condition_number);
     const double beta = max(GIZMO_SLOPE_LIMITER_BETA_MIN,
-			    GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2);
+                            GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2);
 
     /* Base slope limiter */
     const double min_temp =
-	min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
+        min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
     double alpha = min(1.0, min_temp);
 
     /* Positivity-preserving mechanism */
@@ -165,21 +165,21 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
       const double shoot_tol = 0.0;  // Allowable overshoot tolerance
       const double overshoot_corr = gradmin + shoot_tol * gradmax;
       const double f_corr_overshoot =
-	  (overshoot_corr < gradmax) ? overshoot_corr : gradmax;
+          (overshoot_corr < gradmax) ? overshoot_corr : gradmax;
 
       /* Compute fmin for positivity preservation */
       const double min_value =
-	  (value + valmin) * 0.5;  // Halfway between central and min value
+          (value + valmin) * 0.5;  // Halfway between central and min value
       const double positive_definite_min =
-	  (value > 0.0) ? value * FLT_MIN : 0.0;
+          (value > 0.0) ? value * FLT_MIN : 0.0;
       const double fmin =
-	  (f_corr_overshoot < min_value) ? f_corr_overshoot : min_value;
+          (f_corr_overshoot < min_value) ? f_corr_overshoot : min_value;
       const double final_fmin =
-	  (fmin > positive_definite_min) ? fmin : positive_definite_min;
+          (fmin > positive_definite_min) ? fmin : positive_definite_min;
 
       /* Compute cfac for positivity preservation
-	 Note: gradtrue has been multiplied by maxr already. Hence, we don't
-	 need to divide (value - final_fmin) by maxr. */
+         Note: gradtrue has been multiplied by maxr already. Hence, we don't
+         need to divide (value - final_fmin) by maxr. */
       const double cfac_pos_preserve = (value - final_fmin) / gradtrue;
       alpha = (cfac_pos_preserve < alpha) ? cfac_pos_preserve : alpha;
     }
@@ -190,8 +190,9 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
        only have one particule with non zero metallicity. The slope limiter then
        computes a high value for alpha (1e15). */
     if (valmin == valmax && valmin == value && valmax == value) {
-      /* warning("Valmin = Valmax = Value = %e. Grad = (%e %e %e), alpha = %e", */
-	       /* value, gradient[0], gradient[1], gradient[2], alpha); */
+      /* warning("Valmin = Valmax = Value = %e. Grad = (%e %e %e), alpha = %e",
+       */
+      /* value, gradient[0], gradient[1], gradient[2], alpha); */
       alpha = 0.0;
     }
 

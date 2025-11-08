@@ -519,8 +519,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
   p->chemistry_data.flux_dt = dt_therm * cosmo->a * cosmo->a;
 
   /* Update the diffusion coefficient for the new loop */
-  p->chemistry_data.kappa =
-      chemistry_get_diffusion_coefficient(p, cd, cosmo);
+  p->chemistry_data.kappa = chemistry_get_diffusion_coefficient(p, cd, cosmo);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   p->chemistry_data.tau = chemistry_compute_physical_tau(p, cd, cosmo);
