@@ -176,15 +176,15 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     /* Now do the gradients of pj */
     double dFx_j[3], dFy_j[3], dFz_j[3];
 
-    dFx_j[0] = dF_diff[0] * psii_tilde[0];
-    dFx_j[1] = dF_diff[0] * psii_tilde[1];
-    dFx_j[2] = dF_diff[0] * psii_tilde[2];
-    dFy_j[0] = dF_diff[1] * psii_tilde[0];
-    dFy_j[1] = dF_diff[1] * psii_tilde[1];
-    dFy_j[2] = dF_diff[1] * psii_tilde[2];
-    dFz_j[0] = dF_diff[2] * psii_tilde[0];
-    dFz_j[1] = dF_diff[2] * psii_tilde[1];
-    dFz_j[2] = dF_diff[2] * psii_tilde[2];
+    dFx_j[0] = dF_diff[0] * psij_tilde[0];
+    dFx_j[1] = dF_diff[0] * psij_tilde[1];
+    dFx_j[2] = dF_diff[0] * psij_tilde[2];
+    dFy_j[0] = dF_diff[1] * psij_tilde[0];
+    dFy_j[1] = dF_diff[1] * psij_tilde[1];
+    dFy_j[2] = dF_diff[1] * psij_tilde[2];
+    dFz_j[0] = dF_diff[2] * psij_tilde[0];
+    dFz_j[1] = dF_diff[2] * psij_tilde[1];
+    dFz_j[2] = dF_diff[2] * psij_tilde[2];
     chemistry_part_update_flux_gradients(pj, g, dFx_j, dFy_j, dFz_j);
 #endif
   }
