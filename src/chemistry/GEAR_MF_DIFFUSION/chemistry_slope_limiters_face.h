@@ -175,84 +175,6 @@ chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j,
 }
 
 /**
- * @brief Slope limit the slopes at the interface between two particles
- *
- * @param Ui Chemistry variables of particle i.
- * @param Uj Chemistry variables of particle j.
- * @param dUi Difference between the chemistry variables of particle i at the
- * position of particle i and at the interface position.
- * @param dUj Difference between the chemistry variables of particle j at the
- * position of particle j and at the interface position.
- * @param xij_i Relative position vector of the interface w.r.t. particle i.
- * @param xij_j Relative position vector of the interface w.r.t. partilce j.
- * @param r Distance between particle i and particle j.
- */
-__attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
-    double *Ui, double *Uj, double *dUi, double *dUj, const float xij_i[3],
-    const float *xij_j, float r) {
-
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  /* Too much artificial diffusion, avoid using it */
-  /* chemistry_limiter_minmod(dUi, dUj); */
-
-  /* For hyperbolic diffusion, all these slope limiter perform better than
-     minmod and reduce numerical diffusion */
-  /* const double alphai = chemistry_limiter_mc(*dUi, *dUj); */
-  /* const double alphaj = chemistry_limiter_mc(*dUj, *dUi); */
-  /* *dUi *= alphai; */
-  /* *dUj *= alphaj; */
-
-  /* const double alphai = chemistry_limiter_superbee(*dUi, *dUj); */
-  /* const double alphaj = chemistry_limiter_superbee(*dUj, *dUi); */
-  /* *dUi *= alphai; */
-  /* *dUj *= alphaj; */
-
-  /* const double alphai = chemistry_limiter_vanLeer(*dUi, *dUj); */
-  /* const double alphaj = chemistry_limiter_vanLeer(*dUj, *dUi); */
-  /* *dUi *= alphai; */
-  /* *dUj *= alphaj; */
-
-  /* const double alphai = chemistry_limiter_koren(*dUi, *dUj); */
-  /* const double alphaj = chemistry_limiter_koren(*dUj, *dUi); */
-  /* *dUi *= alphai; */
-  /* *dUj *= alphaj; */
-
-  /* The Gizmo slope limiter works even better. */
-  const float xij_i_norm =
-      sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
-
-  const float xij_j_norm =
-      sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
-
-  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
-
-  *dUi = chemistry_slope_limit_face_quantity_double(
-      Ui[0], Uj[0], Ui[0] + dUi[0], xij_i_norm, r_inv, 1);
-
-  *dUj = chemistry_slope_limit_face_quantity_double(
-      Uj[0], Ui[0], Uj[0] + dUj[0], xij_j_norm, r_inv, 1);
-#else
-  /* chemistry_limiter_minmod(dUi, dUj); */
-
-  /* The Gizmo slope limiter works better. */
-  const float xij_i_norm =
-      sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
-
-  const float xij_j_norm =
-      sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
-
-  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
-
-  *dUi = chemistry_slope_limit_face_quantity_double(
-      Ui[0], Uj[0], Ui[0] + dUi[0], xij_i_norm, r_inv, 1);
-
-  *dUj = chemistry_slope_limit_face_quantity_double(
-      Uj[0], Ui[0], Uj[0] + dUj[0], xij_j_norm, r_inv, 1);
-
-#endif
-}
-
-/**
  * @brief Slope limit a single quantity at the interface
  *
  * @param phi_i Value of the quantity at the particle position.
@@ -364,5 +286,12 @@ chemistry_slope_limit_face_hydro(float *Wi, float *Wj, float drhoi, float drhoj,
   dvj[2] = chemistry_slope_limit_face_quantity_float(
       Wj[3], Wi[3], Wj[3] + dvj[2], xij_j_norm, r_inv, 0);
 }
+
+/* Import the right file */
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#include "hyperbolic/chemistry_slope_limiter_face.h"
+#else
+#include "parabolic/chemistry_slope_limiter_face.h"
+#endif
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_FACE_H */
