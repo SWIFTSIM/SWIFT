@@ -38,8 +38,8 @@
  *
  * @return Returns the number of fields to read.
  */
-INLINE static int chemistry_read_particles(struct part* parts,
-                                           struct io_props* list) {
+INLINE static int chemistry_read_particles(struct part *parts,
+                                           struct io_props *list) {
 
   /* List what we want to read */
   list[0] = io_make_input_field(
@@ -49,9 +49,9 @@ INLINE static int chemistry_read_particles(struct part* parts,
   return 1;
 }
 
-INLINE static void convert_gas_metals(const struct engine* e,
-                                      const struct part* p,
-                                      const struct xpart* xp, double* ret) {
+INLINE static void convert_gas_metals(const struct engine *e,
+                                      const struct part *p,
+                                      const struct xpart *xp, double *ret) {
   /* GEAR expects the last element to be the metallicity. Since the
   diffusion stores the mass of all "untracked" elements in the last index, we
   need to compute the metallicity and write it in the last index. */
@@ -78,15 +78,15 @@ INLINE static void convert_gas_metals(const struct engine* e,
 }
 
 INLINE static void convert_chemistry_diffusion_coefficient(
-    const struct engine* e, const struct part* p, const struct xpart* xp,
-    double* ret) {
+    const struct engine *e, const struct part *p, const struct xpart *xp,
+    double *ret) {
   *ret = p->chemistry_data.kappa;
 }
 
-INLINE static void convert_chemistry_diffusion_matrix(const struct engine* e,
-                                                      const struct part* p,
-                                                      const struct xpart* xp,
-                                                      double* ret) {
+INLINE static void convert_chemistry_diffusion_matrix(const struct engine *e,
+                                                      const struct part *p,
+                                                      const struct xpart *xp,
+                                                      double *ret) {
   double K[3][3];
   chemistry_get_physical_matrix_K(p, e->chemistry, e->cosmology, K);
 
@@ -98,10 +98,10 @@ INLINE static void convert_chemistry_diffusion_matrix(const struct engine* e,
 }
 
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
-INLINE static void convert_gas_feedback_metals(const struct engine* e,
-                                               const struct part* p,
-                                               const struct xpart* xp,
-                                               double* ret) {
+INLINE static void convert_gas_feedback_metals(const struct engine *e,
+                                               const struct part *p,
+                                               const struct xpart *xp,
+                                               double *ret) {
   /* GEAR expects the last element to be the metallicity. Since the
   diffusion stores the mass of all "untracked" elements in the last index, we
   need to compute the metallicity and write it in the last index. */
@@ -115,10 +115,10 @@ INLINE static void convert_gas_feedback_metals(const struct engine* e,
   ret[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = m_Z;
 }
 
-INLINE static void convert_gas_diffused_metals(const struct engine* e,
-                                               const struct part* p,
-                                               const struct xpart* xp,
-                                               double* ret) {
+INLINE static void convert_gas_diffused_metals(const struct engine *e,
+                                               const struct part *p,
+                                               const struct xpart *xp,
+                                               double *ret) {
   /* GEAR expects the last element to be the metallicity. Since the
   diffusion stores the mass of all "untracked" elements in the last index, we
   need to compute the metallicity and write it in the last index. */
@@ -133,10 +133,10 @@ INLINE static void convert_gas_diffused_metals(const struct engine* e,
 }
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-INLINE static void convert_gas_diffusion_flux_norm(const struct engine* e,
-                                                   const struct part* p,
-                                                   const struct xpart* xp,
-                                                   double* ret) {
+INLINE static void convert_gas_diffusion_flux_norm(const struct engine *e,
+                                                   const struct part *p,
+                                                   const struct xpart *xp,
+                                                   double *ret) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     double F_diff[3] = {p->chemistry_data.hyperbolic_flux[i].F_diff[0],
                         p->chemistry_data.hyperbolic_flux[i].F_diff[1],
@@ -158,9 +158,9 @@ INLINE static void convert_gas_diffusion_flux_norm(const struct engine* e,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_write_particles(const struct part* parts,
-                                            const struct xpart* xparts,
-                                            struct io_props* list,
+INLINE static int chemistry_write_particles(const struct part *parts,
+                                            const struct xpart *xparts,
+                                            struct io_props *list,
                                             const int with_cosmology) {
   /* Number of fields to write */
   int num = 3;
@@ -225,8 +225,8 @@ INLINE static int chemistry_write_particles(const struct part* parts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_write_sparticles(const struct spart* sparts,
-                                             struct io_props* list) {
+INLINE static int chemistry_write_sparticles(const struct spart *sparts,
+                                             struct io_props *list) {
 
   /* List what we want to write */
   list[0] = io_make_output_field(
@@ -245,8 +245,8 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_write_sinkparticles(const struct sink* sinks,
-                                                struct io_props* list) {
+INLINE static int chemistry_write_sinkparticles(const struct sink *sinks,
+                                                struct io_props *list) {
 
   /* List what we want to write */
   list[0] = io_make_output_field(
@@ -265,8 +265,8 @@ INLINE static int chemistry_write_sinkparticles(const struct sink* sinks,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
-                                             struct io_props* list) {
+INLINE static int chemistry_write_bparticles(const struct bpart *bparts,
+                                             struct io_props *list) {
 
   /* No fields to write here */
   return 0;
@@ -281,7 +281,7 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
  * @param e The #engine.
  */
 INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
-                                           const struct engine* e) {
+                                           const struct engine *e) {
 
   io_write_attribute_s(h_grp, "Chemistry model", "GEAR MFM DIFFUSION");
   io_write_attribute_d(h_grp, "Chemistry element count",
@@ -291,7 +291,7 @@ INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   const int with_feedback = e->policy & engine_policy_feedback;
   if (!with_feedback) return;
 
-  const char* element_names = e->feedback_props->stellar_model.elements_name;
+  const char *element_names = e->feedback_props->stellar_model.elements_name;
 
   /* Add to the named columns */
   hsize_t dims[1] = {GEAR_CHEMISTRY_ELEMENT_COUNT};
@@ -317,7 +317,7 @@ INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   /* Write all the elements as attributes */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    const char* name = stellar_evolution_get_element_name(
+    const char *name = stellar_evolution_get_element_name(
         &e->feedback_props->stellar_model, i);
 
     io_write_attribute_f(h_sol_ab, name, e->chemistry->solar_abundances[i]);

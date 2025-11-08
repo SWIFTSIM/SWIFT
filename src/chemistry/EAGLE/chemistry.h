@@ -126,7 +126,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
-    struct part* p, const struct chemistry_global_data* cd) {}
+    struct part *p, const struct chemistry_global_data *cd) {}
 
 /**
  * @brief Updates to the chemistry data after the hydro force loop.
@@ -139,9 +139,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
  * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
-    struct part* restrict p, const struct cosmology* cosmo,
+    struct part *restrict p, const struct cosmology *cosmo,
     const int with_cosmology, const double time, const double dt,
-    const struct chemistry_global_data* cd) {}
+    const struct chemistry_global_data *cd) {}
 
 /**
  * @brief Prepare a particle for the force calculation.
@@ -157,9 +157,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
  * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const float dt_alpha, const float dt_therm,
-    const struct chemistry_global_data* cd) {}
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo, const float dt_alpha, const float dt_therm,
+    const struct chemistry_global_data *cd) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -705,8 +705,8 @@ chemistry_get_star_total_metal_mass_fraction_for_luminosity(
  * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
-    struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
-    const struct cosmology* cosmo,
-    const struct chemistry_global_data* chem_data) {}
+    struct part *p, struct xpart *xp, float dt_drift, float dt_therm,
+    const struct cosmology *cosmo,
+    const struct chemistry_global_data *chem_data) {}
 
 #endif /* SWIFT_CHEMISTRY_EAGLE_H */

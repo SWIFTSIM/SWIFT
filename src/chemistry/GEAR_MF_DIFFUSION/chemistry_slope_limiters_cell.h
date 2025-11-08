@@ -38,7 +38,7 @@
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_slope_limit_cell_init(struct part* p) {
+chemistry_slope_limit_cell_init(struct part *p) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     p->chemistry_data.limiter.Z[i][0] = FLT_MAX;
@@ -74,10 +74,10 @@ chemistry_slope_limit_cell_init(struct part* p) {
  * @param r Distance between particle i and particle j
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
+chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
 
-  struct chemistry_part_data* chi = &pi->chemistry_data;
-  struct chemistry_part_data* chj = &pj->chemistry_data;
+  struct chemistry_part_data *chi = &pi->chemistry_data;
+  struct chemistry_part_data *chj = &pj->chemistry_data;
 
   /* Basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
@@ -213,9 +213,9 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
  * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
-    struct part* p, const struct chemistry_global_data* cd) {
+    struct part *p, const struct chemistry_global_data *cd) {
 
-  struct chemistry_part_data* chd = &p->chemistry_data;
+  struct chemistry_part_data *chd = &p->chemistry_data;
   const float N_cond = chd->geometry_condition_number;
   const float maxr = chd->limiter.maxr;
   const float vxlim[2] = {chd->limiter.v[0][0], chd->limiter.v[0][1]};

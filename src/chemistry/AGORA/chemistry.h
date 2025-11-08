@@ -62,9 +62,9 @@ static INLINE const char *chemistry_get_element_name(
  * @param cosmo The current cosmological model.
  */
 INLINE static void chemistry_copy_star_formation_properties(
-    struct part* p, const struct xpart* xp, struct spart* sp,
-    const struct chemistry_global_data* chem_data,
-    const struct cosmology* cosm) {
+    struct part *p, const struct xpart *xp, struct spart *sp,
+    const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosm) {
 
   float mass = hydro_get_mass(p);
 

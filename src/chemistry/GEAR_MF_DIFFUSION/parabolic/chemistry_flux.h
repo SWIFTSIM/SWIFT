@@ -33,7 +33,7 @@
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void chemistry_part_reset_fluxes(
-    struct part* restrict p) {
+    struct part *restrict p) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     p->chemistry_data.metal_mass_riemann[i] = 0.0;
   }
@@ -53,7 +53,7 @@ __attribute__((always_inline)) INLINE static void chemistry_part_reset_fluxes(
  * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_fluxes_left(struct part* restrict p, const int metal,
+chemistry_part_update_fluxes_left(struct part *restrict p, const int metal,
                                   const double fluxes[4], const float dt) {
   p->chemistry_data.metal_mass_riemann[metal] -= fluxes[0] * dt;
 }
@@ -72,7 +72,7 @@ chemistry_part_update_fluxes_left(struct part* restrict p, const int metal,
  * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_fluxes_right(struct part* restrict p, const int metal,
+chemistry_part_update_fluxes_right(struct part *restrict p, const int metal,
                                    const double fluxes[4], const float dt) {
   p->chemistry_data.metal_mass_riemann[metal] += fluxes[0] * dt;
 }
@@ -97,12 +97,12 @@ chemistry_part_update_fluxes_right(struct part* restrict p, const int metal,
  * @param fluxes (return) The resulting flux at the interface (of size 1).
  */
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
-    const float dx[3], const struct part* restrict pi,
-    const struct part* restrict pj, const int metal, const double UL[4],
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const int metal, const double UL[4],
     const double UR[4], const float WL[5], const float WR[5],
     const float n_unit[3], const float Anorm,
-    const struct chemistry_global_data* chem_data,
-    const struct cosmology* cosmo, double fluxes[4]) {
+    const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo, double fluxes[4]) {
 
   /* Note: F_diff_R and F_diff_L are computed with a first order
          reconstruction */

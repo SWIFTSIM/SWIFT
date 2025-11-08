@@ -48,9 +48,9 @@
  * @param cosmo The current cosmological model.
  */
 INLINE static void chemistry_copy_star_formation_properties(
-    struct part* p, const struct xpart* xp, struct spart* sp,
-    const struct chemistry_global_data* chem_data,
-    const struct cosmology* cosmo) {
+    struct part *p, const struct xpart *xp, struct spart *sp,
+    const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo) {
 
   /* gas mass after update */
   float mass = hydro_get_mass(p);
@@ -384,7 +384,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
-    struct part* p, const struct chemistry_global_data* cd) {}
+    struct part *p, const struct chemistry_global_data *cd) {}
 
 /**
  * @brief Updates to the chemistry data after the hydro force loop.
@@ -397,9 +397,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
  * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
-    struct part* restrict p, const struct cosmology* cosmo,
+    struct part *restrict p, const struct cosmology *cosmo,
     const int with_cosmology, const double time, const double dt,
-    const struct chemistry_global_data* cd) {}
+    const struct chemistry_global_data *cd) {}
 
 /**
  * @brief Prepare a particle for the force calculation.
@@ -414,9 +414,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const float dt_alpha, const float dt_therm,
-    const struct chemistry_global_data* cd) {}
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo, const float dt_alpha, const float dt_therm,
+    const struct chemistry_global_data *cd) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -827,11 +827,11 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart *restrict bp) {
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_set_star_supernovae_ejected_yields(
-    struct spart* restrict sp, const float mass_snii_event,
+    struct spart *restrict sp, const float mass_snii_event,
     const float m_non_processed, const int number_snii, const int number_snia,
     const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
     const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
-    const struct phys_const* phys_const) {
+    const struct phys_const *phys_const) {
 
   /* Use a chemistry function */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
@@ -866,8 +866,8 @@ chemistry_set_star_supernovae_ejected_yields(
  * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
-    struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
-    const struct cosmology* cosmo,
-    const struct chemistry_global_data* chem_data) {}
+    struct part *p, struct xpart *xp, float dt_drift, float dt_therm,
+    const struct cosmology *cosmo,
+    const struct chemistry_global_data *chem_data) {}
 
 #endif /* SWIFT_CHEMISTRY_GEAR_H */

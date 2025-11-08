@@ -45,7 +45,7 @@
  * @param flux Fluxes for the particle (array of size 1).
  */
 __attribute__((always_inline)) INLINE void chemistry_get_metal_mass_fluxes(
-    const struct part* restrict p, int metal, double* flux) {
+    const struct part *restrict p, int metal, double *flux) {
   *flux = p->chemistry_data.metal_mass_riemann[metal];
 }
 
@@ -59,12 +59,12 @@ __attribute__((always_inline)) INLINE void chemistry_get_metal_mass_fluxes(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_limit_metal_mass_flux(const struct part* restrict pi,
-                                const struct part* restrict pj, const int metal,
+chemistry_limit_metal_mass_flux(const struct part *restrict pi,
+                                const struct part *restrict pj, const int metal,
                                 double fluxes[4], const float dt) {
 
-  const struct chemistry_part_data* chi = &pi->chemistry_data;
-  const struct chemistry_part_data* chj = &pj->chemistry_data;
+  const struct chemistry_part_data *chi = &pi->chemistry_data;
+  const struct chemistry_part_data *chj = &pj->chemistry_data;
 
   /* Convert the raw riemann mass derivative to mass */
   double metal_mass_interface = fluxes[0] * dt;

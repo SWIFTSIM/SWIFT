@@ -337,13 +337,13 @@ INLINE static void star_formation_separate_particles(const struct engine *e,
  * @param convert_part Did we convert a part (or spawned one)?
  */
 INLINE static void star_formation_copy_properties(
-    struct part* p, struct xpart* xp, struct spart* sp, const struct engine* e,
-    const struct star_formation* starform, const struct cosmology* cosmo,
-    const int with_cosmology, const struct phys_const* phys_const,
-    const struct hydro_props* restrict hydro_props,
-    const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling,
-    const struct chemistry_global_data* chem_data, const int convert_part) {
+    struct part *p, struct xpart *xp, struct spart *sp, const struct engine *e,
+    const struct star_formation *starform, const struct cosmology *cosmo,
+    const int with_cosmology, const struct phys_const *phys_const,
+    const struct hydro_props *restrict hydro_props,
+    const struct unit_system *restrict us,
+    const struct cooling_function_data *restrict cooling,
+    const struct chemistry_global_data *chem_data, const int convert_part) {
 
   /* Initialize the feedback */
   feedback_init_after_star_formation(sp, e->feedback_props, star_population);
