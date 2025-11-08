@@ -34,9 +34,9 @@
  * @param hydro_props Additional hydro properties.
  */
 __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
-    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
-    float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {}
+    struct part *p, float dt_therm, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props) {}
 
 /**
  * @brief update metal mass fluxes between two interacting particles during
@@ -50,7 +50,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
  * interaction.
  **/
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
-    struct part* restrict pi, struct part* restrict pj, float mass_flux,
+    struct part *restrict pi, struct part *restrict pj, float mass_flux,
     float flux_dt, int mode) {}
 
 #endif  // SWIFT_CHEMISTRY_NONE_ADDITIONS_H

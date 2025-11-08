@@ -51,21 +51,21 @@ __attribute__((always_inline)) INLINE static void tracers_write_flavour(
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int tracers_write_particles(
-    const struct part* parts, const struct xpart* xparts, struct io_props* list,
+    const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
   return 0;
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
-    const struct spart* sparts, struct io_props* list,
+    const struct spart *sparts, struct io_props *list,
     const int with_cosmology) {
 
   return 0;
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_bparticles(
-    const struct bpart* bparts, struct io_props* list,
+    const struct bpart *bparts, struct io_props *list,
     const int with_cosmology) {
 
   return 0;

@@ -54,7 +54,7 @@
  * @param n_unit Normal vector of the interface
  */
 __attribute__((always_inline)) INLINE static void riemann_solver_solve(
-    const float* WL, const float* WR, float* Whalf, const float* n_unit) {
+    const float *WL, const float *WR, float *Whalf, const float *n_unit) {
   float aL, aR;
   float PLR;
   float vL, vR;
@@ -162,8 +162,8 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
 }
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    const float* Wi, const float* Wj, const float* n_unit, const float* vij,
-    float* totflux) {
+    const float *Wi, const float *Wj, const float *n_unit, const float *vij,
+    float *totflux) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_input(Wi, Wj, n_unit, vij);
@@ -220,9 +220,9 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 }
 
 __attribute__((always_inline)) INLINE static void
-riemann_solve_for_middle_state_flux(const float* Wi, const float* Wj,
-                                    const float* n_unit, const float* vij,
-                                    float* totflux) {
+riemann_solve_for_middle_state_flux(const float *Wi, const float *Wj,
+                                    const float *n_unit, const float *vij,
+                                    float *totflux) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_input(Wi, Wj, n_unit, vij);
