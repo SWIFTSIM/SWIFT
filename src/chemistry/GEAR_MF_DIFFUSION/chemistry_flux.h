@@ -70,12 +70,11 @@ chemistry_limit_metal_mass_flux(const struct part* restrict pi,
   const struct chemistry_part_data *chj = &pj->chemistry_data;
 
   /* Convert the raw riemann mass derivative to mass */
-  double metal_mass_interface = (fluxes[0]) * dt;
+  double metal_mass_interface = fluxes[0] * dt;
 
   /* Use the updated metal masses to ensure that the final result won't be
    * negative */
-  const double m_Z_i =
-    chi->metal_mass[metal] + chi->metal_mass_riemann[metal];
+  const double m_Z_i = chi->metal_mass[metal] + chi->metal_mass_riemann[metal];
   const double m_Z_j = chj->metal_mass[metal] + chj->metal_mass_riemann[metal];
 
   /* This one seemed to work for a certain time */
@@ -84,9 +83,9 @@ chemistry_limit_metal_mass_flux(const struct part* restrict pi,
   /* Choose upwind mass to determine a stability bound on the maximum allowed
      mass exchange, (we do this to prevent negative masses under all
      circumstances) */
-  if (fabs(metal_mass_interface) > 0.0 &&
-      fabs(metal_mass_interface) > 0.9 * upwind_mass) {
-    const double factor = 0.9 * upwind_mass / fabs(metal_mass_interface);
+  const double max_mass = 0.9 * upwind_mass;
+  if (fabs(metal_mass_interface) > 0.0 && fabs(metal_mass_interface) > max_mass) {
+    const double factor = max_mass / fabs(metal_mass_interface);
     fluxes[0] *= factor;
   }
 }
