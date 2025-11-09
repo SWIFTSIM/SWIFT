@@ -267,11 +267,11 @@ __attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
   /* Parabolic evolution term */
   const float Damping_Term = 1.0f * afac2 * v_sig * Gauge / p->h;
   /* Density change term */
-  const float DivV_Term = 0.0 * hydro_get_div_v(p) * Gauge;
+  const float DivV_Term = 0.5 * hydro_get_div_v(p) * Gauge;
   /* Cosmological term */
   const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * Gauge;
 
-  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 0.f * c->a *
+  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 1.f * c->a *
          c->a;
 }
 
@@ -577,21 +577,21 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     }
   }
 
-  const float alpha_AR_max = 0.0;
+  const float alpha_AR_max = 1.0;
 
   p->mhd_data.alpha_AR =
       normB ? fminf(alpha_AR_max, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
 
   /* Sets Induction equation */
-  p->mhd_data.dAdt[0] = p->mhd_data.grad.Mat_dax[0] +
+  p->mhd_data.dAdt[0] = -(p->mhd_data.grad.Mat_dax[0] +
                         p->mhd_data.grad.Mat_day[0] +
-                        p->mhd_data.grad.Mat_daz[0];
-  p->mhd_data.dAdt[1] = p->mhd_data.grad.Mat_dax[1] +
+                        p->mhd_data.grad.Mat_daz[0]);
+  p->mhd_data.dAdt[1] = -(p->mhd_data.grad.Mat_dax[1] +
                         p->mhd_data.grad.Mat_day[1] +
-                        p->mhd_data.grad.Mat_daz[1];
-  p->mhd_data.dAdt[2] = p->mhd_data.grad.Mat_dax[2] +
+                        p->mhd_data.grad.Mat_daz[1]);
+  p->mhd_data.dAdt[2] = -(p->mhd_data.grad.Mat_dax[2] +
                         p->mhd_data.grad.Mat_day[2] +
-                        p->mhd_data.grad.Mat_daz[2];
+                        p->mhd_data.grad.Mat_daz[2]);
 }
 
 /**
