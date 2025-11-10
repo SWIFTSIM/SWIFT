@@ -2860,23 +2860,23 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       if (t->type == task_type_self) {
         cell_activate_subcell_sinks_tasks(ci, NULL, s, with_timestep_sync);
 
-        /* TODO: Check if we need that. Stars have it, BHs don't */
-        /* cell_activate_drift_sink(ci, s); */
-        /* cell_activate_drift_part(ci, s);         */
+        /* Particle creation requires requires particles in thise cell to be
+           drifted. So drift them all! */
+        cell_activate_drift_sink(ci, s);
+        cell_activate_drift_part(ci, s);
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_pair) {
         cell_activate_subcell_sinks_tasks(ci, cj, s, with_timestep_sync);
 
-        /* TODO: Check if we need that. Stars have it, BHs don't */
-        /* Activate the drift tasks. */
-        /* if (ci_nodeID == nodeID) cell_activate_drift_sink(ci, s); */
-        /* if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s); */
+        /* Particle creation requires requires particles in thise cell to be
+           drifted. So drift them all! */
+        if (ci_nodeID == nodeID) cell_activate_drift_sink(ci, s);
+        if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
-        /* Activate the drift tasks. */
-        /* if (cj_nodeID == nodeID) cell_activate_drift_sink(cj, s); */
-        /* if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s); */
+        if (cj_nodeID == nodeID) cell_activate_drift_sink(cj, s);
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
 
         /* Activate sinks_in for each cell that is part of
          * a pair task as to not miss any dependencies */
@@ -3142,7 +3142,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     }
     if (c->top->sinks.star_formation_sink != NULL) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
-      cell_activate_super_sink_drifts(c->top, s);
+      cell_activate_super_spart_drifts(c->top, s);
     }
 
     /* If we don't have pair tasks, then the sink_in and sink_out still

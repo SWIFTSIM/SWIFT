@@ -30,7 +30,7 @@
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell_init(
-    struct part* p) {
+    struct part *p) {
 
   p->limiter.rho[0] = FLT_MAX;
   p->limiter.rho[1] = -FLT_MAX;
@@ -55,7 +55,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell_init(
  * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
+hydro_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
 
   /* basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
@@ -79,7 +79,7 @@ hydro_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
  * @brief Slope-limit the given quantity.
  */
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_quantity(
-    float* gradient, const float maxr, const float value, const float valmin,
+    float *gradient, const float maxr, const float value, const float valmin,
     const float valmax) {
 
   float gradtrue = sqrtf(gradient[0] * gradient[0] + gradient[1] * gradient[1] +
@@ -103,7 +103,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_quantity(
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
-    struct part* p) {
+    struct part *p) {
 
   float W[5];
   float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3];

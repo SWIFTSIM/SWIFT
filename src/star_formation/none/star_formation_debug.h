@@ -20,6 +20,6 @@
 #define SWIFT_STAR_FORMATION_NONE_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void star_formation_debug_particle(
-    const struct part* p, const struct xpart* xp) {}
+    const struct part *p, const struct xpart *xp) {}
 
 #endif /* SWIFT_STAR_FORMATION_NONE_DEBUG_H */
