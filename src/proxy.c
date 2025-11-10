@@ -871,15 +871,15 @@ void proxy_parts_exchange_first(struct proxy *p) {
                 p->nodeID, p->nodeID * proxy_tag_shift + proxy_tag_count,
                 MPI_COMM_WORLD, &p->req_parts_count_in) != MPI_SUCCESS)
     error("Failed to irecv nr of parts.");
-    /* #ifdef SWIFT_DEBUG_CHECKS */
-    /* message( */
-    /* "irecv particle counts [%i, %i, %i, %i, %i] from node %i, I am node %i.",
-     */
-    /* p->buff_in[0], p->buff_in[1], p->buff_in[2], p->buff_in[3],
-     * p->buff_in[4], */
-    /* p->nodeID, p->mynodeID); */
-    /* fflush(stdout); */
-    /* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
+  /* #ifdef SWIFT_DEBUG_CHECKS */
+  /* message( */
+  /* "irecv particle counts [%i, %i, %i, %i, %i] from node %i, I am node %i.",
+   */
+  /* p->buff_in[0], p->buff_in[1], p->buff_in[2], p->buff_in[3],
+   * p->buff_in[4], */
+  /* p->nodeID, p->mynodeID); */
+  /* fflush(stdout); */
+  /* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
 
 #else
   error("SWIFT was not compiled with MPI support.");

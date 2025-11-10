@@ -1160,7 +1160,7 @@ void scheduler_write_cell_dependencies_debug(struct scheduler *s, int verbose,
 
   /* Write the top cell */
   scheduler_write_cell_dependencies(s, verbose, step, c->top->cellID);
-#endif  
+#endif
 }
 
 /**

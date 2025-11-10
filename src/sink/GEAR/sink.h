@@ -789,8 +789,8 @@ INLINE static int sink_spawn_star(struct sink *sink, const struct engine *e,
                                   const struct sink_props *sink_props,
                                   const struct cosmology *cosmo,
                                   const int with_cosmology,
-                                  const struct phys_const* phys_const,
-                                  const struct unit_system* restrict us) {
+                                  const struct phys_const *phys_const,
+                                  const struct unit_system *restrict us) {
 
   /* Exit if we have disabled SF */
   if (sink_props->disable_star_formation) {

@@ -186,7 +186,7 @@ sink_compute_angular_momenta_criterion(
  * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static float sink_get_softening(
-    const struct sink* sink, const struct gravity_props* grav_props) {
+    const struct sink *sink, const struct gravity_props *grav_props) {
   /* This is not MPI friendly */
   /* return gravity_get_softening(sink->gpart, grav_props); */
   return grav_props->epsilon_baryon_cur;
