@@ -73,7 +73,7 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
  * @param xp The extra particle to act upon
  */
 __attribute__((always_inline)) INLINE static void feedback_end_density(
-    struct part* p, struct xpart* xp) {}
+    struct part *p, struct xpart *xp) {}
 
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the

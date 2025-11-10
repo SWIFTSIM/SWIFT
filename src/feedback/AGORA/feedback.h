@@ -68,7 +68,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
  * @param p The particle to act upon
  * @param xp The extra particle to act upon
  */
-void feedback_end_density(struct part* p, struct xpart* xp);
+void feedback_end_density(struct part *p, struct xpart *xp);
 
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the

@@ -38,14 +38,14 @@
  * @param xp The #xpart to consider.
  * @param e The #engine.
  */
-void feedback_update_part(struct part* p, struct xpart* xp,
-                          const struct engine* e) {
+void feedback_update_part(struct part *p, struct xpart *xp,
+                          const struct engine *e) {
 
   /* Did the particle receive a supernovae */
   if (xp->feedback_data.delta_mass == 0) return;
 
-  const struct cosmology* cosmo = e->cosmology;
-  const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
 
   /* Turn off the cooling */
   xp->cooling_data.time_last_event = e->time;
@@ -115,7 +115,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
  * @param xp The extra particle to act upon
  */
 __attribute__((always_inline)) INLINE void feedback_end_density(
-    struct part* p, struct xpart* xp) {
+    struct part *p, struct xpart *xp) {
   p->feedback_data.density.wcount = p->density.wcount;
 }
 
@@ -128,7 +128,7 @@ __attribute__((always_inline)) INLINE void feedback_end_density(
  * @param p The particle.
  * @param xp The extended data of the particle.
  */
-void feedback_reset_part(struct part* p, struct xpart* xp) {}
+void feedback_reset_part(struct part *p, struct xpart *xp) {}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?
@@ -136,7 +136,7 @@ void feedback_reset_part(struct part* p, struct xpart* xp) {}
  * @param sp The #spart.
  * @param e The #engine.
  */
-int feedback_is_active(const struct spart* sp, const struct engine* e) {
+int feedback_is_active(const struct spart *sp, const struct engine *e) {
   /* The particle is inactive if its birth_scale_factor or birth_time is
    * negative */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
@@ -152,7 +152,7 @@ int feedback_is_active(const struct spart* sp, const struct engine* e) {
  *
  * @param sp The #spart.
  */
-int feedback_should_inject_SN_feedback(const struct spart* sp) {
+int feedback_should_inject_SN_feedback(const struct spart *sp) {
   /* Do we have supernovae? */
   return sp->feedback_data.energy_ejected != 0;
 }
@@ -162,7 +162,7 @@ int feedback_should_inject_SN_feedback(const struct spart* sp) {
  *
  * @param sp The particle to act upon
  */
-void feedback_init_spart(struct spart* sp) {
+void feedback_init_spart(struct spart *sp) {
   sp->feedback_data.enrichment_weight = 0.f;
 
   sp->feedback_data.f_sum_minus_term[0] = 0.0;
@@ -195,8 +195,8 @@ void feedback_init_spart(struct spart* sp) {
  *
  * This is called in the stars ghost.
  */
-void feedback_reset_feedback(struct spart* sp,
-                             const struct feedback_props* feedback_props) {
+void feedback_reset_feedback(struct spart *sp,
+                             const struct feedback_props *feedback_props) {
   sp->feedback_data.energy_ejected = 0;
   sp->feedback_data.enrichment_weight = 0.f;
 
@@ -233,8 +233,8 @@ void feedback_reset_feedback(struct spart* sp,
  * @param sp The particle to act upon.
  * @param feedback_props The properties of the feedback model.
  */
-void feedback_prepare_spart(struct spart* sp,
-                            const struct feedback_props* feedback_props) {}
+void feedback_prepare_spart(struct spart *sp,
+                            const struct feedback_props *feedback_props) {}
 
 /**
  * @brief Prepare a #spart for the feedback task.
@@ -255,11 +255,11 @@ void feedback_prepare_spart(struct spart* sp,
  * @param ti_begin The integer time at the beginning of the step.
  * @param with_cosmology Are we running with cosmology on?
  */
-void feedback_prepare_feedback(struct spart* restrict sp,
-                               const struct feedback_props* feedback_props,
-                               const struct cosmology* cosmo,
-                               const struct unit_system* us,
-                               const struct phys_const* phys_const,
+void feedback_prepare_feedback(struct spart *restrict sp,
+                               const struct feedback_props *feedback_props,
+                               const struct cosmology *cosmo,
+                               const struct unit_system *us,
+                               const struct phys_const *phys_const,
                                const double star_age_beg_step, const double dt,
                                const double time, const integertime_t ti_begin,
                                const int with_cosmology) {}
@@ -288,9 +288,9 @@ void feedback_prepare_feedback(struct spart* restrict sp,
  * @param scalar_weigth_j (return) Scalar weight.
  */
 __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
-    const float r2, const float* dx, const float hi, const float hj,
-    const struct spart* restrict si, const struct part* restrict pj,
-    double dx_ij_plus[3], double dx_ij_minus[3], double* scalar_weight_j) {
+    const float r2, const float *dx, const float hi, const float hj,
+    const struct spart *restrict si, const struct part *restrict pj,
+    double dx_ij_plus[3], double dx_ij_minus[3], double *scalar_weight_j) {
 
   const float r = sqrtf(r2);
 
@@ -377,8 +377,8 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
  */
 __attribute__((always_inline)) INLINE void
 feedback_compute_vector_weight_non_normalized(
-    const float r2, const float* dx, const float hi, const float hj,
-    const struct spart* restrict si, const struct part* restrict pj,
+    const float r2, const float *dx, const float hi, const float hj,
+    const struct spart *restrict si, const struct part *restrict pj,
     double f_plus_i[3], double f_minus_i[3], double w_j[3]) {
   double dx_ij_plus[3], dx_ij_minus[3], scalar_weight_j;
   feedback_compute_scalar_weight(r2, dx, hi, hj, si, pj, dx_ij_plus,
@@ -479,10 +479,10 @@ feedback_compute_vector_weight_non_normalized(
  * @param w_j_bar (return) Normalized vector weight. Pointer to array of size 3.
  */
 __attribute__((always_inline)) INLINE void
-feedback_compute_vector_weight_normalized(const float r2, const float* dx,
+feedback_compute_vector_weight_normalized(const float r2, const float *dx,
                                           const float hi, const float hj,
-                                          const struct spart* restrict si,
-                                          const struct part* restrict pj,
+                                          const struct spart *restrict si,
+                                          const struct part *restrict pj,
                                           double w_j_bar[3]) {
   double f_plus_i[3], f_minus_i[3], w_j[3];
   feedback_compute_vector_weight_non_normalized(r2, dx, hi, hj, si, pj,
@@ -511,12 +511,12 @@ feedback_compute_vector_weight_normalized(const float r2, const float* dx,
  * @param us The #unit_system.
  */
 __attribute__((always_inline)) INLINE double
-feedback_get_physical_SN_terminal_momentum(const struct spart* restrict sp,
-                                           const struct part* restrict p,
-                                           const struct xpart* restrict xp,
-                                           const struct phys_const* phys_const,
-                                           const struct unit_system* us,
-                                           const struct cosmology* cosmo) {
+feedback_get_physical_SN_terminal_momentum(const struct spart *restrict sp,
+                                           const struct part *restrict p,
+                                           const struct xpart *restrict xp,
+                                           const struct phys_const *phys_const,
+                                           const struct unit_system *us,
+                                           const struct cosmology *cosmo) {
 
   /* Terminal momentum 0 (in internal units). Note the 1e-5 term since we want
      it in km and not cm. */
@@ -580,9 +580,9 @@ feedback_get_physical_SN_terminal_momentum(const struct spart* restrict sp,
  * @param us The #unit_system.
  */
 __attribute__((always_inline)) INLINE float
-feedback_get_physical_SN_cooling_radius(const struct spart* restrict sp,
+feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
                                         float p_SN_initial, float p_terminal,
-                                        const struct cosmology* cosmo) {
+                                        const struct cosmology *cosmo) {
 
   const float m_ej = sp->feedback_data.mass_ejected;
 
@@ -617,7 +617,7 @@ feedback_get_physical_SN_cooling_radius(const struct spart* restrict sp,
  */
 __attribute__((always_inline)) INLINE double
 feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-    struct part* p, struct xpart* xp, float old_mass, float new_mass) {
+    struct part *p, struct xpart *xp, float old_mass, float new_mass) {
   const float dm = xp->feedback_data.delta_mass;
 
   const double p_old[3] = {old_mass * xp->v_full[0], old_mass * xp->v_full[1],

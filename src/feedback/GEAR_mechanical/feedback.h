@@ -29,22 +29,22 @@
 
 #include <strings.h>
 
-void feedback_update_part(struct part* p, struct xpart* xp,
-                          const struct engine* e);
-void feedback_end_density(struct part* p, struct xpart* xp);
-void feedback_reset_part(struct part* p, struct xpart* xp);
-int feedback_is_active(const struct spart* sp, const struct engine* e);
-int feedback_should_inject_SN_feedback(const struct spart* sp);
-void feedback_init_spart(struct spart* sp);
-void feedback_reset_feedback(struct spart* sp,
-                             const struct feedback_props* feedback_props);
-void feedback_prepare_spart(struct spart* sp,
-                            const struct feedback_props* feedback_props);
-void feedback_prepare_feedback(struct spart* restrict sp,
-                               const struct feedback_props* feedback_props,
-                               const struct cosmology* cosmo,
-                               const struct unit_system* us,
-                               const struct phys_const* phys_const,
+void feedback_update_part(struct part *p, struct xpart *xp,
+                          const struct engine *e);
+void feedback_end_density(struct part *p, struct xpart *xp);
+void feedback_reset_part(struct part *p, struct xpart *xp);
+int feedback_is_active(const struct spart *sp, const struct engine *e);
+int feedback_should_inject_SN_feedback(const struct spart *sp);
+void feedback_init_spart(struct spart *sp);
+void feedback_reset_feedback(struct spart *sp,
+                             const struct feedback_props *feedback_props);
+void feedback_prepare_spart(struct spart *sp,
+                            const struct feedback_props *feedback_props);
+void feedback_prepare_feedback(struct spart *restrict sp,
+                               const struct feedback_props *feedback_props,
+                               const struct cosmology *cosmo,
+                               const struct unit_system *us,
+                               const struct phys_const *phys_const,
                                const double star_age_beg_step, const double dt,
                                const double time, const integertime_t ti_begin,
                                const int with_cosmology);
@@ -55,7 +55,7 @@ void feedback_prepare_feedback(struct spart* restrict sp,
  * @param feedback The #feedback_props.
  * @param h_grp The HDF5 group in which to write
  */
-INLINE static void feedback_write_flavour(struct feedback_props* feedback,
+INLINE static void feedback_write_flavour(struct feedback_props *feedback,
                                           hid_t h_grp) {
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 1
   io_write_attribute_s(h_grp, "Feedback Model", "GEAR-mechanical_1");
@@ -68,34 +68,34 @@ INLINE static void feedback_write_flavour(struct feedback_props* feedback,
 #endif
 };
 
-void feedback_compute_scalar_weight(const float r2, const float* dx,
+void feedback_compute_scalar_weight(const float r2, const float *dx,
                                     const float hi, const float hj,
-                                    const struct spart* restrict si,
-                                    const struct part* restrict pj,
+                                    const struct spart *restrict si,
+                                    const struct part *restrict pj,
                                     double dx_ij_plus[3], double dx_ij_minus[3],
-                                    double* scalar_weight_j);
+                                    double *scalar_weight_j);
 
 void feedback_compute_vector_weight_non_normalized(
-    const float r2, const float* dx, const float hi, const float hj,
-    const struct spart* restrict si, const struct part* restrict pj,
+    const float r2, const float *dx, const float hi, const float hj,
+    const struct spart *restrict si, const struct part *restrict pj,
     double f_plus_i[3], double f_minus_i[3], double w_j[3]);
 
-void feedback_compute_vector_weight_normalized(const float r2, const float* dx,
+void feedback_compute_vector_weight_normalized(const float r2, const float *dx,
                                                const float hi, const float hj,
-                                               const struct spart* restrict si,
-                                               const struct part* restrict pj,
+                                               const struct spart *restrict si,
+                                               const struct part *restrict pj,
                                                double w_j_bar[3]);
 
 double feedback_get_physical_SN_terminal_momentum(
-    const struct spart* restrict sp, const struct part* restrict p,
-    const struct xpart* restrict xp, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct cosmology* cosmo);
+    const struct spart *restrict sp, const struct part *restrict p,
+    const struct xpart *restrict xp, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cosmology *cosmo);
 
-float feedback_get_physical_SN_cooling_radius(const struct spart* restrict sp,
+float feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
                                               float p_SN_initial,
                                               float p_terminal,
-                                              const struct cosmology* cosmo);
+                                              const struct cosmology *cosmo);
 
 double feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-    struct part* p, struct xpart* xp, float old_mass, float new_mass);
+    struct part *p, struct xpart *xp, float old_mass, float new_mass);
 #endif /* SWIFT_FEEDBACK_GEAR_MECHANICAL_H */
