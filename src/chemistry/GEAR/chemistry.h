@@ -389,6 +389,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
 /**
  * @brief Updates to the chemistry data after the hydro force loop.
  *
+ * Nothing to do here
+ *
  * @param p The particle to act upon.
  * @param cosmo The current cosmological model.
  * @param with_cosmology Are we running with the cosmology?
@@ -857,6 +859,8 @@ chemistry_set_star_supernovae_ejected_yields(
 
 /**
  * @brief Extra chemistry operations to be done during the drift.
+ *
+ * Nothing to do here.
  *
  * @param p Particle to act upon.
  * @param xp The extended particle data to act upon.
