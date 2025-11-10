@@ -191,8 +191,8 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
  */
 #define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                    \
   __attribute__((always_inline)) INLINE static size_t            \
-  task_cell_overlap_##TYPE(const struct cell *restrict ci,       \
-                           const struct cell *restrict cj) {     \
+      task_cell_overlap_##TYPE(const struct cell *restrict ci,   \
+                               const struct cell *restrict cj) { \
                                                                  \
     if (ci == NULL || cj == NULL) return 0;                      \
                                                                  \
