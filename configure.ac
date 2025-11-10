@@ -2949,7 +2949,7 @@ esac
 # Forcing terms
 AC_ARG_WITH([forcing],
    [AS_HELP_STRING([--with-forcing=<term>],
-      [Hydrodynamics forcing terms @<:@none, roberts-flow, roberts-flow-acceleration, abc-flow default: none@:>@]
+      [Hydrodynamics forcing terms @<:@none, roberts-flow, roberts-flow-acceleration, abc-flow, balsarakim default: none@:>@]
    )],
    [with_forcing="$withval"],
    [with_forcing="none"]
@@ -2966,6 +2966,9 @@ case "$with_forcing" in
    ;;
    abc-flow)
       AC_DEFINE([FORCING_ABC_FLOW], [1], [ABC flow external forcing terms])
+   ;;
+   balsarakim)
+      AC_DEFINE([FORCING_BALSARAKIM], [1], [BalsaraKim internal energy injections])
    ;;
    *)
       AC_MSG_ERROR([Unknown external forcing term: $with_forcing])
@@ -3321,6 +3324,9 @@ AM_CONDITIONAL([HAVEGEARRT], [test "${with_rt:0:4}" = "GEAR"])
 
 # Check if using Moving mesh
 AM_CONDITIONAL([HAVE_MOVING_MESH], [test "$enable_moving_mesh" = "yes"])
+
+# Check if using Balsara-Kim forcing
+AM_CONDITIONAL([HAVE_BALSARAKIM_FORCING], [test "$with_forcing" = "balsarakim"])
 
 
 
