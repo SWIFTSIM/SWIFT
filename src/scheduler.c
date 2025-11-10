@@ -1727,7 +1727,10 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
 
     /* Get the first progeny that exists. */
     int first_child = 0;
-    while (ci->progeny[first_child] == NULL) first_child++;
+    while (ci->progeny[first_child] == NULL && first_child < 8) first_child++;
+
+    /* If we have found no progeny, we are done here. */
+    if (first_child == 8) break;
 
     /* Reuse the task we already have. */
     t->ci = ci->progeny[first_child];
@@ -1772,6 +1775,15 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
             s);
       }
     }
+  }
+
+  /* If we still have a void cell here, kill off the task. */
+  if (t->ci->subtype == cell_subtype_void) {
+    t->type = task_type_none;
+    t->subtype = task_subtype_none;
+    t->ci = NULL;
+    t->skip = 1;
+    return;
   }
 
   /* Now we're not in a void cell we can just call the normal splitter.  */
