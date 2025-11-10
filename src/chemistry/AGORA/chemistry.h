@@ -656,5 +656,4 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
     const struct cosmology *cosmo,
     const struct chemistry_global_data *chem_data) {}
 
-
 #endif /* SWIFT_CHEMISTRY_AGORA_H */
