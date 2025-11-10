@@ -111,7 +111,7 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
    * can't go back more than one global step */
   kick_part(p, xp, dt_kick_hydro, dt_kick_grav, /*dt_kick_mesh_grav=*/0.,
             dt_kick_therm, dt_kick_corr, e->cosmology, e->hydro_properties,
-            e->entropy_floor, ti_end_half_old, old_ti_beg,
+            e->entropy_floor, e->chemistry, ti_end_half_old, old_ti_beg,
             /*ti_start_mesh=*/-1, /*ti_end_mesh=*/-1);
 
   /* We can now produce a kick to the current point */
@@ -128,7 +128,7 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
    * can't go back more than one global step */
   kick_part(p, xp, dt_kick_hydro, dt_kick_grav, /*dt_kick_mesh_grav=*/0.,
             dt_kick_therm, dt_kick_corr, e->cosmology, e->hydro_properties,
-            e->entropy_floor, new_ti_beg, new_ti_end,
+            e->entropy_floor, e->chemistry, new_ti_beg, new_ti_end,
             /*ti_start_mesh=*/-1, /*ti_end_mesh=*/-1);
 
   /* The particle is now ready to compute its new time-step size and for the
