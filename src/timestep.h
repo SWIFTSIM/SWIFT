@@ -140,7 +140,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
  * @param new_dti_rt The new radiation integer time step.
  */
 __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
-    struct part *restrict p, const struct xpart *restrict xp,
+    const struct part *restrict p, const struct xpart *restrict xp,
     const struct engine *restrict e, const integertime_t new_dti_rt) {
 
   /* Compute the next timestep (hydro condition) */
