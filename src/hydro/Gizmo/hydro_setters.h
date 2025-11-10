@@ -29,7 +29,7 @@
  * @param W Primitive variables.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_part_set_primitive_variables(struct part* restrict p, const float* W) {
+hydro_part_set_primitive_variables(struct part *restrict p, const float *W) {
 
   p->rho = W[0];
   p->fluid_v[0] = W[1];
@@ -46,7 +46,7 @@ hydro_part_set_primitive_variables(struct part* restrict p, const float* W) {
  * @param Q Conserved variables.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_part_set_conserved_variables(struct part* restrict p, const float* Q) {
+hydro_part_set_conserved_variables(struct part *restrict p, const float *Q) {
 
   p->conserved.mass = Q[0];
   p->conserved.momentum[0] = Q[1];
@@ -61,7 +61,7 @@ hydro_part_set_conserved_variables(struct part* restrict p, const float* Q) {
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_reset_gradients(
-    struct part* restrict p) {
+    struct part *restrict p) {
 
   p->gradients.rho[0] = 0.0f;
   p->gradients.rho[1] = 0.0f;
@@ -88,8 +88,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_reset_gradients(
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_set_gradients(
-    struct part* restrict p, const float* gradrho, const float* gradvx,
-    const float* gradvy, const float* gradvz, const float* gradP) {
+    struct part *restrict p, const float *gradrho, const float *gradvx,
+    const float *gradvy, const float *gradvz, const float *gradP) {
 
   p->gradients.rho[0] = gradrho[0];
   p->gradients.rho[1] = gradrho[1];
@@ -122,8 +122,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_set_gradients(
  * @param dP Pressure gradient contribution.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_update_gradients(
-    struct part* restrict p, const float* drho, const float* dvx,
-    const float* dvy, const float* dvz, const float* dP) {
+    struct part *restrict p, const float *drho, const float *dvx,
+    const float *dvy, const float *dvz, const float *dP) {
 
   p->gradients.rho[0] += drho[0];
   p->gradients.rho[1] += drho[1];
@@ -152,7 +152,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_gradients(
  * @param norm Normalisation factor.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_part_normalise_gradients(struct part* restrict p, const float norm) {
+hydro_part_normalise_gradients(struct part *restrict p, const float norm) {
 
   p->gradients.rho[0] *= norm;
   p->gradients.rho[1] *= norm;
@@ -180,7 +180,7 @@ hydro_part_normalise_gradients(struct part* restrict p, const float norm) {
  * @param m The mass to set.
  */
 __attribute__((always_inline)) INLINE static void hydro_set_mass(
-    struct part* restrict p, float m) {
+    struct part *restrict p, float m) {
 
   p->conserved.mass = m;
 }
@@ -195,7 +195,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_mass(
  * @param du_dt The new time derivative of the comoving internal energy.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_comoving_internal_energy_dt(struct part* restrict p,
+hydro_set_comoving_internal_energy_dt(struct part *restrict p,
                                       const float du_dt) {
 
   const float old_du_dt = hydro_get_comoving_internal_energy_dt(p);
@@ -213,8 +213,8 @@ hydro_set_comoving_internal_energy_dt(struct part* restrict p,
  * @param du_dt The time derivative of the physical internal energy.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_physical_internal_energy_dt(struct part* restrict p,
-                                      const struct cosmology* restrict cosmo,
+hydro_set_physical_internal_energy_dt(struct part *restrict p,
+                                      const struct cosmology *restrict cosmo,
                                       const float du_dt) {
 
   hydro_set_comoving_internal_energy_dt(
@@ -228,7 +228,7 @@ hydro_set_physical_internal_energy_dt(struct part* restrict p,
  * @param u The comoving internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_comoving_internal_energy(struct part* p, const float u) {
+hydro_set_comoving_internal_energy(struct part *p, const float u) {
 
   const float mass = p->conserved.mass;
   if (mass <= 0.0f) {
@@ -262,7 +262,7 @@ hydro_set_comoving_internal_energy(struct part* p, const float u) {
  * @param entropy The physical entropy
  */
 __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
-    struct part* p, struct xpart* xp, const struct cosmology* cosmo,
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const float entropy) {
 
   const float u = gas_internal_energy_from_entropy(p->rho, entropy);
@@ -278,8 +278,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
  * @param u The physical internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_physical_internal_energy(struct part* p, struct xpart* xp,
-                                   const struct cosmology* cosmo,
+hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
+                                   const struct cosmology *cosmo,
                                    const float u) {
 
   hydro_set_comoving_internal_energy(p, u / cosmo->a_factor_internal_energy);
@@ -294,8 +294,8 @@ hydro_set_physical_internal_energy(struct part* p, struct xpart* xp,
  */
 __attribute__((always_inline)) INLINE static void
 hydro_set_drifted_physical_internal_energy(
-    struct part* p, const struct cosmology* cosmo,
-    const struct pressure_floor_props* pressure_floor, const float u) {
+    struct part *p, const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor, const float u) {
 
   hydro_set_comoving_internal_energy(p, u / cosmo->a_factor_internal_energy);
 }
@@ -307,7 +307,7 @@ hydro_set_drifted_physical_internal_energy(
  * @param alpha the new value for the viscosity coefficient.
  */
 __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
-    struct part* restrict p, float alpha) {
+    struct part *restrict p, float alpha) {
   /* Purposefully left empty */
 }
 
@@ -318,7 +318,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
  * @param p the particle of interest
  */
 __attribute__((always_inline)) INLINE static void
-hydro_diffusive_feedback_reset(struct part* restrict p) {
+hydro_diffusive_feedback_reset(struct part *restrict p) {
   /* Purposefully left empty */
 }
 
@@ -328,7 +328,7 @@ hydro_diffusive_feedback_reset(struct part* restrict p) {
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_density(
-    const struct part* restrict p) {
+    const struct part *restrict p) {
 
   return p->rho;
 }
@@ -340,7 +340,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_density(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
-    const struct part* restrict p, const struct cosmology* cosmo) {
+    const struct part *restrict p, const struct cosmology *cosmo) {
 
   return cosmo->a3_inv * p->rho;
 }
@@ -356,7 +356,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
  * @param u The new internal energy
  */
 __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
-    struct part* restrict p, float u) {
+    struct part *restrict p, float u) {
 
   /* conserved.energy is NOT the specific energy (u), but the total thermal
      energy (u*m) */
@@ -381,7 +381,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
  * @param S The new entropy
  */
 __attribute__((always_inline)) INLINE static void hydro_set_entropy(
-    struct part* restrict p, float S) {
+    struct part *restrict p, float S) {
 
   p->conserved.energy = S * pow_gamma_minus_one(p->rho) *
                         hydro_one_over_gamma_minus_one * p->conserved.mass;
@@ -407,7 +407,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
  * @param u_init The new initial internal energy.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_init_internal_energy(struct part* p, float u_init) {
+hydro_set_init_internal_energy(struct part *p, float u_init) {
 
   /* We store the initial energy per unit mass in the energy
    * variable as the conversion to energy will be done later,
@@ -425,7 +425,7 @@ hydro_set_init_internal_energy(struct part* p, float u_init) {
  * @param v The new particle velocity.
  */
 __attribute__((always_inline)) INLINE static void hydro_set_particle_velocity(
-    struct part* p, float* v) {
+    struct part *p, float *v) {
   p->v[0] = v[0];
   p->v[1] = v[1];
   p->v[2] = v[2];
