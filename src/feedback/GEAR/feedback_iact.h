@@ -146,7 +146,7 @@ runner_iact_nonsym_feedback_apply(
   /* Distribute pre-SN */
   if (e_preSN != 0.0 && weight > 0.0) {
     /* If the distance is null, no need to use calculation ressources */
-    if (r2 > 0.0){
+    if (r2 > 0.0 && new_mass > 0.0){
       /* -------------------- set to physical quantities -------------------- */
       /* Cosmology constant */
       const float a = cosmo->a;
@@ -154,11 +154,12 @@ runner_iact_nonsym_feedback_apply(
       const float H = cosmo->H;
       const float a_dot = a * H;
 
-      /* physical velocities */
+      /* physical velocities of the star particle i */
       const float v_i_p[3] = {a_dot * si->x[0] + si->v[0] * a_inv,
                               a_dot * si->x[1] + si->v[1] * a_inv,
                               a_dot * si->x[2] + si->v[2] * a_inv};
 
+      /* physical velocities of the gas particle j */
       const float v_j_p[3] = {a_dot * pj->x[0] + xpj->v_full[0] * a_inv,
                               a_dot * pj->x[1] + xpj->v_full[1] * a_inv,
                               a_dot * pj->x[2] + xpj->v_full[2] * a_inv};
@@ -169,10 +170,10 @@ runner_iact_nonsym_feedback_apply(
                              dx[2] * a}; 
 
       /* --------------- Compute physical momentum received ---------------------------- */
-      /* Total momentum ejected by the winds during the timestep */
+      /* Total momentum ejected by the winds during the timestep from the star particle i */
       const double p_ej = sqrt(2.0 * si->feedback_data.preSN.mass_ejected * si->feedback_data.preSN.energy_ejected);
 
-      /* norm of physical velocities */
+      /* norm of physical velocities of the gas particle j */
       const float norm2_v = v_j_p[0] * v_j_p[0]
                           + v_j_p[1] * v_j_p[1]
                           + v_j_p[2] * v_j_p[2];
@@ -180,8 +181,12 @@ runner_iact_nonsym_feedback_apply(
       double dp_lab_frame[3];
 
       for (int i = 0; i < 3; i++) {
+        /* the unit direction from the gas particle j to the star particle i */
+        const double unit_direction = dx_p[i]/r_p;
+        /* the additional momentum due to change of frame of reference (from star particle frame to lab frame) */
+        const double change_of_frame_dp = si->feedback_data.preSN.mass_ejected * v_i_p[i];
         /* momentum in lab frame due to the ejecta */
-        dp_lab_frame[i] = weight * (p_ej + si->feedback_data.preSN.mass_ejected * v_i_p[i]) * (dx_p[i]/r_p);
+        dp_lab_frame[i] = weight * (p_ej + change_of_frame_dp) * unit_direction;
 
         /* Give the comoving momentum to the gas particle */
         xpj->feedback_data.delta_p[i] -= dp_lab_frame[i] * a; /* The minus sign comes from the direction of dx (si - pj) */
@@ -193,28 +198,46 @@ runner_iact_nonsym_feedback_apply(
       const double norm2_dp = weight * weight * p_ej * p_ej;
     
       /* ------------------ calculate physical Energy and internal Energy received -------------------------- */
-      if (new_mass > 0){
-        /* The total energy ejected in the lab frame, and new and old kinetic energies */
-        const double dE_lab_frame = ((weight * e_preSN) + 0.5 * (norm2_dp_lab_frame - norm2_dp) / (weight * si->feedback_data.preSN.mass_ejected));
-        const double old_kinetic_energy = 0.5 * pj->mass * norm2_v;
+      
+      /* The energy ejected from the star particle i by stellar wind that is actually received by the gas particle j */
+      const double weighted_energy = weight * e_preSN;
+      /* The additional energy received by the gas particle j due to the momentum of the star particle i */
+      const double dE_change_of_frame = 0.5 * (norm2_dp_lab_frame - norm2_dp) / (weight * si->feedback_data.preSN.mass_ejected);
+      /* The total energy received from the gas particle j in the laboratory frame of reference */
+      const double dE_lab_frame = weighted_energy + dE_change_of_frame;
 
-        const double norm2_p_new = {(pj->mass * v_j_p[0] + dp_lab_frame[0]) * (pj->mass * v_j_p[0] + dp_lab_frame[0]) +
-                                    (pj->mass * v_j_p[1] + dp_lab_frame[1]) * (pj->mass * v_j_p[1] + dp_lab_frame[1]) +
-                                    (pj->mass * v_j_p[2] + dp_lab_frame[2]) * (pj->mass * v_j_p[2] + dp_lab_frame[2])};
-        const double new_kinetic_energy = 0.5 * norm2_p_new / new_mass; 
+      /* The momentum of the gas particle j after receiving the momentum from stellar wind */
+      const double p_new[3] = {pj->mass * v_j_p[0] + dp_lab_frame[0]
+                              ,pj->mass * v_j_p[1] + dp_lab_frame[1]
+                              ,pj->mass * v_j_p[2] + dp_lab_frame[2]};
+      const double norm2_p_new = {p_new[0] * p_new[0] +
+                                  p_new[1] * p_new[1] +
+                                  p_new[2] * p_new[2]};
 
-        const float du =  (old_kinetic_energy + dE_lab_frame - new_kinetic_energy) / new_mass; /* E_new + U_new = E_old + U_old + dE */ 
-        
-        xpj->feedback_data.delta_u += du;
+      /* The new and old kinetic energy of the gas particle j */
+      const double new_kinetic_energy = 0.5 * norm2_p_new / new_mass; 
+      const double old_kinetic_energy = 0.5 * pj->mass * norm2_v;
 
-        if (a == 1.0 && a_inv == 1.0 && cosmo->z == 0.0){
-          const float dv_phys = sqrt(norm2_dp_lab_frame) / new_mass;
-          hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
-        }
+      /* The additional specific internal energy of the gas particle j.  
+        Ekin_new + U_new = Ekin_old + U_old + dEtot */ 
+      const float du =  (old_kinetic_energy + dE_lab_frame - new_kinetic_energy) / new_mass;      
+      xpj->feedback_data.delta_u += du;
+
+      /* Only used in non-cosmological simulations. Has to be 
+         investigated in cosmological simulations*/
+      if (a == 1.0 && a_inv == 1.0 && cosmo->z == 0.0){
+        /* Update the signal velocity of the gas particle receiving a kick. */
+        const float dv_phys = sqrt(norm2_dp_lab_frame) / new_mass;
+        hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
       }
 
       xpj->feedback_data.hit_by_preSN = 1;
     }
+  }
+
+  /* Impose maximal viscosity (only for SN) */
+  if (xpj->feedback_data.hit_by_SN) {
+    hydro_diffusive_feedback_reset(pj);
   }
 
   /* Synchronize the particle on the timeline */
