@@ -1,0 +1,65 @@
+Balsara & Kim Supernova Driven Turbulence
+_________________________________________
+
+This test is based on the supernova-driven turbulence test from Balsara & Kim (2004) and Price (2018)
+
+This test consists of a series of energy injections at pre-determined times and locations, artificially simulating supernova energy injections. These injections will form interacting shock shells driving turbulence and magnetic field amplification, and in turn result in a filamentary structure. While a quantified comparison to the runs of Balsara & Kim (2004) and Price (2018) are hindered by the use of internal units in their papers, we look for the following features:
+    1) Controlled magnetic divergences
+    2) Sharp and filamentary density structure
+    3) Saturation of the magnetic energy
+
+
+Running the test
+________________
+
+configure swift as:
+./configure --with-forcing=balsarakim --with-spmhd=direct-induction --with-cooling=EAGLE --with-chemistry=EAGLE --with-kernel=quintic-spline --disable-hand-vec
+
+Get the glass IC file: 
+wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/glassCube_64.hdf5
+
+OR
+
+wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/glassCube_128.hdf5
+
+Adjust the ICs (insert the ICs you are using):
+python3 makeIC.py <glassCube_64.hdf5/glassCube_128.hdf5>
+
+Get the EAGLE cooling tables:
+wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/CoolingTables/EAGLE/coolingtables.tar.gz
+tar -xvzf coolingtables.tar.gz
+
+And run the simulation
+../../swift --hydro --cooling balsarakim.yml |& tee output.log
+
+You can also set up the test by running:
+./run.sh
+
+
+Analysing the Snapshots
+_______________________
+
+To analyse the snapshots you can run the following
+
+<TODO>
+
+
+Adjustments & Variations
+________________________
+
+There are some adjustments/variations possible.
+
+1. changing the energy injection times/locations
+the SN_coords.txt file consists of four columns. The first specifies the time of the injection in Myr. The second to fourth respectively specify the x,y,z coordinates relative to the boxsize. You can change this file or make a new file. Specify which file you want to use in the parameter file under "BalsaraKim:coords_file"
+
+2. changing the mode of energy injection
+There are multiple possible ways of injecting energy you can specify in the parameter file
+    1) set the internal energy to a (constant) given value
+    2) set the internal energy computed from a given pressure
+    3) set the velocity of particles radially to a given value (IN DEVELOPMENT)
+
+3. changing the cooling scheme
+The example uses the EAGLE cooling scheme and chemistry which, although the chemistry does not evolve, allows for a (metallicity and) temparature dependent cooling coefficient. In principle other cooling schemes are also possible. Note that we explicitely run without an entropy floor to capture the fragmentation and filamentary resulting structure. TO CHECK: EFFECT OF DIFFERENT COOLING SCHEMES.
+
+
+
