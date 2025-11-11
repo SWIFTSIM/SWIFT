@@ -236,8 +236,8 @@ runner_iact_nonsym_feedback_apply(
           dp_without_Hubble[i] = weight * (p_ej + change_of_frame_without_Hubble) * unit_direction;
         }
         /* The norm of the momentum without the Hubble flow participation */
-        const double norm2_dp_without_Hubble = { dp_without_Hubble[0] * dp_without_Hubble[0],
-                                                 dp_without_Hubble[1] * dp_without_Hubble[1], 
+        const double norm2_dp_without_Hubble = { dp_without_Hubble[0] * dp_without_Hubble[0] + 
+                                                 dp_without_Hubble[1] * dp_without_Hubble[1] + 
                                                  dp_without_Hubble[2] * dp_without_Hubble[2]};
 
         /* Update the signal velocity of the gas particle receiving a kick. 
