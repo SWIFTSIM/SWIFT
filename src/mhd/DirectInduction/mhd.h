@@ -327,6 +327,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   p->mhd_data.mean_SPH_err = 0.f;
   for (int k = 0; k < 3; k++) {
     p->mhd_data.mean_grad_SPH_err[k] = 0.f;
+    p->mhd_data.Delta_B[k] = 0.0f;
   }
 
 }
@@ -571,7 +572,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   for (int k = 0; k < 3; k++) {
     p->mhd_data.Adv_B_source[k] = 0.0f;
     p->mhd_data.Diff_B_source[k] = 0.0f;
-    p->mhd_data.Delta_B[k] = 0.0f;
   }
 
 }

@@ -615,12 +615,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /* OWAR symmetric */
 
-  const float eta_OWAR_ij = 0.5f * (pi->mhd_data.eta_OWAR + pj->mhd_data.eta_OWAR);
+  //const float eta_OWAR_ij = 0.5f * (pi->mhd_data.eta_OWAR + pj->mhd_data.eta_OWAR);
+  const float eta_OWAR_ij = 2.0f * pi->mhd_data.eta_OWAR * pj->mhd_data.eta_OWAR / (pi->mhd_data.eta_OWAR + pj->mhd_data.eta_OWAR + 10.0f * FLT_MIN);
+  //const float eta_OWAR_ij = sqrtf(pi->mhd_data.eta_OWAR * pj->mhd_data.eta_OWAR);
+  //const float eta_OWAR_ij = fmaxf(pi->mhd_data.eta_OWAR, pj->mhd_data.eta_OWAR);
 
   const float rhoij_a = 0.5f * (rhoi + rhoj);
   const float rhoij_inv = 1.0f / rhoij_a;
 
-  const float grad_term_ij = 0.5f * (f_ij * wi_dr + f_ji * wj_dr);
+  const float grad_term_ij = f_ij * wi_dr + f_ji * wj_dr;
 
   const float OWAR_pref_ij = eta_OWAR_ij * rhoij_inv * grad_term_ij * r_inv;
 
@@ -909,12 +912,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* OWAR symmetric */
 
-  const float eta_OWAR_ij = 0.5f * (pi->mhd_data.eta_OWAR + pj->mhd_data.eta_OWAR);
+  //const float eta_OWAR_ij = 0.5f * (pi->mhd_data.eta_OWAR + pj->mhd_data.eta_OWAR);
+  const float eta_OWAR_ij = 2.0f * pi->mhd_data.eta_OWAR * pj->mhd_data.eta_OWAR / (pi->mhd_data.eta_OWAR + pj->mhd_data.eta_OWAR + 10.0f * FLT_MIN);
+  //const float eta_OWAR_ij = sqrtf(pi->mhd_data.eta_OWAR * pj->mhd_data.eta_OWAR);
+  //const float eta_OWAR_ij = fmaxf(pi->mhd_data.eta_OWAR, pj->mhd_data.eta_OWAR);
+
 
   const float rhoij_a = 0.5f * (rhoi + rhoj);
   const float rhoij_inv = 1.0f / rhoij_a;
 
-  const float grad_term_ij = 0.5f * (f_ij * wi_dr + f_ji * wj_dr);
+  const float grad_term_ij = f_ij * wi_dr + f_ji * wj_dr;
 
   const float OWAR_pref_ij = eta_OWAR_ij * rhoij_inv * grad_term_ij * r_inv;
 
