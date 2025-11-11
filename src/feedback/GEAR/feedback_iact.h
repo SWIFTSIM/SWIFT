@@ -91,12 +91,8 @@ runner_iact_nonsym_feedback_apply(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const integertime_t ti_current) {
 
-  // message("No feedback applied");
-
   const double e_sn = si->feedback_data.energy_ejected;
   const double e_preSN = si->feedback_data.preSN.energy_ejected;
-
-  // message("The preSN energy of the particle %lli is : %lf",si->id,e_preSN);
 
   const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);
@@ -174,7 +170,7 @@ runner_iact_nonsym_feedback_apply(
       const double p_ej = sqrt(2.0 * si->feedback_data.preSN.mass_ejected * si->feedback_data.preSN.energy_ejected);
 
       /* norm of physical velocities of the gas particle j */
-      const float norm2_v = v_j_p[0] * v_j_p[0]
+      const float norm2_v_p = v_j_p[0] * v_j_p[0]
                           + v_j_p[1] * v_j_p[1]
                           + v_j_p[2] * v_j_p[2];
 
@@ -216,7 +212,7 @@ runner_iact_nonsym_feedback_apply(
 
       /* The new and old kinetic energy of the gas particle j */
       const double new_kinetic_energy = 0.5 * norm2_p_new / new_mass; 
-      const double old_kinetic_energy = 0.5 * pj->mass * norm2_v;
+      const double old_kinetic_energy = 0.5 * pj->mass * norm2_v_p;
 
       /* The additional specific internal energy of the gas particle j.  
         Ekin_new + U_new = Ekin_old + U_old + dEtot */ 
@@ -226,8 +222,27 @@ runner_iact_nonsym_feedback_apply(
       /* Only used in non-cosmological simulations. Has to be 
          investigated in cosmological simulations*/
       if (a == 1.0 && a_inv == 1.0 && cosmo->z == 0.0){
-        /* Update the signal velocity of the gas particle receiving a kick. */
-        const float dv_phys = sqrt(norm2_dp_lab_frame) / new_mass;
+        /* Calculate the velocity without Hubble flow for signal velocity */
+        const float v_i_without_Hubble_flow[3] = { si->v[0] * a_inv,
+                                                   si->v[1] * a_inv,
+                                                   si->v[2] * a_inv};
+        const double dp_without_Hubble[3]; 
+        for (int i = 0; i < 3; i++) {
+          /* the unit direction from the gas particle j to the star particle i */
+          const double unit_direction = dx_p[i]/r_p;
+          /* the additional momentum due to change of frame of reference (from star particle frame to lab frame) */
+          const double change_of_frame_without_Hubble = si->feedback_data.preSN.mass_ejected * v_i_without_Hubble_flow[i];
+          /* momentum in lab frame due to the ejecta */
+          dp_without_Hubble[i] = weight * (p_ej + change_of_frame_without_Hubble) * unit_direction;
+        }
+        /* The norm of the momentum without the Hubble flow participation */
+        const double norm2_dp_without_Hubble = { dp_without_Hubble[0] * dp_without_Hubble[0],
+                                                 dp_without_Hubble[1] * dp_without_Hubble[1], 
+                                                 dp_without_Hubble[2] * dp_without_Hubble[2]};
+
+        /* Update the signal velocity of the gas particle receiving a kick. 
+           We want to subtract the Hubble flow participation in the signal velocity.*/
+        const float dv_phys = sqrtf(norm2_dp_without_Hubble) / new_mass;
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
       }
 
