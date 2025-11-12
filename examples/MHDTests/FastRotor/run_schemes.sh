@@ -55,7 +55,7 @@ case $WHAT in
 	;;
 esac
 
-SCHEME_DIRS=("VeP_$DIRS" "ODI_$DIRS" "FDI_$DIRS")
+SCHEME_DIRS=("${DIRS}_VEP" "${DIRS}_ODI" "${DIRS}_FDI")
 
 for J in ${SCHEME_Nr[@]}
 do
