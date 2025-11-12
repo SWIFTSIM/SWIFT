@@ -373,7 +373,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
                 h_max_limited);
         wrong_rho++;
       }
-#if defined(SPHENIX_SPH)
+#if defined(SPHENIX_SPH) || defined(MAGMA_SPH)
       if (check_force && !found_inhibited &&
           (fabsf(pi->n_gradient / pi->n_gradient_exact - 1.f) > rel_tol ||
            fabsf(pi->n_gradient_exact / pi->n_gradient - 1.f) > rel_tol)) {
