@@ -71,6 +71,47 @@ __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
 }
 
 /**
+ * @brief Sets the forcing of gparts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param gp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_gpart_drift_apply(
+    const long long id, const struct forcing_terms* terms, struct gpart* gp) {}
+
+/**
+ * @brief Sets the forcing of parts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_part_drift_apply(
+    const long long id, const struct forcing_terms* terms, struct part* p, struct xpart* xp) {}
+
+/**
+ * @brief Sets the forcing of sparts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_spart_drift_apply(
+    const long long id, const struct forcing_terms* terms, struct spart* sp) {}
+
+/**
+ * @brief Sets the forcing of bparts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param bp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_bpart_drift_apply(
+    const long long id, const struct forcing_terms* terms, struct bpart* bp) {}
+
+/**
  * @brief Computes the time-step condition due to the forcing terms.
  *
  * Nothing to do here. --> Return FLT_MAX.

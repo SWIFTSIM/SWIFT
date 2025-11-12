@@ -137,6 +137,87 @@ __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
 }
 
 /**
+ * @brief Sets the forcing of gparts prior to drift.
+ *
+ * Resets the velocities of fixed boundary particles to zero.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param gp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_gpart_drift_apply(
+    const long long id, const struct forcing_terms* terms, struct gpart* gp) {
+
+  if (id <= terms->boundary_particle_max_id && terms->enable_fixed_position) {
+    /* Set velocity of fixed boundary particle to zero. */
+    gp->v_full[0] = 0.f;
+    gp->v_full[1] = 0.f;
+    gp->v_full[2] = 0.f;
+  }
+}
+
+/**
+ * @brief Sets the forcing of parts prior to drift.
+ *
+ * Resets the velocities of fixed boundary particles to zero.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_part_drift_apply(
+    const long long id, const struct forcing_terms* terms, struct part* p, struct xpart* xp) {
+
+  if (id <= terms->boundary_particle_max_id && terms->enable_fixed_position) {
+    /* Set velocity of fixed boundary particle to zero. */
+    xp->v_full[0] = 0.f;
+    xp->v_full[1] = 0.f;
+    xp->v_full[2] = 0.f;
+  }
+}
+
+/**
+ * @brief Sets the forcing of sparts prior to drift.
+ *
+ * Resets the velocities of fixed boundary particles to zero.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_spart_drift_apply(
+    const long long id, const struct forcing_terms* terms, struct spart* sp) {
+
+  if (id <= terms->boundary_particle_max_id && terms->enable_fixed_position) {
+    /* Set velocity of fixed boundary particle to zero. */
+    sp->v[0] = 0.f;
+    sp->v[1] = 0.f;
+    sp->v[2] = 0.f;
+  }
+}
+
+/**
+ * @brief Sets the forcing of bparts prior to drift.
+ *
+ * Resets the velocities of fixed boundary particles to zero.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param bp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_bpart_drift_apply(
+    const long long id, const struct forcing_terms* terms, struct bpart* bp) {
+
+  if (id <= terms->boundary_particle_max_id && terms->enable_fixed_position) {
+    /* Set velocity of fixed boundary particle to zero. */
+    bp->v[0] = 0.f;
+    bp->v[1] = 0.f;
+    bp->v[2] = 0.f;
+  }
+}
+
+/**
  * @brief Computes the time-step condition due to the forcing terms.
  *
  * Nothing to do here. --> Return FLT_MAX.

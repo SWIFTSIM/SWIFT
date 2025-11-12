@@ -30,6 +30,7 @@
 #include "dimension.h"
 #include "engine.h"
 #include "entropy_floor.h"
+#include "forcing.h"
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "lightcone/lightcone_crossing.h"
@@ -70,6 +71,22 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
 
   gp->ti_drift = ti_current;
 #endif
+
+  /* Get the ID of the gpart for forcing */
+  long long id = 0;
+  if (gp->type == swift_type_gas)
+    id = e->s->parts[-gp->id_or_neg_offset].id;
+  else if (gp->type == swift_type_stars)
+    id = e->s->sparts[-gp->id_or_neg_offset].id;
+  else if (gp->type == swift_type_sink)
+    id = e->s->sinks[-gp->id_or_neg_offset].id;
+  else if (gp->type == swift_type_black_hole)
+    id = e->s->bparts[-gp->id_or_neg_offset].id;
+  else
+    id = gp->id_or_neg_offset;
+
+  /* Apply forcing */
+  forcing_gpart_drift_apply(id, e->forcing_terms, gp);
 
 #ifdef WITH_LIGHTCONE
   /* Store initial position and velocity for lightcone check after the drift */
@@ -138,6 +155,9 @@ __attribute__((always_inline)) INLINE static void drift_part(
 
   p->ti_drift = ti_current;
 #endif
+
+  /* Apply forcing */
+  forcing_part_drift_apply(p->id, e->forcing_terms, p, xp);
 
 #ifdef WITH_LIGHTCONE
   /* Store initial position and velocity for lightcone check after the drift */
@@ -209,6 +229,9 @@ __attribute__((always_inline)) INLINE static void drift_spart(
   sp->ti_drift = ti_current;
 #endif
 
+  /* Apply forcing */
+  forcing_spart_drift_apply(sp->id, e->forcing_terms, sp);
+
 #ifdef WITH_LIGHTCONE
   /* Store initial position and velocity for lightcone check after the drift */
   const double x[3] = {sp->x[0], sp->x[1], sp->x[2]};
@@ -261,6 +284,9 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
 
   bp->ti_drift = ti_current;
 #endif
+
+  /* Apply forcing */
+  forcing_bpart_drift_apply(bp->id, e->forcing_terms, bp);
 
 #ifdef WITH_LIGHTCONE
   /* Store initial position and velocity for lightcone check after the drift */
