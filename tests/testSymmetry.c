@@ -223,7 +223,7 @@ void test(void) {
   runner_iact_mhd_force(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
   runner_iact_diffusion(r2, dx, pi.h, pj.h, &pi, &pj, a, H, time_base,
                         ti_current, /*cosmo=*/NULL, /*with_cosmology=*/0,
-			/*chem_data=*/NULL);
+                        /*chem_data=*/NULL);
   runner_iact_timebin(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
 
   /* Call the non-symmetric version */
