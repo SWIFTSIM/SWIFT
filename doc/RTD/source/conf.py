@@ -23,9 +23,9 @@ copyright = "2014-2023, SWIFT Collaboration"
 author = "SWIFT Team"
 
 # The short X.Y version
-version = "2025.04"
+version = "2025.10"
 # The full version, including alpha/beta/rc tags
-release = "2025.04"
+release = "2025.10"
 
 # -- Find additional scripts to run as part of the documentation build -------
 import glob
@@ -147,7 +147,7 @@ latex_documents = [
     (
         master_doc,
         "SWIFT-user-manual.tex",
-        "SWIFT user \& developer documentation",
+        "SWIFT user & developer documentation",
         "SWIFT Collaboration",
         "manual",
     )

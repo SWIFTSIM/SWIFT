@@ -137,8 +137,8 @@ int io_is_double_precision(enum IO_DATA_TYPE type) {
  *
  * Calls #error() if an error occurs.
  */
-void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
-                       void* data) {
+void io_read_attribute(hid_t grp, const char *name, enum IO_DATA_TYPE type,
+                       void *data) {
 
   const hid_t h_attr = H5Aopen(grp, name, H5P_DEFAULT);
   if (h_attr < 0) error("Error while opening attribute '%s'", name);
@@ -161,8 +161,8 @@ void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
  * it is not present, unless debugging checks are activated. If they are,
  * and the read fails, we print a warning.
  */
-void io_read_attribute_graceful(hid_t grp, const char* name,
-                                enum IO_DATA_TYPE type, void* data) {
+void io_read_attribute_graceful(hid_t grp, const char *name,
+                                enum IO_DATA_TYPE type, void *data) {
 
   /* First, we need to check if this attribute exists to avoid raising errors
    * within the HDF5 library if we attempt to access an attribute that does
@@ -248,7 +248,7 @@ hsize_t io_get_number_element_in_attribute(hid_t attr) {
   const int ndims = H5Sget_simple_extent_ndims(space);
 
   /* Read the dimensions */
-  hsize_t* dims = (hsize_t*)malloc(sizeof(hsize_t) * ndims);
+  hsize_t *dims = (hsize_t *)malloc(sizeof(hsize_t) * ndims);
   H5Sget_simple_extent_dims(space, dims, NULL);
 
   /* Compute number of elements */
@@ -275,8 +275,8 @@ hsize_t io_get_number_element_in_attribute(hid_t attr) {
  *
  * Calls #error() if an error occurs.
  */
-void io_read_array_attribute(hid_t grp, const char* name,
-                             enum IO_DATA_TYPE type, void* data,
+void io_read_array_attribute(hid_t grp, const char *name,
+                             enum IO_DATA_TYPE type, void *data,
                              hsize_t number_element) {
 
   /* Open attribute */
@@ -320,7 +320,7 @@ hsize_t io_get_number_element_in_dataset(hid_t dataset) {
   const int ndims = H5Sget_simple_extent_ndims(space);
 
   /* Read the dimensions */
-  hsize_t* dims = (hsize_t*)malloc(sizeof(hsize_t) * ndims);
+  hsize_t *dims = (hsize_t *)malloc(sizeof(hsize_t) * ndims);
   H5Sget_simple_extent_dims(space, dims, NULL);
 
   /* Compute number of elements */
@@ -347,8 +347,8 @@ hsize_t io_get_number_element_in_dataset(hid_t dataset) {
  *
  * Calls #error() if an error occurs.
  */
-void io_read_array_dataset(hid_t grp, const char* name, enum IO_DATA_TYPE type,
-                           void* data, hsize_t number_element) {
+void io_read_array_dataset(hid_t grp, const char *name, enum IO_DATA_TYPE type,
+                           void *data, hsize_t number_element) {
 
   /* Open dataset */
   const hid_t h_dataset = H5Dopen(grp, name, H5P_DEFAULT);
@@ -385,8 +385,8 @@ void io_read_array_dataset(hid_t grp, const char* name, enum IO_DATA_TYPE type,
  *
  * Calls #error() if an error occurs.
  */
-void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
-                        const void* data, int num) {
+void io_write_attribute(hid_t grp, const char *name, enum IO_DATA_TYPE type,
+                        const void *data, int num) {
 
   const hid_t h_space = H5Screate(H5S_SIMPLE);
   if (h_space < 0)
@@ -418,7 +418,7 @@ void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
  *
  * Calls #error() if an error occurs.
  */
-void io_writeStringAttribute(hid_t grp, const char* name, const char* str,
+void io_writeStringAttribute(hid_t grp, const char *name, const char *str,
                              int length) {
 
   const hid_t h_space = H5Screate(H5S_SCALAR);
@@ -448,7 +448,7 @@ void io_writeStringAttribute(hid_t grp, const char* name, const char* str,
  * @param name The name of the attribute
  * @param data The value to write
  */
-void io_write_attribute_d(hid_t grp, const char* name, double data) {
+void io_write_attribute_d(hid_t grp, const char *name, double data) {
   io_write_attribute(grp, name, DOUBLE, &data, 1);
 }
 
@@ -458,7 +458,7 @@ void io_write_attribute_d(hid_t grp, const char* name, double data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void io_write_attribute_f(hid_t grp, const char* name, float data) {
+void io_write_attribute_f(hid_t grp, const char *name, float data) {
   io_write_attribute(grp, name, FLOAT, &data, 1);
 }
 
@@ -468,7 +468,7 @@ void io_write_attribute_f(hid_t grp, const char* name, float data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void io_write_attribute_i(hid_t grp, const char* name, int data) {
+void io_write_attribute_i(hid_t grp, const char *name, int data) {
   io_write_attribute(grp, name, INT, &data, 1);
 }
 
@@ -478,7 +478,7 @@ void io_write_attribute_i(hid_t grp, const char* name, int data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void io_write_attribute_b(hid_t grp, const char* name, int data) {
+void io_write_attribute_b(hid_t grp, const char *name, int data) {
   io_write_attribute(grp, name, BOOL, &data, 1);
 }
 
@@ -488,7 +488,7 @@ void io_write_attribute_b(hid_t grp, const char* name, int data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void io_write_attribute_l(hid_t grp, const char* name, long data) {
+void io_write_attribute_l(hid_t grp, const char *name, long data) {
   io_write_attribute(grp, name, LONG, &data, 1);
 }
 
@@ -498,7 +498,7 @@ void io_write_attribute_l(hid_t grp, const char* name, long data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void io_write_attribute_ll(hid_t grp, const char* name, long long data) {
+void io_write_attribute_ll(hid_t grp, const char *name, long long data) {
   io_write_attribute(grp, name, LONGLONG, &data, 1);
 }
 
@@ -508,7 +508,7 @@ void io_write_attribute_ll(hid_t grp, const char* name, long long data) {
  * @param name The name of the attribute
  * @param str The string to write
  */
-void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
+void io_write_attribute_s(hid_t grp, const char *name, const char *str) {
   io_writeStringAttribute(grp, name, str, strlen(str));
 }
 
@@ -521,9 +521,9 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
  * @param snapshot_units The system of units used in snapshots.
  * @param fof Is this a FOF output? If so don't write subgrid info.
  */
-void io_write_meta_data(hid_t h_file, const struct engine* e,
-                        const struct unit_system* internal_units,
-                        const struct unit_system* snapshot_units,
+void io_write_meta_data(hid_t h_file, const struct engine *e,
+                        const struct unit_system *internal_units,
+                        const struct unit_system *snapshot_units,
                         const int fof) {
 
   hid_t h_grp;
@@ -694,8 +694,8 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
  * @param internal_units The internal system of units to copy if needed.
  * @param mpi_rank The MPI rank we are on.
  */
-void io_read_unit_system(hid_t h_file, struct unit_system* ic_units,
-                         const struct unit_system* internal_units,
+void io_read_unit_system(hid_t h_file, struct unit_system *ic_units,
+                         const struct unit_system *internal_units,
                          int mpi_rank) {
 
   /* First check if it exists as this is *not* required. */
@@ -740,8 +740,8 @@ void io_read_unit_system(hid_t h_file, struct unit_system* ic_units,
  * @param us The unit_system to dump
  * @param groupName The name of the HDF5 group to write to
  */
-void io_write_unit_system(hid_t h_file, const struct unit_system* us,
-                          const char* groupName) {
+void io_write_unit_system(hid_t h_file, const struct unit_system *us,
+                          const char *groupName) {
 
   const hid_t h_grpunit = H5Gcreate1(h_file, groupName, 0);
   if (h_grpunit < 0) error("Error while creating Unit System group");
@@ -813,7 +813,7 @@ void io_write_code_description(hid_t h_file) {
  * @param h_file File to write to.
  * @param e The #engine to read the policy from.
  */
-void io_write_engine_policy(hid_t h_file, const struct engine* e) {
+void io_write_engine_policy(hid_t h_file, const struct engine *e) {
 
   const hid_t h_grp = H5Gcreate1(h_file, "/Policy", 0);
   if (h_grp < 0) error("Error while creating policy group");
@@ -887,9 +887,9 @@ size_t io_sizeof_type(enum IO_DATA_TYPE type) {
   }
 }
 
-void io_prepare_dm_gparts_mapper(void* restrict data, int Ndm, void* dummy) {
+void io_prepare_dm_gparts_mapper(void *restrict data, int Ndm, void *dummy) {
 
-  struct gpart* restrict gparts = (struct gpart*)data;
+  struct gpart *restrict gparts = (struct gpart *)data;
 
   /* Let's give all these gparts a negative id */
   for (int i = 0; i < Ndm; ++i) {
@@ -915,17 +915,17 @@ void io_prepare_dm_gparts_mapper(void* restrict data, int Ndm, void* dummy) {
  * @param gparts The array of #gpart freshly read in.
  * @param Ndm The number of DM particles read in.
  */
-void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
+void io_prepare_dm_gparts(struct threadpool *tp, struct gpart *const gparts,
                           size_t Ndm) {
 
   threadpool_map(tp, io_prepare_dm_gparts_mapper, gparts, Ndm,
                  sizeof(struct gpart), threadpool_auto_chunk_size, NULL);
 }
 
-void io_prepare_dm_background_gparts_mapper(void* restrict data, int Ndm,
-                                            void* dummy) {
+void io_prepare_dm_background_gparts_mapper(void *restrict data, int Ndm,
+                                            void *dummy) {
 
-  struct gpart* restrict gparts = (struct gpart*)data;
+  struct gpart *restrict gparts = (struct gpart *)data;
 
   /* Let's give all these gparts a negative id */
   for (int i = 0; i < Ndm; ++i) {
@@ -951,17 +951,17 @@ void io_prepare_dm_background_gparts_mapper(void* restrict data, int Ndm,
  * @param gparts The array of #gpart freshly read in.
  * @param Ndm The number of DM particles read in.
  */
-void io_prepare_dm_background_gparts(struct threadpool* tp,
-                                     struct gpart* const gparts, size_t Ndm) {
+void io_prepare_dm_background_gparts(struct threadpool *tp,
+                                     struct gpart *const gparts, size_t Ndm) {
 
   threadpool_map(tp, io_prepare_dm_background_gparts_mapper, gparts, Ndm,
                  sizeof(struct gpart), threadpool_auto_chunk_size, NULL);
 }
 
-void io_prepare_dm_neutrino_gparts_mapper(void* restrict data, int Ndm,
-                                          void* dummy) {
+void io_prepare_dm_neutrino_gparts_mapper(void *restrict data, int Ndm,
+                                          void *dummy) {
 
-  struct gpart* restrict gparts = (struct gpart*)data;
+  struct gpart *restrict gparts = (struct gpart *)data;
 
   /* Let's give all these gparts a negative id */
   for (int i = 0; i < Ndm; ++i) {
@@ -987,8 +987,8 @@ void io_prepare_dm_neutrino_gparts_mapper(void* restrict data, int Ndm,
  * @param gparts The array of #gpart freshly read in.
  * @param Ndm The number of DM particles read in.
  */
-void io_prepare_dm_neutrino_gparts(struct threadpool* tp,
-                                   struct gpart* const gparts, size_t Ndm) {
+void io_prepare_dm_neutrino_gparts(struct threadpool *tp,
+                                   struct gpart *const gparts, size_t Ndm) {
 
   threadpool_map(tp, io_prepare_dm_neutrino_gparts_mapper, gparts, Ndm,
                  sizeof(struct gpart), threadpool_auto_chunk_size, NULL);
@@ -996,11 +996,11 @@ void io_prepare_dm_neutrino_gparts(struct threadpool* tp,
 
 struct duplication_data {
 
-  struct part* parts;
-  struct gpart* gparts;
-  struct spart* sparts;
-  struct bpart* bparts;
-  struct sink* sinks;
+  struct part *parts;
+  struct gpart *gparts;
+  struct spart *sparts;
+  struct bpart *bparts;
+  struct sink *sinks;
   int Ndm;
   int Ngas;
   int Nstars;
@@ -1008,14 +1008,14 @@ struct duplication_data {
   int Nsinks;
 };
 
-void io_duplicate_hydro_gparts_mapper(void* restrict data, int Ngas,
-                                      void* restrict extra_data) {
+void io_duplicate_hydro_gparts_mapper(void *restrict data, int Ngas,
+                                      void *restrict extra_data) {
 
-  struct duplication_data* temp = (struct duplication_data*)extra_data;
+  struct duplication_data *temp = (struct duplication_data *)extra_data;
   const int Ndm = temp->Ndm;
-  struct part* parts = (struct part*)data;
+  struct part *parts = (struct part *)data;
   const ptrdiff_t offset = parts - temp->parts;
-  struct gpart* gparts = temp->gparts + offset;
+  struct gpart *gparts = temp->gparts + offset;
 
   for (int i = 0; i < Ngas; ++i) {
 
@@ -1052,8 +1052,8 @@ void io_duplicate_hydro_gparts_mapper(void* restrict data, int Ngas,
  * @param Ngas The number of gas particles read in.
  * @param Ndm The number of DM particles read in.
  */
-void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,
-                               struct gpart* const gparts, size_t Ngas,
+void io_duplicate_hydro_gparts(struct threadpool *tp, struct part *const parts,
+                               struct gpart *const gparts, size_t Ngas,
                                size_t Ndm) {
   struct duplication_data data;
   data.parts = parts;
@@ -1064,14 +1064,14 @@ void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,
                  sizeof(struct part), threadpool_auto_chunk_size, &data);
 }
 
-void io_duplicate_stars_gparts_mapper(void* restrict data, int Nstars,
-                                      void* restrict extra_data) {
+void io_duplicate_stars_gparts_mapper(void *restrict data, int Nstars,
+                                      void *restrict extra_data) {
 
-  struct duplication_data* temp = (struct duplication_data*)extra_data;
+  struct duplication_data *temp = (struct duplication_data *)extra_data;
   const int Ndm = temp->Ndm;
-  struct spart* sparts = (struct spart*)data;
+  struct spart *sparts = (struct spart *)data;
   const ptrdiff_t offset = sparts - temp->sparts;
-  struct gpart* gparts = temp->gparts + offset;
+  struct gpart *gparts = temp->gparts + offset;
 
   for (int i = 0; i < Nstars; ++i) {
 
@@ -1108,9 +1108,9 @@ void io_duplicate_stars_gparts_mapper(void* restrict data, int Nstars,
  * @param Nstars The number of stars particles read in.
  * @param Ndm The number of DM and gas particles read in.
  */
-void io_duplicate_stars_gparts(struct threadpool* tp,
-                               struct spart* const sparts,
-                               struct gpart* const gparts, size_t Nstars,
+void io_duplicate_stars_gparts(struct threadpool *tp,
+                               struct spart *const sparts,
+                               struct gpart *const gparts, size_t Nstars,
                                size_t Ndm) {
 
   struct duplication_data data;
@@ -1122,14 +1122,14 @@ void io_duplicate_stars_gparts(struct threadpool* tp,
                  sizeof(struct spart), threadpool_auto_chunk_size, &data);
 }
 
-void io_duplicate_sinks_gparts_mapper(void* restrict data, int Nsinks,
-                                      void* restrict extra_data) {
+void io_duplicate_sinks_gparts_mapper(void *restrict data, int Nsinks,
+                                      void *restrict extra_data) {
 
-  struct duplication_data* temp = (struct duplication_data*)extra_data;
+  struct duplication_data *temp = (struct duplication_data *)extra_data;
   const int Ndm = temp->Ndm;
-  struct sink* sinks = (struct sink*)data;
+  struct sink *sinks = (struct sink *)data;
   const ptrdiff_t offset = sinks - temp->sinks;
-  struct gpart* gparts = temp->gparts + offset;
+  struct gpart *gparts = temp->gparts + offset;
 
   for (int i = 0; i < Nsinks; ++i) {
 
@@ -1167,8 +1167,8 @@ void io_duplicate_sinks_gparts_mapper(void* restrict data, int Nsinks,
  * @param Nsinks The number of sink particles read in.
  * @param Ndm The number of DM, gas and star particles read in.
  */
-void io_duplicate_sinks_gparts(struct threadpool* tp, struct sink* const sinks,
-                               struct gpart* const gparts, size_t Nsinks,
+void io_duplicate_sinks_gparts(struct threadpool *tp, struct sink *const sinks,
+                               struct gpart *const gparts, size_t Nsinks,
                                size_t Ndm) {
 
   struct duplication_data data;
@@ -1180,15 +1180,15 @@ void io_duplicate_sinks_gparts(struct threadpool* tp, struct sink* const sinks,
                  sizeof(struct sink), threadpool_auto_chunk_size, &data);
 }
 
-void io_duplicate_black_holes_gparts_mapper(void* restrict data,
+void io_duplicate_black_holes_gparts_mapper(void *restrict data,
                                             int Nblackholes,
-                                            void* restrict extra_data) {
+                                            void *restrict extra_data) {
 
-  struct duplication_data* temp = (struct duplication_data*)extra_data;
+  struct duplication_data *temp = (struct duplication_data *)extra_data;
   const int Ndm = temp->Ndm;
-  struct bpart* bparts = (struct bpart*)data;
+  struct bpart *bparts = (struct bpart *)data;
   const ptrdiff_t offset = bparts - temp->bparts;
-  struct gpart* gparts = temp->gparts + offset;
+  struct gpart *gparts = temp->gparts + offset;
 
   for (int i = 0; i < Nblackholes; ++i) {
 
@@ -1226,9 +1226,9 @@ void io_duplicate_black_holes_gparts_mapper(void* restrict data,
  * @param Nblackholes The number of blackholes particles read in.
  * @param Ndm The number of DM, gas and star particles read in.
  */
-void io_duplicate_black_holes_gparts(struct threadpool* tp,
-                                     struct bpart* const bparts,
-                                     struct gpart* const gparts,
+void io_duplicate_black_holes_gparts(struct threadpool *tp,
+                                     struct bpart *const bparts,
+                                     struct gpart *const gparts,
                                      size_t Nblackholes, size_t Ndm) {
 
   struct duplication_data data;
@@ -1258,10 +1258,10 @@ void io_duplicate_black_holes_gparts(struct threadpool* tp,
  * @param Nparts The total number of #part.
  * @param Nparts_written The total number of #part to write.
  */
-void io_collect_parts_to_write(const struct part* restrict parts,
-                               const struct xpart* restrict xparts,
-                               struct part* restrict parts_written,
-                               struct xpart* restrict xparts_written,
+void io_collect_parts_to_write(const struct part *restrict parts,
+                               const struct xpart *restrict xparts,
+                               struct part *restrict parts_written,
+                               struct xpart *restrict xparts_written,
                                const int subsample, const float subsample_ratio,
                                const int snap_num, const size_t Nparts,
                                const size_t Nparts_written) {
@@ -1309,8 +1309,8 @@ void io_collect_parts_to_write(const struct part* restrict parts,
  * @param Nsparts The total number of #part.
  * @param Nsparts_written The total number of #part to write.
  */
-void io_collect_sparts_to_write(const struct spart* restrict sparts,
-                                struct spart* restrict sparts_written,
+void io_collect_sparts_to_write(const struct spart *restrict sparts,
+                                struct spart *restrict sparts_written,
                                 const int subsample,
                                 const float subsample_ratio, const int snap_num,
                                 const size_t Nsparts,
@@ -1358,8 +1358,8 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
  * @param Nsinks The total number of #sink.
  * @param Nsinks_written The total number of #sink to write.
  */
-void io_collect_sinks_to_write(const struct sink* restrict sinks,
-                               struct sink* restrict sinks_written,
+void io_collect_sinks_to_write(const struct sink *restrict sinks,
+                               struct sink *restrict sinks_written,
                                const int subsample, const float subsample_ratio,
                                const int snap_num, const size_t Nsinks,
                                const size_t Nsinks_written) {
@@ -1406,8 +1406,8 @@ void io_collect_sinks_to_write(const struct sink* restrict sinks,
  * @param Nbparts The total number of #part.
  * @param Nbparts_written The total number of #part to write.
  */
-void io_collect_bparts_to_write(const struct bpart* restrict bparts,
-                                struct bpart* restrict bparts_written,
+void io_collect_bparts_to_write(const struct bpart *restrict bparts,
+                                struct bpart *restrict bparts_written,
                                 const int subsample,
                                 const float subsample_ratio, const int snap_num,
                                 const size_t Nbparts,
@@ -1461,10 +1461,10 @@ void io_collect_bparts_to_write(const struct bpart* restrict bparts,
  * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
  */
 void io_collect_gparts_to_write(
-    const struct gpart* restrict gparts,
-    const struct velociraptor_gpart_data* restrict vr_data,
-    struct gpart* restrict gparts_written,
-    struct velociraptor_gpart_data* restrict vr_data_written,
+    const struct gpart *restrict gparts,
+    const struct velociraptor_gpart_data *restrict vr_data,
+    struct gpart *restrict gparts_written,
+    struct velociraptor_gpart_data *restrict vr_data_written,
     const int subsample, const float subsample_ratio, const int snap_num,
     const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
 
@@ -1520,10 +1520,10 @@ void io_collect_gparts_to_write(
  * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
  */
 void io_collect_gparts_background_to_write(
-    const struct gpart* restrict gparts,
-    const struct velociraptor_gpart_data* restrict vr_data,
-    struct gpart* restrict gparts_written,
-    struct velociraptor_gpart_data* restrict vr_data_written,
+    const struct gpart *restrict gparts,
+    const struct velociraptor_gpart_data *restrict vr_data,
+    struct gpart *restrict gparts_written,
+    struct velociraptor_gpart_data *restrict vr_data_written,
     const int subsample, const float subsample_ratio, const int snap_num,
     const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
 
@@ -1579,10 +1579,10 @@ void io_collect_gparts_background_to_write(
  * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
  */
 void io_collect_gparts_neutrino_to_write(
-    const struct gpart* restrict gparts,
-    const struct velociraptor_gpart_data* restrict vr_data,
-    struct gpart* restrict gparts_written,
-    struct velociraptor_gpart_data* restrict vr_data_written,
+    const struct gpart *restrict gparts,
+    const struct velociraptor_gpart_data *restrict vr_data,
+    struct gpart *restrict gparts_written,
+    struct velociraptor_gpart_data *restrict vr_data_written,
     const int subsample, const float subsample_ratio, const int snap_num,
     const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
 
@@ -1625,7 +1625,7 @@ void io_collect_gparts_neutrino_to_write(
  *
  * @param dirname The name of the directory.
  */
-void io_make_snapshot_subdir(const char* dirname) {
+void io_make_snapshot_subdir(const char *dirname) {
 
   if (strcmp(dirname, ".") != 0 && strnlen(dirname, FILENAME_BUFFER_SIZE) > 0) {
     safe_checkdir(dirname, /*create=*/1);
@@ -1652,12 +1652,12 @@ void io_make_snapshot_subdir(const char* dirname) {
  */
 void io_get_snapshot_filename(char filename[FILENAME_BUFFER_SIZE],
                               char xmf_filename[FILENAME_BUFFER_SIZE],
-                              const struct output_list* output_list,
+                              const struct output_list *output_list,
                               const int snapshots_invoke_stf,
                               const int stf_count, const int snap_count,
-                              const char* default_subdir, const char* subdir,
-                              const char* default_basename,
-                              const char* basename) {
+                              const char *default_subdir, const char *subdir,
+                              const char *default_basename,
+                              const char *basename) {
 
   int snap_number = -1;
   int number_digits = -1;
@@ -1693,7 +1693,7 @@ void io_get_snapshot_filename(char filename[FILENAME_BUFFER_SIZE],
  * @param gparts The array of loaded gparts.
  * @param Ngparts Number of loaded gparts.
  */
-void io_set_ids_to_one(struct gpart* gparts, const size_t Ngparts) {
+void io_set_ids_to_one(struct gpart *gparts, const size_t Ngparts) {
   for (size_t i = 0; i < Ngparts; i++) gparts[i].id_or_neg_offset = 1;
 }
 
@@ -1712,13 +1712,13 @@ void io_set_ids_to_one(struct gpart* gparts, const size_t Ngparts) {
  * @param num_fields (return) The number of fields to write.
  * @param list (return) The list of fields to write.
  */
-void io_select_hydro_fields(const struct part* const parts,
-                            const struct xpart* const xparts,
+void io_select_hydro_fields(const struct part *const parts,
+                            const struct xpart *const xparts,
                             const int with_cosmology, const int with_cooling,
                             const int with_temperature, const int with_fof,
                             const int with_stf, const int with_rt,
-                            const struct engine* const e, int* const num_fields,
-                            struct io_props* const list) {
+                            const struct engine *const e, int *const num_fields,
+                            struct io_props *const list) {
 
   hydro_write_particles(parts, xparts, list, num_fields);
 
@@ -1758,11 +1758,11 @@ void io_select_hydro_fields(const struct part* const parts,
  * @param num_fields (return) The number of fields to write.
  * @param list (return) The list of fields to write.
  */
-void io_select_dm_fields(const struct gpart* const gparts,
-                         const struct velociraptor_gpart_data* gpart_group_data,
+void io_select_dm_fields(const struct gpart *const gparts,
+                         const struct velociraptor_gpart_data *gpart_group_data,
                          const int with_fof, const int with_stf,
-                         const struct engine* const e, int* const num_fields,
-                         struct io_props* const list) {
+                         const struct engine *const e, int *const num_fields,
+                         struct io_props *const list) {
 
   darkmatter_write_particles(gparts, list, num_fields);
   if (with_fof) {
@@ -1785,10 +1785,10 @@ void io_select_dm_fields(const struct gpart* const gparts,
  * @param list (return) The list of fields to write.
  */
 void io_select_neutrino_fields(
-    const struct gpart* const gparts,
-    const struct velociraptor_gpart_data* gpart_group_data, const int with_fof,
-    const int with_stf, const struct engine* const e, int* const num_fields,
-    struct io_props* const list) {
+    const struct gpart *const gparts,
+    const struct velociraptor_gpart_data *gpart_group_data, const int with_fof,
+    const int with_stf, const struct engine *const e, int *const num_fields,
+    struct io_props *const list) {
 
   darkmatter_write_particles(gparts, list, num_fields);
 
@@ -1806,10 +1806,10 @@ void io_select_neutrino_fields(
  * @param num_fields (return) The number of fields to write.
  * @param list (return) The list of fields to write.
  */
-void io_select_sink_fields(const struct sink* const sinks,
+void io_select_sink_fields(const struct sink *const sinks,
                            const int with_cosmology, const int with_fof,
-                           const int with_stf, const struct engine* const e,
-                           int* const num_fields, struct io_props* const list) {
+                           const int with_stf, const struct engine *const e,
+                           int *const num_fields, struct io_props *const list) {
 
   sink_write_particles(sinks, list, num_fields, with_cosmology);
   *num_fields += chemistry_write_sinkparticles(sinks, list + *num_fields);
@@ -1827,11 +1827,11 @@ void io_select_sink_fields(const struct sink* const sinks,
  * @param num_fields (return) The number of fields to write.
  * @param list (return) The list of fields to write.
  */
-void io_select_star_fields(const struct spart* const sparts,
+void io_select_star_fields(const struct spart *const sparts,
                            const int with_cosmology, const int with_fof,
                            const int with_stf, const int with_rt,
-                           const struct engine* const e, int* const num_fields,
-                           struct io_props* const list) {
+                           const struct engine *const e, int *const num_fields,
+                           struct io_props *const list) {
 
   stars_write_particles(sparts, list, num_fields, with_cosmology);
   *num_fields +=
@@ -1864,10 +1864,10 @@ void io_select_star_fields(const struct spart* const sparts,
  * @param num_fields (return) The number of fields to write.
  * @param list (return) The list of fields to write.
  */
-void io_select_bh_fields(const struct bpart* const bparts,
+void io_select_bh_fields(const struct bpart *const bparts,
                          const int with_cosmology, const int with_fof,
-                         const int with_stf, const struct engine* const e,
-                         int* const num_fields, struct io_props* const list) {
+                         const int with_stf, const struct engine *const e,
+                         int *const num_fields, struct io_props *const list) {
 
   black_holes_write_particles(bparts, list, num_fields, with_cosmology);
   *num_fields +=
