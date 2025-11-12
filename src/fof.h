@@ -114,11 +114,24 @@ struct fof_props {
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
 
+  /*! Gas mass of the group a given gpart belongs to. */
+  float *group_gas_mass;
+
+  /*! Stellar mass of the group a given gpart belongs to. */
+  float *group_stellar_mass;
+
+  /*! SFR of the group a given gpart belongs to. */
+  float *group_star_formation_rate;
+
   /*! Does the group have a black hole? */
   char *has_black_hole;
 
   /*! Centre of mass of the group a given gpart belongs to. */
   double *group_centre_of_mass;
+
+  /*! Distance to the particle furthest from the centre of mass in
+   * the group a given gpart belongs to. */
+  float *group_radii;
 
   /*! Maximal density of all parts of each group. */
   float *max_part_density;
@@ -168,24 +181,6 @@ struct fof_mpi {
 struct fof_final_index {
   size_t local_root;
   size_t global_root;
-};
-
-/* Struct used to find the total mass of a group when using MPI */
-struct fof_final_mass {
-  size_t global_root;
-  double group_mass;
-  long long final_group_size;
-  double first_position[3];
-  double centre_of_mass[3];
-  long long max_part_density_index;
-  float max_part_density;
-};
-
-/* Struct used to iterate over the hash table and unpack the mass fragments of a
- * group when using MPI */
-struct fof_mass_send_hashmap {
-  struct fof_final_mass *mass_send;
-  size_t nsend;
 };
 
 /* Store local and foreign cell indices that touch. */

@@ -5,7 +5,7 @@
 </a>
 </div>
 
-SWIFT: SPH WIth Fine-grained inter-dependent Tasking
+SWIFT: SPH With Inter-dependent Fine-grained Tasking
 ====================================================
 
 [![Build Status](https://gitlab.cosma.dur.ac.uk/jenkins/job/GNU%20SWIFT%20build/badge/icon)](https://gitlab.cosma.dur.ac.uk/jenkins/job/GNU%20SWIFT%20build/)
@@ -81,7 +81,7 @@ Contribution Guidelines
 -----------------------
 
 The SWIFT source code uses a variation of the 'Google' formatting style.
-The script 'format.sh' in the root directory applies the clang-format-18
+The script 'format.sh' in the root directory applies the clang-format-20
 tool with our style choices to all the SWIFT C source file. Please apply
 the formatting script to the files before submitting a pull request.
 
@@ -106,7 +106,7 @@ Runtime parameters
  /____/ |__/|__/___/_/    /_/
  SPH With Inter-dependent Fine-grained Tasking
 
- Version : 2025.04
+ Version : 2025.10
  Website: www.swiftsim.com
  Twitter: @SwiftSimulation
 

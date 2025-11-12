@@ -61,7 +61,7 @@ int is_unit_matrix(float A[3][3]) {
   return check;
 }
 
-void print_matrix(float A[3][3], const char* s) {
+void print_matrix(float A[3][3], const char *s) {
   message("Matrix %s:", s);
 #if defined(HYDRO_DIMENSION_1D)
   message("[%.3e]", A[0][0]);
@@ -99,7 +99,7 @@ void multiply_matrices(float A[3][3], float B[3][3], float C[3][3]) {
 #endif
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
   float A[3][3], B[3][3], C[3][3];
   setup_matrix(A);

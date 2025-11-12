@@ -1965,7 +1965,7 @@ void engine_synchronize_times(struct engine *e) {
 
 #ifdef WITH_MPI
 
-  const ticks tic = getticks();
+  const ticks tic_start = getticks();
 
   /* Collect which top-level cells have been updated */
   MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR,
@@ -1984,7 +1984,7 @@ void engine_synchronize_times(struct engine *e) {
 
   if (e->verbose)
     message("Gathering and activating tend took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+            clocks_from_ticks(getticks() - tic_start), clocks_getunit());
 
   TIMER_TIC;
   engine_launch(e, "tend");
@@ -3044,9 +3044,9 @@ int engine_step(struct engine *e) {
             e->collect_group1.csds_file_size_gb);
 #endif
 
-    /********************************************************/
-    /* OK, we are done with the regular stuff. Time for i/o */
-    /********************************************************/
+  /********************************************************/
+  /* OK, we are done with the regular stuff. Time for i/o */
+  /********************************************************/
 
 #ifdef WITH_LIGHTCONE
   /* Flush lightcone buffers if necessary */

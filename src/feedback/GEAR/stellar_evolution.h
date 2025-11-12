@@ -30,56 +30,82 @@
 #include <math.h>
 #include <stddef.h>
 
-void stellar_model_print(const struct stellar_model* sm);
+void stellar_model_print(const struct stellar_model *sm);
 int stellar_evolution_compute_integer_number_supernovae(
-    struct spart* restrict sp, float number_supernovae_f,
+    struct spart *restrict sp, float number_supernovae_f,
     const integertime_t ti_begin, enum random_number_type random_type);
 
 void stellar_evolution_compute_continuous_feedback_properties(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct phys_const* phys_const, const float log_m_beg_step,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct phys_const *phys_const, const float log_m_beg_step,
     const float log_m_end_step, const float m_beg_step, const float m_end_step,
     const float m_init, const float number_snia_f, const float number_snii_f);
 void stellar_evolution_compute_discrete_feedback_properties(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct phys_const* phys_const, const float log_m_beg_step,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct phys_const *phys_const, const float log_m_beg_step,
     const float m_end_step, const float m_init, const int number_snia,
     const int number_snii);
 
 void stellar_evolution_evolve_individual_star(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct cosmology* cosmo, const struct unit_system* us,
-    const struct phys_const* phys_const, const integertime_t ti_begin,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt);
 
 void stellar_evolution_evolve_spart(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct cosmology* cosmo, const struct unit_system* us,
-    const struct phys_const* phys_const, const integertime_t ti_begin,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt);
 
-const char* stellar_evolution_get_element_name(const struct stellar_model* sm,
+const char *stellar_evolution_get_element_name(const struct stellar_model *sm,
                                                int i);
-int stellar_evolution_get_element_index(const struct stellar_model* sm,
-                                        const char* element_name);
-float stellar_evolution_get_solar_abundance(const struct stellar_model* sm,
-                                            const char* element_name);
-void stellar_evolution_read_elements(struct stellar_model* sm,
-                                     struct swift_params* params);
-void stellar_evolution_read_solar_abundances(struct stellar_model* sm,
-                                             struct swift_params* params);
-void stellar_evolution_props_init(struct stellar_model* sm,
-                                  const struct phys_const* phys_const,
-                                  const struct unit_system* us,
-                                  struct swift_params* params,
-                                  const struct cosmology* cosmo);
+int stellar_evolution_get_element_index(const struct stellar_model *sm,
+                                        const char *element_name);
+float stellar_evolution_get_solar_abundance(const struct stellar_model *sm,
+                                            const char *element_name);
+void stellar_evolution_read_elements(struct stellar_model *sm,
+                                     struct swift_params *params);
+void stellar_evolution_read_solar_abundances(struct stellar_model *sm,
+                                             struct swift_params *params);
+void stellar_evolution_props_init(struct stellar_model *sm,
+                                  const struct phys_const *phys_const,
+                                  const struct unit_system *us,
+                                  struct swift_params *params,
+                                  const struct cosmology *cosmo);
 
-void stellar_evolution_dump(const struct stellar_model* sm, FILE* stream);
-void stellar_evolution_restore(struct stellar_model* sm, FILE* stream);
+void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream);
+void stellar_evolution_restore(struct stellar_model *sm, FILE *stream);
 
-void stellar_evolution_clean(struct stellar_model* sm);
+void stellar_evolution_clean(struct stellar_model *sm);
 
 float stellar_evolution_compute_initial_mass(
-    const struct spart* restrict sp, const struct stellar_model* sm,
-    const struct phys_const* phys_consts);
+    const struct spart *restrict sp, const struct stellar_model *sm,
+    const struct phys_const *phys_consts);
+
+void stellar_evolution_compute_SN_feedback_individual_star(
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt);
+
+void stellar_evolution_compute_SN_feedback_spart(
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt);
+
+/* TODO: You can update these two functions parameters as needed */
+void stellar_evolution_compute_preSN_feedback_individual_star(
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt);
+
+void stellar_evolution_compute_preSN_feedback_spart(
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt);
+
 #endif  // SWIFT_STELLAR_EVOLUTION_GEAR_H

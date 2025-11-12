@@ -32,9 +32,9 @@
 struct engine;
 struct unit_system;
 
-void write_output_distributed(struct engine* e,
-                              const struct unit_system* internal_units,
-                              const struct unit_system* snapshot_units,
+void write_output_distributed(struct engine *e,
+                              const struct unit_system *internal_units,
+                              const struct unit_system *snapshot_units,
                               const int fof, int mpi_rank, int mpi_size,
                               MPI_Comm comm, MPI_Info info);
 

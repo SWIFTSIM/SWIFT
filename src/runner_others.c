@@ -476,7 +476,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                  */
                 star_formation_copy_properties(
                     p, xp, sp, e, sf_props, cosmo, with_cosmology, phys_const,
-                    hydro_props, us, cooling, part_converted);
+                    hydro_props, us, cooling, e->chemistry, part_converted);
 
                 /* Update the Star formation history */
                 star_formation_logger_log_new_spart(sp, &c->stars.sfh);
@@ -505,12 +505,12 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                 }
 
 #ifdef WITH_CSDS
-                if (spawn_spart) {
-                  /* Set to zero the csds data. */
-                  csds_part_data_init(&sp->csds_data);
-                } else {
+                if (n_spart_to_create == 1 && n_spart_convert == 1) {
                   /* Copy the properties back to the stellar particle */
                   sp->csds_data = xp->csds_data;
+                } else {
+                  /* If we create new stars, set to zero the csds data. */
+                  csds_part_data_init(&sp->csds_data);
                 }
 
                 /* Write the s-particle */
@@ -733,7 +733,8 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         hydro_end_force(p, cosmo);
         mhd_end_force(p, cosmo);
         timestep_limiter_end_force(p);
-        chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
+        chemistry_end_force(p, cosmo, with_cosmology, e->time, dt,
+                            e->chemistry);
 
         /* Apply the forcing terms (if any) */
         forcing_terms_apply(e->time, e->forcing_terms, e->s,
@@ -750,6 +751,9 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
           /* Don't move ! */
           hydro_reset_acceleration(p);
           mhd_reset_acceleration(p);
+
+          chemistry_prepare_force(p, xp, cosmo, dt_alpha, dt_therm,
+                                  e->chemistry);
 
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 

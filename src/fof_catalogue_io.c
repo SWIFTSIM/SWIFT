@@ -32,10 +32,10 @@
 #include "tools.h"
 #include "version.h"
 
-void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
+void write_fof_hdf5_header(hid_t h_file, const struct engine *e,
                            const long long num_groups_total,
                            const long long num_groups_this_file,
-                           const struct fof_props* props,
+                           const struct fof_props *props,
                            const int virtual_file) {
 
   /* Open header to write simulation properties */
@@ -82,7 +82,7 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
 
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);
-  struct tm* timeinfo = localtime(&tm);
+  struct tm *timeinfo = localtime(&tm);
   char snapshot_date[64];
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
   io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
@@ -136,11 +136,11 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
 }
 
 void write_fof_hdf5_array(
-    const struct engine* e, hid_t grp, const char* fileName,
-    const char* partTypeGroupName, const struct io_props props, const size_t N,
+    const struct engine *e, hid_t grp, const char *fileName,
+    const char *partTypeGroupName, const struct io_props props, const size_t N,
     const enum lossy_compression_schemes lossy_compression,
-    const struct unit_system* internal_units,
-    const struct unit_system* snapshot_units) {
+    const struct unit_system *internal_units,
+    const struct unit_system *snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t num_elements = N * props.dimension;
@@ -148,8 +148,8 @@ void write_fof_hdf5_array(
   /* message("Writing '%s' array...", props.name); */
 
   /* Allocate temporary buffer */
-  void* temp = NULL;
-  if (swift_memalign("writebuff", (void**)&temp, IO_BUFFER_ALIGNMENT,
+  void *temp = NULL;
+  if (swift_memalign("writebuff", (void **)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
   /* Copy the particle data to the temporary buffer */
@@ -292,8 +292,8 @@ void write_fof_hdf5_array(
   H5Sclose(h_space);
 }
 
-void write_fof_hdf5_catalogue(const struct fof_props* props,
-                              const struct engine* e) {
+void write_fof_hdf5_catalogue(const struct fof_props *props,
+                              const struct engine *e) {
 
   char file_name[512];
   sprintf(file_name, "%s_%04i.hdf5", props->base_name,
@@ -322,7 +322,7 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
 
   struct io_props output_prop;
   output_prop = io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
-                                      (char*)props->group_mass, sizeof(double),
+                                      (char *)props->group_mass, sizeof(double),
                                       "FOF group masses", /*physical=*/0,
                                       /*convertible_to_comoving=*/1);
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
@@ -330,15 +330,22 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                        e->internal_units, e->snapshot_units);
   output_prop =
       io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f,
-                            (char*)props->group_centre_of_mass,
+                            (char *)props->group_centre_of_mass,
                             3 * sizeof(double), "FOF group centres of mass",
                             /*physical=*/0, /*convertible_to_comoving=*/1);
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
+  output_prop = io_make_output_field_(
+      "Radii", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, (char *)props->group_radii,
+      sizeof(float), "Distance to the particle furthest from the centre",
+      /*physical=*/0, /*convertible_to_comoving=*/1);
+  write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
+                       num_groups_local, compression_write_lossless,
+                       e->internal_units, e->snapshot_units);
   output_prop =
       io_make_output_field_("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                            (char*)props->final_group_index, sizeof(long long),
+                            (char *)props->final_group_index, sizeof(long long),
                             "FOF group IDs", /*physical=*/1,
                             /*convertible_to_comoving=*/0);
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
@@ -346,7 +353,7 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                        e->internal_units, e->snapshot_units);
   output_prop =
       io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                            (char*)props->final_group_size, sizeof(long long),
+                            (char *)props->final_group_size, sizeof(long long),
                             "FOF group length (number of particles)",
                             /*physical=*/1, /*convertible_to_comoving=*/0);
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
