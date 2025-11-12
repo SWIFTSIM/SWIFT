@@ -487,20 +487,6 @@ elif test "$no_gravity_below_id" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
 fi
 
-# Check if we want to use fixed black holes.
-AC_ARG_ENABLE([fixed-black-holes],
-   [AS_HELP_STRING([--enable-fixed-black-holes=<N>],
-     [Set all black hole particles with an ID less than or equal to @<:@N@:>@ as fixed particles (i.e. zero velocity).]
-   )],
-   [fixed_black_holes="$enableval"],
-   [fixed_black_holes="no"]
-)
-if test "$fixed_black_holes" = "yes"; then
-   AC_MSG_ERROR(Need to specify the ID less than or equal to which black hole particles have zero velocity, using --enable-fixed-black-holes=N!)
-elif test "$fixed_black_holes" != "no"; then
-   AC_DEFINE_UNQUOTED([SWIFT_FIXED_BLACK_HOLES], [$enableval] ,[Black hole particles with ID less than or equal to this value will be fixed in place.])
-fi
-
 # Check if fixed entropy is on for settling planetary initial conditions
 AC_ARG_ENABLE([planetary-fixed-entropy],
    [AS_HELP_STRING([--enable-planetary-fixed-entropy],
@@ -3409,7 +3395,6 @@ AC_MSG_RESULT([
    Naive stars interactions    : $enable_naive_interactions_stars
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
-   Fixed black holes           : $fixed_black_holes
    Planetary fixed entropy     : $planetary_fixed_entropy
    Ghost statistics            : $ghost_stats
 

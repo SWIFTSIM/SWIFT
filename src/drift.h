@@ -71,25 +71,6 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   gp->ti_drift = ti_current;
 #endif
 
-#ifdef SWIFT_FIXED_BLACK_HOLES
-
-  /* Check if particle is a black hole particle */
-  if (gp->type == swift_type_black_hole) {
-
-    /* Get the ID of the gpart */
-    const long long id = e->s->bparts[-gp->id_or_neg_offset].id;
-
-    /* Cancel the velocity of the particles */
-    if (id <= SWIFT_FIXED_BLACK_HOLES) {
-
-      /* Don't move! */
-      gp->v_full[0] = 0.f;
-      gp->v_full[1] = 0.f;
-      gp->v_full[2] = 0.f;
-    }
-  }
-#endif
-
 #ifdef WITH_LIGHTCONE
   /* Store initial position and velocity for lightcone check after the drift */
   const double x[3] = {gp->x[0], gp->x[1], gp->x[2]};
@@ -279,21 +260,6 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
         bp->ti_drift, ti_old, ti_current);
 
   bp->ti_drift = ti_current;
-#endif
-
-#ifdef SWIFT_FIXED_BLACK_HOLES
-
-  /* Get the ID of the bpart */
-  const long long id = bp->id;
-
-  /* Cancel the velocity of the particles */
-  if (id <= SWIFT_FIXED_BLACK_HOLES) {
-
-    /* Don't move! */
-    bp->v[0] = 0.f;
-    bp->v[1] = 0.f;
-    bp->v[2] = 0.f;
-  }
 #endif
 
 #ifdef WITH_LIGHTCONE

@@ -834,23 +834,6 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
         }
 #endif
 
-#ifdef SWIFT_FIXED_BLACK_HOLES
-
-        /* Check if particle is a black hole particle */
-        if (gp->type == swift_type_black_hole) {
-
-          /* Cancel gravity forces of black hole particles with ID less than or
-           * equal to value given */
-          if (id <= SWIFT_FIXED_BLACK_HOLES) {
-
-            /* Don't move ! */
-            gp->a_grav[0] = 0.f;
-            gp->a_grav[1] = 0.f;
-            gp->a_grav[2] = 0.f;
-          }
-        }
-#endif
-
 #ifdef SWIFT_DEBUG_CHECKS
         if ((e->policy & engine_policy_self_gravity) &&
             !(e->policy & engine_policy_black_holes) &&
