@@ -48,7 +48,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 1, frameon=False)
 
     with np.load("sedov_soundspeed_ratio_data.npz") as file:
-        mesh = file.items()[0][1]
+        mesh = file["arr_0"]
 
     # Global variable for set_array
     img = ax.imshow(

@@ -37,12 +37,12 @@
  * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
-    struct part* restrict p, const struct rt_props* rt_props,
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo) {
+    struct part *restrict p, const struct rt_props *rt_props,
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us,
+    const struct cosmology *restrict cosmo) {
 
-  struct rt_part_data* rpd = &p->rt_data;
+  struct rt_part_data *rpd = &p->rt_data;
 
   /* Initialize mass fractions for total metals and each metal individually */
   if (rt_props->initial_metal_mass_fraction_total != -1.f) {
@@ -77,12 +77,12 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
  * @param us The internal system of units.
  * @param dt The time-step of this particle.
  */
-void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
-                           struct rt_props* rt_props,
-                           const struct cosmology* restrict cosmo,
-                           const struct hydro_props* hydro_props,
-                           const struct phys_const* restrict phys_const,
-                           const struct unit_system* restrict us,
+void rt_do_thermochemistry(struct part *restrict p, struct xpart *restrict xp,
+                           struct rt_props *rt_props,
+                           const struct cosmology *restrict cosmo,
+                           const struct hydro_props *hydro_props,
+                           const struct phys_const *restrict phys_const,
+                           const struct unit_system *restrict us,
                            const double dt);
 
 #endif /* SWIFT_RT_SPHM1RT_COOLING_H */

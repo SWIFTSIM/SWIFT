@@ -93,8 +93,8 @@ static const int io_max_size_output_list = 100;
 void read_array_parallel_chunk(hid_t h_data, hid_t h_plist_id,
                                const struct io_props props, size_t N,
                                long long offset,
-                               const struct unit_system* internal_units,
-                               const struct unit_system* ic_units,
+                               const struct unit_system *internal_units,
+                               const struct unit_system *ic_units,
                                int cleanup_h, int cleanup_sqrt_a, double h,
                                double a) {
 
@@ -107,7 +107,7 @@ void read_array_parallel_chunk(hid_t h_data, hid_t h_plist_id,
     error("Dataset too large to be read in one pass!");
 
   /* Allocate temporary buffer */
-  void* temp = malloc(num_elements * typeSize);
+  void *temp = malloc(num_elements * typeSize);
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
 
   /* Prepare information for hyper-slab */
@@ -149,10 +149,10 @@ void read_array_parallel_chunk(hid_t h_data, hid_t h_plist_id,
     /* message("Converting ! factor=%e", factor); */
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = (double*)temp;
+      double *temp_d = (double *)temp;
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
-      float* temp_f = (float*)temp;
+      float *temp_f = (float *)temp;
 
 #ifdef SWIFT_DEBUG_CHECKS
       float maximum = 0.;
@@ -195,11 +195,11 @@ void read_array_parallel_chunk(hid_t h_data, hid_t h_plist_id,
      * h_factor); */
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = (double*)temp;
+      double *temp_d = (double *)temp;
       const double h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= h_factor;
     } else {
-      float* temp_f = (float*)temp;
+      float *temp_f = (float *)temp;
       const float h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= h_factor;
     }
@@ -209,18 +209,18 @@ void read_array_parallel_chunk(hid_t h_data, hid_t h_plist_id,
   if (cleanup_sqrt_a && a != 1. && (strcmp(props.name, "Velocities") == 0)) {
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = (double*)temp;
+      double *temp_d = (double *)temp;
       const double vel_factor = sqrt(a);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= vel_factor;
     } else {
-      float* temp_f = (float*)temp;
+      float *temp_f = (float *)temp;
       const float vel_factor = sqrt(a);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= vel_factor;
     }
   }
 
   /* Copy temporary buffer to particle data */
-  char* temp_c = (char*)temp;
+  char *temp_c = (char *)temp;
   for (size_t i = 0; i < N; ++i)
     memcpy(props.field + i * props.partSize, &temp_c[i * copySize], copySize);
 
@@ -249,8 +249,8 @@ void read_array_parallel_chunk(hid_t h_data, hid_t h_plist_id,
  */
 void read_array_parallel(hid_t grp, struct io_props props, size_t N,
                          long long N_total, int mpi_rank, long long offset,
-                         const struct unit_system* internal_units,
-                         const struct unit_system* ic_units, int cleanup_h,
+                         const struct unit_system *internal_units,
+                         const struct unit_system *ic_units, int cleanup_h,
                          int cleanup_sqrt_a, double h, double a) {
 
   const size_t typeSize = io_sizeof_type(props.type);
@@ -266,7 +266,7 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
     } else {
 
       /* Create a single instance of the default value */
-      float* temp = (float*)malloc(copySize);
+      float *temp = (float *)malloc(copySize);
       for (int i = 0; i < props.dimension; ++i) temp[i] = props.default_value;
 
       /* Copy it everywhere in the particle array */
@@ -300,9 +300,9 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
 
       unsigned int flag;
       size_t cd_nelmts = 32;
-      unsigned int* cd_values = malloc(cd_nelmts * sizeof(unsigned int));
+      unsigned int *cd_values = malloc(cd_nelmts * sizeof(unsigned int));
       size_t namelen = 256;
-      char* name = calloc(namelen, sizeof(char));
+      char *name = calloc(namelen, sizeof(char));
       unsigned int filter_config;
 
       /* Recover the n^th filter in the list */
@@ -395,11 +395,11 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
  * @param snapshot_units The units used for the data in this snapshot.
  */
 void prepare_array_parallel(
-    struct engine* e, hid_t grp, const char* fileName, FILE* xmfFile,
-    const char* partTypeGroupName, const struct io_props props,
+    struct engine *e, hid_t grp, const char *fileName, FILE *xmfFile,
+    const char *partTypeGroupName, const struct io_props props,
     const long long N_total,
     const enum lossy_compression_schemes lossy_compression,
-    const struct unit_system* snapshot_units) {
+    const struct unit_system *snapshot_units) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
@@ -527,11 +527,11 @@ void prepare_array_parallel(
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
  */
-void write_array_parallel_chunk(const struct engine* e, hid_t h_data,
+void write_array_parallel_chunk(const struct engine *e, hid_t h_data,
                                 const struct io_props props, const size_t N,
                                 const long long offset,
-                                const struct unit_system* internal_units,
-                                const struct unit_system* snapshot_units) {
+                                const struct unit_system *internal_units,
+                                const struct unit_system *snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t num_elements = N * props.dimension;
@@ -543,8 +543,8 @@ void write_array_parallel_chunk(const struct engine* e, hid_t h_data,
   /* message("Writing '%s' array...", props.name); */
 
   /* Allocate temporary buffer */
-  void* temp = NULL;
-  if (swift_memalign("writebuff", (void**)&temp, IO_BUFFER_ALIGNMENT,
+  void *temp = NULL;
+  if (swift_memalign("writebuff", (void **)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
@@ -654,13 +654,13 @@ void write_array_parallel_chunk(const struct engine* e, hid_t h_data,
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
  */
-void write_array_parallel(const struct engine* e, hid_t grp,
-                          const char* fileName, char* partTypeGroupName,
+void write_array_parallel(const struct engine *e, hid_t grp,
+                          const char *fileName, char *partTypeGroupName,
                           struct io_props props, size_t N,
                           const long long N_total, const int mpi_rank,
                           long long offset,
-                          const struct unit_system* internal_units,
-                          const struct unit_system* snapshot_units) {
+                          const struct unit_system *internal_units,
+                          const struct unit_system *snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
 
@@ -764,20 +764,20 @@ void write_array_parallel(const struct engine* e, hid_t grp,
  * @param ics_metadata Will store metadata group copied from the ICs file
  *
  */
-void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
-                      double dim[3], struct part** parts, struct gpart** gparts,
-                      struct sink** sinks, struct spart** sparts,
-                      struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
-                      size_t* Ngparts_background, size_t* Nnuparts,
-                      size_t* Nsinks, size_t* Nstars, size_t* Nblackholes,
-                      int* flag_entropy, const int with_hydro,
+void read_ic_parallel(char *fileName, const struct unit_system *internal_units,
+                      double dim[3], struct part **parts, struct gpart **gparts,
+                      struct sink **sinks, struct spart **sparts,
+                      struct bpart **bparts, size_t *Ngas, size_t *Ngparts,
+                      size_t *Ngparts_background, size_t *Nnuparts,
+                      size_t *Nsinks, size_t *Nstars, size_t *Nblackholes,
+                      int *flag_entropy, const int with_hydro,
                       const int with_gravity, const int with_sink,
                       const int with_stars, const int with_black_holes,
                       const int with_cosmology, const int cleanup_h,
                       const int cleanup_sqrt_a, const double h, const double a,
                       const int mpi_rank, const int mpi_size, MPI_Comm comm,
                       MPI_Info info, const int n_threads, const int dry_run,
-                      const int remap_ids, struct ic_info* ics_metadata) {
+                      const int remap_ids, struct ic_info *ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -883,8 +883,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   H5Gclose(h_grp);
 
   /* Read the unit system used in the ICs */
-  struct unit_system* ic_units =
-      (struct unit_system*)malloc(sizeof(struct unit_system));
+  struct unit_system *ic_units =
+      (struct unit_system *)malloc(sizeof(struct unit_system));
   if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
   io_read_unit_system(h_file, ic_units, internal_units, mpi_rank);
 
@@ -930,7 +930,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[0];
-    if (swift_memalign("parts", (void**)parts, part_align,
+    if (swift_memalign("parts", (void **)parts, part_align,
                        (*Ngas) * sizeof(struct part)) != 0)
       error("Error while allocating memory for particles");
     bzero(*parts, *Ngas * sizeof(struct part));
@@ -939,7 +939,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store black hole particles */
   if (with_sink) {
     *Nsinks = N[swift_type_sink];
-    if (swift_memalign("sinks", (void**)sinks, sink_align,
+    if (swift_memalign("sinks", (void **)sinks, sink_align,
                        *Nsinks * sizeof(struct sink)) != 0)
       error("Error while allocating memory for sink particles");
     bzero(*sinks, *Nsinks * sizeof(struct sink));
@@ -948,7 +948,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store stars particles */
   if (with_stars) {
     *Nstars = N[swift_type_stars];
-    if (swift_memalign("sparts", (void**)sparts, spart_align,
+    if (swift_memalign("sparts", (void **)sparts, spart_align,
                        *Nstars * sizeof(struct spart)) != 0)
       error("Error while allocating memory for stars particles");
     bzero(*sparts, *Nstars * sizeof(struct spart));
@@ -957,7 +957,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store black hole particles */
   if (with_black_holes) {
     *Nblackholes = N[swift_type_black_hole];
-    if (swift_memalign("bparts", (void**)bparts, bpart_align,
+    if (swift_memalign("bparts", (void **)bparts, bpart_align,
                        *Nblackholes * sizeof(struct bpart)) != 0)
       error("Error while allocating memory for black_holes particles");
     bzero(*bparts, *Nblackholes * sizeof(struct bpart));
@@ -976,7 +976,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                (with_black_holes ? N[swift_type_black_hole] : 0);
     *Ngparts_background = Ndm_background;
     *Nnuparts = Ndm_neutrino;
-    if (swift_memalign("gparts", (void**)gparts, gpart_align,
+    if (swift_memalign("gparts", (void **)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
@@ -1158,18 +1158,18 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
  * @param subsample_any Are any fields being subsampled?
  * @param subsample_fraction The subsampling fraction of each particle type.
  */
-void prepare_file(struct engine* e, const char* fileName,
-                  const char* xmfFileName,
+void prepare_file(struct engine *e, const char *fileName,
+                  const char *xmfFileName,
                   const long long N_total[swift_type_count],
                   const int to_write[swift_type_count],
                   const int numFields[swift_type_count],
                   const char current_selection_name[FIELD_BUFFER_SIZE],
-                  const struct unit_system* internal_units,
-                  const struct unit_system* snapshot_units, const int fof,
+                  const struct unit_system *internal_units,
+                  const struct unit_system *snapshot_units, const int fof,
                   const int subsample_any,
                   const float subsample_fraction[swift_type_count]) {
 
-  struct output_options* output_options = e->output_options;
+  struct output_options *output_options = e->output_options;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -1182,7 +1182,7 @@ void prepare_file(struct engine* e, const char* fileName,
 #endif
   const int with_rt = e->policy & engine_policy_rt;
 
-  FILE* xmfFile = 0;
+  FILE *xmfFile = 0;
   int numFiles = 1;
 
   /* First time, we need to create the XMF file */
@@ -1248,7 +1248,7 @@ void prepare_file(struct engine* e, const char* fileName,
 
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);
-  struct tm* timeinfo = localtime(&tm);
+  struct tm *timeinfo = localtime(&tm);
   char snapshot_date[64];
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
   io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
@@ -1460,20 +1460,20 @@ void prepare_file(struct engine* e, const char* fileName,
  * Calls #error() if an error occurs.
  *
  */
-void write_output_parallel(struct engine* e,
-                           const struct unit_system* internal_units,
-                           const struct unit_system* snapshot_units,
+void write_output_parallel(struct engine *e,
+                           const struct unit_system *internal_units,
+                           const struct unit_system *snapshot_units,
                            const int fof, const int mpi_rank,
                            const int mpi_size, MPI_Comm comm, MPI_Info info) {
 
-  const struct part* parts = e->s->parts;
-  const struct xpart* xparts = e->s->xparts;
-  const struct gpart* gparts = e->s->gparts;
-  const struct spart* sparts = e->s->sparts;
-  const struct bpart* bparts = e->s->bparts;
-  const struct sink* sinks = e->s->sinks;
-  struct output_options* output_options = e->output_options;
-  struct output_list* output_list = e->output_list_snapshots;
+  const struct part *parts = e->s->parts;
+  const struct xpart *xparts = e->s->xparts;
+  const struct gpart *gparts = e->s->gparts;
+  const struct spart *sparts = e->s->sparts;
+  const struct bpart *bparts = e->s->bparts;
+  const struct sink *sinks = e->s->sinks;
+  struct output_options *output_options = e->output_options;
+  struct output_list *output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -1727,8 +1727,8 @@ void write_output_parallel(struct engine* e,
 #if H5_VERSION_GE(1, 10, 0)
   h_err = H5Pset_all_coll_metadata_ops(plist_id, 1);
   if (h_err < 0) error("Error setting collective meta-data on all ops");
-    // h_err = H5Pset_coll_metadata_write(plist_id, 1);
-    // if (h_err < 0) error("Error setting collective meta-data writes");
+  // h_err = H5Pset_coll_metadata_write(plist_id, 1);
+  // if (h_err < 0) error("Error setting collective meta-data writes");
 #endif
 
 #ifdef IO_SPEED_MEASUREMENT
@@ -1777,13 +1777,13 @@ void write_output_parallel(struct engine* e,
     bzero(list, 100 * sizeof(struct io_props));
     size_t Nparticles = 0;
 
-    struct part* parts_written = NULL;
-    struct xpart* xparts_written = NULL;
-    struct gpart* gparts_written = NULL;
-    struct velociraptor_gpart_data* gpart_group_data_written = NULL;
-    struct spart* sparts_written = NULL;
-    struct bpart* bparts_written = NULL;
-    struct sink* sinks_written = NULL;
+    struct part *parts_written = NULL;
+    struct xpart *xparts_written = NULL;
+    struct gpart *gparts_written = NULL;
+    struct velociraptor_gpart_data *gpart_group_data_written = NULL;
+    struct spart *sparts_written = NULL;
+    struct bpart *bparts_written = NULL;
+    struct sink *sinks_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1805,11 +1805,11 @@ void write_output_parallel(struct engine* e,
           Nparticles = Ngas_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("parts_written", (void**)&parts_written,
+          if (swift_memalign("parts_written", (void **)&parts_written,
                              part_align,
                              Ngas_written * sizeof(struct part)) != 0)
             error("Error while allocating temporary memory for parts");
-          if (swift_memalign("xparts_written", (void**)&xparts_written,
+          if (swift_memalign("xparts_written", (void **)&xparts_written,
                              xpart_align,
                              Ngas_written * sizeof(struct xpart)) != 0)
             error("Error while allocating temporary memory for xparts");
@@ -1843,14 +1843,14 @@ void write_output_parallel(struct engine* e,
           Nparticles = Ndm_written;
 
           /* Allocate temporary array */
-          if (swift_memalign("gparts_written", (void**)&gparts_written,
+          if (swift_memalign("gparts_written", (void **)&gparts_written,
                              gpart_align,
                              Ndm_written * sizeof(struct gpart)) != 0)
             error("Error while allocating temporary memory for gparts");
 
           if (with_stf) {
             if (swift_memalign(
-                    "gpart_group_written", (void**)&gpart_group_data_written,
+                    "gpart_group_written", (void **)&gpart_group_data_written,
                     gpart_align,
                     Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
               error(
@@ -1877,14 +1877,14 @@ void write_output_parallel(struct engine* e,
         Nparticles = Ndm_background;
 
         /* Allocate temporary array */
-        if (swift_memalign("gparts_written", (void**)&gparts_written,
+        if (swift_memalign("gparts_written", (void **)&gparts_written,
                            gpart_align,
                            Ndm_background * sizeof(struct gpart)) != 0)
           error("Error while allocating temporart memory for gparts");
 
         if (with_stf) {
           if (swift_memalign(
-                  "gpart_group_written", (void**)&gpart_group_data_written,
+                  "gpart_group_written", (void **)&gpart_group_data_written,
                   gpart_align,
                   Ndm_background * sizeof(struct velociraptor_gpart_data)) != 0)
             error(
@@ -1911,14 +1911,14 @@ void write_output_parallel(struct engine* e,
         Nparticles = Ndm_neutrino;
 
         /* Allocate temporary array */
-        if (swift_memalign("gparts_written", (void**)&gparts_written,
+        if (swift_memalign("gparts_written", (void **)&gparts_written,
                            gpart_align,
                            Ndm_neutrino * sizeof(struct gpart)) != 0)
           error("Error while allocating temporart memory for gparts");
 
         if (with_stf) {
           if (swift_memalign(
-                  "gpart_group_written", (void**)&gpart_group_data_written,
+                  "gpart_group_written", (void **)&gpart_group_data_written,
                   gpart_align,
                   Ndm_neutrino * sizeof(struct velociraptor_gpart_data)) != 0)
             error(
@@ -1955,7 +1955,7 @@ void write_output_parallel(struct engine* e,
           Nparticles = Nsinks_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("sinks_written", (void**)&sinks_written,
+          if (swift_memalign("sinks_written", (void **)&sinks_written,
                              sink_align,
                              Nsinks_written * sizeof(struct sink)) != 0)
             error("Error while allocating temporary memory for sink");
@@ -1988,7 +1988,7 @@ void write_output_parallel(struct engine* e,
           Nparticles = Nstars_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("sparts_written", (void**)&sparts_written,
+          if (swift_memalign("sparts_written", (void **)&sparts_written,
                              spart_align,
                              Nstars_written * sizeof(struct spart)) != 0)
             error("Error while allocating temporary memory for sparts");
@@ -2021,7 +2021,7 @@ void write_output_parallel(struct engine* e,
           Nparticles = Nblackholes_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("bparts_written", (void**)&bparts_written,
+          if (swift_memalign("bparts_written", (void **)&bparts_written,
                              bpart_align,
                              Nblackholes_written * sizeof(struct bpart)) != 0)
             error("Error while allocating temporary memory for bparts");

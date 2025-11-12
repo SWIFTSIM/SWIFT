@@ -22,6 +22,9 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Local includes */
+#include "part_type.h"
+
 #if defined(HAVE_HDF5)
 #include <hdf5.h>
 #endif
@@ -154,6 +157,11 @@ struct gravity_props {
 
   /*! Inverse of the long-range gravity mesh scale. */
   float r_s_inv;
+
+  /* ------------- Exact gravity checks--------------------------------- */
+
+  /*! The type of particles to check in the N^2 exact gravity routines */
+  int exact_gravity_to_check_types[swift_type_count];
 
   /* ------------- Physical constants ---------------------------------- */
 

@@ -93,11 +93,6 @@ runner_iact_nonsym_feedback_apply(
 
   const double e_sn = si->feedback_data.energy_ejected;
 
-  /* Do we have supernovae? */
-  if (e_sn == 0) {
-    return;
-  }
-
   const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);
 
@@ -120,21 +115,23 @@ runner_iact_nonsym_feedback_apply(
   const double dm = m_ej * weight;
   const double new_mass = mj + dm;
 
-  /* Energy received */
-  const double du = e_sn * weight / new_mass;
+  if (e_sn != 0.0) {
+    /* Energy received */
+    const double du = e_sn * weight / new_mass;
 
-  xpj->feedback_data.delta_mass += dm;
-  xpj->feedback_data.delta_u += du;
+    xpj->feedback_data.delta_mass += dm;
+    xpj->feedback_data.delta_u += du;
 
-  /* Compute momentum received. */
-  for (int i = 0; i < 3; i++) {
-    xpj->feedback_data.delta_p[i] += dm * (si->v[i] - xpj->v_full[i]);
-  }
+    /* Compute momentum received. */
+    for (int i = 0; i < 3; i++) {
+      xpj->feedback_data.delta_p[i] += dm * (si->v[i] - xpj->v_full[i]);
+    }
 
-  /* Add the metals */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    pj->chemistry_data.metal_mass[i] +=
-        weight * si->feedback_data.metal_mass_ejected[i];
+    /* Add the metals */
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+      pj->chemistry_data.metal_mass[i] +=
+          weight * si->feedback_data.metal_mass_ejected[i];
+    }
   }
 
   /* Impose maximal viscosity */

@@ -38,8 +38,8 @@
  *
  * @return Returns the number of fields to read.
  */
-INLINE static int rt_read_particles(const struct part* parts,
-                                    struct io_props* list) {
+INLINE static int rt_read_particles(const struct part *parts,
+                                    struct io_props *list) {
 
   /* List what we want to read */
 
@@ -80,8 +80,8 @@ INLINE static int rt_read_particles(const struct part* parts,
  *
  * @return Returns the number of fields to read.
  */
-INLINE static int rt_read_stars(const struct spart* sparts,
-                                struct io_props* list) {
+INLINE static int rt_read_stars(const struct spart *sparts,
+                                struct io_props *list) {
   return 0;
 }
 
@@ -90,8 +90,8 @@ INLINE static int rt_read_stars(const struct spart* sparts,
  * we convert radiation energy per mass to radiation energy
  */
 INLINE static void rt_convert_conserved_photon_energies(
-    const struct engine* engine, const struct part* part,
-    const struct xpart* xpart, float* ret) {
+    const struct engine *engine, const struct part *part,
+    const struct xpart *xpart, float *ret) {
 
   for (int g = 0; g < RT_NGROUPS; g++) {
     ret[g] = part->rt_data.conserved[g].urad * part->mass;
@@ -103,8 +103,8 @@ INLINE static void rt_convert_conserved_photon_energies(
  * we convert radiation flux per mass to radiation flux
  */
 INLINE static void rt_convert_conserved_photon_fluxes(
-    const struct engine* engine, const struct part* part,
-    const struct xpart* xpart, float* ret) {
+    const struct engine *engine, const struct part *part,
+    const struct xpart *xpart, float *ret) {
 
   int i = 0;
   for (int g = 0; g < RT_NGROUPS; g++) {
@@ -123,8 +123,8 @@ INLINE static void rt_convert_conserved_photon_fluxes(
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int rt_write_particles(const struct part* parts,
-                                     struct io_props* list) {
+INLINE static int rt_write_particles(const struct part *parts,
+                                     struct io_props *list) {
 
   /* Note that in the output, we write radiation energy and flux then we convert
    * these quantities from radiation energy per mass and flux per mass */
@@ -163,8 +163,8 @@ INLINE static int rt_write_particles(const struct part* parts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int rt_write_stars(const struct spart* sparts,
-                                 struct io_props* list) {
+INLINE static int rt_write_stars(const struct spart *sparts,
+                                 struct io_props *list) {
   return 0;
 }
 
@@ -179,10 +179,10 @@ INLINE static int rt_write_stars(const struct spart* sparts,
  * @param rtp The #rt_props
  */
 INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
-                                    const struct engine* e,
-                                    const struct unit_system* internal_units,
-                                    const struct unit_system* snapshot_units,
-                                    const struct rt_props* rtp) {
+                                    const struct engine *e,
+                                    const struct unit_system *internal_units,
+                                    const struct unit_system *snapshot_units,
+                                    const struct rt_props *rtp) {
 
 #if defined(HAVE_HDF5)
 

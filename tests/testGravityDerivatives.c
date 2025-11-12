@@ -908,7 +908,7 @@ double D_500(double r_x, double r_y, double r_z, double r_inv) {
   /* 26 zero-valued terms not written out */
 }
 
-void test(double x, double y, double tol, double min, const char* name) {
+void test(double x, double y, double tol, double min, const char *name) {
 
   double diff = fabs(x - y);
   double norm = 0.5 * fabs(x + y);
@@ -921,7 +921,7 @@ void test(double x, double y, double tol, double min, const char* name) {
   /*   message("'%s' (%e -- %e) OK!", name, x, y); */
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
