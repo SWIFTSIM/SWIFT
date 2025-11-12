@@ -286,9 +286,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
  */
 __attribute__((always_inline)) INLINE static void mhd_init_part(
     struct part *p) {
-
-  // p->mhd_data.divA = 0.f;
-  // for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = 0.f;
+  
+  zero_sym_matrix(&p->mhd_data.dens.d_mat_inv);
+  for (int i = 0; i < 3; ++i) 
+    for (int j = 0; j < 3; ++j){ 
+      p->mhd_data.dens.Mat_b[i][j] = 0.f;
+      }
 }
 
 /**
@@ -306,13 +309,52 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_density(
     struct part *p, const struct cosmology *cosmo) {
-  //
-  //  const float h_inv_dim_plus_one =
-  //      pow_dimension_plus_one(1.f / p->h); /*1/h^(d+1) */
-  //  const float rho_inv = 1.f / p->rho;
-  //  p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
-  //  for (int i = 0; i < 3; i++)
-  //    p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv;
+  
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Finish the construction of the inverse of the c-matrix by
+   * multiplying in the factors of h coming from W */
+  for (int i = 0; i < 6; ++i) {
+    p->mhd_data.dens.d_mat_inv.elements[i] *= h_inv_dim/p->mass;
+  }
+  /* Finish the construction of the inverse of the A gradient
+   * multiplying in the factors of h coming from W */
+  for (int i = 0; i < 3; ++i) 
+    for (int j = 0; j < 3; ++j) {
+      p->mhd_data.dens.Mat_b[i][j] *= h_inv_dim/p->mass;
+      }
+  /* Invert the c-matrix */
+  float d_mat_temp[3][3];
+  get_matrix_from_sym_matrix(d_mat_temp, &p->mhd_data.dens.d_mat_inv);
+  int res = invert_dimension_by_dimension_matrix(d_mat_temp);
+  if (res) {
+    sym_matrix_print(&p->mhd_data.dens.d_mat_inv);
+    error("Error inverting D matrix");
+  }
+  const float g_b[3][3] = {
+  {p->mhd_data.dens.Mat_b[0][0], p->mhd_data.dens.Mat_b[0][1], p->mhd_data.dens.Mat_b[0][2]},
+  {p->mhd_data.dens.Mat_b[1][0], p->mhd_data.dens.Mat_b[1][1], p->mhd_data.dens.Mat_b[1][2]},
+  {p->mhd_data.dens.Mat_b[2][0], p->mhd_data.dens.Mat_b[2][1], p->mhd_data.dens.Mat_b[2][2]}};
+  
+  for (int i = 0; i < 3; i++) 
+    for (int j = 0; j < 3; j++){ 
+         p->mhd_data.dens.Mat_b[i][j] = 0.f;
+      for (int k = 0; k < 3; k++){ 
+         p->mhd_data.dens.Mat_b[i][j] += d_mat_temp[j][k] * g_b[i][k];
+	 }
+  }
+  
+  for (int i = 0; i < 3; i++) 
+     p->mhd_data.BPred[i] =
+         p->mhd_data.dens.Mat_b[(i+2)%3][(i+1)%3] - p->mhd_data.dens.Mat_b[(i+1)%3][(i+2)%3];
+  p->mhd_data.divA = p->mhd_data.dens.Mat_b[0][0] + p->mhd_data.dens.Mat_b[1][1] +
+                     p->mhd_data.dens.Mat_b[2][2];
+
+  get_sym_matrix_from_matrix(&p->mhd_data.grad.d_mat, d_mat_temp);
+
 }
 
 /**
@@ -345,7 +387,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
 __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     struct part *p) {
 
-  zero_sym_matrix(&p->mhd_data.grad.c_matrix_inv);
+  zero_sym_matrix(&p->mhd_data.grad.c_mat_inv);
   for (int i = 0; i < 3; ++i) 
     for (int j = 0; j < 3; ++j){ 
       p->mhd_data.grad.Mat_b[i][j] = 0.f;
@@ -362,12 +404,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
       p->mhd_data.grad_B_tensor[i][j] = 0.0f;
     }
   }
-
-  p->mhd_data.BSmooth[0] = 0.f;
-  p->mhd_data.BSmooth[1] = 0.f;
-  p->mhd_data.BSmooth[2] = 0.f;
-  //  p->mhd_data.GauSmooth = 0.f;
-  p->mhd_data.Q0 = 0.f;  // XXX make union for clarification
 
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
@@ -386,19 +422,11 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     struct part *p) {
 
-  // Self Contribution
-  // for (int i = 0; i < 3; i++)
-  //  p->mhd_data.BSmooth[i] += p->mass * kernel_root * p->mhd_data.BPred[i];
-  p->mhd_data.Q0 += p->mass * kernel_root;
-
-  //  for (int i = 0; i < 3; i++)
-  //    p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
-  for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i];
-
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
   /* Finish SPH_1 calculation*/
   p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho;
+  
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
@@ -407,7 +435,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   /* Finish the construction of the inverse of the c-matrix by
    * multiplying in the factors of h coming from W */
   for (int i = 0; i < 6; ++i) {
-    p->mhd_data.grad.c_matrix_inv.elements[i] *= h_inv_dim;
+    p->mhd_data.grad.c_mat_inv.elements[i] *= h_inv_dim;
   }
   /* Finish the construction of the inverse of the A gradient
    * multiplying in the factors of h coming from W */
@@ -417,12 +445,12 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
       p->mhd_data.grad.Mat_da[i][j] *= h_inv_dim;
       }
   /* Invert the c-matrix */
-  float c_matrix_temp[3][3];
-  get_matrix_from_sym_matrix(c_matrix_temp, &p->mhd_data.grad.c_matrix_inv);
-  int res = invert_dimension_by_dimension_matrix(c_matrix_temp);
+  float c_mat_temp[3][3];
+  get_matrix_from_sym_matrix(c_mat_temp, &p->mhd_data.grad.c_mat_inv);
+  int res = invert_dimension_by_dimension_matrix(c_mat_temp);
   if (res) {
-    sym_matrix_print(&p->mhd_data.grad.c_matrix_inv);
-    error("Error inverting matrix");
+    sym_matrix_print(&p->mhd_data.grad.c_mat_inv);
+    error("Error inverting C matrix");
   }
   /* Finish computation of velocity gradient (eq. 18) */
   const float g_b[3][3] = {
@@ -440,18 +468,18 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
          p->mhd_data.grad.Mat_b[i][j] = 0.f;
          p->mhd_data.grad.Mat_da[i][j] = 0.f;
       for (int k = 0; k < 3; k++){ 
-         p->mhd_data.grad.Mat_b[i][j] += c_matrix_temp[j][k] * g_b[i][k];
-         p->mhd_data.grad.Mat_da[i][j] += c_matrix_temp[j][k] * g_da[i][k];
+         p->mhd_data.grad.Mat_b[i][j] += c_mat_temp[j][k] * g_b[i][k];
+         p->mhd_data.grad.Mat_da[i][j] += c_mat_temp[j][k] * g_da[i][k];
 	 }
   }
   
   for (int i = 0; i < 3; i++) 
-     p->mhd_data.BPred[i] =
+     p->mhd_data.JPred[i] =
          p->mhd_data.grad.Mat_b[(i+2)%3][(i+1)%3] - p->mhd_data.grad.Mat_b[(i+1)%3][(i+2)%3];
-  p->mhd_data.divA = p->mhd_data.grad.Mat_b[0][0] + p->mhd_data.grad.Mat_b[1][1] +
+  p->mhd_data.divB = p->mhd_data.grad.Mat_b[0][0] + p->mhd_data.grad.Mat_b[1][1] +
                      p->mhd_data.grad.Mat_b[2][2];
 
-  get_sym_matrix_from_matrix(&p->mhd_data.force.c_matrix, c_matrix_temp);
+  get_sym_matrix_from_matrix(&p->mhd_data.force.c_mat, c_mat_temp);
 }
 
 /**
