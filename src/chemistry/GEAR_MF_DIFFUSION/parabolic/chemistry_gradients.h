@@ -42,15 +42,16 @@
  * pj->x).
  * @param r Comoving distance between particle i and particle j.
  * @param xij_i Position of the "interface" w.r.t. position of particle i
+ * @param cosmo The #cosmology.
  * @param Ui (return) Resulting predicted and limited diffusion state of
- * particle i
+ * particle i (in physical units).
  * @param Uj (return) Resulting predicted and limited diffusion state of
- * particle j
+ * particle j (in physical units).
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     const struct part *restrict pi, const struct part *restrict pj, int metal,
-    const float dx[3], const float r, const float xij_i[3], double Ui[4],
-    double Uj[4]) {
+    const float dx[3], const float r, const float xij_i[3],
+    const struct cosmology *cosmo, double Ui[4], double Uj[4]) {
 
   /* Metal density */
   Ui[0] = chemistry_get_comoving_metal_density(pi, metal);
@@ -110,6 +111,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   if (m_Zj == m_Zj_not_extrapolated) {
     Uj[0] = m_Zj_not_extrapolated * hydro_get_comoving_density(pj) / mj;
   }
+
+  /* Convert Ui[0] and Uj[0] (metal density) to physical units */
+  Ui[0] *= cosmo->a3_inv;
+  Uj[0] *= cosmo->a3_inv;
 }
 
 /**

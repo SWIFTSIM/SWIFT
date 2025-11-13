@@ -444,11 +444,8 @@ runner_iact_chemistry_fluxes_common(
 
     /* Predict the diffusion state at the interface to compute fluxes */
     double Ui[4], Uj[4];
-    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, Ui, Uj);
-
-    /* Convert Ui[0] and Uj[0] (metal density) to physical units */
-    Ui[0] *= cosmo->a3_inv;
-    Uj[0] *= cosmo->a3_inv;
+    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, cosmo, Ui, Uj);
+    /* Note: The returned values are in physical units. No conversion needed */
 
     /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */
     double totflux[4] = {0.0, 0.0, 0.0, 0.0};
