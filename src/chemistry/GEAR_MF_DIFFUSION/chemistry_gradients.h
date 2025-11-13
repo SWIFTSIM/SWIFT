@@ -48,7 +48,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_init(
 /**
  * @brief Gradient calculations done during the gradient loop
  *
- * We compute \nabla Z.
+ * Note: Gradients are in comoving units: grad_p = 1/a * grad_c.
  *
  * @param r2 Squared distance between the two particles.
  * @param dx Distance vector (pi->x - pj->x).
@@ -154,37 +154,37 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
 
     // TODO: move this to a function inside hyperbolic/gradients
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-    const float dF_diff[3] = {
-        chi->hyperbolic_flux.dF_diff_i[0] - chj->hyperbolic_flux.dF_diff_j[0],
-        chi->hyperbolic_flux.dF_diff_i[1] - chj->hyperbolic_flux.dF_diff_j[1],
-        chi->hyperbolic_flux.dF_diff_i[2] - chj->hyperbolic_flux.dF_diff_j[2]};
+    const float dflux[3] = {
+        chi->flux[g][0] - chj->flux[g][0],
+        chi->flux[g][1] - chj->flux[g][1],
+        chi->flux[g][2] - chj->flux[g][2]};
 
     /* Do the gradients of pi */
     double dFx_i[3], dFy_i[3], dFz_i[3];
 
-    dFx_i[0] = dF_diff[0] * psii_tilde[0];
-    dFx_i[1] = dF_diff[0] * psii_tilde[1];
-    dFx_i[2] = dF_diff[0] * psii_tilde[2];
-    dFy_i[0] = dF_diff[1] * psii_tilde[0];
-    dFy_i[1] = dF_diff[1] * psii_tilde[1];
-    dFy_i[2] = dF_diff[1] * psii_tilde[2];
-    dFz_i[0] = dF_diff[2] * psii_tilde[0];
-    dFz_i[1] = dF_diff[2] * psii_tilde[1];
-    dFz_i[2] = dF_diff[2] * psii_tilde[2];
+    dFx_i[0] = dflux[0] * psii_tilde[0];
+    dFx_i[1] = dflux[0] * psii_tilde[1];
+    dFx_i[2] = dflux[0] * psii_tilde[2];
+    dFy_i[0] = dflux[1] * psii_tilde[0];
+    dFy_i[1] = dflux[1] * psii_tilde[1];
+    dFy_i[2] = dflux[1] * psii_tilde[2];
+    dFz_i[0] = dflux[2] * psii_tilde[0];
+    dFz_i[1] = dflux[2] * psii_tilde[1];
+    dFz_i[2] = dflux[2] * psii_tilde[2];
     chemistry_part_update_flux_gradients(pi, g, dFx_i, dFy_i, dFz_i);
 
     /* Now do the gradients of pj */
     double dFx_j[3], dFy_j[3], dFz_j[3];
 
-    dFx_j[0] = dF_diff[0] * psij_tilde[0];
-    dFx_j[1] = dF_diff[0] * psij_tilde[1];
-    dFx_j[2] = dF_diff[0] * psij_tilde[2];
-    dFy_j[0] = dF_diff[1] * psij_tilde[0];
-    dFy_j[1] = dF_diff[1] * psij_tilde[1];
-    dFy_j[2] = dF_diff[1] * psij_tilde[2];
-    dFz_j[0] = dF_diff[2] * psij_tilde[0];
-    dFz_j[1] = dF_diff[2] * psij_tilde[1];
-    dFz_j[2] = dF_diff[2] * psij_tilde[2];
+    dFx_j[0] = dflux[0] * psij_tilde[0];
+    dFx_j[1] = dflux[0] * psij_tilde[1];
+    dFx_j[2] = dflux[0] * psij_tilde[2];
+    dFy_j[0] = dflux[1] * psij_tilde[0];
+    dFy_j[1] = dflux[1] * psij_tilde[1];
+    dFy_j[2] = dflux[1] * psij_tilde[2];
+    dFz_j[0] = dflux[2] * psij_tilde[0];
+    dFz_j[1] = dflux[2] * psij_tilde[1];
+    dFz_j[2] = dflux[2] * psij_tilde[2];
     chemistry_part_update_flux_gradients(pj, g, dFx_j, dFy_j, dFz_j);
 #endif
   }
@@ -279,6 +279,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
  * @brief Gradient calculations done during the gradient loop: non-symmetric
  * version
  *
+ * Note: Gradients are in comoving units: grad_p = 1/a * grad_c.
+ *
  * @param r2 Squared distance between the two particles.
  * @param dx Distance vector (pi->x - pj->x).
  * @param hi Smoothing length of particle i.
@@ -349,23 +351,23 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
     chemistry_part_update_metal_mass_fraction_gradients(pi, g, dU_i);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-    const float dF_diff[3] = {
-        chi->hyperbolic_flux.dF_diff_i[0] - chj->hyperbolic_flux.dF_diff_j[0],
-        chi->hyperbolic_flux.dF_diff_i[1] - chj->hyperbolic_flux.dF_diff_j[1],
-        chi->hyperbolic_flux.dF_diff_i[2] - chj->hyperbolic_flux.dF_diff_j[2]};
+    const float dflux[3] = {
+        chi->flux[g][0] - chj->flux[g][0],
+        chi->flux[g][1] - chj->flux[g][1],
+        chi->flux[g][2] - chj->flux[g][2]};
 
     /* Do the gradients of pi */
     double dFx_i[3], dFy_i[3], dFz_i[3];
 
-    dFx_i[0] = dF_diff[0] * psii_tilde[0];
-    dFx_i[1] = dF_diff[0] * psii_tilde[1];
-    dFx_i[2] = dF_diff[0] * psii_tilde[2];
-    dFy_i[0] = dF_diff[1] * psii_tilde[0];
-    dFy_i[1] = dF_diff[1] * psii_tilde[1];
-    dFy_i[2] = dF_diff[1] * psii_tilde[2];
-    dFz_i[0] = dF_diff[2] * psii_tilde[0];
-    dFz_i[1] = dF_diff[2] * psii_tilde[1];
-    dFz_i[2] = dF_diff[2] * psii_tilde[2];
+    dFx_i[0] = dflux[0] * psii_tilde[0];
+    dFx_i[1] = dflux[0] * psii_tilde[1];
+    dFx_i[2] = dflux[0] * psii_tilde[2];
+    dFy_i[0] = dflux[1] * psii_tilde[0];
+    dFy_i[1] = dflux[1] * psii_tilde[1];
+    dFy_i[2] = dflux[1] * psii_tilde[2];
+    dFz_i[0] = dflux[2] * psii_tilde[0];
+    dFz_i[1] = dflux[2] * psii_tilde[1];
+    dFz_i[2] = dflux[2] * psii_tilde[2];
     chemistry_part_update_flux_gradients(pi, g, dFx_i, dFy_i, dFz_i);
 #endif
   }
