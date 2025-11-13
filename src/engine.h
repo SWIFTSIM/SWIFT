@@ -34,7 +34,6 @@
 
 /* Includes. */
 #include "barrier.h"
-#include "cell.h"
 #include "clocks.h"
 #include "collectgroup.h"
 #include "ic_info.h"
@@ -56,6 +55,7 @@ struct black_holes_properties;
 struct extra_io_properties;
 struct external_potential;
 struct forcing_terms;
+struct cell;
 
 /**
  * @brief The different policies the #engine can follow.

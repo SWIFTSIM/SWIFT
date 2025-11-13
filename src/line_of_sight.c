@@ -19,9 +19,11 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "zoom_region/zoom.h"
-
 #include <config.h>
+
+/* Standard header */
+#include <stdio.h>
+#include <stdlib.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -37,9 +39,6 @@
 #include "periodic.h"
 #include "version.h"
 #include "zoom_region/zoom.h"
-
-#include <stdio.h>
-#include <stdlib.h>
 
 /**
  * @brief Will the line of sight intersect a given cell?
