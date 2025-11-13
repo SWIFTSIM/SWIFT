@@ -191,7 +191,7 @@ if __name__ == "__main__":
                 uni_id += 1
 
     print(
-        "You need to compile the code with " "--enable-boundary-particles=%i" % uni_id
+        "You need to compile the code with " "--enable-boundary-particles-below-id=%i" % uni_id
     )
     ids[ids == 0] = np.linspace(uni_id, numPart, numPart - uni_id + 1)
 
