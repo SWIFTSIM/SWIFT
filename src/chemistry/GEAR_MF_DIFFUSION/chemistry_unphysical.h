@@ -157,4 +157,45 @@ chemistry_check_unphysical_total_metal_mass(struct part* restrict p,
   }
 }
 
+/**
+ * @brief Check for and correct if needed unphysical values for a flux in the
+ * sense of hyperbolic conservation laws.
+ *
+ * @param flux Hyperbolic flux: 4 components (metal density +
+ *        metal flux) x 3 dimensions each.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_check_unphysical_hyperbolic_flux(double  flux[4][3]) {
+
+/* #ifdef SWIFT_DEBUG_CHECKS */
+  int nans = 0;
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 3; j++) {
+      if (isnan(flux[i][j])) {
+        nans += 1;
+        break;
+      }
+    }
+  }
+
+  if (nans) {
+    message(
+        "Fixing unphysical hyperbolic flux:"
+        " %.3e %.3e %.3e | %.3e %.3e %.3e |"
+        " %.3e %.3e %.3e | %.3e %.3e %.3e",
+        flux[0][0], flux[0][1], flux[0][2], flux[1][0], flux[1][1], flux[1][2],
+        flux[2][0], flux[2][1], flux[2][2], flux[3][0], flux[3][1], flux[3][2]);
+  }
+/* #endif */
+
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 3; j++) {
+      if (isnan(flux[i][j])) {
+        flux[i][j] = 0.f;
+      }
+    }
+  }
+}
+
+
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_UNPHYSICAL_H */
