@@ -29,8 +29,15 @@ struct chemistry_part_data {
    * volume. */
   double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
+  /*! Diffusion flux at the last active timestep (in physical units).
+      Units: U_M/(U_L^2 U_T) */
+  double flux[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
+
   /*! Metal mass flux computed with the Riemann solver */
   double metal_mass_riemann[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Flux of the diffusion flux, computed with the Riemann solver */
+  double flux_riemann[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
 
 #ifdef HYDRO_DOES_MASS_FLUX
   /* Note: This is only used by the MFV hydro scheme. */
@@ -46,7 +53,7 @@ struct chemistry_part_data {
   /*! Condition number of matrix_E (eq C1) */
   float geometry_condition_number;
 
-  /*! Particle chemistry time-step. */
+  /*! Particle chemistry time-step in physical units. */
   float flux_dt;
 
   /*! Isotropic diffusion coefficient. The matrix K is proportional to kappa.
@@ -54,6 +61,9 @@ struct chemistry_part_data {
    - For the isotropic constant case, the units are : U_L^2/U_T
    - Smagorinsky/Gradient, units are : U_M/(U_L*U_T) */
   double kappa;
+
+  /*! Relaxation time */
+  double tau;
 
   /*! Density of the previous timestep. This is used to compute quantities in
      the density loop while hydro loops are updating rho. */
@@ -70,7 +80,8 @@ struct chemistry_part_data {
     /*! Fluid velocity gradients. */
     float v[3][3];
 
-    float F_diff[3][3];
+    /*! Diffusion flux gradients. */
+    float flux[GEAR_CHEMISTRY_ELEMENT_COUNT][3][3];
 
   } gradients;
 
@@ -89,7 +100,8 @@ struct chemistry_part_data {
     /*! Extreme values of the filtered velocity among the neighbours. */
     float v_tilde[3][2];
 
-    float F_diff[GEAR_CHEMISTRY_ELEMENT_COUNT][3][2];
+    /*! Extreme values of the diffusion flux among the neighbours. */
+    float flux[GEAR_CHEMISTRY_ELEMENT_COUNT][3][2];
 
     /*! Maximal distance to all neighbouring faces. */
     float maxr;
@@ -113,25 +125,6 @@ struct chemistry_part_data {
     /*! Gradient of tilde(v) */
     float grad_v_tilde[3][3];
   } filtered;
-
-  /* Relaxation time */
-  double tau;
-
-  /* Hyperbolic flux scheme variables */
-  struct {
-    /*! Diffusion flux at the last active timestep. Units: U_M/(U_L^2 U_T) */
-    double F_diff[3];
-
-    /*! Predicted diffusion flux */
-    double F_diff_pred[3];
-
-    /*! Time derivative of the diffusion flux */
-    double dF_dt[3];
-
-    /*! Flux of the diffusion flux, computed with the Riemann solver */
-    double F_diff_flux[3];
-
-  } hyperbolic_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   /*! Variables used for timestep calculation. */
   struct {
