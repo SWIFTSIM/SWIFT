@@ -20,7 +20,7 @@
 #define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_GETTERS_H
 
 #include "chemistry_struct.h"
-#include "chemistry_utils.h"
+#include "../chemistry_utils.h"
 #include "const.h"
 #include "cosmology.h"
 #include "hydro.h"
@@ -89,6 +89,63 @@ chemistry_compute_physical_tau(const struct part* restrict p,
     const double S_norm_inv = 1.0 / chemistry_get_matrix_norm(S);
 
     return chem_data->tau * S_norm_inv;
+  }
+}
+
+/**
+ * @brief Get the gradients of diffusion flux for a given metal specie.
+ *
+ * Note: Gradients are comoving;
+ *
+ * @param p Particle.
+ * @param metal Index of metal specie.
+ * @param dFx Gradient (of size 3) of the flux's x component.
+ * @param dFy Gradient (of size 3) of the flux's y component.
+ * @param dFz Gradient (of size 3) of the flux's z component.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_get_hyperbolic_flux_gradients(const struct part* restrict p, int metal,
+					double dFx[3], double dFy[3], double dFz[3]) {
+
+  const struct chemistry_part_data* chd = &p->chemistry_data;
+
+  dFx[0] = chd->gradients.flux[metal][0][0];
+  dFx[1] = chd->gradients.flux[metal][0][1];
+  dFx[2] = chd->gradients.flux[metal][0][2];
+
+  dFy[0] = chd->gradients.flux[metal][1][0];
+  dFy[1] = chd->gradients.flux[metal][1][1];
+  dFy[2] = chd->gradients.flux[metal][1][2];
+
+  dFz[0] = chd->gradients.flux[metal][2][0];
+  dFz[1] = chd->gradients.flux[metal][2][1];
+  dFz[2] = chd->gradients.flux[metal][2][2];
+}
+
+/**
+ * @brief Get the gradients of diffusion flux for a given metal specie.
+ *
+ * Note: Gradients are comoving;
+ *
+ * @param p Particle.
+ * @param metal Index of metal specie.
+ * @param dFx Gradient (of size 3) of the flux's x component.
+ * @param dFy Gradient (of size 3) of the flux's y component.
+ * @param dFz Gradient (of size 3) of the flux's z component.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_get_physical_hyperbolic_flux_gradients(const struct part* restrict p,
+						 int metal, double dFx[3],
+						 double dFy[3], double dFz[3],
+						 const struct cosmology* cosmo) {
+  chemistry_get_hyperbolic_flux_gradients(p, metal, dFx, dFy, dFz);
+
+  /* grad_p = a^{-1} grad_c */
+  for (int i = 0; i < 3; i++) {
+    dFx[i] *= cosmo->a_inv;
+    dFy[i] *= cosmo->a_inv;
+    dFz[i] *= cosmo->a_inv ;
   }
 }
 

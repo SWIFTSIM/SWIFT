@@ -410,63 +410,6 @@ chemistry_get_physical_parabolic_flux(
 }
 
 /**
- * @brief Get the physical diffusion speed.
- *
- * Note: The units are always U_L/U_T.
- *
- * TODO: CHECK THIS
- *
- * @param p Particle.
- * @param chem_data The global properties of the chemistry scheme.
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_physical_diffusion_speed(
-    const struct part* restrict p,
-    const struct chemistry_global_data* chem_data,
-    const struct cosmology* cosmo) {
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  return chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
-#else
-  /* For the parabolic diffusion, we can estimate the diffusion speed with
-                v_diff ~ ||K|| * || Grad q || / ||U||.
-     See apendix D in Hopkins 2017 (https://arxiv.org/abs/1602.07703). */
-  const struct chemistry_part_data* chd = &p->chemistry_data;
-
-  /* Compute diffusion matrix K */
-  double K[3][3];
-  chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
-  const double norm_matrix_K = chemistry_get_matrix_norm(K);
-
-  /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...). */
-  double norm_U = 0.0;
-  double norm_nabla_q = 0.0;
-
-  /* Compute the norms */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    norm_U += chemistry_get_physical_metal_density(p, i, cosmo) *
-              chemistry_get_physical_metal_density(p, i, cosmo);
-
-    for (int j = 0; j < 3; j++) {
-      /* Compute the Frobenius norm of \nabla \otimes q */
-      norm_nabla_q += chd->gradients.Z[i][j] * chd->gradients.Z[i][j];
-    }
-  }
-
-  /* Take the sqrt and convert to physical units */
-  norm_U = sqrtf(norm_U);
-  norm_nabla_q = sqrtf(norm_nabla_q) * cosmo->a_inv;
-
-  /* Prevent pathological cases */
-  if (norm_U == 0.0) {
-    return FLT_MAX;
-  }
-
-  return norm_matrix_K * norm_nabla_q / norm_U;
-#endif
-}
-
-/**
  * @brief Returns the total metallicity (metal mass fraction) of the
  * gas particle to be used in feedback/enrichment related routines.
  *
@@ -652,5 +595,11 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
   error("No BH yet in GEAR");
   return 0.f;
 }
+
+/* Import the right chemistry_part_data definition */
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#include "hyperbolic/chemistry_getters.h"
+#endif
+
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_GETTERS_H  */
