@@ -138,9 +138,9 @@ INLINE static void convert_gas_diffusion_flux_norm(const struct engine* e,
                                                    const struct xpart* xp,
                                                    double* ret) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    double F_diff[3] = {p->chemistry_data.hyperbolic_flux[i].F_diff[0],
-                        p->chemistry_data.hyperbolic_flux[i].F_diff[1],
-                        p->chemistry_data.hyperbolic_flux[i].F_diff[2]};
+    double F_diff[3] = {p->chemistry_data.flux[i][0],
+                        p->chemistry_data.flux[i][1],
+                        p->chemistry_data.flux[i][2]};
     ret[i] = sqrt(F_diff[0] * F_diff[0] + F_diff[1] * F_diff[1] +
                   F_diff[2] * F_diff[2]);
   }
