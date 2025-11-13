@@ -19,8 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SETTERS_H
 #define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SETTERS_H
 
-#include "chemistry_getters.h"
-#include "chemistry_struct.h"
+#include "../chemistry_getters.h"
+#include "../chemistry_struct.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
 
@@ -36,20 +36,20 @@
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_flux_gradients(struct part *restrict p, int metal,
-                                     float dFx[3], float dFy[3], float dFz[3]) {
+                                     double dFx[3], double dFy[3], double dFz[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
-  chd->gradient[metal].F_diff[0][0] += dFx[0];
-  chd->gradient[metal].F_diff[0][1] += dFx[1];
-  chd->gradient[metal].F_diff[0][2] += dFx[2];
+  chd->gradients.flux[metal][0][0] += dFx[0];
+  chd->gradients.flux[metal][0][1] += dFx[1];
+  chd->gradients.flux[metal][0][2] += dFx[2];
 
-  chd->gradient[metal].F_diff[1][0] += dFy[0];
-  chd->gradient[metal].F_diff[1][1] += dFy[1];
-  chd->gradient[metal].F_diff[1][2] += dFy[2];
+  chd->gradients.flux[metal][1][0] += dFy[0];
+  chd->gradients.flux[metal][1][1] += dFy[1];
+  chd->gradients.flux[metal][1][2] += dFy[2];
 
-  chd->gradient[metal].F_diff[2][0] += dFz[0];
-  chd->gradient[metal].F_diff[2][1] += dFz[1];
-  chd->gradient[metal].F_diff[2][2] += dFz[2];
+  chd->gradients.flux[metal][2][0] += dFz[0];
+  chd->gradients.flux[metal][2][1] += dFz[1];
+  chd->gradients.flux[metal][2][2] += dFz[2];
 }
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SETTERS_H */

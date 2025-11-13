@@ -34,16 +34,17 @@ chemistry_part_reset_gradients(struct part *restrict p) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chd->gradients.Z[i][0] = 0.0f;
-    chd->gradients.Z[i][1] = 0.0f;
-    chd->gradients.Z[i][2] = 0.0f;
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    chd->gradients.Z[m][0] = 0.0f;
+    chd->gradients.Z[m][1] = 0.0f;
+    chd->gradients.Z[m][2] = 0.0f;
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    /* Iterate over the lines of the flux gradient matrix, for metal m */
     for (int i = 0; i < 3; i++) {
-      chd->gradients.F_diff[i][0] = 0.f;
-      chd->gradients.F_diff[i][1] = 0.f;
-      chd->gradients.F_diff[i][2] = 0.f;
+      chd->gradients.flux[m][i][0] = 0.f;
+      chd->gradients.flux[m][i][1] = 0.f;
+      chd->gradients.flux[m][i][2] = 0.f;
     }
 #endif
   }
@@ -169,16 +170,17 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chd->gradients.Z[i][0] *= norm;
-    chd->gradients.Z[i][1] *= norm;
-    chd->gradients.Z[i][2] *= norm;
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    chd->gradients.Z[m][0] *= norm;
+    chd->gradients.Z[m][1] *= norm;
+    chd->gradients.Z[m][2] *= norm;
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    /* Iterate over the lines of the flux gradient matrix, for metal m */
     for (int i = 0; i < 3; i++) {
-      chd->gradients.F_diff[i][0] *= norm;
-      chd->gradients.F_diff[i][1] *= norm;
-      chd->gradients.F_diff[i][2] *= norm;
+      chd->gradients.flux[m][i][0] *= norm;
+      chd->gradients.flux[m][i][1] *= norm;
+      chd->gradients.flux[m][i][2] *= norm;
     }
 #endif
   }
@@ -312,5 +314,10 @@ chemistry_set_star_supernovae_ejected_yields(
     sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
   }
 }
+
+/* Import the right chemistry_part_data definition */
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#include "hyperbolic/chemistry_setters.h"
+#endif
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SETTERS_H */
