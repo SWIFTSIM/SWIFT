@@ -463,7 +463,17 @@ nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_struct.
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_gradients.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_flux.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_riemann_HLL.h
+nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_riemann_checks.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_slope_limiter_face.h
+
+nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_struct.h
+nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_getters.h
+nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_setters.h
+nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_gradients.h
+nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_flux.h
+nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_riemann_HLL.h
+nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_riemann_checks.h
+nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_slope_limiter_face.h
 
 
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry.h
