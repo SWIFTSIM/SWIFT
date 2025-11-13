@@ -19,8 +19,9 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_FLUX_H
 #define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_FLUX_H
 
-#include "../chemistry_riemann_HLL.h"
 #include "../chemistry_unphysical.h"
+#include "../chemistry_struct.h"
+#include "../chemistry_riemann_HLL.h"
 
 /**
  * @file src/chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_flux.h
@@ -36,9 +37,9 @@ __attribute__((always_inline)) INLINE static void
 chemistry_part_reset_fluxes(struct part* restrict p) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     p->chemistry_data.metal_mass_riemann[i] = 0.0;
-    p->chemistry_data.flux_riemann[metal][0] = 0.0;
-    p->chemistry_data.flux_riemann[metal][1] = 0.0;
-    p->chemistry_data.flux_riemann[metal][2] = 0.0;
+    p->chemistry_data.flux_riemann[i][0] = 0.0;
+    p->chemistry_data.flux_riemann[i][1] = 0.0;
+    p->chemistry_data.flux_riemann[i][2] = 0.0;
   }
 }
 
@@ -90,8 +91,91 @@ chemistry_part_update_fluxes_right(struct part* restrict p,
   p->chemistry_data.flux_riemann[metal][2] += fluxes[3] * dt;
 }
 
-// TODO: Rewrite this function (and the riemann solver part to use the
-// hyperbolic version)
+
+/**
+ * @brief Time integrate the source term in the flux relaxation equation
+ *
+ * The flux relaxation equation is :
+ *       dflux/dt + K/tau * grad Z = - flux/tau.
+ *
+ * The - flux/tau is the source term.
+ *
+ * @param p Particle.
+ * @param metal Metal specie.
+ * @param dt Time step for the flux integration (in physical units).
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_part_integrate_flux_source_term(
+    struct part* restrict p, const int metal, const float dt,
+    const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo) {
+
+  struct chemistry_part_data* chd = &p->chemistry_data;
+  const double tau = chd->tau;
+  const double exp_decay = exp(-dt / tau);
+  const double one_minus_exp_decay = exp_decay + 1.0;
+
+  const double flux_current[3] = {chd->flux[metal][0], chd->flux[metal][1],
+				  chd->flux[metal][2]};
+  double flux_parabolic[3];
+  chemistry_get_physical_parabolic_flux(p, metal, flux_parabolic, chem_data,
+					cosmo);
+
+  for (int i = 0; i < 3; i++) {
+    /* Note that parabolic flux already includes the minus term. */
+    chd->flux[metal][i] = flux_current[i] * exp_decay + flux_parabolic[i]*one_minus_exp_decay;
+  }
+}
+
+/**
+ * @brief Compute the flux of the hyperbolic conservation law for a given
+ * state U.
+ *
+ * @param p Particle.
+ * @param U the state (metal density, diffusion flux) to use
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
+ * @param hypflux (return) resulting flux F(U) of the hyperbolic conservation
+ * law (in physical units).
+ */
+__attribute__((always_inline)) INLINE static void chemistry_get_hyperbolic_flux(
+    const struct part* restrict p, const int metal, const double U[4],
+    const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo, double hypflux[4][3]) {
+
+  /* Flux part (first row) */
+  hypflux[0][0] = U[1];
+  hypflux[0][1] = U[2];
+  hypflux[0][2] = U[3];
+
+  const double tau = p->chemistry_data.tau;
+  double K[3][3];
+  chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
+
+  /* Get the right diffusion driver */
+  double q;
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    q = chemistry_get_physical_metal_density(p, metal, cosmo);
+  } else {
+    q = chemistry_get_metal_mass_fraction(p, metal);
+  }
+
+  const double multiplier = q / tau;
+
+  /* The matrix part: q / tau * K */
+  hypflux[1][0] = K[0][0] * multiplier;
+  hypflux[1][1] = K[0][1] * multiplier;
+  hypflux[1][2] = K[0][2] * multiplier;
+  hypflux[2][0] = K[1][0] * multiplier;
+  hypflux[2][1] = K[1][1] * multiplier;
+  hypflux[2][2] = K[1][2] * multiplier;
+  hypflux[3][0] = K[2][0] * multiplier;
+  hypflux[3][1] = K[2][1] * multiplier;
+  hypflux[3][2] = K[2][2] * multiplier;
+}
+
 /**
  * @brief Compute the metal mass flux for the Riemann problem with the given
  * left and right state, and interface normal, surface area and velocity.
@@ -119,29 +203,27 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
     const float Anorm, const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo, double fluxes[4]) {
 
-  /* Use the predicted fluxes. They improve metal mass conservation and reduce
-     artificial diffusion. */
-  double F_diff_i[3] = {
-      pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[0],
-      pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[1],
-      pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[2]};
-  double F_diff_j[3] = {
-      pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[0],
-      pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[1],
-      pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[2]};
+  /* (flux[3], q / tau * K) */
+  double hyper_flux_L[4][3];
+  chemistry_get_hyperbolic_flux(pi, metal, UL, chem_data, cosmo, hyper_flux_L);
+  double hyper_flux_R[4][3];
+  chemistry_get_hyperbolic_flux(pj, metal, UR, chem_data, cosmo, hyper_flux_R);
 
+/* #ifdef SWIFT_RT_DEBUG_CHECKS */
   /* Check that the fluxes are meaningful */
-  chemistry_check_unphysical_diffusion_flux(F_diff_i);
-  chemistry_check_unphysical_diffusion_flux(F_diff_j);
+  chemistry_check_unphysical_hyperbolic_flux(hyper_flux_L);
+  chemistry_check_unphysical_hyperbolic_flux(hyper_flux_R);
+/* #endif */
 
-  /* While solving the Riemann problem, we shall get a scalar because of the
-     scalar product betwee F_diff_ij^* and A_ij */
-  chemistry_riemann_solve_for_flux(dx, pi, pj, UL, UR, WL, WR, F_diff_i,
-				   F_diff_j, Anorm, n_unit, metal, chem_data,
-				   cosmo, metal_flux);
+  chemistry_riemann_solve_for_flux(dx, pi, pj, UL, UR, WL, WR, hyper_flux_L,
+				   hyper_flux_R, Anorm, n_unit, metal, chem_data,
+				   cosmo, fluxes);
 
   /* Anorm is already in physical units here. */
-  *metal_flux *= Anorm;
+  fluxes[0] *= Anorm;
+  fluxes[1] *= Anorm;
+  fluxes[2] *= Anorm;
+  fluxes[3] *= Anorm;
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_FLUX_H */
