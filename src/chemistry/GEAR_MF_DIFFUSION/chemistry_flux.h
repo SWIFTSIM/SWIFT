@@ -43,11 +43,11 @@
  *
  * @param p Particle.
  * @param metal Index of metal specie.
- * @param flux Fluxes for the particle (array of size 1).
+ * @return flux Fluxes for the particle (array of size 1).
  */
-__attribute__((always_inline)) INLINE void chemistry_get_metal_mass_fluxes(
-    const struct part* restrict p, int metal, double* flux) {
-  *flux = p->chemistry_data.metal_mass_riemann[metal];
+__attribute__((always_inline)) INLINE double chemistry_get_metal_mass_fluxes(
+    const struct part* restrict p, int metal) {
+  return p->chemistry_data.metal_mass_riemann[metal];
 }
 
 /**
