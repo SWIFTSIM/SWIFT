@@ -97,6 +97,8 @@ struct mhd_part_data {
     float Mat_b[3][3];
     /*! Gradient per component of the dAdt*/
     float Mat_da[3][3];
+    /*! Gradient per component of Lorentz Force*/
+    float Mat_F[3][3];
 
   } grad;
 
@@ -104,9 +106,6 @@ struct mhd_part_data {
 
     /*! The 'correction matrix' (e.q. 6) - It's symmetric */
     struct sym_matrix c_mat;
-
-    /*! Gradient per component of the Afield means Bfield*/
-    float Mat_b[3][3];
 
   } force;
 };

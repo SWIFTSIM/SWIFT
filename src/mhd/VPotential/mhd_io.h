@@ -436,8 +436,14 @@ INLINE static int mhd_write_particles(const struct part* parts,
   list[11] = io_make_output_field_convert_part(
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
+  list[12] = io_make_output_field(
+      "MagneticCurrent", FLOAT, 3,
+      UNIT_CONV_MAGNETIC_CURL, mhd_comoving_factor - 1.f,
+      //parts, mhd_data.JPred,
+      parts, mhd_data.tot_mag_F,
+      "Co-moving Magnetic Current of the particles");
 
-  return 12;
+  return 13;
 }
 
 /**
