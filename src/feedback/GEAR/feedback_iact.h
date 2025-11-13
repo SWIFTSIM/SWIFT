@@ -226,7 +226,7 @@ runner_iact_nonsym_feedback_apply(
         const float v_i_without_Hubble_flow[3] = { si->v[0] * a_inv,
                                                    si->v[1] * a_inv,
                                                    si->v[2] * a_inv};
-        const double dp_without_Hubble[3]; 
+        double dp_without_Hubble[3]; 
         for (int i = 0; i < 3; i++) {
           /* the unit direction from the gas particle j to the star particle i */
           const double unit_direction = dx_p[i]/r_p;
