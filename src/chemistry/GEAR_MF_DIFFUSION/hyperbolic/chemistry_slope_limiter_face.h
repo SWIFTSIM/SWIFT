@@ -20,7 +20,8 @@
 #define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SLOPE_LIMITERS_FACE_H
 
 /**
- * @file src/chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_slope_limiters_face.h
+ * @file
+ *src/chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_slope_limiters_face.h
  * @brief Face slope limiter for the hyperbolic diffusion scheme.
  **/
 
@@ -51,40 +52,38 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
   const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
   for (int i = 0; i < 4; i++) {
-  /* Too much artificial diffusion, avoid using it */
-  /* chemistry_limiter_minmod(&dUi[i], &dUj[i]); */
+    /* Too much artificial diffusion, avoid using it */
+    /* chemistry_limiter_minmod(&dUi[i], &dUj[i]); */
 
-  /* For hyperbolic diffusion, all these slope limiter perform better than
-     minmod and reduce numerical diffusion */
-  /* const double alphai = chemistry_limiter_mc(dUi[i], dUj[i]); */
-  /* const double alphaj = chemistry_limiter_mc(dUj[i], dUi[i]); */
-  /* dUi[i] *= alphai; */
-  /* dUj[i] *= alphaj; */
+    /* For hyperbolic diffusion, all these slope limiter perform better than
+       minmod and reduce numerical diffusion */
+    /* const double alphai = chemistry_limiter_mc(dUi[i], dUj[i]); */
+    /* const double alphaj = chemistry_limiter_mc(dUj[i], dUi[i]); */
+    /* dUi[i] *= alphai; */
+    /* dUj[i] *= alphaj; */
 
-  /* const double alphai = chemistry_limiter_superbee(dUi[i], dUj[i]); */
-  /* const double alphaj = chemistry_limiter_superbee(dUj[i], dUi[i]); */
-  /* dUi[i] *= alphai; */
-  /* dUj[i] *= alphaj; */
+    /* const double alphai = chemistry_limiter_superbee(dUi[i], dUj[i]); */
+    /* const double alphaj = chemistry_limiter_superbee(dUj[i], dUi[i]); */
+    /* dUi[i] *= alphai; */
+    /* dUj[i] *= alphaj; */
 
-  /* const double alphai = chemistry_limiter_vanLeer(dUi[i], dUj[i]); */
-  /* const double alphaj = chemistry_limiter_vanLeer(dUj[i], dUi[i]); */
-  /* dUi[i] *= alphai; */
-  /* dUj[i] *= alphaj; */
+    /* const double alphai = chemistry_limiter_vanLeer(dUi[i], dUj[i]); */
+    /* const double alphaj = chemistry_limiter_vanLeer(dUj[i], dUi[i]); */
+    /* dUi[i] *= alphai; */
+    /* dUj[i] *= alphaj; */
 
-  /* const double alphai = chemistry_limiter_koren(dUi[i], dUj[i]); */
-  /* const double alphaj = chemistry_limiter_koren(dUj[i], dUi[i]); */
-  /* dUi[i] *= alphai; */
-  /* dUj[i] *= alphaj; */
-  
-    dUi[i] =
-        chemistry_slope_limit_face_quantity_double(Ui[i], Uj[i], Ui[i] + dUi[i],
-                                                   xij_i_norm, r_inv, 1);
+    /* const double alphai = chemistry_limiter_koren(dUi[i], dUj[i]); */
+    /* const double alphaj = chemistry_limiter_koren(dUj[i], dUi[i]); */
+    /* dUi[i] *= alphai; */
+    /* dUj[i] *= alphaj; */
 
-    dUj[i] =
-        chemistry_slope_limit_face_quantity_double(Uj[i], Ui[i], Uj[i] + dUj[i],
-                                                   xij_j_norm, r_inv, 1);
+    dUi[i] = chemistry_slope_limit_face_quantity_double(
+        Ui[i], Uj[i], Ui[i] + dUi[i], xij_i_norm, r_inv, 1);
+
+    dUj[i] = chemistry_slope_limit_face_quantity_double(
+        Uj[i], Ui[i], Uj[i] + dUj[i], xij_j_norm, r_inv, 1);
   }
 }
 
-
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SLOPE_LIMITERS_FACE_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SLOPE_LIMITERS_FACE_H \
+        */

@@ -47,7 +47,7 @@
  * @param id Particle id.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
+chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
                                  const double gas_mass, int callloc,
                                  const int element, const long long id) {
 
@@ -132,9 +132,9 @@ chemistry_check_unphysical_diffusion_flux(double flux[3]) {
  *
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_check_unphysical_total_metal_mass(struct part* restrict p,
+chemistry_check_unphysical_total_metal_mass(struct part *restrict p,
                                             int callloc) {
-  struct chemistry_part_data* chd = &p->chemistry_data;
+  struct chemistry_part_data *chd = &p->chemistry_data;
 
   /* Verify that the total metal mass does not exceed the part's mass */
   const float gas_mass = hydro_get_mass(p);

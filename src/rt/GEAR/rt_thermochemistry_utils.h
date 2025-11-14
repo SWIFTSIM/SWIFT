@@ -110,7 +110,7 @@ __attribute__((always_inline)) INLINE static float rt_tchem_internal_energy_dT(
  * @param species_densities array to write densities in
  **/
 __attribute__((always_inline)) INLINE static void
-rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
+rt_tchem_get_species_densities(const struct part *restrict p, gr_float rho,
                                gr_float species_densities[6]) {
 
   species_densities[0] = p->rt_data.tchem.mass_fraction_HI * rho;
@@ -142,8 +142,8 @@ rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
 __attribute__((always_inline)) INLINE static void
 rt_tchem_get_ionizing_species_number_densities(
     double ns_cgs[rt_ionizing_species_count], gr_float species_densities[6],
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us) {
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us) {
 
   const double m_p = phys_const->const_proton_mass;
   const double to_inv_volume_cgs =
@@ -163,9 +163,9 @@ rt_tchem_get_ionizing_species_number_densities(
  * @param cosmo cosmology struct
  **/
 __attribute__((always_inline)) INLINE static double
-rt_tchem_get_gas_temperature(const struct part* restrict p,
-                             const struct phys_const* restrict phys_const,
-                             const struct cosmology* restrict cosmo) {
+rt_tchem_get_gas_temperature(const struct part *restrict p,
+                             const struct phys_const *restrict phys_const,
+                             const struct cosmology *restrict cosmo) {
 
   const double kB = phys_const->const_boltzmann_k;
   const double mp = phys_const->const_proton_mass;
@@ -193,7 +193,7 @@ rt_tchem_get_gas_temperature(const struct part* restrict p,
  * temperatures.
  **/
 __attribute__((always_inline)) INLINE static void
-rt_tchem_set_particle_quantities_for_test(struct part* restrict p) {
+rt_tchem_set_particle_quantities_for_test(struct part *restrict p) {
 
 #ifdef GIZMO_MFV_SPH
 
@@ -241,8 +241,8 @@ rt_tchem_set_particle_quantities_for_test(struct part* restrict p) {
  **/
 __attribute__((always_inline)) INLINE static void
 rt_tchem_set_particle_radiation_field_for_test(
-    struct part* restrict p, const double time,
-    const struct unit_system* restrict us) {
+    struct part *restrict p, const double time,
+    const struct unit_system *restrict us) {
 
   const double time_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   const double t_Myr = time * time_to_cgs / (3600. * 24. * 365. * 1e6);
@@ -279,7 +279,7 @@ rt_tchem_set_particle_radiation_field_for_test(
  * a simple manner.
  * */
 __attribute__((always_inline)) INLINE static void
-rt_tchem_set_boundary_particles_for_test(struct part* restrict p) {
+rt_tchem_set_boundary_particles_for_test(struct part *restrict p) {
 
   if (p->id >= 1000000000) {
     for (int g = 0; g < RT_NGROUPS; g++) {

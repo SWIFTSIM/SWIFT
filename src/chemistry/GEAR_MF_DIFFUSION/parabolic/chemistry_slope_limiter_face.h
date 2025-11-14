@@ -20,7 +20,8 @@
 #define SWIFT_CHEMISTRY_GEAR_MF_PARABOLIC_DIFFUSION_SLOPE_LIMITERS_FACE_H
 
 /**
- * @file src/chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_slope_limiters_face.h
+ * @file
+ *src/chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_slope_limiters_face.h
  * @brief Face slope limiter for the parabolic diffusion scheme.
  **/
 

@@ -37,9 +37,9 @@
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_get_physical_hyperbolic_soundspeed(
-    const struct part* restrict p,
-    const struct chemistry_global_data* chem_data,
-    const struct cosmology* cosmo) {
+    const struct part *restrict p,
+    const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo) {
   if (chem_data->relaxation_time_mode == constant_mode) {
     double K[3][3];
     chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
@@ -74,9 +74,9 @@ chemistry_get_physical_hyperbolic_soundspeed(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_compute_physical_tau(const struct part* restrict p,
-                               const struct chemistry_global_data* chem_data,
-                               const struct cosmology* cosmo) {
+chemistry_compute_physical_tau(const struct part *restrict p,
+                               const struct chemistry_global_data *chem_data,
+                               const struct cosmology *cosmo) {
   if (chem_data->relaxation_time_mode == constant_mode) {
     /* Tau is constant and chosen in the parameter file. Hence return this
      * value. */

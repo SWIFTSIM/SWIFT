@@ -68,7 +68,7 @@ __attribute__((always_inline)) static INLINE int row_major_index_3d(
  * @param dx offset within cell to interpolate
  */
 __attribute__((always_inline)) static INLINE double interpolate_1d(
-    const double* const table, const int i, const double dx) {
+    const double *const table, const int i, const double dx) {
 
   const double tx = 1. - dx;
 
@@ -85,7 +85,7 @@ __attribute__((always_inline)) static INLINE double interpolate_1d(
  * @param dy column offset within cell to interpolate
  */
 __attribute__((always_inline)) static INLINE double interpolate_2d(
-    double** table, const int i, const int j, const float dx, const float dy) {
+    double **table, const int i, const int j, const float dx, const float dy) {
   const float tx = 1.f - dx;
   const float ty = 1.f - dy;
 
@@ -110,8 +110,8 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
  * @param x value within range of array_x indicating bin and offset within
  * array_y to interpolate
  */
-static INLINE double interpolate_1D_non_uniform(const double* array_x,
-                                                const double* array_y,
+static INLINE double interpolate_1D_non_uniform(const double *array_x,
+                                                const double *array_y,
                                                 const int size,
                                                 const double x) {
 #ifdef SWIFT_DEBUG_CHECKS

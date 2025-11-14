@@ -29,8 +29,7 @@
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static float
-chemistry_diffusion_timestep(
+__attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
     const struct part *restrict p,
     const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo) {
@@ -60,7 +59,7 @@ chemistry_diffusion_timestep(
 
   if (chem_data->diffusion_mode == isotropic_constant) {
     /* Isotropic constant diffusion has the simple expression: */
-    return delta_x*delta_x/norm_matrix_K;
+    return delta_x * delta_x / norm_matrix_K;
   }
   /* From here, we are either isotropic smagorinksy or anisotropic */
 
@@ -76,7 +75,7 @@ chemistry_diffusion_timestep(
   /* Compute the norms */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     norm_q += chemistry_get_metal_mass_fraction(p, i) *
-	      chemistry_get_metal_mass_fraction(p, i);
+              chemistry_get_metal_mass_fraction(p, i);
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Frobenius norm of \nabla \otimes q = Grad Z */
@@ -109,7 +108,8 @@ chemistry_diffusion_timestep(
     expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
   }
 
-  const float dt = CFL_condition * expression * expression / norm_matrix_K * norm_U_over_norm_q;
+  const float dt = CFL_condition * expression * expression / norm_matrix_K *
+                   norm_U_over_norm_q;
   return dt;
 #endif
 }
