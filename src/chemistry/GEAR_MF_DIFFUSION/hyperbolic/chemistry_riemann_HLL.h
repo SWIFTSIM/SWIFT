@@ -26,11 +26,11 @@
 #include "hydro.h"
 #include "sign.h"
 
-// TODO: Same
-// Test again with the hyperbolic soundspeed. Maybe take the max of c_s and
-// c_hyp.
 /**
  * @brief HLL riemann solver.
+ *
+ * TODO: Test again with the hyperbolic soundspeed. Maybe take the max of c_s
+ * and c_hyp. See if we need to take u+c_hyp or not.
  *
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
@@ -42,9 +42,9 @@
  * pressure) (in physical units)
  * @param WR Right state hydrodynamics primitve variables (density,
  * velocity[3], pressure) (in physical units)
- * @param hyper_flux_L The flux of the hyperbolic conservation law of the left
+ * @param hyperFluxL The flux of the hyperbolic conservation law of the left
  * (in physical units).
- * @param hyper_flux_R The flux of the hyperbolic conservation law of the right
+ * @param hyperFluxR The flux of the hyperbolic conservation law of the right
  * (in physical units).
  * @param Anorm Norm of the face between the left and right particles (in
  * physical units)
@@ -57,8 +57,8 @@
 __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const double UL[4], const double UR[4],
-    const float WL[5], const float WR[5], const double hyper_flux_L[4][3],
-    const double hyper_flux_R[4][3], const float Anorm, const float n_unit[3],
+    const float WL[5], const float WR[5], const double hyperFluxL[4][3],
+    const double hyperFluxR[4][3], const float Anorm, const float n_unit[3],
     const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double fluxes[4]) {
 
@@ -122,17 +122,33 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /* No conversion to physical needed, everything is physical here */
 
   /* Project the fluxes to reduce to a 1D Problem with 1 quantity */
-  /* const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] +
-   */
+  /* const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] + */
   /* F_diff_L[2] * n_unit[2]; */
-  /* const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] +
-   */
+  /* const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] + */
   /* F_diff_R[2] * n_unit[2]; */
+
+  double fluxL[4];
+  fluxL[0] = hyperFluxL[0][0] * n_unit[0] + hyperFluxL[0][1] * n_unit[1] +
+             hyperFluxL[0][2] * n_unit[2];
+  fluxL[1] = hyperFluxL[1][0] * n_unit[0] + hyperFluxL[1][1] * n_unit[1] +
+             hyperFluxL[1][2] * n_unit[2];
+  fluxL[2] = hyperFluxL[2][0] * n_unit[0] + hyperFluxL[2][1] * n_unit[1] +
+             hyperFluxL[2][2] * n_unit[2];
+  fluxL[3] = hyperFluxL[3][0] * n_unit[0] + hyperFluxL[3][1] * n_unit[1] +
+             hyperFluxL[3][2] * n_unit[2];
+
+  double fluxR[4];
+  fluxR[0] = hyperFluxR[0][0] * n_unit[0] + hyperFluxR[0][1] * n_unit[1] +
+             hyperFluxR[0][2] * n_unit[2];
+  fluxR[1] = hyperFluxR[1][0] * n_unit[0] + hyperFluxR[1][1] * n_unit[1] +
+             hyperFluxR[1][2] * n_unit[2];
+  fluxR[2] = hyperFluxR[2][0] * n_unit[0] + hyperFluxR[2][1] * n_unit[1] +
+             hyperFluxR[2][2] * n_unit[2];
+  fluxR[3] = hyperFluxR[3][0] * n_unit[0] + hyperFluxR[3][1] * n_unit[1] +
+             hyperFluxR[3][2] * n_unit[2];
 
   /***************************************************************************/
   /* Now solve the Riemann problem */
-
-  /* const double dU = UR - UL; */
 
   /* const double delta_lambda = lambda_plus - lambda_minus; */
   /* if (fabs(delta_lambda) < 1e-8) { */
@@ -140,21 +156,23 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /*   return; */
   /* } */
 
-  /* const double one_over_dl = 1.f / (lambda_plus - lambda_minus); */
-  /* const double F_2 = */
-  /*     (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl; */
-  /* double F_U = lambda_plus * lambda_minus * dU * one_over_dl; */
+  if (lambda_minus > 0.0) {
+    fluxes = fluxL;
+  } else if (lambda_minus <= 0.0 && lambda_plus >= 0.0) {
+    const double dU = UR - UL;
+    const double one_over_dl = 1.f / (lambda_plus - lambda_minus);
+    const double lprod = lambda_plus*lambda_minus;
 
-  /* if (lambda_minus > 0.0) { */
-  /*   *metal_flux = Flux_L; */
-  /* } else if (lambda_minus <= 0.0 && lambda_plus >= 0.0) { */
-  /*   *metal_flux = F_2 + F_U; */
-  /* } else if (lambda_plus < 0.0) { */
-  /*   *metal_flux = Flux_R; */
-  /* } */
+    fluxes[0] = (lambda_plus*fluxL[0] - lambda_minus*fluxR[0] + lprod*dU)*one_over_dl;
+    fluxes[1] = (lambda_plus*fluxL[1] - lambda_minus*fluxR[1] + lprod*dU)*one_over_dl;
+    fluxes[2] = (lambda_plus*fluxL[2] - lambda_minus*fluxR[2] + lprod*dU)*one_over_dl;
+    fluxes[3] = (lambda_plus*fluxL[3] - lambda_minus*fluxR[3] + lprod*dU)*one_over_dl;
+
+  } else if (lambda_plus < 0.0) {
+    fluxes = fluxR;
+  }
 }
 
-// TODO: Update arguments to take U[4]...
 /**
  * @brief Solve the Riemann problem for the diffusion equations and return the
  * flux at the interface.
@@ -169,9 +187,9 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
  * pressure) (in physical units)
  * @param WR Right state hydrodynamics primitve variables (density,
  * velocity[3], pressure) (in physical units)
- * @param hyper_flux_L The flux of the hyperbolic conservation law of the left
+ * @param hyperFluxL The flux of the hyperbolic conservation law of the left
  * (in physical units).
- * @param hyper_flux_R The flux of the hyperbolic conservation law of the right
+ * @param hyperFluxR The flux of the hyperbolic conservation law of the right
  * (in physical units).
  * @param Anorm Norm of the face between the left and right particles (in
  * physical units)
@@ -185,8 +203,8 @@ __attribute__((always_inline)) INLINE static void
 chemistry_riemann_solve_for_flux(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const double UL[4], const double UR[4],
-    const float WL[5], const float WR[5], const double hyper_flux_L[4][3],
-    const double hyper_flux_R[4][3], const float Anorm, const float n_unit[3],
+    const float WL[5], const float WR[5], const double hyperFluxL[4][3],
+    const double hyperFluxR[4][3], const float Anorm, const float n_unit[3],
     const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double fluxes[4]) {
 
@@ -202,8 +220,8 @@ chemistry_riemann_solve_for_flux(
   }
 
   /* No conversion to physical needed, everything is physical here */
-  chemistry_riemann_solver_HLL(dx, pi, pj, UL, UR, WL, WR, hyper_flux_L,
-                               hyper_flux_R, Anorm, n_unit, m, chem_data, cosmo,
+  chemistry_riemann_solver_HLL(dx, pi, pj, UL, UR, WL, WR, hyperFluxL,
+                               hyperFluxR, Anorm, n_unit, m, chem_data, cosmo,
                                fluxes);
 
   chemistry_riemann_check_output(WL, WR, UL, UR, n_unit, fluxes);
