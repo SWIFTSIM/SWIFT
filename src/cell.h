@@ -984,6 +984,50 @@ __attribute__((always_inline)) INLINE int cell_getid_from_pos(
 }
 
 /**
+ * @brief Is this cell pair at the zoom top level?
+ *
+ * A zoom top level pair can either be a pair of depth 0 zoom cells, or a
+ * depth 0 zoom cell and a neighbour background cell at the zoom cell depth.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param s The #space.
+ * @return 1 if both cells are at the zoom top level, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_pair_is_zoom_tl(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    const struct space *restrict s) {
+
+  /* Are the cells zoom top level cells? */
+  int ci_is_zoom_tl = (ci->type == cell_type_zoom && ci->depth == 0);
+  int cj_is_zoom_tl = (cj->type == cell_type_zoom && cj->depth == 0);
+
+  /* Are the cells neighbour background cells at the zoom cell depth? */
+  int ci_is_neighbour_at_zoom_depth =
+      (ci->subtype == cell_subtype_neighbour &&
+       ci->depth == s->zoom_props->zoom_cell_depth);
+  int cj_is_neighbour_at_zoom_depth =
+      (cj->subtype == cell_subtype_neighbour &&
+       cj->depth == s->zoom_props->zoom_cell_depth);
+
+  /* If both cells are type zoom and have depth 0 then by definition they are
+   * zoom top level cells. */
+  if (ci_is_zoom_tl && cj_is_zoom_tl) {
+    return 1;
+  }
+
+  /* If one cell is zoom type and at depth 0, and the other is a background
+   * neighbour cell at the zoom top level cell depth then we also have a zoom
+   * top level pair. */
+  if ((ci_is_zoom_tl && cj_is_neighbour_at_zoom_depth) ||
+      (cj_is_zoom_tl && ci_is_neighbour_at_zoom_depth)) {
+    return 1;
+  }
+
+  return 0;
+}
+
+/**
  * @brief Does a #cell contain no particle at all.
  *
  * @param c The #cell.

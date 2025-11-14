@@ -2093,6 +2093,38 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Test whether two cells can use PM interactions.
+ *
+ * This will test if particles in the two cells are far enough apart to use
+ * the mesh for their interaction. If so we won't need an expensive pair
+ * task or multipole-multipole interaction.
+ *
+ * @param e The #engine.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ *
+ * @return 1 if the mesh can be used, 0 otherwise.
+ */
+int engine_gravity_can_use_mesh(struct engine *e, const struct cell *ci,
+                                const struct cell *cj) {
+
+  struct space *s = e->s;
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+  /* If not periodic then we cannot use the mesh */
+  if (!s->periodic) {
+    return 0;
+  }
+
+  /* Minimal distance between any pair of particles */
+  const double min_radius2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
+
+  /* Are we beyond the distance where the truncated forces are 0 ?*/
+  return (min_radius2 > max_distance2);
+}
+
+/**
  * @brief Test whether two cells need a pair gravity task.
  *
  * This function will test if the two cells are far enough apart to let
@@ -2115,11 +2147,6 @@ int engine_gravity_need_cell_pair_task(struct engine *e, struct cell *ci,
                                        struct cell *cj, const int periodic,
                                        const int use_mesh) {
 
-  struct space *s = e->s;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
-
 #ifdef WITH_MPI
   const int nodeID = e->nodeID;
 
@@ -2133,11 +2160,10 @@ int engine_gravity_need_cell_pair_task(struct engine *e, struct cell *ci,
     error("Multipole of cj was not exchanged properly via the proxies");
 #endif
 
-  /* Minimal distance between any pair of particles */
-  const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
-
-  /* Are we beyond the distance where the truncated forces are 0 ?*/
-  if (use_mesh && min_radius2 > max_distance2) return 0;
+  /* Can we use the mesh for the interaction ? */
+  if (use_mesh && engine_gravity_can_use_mesh(e, ci, cj)) {
+    return 0;
+  }
 
   /* Are the cells too close for a MM interaction ? */
   return !cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/1,
