@@ -601,5 +601,4 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart *restrict bp) {
 #include "hyperbolic/chemistry_getters.h"
 #endif
 
-
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_GETTERS_H  */

@@ -50,7 +50,7 @@ chemistry_slope_limit_cell_init(struct part *p) {
        component: limiter min or max value. */
     for (int i = 0; i < 3; i++) {
       p->chemistry_data.limiter.flux[m][i][0] = FLT_MAX;
-      p->chemistry_data.limiter.flux[m][i][1] = - FLT_MAX;
+      p->chemistry_data.limiter.flux[m][i][1] = -FLT_MAX;
     }
 #endif
   }
@@ -102,8 +102,10 @@ chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     for (int i = 0; i < 3; i++) {
-      chi->limiter.flux[m][i][0] = min(chj->flux[m][i], chi->limiter.flux[m][i][0]);
-      chi->limiter.flux[m][i][1] = max(chj->flux[m][i], chi->limiter.flux[m][i][1]);
+      chi->limiter.flux[m][i][0] =
+          min(chj->flux[m][i], chi->limiter.flux[m][i][0]);
+      chi->limiter.flux[m][i][1] =
+          max(chj->flux[m][i], chi->limiter.flux[m][i][1]);
     }
 #endif
   }
@@ -260,7 +262,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
 #endif
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     chemistry_slope_limit_quantity(
-        /*gradient=*/ chd->gradients.Z[m],
+        /*gradient=*/chd->gradients.Z[m],
         /*maxr=    */ maxr,
         /*value=   */ chemistry_get_metal_mass_fraction(p, m),
         /*valmin=  */ chd->limiter.Z[m][0],
@@ -271,13 +273,14 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     for (int i = 0; i < 3; i++) {
       chemistry_slope_limit_quantity(
-	  chd->gradients.flux[m][i], maxr, chd->flux[m][i],
-	  chd->limiter.flux[m][i][0], chd->limiter.flux[m][i][1], N_cond, 0);
+          chd->gradients.flux[m][i], maxr, chd->flux[m][i],
+          chd->limiter.flux[m][i][0], chd->limiter.flux[m][i][1], N_cond, 0);
     }
 #endif
   }
 
-  /* Use doubles since chemistry_slope_limit_quantity() accepts double arrays. */
+  /* Use doubles since chemistry_slope_limit_quantity() accepts double arrays.
+   */
   double gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3],
       gradvy_tilde[3], gradvz_tilde[3];
 

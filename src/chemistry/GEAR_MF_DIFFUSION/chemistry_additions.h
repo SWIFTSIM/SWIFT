@@ -181,14 +181,14 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     const struct chemistry_global_data *chem_data) {
 
   /* TODO:
-	- I think that we can move everything to end_force() and use
-	flux_dt as dt_therm_phys. I still need to think about scale-factors for
-	flux_dt.
-	- Furthermore, we do not need to store dF_dt: We have the gradients.
-	- Think about using explicit, implicit or semi-implicit scheme.
-	- If we properly order operations, we will not need F_diff_pred.
+        - I think that we can move everything to end_force() and use
+        flux_dt as dt_therm_phys. I still need to think about scale-factors for
+        flux_dt.
+        - Furthermore, we do not need to store dF_dt: We have the gradients.
+        - Think about using explicit, implicit or semi-implicit scheme.
+        - If we properly order operations, we will not need F_diff_pred.
   */
-/* #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION) */
+  /* #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION) */
   /* struct chemistry_part_data* chd = &p->chemistry_data; */
 
   /* /\* Convert the timestep to physical units *\/ */
@@ -199,7 +199,8 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
   /*   if (chd->tau != 0.0) { */
   /*     /\* Get the parabolic diffusion flux *\/ */
   /*     double F_diff_target[3]; */
-  /*     chemistry_get_physical_parabolic_flux(p, i, F_diff_target, chem_data, cosmo); */
+  /*     chemistry_get_physical_parabolic_flux(p, i, F_diff_target, chem_data,
+   * cosmo); */
 
   /*     /\* First update dF_dt with the previous value of the diffusion */
   /* 	 flux. Notice the + in front of F_diff_target. This is because the */
@@ -213,7 +214,8 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
   /* 	  -chd->flux[i][2] / chd->tau + F_diff_target[2] / chd->tau; */
 
   /*     /\* Then update the diffusion flux with a semi-implicit scheme *\/ */
-  /*     const float dt_factor = 1.0 / (1.0 + 0.5 * dt_therm_phys / chd->tau); */
+  /*     const float dt_factor = 1.0 / (1.0 + 0.5 * dt_therm_phys / chd->tau);
+   */
   /*     chd->flux[i][0] = */
   /* 	  dt_factor * (chd->hyperbolic_flux[i].F_diff_pred[0] + */
   /* 		       0.5 * dt_therm_phys / chd->tau * F_diff_target[0]); */
@@ -235,7 +237,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
 
 #if defined(HYDRO_DOES_MASS_FLUX)
   chemistry_kick_extra_mass_flux(p, dt_therm, dt_grav, dt_hydro, dt_kick_corr,
-				 cosmo, hydro_props);
+                                 cosmo, hydro_props);
 #endif
 }
 

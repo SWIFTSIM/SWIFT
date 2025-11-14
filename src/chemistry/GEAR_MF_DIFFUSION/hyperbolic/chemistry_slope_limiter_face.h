@@ -39,8 +39,8 @@
  * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
-    double Ui[4], double Uj[4], double dUi[4], double dUj[4], const float xij_i[3],
-    const float xij_j[3], float r) {
+    double Ui[4], double Uj[4], double dUi[4], double dUj[4],
+    const float xij_i[3], const float xij_j[3], float r) {
 
   /* The Gizmo slope limiter works even better. */
   const float xij_i_norm =

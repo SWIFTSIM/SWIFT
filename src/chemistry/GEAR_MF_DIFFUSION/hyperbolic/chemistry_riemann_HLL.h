@@ -86,27 +86,29 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   double qL = 1.0f;
   if (pstar > WL[4] && WL[4] > 0.0f) {
     qL = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-			  (pstar / WL[4] - 1.0f));
+                          (pstar / WL[4] - 1.0f));
   }
   double qR = 1.0f;
   if (pstar > WR[4] && WR[4] > 0.0f) {
     qR = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-			  (pstar / WR[4] - 1.0f));
+                          (pstar / WR[4] - 1.0f));
   }
   const double lambda_minus_hydro = -aL * qL;
   const double lambda_plus_hydro = aR * qR;
 
   /* const double c_diff_L = */
-      /* chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo); */
+  /* chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo); */
   /* const double c_diff_R = */
-      /* chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo); */
+  /* chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo); */
   /* const double lambda_plus_diffusion = max3(0.0, c_diff_L, c_diff_R); */
   /* const double lambda_minus_diffusion = min3(0.0, c_diff_L, c_diff_R); */
 
   const double lambda_minus = lambda_minus_hydro;
   const double lambda_plus = lambda_plus_hydro;
-  /* const double lambda_minus = min(lambda_minus_hydro, lambda_minus_diffusion); */
-  /* const double lambda_plus = max(lambda_plus_hydro, lambda_plus_diffusion); */
+  /* const double lambda_minus = min(lambda_minus_hydro,
+   * lambda_minus_diffusion); */
+  /* const double lambda_plus = max(lambda_plus_hydro, lambda_plus_diffusion);
+   */
 
   if (lambda_plus == 0.0 && lambda_minus == 0.0) {
     fluxes[0] = 0.0;
@@ -120,10 +122,12 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /* No conversion to physical needed, everything is physical here */
 
   /* Project the fluxes to reduce to a 1D Problem with 1 quantity */
-  /* const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] + */
-			/* F_diff_L[2] * n_unit[2]; */
-  /* const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] + */
-			/* F_diff_R[2] * n_unit[2]; */
+  /* const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] +
+   */
+  /* F_diff_L[2] * n_unit[2]; */
+  /* const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] +
+   */
+  /* F_diff_R[2] * n_unit[2]; */
 
   /***************************************************************************/
   /* Now solve the Riemann problem */
@@ -198,8 +202,9 @@ chemistry_riemann_solve_for_flux(
   }
 
   /* No conversion to physical needed, everything is physical here */
-  chemistry_riemann_solver_HLL(dx, pi, pj, UL, UR, WL, WR, hyper_flux_L, hyper_flux_R,
-			       Anorm, n_unit, m, chem_data, cosmo, fluxes);
+  chemistry_riemann_solver_HLL(dx, pi, pj, UL, UR, WL, WR, hyper_flux_L,
+                               hyper_flux_R, Anorm, n_unit, m, chem_data, cosmo,
+                               fluxes);
 
   chemistry_riemann_check_output(WL, WR, UL, UR, n_unit, fluxes);
 }

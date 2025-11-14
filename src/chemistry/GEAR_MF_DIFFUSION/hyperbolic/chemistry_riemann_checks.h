@@ -42,7 +42,7 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_check_state(
 
   int errorFlag = 0;
 
-  // TODO: Use isnan. TODO: Do the same for parabolic diffusion  
+  // TODO: Use isnan. TODO: Do the same for parabolic diffusion
   /* check the density: should be finite and positive */
   if (W[0] != W[0]) {
     message("NaN density!");
@@ -87,7 +87,7 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_check_state(
     errorFlag = 1;
   }
 
-  /* Check metal flux: should be finite  */  
+  /* Check metal flux: should be finite  */
   if (U[1] != U[1]) {
     message("NaN x metal flux!");
     errorFlag = 1;
@@ -99,7 +99,7 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_check_state(
   if (U[3] != U[3]) {
     message("NaN z metal flux!");
     errorFlag = 1;
-  }  
+  }
 
   return errorFlag;
 }
@@ -148,8 +148,8 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_check_vector(
  * @param n Surface normal vector.
  */
 __attribute__((always_inline)) INLINE static void chemistry_riemann_check_input(
-    const float WL[5], const float WR[5], const double UL[4], const double UR[4],
-    const float n[3]) {
+    const float WL[5], const float WR[5], const double UL[4],
+    const double UR[4], const float n[3]) {
 
   int errorFlag = 0;
 
@@ -169,10 +169,10 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_check_input(
   }
 
   if (errorFlag) {
-    message("WL: %g %g %g %g %g, UL = %e %e %e %e", WL[0], WL[1], WL[2], WL[3], WL[4],
-            UL[0], UL[1], UL[2], UL[3]);
-    message("WR: %g %g %g %g %g, UR = %e %e %e %e", WR[0], WR[1], WR[2], WR[3], WR[4],
-            UR[0], UR[1], UR[2], UR[3]);
+    message("WL: %g %g %g %g %g, UL = %e %e %e %e", WL[0], WL[1], WL[2], WL[3],
+            WL[4], UL[0], UL[1], UL[2], UL[3]);
+    message("WR: %g %g %g %g %g, UR = %e %e %e %e", WR[0], WR[1], WR[2], WR[3],
+            WR[4], UR[0], UR[1], UR[2], UR[3]);
     message("n: %g %g %g", n[0], n[1], n[2]);
     error("Invalid Riemann solver input!");
   }
@@ -214,13 +214,13 @@ chemistry_riemann_check_output(const float WL[5], const float WR[5],
   if (totflux[3] != totflux[3]) {
     message("NaN z metal flux!");
     errorFlag = 1;
-  }  
+  }
 
   if (errorFlag) {
-    message("WL: %g %g %g %g %g, UL = %e %e %e %e", WL[0], WL[1], WL[2], WL[3], WL[4],
-            UL[0], UL[1], UL[2], UL[3]);
-    message("WR: %g %g %g %g %g, UR = %e %e %e %e", WR[0], WR[1], WR[2], WR[3], WR[4],
-            UR[0], UR[1], UR[2], UR[3]);
+    message("WL: %g %g %g %g %g, UL = %e %e %e %e", WL[0], WL[1], WL[2], WL[3],
+            WL[4], UL[0], UL[1], UL[2], UL[3]);
+    message("WR: %g %g %g %g %g, UR = %e %e %e %e", WR[0], WR[1], WR[2], WR[3],
+            WR[4], UR[0], UR[1], UR[2], UR[3]);
     message("n: %g %g %g", n[0], n[1], n[2]);
     /* message("vij: %g %g %g", vij[0], vij[1], vij[2]); */
     message("totflux: %g %g %g %g", totflux[0], totflux[1], totflux[2],

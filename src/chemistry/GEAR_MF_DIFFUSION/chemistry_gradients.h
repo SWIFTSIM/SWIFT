@@ -154,10 +154,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
 
     // TODO: move this to a function inside hyperbolic/gradients
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-    const double dflux[3] = {
-        chi->flux[g][0] - chj->flux[g][0],
-        chi->flux[g][1] - chj->flux[g][1],
-        chi->flux[g][2] - chj->flux[g][2]};
+    const double dflux[3] = {chi->flux[g][0] - chj->flux[g][0],
+                             chi->flux[g][1] - chj->flux[g][1],
+                             chi->flux[g][2] - chj->flux[g][2]};
 
     /* Do the gradients of pi */
     double dFx_i[3], dFy_i[3], dFz_i[3];
@@ -351,10 +350,9 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
     chemistry_part_update_metal_mass_fraction_gradients(pi, g, dU_i);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-    const double dflux[3] = {
-        chi->flux[g][0] - chj->flux[g][0],
-        chi->flux[g][1] - chj->flux[g][1],
-        chi->flux[g][2] - chj->flux[g][2]};
+    const double dflux[3] = {chi->flux[g][0] - chj->flux[g][0],
+                             chi->flux[g][1] - chj->flux[g][1],
+                             chi->flux[g][2] - chj->flux[g][2]};
 
     /* Do the gradients of pi */
     double dFx_i[3], dFy_i[3], dFz_i[3];

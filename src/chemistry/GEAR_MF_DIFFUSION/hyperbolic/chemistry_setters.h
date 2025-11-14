@@ -36,7 +36,8 @@
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_flux_gradients(struct part *restrict p, int metal,
-                                     double dFx[3], double dFy[3], double dFz[3]) {
+                                     double dFx[3], double dFy[3],
+                                     double dFz[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 

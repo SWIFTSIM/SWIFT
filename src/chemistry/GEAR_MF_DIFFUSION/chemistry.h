@@ -569,7 +569,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     /* Integrate the flux equation source term */
     /* TODO: Use half-timestep (when we'll split the time integration) */
 
-    chemistry_part_integrate_flux_source_term(p, i, dt_therm_physical, cd, cosmo);
+    chemistry_part_integrate_flux_source_term(p, i, dt_therm_physical, cd,
+                                              cosmo);
   }
 #endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
 
@@ -584,8 +585,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     const double m_metal_old = chd->metal_mass[i];
     chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
-				     hydro_get_mass(p), /*callloc=*/2,
-				     /*element*/ i, p->id);
+                                     hydro_get_mass(p), /*callloc=*/2,
+                                     /*element*/ i, p->id);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     /* Check the fluxes */
@@ -949,7 +950,7 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   const float w2 = -hydro_dimension * w1;
   if (fabsf(w2) < 0.2f) {
     const float expf_approx =
-	approx_expf(w2); /* 4th order expansion of exp(w) */
+        approx_expf(w2); /* 4th order expansion of exp(w) */
     chd->filtered.rho *= expf_approx;
   } else {
     const float expf_exact = expf(w2);
@@ -989,8 +990,9 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
     chd->flux[i][1] += chd->flux_riemann[i][1] * Vinv;
     chd->flux[i][2] += chd->flux_riemann[i][2] * Vinv;
 
-  /* TODO: Integrate the flux equation source term */
-    chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data, cosmo);
+    /* TODO: Integrate the flux equation source term */
+    chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data,
+                                              cosmo);
   }
 
 #endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
@@ -1014,8 +1016,8 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     const double m_metal_old = chd->metal_mass[i];
     chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
-				     hydro_get_mass(p), /*callloc=*/3,
-				     /*element*/ i, p->id);
+                                     hydro_get_mass(p), /*callloc=*/3,
+                                     /*element*/ i, p->id);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     /* TODO: Check the fluxes */

@@ -19,9 +19,9 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_FLUX_H
 #define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_FLUX_H
 
-#include "../chemistry_unphysical.h"
-#include "../chemistry_struct.h"
 #include "../chemistry_riemann_HLL.h"
+#include "../chemistry_struct.h"
+#include "../chemistry_unphysical.h"
 
 /**
  * @file src/chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_flux.h
@@ -87,7 +87,6 @@ chemistry_part_update_fluxes_right(struct part *restrict p, const int metal,
   p->chemistry_data.flux_riemann[metal][2] += fluxes[3] * dt;
 }
 
-
 /**
  * @brief Time integrate the source term in the flux relaxation equation
  *
@@ -104,24 +103,25 @@ chemistry_part_update_fluxes_right(struct part *restrict p, const int metal,
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_integrate_flux_source_term(
-    struct part* restrict p, const int metal, const float dt,
-    const struct chemistry_global_data* chem_data,
-    const struct cosmology* cosmo) {
+    struct part *restrict p, const int metal, const float dt,
+    const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo) {
 
-  struct chemistry_part_data* chd = &p->chemistry_data;
+  struct chemistry_part_data *chd = &p->chemistry_data;
   const double tau = chd->tau;
   const double exp_decay = exp(-dt / tau);
   const double one_minus_exp_decay = exp_decay + 1.0;
 
   const double flux_current[3] = {chd->flux[metal][0], chd->flux[metal][1],
-				  chd->flux[metal][2]};
+                                  chd->flux[metal][2]};
   double flux_parabolic[3];
   chemistry_get_physical_parabolic_flux(p, metal, flux_parabolic, chem_data,
-					cosmo);
+                                        cosmo);
 
   for (int i = 0; i < 3; i++) {
     /* Note that parabolic flux already includes the minus term. */
-    chd->flux[metal][i] = flux_current[i] * exp_decay + flux_parabolic[i]*one_minus_exp_decay;
+    chd->flux[metal][i] =
+        flux_current[i] * exp_decay + flux_parabolic[i] * one_minus_exp_decay;
   }
 }
 
@@ -137,9 +137,9 @@ chemistry_part_integrate_flux_source_term(
  * law (in physical units).
  */
 __attribute__((always_inline)) INLINE static void chemistry_get_hyperbolic_flux(
-    const struct part* restrict p, const int metal, const double U[4],
-    const struct chemistry_global_data* chem_data,
-    const struct cosmology* cosmo, double hypflux[4][3]) {
+    const struct part *restrict p, const int metal, const double U[4],
+    const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo, double hypflux[4][3]) {
 
   /* Flux part (first row) */
   hypflux[0][0] = U[1];
@@ -205,15 +205,15 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
   double hyper_flux_R[4][3];
   chemistry_get_hyperbolic_flux(pj, metal, UR, chem_data, cosmo, hyper_flux_R);
 
-/* #ifdef SWIFT_RT_DEBUG_CHECKS */
+  /* #ifdef SWIFT_RT_DEBUG_CHECKS */
   /* Check that the fluxes are meaningful */
   chemistry_check_unphysical_hyperbolic_flux(hyper_flux_L);
   chemistry_check_unphysical_hyperbolic_flux(hyper_flux_R);
-/* #endif */
+  /* #endif */
 
   chemistry_riemann_solve_for_flux(dx, pi, pj, UL, UR, WL, WR, hyper_flux_L,
-				   hyper_flux_R, Anorm, n_unit, metal, chem_data,
-				   cosmo, fluxes);
+                                   hyper_flux_R, Anorm, n_unit, metal,
+                                   chem_data, cosmo, fluxes);
 
   /* Anorm is already in physical units here. */
   fluxes[0] *= Anorm;

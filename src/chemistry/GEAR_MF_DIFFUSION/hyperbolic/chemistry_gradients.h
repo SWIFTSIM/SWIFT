@@ -69,8 +69,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
      gradients to physical units */
   double dFx_i[3], dFy_i[3], dFz_i[3];
   double dFx_j[3], dFy_j[3], dFz_j[3];
-  chemistry_get_physical_hyperbolic_flux_gradients(pi, metal, dFx_i, dFy_i, dFz_i, cosmo);
-  chemistry_get_physical_hyperbolic_flux_gradients(pj, metal, dFx_j, dFy_j, dFz_j, cosmo);
+  chemistry_get_physical_hyperbolic_flux_gradients(pi, metal, dFx_i, dFy_i,
+                                                   dFz_i, cosmo);
+  chemistry_get_physical_hyperbolic_flux_gradients(pj, metal, dFx_j, dFy_j,
+                                                   dFz_j, cosmo);
 
   /* Compute interface position (relative to pj, since we don't need the
      actual position) eqn. (8)
@@ -113,9 +115,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   double m_Zj = Uj[0] * mj / hydro_get_comoving_density(pj);
 
   chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
-				   /*callloc=*/1, /*element*/ metal, pi->id);
+                                   /*callloc=*/1, /*element*/ metal, pi->id);
   chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
-				   /*callloc=*/1, /*element*/ metal, pj->id);
+                                   /*callloc=*/1, /*element*/ metal, pj->id);
 
   /* Check that we have physical fluxes */
   double flux_i[3] = {Ui[1], Ui[2], Ui[3]};
