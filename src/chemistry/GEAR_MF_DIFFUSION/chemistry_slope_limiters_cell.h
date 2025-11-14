@@ -141,9 +141,6 @@ chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
  * @brief Slope-limit the given quantity. Result will be written directly
  * to double gradient[3].
  *
- * TODO: Experiment with the value of beta. For now, take stability over
- * diffusivity with beta=1.
- *
  * @param gradient the gradient of the quantity
  * @param maxr maximal distance to any neighbour of the particle
  * @param value the current value of the quantity

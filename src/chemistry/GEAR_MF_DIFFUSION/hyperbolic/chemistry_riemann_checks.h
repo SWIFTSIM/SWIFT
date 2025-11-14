@@ -42,8 +42,7 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_check_state(
 
   int errorFlag = 0;
 
-  // TODO: Use isnan. TODO: Do the same for parabolic diffusion
-  /* check the density: should be finite and positive */
+  /* Check the density: should be finite and positive */
   if (W[0] != W[0]) {
     message("NaN density!");
     errorFlag = 1;
@@ -53,7 +52,7 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_check_state(
     errorFlag = 1;
   }
 
-  /* check the velocities: should be finite */
+  /* Check the velocities: should be finite */
   if (W[1] != W[1]) {
     message("NaN x velocity!");
     errorFlag = 1;
@@ -67,7 +66,7 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_check_state(
     errorFlag = 1;
   }
 
-  /* check the pressure: should be positive and finite */
+  /* Check the pressure: should be positive and finite */
   if (W[4] != W[4]) {
     message("NaN pressure!");
     errorFlag = 1;
@@ -117,7 +116,7 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_check_vector(
 
   int errorFlag = 0;
 
-  /* check that all components are finite */
+  /* Check that all components are finite */
   if (x[0] != x[0]) {
     message("NaN x component!");
     errorFlag = 1;

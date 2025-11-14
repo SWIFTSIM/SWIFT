@@ -340,18 +340,6 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
         "GEARChemistry:tau cannot be set to 0.0! This defeats the hyperbolic "
         "diffusion purpose!");
   }
-
-  parser_get_param_string(parameter_file, "GEARChemistry:riemann_solver", temp);
-  if (strcmp(temp, "HLL") == 0)
-    data->riemann_solver = HLL;
-  else if (strcmp(temp, "HLL_hyperbolic_H17") == 0)
-    data->riemann_solver = HLL_hyperbolic_Hopkins2017;
-  else
-    error(
-        "The chemistry diffusion mode must be HLL, HLL_parabolic_H17 or "
-        "or HLL_hyperbolic_H17 "
-        " not %s",
-        temp);
 #endif
   /***************************************************************************/
   /* Print the parameters we use */
@@ -362,7 +350,6 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
     message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
     message("C_CFL:                      %e", data->C_CFL_chemistry);
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-    message("Riemann solver:             %d", data->riemann_solver);
     message("Relaxation time mode:       %u", data->relaxation_time_mode);
     message("Relaxation time (constant_mode): %e", data->tau);
 #endif
@@ -990,7 +977,6 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
     chd->flux[i][1] += chd->flux_riemann[i][1] * Vinv;
     chd->flux[i][2] += chd->flux_riemann[i][2] * Vinv;
 
-    /* TODO: Integrate the flux equation source term */
     chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data,
                                               cosmo);
   }
@@ -1020,7 +1006,6 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
                                      /*element*/ i, p->id);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-    /* TODO: Check the fluxes */
     chemistry_check_unphysical_diffusion_flux(chd->flux[i]);
 #endif
   }

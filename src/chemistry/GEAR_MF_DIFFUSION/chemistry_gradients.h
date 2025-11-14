@@ -152,7 +152,6 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
 
     chemistry_part_update_metal_mass_fraction_gradients(pj, g, dU_j);
 
-    // TODO: move this to a function inside hyperbolic/gradients
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     const double dflux[3] = {chi->flux[g][0] - chj->flux[g][0],
                              chi->flux[g][1] - chj->flux[g][1],

@@ -180,14 +180,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     const struct hydro_props *hydro_props,
     const struct chemistry_global_data *chem_data) {
 
-  /* TODO:
-        - I think that we can move everything to end_force() and use
-        flux_dt as dt_therm_phys. I still need to think about scale-factors for
-        flux_dt.
-        - Furthermore, we do not need to store dF_dt: We have the gradients.
-        - Think about using explicit, implicit or semi-implicit scheme.
-        - If we properly order operations, we will not need F_diff_pred.
-  */
+  /* TODO: Clean these */
   /* #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION) */
   /* struct chemistry_part_data* chd = &p->chemistry_data; */
 

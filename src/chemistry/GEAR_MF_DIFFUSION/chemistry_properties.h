@@ -43,15 +43,6 @@ enum chemistry_relaxation_time_mode {
 };
 
 /**
- * @brief The Riemann solver type
- */
-enum chemistry_riemann_solver {
-  HLL,                       /* Regular HLL solver */
-  HLL_hyperbolic_Hopkins2017 /* Improved Hopkins (2017) HLL Riemann solver for
-                                hyperbolic diffusion*/
-};
-
-/**
  * @brief Global chemical abundance information.
  */
 struct chemistry_global_data {
@@ -78,9 +69,6 @@ struct chemistry_global_data {
 
   /*! Relaxation time mode. 0: constant, 1: . */
   enum chemistry_relaxation_time_mode relaxation_time_mode;
-
-  /* 1=Hopkins 2017, 2=HLL */
-  int riemann_solver;
 #endif
 
   /*! Diffusion mode. 0: isotropic with constant coefficient, 1: Smagorinsky
