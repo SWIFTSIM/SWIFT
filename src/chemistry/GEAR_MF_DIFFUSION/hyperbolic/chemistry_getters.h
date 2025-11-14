@@ -149,4 +149,52 @@ chemistry_get_physical_hyperbolic_flux_gradients(
   }
 }
 
+/**
+ * @brief Compute the flux of the hyperbolic conservation law for a given
+ * state U.
+ *
+ * @param p Particle.
+ * @param U the state (metal density, diffusion flux) to use
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
+ * @param hypflux (return) resulting flux F(U) of the hyperbolic conservation
+ * law (in physical units).
+ */
+__attribute__((always_inline)) INLINE static void chemistry_get_hyperbolic_flux(
+    const struct part *restrict p, const int metal, const double U[4],
+    const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo, double hypflux[4][3]) {
+
+  /* Flux part (first row) */
+  hypflux[0][0] = U[1];
+  hypflux[0][1] = U[2];
+  hypflux[0][2] = U[3];
+
+  const double tau = p->chemistry_data.tau;
+  double K[3][3];
+  chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
+
+  /* Get the right diffusion driver */
+  /* TODO: Use linear reconstructed values */
+  double q;
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    q = chemistry_get_physical_metal_density(p, metal, cosmo);
+  } else {
+    q = chemistry_get_metal_mass_fraction(p, metal);
+  }
+
+  const double multiplier = q / tau;
+
+  /* The matrix part: q / tau * K */
+  hypflux[1][0] = K[0][0] * multiplier;
+  hypflux[1][1] = K[0][1] * multiplier;
+  hypflux[1][2] = K[0][2] * multiplier;
+  hypflux[2][0] = K[1][0] * multiplier;
+  hypflux[2][1] = K[1][1] * multiplier;
+  hypflux[2][2] = K[1][2] * multiplier;
+  hypflux[3][0] = K[2][0] * multiplier;
+  hypflux[3][1] = K[2][1] * multiplier;
+  hypflux[3][2] = K[2][2] * multiplier;
+}
+
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_GETTERS_H */
