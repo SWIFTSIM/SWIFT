@@ -81,7 +81,7 @@ struct chemistry_part_data {
     float v[3][3];
 
     /*! Diffusion flux gradients. */
-    float flux[GEAR_CHEMISTRY_ELEMENT_COUNT][3][3];
+    double flux[GEAR_CHEMISTRY_ELEMENT_COUNT][3][3];
 
   } gradients;
 
