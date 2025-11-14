@@ -53,7 +53,7 @@ void runner_do_grav_long_range_uniform_non_periodic(struct runner *r,
   struct engine *e = r->e;
   struct space *s = e->s;
 
-  /* Get the mutlipole of the cell we are interacting. */
+  /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
   /* Recover the list of top-level cells */
@@ -114,7 +114,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   struct engine *e = r->e;
   struct space *s = e->s;
 
-  /* Get the mutlipole of the cell we are interacting. */
+  /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
   /* Recover the list of top-level cells */
@@ -159,7 +159,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   } /* Loop over top-level cells */
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure we at leasted against all possible gparts. */
+  /* Ensure we at tested against all possible gparts. */
   if (tested_gparts != e->s->nr_gparts) {
     error(
         "Not all gparts were tested in long range gravity task! (tested: %ld, "
@@ -211,7 +211,7 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-  /* Get the mutlipole of the cell we are interacting. */
+  /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
   /* Get the (i,j,k) location of the top-level cell in the grid. */
@@ -310,7 +310,7 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-  /* Get the mutlipole of the cell we are interacting. */
+  /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
   /* Get the (i,j,k) location of the top-level cell in the grid. */
@@ -382,10 +382,87 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
 }
 
 /**
- * @brief Accumalate the number of particle mesh interactions for debugging
+ * @brief Recurse to the zoom depth in bkg cells accumulating interactions.
+ *
+ * This is a helper function for runner_count_mesh_interactions_zoom.
+ * It will recurse down from the background top level to check interactions
+ * at the zoom depth between the zoom cell and the background cell.
+ *
+ * @param ci The #cell whose counter we are updating.
+ * @param zoom_c The zoom #cell.
+ * @param bkg_c The background #cell.
+ * @param s The #space.
+ */
+void runner_count_mesh_interactions_zoom_bkg_recursive(struct cell *ci,
+                                                       struct cell *zoom_c,
+                                                       struct cell *bkg_c,
+                                                       struct space *s) {
+
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
+  /* Get the maximum distance at which we can have a non-mesh interaction. */
+  struct engine *e = s->e;
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+  /* Are we at the zoom depth yet? */
+  if (!cell_pair_is_zoom_tl(zoom_c, bkg_c, s)) {
+    /* Recurse down to the zoom depth */
+    for (int k = 0; k < 8; k++) {
+      if (bkg_c->progeny[k] == NULL) continue;
+      runner_count_mesh_interactions_zoom_bkg_recursive(ci, zoom_c,
+                                                        bkg_c->progeny[k], s);
+    }
+    return;
+  }
+
+  /* Make sure we don't end up below the zoom depth */
+  if (zoom_c->depth != 0) error("Zoom cell is deeper than zoom depth!");
+  if (zoom_c->type != cell_type_zoom) error("Zoom cell is not of zoom type!");
+  if (bkg_c->depth > s->zoom_props->zoom_cell_depth)
+    error("Background cell is deeper than zoom depth!");
+  if (bkg_c->subtype != cell_subtype_neighbour)
+    error("Background cell is not of background type!");
+
+  /* Ok, we are at the zoom depth, check interaction */
+  struct gravity_tensors *multi_i;
+  struct gravity_tensors *multi_j;
+  if (ci->type == cell_type_zoom) {
+    multi_i = ci->grav.multipole;
+    multi_j = bkg_c->grav.multipole;
+  } else {
+    multi_i = bkg_c->grav.multipole;
+    multi_j = zoom_c->grav.multipole;
+  }
+
+  /* Minimal distance between any pair of particles */
+  const double min_radius2 = cell_min_dist2(zoom_c, bkg_c, s->periodic, s->dim);
+
+  /* Are we beyond the distance where the truncated forces are 0 ?*/
+  if (min_radius2 > max_distance2) {
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Need to account for the interactions we missed */
+    accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+    /* Need to account for the interactions we missed */
+    accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                      multi_j->m_pole.num_gpart);
+#endif
+    /* Record that this multipole received a contribution */
+    multi_i->pot.interacted = 1;
+  }
+#else
+  error("This function should not be called without debugging checks enabled!");
+#endif
+}
+
+/**
+ * @brief Accumulate the number of particle mesh interactions for debugging
  * purposes.
  *
- * This is the varaint used when running a zoom simulation.
+ * This is the variant used when running a zoom simulation.
  *
  * @param r The thread #runner.
  * @param ci The #cell of interest.
@@ -409,6 +486,10 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
+  /* Define a cell pointer to use for the right comparison top level cell */
+  struct cell *compare_top_i = top;
+  struct cell *compare_top_j = NULL;
+
   /* Loop over all cells. */
   for (int n = 0; n < s->nr_cells; n++) {
 
@@ -423,27 +504,39 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
     /* Get the top level cell of the current cj */
     struct cell *top_j = cj->top;
 
-    /* If we are in a zoom cell we need to jump up the void hierarchy
-     * to get the top level cell. */
-    if (top_j->void_parent != NULL) {
-      top_j = cj->void_parent->top;
-    }
-
-    /* If we had buffer cells then we may need an extra jump since the
-     * top-level for a zoom cell is at:
-     * zoom->top->void_parent->top->void_parent->top. */
-    if (top_j->void_parent != NULL) {
-      top_j = top_j->void_parent->top;
+    /* What cells should we be comparing? For two top level zoom cells we
+     * compare them directly, top level zoom cells interacting with
+     * background cells is more complex. First we must check at the
+     * void<->bkg level. Then if we would have made and split a task we need
+     * to check at the zoom level. All other combinations are just top level
+     * cells. */
+    if (ci->type == cell_type_zoom && cj->type == cell_type_zoom) {
+      compare_top_i = ci->top;
+      compare_top_j = cj->top;
+    } else if (ci->type == cell_type_zoom) {
+      /* If void_parent is NULL we can just continue here */
+      if (ci->void_parent == NULL) continue;
+      compare_top_i = ci->top->void_parent->top;
+      compare_top_j = top_j;
+    } else if (cj->type == cell_type_zoom) {
+      /* If void_parent is NULL we can just continue here */
+      if (cj->void_parent == NULL) continue;
+      compare_top_i = top;
+      compare_top_j = cj->void_parent->top;
+    } else {
+      compare_top_i = top;
+      compare_top_j = top_j;
     }
 
     /* Avoid self contributions */
-    if (top == top_j) continue;
+    if (compare_top_i == compare_top_j) continue;
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top, top_j, periodic, dim);
+    const double min_radius2 =
+        cell_min_dist2(compare_top_i, compare_top_j, periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
@@ -460,6 +553,14 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 #endif
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
+    } else if (ci->type == cell_type_zoom &&
+               cj->subtype == cell_subtype_neighbour) {
+      /* Ok we made a task here, between a zoom ci and bkg cj. */
+      runner_count_mesh_interactions_zoom_bkg_recursive(ci, ci->top, top_j, s);
+    } else if (cj->type == cell_type_zoom &&
+               ci->subtype == cell_subtype_neighbour) {
+      /* Ok we made a task here, between a bkg ci and zoom cj. */
+      runner_count_mesh_interactions_zoom_bkg_recursive(ci, cj->top, ci, s);
     }
   }
 #else
@@ -470,10 +571,10 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 }
 
 /**
- * @brief Accumalate the number of particle mesh interactions for debugging
+ * @brief Accumulate the number of particle mesh interactions for debugging
  * purposes.
  *
- * This is the varaint used when running a uniform box simulation.
+ * This is the variant used when running a uniform box simulation.
  *
  * @param r The thread #runner.
  * @param ci The #cell of interest.

@@ -1620,7 +1620,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
   /* When we split a regular cell's task because it is interacting with a
    * void cell, we can end up below the depth set by space_subdepth_diff_grav.
-   * This will cause absolute havoc with heierarchical gravity tasks being
+   * This will cause absolute havoc with hierarchical gravity tasks being
    * missing on the regular cell if we don't flag this somehow to ensure
    * task recursions continue to this level. */
   if (!cell_is_above_diff_grav_depth(ci)) {
@@ -1652,6 +1652,13 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       /* Skip any empty progeny of a void cell (void cells themselves always
        * have 0 particles but are never "empty"). */
       if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
+
+      /* Are we at the zoom top level and if so can we get away with using
+       * the mesh here instead of a direct interaction? */
+      if (cell_pair_is_zoom_tl(cpi, cpj, sp) &&
+          engine_gravity_can_use_mesh(e, cpi, cpj)) {
+        continue;
+      }
 
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(cpi, cpj, e, sp,
@@ -1720,7 +1727,10 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
 
     /* Get the first progeny that exists. */
     int first_child = 0;
-    while (ci->progeny[first_child] == NULL) first_child++;
+    while (ci->progeny[first_child] == NULL && first_child < 8) first_child++;
+
+    /* If we have found no progeny, we are done here. */
+    if (first_child == 8) break;
 
     /* Reuse the task we already have. */
     t->ci = ci->progeny[first_child];
@@ -1750,6 +1760,14 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
         /* Skip empty progeny. */
         if (ci->progeny[k] == NULL) continue;
 
+        /* Check if we are at the zoom top level and if so can we get away
+         * with using the mesh here instead of a direct interaction? */
+        if (cell_pair_is_zoom_tl(ci->progeny[j], ci->progeny[k], s->space) &&
+            engine_gravity_can_use_mesh(s->space->e, ci->progeny[j],
+                                        ci->progeny[k])) {
+          continue;
+        }
+
         /* Create the pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
             scheduler_addtask(s, task_type_pair, t->subtype, sub_sid_flag[j][k],
@@ -1757,6 +1775,15 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
             s);
       }
     }
+  }
+
+  /* If we still have a void cell here, kill off the task. */
+  if (t->ci->subtype == cell_subtype_void) {
+    t->type = task_type_none;
+    t->subtype = task_subtype_none;
+    t->ci = NULL;
+    t->skip = 1;
+    return;
   }
 
   /* Now we're not in a void cell we can just call the normal splitter.  */
