@@ -35,14 +35,24 @@
 /**
  * @brief Initialize variables for the cell wide slope limiter
  *
+ * TODO: Use DBL_MAX for double fields.
+ *
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_slope_limit_cell_init(struct part* p) {
 
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    p->chemistry_data.limiter.Z[i][0] = FLT_MAX;
-    p->chemistry_data.limiter.Z[i][1] = -FLT_MAX;
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    p->chemistry_data.limiter.Z[m][0] = FLT_MAX;
+    p->chemistry_data.limiter.Z[m][1] = -FLT_MAX;
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    /* Array index reminder: 1st: metal; 2nd: flux component x, y or z; 3rd
+       component: limiter min or max value. */
+    for (int i = 0; i < 3; i++) {
+      p->chemistry_data.limiter.flux[m][i][0] = FLT_MAX;
+      p->chemistry_data.limiter.flux[m][i][1] = - FLT_MAX;
+    }
+#endif
   }
 
   p->chemistry_data.limiter.rho[0] = FLT_MAX;
@@ -81,16 +91,24 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
 
   /* Basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chi->limiter.Z[i][0] =
-        min(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][0]);
-    chi->limiter.Z[i][1] =
-        max(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][1]);
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    chi->limiter.Z[m][0] =
+        min(chemistry_get_metal_mass_fraction(pj, m), chi->limiter.Z[m][0]);
+    chi->limiter.Z[m][1] =
+        max(chemistry_get_metal_mass_fraction(pj, m), chi->limiter.Z[m][1]);
 
     /* Ensures metalicity never exceeds 1 */
-    chi->limiter.Z[i][1] = min(1.0, chi->limiter.Z[i][1]);
+    chi->limiter.Z[m][1] = min(1.0, chi->limiter.Z[m][1]);
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    for (int i = 0; i < 3; i++) {
+      chi->limiter.flux[m][i][0] = min(chj->flux[m][i], chi->limiter.flux[m][i][0]);
+      chi->limiter.flux[m][i][1] = max(chj->flux[m][i], chi->limiter.flux[m][i][1]);
+    }
+#endif
   }
 
+  /* TODO: Simplify using for loops ? */
   chi->limiter.v[0][0] = min(pj->v[0], chi->limiter.v[0][0]);
   chi->limiter.v[0][1] = max(pj->v[0], chi->limiter.v[0][1]);
   chi->limiter.v[1][0] = min(pj->v[1], chi->limiter.v[1][0]);
@@ -239,18 +257,26 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
      limiter. The Riemann solver takes care of artifical diffusion. */
   const int mode = 0;
 #endif
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     chemistry_slope_limit_quantity(
-        /*gradient=*/chd->gradients.Z[i],
+        /*gradient=*/ chd->gradients.Z[m],
         /*maxr=    */ maxr,
-        /*value=   */ chemistry_get_metal_mass_fraction(p, i),
-        /*valmin=  */ chd->limiter.Z[i][0],
-        /*valmax=  */ chd->limiter.Z[i][1],
+        /*value=   */ chemistry_get_metal_mass_fraction(p, m),
+        /*valmin=  */ chd->limiter.Z[m][0],
+        /*valmax=  */ chd->limiter.Z[m][1],
         /*condition_number*/ N_cond,
         /*pos_preserve*/ mode);
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    for (int i = 0; i < 3; i++) {
+      chemistry_slope_limit_quantity(
+	  chd->gradients.flux[m][i], maxr, chd->flux[m][i],
+	  chd->limiter.flux[m][i][0], chd->limiter.flux[m][i][1], N_cond, 0);
+    }
+#endif
   }
 
-  /* Use doubles sice chemistry_slope_limit_quantity() accepts double arrays. */
+  /* Use doubles since chemistry_slope_limit_quantity() accepts double arrays. */
   double gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3],
       gradvy_tilde[3], gradvz_tilde[3];
 
