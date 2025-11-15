@@ -69,46 +69,17 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /* PVRS wavespeed approximation */
   const double uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
   const double uR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
-  const double rhoLinv = (WL[0] > 0.0f) ? 1.0f / WL[0] : 0.0f;
-  const double rhoRinv = (WR[0] > 0.0f) ? 1.0f / WR[0] : 0.0f;
-  const double aL = sqrtf(hydro_gamma * WL[4] * rhoLinv);
-  const double aR = sqrtf(hydro_gamma * WR[4] * rhoRinv);
 
-  /* Pressure estimate */
-  const double rhobar = WL[0] + WR[0];
-  const double abar = aL + aR;
-  const double pPVRS =
-      0.5f * ((WL[4] + WR[4]) - 0.25f * (uR - uL) * rhobar * abar);
-  const double pstar = max(0.0f, pPVRS);
+  const double c_diff_L =
+  chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo);
+  const double c_diff_R =
+  chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo);
 
-  /* Wave speed estimates
-     all these speeds are along the interface normal, since uL and uR are */
-  double qL = 1.0f;
-  if (pstar > WL[4] && WL[4] > 0.0f) {
-    qL = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                          (pstar / WL[4] - 1.0f));
-  }
-  double qR = 1.0f;
-  if (pstar > WR[4] && WR[4] > 0.0f) {
-    qR = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                          (pstar / WR[4] - 1.0f));
-  }
-  const double lambda_minus_hydro = -aL * qL;
-  const double lambda_plus_hydro = aR * qR;
+  const double lambda_minus_diffusion = min(uL - c_diff_L, uR - c_diff_R);
+  const double lambda_plus_diffusion =  max(uL + c_diff_L, uR + c_diff_R);
 
-  /* const double c_diff_L = */
-  /* chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo); */
-  /* const double c_diff_R = */
-  /* chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo); */
-  /* const double lambda_plus_diffusion = max3(0.0, c_diff_L, c_diff_R); */
-  /* const double lambda_minus_diffusion = min3(0.0, c_diff_L, c_diff_R); */
-
-  const double lambda_minus = lambda_minus_hydro;
-  const double lambda_plus = lambda_plus_hydro;
-  /* const double lambda_minus = min(lambda_minus_hydro,
-   * lambda_minus_diffusion); */
-  /* const double lambda_plus = max(lambda_plus_hydro, lambda_plus_diffusion);
-   */
+  const double lambda_minus = lambda_minus_diffusion;
+  const double lambda_plus = lambda_plus_diffusion;
 
   if (lambda_plus == 0.0 && lambda_minus == 0.0) {
     fluxes[0] = 0.0;
@@ -121,12 +92,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /* Now project the fluxes */
   /* No conversion to physical needed, everything is physical here */
 
-  /* Project the fluxes to reduce to a 1D Problem with 1 quantity */
-  /* const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] + */
-  /* F_diff_L[2] * n_unit[2]; */
-  /* const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] + */
-  /* F_diff_R[2] * n_unit[2]; */
-
+  /* Project the fluxes to reduce to a 1D Problem with 4 quantities */
   double fluxL[4];
   fluxL[0] = hyperFluxL[0][0] * n_unit[0] + hyperFluxL[0][1] * n_unit[1] +
              hyperFluxL[0][2] * n_unit[2];
@@ -157,19 +123,25 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /* } */
 
   if (lambda_minus > 0.0) {
-    fluxes = fluxL;
+    message("lambda_minus > 0 (UL[0], UR[0]) = (%e %e)", UL[0], UR[0]);
+    for (int i = 0; i < 4; i++) {
+      fluxes[i] = fluxL[i];
+    }
   } else if (lambda_minus <= 0.0 && lambda_plus >= 0.0) {
-    const double dU = UR - UL;
+    /* message("lambda_minus >= 0, lambda_plus >= 0 (UL[0], UR[0]) = (%e %e)", UL[0], UR[0]); */
     const double one_over_dl = 1.f / (lambda_plus - lambda_minus);
     const double lprod = lambda_plus*lambda_minus;
 
-    fluxes[0] = (lambda_plus*fluxL[0] - lambda_minus*fluxR[0] + lprod*dU)*one_over_dl;
-    fluxes[1] = (lambda_plus*fluxL[1] - lambda_minus*fluxR[1] + lprod*dU)*one_over_dl;
-    fluxes[2] = (lambda_plus*fluxL[2] - lambda_minus*fluxR[2] + lprod*dU)*one_over_dl;
-    fluxes[3] = (lambda_plus*fluxL[3] - lambda_minus*fluxR[3] + lprod*dU)*one_over_dl;
+    fluxes[0] = (lambda_plus*fluxL[0] - lambda_minus*fluxR[0] + lprod*(UR[0] -UL[0]))*one_over_dl;
+    fluxes[1] = (lambda_plus*fluxL[1] - lambda_minus*fluxR[1] + lprod*(UR[1] -UL[1]))*one_over_dl;
+    fluxes[2] = (lambda_plus*fluxL[2] - lambda_minus*fluxR[2] + lprod*(UR[2] -UL[2]))*one_over_dl;
+    fluxes[3] = (lambda_plus*fluxL[3] - lambda_minus*fluxR[3] + lprod*(UR[3] -UL[3]))*one_over_dl;
 
   } else if (lambda_plus < 0.0) {
-    fluxes = fluxR;
+    message("lambda_plus < 0 (UL[0], UR[0]) = (%e %e)", UL[0], UR[0]);
+    for (int i = 0; i < 4; i++) {
+      fluxes[i] = fluxR[i];
+    }
   }
 }
 
