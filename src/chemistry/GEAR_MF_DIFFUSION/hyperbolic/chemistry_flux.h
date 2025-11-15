@@ -158,11 +158,8 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
   double hyper_flux_R[4][3];
   chemistry_get_hyperbolic_flux(pj, metal, UR, chem_data, cosmo, hyper_flux_R);
 
-  /* #ifdef SWIFT_RT_DEBUG_CHECKS */
-  /* Check that the fluxes are meaningful */
   chemistry_check_unphysical_hyperbolic_flux(hyper_flux_L);
   chemistry_check_unphysical_hyperbolic_flux(hyper_flux_R);
-  /* #endif */
 
   chemistry_riemann_solve_for_flux(dx, pi, pj, UL, UR, WL, WR, hyper_flux_L,
                                    hyper_flux_R, Anorm, n_unit, metal,
