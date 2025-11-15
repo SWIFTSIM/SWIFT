@@ -110,7 +110,7 @@ chemistry_part_integrate_flux_source_term(
   struct chemistry_part_data *chd = &p->chemistry_data;
   const double tau = chd->tau;
   const double exp_decay = exp(-dt / tau);
-  const double one_minus_exp_decay = exp_decay + 1.0;
+  const double one_minus_exp_decay = 1.0 - exp_decay;
 
   const double flux_current[3] = {chd->flux[metal][0], chd->flux[metal][1],
                                   chd->flux[metal][2]};
