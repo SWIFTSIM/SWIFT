@@ -378,13 +378,19 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
       }
   }
 
+  float ShearAndRotation[3][3];
+  float NormShearAndRotation=0.0f;
+
   // leave only shear tensor
   for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
           p->mhd_data.shear_tensor[i][j] = 0.5f * (grad_v_tensor[i][j] + grad_v_tensor[j][i])  - (compression / 3.0f) * delta[i][j];
+          ShearAndRotation[i][j] = grad_v_tensor[i][j] - (compression / 3.0f) * delta[i][j];
+          NormShearAndRotation += ShearAndRotation[i][j]*ShearAndRotation[i][j];
       }
   }
 
+  NormShearAndRotation = sqrtf(NormShearAndRotation);
   
   for (int i = 0; i < 3; i++) {
     p->mhd_data.AdvS_B_source[i] = 0.0f;
@@ -399,38 +405,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   float OW;
   OW = 1.0f;
 
-  float Abs_B;
-
-  Abs_B = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
-
-  float Adv_B_source[3];
-  float Delta_B[3];
-  float Adv_B_times_Delta_B = 0.0f;
   const float d_ip = cbrtf(p->mass / p->rho);
-  float MaxDiff_B_source = sqrtf(3.0f) * 2.0f * Abs_B / (d_ip * d_ip * p->rho + FLT_MIN);
 
-  for (int k = 0; k < 3; k++) {
-    Adv_B_source[k] = p->mhd_data.AdvS_B_source[k];
-    Delta_B[k] = p->mhd_data.Delta_B[k]; 
-  }
+  p->mhd_data.eta_OWAR = NormShearAndRotation * d_ip * d_ip / OW; 
 
-  const float Abs_Delta_B = sqrtf(Delta_B[0]*Delta_B[0]+Delta_B[1]*Delta_B[1]+Delta_B[2]*Delta_B[2]);
-  for (int k = 0; k < 3; k++) {
-    Delta_B[k] /= (Abs_Delta_B+FLT_MIN);
-  }
-
-  for (int k = 0; k < 3; k++) { 
-    Adv_B_times_Delta_B += Adv_B_source[k] * Delta_B[k];
-  }
-
-  p->mhd_data.eta_OWAR = fmaxf( - Adv_B_times_Delta_B, 0.0f ) / ( OW * MaxDiff_B_source + FLT_MIN); 
-
-  if (p->mhd_data.eta_OWAR<0.0f){
-    error(
-        "Error: incorrect OWAR "
-        );
-  }
- 
 }
 
 /**
