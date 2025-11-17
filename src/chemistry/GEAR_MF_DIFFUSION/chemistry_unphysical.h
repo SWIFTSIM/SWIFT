@@ -158,6 +158,34 @@ chemistry_check_unphysical_total_metal_mass(struct part *restrict p,
 }
 
 /**
+ * @brief Check for, and correct, if needed, unphysical values for a metallicity
+ *
+ * @param Z Pointer to the metallicity
+ * @param callloc Integer indentifier where this function was called from
+ *
+ * 0: in gradient extraplation (Riemann solver for parabolic scheme, hyperblic
+ * fluxes for the hyperbolic scheme).
+ *
+ * @param metal Integer identifier for the metal specie to correct.
+ * @param id Particle id.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_check_unphysical_metallicity(double *Z, int callloc,
+				       const int metal, const long long id) {
+
+  if (isinf(*Z) || isnan(*Z))
+    error("[%lld, %d] Got inf/nan metallicity, case %d | %.6e ",
+	  id, metal, callloc, *Z);
+
+  /* Check that we do not have unphysical values */
+  if (*Z > 1.0) {
+    *Z = 1.0;
+  } else if (*Z < 0.0) {
+    *Z = 0.0;
+  }
+}
+
+/**
  * @brief Check for and correct if needed unphysical values for a flux in the
  * sense of hyperbolic conservation laws.
  *

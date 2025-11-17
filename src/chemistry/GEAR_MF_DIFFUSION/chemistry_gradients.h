@@ -577,17 +577,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
   *Zj += dZj * cosmo->a_inv;
 
   /* Check that we do not have unphysical values */
-  if (*Zi > 1.0) {
-    *Zi = 1.0;
-  } else if (*Zi < 0.0) {
-    *Zi = 0.0;
-  }
-
-  if (*Zi > 1.0) {
-    *Zj = 1.0;
-  } else if (*Zj < 0.0) {
-    *Zj = 0.0;
-  }
+  chemistry_check_unphysical_metallicity(Zi, 0, metal, pi->id);
+  chemistry_check_unphysical_metallicity(Zj, 0, metal, pj->id);
 }
 
 /* Import the right header */
