@@ -84,8 +84,8 @@ static const int io_max_size_output_list = 100;
  * the part array will be written once the structures have been stabilized.
  */
 void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
-                       const struct unit_system* internal_units,
-                       const struct unit_system* ic_units, int cleanup_h,
+                       const struct unit_system *internal_units,
+                       const struct unit_system *ic_units, int cleanup_h,
                        int cleanup_sqrt_a, double h, double a) {
 
   const size_t typeSize = io_sizeof_type(props.type);
@@ -102,7 +102,7 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
     } else {
 
       /* Create a single instance of the default value */
-      float* temp = (float*)malloc(copySize);
+      float *temp = (float *)malloc(copySize);
       for (int i = 0; i < props.dimension; ++i) temp[i] = props.default_value;
 
       /* Copy it everywhere in the particle array */
@@ -123,7 +123,7 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
   if (h_data < 0) error("Error while opening data space '%s'.", props.name);
 
   /* Allocate temporary buffer */
-  void* temp = malloc(num_elements * typeSize);
+  void *temp = malloc(num_elements * typeSize);
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
 
   /* Read HDF5 dataspace in temporary buffer */
@@ -141,11 +141,11 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
     /* message("Converting ! factor=%e", factor); */
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = (double*)temp;
+      double *temp_d = (double *)temp;
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= unit_factor;
 
     } else {
-      float* temp_f = (float*)temp;
+      float *temp_f = (float *)temp;
 
 #ifdef SWIFT_DEBUG_CHECKS
       float maximum = 0.f;
@@ -188,11 +188,11 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
      * h_factor); */
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = (double*)temp;
+      double *temp_d = (double *)temp;
       const double h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= h_factor;
     } else {
-      float* temp_f = (float*)temp;
+      float *temp_f = (float *)temp;
       const float h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= h_factor;
     }
@@ -202,18 +202,18 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
   if (cleanup_sqrt_a && a != 1. && (strcmp(props.name, "Velocities") == 0)) {
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = (double*)temp;
+      double *temp_d = (double *)temp;
       const double vel_factor = sqrt(a);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= vel_factor;
     } else {
-      float* temp_f = (float*)temp;
+      float *temp_f = (float *)temp;
       const float vel_factor = sqrt(a);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= vel_factor;
     }
   }
 
   /* Copy temporary buffer to particle data */
-  char* temp_c = (char*)temp;
+  char *temp_c = (char *)temp;
   for (size_t i = 0; i < N; ++i)
     memcpy(props.field + i * props.partSize, &temp_c[i * copySize], copySize);
 
@@ -239,12 +239,12 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
  */
-void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
-                        FILE* xmfFile, const char* partTypeGroupName,
+void write_array_single(const struct engine *e, hid_t grp, const char *fileName,
+                        FILE *xmfFile, const char *partTypeGroupName,
                         const struct io_props props, const size_t N,
                         const enum lossy_compression_schemes lossy_compression,
-                        const struct unit_system* internal_units,
-                        const struct unit_system* snapshot_units) {
+                        const struct unit_system *internal_units,
+                        const struct unit_system *snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t num_elements = N * props.dimension;
@@ -252,8 +252,8 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
   /* message("Writing '%s' array...", props.name); */
 
   /* Allocate temporary buffer */
-  void* temp = NULL;
-  if (swift_memalign("writebuff", (void**)&temp, IO_BUFFER_ALIGNMENT,
+  void *temp = NULL;
+  if (swift_memalign("writebuff", (void **)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
@@ -441,16 +441,16 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
  * @todo Read snapshots distributed in more than one file.
  */
 void read_ic_single(
-    const char* fileName, const struct unit_system* internal_units,
-    double dim[3], struct part** parts, struct gpart** gparts,
-    struct sink** sinks, struct spart** sparts, struct bpart** bparts,
-    size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background, size_t* Nnuparts,
-    size_t* Nsinks, size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
+    const char *fileName, const struct unit_system *internal_units,
+    double dim[3], struct part **parts, struct gpart **gparts,
+    struct sink **sinks, struct spart **sparts, struct bpart **bparts,
+    size_t *Ngas, size_t *Ngparts, size_t *Ngparts_background, size_t *Nnuparts,
+    size_t *Nsinks, size_t *Nstars, size_t *Nblackholes, int *flag_entropy,
     const int with_hydro, const int with_gravity, const int with_sink,
     const int with_stars, const int with_black_holes, const int with_cosmology,
     const int cleanup_h, const int cleanup_sqrt_a, const double h,
     const double a, const int n_threads, const int dry_run, const int remap_ids,
-    struct ic_info* ics_metadata) {
+    struct ic_info *ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -545,8 +545,8 @@ void read_ic_single(
   H5Gclose(h_grp);
 
   /* Read the unit system used in the ICs */
-  struct unit_system* ic_units =
-      (struct unit_system*)malloc(sizeof(struct unit_system));
+  struct unit_system *ic_units =
+      (struct unit_system *)malloc(sizeof(struct unit_system));
   if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
   io_read_unit_system(h_file, ic_units, internal_units, 0);
 
@@ -590,7 +590,7 @@ void read_ic_single(
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[swift_type_gas];
-    if (swift_memalign("parts", (void**)parts, part_align,
+    if (swift_memalign("parts", (void **)parts, part_align,
                        *Ngas * sizeof(struct part)) != 0)
       error("Error while allocating memory for SPH particles");
     bzero(*parts, *Ngas * sizeof(struct part));
@@ -599,7 +599,7 @@ void read_ic_single(
   /* Allocate memory to store star particles */
   if (with_sink) {
     *Nsinks = N[swift_type_sink];
-    if (swift_memalign("sinks", (void**)sinks, sink_align,
+    if (swift_memalign("sinks", (void **)sinks, sink_align,
                        *Nsinks * sizeof(struct sink)) != 0)
       error("Error while allocating memory for sink particles");
     bzero(*sinks, *Nsinks * sizeof(struct sink));
@@ -608,7 +608,7 @@ void read_ic_single(
   /* Allocate memory to store star particles */
   if (with_stars) {
     *Nstars = N[swift_type_stars];
-    if (swift_memalign("sparts", (void**)sparts, spart_align,
+    if (swift_memalign("sparts", (void **)sparts, spart_align,
                        *Nstars * sizeof(struct spart)) != 0)
       error("Error while allocating memory for stars particles");
     bzero(*sparts, *Nstars * sizeof(struct spart));
@@ -617,7 +617,7 @@ void read_ic_single(
   /* Allocate memory to store black hole particles */
   if (with_black_holes) {
     *Nblackholes = N[swift_type_black_hole];
-    if (swift_memalign("bparts", (void**)bparts, bpart_align,
+    if (swift_memalign("bparts", (void **)bparts, bpart_align,
                        *Nblackholes * sizeof(struct bpart)) != 0)
       error("Error while allocating memory for black hole particles");
     bzero(*bparts, *Nblackholes * sizeof(struct bpart));
@@ -636,7 +636,7 @@ void read_ic_single(
                (with_black_holes ? N[swift_type_black_hole] : 0);
     *Ngparts_background = Ndm_background;
     *Nnuparts = Ndm_neutrino;
-    if (swift_memalign("gparts", (void**)gparts, gpart_align,
+    if (swift_memalign("gparts", (void **)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
@@ -815,21 +815,21 @@ void read_ic_single(
  * Calls #error() if an error occurs.
  *
  */
-void write_output_single(struct engine* e,
-                         const struct unit_system* internal_units,
-                         const struct unit_system* snapshot_units,
+void write_output_single(struct engine *e,
+                         const struct unit_system *internal_units,
+                         const struct unit_system *snapshot_units,
                          const int fof) {
 
   hid_t h_file = 0, h_grp = 0;
   int numFiles = 1;
-  const struct part* parts = e->s->parts;
-  const struct xpart* xparts = e->s->xparts;
-  const struct gpart* gparts = e->s->gparts;
-  const struct spart* sparts = e->s->sparts;
-  const struct bpart* bparts = e->s->bparts;
-  const struct sink* sinks = e->s->sinks;
-  struct output_options* output_options = e->output_options;
-  struct output_list* output_list = e->output_list_snapshots;
+  const struct part *parts = e->s->parts;
+  const struct xpart *xparts = e->s->xparts;
+  const struct gpart *gparts = e->s->gparts;
+  const struct spart *sparts = e->s->sparts;
+  const struct bpart *bparts = e->s->bparts;
+  const struct sink *sinks = e->s->sinks;
+  struct output_options *output_options = e->output_options;
+  struct output_list *output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -907,7 +907,7 @@ void write_output_single(struct engine* e,
   if (e->snapshot_output_count == 0) xmf_create_file(xmfFileName);
 
   /* Prepare the XMF file for the new entry */
-  FILE* xmfFile = 0;
+  FILE *xmfFile = 0;
   xmfFile = xmf_prepare_file(xmfFileName);
 
   /* Write the part corresponding to this specific output */
@@ -1043,7 +1043,7 @@ void write_output_single(struct engine* e,
 
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);
-  struct tm* timeinfo = localtime(&tm);
+  struct tm *timeinfo = localtime(&tm);
   char snapshot_date[64];
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
   io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
@@ -1159,13 +1159,13 @@ void write_output_single(struct engine* e,
     bzero(list, io_max_size_output_list * sizeof(struct io_props));
     size_t N = 0;
 
-    struct part* parts_written = NULL;
-    struct xpart* xparts_written = NULL;
-    struct gpart* gparts_written = NULL;
-    struct velociraptor_gpart_data* gpart_group_data_written = NULL;
-    struct spart* sparts_written = NULL;
-    struct bpart* bparts_written = NULL;
-    struct sink* sinks_written = NULL;
+    struct part *parts_written = NULL;
+    struct xpart *xparts_written = NULL;
+    struct gpart *gparts_written = NULL;
+    struct velociraptor_gpart_data *gpart_group_data_written = NULL;
+    struct spart *sparts_written = NULL;
+    struct bpart *bparts_written = NULL;
+    struct sink *sinks_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1187,11 +1187,11 @@ void write_output_single(struct engine* e,
           N = Ngas_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("parts_written", (void**)&parts_written,
+          if (swift_memalign("parts_written", (void **)&parts_written,
                              part_align,
                              Ngas_written * sizeof(struct part)) != 0)
             error("Error while allocating temporary memory for parts");
-          if (swift_memalign("xparts_written", (void**)&xparts_written,
+          if (swift_memalign("xparts_written", (void **)&xparts_written,
                              xpart_align,
                              Ngas_written * sizeof(struct xpart)) != 0)
             error("Error while allocating temporary memory for xparts");
@@ -1226,14 +1226,14 @@ void write_output_single(struct engine* e,
           N = Ndm_written;
 
           /* Allocate temporary array */
-          if (swift_memalign("gparts_written", (void**)&gparts_written,
+          if (swift_memalign("gparts_written", (void **)&gparts_written,
                              gpart_align,
                              Ndm_written * sizeof(struct gpart)) != 0)
             error("Error while allocating temporary memory for gparts");
 
           if (with_stf) {
             if (swift_memalign(
-                    "gpart_group_written", (void**)&gpart_group_data_written,
+                    "gpart_group_written", (void **)&gpart_group_data_written,
                     gpart_align,
                     Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
               error(
@@ -1260,14 +1260,14 @@ void write_output_single(struct engine* e,
         N = Ndm_background;
 
         /* Allocate temporary array */
-        if (swift_memalign("gparts_written", (void**)&gparts_written,
+        if (swift_memalign("gparts_written", (void **)&gparts_written,
                            gpart_align,
                            Ndm_background * sizeof(struct gpart)) != 0)
           error("Error while allocating temporary memory for gparts");
 
         if (with_stf) {
           if (swift_memalign(
-                  "gpart_group_written", (void**)&gpart_group_data_written,
+                  "gpart_group_written", (void **)&gpart_group_data_written,
                   gpart_align,
                   Ndm_background * sizeof(struct velociraptor_gpart_data)) != 0)
             error(
@@ -1295,14 +1295,14 @@ void write_output_single(struct engine* e,
         N = Ndm_neutrino;
 
         /* Allocate temporary array */
-        if (swift_memalign("gparts_written", (void**)&gparts_written,
+        if (swift_memalign("gparts_written", (void **)&gparts_written,
                            gpart_align,
                            Ndm_neutrino * sizeof(struct gpart)) != 0)
           error("Error while allocating temporary memory for gparts");
 
         if (with_stf) {
           if (swift_memalign(
-                  "gpart_group_written", (void**)&gpart_group_data_written,
+                  "gpart_group_written", (void **)&gpart_group_data_written,
                   gpart_align,
                   Ndm_neutrino * sizeof(struct velociraptor_gpart_data)) != 0)
             error(
@@ -1338,7 +1338,7 @@ void write_output_single(struct engine* e,
           N = Nsinks_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("sinks_written", (void**)&sinks_written,
+          if (swift_memalign("sinks_written", (void **)&sinks_written,
                              sink_align,
                              Nsinks_written * sizeof(struct sink)) != 0)
             error("Error while allocating temporary memory for sinks");
@@ -1371,7 +1371,7 @@ void write_output_single(struct engine* e,
           N = Nstars_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("sparts_written", (void**)&sparts_written,
+          if (swift_memalign("sparts_written", (void **)&sparts_written,
                              spart_align,
                              Nstars_written * sizeof(struct spart)) != 0)
             error("Error while allocating temporary memory for sparts");
@@ -1404,7 +1404,7 @@ void write_output_single(struct engine* e,
           N = Nblackholes_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("bparts_written", (void**)&bparts_written,
+          if (swift_memalign("bparts_written", (void **)&bparts_written,
                              bpart_align,
                              Nblackholes_written * sizeof(struct bpart)) != 0)
             error("Error while allocating temporary memory for bparts");

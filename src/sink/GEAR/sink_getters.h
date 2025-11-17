@@ -38,8 +38,8 @@
  */
 
 __attribute__((always_inline)) INLINE double sink_get_sink_age(
-    const struct sink* restrict sink, const int with_cosmology,
-    const struct cosmology* cosmo, const double time) {
+    const struct sink *restrict sink, const int with_cosmology,
+    const struct cosmology *cosmo, const double time) {
   double sink_age;
   if (with_cosmology) {
 
@@ -66,7 +66,7 @@ __attribute__((always_inline)) INLINE double sink_get_sink_age(
  *
  */
 INLINE static double sink_compute_neighbour_rotation_energy_magnitude(
-    const struct part* restrict p) {
+    const struct part *restrict p) {
   double E_rot_x = p->sink_data.E_rot_neighbours[0];
   double E_rot_y = p->sink_data.E_rot_neighbours[1];
   double E_rot_z = p->sink_data.E_rot_neighbours[2];
@@ -82,7 +82,7 @@ INLINE static double sink_compute_neighbour_rotation_energy_magnitude(
  *
  */
 INLINE static float sink_get_physical_div_v_from_part(
-    const struct part* restrict p, const struct cosmology* cosmo) {
+    const struct part *restrict p, const struct cosmology *cosmo) {
 
   float div_v = 0.0;
 
@@ -146,8 +146,8 @@ INLINE static float sink_get_physical_div_v_from_part(
 __attribute__((always_inline)) INLINE static void
 sink_compute_angular_momenta_criterion(
     const float dx[3], const float dv_plus_H_flow[3], const float r,
-    const float r_cut_i, const float mass_i, const struct cosmology* cosmo,
-    const struct gravity_props* grav_props, float* L2_kepler, float* L2_j) {
+    const float r_cut_i, const float mass_i, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props, float *L2_kepler, float *L2_j) {
 
   /* Compute the physical relative velocity between the particles */
   const float dv_physical[3] = {dv_plus_H_flow[0] * cosmo->a_inv,
