@@ -184,15 +184,18 @@ void test(void) {
   /* Call the symmetric version */
   runner_iact_gradient(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_mhd_gradient(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
+  runner_iact_gradient_diffusion(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
 
   /* Call the non-symmetric version */
   runner_iact_nonsym_gradient(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   runner_iact_nonsym_mhd_gradient(r2, dx, pi2.h, pj2.h, &pi2, &pj2, mu_0, a, H);
+  runner_iact_nonsym_gradient_diffusion(r2, dx, pi.h, pj.h, &pi2, &pj2, a, H);
   dx[0] = -dx[0];
   dx[1] = -dx[1];
   dx[2] = -dx[2];
   runner_iact_nonsym_gradient(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
   runner_iact_nonsym_mhd_gradient(r2, dx, pj2.h, pi2.h, &pj2, &pi2, mu_0, a, H);
+  runner_iact_nonsym_gradient_diffusion(r2, dx, pj.h, pi.h, &pj2, &pi2, a, H);
 
   i_not_ok = memcmp((char *)&pi, (char *)&pi2, sizeof(struct part));
   j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));
@@ -219,15 +222,16 @@ void test(void) {
   runner_iact_force(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_mhd_force(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
   runner_iact_diffusion(r2, dx, pi.h, pj.h, &pi, &pj, a, H, time_base,
-                        ti_current, NULL, /*with_cosmology=*/0);
+                        ti_current, /*cosmo=*/NULL, /*with_cosmology=*/0,
+                        /*chem_data=*/NULL);
   runner_iact_timebin(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
 
   /* Call the non-symmetric version */
   runner_iact_nonsym_force(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   runner_iact_nonsym_mhd_force(r2, dx, pi2.h, pj2.h, &pi2, &pj2, mu_0, a, H);
   runner_iact_nonsym_diffusion(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H,
-                               time_base, ti_current, NULL,
-                               /*with_cosmology=*/0);
+                               time_base, ti_current, /*cosmo=*/NULL,
+                               /*with_cosmology=*/0, /*chem_data=*/NULL);
   runner_iact_nonsym_timebin(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   dx[0] = -dx[0];
   dx[1] = -dx[1];
@@ -235,8 +239,8 @@ void test(void) {
   runner_iact_nonsym_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
   runner_iact_nonsym_mhd_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2, mu_0, a, H);
   runner_iact_nonsym_diffusion(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H,
-                               time_base, ti_current, NULL,
-                               /*with_cosmology=*/0);
+                               time_base, ti_current, /*cosmo=*/NULL,
+                               /*with_cosmology=*/0, /*chem_data=*/NULL);
   runner_iact_nonsym_timebin(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
 
 /* Check that the particles are the same */

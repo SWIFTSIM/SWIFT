@@ -20,6 +20,6 @@
 #define SWIFT_BLACK_HOLES_DEFAULT_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void black_holes_debug_particle(
-    const struct part* p, const struct xpart* xp) {}
+    const struct part *p, const struct xpart *xp) {}
 
 #endif /* SWIFT_BLACK_HOLES_DEFAULT_DEBUG_H */
