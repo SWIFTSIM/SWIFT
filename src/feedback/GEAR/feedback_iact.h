@@ -215,7 +215,8 @@ runner_iact_nonsym_feedback_apply(
       const double old_kinetic_energy = 0.5 * pj->mass * norm2_v_p;
 
       /* The additional specific internal energy of the gas particle j.  
-        Ekin_new + U_new = Ekin_old + U_old + dEtot */ 
+        Ekin_new + U_new = Ekin_old + U_old + dEtot 
+        -> du = (U_new - U_old) / new_mass = (Ekin_old + dEtot - Ekin_new) / new_mass */ 
       const float du =  (old_kinetic_energy + dE_lab_frame - new_kinetic_energy) / new_mass;      
       xpj->feedback_data.delta_u += du;
 
