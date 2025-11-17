@@ -1400,13 +1400,13 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
             scheduler_addtask(s, task_type_stars_df_from_dm_ghost, task_subtype_none,
                               0, 0, c, NULL);
         
-        c->stars.df_from_stars_ghost =
-            scheduler_addtask(s, task_type_stars_df_from_stars_ghost, task_subtype_none,
-                              0, 0, c, NULL);
+        // c->stars.df_from_stars_ghost =
+        //     scheduler_addtask(s, task_type_stars_df_from_stars_ghost, task_subtype_none,
+        //                       0, 0, c, NULL);
 
         /* DF tasks should slot in between gravity tasks and kick2, where the extra acceleration is applied */
         scheduler_addunlock(s, c->stars.df_from_dm_ghost, c->kick2);
-        scheduler_addunlock(s, c->stars.df_from_stars_ghost, c->kick2);
+        // scheduler_addunlock(s, c->stars.df_from_stars_ghost, c->kick2);
 #endif
       }
     }
@@ -3422,11 +3422,11 @@ void engine_make_extra_df_loop_tasks_mapper(void *map_data, int num_elements,
       if (t_type == task_type_self && t_subtype == task_subtype_stars_df_from_dm) {
 
         
-        t_star_df_from_stars =
-            scheduler_addtask(sched, task_type_self, task_subtype_stars_df_from_stars,
-                              flags, 0, ci, NULL);
+        // t_star_df_from_stars =
+        //     scheduler_addtask(sched, task_type_self, task_subtype_stars_df_from_stars,
+        //                       flags, 0, ci, NULL);
 
-        engine_addlink(e, &ci->stars.df_from_stars, t_star_df_from_stars);
+        // engine_addlink(e, &ci->stars.df_from_stars, t_star_df_from_stars);
 
         /* DF tasks should slot between the gravity tasks and kick2, where the extra acceleration is applied */
         /* Do we even need to wait for gravity? Can they just happen any time before kick2? */
@@ -3436,23 +3436,25 @@ void engine_make_extra_df_loop_tasks_mapper(void *map_data, int num_elements,
                               t);
         scheduler_addunlock(sched, t, ci->super->stars.df_from_dm_ghost);
 
-        scheduler_addunlock(sched, ci->super->grav.end_force,
-                              t_star_df_from_stars);
-        scheduler_addunlock(sched, ci->super->stars.drift,
-                              t_star_df_from_stars);
-        scheduler_addunlock(sched, t_star_df_from_stars,
-                              ci->super->stars.df_from_stars_ghost);
+        // scheduler_addunlock(sched, ci->super->grav.end_force,
+        //                       t_star_df_from_stars);
+        // scheduler_addunlock(sched, ci->super->stars.df_from_dm_ghost,
+        //                       t_star_df_from_stars);
+        // scheduler_addunlock(sched, ci->super->stars.drift,
+        //                       t_star_df_from_stars);
+        // scheduler_addunlock(sched, t_star_df_from_stars,
+        //                       ci->super->stars.df_from_stars_ghost);
 
       }
 
       /* Otherwise, pair interaction? */
       else if (t_type == task_type_pair && t_subtype == task_subtype_stars_df_from_dm) {
 
-        t_star_df_from_stars = scheduler_addtask(
-            sched, task_type_pair, task_subtype_stars_df_from_stars, flags, 0, ci, cj);
+        // t_star_df_from_stars = scheduler_addtask(
+        //     sched, task_type_pair, task_subtype_stars_df_from_stars, flags, 0, ci, cj);
 
-        engine_addlink(e, &ci->stars.df_from_stars, t_star_df_from_stars);
-        engine_addlink(e, &cj->stars.df_from_stars, t_star_df_from_stars);
+        // engine_addlink(e, &ci->stars.df_from_stars, t_star_df_from_stars);
+        // engine_addlink(e, &cj->stars.df_from_stars, t_star_df_from_stars);
 
         if (ci->nodeID == nodeID) {
 
@@ -3460,9 +3462,10 @@ void engine_make_extra_df_loop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, ci->super->stars.drift, t);
           scheduler_addunlock(sched, t, ci->super->stars.df_from_dm_ghost);
 
-          scheduler_addunlock(sched, ci->super->grav.end_force, t_star_df_from_stars);
-          scheduler_addunlock(sched, ci->super->stars.drift, t_star_df_from_stars);
-          scheduler_addunlock(sched, t_star_df_from_stars, ci->super->stars.df_from_stars_ghost);
+          // scheduler_addunlock(sched, ci->super->grav.end_force, t_star_df_from_stars);
+          // scheduler_addunlock(sched, ci->super->stars.df_from_dm_ghost, t_star_df_from_stars);
+          // scheduler_addunlock(sched, ci->super->stars.drift, t_star_df_from_stars);
+          // scheduler_addunlock(sched, t_star_df_from_stars, ci->super->stars.df_from_stars_ghost);
 
         }
 
@@ -3472,9 +3475,10 @@ void engine_make_extra_df_loop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, cj->super->stars.drift, t);
           scheduler_addunlock(sched, t, cj->super->stars.df_from_dm_ghost);
 
-          scheduler_addunlock(sched, cj->super->grav.end_force, t_star_df_from_stars);
-          scheduler_addunlock(sched, cj->super->stars.drift, t_star_df_from_stars);
-          scheduler_addunlock(sched, t_star_df_from_stars, cj->super->stars.df_from_stars_ghost);
+          // scheduler_addunlock(sched, cj->super->grav.end_force, t_star_df_from_stars);
+          // scheduler_addunlock(sched, cj->super->stars.df_from_dm_ghost, t_star_df_from_stars);
+          // scheduler_addunlock(sched, cj->super->stars.drift, t_star_df_from_stars);
+          // scheduler_addunlock(sched, t_star_df_from_stars, cj->super->stars.df_from_stars_ghost);
 
         } 
       }
