@@ -161,6 +161,67 @@ void stellar_evolution_sn_apply_ejected_mass(struct spart* restrict sp,
 }
 
 /**
+ * @brief Update the #spart mass from the stellar wind ejected mass.
+ *
+ * This function deals with each star_type.
+ *
+ * Note: This function is called by
+ * stellar_evolution_compute_preSN_properties().
+ *
+ * @param sp The particle to act upon
+ * @param sm The #stellar_model structure.
+ */
+void stellar_evolution_preSN_apply_ejected_mass(struct spart* restrict sp,
+                                             const struct stellar_model* sm) {
+  /* If a star is a discrete star */
+  if (sp->star_type == single_star) {
+    const char null_mass = (sp->mass == sp->feedback_data.preSN.mass_ejected);
+    const int negative_mass = (sp->mass < sp->feedback_data.preSN.mass_ejected);
+
+    if (null_mass) {
+      message("Star %lld (m_star = %e, m_ej = %e) completely exploded!", sp->id,
+              sp->mass, sp->feedback_data.preSN.mass_ejected);
+      
+      sp->mass = sm->discrete_star_minimal_gravity_mass;
+
+      /* If somehow the star has a negative mass, we have a problem. */
+    } else if (negative_mass) {
+      error(
+          "(Discrete star) Negative mass (m_star = %e, m_ej = %e), skipping current star: %lli",
+          sp->mass, sp->feedback_data.preSN.mass_ejected, sp->id);
+      /* Reset everything */
+      sp->feedback_data.preSN.mass_ejected = 0.0;
+
+      /* Reset energy to avoid injecting anything in the
+         runner_iact_nonsym_feedback_apply() */
+      sp->feedback_data.preSN.energy_ejected = 0.0;
+      return;
+    } else {
+      /* Update the mass */
+      sp->mass -= sp->feedback_data.preSN.mass_ejected;
+    }
+
+    /* If the star is the continuous part of the IMF or the entire IMF */
+  } else {
+    /* Check if we can eject the required amount of elements. */
+    const int negative_mass = (sp->mass <= sp->feedback_data.preSN.mass_ejected);
+    if (negative_mass) {
+      warning("(Continuous star) Negative mass (m_star = %e, m_ej = %e), skipping current star: %lli",
+          sp->mass, sp->feedback_data.preSN.mass_ejected, sp->id);
+      /* Reset everything */
+      sp->feedback_data.preSN.mass_ejected = 2.0;
+
+      /* Reset energy to avoid injecting anything in the
+         runner_iact_nonsym_feedback_apply() */
+      sp->feedback_data.preSN.energy_ejected = 0.0;
+      return;
+    }
+    /* Update the mass */
+    sp->mass -= sp->feedback_data.preSN.mass_ejected;
+  }
+}
+
+/**
  * @brief Compute the feedback properties.
  *
  * @param sp The particle to act upon
@@ -200,6 +261,21 @@ void stellar_evolution_compute_continuous_feedback_properties(
   /* Sum the contributions from SNIa and SNII */
   sp->feedback_data.mass_ejected = mass_frac_snii * sp->sf_data.birth_mass +
                                    mass_snia * phys_const->const_solar_mass;
+
+  /* Check the mass that have to be expulsed by SN in case if the cumulated SW + SN mass-loss is negative. 
+  No need to check for population type as both behave the same way in this case, i.e. expulsing all the remaining mass.
+  Is checked only if the stellar wind actually ejected mass. (In the case of stellar winds without mass-loss) */
+  if (sp->feedback_data.preSN.mass_ejected != 0.0) {
+    /* The `stellar_evolution_preSN_apply_ejected_mass(...)` function has already been called at this stage,
+        verrifying that `sp->feedback_data.preSN.mass_ejected` is not bigger than `sp->mass`*/
+    const double mass_minus_winds = sp->mass - sp->feedback_data.preSN.mass_ejected;
+    if (sp->feedback_data.mass_ejected > mass_minus_winds){
+      sp->feedback_data.mass_ejected = mass_minus_winds;
+      message("[%lld]. The mass ejected during discrete SN : %e, is bigger than the remaining mass after the stellar winds mass-loss : %e"
+        ,sp->id, sp->feedback_data.mass_ejected, mass_minus_winds);
+    }
+  }
+
 
   /* Removes the ejected mass from the star */
   stellar_evolution_sn_apply_ejected_mass(sp, sm);
@@ -282,6 +358,20 @@ void stellar_evolution_compute_discrete_feedback_properties(
 
   /* Transform into internal units */
   sp->feedback_data.mass_ejected *= phys_const->const_solar_mass;
+ 
+  /* Check the mass that have to be expulsed by SN in case if the cumulated SW + SN mass-loss is negative. 
+  No need to check for population type as both behave the same way in this case, i.e. expulsing all the remaining mass.
+  Is checked only if the stellar wind actually ejected mass. (In the case of stellar winds without mass-loss) */
+  if (sp->feedback_data.preSN.mass_ejected != 0.0) {
+    /* The `stellar_evolution_preSN_apply_ejected_mass(...)` function has already been called at this stage,
+        verrifying that `sp->feedback_data.preSN.mass_ejected` is not bigger than `sp->mass`*/
+    const double mass_minus_winds = sp->mass - sp->feedback_data.preSN.mass_ejected;
+    if (sp->feedback_data.mass_ejected > mass_minus_winds){
+      sp->feedback_data.mass_ejected = mass_minus_winds;
+      message("[%lli]. The mass ejected during discrete SN : %e, is bigger than the remaining mass after the stellar winds mass-loss : %e"
+        ,sp->id, sp->feedback_data.mass_ejected, mass_minus_winds);
+    }
+  }
 
   /* Removes the ejected mass from the star */
   stellar_evolution_sn_apply_ejected_mass(sp, sm);
@@ -370,7 +460,7 @@ void stellar_evolution_compute_preSN_properties(
     message(
         "Star_type=single init_mass[M_odot]=%g metallicity[Z_odot]=%g "
         "Energy[erg/yr]=%g Mass_ejected[Msol/yr]=%g",
-        exp10(log_m), exp10(log_metallicity), energy_per_unit_time,
+        m_init, exp10(log_metallicity), energy_per_unit_time,
         mass_ejected_per_unit_time);
 
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
@@ -381,18 +471,22 @@ void stellar_evolution_compute_preSN_properties(
     const double energy_per_unit_time =
         energy_per_unit_time_per_progenitor_mass * m_init;
     sp->feedback_data.preSN.energy_ejected = energy_per_unit_time;
+    message("M_init = %e", m_init);
     const double mass_ejected_per_unit_time_per_progenitor_mass =
         stellar_wind_get_ejected_mass_IMF(&sm->sw, log_m, log_metallicity);
+    message("mass_ejected_per_unit_time_per_progenitor_mass = %e", mass_ejected_per_unit_time_per_progenitor_mass);
     const double mass_ejected_per_unit_time =
         mass_ejected_per_unit_time_per_progenitor_mass * m_init;
+    message("DU COUP.... mass_ejected_per_unit_time = %e", mass_ejected_per_unit_time);
     sp->feedback_data.preSN.mass_ejected = mass_ejected_per_unit_time;
+    message("DU COUP.... MAIS AVEC SP-> DIRECTMENT = %e", sp->feedback_data.preSN.mass_ejected);
 
 #if defined(SWIFT_TEST_STELLAR_WIND)
     message(
         "Star_type=continuous init_mass[M_odot]=%g metallicity[Z_odot]=%g "
         "Energy_per_progenitor_mass[erg/yr/Msol]=%g "
         "Mass_ejected_per_progenitor_mass[Msol/yr/Msol]=%g",
-        exp10(log_m), exp10(log_metallicity),
+        m_init, exp10(log_metallicity),
         energy_per_unit_time_per_progenitor_mass,
         mass_ejected_per_unit_time_per_progenitor_mass);
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
@@ -1165,6 +1259,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   sp->feedback_data.preSN.energy_ejected /=
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   sp->feedback_data.preSN.mass_ejected *= phys_const->const_solar_mass;
+
+  /* Apply the mass-loss */
+  stellar_evolution_preSN_apply_ejected_mass(sp, sm);
 }
 
 /**
@@ -1244,18 +1341,25 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
   /* initialize */
   sp->feedback_data.preSN.energy_ejected = 0;
-  sp->feedback_data.preSN.mass_ejected = 0;
+  sp->feedback_data.preSN.mass_ejected = 1;
 
   /* compute pre-SN properties */
   stellar_evolution_compute_preSN_properties(sp, sm, phys_const, m_beg_step,
                                              m_end_step, m_init);
 
+  message("in [Msol / yr ]: %e", sp->feedback_data.preSN.mass_ejected);
+
   /* The duration of the preSN feedback in yr */
   sp->feedback_data.preSN.energy_ejected *= dt_myr * 1e6;
   sp->feedback_data.preSN.mass_ejected *= dt_myr * 1e6;
+  message("in [Msol] : %e", sp->feedback_data.preSN.mass_ejected);
 
   /* convert to internal units */
   sp->feedback_data.preSN.energy_ejected /=
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   sp->feedback_data.preSN.mass_ejected *= phys_const->const_solar_mass;
+  message("in [10^10 Msol] : %e", sp->feedback_data.preSN.mass_ejected);
+
+  /* Apply the mass-loss */
+  stellar_evolution_preSN_apply_ejected_mass(sp, sm);
 }
