@@ -45,7 +45,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   /* WARNING: Do not comment out this line, because it will mess-up with
      SF/sinks. (I think it injects something that it should not...) */
   /* Did the particle receive a supernovae */
-  if (xp->feedback_data.delta_u == 0) return;
+  if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_preSN) return;
 
   const struct cosmology* cosmo = e->cosmology;
   const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
@@ -89,6 +89,9 @@ void feedback_update_part(struct part* p, struct xpart* xp,
 
     xp->feedback_data.delta_p[i] = 0;
   }
+
+  xp->feedback_data.hit_by_SN = 0;
+  xp->feedback_data.hit_by_preSN = 0;
 }
 
 /**
