@@ -944,18 +944,18 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   /***************************************************************************/
   /* Update inactive particles that are drifted. This ensures metal mass
      conservation to machine accuracy. */
-/*   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) { */
-/*     /\* Update the conserved variable *\/ */
-/*     chd->metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i); */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    /* Update the conserved variable */
+    chd->metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i);
 
-/* #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS */
-/*     /\* Update the diffused metal mass *\/ */
-/*     chd->diffused_metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i); */
-/* #endif */
-/*   } */
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+    /* Update the diffused metal mass */
+    chd->diffused_metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i);
+#endif
+  }
 
-/*   /\* Reset the metal mass fluxes now that they have been applied *\/ */
-/*   chemistry_part_reset_mass_fluxes(p); */
+  /* Reset the metal mass fluxes now that they have been applied */
+  chemistry_part_reset_mass_fluxes(p);
 
   /* We don't need to invalidate the part's timestep. The active ones were
      reset in chemistry_end_force() and the inactive do not need an update
