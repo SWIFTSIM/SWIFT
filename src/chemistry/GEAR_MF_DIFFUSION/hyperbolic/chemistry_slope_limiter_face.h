@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SLOPE_LIMITERS_FACE_H
-#define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SLOPE_LIMITERS_FACE_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SLOPE_LIMITER_FACE_H
+#define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SLOPE_LIMITER_FACE_H
 
 /**
  * @file
- *src/chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_slope_limiters_face.h
+ *src/chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_slope_limiters_face.h
  * @brief Face slope limiter for the hyperbolic diffusion scheme.
  **/
 
@@ -52,7 +52,6 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
   const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
   for (int i = 0; i < 4; i++) {
-    /* Too much artificial diffusion, avoid using it */
     /* chemistry_limiter_minmod(&dUi[i], &dUj[i]); */
 
     /* For hyperbolic diffusion, all these slope limiter perform better than
