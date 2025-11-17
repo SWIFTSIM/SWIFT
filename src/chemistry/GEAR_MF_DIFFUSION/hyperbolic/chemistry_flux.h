@@ -152,18 +152,33 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
     const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double fluxes[4]) {
 
+  /* Predict the diffusion driver q at the cell interface */
+  double qL, qR;
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    /* For constant isotropic case, U = q = rho*Z.
+       This is already predicted at the cell interface, nothing else to do. */
+    qL = UL[0];
+    qR = UR[0];
+  } else {
+    /* In these cases, U = rho*Z, q = Z */
+    qL = chemistry_get_metal_mass_fraction(pi, metal);
+    qR = chemistry_get_metal_mass_fraction(pj, metal);
+
+    chemistry_gradients_predict_Z(pi, pj, metal, dx, cosmo, &qL, &qR);
+  }
+
   /* (flux[3], q / tau * K) */
   double hyper_flux_L[4][3];
-  chemistry_get_hyperbolic_flux(pi, metal, UL, chem_data, cosmo, hyper_flux_L);
+  chemistry_get_hyperbolic_flux(pi, metal, UL, qL, chem_data, cosmo, hyper_flux_L);
   double hyper_flux_R[4][3];
-  chemistry_get_hyperbolic_flux(pj, metal, UR, chem_data, cosmo, hyper_flux_R);
+  chemistry_get_hyperbolic_flux(pj, metal, UR, qR, chem_data, cosmo, hyper_flux_R);
 
   chemistry_check_unphysical_hyperbolic_flux(hyper_flux_L);
   chemistry_check_unphysical_hyperbolic_flux(hyper_flux_R);
 
   chemistry_riemann_solve_for_flux(dx, pi, pj, UL, UR, WL, WR, hyper_flux_L,
-                                   hyper_flux_R, Anorm, n_unit, metal,
-                                   chem_data, cosmo, fluxes);
+				   hyper_flux_R, Anorm, n_unit, metal,
+				   chem_data, cosmo, fluxes);
 
   /* Anorm is already in physical units here. */
   fluxes[0] *= Anorm;
