@@ -50,6 +50,18 @@ __attribute__((always_inline)) INLINE double chemistry_get_metal_mass_fluxes(
 }
 
 /**
+ * @brief Reset the metal mass fluxes for the given particle.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_part_reset_mass_fluxes(
+    struct part *restrict p) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    p->chemistry_data.metal_mass_riemann[i] = 0.0;
+  }
+}
+
+/**
  * @brief Limit the metal mass flux to avoid negative metal masses.
  *
  * @param p Particle.

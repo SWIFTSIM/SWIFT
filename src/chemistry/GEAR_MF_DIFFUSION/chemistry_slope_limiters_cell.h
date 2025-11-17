@@ -207,9 +207,6 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
        only have one particule with non zero metallicity. The slope limiter then
        computes a high value for alpha (1e15). */
     if (valmin == valmax && valmin == value && valmax == value) {
-      /* warning("Valmin = Valmax = Value = %e. Grad = (%e %e %e), alpha = %e",
-       */
-      /* value, gradient[0], gradient[1], gradient[2], alpha); */
       alpha = 0.0;
     }
 
