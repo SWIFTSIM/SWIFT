@@ -541,7 +541,6 @@ int main(int argc, char *argv[]) {
     pretime_message("Error: sink particles are not available yet with MPI.");
     return 1;
   }
-
 #endif /* SWIFT_DEBUG_CHECKS */
 #endif /* WITH_MPI */
 

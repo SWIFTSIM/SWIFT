@@ -362,7 +362,6 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
       props.gparts += max_chunk_size;                 /* gpart* on the gpart */
       props.sparts += max_chunk_size;                 /* spart* on the spart */
       props.bparts += max_chunk_size;                 /* bpart* on the bpart */
-      props.siparts += max_chunk_size; /* sipart* on the sipart */
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -745,7 +744,6 @@ void write_array_parallel(const struct engine *e, hid_t grp,
  * @param Nsink (output) The number of particles read from the file.
  * @param Nstars (output) The number of particles read from the file.
  * @param Nblackholes (output) The number of particles read from the file.
- * @param Nsidm (output) The number of particles read from the file.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we running with hydro ?
@@ -753,7 +751,6 @@ void write_array_parallel(const struct engine *e, hid_t grp,
  * @param with_sink Are we running with sink ?
  * @param with_stars Are we running with stars ?
  * @param with_black_holes Are we running with black holes ?
- * @param with_sidm Are we running with SIDM ?
  * @param with_cosmology Are we running with cosmology ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
@@ -801,7 +798,7 @@ void read_ic_parallel(char *fileName, const struct unit_system *internal_units,
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
-  *Nblackholes = 0, *Nsinks = 0, *Nnuparts = 0, *Nsidm = 0;
+  *Nblackholes = 0, *Nsinks = 0, *Nnuparts = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */

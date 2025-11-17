@@ -333,6 +333,7 @@ INLINE static void star_formation_separate_particles(const struct engine *e,
  * @param hydro_props The #hydro_props.
  * @param us The #unit_system.
  * @param cooling The #cooling_function_data.
+ * @param chem_data The global properties of the chemistry scheme.
  * @param convert_part Did we convert a part (or spawned one)?
  */
 INLINE static void star_formation_copy_properties(
@@ -342,7 +343,7 @@ INLINE static void star_formation_copy_properties(
     const struct hydro_props *restrict hydro_props,
     const struct unit_system *restrict us,
     const struct cooling_function_data *restrict cooling,
-    const int convert_part) {
+    const struct chemistry_global_data *chem_data, const int convert_part) {
 
   /* Initialize the feedback */
   feedback_init_after_star_formation(sp, e->feedback_props, star_population);
@@ -388,7 +389,7 @@ INLINE static void star_formation_copy_properties(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
 
   /* Copy the chemistry properties */
-  chemistry_copy_star_formation_properties(p, xp, sp);
+  chemistry_copy_star_formation_properties(p, xp, sp, chem_data, cosmo);
 
   /* Copy the progenitor id */
   sp->sf_data.progenitor_id = p->id;
