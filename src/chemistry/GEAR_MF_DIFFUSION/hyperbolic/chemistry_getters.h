@@ -166,6 +166,17 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hyperbolic_flux(
     const double q, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double hypflux[4][3]) {
 
+  /* Safeguard against non physical/pathological results... */
+  if (p->chemistry_data.tau == 0.0) {
+    /* Don't do anything to avoid NaNs */
+    for (int i=0 ; i < 4; i++) {
+      for (int j = 0; j < 3; i++) {
+	hypflux[i][j] = 0.0;
+      }
+    }
+    return;
+  }
+
   /* Flux part (first row) */
   hypflux[0][0] = U[1];
   hypflux[0][1] = U[2];
@@ -175,7 +186,7 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hyperbolic_flux(
   double K[3][3];
   chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
 
-  /* Note: This is positive: dF/dt + div(K* q/tau) = 0 */
+  /* Note: This is positive: dF/dt + div(K * q/tau) = 0 */
   const double multiplier = q / tau;
 
   /* The matrix part: q / tau * K */
