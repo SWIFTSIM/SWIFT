@@ -246,14 +246,8 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                             chd->filtered.rho_v[1] / chd->filtered.rho,
                             chd->filtered.rho_v[2] / chd->filtered.rho};
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  /* The positivity preserving better reduces artificial diffusion */
-  const int mode = 1;
-#else
-  /* For parabolic diffusion, it's better to use the regular cell slope
-     limiter. The Riemann solver takes care of artifical diffusion. */
-  const int mode = 0;
-#endif
+  /* Gizmo's positivity preserving mode increases artificial diffusion for
+     hyperbolic scheme. For the parabolic, it suppresses diffusion features. */
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     chemistry_slope_limit_quantity(
         /*gradient=*/chd->gradients.Z[m],
@@ -262,7 +256,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
         /*valmin=  */ chd->limiter.Z[m][0],
         /*valmax=  */ chd->limiter.Z[m][1],
         /*condition_number*/ N_cond,
-        /*pos_preserve*/ mode);
+        /*pos_preserve*/ 0);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     for (int i = 0; i < 3; i++) {
