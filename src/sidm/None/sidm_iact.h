@@ -33,7 +33,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_sidm_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct sipart* restrict sipi, struct sipart* restrict sipj, const float a,
+    struct sipart *restrict sipi, struct sipart *restrict sipj, const float a,
     const float H) {}
 
 /**
@@ -51,8 +51,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_density(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sidm_density(const float r2, const float dx[3],
                                 const float hi, const float hj,
-                                struct sipart* restrict sipi,
-                                const struct sipart* restrict sipj,
+                                struct sipart *restrict sipi,
+                                const struct sipart *restrict sipj,
                                 const float a, const float H) {}
 
 #endif /* SWIFT_NONE_SIDM_IACT_H */

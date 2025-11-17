@@ -89,7 +89,7 @@ struct sink_sink_data {
  * @param s_data The #part's #sink_part_data structure.
  */
 __attribute__((always_inline)) INLINE static long long sink_get_part_swallow_id(
-    struct sink_part_data* s_data) {
+    struct sink_part_data *s_data) {
 
   return s_data->swallow_id;
 }
@@ -101,7 +101,7 @@ __attribute__((always_inline)) INLINE static long long sink_get_part_swallow_id(
  * @param s_data The #part's #sink_part_data structure.
  */
 __attribute__((always_inline)) INLINE static void
-sink_mark_part_as_not_swallowed(struct sink_part_data* s_data) {
+sink_mark_part_as_not_swallowed(struct sink_part_data *s_data) {
 
   s_data->swallow_id = -1;
 }
@@ -113,7 +113,7 @@ sink_mark_part_as_not_swallowed(struct sink_part_data* s_data) {
  * @param p_data The #part's #sink_part_data structure.
  */
 __attribute__((always_inline)) INLINE static void sink_mark_part_as_swallowed(
-    struct sink_part_data* s_data) {
+    struct sink_part_data *s_data) {
 
   s_data->swallow_id = -2;
 }
@@ -125,7 +125,7 @@ __attribute__((always_inline)) INLINE static void sink_mark_part_as_swallowed(
  * @param s_data The #sink's #sink_sink_data structure.
  */
 __attribute__((always_inline)) INLINE static void
-sink_mark_sink_as_not_swallowed(struct sink_sink_data* s_data) {
+sink_mark_sink_as_not_swallowed(struct sink_sink_data *s_data) {
 
   s_data->swallow_id = -1;
   s_data->swallow_mass = 0.f;
@@ -138,7 +138,7 @@ sink_mark_sink_as_not_swallowed(struct sink_sink_data* s_data) {
  * @param s_data The #sink's #bsink_sink_data structure.
  */
 __attribute__((always_inline)) INLINE static void sink_mark_sink_as_merged(
-    struct sink_sink_data* s_data) {
+    struct sink_sink_data *s_data) {
 
   s_data->swallow_id = -2;
   s_data->swallow_mass = -1.f;
@@ -150,7 +150,7 @@ __attribute__((always_inline)) INLINE static void sink_mark_sink_as_merged(
  * @param s_data The #sink's #sink_sink_data structure.
  */
 __attribute__((always_inline)) INLINE static long long sink_get_sink_swallow_id(
-    struct sink_sink_data* s_data) {
+    struct sink_sink_data *s_data) {
 
   return s_data->swallow_id;
 }

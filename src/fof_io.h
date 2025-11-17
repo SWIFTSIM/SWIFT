@@ -24,28 +24,28 @@
 
 #ifdef WITH_FOF
 
-INLINE static void convert_part_group_id(const struct engine* e,
-                                         const struct part* p,
-                                         const struct xpart* xp,
-                                         long long* ret) {
+INLINE static void convert_part_group_id(const struct engine *e,
+                                         const struct part *p,
+                                         const struct xpart *xp,
+                                         long long *ret) {
   ret[0] = p->gpart->fof_data.group_id;
 }
 
-INLINE static void convert_spart_group_id(const struct engine* e,
-                                          const struct spart* sp,
-                                          long long* ret) {
+INLINE static void convert_spart_group_id(const struct engine *e,
+                                          const struct spart *sp,
+                                          long long *ret) {
   ret[0] = sp->gpart->fof_data.group_id;
 }
 
-INLINE static void convert_bpart_group_id(const struct engine* e,
-                                          const struct bpart* bp,
-                                          long long* ret) {
+INLINE static void convert_bpart_group_id(const struct engine *e,
+                                          const struct bpart *bp,
+                                          long long *ret) {
   ret[0] = bp->gpart->fof_data.group_id;
 }
 
-INLINE static void convert_sipart_group_id(const struct engine* e,
-                                           const struct sipart* sip,
-                                           long long* ret) {
+INLINE static void convert_sipart_group_id(const struct engine *e,
+                                           const struct sipart *sip,
+                                           long long *ret) {
   ret[0] = sip->gpart->fof_data.group_id;
 }
 #endif /* WITH_FOF */
@@ -59,9 +59,9 @@ INLINE static void convert_sipart_group_id(const struct engine* e,
  *
  * @return The number of fields to write.
  */
-INLINE static int fof_write_parts(const struct part* parts,
-                                  const struct xpart* xparts,
-                                  struct io_props* list) {
+INLINE static int fof_write_parts(const struct part *parts,
+                                  const struct xpart *xparts,
+                                  struct io_props *list) {
 
 #ifdef WITH_FOF
 
@@ -83,8 +83,8 @@ INLINE static int fof_write_parts(const struct part* parts,
  *
  * @return The number of fields to write.
  */
-INLINE static int fof_write_gparts(const struct gpart* gparts,
-                                   struct io_props* list) {
+INLINE static int fof_write_gparts(const struct gpart *gparts,
+                                   struct io_props *list) {
 
 #ifdef WITH_FOF
 
@@ -107,8 +107,8 @@ INLINE static int fof_write_gparts(const struct gpart* gparts,
  *
  * @return The number of fields to write.
  */
-INLINE static int fof_write_sparts(const struct spart* sparts,
-                                   struct io_props* list) {
+INLINE static int fof_write_sparts(const struct spart *sparts,
+                                   struct io_props *list) {
 
 #ifdef WITH_FOF
 
@@ -130,8 +130,8 @@ INLINE static int fof_write_sparts(const struct spart* sparts,
  *
  * @return The number of fields to write.
  */
-INLINE static int fof_write_bparts(const struct bpart* bparts,
-                                   struct io_props* list) {
+INLINE static int fof_write_bparts(const struct bpart *bparts,
+                                   struct io_props *list) {
 
 #ifdef WITH_FOF
 
@@ -153,8 +153,8 @@ INLINE static int fof_write_bparts(const struct bpart* bparts,
  *
  * @return The number of fields to write.
  */
-INLINE static int fof_write_siparts(const struct sipart* siparts,
-                                    struct io_props* list) {
+INLINE static int fof_write_siparts(const struct sipart *siparts,
+                                    struct io_props *list) {
 
 #ifdef WITH_FOF
 

@@ -76,7 +76,7 @@ void check_value(const double a, const double b, const double rel_tol,
           fabs(a - b), x);
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

@@ -20,7 +20,7 @@
 #define SWIFT_SIDM_BASIC_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void sidm_debug_particle(
-    const struct sipart* sip) {
+    const struct sipart *sip) {
   warning(
       "[PID%lld] x=[%.3e,%.3e,%.3e], "
       "v=[%.3e,%.3e,%.3e] sip->mass=%.3e",

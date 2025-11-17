@@ -36,13 +36,13 @@
 struct engine;
 struct unit_system;
 
-void read_ic_serial(char* fileName, const struct unit_system* internal_units,
-                    double dim[3], struct part** parts, struct gpart** gparts,
-                    struct sink** sinks, struct spart** sparts,
-                    struct bpart** bparts, struct sipart** siparts,
-                    size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background,
-                    size_t* Nnuparts, size_t* Nsinks, size_t* Nstars,
-                    size_t* Nblackholes, size_t* Nsidm, int* flag_entropy,
+void read_ic_serial(char *fileName, const struct unit_system *internal_units,
+                    double dim[3], struct part **parts, struct gpart **gparts,
+                    struct sink **sinks, struct spart **sparts,
+                    struct bpart **bparts, struct sipart **siparts,
+                    size_t *Ngas, size_t *Ngparts, size_t *Ngparts_background,
+                    size_t *Nnuparts, size_t *Nsinks, size_t *Nstars,
+                    size_t *Nblackholes, size_t *Nsidm, int *flag_entropy,
                     const int with_hydro, const int with_gravity,
                     const int with_sinks, const int with_stars,
                     const int with_black_holes, const int with_sidm,
@@ -50,11 +50,11 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     const int cleanup_sqrt_a, const double h, const double a,
                     const int mpi_rank, int mpi_size, MPI_Comm comm,
                     MPI_Info info, const int n_threads, const int dry_run,
-                    const int remap_ids, struct ic_info* ics_metadata);
+                    const int remap_ids, struct ic_info *ics_metadata);
 
-void write_output_serial(struct engine* e,
-                         const struct unit_system* internal_units,
-                         const struct unit_system* snapshot_units,
+void write_output_serial(struct engine *e,
+                         const struct unit_system *internal_units,
+                         const struct unit_system *snapshot_units,
                          const int fof, const int mpi_rank, const int mpi_size,
                          MPI_Comm comm, MPI_Info info);
 
