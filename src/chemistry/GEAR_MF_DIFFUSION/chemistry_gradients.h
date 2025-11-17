@@ -571,6 +571,11 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
   chemistry_slope_limit_face(Zi, Zj, &dZi, &dZj, xij_i, xij_j, r);
 #endif
 
+  /* Pay attention here to convert these gradient to physical units... Z is
+     always physical. */
+  *Zi += dZi * cosmo->a_inv;
+  *Zj += dZj * cosmo->a_inv;
+
   /* Check that we do not have unphysical values */
   if (*Zi > 1.0) {
     *Zi = 1.0;
@@ -583,11 +588,6 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
   } else if (*Zj < 0.0) {
     *Zj = 0.0;
   }
-
-  /* Pay attention here to convert this gradient to physical units... Z is
-     always physical. */
-  *Zi += dZi * cosmo->a_inv;
-  *Zj += dZj * cosmo->a_inv;
 }
 
 /* Import the right header */
