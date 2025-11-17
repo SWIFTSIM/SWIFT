@@ -160,12 +160,12 @@ for filename in tqdm(files):
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=figsize, num=1)
 
     if do_log:
-        im = ax.imshow(metal_density_log,  zorder=1,
+        im = ax.imshow(metal_density_log,  zorder=1, origin="lower",
                        extent=[0, boxsize[0].value, 0, boxsize[1].value], aspect='equal',
                        cmap=cmap,
                        vmin=vmin, vmax=vmax)
     else:
-        im = ax.imshow(metal_density,  zorder=1,
+        im = ax.imshow(metal_density,  zorder=1, origin="lower",
                        extent=[0, boxsize[0].value, 0, boxsize[1].value], aspect='equal',
                        cmap=cmap,
                        vmin=vmin, vmax=vmax)
