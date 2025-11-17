@@ -291,6 +291,7 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
   for (int i = 0; i < 3; ++i) 
     for (int j = 0; j < 3; ++j){ 
       p->mhd_data.dens.Mat_b[i][j] = 0.f;
+      p->mhd_data.grad.Mat_da[i][j] = 0.f;
       }
 }
 
@@ -325,6 +326,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   for (int i = 0; i < 3; ++i) 
     for (int j = 0; j < 3; ++j) {
       p->mhd_data.dens.Mat_b[i][j] *= h_inv_dim/p->mass;
+      p->mhd_data.grad.Mat_da[i][j] *= h_inv_dim/p->mass;
       }
   /* Invert the c-matrix */
   float d_mat_temp[3][3];
@@ -339,11 +341,18 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   {p->mhd_data.dens.Mat_b[1][0], p->mhd_data.dens.Mat_b[1][1], p->mhd_data.dens.Mat_b[1][2]},
   {p->mhd_data.dens.Mat_b[2][0], p->mhd_data.dens.Mat_b[2][1], p->mhd_data.dens.Mat_b[2][2]}};
   
+  const float g_da[3][3] = {
+  {p->mhd_data.grad.Mat_da[0][0], p->mhd_data.grad.Mat_da[0][1], p->mhd_data.grad.Mat_da[0][2]},
+  {p->mhd_data.grad.Mat_da[1][0], p->mhd_data.grad.Mat_da[1][1], p->mhd_data.grad.Mat_da[1][2]},
+  {p->mhd_data.grad.Mat_da[2][0], p->mhd_data.grad.Mat_da[2][1], p->mhd_data.grad.Mat_da[2][2]}};
+  
   for (int i = 0; i < 3; i++) 
     for (int j = 0; j < 3; j++){ 
          p->mhd_data.dens.Mat_b[i][j] = 0.f;
+         p->mhd_data.grad.Mat_da[i][j] = 0.f;
       for (int k = 0; k < 3; k++){ 
          p->mhd_data.dens.Mat_b[i][j] += d_mat_temp[j][k] * g_b[i][k];
+         p->mhd_data.grad.Mat_da[i][j] += d_mat_temp[j][k] * g_da[i][k];
 	 }
   }
   
@@ -391,7 +400,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   for (int i = 0; i < 3; ++i) 
     for (int j = 0; j < 3; ++j){ 
       p->mhd_data.grad.Mat_b[i][j] = 0.f;
-      p->mhd_data.grad.Mat_da[i][j] = 0.f;
       p->mhd_data.grad.Mat_F[i][j] = 0.f;
       }
   /* Curl B*/
@@ -440,7 +448,6 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   for (int i = 0; i < 3; ++i) 
     for (int j = 0; j < 3; ++j) {
       p->mhd_data.grad.Mat_b[i][j] *= h_inv_dim;
-      p->mhd_data.grad.Mat_da[i][j] *= h_inv_dim;
       p->mhd_data.grad.Mat_F[i][j] *= h_inv_dim;
       }
   /* Invert the c-matrix */
@@ -457,11 +464,6 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   {p->mhd_data.grad.Mat_b[1][0], p->mhd_data.grad.Mat_b[1][1], p->mhd_data.grad.Mat_b[1][2]},
   {p->mhd_data.grad.Mat_b[2][0], p->mhd_data.grad.Mat_b[2][1], p->mhd_data.grad.Mat_b[2][2]}};
   
-  const float g_da[3][3] = {
-  {p->mhd_data.grad.Mat_da[0][0], p->mhd_data.grad.Mat_da[0][1], p->mhd_data.grad.Mat_da[0][2]},
-  {p->mhd_data.grad.Mat_da[1][0], p->mhd_data.grad.Mat_da[1][1], p->mhd_data.grad.Mat_da[1][2]},
-  {p->mhd_data.grad.Mat_da[2][0], p->mhd_data.grad.Mat_da[2][1], p->mhd_data.grad.Mat_da[2][2]}};
-  
   const float g_F[3][3] = {
   {p->mhd_data.grad.Mat_F[0][0], p->mhd_data.grad.Mat_F[0][1], p->mhd_data.grad.Mat_F[0][2]},
   {p->mhd_data.grad.Mat_F[1][0], p->mhd_data.grad.Mat_F[1][1], p->mhd_data.grad.Mat_F[1][2]},
@@ -470,11 +472,9 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   for (int i = 0; i < 3; i++) 
     for (int j = 0; j < 3; j++){ 
          p->mhd_data.grad.Mat_b[i][j] = 0.f;
-         p->mhd_data.grad.Mat_da[i][j] = 0.f;
          p->mhd_data.grad.Mat_F[i][j] = 0.f;
       for (int k = 0; k < 3; k++){ 
          p->mhd_data.grad.Mat_b[i][j] += c_mat_temp[j][k] * g_b[i][k];
-         p->mhd_data.grad.Mat_da[i][j] += c_mat_temp[j][k] * g_da[i][k];
          p->mhd_data.grad.Mat_F[i][j] += c_mat_temp[j][k] * g_F[i][k];
 	 }
   }
@@ -661,11 +661,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
-
+/*
   for (int i = 0; i < 3; i++) {
       for (int k = 0; k < 3; k++) 
-         p->a_hydro[i] += p->mhd_data.grad.Mat_F[i][k];
-  }
+         p->a_hydro[i] -= p->mhd_data.grad.Mat_F[i][k];
+  }*/
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] *= p->mass;
