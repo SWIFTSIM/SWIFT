@@ -164,6 +164,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
 /**
  * @brief Extra chemistry operations done during the kick. Update the fluxes.
  *
+ * This function is called by kick1 and kick2 tasks, effectively performing two
+ * kicks.
+ *
  * @param p Particle to act upon.
  * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
  * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
@@ -180,50 +183,16 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     const struct hydro_props *hydro_props,
     const struct chemistry_global_data *chem_data) {
 
-  /* TODO: Clean these */
-  /* #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION) */
-  /* struct chemistry_part_data* chd = &p->chemistry_data; */
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* Convert the timestep to physical units */
+  const double dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
 
-  /* /\* Convert the timestep to physical units *\/ */
-  /* const double dt_therm_phys = dt_therm * cosmo->a * cosmo->a; */
-
-  /* for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) { */
-  /*   /\* Avoid 0.0 divisions *\/ */
-  /*   if (chd->tau != 0.0) { */
-  /*     /\* Get the parabolic diffusion flux *\/ */
-  /*     double F_diff_target[3]; */
-  /*     chemistry_get_physical_parabolic_flux(p, i, F_diff_target, chem_data,
-   * cosmo); */
-
-  /*     /\* First update dF_dt with the previous value of the diffusion */
-  /* 	 flux. Notice the + in front of F_diff_target. This is because the */
-  /* 	 minus sign is already included.  *\/ */
-
-  /*     chd->hyperbolic_flux[i].dF_dt[0] = */
-  /* 	  -chd->flux[i][0] / chd->tau + F_diff_target[0] / chd->tau; */
-  /*     chd->hyperbolic_flux[i].dF_dt[1] = */
-  /* 	  -chd->flux[i][1] / chd->tau + F_diff_target[1] / chd->tau; */
-  /*     chd->hyperbolic_flux[i].dF_dt[2] = */
-  /* 	  -chd->flux[i][2] / chd->tau + F_diff_target[2] / chd->tau; */
-
-  /*     /\* Then update the diffusion flux with a semi-implicit scheme *\/ */
-  /*     const float dt_factor = 1.0 / (1.0 + 0.5 * dt_therm_phys / chd->tau);
-   */
-  /*     chd->flux[i][0] = */
-  /* 	  dt_factor * (chd->hyperbolic_flux[i].F_diff_pred[0] + */
-  /* 		       0.5 * dt_therm_phys / chd->tau * F_diff_target[0]); */
-  /*     chd->flux[i][1] = */
-  /* 	  dt_factor * (chd->hyperbolic_flux[i].F_diff_pred[1] + */
-  /* 		       0.5 * dt_therm_phys / chd->tau * F_diff_target[1]); */
-  /*     chd->flux[i][2] = */
-  /* 	  dt_factor * (chd->hyperbolic_flux[i].F_diff_pred[2] + */
-  /* 		       0.5 * dt_therm_phys / chd->tau * F_diff_target[2]); */
-
-  /*     /\* Check that the fluxes are meaningful *\/ */
-  /*     chemistry_check_unphysical_diffusion_flux(chd->flux[i]); */
-  /*   } */
-  /* } */
-  /* #endif */
+  /* Integrate the flux equation source term for half-timestep */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys,
+					      chem_data, cosmo);
+  }
+#endif
 
   /* Reset wcorr */
   p->geometry.wcorr = 1.0f;

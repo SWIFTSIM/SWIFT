@@ -543,7 +543,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   const float Vinv = 1.f / p->geometry.volume;
-  const float dt_therm_physical = chd->flux_dt;
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     /* Homogeneous equation update */
@@ -552,12 +551,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     chd->flux[i][0] += chd->flux_riemann[i][0] * Vinv;
     chd->flux[i][1] += chd->flux_riemann[i][1] * Vinv;
     chd->flux[i][2] += chd->flux_riemann[i][2] * Vinv;
-
-    /* Integrate the flux equation source term */
-    /* TODO: Use half-timestep (when we'll split the time integration) */
-
-    chemistry_part_integrate_flux_source_term(p, i, dt_therm_physical, cd,
-                                              cosmo);
   }
 #endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
 
@@ -626,7 +619,7 @@ chemistry_part_has_no_neighbours(struct part *restrict p,
 }
 
 /**
- * @brief Prepares a particle for the diffusionx calculations.
+ * @brief Prepares a particle for the diffusion calculations.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
  * the various diffusion tasks.
@@ -949,52 +942,24 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   chd->kappa = chemistry_get_diffusion_coefficient(p, chem_data, cosmo);
 
   /***************************************************************************/
-  /* Inactive particles */
   /* Update inactive particles that are drifted. This ensures metal mass
      conservation to machine accuracy. */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    /* Update the conserved variable */
-    chd->metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i);
+/*   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) { */
+/*     /\* Update the conserved variable *\/ */
+/*     chd->metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i); */
 
-#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
-    /* Update the diffused metal mass */
-    chd->diffused_metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i);
-#endif
-  }
+/* #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS */
+/*     /\* Update the diffused metal mass *\/ */
+/*     chd->diffused_metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i); */
+/* #endif */
+/*   } */
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  const float Vinv = 1.f / p->geometry.volume;
-
-  /* Is this the correct time-step for an inactive particle?
-     TODO: Should we take half-timestep */
-  const double dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
-
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    /* Homogeneous equation update */
-    /* For the flux, we are updating d(U*V)/dt = - Sum div F*A*dt and we want
-       U = flux, not V*U. For the metal mass, U = metal density so U*V = mass */
-    chd->flux[i][0] += chd->flux_riemann[i][0] * Vinv;
-    chd->flux[i][1] += chd->flux_riemann[i][1] * Vinv;
-    chd->flux[i][2] += chd->flux_riemann[i][2] * Vinv;
-
-    chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data,
-                                              cosmo);
-  }
-
-#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
-
-  /* Reset the metal mass fluxes now that they have been applied */
-  chemistry_part_reset_fluxes(p);
+/*   /\* Reset the metal mass fluxes now that they have been applied *\/ */
+/*   chemistry_part_reset_mass_fluxes(p); */
 
   /* We don't need to invalidate the part's timestep. The active ones were
      reset in chemistry_end_force() and the inactive do not need an update
      until the next chemistry_prepare_force() call. */
-
-  /***************************************************************************/
-  /* Predict active particles */
-  /* rt_predict_extra() extrapolates the quantities with the drifted
-   positions. See rt_gradients_predict_drift() */
-  /* TODO: predict metal mass (should we? I think no...)*/
 
   /***************************************************************************/
 
