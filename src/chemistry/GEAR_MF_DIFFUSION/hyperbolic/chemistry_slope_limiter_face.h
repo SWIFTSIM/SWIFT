@@ -77,11 +77,12 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
     /* dUi[i] *= alphai; */
     /* dUj[i] *= alphaj; */
 
+    /* Do NOT use the positivity preserving mode: it creates anisotropy */
     dUi[i] = chemistry_slope_limit_face_quantity_double(
-        Ui[i], Uj[i], Ui[i] + dUi[i], xij_i_norm, r_inv, 1);
+        Ui[i], Uj[i], Ui[i] + dUi[i], xij_i_norm, r_inv, 0);
 
     dUj[i] = chemistry_slope_limit_face_quantity_double(
-        Uj[i], Ui[i], Uj[i] + dUj[i], xij_j_norm, r_inv, 1);
+        Uj[i], Ui[i], Uj[i] + dUj[i], xij_j_norm, r_inv, 0);
   }
 }
 
