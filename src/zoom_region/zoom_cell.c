@@ -60,8 +60,8 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   int ncells = zoom_props->nr_bkg_cells;
 
   /* Work out how many void cells we should have. */
-  int void_cdim = s->zoom_props->void_dim[0] * s->iwidth[0] * 1.0001;
-  int target_void_count = void_cdim * void_cdim * void_cdim;
+  int target_void_count = zoom_props->void_cdim[0] * zoom_props->void_cdim[1] *
+                          zoom_props->void_cdim[2];
 
   /* Allocate the indices of void cells */
   if (swift_memalign(
@@ -732,6 +732,13 @@ static void zoom_void_timestep_collect_recursive(struct cell *c) {
       if (cp->subtype == cell_subtype_void) {
         zoom_void_timestep_collect_recursive(cp);
       }
+
+      /* If this is an empty non-void progeny cell, skip it. */
+      if (cp->subtype != cell_subtype_void &&
+          (cp->grav.count == 0 && cp->hydro.count == 0 &&
+           cp->stars.count == 0 && cp->sinks.count == 0 &&
+           cp->black_holes.count == 0))
+        continue;
 
       /* And update */
       ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
