@@ -122,29 +122,15 @@ chemistry_riemann_solver_hopkins2017_HLL(
      do so now. */
   double qL, qR;
   if (chem_data->diffusion_mode == isotropic_constant) {
-    /* In this case, q = U = rho*Z */
-    qL = chemistry_get_physical_metal_density(pi, m, cosmo);
-    qR = chemistry_get_physical_metal_density(pj, m, cosmo);
-
-    /* We need to use arrays of length 4 for this function. Copy the metal
-       density in the array. */
-    double qL_4[4] = {qL, 0.0, 0.0, 0.0};
-    double qR_4[4] = {qR, 0.0, 0.0, 0.0};
-
-    const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-    const float xfac = -pi->h / (pi->h + pj->h);
-    const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
-    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, qL_4, qR_4);
-
-    /* Copy the array value back */
-    qL = qL_4[0];
-    qR = qR_4[0];
+    /* For constant isotropic case, U = q = rho*Z.
+       This is already predicted at the cell interface, nothing else to do. */
+       qL = UL;
+       qR = UR;
   } else {
     /* In these cases, U = rho*Z, q = Z */
     qL = chemistry_get_metal_mass_fraction(pi, m);
     qR = chemistry_get_metal_mass_fraction(pj, m);
 
-    /* TODO: Make API similar to gradients_predict() */
     chemistry_gradients_predict_Z(pi, pj, m, dx, cosmo, &qL, &qR);
   }
   /* Now compute q_star and grad_q_star. Convert the gradient to physical
