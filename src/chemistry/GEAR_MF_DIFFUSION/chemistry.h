@@ -632,19 +632,19 @@ chemistry_part_has_no_neighbours(struct part *restrict p,
 __attribute__((always_inline)) INLINE static void chemistry_init_part(
     struct part *restrict p, const struct chemistry_global_data *cd) {
 
-  struct chemistry_part_data *cpd = &p->chemistry_data;
+  struct chemistry_part_data *chd = &p->chemistry_data;
 
-  cpd->filtered.rho = 0.0;
-  cpd->filtered.rho_v[0] = 0.0;
-  cpd->filtered.rho_v[1] = 0.0;
-  cpd->filtered.rho_v[2] = 0.0;
+  chd->filtered.rho = 0.0;
+  chd->filtered.rho_v[0] = 0.0;
+  chd->filtered.rho_v[1] = 0.0;
+  chd->filtered.rho_v[2] = 0.0;
 
   /* Init the gradient for the next loops */
   chemistry_gradients_init(p);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Initialize time step criterion variables */
-  cpd->timestepvars.vmax = 0.0;
+  chd->timestepvars.vmax = 0.0;
 #endif
 }
 
