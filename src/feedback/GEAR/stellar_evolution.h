@@ -108,8 +108,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
     const double star_age_beg_step, const double dt);
 
 void stellar_evolution_compute_preSN_properties(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct phys_const* phys_const, const float m_beg_step,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct phys_const *phys_const, const float m_beg_step,
     const float m_end_step, const float m_init);
 
 #endif  // SWIFT_STELLAR_EVOLUTION_GEAR_H

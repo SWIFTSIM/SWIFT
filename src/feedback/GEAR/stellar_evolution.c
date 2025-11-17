@@ -334,8 +334,8 @@ void stellar_evolution_compute_discrete_feedback_properties(
  *
  */
 void stellar_evolution_compute_preSN_properties(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct phys_const* phys_const, const float m_beg_step,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct phys_const *phys_const, const float m_beg_step,
     const float m_end_step, const float m_init) {
 
   /* the end/beg step mass are already limited to the imf if SSP or continuous
@@ -1107,9 +1107,9 @@ void stellar_evolution_compute_SN_feedback_spart(
  * @param dt The time-step size of this star in internal units.
  */
 void stellar_evolution_compute_preSN_feedback_individual_star(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct cosmology* cosmo, const struct unit_system* us,
-    const struct phys_const* phys_const, const integertime_t ti_begin,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for individual stars */
@@ -1185,9 +1185,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
  * @param dt The time-step size of this star in internal units.
  */
 void stellar_evolution_compute_preSN_feedback_spart(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct cosmology* cosmo, const struct unit_system* us,
-    const struct phys_const* phys_const, const integertime_t ti_begin,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for populations of stars and not
