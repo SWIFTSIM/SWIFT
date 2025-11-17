@@ -471,15 +471,11 @@ void stellar_evolution_compute_preSN_properties(
     const double energy_per_unit_time =
         energy_per_unit_time_per_progenitor_mass * m_init;
     sp->feedback_data.preSN.energy_ejected = energy_per_unit_time;
-    message("M_init = %e", m_init);
     const double mass_ejected_per_unit_time_per_progenitor_mass =
         stellar_wind_get_ejected_mass_IMF(&sm->sw, log_m, log_metallicity);
-    message("mass_ejected_per_unit_time_per_progenitor_mass = %e", mass_ejected_per_unit_time_per_progenitor_mass);
     const double mass_ejected_per_unit_time =
         mass_ejected_per_unit_time_per_progenitor_mass * m_init;
-    message("DU COUP.... mass_ejected_per_unit_time = %e", mass_ejected_per_unit_time);
     sp->feedback_data.preSN.mass_ejected = mass_ejected_per_unit_time;
-    message("DU COUP.... MAIS AVEC SP-> DIRECTMENT = %e", sp->feedback_data.preSN.mass_ejected);
 
 #if defined(SWIFT_TEST_STELLAR_WIND)
     message(
@@ -1347,23 +1343,15 @@ void stellar_evolution_compute_preSN_feedback_spart(
   stellar_evolution_compute_preSN_properties(sp, sm, phys_const, m_beg_step,
                                              m_end_step, m_init);
 
-  message("in [Msol / yr ]: %e", sp->feedback_data.preSN.mass_ejected);
-
   /* The duration of the preSN feedback in yr */
   sp->feedback_data.preSN.energy_ejected *= dt_myr * 1e6;
   sp->feedback_data.preSN.mass_ejected *= dt_myr * 1e6;
-  message("in [Msol] : %e", sp->feedback_data.preSN.mass_ejected);
 
   /* convert to internal units */
   sp->feedback_data.preSN.energy_ejected /=
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   sp->feedback_data.preSN.mass_ejected *= phys_const->const_solar_mass;
-<<<<<<< HEAD
-  message("in [10^10 Msol] : %e", sp->feedback_data.preSN.mass_ejected);
 
   /* Apply the mass-loss */
   stellar_evolution_preSN_apply_ejected_mass(sp, sm);
 }
-=======
-}
->>>>>>> origin/darwin/gear_preSN_fbk_merge
