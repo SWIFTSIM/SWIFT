@@ -768,6 +768,23 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 }
 
 /**
+ * @brief Reset accelerations of boundary particles
+ *
+ * Resets all hydro accelerations of boundary particles. Other time derivatives
+ * are not reset.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_reset_boundary_particles(struct part *restrict p) {
+
+  /* Reset the acceleration. */
+  p->a_hydro[0] = 0.0f;
+  p->a_hydro[1] = 0.0f;
+  p->a_hydro[2] = 0.0f;
+}
+
+/**
  * @brief Sets the values to be predicted in the drifts to their values at a
  * kick time
  *

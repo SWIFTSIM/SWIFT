@@ -145,7 +145,7 @@ for i in range(N2_depth):
 
 print(
     "You need to compile the code with "
-    "--enable-boundary-particles=%i" % boundary_particles
+    "--enable-boundary-particles-below-id=%i" % boundary_particles
 )
 
 # Set IDs of non-boundary particles
