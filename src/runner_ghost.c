@@ -753,6 +753,8 @@ void runner_do_stars_df_from_dm_ghost(struct runner *r, struct cell *c, int time
           /* Verify that we are actually progrssing towards the answer */
           h_new = max(h_new, left[i]);
           h_new = min(h_new, right[i]);
+
+          message("n_sum=%e, n_target=%e", n_sum, n_target);
         }
 
         /* Check whether the particle has an inappropriate smoothing length
@@ -785,6 +787,9 @@ void runner_do_stars_df_from_dm_ghost(struct runner *r, struct cell *c, int time
             right[redo] = right[i];
             redo += 1;
 
+            message("Finished ngb iteration. N=%i, h_old=%e, h_new=%e, left=%e, right=%e",
+              sp->df_data.density_dm.n_ngb_actual, h_old, sp->df_data.h_dm, left[i], right[i]);
+
             /* Re-initialise everything */
             df_from_dm_init_spart(sp);
 
@@ -813,7 +818,7 @@ void runner_do_stars_df_from_dm_ghost(struct runner *r, struct cell *c, int time
           }
         }
         /* We now have a particle whose smoothing length has converged */
-        message("Successfully converged to h=%e, n=%e, n_target=%e", sp->df_data.h_dm, sp->df_data.density_dm.wcount, df_eta_dim/pow_dimension(sp->df_data.h_dm));
+        message("Successfully converged to h=%e, N_actual=%i, n=%e, n_target=%e", sp->df_data.h_dm, sp->df_data.density_dm.n_ngb_actual, sp->df_data.density_dm.wcount, df_eta_dim/h_old_dim);
       }
 
       /* We now need to treat the particles whose smoothing length had not
