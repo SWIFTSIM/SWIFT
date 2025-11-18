@@ -502,6 +502,13 @@ MWPotential2014Potential:
 
 # Parameters related to forcing terms     ----------------------------------------------
 
+# Boundary particles
+BoundaryParticles:
+    boundary_particle_max_id:        10000 # Particles with ID <= boundary_particle_max_id are treated as boundary particles.
+    enable_fixed_position:           0     # (optional) Whether or not boundary particles are fixed in place.
+    enable_hydro_acceleration:       0     # (optional) Whether or not boundary particles have hydrodynamic accelerations enabled.
+    enable_grav_acceleration:        0     # (optional) Whether or not boundary particles have gravitational accelerations enabled.
+
 # Roberts' flow (Tilgner & Brandenburg, 2008, MNRAS, 391, 1477) where the velocity is imposed
 RobertsFlowForcing:
   u0:              1.5      # Forcing velocity (internal units)
