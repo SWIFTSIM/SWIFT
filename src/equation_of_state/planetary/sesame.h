@@ -194,11 +194,6 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
   c = fscanf(f, "%d %d", &mat->num_rho, &mat->num_T);
   if (c != 2) error("Failed to read the SESAME EoS table %s", table_file);
 
-  // Ignore the first elements of rho = 0, T = 0
-  mat->num_rho--;
-  mat->num_T--;
-  float ignore;
-
   // Allocate table memory
   mat->table_log_rho = (float *)malloc(mat->num_rho * sizeof(float));
   mat->table_log_T = (float *)malloc(mat->num_T * sizeof(float));
@@ -213,44 +208,34 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
 
   // Densities (not log yet)
   for (int i_rho = -1; i_rho < mat->num_rho; i_rho++) {
-    // Ignore the first elements of rho = 0, T = 0
-    if (i_rho == -1) {
-      c = fscanf(f, "%f", &ignore);
-      if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
-    } else {
-      c = fscanf(f, "%f", &mat->table_log_rho[i_rho]);
-      if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
-    }
+    c = fscanf(f, "%f", &mat->table_log_rho[i_rho]);
+    if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
   }
 
   // Temperatures (not log yet)
   for (int i_T = -1; i_T < mat->num_T; i_T++) {
-    // Ignore the first elements of rho = 0, T = 0
-    if (i_T == -1) {
-      c = fscanf(f, "%f", &ignore);
-      if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
-    } else {
-      c = fscanf(f, "%f", &mat->table_log_T[i_T]);
-      if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
-    }
+    c = fscanf(f, "%f", &mat->table_log_T[i_T]);
+    if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
+  }
+
+  // Ensure first density and temperature aren't zero before taking logs
+  if (mat->table_log_rho[0] == 0) {
+    mat->table_log_rho[0] = mat->table_log_rho[1] * 1e-5;
+  }
+  if (mat->table_log_T[0] == 0) {
+    mat->table_log_T[0] = mat->table_log_T[1] * 1e-5;
   }
 
   // Sp. int. energies (not log yet), pressures, sound speeds, and sp.
   // entropies (not log yet)
   for (int i_T = -1; i_T < mat->num_T; i_T++) {
     for (int i_rho = -1; i_rho < mat->num_rho; i_rho++) {
-      // Ignore the first elements of rho = 0, T = 0
-      if ((i_T == -1) || (i_rho == -1)) {
-        c = fscanf(f, "%f %f %f %f", &ignore, &ignore, &ignore, &ignore);
-        if (c != 4) error("Failed to read the SESAME EoS table %s", table_file);
-      } else {
-        c = fscanf(f, "%f %f %f %f",
-                   &mat->table_log_u_rho_T[i_rho * mat->num_T + i_T],
-                   &mat->table_P_rho_T[i_rho * mat->num_T + i_T],
-                   &mat->table_c_rho_T[i_rho * mat->num_T + i_T],
-                   &mat->table_log_s_rho_T[i_rho * mat->num_T + i_T]);
-        if (c != 4) error("Failed to read the SESAME EoS table %s", table_file);
-      }
+      c = fscanf(f, "%f %f %f %f",
+                  &mat->table_log_u_rho_T[i_rho * mat->num_T + i_T],
+                  &mat->table_P_rho_T[i_rho * mat->num_T + i_T],
+                  &mat->table_c_rho_T[i_rho * mat->num_T + i_T],
+                  &mat->table_log_s_rho_T[i_rho * mat->num_T + i_T]);
+      if (c != 4) error("Failed to read the SESAME EoS table %s", table_file);
     }
   }
 
