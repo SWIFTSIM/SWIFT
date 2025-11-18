@@ -248,6 +248,45 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 }
 
 /**
+ * @brief Adapts signal velocity to change in drifted physical internal energy of a particle at feedback events
+ *
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static void
+mhd_set_drifted_physical_internal_energy(struct part *p) {
+
+  /* Re-set MHD signal velocity */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p);
+  p->viscosity.v_sig = fmaxf(p->viscosity.v_sig, 2.0f * cms);
+}
+
+/**
+ * @brief Correct the signal velocity of the particle partaking in
+ * supernova (kinetic) feedback based on the velocity kick the particle receives
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param dv_phys The velocity kick received by the particle expressed in
+ * physical units (note that dv_phys must be positive or equal to zero)
+ */
+__attribute__((always_inline)) INLINE static void
+mhd_set_v_sig_based_on_velocity_kick(struct part *p,
+                                       const struct cosmology *cosmo,
+                                       const float dv_phys) {
+
+  /* Compute the velocity kick in comoving coordinates */
+  const float dv = dv_phys / cosmo->a_factor_sound_speed;
+
+  /* Fast magnetosonic speed */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p);
+  
+  /* Update the signal velocity */
+  p->viscosity.v_sig =
+      fmaxf(2.f * cms, p->viscosity.v_sig + const_viscosity_beta * dv);
+}
+
+
+/**
  * @brief Prepares a particle for the density calculation.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
@@ -316,6 +355,13 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     }
   }
 
+  p->mhd_data.plasma_beta_rms = 0.0f;
+  p->mhd_data.neighbour_number = 0.0f;
+
+  /* Initialise MHD signal velocity */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p);
+  p->viscosity.v_sig = 2.0f * cms;
+
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
   for (int k = 0; k < 3; k++) {
@@ -331,9 +377,31 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
-    struct part *p) {
+    struct part *p, const float mu_0) {
+
+  /* Recover some data */
+  const float rho = p->rho;
+  const float P = p->force.pressure;
+
+  float B[3];
+  for (int k = 0; k < 3; k++) {
+    B[k] = p->mhd_data.B_over_rho[k] * rho;
+  }
+
+  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+    
+  /* Finalise local plasma beta mean square calculation */
+  const float Pmag_inv = B2 ? 2.0f * mu_0 / B2 : FLT_MAX;
+  const float plasma_beta = P * Pmag_inv;
+
+  p->mhd_data.neighbour_number += 1.0f;
+  p->mhd_data.plasma_beta_rms += plasma_beta * plasma_beta; 
+
+  p->mhd_data.plasma_beta_rms = sqrtf(p->mhd_data.plasma_beta_rms / p->mhd_data.neighbour_number); /* Divisor guaranteed to be strictly positive */ 
+  
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
+
   /* Finish SPH_1 calculation*/
   p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho;
 }
@@ -500,6 +568,10 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
   p->mhd_data.psi_over_ch = xp->mhd_data.psi_over_ch_full;
 
   p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+
+  /* Re-set MHD signal velocity */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p);
+  p->viscosity.v_sig = fmaxf(p->viscosity.v_sig, 2.0f * cms);
 }
 
 /**
@@ -531,6 +603,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.psi_over_ch += p->mhd_data.psi_over_ch_dt * dt_therm;
 
   p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+
+  /* Initialise MHD signal velocity */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p);
+  p->viscosity.v_sig = fmaxf(p->viscosity.v_sig, 2.0f * cms);
 }
 
 /**
