@@ -43,6 +43,10 @@ struct mhd_part_data {
   /* Tensile instability correction multiplicative prefactor */
   float monopole_beta;
 
+  /* Local plasma beta mean square and its normalising factor */
+  float plasma_beta_rms;
+  float neighbour_number;
+  
   /* Artifical resistivity multiplicative prefactor */
   float art_diff_beta;
 

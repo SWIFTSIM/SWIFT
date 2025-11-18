@@ -430,6 +430,7 @@ runner_iact_nonsym_feedback_apply(
            * kick
            */
           hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, v_kick_abs);
+	  mhd_set_v_sig_based_on_velocity_kick(pj, cosmo, v_kick_abs);
 
           /* Synchronize the particle on the timeline */
           timestep_sync_part(pj);
@@ -511,7 +512,8 @@ runner_iact_nonsym_feedback_apply(
   hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new_enrich);
   hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
                                              u_new_enrich);
-
+  mhd_set_drifted_physical_internal_energy(pj);
+  
   /* Synchronize the particle on the timeline if we've got some extra
    * thermal energy from the SNII kicks that have not occured */
   if (E_kinetic_unused) {
