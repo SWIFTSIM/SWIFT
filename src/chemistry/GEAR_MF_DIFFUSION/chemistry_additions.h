@@ -183,17 +183,6 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     const struct hydro_props *hydro_props,
     const struct chemistry_global_data *chem_data) {
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  /* Convert the timestep to physical units */
-  const double dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
-
-  /* Integrate the flux equation source term for half-timestep */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys,
-					      chem_data, cosmo);
-  }
-#endif
-
   /* Reset wcorr */
   p->geometry.wcorr = 1.0f;
 

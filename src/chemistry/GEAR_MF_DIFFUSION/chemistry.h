@@ -542,7 +542,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   }
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  const float Vinv = 1.f / p->geometry.volume;
+  const float Vinv = 1.0 / p->geometry.volume;
+  const float dt_therm_phys = chd->flux_dt;
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     /* Homogeneous equation update */
@@ -551,6 +552,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     chd->flux[i][0] += chd->flux_riemann[i][0] * Vinv;
     chd->flux[i][1] += chd->flux_riemann[i][1] * Vinv;
     chd->flux[i][2] += chd->flux_riemann[i][2] * Vinv;
+
+    /* Update the source term to end the timestep (kick2 term) */
+    chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, cd, cosmo);
   }
 #endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
 
@@ -954,8 +958,25 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
 #endif
   }
 
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  const float Vinv = 1.0 / p->geometry.volume;
+  const float dt_therm_phys = dt_therm*cosmo->a*cosmo->a;
+
+  /* Homogeneous equation update for inactive particles */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    /* For the flux, we are updating d(U*V)/dt = - Sum div F*A*dt and we want
+       U = flux, not V*U. For the metal mass, U = metal density so U*V = mass */
+    chd->flux[i][0] += chd->flux_riemann[i][0] * Vinv;
+    chd->flux[i][1] += chd->flux_riemann[i][1] * Vinv;
+    chd->flux[i][2] += chd->flux_riemann[i][2] * Vinv;
+
+    /* Update the source term to the current time (active and inactive particles)*/
+    chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data, cosmo);
+  }
+#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
+
   /* Reset the metal mass fluxes now that they have been applied */
-  chemistry_part_reset_mass_fluxes(p);
+  chemistry_part_reset_fluxes(p);
 
   /* We don't need to invalidate the part's timestep. The active ones were
      reset in chemistry_end_force() and the inactive do not need an update
