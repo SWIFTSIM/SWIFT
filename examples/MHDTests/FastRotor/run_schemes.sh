@@ -55,7 +55,7 @@ case $WHAT in
 	;;
 esac
 
-SCHEME_DIRS=("VeP_$DIRS" "ODI_$DIRS" "FDI_$DIRS")
+SCHEME_DIRS=("${DIRS}_VEP" "${DIRS}_ODI" "${DIRS}_FDI")
 
 for J in ${SCHEME_Nr[@]}
 do
@@ -74,14 +74,14 @@ do
       cur_dir=`pwd`
       cd ../../../../
       pwd
-      ./TestAllMHD.sh $IDD "--with-adiabatic-index=7/5 --with-kernel=quintic-spline --disable-hand-vec"
+      ./TestAllMHD.sh $IDD "--with-adiabatic-index=7/5 --with-kernel=quintic-spline --disable-hand-vec --disable-mpi"
       cd $cur_dir
       cp ../../../../sw_$ID .
    fi
    cat <<-EOF > ./run.sh
 	#!/bin/bash
 	# Run SWIFT
-	./sw_$ID --hydro --threads=16 ../FastRotor_schemes.yml 2>&1 > out.log 
+	./sw_$ID --hydro --threads=12 ../FastRotor_schemes.yml 2>&1 > out.log 
 	
 	# Plot the evolution
 	python3 ../plot_schemes.py 0 16 2>&1 > plot.log
