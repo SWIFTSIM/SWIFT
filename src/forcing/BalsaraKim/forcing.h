@@ -21,6 +21,12 @@
 #include "periodic.h"
 #include "timeline.h"
 
+enum mechanism {
+  SET_U       = 0,
+  SET_CONST_U = 1,
+  SET_V       = 2,
+  SET_CONST_V = 3
+};
 
 struct forcing_terms {
     /* Amount of SN injections */
@@ -45,20 +51,14 @@ struct forcing_terms {
 
     /* next event injection index */
     int t_index;
-    
-    /* do we set a constant specific energy as injection */
-    int set_const_u;
 
-    /* if yes, to what value */ 
+    /* injection mechanism */
+    enum mechanism injection_model;
+
+    /* injection model: set_const_u, specific energy injection */ 
     double u_inj;
 
-    /* do we kinetically kick particles, based on density */
-    int set_v;
-
-    /* do we kinetically kick particles, with constant v */
-    int set_const_v;
-
-    /* if yes, what velocity do we give particles */
+    /* injection model: set_const_v, velocity kick */
     double vel_inj;
 
     /* keep track of times time-condition was valid */
@@ -111,29 +111,79 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
     if (distance <= terms->r_inj) {
       message("applying injection to particle %lld at t: %f", p->id, 
         time);
-        /*
-         * Since we are looking at one particle, we don't know
-         * the amount of particles affected. Thus approximate
-         * N_part * m = rho * V_inj
-         *
-	      */
-      if (terms->set_const_u == 1) {
-        xp->u_full = terms->u_inj; 
-      }
-      else if (terms->set_v == 1) {
-        double v = sqrtf(2 * terms->E_inj / (p->rho * terms->V_inj));
+
+      /* store old specific energy and velocity */
+      double u_old = xp->u_full;
+      double v_old = sqrtf(xp->v_full[0]*xp->v_full[0] + 
+                           xp->v_full[1]*xp->v_full[1] +
+                           xp->v_full[2]*xp->v_full[2]);
+
+      double u_new;
+      double v_new;
+
+      /* inject energy according to specified model */
+      enum mechanism injection_model = terms->injection_model;
+
+      switch (injection_model) {
+
+        case SET_U:
         
-        xp->v_full[0] = (dx / distance) * v;
-        xp->v_full[1] = (dy / distance) * v;
-        xp->v_full[2] = (dz / distance) * v;
-      }
-      else if (terms->set_const_v == 1) {
-        xp->v_full[0] = (dx / distance) * terms->vel_inj;
-        xp->v_full[1] = (dy / distance) * terms->vel_inj;
-        xp->v_full[2] = (dz / distance) * terms->vel_inj;
-      }
-      else {
-        xp->u_full = terms->E_inj / (p->rho * terms->V_inj);
+          /* compute new specific energy */
+          u_new = terms->E_inj / (p->rho * terms->V_inj);
+
+          /* set the specific energy */
+          xp->u_full = u_new;
+
+          /* store injected energy */
+          xp->forcing_data.forcing_injected_energy += (u_new - u_old) * p->mass;
+          break;
+        
+        case SET_CONST_U:
+
+          /* get new specific energy */
+          u_new = terms->u_inj;
+
+          /* set the specific energy */
+          xp->u_full = u_new;
+
+          /* store injected energy */
+          xp->forcing_data.forcing_injected_energy += (u_new - u_old) * p->mass;
+          break;
+
+        case SET_V:
+
+          /* compute new velocity */
+          v_new = sqrtf(2 * terms->E_inj / (p->rho * terms->V_inj));
+        
+          /* set the velocity */
+          xp->v_full[0] = (dx / distance) * v_new;
+          xp->v_full[1] = (dy / distance) * v_new;
+          xp->v_full[2] = (dz / distance) * v_new;
+
+          /* store injected energy */
+          xp->forcing_data.forcing_injected_energy += 
+                p->mass * (v_new * v_new - v_old * v_old) / 2;
+          break;
+
+        case SET_CONST_V:
+
+          /* get new velocity */
+          v_new = terms->vel_inj;
+        
+          /* set the velocity */
+          xp->v_full[0] = (dx / distance) * v_new;
+          xp->v_full[1] = (dy / distance) * v_new;
+          xp->v_full[2] = (dz / distance) * v_new;
+
+          /* store injected energy */
+          xp->forcing_data.forcing_injected_energy += 
+                p->mass * (v_new * v_new - v_old * v_old) / 2;
+          break;
+        
+        default:
+
+          error("no injection model specified");
+          
       }
     }
   }
@@ -175,19 +225,36 @@ void forcing_update(struct forcing_terms *terms, const double time_old);
  */
 static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
   /* Print energy injection mechanism */
-  if (terms->set_const_u == 1) {
-    message("Balsara-Kim specific energy injection u_inj: %f", terms->u_inj);
-  }
-  else if (terms->set_const_v == 1) {
-    message("Balsara-Kim constant velocity kick v_inj: %f", terms->vel_inj);
-  }
-  else if (terms->set_v == 1) {
-    message("Balsara-Kim density dependent velocity kick with E_inj: %f", 
-      terms->E_inj);
-  }
-  else {
-    message("Balsara-Kim density dependent specific energy injection with E_inj: %f",
-      terms->E_inj);
+  enum mechanism injection_model = terms->injection_model;
+
+  switch (injection_model) {
+
+    case SET_U:
+    
+      message("Balsara-Kim density dependent specific energy injection with E_inj: %f",
+        terms->E_inj);
+      break;
+    
+    case SET_CONST_U:
+
+      message("Balsara-Kim specific energy injection u_inj: %f", terms->u_inj);
+      break;
+
+    case SET_V:
+
+      message("Balsara-Kim density dependent velocity kick with E_inj: %f", 
+        terms->E_inj);
+      break;
+
+    case SET_CONST_V:
+
+      message("Balsara-Kim constant velocity kick v_inj: %f", terms->vel_inj);
+      break;
+    
+    default:
+
+      error("no injection model specified");
+      
   }
 
   message("Injection radius r_inj: %f", terms->r_inj);
@@ -308,24 +375,34 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
 
   /* Calculate & store injection volume, saves calculations */
   double V_inj = (4/3) * M_PI * pow(r_inj, 3);
-    
-  /* Read the injection energy, defaults to 1e51 erg*/
-  double E_inj = parser_get_opt_param_double(parameter_file,
-        "BalsaraKimForcing:E_inj", 1e51);
 
   /* What energy injection scheme do we use? */
-  terms->set_const_u = parser_get_opt_param_int(parameter_file,
-	"BalsaraKimForcing:set_const_u", 0);
+  char injection_model[20];
+  parser_get_param_string(parameter_file, "BalsaraKimForcing:inj_model",
+        injection_model);
+  if (strcmp(injection_model, "set_u") == 0) {
+    terms->injection_model = SET_U;
+  }
+  else if (strcmp(injection_model, "set_const_u") == 0) {
+    terms->injection_model = SET_CONST_U;
+  }
+  else if (strcmp(injection_model, "set_v") == 0) {
+    terms->injection_model = SET_V;
+  }
+  else if (strcmp(injection_model, "set_const_v") == 0) {
+    terms->injection_model = SET_CONST_V;
+  }
+  else {
+    error("unknown injection model '%s'", injection_model);
+  }
+  
+  /* Read injection parameters*/
+  double E_inj = parser_get_opt_param_double(parameter_file,
+        "BalsaraKimForcing:E_inj", 1e51);
   double u_inj = parser_get_opt_param_double(parameter_file,
-	"BalsaraKimForcing:u_inj", 2.8263e15);
-
-  terms->set_const_v = parser_get_opt_param_int(parameter_file,
-	"BalsaraKimForcing:set_const_v", 0);
+	      "BalsaraKimForcing:u_inj", 2.8263e15);
   double vel_inj = parser_get_opt_param_double(parameter_file,
-  "BalsaraKimForcing:v_inj", 200) * 1.e5;
-
-  terms->set_v = parser_get_opt_param_int(parameter_file,
-	"BalsaraKimForcing:set_v", 0);
+        "BalsaraKimForcing:v_inj", 200) * 1.e5;
 
   /* convert everything to internal units */
   double parsec_ui = phys_const->const_parsec;
