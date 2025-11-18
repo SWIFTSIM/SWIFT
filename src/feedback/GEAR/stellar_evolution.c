@@ -209,7 +209,7 @@ void stellar_evolution_preSN_apply_ejected_mass(struct spart* restrict sp,
       warning("(Continuous star) Negative mass (m_star = %e, m_ej = %e), skipping current star: %lli",
           sp->mass, sp->feedback_data.preSN.mass_ejected, sp->id);
       /* Reset everything */
-      sp->feedback_data.preSN.mass_ejected = 2.0;
+      sp->feedback_data.preSN.mass_ejected = 0.0;
 
       /* Reset energy to avoid injecting anything in the
          runner_iact_nonsym_feedback_apply() */
@@ -1337,7 +1337,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
   /* initialize */
   sp->feedback_data.preSN.energy_ejected = 0;
-  sp->feedback_data.preSN.mass_ejected = 1;
+  sp->feedback_data.preSN.mass_ejected = 0;
 
   /* compute pre-SN properties */
   stellar_evolution_compute_preSN_properties(sp, sm, phys_const, m_beg_step,
