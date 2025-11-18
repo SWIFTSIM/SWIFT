@@ -207,13 +207,13 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
       (float *)malloc(mat->num_rho * mat->num_T * sizeof(float));
 
   // Densities (not log yet)
-  for (int i_rho = -1; i_rho < mat->num_rho; i_rho++) {
+  for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
     c = fscanf(f, "%f", &mat->table_log_rho[i_rho]);
     if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
   }
 
   // Temperatures (not log yet)
-  for (int i_T = -1; i_T < mat->num_T; i_T++) {
+  for (int i_T = 0; i_T < mat->num_T; i_T++) {
     c = fscanf(f, "%f", &mat->table_log_T[i_T]);
     if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
   }
@@ -228,8 +228,8 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
 
   // Sp. int. energies (not log yet), pressures, sound speeds, and sp.
   // entropies (not log yet)
-  for (int i_T = -1; i_T < mat->num_T; i_T++) {
-    for (int i_rho = -1; i_rho < mat->num_rho; i_rho++) {
+  for (int i_T = 0; i_T < mat->num_T; i_T++) {
+    for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
       c = fscanf(f, "%f %f %f %f",
                   &mat->table_log_u_rho_T[i_rho * mat->num_T + i_T],
                   &mat->table_P_rho_T[i_rho * mat->num_T + i_T],
