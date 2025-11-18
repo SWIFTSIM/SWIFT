@@ -244,25 +244,27 @@ def extract_stellar_feedback(log_file_path: str):
     # Define compiled patterns specific to the user's log format (rates)
     # 1. Energy pattern targets: "Energy[erg/yr]=" followed by the float
     energy_pattern = re.compile(r"Energy\[erg/yr\]=" + float_pattern)
-    energy_continuous_pattern = re.compile(r"Energy_per_progenitor_mass\[erg/yr/Msol\]=" + float_pattern)
+    energy_continuous_pattern = re.compile(
+        r"Energy_per_progenitor_mass\[erg/yr/Msol\]=" + float_pattern
+    )
 
     # 2. Mass pattern targets: "Mass_ejected[Msol/yr]=" followed by the float
     mass_pattern = re.compile(r"Mass_ejected\[Msol/yr\]=" + float_pattern)
-    mass_continuous_pattern = re.compile(r"Mass_ejected_per_progenitor_mass\[Msol/yr/Msol\]=" + float_pattern)
+    mass_continuous_pattern = re.compile(
+        r"Mass_ejected_per_progenitor_mass\[Msol/yr/Msol\]=" + float_pattern
+    )
 
     # 3. Lifetime pattern targets: "lifetime_myr=" followed by the float
     lifetime_pattern = re.compile(r"lifetime_myr=" + float_pattern)
 
-    # 4. Init_mass for continuous particle 
+    # 4. Init_mass for continuous particle
     init_mass_pattern = re.compile(r"init_mass\[M_odot\]=" + float_pattern)
 
     # Initialize quantities
     energy_rate = 0.0
     mass_loss = 0.0
 
-    print(
-        f"\nSearching for stellar feedback data  in {log_file_path}..."
-    )
+    print(f"\nSearching for stellar feedback data  in {log_file_path}...")
 
     try:
         with open(log_file_path, "r") as f:
@@ -280,7 +282,7 @@ def extract_stellar_feedback(log_file_path: str):
                     current_energy = float(match_e.group(1))
                 if match_e_cont:
                     current_energy = float(match_e_cont.group(1))
-                    # Search for mass init if continuous case only  
+                    # Search for mass init if continuous case only
                     match_init_mass = init_mass_pattern.search(line)
                     if match_init_mass:
                         current_init_mass = float(match_init_mass.group(1))
@@ -315,7 +317,7 @@ def extract_stellar_feedback(log_file_path: str):
         print(f"Error reading or parsing feedback file: {e}")
         return None, None, None
 
-    # if lifetime not found, it means the star is still alive or/and continuous 
+    # if lifetime not found, it means the star is still alive or/and continuous/SSP
     if GLOBAL_LIFETIME is None:
         GLOBAL_LIFETIME = 0.0
 
@@ -494,10 +496,12 @@ def write_quantities(
     )  # In case of multiple maxima, take the smallest radius, because at the begining the all have the same values
     for i in range(8):
         print(i)
-        densities_sorted = np.where(densities_sorted == rho_max[i], -np.inf, densities_sorted)
-        rho_max[i+1] = np.max(densities_sorted)
+        densities_sorted = np.where(
+            densities_sorted == rho_max[i], -np.inf, densities_sorted
+        )
+        rho_max[i + 1] = np.max(densities_sorted)
         idx_rho_max[i] = np.argmin(
-            np.where(densities_sorted == rho_max[i+1], r_val, np.inf)
+            np.where(densities_sorted == rho_max[i + 1], r_val, np.inf)
         )
 
     mean_idx_rho_max = int(np.mean(idx_rho_max))
@@ -505,13 +509,13 @@ def write_quantities(
     mean_rho_max = np.mean(rho_max)
     print(r_rho_max, mean_rho_max)
 
-  
-
     # The min density correspond to the hot compressed wind region (closer than the shockwave contact surface)
     rho_min = np.min(densities_sorted)
     idx_rho_min = np.argmin(np.where(densities_sorted == rho_max[0], r_val, np.inf))
     r_rho_min = r_sorted[idx_rho_min]
-    peak_data += f"\t{r_rho_max:.4f}\t{mean_rho_max:.4f}\t{r_rho_min:.4f}\t{rho_min:.4f}"
+    peak_data += (
+        f"\t{r_rho_max:.4f}\t{mean_rho_max:.4f}\t{r_rho_min:.4f}\t{rho_min:.4f}"
+    )
 
     # Velocity Peak (Using argmax on the magnitude of the velocity array values)
     idx_v_max = np.argmax(velocities_value_sorted)
