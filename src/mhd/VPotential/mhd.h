@@ -263,15 +263,15 @@ __attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
   const float afac2 = pow(c->a, (c->a_factor_sound_speed + 1.f));
 
   /* Hyperbolic term */
-  const float Source_Term = 1.0f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
+  const float Source_Term = 2.0f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
   /* Parabolic evolution term */
   const float Damping_Term = 1.0f * afac2 * v_sig * Gauge / p->h;
   /* Density change term */
-  const float DivV_Term = 0.5 * hydro_get_div_v(p) * Gauge;
+  const float DivV_Term = 0.0 * hydro_get_div_v(p) * Gauge;
   /* Cosmological term */
   const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * Gauge;
 
-  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 0.f * c->a *
+  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 1.f * c->a *
          c->a;
 }
 
@@ -314,19 +314,19 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  const float h_inv_dim = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
 
   /* Finish the construction of the inverse of the c-matrix by
    * multiplying in the factors of h coming from W */
   for (int i = 0; i < 6; ++i) {
-    p->mhd_data.dens.d_mat_inv.elements[i] *= h_inv_dim/p->mass;
+    p->mhd_data.dens.d_mat_inv.elements[i] *= h_inv_dim;
   }
   /* Finish the construction of the inverse of the A gradient
    * multiplying in the factors of h coming from W */
   for (int i = 0; i < 3; ++i) 
     for (int j = 0; j < 3; ++j) {
-      p->mhd_data.dens.Mat_b[i][j] *= h_inv_dim/p->mass;
-      p->mhd_data.grad.Mat_da[i][j] *= h_inv_dim/p->mass;
+      p->mhd_data.dens.Mat_b[i][j] *= h_inv_dim;
+      p->mhd_data.grad.Mat_da[i][j] *= h_inv_dim;
       }
   /* Invert the c-matrix */
   float d_mat_temp[3][3];
@@ -548,14 +548,14 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     }
   }
 
-  const float alpha_AR_max = 1.0;
+  const float alpha_AR_max = 0.0;
 
   p->mhd_data.alpha_AR =
       normB ? fminf(alpha_AR_max, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
 
   /* Sets Induction equation */
   for (int i = 0; i < 3; i++) {
-      p->mhd_data.dAdt[i] = 0.f;
+      p->mhd_data.dAdt[i] =  -p->mhd_data.resistive_eta * p->mhd_data.JPred[i];
       for (int k = 0; k < 3; k++) 
          p->mhd_data.dAdt[i] -= p->mhd_data.grad.Mat_da[k][i];
   }
@@ -661,11 +661,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
-/*
-  for (int i = 0; i < 3; i++) {
+  
+  for (int i = 0; i < 3; i++) 
       for (int k = 0; k < 3; k++) 
-         p->a_hydro[i] -= p->mhd_data.grad.Mat_F[i][k];
-  }*/
+         p->a_hydro[i] += p->mhd_data.grad.Mat_F[i][k];
+  
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] *= p->mass;
