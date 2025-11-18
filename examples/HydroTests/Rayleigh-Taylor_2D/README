@@ -10,8 +10,13 @@ In this example, we follow the implementation of Saitoh and Makino 2013, but wit
 to avoid an interaction with the wall (see last image in Figure 10).
 
 The code needs to be compiled with the following options: `--with-hydro-dimension=2`,
-`--with-ext-potential=constant`, `--enable-boundary-particles` and `--with-adiabatic-index=7/5`.
+`--with-ext-potential=constant`, `--with-forcing=boundary-particles` and `--with-adiabatic-index=7/5`.
 I also recommend to use `--with-kernel=wendland-C2`.
 
-The option `--enable-boundary-particles` requires the ID of the last boundary particle.
+The flag `--with-forcing=boundary-particles` requires that the maximum boundary particle ID is
+specified in the parameter file, for example:
+
+BoundaryParticles:
+  boundary_particle_max_id:        3072
+
 This value is provided by the script makeIC.py and depends on the resolution.
