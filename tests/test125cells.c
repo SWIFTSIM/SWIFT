@@ -51,7 +51,7 @@ enum velocity_field {
 
 enum pressure_field { pressure_const, pressure_gradient, pressure_divergent };
 
-void set_velocity(struct part *part, enum velocity_field vel, float size) {
+void set_velocity(struct part* part, enum velocity_field vel, float size) {
 
   switch (vel) {
     case velocity_zero:
@@ -100,7 +100,7 @@ float get_pressure(double x[3], enum pressure_field press, float size) {
   return 0.f;
 }
 
-void set_energy_state(struct part *part, enum pressure_field press, float size,
+void set_energy_state(struct part* part, enum pressure_field press, float size,
                       float density) {
 
   const float pressure = get_pressure(part->x, press, size);
@@ -146,7 +146,7 @@ struct solution_part {
   float u_dt;
 };
 
-void get_solution(const struct cell *main_cell, struct solution_part *solution,
+void get_solution(const struct cell* main_cell, struct solution_part* solution,
                   float density, enum velocity_field vel,
                   enum pressure_field press, float size) {
 
@@ -207,13 +207,13 @@ void get_solution(const struct cell *main_cell, struct solution_part *solution,
   }
 }
 
-void reset_particles(struct cell *c, struct hydro_space *hs,
+void reset_particles(struct cell* c, struct hydro_space* hs,
                      enum velocity_field vel, enum pressure_field press,
                      float size, float density) {
 
   for (int i = 0; i < c->hydro.count; ++i) {
 
-    struct part *p = &c->hydro.parts[i];
+    struct part* p = &c->hydro.parts[i];
 
     set_velocity(p, vel, size);
     set_energy_state(p, press, size, density);
@@ -250,22 +250,22 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
  * @param vel The type of velocity field.
  * @param press The type of pressure field.
  */
-struct cell *make_cell(size_t n, const double offset[3], double size, double h,
-                       double density, long long *partId, double pert,
+struct cell* make_cell(size_t n, const double offset[3], double size, double h,
+                       double density, long long* partId, double pert,
                        enum velocity_field vel, enum pressure_field press) {
 
   const size_t count = n * n * n;
   const double volume = size * size * size;
-  struct cell *cell = NULL;
-  if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
+  struct cell* cell = NULL;
+  if (posix_memalign((void**)&cell, cell_align, sizeof(struct cell)) != 0) {
     error("Couldn't allocate the cell");
   }
   bzero(cell, sizeof(struct cell));
 
-  if (posix_memalign((void **)&cell->hydro.parts, part_align,
+  if (posix_memalign((void**)&cell->hydro.parts, part_align,
                      count * sizeof(struct part)) != 0)
     error("couldn't allocate particles, no. of particles: %d", (int)count);
-  if (posix_memalign((void **)&cell->hydro.xparts, xpart_align,
+  if (posix_memalign((void**)&cell->hydro.xparts, xpart_align,
                      count * sizeof(struct xpart)) != 0)
     error("couldn't allocate particles, no. of x-particles: %d", (int)count);
   bzero(cell->hydro.parts, count * sizeof(struct part));
@@ -274,8 +274,8 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   float h_max = 0.f;
 
   /* Construct the parts */
-  struct part *part = cell->hydro.parts;
-  struct xpart *xpart = cell->hydro.xparts;
+  struct part* part = cell->hydro.parts;
+  struct xpart* xpart = cell->hydro.xparts;
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
@@ -352,7 +352,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   return cell;
 }
 
-void clean_up(struct cell *ci) {
+void clean_up(struct cell* ci) {
   free(ci->hydro.parts);
   free(ci->hydro.xparts);
   free(ci->hydro.sort);
@@ -362,9 +362,9 @@ void clean_up(struct cell *ci) {
 /**
  * @brief Dump all the particles to a file
  */
-void dump_particle_fields(char *fileName, struct cell *main_cell,
-                          struct solution_part *solution, int with_solution) {
-  FILE *file = fopen(fileName, "w");
+void dump_particle_fields(char* fileName, struct cell* main_cell,
+                          struct solution_part* solution, int with_solution) {
+  FILE* file = fopen(fileName, "w");
 
   /* Write header */
   fprintf(file,
@@ -447,36 +447,36 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 }
 
 /* Just a forward declaration... */
-void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj, int limit_h_min,
+void runner_dopair1_branch_density(struct runner* r, struct cell* ci,
+                                   struct cell* cj, int limit_h_min,
                                    int limit_h_max);
-void runner_doself1_branch_density(struct runner *r, struct cell *ci,
+void runner_doself1_branch_density(struct runner* r, struct cell* ci,
                                    int limit_h_min, int limit_h_max);
 #ifdef EXTRA_HYDRO_LOOP
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
-void runner_dopair2_branch_gradient(struct runner *r, struct cell *ci,
-                                    struct cell *cj, int limit_h_min,
+void runner_dopair2_branch_gradient(struct runner* r, struct cell* ci,
+                                    struct cell* cj, int limit_h_min,
                                     int limit_h_max);
-void runner_doself2_branch_gradient(struct runner *r, struct cell *ci,
+void runner_doself2_branch_gradient(struct runner* r, struct cell* ci,
                                     int limit_h_min, int limit_h_max);
 #else
-void runner_dopair1_branch_gradient(struct runner *r, struct cell *ci,
-                                    struct cell *cj, int limit_h_min,
+void runner_dopair1_branch_gradient(struct runner* r, struct cell* ci,
+                                    struct cell* cj, int limit_h_min,
                                     int limit_h_max);
-void runner_doself1_branch_gradient(struct runner *r, struct cell *ci,
+void runner_doself1_branch_gradient(struct runner* r, struct cell* ci,
                                     int limit_h_min, int limit_h_max);
 #endif /* EXTRA_HYDRO_LOOP_TYPE2 */
 #endif /* EXTRA_HYDRO LOOP */
-void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
-                                 struct cell *cj, int limit_h_min,
+void runner_dopair2_branch_force(struct runner* r, struct cell* ci,
+                                 struct cell* cj, int limit_h_min,
                                  int limit_h_max);
-void runner_doself2_branch_force(struct runner *r, struct cell *ci,
+void runner_doself2_branch_force(struct runner* r, struct cell* ci,
                                  int limit_h_min, int limit_h_max);
 
-void runner_doself2_force_vec(struct runner *r, struct cell *ci);
+void runner_doself2_force_vec(struct runner* r, struct cell* ci);
 
 /* And go... */
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
 #ifdef HAVE_SETAFFINITY
   engine_pin();
@@ -527,10 +527,10 @@ int main(int argc, char *argv[]) {
         strcpy(outputFileNameExtension, optarg);
         break;
       case 'v':
-        sscanf(optarg, "%d", (int *)&vel);
+        sscanf(optarg, "%d", (int*)&vel);
         break;
       case 'p':
-        sscanf(optarg, "%d", (int *)&press);
+        sscanf(optarg, "%d", (int*)&press);
         break;
       case '?':
         error("Unknown option.");
@@ -634,9 +634,9 @@ int main(int argc, char *argv[]) {
   engine.pressure_floor_props = &pressure_floor;
 
   /* Construct some cells */
-  struct cell *cells[125];
-  struct cell *inner_cells[27];
-  struct cell *main_cell;
+  struct cell* cells[125];
+  struct cell* inner_cells[27];
+  struct cell* main_cell;
   int count = 0;
   static long long partId = 0;
   for (int i = 0; i < 5; ++i) {
@@ -663,7 +663,7 @@ int main(int argc, char *argv[]) {
   main_cell = cells[62];
 
   /* Construct the real solution */
-  struct solution_part *solution = (struct solution_part *)malloc(
+  struct solution_part* solution = (struct solution_part*)malloc(
       main_cell->hydro.count * sizeof(struct solution_part));
   get_solution(main_cell, solution, rho, vel, press, size);
 
@@ -707,7 +707,7 @@ int main(int argc, char *argv[]) {
       for (int j = 0; j < 5; j++) {
         for (int k = 0; k < 5; k++) {
 
-          struct cell *ci = cells[i * 25 + j * 5 + k];
+          struct cell* ci = cells[i * 25 + j * 5 + k];
 
           for (int ii = -1; ii < 2; ii++) {
             int iii = i + ii;
@@ -722,7 +722,7 @@ int main(int argc, char *argv[]) {
                 if (kkk < 0 || kkk >= 5) continue;
                 kkk = (kkk + 5) % 5;
 
-                struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
+                struct cell* cj = cells[iii * 25 + jjj * 5 + kkk];
 
                 if (cj > ci)
                   runner_dopair1_branch_density(
@@ -752,7 +752,7 @@ int main(int argc, char *argv[]) {
       for (int j = 0; j < 5; j++) {
         for (int k = 0; k < 5; k++) {
 
-          struct cell *ci = cells[i * 25 + j * 5 + k];
+          struct cell* ci = cells[i * 25 + j * 5 + k];
 
           for (int ii = -1; ii < 2; ii++) {
             int iii = i + ii;
@@ -767,7 +767,7 @@ int main(int argc, char *argv[]) {
                 if (kkk < 0 || kkk >= 5) continue;
                 kkk = (kkk + 5) % 5;
 
-                struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
+                struct cell* cj = cells[iii * 25 + jjj * 5 + kkk];
 
                 if (cj > ci) {
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
@@ -818,7 +818,7 @@ int main(int argc, char *argv[]) {
       for (int j = 1; j < 4; j++) {
         for (int k = 1; k < 4; k++) {
 
-          struct cell *cj = cells[i * 25 + j * 5 + k];
+          struct cell* cj = cells[i * 25 + j * 5 + k];
 
           if (main_cell != cj) {
 
@@ -910,7 +910,7 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 5; j++) {
       for (int k = 0; k < 5; k++) {
 
-        struct cell *ci = cells[i * 25 + j * 5 + k];
+        struct cell* ci = cells[i * 25 + j * 5 + k];
 
         for (int ii = -1; ii < 2; ii++) {
           int iii = i + ii;
@@ -925,7 +925,7 @@ int main(int argc, char *argv[]) {
               if (kkk < 0 || kkk >= 5) continue;
               kkk = (kkk + 5) % 5;
 
-              struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
+              struct cell* cj = cells[iii * 25 + jjj * 5 + kkk];
 
               if (cj > ci) pairs_all_density(&runner, ci, cj);
             }
@@ -949,7 +949,7 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 5; j++) {
       for (int k = 0; k < 5; k++) {
 
-        struct cell *ci = cells[i * 25 + j * 5 + k];
+        struct cell* ci = cells[i * 25 + j * 5 + k];
 
         for (int ii = -1; ii < 2; ii++) {
           int iii = i + ii;
@@ -964,7 +964,7 @@ int main(int argc, char *argv[]) {
               if (kkk < 0 || kkk >= 5) continue;
               kkk = (kkk + 5) % 5;
 
-              struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
+              struct cell* cj = cells[iii * 25 + jjj * 5 + kkk];
 
               if (cj > ci) pairs_all_gradient(&runner, ci, cj);
             }
@@ -990,7 +990,7 @@ int main(int argc, char *argv[]) {
     for (int j = 1; j < 4; j++) {
       for (int k = 1; k < 4; k++) {
 
-        struct cell *cj = cells[i * 25 + j * 5 + k];
+        struct cell* cj = cells[i * 25 + j * 5 + k];
 
         if (main_cell != cj) pairs_all_force(&runner, main_cell, cj);
       }

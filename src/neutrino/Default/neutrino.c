@@ -48,7 +48,7 @@ INLINE static double neutrino_momentum(const float v[3], const double m_eV,
  * @param s The #space for this run.
  * @param nm Struct with neutrino constants
  */
-void gather_neutrino_consts(const struct space *s, struct neutrino_model *nm) {
+void gather_neutrino_consts(const struct space* s, struct neutrino_model* nm) {
   nm->use_delta_f_mesh_only = s->e->neutrino_properties->use_delta_f_mesh_only;
   nm->M_nu_eV = s->e->cosmology->M_nu_eV;
   nm->deg_nu = s->e->cosmology->deg_nu;
@@ -68,9 +68,9 @@ void gather_neutrino_consts(const struct space *s, struct neutrino_model *nm) {
  * @param nm Properties of the neutrino model
  * @param weight The resulting weight (output)
  */
-void gpart_neutrino_weight_mesh_only(const struct gpart *gp,
-                                     const struct neutrino_model *nm,
-                                     double *weight) {
+void gpart_neutrino_weight_mesh_only(const struct gpart* gp,
+                                     const struct neutrino_model* nm,
+                                     double* weight) {
   /* Anything to do? */
   if (!nm->use_delta_f_mesh_only) return;
 
@@ -100,9 +100,9 @@ void gpart_neutrino_weight_mesh_only(const struct gpart *gp,
  * @param mass The mass (output)
  * @param weight The resulting weight (output)
  */
-void gpart_neutrino_mass_weight(const struct gpart *gp,
-                                const struct neutrino_model *nm, double *mass,
-                                double *weight) {
+void gpart_neutrino_mass_weight(const struct gpart* gp,
+                                const struct neutrino_model* nm, double* mass,
+                                double* weight) {
 
   /* Use a particle id dependent seed */
   const long long seed = gp->id_or_neg_offset + nm->neutrino_seed;
@@ -138,10 +138,10 @@ void gpart_neutrino_mass_weight(const struct gpart *gp,
  * @param mass_tot Output: the total mass in neutrino particles
  */
 void compute_neutrino_diagnostics(
-    const struct space *s, const struct cosmology *cosmo,
-    const struct phys_const *physical_constants,
-    const struct neutrino_props *neutrino_properties, const int rank, double *r,
-    double *I_df, double *mass_tot) {
+    const struct space* s, const struct cosmology* cosmo,
+    const struct phys_const* physical_constants,
+    const struct neutrino_props* neutrino_properties, const int rank, double* r,
+    double* I_df, double* mass_tot) {
 
   int use_df = neutrino_properties->use_delta_f;
   int use_df_mesh = neutrino_properties->use_delta_f_mesh_only;
@@ -150,13 +150,13 @@ void compute_neutrino_diagnostics(
     error("Neutrino diagnostics only defined when using the delta-f method.");
   }
 
-  struct gpart *gparts = s->gparts;
+  struct gpart* gparts = s->gparts;
   const size_t nr_gparts = s->nr_gparts;
 
   /* Retrieve physical and cosmological constants */
   const double c_vel = physical_constants->const_speed_light_c;
-  const double *m_eV_array = cosmo->M_nu_eV;
-  const double *deg_array = cosmo->deg_nu;
+  const double* m_eV_array = cosmo->M_nu_eV;
+  const double* deg_array = cosmo->deg_nu;
   const int N_nu = cosmo->N_nu;
   const double T_eV = cosmo->T_nu_0_eV;
   const double fac = 1.0 / (c_vel * T_eV);
@@ -262,11 +262,11 @@ void compute_neutrino_diagnostics(
  * @param with_neutrinos Are we running with neutrino particles?
  * @param verbose Are we verbose?
  */
-void neutrino_check_cosmology(const struct space *s,
-                              const struct cosmology *cosmo,
-                              const struct phys_const *physical_constants,
-                              struct swift_params *params,
-                              const struct neutrino_props *neutrino_props,
+void neutrino_check_cosmology(const struct space* s,
+                              const struct cosmology* cosmo,
+                              const struct phys_const* physical_constants,
+                              struct swift_params* params,
+                              const struct neutrino_props* neutrino_props,
                               const int rank, const int verbose) {
 
   /* Check that we have neutrino particles if and only if we need them */
@@ -378,8 +378,8 @@ int lightcone_map_neutrino_mass_type_contributes(int ptype) {
  * lightcone
  */
 double lightcone_map_neutrino_mass_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   switch (gp->type) {
     case swift_type_neutrino: {
@@ -407,8 +407,8 @@ double lightcone_map_neutrino_mass_get_value(
  * @param map The lightcone map
  */
 double lightcone_map_neutrino_baseline_value(
-    const struct cosmology *c, const struct lightcone_props *lightcone_props,
-    const struct lightcone_map *map) {
+    const struct cosmology* c, const struct lightcone_props* lightcone_props,
+    const struct lightcone_map* map) {
 
   /* Fetch the area of healpix pixels */
   const double area = lightcone_props->pixel_area_steradians;

@@ -41,7 +41,7 @@
 /**
  * @brief Names of the elements in the order they are stored in the files
  */
-static const char *qla_eagle_tables_element_names[qla_eagle_cooling_N_metal] = {
+static const char* qla_eagle_tables_element_names[qla_eagle_cooling_N_metal] = {
     "Carbon",  "Nitrogen", "Oxygen",  "Neon", "Magnesium",
     "Silicon", "Sulphur",  "Calcium", "Iron"};
 
@@ -78,13 +78,13 @@ static const size_t num_elements_HpHe_electron_abundance =
  *
  * @param cooling #cooling_function_data structure
  */
-void get_cooling_redshifts(struct cooling_function_data *cooling) {
+void get_cooling_redshifts(struct cooling_function_data* cooling) {
 
   /* Read the list of table redshifts */
   char redshift_filename[qla_eagle_table_path_name_length + 16];
   sprintf(redshift_filename, "%s/redshifts.dat", cooling->cooling_table_path);
 
-  FILE *infile = fopen(redshift_filename, "r");
+  FILE* infile = fopen(redshift_filename, "r");
   if (infile == NULL) {
     error("Cannot open the list of cooling table redshifts (%s)",
           redshift_filename);
@@ -111,7 +111,7 @@ void get_cooling_redshifts(struct cooling_function_data *cooling) {
       error("Invalid redshift length array.");
 
     /* Allocate the list of redshifts */
-    if (swift_memalign("cooling", (void **)&cooling->Redshifts,
+    if (swift_memalign("cooling", (void**)&cooling->Redshifts,
                        SWIFT_STRUCT_ALIGNMENT,
                        qla_eagle_cooling_N_redshifts * sizeof(float)) != 0)
       error("Failed to allocate redshift table");
@@ -156,8 +156,8 @@ void get_cooling_redshifts(struct cooling_function_data *cooling) {
  * @param fname Filepath for cooling table from which to read header
  * @param cooling Cooling data structure
  */
-void read_cooling_header(const char *fname,
-                         struct cooling_function_data *cooling) {
+void read_cooling_header(const char* fname,
+                         struct cooling_function_data* cooling) {
 
 #ifdef HAVE_HDF5
 
@@ -227,23 +227,23 @@ void read_cooling_header(const char *fname,
     error("Invalid metal array length.");
 
   /* allocate arrays of values for each of the above quantities */
-  if (swift_memalign("cooling", (void **)&cooling->Temp, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("cooling", (void**)&cooling->Temp, SWIFT_STRUCT_ALIGNMENT,
                      N_Temp * sizeof(float)) != 0)
     error("Failed to allocate temperature table");
-  if (swift_memalign("cooling", (void **)&cooling->Therm,
-                     SWIFT_STRUCT_ALIGNMENT, N_Temp * sizeof(float)) != 0)
+  if (swift_memalign("cooling", (void**)&cooling->Therm, SWIFT_STRUCT_ALIGNMENT,
+                     N_Temp * sizeof(float)) != 0)
     error("Failed to allocate internal energy table");
-  if (swift_memalign("cooling", (void **)&cooling->nH, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("cooling", (void**)&cooling->nH, SWIFT_STRUCT_ALIGNMENT,
                      N_nH * sizeof(float)) != 0)
     error("Failed to allocate nH table");
-  if (swift_memalign("cooling", (void **)&cooling->HeFrac,
+  if (swift_memalign("cooling", (void**)&cooling->HeFrac,
                      SWIFT_STRUCT_ALIGNMENT, N_He * sizeof(float)) != 0)
     error("Failed to allocate HeFrac table");
-  if (swift_memalign("cooling", (void **)&cooling->SolarAbundances,
+  if (swift_memalign("cooling", (void**)&cooling->SolarAbundances,
                      SWIFT_STRUCT_ALIGNMENT,
                      N_SolarAbundances * sizeof(float)) != 0)
     error("Failed to allocate Solar abundances table");
-  if (swift_memalign("cooling", (void **)&cooling->SolarAbundances_inv,
+  if (swift_memalign("cooling", (void**)&cooling->SolarAbundances_inv,
                      SWIFT_STRUCT_ALIGNMENT,
                      N_SolarAbundances * sizeof(float)) != 0)
     error("Failed to allocate Solar abundances inverses table");
@@ -314,40 +314,40 @@ void read_cooling_header(const char *fname,
  *
  * @param cooling #cooling_function_data structure
  */
-void allocate_cooling_tables(struct cooling_function_data *restrict cooling) {
+void allocate_cooling_tables(struct cooling_function_data* restrict cooling) {
 
   /* Allocate arrays to store cooling tables. Arrays contain two tables of
    * cooling rates with one table being for the redshift above current redshift
    * and one below. */
 
-  if (swift_memalign("cooling-tables", (void **)&cooling->table.metal_heating,
+  if (swift_memalign("cooling-tables", (void**)&cooling->table.metal_heating,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_eagle_cooling_N_loaded_redshifts *
                          num_elements_metal_heating * sizeof(float)) != 0)
     error("Failed to allocate metal_heating array");
 
   if (swift_memalign("cooling-tables",
-                     (void **)&cooling->table.electron_abundance,
+                     (void**)&cooling->table.electron_abundance,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_eagle_cooling_N_loaded_redshifts *
                          num_elements_electron_abundance * sizeof(float)) != 0)
     error("Failed to allocate electron_abundance array");
 
-  if (swift_memalign("cooling-tables", (void **)&cooling->table.temperature,
+  if (swift_memalign("cooling-tables", (void**)&cooling->table.temperature,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_eagle_cooling_N_loaded_redshifts *
                          num_elements_temperature * sizeof(float)) != 0)
     error("Failed to allocate temperature array");
 
   if (swift_memalign("cooling-tables",
-                     (void **)&cooling->table.H_plus_He_heating,
+                     (void**)&cooling->table.H_plus_He_heating,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_eagle_cooling_N_loaded_redshifts *
                          num_elements_HpHe_heating * sizeof(float)) != 0)
     error("Failed to allocate H_plus_He_heating array");
 
   if (swift_memalign("cooling-tables",
-                     (void **)&cooling->table.H_plus_He_electron_abundance,
+                     (void**)&cooling->table.H_plus_He_electron_abundance,
                      SWIFT_STRUCT_ALIGNMENT,
                      qla_eagle_cooling_N_loaded_redshifts *
                          num_elements_HpHe_electron_abundance *
@@ -370,34 +370,34 @@ void allocate_cooling_tables(struct cooling_function_data *restrict cooling) {
  * @param photodis Are we loading the photo-dissociation table?
  */
 void get_redshift_invariant_table(
-    struct cooling_function_data *restrict cooling, const int photodis) {
+    struct cooling_function_data* restrict cooling, const int photodis) {
 #ifdef HAVE_HDF5
 
   /* Temporary tables */
-  float *net_cooling_rate = NULL;
-  float *electron_abundance = NULL;
-  float *temperature = NULL;
-  float *he_net_cooling_rate = NULL;
-  float *he_electron_abundance = NULL;
+  float* net_cooling_rate = NULL;
+  float* electron_abundance = NULL;
+  float* temperature = NULL;
+  float* he_net_cooling_rate = NULL;
+  float* he_electron_abundance = NULL;
 
   /* Allocate arrays for reading in cooling tables.  */
-  if (swift_memalign("cooling-temp", (void **)&net_cooling_rate,
+  if (swift_memalign("cooling-temp", (void**)&net_cooling_rate,
                      SWIFT_STRUCT_ALIGNMENT,
                      num_elements_cooling_rate * sizeof(float)) != 0)
     error("Failed to allocate net_cooling_rate array");
-  if (swift_memalign("cooling-temp", (void **)&electron_abundance,
+  if (swift_memalign("cooling-temp", (void**)&electron_abundance,
                      SWIFT_STRUCT_ALIGNMENT,
                      num_elements_electron_abundance * sizeof(float)) != 0)
     error("Failed to allocate electron_abundance array");
-  if (swift_memalign("cooling-temp", (void **)&temperature,
+  if (swift_memalign("cooling-temp", (void**)&temperature,
                      SWIFT_STRUCT_ALIGNMENT,
                      num_elements_temperature * sizeof(float)) != 0)
     error("Failed to allocate temperature array");
-  if (swift_memalign("cooling-temp", (void **)&he_net_cooling_rate,
+  if (swift_memalign("cooling-temp", (void**)&he_net_cooling_rate,
                      SWIFT_STRUCT_ALIGNMENT,
                      num_elements_HpHe_heating * sizeof(float)) != 0)
     error("Failed to allocate he_net_cooling_rate array");
-  if (swift_memalign("cooling-temp", (void **)&he_electron_abundance,
+  if (swift_memalign("cooling-temp", (void**)&he_electron_abundance,
                      SWIFT_STRUCT_ALIGNMENT,
                      num_elements_HpHe_electron_abundance * sizeof(float)) != 0)
     error("Failed to allocate he_electron_abundance array");
@@ -573,36 +573,36 @@ void get_redshift_invariant_table(
  * @param low_z_index Index of the lowest redshift table to load.
  * @param high_z_index Index of the highest redshift table to load.
  */
-void get_cooling_table(struct cooling_function_data *restrict cooling,
+void get_cooling_table(struct cooling_function_data* restrict cooling,
                        const int low_z_index, const int high_z_index) {
 
 #ifdef HAVE_HDF5
 
   /* Temporary tables */
-  float *net_cooling_rate = NULL;
-  float *electron_abundance = NULL;
-  float *temperature = NULL;
-  float *he_net_cooling_rate = NULL;
-  float *he_electron_abundance = NULL;
+  float* net_cooling_rate = NULL;
+  float* electron_abundance = NULL;
+  float* temperature = NULL;
+  float* he_net_cooling_rate = NULL;
+  float* he_electron_abundance = NULL;
 
   /* Allocate arrays for reading in cooling tables.  */
-  if (swift_memalign("cooling-temp", (void **)&net_cooling_rate,
+  if (swift_memalign("cooling-temp", (void**)&net_cooling_rate,
                      SWIFT_STRUCT_ALIGNMENT,
                      num_elements_cooling_rate * sizeof(float)) != 0)
     error("Failed to allocate net_cooling_rate array");
-  if (swift_memalign("cooling-temp", (void **)&electron_abundance,
+  if (swift_memalign("cooling-temp", (void**)&electron_abundance,
                      SWIFT_STRUCT_ALIGNMENT,
                      num_elements_electron_abundance * sizeof(float)) != 0)
     error("Failed to allocate electron_abundance array");
-  if (swift_memalign("cooling-temp", (void **)&temperature,
+  if (swift_memalign("cooling-temp", (void**)&temperature,
                      SWIFT_STRUCT_ALIGNMENT,
                      num_elements_temperature * sizeof(float)) != 0)
     error("Failed to allocate temperature array");
-  if (swift_memalign("cooling-temp", (void **)&he_net_cooling_rate,
+  if (swift_memalign("cooling-temp", (void**)&he_net_cooling_rate,
                      SWIFT_STRUCT_ALIGNMENT,
                      num_elements_HpHe_heating * sizeof(float)) != 0)
     error("Failed to allocate he_net_cooling_rate array");
-  if (swift_memalign("cooling-temp", (void **)&he_electron_abundance,
+  if (swift_memalign("cooling-temp", (void**)&he_electron_abundance,
                      SWIFT_STRUCT_ALIGNMENT,
                      num_elements_HpHe_electron_abundance * sizeof(float)) != 0)
     error("Failed to allocate he_electron_abundance array");

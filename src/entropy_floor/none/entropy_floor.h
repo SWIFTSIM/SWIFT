@@ -48,8 +48,8 @@ struct entropy_floor_properties {};
  * @param props The properties of the entropy floor.
  */
 static INLINE float entropy_floor_gas_pressure(
-    const float rho_phys, const float rho_com, const struct cosmology *cosmo,
-    const struct entropy_floor_properties *props) {
+    const float rho_phys, const float rho_com, const struct cosmology* cosmo,
+    const struct entropy_floor_properties* props) {
   return 0.f;
 }
 
@@ -63,8 +63,8 @@ static INLINE float entropy_floor_gas_pressure(
  * @param props The properties of the entropy floor.
  */
 static INLINE float entropy_floor(
-    const struct part *p, const struct cosmology *cosmo,
-    const struct entropy_floor_properties *props) {
+    const struct part* p, const struct cosmology* cosmo,
+    const struct entropy_floor_properties* props) {
 
   return 0.f;
 }
@@ -80,8 +80,8 @@ static INLINE float entropy_floor(
  * @param props The properties of the entropy floor.
  */
 static INLINE float entropy_floor_gas_temperature(
-    const float rho_phys, const float rho_com, const struct cosmology *cosmo,
-    const struct entropy_floor_properties *props) {
+    const float rho_phys, const float rho_com, const struct cosmology* cosmo,
+    const struct entropy_floor_properties* props) {
 
   return 0.f;
 }
@@ -96,8 +96,8 @@ static INLINE float entropy_floor_gas_temperature(
  * @param props The properties of the entropy floor.
  */
 static INLINE float entropy_floor_temperature(
-    const struct part *p, const struct cosmology *cosmo,
-    const struct entropy_floor_properties *props) {
+    const struct part* p, const struct cosmology* cosmo,
+    const struct entropy_floor_properties* props) {
 
   return 0.f;
 }
@@ -113,11 +113,11 @@ static INLINE float entropy_floor_temperature(
  * @param phys_cont The physical constants.
  * @param props The entropy floor properties to fill.
  */
-static INLINE void entropy_floor_init(struct entropy_floor_properties *props,
-                                      const struct phys_const *phys_const,
-                                      const struct unit_system *us,
-                                      const struct hydro_props *hydro_props,
-                                      struct swift_params *params) {}
+static INLINE void entropy_floor_init(struct entropy_floor_properties* props,
+                                      const struct phys_const* phys_const,
+                                      const struct unit_system* us,
+                                      const struct hydro_props* hydro_props,
+                                      struct swift_params* params) {}
 
 /**
  * @brief Print the properties of the entropy floor to stdout.
@@ -125,7 +125,7 @@ static INLINE void entropy_floor_init(struct entropy_floor_properties *props,
  * @param props The entropy floor properties.
  */
 static INLINE void entropy_floor_print(
-    const struct entropy_floor_properties *props) {
+    const struct entropy_floor_properties* props) {
 
   message("Entropy floor is 'no entropy floor'.");
 }
@@ -151,7 +151,7 @@ INLINE static void entropy_floor_write_flavour(hid_t h_grp) {
  * @param stream the file stream
  */
 static INLINE void entropy_floor_struct_dump(
-    const struct entropy_floor_properties *props, FILE *stream) {}
+    const struct entropy_floor_properties* props, FILE* stream) {}
 
 /**
  * @brief Restore a entropy floor struct from the given FILE as a stream of
@@ -163,6 +163,6 @@ static INLINE void entropy_floor_struct_dump(
  * @param stream the file stream
  */
 static INLINE void entropy_floor_struct_restore(
-    struct entropy_floor_properties *props, FILE *stream) {}
+    struct entropy_floor_properties* props, FILE* stream) {}
 
 #endif /* SWIFT_ENTROPY_FLOOR_NONE_H */

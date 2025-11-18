@@ -39,7 +39,7 @@
  *
  * @return The number of packed cells.
  */
-int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
+int cell_pack(struct cell* restrict c, struct pcell* restrict pc,
               const int with_gravity) {
 #ifdef WITH_MPI
 
@@ -75,7 +75,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
 
   /* Copy the Multipole related information */
   if (with_gravity) {
-    const struct gravity_tensors *mp = c->grav.multipole;
+    const struct gravity_tensors* mp = c->grav.multipole;
 
     pc->grav.m_pole = mp->m_pole;
     pc->grav.CoM[0] = mp->CoM[0];
@@ -120,7 +120,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
  *
  * @return The number of packed tags.
  */
-int cell_pack_tags(const struct cell *c, int *tags) {
+int cell_pack_tags(const struct cell* c, int* tags) {
 #ifdef WITH_MPI
 
   /* Start by packing the data of the current cell. */
@@ -154,8 +154,8 @@ int cell_pack_tags(const struct cell *c, int *tags) {
  *
  * @return The number of packed tags.
  */
-int cell_pack_grid_extra(const struct cell *c,
-                         enum grid_construction_level *info) {
+int cell_pack_grid_extra(const struct cell* c,
+                         enum grid_construction_level* info) {
 #ifdef WITH_MPI
 
   /* Start by packing the construction level of the current cell. */
@@ -186,44 +186,44 @@ int cell_pack_grid_extra(const struct cell *c,
 #endif
 }
 
-void cell_pack_part_swallow(const struct cell *c,
-                            struct black_holes_part_data *data) {
+void cell_pack_part_swallow(const struct cell* c,
+                            struct black_holes_part_data* data) {
 
   const size_t count = c->hydro.count;
-  const struct part *parts = c->hydro.parts;
+  const struct part* parts = c->hydro.parts;
 
   for (size_t i = 0; i < count; ++i) {
     data[i] = parts[i].black_holes_data;
   }
 }
 
-void cell_unpack_part_swallow(struct cell *c,
-                              const struct black_holes_part_data *data) {
+void cell_unpack_part_swallow(struct cell* c,
+                              const struct black_holes_part_data* data) {
 
   const size_t count = c->hydro.count;
-  struct part *parts = c->hydro.parts;
+  struct part* parts = c->hydro.parts;
 
   for (size_t i = 0; i < count; ++i) {
     parts[i].black_holes_data = data[i];
   }
 }
 
-void cell_pack_bpart_swallow(const struct cell *c,
-                             struct black_holes_bpart_data *data) {
+void cell_pack_bpart_swallow(const struct cell* c,
+                             struct black_holes_bpart_data* data) {
 
   const size_t count = c->black_holes.count;
-  const struct bpart *bparts = c->black_holes.parts;
+  const struct bpart* bparts = c->black_holes.parts;
 
   for (size_t i = 0; i < count; ++i) {
     data[i] = bparts[i].merger_data;
   }
 }
 
-void cell_unpack_bpart_swallow(struct cell *c,
-                               const struct black_holes_bpart_data *data) {
+void cell_unpack_bpart_swallow(struct cell* c,
+                               const struct black_holes_bpart_data* data) {
 
   const size_t count = c->black_holes.count;
-  struct bpart *bparts = c->black_holes.parts;
+  struct bpart* bparts = c->black_holes.parts;
 
   for (size_t i = 0; i < count; ++i) {
     bparts[i].merger_data = data[i];
@@ -241,8 +241,8 @@ void cell_unpack_bpart_swallow(struct cell *c,
  *
  * @return The number of cells created.
  */
-int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
-                struct space *restrict s, const int with_gravity) {
+int cell_unpack(struct pcell* restrict pc, struct cell* restrict c,
+                struct space* restrict s, const int with_gravity) {
 #ifdef WITH_MPI
 
   /* Unpack the current pcell. */
@@ -281,7 +281,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
 
   /* Copy the Multipole related information */
   if (with_gravity) {
-    struct gravity_tensors *mp = c->grav.multipole;
+    struct gravity_tensors* mp = c->grav.multipole;
 
     mp->m_pole = pc->grav.m_pole;
     mp->CoM[0] = pc->grav.CoM[0];
@@ -301,7 +301,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->split = 0;
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
-      struct cell *temp;
+      struct cell* temp;
       space_getcells(s, 1, &temp, 0);
       temp->hydro.count = 0;
       temp->grav.count = 0;
@@ -353,7 +353,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
  *
  * @return The number of tags created.
  */
-int cell_unpack_tags(const int *tags, struct cell *restrict c) {
+int cell_unpack_tags(const int* tags, struct cell* restrict c) {
 #ifdef WITH_MPI
 
   /* Unpack the current pcell. */
@@ -389,8 +389,8 @@ int cell_unpack_tags(const int *tags, struct cell *restrict c) {
  *
  * @return The number of tags created.
  */
-int cell_unpack_grid_extra(const enum grid_construction_level *info,
-                           struct cell *c, struct cell *construction_level) {
+int cell_unpack_grid_extra(const enum grid_construction_level* info,
+                           struct cell* c, struct cell* construction_level) {
 #ifdef WITH_MPI
 
   /* Unpack the current pcell. */
@@ -446,7 +446,7 @@ int cell_unpack_grid_extra(const enum grid_construction_level *info,
  *
  * @return The number of cells that were packed.
  */
-int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
+int cell_pack_end_step(const struct cell* c, struct pcell_step* pcells) {
 
 #ifdef WITH_MPI
 
@@ -492,7 +492,7 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
  *
  * @return The number of cells that were packed.
  */
-int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
+int cell_unpack_end_step(struct cell* c, const struct pcell_step* pcells) {
 
 #ifdef WITH_MPI
 
@@ -538,7 +538,7 @@ int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
  * @param c The #cell.
  * @param t (output) The array of timebins we pack into.
  */
-void cell_pack_timebin(const struct cell *const c, timebin_t *const t) {
+void cell_pack_timebin(const struct cell* const c, timebin_t* const t) {
 
 #ifdef WITH_MPI
 
@@ -560,7 +560,7 @@ void cell_pack_timebin(const struct cell *const c, timebin_t *const t) {
  * @param c The #cell
  * @param t The array of timebins we unpack from.
  */
-void cell_unpack_timebin(struct cell *const c, timebin_t *const t) {
+void cell_unpack_timebin(struct cell* const c, timebin_t* const t) {
 
 #ifdef WITH_MPI
 
@@ -582,8 +582,8 @@ void cell_unpack_timebin(struct cell *const c, timebin_t *const t) {
  * @param c The #cell.
  * @param b (output) The array of #gpart_foreign we pack into.
  */
-void cell_pack_gpart(const struct cell *const c,
-                     struct gpart_foreign *const b) {
+void cell_pack_gpart(const struct cell* const c,
+                     struct gpart_foreign* const b) {
 
 #ifdef WITH_MPI
 
@@ -606,8 +606,8 @@ void cell_pack_gpart(const struct cell *const c,
  * @param c The #cell.
  * @param b (output) The array of #gpart_fof_foreign we pack into.
  */
-void cell_pack_fof_gpart(const struct cell *const c,
-                         struct gpart_fof_foreign *const b) {
+void cell_pack_fof_gpart(const struct cell* const c,
+                         struct gpart_fof_foreign* const b) {
 
 #ifdef WITH_MPI
 
@@ -631,8 +631,8 @@ void cell_pack_fof_gpart(const struct cell *const c,
  *
  * @return The number of packed cells.
  */
-int cell_pack_multipoles(struct cell *restrict c,
-                         struct gravity_tensors *restrict pcells) {
+int cell_pack_multipoles(struct cell* restrict c,
+                         struct gravity_tensors* restrict pcells) {
 #ifdef WITH_MPI
 
   /* Pack this cell's data. */
@@ -662,8 +662,8 @@ int cell_pack_multipoles(struct cell *restrict c,
  *
  * @return The number of cells created.
  */
-int cell_unpack_multipoles(struct cell *restrict c,
-                           struct gravity_tensors *restrict pcells) {
+int cell_unpack_multipoles(struct cell* restrict c,
+                           struct gravity_tensors* restrict pcells) {
 #ifdef WITH_MPI
 
   /* Unpack this cell's data. */
@@ -694,7 +694,7 @@ int cell_unpack_multipoles(struct cell *restrict c,
  *
  * @return The number of packed cells.
  */
-int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
+int cell_pack_sf_counts(struct cell* c, struct pcell_sf_stars* pcells) {
 
 #ifdef WITH_MPI
 
@@ -740,7 +740,7 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
  *
  * @return The number of cells created.
  */
-int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
+int cell_unpack_sf_counts(struct cell* c, struct pcell_sf_stars* pcells) {
 
 #ifdef WITH_MPI
 
@@ -779,7 +779,7 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
  *
  * @return The number of packed cells.
  */
-int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
+int cell_pack_grav_counts(struct cell* c, struct pcell_sf_grav* pcells) {
 
 #ifdef WITH_MPI
 
@@ -824,7 +824,7 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
  *
  * @return The number of cells created.
  */
-int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
+int cell_unpack_grav_counts(struct cell* c, struct pcell_sf_grav* pcells) {
 
 #ifdef WITH_MPI
 

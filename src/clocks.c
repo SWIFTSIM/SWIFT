@@ -48,7 +48,7 @@ static unsigned long long clocks_cpufreq = 0;
 ticks clocks_start_ticks = 0;
 
 /* The units of any returned times. */
-static const char *clocks_units[] = {"ms", "~ms"};
+static const char* clocks_units[] = {"ms", "~ms"};
 static int clocks_units_index = 0;
 static double clocks_units_scale = 1000.0;
 
@@ -60,7 +60,7 @@ static void clocks_estimate_cpufreq(void);
  *
  * @param time the current time.
  */
-void clocks_gettime(struct clocks_time *time) {
+void clocks_gettime(struct clocks_time* time) {
 
 #ifdef HAVE_CLOCK_GETTIME
   clock_gettime(CLOCK_REALTIME, &time->time);
@@ -77,7 +77,7 @@ void clocks_gettime(struct clocks_time *time) {
  *
  * @return the difference.
  */
-double clocks_diff(struct clocks_time *start, struct clocks_time *end) {
+double clocks_diff(struct clocks_time* start, struct clocks_time* end) {
 #ifdef HAVE_CLOCK_GETTIME
   struct timespec temp;
   if ((end->time.tv_nsec - start->time.tv_nsec) < 0) {
@@ -165,7 +165,7 @@ static void clocks_estimate_cpufreq(void) {
 /* Look for the system value, if available. Tends to be too large. */
 #ifdef __linux__
   if (clocks_cpufreq == 0) {
-    FILE *file =
+    FILE* file =
         fopen("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", "r");
     if (file != NULL) {
       unsigned long long maxfreq;
@@ -244,7 +244,7 @@ ticks clocks_to_ticks(double ms) {
  *
  * @result the current time units.
  */
-const char *clocks_getunit(void) { return clocks_units[clocks_units_index]; }
+const char* clocks_getunit(void) { return clocks_units[clocks_units_index]; }
 
 /**
  * @brief returns the time since the start of the execution in seconds
@@ -255,7 +255,7 @@ const char *clocks_getunit(void) { return clocks_units[clocks_units_index]; }
  *
  * @result the time since the start of the execution
  */
-const char *clocks_get_timesincestart(void) {
+const char* clocks_get_timesincestart(void) {
 
   static char buffer[40];
 
@@ -290,7 +290,7 @@ double clocks_get_hours_since_start(void) {
  * @param usertime the user time.
  * @param systime the system time.
  */
-void clocks_get_cputimes_used(double *usertime, double *systime) {
+void clocks_get_cputimes_used(double* usertime, double* systime) {
   struct tms tmstic;
   times(&tmstic);
   *usertime = (tmstic.tms_utime + tmstic.tms_cutime);
@@ -324,10 +324,10 @@ int clocks_random_seed(void) {
  * @result the formatted time, take a copy if you need to keep it longer than
  *         the next call.
  */
-const char *clocks_now(int swift) {
+const char* clocks_now(int swift) {
   static char now[64];
   time_t tm = time(NULL);
-  struct tm *timeinfo = localtime(&tm);
+  struct tm* timeinfo = localtime(&tm);
   if (swift) {
     strftime(now, 64, "%T %F %Z", timeinfo);
   } else {

@@ -64,20 +64,20 @@
 #include "tools.h"
 
 /* Simple descriptions of initial partition types for reports. */
-const char *initial_partition_name[] = {
+const char* initial_partition_name[] = {
     "axis aligned grids of cells", "vectorized point associated cells",
     "memory balanced, using particle weighted cells",
     "similar sized regions, using unweighted cells",
     "memory and edge balanced cells using particle weights"};
 
 /* Simple descriptions of repartition types for reports. */
-const char *repartition_name[] = {
+const char* repartition_name[] = {
     "none", "edge and vertex task cost weights", "task cost edge weights",
     "memory balanced, using particle vertex weights",
     "vertex task costs and edge delta timebin weights"};
 
 /* Local functions, if needed. */
-static int check_complete(struct space *s, int verbose, int nregions);
+static int check_complete(struct space* s, int verbose, int nregions);
 
 /*
  * Repartition fixed costs per type/subtype. These are determined from the
@@ -105,7 +105,7 @@ static int repart_init_fixed_costs(void);
  *  @param nregions the number of regions
  *  @param samplecells the list of sample cell positions, size of 3*nregions
  */
-static void pick_vector(struct space *s, int nregions, int *samplecells) {
+static void pick_vector(struct space* s, int nregions, int* samplecells) {
 
   /* Get length of space and divide up. */
   int length = s->cdim[0] * s->cdim[1] * s->cdim[2];
@@ -143,7 +143,7 @@ static void pick_vector(struct space *s, int nregions, int *samplecells) {
  * Using the sample positions as seeds pick cells that are geometrically
  * closest and apply the partition to the space.
  */
-static void split_vector(struct space *s, int nregions, int *samplecells) {
+static void split_vector(struct space* s, int nregions, int* samplecells) {
   int n = 0;
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
@@ -208,8 +208,8 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
  *             number of cells in space + 1. NULL for not used.
  * @param nxadj the number of xadj element used.
  */
-static void graph_init(struct space *s, int periodic, idx_t *weights_e,
-                       idx_t *adjncy, int *nadjcny, idx_t *xadj, int *nxadj) {
+static void graph_init(struct space* s, int periodic, idx_t* weights_e,
+                       idx_t* adjncy, int* nadjcny, idx_t* xadj, int* nxadj) {
 
   /* Loop over all cells in the space. */
   *nadjcny = 0;
@@ -328,26 +328,26 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 struct counts_mapper_data {
-  double *counts;
+  double* counts;
   size_t size;
-  struct space *s;
+  struct space* s;
 };
 
 /* Generic function for accumulating sized counts for TYPE parts. Note uses
  * local memory to reduce contention, the amount of memory required is
  * precalculated by an additional loop determining the range of cell IDs. */
 #define ACCUMULATE_SIZES_MAPPER(TYPE)                                          \
-  partition_accumulate_sizes_mapper_##TYPE(void *map_data, int num_elements,   \
-                                           void *extra_data) {                 \
-    struct TYPE *parts = (struct TYPE *)map_data;                              \
-    struct counts_mapper_data *mydata =                                        \
-        (struct counts_mapper_data *)extra_data;                               \
+  partition_accumulate_sizes_mapper_##TYPE(void* map_data, int num_elements,   \
+                                           void* extra_data) {                 \
+    struct TYPE* parts = (struct TYPE*)map_data;                               \
+    struct counts_mapper_data* mydata =                                        \
+        (struct counts_mapper_data*)extra_data;                                \
     double size = mydata->size;                                                \
-    int *cdim = mydata->s->cdim;                                               \
+    int* cdim = mydata->s->cdim;                                               \
     double iwidth[3] = {mydata->s->iwidth[0], mydata->s->iwidth[1],            \
                         mydata->s->iwidth[2]};                                 \
     double dim[3] = {mydata->s->dim[0], mydata->s->dim[1], mydata->s->dim[2]}; \
-    double *lcounts = NULL;                                                    \
+    double* lcounts = NULL;                                                    \
     int lcid = mydata->s->nr_cells;                                            \
     int ucid = 0;                                                              \
     for (int k = 0; k < num_elements; k++) {                                   \
@@ -364,7 +364,7 @@ struct counts_mapper_data {
       if (cid < lcid) lcid = cid;                                              \
     }                                                                          \
     int nused = ucid - lcid + 1;                                               \
-    if ((lcounts = (double *)calloc(nused, sizeof(double))) == NULL)           \
+    if ((lcounts = (double*)calloc(nused, sizeof(double))) == NULL)            \
       error("Failed to allocate counts thread-specific buffer");               \
     for (int k = 0; k < num_elements; k++) {                                   \
       const int cid =                                                          \
@@ -402,9 +402,9 @@ void ACCUMULATE_SIZES_MAPPER(gpart);
 void ACCUMULATE_SIZES_MAPPER(spart);
 
 /* qsort support. */
-static int ptrcmp(const void *p1, const void *p2) {
-  const double *v1 = *(const double **)p1;
-  const double *v2 = *(const double **)p2;
+static int ptrcmp(const void* p1, const void* p2) {
+  const double* v1 = *(const double**)p1;
+  const double* v2 = *(const double**)p2;
   return (*v1) - (*v2);
 }
 
@@ -416,14 +416,14 @@ static int ptrcmp(const void *p1, const void *p2) {
  * @param counts the number of bytes in particles per cell. Should be
  *               allocated as size s->nr_cells.
  */
-static void accumulate_sizes(struct space *s, int verbose, double *counts) {
+static void accumulate_sizes(struct space* s, int verbose, double* counts) {
 
   bzero(counts, sizeof(double) * s->nr_cells);
 
   struct counts_mapper_data mapper_data;
   mapper_data.s = s;
   double gsize = 0.0;
-  double *gcounts = NULL;
+  double* gcounts = NULL;
   double hsize = 0.0;
   double ssize = 0.0;
 
@@ -433,7 +433,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
      * gparts, to suppress this we fix a upper weight limit based on a
      * percentile clip to on the numbers of cells. Should be relatively
      * harmless when not really needed. */
-    if ((gcounts = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+    if ((gcounts = (double*)malloc(sizeof(double) * s->nr_cells)) == NULL)
       error("Failed to allocate gcounts buffer.");
     bzero(gcounts, sizeof(double) * s->nr_cells);
     gsize = (double)sizeof(struct gpart);
@@ -450,15 +450,15 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
       error("Failed to allreduce particle cell gpart weights.");
 
     /* Now we need to sort... */
-    double **ptrs = NULL;
-    if ((ptrs = (double **)malloc(sizeof(double *) * s->nr_cells)) == NULL)
+    double** ptrs = NULL;
+    if ((ptrs = (double**)malloc(sizeof(double*) * s->nr_cells)) == NULL)
       error("Failed to allocate pointers buffer.");
     for (int k = 0; k < s->nr_cells; k++) {
       ptrs[k] = &gcounts[k];
     }
 
     /* Sort pointers, not counts... */
-    qsort(ptrs, s->nr_cells, sizeof(double *), ptrcmp);
+    qsort(ptrs, s->nr_cells, sizeof(double*), ptrcmp);
 
     /* Percentile cut keeps 99.8% of cells and clips above. */
     int cut = ceil(s->nr_cells * 0.998);
@@ -529,7 +529,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
  * @param counts the number of bytes in particles per cell.
  * @param edges weights for the edges of these regions. Should be 26 * counts.
  */
-static void sizes_to_edges(struct space *s, double *counts, double *edges) {
+static void sizes_to_edges(struct space* s, double* counts, double* edges) {
 
   bzero(edges, sizeof(double) * s->nr_cells * 26);
 
@@ -564,7 +564,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
  * @param nregions number of regions.
  * @param celllist list of regions for each cell.
  */
-static void split_metis(struct space *s, int nregions, int *celllist) {
+static void split_metis(struct space* s, int nregions, int* celllist) {
 
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
@@ -583,9 +583,9 @@ struct indexval {
   int old_val;
   int new_val;
 };
-static int indexvalcmp(const void *p1, const void *p2) {
-  const struct indexval *iv1 = (const struct indexval *)p1;
-  const struct indexval *iv2 = (const struct indexval *)p2;
+static int indexvalcmp(const void* p1, const void* p2) {
+  const struct indexval* iv1 = (const struct indexval*)p1;
+  const struct indexval* iv2 = (const struct indexval*)p2;
   return iv2->count - iv1->count;
 }
 
@@ -599,8 +599,8 @@ static int indexvalcmp(const void *p1, const void *p2) {
  * @param ncells the number of cells.
  * @param permlist the permutation of the newlist.
  */
-void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
-                     int *permlist) {
+void permute_regions(int* newlist, int* oldlist, int nregions, int ncells,
+                     int* permlist) {
 
   /* We want a solution in which the current region assignments of the cells
    * are preserved when possible, to avoid unneccesary particle movement.  So
@@ -609,8 +609,8 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
    * unique index so we can sort into decreasing counts.
    */
   int indmax = nregions * nregions;
-  struct indexval *ivs = NULL;
-  if ((ivs = (struct indexval *)malloc(sizeof(struct indexval) * indmax)) ==
+  struct indexval* ivs = NULL;
+  if ((ivs = (struct indexval*)malloc(sizeof(struct indexval) * indmax)) ==
       NULL)
     error("Failed to allocate ivs structs");
   bzero(ivs, sizeof(struct indexval) * indmax);
@@ -627,10 +627,10 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
   /* Go through the ivs using the largest counts first, these are the
    * regions with the most cells in common, old partition to new. If not
    * returning the permutation, avoid the associated work. */
-  int *oldmap = NULL;
-  int *newmap = NULL;
+  int* oldmap = NULL;
+  int* newmap = NULL;
   oldmap = permlist; /* Reuse this */
-  if ((newmap = (int *)malloc(sizeof(int) * nregions)) == NULL)
+  if ((newmap = (int*)malloc(sizeof(int) * nregions)) == NULL)
     error("Failed to allocate newmap array");
 
   for (int k = 0; k < nregions; k++) {
@@ -710,9 +710,9 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        size of number of cells. If refine is 1, then this should contain
  *        the old partition on entry.
  */
-static void pick_parmetis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int refine,
-                          int adaptive, float itr, int *celllist) {
+static void pick_parmetis(int nodeID, struct space* s, int nregions,
+                          double* vertexw, double* edgew, int refine,
+                          int adaptive, float itr, int* celllist) {
 
   int res;
   MPI_Comm comm;
@@ -733,8 +733,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
    * meet this requirement. That means the graph and related information needs
    * to be all brought to one node and redistributed for processing in
    * approproiate batches. */
-  idx_t *vtxdist;
-  if ((vtxdist = (idx_t *)malloc(sizeof(idx_t) * (nregions + 1))) == NULL)
+  idx_t* vtxdist;
+  if ((vtxdist = (idx_t*)malloc(sizeof(idx_t) * (nregions + 1))) == NULL)
     error("Failed to allocate vtxdist buffer.");
 
   if (nodeID == 0) {
@@ -748,77 +748,76 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       vtxdist[i + 1] = vtxdist[i] + l;
       k -= l;
     }
-    res = MPI_Bcast((void *)vtxdist, nregions + 1, IDX_T, 0, comm);
+    res = MPI_Bcast((void*)vtxdist, nregions + 1, IDX_T, 0, comm);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast vtxdist.");
 
   } else {
-    res = MPI_Bcast((void *)vtxdist, nregions + 1, IDX_T, 0, comm);
+    res = MPI_Bcast((void*)vtxdist, nregions + 1, IDX_T, 0, comm);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast vtxdist.");
   }
 
   /* Number of cells on this node and space for the expected arrays. */
   int nverts = vtxdist[nodeID + 1] - vtxdist[nodeID];
 
-  idx_t *xadj = NULL;
-  if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
+  idx_t* xadj = NULL;
+  if ((xadj = (idx_t*)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
     error("Failed to allocate xadj buffer.");
 
-  idx_t *adjncy = NULL;
-  if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * nverts)) == NULL)
+  idx_t* adjncy = NULL;
+  if ((adjncy = (idx_t*)malloc(sizeof(idx_t) * 26 * nverts)) == NULL)
     error("Failed to allocate adjncy array.");
 
-  idx_t *weights_v = NULL;
+  idx_t* weights_v = NULL;
   if (vertexw != NULL)
-    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * nverts)) == NULL)
+    if ((weights_v = (idx_t*)malloc(sizeof(idx_t) * nverts)) == NULL)
       error("Failed to allocate vertex weights array");
 
-  idx_t *weights_e = NULL;
+  idx_t* weights_e = NULL;
   if (edgew != NULL)
-    if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * nverts)) == NULL)
+    if ((weights_e = (idx_t*)malloc(26 * sizeof(idx_t) * nverts)) == NULL)
       error("Failed to allocate edge weights array");
 
-  idx_t *regionid = NULL;
-  if ((regionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
+  idx_t* regionid = NULL;
+  if ((regionid = (idx_t*)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
     error("Failed to allocate regionid array");
 
   /* Prepare MPI requests for the asynchronous communications */
-  MPI_Request *reqs;
-  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 5 * nregions)) ==
-      NULL)
+  MPI_Request* reqs;
+  if ((reqs = (MPI_Request*)malloc(sizeof(MPI_Request) * 5 * nregions)) == NULL)
     error("Failed to allocate MPI request list.");
   for (int k = 0; k < 5 * nregions; k++) reqs[k] = MPI_REQUEST_NULL;
 
-  MPI_Status *stats;
-  if ((stats = (MPI_Status *)malloc(sizeof(MPI_Status) * 5 * nregions)) == NULL)
+  MPI_Status* stats;
+  if ((stats = (MPI_Status*)malloc(sizeof(MPI_Status) * 5 * nregions)) == NULL)
     error("Failed to allocate MPI status list.");
 
   /* Only use one rank to organize everything. */
   if (nodeID == 0) {
 
     /* Space for largest lists. */
-    idx_t *full_xadj = NULL;
-    if ((full_xadj =
-             (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1))) == NULL)
+    idx_t* full_xadj = NULL;
+    if ((full_xadj = (idx_t*)malloc(sizeof(idx_t) * (ncells + nregions + 1))) ==
+        NULL)
       error("Failed to allocate full xadj buffer.");
-    idx_t *std_xadj = NULL;
-    if ((std_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
+    idx_t* std_xadj = NULL;
+    if ((std_xadj = (idx_t*)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
       error("Failed to allocate std xadj buffer.");
-    idx_t *full_adjncy = NULL;
-    if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
+    idx_t* full_adjncy = NULL;
+    if ((full_adjncy = (idx_t*)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
       error("Failed to allocate full adjncy array.");
-    idx_t *full_weights_v = NULL;
+    idx_t* full_weights_v = NULL;
     if (weights_v != NULL)
-      if ((full_weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      if ((full_weights_v = (idx_t*)malloc(sizeof(idx_t) * ncells)) == NULL)
         error("Failed to allocate full vertex weights array");
-    idx_t *full_weights_e = NULL;
+    idx_t* full_weights_e = NULL;
     if (weights_e != NULL)
-      if ((full_weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) ==
+      if ((full_weights_e = (idx_t*)malloc(26 * sizeof(idx_t) * ncells)) ==
           NULL)
         error("Failed to allocate full edge weights array");
 
-    idx_t *full_regionid = NULL;
+    idx_t* full_regionid = NULL;
     if (refine) {
-      if ((full_regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      if ((full_regionid = (idx_t*)malloc(sizeof(idx_t) * ncells)) == NULL)
         error("Failed to allocate full regionid array");
     }
 
@@ -978,7 +977,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if (res == MPI_SUCCESS && weights_v != NULL)
       res = MPI_Irecv(weights_v, nverts, IDX_T, 0, 3, comm, &reqs[3]);
     if (refine && res == MPI_SUCCESS)
-      res += MPI_Irecv((void *)regionid, nverts, IDX_T, 0, 4, comm, &reqs[4]);
+      res += MPI_Irecv((void*)regionid, nverts, IDX_T, 0, 4, comm, &reqs[4]);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive graph data");
 
     /* Wait for all recvs to complete. */
@@ -995,8 +994,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   }
 
   /* Set up the tpwgts array. This is just 1/nregions. */
-  real_t *tpwgts;
-  if ((tpwgts = (real_t *)malloc(sizeof(real_t) * nregions)) == NULL)
+  real_t* tpwgts;
+  if ((tpwgts = (real_t*)malloc(sizeof(real_t) * nregions)) == NULL)
     error("Failed to allocate tpwgts array");
   for (int i = 0; i < nregions; i++) tpwgts[i] = 1.0 / (real_t)nregions;
 
@@ -1048,8 +1047,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
      * the way that serial METIS works (serial METIS usually gives the best
      * quality partitions). */
     idx_t best_edgecut = 0;
-    idx_t *best_regionid = NULL;
-    if ((best_regionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
+    idx_t* best_regionid = NULL;
+    if ((best_regionid = (idx_t*)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
       error("Failed to allocate best_regionid array");
 
     for (int i = 0; i < 10; i++) {
@@ -1091,8 +1090,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   } else {
 
     /* Node 0 */
-    idx_t *remoteids = NULL;
-    if ((remoteids = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+    idx_t* remoteids = NULL;
+    if ((remoteids = (idx_t*)malloc(sizeof(idx_t) * ncells)) == NULL)
       error("Failed to allocate remoteids buffer");
 
     int nvt = vtxdist[1] - vtxdist[0];
@@ -1101,7 +1100,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Receive from other ranks. */
     for (int rank = 1, j = nvt; rank < nregions; rank++) {
       nvt = vtxdist[rank + 1] - vtxdist[rank];
-      res = MPI_Irecv((void *)&remoteids[j], nvt, IDX_T, rank, 1, comm,
+      res = MPI_Irecv((void*)&remoteids[j], nvt, IDX_T, rank, 1, comm,
                       &reqs[rank]);
       if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive new regionids");
       j += nvt;
@@ -1119,8 +1118,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
 
     /* Copy: idx_t -> int. */
-    int *newcelllist = NULL;
-    if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
+    int* newcelllist = NULL;
+    if ((newcelllist = (int*)malloc(sizeof(int) * ncells)) == NULL)
       error("Failed to allocate new celllist");
     for (int k = 0; k < ncells; k++) newcelllist[k] = remoteids[k];
     free(remoteids);
@@ -1154,8 +1153,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
 
     if (permute) {
-      int *permcelllist = NULL;
-      if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
+      int* permcelllist = NULL;
+      if ((permcelllist = (int*)malloc(sizeof(int) * ncells)) == NULL)
         error("Failed to allocate perm celllist array");
       permute_regions(newcelllist, celllist, nregions, ncells, permcelllist);
 
@@ -1206,8 +1205,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
  * @param celllist on exit this contains the ids of the selected regions,
  *        sizeof number of cells.
  */
-static void pick_metis(int nodeID, struct space *s, int nregions,
-                       double *vertexw, double *edgew, int *celllist) {
+static void pick_metis(int nodeID, struct space* s, int nregions,
+                       double* vertexw, double* edgew, int* celllist) {
 
   /* Total number of cells. */
   int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
@@ -1223,22 +1222,22 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   if (nodeID == 0) {
 
     /* Allocate adjacency and weights arrays . */
-    idx_t *xadj;
-    if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
+    idx_t* xadj;
+    if ((xadj = (idx_t*)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
       error("Failed to allocate xadj buffer.");
-    idx_t *adjncy;
-    if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
+    idx_t* adjncy;
+    if ((adjncy = (idx_t*)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
       error("Failed to allocate adjncy array.");
-    idx_t *weights_v = NULL;
+    idx_t* weights_v = NULL;
     if (vertexw != NULL)
-      if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      if ((weights_v = (idx_t*)malloc(sizeof(idx_t) * ncells)) == NULL)
         error("Failed to allocate vertex weights array");
-    idx_t *weights_e = NULL;
+    idx_t* weights_e = NULL;
     if (edgew != NULL)
-      if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
+      if ((weights_e = (idx_t*)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
         error("Failed to allocate edge weights array");
-    idx_t *regionid;
-    if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+    idx_t* regionid;
+    if ((regionid = (idx_t*)malloc(sizeof(idx_t) * ncells)) == NULL)
       error("Failed to allocate regionid array");
 
     /* Init the vertex weights array. */
@@ -1353,22 +1352,22 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 
 /* Helper struct for partition_gather weights. */
 struct weights_mapper_data {
-  double *weights_e;
-  double *weights_v;
-  idx_t *inds;
+  double* weights_e;
+  double* weights_v;
+  idx_t* inds;
   int eweights;
   int nodeID;
   int timebins;
   int vweights;
   int nr_cells;
   int use_ticks;
-  struct cell *cells;
+  struct cell* cells;
 };
 
 #ifdef SWIFT_DEBUG_CHECKS
-static void check_weights(struct task *tasks, int nr_tasks,
-                          struct weights_mapper_data *weights_data,
-                          double *weights_v, double *weights_e);
+static void check_weights(struct task* tasks, int nr_tasks,
+                          struct weights_mapper_data* weights_data,
+                          double* weights_v, double* weights_e);
 #endif
 
 /**
@@ -1379,15 +1378,15 @@ static void check_weights(struct task *tasks, int nr_tasks,
  * @param num_elements the number of data elements to process.
  * @param extra_data additional data for the mapper context.
  */
-void partition_gather_weights(void *map_data, int num_elements,
-                              void *extra_data) {
+void partition_gather_weights(void* map_data, int num_elements,
+                              void* extra_data) {
 
-  struct task *tasks = (struct task *)map_data;
-  struct weights_mapper_data *mydata = (struct weights_mapper_data *)extra_data;
+  struct task* tasks = (struct task*)map_data;
+  struct weights_mapper_data* mydata = (struct weights_mapper_data*)extra_data;
 
-  double *weights_e = mydata->weights_e;
-  double *weights_v = mydata->weights_v;
-  idx_t *inds = mydata->inds;
+  double* weights_e = mydata->weights_e;
+  double* weights_v = mydata->weights_v;
+  idx_t* inds = mydata->inds;
   int eweights = mydata->eweights;
   int nodeID = mydata->nodeID;
   int nr_cells = mydata->nr_cells;
@@ -1395,11 +1394,11 @@ void partition_gather_weights(void *map_data, int num_elements,
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
 
-  struct cell *cells = mydata->cells;
+  struct cell* cells = mydata->cells;
 
   /* Loop over the tasks... */
   for (int i = 0; i < num_elements; i++) {
-    struct task *t = &tasks[i];
+    struct task* t = &tasks[i];
 
     /* Skip un-interesting tasks. */
     if (t->type == task_type_send || t->type == task_type_recv ||
@@ -1548,19 +1547,19 @@ void partition_gather_weights(void *map_data, int num_elements,
  * @param nr_tasks the number of tasks.
  */
 static void repart_edge_metis(int vweights, int eweights, int timebins,
-                              struct repartition *repartition, int nodeID,
-                              int nr_nodes, struct space *s, struct task *tasks,
+                              struct repartition* repartition, int nodeID,
+                              int nr_nodes, struct space* s, struct task* tasks,
                               int nr_tasks) {
 
   /* Create weight arrays using task ticks for vertices and edges (edges
    * assume the same graph structure as used in the part_ calls). */
   int nr_cells = s->nr_cells;
-  struct cell *cells = s->cells_top;
+  struct cell* cells = s->cells_top;
 
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
-  idx_t *inds;
-  if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 * nr_cells)) == NULL)
+  idx_t* inds;
+  if ((inds = (idx_t*)malloc(sizeof(idx_t) * 26 * nr_cells)) == NULL)
     error("Failed to allocate the inds array");
   int nadjcny = 0;
   int nxadj = 0;
@@ -1568,15 +1567,15 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
              NULL /* no xadj needed */, &nxadj);
 
   /* Allocate and init weights. */
-  double *weights_v = NULL;
-  double *weights_e = NULL;
+  double* weights_v = NULL;
+  double* weights_e = NULL;
   if (vweights) {
-    if ((weights_v = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
+    if ((weights_v = (double*)malloc(sizeof(double) * nr_cells)) == NULL)
       error("Failed to allocate vertex weights arrays.");
     bzero(weights_v, sizeof(double) * nr_cells);
   }
   if (eweights) {
-    if ((weights_e = (double *)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
+    if ((weights_e = (double*)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
       error("Failed to allocate edge weights arrays.");
     bzero(weights_e, sizeof(double) * 26 * nr_cells);
   }
@@ -1633,7 +1632,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 #endif
     free(repartition->celllist);
     repartition->ncelllist = 0;
-    if ((repartition->celllist = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
+    if ((repartition->celllist = (int*)malloc(sizeof(int) * nr_cells)) == NULL)
       error("Failed to allocate celllist");
     repartition->ncelllist = nr_cells;
   }
@@ -1765,12 +1764,12 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
  * @param nr_nodes the number of nodes.
  * @param s the space of cells holding our local particles.
  */
-static void repart_memory_metis(struct repartition *repartition, int nodeID,
-                                int nr_nodes, struct space *s) {
+static void repart_memory_metis(struct repartition* repartition, int nodeID,
+                                int nr_nodes, struct space* s) {
 
   /* Space for counts of particle memory use per cell. */
-  double *weights = NULL;
-  if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+  double* weights = NULL;
+  if ((weights = (double*)malloc(sizeof(double) * s->nr_cells)) == NULL)
     error("Failed to allocate cell weights buffer.");
 
   /* Check each particle and accumulate the sizes per cell. */
@@ -1786,7 +1785,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
 #endif
     free(repartition->celllist);
     repartition->ncelllist = 0;
-    if ((repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) ==
+    if ((repartition->celllist = (int*)malloc(sizeof(int) * s->nr_cells)) ==
         NULL)
       error("Failed to allocate celllist");
     repartition->ncelllist = s->nr_cells;
@@ -1862,8 +1861,8 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
  */
-void partition_repartition(struct repartition *reparttype, int nodeID,
-                           int nr_nodes, struct space *s, struct task *tasks,
+void partition_repartition(struct repartition* reparttype, int nodeID,
+                           int nr_nodes, struct space* s, struct task* tasks,
                            int nr_tasks) {
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
@@ -1916,15 +1915,15 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
  * @param nr_nodes the number of nodes.
  * @param s the space of cells.
  */
-void partition_initial_partition(struct partition *initial_partition,
-                                 int nodeID, int nr_nodes, struct space *s) {
+void partition_initial_partition(struct partition* initial_partition,
+                                 int nodeID, int nr_nodes, struct space* s) {
   ticks tic = getticks();
 
   /* Geometric grid partitioning. */
   if (initial_partition->type == INITPART_GRID) {
     int j, k;
     int ind[3];
-    struct cell *c;
+    struct cell* c;
 
     /* If we've got the wrong number of nodes, fail. */
     if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
@@ -1957,11 +1956,11 @@ void partition_initial_partition(struct partition *initial_partition,
      * counts as weights or not. Should be best when starting with a
      * inhomogeneous dist.
      */
-    double *weights_v = NULL;
-    double *weights_e = NULL;
+    double* weights_v = NULL;
+    double* weights_e = NULL;
     if (initial_partition->type == INITPART_METIS_WEIGHT) {
       /* Particles sizes per cell, which will be used as weights. */
-      if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      if ((weights_v = (double*)malloc(sizeof(double) * s->nr_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
 
       /* Check each particle and accumulate the sizes per cell. */
@@ -1971,9 +1970,9 @@ void partition_initial_partition(struct partition *initial_partition,
 
       /* Particle sizes also counted towards the edges. */
 
-      if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      if ((weights_v = (double*)malloc(sizeof(double) * s->nr_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
-      if ((weights_e = (double *)malloc(sizeof(double) * s->nr_cells * 26)) ==
+      if ((weights_e = (double*)malloc(sizeof(double) * s->nr_cells * 26)) ==
           NULL)
         error("Failed to allocate weights_e buffer.");
 
@@ -1985,8 +1984,8 @@ void partition_initial_partition(struct partition *initial_partition,
     }
 
     /* Do the calculation. */
-    int *celllist = NULL;
-    if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+    int* celllist = NULL;
+    if ((celllist = (int*)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
@@ -2023,8 +2022,8 @@ void partition_initial_partition(struct partition *initial_partition,
 #if defined(WITH_MPI)
     /* Vectorised selection, guaranteed to work for samples less than the
      * number of cells, but not very clumpy in the selection of regions. */
-    int *samplecells = NULL;
-    if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
+    int* samplecells = NULL;
+    if ((samplecells = (int*)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
       error("Failed to allocate samplecells");
 
     if (nodeID == 0) {
@@ -2058,19 +2057,19 @@ void partition_initial_partition(struct partition *initial_partition,
  * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI nodes we are running on.
  */
-void partition_init(struct partition *partition,
-                    struct repartition *repartition,
-                    struct swift_params *params, int nr_nodes) {
+void partition_init(struct partition* partition,
+                    struct repartition* repartition,
+                    struct swift_params* params, int nr_nodes) {
 
 #ifdef WITH_MPI
 
   /* Defaults make use of METIS if available */
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
-  const char *default_repart = "fullcosts";
-  const char *default_part = "edgememory";
+  const char* default_repart = "fullcosts";
+  const char* default_part = "edgememory";
 #else
-  const char *default_repart = "none";
-  const char *default_part = "grid";
+  const char* default_repart = "none";
+  const char* default_part = "grid";
 #endif
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
@@ -2226,8 +2225,8 @@ void partition_init(struct partition *partition,
  * @param partition The #partition
  * @param repartition The #repartition
  */
-void partition_clean(struct partition *partition,
-                     struct repartition *repartition) {
+void partition_clean(struct partition* partition,
+                     struct repartition* repartition) {
 #ifdef WITH_MPI
   /* Only the celllist is dynamic. */
   if (repartition->celllist != NULL) free(repartition->celllist);
@@ -2278,10 +2277,10 @@ static int repart_init_fixed_costs(void) {
  * @param verbose if true report the missing regions.
  * @return true if all regions have been found, false otherwise.
  */
-static int check_complete(struct space *s, int verbose, int nregions) {
+static int check_complete(struct space* s, int verbose, int nregions) {
 
-  int *present = NULL;
-  if ((present = (int *)malloc(sizeof(int) * nregions)) == NULL)
+  int* present = NULL;
+  if ((present = (int*)malloc(sizeof(int) * nregions)) == NULL)
     error("Failed to allocate present array");
 
   int failed = 0;
@@ -2315,11 +2314,11 @@ static int check_complete(struct space *s, int verbose, int nregions) {
  * @param ref_weights_v vertex weights to check
  * @param ref_weights_e edge weights to check
  */
-static void check_weights(struct task *tasks, int nr_tasks,
-                          struct weights_mapper_data *mydata,
-                          double *ref_weights_v, double *ref_weights_e) {
+static void check_weights(struct task* tasks, int nr_tasks,
+                          struct weights_mapper_data* mydata,
+                          double* ref_weights_v, double* ref_weights_e) {
 
-  idx_t *inds = mydata->inds;
+  idx_t* inds = mydata->inds;
   int eweights = mydata->eweights;
   int nodeID = mydata->nodeID;
   int nr_cells = mydata->nr_cells;
@@ -2327,18 +2326,18 @@ static void check_weights(struct task *tasks, int nr_tasks,
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
 
-  struct cell *cells = mydata->cells;
+  struct cell* cells = mydata->cells;
 
   /* Allocate and init weights. */
-  double *weights_v = NULL;
-  double *weights_e = NULL;
+  double* weights_v = NULL;
+  double* weights_e = NULL;
   if (vweights) {
-    if ((weights_v = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
+    if ((weights_v = (double*)malloc(sizeof(double) * nr_cells)) == NULL)
       error("Failed to allocate vertex weights arrays.");
     bzero(weights_v, sizeof(double) * nr_cells);
   }
   if (eweights) {
-    if ((weights_e = (double *)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
+    if ((weights_e = (double*)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
       error("Failed to allocate edge weights arrays.");
     bzero(weights_e, sizeof(double) * 26 * nr_cells);
   }
@@ -2347,7 +2346,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
   for (int j = 0; j < nr_tasks; j++) {
 
     /* Get a pointer to the kth task. */
-    struct task *t = &tasks[j];
+    struct task* t = &tasks[j];
 
     /* Skip un-interesting tasks. */
     if (t->type == task_type_send || t->type == task_type_recv ||
@@ -2534,8 +2533,8 @@ static void check_weights(struct task *tasks, int nr_tasks,
  *
  * @return 1 if the new space contains nodeIDs from all nodes, 0 otherwise.
  */
-int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
-                             struct space *s) {
+int partition_space_to_space(double* oldh, double* oldcdim, int* oldnodeIDs,
+                             struct space* s) {
 
   /* Loop over all the new cells. */
   for (int i = 0; i < s->cdim[0]; i++) {
@@ -2566,10 +2565,10 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
  * @param reparttype struct to update with the a list of nodeIDs.
  *
  */
-void partition_store_celllist(struct space *s, struct repartition *reparttype) {
+void partition_store_celllist(struct space* s, struct repartition* reparttype) {
   if (reparttype->ncelllist != s->nr_cells) {
     free(reparttype->celllist);
-    if ((reparttype->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) ==
+    if ((reparttype->celllist = (int*)malloc(sizeof(int) * s->nr_cells)) ==
         NULL)
       error("Failed to allocate celllist");
     reparttype->ncelllist = s->nr_cells;
@@ -2588,8 +2587,8 @@ void partition_store_celllist(struct space *s, struct repartition *reparttype) {
  * @param reparttype struct with the list of nodeIDs saved,
  *
  */
-void partition_restore_celllist(struct space *s,
-                                struct repartition *reparttype) {
+void partition_restore_celllist(struct space* s,
+                                struct repartition* reparttype) {
   if (reparttype->ncelllist > 0) {
     if (reparttype->ncelllist == s->nr_cells) {
       for (int i = 0; i < s->nr_cells; i++) {
@@ -2614,7 +2613,7 @@ void partition_restore_celllist(struct space *s,
  * @param reparttype the struct
  * @param stream the file stream
  */
-void partition_struct_dump(struct repartition *reparttype, FILE *stream) {
+void partition_struct_dump(struct repartition* reparttype, FILE* stream) {
   restart_write_blocks(reparttype, sizeof(struct repartition), 1, stream,
                        "repartition", "repartition params");
 
@@ -2632,14 +2631,14 @@ void partition_struct_dump(struct repartition *reparttype, FILE *stream) {
  * @param reparttype the struct
  * @param stream the file stream
  */
-void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
+void partition_struct_restore(struct repartition* reparttype, FILE* stream) {
   restart_read_blocks(reparttype, sizeof(struct repartition), 1, stream, NULL,
                       "repartition params");
 
   /* Also restore the celllist, if we have one. */
   if (reparttype->ncelllist > 0) {
     if ((reparttype->celllist =
-             (int *)malloc(sizeof(int) * reparttype->ncelllist)) == NULL)
+             (int*)malloc(sizeof(int) * reparttype->ncelllist)) == NULL)
       error("Failed to allocate celllist");
     restart_read_blocks(reparttype->celllist,
                         sizeof(int) * reparttype->ncelllist, 1, stream, NULL,

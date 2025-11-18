@@ -41,8 +41,8 @@
  * @brief c The #cell of interest.
  * @brief e The #engine (to check whether active or not).
  */
-static INLINE void runner_clear_grav_flags(struct cell *c,
-                                           const struct engine *e) {
+static INLINE void runner_clear_grav_flags(struct cell* c,
+                                           const struct engine* e) {
 
   if ((!cell_is_active_gravity(c, e) || c->nodeID != e->nodeID) && c->split) {
     for (int k = 0; k < 8; ++k)
@@ -62,10 +62,10 @@ static INLINE void runner_clear_grav_flags(struct cell *c,
  * @param c The #cell we are working on.
  * @param timer Are we timing this ?
  */
-void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
+void runner_do_grav_down(struct runner* r, struct cell* c, int timer) {
 
   /* Some constants */
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   TIMER_TIC;
 
@@ -82,7 +82,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
     /* Add the field-tensor to all the 8 progenitors */
     for (int k = 0; k < 8; ++k) {
-      struct cell *cp = c->progeny[k];
+      struct cell* cp = c->progeny[k];
 
       /* Do we have a progenitor with any active g-particles ? */
       if (cp != NULL && cell_is_active_gravity(cp, e)) {
@@ -126,9 +126,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 #endif
 
     /* Cell properties */
-    struct gpart *gparts = c->grav.parts;
+    struct gpart* gparts = c->grav.parts;
     const int gcount = c->grav.count;
-    const struct grav_tensor *pot = &c->grav.multipole->pot;
+    const struct grav_tensor* pot = &c->grav.multipole->pot;
     const double CoM[3] = {c->grav.multipole->CoM[0], c->grav.multipole->CoM[1],
                            c->grav.multipole->CoM[2]};
 
@@ -136,7 +136,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     for (int i = 0; i < gcount; ++i) {
 
       /* Get a handle on the gpart */
-      struct gpart *gp = &gparts[i];
+      struct gpart* gp = &gparts[i];
 
       /* Update if active */
       if (gpart_is_active(gp, e)) {
@@ -189,12 +189,12 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
  * @param multi_j The multipole in cell j.
  */
 static INLINE void runner_dopair_grav_pp_full_no_cache(
-    struct gpart *restrict gparts_i, const int gcount_i,
-    const struct gpart *restrict gparts_j,
-    const struct gpart_foreign *gparts_foreign_j, const int gcount_j,
-    const struct engine *e, const struct gravity_props *grav_props,
-    struct gravity_cache *cache_i, struct cell *ci, const struct cell *cj,
-    const struct gravity_tensors *multi_j) {
+    struct gpart* restrict gparts_i, const int gcount_i,
+    const struct gpart* restrict gparts_j,
+    const struct gpart_foreign* gparts_foreign_j, const int gcount_j,
+    const struct engine* e, const struct gravity_props* grav_props,
+    struct gravity_cache* cache_i, struct cell* ci, const struct cell* cj,
+    const struct gravity_tensors* multi_j) {
 
   /* Prepare the i cache */
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
@@ -210,7 +210,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
   /* Loop over sink particles */
   for (int i = 0; i < gcount_i; ++i) {
 
-    struct gpart *gpi = &gparts_i[i];
+    struct gpart* gpi = &gparts_i[i];
 
     /* Ignore inactive particles */
     if (!gpart_is_active(gpi, e)) continue;
@@ -285,7 +285,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
         /* Loop over source particles */
         for (int j = 0; j < gcount_j; ++j) {
 
-          const struct gpart *gpj = &gparts_j[j];
+          const struct gpart* gpj = &gparts_j[j];
 
           /* Ignore inhibited particles */
           if (gpart_is_inhibited(gpj, e)) continue;
@@ -355,7 +355,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
         /* Loop over source particles */
         for (int j = 0; j < gcount_j; ++j) {
 
-          const struct gpart_foreign *gpj = &gparts_foreign_j[j];
+          const struct gpart_foreign* gpj = &gparts_foreign_j[j];
 
           /* Ignore inhibited particles */
           if (gpart_foreign_is_inhibited(gpj, e)) continue;
@@ -455,13 +455,13 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
  * @param multi_j The multipole in cell j.
  */
 static INLINE void runner_dopair_grav_pp_truncated_no_cache(
-    struct gpart *restrict gparts_i, const int gcount_i,
-    const struct gpart *restrict gparts_j,
-    const struct gpart_foreign *gparts_foreign_j, const int gcount_j,
-    const float dim[3], const struct engine *e,
-    const struct gravity_props *grav_props, struct gravity_cache *cache_i,
-    struct cell *ci, const struct cell *cj,
-    const struct gravity_tensors *multi_j) {
+    struct gpart* restrict gparts_i, const int gcount_i,
+    const struct gpart* restrict gparts_j,
+    const struct gpart_foreign* gparts_foreign_j, const int gcount_j,
+    const float dim[3], const struct engine* e,
+    const struct gravity_props* grav_props, struct gravity_cache* cache_i,
+    struct cell* ci, const struct cell* cj,
+    const struct gravity_tensors* multi_j) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -481,7 +481,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
   /* Loop over sink particles */
   for (int i = 0; i < gcount_i; ++i) {
 
-    struct gpart *gpi = &gparts_i[i];
+    struct gpart* gpi = &gparts_i[i];
 
     /* Ignore inactive particles */
     if (!gpart_is_active(gpi, e)) continue;
@@ -561,7 +561,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
         /* Loop over source particles */
         for (int j = 0; j < gcount_j; ++j) {
 
-          const struct gpart *gpj = &gparts_j[j];
+          const struct gpart* gpj = &gparts_j[j];
 
           /* Ignore inhibited particles */
           if (gpart_is_inhibited(gpj, e)) continue;
@@ -637,7 +637,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
         /* Loop over source particles */
         for (int j = 0; j < gcount_j; ++j) {
 
-          const struct gpart_foreign *gpj = &gparts_foreign_j[j];
+          const struct gpart_foreign* gpj = &gparts_foreign_j[j];
 
           /* Ignore inhibited particles */
           if (gpart_foreign_is_inhibited(gpj, e)) continue;
@@ -747,12 +747,12 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
  * @param foreign_j Is the cell j foreign? (for debugging checks only).
  */
 static INLINE void runner_dopair_grav_pp_full(
-    struct gravity_cache *restrict ci_cache,
-    struct gravity_cache *restrict cj_cache, const int gcount_i,
+    struct gravity_cache* restrict ci_cache,
+    struct gravity_cache* restrict cj_cache, const int gcount_i,
     const int gcount_j, const int gcount_padded_j, const int periodic,
-    const float dim[3], const struct engine *restrict e,
-    struct gpart *restrict gparts_i, const struct gpart *restrict gparts_j,
-    const struct gpart_foreign *restrict gparts_foreign_j,
+    const float dim[3], const struct engine* restrict e,
+    struct gpart* restrict gparts_i, const struct gpart* restrict gparts_j,
+    const struct gpart_foreign* restrict gparts_foreign_j,
     const int foreign_j) {
 
   /* Loop over all particles in ci... */
@@ -934,12 +934,12 @@ static INLINE void runner_dopair_grav_pp_full(
  * @param foreign_j Is the cell j foreign? (for debugging checks only).
  */
 static INLINE void runner_dopair_grav_pp_truncated(
-    struct gravity_cache *restrict ci_cache,
-    struct gravity_cache *restrict cj_cache, const int gcount_i,
+    struct gravity_cache* restrict ci_cache,
+    struct gravity_cache* restrict cj_cache, const int gcount_i,
     const int gcount_j, const int gcount_padded_j, const float dim[3],
-    const float r_s_inv, const struct engine *restrict e,
-    struct gpart *restrict gparts_i, const struct gpart *restrict gparts_j,
-    const struct gpart_foreign *restrict gparts_foreign_j,
+    const float r_s_inv, const struct engine* restrict e,
+    struct gpart* restrict gparts_i, const struct gpart* restrict gparts_j,
+    const struct gpart_foreign* restrict gparts_foreign_j,
     const int foreign_j) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1122,11 +1122,11 @@ static INLINE void runner_dopair_grav_pp_truncated(
  * @param cj The #cell j (for debugging checks only).
  */
 static INLINE void runner_dopair_grav_pm_full(
-    struct gravity_cache *ci_cache, const int gcount_padded_i,
-    const float CoM_j[3], const struct multipole *restrict multi_j,
-    const int periodic, const float dim[3], const struct engine *restrict e,
-    struct gpart *restrict gparts_i, const int gcount_i,
-    const struct cell *restrict cj) {
+    struct gravity_cache* ci_cache, const int gcount_padded_i,
+    const float CoM_j[3], const struct multipole* restrict multi_j,
+    const int periodic, const float dim[3], const struct engine* restrict e,
+    struct gpart* restrict gparts_i, const int gcount_i,
+    const struct cell* restrict cj) {
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -1268,11 +1268,11 @@ static INLINE void runner_dopair_grav_pm_full(
  * @param cj The #cell j (for debugging checks only).
  */
 static INLINE void runner_dopair_grav_pm_truncated(
-    struct gravity_cache *ci_cache, const int gcount_padded_i,
-    const float CoM_j[3], const struct multipole *restrict multi_j,
-    const float dim[3], const float r_s_inv, const struct engine *restrict e,
-    struct gpart *restrict gparts_i, const int gcount_i,
-    const struct cell *restrict cj) {
+    struct gravity_cache* ci_cache, const int gcount_padded_i,
+    const float CoM_j[3], const struct multipole* restrict multi_j,
+    const float dim[3], const float r_s_inv, const struct engine* restrict e,
+    struct gpart* restrict gparts_i, const int gcount_i,
+    const struct cell* restrict cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -1412,11 +1412,11 @@ static INLINE void runner_dopair_grav_pm_truncated(
  * @param symmetric Are we updating both cells (1) or just ci (0) ?
  * @param allow_mpole Are we allowing the use of M2P interactions ?
  */
-void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
+void runner_dopair_grav_pp(struct runner* r, struct cell* ci, struct cell* cj,
                            const int symmetric, const int allow_mpole) {
 
   /* Recover some useful constants */
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const int periodic = e->mesh->periodic;
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
@@ -1449,8 +1449,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
   /* Caches to play with */
-  struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
-  struct gravity_cache *const cj_cache = &r->cj_gravity_cache;
+  struct gravity_cache* const ci_cache = &r->ci_gravity_cache;
+  struct gravity_cache* const cj_cache = &r->cj_gravity_cache;
 
   /* Shift to apply to the particles in each cell */
   const double shift_i[3] = {0., 0., 0.};
@@ -1459,8 +1459,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   /* Recover the multipole info and shift the CoM locations */
   const float rmax_i = ci->grav.multipole->r_max;
   const float rmax_j = cj->grav.multipole->r_max;
-  const struct multipole *multi_i = &ci->grav.multipole->m_pole;
-  const struct multipole *multi_j = &cj->grav.multipole->m_pole;
+  const struct multipole* multi_i = &ci->grav.multipole->m_pole;
+  const struct multipole* multi_j = &cj->grav.multipole->m_pole;
   const float CoM_i[3] = {(float)(ci->grav.multipole->CoM[0] - shift_i[0]),
                           (float)(ci->grav.multipole->CoM[1] - shift_i[1]),
                           (float)(ci->grav.multipole->CoM[2] - shift_i[2])};
@@ -1661,11 +1661,11 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The cell containing particles to update.
  * @param cj The cell containing the particles sourcing the gravity.
  */
-void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
-                                    const struct cell *restrict cj) {
+void runner_dopair_grav_pp_no_cache(struct runner* r, struct cell* restrict ci,
+                                    const struct cell* restrict cj) {
 
   /* Recover some useful constants */
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const int periodic = e->mesh->periodic;
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
@@ -1723,8 +1723,8 @@ void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
  * @param gparts The #gpart in the cell (for debugging checks only).
  */
 static INLINE void runner_doself_grav_pp_full(
-    struct gravity_cache *restrict ci_cache, const int gcount,
-    const int gcount_padded, const struct engine *e, struct gpart *gparts) {
+    struct gravity_cache* restrict ci_cache, const int gcount,
+    const int gcount_padded, const struct engine* e, struct gpart* gparts) {
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount; pid++) {
@@ -1865,9 +1865,9 @@ static INLINE void runner_doself_grav_pp_full(
  * @param gparts The #gpart in the cell (for debugging checks only).
  */
 static INLINE void runner_doself_grav_pp_truncated(
-    struct gravity_cache *restrict ci_cache, const int gcount,
-    const int gcount_padded, const float r_s_inv, const struct engine *e,
-    struct gpart *gparts) {
+    struct gravity_cache* restrict ci_cache, const int gcount,
+    const int gcount_padded, const float r_s_inv, const struct engine* e,
+    struct gpart* gparts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -2010,10 +2010,10 @@ static INLINE void runner_doself_grav_pp_truncated(
  * @param r The #runner.
  * @param c The #cell.
  */
-void runner_doself_grav_pp(struct runner *r, struct cell *c) {
+void runner_doself_grav_pp(struct runner* r, struct cell* c) {
 
   /* Recover some useful constants */
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const int periodic = e->mesh->periodic;
   const float r_s_inv = e->mesh->r_s_inv;
   const double min_trunc = e->mesh->r_cut_min;
@@ -2035,7 +2035,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
   /* Start by constructing a cache for the particles */
-  struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
+  struct gravity_cache* const ci_cache = &r->ci_gravity_cache;
 
   /* Shift to apply to the particles in the cell */
   const double loc[3] = {c->loc[0] + 0.5 * c->width[0],
@@ -2098,13 +2098,13 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
-                                                   struct cell *restrict ci,
-                                                   struct cell *restrict cj) {
+static INLINE void runner_dopair_grav_mm_symmetric(struct runner* r,
+                                                   struct cell* restrict ci,
+                                                   struct cell* restrict cj) {
 
   /* Some constants */
-  const struct engine *e = r->e;
-  const struct gravity_props *props = e->gravity_properties;
+  const struct engine* e = r->e;
+  const struct gravity_props* props = e->gravity_properties;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const float r_s_inv = e->mesh->r_s_inv;
@@ -2117,8 +2117,8 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
     error("Invalid state in symmetric M-M calculation!");
 
   /* Short-cut to the multipole */
-  const struct multipole *multi_i = &ci->grav.multipole->m_pole;
-  const struct multipole *multi_j = &cj->grav.multipole->m_pole;
+  const struct multipole* multi_i = &ci->grav.multipole->m_pole;
+  const struct multipole* multi_j = &cj->grav.multipole->m_pole;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Interacting a cell with itself using M2L");
@@ -2182,13 +2182,13 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
  * @param ci The #cell with field tensor to interact.
  * @param cj The #cell with the multipole.
  */
-static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
-                                                struct cell *restrict ci,
-                                                struct cell *restrict cj) {
+static INLINE void runner_dopair_grav_mm_nonsym(struct runner* r,
+                                                struct cell* restrict ci,
+                                                struct cell* restrict cj) {
 
   /* Some constants */
-  const struct engine *e = r->e;
-  const struct gravity_props *props = e->gravity_properties;
+  const struct engine* e = r->e;
+  const struct gravity_props* props = e->gravity_properties;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const float r_s_inv = e->mesh->r_s_inv;
@@ -2199,7 +2199,7 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   if (!cell_is_active_gravity_mm(ci, e) || ci->nodeID != engine_rank) return;
 
   /* Short-cut to the multipole */
-  const struct multipole *multi_j = &cj->grav.multipole->m_pole;
+  const struct multipole* multi_j = &cj->grav.multipole->m_pole;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Interacting a cell with itself using M2L");
@@ -2249,11 +2249,11 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-static INLINE void runner_dopair_grav_mm(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct cell *restrict cj) {
+static INLINE void runner_dopair_grav_mm(struct runner* r,
+                                         struct cell* restrict ci,
+                                         struct cell* restrict cj) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   /* What do we need to do? */
   const int do_i =
@@ -2284,11 +2284,11 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
-                                     struct cell *restrict ci,
-                                     struct cell *restrict cj) {
+void runner_dopair_grav_mm_progenies(struct runner* r, const long long flags,
+                                     struct cell* restrict ci,
+                                     struct cell* restrict cj) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
@@ -2300,8 +2300,8 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
       for (int j = 0; j < 8; j++) {
         if (cj->progeny[j] != NULL) {
 
-          struct cell *cpi = ci->progeny[i];
-          struct cell *cpj = cj->progeny[j];
+          struct cell* cpi = ci->progeny[i];
+          struct cell* cpj = cj->progeny[j];
 
           const int flag = i * 8 + j;
 
@@ -2313,10 +2313,10 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
   }
 }
 
-void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
-                                     const struct cell *cj) {
+void runner_dopair_recursive_grav_pm(struct runner* r, struct cell* ci,
+                                     const struct cell* cj) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
@@ -2357,14 +2357,14 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
     /* Start by constructing particle caches */
 
     /* Cache to play with */
-    struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
+    struct gravity_cache* const ci_cache = &r->ci_gravity_cache;
 
     /* Computed the padded counts */
     const int gcount_i = ci->grav.count;
     const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
 
     /* Recover the multipole info and the CoM locations */
-    const struct multipole *multi_j = &cj->grav.multipole->m_pole;
+    const struct multipole* multi_j = &cj->grav.multipole->m_pole;
     const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0]),
                             (float)(cj->grav.multipole->CoM[1]),
                             (float)(cj->grav.multipole->CoM[2])};
@@ -2419,10 +2419,10 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
  * @param cj The other #cell.
  * @param gettimer Are we timing this ?
  */
-void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
-                                  struct cell *cj, const int gettimer) {
+void runner_dopair_recursive_grav(struct runner* r, struct cell* ci,
+                                  struct cell* cj, const int gettimer) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
@@ -2462,8 +2462,8 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   TIMER_TIC;
 
   /* Recover the multipole information */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
-  struct gravity_tensors *const multi_j = cj->grav.multipole;
+  struct gravity_tensors* const multi_i = ci->grav.multipole;
+  struct gravity_tensors* const multi_j = cj->grav.multipole;
 
   /* Get the distance between the CoMs */
   double dx = multi_i->CoM[0] - multi_j->CoM[0];
@@ -2597,11 +2597,11 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
  * @param c The first #cell.
  * @param gettimer Are we timing this ?
  */
-void runner_doself_recursive_grav(struct runner *r, struct cell *c,
+void runner_doself_recursive_grav(struct runner* r, struct cell* c,
                                   const int gettimer) {
 
   /* Some constants */
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   /* Clear the flags */
   runner_clear_grav_flags(c, e);
@@ -2652,11 +2652,11 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
  * @param ci The #cell of interest.
  * @param timer Are we timing this ?
  */
-void runner_do_grav_long_range(struct runner *r, struct cell *ci,
+void runner_do_grav_long_range(struct runner* r, struct cell* ci,
                                const int timer) {
 
   /* Some constants */
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double max_distance2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
@@ -2664,8 +2664,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   TIMER_TIC;
 
   /* Recover the list of top-level cells */
-  struct cell *cells = e->s->cells_top;
-  int *cells_with_particles = e->s->cells_with_particles_top;
+  struct cell* cells = e->s->cells_top;
+  int* cells_with_particles = e->s->cells_with_particles_top;
   const int nr_cells_with_particles = e->s->nr_cells_with_particles;
 
   /* Anything to do here? */
@@ -2678,10 +2678,10 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   if (ci->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
 
   /* Get this cell's multipole information */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
+  struct gravity_tensors* const multi_i = ci->grav.multipole;
 
   /* Find this cell's top-level (great-)parent */
-  struct cell *top = ci;
+  struct cell* top = ci;
   while (top->parent != NULL) top = top->parent;
 
   /* Loop over all the top-level cells and go for a M-M interaction if
@@ -2689,8 +2689,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   for (int n = 0; n < nr_cells_with_particles; ++n) {
 
     /* Handle on the top-level cell and it's gravity business*/
-    struct cell *cj = &cells[cells_with_particles[n]];
-    struct gravity_tensors *const multi_j = cj->grav.multipole;
+    struct cell* cj = &cells[cells_with_particles[n]];
+    struct gravity_tensors* const multi_j = cj->grav.multipole;
 
     /* Avoid self contributions */
     if (top == cj) continue;

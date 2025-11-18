@@ -39,46 +39,46 @@
 struct cache {
 
   /* Particle x position. */
-  float *restrict x SWIFT_CACHE_ALIGN;
+  float* restrict x SWIFT_CACHE_ALIGN;
 
   /* Particle y position. */
-  float *restrict y SWIFT_CACHE_ALIGN;
+  float* restrict y SWIFT_CACHE_ALIGN;
 
   /* Particle z position. */
-  float *restrict z SWIFT_CACHE_ALIGN;
+  float* restrict z SWIFT_CACHE_ALIGN;
 
   /* Particle smoothing length. */
-  float *restrict h SWIFT_CACHE_ALIGN;
+  float* restrict h SWIFT_CACHE_ALIGN;
 
   /* Particle mass. */
-  float *restrict m SWIFT_CACHE_ALIGN;
+  float* restrict m SWIFT_CACHE_ALIGN;
 
   /* Particle x velocity. */
-  float *restrict vx SWIFT_CACHE_ALIGN;
+  float* restrict vx SWIFT_CACHE_ALIGN;
 
   /* Particle y velocity. */
-  float *restrict vy SWIFT_CACHE_ALIGN;
+  float* restrict vy SWIFT_CACHE_ALIGN;
 
   /* Particle z velocity. */
-  float *restrict vz SWIFT_CACHE_ALIGN;
+  float* restrict vz SWIFT_CACHE_ALIGN;
 
   /* Maximum index into neighbouring cell for particles that are in range. */
-  int *restrict max_index SWIFT_CACHE_ALIGN;
+  int* restrict max_index SWIFT_CACHE_ALIGN;
 
   /* Particle density. */
-  float *restrict rho SWIFT_CACHE_ALIGN;
+  float* restrict rho SWIFT_CACHE_ALIGN;
 
   /* Particle smoothing length gradient. */
-  float *restrict grad_h SWIFT_CACHE_ALIGN;
+  float* restrict grad_h SWIFT_CACHE_ALIGN;
 
   /* Pressure over density squared. */
-  float *restrict pOrho2 SWIFT_CACHE_ALIGN;
+  float* restrict pOrho2 SWIFT_CACHE_ALIGN;
 
   /* Balsara switch. */
-  float *restrict balsara SWIFT_CACHE_ALIGN;
+  float* restrict balsara SWIFT_CACHE_ALIGN;
 
   /* Particle sound speed. */
-  float *restrict soundspeed SWIFT_CACHE_ALIGN;
+  float* restrict soundspeed SWIFT_CACHE_ALIGN;
 
   /* Cache size. */
   int count;
@@ -119,7 +119,7 @@ struct c2_cache {
  * @param c The cache.
  * @param count Number of particles to allocate space for.
  */
-__attribute__((always_inline)) INLINE void cache_init(struct cache *c,
+__attribute__((always_inline)) INLINE void cache_init(struct cache* c,
                                                       size_t count) {
 
   /* Align cache on correct byte boundary and pad cache size to be a multiple of
@@ -148,25 +148,23 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
     free(c->soundspeed);
   }
 
-  error += posix_memalign((void **)&c->x, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->y, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->z, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->m, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->vx, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->vy, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->vz, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->h, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->max_index, SWIFT_CACHE_ALIGNMENT,
+  error += posix_memalign((void**)&c->x, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void**)&c->y, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void**)&c->z, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void**)&c->m, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void**)&c->vx, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void**)&c->vy, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void**)&c->vz, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void**)&c->h, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void**)&c->max_index, SWIFT_CACHE_ALIGNMENT,
                           sizeIntBytes);
-  error += posix_memalign((void **)&c->rho, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void**)&c->rho, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void**)&c->grad_h, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void**)&c->pOrho2, SWIFT_CACHE_ALIGNMENT, sizeBytes);
   error +=
-      posix_memalign((void **)&c->grad_h, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+      posix_memalign((void**)&c->balsara, SWIFT_CACHE_ALIGNMENT, sizeBytes);
   error +=
-      posix_memalign((void **)&c->pOrho2, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error +=
-      posix_memalign((void **)&c->balsara, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error +=
-      posix_memalign((void **)&c->soundspeed, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+      posix_memalign((void**)&c->soundspeed, SWIFT_CACHE_ALIGNMENT, sizeBytes);
 
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
@@ -181,8 +179,8 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
  * @return uninhibited_count The no. of uninhibited particles.
  */
 __attribute__((always_inline)) INLINE int cache_read_particles(
-    const struct cell *restrict const ci,
-    struct cache *restrict const ci_cache) {
+    const struct cell* restrict const ci,
+    struct cache* restrict const ci_cache) {
 
 #if defined(GADGET2_SPH)
 
@@ -198,7 +196,7 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
   swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
 
   const int count = ci->hydro.count;
-  const struct part *restrict parts = ci->hydro.parts;
+  const struct part* restrict parts = ci->hydro.parts;
   const double loc[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
   const double max_dx = ci->hydro.dx_max_part;
   const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
@@ -262,8 +260,8 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
  * @return uninhibited_count The no. of uninhibited particles.
  */
 __attribute__((always_inline)) INLINE int cache_read_particles_subset_self(
-    const struct cell *restrict const ci,
-    struct cache *restrict const ci_cache) {
+    const struct cell* restrict const ci,
+    struct cache* restrict const ci_cache) {
 
 #if defined(GADGET2_SPH)
 
@@ -278,7 +276,7 @@ __attribute__((always_inline)) INLINE int cache_read_particles_subset_self(
   swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
 
   const int count = ci->hydro.count;
-  const struct part *restrict parts = ci->hydro.parts;
+  const struct part* restrict parts = ci->hydro.parts;
   const double loc[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
   const double max_dx = ci->hydro.dx_max_part;
   const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
@@ -344,9 +342,9 @@ __attribute__((always_inline)) INLINE int cache_read_particles_subset_self(
  * @param flipped Flag to check whether the cells have been flipped or not.
  */
 __attribute__((always_inline)) INLINE void cache_read_particles_subset_pair(
-    const struct cell *restrict const ci, struct cache *restrict const ci_cache,
-    const struct sort_entry *restrict sort_i, int *first_pi, int *last_pi,
-    const double *loc, const int flipped) {
+    const struct cell* restrict const ci, struct cache* restrict const ci_cache,
+    const struct sort_entry* restrict sort_i, int* first_pi, int* last_pi,
+    const double* loc, const int flipped) {
 
 #if defined(GADGET2_SPH)
 
@@ -360,7 +358,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset_pair(
   swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
 
-  const struct part *restrict parts = ci->hydro.parts;
+  const struct part* restrict parts = ci->hydro.parts;
 
   /* The cell is on the right so read the particles
    * into the cache from the start of the cell. */
@@ -492,8 +490,8 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset_pair(
  * @return uninhibited_count The no. of uninhibited particles.
  */
 __attribute__((always_inline)) INLINE int cache_read_force_particles(
-    const struct cell *restrict const ci,
-    struct cache *restrict const ci_cache) {
+    const struct cell* restrict const ci,
+    struct cache* restrict const ci_cache) {
 
 #if defined(GADGET2_SPH)
 
@@ -518,7 +516,7 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
                             SWIFT_CACHE_ALIGNMENT);
 
   const int count = ci->hydro.count;
-  const struct part *restrict parts = ci->hydro.parts;
+  const struct part* restrict parts = ci->hydro.parts;
   const double loc[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
   const double max_dx = ci->hydro.dx_max_part;
   const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
@@ -605,12 +603,12 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
  * @param last_pj The last particle in cell cj that is in range.
  */
 __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
-    const struct cell *restrict const ci, const struct cell *restrict const cj,
-    struct cache *restrict const ci_cache,
-    struct cache *restrict const cj_cache,
-    const struct sort_entry *restrict sort_i,
-    const struct sort_entry *restrict sort_j,
-    const double *restrict const shift, int *first_pi, int *last_pj) {
+    const struct cell* restrict const ci, const struct cell* restrict const cj,
+    struct cache* restrict const ci_cache,
+    struct cache* restrict const cj_cache,
+    const struct sort_entry* restrict sort_i,
+    const struct sort_entry* restrict sort_j,
+    const double* restrict const shift, int* first_pi, int* last_pj) {
 
   /* Make the number of particles to be read a multiple of the vector size.
    * This eliminates serial remainder loops where possible when populating the
@@ -636,8 +634,8 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   /* Get some local pointers */
   const int first_pi_align = *first_pi;
   const int last_pj_align = *last_pj;
-  const struct part *restrict parts_i = ci->hydro.parts;
-  const struct part *restrict parts_j = cj->hydro.parts;
+  const struct part* restrict parts_i = ci->hydro.parts;
+  const struct part* restrict parts_j = cj->hydro.parts;
 
   /* Shift particles to the local frame and account for boundary conditions.*/
   const double total_ci_shift[3] = {
@@ -858,11 +856,11 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
  */
 __attribute__((always_inline)) INLINE void
 cache_read_two_partial_cells_sorted_force(
-    const struct cell *const ci, const struct cell *const cj,
-    struct cache *const ci_cache, struct cache *const cj_cache,
-    const struct sort_entry *restrict sort_i,
-    const struct sort_entry *restrict sort_j, const double *const shift,
-    int *first_pi, int *last_pj) {
+    const struct cell* const ci, const struct cell* const cj,
+    struct cache* const ci_cache, struct cache* const cj_cache,
+    const struct sort_entry* restrict sort_i,
+    const struct sort_entry* restrict sort_j, const double* const shift,
+    int* first_pi, int* last_pj) {
 
   /* Make the number of particles to be read a multiple of the vector size.
    * This eliminates serial remainder loops where possible when populating the
@@ -888,8 +886,8 @@ cache_read_two_partial_cells_sorted_force(
   /* Get some local pointers */
   const int first_pi_align = *first_pi;
   const int last_pj_align = *last_pj;
-  const struct part *restrict parts_i = ci->hydro.parts;
-  const struct part *restrict parts_j = cj->hydro.parts;
+  const struct part* restrict parts_i = ci->hydro.parts;
+  const struct part* restrict parts_j = cj->hydro.parts;
 
   /* Shift particles to the local frame and account for boundary conditions.*/
   const double total_ci_shift[3] = {
@@ -1074,7 +1072,7 @@ cache_read_two_partial_cells_sorted_force(
  *
  * @param c The #cache to clean.
  */
-static INLINE void cache_clean(struct cache *c) {
+static INLINE void cache_clean(struct cache* c) {
   if (c->count > 0) {
     free(c->x);
     free(c->y);

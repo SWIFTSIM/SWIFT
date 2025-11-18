@@ -34,7 +34,7 @@
  * @return 0 if the state vector is valid, 1 otherwise.
  */
 __attribute__((always_inline)) INLINE static int riemann_check_state(
-    const float *W) {
+    const float* W) {
 
   int errorFlag = 0;
 
@@ -84,7 +84,7 @@ __attribute__((always_inline)) INLINE static int riemann_check_state(
  * @return 0 if the vector is valid, 1 otherwise.
  */
 __attribute__((always_inline)) INLINE static int riemann_check_vector(
-    const float *x) {
+    const float* x) {
 
   int errorFlag = 0;
 
@@ -118,7 +118,7 @@ __attribute__((always_inline)) INLINE static int riemann_check_vector(
  * @param vij Surface velocity vector.
  */
 __attribute__((always_inline)) INLINE static void riemann_check_input(
-    const float *WL, const float *WR, const float *n, const float *vij) {
+    const float* WL, const float* WR, const float* n, const float* vij) {
 
   int errorFlag = 0;
 
@@ -164,8 +164,8 @@ __attribute__((always_inline)) INLINE static void riemann_check_input(
  * @param totflux Riemann solver flux result.
  */
 __attribute__((always_inline)) INLINE static void riemann_check_output(
-    const float *WL, const float *WR, const float *n, const float *vij,
-    const float *totflux) {
+    const float* WL, const float* WR, const float* n, const float* vij,
+    const float* totflux) {
 
   int errorFlag = 0;
 

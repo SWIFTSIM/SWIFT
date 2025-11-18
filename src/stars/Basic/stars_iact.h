@@ -35,8 +35,8 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_density(const float r2, const float dx[3],
                                  const float hi, const float hj,
-                                 struct spart *restrict si,
-                                 const struct part *restrict pj, const float a,
+                                 struct spart* restrict si,
+                                 const struct part* restrict pj, const float a,
                                  const float H) {
 
   float wi, wi_dx;
@@ -78,8 +78,8 @@ runner_iact_nonsym_stars_density(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(const float r2, const float dx[3],
                                   const float hi, const float hj,
-                                  struct spart *restrict si,
-                                  struct part *restrict pj, const float a,
+                                  struct spart* restrict si,
+                                  struct part* restrict pj, const float a,
                                   const float H) {
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */

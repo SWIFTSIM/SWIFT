@@ -84,7 +84,7 @@ typedef struct {
  * @param unused Unused parameter (NULL) as we don't support barrier attributes.
  * @param count The number of threads that will wait at the barrier.
  */
-static INLINE int swift_barrier_init(swift_barrier_t *barrier, void *unused,
+static INLINE int swift_barrier_init(swift_barrier_t* barrier, void* unused,
                                      unsigned int count) {
   /* Initialise the mutex */
   if (pthread_mutex_init(&barrier->mutex, 0) != 0)
@@ -110,7 +110,7 @@ static INLINE int swift_barrier_init(swift_barrier_t *barrier, void *unused,
  *
  * @param barrier The (initialised) #swift_barrier_t to wait at.
  */
-static INLINE int swift_barrier_wait(swift_barrier_t *barrier) {
+static INLINE int swift_barrier_wait(swift_barrier_t* barrier) {
 
   /* Start by locking the barrier */
   pthread_mutex_lock(&barrier->mutex);
@@ -155,7 +155,7 @@ static INLINE int swift_barrier_wait(swift_barrier_t *barrier) {
  *
  * @param barrier The #swift_barrier_t object to destroy.
  */
-static INLINE int swift_barrier_destroy(swift_barrier_t *barrier) {
+static INLINE int swift_barrier_destroy(swift_barrier_t* barrier) {
 
   /* Destroy the pthread things */
   pthread_cond_destroy(&barrier->condition);

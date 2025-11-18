@@ -41,8 +41,8 @@
  * @param c (return) The cosine of x.
  */
 __attribute__((always_inline)) INLINE static void sincos(const double x,
-                                                         double *restrict s,
-                                                         double *restrict c) {
+                                                         double* restrict s,
+                                                         double* restrict c) {
 
   *s = sin(x);
   *c = cos(x);
@@ -63,8 +63,8 @@ __attribute__((always_inline)) INLINE static void sincos(const double x,
  * @param c (return) The cosine of x.
  */
 __attribute__((always_inline)) INLINE static void sincosf(const float x,
-                                                          float *restrict s,
-                                                          float *restrict c) {
+                                                          float* restrict s,
+                                                          float* restrict c) {
 
   *s = sinf(x);
   *c = cosf(x);

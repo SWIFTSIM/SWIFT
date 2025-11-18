@@ -52,7 +52,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   float wi, wi_dx;
@@ -157,7 +157,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
     const float H) {
 
   float wi, wi_dx;
@@ -226,13 +226,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * (non-symmetric vectorized version).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_1_vec_density(vector *r2, vector *dx, vector *dy, vector *dz,
+runner_iact_nonsym_1_vec_density(vector* r2, vector* dx, vector* dy, vector* dz,
                                  vector hi_inv, vector vix, vector viy,
-                                 vector viz, float *Vjx, float *Vjy, float *Vjz,
-                                 float *Mj, vector *rhoSum, vector *rho_dhSum,
-                                 vector *wcountSum, vector *wcount_dhSum,
-                                 vector *div_vSum, vector *curlvxSum,
-                                 vector *curlvySum, vector *curlvzSum,
+                                 vector viz, float* Vjx, float* Vjy, float* Vjz,
+                                 float* Mj, vector* rhoSum, vector* rho_dhSum,
+                                 vector* wcountSum, vector* wcount_dhSum,
+                                 vector* div_vSum, vector* curlvxSum,
+                                 vector* curlvySum, vector* curlvzSum,
                                  mask_t mask) {
 
   vector r, ri, ui, wi, wi_dx;
@@ -300,13 +300,13 @@ runner_iact_nonsym_1_vec_density(vector *r2, vector *dx, vector *dy, vector *dz,
  * (non-symmetric vectorized version).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz,
+runner_iact_nonsym_2_vec_density(float* R2, float* Dx, float* Dy, float* Dz,
                                  vector hi_inv, vector vix, vector viy,
-                                 vector viz, float *Vjx, float *Vjy, float *Vjz,
-                                 float *Mj, vector *rhoSum, vector *rho_dhSum,
-                                 vector *wcountSum, vector *wcount_dhSum,
-                                 vector *div_vSum, vector *curlvxSum,
-                                 vector *curlvySum, vector *curlvzSum,
+                                 vector viz, float* Vjx, float* Vjy, float* Vjz,
+                                 float* Mj, vector* rhoSum, vector* rho_dhSum,
+                                 vector* wcountSum, vector* wcount_dhSum,
+                                 vector* div_vSum, vector* curlvxSum,
+                                 vector* curlvySum, vector* curlvzSum,
                                  mask_t mask, mask_t mask2, int mask_cond) {
 
   vector r, ri, ui, wi, wi_dx;
@@ -463,7 +463,7 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz,
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {}
 
 /**
@@ -484,7 +484,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {}
 
 /**
@@ -501,7 +501,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   float wi, wj, wi_dx, wj_dx;
@@ -631,7 +631,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
     const float H) {
 
   float wi, wj, wi_dx, wj_dx;
@@ -743,13 +743,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_1_vec_force(
-    vector *r2, vector *dx, vector *dy, vector *dz, vector vix, vector viy,
+    vector* r2, vector* dx, vector* dy, vector* dz, vector vix, vector viy,
     vector viz, vector pirho, vector grad_hi, vector piPOrho2, vector balsara_i,
-    vector ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj,
-    float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector hi_inv,
-    vector hj_inv, const float a, const float H, vector *a_hydro_xSum,
-    vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
-    vector *v_sigSum, vector *entropy_dtSum, mask_t mask) {
+    vector ci, float* Vjx, float* Vjy, float* Vjz, float* Pjrho, float* Grad_hj,
+    float* PjPOrho2, float* Balsara_j, float* Cj, float* Mj, vector hi_inv,
+    vector hj_inv, const float a, const float H, vector* a_hydro_xSum,
+    vector* a_hydro_ySum, vector* a_hydro_zSum, vector* h_dtSum,
+    vector* v_sigSum, vector* entropy_dtSum, mask_t mask) {
 
 #ifdef WITH_VECTORIZATION
 
@@ -878,13 +878,13 @@ runner_iact_nonsym_1_vec_force(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_2_vec_force(
-    float *R2, float *Dx, float *Dy, float *Dz, vector vix, vector viy,
+    float* R2, float* Dx, float* Dy, float* Dz, vector vix, vector viy,
     vector viz, vector pirho, vector grad_hi, vector piPOrho2, vector balsara_i,
-    vector ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj,
-    float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector hi_inv,
-    float *Hj_inv, const float a, const float H, vector *a_hydro_xSum,
-    vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
-    vector *v_sigSum, vector *entropy_dtSum, mask_t mask, mask_t mask_2,
+    vector ci, float* Vjx, float* Vjy, float* Vjz, float* Pjrho, float* Grad_hj,
+    float* PjPOrho2, float* Balsara_j, float* Cj, float* Mj, vector hi_inv,
+    float* Hj_inv, const float a, const float H, vector* a_hydro_xSum,
+    vector* a_hydro_ySum, vector* a_hydro_zSum, vector* h_dtSum,
+    vector* v_sigSum, vector* entropy_dtSum, mask_t mask, mask_t mask_2,
     short mask_cond) {
 
 #ifdef WITH_VECTORIZATION

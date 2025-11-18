@@ -78,17 +78,17 @@
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
+void runner_do_stars_ghost(struct runner* r, struct cell* c, int timer) {
 
-  struct spart *restrict sparts = c->stars.parts;
-  const struct engine *e = r->e;
-  const struct unit_system *us = e->internal_units;
-  const struct phys_const *phys_const = e->physical_constants;
+  struct spart* restrict sparts = c->stars.parts;
+  const struct engine* e = r->e;
+  const struct unit_system* us = e->internal_units;
+  const struct phys_const* phys_const = e->physical_constants;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_rt = (e->policy & engine_policy_rt);
-  const struct cosmology *cosmo = e->cosmology;
-  const struct feedback_props *feedback_props = e->feedback_props;
-  const struct rt_props *rt_props = e->rt_props;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct feedback_props* feedback_props = e->feedback_props;
+  const struct rt_props* rt_props = e->rt_props;
   const float stars_h_max = e->hydro_properties->h_max;
   const float stars_h_min = e->hydro_properties->h_min;
   const float eps = e->stars_properties->h_tolerance;
@@ -126,17 +126,17 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   } else {
 
     /* Init the list of active particles that have to be updated. */
-    int *sid = NULL;
-    float *h_0 = NULL;
-    float *left = NULL;
-    float *right = NULL;
-    if ((sid = (int *)malloc(sizeof(int) * c->stars.count)) == NULL)
+    int* sid = NULL;
+    float* h_0 = NULL;
+    float* left = NULL;
+    float* right = NULL;
+    if ((sid = (int*)malloc(sizeof(int) * c->stars.count)) == NULL)
       error("Can't allocate memory for sid.");
-    if ((h_0 = (float *)malloc(sizeof(float) * c->stars.count)) == NULL)
+    if ((h_0 = (float*)malloc(sizeof(float) * c->stars.count)) == NULL)
       error("Can't allocate memory for h_0.");
-    if ((left = (float *)malloc(sizeof(float) * c->stars.count)) == NULL)
+    if ((left = (float*)malloc(sizeof(float) * c->stars.count)) == NULL)
       error("Can't allocate memory for left.");
-    if ((right = (float *)malloc(sizeof(float) * c->stars.count)) == NULL)
+    if ((right = (float*)malloc(sizeof(float) * c->stars.count)) == NULL)
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->stars.count; k++)
       if (spart_is_active(&sparts[k], e) &&
@@ -162,7 +162,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
       for (int i = 0; i < scount; i++) {
 
         /* Get a direct pointer on the part. */
-        struct spart *sp = &sparts[sid[i]];
+        struct spart* sp = &sparts[sid[i]];
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
@@ -488,10 +488,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
       if (scount > 0) {
 
         /* Climb up the cell hierarchy. */
-        for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+        for (struct cell* finger = c; finger != NULL; finger = finger->parent) {
 
           /* Run through this cell's density interactions. */
-          for (struct link *l = finger->stars.density; l != NULL; l = l->next) {
+          for (struct link* l = finger->stars.density; l != NULL; l = l->next) {
 
 #ifdef SWIFT_DEBUG_CHECKS
             if (l->t->ti_run < r->e->ti_current)
@@ -529,7 +529,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           "Smoothing length failed to converge for the following star "
           "particles:");
       for (int i = 0; i < scount; i++) {
-        struct spart *sp = &sparts[sid[i]];
+        struct spart* sp = &sparts[sid[i]];
         warning("ID: %lld, h: %g, wcount: %g", sp->id, sp->h,
                 sp->density.wcount);
       }
@@ -550,7 +550,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < c->stars.count; ++i) {
-    const struct spart *sp = &c->stars.parts[i];
+    const struct spart* sp = &c->stars.parts[i];
     const float h = c->stars.parts[i].h;
     if (spart_is_inhibited(sp, e)) continue;
 
@@ -566,7 +566,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->stars.density_ghost) {
-    for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+    for (struct cell* tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->stars.h_max, h_max);
       atomic_max_f(&tmp->stars.h_max_active, h_max_active);
     }
@@ -583,12 +583,12 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
+void runner_do_black_holes_density_ghost(struct runner* r, struct cell* c,
                                          int timer) {
 
-  struct bpart *restrict bparts = c->black_holes.parts;
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  struct bpart* restrict bparts = c->black_holes.parts;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const float black_holes_h_max = e->hydro_properties->h_max;
   const float black_holes_h_min = e->hydro_properties->h_min;
   const float eps = e->black_holes_properties->h_tolerance;
@@ -622,17 +622,17 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
   } else {
 
     /* Init the list of active particles that have to be updated. */
-    int *sid = NULL;
-    float *h_0 = NULL;
-    float *left = NULL;
-    float *right = NULL;
-    if ((sid = (int *)malloc(sizeof(int) * c->black_holes.count)) == NULL)
+    int* sid = NULL;
+    float* h_0 = NULL;
+    float* left = NULL;
+    float* right = NULL;
+    if ((sid = (int*)malloc(sizeof(int) * c->black_holes.count)) == NULL)
       error("Can't allocate memory for sid.");
-    if ((h_0 = (float *)malloc(sizeof(float) * c->black_holes.count)) == NULL)
+    if ((h_0 = (float*)malloc(sizeof(float) * c->black_holes.count)) == NULL)
       error("Can't allocate memory for h_0.");
-    if ((left = (float *)malloc(sizeof(float) * c->black_holes.count)) == NULL)
+    if ((left = (float*)malloc(sizeof(float) * c->black_holes.count)) == NULL)
       error("Can't allocate memory for left.");
-    if ((right = (float *)malloc(sizeof(float) * c->black_holes.count)) == NULL)
+    if ((right = (float*)malloc(sizeof(float) * c->black_holes.count)) == NULL)
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->black_holes.count; k++)
       if (bpart_is_active(&bparts[k], e)) {
@@ -657,7 +657,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
       for (int i = 0; i < bcount; i++) {
 
         /* Get a direct pointer on the part. */
-        struct bpart *bp = &bparts[sid[i]];
+        struct bpart* bp = &bparts[sid[i]];
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
@@ -832,10 +832,10 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
       if (bcount > 0) {
 
         /* Climb up the cell hierarchy. */
-        for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+        for (struct cell* finger = c; finger != NULL; finger = finger->parent) {
 
           /* Run through this cell's density interactions. */
-          for (struct link *l = finger->black_holes.density; l != NULL;
+          for (struct link* l = finger->black_holes.density; l != NULL;
                l = l->next) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -874,7 +874,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
           "Smoothing length failed to converge for the following BH "
           "particles:");
       for (int i = 0; i < bcount; i++) {
-        struct bpart *bp = &bparts[sid[i]];
+        struct bpart* bp = &bparts[sid[i]];
         warning("ID: %lld, h: %g, wcount: %g", bp->id, bp->h,
                 bp->density.wcount);
       }
@@ -895,7 +895,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < c->black_holes.count; ++i) {
-    const struct bpart *bp = &c->black_holes.parts[i];
+    const struct bpart* bp = &c->black_holes.parts[i];
     const float h = c->black_holes.parts[i].h;
     if (bpart_is_inhibited(bp, e)) continue;
 
@@ -909,7 +909,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->black_holes.density_ghost) {
-    for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+    for (struct cell* tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->black_holes.h_max, h_max);
       atomic_max_f(&tmp->black_holes.h_max_active, h_max_active);
     }
@@ -926,12 +926,12 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
+void runner_do_black_holes_swallow_ghost(struct runner* r, struct cell* c,
                                          int timer) {
 
-  struct bpart *restrict bparts = c->black_holes.parts;
+  struct bpart* restrict bparts = c->black_holes.parts;
   const int count = c->black_holes.count;
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
   TIMER_TIC;
@@ -951,7 +951,7 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
     for (int i = 0; i < count; i++) {
 
       /* Get a direct pointer on the part. */
-      struct bpart *bp = &bparts[i];
+      struct bpart* bp = &bparts[i];
 
       if (bpart_is_active(bp, e)) {
 
@@ -993,20 +993,20 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
+void runner_do_extra_ghost(struct runner* r, struct cell* c, int timer) {
 
 #ifdef EXTRA_HYDRO_LOOP
 
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
+  struct part* restrict parts = c->hydro.parts;
+  struct xpart* restrict xparts = c->hydro.xparts;
   const int count = c->hydro.count;
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const integertime_t ti_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const double time_base = e->time_base;
-  const struct cosmology *cosmo = e->cosmology;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct hydro_props* hydro_props = e->hydro_properties;
+  const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
   const float mu_0 = e->physical_constants->const_vacuum_permeability;
 
   TIMER_TIC;
@@ -1024,8 +1024,8 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
     for (int i = 0; i < count; i++) {
 
       /* Get a direct pointer on the part. */
-      struct part *restrict p = &parts[i];
-      struct xpart *restrict xp = &xparts[i];
+      struct part* restrict p = &parts[i];
+      struct xpart* restrict xp = &xparts[i];
 
       if (part_is_active(p, e)) {
 
@@ -1087,18 +1087,18 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
+void runner_do_ghost(struct runner* r, struct cell* c, int timer) {
 
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
-  const struct engine *e = r->e;
-  const struct space *s = e->s;
-  const struct hydro_space *hs = &s->hs;
-  const struct cosmology *cosmo = e->cosmology;
-  const struct chemistry_global_data *chemistry = e->chemistry;
-  const struct star_formation *star_formation = e->star_formation;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+  struct part* restrict parts = c->hydro.parts;
+  struct xpart* restrict xparts = c->hydro.xparts;
+  const struct engine* e = r->e;
+  const struct space* s = e->s;
+  const struct hydro_space* hs = &s->hs;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct chemistry_global_data* chemistry = e->chemistry;
+  const struct star_formation* star_formation = e->star_formation;
+  const struct hydro_props* hydro_props = e->hydro_properties;
+  const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
   const float mu_0 = e->physical_constants->const_vacuum_permeability;
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -1139,17 +1139,17 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
     /* Init the list of active particles that have to be updated and their
      * current smoothing lengths. */
-    int *pid = NULL;
-    float *h_0 = NULL;
-    float *left = NULL;
-    float *right = NULL;
-    if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
+    int* pid = NULL;
+    float* h_0 = NULL;
+    float* left = NULL;
+    float* right = NULL;
+    if ((pid = (int*)malloc(sizeof(int) * c->hydro.count)) == NULL)
       error("Can't allocate memory for pid.");
-    if ((h_0 = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
+    if ((h_0 = (float*)malloc(sizeof(float) * c->hydro.count)) == NULL)
       error("Can't allocate memory for h_0.");
-    if ((left = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
+    if ((left = (float*)malloc(sizeof(float) * c->hydro.count)) == NULL)
       error("Can't allocate memory for left.");
-    if ((right = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
+    if ((right = (float*)malloc(sizeof(float) * c->hydro.count)) == NULL)
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->hydro.count; k++)
       if (part_is_active(&parts[k], e)) {
@@ -1174,8 +1174,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       for (int i = 0; i < count; i++) {
 
         /* Get a direct pointer on the part. */
-        struct part *p = &parts[pid[i]];
-        struct xpart *xp = &xparts[pid[i]];
+        struct part* p = &parts[pid[i]];
+        struct xpart* xp = &xparts[pid[i]];
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
@@ -1519,10 +1519,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       if (count > 0) {
 
         /* Climb up the cell hierarchy. */
-        for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+        for (struct cell* finger = c; finger != NULL; finger = finger->parent) {
 
           /* Run through this cell's density interactions. */
-          for (struct link *l = finger->hydro.density; l != NULL; l = l->next) {
+          for (struct link* l = finger->hydro.density; l != NULL; l = l->next) {
 
 #ifdef SWIFT_DEBUG_CHECKS
             if (l->t->ti_run < r->e->ti_current)
@@ -1559,7 +1559,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           "Smoothing length failed to converge for the following gas "
           "particles:");
       for (int i = 0; i < count; i++) {
-        struct part *p = &parts[pid[i]];
+        struct part* p = &parts[pid[i]];
         warning("ID: %lld, h: %g, wcount: %g", p->id, p->h, p->density.wcount);
       }
 
@@ -1579,7 +1579,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < c->hydro.count; ++i) {
-    const struct part *p = &c->hydro.parts[i];
+    const struct part* p = &c->hydro.parts[i];
     const float h = c->hydro.parts[i].h;
     if (part_is_inhibited(p, e)) continue;
 
@@ -1593,7 +1593,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->hydro.ghost) {
-    for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+    for (struct cell* tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->hydro.h_max, h_max);
       atomic_max_f(&tmp->hydro.h_max_active, h_max_active);
     }
@@ -1610,11 +1610,11 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
+void runner_do_rt_ghost1(struct runner* r, struct cell* c, int timer) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
   int count = c->hydro.count;
 
   /* Anything to do here? */
@@ -1633,7 +1633,7 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
   } else {
 
     for (int pid = 0; pid < count; pid++) {
-      struct part *restrict p = &(c->hydro.parts[pid]);
+      struct part* restrict p = &(c->hydro.parts[pid]);
 
       /* Skip inhibited parts */
       if (part_is_inhibited(p, e)) continue;
@@ -1671,11 +1671,11 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
+void runner_do_rt_ghost2(struct runner* r, struct cell* c, int timer) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   int count = c->hydro.count;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Anything to do here? */
   if (count == 0) return;
@@ -1693,7 +1693,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
   } else {
 
     for (int pid = 0; pid < count; pid++) {
-      struct part *restrict p = &(c->hydro.parts[pid]);
+      struct part* restrict p = &(c->hydro.parts[pid]);
 
       /* Skip inhibited parts */
       if (part_is_inhibited(p, e)) continue;
@@ -1717,12 +1717,12 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
+void runner_do_sinks_density_ghost(struct runner* r, struct cell* c,
                                    int timer) {
 
-  struct sink *restrict sinks = c->sinks.parts;
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  struct sink* restrict sinks = c->sinks.parts;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const float sinks_h_max = e->hydro_properties->h_max;
   const float sinks_h_min = e->hydro_properties->h_min;
@@ -1755,17 +1755,17 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
   } else {
 
     /* Init the list of active particles that have to be updated. */
-    int *sid = NULL;
-    float *h_0 = NULL;
-    float *left = NULL;
-    float *right = NULL;
-    if ((sid = (int *)malloc(sizeof(int) * c->sinks.count)) == NULL)
+    int* sid = NULL;
+    float* h_0 = NULL;
+    float* left = NULL;
+    float* right = NULL;
+    if ((sid = (int*)malloc(sizeof(int) * c->sinks.count)) == NULL)
       error("Can't allocate memory for sid.");
-    if ((h_0 = (float *)malloc(sizeof(float) * c->sinks.count)) == NULL)
+    if ((h_0 = (float*)malloc(sizeof(float) * c->sinks.count)) == NULL)
       error("Can't allocate memory for h_0.");
-    if ((left = (float *)malloc(sizeof(float) * c->sinks.count)) == NULL)
+    if ((left = (float*)malloc(sizeof(float) * c->sinks.count)) == NULL)
       error("Can't allocate memory for left.");
-    if ((right = (float *)malloc(sizeof(float) * c->sinks.count)) == NULL)
+    if ((right = (float*)malloc(sizeof(float) * c->sinks.count)) == NULL)
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->sinks.count; k++)
       if (sink_is_active(&sinks[k], e)) {
@@ -1784,7 +1784,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
       for (int i = 0; i < scount; i++) {
 
         /* Get a direct pointer on the part. */
-        struct sink *sp = &sinks[sid[i]];
+        struct sink* sp = &sinks[sid[i]];
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
@@ -1814,7 +1814,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
         for (int i = 0; i < scount; i++) {
 
           /* Get a direct pointer on the part. */
-          struct sink *sp = &sinks[sid[i]];
+          struct sink* sp = &sinks[sid[i]];
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Is this part within the timestep? */
@@ -1980,11 +1980,11 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
         if (scount > 0) {
 
           /* Climb up the cell hierarchy. */
-          for (struct cell *finger = c; finger != NULL;
+          for (struct cell* finger = c; finger != NULL;
                finger = finger->parent) {
 
             /* Run through this cell's density interactions. */
-            for (struct link *l = finger->sinks.density; l != NULL;
+            for (struct link* l = finger->sinks.density; l != NULL;
                  l = l->next) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2023,7 +2023,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
             "Smoothing length failed to converge for the following sink "
             "particles:");
         for (int i = 0; i < scount; i++) {
-          struct sink *sp = &sinks[sid[i]];
+          struct sink* sp = &sinks[sid[i]];
           warning("ID: %lld, h: %g, wcount: %g", sp->id, sp->h,
                   sp->density.wcount);
         }
@@ -2042,7 +2042,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
     for (int i = 0; i < c->sinks.count; i++) {
 
       /* Get a direct pointer on the part. */
-      struct sink *sp = &sinks[i];
+      struct sink* sp = &sinks[i];
 
       if (sink_is_active(sp, e)) {
 
@@ -2074,7 +2074,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < c->sinks.count; ++i) {
-    const struct sink *sp = &c->sinks.parts[i];
+    const struct sink* sp = &c->sinks.parts[i];
     const float h = c->sinks.parts[i].h;
     if (sink_is_inhibited(sp, e)) continue;
 
@@ -2088,7 +2088,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->sinks.density_ghost) {
-    for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+    for (struct cell* tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->sinks.h_max, h_max);
       atomic_max_f(&tmp->sinks.h_max_active, h_max_active);
     }

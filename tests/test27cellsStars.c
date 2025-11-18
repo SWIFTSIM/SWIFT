@@ -64,27 +64,27 @@
  * of the inter-particle separation.
  * @param h_pert The perturbation to apply to the smoothing length.
  */
-struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
-                       double h, long long *partId, long long *spartId,
+struct cell* make_cell(size_t n, size_t n_stars, double* offset, double size,
+                       double h, long long* partId, long long* spartId,
                        double pert, double h_pert) {
   const size_t count = n * n * n;
   const size_t scount = n_stars * n_stars * n_stars;
   float h_max = 0.f;
   float stars_h_max = 0.f;
-  struct cell *cell = NULL;
-  if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
+  struct cell* cell = NULL;
+  if (posix_memalign((void**)&cell, cell_align, sizeof(struct cell)) != 0) {
     error("Couldn't allocate the cell");
   }
   bzero(cell, sizeof(struct cell));
 
-  if (posix_memalign((void **)&cell->hydro.parts, part_align,
+  if (posix_memalign((void**)&cell->hydro.parts, part_align,
                      count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
   bzero(cell->hydro.parts, count * sizeof(struct part));
 
   /* Construct the parts */
-  struct part *part = cell->hydro.parts;
+  struct part* part = cell->hydro.parts;
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
@@ -120,13 +120,13 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   }
 
   /* Construct the sparts */
-  if (posix_memalign((void **)&cell->stars.parts, spart_align,
+  if (posix_memalign((void**)&cell->stars.parts, spart_align,
                      scount * sizeof(struct spart)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)scount);
   }
   bzero(cell->stars.parts, scount * sizeof(struct spart));
 
-  struct spart *spart = cell->stars.parts;
+  struct spart* spart = cell->stars.parts;
   for (size_t x = 0; x < n_stars; ++x) {
     for (size_t y = 0; y < n_stars; ++y) {
       for (size_t z = 0; z < n_stars; ++z) {
@@ -202,7 +202,7 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   return cell;
 }
 
-void clean_up(struct cell *ci) {
+void clean_up(struct cell* ci) {
   free(ci->hydro.parts);
   free(ci->stars.parts);
   free(ci->hydro.sort);
@@ -213,7 +213,7 @@ void clean_up(struct cell *ci) {
 /**
  * @brief Initializes all particles field to be ready for a density calculation
  */
-void zero_particle_fields(struct cell *c) {
+void zero_particle_fields(struct cell* c) {
   for (int pid = 0; pid < c->stars.count; pid++) {
     stars_init_spart(&c->stars.parts[pid]);
   }
@@ -222,7 +222,7 @@ void zero_particle_fields(struct cell *c) {
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c, const struct cosmology *cosmo) {
+void end_calculation(struct cell* c, const struct cosmology* cosmo) {
   for (int pid = 0; pid < c->stars.count; pid++) {
     stars_end_density(&c->stars.parts[pid], cosmo);
 
@@ -235,9 +235,9 @@ void end_calculation(struct cell *c, const struct cosmology *cosmo) {
 /**
  * @brief Dump all the particles to a file
  */
-void dump_particle_fields(char *fileName, struct cell *main_cell,
-                          struct cell **cells) {
-  FILE *file = fopen(fileName, "w");
+void dump_particle_fields(char* fileName, struct cell* main_cell,
+                          struct cell** cells) {
+  FILE* file = fopen(fileName, "w");
 
   /* Write header */
   fprintf(file, "# %4s %10s %10s %10s %13s %13s\n", "ID", "pos_x", "pos_y",
@@ -258,7 +258,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 3; ++k) {
-        struct cell *cj = cells[i * 9 + j * 3 + k];
+        struct cell* cj = cells[i * 9 + j * 3 + k];
         if (cj == main_cell) continue;
 
         fprintf(file,
@@ -279,23 +279,23 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 }
 
 /* Just a forward declaration... */
-void runner_dopair_branch_stars_density(struct runner *r, struct cell *ci,
-                                        struct cell *cj, int limit_h_min,
+void runner_dopair_branch_stars_density(struct runner* r, struct cell* ci,
+                                        struct cell* cj, int limit_h_min,
                                         int limit_h_max);
-void runner_doself_branch_stars_density(struct runner *r, struct cell *c,
+void runner_doself_branch_stars_density(struct runner* r, struct cell* c,
                                         int limit_h_min, int limit_h_max);
-void runner_dopair_subset_branch_stars_density(struct runner *r,
-                                               struct cell *restrict ci,
-                                               struct spart *restrict sparts_i,
-                                               int *restrict ind, int scount,
-                                               struct cell *restrict cj);
-void runner_doself_subset_branch_stars_density(struct runner *r,
-                                               struct cell *restrict ci,
-                                               struct spart *restrict sparts,
-                                               int *restrict ind, int scount);
+void runner_dopair_subset_branch_stars_density(struct runner* r,
+                                               struct cell* restrict ci,
+                                               struct spart* restrict sparts_i,
+                                               int* restrict ind, int scount,
+                                               struct cell* restrict cj);
+void runner_doself_subset_branch_stars_density(struct runner* r,
+                                               struct cell* restrict ci,
+                                               struct spart* restrict sparts,
+                                               int* restrict ind, int scount);
 
 /* And go... */
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
 #ifdef HAVE_SETAFFINITY
   engine_pin();
@@ -419,8 +419,8 @@ int main(int argc, char *argv[]) {
   engine.lightcone_array_properties = &lightcone_array_properties;
 
   /* Construct some cells */
-  struct cell *cells[27];
-  struct cell *main_cell;
+  struct cell* cells[27];
+  struct cell* main_cell;
   static long long partId = 0;
   long long spartId = particles * particles * particles * 27;
 
@@ -456,9 +456,9 @@ int main(int argc, char *argv[]) {
     const ticks tic = getticks();
 
 #if defined(TEST_DOSELF_SUBSET) || defined(TEST_DOPAIR_SUBSET)
-    int *pid = NULL;
+    int* pid = NULL;
     int scount = 0;
-    if ((pid = (int *)malloc(sizeof(int) * main_cell->stars.count)) == NULL)
+    if ((pid = (int*)malloc(sizeof(int) * main_cell->stars.count)) == NULL)
       error("Can't allocate memory for pid.");
     for (int k = 0; k < main_cell->stars.count; k++)
       if (spart_is_active(&main_cell->stars.parts[k], &engine)) {

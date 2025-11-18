@@ -28,6 +28,6 @@
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_debug_particle(
-    const struct part *p, const struct xpart *xp) {}
+    const struct part* p, const struct xpart* xp) {}
 
 #endif /* SWIFT_NONE_MHD_DEBUG_H */

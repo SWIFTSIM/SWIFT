@@ -72,7 +72,7 @@ struct lightcone_io_field {
   enum lossy_compression_schemes compression;
 
   /* Pointer to the next field */
-  struct lightcone_io_field *next;
+  struct lightcone_io_field* next;
 };
 
 /*
@@ -81,10 +81,10 @@ struct lightcone_io_field {
 struct lightcone_io_field_list {
 
   /* Pointer to the first field */
-  struct lightcone_io_field *first;
+  struct lightcone_io_field* first;
 
   /* Pointer to the last field */
-  struct lightcone_io_field *last;
+  struct lightcone_io_field* last;
 
   /* Number of fields */
   int num_fields;
@@ -122,11 +122,11 @@ struct lightcone_gas_data {
 #endif
 };
 
-int lightcone_store_gas(const struct engine *e, struct lightcone_props *props,
-                        const struct gpart *gp, const struct part *p,
-                        const struct xpart *xp, const double a_cross,
+int lightcone_store_gas(const struct engine* e, struct lightcone_props* props,
+                        const struct gpart* gp, const struct part* p,
+                        const struct xpart* xp, const double a_cross,
                         const double x_cross[3],
-                        struct lightcone_gas_data *data);
+                        struct lightcone_gas_data* data);
 
 /**
  * @brief Dark matter particle data for lightcone output
@@ -139,11 +139,11 @@ struct lightcone_dark_matter_data {
   float a;
 };
 
-int lightcone_store_dark_matter(const struct engine *e,
-                                struct lightcone_props *props,
-                                const struct gpart *gp, const double a_cross,
+int lightcone_store_dark_matter(const struct engine* e,
+                                struct lightcone_props* props,
+                                const struct gpart* gp, const double a_cross,
                                 const double x_cross[3],
-                                struct lightcone_dark_matter_data *data);
+                                struct lightcone_dark_matter_data* data);
 
 /**
  * @brief Star particle data for lightcone output
@@ -173,10 +173,10 @@ struct lightcone_stars_data {
 #endif
 };
 
-int lightcone_store_stars(const struct engine *e, struct lightcone_props *props,
-                          const struct gpart *gp, const struct spart *sp,
+int lightcone_store_stars(const struct engine* e, struct lightcone_props* props,
+                          const struct gpart* gp, const struct spart* sp,
                           const double a_cross, const double x_cross[3],
-                          struct lightcone_stars_data *data);
+                          struct lightcone_stars_data* data);
 
 /**
  * @brief Black hole particle data for lightcone output
@@ -206,11 +206,11 @@ struct lightcone_black_hole_data {
 #endif
 };
 
-int lightcone_store_black_hole(const struct engine *e,
-                               struct lightcone_props *props,
-                               const struct gpart *gp, const struct bpart *bp,
+int lightcone_store_black_hole(const struct engine* e,
+                               struct lightcone_props* props,
+                               const struct gpart* gp, const struct bpart* bp,
                                const double a_cross, const double x_cross[3],
-                               struct lightcone_black_hole_data *data);
+                               struct lightcone_black_hole_data* data);
 
 /**
  * @brief Neutrino particle data for lightcone output
@@ -224,15 +224,15 @@ struct lightcone_neutrino_data {
   float a;
 };
 
-int lightcone_store_neutrino(const struct engine *e,
-                             struct lightcone_props *props,
-                             const struct gpart *gp, const double a_cross,
+int lightcone_store_neutrino(const struct engine* e,
+                             struct lightcone_props* props,
+                             const struct gpart* gp, const double a_cross,
                              const double x_cross[3],
-                             struct lightcone_neutrino_data *data);
+                             struct lightcone_neutrino_data* data);
 
-void lightcone_write_particles(struct lightcone_props *props,
-                               const struct unit_system *internal_units,
-                               const struct unit_system *snapshot_units,
+void lightcone_write_particles(struct lightcone_props* props,
+                               const struct unit_system* internal_units,
+                               const struct unit_system* snapshot_units,
                                int ptype, hid_t file_id);
 
 inline static size_t lightcone_io_struct_size(int ptype) {
@@ -254,26 +254,26 @@ inline static size_t lightcone_io_struct_size(int ptype) {
   }
 }
 
-void lightcone_io_field_list_init(struct lightcone_io_field_list *list);
-void lightcone_io_field_list_clean(struct lightcone_io_field_list *list);
-void lightcone_io_field_list_append(struct lightcone_io_field_list *list,
-                                    char *name, enum IO_DATA_TYPE type,
+void lightcone_io_field_list_init(struct lightcone_io_field_list* list);
+void lightcone_io_field_list_clean(struct lightcone_io_field_list* list);
+void lightcone_io_field_list_append(struct lightcone_io_field_list* list,
+                                    char* name, enum IO_DATA_TYPE type,
                                     int dimension, size_t offset,
                                     enum unit_conversion_factor units,
                                     float scale_factor_exponent,
-                                    char *compression);
+                                    char* compression);
 
 void lightcone_io_append_gas_output_fields(
-    struct lightcone_io_field_list *list);
+    struct lightcone_io_field_list* list);
 void lightcone_io_append_dark_matter_output_fields(
-    struct lightcone_io_field_list *list);
+    struct lightcone_io_field_list* list);
 void lightcone_io_append_dark_matter_background_output_fields(
-    struct lightcone_io_field_list *list);
+    struct lightcone_io_field_list* list);
 void lightcone_io_append_stars_output_fields(
-    struct lightcone_io_field_list *list);
+    struct lightcone_io_field_list* list);
 void lightcone_io_append_black_hole_output_fields(
-    struct lightcone_io_field_list *list);
+    struct lightcone_io_field_list* list);
 void lightcone_io_append_neutrino_output_fields(
-    struct lightcone_io_field_list *list);
+    struct lightcone_io_field_list* list);
 
 #endif

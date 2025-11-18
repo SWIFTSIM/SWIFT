@@ -39,9 +39,9 @@
  * @param e The #engine.
  * @param cosmo The cosmology model.
  */
-INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
-                                              const struct engine *e,
-                                              const struct cosmology *cosmo) {
+INLINE static void timestep_process_sync_part(struct part* p, struct xpart* xp,
+                                              const struct engine* e,
+                                              const struct cosmology* cosmo) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const integertime_t ti_current = e->ti_current;

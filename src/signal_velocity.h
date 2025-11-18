@@ -41,8 +41,8 @@
  * @brief beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float signal_velocity(
-    const float dx[3], const struct part *restrict pi,
-    const struct part *restrict pj, const float mu_ij, const float beta,
+    const float dx[3], const struct part* restrict pi,
+    const struct part* restrict pj, const float mu_ij, const float beta,
     const float a, const float mu_0) {
   return mhd_signal_velocity(dx, pi, pj, mu_ij, beta, a, mu_0);
 }
@@ -66,8 +66,8 @@ __attribute__((always_inline)) INLINE static float signal_velocity(
  * @brief beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float signal_velocity(
-    const float dx[3], const struct part *restrict pi,
-    const struct part *restrict pj, const float mu_ij, const float beta,
+    const float dx[3], const struct part* restrict pi,
+    const struct part* restrict pj, const float mu_ij, const float beta,
     const float a, const float mu_0) {
 
   return hydro_signal_velocity(dx, pi, pj, mu_ij, beta);

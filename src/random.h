@@ -85,7 +85,7 @@ enum random_number_type {
    functions are minor modifications, but functional equivalents, of their glibc
    counterparts. */
 
-INLINE static int inl_rand_r(uint32_t *seed) {
+INLINE static int inl_rand_r(uint32_t* seed) {
   uint32_t next = *seed;
   int result;
   next *= 1103515245;
@@ -141,7 +141,7 @@ INLINE static double inl_erand48(uint16_t xsubi[3]) {
 /* In the case of OSX, we default to the platform's
    default implementation. */
 
-INLINE static int inl_rand_r(uint32_t *seed) { return rand_r(seed); }
+INLINE static int inl_rand_r(uint32_t* seed) { return rand_r(seed); }
 
 INLINE static double inl_erand48(uint16_t xsubi[3]) { return erand48(xsubi); }
 

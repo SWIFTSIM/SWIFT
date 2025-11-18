@@ -78,9 +78,9 @@ struct collectgroup1 {
 };
 
 void collectgroup_init(void);
-void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e);
+void collectgroup1_apply(const struct collectgroup1* grp1, struct engine* e);
 void collectgroup1_init(
-    struct collectgroup1 *grp1, size_t updated, size_t g_updated,
+    struct collectgroup1* grp1, size_t updated, size_t g_updated,
     size_t s_updated, size_t b_updated, size_t sink_updated, size_t inhibited,
     size_t g_inhibited, size_t s_inhibited, size_t sink_inhibited,
     size_t b_inhibited, integertime_t ti_hydro_end_min,
@@ -93,7 +93,7 @@ void collectgroup1_init(
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
     const struct star_formation_history sfh, float runtime,
     int flush_lightcone_maps, double deadtime, float csds_file_size_gb);
-void collectgroup1_reduce(struct collectgroup1 *grp1);
+void collectgroup1_reduce(struct collectgroup1* grp1);
 #ifdef WITH_MPI
 void mpicollect_free_MPI_type(void);
 #endif

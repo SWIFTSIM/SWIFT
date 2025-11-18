@@ -23,7 +23,7 @@
 // MATTHIEU fix this test
 #if 1 || !defined(HAVE_FFTW)
 
-int main(int argc, char *argv[]) { return 0; }
+int main(int argc, char* argv[]) { return 0; }
 
 #else
 
@@ -45,7 +45,7 @@ int is_close(double x, double y, double abs_err) {
   return (abs(x - y) < abs_err);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
@@ -57,8 +57,8 @@ int main(int argc, char *argv[]) {
 
   /* Make one particle */
   int nr_gparts = 1;
-  struct gpart *gparts = NULL;
-  if (posix_memalign((void **)&gparts, gpart_align,
+  struct gpart* gparts = NULL;
+  if (posix_memalign((void**)&gparts, gpart_align,
                      nr_gparts * sizeof(struct gpart)) != 0)
     error("Impossible to allocate memory for gparts.");
   bzero(gparts, nr_gparts * sizeof(struct gpart));
@@ -69,8 +69,8 @@ int main(int argc, char *argv[]) {
   gparts[0].mass = 1.f;
 
   /* Read the parameter file */
-  struct swift_params *params =
-      (struct swift_params *)malloc(sizeof(struct swift_params));
+  struct swift_params* params =
+      (struct swift_params*)malloc(sizeof(struct swift_params));
   parser_read_file("fft_params.yml", params);
 
   struct cosmology cosmo;
@@ -118,12 +118,12 @@ int main(int argc, char *argv[]) {
 
   /* Now check that we got the right answer */
   int nr_cells = space.nr_cells;
-  double *r = (double *)malloc(nr_cells * sizeof(double));
-  double *m = (double *)malloc(nr_cells * sizeof(double));
-  double *pot = (double *)malloc(nr_cells * sizeof(double));
-  double *pot_exact = (double *)malloc(nr_cells * sizeof(double));
+  double* r = (double*)malloc(nr_cells * sizeof(double));
+  double* m = (double*)malloc(nr_cells * sizeof(double));
+  double* pot = (double*)malloc(nr_cells * sizeof(double));
+  double* pot_exact = (double*)malloc(nr_cells * sizeof(double));
 
-  FILE *file = fopen("potential.dat", "w");
+  FILE* file = fopen("potential.dat", "w");
   for (int i = 0; i < nr_cells; ++i) {
     pot[i] = space.multipoles_top[i].pot.F_000;
     m[i] = space.multipoles_top[i].m_pole.M_000;
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < cdim[0]; ++i) {
     for (int j = 0; j < cdim[1]; ++j) {
       for (int k = 0; k < cdim[2]; ++k) {
-        const struct grav_tensor *f =
+        const struct grav_tensor* f =
             &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
 
         if (!is_close(f->F_000, -1., 1e-10))
@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
   for (int i = 2; i < cdim[0] - 3; ++i) {
     for (int j = 0; j < cdim[1]; ++j) {
       for (int k = 0; k < cdim[2]; ++k) {
-        const struct grav_tensor *f =
+        const struct grav_tensor* f =
             &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
 
         if (!is_close(f->F_000, -i / ((double)cdim[0]), 1e-10))
@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < cdim[0]; ++i) {
     for (int j = 2; j < cdim[1] - 3; ++j) {
       for (int k = 0; k < cdim[2]; ++k) {
-        const struct grav_tensor *f =
+        const struct grav_tensor* f =
             &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
 
         if (!is_close(f->F_000, -j / ((double)cdim[0]), 1e-10))
@@ -295,7 +295,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < cdim[0]; ++i) {
     for (int j = 0; j < cdim[1]; ++j) {
       for (int k = 2; k < cdim[2] - 3; ++k) {
-        const struct grav_tensor *f =
+        const struct grav_tensor* f =
             &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
 
         if (!is_close(f->F_000, -k / ((double)cdim[0]), 1e-10))
@@ -338,7 +338,7 @@ int main(int argc, char *argv[]) {
   for (int i = 2; i < cdim[0] - 3; ++i) {
     for (int j = 0; j < cdim[1]; ++j) {
       for (int k = 0; k < cdim[2]; ++k) {
-        const struct grav_tensor *f =
+        const struct grav_tensor* f =
             &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
         const double val = i / ((double)cdim[0]);
         const double val2 = val * val;
@@ -383,7 +383,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < cdim[0]; ++i) {
     for (int j = 2; j < cdim[1] - 3; ++j) {
       for (int k = 0; k < cdim[2]; ++k) {
-        const struct grav_tensor *f =
+        const struct grav_tensor* f =
             &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
         const double val = j / ((double)cdim[0]);
         const double val2 = val * val;
@@ -428,7 +428,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < cdim[0]; ++i) {
     for (int j = 0; j < cdim[1]; ++j) {
       for (int k = 2; k < cdim[2] - 3; ++k) {
-        const struct grav_tensor *f =
+        const struct grav_tensor* f =
             &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
         const double val = k / ((double)cdim[0]);
         const double val2 = val * val;

@@ -156,7 +156,7 @@ enum {
 extern ticks timers[timer_count];
 
 /* The timer names. */
-extern const char *timers_names[];
+extern const char* timers_names[];
 
 /* Define the timer macros. */
 #ifdef SWIFT_USE_TIMERS

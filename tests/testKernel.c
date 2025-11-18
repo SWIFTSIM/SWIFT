@@ -31,7 +31,7 @@
 
 const int numPoints = (1 << 28);
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -45,13 +45,13 @@ int main(int argc, char *argv[]) {
   const float h = 1.2348f;
 
   float *u, *W, *dW;
-  if (posix_memalign((void **)&u, SWIFT_CACHE_ALIGNMENT,
+  if (posix_memalign((void**)&u, SWIFT_CACHE_ALIGNMENT,
                      numPoints * sizeof(float)) != 0)
     error("Error allocating u");
-  if (posix_memalign((void **)&W, SWIFT_CACHE_ALIGNMENT,
+  if (posix_memalign((void**)&W, SWIFT_CACHE_ALIGNMENT,
                      numPoints * sizeof(float)) != 0)
     error("Error allocating W");
-  if (posix_memalign((void **)&dW, SWIFT_CACHE_ALIGNMENT,
+  if (posix_memalign((void**)&dW, SWIFT_CACHE_ALIGNMENT,
                      numPoints * sizeof(float)) != 0)
     error("Error allocating dW");
 

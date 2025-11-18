@@ -47,7 +47,7 @@
 __attribute__((always_inline)) INLINE static double kick_get_grav_kick_dt(
     const integertime_t ti_beg, const integertime_t ti_end,
     const double time_base, const int with_cosmology,
-    const struct cosmology *cosmo) {
+    const struct cosmology* cosmo) {
 
   if (with_cosmology) {
     return cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_end);
@@ -70,7 +70,7 @@ __attribute__((always_inline)) INLINE static double kick_get_grav_kick_dt(
 __attribute__((always_inline)) INLINE static double kick_get_hydro_kick_dt(
     const integertime_t ti_beg, const integertime_t ti_end,
     const double time_base, const int with_cosmology,
-    const struct cosmology *cosmo) {
+    const struct cosmology* cosmo) {
 
   if (with_cosmology) {
     return cosmology_get_hydro_kick_factor(cosmo, ti_beg, ti_end);
@@ -93,7 +93,7 @@ __attribute__((always_inline)) INLINE static double kick_get_hydro_kick_dt(
 __attribute__((always_inline)) INLINE static double kick_get_therm_kick_dt(
     const integertime_t ti_beg, const integertime_t ti_end,
     const double time_base, const int with_cosmology,
-    const struct cosmology *cosmo) {
+    const struct cosmology* cosmo) {
 
   if (with_cosmology) {
     return cosmology_get_therm_kick_factor(cosmo, ti_beg, ti_end);
@@ -116,7 +116,7 @@ __attribute__((always_inline)) INLINE static double kick_get_therm_kick_dt(
 __attribute__((always_inline)) INLINE static double kick_get_corr_kick_dt(
     const integertime_t ti_beg, const integertime_t ti_end,
     const double time_base, const int with_cosmology,
-    const struct cosmology *cosmo) {
+    const struct cosmology* cosmo) {
 
   if (with_cosmology) {
     return cosmology_get_corr_kick_factor(cosmo, ti_beg, ti_end);
@@ -140,7 +140,7 @@ __attribute__((always_inline)) INLINE static double kick_get_corr_kick_dt(
  * checks).
  */
 __attribute__((always_inline)) INLINE static void kick_gpart(
-    struct gpart *restrict gp, const double dt_kick_grav,
+    struct gpart* restrict gp, const double dt_kick_grav,
     const integertime_t ti_start, const integertime_t ti_end,
     const double dt_kick_mesh_grav, const integertime_t ti_start_mesh,
     const integertime_t ti_end_mesh) {
@@ -213,12 +213,12 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
  * checks).
  */
 __attribute__((always_inline)) INLINE static void kick_part(
-    struct part *restrict p, struct xpart *restrict xp,
+    struct part* restrict p, struct xpart* restrict xp,
     const double dt_kick_hydro, const double dt_kick_grav,
     const double dt_kick_mesh_grav, const double dt_kick_therm,
-    const double dt_kick_corr, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props,
+    const double dt_kick_corr, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props,
     const integertime_t ti_start, const integertime_t ti_end,
     const integertime_t ti_start_mesh, const integertime_t ti_end_mesh) {
 
@@ -299,7 +299,7 @@ __attribute__((always_inline)) INLINE static void kick_part(
  * checks).
  */
 __attribute__((always_inline)) INLINE static void kick_spart(
-    struct spart *restrict sp, const double dt_kick_grav,
+    struct spart* restrict sp, const double dt_kick_grav,
     const integertime_t ti_start, const integertime_t ti_end,
     const double dt_kick_mesh_grav, const integertime_t ti_start_mesh,
     const integertime_t ti_end_mesh) {
@@ -356,7 +356,7 @@ __attribute__((always_inline)) INLINE static void kick_spart(
  * checks).
  */
 __attribute__((always_inline)) INLINE static void kick_bpart(
-    struct bpart *restrict bp, const double dt_kick_grav,
+    struct bpart* restrict bp, const double dt_kick_grav,
     const integertime_t ti_start, const integertime_t ti_end,
     const double dt_kick_mesh_grav, const integertime_t ti_start_mesh,
     const integertime_t ti_end_mesh) {
@@ -413,7 +413,7 @@ __attribute__((always_inline)) INLINE static void kick_bpart(
  * checks).
  */
 __attribute__((always_inline)) INLINE static void kick_sink(
-    struct sink *restrict sink, const double dt_kick_grav,
+    struct sink* restrict sink, const double dt_kick_grav,
     const integertime_t ti_start, const integertime_t ti_end,
     const double dt_kick_mesh_grav, const integertime_t ti_start_mesh,
     const integertime_t ti_end_mesh) {

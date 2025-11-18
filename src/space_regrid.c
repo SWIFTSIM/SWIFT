@@ -36,7 +36,7 @@
  * @param s The #space.
  * @param verbose Print messages to stdout or not.
  */
-void space_regrid(struct space *s, int verbose) {
+void space_regrid(struct space* s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
@@ -53,7 +53,7 @@ void space_regrid(struct space *s, int verbose) {
     /* Can we use the list of local non-empty top-level cells? */
     if (s->local_cells_with_particles_top != NULL) {
       for (int k = 0; k < s->nr_local_cells_with_particles; ++k) {
-        const struct cell *c =
+        const struct cell* c =
             &s->cells_top[s->local_cells_with_particles_top[k]];
         if (c->hydro.h_max > h_max) {
           h_max = c->hydro.h_max;
@@ -72,7 +72,7 @@ void space_regrid(struct space *s, int verbose) {
       /* Can we instead use all the top-level cells? */
     } else if (s->cells_top != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
-        const struct cell *c = &s->cells_top[k];
+        const struct cell* c = &s->cells_top[k];
         if (c->nodeID == engine_rank && c->hydro.h_max > h_max) {
           h_max = c->hydro.h_max;
         }
@@ -156,7 +156,7 @@ void space_regrid(struct space *s, int verbose) {
 #ifdef WITH_MPI
   double oldwidth[3] = {0., 0., 0.};
   double oldcdim[3] = {0., 0., 0.};
-  int *oldnodeIDs = NULL;
+  int* oldnodeIDs = NULL;
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
 
     /* Capture state of current space. */
@@ -168,7 +168,7 @@ void space_regrid(struct space *s, int verbose) {
     oldwidth[2] = s->width[2];
 
     if ((oldnodeIDs =
-             (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
+             (int*)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate temporary nodeIDs.");
 
     int cid = 0;
@@ -226,48 +226,48 @@ void space_regrid(struct space *s, int verbose) {
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
 
-    if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
+    if (swift_memalign("cells_top", (void**)&s->cells_top, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate top-level cells.");
     bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
 
     /* Allocate the multipoles for the top-level cells. */
     if (s->with_self_gravity) {
-      if (swift_memalign("multipoles_top", (void **)&s->multipoles_top,
+      if (swift_memalign("multipoles_top", (void**)&s->multipoles_top,
                          multipole_align,
                          s->nr_cells * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate top-level multipoles.");
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
     }
 
-    if (swift_memalign("cells_top_updated", (void **)&s->cells_top_updated,
+    if (swift_memalign("cells_top_updated", (void**)&s->cells_top_updated,
                        cell_align, s->nr_cells * sizeof(char)) != 0)
       error("Failed to allocate top-level cells.");
     bzero(s->cells_top_updated, s->nr_cells * sizeof(char));
 
     /* Allocate the indices of local cells */
-    if (swift_memalign("local_cells_top", (void **)&s->local_cells_top,
+    if (swift_memalign("local_cells_top", (void**)&s->local_cells_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of local top-level cells.");
     bzero(s->local_cells_top, s->nr_cells * sizeof(int));
 
     /* Allocate the indices of local cells with tasks */
     if (swift_memalign("local_cells_with_tasks_top",
-                       (void **)&s->local_cells_with_tasks_top,
+                       (void**)&s->local_cells_with_tasks_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of local top-level cells with tasks.");
     bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
 
     /* Allocate the indices of cells with particles */
     if (swift_memalign("cells_with_particles_top",
-                       (void **)&s->cells_with_particles_top,
+                       (void**)&s->cells_with_particles_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of top-level cells with particles.");
     bzero(s->cells_with_particles_top, s->nr_cells * sizeof(int));
 
     /* Allocate the indices of local cells with particles */
     if (swift_memalign("local_cells_with_particles_top",
-                       (void **)&s->local_cells_with_particles_top,
+                       (void**)&s->local_cells_with_particles_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error(
           "Failed to allocate indices of local top-level cells with "
@@ -303,7 +303,7 @@ void space_regrid(struct space *s, int verbose) {
       for (int j = 0; j < cdim[1]; j++)
         for (int k = 0; k < cdim[2]; k++) {
           const size_t cid = cell_getid(cdim, i, j, k);
-          struct cell *restrict c = &s->cells_top[cid];
+          struct cell* restrict c = &s->cells_top[cid];
           c->loc[0] = i * s->width[0];
           c->loc[1] = j * s->width[1];
           c->loc[2] = k * s->width[2];

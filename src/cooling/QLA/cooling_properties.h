@@ -27,49 +27,49 @@
 struct cooling_tables {
 
   /* array of all mean particle masses mu (temperature) */
-  float *Tmu;
+  float* Tmu;
 
   /* array of all mean particle masses mu (internal energy) */
-  float *Umu;
+  float* Umu;
 
   /* array of all cooling processes (temperature) */
-  float *Tcooling;
+  float* Tcooling;
 
   /* array of all cooling processes (internal energy) */
-  float *Ucooling;
+  float* Ucooling;
 
   /* array of all heating processes (temperature) */
-  float *Theating;
+  float* Theating;
 
   /* array of all heating processes (internal energy) */
-  float *Uheating;
+  float* Uheating;
 
   /* array of all electron abundances (temperature) */
-  float *Telectron_fraction;
+  float* Telectron_fraction;
 
   /* array of all electron abundances (internal energy) */
-  float *Uelectron_fraction;
+  float* Uelectron_fraction;
 
   /* array to get T from U */
-  float *T_from_U;
+  float* T_from_U;
 
   /* array to get U from T */
-  float *U_from_T;
+  float* U_from_T;
 
   /* array of equilibrium temperatures */
-  float *logTeq;
+  float* logTeq;
 
   /* array of mean particle masses at equilibrium temperatures */
-  float *meanpartmass_Teq;
+  float* meanpartmass_Teq;
 
   /* array of pressures at equilibrium temperatures */
-  float *logPeq;
+  float* logPeq;
 
   /* array of hydrogen fractions at equilibrium temperature */
-  float *logHfracs_Teq;
+  float* logHfracs_Teq;
 
   /* array of all hydrogen fractions */
-  float *logHfracs_all;
+  float* logHfracs_all;
 };
 
 /**
@@ -81,41 +81,41 @@ struct cooling_function_data {
   struct cooling_tables table;
 
   /*! Redshift bins */
-  float *Redshifts;
+  float* Redshifts;
 
   /*! Hydrogen number density bins */
-  float *nH;
+  float* nH;
 
   /*! Temperature bins */
-  float *Temp;
+  float* Temp;
 
   /*! Metallicity bins */
-  float *Metallicity;
+  float* Metallicity;
 
   /*! Internal energy bins */
-  float *Therm;
+  float* Therm;
 
   /*! Abundance ratios for each metallicity bin and for each included element */
-  float *LogAbundances;
-  float *Abundances;
-  float *Abundances_inv;
+  float* LogAbundances;
+  float* Abundances;
+  float* Abundances_inv;
 
   /*! Atomic masses for all included elements */
-  float *atomicmass;
-  float *atomicmass_inv;
+  float* atomicmass;
+  float* atomicmass_inv;
 
   /*! Mass fractions of all included elements */
-  float *LogMassFractions;
-  float *MassFractions;
+  float* LogMassFractions;
+  float* MassFractions;
 
   /*! Index for solar metallicity in the metallicity dimension */
   int indxZsol;
 
   /*! Solar metallicity (metal mass fraction) */
-  float *Zsol;
+  float* Zsol;
 
   /*! Inverse of solar metallicity (metal mass fraction) */
-  float *Zsol_inv;
+  float* Zsol_inv;
 
   /*! Filepath to the directory containing the HDF5 cooling tables */
   char cooling_table_path[qla_table_path_name_length];

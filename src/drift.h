@@ -51,9 +51,9 @@
  * @param e the #engine
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
-    struct gpart *restrict gp, double dt_drift, integertime_t ti_old,
-    integertime_t ti_current, const struct gravity_props *grav_props,
-    const struct engine *e, struct replication_list *replication_list,
+    struct gpart* restrict gp, double dt_drift, integertime_t ti_old,
+    integertime_t ti_current, const struct gravity_props* grav_props,
+    const struct engine* e, struct replication_list* replication_list,
     const double cell_loc[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -142,15 +142,15 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
  * @param floor The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void drift_part(
-    struct part *restrict p, struct xpart *restrict xp, double dt_drift,
+    struct part* restrict p, struct xpart* restrict xp, double dt_drift,
     double dt_kick_hydro, double dt_kick_grav, double dt_therm,
-    integertime_t ti_old, integertime_t ti_current, const struct engine *e,
-    struct replication_list *replication_list, const double cell_loc[3]) {
+    integertime_t ti_old, integertime_t ti_current, const struct engine* e,
+    struct replication_list* replication_list, const double cell_loc[3]) {
 
-  const struct cosmology *cosmo = e->cosmology;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
-  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct hydro_props* hydro_props = e->hydro_properties;
+  const struct entropy_floor_properties* entropy_floor = e->entropy_floor;
+  const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
   const float mu_0 = e->physical_constants->const_vacuum_permeability;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -243,9 +243,9 @@ __attribute__((always_inline)) INLINE static void drift_part(
  * @param ti_current Integer end of time-step (for debugging checks).
  */
 __attribute__((always_inline)) INLINE static void drift_spart(
-    struct spart *restrict sp, double dt_drift, integertime_t ti_old,
-    integertime_t ti_current, const struct engine *e,
-    struct replication_list *replication_list, const double cell_loc[3]) {
+    struct spart* restrict sp, double dt_drift, integertime_t ti_old,
+    integertime_t ti_current, const struct engine* e,
+    struct replication_list* replication_list, const double cell_loc[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (sp->ti_drift != ti_old)
@@ -311,9 +311,9 @@ __attribute__((always_inline)) INLINE static void drift_spart(
  * @param ti_current Integer end of time-step (for debugging checks).
  */
 __attribute__((always_inline)) INLINE static void drift_bpart(
-    struct bpart *restrict bp, double dt_drift, integertime_t ti_old,
-    integertime_t ti_current, const struct engine *e,
-    struct replication_list *replication_list, const double cell_loc[3]) {
+    struct bpart* restrict bp, double dt_drift, integertime_t ti_old,
+    integertime_t ti_current, const struct engine* e,
+    struct replication_list* replication_list, const double cell_loc[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (bp->ti_drift != ti_old)
@@ -378,7 +378,7 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
  * @param ti_current Integer end of time-step (for debugging checks).
  */
 __attribute__((always_inline)) INLINE static void drift_sink(
-    struct sink *restrict sink, double dt_drift, integertime_t ti_old,
+    struct sink* restrict sink, double dt_drift, integertime_t ti_old,
     integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS

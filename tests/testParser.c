@@ -25,8 +25,8 @@
 #include <stdio.h>
 #include <string.h>
 
-int main(int argc, char *argv[]) {
-  const char *input_file = argv[1];
+int main(int argc, char* argv[]) {
+  const char* input_file = argv[1];
 
   /* Create a structure to read file into. */
   struct swift_params param_file;
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
   int haveopt2 =
       parser_get_opt_param_int_array(&param_file, "Box:moresides", 5, optsides);
 
-  char **var_result;
+  char** var_result;
   int nvar_result;
   parser_get_param_string_array(&param_file, "Words:list", &nvar_result,
                                 &var_result);
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < nvar_result; i++) printf("   %d: %s\n", i, var_result[i]);
 
   /* Get same list without []. */
-  char **var_result2;
+  char** var_result2;
   int nvar_result2;
   parser_get_param_string_array(&param_file, "Words:nonstdlist", &nvar_result2,
                                 &var_result2);
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
   parser_free_param_string_array(nvar_result, var_result);
   parser_free_param_string_array(nvar_result2, var_result2);
 
-  const char *optwords[4] = {"Word1", "Word2", "Word3", "Word4"};
+  const char* optwords[4] = {"Word1", "Word2", "Word3", "Word4"};
   int noptwords = 4;
   int haveoptwords1 = parser_get_opt_param_string_array(
       &param_file, "Simulation:optwords", &nvar_result, &var_result, noptwords,

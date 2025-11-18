@@ -56,15 +56,15 @@ struct output_list {
                           [FIELD_BUFFER_SIZE];
 
   /* Time array */
-  double *times;
+  double* times;
 
   /* Select output indices - each index corresponds to a string
    * in select_output. Chosen to be this instead of an array of
    * pointers because of restarts. */
-  int *select_output_indices;
+  int* select_output_indices;
 
   /* List of snapshot labels if not using the defaults */
-  int *snapshot_labels;
+  int* snapshot_labels;
 
   /* Total number of currently used select output names */
   int select_output_number_of_names;
@@ -88,19 +88,19 @@ struct output_list {
   int final_step_dump;
 };
 
-void output_list_read_file(struct output_list *output_list,
-                           const char *filename, struct cosmology *cosmo);
-void output_list_read_next_time(struct output_list *t, const struct engine *e,
-                                const char *name, integertime_t *ti_next);
-void output_list_get_current_select_output(struct output_list *t,
-                                           char *select_output_name);
-void output_list_init(struct output_list **list, const struct engine *e,
-                      const char *name, double *const delta_time);
-void output_list_print(const struct output_list *output_list);
-void output_list_clean(struct output_list **output_list);
-void output_list_struct_dump(struct output_list *list, FILE *stream);
-void output_list_struct_restore(struct output_list *list, FILE *stream);
-void output_list_check_selection(const struct output_list *list,
-                                 const struct output_options *output_options);
+void output_list_read_file(struct output_list* output_list,
+                           const char* filename, struct cosmology* cosmo);
+void output_list_read_next_time(struct output_list* t, const struct engine* e,
+                                const char* name, integertime_t* ti_next);
+void output_list_get_current_select_output(struct output_list* t,
+                                           char* select_output_name);
+void output_list_init(struct output_list** list, const struct engine* e,
+                      const char* name, double* const delta_time);
+void output_list_print(const struct output_list* output_list);
+void output_list_clean(struct output_list** output_list);
+void output_list_struct_dump(struct output_list* list, FILE* stream);
+void output_list_struct_restore(struct output_list* list, FILE* stream);
+void output_list_check_selection(const struct output_list* list,
+                                 const struct output_options* output_options);
 
 #endif /* SWIFT_OUTPUT_LIST_H */

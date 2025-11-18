@@ -48,8 +48,8 @@
  * @param ratio_solar (return) Array of ratios to solar abundances.
  */
 __attribute__((always_inline)) INLINE static void abundance_ratio_to_solar(
-    const struct part *p, const struct cooling_function_data *cooling,
-    const struct phys_const *phys_const,
+    const struct part* p, const struct cooling_function_data* cooling,
+    const struct phys_const* phys_const,
     float ratio_solar[qla_eagle_cooling_N_abundances]) {
 
   const float XH = 1. - phys_const->const_primordial_He_fraction;
@@ -86,7 +86,7 @@ __attribute__((always_inline)) INLINE static void abundance_ratio_to_solar(
 __attribute__((always_inline)) INLINE double
 qla_eagle_helium_reionization_extraheat(
     const double z, const double delta_z,
-    const struct cooling_function_data *cooling) {
+    const struct cooling_function_data* cooling) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (delta_z > 0.f) error("Invalid value for delta_z. Should be negative.");
@@ -142,7 +142,7 @@ qla_eagle_helium_reionization_extraheat(
 __attribute__((always_inline)) INLINE double qla_eagle_convert_u_to_temp(
     const double log_10_u_cgs, const float redshift, const int n_H_index,
     const int He_index, const float d_n_H, const float d_He,
-    const struct cooling_function_data *cooling) {
+    const struct cooling_function_data* cooling) {
 
   /* Get index of u along the internal energy axis */
   int u_index;
@@ -198,7 +198,7 @@ __attribute__((always_inline)) INLINE double qla_eagle_convert_u_to_temp(
  * @param electron_abundance The electron abundance.
  */
 __attribute__((always_inline)) INLINE double qla_eagle_Compton_cooling_rate(
-    const struct cooling_function_data *cooling, const double redshift,
+    const struct cooling_function_data* cooling, const double redshift,
     const double n_H_cgs, const double temperature,
     const double electron_abundance) {
 
@@ -282,8 +282,8 @@ INLINE static double qla_eagle_metal_cooling_rate(
     const double log10_u_cgs, const double redshift, const double n_H_cgs,
     const float solar_ratio[qla_eagle_cooling_N_abundances],
     const int n_H_index, const float d_n_H, const int He_index,
-    const float d_He, const struct cooling_function_data *cooling,
-    double *element_lambda) {
+    const float d_He, const struct cooling_function_data* cooling,
+    double* element_lambda) {
 
   /* Temperature */
   const double log_10_T = qla_eagle_convert_u_to_temp(
@@ -507,7 +507,7 @@ INLINE static double qla_eagle_cooling_rate(
     const double log10_u_cgs, const double redshift, const double n_H_cgs,
     const float abundance_ratio[qla_eagle_cooling_N_abundances],
     const int n_H_index, const float d_n_H, const int He_index,
-    const float d_He, const struct cooling_function_data *cooling) {
+    const float d_He, const struct cooling_function_data* cooling) {
 
   return qla_eagle_metal_cooling_rate(
       log10_u_cgs, redshift, n_H_cgs, abundance_ratio, n_H_index, d_n_H,

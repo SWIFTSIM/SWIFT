@@ -6,9 +6,9 @@
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-void DOPAIR1_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
+void DOPAIR1_NOSORT(struct runner* r, struct cell* ci, struct cell* cj) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   TIMER_TIC;
 
@@ -24,8 +24,8 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const int count_i = ci->count;
   const int count_j = cj->count;
-  struct part *restrict parts_i = ci->parts;
-  struct part *restrict parts_j = cj->parts;
+  struct part* restrict parts_i = ci->parts;
+  struct part* restrict parts_j = cj->parts;
 
   if (cell_is_active(ci, e)) {
 
@@ -33,7 +33,7 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
     for (int pid = 0; pid < count_i; pid++) {
 
       /* Get a hold of the ith part in ci. */
-      struct part *restrict pi = &parts_i[pid];
+      struct part* restrict pi = &parts_i[pid];
       if (!part_is_active(pi, e)) continue;
       const float hi = pi->h;
 
@@ -45,7 +45,7 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
       for (int pjd = 0; pjd < count_j; pjd++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts_j[pjd];
+        struct part* restrict pj = &parts_j[pjd];
 
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
@@ -80,7 +80,7 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
     for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a hold of the ith part in ci. */
-      struct part *restrict pj = &parts_j[pjd];
+      struct part* restrict pj = &parts_j[pjd];
       if (!part_is_active(pj, e)) continue;
       const float hj = pj->h;
 
@@ -92,7 +92,7 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
       for (int pid = 0; pid < count_i; pid++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pi = &parts_i[pid];
+        struct part* restrict pi = &parts_i[pid];
 
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
@@ -131,9 +131,9 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-void DOPAIR2_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
+void DOPAIR2_NOSORT(struct runner* r, struct cell* ci, struct cell* cj) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   TIMER_TIC;
 
@@ -149,8 +149,8 @@ void DOPAIR2_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const int count_i = ci->count;
   const int count_j = cj->count;
-  struct part *restrict parts_i = ci->parts;
-  struct part *restrict parts_j = cj->parts;
+  struct part* restrict parts_i = ci->parts;
+  struct part* restrict parts_j = cj->parts;
 
   if (cell_is_active(ci, e)) {
 
@@ -158,7 +158,7 @@ void DOPAIR2_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
     for (int pid = 0; pid < count_i; pid++) {
 
       /* Get a hold of the ith part in ci. */
-      struct part *restrict pi = &parts_i[pid];
+      struct part* restrict pi = &parts_i[pid];
       if (!part_is_active(pi, e)) continue;
       const float hi = pi->h;
 
@@ -170,7 +170,7 @@ void DOPAIR2_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
       for (int pjd = 0; pjd < count_j; pjd++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts_j[pjd];
+        struct part* restrict pj = &parts_j[pjd];
         const float hjg2 = pj->h * pj->h * kernel_gamma2;
 
         /* Compute the pairwise distance. */
@@ -206,7 +206,7 @@ void DOPAIR2_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
     for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a hold of the ith part in ci. */
-      struct part *restrict pj = &parts_j[pjd];
+      struct part* restrict pj = &parts_j[pjd];
       if (!part_is_active(pj, e)) continue;
       const float hj = pj->h;
 
@@ -218,7 +218,7 @@ void DOPAIR2_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
       for (int pid = 0; pid < count_i; pid++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pi = &parts_i[pid];
+        struct part* restrict pi = &parts_i[pid];
         const float hig2 = pi->h * pi->h * kernel_gamma2;
 
         /* Compute the pairwise distance. */
@@ -262,16 +262,16 @@ void DOPAIR2_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
  * @param count The number of particles in @c ind.
  * @param cj The second #cell.
  */
-void DOPAIR_SUBSET_NOSORT(struct runner *r, struct cell *restrict ci,
-                          struct part *restrict parts_i, int *restrict ind,
-                          int count, struct cell *restrict cj) {
+void DOPAIR_SUBSET_NOSORT(struct runner* r, struct cell* restrict ci,
+                          struct part* restrict parts_i, int* restrict ind,
+                          int count, struct cell* restrict cj) {
 
-  struct engine *e = r->e;
+  struct engine* e = r->e;
 
   TIMER_TIC;
 
   const int count_j = cj->count;
-  struct part *restrict parts_j = cj->parts;
+  struct part* restrict parts_j = cj->parts;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -286,7 +286,7 @@ void DOPAIR_SUBSET_NOSORT(struct runner *r, struct cell *restrict ci,
   for (int pid = 0; pid < count; pid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct part *restrict pi = &parts_i[ind[pid]];
+    struct part* restrict pi = &parts_i[ind[pid]];
     double pix[3];
     for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
     const float hi = pi->h;
@@ -299,7 +299,7 @@ void DOPAIR_SUBSET_NOSORT(struct runner *r, struct cell *restrict ci,
     for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
+      struct part* restrict pj = &parts_j[pjd];
 
       /* Compute the pairwise distance. */
       float r2 = 0.0f;

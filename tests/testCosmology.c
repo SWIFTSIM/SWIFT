@@ -26,7 +26,7 @@
 #define N_CHECK 20
 #define TOLERANCE 1e-7
 
-void test_params_init(struct swift_params *params) {
+void test_params_init(struct swift_params* params) {
   parser_init("", params);
   parser_set_param(params, "Cosmology:Omega_cdm:0.2589");
   parser_set_param(params, "Cosmology:Omega_lambda:0.6910");
@@ -36,7 +36,7 @@ void test_params_init(struct swift_params *params) {
   parser_set_param(params, "Cosmology:a_end:1.0");
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   message("Initialization...");
 

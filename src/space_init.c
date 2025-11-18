@@ -39,16 +39,16 @@
 #include "threadpool.h"
 #include "tracers.h"
 
-void space_init_parts_mapper(void *restrict map_data, int count,
-                             void *restrict extra_data) {
+void space_init_parts_mapper(void* restrict map_data, int count,
+                             void* restrict extra_data) {
 
-  struct part *restrict parts = (struct part *)map_data;
-  const struct engine *restrict e = (struct engine *)extra_data;
-  const struct hydro_space *restrict hs = &e->s->hs;
+  struct part* restrict parts = (struct part*)map_data;
+  const struct engine* restrict e = (struct engine*)extra_data;
+  const struct hydro_space* restrict hs = &e->s->hs;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   size_t ind = parts - e->s->parts;
-  struct xpart *restrict xparts = e->s->xparts + ind;
+  struct xpart* restrict xparts = e->s->xparts + ind;
 
   for (int k = 0; k < count; k++) {
     hydro_init_part(&parts[k], hs);
@@ -72,7 +72,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
  * @param s The #space.
  * @param verbose Are we talkative?
  */
-void space_init_parts(struct space *s, int verbose) {
+void space_init_parts(struct space* s, int verbose) {
 
   const ticks tic = getticks();
 
@@ -85,10 +85,10 @@ void space_init_parts(struct space *s, int verbose) {
             clocks_getunit());
 }
 
-void space_init_gparts_mapper(void *restrict map_data, int count,
-                              void *restrict extra_data) {
+void space_init_gparts_mapper(void* restrict map_data, int count,
+                              void* restrict extra_data) {
 
-  struct gpart *gparts = (struct gpart *)map_data;
+  struct gpart* gparts = (struct gpart*)map_data;
   for (int k = 0; k < count; k++) gravity_init_gpart(&gparts[k]);
 }
 
@@ -99,7 +99,7 @@ void space_init_gparts_mapper(void *restrict map_data, int count,
  * @param s The #space.
  * @param verbose Are we talkative?
  */
-void space_init_gparts(struct space *s, int verbose) {
+void space_init_gparts(struct space* s, int verbose) {
 
   const ticks tic = getticks();
 
@@ -112,10 +112,10 @@ void space_init_gparts(struct space *s, int verbose) {
             clocks_getunit());
 }
 
-void space_init_sparts_mapper(void *restrict map_data, int scount,
-                              void *restrict extra_data) {
+void space_init_sparts_mapper(void* restrict map_data, int scount,
+                              void* restrict extra_data) {
 
-  struct spart *restrict sparts = (struct spart *)map_data;
+  struct spart* restrict sparts = (struct spart*)map_data;
   for (int k = 0; k < scount; k++) {
     stars_init_spart(&sparts[k]);
     rt_init_spart(&sparts[k]);
@@ -130,7 +130,7 @@ void space_init_sparts_mapper(void *restrict map_data, int scount,
  * @param s The #space.
  * @param verbose Are we talkative?
  */
-void space_init_sparts(struct space *s, int verbose) {
+void space_init_sparts(struct space* s, int verbose) {
 
   const ticks tic = getticks();
 
@@ -143,10 +143,10 @@ void space_init_sparts(struct space *s, int verbose) {
             clocks_getunit());
 }
 
-void space_init_bparts_mapper(void *restrict map_data, int bcount,
-                              void *restrict extra_data) {
+void space_init_bparts_mapper(void* restrict map_data, int bcount,
+                              void* restrict extra_data) {
 
-  struct bpart *restrict bparts = (struct bpart *)map_data;
+  struct bpart* restrict bparts = (struct bpart*)map_data;
   for (int k = 0; k < bcount; k++) black_holes_init_bpart(&bparts[k]);
 }
 
@@ -157,7 +157,7 @@ void space_init_bparts_mapper(void *restrict map_data, int bcount,
  * @param s The #space.
  * @param verbose Are we talkative?
  */
-void space_init_bparts(struct space *s, int verbose) {
+void space_init_bparts(struct space* s, int verbose) {
 
   const ticks tic = getticks();
 
@@ -170,10 +170,10 @@ void space_init_bparts(struct space *s, int verbose) {
             clocks_getunit());
 }
 
-void space_init_sinks_mapper(void *restrict map_data, int sink_count,
-                             void *restrict extra_data) {
+void space_init_sinks_mapper(void* restrict map_data, int sink_count,
+                             void* restrict extra_data) {
 
-  struct sink *restrict sinks = (struct sink *)map_data;
+  struct sink* restrict sinks = (struct sink*)map_data;
   for (int k = 0; k < sink_count; k++) sink_init_sink(&sinks[k]);
 }
 
@@ -184,7 +184,7 @@ void space_init_sinks_mapper(void *restrict map_data, int sink_count,
  * @param s The #space.
  * @param verbose Are we talkative?
  */
-void space_init_sinks(struct space *s, int verbose) {
+void space_init_sinks(struct space* s, int verbose) {
 
   const ticks tic = getticks();
 

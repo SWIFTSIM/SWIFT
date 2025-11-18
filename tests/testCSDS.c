@@ -33,8 +33,8 @@
 #include "csds/src/csds_logfile_writer.h"
 #include "swift.h"
 
-void test_log_parts(struct csds_writer *log) {
-  struct csds_logfile_writer *d = &log->logfile;
+void test_log_parts(struct csds_writer* log) {
+  struct csds_logfile_writer* d = &log->logfile;
   struct engine e;
   struct cosmology cosmo;
   e.cosmology = &cosmo;
@@ -73,7 +73,7 @@ void test_log_parts(struct csds_writer *log) {
   bzero(&p, sizeof(struct part));
   size_t offset = xp.csds_data.last_offset;
   size_t offset_old = offset;
-  unsigned int mask = csds_read_part(log, &p, &offset, (const char *)d->data);
+  unsigned int mask = csds_read_part(log, &p, &offset, (const char*)d->data);
   printf(
       "Recovered part at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -86,7 +86,7 @@ void test_log_parts(struct csds_writer *log) {
   /* Recover the second part from the logfile (only position). */
   bzero(&p, sizeof(struct part));
   offset_old = offset;
-  mask = csds_read_part(log, &p, &offset, (const char *)d->data);
+  mask = csds_read_part(log, &p, &offset, (const char*)d->data);
   printf(
       "Recovered part at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -99,7 +99,7 @@ void test_log_parts(struct csds_writer *log) {
   /* Recover the first part from the logfile. */
   bzero(&p, sizeof(struct part));
   offset_old = offset;
-  mask = csds_read_part(log, &p, &offset, (const char *)d->data);
+  mask = csds_read_part(log, &p, &offset, (const char*)d->data);
   printf(
       "Recovered part at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -110,8 +110,8 @@ void test_log_parts(struct csds_writer *log) {
   }
 }
 
-void test_log_gparts(struct csds_writer *log) {
-  struct csds_logfile_writer *d = &log->logfile;
+void test_log_gparts(struct csds_writer* log) {
+  struct csds_logfile_writer* d = &log->logfile;
   struct engine e;
 
   /* Write several copies of a part to the logfile. */
@@ -145,7 +145,7 @@ void test_log_gparts(struct csds_writer *log) {
   size_t offset = p.csds_data.last_offset;
   bzero(&p, sizeof(struct gpart));
   size_t offset_old = offset;
-  int mask = csds_read_gpart(log, &p, &offset, (const char *)d->data);
+  int mask = csds_read_gpart(log, &p, &offset, (const char*)d->data);
   printf(
       "Recovered gpart at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -158,7 +158,7 @@ void test_log_gparts(struct csds_writer *log) {
   /* Recover the second part from the logfile. */
   bzero(&p, sizeof(struct gpart));
   offset_old = offset;
-  mask = csds_read_gpart(log, &p, &offset, (const char *)d->data);
+  mask = csds_read_gpart(log, &p, &offset, (const char*)d->data);
   printf(
       "Recovered gpart at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -171,7 +171,7 @@ void test_log_gparts(struct csds_writer *log) {
   /* Recover the first part from the logfile. */
   bzero(&p, sizeof(struct gpart));
   offset_old = offset;
-  mask = csds_read_gpart(log, &p, &offset, (const char *)d->data);
+  mask = csds_read_gpart(log, &p, &offset, (const char*)d->data);
   printf(
       "Recovered gpart at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -182,8 +182,8 @@ void test_log_gparts(struct csds_writer *log) {
   }
 }
 
-void test_log_timestamps(struct csds_writer *log) {
-  struct csds_logfile_writer *d = &log->logfile;
+void test_log_timestamps(struct csds_writer* log) {
+  struct csds_logfile_writer* d = &log->logfile;
 
   /* The timestamp to log. */
   integertime_t t = 10;
@@ -208,8 +208,7 @@ void test_log_timestamps(struct csds_writer *log) {
   size_t offset_old = offset;
   t = 0;
   time = 0;
-  int mask =
-      csds_read_timestamp(log, &t, &time, &offset, (const char *)d->data);
+  int mask = csds_read_timestamp(log, &t, &time, &offset, (const char*)d->data);
   printf(
       "Recovered timestamp %020llu with time %g at offset %#016zx with mask "
       "%#04x.\n",
@@ -226,7 +225,7 @@ void test_log_timestamps(struct csds_writer *log) {
   offset_old = offset;
   t = 0;
   time = 0;
-  mask = csds_read_timestamp(log, &t, &time, &offset, (const char *)d->data);
+  mask = csds_read_timestamp(log, &t, &time, &offset, (const char*)d->data);
   printf(
       "Recovered timestamp %020llu with time %g at offset %#016zx with mask "
       "%#04x.\n",
@@ -243,7 +242,7 @@ void test_log_timestamps(struct csds_writer *log) {
   offset_old = offset;
   t = 0;
   time = 0;
-  mask = csds_read_timestamp(log, &t, &time, &offset, (const char *)d->data);
+  mask = csds_read_timestamp(log, &t, &time, &offset, (const char*)d->data);
   printf(
       "Recovered timestamp %020llu with time %g at offset %#016zx with mask "
       "%#04x.\n",
@@ -258,7 +257,7 @@ void test_log_timestamps(struct csds_writer *log) {
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Prepare a csds. */
   struct csds_writer log;
@@ -292,6 +291,6 @@ int main(int argc, char *argv[]) {
 
 #else
 
-int main(int argc, char *argv[]) { return 0; }
+int main(int argc, char* argv[]) { return 0; }
 
 #endif /* HAVE_POSIX_FALLOCATE */

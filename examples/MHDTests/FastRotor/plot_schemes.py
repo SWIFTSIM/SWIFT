@@ -77,6 +77,7 @@ for ii in range(nini, nfin):
     # First create a mass-weighted temperature dataset
 
     B = data.gas.magnetic_flux_densities
+    #B = data.gas.magnetic_current
     divB = data.gas.magnetic_divergences
     P_mag = (B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2) / 2
     h = data.gas.smoothing_lengths
@@ -84,6 +85,7 @@ for ii in range(nini, nfin):
     normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
 
     data.gas.DivB_error = np.maximum(h * abs(divB) / normB, 1e-10)
+    #data.gas.DivB_error = np.maximum( abs(divB) / normB, 1e-10)
 
     # Then create a mass-weighted B error dataset
     data.gas.mass_weighted_magnetic_divB_error = data.gas.masses * data.gas.DivB_error

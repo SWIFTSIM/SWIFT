@@ -65,7 +65,7 @@ struct lightcone_map {
   pixel_index_t pix_per_rank;
 
   /*! Local healpix map data */
-  double *data;
+  double* data;
 
   /*! Inner radius */
   double r_min;
@@ -85,7 +85,7 @@ struct lightcone_map {
 #endif
 };
 
-void lightcone_map_init(struct lightcone_map *map, const int nside,
+void lightcone_map_init(struct lightcone_map* map, const int nside,
                         const pixel_index_t total_nr_pix,
                         const pixel_index_t pix_per_rank,
                         const pixel_index_t local_nr_pix,
@@ -93,22 +93,22 @@ void lightcone_map_init(struct lightcone_map *map, const int nside,
                         const double r_min, const double r_max,
                         struct lightcone_map_type type);
 
-void lightcone_map_clean(struct lightcone_map *map);
+void lightcone_map_clean(struct lightcone_map* map);
 
-void lightcone_map_struct_dump(const struct lightcone_map *map, FILE *stream);
+void lightcone_map_struct_dump(const struct lightcone_map* map, FILE* stream);
 
-void lightcone_map_struct_restore(struct lightcone_map *map, FILE *stream);
+void lightcone_map_struct_restore(struct lightcone_map* map, FILE* stream);
 
-void lightcone_map_allocate_pixels(struct lightcone_map *map,
+void lightcone_map_allocate_pixels(struct lightcone_map* map,
                                    const int zero_pixels);
 
-void lightcone_map_free_pixels(struct lightcone_map *map);
+void lightcone_map_free_pixels(struct lightcone_map* map);
 
 #ifdef HAVE_HDF5
-void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id,
-                         const char *name,
-                         const struct unit_system *internal_units,
-                         const struct unit_system *snapshot_units,
+void lightcone_map_write(struct lightcone_map* map, const hid_t loc_id,
+                         const char* name,
+                         const struct unit_system* internal_units,
+                         const struct unit_system* snapshot_units,
                          const int collective, const int maps_gzip_level,
                          const int chunk_size,
                          enum lossy_compression_schemes compression);

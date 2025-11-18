@@ -38,8 +38,8 @@
  */
 __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
     const double log_10_u_cgs, const float redshift, const int compute_dT_du,
-    float *dT_du, int n_H_index, int He_index, float d_n_H, float d_He,
-    const struct cooling_function_data *restrict cooling) {
+    float* dT_du, int n_H_index, int He_index, float d_n_H, float d_He,
+    const struct cooling_function_data* restrict cooling) {
 
   /* Get index of u along the internal energy axis */
   int u_index;
@@ -216,8 +216,8 @@ INLINE static double eagle_metal_cooling_rate(
     double log10_u_cgs, double redshift, double n_H_cgs,
     const float solar_ratio[eagle_cooling_N_abundances], int n_H_index,
     float d_n_H, int He_index, float d_He,
-    const struct cooling_function_data *restrict cooling, double *dlambda_du,
-    double *element_lambda) {
+    const struct cooling_function_data* restrict cooling, double* dlambda_du,
+    double* element_lambda) {
 
   /* used for calculating dlambda_du */
   double temp_lambda_high = 0, temp_lambda_low = 0;
@@ -571,8 +571,8 @@ INLINE static double eagle_metal_cooling_rate(
       double log_u_cgs, double redshift, double n_H_cgs,
       const float abundance_ratio[eagle_cooling_N_abundances], int n_H_index,
       float d_n_H, int He_index, float d_He,
-      const struct cooling_function_data *restrict cooling,
-      double *dLambdaNet_du) {
+      const struct cooling_function_data* restrict cooling,
+      double* dLambdaNet_du) {
 
     return eagle_metal_cooling_rate(log_u_cgs / M_LN10, redshift, n_H_cgs,
                                     abundance_ratio, n_H_index, d_n_H, He_index,
@@ -605,12 +605,12 @@ INLINE static double eagle_metal_cooling_rate(
    */
   float newton_iter(float logu_init, double u_ini, int n_H_index, float d_n_H,
                     int He_index, float d_He, float He_reion_heat,
-                    struct part *restrict p,
-                    const struct cosmology *restrict cosmo,
-                    const struct cooling_function_data *restrict cooling,
-                    const struct phys_const *restrict phys_const,
+                    struct part* restrict p,
+                    const struct cosmology* restrict cosmo,
+                    const struct cooling_function_data* restrict cooling,
+                    const struct phys_const* restrict phys_const,
                     const float abundance_ratio[eagle_cooling_N_abundances],
-                    float dt, int *bisection_flag) {
+                    float dt, int* bisection_flag) {
 
     double logu, logu_old;
     double dLambdaNet_du = 0.0, LambdaNet;
@@ -621,7 +621,7 @@ INLINE static double eagle_metal_cooling_rate(
     const float log_table_bound_low = (cooling->Therm[0] + 0.05) / M_LOG10E;
 
     /* convert Hydrogen mass fraction in Hydrogen number density */
-    float const *metal_fraction =
+    float const* metal_fraction =
         chemistry_get_metal_mass_fraction_for_cooling(p);
     const float XH = metal_fraction[chemistry_element_H];
     const double n_H = hydro_get_physical_density(p, cosmo) * XH /

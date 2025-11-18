@@ -43,10 +43,10 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const float hi, const float hj,
-                                    struct spart *si, const struct part *pj,
-                                    const struct xpart *xpj,
-                                    const struct cosmology *cosmo,
-                                    const struct feedback_props *fb_props,
+                                    struct spart* si, const struct part* pj,
+                                    const struct xpart* xpj,
+                                    const struct cosmology* cosmo,
+                                    const struct feedback_props* fb_props,
                                     const integertime_t ti_current) {
 
   /* Get the gas mass. */
@@ -115,9 +115,9 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
                                   const float hi, const float hj,
-                                  const struct spart *si, struct part *pj,
-                                  const struct xpart *xpj,
-                                  const struct cosmology *cosmo,
+                                  const struct spart* si, struct part* pj,
+                                  const struct xpart* xpj,
+                                  const struct cosmology* cosmo,
                                   const integertime_t ti_current) {
 
   /* Get the the number of SNII kinetic energy injections per stellar
@@ -148,9 +148,9 @@ runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
                                   const float hi, const float hj,
-                                  struct spart *si, const struct part *pj,
-                                  const struct xpart *xpj,
-                                  const struct cosmology *cosmo,
+                                  struct spart* si, const struct part* pj,
+                                  const struct xpart* xpj,
+                                  const struct cosmology* cosmo,
                                   const integertime_t ti_current) {
 
   /* Get the the number of SNII kinetic energy injections per stellar
@@ -207,9 +207,9 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
-    const struct spart *si, struct part *pj, struct xpart *xpj,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct feedback_props *fb_props, const integertime_t ti_current) {
+    const struct spart* si, struct part* pj, struct xpart* xpj,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct feedback_props* fb_props, const integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (si->count_since_last_enrichment != 0 && engine_current_step > 0)
@@ -430,7 +430,7 @@ runner_iact_nonsym_feedback_apply(
            * kick
            */
           hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, v_kick_abs);
-	  mhd_set_v_sig_based_on_velocity_kick(pj, cosmo, v_kick_abs);
+          mhd_set_v_sig_based_on_velocity_kick(pj, cosmo, v_kick_abs);
 
           /* Synchronize the particle on the timeline */
           timestep_sync_part(pj);
@@ -513,7 +513,7 @@ runner_iact_nonsym_feedback_apply(
   hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
                                              u_new_enrich);
   mhd_set_drifted_physical_internal_energy(pj);
-  
+
   /* Synchronize the particle on the timeline if we've got some extra
    * thermal energy from the SNII kicks that have not occured */
   if (E_kinetic_unused) {

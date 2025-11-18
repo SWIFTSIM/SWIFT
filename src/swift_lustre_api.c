@@ -56,11 +56,11 @@
  * @param ost_infos pointer to the storage structure.
  * @param size number of OSTs to make space for.
  */
-void swift_ost_store_alloc(struct swift_ost_store *ost_infos, int size) {
+void swift_ost_store_alloc(struct swift_ost_store* ost_infos, int size) {
 #ifdef HAVE_LUSTREAPI
   ost_infos->size = size;
   ost_infos->infos =
-      (struct swift_ost_info *)malloc(sizeof(struct swift_ost_info) * size);
+      (struct swift_ost_info*)malloc(sizeof(struct swift_ost_info) * size);
   if (ost_infos->infos == NULL)
     error("Failed to allocate space for an OST scan");
   memset(ost_infos->infos, 0, sizeof(struct swift_ost_info) * size);
@@ -75,13 +75,13 @@ void swift_ost_store_alloc(struct swift_ost_store *ost_infos, int size) {
  *                      the copy. Assumed to have no OST space so not
  *                      used or initialized.
  */
-void swift_ost_store_copy(struct swift_ost_store *ost_infos_src,
-                          struct swift_ost_store *ost_infos_dst) {
+void swift_ost_store_copy(struct swift_ost_store* ost_infos_src,
+                          struct swift_ost_store* ost_infos_dst) {
 #ifdef HAVE_LUSTREAPI
   ost_infos_dst->size = ost_infos_src->fullcount; /* Used size. */
   ost_infos_dst->count = ost_infos_src->count;
   ost_infos_dst->fullcount = ost_infos_src->fullcount;
-  ost_infos_dst->infos = (struct swift_ost_info *)malloc(
+  ost_infos_dst->infos = (struct swift_ost_info*)malloc(
       sizeof(struct swift_ost_info) * ost_infos_dst->size);
   if (ost_infos_dst->infos == NULL)
     error("Failed to allocate space for an OST scan copy");
@@ -95,7 +95,7 @@ void swift_ost_store_copy(struct swift_ost_store *ost_infos_src,
  *
  * @param ost_infos pointer to the storage structure.
  */
-void swift_ost_store_init(struct swift_ost_store *ost_infos) {
+void swift_ost_store_init(struct swift_ost_store* ost_infos) {
 #ifdef HAVE_LUSTREAPI
   swift_ost_store_alloc(ost_infos, PREALLOC);
   ost_infos->count = 0;
@@ -108,7 +108,7 @@ void swift_ost_store_init(struct swift_ost_store *ost_infos) {
  *
  * @param ost_infos pointer to the storage structure.
  */
-void swift_ost_store_free(struct swift_ost_store *ost_infos) {
+void swift_ost_store_free(struct swift_ost_store* ost_infos) {
 #ifdef HAVE_LUSTREAPI
   free(ost_infos->infos);
   ost_infos->infos = NULL;
@@ -124,7 +124,7 @@ void swift_ost_store_free(struct swift_ost_store *ost_infos) {
  * @param file FILE stream to write output to.
  * @param ost_infos pointer to the storage structure.
  */
-void swift_ost_store_write(FILE *file, struct swift_ost_store *ost_infos) {
+void swift_ost_store_write(FILE* file, struct swift_ost_store* ost_infos) {
 #ifdef HAVE_LUSTREAPI
   fprintf(file, "# %5s %21s %21s %21s\n", "Index", "Size (MiB)", "Used (MiB)",
           "Free (MiB)");
@@ -171,7 +171,7 @@ void swift_ost_store_write(FILE *file, struct swift_ost_store *ost_infos) {
  * @param verbose if non zero additional information will be written
  *                to stdout.
  */
-void swift_ost_store_print(struct swift_ost_store *ost_infos, int verbose) {
+void swift_ost_store_print(struct swift_ost_store* ost_infos, int verbose) {
 #ifdef HAVE_LUSTREAPI
   message("#  OSTs, using %d of %d", ost_infos->count, ost_infos->fullcount);
   if (verbose) swift_ost_store_write(stdout, ost_infos);
@@ -187,13 +187,13 @@ void swift_ost_store_print(struct swift_ost_store *ost_infos, int verbose) {
  * @param size the total size in bytes.
  * @param used the number of bytes used.
  */
-static void swift_ost_store(struct swift_ost_store *ost_infos, int index,
+static void swift_ost_store(struct swift_ost_store* ost_infos, int index,
                             size_t size, size_t used) {
   /* Add extra space if needed. Note not thread safe. */
   if (ost_infos->fullcount == ost_infos->size - 1) {
     size_t newsize = ost_infos->size + PREALLOC;
-    struct swift_ost_info *newinfos = (struct swift_ost_info *)malloc(
-        sizeof(struct swift_ost_info) * newsize);
+    struct swift_ost_info* newinfos =
+        (struct swift_ost_info*)malloc(sizeof(struct swift_ost_info) * newsize);
     if (newinfos == NULL) error("Failed to allocate space for OST information");
     memset(newinfos, 0, sizeof(struct swift_ost_info) * newsize);
     memcpy(newinfos, ost_infos->infos,
@@ -223,7 +223,7 @@ static void swift_ost_store(struct swift_ost_store *ost_infos, int index,
  * @return 0 on success, otherwise an error will have been reported to stdout.
  * If an error occurs the store will never be changed.
  */
-int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
+int swift_ost_scan(const char* path, struct swift_ost_store* ost_infos) {
 
   int rc = 0;
 #ifdef HAVE_LUSTREAPI
@@ -283,9 +283,9 @@ int swift_ost_scan(const char *path, struct swift_ost_store *ost_infos) {
 
 #ifdef HAVE_LUSTREAPI
 /** Comparison function for OST free space. */
-static int ostcmp(const void *p1, const void *p2) {
-  const struct swift_ost_info *i1 = (const struct swift_ost_info *)p1;
-  const struct swift_ost_info *i2 = (const struct swift_ost_info *)p2;
+static int ostcmp(const void* p1, const void* p2) {
+  const struct swift_ost_info* i1 = (const struct swift_ost_info*)p1;
+  const struct swift_ost_info* i2 = (const struct swift_ost_info*)p2;
 
   /* size_t ints so some care is needed to return an int. */
   size_t f1 = i1->size - i1->used;
@@ -304,7 +304,7 @@ static int ostcmp(const void *p1, const void *p2) {
  * @param minfree the number of MiB that the OST should be capable of
  *                storing. Zero for no effect.
  */
-void swift_ost_cull(struct swift_ost_store *ost_infos, int minfree) {
+void swift_ost_cull(struct swift_ost_store* ost_infos, int minfree) {
 #ifdef HAVE_LUSTREAPI
   /* Sort by free space. */
   qsort(ost_infos->infos, ost_infos->count, sizeof(struct swift_ost_info),
@@ -316,7 +316,7 @@ void swift_ost_cull(struct swift_ost_store *ost_infos, int minfree) {
 
     /* Always keep at least one! */
     for (int i = 1; i < ost_infos->count; i++) {
-      struct swift_ost_info *curr = &ost_infos->infos[i];
+      struct swift_ost_info* curr = &ost_infos->infos[i];
       if ((curr->size - curr->used) < bytesfree) {
 
         /* Throw the rest away. Note fullcount now decoupled. */
@@ -339,7 +339,7 @@ void swift_ost_cull(struct swift_ost_store *ost_infos, int minfree) {
  *              culled as this implicitly assumes OSTs are in index order.
  * @return the selected OST index.
  */
-int swift_ost_next(struct swift_ost_store *ost_infos, int *arrayindex,
+int swift_ost_next(struct swift_ost_store* ost_infos, int* arrayindex,
                    int count) {
 #ifdef HAVE_LUSTREAPI
   int index = (*arrayindex % ost_infos->count);
@@ -356,7 +356,7 @@ int swift_ost_next(struct swift_ost_store *ost_infos, int *arrayindex,
  * @param ost_infos pointer to populated storage structure.
  * @param index index of the OST to remove.
  */
-void swift_ost_remove(struct swift_ost_store *ost_infos, int index) {
+void swift_ost_remove(struct swift_ost_store* ost_infos, int index) {
 
 #ifdef HAVE_LUSTREAPI
   /* Find the array index. */
@@ -397,8 +397,8 @@ void swift_ost_remove(struct swift_ost_store *ost_infos, int index) {
  *
  * @return non-zero if there are problems creating the file.
  */
-int swift_create_striped_file(const char *filename, int offset, int count,
-                              int *usedoffset) {
+int swift_create_striped_file(const char* filename, int offset, int count,
+                              int* usedoffset) {
   int rc = 0;
 
 #ifdef HAVE_LUSTREAPI
@@ -415,7 +415,7 @@ int swift_create_striped_file(const char *filename, int offset, int count,
     /* Yuk, needs extra space for array os lov_user_ost_data. */
     size_t sizelum = sizeof(struct lov_user_md) +
                      LOV_MAX_STRIPE_COUNT * sizeof(struct lov_user_ost_data);
-    struct lov_user_md *lum = (struct lov_user_md *)malloc(sizelum);
+    struct lov_user_md* lum = (struct lov_user_md*)malloc(sizelum);
 
     rc = llapi_file_get_stripe(filename, lum);
     rc = -rc;
@@ -457,15 +457,15 @@ int swift_create_striped_file(const char *filename, int offset, int count,
  *                will be output.
  *
  */
-void swift_ost_select(struct swift_ost_store *ost_infos, const char *filepath,
+void swift_ost_select(struct swift_ost_store* ost_infos, const char* filepath,
                       int minfree, int writetest, int verbose) {
 
   /* Initialise the struct. */
   swift_ost_store_init(ost_infos);
 
   /* Get directory of filepath. */
-  char *filepathc = strdup(filepath);
-  char *dirp = dirname(filepathc);
+  char* filepathc = strdup(filepath);
+  char* dirp = dirname(filepathc);
 
   /* Scan for all OSTs. */
   int rc = swift_ost_scan(dirp, ost_infos);

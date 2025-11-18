@@ -139,7 +139,7 @@ struct qstack {
  * @param clear_cell_pointers Are we also setting all the foreign cell particle
  * pointers to NULL?
  */
-void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
+void space_free_foreign_parts(struct space* s, const int clear_cell_pointers) {
 
 #ifdef WITH_MPI
   if (s->parts_foreign != NULL) {
@@ -182,53 +182,53 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
 #endif
 }
 
-void space_reorder_extra_parts_mapper(void *map_data, int num_cells,
-                                      void *extra_data) {
-  int *local_cells = (int *)map_data;
-  struct space *s = (struct space *)extra_data;
-  struct cell *cells_top = s->cells_top;
+void space_reorder_extra_parts_mapper(void* map_data, int num_cells,
+                                      void* extra_data) {
+  int* local_cells = (int*)map_data;
+  struct space* s = (struct space*)extra_data;
+  struct cell* cells_top = s->cells_top;
 
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[local_cells[ind]];
+    struct cell* c = &cells_top[local_cells[ind]];
     cell_reorder_extra_parts(c, c->hydro.parts - s->parts);
   }
 }
 
-void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
-                                       void *extra_data) {
+void space_reorder_extra_gparts_mapper(void* map_data, int num_cells,
+                                       void* extra_data) {
 
-  int *local_cells = (int *)map_data;
-  struct space *s = (struct space *)extra_data;
-  struct cell *cells_top = s->cells_top;
+  int* local_cells = (int*)map_data;
+  struct space* s = (struct space*)extra_data;
+  struct cell* cells_top = s->cells_top;
 
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[local_cells[ind]];
+    struct cell* c = &cells_top[local_cells[ind]];
     cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks, s->bparts);
   }
 }
 
-void space_reorder_extra_sparts_mapper(void *map_data, int num_cells,
-                                       void *extra_data) {
+void space_reorder_extra_sparts_mapper(void* map_data, int num_cells,
+                                       void* extra_data) {
 
-  int *local_cells = (int *)map_data;
-  struct space *s = (struct space *)extra_data;
-  struct cell *cells_top = s->cells_top;
+  int* local_cells = (int*)map_data;
+  struct space* s = (struct space*)extra_data;
+  struct cell* cells_top = s->cells_top;
 
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[local_cells[ind]];
+    struct cell* c = &cells_top[local_cells[ind]];
     cell_reorder_extra_sparts(c, c->stars.parts - s->sparts);
   }
 }
 
-void space_reorder_extra_sinks_mapper(void *map_data, int num_cells,
-                                      void *extra_data) {
+void space_reorder_extra_sinks_mapper(void* map_data, int num_cells,
+                                      void* extra_data) {
 
-  int *local_cells = (int *)map_data;
-  struct space *s = (struct space *)extra_data;
-  struct cell *cells_top = s->cells_top;
+  int* local_cells = (int*)map_data;
+  struct space* s = (struct space*)extra_data;
+  struct cell* cells_top = s->cells_top;
 
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[local_cells[ind]];
+    struct cell* c = &cells_top[local_cells[ind]];
     cell_reorder_extra_sinks(c, c->sinks.parts - s->sinks);
   }
 }
@@ -243,7 +243,7 @@ void space_reorder_extra_sinks_mapper(void *map_data, int num_cells,
  * @param s The #space to act upon.
  * @param verbose Are we talkative?
  */
-void space_reorder_extras(struct space *s, int verbose) {
+void space_reorder_extras(struct space* s, int verbose) {
 
   /* Re-order the gas particles */
   if (space_extra_parts)
@@ -281,12 +281,12 @@ void space_reorder_extras(struct space *s, int verbose) {
  * @param num_cells The number of top-level cells.
  * @param extra_data Unused parameters.
  */
-void space_sanitize_mapper(void *map_data, int num_cells, void *extra_data) {
+void space_sanitize_mapper(void* map_data, int num_cells, void* extra_data) {
   /* Unpack the inputs. */
-  struct cell *cells_top = (struct cell *)map_data;
+  struct cell* cells_top = (struct cell*)map_data;
 
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[ind];
+    struct cell* c = &cells_top[ind];
     cell_sanitize(c, 0);
   }
 }
@@ -296,7 +296,7 @@ void space_sanitize_mapper(void *map_data, int num_cells, void *extra_data) {
  *
  * @param s The #space to act upon.
  */
-void space_sanitize(struct space *s) {
+void space_sanitize(struct space* s) {
 
   if (s->e->nodeID == 0) message("Cleaning up unreasonable values of h");
 
@@ -308,7 +308,7 @@ void space_sanitize(struct space *s) {
 /**
  * @brief Mapping function to free the sorted indices buffers.
  */
-void space_map_clearsort(struct cell *c, void *data) {
+void space_map_clearsort(struct cell* c, void* data) {
 
   cell_free_hydro_sorts(c);
   cell_free_stars_sorts(c);
@@ -321,10 +321,10 @@ void space_map_clearsort(struct cell *c, void *data) {
  * @param fun Function pointer to apply on the cells.
  * @param data Data passed to the function fun.
  */
-static void rec_map_parts(struct cell *c,
-                          void (*fun)(struct part *p, struct cell *c,
-                                      void *data),
-                          void *data) {
+static void rec_map_parts(struct cell* c,
+                          void (*fun)(struct part* p, struct cell* c,
+                                      void* data),
+                          void* data) {
   /* No progeny? */
   if (!c->split)
     for (int k = 0; k < c->hydro.count; k++) fun(&c->hydro.parts[k], c, data);
@@ -342,9 +342,9 @@ static void rec_map_parts(struct cell *c,
  * @param fun Function pointer to apply on the cells.
  * @param data Data passed to the function fun.
  */
-void space_map_parts(struct space *s,
-                     void (*fun)(struct part *p, struct cell *c, void *data),
-                     void *data) {
+void space_map_parts(struct space* s,
+                     void (*fun)(struct part* p, struct cell* c, void* data),
+                     void* data) {
 
   /* Call the recursive function on all higher-level cells. */
   for (int cid = 0; cid < s->nr_cells; cid++)
@@ -357,9 +357,9 @@ void space_map_parts(struct space *s,
  * @param c The #cell we are working in.
  * @param fun Function pointer to apply on the cells.
  */
-static void rec_map_parts_xparts(struct cell *c,
-                                 void (*fun)(struct part *p, struct xpart *xp,
-                                             struct cell *c)) {
+static void rec_map_parts_xparts(struct cell* c,
+                                 void (*fun)(struct part* p, struct xpart* xp,
+                                             struct cell* c)) {
 
   /* No progeny? */
   if (!c->split)
@@ -378,9 +378,9 @@ static void rec_map_parts_xparts(struct cell *c,
  * @param s The #space we are working in.
  * @param fun Function pointer to apply on the particles in the cells.
  */
-void space_map_parts_xparts(struct space *s,
-                            void (*fun)(struct part *p, struct xpart *xp,
-                                        struct cell *c)) {
+void space_map_parts_xparts(struct space* s,
+                            void (*fun)(struct part* p, struct xpart* xp,
+                                        struct cell* c)) {
 
   /* Call the recursive function on all higher-level cells. */
   for (int cid = 0; cid < s->nr_cells; cid++)
@@ -395,9 +395,9 @@ void space_map_parts_xparts(struct space *s,
  * @param fun Function pointer to apply on the cells.
  * @param data Data passed to the function fun.
  */
-static void rec_map_cells_post(struct cell *c, int full,
-                               void (*fun)(struct cell *c, void *data),
-                               void *data) {
+static void rec_map_cells_post(struct cell* c, int full,
+                               void (*fun)(struct cell* c, void* data),
+                               void* data) {
   /* Recurse. */
   if (c->split)
     for (int k = 0; k < 8; k++)
@@ -416,17 +416,17 @@ static void rec_map_cells_post(struct cell *c, int full,
  * @param fun Function pointer to apply on the cells.
  * @param data Data passed to the function fun.
  */
-void space_map_cells_post(struct space *s, int full,
-                          void (*fun)(struct cell *c, void *data), void *data) {
+void space_map_cells_post(struct space* s, int full,
+                          void (*fun)(struct cell* c, void* data), void* data) {
 
   /* Call the recursive function on all higher-level cells. */
   for (int cid = 0; cid < s->nr_cells; cid++)
     rec_map_cells_post(&s->cells_top[cid], full, fun, data);
 }
 
-static void rec_map_cells_pre(struct cell *c, int full,
-                              void (*fun)(struct cell *c, void *data),
-                              void *data) {
+static void rec_map_cells_pre(struct cell* c, int full,
+                              void (*fun)(struct cell* c, void* data),
+                              void* data) {
 
   /* No progeny? */
   if (full || !c->split) fun(c, data);
@@ -446,8 +446,8 @@ static void rec_map_cells_pre(struct cell *c, int full,
  * @param fun The function to call.
  * @param data Additional data passed to fun() when called
  */
-void space_map_cells_pre(struct space *s, int full,
-                         void (*fun)(struct cell *c, void *data), void *data) {
+void space_map_cells_pre(struct space* s, int full,
+                         void (*fun)(struct cell* c, void* data), void* data) {
 
   /* Call the recursive function on all higher-level cells. */
   for (int cid = 0; cid < s->nr_cells; cid++)
@@ -466,7 +466,7 @@ void space_map_cells_pre(struct space *s, int full,
  *        new cells.
  * @param tpid ID of threadpool threadpool associated with cells_sub.
  */
-void space_getcells(struct space *s, int nr_cells, struct cell **cells,
+void space_getcells(struct space* s, int nr_cells, struct cell** cells,
                     const short int tpid) {
 
   /* For each requested cell... */
@@ -474,7 +474,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
 
     /* Is the cell buffer empty? */
     if (s->cells_sub[tpid] == NULL) {
-      if (swift_memalign("cells_sub", (void **)&s->cells_sub[tpid], cell_align,
+      if (swift_memalign("cells_sub", (void**)&s->cells_sub[tpid], cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
 
@@ -493,7 +493,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     /* Is the multipole buffer empty? */
     if (s->with_self_gravity && s->multipoles_sub[tpid] == NULL) {
       if (swift_memalign(
-              "multipoles_sub", (void **)&s->multipoles_sub[tpid],
+              "multipoles_sub", (void**)&s->multipoles_sub[tpid],
               multipole_align,
               space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
@@ -523,7 +523,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     cell_free_hydro_sorts(cells[j]);
     cell_free_stars_sorts(cells[j]);
 
-    struct gravity_tensors *temp = cells[j]->grav.multipole;
+    struct gravity_tensors* temp = cells[j]->grav.multipole;
     bzero(cells[j], sizeof(struct cell));
     cells[j]->grav.multipole = temp;
     cells[j]->nodeID = -1;
@@ -547,9 +547,9 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
  *
  * @param s The #space.
  */
-void space_free_buff_sort_indices(struct space *s) {
+void space_free_buff_sort_indices(struct space* s) {
   for (short int tpid = 0; tpid < s->e->nr_pool_threads; ++tpid) {
-    for (struct cell *finger = s->cells_sub[tpid]; finger != NULL;
+    for (struct cell* finger = s->cells_sub[tpid]; finger != NULL;
          finger = finger->next) {
       cell_free_hydro_sorts(finger);
       cell_free_stars_sorts(finger);
@@ -566,7 +566,7 @@ void space_free_buff_sort_indices(struct space *s) {
  *
  * @param s The #space.
  */
-void space_list_useful_top_level_cells(struct space *s) {
+void space_list_useful_top_level_cells(struct space* s) {
 
   const ticks tic = getticks();
 
@@ -574,7 +574,7 @@ void space_list_useful_top_level_cells(struct space *s) {
   s->nr_cells_with_particles = 0;
 
   for (int i = 0; i < s->nr_cells; ++i) {
-    struct cell *c = &s->cells_top[i];
+    struct cell* c = &s->cells_top[i];
 
     if (cell_has_tasks(c)) {
       s->local_cells_with_tasks_top[s->nr_local_cells_with_tasks] = i;
@@ -603,19 +603,19 @@ void space_list_useful_top_level_cells(struct space *s) {
             clocks_getunit());
 }
 
-void space_synchronize_part_positions_mapper(void *map_data, int nr_parts,
-                                             void *extra_data) {
+void space_synchronize_part_positions_mapper(void* map_data, int nr_parts,
+                                             void* extra_data) {
   /* Unpack the data */
-  const struct part *parts = (struct part *)map_data;
-  struct space *s = (struct space *)extra_data;
+  const struct part* parts = (struct part*)map_data;
+  struct space* s = (struct space*)extra_data;
   const ptrdiff_t offset = parts - s->parts;
-  const struct xpart *xparts = s->xparts + offset;
+  const struct xpart* xparts = s->xparts + offset;
 
   for (int k = 0; k < nr_parts; k++) {
 
     /* Get the particle */
-    const struct part *p = &parts[k];
-    const struct xpart *xp = &xparts[k];
+    const struct part* p = &parts[k];
+    const struct xpart* xp = &xparts[k];
 
     /* Skip unimportant particles */
     if (p->time_bin == time_bin_not_created ||
@@ -623,7 +623,7 @@ void space_synchronize_part_positions_mapper(void *map_data, int nr_parts,
       continue;
 
     /* Get its gravity friend */
-    struct gpart *gp = p->gpart;
+    struct gpart* gp = p->gpart;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (gp == NULL) error("Unlinked particle!");
@@ -642,15 +642,15 @@ void space_synchronize_part_positions_mapper(void *map_data, int nr_parts,
   }
 }
 
-void space_synchronize_spart_positions_mapper(void *map_data, int nr_sparts,
-                                              void *extra_data) {
+void space_synchronize_spart_positions_mapper(void* map_data, int nr_sparts,
+                                              void* extra_data) {
   /* Unpack the data */
-  const struct spart *sparts = (struct spart *)map_data;
+  const struct spart* sparts = (struct spart*)map_data;
 
   for (int k = 0; k < nr_sparts; k++) {
 
     /* Get the particle */
-    const struct spart *sp = &sparts[k];
+    const struct spart* sp = &sparts[k];
 
     /* Skip unimportant particles */
     if (sp->time_bin == time_bin_not_created ||
@@ -658,7 +658,7 @@ void space_synchronize_spart_positions_mapper(void *map_data, int nr_sparts,
       continue;
 
     /* Get its gravity friend */
-    struct gpart *gp = sp->gpart;
+    struct gpart* gp = sp->gpart;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (gp == NULL) error("Unlinked particle!");
@@ -677,15 +677,15 @@ void space_synchronize_spart_positions_mapper(void *map_data, int nr_sparts,
   }
 }
 
-void space_synchronize_bpart_positions_mapper(void *map_data, int nr_bparts,
-                                              void *extra_data) {
+void space_synchronize_bpart_positions_mapper(void* map_data, int nr_bparts,
+                                              void* extra_data) {
   /* Unpack the data */
-  const struct bpart *bparts = (struct bpart *)map_data;
+  const struct bpart* bparts = (struct bpart*)map_data;
 
   for (int k = 0; k < nr_bparts; k++) {
 
     /* Get the particle */
-    const struct bpart *bp = &bparts[k];
+    const struct bpart* bp = &bparts[k];
 
     /* Skip unimportant particles */
     if (bp->time_bin == time_bin_not_created ||
@@ -693,7 +693,7 @@ void space_synchronize_bpart_positions_mapper(void *map_data, int nr_bparts,
       continue;
 
     /* Get its gravity friend */
-    struct gpart *gp = bp->gpart;
+    struct gpart* gp = bp->gpart;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (gp == NULL) error("Unlinked particle!");
@@ -712,15 +712,15 @@ void space_synchronize_bpart_positions_mapper(void *map_data, int nr_bparts,
   }
 }
 
-void space_synchronize_sink_positions_mapper(void *map_data, int nr_sinks,
-                                             void *extra_data) {
+void space_synchronize_sink_positions_mapper(void* map_data, int nr_sinks,
+                                             void* extra_data) {
   /* Unpack the data */
-  const struct sink *sinks = (struct sink *)map_data;
+  const struct sink* sinks = (struct sink*)map_data;
 
   for (int k = 0; k < nr_sinks; k++) {
 
     /* Get the particle */
-    const struct sink *sink = &sinks[k];
+    const struct sink* sink = &sinks[k];
 
     /* Skip unimportant particles */
     if (sink->time_bin == time_bin_not_created ||
@@ -728,7 +728,7 @@ void space_synchronize_sink_positions_mapper(void *map_data, int nr_sinks,
       continue;
 
     /* Get its gravity friend */
-    struct gpart *gp = sink->gpart;
+    struct gpart* gp = sink->gpart;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (gp == NULL) error("Unlinked particle!");
@@ -755,14 +755,14 @@ void space_synchronize_sink_positions_mapper(void *map_data, int nr_sinks,
  *
  * @param s The #space.
  */
-void space_synchronize_particle_positions(struct space *s) {
+void space_synchronize_particle_positions(struct space* s) {
 
   const ticks tic = getticks();
 
   if (s->nr_gparts > 0 && s->nr_parts > 0)
     threadpool_map(&s->e->threadpool, space_synchronize_part_positions_mapper,
                    s->parts, s->nr_parts, sizeof(struct part),
-                   threadpool_auto_chunk_size, (void *)s);
+                   threadpool_auto_chunk_size, (void*)s);
 
   if (s->nr_gparts > 0 && s->nr_sparts > 0)
     threadpool_map(&s->e->threadpool, space_synchronize_spart_positions_mapper,
@@ -784,16 +784,16 @@ void space_synchronize_particle_positions(struct space *s) {
             clocks_getunit());
 }
 
-void space_convert_quantities_mapper(void *restrict map_data, int count,
-                                     void *restrict extra_data) {
-  struct space *s = (struct space *)extra_data;
-  const struct cosmology *cosmo = s->e->cosmology;
-  const struct hydro_props *hydro_props = s->e->hydro_properties;
-  const struct pressure_floor_props *floor = s->e->pressure_floor_props;
+void space_convert_quantities_mapper(void* restrict map_data, int count,
+                                     void* restrict extra_data) {
+  struct space* s = (struct space*)extra_data;
+  const struct cosmology* cosmo = s->e->cosmology;
+  const struct hydro_props* hydro_props = s->e->hydro_properties;
+  const struct pressure_floor_props* floor = s->e->pressure_floor_props;
   const float mu_0 = s->e->physical_constants->const_vacuum_permeability;
-  struct part *restrict parts = (struct part *)map_data;
+  struct part* restrict parts = (struct part*)map_data;
   const ptrdiff_t index = parts - s->parts;
-  struct xpart *restrict xparts = s->xparts + index;
+  struct xpart* restrict xparts = s->xparts + index;
 
   /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
    * creation */
@@ -813,7 +813,7 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
  * @param s The #space.
  * @param verbose Are we talkative?
  */
-void space_convert_quantities(struct space *s, int verbose) {
+void space_convert_quantities(struct space* s, int verbose) {
 
   const ticks tic = getticks();
 
@@ -827,20 +827,20 @@ void space_convert_quantities(struct space *s, int verbose) {
             clocks_getunit());
 }
 
-void space_convert_rt_quantities_mapper(void *restrict map_data, int count,
-                                        void *restrict extra_data) {
-  struct space *s = (struct space *)extra_data;
-  const struct engine *restrict e = s->e;
+void space_convert_rt_quantities_mapper(void* restrict map_data, int count,
+                                        void* restrict extra_data) {
+  struct space* s = (struct space*)extra_data;
+  const struct engine* restrict e = s->e;
   const int with_rt = (e->policy & engine_policy_rt);
   if (!with_rt) return;
 
-  const struct rt_props *restrict rt_props = e->rt_props;
-  const struct hydro_props *restrict hydro_props = e->hydro_properties;
-  const struct phys_const *restrict phys_const = e->physical_constants;
-  const struct unit_system *restrict iu = e->internal_units;
-  const struct cosmology *restrict cosmo = e->cosmology;
+  const struct rt_props* restrict rt_props = e->rt_props;
+  const struct hydro_props* restrict hydro_props = e->hydro_properties;
+  const struct phys_const* restrict phys_const = e->physical_constants;
+  const struct unit_system* restrict iu = e->internal_units;
+  const struct cosmology* restrict cosmo = e->cosmology;
 
-  struct part *restrict parts = (struct part *)map_data;
+  struct part* restrict parts = (struct part*)map_data;
 
   /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
    * creation */
@@ -858,7 +858,7 @@ void space_convert_rt_quantities_mapper(void *restrict map_data, int count,
  * @param s The #space.
  * @param verbose Are we talkative?
  */
-void space_convert_rt_quantities(struct space *s, int verbose) {
+void space_convert_rt_quantities(struct space* s, int verbose) {
 
   const ticks tic = getticks();
 
@@ -872,20 +872,20 @@ void space_convert_rt_quantities(struct space *s, int verbose) {
             clocks_getunit());
 }
 
-void space_post_init_parts_mapper(void *restrict map_data, int count,
-                                  void *restrict extra_data) {
-  struct space *s = (struct space *)extra_data;
-  const struct engine *restrict e = s->e;
+void space_post_init_parts_mapper(void* restrict map_data, int count,
+                                  void* restrict extra_data) {
+  struct space* s = (struct space*)extra_data;
+  const struct engine* restrict e = s->e;
 
-  const struct hydro_props *restrict hydro_props = e->hydro_properties;
-  const struct phys_const *restrict phys_const = e->physical_constants;
-  const struct unit_system *us = s->e->internal_units;
-  const struct cosmology *restrict cosmo = e->cosmology;
-  const struct cooling_function_data *cool_func = e->cooling_func;
+  const struct hydro_props* restrict hydro_props = e->hydro_properties;
+  const struct phys_const* restrict phys_const = e->physical_constants;
+  const struct unit_system* us = s->e->internal_units;
+  const struct cosmology* restrict cosmo = e->cosmology;
+  const struct cooling_function_data* cool_func = e->cooling_func;
 
-  struct part *restrict p = (struct part *)map_data;
+  struct part* restrict p = (struct part*)map_data;
   const ptrdiff_t delta = p - s->parts;
-  struct xpart *restrict xp = s->xparts + delta;
+  struct xpart* restrict xp = s->xparts + delta;
 
   /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
    * creation
@@ -910,7 +910,7 @@ void space_post_init_parts_mapper(void *restrict map_data, int count,
  * @param s The #space.
  * @param verbose Are we talkative?
  */
-void space_post_init_parts(struct space *s, int verbose) {
+void space_post_init_parts(struct space* s, int verbose) {
 
   const ticks tic = getticks();
 
@@ -924,11 +924,11 @@ void space_post_init_parts(struct space *s, int verbose) {
             clocks_getunit());
 }
 
-void space_collect_sum_part_mass(void *restrict map_data, int count,
-                                 void *restrict extra_data) {
+void space_collect_sum_part_mass(void* restrict map_data, int count,
+                                 void* restrict extra_data) {
 
-  struct space *s = (struct space *)extra_data;
-  const struct part *parts = (const struct part *)map_data;
+  struct space* s = (struct space*)extra_data;
+  const struct part* parts = (const struct part*)map_data;
 
   /* Local collection */
   double sum = 0.;
@@ -939,11 +939,11 @@ void space_collect_sum_part_mass(void *restrict map_data, int count,
   atomic_add(&s->initial_count_particles[0], count);
 }
 
-void space_collect_sum_gpart_mass(void *restrict map_data, int count,
-                                  void *restrict extra_data) {
+void space_collect_sum_gpart_mass(void* restrict map_data, int count,
+                                  void* restrict extra_data) {
 
-  struct space *s = (struct space *)extra_data;
-  const struct gpart *gparts = (const struct gpart *)map_data;
+  struct space* s = (struct space*)extra_data;
+  const struct gpart* gparts = (const struct gpart*)map_data;
 
   /* Local collection */
   double sum_DM = 0., sum_DM_background = 0., sum_nu = 0.;
@@ -977,11 +977,11 @@ void space_collect_sum_gpart_mass(void *restrict map_data, int count,
   atomic_add(&s->initial_count_particles[6], count_nu);
 }
 
-void space_collect_sum_sink_mass(void *restrict map_data, int count,
-                                 void *restrict extra_data) {
+void space_collect_sum_sink_mass(void* restrict map_data, int count,
+                                 void* restrict extra_data) {
 
-  struct space *s = (struct space *)extra_data;
-  const struct sink *sinks = (const struct sink *)map_data;
+  struct space* s = (struct space*)extra_data;
+  const struct sink* sinks = (const struct sink*)map_data;
 
   /* Local collection */
   double sum = 0.;
@@ -992,11 +992,11 @@ void space_collect_sum_sink_mass(void *restrict map_data, int count,
   atomic_add(&s->initial_count_particles[3], count);
 }
 
-void space_collect_sum_spart_mass(void *restrict map_data, int count,
-                                  void *restrict extra_data) {
+void space_collect_sum_spart_mass(void* restrict map_data, int count,
+                                  void* restrict extra_data) {
 
-  struct space *s = (struct space *)extra_data;
-  const struct spart *sparts = (const struct spart *)map_data;
+  struct space* s = (struct space*)extra_data;
+  const struct spart* sparts = (const struct spart*)map_data;
 
   /* Local collection */
   double sum = 0.;
@@ -1007,11 +1007,11 @@ void space_collect_sum_spart_mass(void *restrict map_data, int count,
   atomic_add(&s->initial_count_particles[4], count);
 }
 
-void space_collect_sum_bpart_mass(void *restrict map_data, int count,
-                                  void *restrict extra_data) {
+void space_collect_sum_bpart_mass(void* restrict map_data, int count,
+                                  void* restrict extra_data) {
 
-  struct space *s = (struct space *)extra_data;
-  const struct bpart *bparts = (const struct bpart *)map_data;
+  struct space* s = (struct space*)extra_data;
+  const struct bpart* bparts = (const struct bpart*)map_data;
 
   /* Local collection */
   double sum = 0.;
@@ -1025,7 +1025,7 @@ void space_collect_sum_bpart_mass(void *restrict map_data, int count,
 /**
  * @brief Collect the mean mass of each particle type in the #space.
  */
-void space_collect_mean_masses(struct space *s, int verbose) {
+void space_collect_mean_masses(struct space* s, int verbose) {
 
   /* Init counters */
   for (int i = 0; i < swift_type_count; ++i)
@@ -1107,11 +1107,11 @@ void space_collect_mean_masses(struct space *s, int verbose) {
  * parts with a cutoff below half the cell width are then split
  * recursively.
  */
-void space_init(struct space *s, struct swift_params *params,
-                const struct cosmology *cosmo, double dim[3],
-                const struct hydro_props *hydro_properties, struct part *parts,
-                struct gpart *gparts, struct sink *sinks, struct spart *sparts,
-                struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
+void space_init(struct space* s, struct swift_params* params,
+                const struct cosmology* cosmo, double dim[3],
+                const struct hydro_props* hydro_properties, struct part* parts,
+                struct gpart* gparts, struct sink* sinks, struct spart* sparts,
+                struct bpart* bparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int self_gravity, int star_formation, int with_sink,
@@ -1472,7 +1472,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Allocate the extra parts array for the gas particles. */
   if (Npart > 0) {
-    if (swift_memalign("xparts", (void **)&s->xparts, xpart_align,
+    if (swift_memalign("xparts", (void**)&s->xparts, xpart_align,
                        Npart * sizeof(struct xpart)) != 0)
       error("Failed to allocate xparts.");
     bzero(s->xparts, Npart * sizeof(struct xpart));
@@ -1535,7 +1535,7 @@ void space_init(struct space *s, struct swift_params *params,
  * @param replicate The number of copies along each axis.
  * @param verbose Are we talkative ?
  */
-void space_replicate(struct space *s, int replicate, int verbose) {
+void space_replicate(struct space* s, int replicate, int verbose) {
 
   if (replicate < 1) error("Invalid replicate value: %d", replicate);
 
@@ -1561,29 +1561,29 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   s->nr_nuparts = nr_nuparts * factor;
 
   /* Allocate space for new particles */
-  struct part *parts = NULL;
-  struct gpart *gparts = NULL;
-  struct spart *sparts = NULL;
-  struct bpart *bparts = NULL;
-  struct sink *sinks = NULL;
+  struct part* parts = NULL;
+  struct gpart* gparts = NULL;
+  struct spart* sparts = NULL;
+  struct bpart* bparts = NULL;
+  struct sink* sinks = NULL;
 
-  if (swift_memalign("parts", (void **)&parts, part_align,
+  if (swift_memalign("parts", (void**)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
     error("Failed to allocate new part array.");
 
-  if (swift_memalign("gparts", (void **)&gparts, gpart_align,
+  if (swift_memalign("gparts", (void**)&gparts, gpart_align,
                      s->nr_gparts * sizeof(struct gpart)) != 0)
     error("Failed to allocate new gpart array.");
 
-  if (swift_memalign("sparts", (void **)&sparts, spart_align,
+  if (swift_memalign("sparts", (void**)&sparts, spart_align,
                      s->nr_sparts * sizeof(struct spart)) != 0)
     error("Failed to allocate new spart array.");
 
-  if (swift_memalign("sinks", (void **)&sinks, sink_align,
+  if (swift_memalign("sinks", (void**)&sinks, sink_align,
                      s->nr_sinks * sizeof(struct sink)) != 0)
     error("Failed to allocate new sink array.");
 
-  if (swift_memalign("bparts", (void **)&bparts, bpart_align,
+  if (swift_memalign("bparts", (void**)&bparts, bpart_align,
                      s->nr_bparts * sizeof(struct bpart)) != 0)
     error("Failed to allocate new bpart array.");
 
@@ -1713,7 +1713,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
  * @param nr_nodes The number of MPI ranks used in the run.
  * @param verbose Are we talkative?
  */
-void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
+void space_remap_ids(struct space* s, int nr_nodes, int verbose) {
 
   if (verbose) message("Remapping all the IDs");
 
@@ -1852,8 +1852,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
  * @param dim The size of the box (for periodic wrapping).
  * @param verbose Are we talkative?
  */
-void space_generate_gas(struct space *s, const struct cosmology *cosmo,
-                        const struct hydro_props *hydro_properties,
+void space_generate_gas(struct space* s, const struct cosmology* cosmo,
+                        const struct hydro_props* hydro_properties,
                         const int periodic, const int with_background,
                         const int with_neutrinos, const double dim[3],
                         const int verbose) {
@@ -1921,14 +1921,14 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       2 * nr_zoom_gparts + nr_background_gparts + nr_neutrino_gparts;
 
   /* Allocate space for new particles */
-  struct part *parts = NULL;
-  struct gpart *gparts = NULL;
+  struct part* parts = NULL;
+  struct gpart* gparts = NULL;
 
-  if (swift_memalign("parts", (void **)&parts, part_align,
+  if (swift_memalign("parts", (void**)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
     error("Failed to allocate new part array.");
 
-  if (swift_memalign("gparts", (void **)&gparts, gpart_align,
+  if (swift_memalign("gparts", (void**)&gparts, gpart_align,
                      s->nr_gparts * sizeof(struct gpart)) != 0)
     error("Failed to allocate new gpart array.");
 
@@ -1965,9 +1965,9 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
       /* For the zoom DM particles, there is a lot of work to do */
 
-      struct part *p = &parts[j];
-      struct gpart *gp_gas = &gparts[current_nr_gparts + j];
-      struct gpart *gp_dm = &gparts[i];
+      struct part* p = &parts[j];
+      struct gpart* gp_gas = &gparts[current_nr_gparts + j];
+      struct gpart* gp_dm = &gparts[i];
 
       /* Start by copying over the gpart */
       memcpy(gp_gas, &s->gparts[i], sizeof(struct gpart));
@@ -2059,11 +2059,11 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
  * @param rank The MPI rank of this #space.
  * @param check_neutrinos Should neutrino masses be checked?
  */
-void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
+void space_check_cosmology(struct space* s, const struct cosmology* cosmo,
                            const int with_hydro, const int rank,
                            const int check_neutrinos) {
 
-  struct gpart *gparts = s->gparts;
+  struct gpart* gparts = s->gparts;
   const size_t nr_gparts = s->nr_gparts;
 
   /* Sum up the mass in this space */
@@ -2178,7 +2178,7 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
  *
  * @param s The #space.
  */
-long long space_get_max_parts_id(struct space *s) {
+long long space_get_max_parts_id(struct space* s) {
 
   long long max_id = -1;
   for (size_t i = 0; i < s->nr_parts; ++i) max_id = max(max_id, s->parts[i].id);
@@ -2203,7 +2203,7 @@ long long space_get_max_parts_id(struct space *s) {
  *
  * @param s The #space to clean.
  */
-void space_link_cleanup(struct space *s) {
+void space_link_cleanup(struct space* s) {
 
   /* Recursively apply the cell link cleaning routine */
   space_map_cells_pre(s, 1, cell_clean_links, NULL);
@@ -2218,7 +2218,7 @@ void space_link_cleanup(struct space *s) {
  * @param ti_drift The (integer) time.
  * @param multipole Are we also checking the multipoles ?
  */
-void space_check_drift_point(struct space *s, integertime_t ti_drift,
+void space_check_drift_point(struct space* s, integertime_t ti_drift,
                              int multipole) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Recursively check all cells */
@@ -2234,7 +2234,7 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
 #endif
 }
 
-void space_check_top_multipoles_drift_point(struct space *s,
+void space_check_top_multipoles_drift_point(struct space* s,
                                             integertime_t ti_drift) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < s->nr_cells; ++i) {
@@ -2252,7 +2252,7 @@ void space_check_top_multipoles_drift_point(struct space *s,
  *
  * @param s The #space to check.
  */
-void space_check_timesteps(const struct space *s) {
+void space_check_timesteps(const struct space* s) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < s->nr_cells; ++i) {
     if (s->cells_top[i].nodeID == engine_rank) {
@@ -2268,12 +2268,12 @@ void space_check_timesteps(const struct space *s) {
 /**
  * @brief #threadpool mapper function for the limiter debugging check
  */
-void space_check_limiter_mapper(void *map_data, int nr_parts,
-                                void *extra_data) {
+void space_check_limiter_mapper(void* map_data, int nr_parts,
+                                void* extra_data) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
-  struct part *restrict parts = (struct part *)map_data;
-  const struct space *s = (struct space *)extra_data;
+  struct part* restrict parts = (struct part*)map_data;
+  const struct space* s = (struct space*)extra_data;
   const int with_timestep_limiter =
       (s->e->policy & engine_policy_timestep_limiter);
   const int with_timestep_sync = (s->e->policy & engine_policy_timestep_sync);
@@ -2313,7 +2313,7 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
  *
  * @param s The #space to check.
  */
-void space_check_limiter(struct space *s) {
+void space_check_limiter(struct space* s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   threadpool_map(&s->e->threadpool, space_check_limiter_mapper, s->parts,
@@ -2326,11 +2326,11 @@ void space_check_limiter(struct space *s) {
 /**
  * @brief #threadpool mapper function for the swallow debugging check
  */
-void space_check_part_swallow_mapper(void *map_data, int nr_parts,
-                                     void *extra_data) {
+void space_check_part_swallow_mapper(void* map_data, int nr_parts,
+                                     void* extra_data) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
-  struct part *restrict parts = (struct part *)map_data;
+  struct part* restrict parts = (struct part*)map_data;
 
   /* Verify that all particles have been swallowed or are untouched */
   for (int k = 0; k < nr_parts; k++) {
@@ -2351,11 +2351,11 @@ void space_check_part_swallow_mapper(void *map_data, int nr_parts,
 /**
  * @brief #threadpool mapper function for the swallow debugging check
  */
-void space_check_bpart_swallow_mapper(void *map_data, int nr_bparts,
-                                      void *extra_data) {
+void space_check_bpart_swallow_mapper(void* map_data, int nr_bparts,
+                                      void* extra_data) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
-  struct bpart *restrict bparts = (struct bpart *)map_data;
+  struct bpart* restrict bparts = (struct bpart*)map_data;
 
   /* Verify that all particles have been swallowed or are untouched */
   for (int k = 0; k < nr_bparts; k++) {
@@ -2376,11 +2376,11 @@ void space_check_bpart_swallow_mapper(void *map_data, int nr_bparts,
 /**
  * @brief #threadpool mapper function for the swallow debugging check
  */
-void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
-                                          void *extra_data) {
+void space_check_part_sink_swallow_mapper(void* map_data, int nr_parts,
+                                          void* extra_data) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
-  struct part *restrict parts = (struct part *)map_data;
+  struct part* restrict parts = (struct part*)map_data;
 
   /* Verify that all particles have been swallowed or are untouched */
   for (int k = 0; k < nr_parts; k++) {
@@ -2400,11 +2400,11 @@ void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
 /**
  * @brief #threadpool mapper function for the swallow debugging check
  */
-void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
-                                          void *extra_data) {
+void space_check_sink_sink_swallow_mapper(void* map_data, int nr_sinks,
+                                          void* extra_data) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
-  struct sink *restrict sinks = (struct sink *)map_data;
+  struct sink* restrict sinks = (struct sink*)map_data;
 
   /* Verify that all particles have been swallowed or are untouched */
   for (int k = 0; k < nr_sinks; k++) {
@@ -2430,7 +2430,7 @@ void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
  *
  * @param s The #space to check.
  */
-void space_check_swallow(struct space *s) {
+void space_check_swallow(struct space* s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   threadpool_map(&s->e->threadpool, space_check_part_swallow_mapper, s->parts,
@@ -2455,16 +2455,16 @@ void space_check_swallow(struct space *s) {
 #endif
 }
 
-void space_check_sort_flags_mapper(void *map_data, int nr_cells,
-                                   void *extra_data) {
+void space_check_sort_flags_mapper(void* map_data, int nr_cells,
+                                   void* extra_data) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-  const struct space *s = (struct space *)extra_data;
-  int *local_cells_top = map_data;
+  const struct space* s = (struct space*)extra_data;
+  int* local_cells_top = map_data;
 
   for (int ind = 0; ind < nr_cells; ++ind) {
-    const struct cell *c = &s->cells_top[local_cells_top[ind]];
+    const struct cell* c = &s->cells_top[local_cells_top[ind]];
 
     cell_check_sort_flags(c);
   }
@@ -2479,7 +2479,7 @@ void space_check_sort_flags_mapper(void *map_data, int nr_cells,
  *
  * @param s The #space to check.
  */
-void space_check_sort_flags(struct space *s) {
+void space_check_sort_flags(struct space* s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   threadpool_map(&s->e->threadpool, space_check_sort_flags_mapper,
@@ -2497,7 +2497,7 @@ void space_check_sort_flags(struct space *s) {
  *
  * @param s The #space to reset.
  */
-void space_reset_task_counters(struct space *s) {
+void space_reset_task_counters(struct space* s) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < s->nr_cells; ++i) {
     cell_reset_task_counters(&s->cells_top[i]);
@@ -2512,7 +2512,7 @@ void space_reset_task_counters(struct space *s) {
  *
  * @param s The #space.
  */
-void space_after_snap_tracer(struct space *s, int verbose) {
+void space_after_snap_tracer(struct space* s, int verbose) {
   for (size_t i = 0; i < s->nr_parts; ++i) {
     tracers_after_snapshot_part(&s->parts[i], &s->xparts[i]);
   }
@@ -2528,7 +2528,7 @@ void space_after_snap_tracer(struct space *s, int verbose) {
  * @brief Marks a top-level cell as having been updated by one of the
  * time-step updating tasks.
  */
-void space_mark_cell_as_updated(struct space *s, const struct cell *c) {
+void space_mark_cell_as_updated(struct space* s, const struct cell* c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c != c->top) error("Function can only be called at the top level!");
@@ -2544,7 +2544,7 @@ void space_mark_cell_as_updated(struct space *s, const struct cell *c) {
 /**
  * @brief Frees up the memory allocated for this #space
  */
-void space_clean(struct space *s) {
+void space_clean(struct space* s) {
 
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
   swift_free("cells_top", s->cells_top);
@@ -2582,7 +2582,7 @@ void space_clean(struct space *s) {
  * @param s the space
  * @param stream the file stream
  */
-void space_struct_dump(struct space *s, FILE *stream) {
+void space_struct_dump(struct space* s, FILE* stream) {
 
   restart_write_blocks(s, sizeof(struct space), 1, stream, "space",
                        "space struct");
@@ -2695,7 +2695,7 @@ void space_struct_dump(struct space *s, FILE *stream) {
  * @param s the space
  * @param stream the file stream
  */
-void space_struct_restore(struct space *s, FILE *stream) {
+void space_struct_restore(struct space* s, FILE* stream) {
 
   restart_read_blocks(s, sizeof(struct space), 1, stream, NULL, "space struct");
 
@@ -2792,11 +2792,11 @@ void space_struct_restore(struct space *s, FILE *stream) {
   if (s->nr_parts > 0) {
 
     /* Need the memory for these. */
-    if (swift_memalign("parts", (void **)&s->parts, part_align,
+    if (swift_memalign("parts", (void**)&s->parts, part_align,
                        s->size_parts * sizeof(struct part)) != 0)
       error("Failed to allocate restore part array.");
 
-    if (swift_memalign("xparts", (void **)&s->xparts, xpart_align,
+    if (swift_memalign("xparts", (void**)&s->xparts, xpart_align,
                        s->size_parts * sizeof(struct xpart)) != 0)
       error("Failed to allocate restore xpart array.");
 
@@ -2807,7 +2807,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   }
   s->gparts = NULL;
   if (s->nr_gparts > 0) {
-    if (swift_memalign("gparts", (void **)&s->gparts, gpart_align,
+    if (swift_memalign("gparts", (void**)&s->gparts, gpart_align,
                        s->size_gparts * sizeof(struct gpart)) != 0)
       error("Failed to allocate restore gpart array.");
 
@@ -2817,7 +2817,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
 
   s->sinks = NULL;
   if (s->nr_sinks > 0) {
-    if (swift_memalign("sinks", (void **)&s->sinks, sink_align,
+    if (swift_memalign("sinks", (void**)&s->sinks, sink_align,
                        s->size_sinks * sizeof(struct sink)) != 0)
       error("Failed to allocate restore sink array.");
 
@@ -2827,7 +2827,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
 
   s->sparts = NULL;
   if (s->nr_sparts > 0) {
-    if (swift_memalign("sparts", (void **)&s->sparts, spart_align,
+    if (swift_memalign("sparts", (void**)&s->sparts, spart_align,
                        s->size_sparts * sizeof(struct spart)) != 0)
       error("Failed to allocate restore spart array.");
 
@@ -2836,7 +2836,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   }
   s->bparts = NULL;
   if (s->nr_bparts > 0) {
-    if (swift_memalign("bparts", (void **)&s->bparts, bpart_align,
+    if (swift_memalign("bparts", (void**)&s->bparts, bpart_align,
                        s->size_bparts * sizeof(struct bpart)) != 0)
       error("Failed to allocate restore bpart array.");
 
@@ -2880,7 +2880,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
  * @param f The file to use (already open).
  * @param c The current #cell.
  */
-void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
+void space_write_cell(const struct space* s, FILE* f, const struct cell* c) {
 #ifdef SWIFT_CELL_GRAPH
 
   if (c == NULL) return;
@@ -2920,14 +2920,14 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
  * @param s The #space.
  * @param j The file number.
  */
-void space_write_cell_hierarchy(const struct space *s, int j) {
+void space_write_cell_hierarchy(const struct space* s, int j) {
 
 #ifdef SWIFT_CELL_GRAPH
 
   /* Open file */
   char filename[200];
   sprintf(filename, "cell_hierarchy_%04i_%04i.csv", j, engine_rank);
-  FILE *f = fopen(filename, "w");
+  FILE* f = fopen(filename, "w");
   if (f == NULL) error("Error opening task level file.");
 
   const int root_id = root_cell_id;
@@ -2948,7 +2948,7 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
 
   /* Write all the top level cells (and their children) */
   for (int i = 0; i < s->nr_cells; i++) {
-    struct cell *c = &s->cells_top[i];
+    struct cell* c = &s->cells_top[i];
     if (c->nodeID == engine_rank) space_write_cell(s, f, c);
   }
 
@@ -2962,7 +2962,7 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
  *
  * @param c The current #cell.
  */
-void space_recurse_check_unskip_flag(const struct cell *c) {
+void space_recurse_check_unskip_flag(const struct cell* c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -2993,11 +2993,11 @@ void space_recurse_check_unskip_flag(const struct cell *c) {
  *
  * @param s The #space
  */
-void space_check_unskip_flags(const struct space *s) {
+void space_check_unskip_flags(const struct space* s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   for (int i = 0; i < s->nr_cells; i++) {
-    const struct cell *c = &s->cells_top[i];
+    const struct cell* c = &s->cells_top[i];
     space_recurse_check_unskip_flag(c);
   }
 #else

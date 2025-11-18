@@ -36,31 +36,31 @@
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an #engine.
  */
-void engine_do_drift_all_part_mapper(void *map_data, int num_elements,
-                                     void *extra_data) {
+void engine_do_drift_all_part_mapper(void* map_data, int num_elements,
+                                     void* extra_data) {
 
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine* e = (const struct engine*)extra_data;
   const int restarting = e->restarting;
-  struct space *s = e->s;
-  struct cell *cells_top;
-  int *local_cells_top;
+  struct space* s = e->s;
+  struct cell* cells_top;
+  int* local_cells_top;
 
   if (restarting) {
 
     /* When restarting, we loop over all top-level cells */
-    cells_top = (struct cell *)map_data;
+    cells_top = (struct cell*)map_data;
     local_cells_top = NULL;
 
   } else {
 
     /* In any other case, we use the list of local cells with tasks */
     cells_top = s->cells_top;
-    local_cells_top = (int *)map_data;
+    local_cells_top = (int*)map_data;
   }
 
   for (int ind = 0; ind < num_elements; ind++) {
 
-    struct cell *c;
+    struct cell* c;
 
     /* When restarting, the list of local cells does not
        yet exist. We use the raw list of top-level cells instead */
@@ -84,31 +84,31 @@ void engine_do_drift_all_part_mapper(void *map_data, int num_elements,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an #engine.
  */
-void engine_do_drift_all_gpart_mapper(void *map_data, int num_elements,
-                                      void *extra_data) {
+void engine_do_drift_all_gpart_mapper(void* map_data, int num_elements,
+                                      void* extra_data) {
 
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine* e = (const struct engine*)extra_data;
   const int restarting = e->restarting;
-  struct space *s = e->s;
-  struct cell *cells_top;
-  int *local_cells_top;
+  struct space* s = e->s;
+  struct cell* cells_top;
+  int* local_cells_top;
 
   if (restarting) {
 
     /* When restarting, we loop over all top-level cells */
-    cells_top = (struct cell *)map_data;
+    cells_top = (struct cell*)map_data;
     local_cells_top = NULL;
 
   } else {
 
     /* In any other case, we use the list of local cells with tasks */
     cells_top = s->cells_top;
-    local_cells_top = (int *)map_data;
+    local_cells_top = (int*)map_data;
   }
 
   for (int ind = 0; ind < num_elements; ind++) {
 
-    struct cell *c;
+    struct cell* c;
 
     /* When restarting, the list of local cells does not
        yet exist. We use the raw list of top-level cells instead */
@@ -132,31 +132,31 @@ void engine_do_drift_all_gpart_mapper(void *map_data, int num_elements,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an #engine.
  */
-void engine_do_drift_all_spart_mapper(void *map_data, int num_elements,
-                                      void *extra_data) {
+void engine_do_drift_all_spart_mapper(void* map_data, int num_elements,
+                                      void* extra_data) {
 
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine* e = (const struct engine*)extra_data;
   const int restarting = e->restarting;
-  struct space *s = e->s;
-  struct cell *cells_top;
-  int *local_cells_top;
+  struct space* s = e->s;
+  struct cell* cells_top;
+  int* local_cells_top;
 
   if (restarting) {
 
     /* When restarting, we loop over all top-level cells */
-    cells_top = (struct cell *)map_data;
+    cells_top = (struct cell*)map_data;
     local_cells_top = NULL;
 
   } else {
 
     /* In any other case, we use the list of local cells with tasks */
     cells_top = s->cells_top;
-    local_cells_top = (int *)map_data;
+    local_cells_top = (int*)map_data;
   }
 
   for (int ind = 0; ind < num_elements; ind++) {
 
-    struct cell *c;
+    struct cell* c;
 
     /* When restarting, the list of local cells does not
        yet exist. We use the raw list of top-level cells instead */
@@ -180,31 +180,31 @@ void engine_do_drift_all_spart_mapper(void *map_data, int num_elements,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an #engine.
  */
-void engine_do_drift_all_bpart_mapper(void *map_data, int num_elements,
-                                      void *extra_data) {
+void engine_do_drift_all_bpart_mapper(void* map_data, int num_elements,
+                                      void* extra_data) {
 
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine* e = (const struct engine*)extra_data;
   const int restarting = e->restarting;
-  struct space *s = e->s;
-  struct cell *cells_top;
-  int *local_cells_top;
+  struct space* s = e->s;
+  struct cell* cells_top;
+  int* local_cells_top;
 
   if (restarting) {
 
     /* When restarting, we loop over all top-level cells */
-    cells_top = (struct cell *)map_data;
+    cells_top = (struct cell*)map_data;
     local_cells_top = NULL;
 
   } else {
 
     /* In any other case, we use the list of local cells with tasks */
     cells_top = s->cells_top;
-    local_cells_top = (int *)map_data;
+    local_cells_top = (int*)map_data;
   }
 
   for (int ind = 0; ind < num_elements; ind++) {
 
-    struct cell *c;
+    struct cell* c;
 
     /* When restarting, the list of local cells does not
        yet exist. We use the raw list of top-level cells instead */
@@ -228,31 +228,31 @@ void engine_do_drift_all_bpart_mapper(void *map_data, int num_elements,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an #engine.
  */
-void engine_do_drift_all_sink_mapper(void *map_data, int num_elements,
-                                     void *extra_data) {
+void engine_do_drift_all_sink_mapper(void* map_data, int num_elements,
+                                     void* extra_data) {
 
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine* e = (const struct engine*)extra_data;
   const int restarting = e->restarting;
-  struct space *s = e->s;
-  struct cell *cells_top;
-  int *local_cells_top;
+  struct space* s = e->s;
+  struct cell* cells_top;
+  int* local_cells_top;
 
   if (restarting) {
 
     /* When restarting, we loop over all top-level cells */
-    cells_top = (struct cell *)map_data;
+    cells_top = (struct cell*)map_data;
     local_cells_top = NULL;
 
   } else {
 
     /* In any other case, we use the list of local cells with tasks */
     cells_top = s->cells_top;
-    local_cells_top = (int *)map_data;
+    local_cells_top = (int*)map_data;
   }
 
   for (int ind = 0; ind < num_elements; ind++) {
 
-    struct cell *c;
+    struct cell* c;
 
     /* When restarting, the list of local cells does not
        yet exist. We use the raw list of top-level cells instead */
@@ -276,31 +276,31 @@ void engine_do_drift_all_sink_mapper(void *map_data, int num_elements,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an #engine.
  */
-void engine_do_drift_all_multipole_mapper(void *map_data, int num_elements,
-                                          void *extra_data) {
+void engine_do_drift_all_multipole_mapper(void* map_data, int num_elements,
+                                          void* extra_data) {
 
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine* e = (const struct engine*)extra_data;
   const int restarting = e->restarting;
-  struct space *s = e->s;
-  struct cell *cells_top;
-  int *local_cells_with_tasks_top;
+  struct space* s = e->s;
+  struct cell* cells_top;
+  int* local_cells_with_tasks_top;
 
   if (restarting) {
 
     /* When restarting, we loop over all top-level cells */
-    cells_top = (struct cell *)map_data;
+    cells_top = (struct cell*)map_data;
     local_cells_with_tasks_top = NULL;
 
   } else {
 
     /* In any other case, we use the list of local cells with tasks */
     cells_top = s->cells_top;
-    local_cells_with_tasks_top = (int *)map_data;
+    local_cells_with_tasks_top = (int*)map_data;
   }
 
   for (int ind = 0; ind < num_elements; ind++) {
 
-    struct cell *c;
+    struct cell* c;
 
     /* When restarting, the list of local cells does not
        yet exist. We use the raw list of top-level cells instead */
@@ -320,7 +320,7 @@ void engine_do_drift_all_multipole_mapper(void *map_data, int num_elements,
  * @param e The #engine.
  * @param drift_mpoles Do we want to drift all the multipoles as well?
  */
-void engine_drift_all(struct engine *e, const int drift_mpoles) {
+void engine_drift_all(struct engine* e, const int drift_mpoles) {
 
   const ticks tic = getticks();
 
@@ -452,14 +452,14 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an #engine.
  */
-void engine_do_drift_top_multipoles_mapper(void *map_data, int num_elements,
-                                           void *extra_data) {
+void engine_do_drift_top_multipoles_mapper(void* map_data, int num_elements,
+                                           void* extra_data) {
 
-  struct engine *e = (struct engine *)extra_data;
-  struct cell *cells = (struct cell *)map_data;
+  struct engine* e = (struct engine*)extra_data;
+  struct cell* cells = (struct cell*)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &cells[ind];
+    struct cell* c = &cells[ind];
     if (c != NULL) {
 
       /* Drift the multipole at this level only */
@@ -473,7 +473,7 @@ void engine_do_drift_top_multipoles_mapper(void *map_data, int num_elements,
  *
  * @param e The #engine.
  */
-void engine_drift_top_multipoles(struct engine *e) {
+void engine_drift_top_multipoles(struct engine* e) {
 
   const ticks tic = getticks();
 

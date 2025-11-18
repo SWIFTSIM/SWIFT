@@ -62,7 +62,7 @@
 /**
  *  Factorize a given integer, attempts to keep larger pair of factors.
  */
-void factor(int value, int *f1, int *f2) {
+void factor(int value, int* f1, int* f2) {
   int j;
   int i;
 
@@ -85,7 +85,7 @@ void factor(int value, int *f1, int *f2) {
  * @param N The number of parts.
  * @param periodic Periodic boundary conditions flag.
  */
-void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
+void pairs_n2(double* dim, struct part* restrict parts, int N, int periodic) {
   int i, j, k, count = 0;
   // int mj, mk;
   // double maxratio = 1.0;
@@ -150,8 +150,8 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
   fflush(stdout);
 }
 
-void pairs_single_density(double *dim, long long int pid,
-                          struct part *restrict parts, int N, int periodic) {
+void pairs_single_density(double* dim, long long int pid,
+                          struct part* restrict parts, int N, int periodic) {
   const float a = 1.f;
   const float H = 0.f;
   const float mu_0 = 1.f;
@@ -207,13 +207,13 @@ void pairs_single_density(double *dim, long long int pid,
   fflush(stdout);
 }
 
-void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
+void pairs_all_density(struct runner* r, struct cell* ci, struct cell* cj) {
 
   float hi, hj, hig2, hjg2;
   struct part *pi, *pj;
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -307,13 +307,13 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 }
 
 #ifdef EXTRA_HYDRO_LOOP
-void pairs_all_gradient(struct runner *r, struct cell *ci, struct cell *cj) {
+void pairs_all_gradient(struct runner* r, struct cell* ci, struct cell* cj) {
 
   float hi, hj, hig2, hjg2;
   struct part *pi, *pj;
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -419,13 +419,13 @@ void pairs_all_gradient(struct runner *r, struct cell *ci, struct cell *cj) {
 }
 #endif /* EXTRA_HDYRO_LOOP */
 
-void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
+void pairs_all_force(struct runner* r, struct cell* ci, struct cell* cj) {
 
   float hi, hj, hig2, hjg2;
   struct part *pi, *pj;
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -514,19 +514,19 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 }
 
-void pairs_all_stars_density(struct runner *r, struct cell *ci,
-                             struct cell *cj) {
+void pairs_all_stars_density(struct runner* r, struct cell* ci,
+                             struct cell* cj) {
 
   float r2, dx[3];
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->stars.count; ++i) {
-    struct spart *spi = &ci->stars.parts[i];
+    struct spart* spi = &ci->stars.parts[i];
 
     float hi = spi->h;
     float hig2 = hi * hi * kernel_gamma2;
@@ -537,7 +537,7 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
 
     for (int j = 0; j < cj->hydro.count; ++j) {
 
-      struct part *pj = &cj->hydro.parts[j];
+      struct part* pj = &cj->hydro.parts[j];
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
@@ -561,7 +561,7 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
   /* Reverse double-for loop and checks every interaction */
   for (int j = 0; j < cj->stars.count; ++j) {
 
-    struct spart *spj = &cj->stars.parts[j];
+    struct spart* spj = &cj->stars.parts[j];
     float hj = spj->h;
     float hjg2 = hj * hj * kernel_gamma2;
 
@@ -571,7 +571,7 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
 
     for (int i = 0; i < ci->hydro.count; ++i) {
 
-      struct part *pi = &ci->hydro.parts[i];
+      struct part* pi = &ci->hydro.parts[i];
 
       /* Early abort? */
       if (part_is_inhibited(pi, e)) continue;
@@ -593,11 +593,11 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
   }
 }
 
-void self_all_density(struct runner *r, struct cell *ci) {
+void self_all_density(struct runner* r, struct cell* ci) {
   float hi, hj, hig2, hjg2;
   struct part *pi, *pj;
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -656,11 +656,11 @@ void self_all_density(struct runner *r, struct cell *ci) {
 }
 
 #ifdef EXTRA_HYDRO_LOOP
-void self_all_gradient(struct runner *r, struct cell *ci) {
+void self_all_gradient(struct runner* r, struct cell* ci) {
   float hi, hj, hig2, hjg2;
   struct part *pi, *pj;
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -728,11 +728,11 @@ void self_all_gradient(struct runner *r, struct cell *ci) {
 }
 #endif /* EXTRA_HYDRO_LOOP */
 
-void self_all_force(struct runner *r, struct cell *ci) {
+void self_all_force(struct runner* r, struct cell* ci) {
   float hi, hj, hig2, hjg2;
   struct part *pi, *pj;
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -771,13 +771,13 @@ void self_all_force(struct runner *r, struct cell *ci) {
   }
 }
 
-void self_all_stars_density(struct runner *r, struct cell *ci) {
+void self_all_stars_density(struct runner* r, struct cell* ci) {
 
   float r2, hi, hj, hig2, dxi[3];
-  struct spart *spi;
-  struct part *pj;
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  struct spart* spi;
+  struct part* pj;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -819,9 +819,9 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
  * @brief Compute the force on a single particle brute-force.
  */
 void engine_single_density(const double dim[3], const long long int pid,
-                           struct part *restrict parts, const int N,
-                           const int periodic, const struct cosmology *cosmo,
-                           const struct gravity_props *grav_props) {
+                           struct part* restrict parts, const int N,
+                           const int periodic, const struct cosmology* cosmo,
+                           const struct gravity_props* grav_props) {
   const float a = 1.f;
   const float H = 0.f;
   const float mu_0 = 1.f;
@@ -874,8 +874,8 @@ void engine_single_density(const double dim[3], const long long int pid,
   fflush(stdout);
 }
 
-void engine_single_force(double *dim, long long int pid,
-                         struct part *restrict parts, int N, int periodic) {
+void engine_single_force(double* dim, long long int pid,
+                         struct part* restrict parts, int N, int periodic) {
   int i, k;
   double r2, dx[3];
   float fdx[3];
@@ -937,7 +937,7 @@ double random_uniform(const double a, const double b) {
 /**
  * @brief Randomly shuffle an array of particles.
  */
-void shuffle_particles(struct part *parts, const int count) {
+void shuffle_particles(struct part* parts, const int count) {
   if (count > 1) {
     for (int i = 0; i < count - 1; i++) {
       int j = i + random_uniform(0., (double)(count - 1 - i));
@@ -954,7 +954,7 @@ void shuffle_particles(struct part *parts, const int count) {
 /**
  * @brief Randomly shuffle an array of sparticles.
  */
-void shuffle_sparticles(struct spart *sparts, const int scount) {
+void shuffle_sparticles(struct spart* sparts, const int scount) {
   if (scount > 1) {
     for (int i = 0; i < scount - 1; i++) {
       int j = i + random_uniform(0., (double)(scount - 1 - i));
@@ -981,8 +981,8 @@ void shuffle_sparticles(struct spart *sparts, const int scount) {
  *
  * @return 1 if difference found, 0 otherwise
  */
-int compare_values(double a, double b, double threshold, double *absDiff,
-                   double *absSum, double *relDiff) {
+int compare_values(double a, double b, double threshold, double* absDiff,
+                   double* absSum, double* relDiff) {
 
   int result = 0;
   *absDiff = 0.0, *absSum = 0.0, *relDiff = 0.0;
@@ -1010,7 +1010,7 @@ int compare_values(double a, double b, double threshold, double *absDiff,
  *
  * @return 1 if difference found, 0 otherwise
  */
-int compare_particles(struct part *a, struct part *b, double threshold) {
+int compare_particles(struct part* a, struct part* b, double threshold) {
 
 #ifdef GADGET2_SPH
 
@@ -1162,7 +1162,7 @@ long get_maxrss(void) {
  * @param s the string.
  * @result the result.
  */
-char *trim_leading(char *s) {
+char* trim_leading(char* s) {
   if (s == NULL || strlen(s) < 2) return s;
   while (isspace(*s)) s++;
   return s;
@@ -1176,9 +1176,9 @@ char *trim_leading(char *s) {
  * @param s the string.
  * @result the result.
  */
-char *trim_trailing(char *s) {
+char* trim_trailing(char* s) {
   if (s == NULL || strlen(s) < 2) return s;
-  char *end = s + strlen(s) - 1;
+  char* end = s + strlen(s) - 1;
   while (isspace(*end)) end--;
   *(end + 1) = '\0';
   return s;
@@ -1192,7 +1192,7 @@ char *trim_trailing(char *s) {
  * @param s the string.
  * @result the result.
  */
-char *trim_both(char *s) {
+char* trim_both(char* s) {
   if (s == NULL || strlen(s) < 2) return s;
   return trim_trailing(trim_leading(s));
 }
@@ -1212,7 +1212,7 @@ char *trim_both(char *s) {
  * @param create create if not already exists, otherwise non-existence is an
  *               error.
  */
-void safe_checkdir(const char *dir, int create) {
+void safe_checkdir(const char* dir, int create) {
 
   if (access(dir, W_OK | X_OK) != 0) {
 

@@ -68,7 +68,7 @@
  *
  * @result the hostname.
  */
-const char *hostname(void) {
+const char* hostname(void) {
   static char buf[256];
   static int initialised = 0;
   if (!initialised) {
@@ -87,10 +87,10 @@ const char *hostname(void) {
  *
  * @result the git version.
  */
-const char *git_revision(void) {
+const char* git_revision(void) {
   static char buf[256];
   static int initialised = 0;
-  static const char *revision = GIT_REVISION;
+  static const char* revision = GIT_REVISION;
   if (!initialised) {
     if (strlen(revision) == 0)
       sprintf(buf, "%s", "unknown");
@@ -108,10 +108,10 @@ const char *git_revision(void) {
  *
  * @result git branch
  */
-const char *git_branch(void) {
+const char* git_branch(void) {
   static char buf[256];
   static int initialised = 0;
-  static const char *branch = GIT_BRANCH;
+  static const char* branch = GIT_BRANCH;
   if (!initialised) {
     if (strlen(branch) == 0)
       sprintf(buf, "%s", "unknown");
@@ -129,10 +129,10 @@ const char *git_branch(void) {
  *
  * @result git branch
  */
-const char *git_date(void) {
+const char* git_date(void) {
   static char buf[256];
   static int initialised = 0;
-  static const char *date = GIT_DATE;
+  static const char* date = GIT_DATE;
   if (!initialised) {
     if (strlen(date) == 0)
       sprintf(buf, "%s", "unknown");
@@ -148,10 +148,10 @@ const char *git_date(void) {
  *
  * @result List of configuration options within simple quotes (').
  */
-const char *configuration_options(void) {
+const char* configuration_options(void) {
   static char buf[1024];
   static int initialised = 0;
-  static const char *config = SWIFT_CONFIG_FLAGS;
+  static const char* config = SWIFT_CONFIG_FLAGS;
   if (!initialised) {
     snprintf(buf, 1024, "'%.1021s'", config);
     initialised = 1;
@@ -164,10 +164,10 @@ const char *configuration_options(void) {
  *
  * @result List of CFLAGS within simple quotes (').
  */
-const char *compilation_cflags(void) {
+const char* compilation_cflags(void) {
   static char buf[1024];
   static int initialised = 0;
-  static const char *cflags = SWIFT_CFLAGS;
+  static const char* cflags = SWIFT_CFLAGS;
   if (!initialised) {
     snprintf(buf, 1024, "'%.1021s'", cflags);
     initialised = 1;
@@ -180,8 +180,8 @@ const char *compilation_cflags(void) {
  *
  * @result the package version
  */
-const char *package_version(void) {
-  static const char *version = PACKAGE_VERSION;
+const char* package_version(void) {
+  static const char* version = PACKAGE_VERSION;
   return version;
 }
 
@@ -190,7 +190,7 @@ const char *package_version(void) {
  *
  * @result description of the package version
  */
-const char *package_description(void) {
+const char* package_description(void) {
   static char buf[256];
   static int initialised = 0;
   if (!initialised) {
@@ -206,7 +206,7 @@ const char *package_description(void) {
  *
  * @result description of the compiler.
  */
-const char *compiler_name(void) {
+const char* compiler_name(void) {
   static char compiler[256] = {0};
 #if defined(__INTEL_COMPILER)
   sprintf(compiler, "ICC");
@@ -226,7 +226,7 @@ const char *compiler_name(void) {
  *
  * @result description of the compiler.
  */
-const char *compiler_version(void) {
+const char* compiler_version(void) {
   static char version[256] = {0};
 #if defined(__INTEL_COMPILER)
   const int major = __INTEL_COMPILER / 100;
@@ -253,7 +253,7 @@ const char *compiler_version(void) {
  *
  * @result description of the MPI version.
  */
-const char *mpi_version(void) {
+const char* mpi_version(void) {
   static char version[80] = {0};
 
 #ifdef WITH_MPI
@@ -267,7 +267,7 @@ const char *mpi_version(void) {
 
   /* Find first \n and truncate string to this length, can get many lines from
    * some MPIs (MPICH). */
-  char *ptr = strchr(lib_version, '\n');
+  char* ptr = strchr(lib_version, '\n');
   if (ptr != NULL) *ptr = '\0';
 
   /* Also arbitrarily truncate to keep down to one line, Open MPI,
@@ -297,7 +297,7 @@ const char *mpi_version(void) {
  *
  * @result description of the current HDF5 version.
  */
-const char *hdf5_version(void) {
+const char* hdf5_version(void) {
 
   static char version[256] = {0};
 #ifdef HAVE_HDF5
@@ -315,7 +315,7 @@ const char *hdf5_version(void) {
  *
  * @result description of the METIS version.
  */
-const char *metis_version(void) {
+const char* metis_version(void) {
 
   static char version[256] = {0};
 #if defined(WITH_MPI) && defined(HAVE_METIS)
@@ -332,7 +332,7 @@ const char *metis_version(void) {
  *
  * @result description of the ParMETIS version.
  */
-const char *parmetis_version(void) {
+const char* parmetis_version(void) {
 
   static char version[256] = {0};
 #if defined(WITH_MPI) && defined(HAVE_PARMETIS)
@@ -349,7 +349,7 @@ const char *parmetis_version(void) {
  *
  * @result description of the FFTW version.
  */
-const char *fftw3_version(void) {
+const char* fftw3_version(void) {
 
   static char version[256] = {0};
 #if defined(HAVE_FFTW)
@@ -365,7 +365,7 @@ const char *fftw3_version(void) {
  *
  * @result description of the GSL version.
  */
-const char *libgsl_version(void) {
+const char* libgsl_version(void) {
 
   static char version[256] = {0};
 #if defined(HAVE_LIBGSL)
@@ -381,7 +381,7 @@ const char *libgsl_version(void) {
  *
  * @result description of the SUNDIALS version.
  */
-const char *sundials_version(void) {
+const char* sundials_version(void) {
 
   static char version[256] = {0};
 #if defined(HAVE_SUNDIALS)
@@ -397,7 +397,7 @@ const char *sundials_version(void) {
  *
  * @result description of the thread barriers
  */
-const char *thread_barrier_version(void) {
+const char* thread_barrier_version(void) {
 
   static char version[256] = {0};
 #if defined(HAVE_PTHREAD_BARRIERS)
@@ -413,7 +413,7 @@ const char *thread_barrier_version(void) {
  *
  * @result description of the allocation library
  */
-const char *allocator_version(void) {
+const char* allocator_version(void) {
 
   static char version[256] = {0};
 #if defined(HAVE_TBBMALLOC)

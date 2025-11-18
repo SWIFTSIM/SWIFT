@@ -56,10 +56,10 @@ enum task_broad_types {
 struct unskip_data {
 
   /*! The #engine */
-  struct engine *e;
+  struct engine* e;
 
   /*! Pointer to the start of the list of cells to unskip */
-  int *list_base;
+  int* list_base;
 
   /*! Number of times the list has been duplicated */
   int multiplier;
@@ -77,7 +77,7 @@ struct unskip_data {
  * @param c The cell.
  * @param e The engine.
  */
-static void engine_do_unskip_hydro(struct cell *c, struct engine *e) {
+static void engine_do_unskip_hydro(struct cell* c, struct engine* e) {
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -94,7 +94,7 @@ static void engine_do_unskip_hydro(struct cell *c, struct engine *e) {
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
+        struct cell* cp = c->progeny[k];
         engine_do_unskip_hydro(cp, e);
       }
     }
@@ -112,7 +112,7 @@ static void engine_do_unskip_hydro(struct cell *c, struct engine *e) {
  * @param e The engine.
  * @param with_star_formation Are we running with star formation switched on?
  */
-static void engine_do_unskip_stars(struct cell *c, struct engine *e,
+static void engine_do_unskip_stars(struct cell* c, struct engine* e,
                                    const int with_star_formation,
                                    const int with_star_formation_sink) {
 
@@ -136,7 +136,7 @@ static void engine_do_unskip_stars(struct cell *c, struct engine *e,
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
+        struct cell* cp = c->progeny[k];
         engine_do_unskip_stars(cp, e, with_star_formation,
                                with_star_formation_sink);
       }
@@ -155,7 +155,7 @@ static void engine_do_unskip_stars(struct cell *c, struct engine *e,
  * @param c The cell.
  * @param e The engine.
  */
-static void engine_do_unskip_black_holes(struct cell *c, struct engine *e) {
+static void engine_do_unskip_black_holes(struct cell* c, struct engine* e) {
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -164,7 +164,7 @@ static void engine_do_unskip_black_holes(struct cell *c, struct engine *e) {
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
+        struct cell* cp = c->progeny[k];
         engine_do_unskip_black_holes(cp, e);
       }
     }
@@ -181,7 +181,7 @@ static void engine_do_unskip_black_holes(struct cell *c, struct engine *e) {
  * @param c The cell.
  * @param e The engine.
  */
-static void engine_do_unskip_sinks(struct cell *c, struct engine *e) {
+static void engine_do_unskip_sinks(struct cell* c, struct engine* e) {
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -196,7 +196,7 @@ static void engine_do_unskip_sinks(struct cell *c, struct engine *e) {
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
+        struct cell* cp = c->progeny[k];
         engine_do_unskip_sinks(cp, e);
       }
     }
@@ -213,7 +213,7 @@ static void engine_do_unskip_sinks(struct cell *c, struct engine *e) {
  * @param c The cell.
  * @param e The engine.
  */
-static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
+static void engine_do_unskip_gravity(struct cell* c, struct engine* e) {
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -228,7 +228,7 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav)) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
+        struct cell* cp = c->progeny[k];
         engine_do_unskip_gravity(cp, e);
       }
     }
@@ -245,7 +245,7 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
  * @param e The engine.
  * @param sub_cycle 1 if this is a call for a sub cycle, 0 otherwise
  */
-static void engine_do_unskip_rt(struct cell *c, struct engine *e,
+static void engine_do_unskip_rt(struct cell* c, struct engine* e,
                                 const int sub_cycle) {
 
   /* Note: we only get this far if engine_policy_rt is flagged. */
@@ -282,16 +282,16 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an unskip_data structure.
  */
-void engine_do_unskip_mapper(void *map_data, int num_elements,
-                             void *extra_data) {
+void engine_do_unskip_mapper(void* map_data, int num_elements,
+                             void* extra_data) {
 
   /* Unpack the meta data */
-  struct unskip_data *data = (struct unskip_data *)extra_data;
+  struct unskip_data* data = (struct unskip_data*)extra_data;
   const int num_active_cells = data->num_active_cells;
-  const enum task_broad_types *const task_types = data->task_types;
-  const int *const list_base = data->list_base;
-  struct engine *e = data->e;
-  struct cell *const cells_top = e->s->cells_top;
+  const enum task_broad_types* const task_types = data->task_types;
+  const int* const list_base = data->list_base;
+  struct engine* e = data->e;
+  struct cell* const cells_top = e->s->cells_top;
 
   /* What policies are we running? */
   const int with_sinks = e->policy & engine_policy_sinks;
@@ -300,13 +300,13 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
   const int with_star_formation_sink = with_sinks && with_stars;
 
   /* The current chunk of active cells */
-  const int *const local_cells = (int *)map_data;
+  const int* const local_cells = (int*)map_data;
 
   /* Loop over this thread's chunk of cells to unskip */
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Handle on the cell */
-    struct cell *const c = &cells_top[local_cells[ind]];
+    struct cell* const c = &cells_top[local_cells[ind]];
 
     /* In what copy of the global list are we?
      * This gives us the broad type of task we are working on. */
@@ -378,10 +378,10 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
  *
  * @param e The #engine.
  */
-void engine_unskip(struct engine *e) {
+void engine_unskip(struct engine* e) {
 
   const ticks tic = getticks();
-  struct space *s = e->s;
+  struct space* s = e->s;
   const int nodeID = e->nodeID;
 
   const int with_hydro = e->policy & engine_policy_hydro;
@@ -401,10 +401,10 @@ void engine_unskip(struct engine *e) {
 #endif  // WITH_PROFILER
 
   /* Move the active local cells to the top of the list. */
-  int *local_cells = e->s->local_cells_with_tasks_top;
+  int* local_cells = e->s->local_cells_with_tasks_top;
   int num_active_cells = 0;
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
-    struct cell *c = &s->cells_top[local_cells[k]];
+    struct cell* c = &s->cells_top[local_cells[k]];
 
     if (cell_is_empty(c)) continue;
 
@@ -455,12 +455,12 @@ void engine_unskip(struct engine *e) {
 
   /* Should we duplicate the list of active cells to better parallelise the
      unskip over the threads ? */
-  int *local_active_cells;
+  int* local_active_cells;
   if (multiplier > 1) {
 
     /* Make space for copies of the list */
     local_active_cells =
-        (int *)malloc(multiplier * num_active_cells * sizeof(int));
+        (int*)malloc(multiplier * num_active_cells * sizeof(int));
     if (local_active_cells == NULL)
       error(
           "Couldn't allocate memory for duplicated list of local active "
@@ -502,20 +502,20 @@ void engine_unskip(struct engine *e) {
             clocks_getunit());
 }
 
-void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
-                                       void *extra_data) {
+void engine_do_unskip_sub_cycle_mapper(void* map_data, int num_elements,
+                                       void* extra_data) {
 
-  struct engine *e = (struct engine *)extra_data;
-  struct cell *const cells_top = e->s->cells_top;
+  struct engine* e = (struct engine*)extra_data;
+  struct cell* const cells_top = e->s->cells_top;
 
   /* The current chunk of active cells */
-  const int *const local_cells = (int *)map_data;
+  const int* const local_cells = (int*)map_data;
 
   /* Loop over this thread's chunk of cells to unskip */
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Handle on the cell */
-    struct cell *const c = &cells_top[local_cells[ind]];
+    struct cell* const c = &cells_top[local_cells[ind]];
 
     engine_do_unskip_rt(c, e, /*sub_cycle=*/1);
   }
@@ -526,18 +526,18 @@ void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
  *
  * @param e The #engine.
  */
-void engine_unskip_rt_sub_cycle(struct engine *e) {
+void engine_unskip_rt_sub_cycle(struct engine* e) {
 
   const ticks tic = getticks();
-  struct space *s = e->s;
+  struct space* s = e->s;
   const int with_rt = e->policy & engine_policy_rt;
 
   if (!with_rt) error("Unskipping sub-cycles when running without RT!");
 
-  int *local_cells = e->s->local_cells_with_tasks_top;
+  int* local_cells = e->s->local_cells_with_tasks_top;
   int num_active_cells = 0;
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
-    struct cell *c = &s->cells_top[local_cells[k]];
+    struct cell* c = &s->cells_top[local_cells[k]];
 
     if (c->hydro.count == 0) continue;
 

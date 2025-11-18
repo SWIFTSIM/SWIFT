@@ -56,15 +56,15 @@ static void threadpool_apply_affinity_mask(void);
 /**
  * @brief Store a log entry of the given chunk.
  */
-static void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
+static void threadpool_log(struct threadpool* tp, int tid, size_t chunk_size,
                            ticks tic, ticks toc) {
-  struct mapper_log *log = &tp->logs[tid > 0 ? tid : 0];
+  struct mapper_log* log = &tp->logs[tid > 0 ? tid : 0];
 
   /* Check if we need to re-allocate the log buffer. */
   if (log->count == log->size) {
     log->size *= 2;
-    struct mapper_log_entry *new_log;
-    if ((new_log = (struct mapper_log_entry *)malloc(
+    struct mapper_log_entry* new_log;
+    if ((new_log = (struct mapper_log_entry*)malloc(
              sizeof(struct mapper_log_entry) * log->size)) == NULL)
       error("Failed to re-allocate mapper log.");
     memcpy(new_log, log->log, sizeof(struct mapper_log_entry) * log->count);
@@ -73,7 +73,7 @@ static void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
   }
 
   /* Store the new entry. */
-  struct mapper_log_entry *entry = &log->log[log->count];
+  struct mapper_log_entry* entry = &log->log[log->count];
   entry->tid = tid;
   entry->chunk_size = chunk_size;
   entry->tic = tic;
@@ -82,11 +82,11 @@ static void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
   log->count++;
 }
 
-void threadpool_dump_log(struct threadpool *tp, const char *filename,
+void threadpool_dump_log(struct threadpool* tp, const char* filename,
                          int reset) {
 
   /* Open the output file. */
-  FILE *fd;
+  FILE* fd;
   if ((fd = fopen(filename, "w")) == NULL)
     error("Failed to create log file '%s'.", filename);
 
@@ -94,7 +94,7 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
   const int max_names = 100;
   struct name_entry {
     threadpool_map_function map_function;
-    const char *name;
+    const char* name;
   };
   struct name_entry names[max_names];
   bzero(names, sizeof(struct name_entry) * max_names);
@@ -106,12 +106,12 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
 
   /* Loop over the per-tid logs and dump them. */
   for (int k = 0; k < tp->num_threads; k++) {
-    struct mapper_log *log = &tp->logs[k];
+    struct mapper_log* log = &tp->logs[k];
 
     /* Loop over the log entries and dump them. */
     for (int i = 0; i < log->count; i++) {
 
-      struct mapper_log_entry *entry = &log->log[i];
+      struct mapper_log_entry* entry = &log->log[i];
 
       /* Look for the function pointer in the buffer. */
       int nid = 0;
@@ -145,7 +145,7 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
 /**
  * @brief Runner main loop, get a chunk and call the mapper function.
  */
-static void threadpool_chomp(struct threadpool *tp, int tid) {
+static void threadpool_chomp(struct threadpool* tp, int tid) {
 
   /* Store the thread ID as thread specific data. */
   int localtid = tid;
@@ -179,7 +179,7 @@ static void threadpool_chomp(struct threadpool *tp, int tid) {
     ticks tic = getticks();
 #endif
 
-    tp->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
+    tp->map_function((char*)tp->map_data + (tp->map_data_stride * task_ind),
                      chunk_size, tp->map_extra_data);
 
 #ifdef SWIFT_DEBUG_THREADPOOL
@@ -193,10 +193,10 @@ static void threadpool_chomp(struct threadpool *tp, int tid) {
  *
  * @param data the threadpool we are part of.
  */
-static void *threadpool_runner(void *data) {
+static void* threadpool_runner(void* data) {
 
   /* Our threadpool. */
-  struct threadpool *tp = (struct threadpool *)data;
+  struct threadpool* tp = (struct threadpool*)data;
 
   /* Our affinity, if set. */
   threadpool_apply_affinity_mask();
@@ -225,7 +225,7 @@ static void *threadpool_runner(void *data) {
  * @param tp The #threadpool.
  * @param num_threads The number of threads.
  */
-void threadpool_init(struct threadpool *tp, int num_threads) {
+void threadpool_init(struct threadpool* tp, int num_threads) {
 
   /* Initialize the thread counters. */
   tp->num_threads = num_threads;
@@ -238,13 +238,13 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   pthread_setspecific(threadpool_tid, &localtid);
 
 #ifdef SWIFT_DEBUG_THREADPOOL
-  if ((tp->logs = (struct mapper_log *)malloc(sizeof(struct mapper_log) *
-                                              num_threads)) == NULL)
+  if ((tp->logs = (struct mapper_log*)malloc(sizeof(struct mapper_log) *
+                                             num_threads)) == NULL)
     error("Failed to allocate mapper logs.");
   for (int k = 0; k < num_threads; k++) {
     tp->logs[k].size = threadpool_log_initial_size;
     tp->logs[k].count = 0;
-    if ((tp->logs[k].log = (struct mapper_log_entry *)malloc(
+    if ((tp->logs[k].log = (struct mapper_log_entry*)malloc(
              sizeof(struct mapper_log_entry) * tp->logs[k].size)) == NULL)
       error("Failed to allocate mapper log.");
   }
@@ -268,8 +268,8 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
 
   /* Allocate the threads, one less than requested since the calling thread
      works as well. */
-  if ((tp->threads = (pthread_t *)malloc(sizeof(pthread_t) *
-                                         (num_threads - 1))) == NULL) {
+  if ((tp->threads =
+           (pthread_t*)malloc(sizeof(pthread_t) * (num_threads - 1))) == NULL) {
     error("Failed to allocate thread array.");
   }
 
@@ -302,9 +302,9 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
  * @param extra_data Addtitional pointer that will be passed to the mapping
  *        function, may contain additional data.
  */
-void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
-                    void *map_data, size_t N, int stride, int chunk,
-                    void *extra_data) {
+void threadpool_map(struct threadpool* tp, threadpool_map_function map_function,
+                    void* map_data, size_t N, int stride, int chunk,
+                    void* extra_data) {
 
 #ifdef SWIFT_DEBUG_THREADPOOL
   ticks tic_total = getticks();
@@ -333,7 +333,7 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
 #ifdef SWIFT_DEBUG_THREADPOOL
         ticks tic = getticks();
 #endif
-        map_function((char *)map_data + (stride * data_count), chunk_size,
+        map_function((char*)map_data + (stride * data_count), chunk_size,
                      extra_data);
 #ifdef SWIFT_DEBUG_THREADPOOL
         threadpool_log(tp, 0, chunk_size, tic, getticks());
@@ -385,7 +385,7 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
  * @brief Re-sets the log for this #threadpool.
  */
 #ifdef SWIFT_DEBUG_THREADPOOL
-void threadpool_reset_log(struct threadpool *tp) {
+void threadpool_reset_log(struct threadpool* tp) {
   for (int k = 0; k < tp->num_threads; k++) tp->logs[k].count = 0;
 }
 #endif
@@ -393,7 +393,7 @@ void threadpool_reset_log(struct threadpool *tp) {
 /**
  * @brief Frees up the memory allocated for this #threadpool.
  */
-void threadpool_clean(struct threadpool *tp) {
+void threadpool_clean(struct threadpool* tp) {
 
   if (tp->num_threads > 1) {
     /* Destroy the runner threads by calling them with a NULL mapper function
@@ -402,7 +402,7 @@ void threadpool_clean(struct threadpool *tp) {
     tp->map_function = NULL;
     swift_barrier_wait(&tp->run_barrier);
     for (int k = 0; k < tp->num_threads - 1; k++) {
-      void *retval;
+      void* retval;
       pthread_join(tp->threads[k], &retval);
     }
 
@@ -427,7 +427,7 @@ void threadpool_clean(struct threadpool *tp) {
  * @brief return the threadpool id of the current thread.
  */
 int threadpool_gettid(void) {
-  int *tid = (int *)pthread_getspecific(threadpool_tid);
+  int* tid = (int*)pthread_getspecific(threadpool_tid);
   return *tid;
 }
 
@@ -437,7 +437,7 @@ int threadpool_gettid(void) {
  *
  * @param affinity the mask to use.
  */
-void threadpool_set_affinity_mask(cpu_set_t *affinity) {
+void threadpool_set_affinity_mask(cpu_set_t* affinity) {
   memcpy(&thread_affinity, affinity, sizeof(cpu_set_t));
   thread_affinity_set = 1;
 }

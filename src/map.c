@@ -35,9 +35,9 @@
 /**
  * @brief Mapping function to draw a specific cell (gnuplot).
  */
-void map_cells_plot(struct cell *c, void *data) {
+void map_cells_plot(struct cell* c, void* data) {
 
-  int depth = *(int *)data;
+  int depth = *(int*)data;
   double *l = c->loc, *h = c->width;
 
   if (c->depth <= depth) {
@@ -88,7 +88,7 @@ void map_cells_plot(struct cell *c, void *data) {
 /**
  * @brief Mapping function for checking if each part is in its box.
  */
-void map_check(struct part *p, struct cell *c, void *data) {
+void map_check(struct part* p, struct cell* c, void* data) {
 
   if (p->x[0] < c->loc[0] || p->x[0] > c->loc[0] + c->width[0] ||
       p->x[0] < c->loc[0] || p->x[0] > c->loc[0] + c->width[0] ||
@@ -99,14 +99,14 @@ void map_check(struct part *p, struct cell *c, void *data) {
 /**
  * @brief Mapping function for neighbour count.
  */
-void map_cellcheck(struct cell *c, void *data) {
+void map_cellcheck(struct cell* c, void* data) {
 
-  int *count = (int *)data;
+  int* count = (int*)data;
   atomic_add(count, c->hydro.count);
 
   /* Loop over all parts and check if they are in the cell. */
   for (int k = 0; k < c->hydro.count; k++) {
-    struct part *p = &c->hydro.parts[k];
+    struct part* p = &c->hydro.parts[k];
     if (p->x[0] < c->loc[0] || p->x[1] < c->loc[1] || p->x[2] < c->loc[2] ||
         p->x[0] > c->loc[0] + c->width[0] ||
         p->x[1] > c->loc[1] + c->width[1] ||
@@ -123,7 +123,7 @@ void map_cellcheck(struct cell *c, void *data) {
 
   /* Loop over all gparts and check if they are in the cell. */
   for (int k = 0; k < c->grav.count; k++) {
-    struct gpart *p = &c->grav.parts[k];
+    struct gpart* p = &c->grav.parts[k];
     if (p->x[0] < c->loc[0] || p->x[1] < c->loc[1] || p->x[2] < c->loc[2] ||
         p->x[0] > c->loc[0] + c->width[0] ||
         p->x[1] > c->loc[1] + c->width[1] ||
@@ -142,10 +142,10 @@ void map_cellcheck(struct cell *c, void *data) {
 /**
  * @brief Mapping function for maxdepth cell count.
  */
-void map_maxdepth(struct cell *c, void *data) {
+void map_maxdepth(struct cell* c, void* data) {
 
-  int maxdepth = ((int *)data)[0];
-  int *count = &((int *)data)[1];
+  int maxdepth = ((int*)data)[0];
+  int* count = &((int*)data)[1];
 
   // printf( "%e\n" , p->count );
 
@@ -155,45 +155,45 @@ void map_maxdepth(struct cell *c, void *data) {
 /**
  * @brief Mapping function for neighbour count.
  */
-void map_count(struct part *p, struct cell *c, void *data) {
+void map_count(struct part* p, struct cell* c, void* data) {
 
-  double *wcount = (double *)data;
+  double* wcount = (double*)data;
 
   // printf( "%i %e %e\n" , p->id , p->count , p->count_dh );
 
   *wcount += p->density.wcount;
 }
-void map_wcount_min(struct part *p, struct cell *c, void *data) {
+void map_wcount_min(struct part* p, struct cell* c, void* data) {
 
-  struct part **p2 = (struct part **)data;
+  struct part** p2 = (struct part**)data;
 
   if (p->density.wcount < (*p2)->density.wcount) *p2 = p;
 }
 
-void map_wcount_max(struct part *p, struct cell *c, void *data) {
+void map_wcount_max(struct part* p, struct cell* c, void* data) {
 
-  struct part **p2 = (struct part **)data;
+  struct part** p2 = (struct part**)data;
 
   if (p->density.wcount > (*p2)->density.wcount) *p2 = p;
 }
 
-void map_h_min(struct part *p, struct cell *c, void *data) {
+void map_h_min(struct part* p, struct cell* c, void* data) {
 
-  struct part **p2 = (struct part **)data;
+  struct part** p2 = (struct part**)data;
 
   if (p->h < (*p2)->h) *p2 = p;
 }
 
-void map_h_max(struct part *p, struct cell *c, void *data) {
+void map_h_max(struct part* p, struct cell* c, void* data) {
 
-  struct part **p2 = (struct part **)data;
+  struct part** p2 = (struct part**)data;
 
   if (p->h > (*p2)->h) *p2 = p;
 }
 
-void map_stars_h_max(struct spart *p, struct cell *c, void *data) {
+void map_stars_h_max(struct spart* p, struct cell* c, void* data) {
 
-  struct spart **p2 = (struct spart **)data;
+  struct spart** p2 = (struct spart**)data;
 
   if (p->h > (*p2)->h) *p2 = p;
 }
@@ -201,7 +201,7 @@ void map_stars_h_max(struct spart *p, struct cell *c, void *data) {
 /**
  * @brief Mapping function for neighbour count.
  */
-void map_icount(struct part *p, struct cell *c, void *data) {
+void map_icount(struct part* p, struct cell* c, void* data) {
 
   // int *count = (int *)data;
 
@@ -213,9 +213,9 @@ void map_icount(struct part *p, struct cell *c, void *data) {
 /**
  * @brief Mapping function to print the particle position.
  */
-void map_dump(struct part *p, struct cell *c, void *data) {
+void map_dump(struct part* p, struct cell* c, void* data) {
 
-  double *shift = (double *)data;
+  double* shift = (double*)data;
 
   printf("%g\t%g\t%g\n", p->x[0] - shift[0], p->x[1] - shift[1],
          p->x[2] - shift[2]);

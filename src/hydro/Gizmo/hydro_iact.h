@@ -52,7 +52,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   float wi, wj, wi_dx, wj_dx;
@@ -108,7 +108,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
     const float H) {
 
   float wi, wi_dx;
@@ -145,7 +145,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   hydro_gradients_collect(r2, dx, hi, hj, pi, pj);
@@ -170,7 +170,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   hydro_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
@@ -206,7 +206,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, int mode, const float a,
+    struct part* restrict pi, struct part* restrict pj, int mode, const float a,
     const float H) {
 
   /* Get r and 1/r. */
@@ -435,7 +435,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 1, a, H);
@@ -459,7 +459,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H);

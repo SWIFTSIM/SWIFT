@@ -84,27 +84,27 @@ int lightcone_map_total_mass_type_contributes(int ptype) {
  * lightcone
  */
 double lightcone_map_total_mass_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
   /* const struct xpart *xparts = s->xparts; */ /* Currently not used */
-  const struct spart *sparts = s->sparts;
-  const struct bpart *bparts = s->bparts;
+  const struct spart* sparts = s->sparts;
+  const struct bpart* bparts = s->bparts;
 
   switch (gp->type) {
     case swift_type_gas: {
-      const struct part *p = &parts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
       return hydro_get_mass(p);
     } break;
     case swift_type_stars: {
-      const struct spart *sp = &sparts[-gp->id_or_neg_offset];
+      const struct spart* sp = &sparts[-gp->id_or_neg_offset];
       return sp->mass;
     } break;
     case swift_type_black_hole: {
-      const struct bpart *bp = &bparts[-gp->id_or_neg_offset];
+      const struct bpart* bp = &bparts[-gp->id_or_neg_offset];
       return bp->mass;
     } break;
     case swift_type_dark_matter:
@@ -139,8 +139,8 @@ double lightcone_map_total_mass_get_value(
  *
  */
 double lightcone_map_total_mass_baseline_value(
-    const struct cosmology *c, const struct lightcone_props *lightcone_props,
-    const struct lightcone_map *map) {
+    const struct cosmology* c, const struct lightcone_props* lightcone_props,
+    const struct lightcone_map* map) {
   return lightcone_map_neutrino_baseline_value(c, lightcone_props, map);
 }
 
@@ -170,16 +170,16 @@ int lightcone_map_gas_mass_type_contributes(int ptype) {
  * lightcone
  */
 double lightcone_map_gas_mass_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
 
   switch (gp->type) {
     case swift_type_gas: {
-      const struct part *p = &parts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
       return hydro_get_mass(p);
     } break;
     default:
@@ -215,8 +215,8 @@ int lightcone_map_dark_matter_mass_type_contributes(int ptype) {
  * lightcone
  */
 double lightcone_map_dark_matter_mass_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
   switch (gp->type) {
     case swift_type_dark_matter:
     case swift_type_dark_matter_background: {
@@ -254,16 +254,16 @@ int lightcone_map_stellar_mass_type_contributes(int ptype) {
  * lightcone
  */
 double lightcone_map_stellar_mass_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct spart *sparts = s->sparts;
+  const struct space* s = e->s;
+  const struct spart* sparts = s->sparts;
 
   switch (gp->type) {
     case swift_type_stars: {
-      const struct spart *sp = &sparts[-gp->id_or_neg_offset];
+      const struct spart* sp = &sparts[-gp->id_or_neg_offset];
       return sp->mass;
     } break;
     default:
@@ -298,16 +298,16 @@ int lightcone_map_black_hole_mass_type_contributes(int ptype) {
  * lightcone
  */
 double lightcone_map_black_hole_mass_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct bpart *bparts = s->bparts;
+  const struct space* s = e->s;
+  const struct bpart* bparts = s->bparts;
 
   switch (gp->type) {
     case swift_type_black_hole: {
-      const struct bpart *bp = &bparts[-gp->id_or_neg_offset];
+      const struct bpart* bp = &bparts[-gp->id_or_neg_offset];
       return bp->mass;
     } break;
     default:
@@ -342,18 +342,18 @@ int lightcone_map_sfr_type_contributes(int ptype) {
  * lightcone
  */
 double lightcone_map_sfr_get_value(
-    const struct engine *e, const struct lightcone_props *lightcone_props,
-    const struct gpart *gp, const double a_cross, const double x_cross[3]) {
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]) {
 
   /* Handle on the other particle types */
-  const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
+  const struct space* s = e->s;
+  const struct part* parts = s->parts;
+  const struct xpart* xparts = s->xparts;
 
   switch (gp->type) {
     case swift_type_gas: {
-      const struct part *p = &parts[-gp->id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
+      const struct part* p = &parts[-gp->id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gp->id_or_neg_offset];
       return star_formation_get_SFR(p, xp);
     } break;
     default:

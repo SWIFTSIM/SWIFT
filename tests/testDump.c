@@ -36,17 +36,17 @@
 /* Local headers. */
 #include "swift.h"
 
-void logfile_mapper(void *map_data, int num_elements, void *extra_data) {
-  struct csds_logfile_writer *d = (struct csds_logfile_writer *)extra_data;
+void logfile_mapper(void* map_data, int num_elements, void* extra_data) {
+  struct csds_logfile_writer* d = (struct csds_logfile_writer*)extra_data;
   size_t offset;
-  char *out_string = (char *)csds_logfile_writer_get(d, 7, &offset);
+  char* out_string = (char*)csds_logfile_writer_get(d, 7, &offset);
   char out_buff[8];
   /* modulo due to bug in gcc, should be removed */
   snprintf(out_buff, 8, "%06zi\n", (offset / 7) % 1000000);
   memcpy(out_string, out_buff, 7);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Some constants. */
   const int num_threads = 4;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
 
 #include <stdio.h>
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   printf("No posix_fallocate, not testing anything.\n");
   return 0;
 }

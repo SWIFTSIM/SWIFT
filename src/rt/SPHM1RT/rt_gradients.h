@@ -266,10 +266,10 @@ __attribute__((always_inline)) INLINE static void radiation_gradient_aniso_SPH(
  * @param divfj divergence of f for particle j
  */
 __attribute__((always_inline)) INLINE static void radiation_divergence_SPH(
-    const float *fini, const float *finj, const float mi, const float mj,
+    const float* fini, const float* finj, const float mi, const float mj,
     const float forcefi, const float forcefj, const float rhoi,
     const float rhoj, const float wi_dr, const float wj_dr, const float dx[3],
-    const float r, int diffmode, float *divfi, float *divfj) {
+    const float r, int diffmode, float* divfi, float* divfj) {
   const float rho_i_inv = 1.0f / rhoi;
   const float rho_j_inv = 1.0f / rhoj;
   const float r_inv = 1.0f / r;
@@ -335,14 +335,14 @@ __attribute__((always_inline)) INLINE static void radiation_divergence_SPH(
  * @param divfj divergence of f for particle j
  */
 __attribute__((always_inline)) INLINE static void
-radiation_divergence_aniso_SPH(const float *fini, const float *finj,
+radiation_divergence_aniso_SPH(const float* fini, const float* finj,
                                const float mi, const float mj,
                                const float forcefi, const float forcefj,
                                const float rhoi, const float rhoj,
                                const float wi_dr, const float wj_dr,
                                float Fanisoi[3][3], float Fanisoj[3][3],
                                const float dx[3], const float r, int diffmode,
-                               float *divfi, float *divfj) {
+                               float* divfi, float* divfj) {
   const float rho_i_inv = 1.0f / rhoi;
   const float rho_j_inv = 1.0f / rhoj;
   const float r_inv = 1.0f / r;
@@ -445,7 +445,7 @@ radiation_divergence_aniso_SPH(const float *fini, const float *finj,
  * @param shearfj divergence of f for particle j
  */
 __attribute__((always_inline)) INLINE static void radiation_gradient_vec_SPH(
-    const float *fini, const float *finj, const float mi, const float mj,
+    const float* fini, const float* finj, const float mi, const float mj,
     const float forcefi, const float forcefj, const float rhoi,
     const float rhoj, const float wi_dr, const float wj_dr, const float dx[3],
     const float r, int diffmode, float shearfi[3][3], float shearfj[3][3]) {

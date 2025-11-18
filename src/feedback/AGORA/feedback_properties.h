@@ -56,7 +56,7 @@ struct feedback_props {
  * @param feedback_props The #feedback_props
  */
 __attribute__((always_inline)) INLINE static void feedback_props_print(
-    const struct feedback_props *feedback_props) {
+    const struct feedback_props* feedback_props) {
 
   /* Only the master print */
   if (engine_rank != 0) {
@@ -97,12 +97,12 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
  * @param hydro_props The already read-in properties of the hydro scheme.
  * @param cosmo The cosmological model.
  */
-INLINE static void feedback_props_init(struct feedback_props *fp,
-                                       const struct phys_const *phys_const,
-                                       const struct unit_system *us,
-                                       struct swift_params *params,
-                                       const struct hydro_props *hydro_props,
-                                       const struct cosmology *cosmo) {
+INLINE static void feedback_props_init(struct feedback_props* fp,
+                                       const struct phys_const* phys_const,
+                                       const struct unit_system* us,
+                                       struct swift_params* params,
+                                       const struct hydro_props* hydro_props,
+                                       const struct cosmology* cosmo) {
 
   /* Supernovae energy efficiency */
   double e_efficiency =

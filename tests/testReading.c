@@ -26,18 +26,18 @@
 /* Includes. */
 #include "swift.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0,
          Nsink = 0, Nnupart = 0;
   int flag_entropy_ICs = -1;
   int i, j, k;
   double dim[3];
-  struct part *parts = NULL;
-  struct gpart *gparts = NULL;
-  struct spart *sparts = NULL;
-  struct bpart *bparts = NULL;
-  struct sink *sinks = NULL;
+  struct part* parts = NULL;
+  struct gpart* gparts = NULL;
+  struct spart* sparts = NULL;
+  struct bpart* bparts = NULL;
+  struct sink* sinks = NULL;
   struct ic_info ics_metadata;
   strcpy(ics_metadata.group_name, "NoSUCH");
 

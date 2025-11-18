@@ -54,11 +54,11 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct bpart *bi, const struct part *pj, const struct xpart *xpj,
-    const int with_cosmology, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props,
-    const struct black_holes_props *bh_props,
-    const struct entropy_floor_properties *floor_props,
+    struct bpart* bi, const struct part* pj, const struct xpart* xpj,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const struct gravity_props* grav_props,
+    const struct black_holes_props* bh_props,
+    const struct entropy_floor_properties* floor_props,
     const integertime_t ti_current, const double time) {
 
   float wi, wi_dx;
@@ -408,11 +408,11 @@ runner_iact_nonsym_bh_gas_density(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_repos(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct bpart *bi, const struct part *pj, const struct xpart *xpj,
-    const int with_cosmology, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props,
-    const struct black_holes_props *bh_props,
-    const struct entropy_floor_properties *floor_props,
+    struct bpart* bi, const struct part* pj, const struct xpart* xpj,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const struct gravity_props* grav_props,
+    const struct black_holes_props* bh_props,
+    const struct entropy_floor_properties* floor_props,
     const integertime_t ti_current, const double time) {
 
   float wi;
@@ -533,11 +533,11 @@ runner_iact_nonsym_bh_gas_repos(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_swallow(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct bpart *bi, struct part *pj, struct xpart *xpj,
-    const int with_cosmology, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props,
-    const struct black_holes_props *bh_props,
-    const struct entropy_floor_properties *floor_props,
+    struct bpart* bi, struct part* pj, struct xpart* xpj,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const struct gravity_props* grav_props,
+    const struct black_holes_props* bh_props,
+    const struct entropy_floor_properties* floor_props,
     const integertime_t ti_current, const double time) {
 
   float wi;
@@ -624,8 +624,8 @@ runner_iact_nonsym_bh_gas_swallow(
     const float nibbled_fraction = nibbled_mass / pj_mass_orig;
 
     /* Update the BH and also gas metal masses */
-    struct chemistry_bpart_data *bi_chem = &bi->chemistry_data;
-    struct chemistry_part_data *pj_chem = &pj->chemistry_data;
+    struct chemistry_bpart_data* bi_chem = &bi->chemistry_data;
+    struct chemistry_part_data* pj_chem = &pj->chemistry_data;
     chemistry_transfer_part_to_bpart(bi_chem, pj_chem, nibbled_mass,
                                      nibbled_fraction);
 
@@ -681,10 +681,10 @@ runner_iact_nonsym_bh_gas_swallow(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_bh_repos(const float r2, const float dx[3],
-                               const float hi, const float hj, struct bpart *bi,
-                               struct bpart *bj, const struct cosmology *cosmo,
-                               const struct gravity_props *grav_props,
-                               const struct black_holes_props *bh_props,
+                               const float hi, const float hj, struct bpart* bi,
+                               struct bpart* bj, const struct cosmology* cosmo,
+                               const struct gravity_props* grav_props,
+                               const struct black_holes_props* bh_props,
                                const integertime_t ti_current) {
 
   /* Compute relative peculiar velocity between the two BHs
@@ -789,10 +789,10 @@ runner_iact_nonsym_bh_bh_repos(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
                                  const float hi, const float hj,
-                                 struct bpart *bi, struct bpart *bj,
-                                 const struct cosmology *cosmo,
-                                 const struct gravity_props *grav_props,
-                                 const struct black_holes_props *bh_props,
+                                 struct bpart* bi, struct bpart* bj,
+                                 const struct cosmology* cosmo,
+                                 const struct gravity_props* grav_props,
+                                 const struct black_holes_props* bh_props,
                                  const integertime_t ti_current) {
 
   /* Compute relative peculiar velocity between the two BHs
@@ -901,11 +901,11 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_feedback(
     const float r2, const float dx[3], const float hi, const float hj,
-    const struct bpart *bi, struct part *pj, struct xpart *xpj,
-    const int with_cosmology, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props,
-    const struct black_holes_props *bh_props,
-    const struct entropy_floor_properties *floor_props,
+    const struct bpart* bi, struct part* pj, struct xpart* xpj,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const struct gravity_props* grav_props,
+    const struct black_holes_props* bh_props,
+    const struct entropy_floor_properties* floor_props,
     const integertime_t ti_current, const double time) {
 
   /* Number of energy injections per BH per time-step */

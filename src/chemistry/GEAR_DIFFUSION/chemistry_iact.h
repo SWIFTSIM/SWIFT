@@ -40,11 +40,11 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
-  struct chemistry_part_data *chi = &pi->chemistry_data;
-  struct chemistry_part_data *chj = &pj->chemistry_data;
+  struct chemistry_part_data* chi = &pi->chemistry_data;
+  struct chemistry_part_data* chj = &pj->chemistry_data;
 
   float wi, wi_dx;
   float wj, wj_dx;
@@ -104,11 +104,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
     const float H) {
 
-  struct chemistry_part_data *chi = &pi->chemistry_data;
-  const struct chemistry_part_data *chj = &pj->chemistry_data;
+  struct chemistry_part_data* chi = &pi->chemistry_data;
+  const struct chemistry_part_data* chj = &pj->chemistry_data;
 
   float wi, wi_dx;
 
@@ -160,12 +160,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
-    const struct cosmology *cosmo, const int with_cosmology) {
+    const struct cosmology* cosmo, const int with_cosmology) {
 
-  struct chemistry_part_data *chi = &pi->chemistry_data;
-  struct chemistry_part_data *chj = &pj->chemistry_data;
+  struct chemistry_part_data* chi = &pi->chemistry_data;
+  struct chemistry_part_data* chj = &pj->chemistry_data;
 
   /* No need to diffuse if both particles are not diffusing. */
   if (chj->diff_coef > 0 && chi->diff_coef > 0) {
@@ -246,12 +246,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
-    const struct cosmology *cosmo, const int with_cosmology) {
+    const struct cosmology* cosmo, const int with_cosmology) {
 
-  struct chemistry_part_data *chi = &pi->chemistry_data;
-  struct chemistry_part_data *chj = &pj->chemistry_data;
+  struct chemistry_part_data* chi = &pi->chemistry_data;
+  struct chemistry_part_data* chj = &pj->chemistry_data;
 
   if (chj->diff_coef > 0 && chi->diff_coef > 0) {
 

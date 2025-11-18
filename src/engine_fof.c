@@ -34,19 +34,19 @@
  *
  * @param e The #engine to act on.
  */
-void engine_activate_gpart_comms(struct engine *e) {
+void engine_activate_gpart_comms(struct engine* e) {
 
 #ifdef WITH_MPI
 
   const ticks tic = getticks();
 
-  struct scheduler *s = &e->sched;
+  struct scheduler* s = &e->sched;
   const int nr_tasks = s->nr_tasks;
-  struct task *tasks = s->tasks;
+  struct task* tasks = s->tasks;
 
   for (int k = 0; k < nr_tasks; ++k) {
 
-    struct task *t = &tasks[k];
+    struct task* t = &tasks[k];
 
     if ((t->type == task_type_send) && (t->subtype == task_subtype_fof)) {
       scheduler_activate(s, t);
@@ -77,17 +77,17 @@ void engine_activate_gpart_comms(struct engine *e) {
  *
  * @param e The #engine to act on.
  */
-void engine_activate_fof_tasks(struct engine *e) {
+void engine_activate_fof_tasks(struct engine* e) {
 
   const ticks tic = getticks();
 
-  struct scheduler *s = &e->sched;
+  struct scheduler* s = &e->sched;
   const int nr_tasks = s->nr_tasks;
-  struct task *tasks = s->tasks;
+  struct task* tasks = s->tasks;
 
   for (int k = 0; k < nr_tasks; k++) {
 
-    struct task *t = &tasks[k];
+    struct task* t = &tasks[k];
 
     if (t->type == task_type_fof_self || t->type == task_type_fof_pair)
       scheduler_activate(s, t);
@@ -107,17 +107,17 @@ void engine_activate_fof_tasks(struct engine *e) {
  *
  * @param e The #engine to act on.
  */
-void engine_activate_fof_attach_tasks(struct engine *e) {
+void engine_activate_fof_attach_tasks(struct engine* e) {
 
   const ticks tic = getticks();
 
-  struct scheduler *s = &e->sched;
+  struct scheduler* s = &e->sched;
   const int nr_tasks = s->nr_tasks;
-  struct task *tasks = s->tasks;
+  struct task* tasks = s->tasks;
 
   for (int k = 0; k < nr_tasks; k++) {
 
-    struct task *t = &tasks[k];
+    struct task* t = &tasks[k];
 
     if (t->type == task_type_fof_attach_self ||
         t->type == task_type_fof_attach_pair)
@@ -142,7 +142,7 @@ void engine_activate_fof_attach_tasks(struct engine *e) {
  * @param foreign_buffers_allocated Are the foreign buffers currently
  * allocated?
  */
-void engine_fof(struct engine *e, const int dump_results,
+void engine_fof(struct engine* e, const int dump_results,
                 const int dump_debug_results, const int seed_black_holes,
                 const int foreign_buffers_allocated) {
 

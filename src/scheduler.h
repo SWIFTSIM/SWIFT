@@ -63,7 +63,7 @@ struct scheduler {
   int nr_queues;
 
   /* Array of queues. */
-  struct queue *queues;
+  struct queue* queues;
 
   /* Total number of tasks. */
   int nr_tasks, size, tasks_next;
@@ -72,18 +72,18 @@ struct scheduler {
   int waiting;
 
   /* The task array. */
-  struct task *tasks;
+  struct task* tasks;
 
   /* The task indices. */
-  int *tasks_ind;
+  int* tasks_ind;
 
   /* List of initial tasks. */
-  int *tid_active;
+  int* tid_active;
   int active_count;
 
   /* The task unlocks. */
-  struct task **volatile unlocks;
-  int *volatile unlock_ind;
+  struct task** volatile unlocks;
+  int* volatile unlock_ind;
   volatile int nr_unlocks, size_unlocks, completed_unlock_writes;
 
   /* Lock for this scheduler. */
@@ -94,10 +94,10 @@ struct scheduler {
   pthread_cond_t sleep_cond;
 
   /* The space associated with this scheduler. */
-  struct space *space;
+  struct space* space;
 
   /* Threadpool to use internally for mundane parallel work. */
-  struct threadpool *threadpool;
+  struct threadpool* threadpool;
 
   /* The node we are working on. */
   int nodeID;
@@ -136,7 +136,7 @@ struct scheduler {
   ticks last_successful_task_fetch;
 
   /* needed to dump queues on deadlock detection */
-  struct engine *e;
+  struct engine* e;
 
 #endif /* SWIFT_DEBUG_CHECKS */
 };
@@ -149,7 +149,7 @@ struct scheduler {
  * @param t The task to be added.
  */
 __attribute__((always_inline)) INLINE static void scheduler_activate(
-    struct scheduler *s, struct task *t) {
+    struct scheduler* s, struct task* t) {
   if (atomic_cas(&t->skip, 1, 0)) {
     t->wait = 0;
     int ind = atomic_inc(&s->active_count);
@@ -167,10 +167,10 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
  * @param subtype the task subtype to activate.
  */
 __attribute__((always_inline)) INLINE static void
-scheduler_activate_all_subtype(struct scheduler *s, struct link *link,
+scheduler_activate_all_subtype(struct scheduler* s, struct link* link,
                                const enum task_subtypes subtype) {
 
-  for (struct link *l = link; l != NULL; l = l->next) {
+  for (struct link* l = link; l != NULL; l = l->next) {
     if (l->t->subtype == subtype) scheduler_activate(s, l->t);
   }
 }
@@ -186,10 +186,10 @@ scheduler_activate_all_subtype(struct scheduler *s, struct link *link,
  *
  * @return The #link to the MPI send task.
  */
-__attribute__((always_inline)) INLINE static struct link *
-scheduler_activate_send(struct scheduler *s, struct link *link,
+__attribute__((always_inline)) INLINE static struct link*
+scheduler_activate_send(struct scheduler* s, struct link* link,
                         const enum task_subtypes subtype, const int nodeID) {
-  struct link *l = NULL;
+  struct link* l = NULL;
   for (l = link;
        l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
        l = l->next) {
@@ -213,10 +213,10 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
  *
  * @return The #link to the MPI recv task.
  */
-__attribute__((always_inline)) INLINE static struct link *
-scheduler_activate_recv(struct scheduler *s, struct link *link,
+__attribute__((always_inline)) INLINE static struct link*
+scheduler_activate_recv(struct scheduler* s, struct link* link,
                         const enum task_subtypes subtype) {
-  struct link *l = NULL;
+  struct link* l = NULL;
   for (l = link; l != NULL && l->t->subtype != subtype; l = l->next) {
     /* Nothing to do here */
   }
@@ -239,10 +239,10 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
  *
  * @return The #link to the MPI pack task.
  */
-__attribute__((always_inline)) INLINE static struct link *
-scheduler_activate_pack(struct scheduler *s, struct link *link,
+__attribute__((always_inline)) INLINE static struct link*
+scheduler_activate_pack(struct scheduler* s, struct link* link,
                         enum task_subtypes subtype, int nodeID) {
-  struct link *l = NULL;
+  struct link* l = NULL;
   for (l = link;
        l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
        l = l->next) {
@@ -266,10 +266,10 @@ scheduler_activate_pack(struct scheduler *s, struct link *link,
  *
  * @return The #link to the MPI unpack task.
  */
-__attribute__((always_inline)) INLINE static struct link *
-scheduler_activate_unpack(struct scheduler *s, struct link *link,
+__attribute__((always_inline)) INLINE static struct link*
+scheduler_activate_unpack(struct scheduler* s, struct link* link,
                           enum task_subtypes subtype) {
-  struct link *l = NULL;
+  struct link* l = NULL;
   for (l = link; l != NULL && l->t->subtype != subtype; l = l->next) {
     /* Nothing to do here */
   }
@@ -282,36 +282,36 @@ scheduler_activate_unpack(struct scheduler *s, struct link *link,
 }
 
 /* Function prototypes. */
-void scheduler_clear_active(struct scheduler *s);
-void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
+void scheduler_clear_active(struct scheduler* s);
+void scheduler_init(struct scheduler* s, struct space* space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID,
-                    struct threadpool *tp);
-struct task *scheduler_gettask(struct scheduler *s, int qid,
-                               const struct task *prev);
-void scheduler_enqueue(struct scheduler *s, struct task *t);
-void scheduler_start(struct scheduler *s);
-void scheduler_reset(struct scheduler *s, int nr_tasks);
-void scheduler_ranktasks(struct scheduler *s);
-void scheduler_reweight(struct scheduler *s, int verbose);
-struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
+                    struct threadpool* tp);
+struct task* scheduler_gettask(struct scheduler* s, int qid,
+                               const struct task* prev);
+void scheduler_enqueue(struct scheduler* s, struct task* t);
+void scheduler_start(struct scheduler* s);
+void scheduler_reset(struct scheduler* s, int nr_tasks);
+void scheduler_ranktasks(struct scheduler* s);
+void scheduler_reweight(struct scheduler* s, int verbose);
+struct task* scheduler_addtask(struct scheduler* s, enum task_types type,
                                enum task_subtypes subtype, long long flags,
-                               int implicit, struct cell *ci, struct cell *cj);
-void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
+                               int implicit, struct cell* ci, struct cell* cj);
+void scheduler_splittasks(struct scheduler* s, const int fof_tasks,
                           const int verbose);
-struct task *scheduler_done(struct scheduler *s, struct task *t);
-struct task *scheduler_unlock(struct scheduler *s, struct task *t);
-void scheduler_addunlock(struct scheduler *s, struct task *ta, struct task *tb);
-void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp);
-void scheduler_dump_queue(struct scheduler *s);
-void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
-void scheduler_clean(struct scheduler *s);
-void scheduler_free_tasks(struct scheduler *s);
-void scheduler_write_dependencies(struct scheduler *s, int verbose, int step);
-void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
+struct task* scheduler_done(struct scheduler* s, struct task* t);
+struct task* scheduler_unlock(struct scheduler* s, struct task* t);
+void scheduler_addunlock(struct scheduler* s, struct task* ta, struct task* tb);
+void scheduler_set_unlocks(struct scheduler* s, struct threadpool* tp);
+void scheduler_dump_queue(struct scheduler* s);
+void scheduler_print_tasks(const struct scheduler* s, const char* fileName);
+void scheduler_clean(struct scheduler* s);
+void scheduler_free_tasks(struct scheduler* s);
+void scheduler_write_dependencies(struct scheduler* s, int verbose, int step);
+void scheduler_write_cell_dependencies(struct scheduler* s, int verbose,
                                        int step);
-void scheduler_write_task_level(const struct scheduler *s, int step);
-void scheduler_dump_queues(struct engine *e);
-void scheduler_report_task_times(const struct scheduler *s,
+void scheduler_write_task_level(const struct scheduler* s, int step);
+void scheduler_dump_queues(struct engine* e);
+void scheduler_report_task_times(const struct scheduler* s,
                                  const int nr_threads);
 
 #endif /* SWIFT_SCHEDULER_H */

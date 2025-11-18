@@ -150,29 +150,29 @@ struct threadpool;
 #error "Invalid choice of sink particle"
 #endif
 
-void part_relink_gparts_to_parts(struct part *parts, const size_t N,
+void part_relink_gparts_to_parts(struct part* parts, const size_t N,
                                  const ptrdiff_t offset);
-void part_relink_gparts_to_sparts(struct spart *sparts, const size_t N,
+void part_relink_gparts_to_sparts(struct spart* sparts, const size_t N,
                                   const ptrdiff_t offset);
-void part_relink_gparts_to_bparts(struct bpart *bparts, const size_t N,
+void part_relink_gparts_to_bparts(struct bpart* bparts, const size_t N,
                                   const ptrdiff_t offset);
-void part_relink_gparts_to_sinks(struct sink *sinks, const size_t N,
+void part_relink_gparts_to_sinks(struct sink* sinks, const size_t N,
                                  const ptrdiff_t offset);
-void part_relink_parts_to_gparts(struct gpart *gparts, const size_t N,
-                                 struct part *parts);
-void part_relink_sparts_to_gparts(struct gpart *gparts, const size_t N,
-                                  struct spart *sparts);
-void part_relink_bparts_to_gparts(struct gpart *gparts, const size_t N,
-                                  struct bpart *bparts);
-void part_relink_sinks_to_gparts(struct gpart *gparts, const size_t N,
-                                 struct sink *sinks);
-void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
-                                     struct part *parts, struct sink *sinks,
-                                     struct spart *sparts, struct bpart *bparts,
-                                     struct threadpool *tp);
-void part_verify_links(struct part *parts, struct gpart *gparts,
-                       struct sink *sinks, struct spart *sparts,
-                       struct bpart *bparts, size_t nr_parts, size_t nr_gparts,
+void part_relink_parts_to_gparts(struct gpart* gparts, const size_t N,
+                                 struct part* parts);
+void part_relink_sparts_to_gparts(struct gpart* gparts, const size_t N,
+                                  struct spart* sparts);
+void part_relink_bparts_to_gparts(struct gpart* gparts, const size_t N,
+                                  struct bpart* bparts);
+void part_relink_sinks_to_gparts(struct gpart* gparts, const size_t N,
+                                 struct sink* sinks);
+void part_relink_all_parts_to_gparts(struct gpart* gparts, const size_t N,
+                                     struct part* parts, struct sink* sinks,
+                                     struct spart* sparts, struct bpart* bparts,
+                                     struct threadpool* tp);
+void part_verify_links(struct part* parts, struct gpart* gparts,
+                       struct sink* sinks, struct spart* sparts,
+                       struct bpart* bparts, size_t nr_parts, size_t nr_gparts,
                        size_t nr_sinks, size_t nr_sparts, size_t nr_bparts,
                        int verbose);
 

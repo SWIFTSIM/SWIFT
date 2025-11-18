@@ -37,7 +37,7 @@
  * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_are_part_drifted(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_old_part > e->ti_current)
@@ -61,7 +61,7 @@ __attribute__((always_inline)) INLINE static int cell_are_part_drifted(
  * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_are_gpart_drifted(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->grav.ti_old_part > e->ti_current)
@@ -84,7 +84,7 @@ __attribute__((always_inline)) INLINE static int cell_are_gpart_drifted(
  * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_are_spart_drifted(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->stars.ti_old_part > e->ti_current)
@@ -107,7 +107,7 @@ __attribute__((always_inline)) INLINE static int cell_are_spart_drifted(
  * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_are_sink_drifted(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->sinks.ti_old_part > e->ti_current)
@@ -130,7 +130,7 @@ __attribute__((always_inline)) INLINE static int cell_are_sink_drifted(
  * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_are_bpart_drifted(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->black_holes.ti_old_part > e->ti_current)
@@ -155,8 +155,8 @@ __attribute__((always_inline)) INLINE static int cell_are_bpart_drifted(
  * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int
-cell_are_part_drifted_rt_sub_cycle(const struct cell *c,
-                                   const struct engine *e) {
+cell_are_part_drifted_rt_sub_cycle(const struct cell* c,
+                                   const struct engine* e) {
 
   /* Note: we can't just use "cell_are_part_drifted" in the hydro_iact
    * functions, because an RT sub-cycle may be called during a main
@@ -174,7 +174,7 @@ cell_are_part_drifted_rt_sub_cycle(const struct cell *c,
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_end_min < e->ti_current)
@@ -196,7 +196,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_rt_active(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->rt.ti_rt_end_min < e->ti_current_subcycle) {
@@ -223,7 +223,7 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->grav.ti_end_min < e->ti_current)
@@ -245,7 +245,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_active_gravity_mm(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
   return (c->grav.ti_end_min == e->ti_current);
 }
@@ -258,7 +258,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity_mm(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_active_stars(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->stars.ti_end_min < e->ti_current)
@@ -280,7 +280,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_stars(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_active_sinks(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->sinks.ti_end_min < e->ti_current)
@@ -307,7 +307,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_sinks(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_need_activating_stars(
-    const struct cell *c, const struct engine *e, const int with_star_formation,
+    const struct cell* c, const struct engine* e, const int with_star_formation,
     const int with_star_formation_sink) {
 
   return cell_is_active_stars(c, e) ||
@@ -325,7 +325,7 @@ __attribute__((always_inline)) INLINE static int cell_need_activating_stars(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_active_black_holes(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->black_holes.ti_end_min < e->ti_current)
@@ -347,7 +347,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_black_holes(
  * @return 1 if the #part is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int part_is_active(
-    const struct part *p, const struct engine *e) {
+    const struct part* p, const struct engine* e) {
 
   const timebin_t max_active_bin = e->max_active_bin;
   const timebin_t part_bin = p->time_bin;
@@ -366,7 +366,7 @@ __attribute__((always_inline)) INLINE static int part_is_active(
 }
 
 __attribute__((always_inline)) INLINE static int part_is_active_no_debug(
-    const struct part *p, const timebin_t max_active_bin) {
+    const struct part* p, const timebin_t max_active_bin) {
 
   const timebin_t part_bin = p->time_bin;
 
@@ -381,7 +381,7 @@ __attribute__((always_inline)) INLINE static int part_is_active_no_debug(
  * @return 1 if the #part is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int part_is_rt_active(
-    const struct part *p, const struct engine *e) {
+    const struct part* p, const struct engine* e) {
 
   const timebin_t max_active_bin = e->max_active_bin_subcycle;
   const timebin_t part_bin = p->rt_time_data.time_bin;
@@ -408,7 +408,7 @@ __attribute__((always_inline)) INLINE static int part_is_rt_active(
  * @return 1 if the #gpart is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int gpart_is_active(
-    const struct gpart *gp, const struct engine *e) {
+    const struct gpart* gp, const struct engine* e) {
 
   const timebin_t max_active_bin = e->max_active_bin;
   const timebin_t gpart_bin = gp->time_bin;
@@ -435,7 +435,7 @@ __attribute__((always_inline)) INLINE static int gpart_is_active(
  * @return 1 if the #spart is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int spart_is_active(
-    const struct spart *sp, const struct engine *e) {
+    const struct spart* sp, const struct engine* e) {
 
   const timebin_t max_active_bin = e->max_active_bin;
   const timebin_t spart_bin = sp->time_bin;
@@ -462,7 +462,7 @@ __attribute__((always_inline)) INLINE static int spart_is_active(
  * @return 1 if the #bpart is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int sink_is_active(
-    const struct sink *sink, const struct engine *e) {
+    const struct sink* sink, const struct engine* e) {
 
   const timebin_t max_active_bin = e->max_active_bin;
   const timebin_t sink_bin = sink->time_bin;
@@ -489,7 +489,7 @@ __attribute__((always_inline)) INLINE static int sink_is_active(
  * @return 1 if the #bpart is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int bpart_is_active(
-    const struct bpart *bp, const struct engine *e) {
+    const struct bpart* bp, const struct engine* e) {
 
   const timebin_t max_active_bin = e->max_active_bin;
   const timebin_t bpart_bin = bp->time_bin;
@@ -516,7 +516,7 @@ __attribute__((always_inline)) INLINE static int bpart_is_active(
  * @return 1 if the #part is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int part_is_inhibited(
-    const struct part *p, const struct engine *e) {
+    const struct part* p, const struct engine* e) {
   return p->time_bin == time_bin_inhibited;
 }
 
@@ -528,7 +528,7 @@ __attribute__((always_inline)) INLINE static int part_is_inhibited(
  * @return 1 if the #gpart is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int gpart_is_inhibited(
-    const struct gpart *gp, const struct engine *e) {
+    const struct gpart* gp, const struct engine* e) {
   return gp->time_bin == time_bin_inhibited;
 }
 
@@ -540,7 +540,7 @@ __attribute__((always_inline)) INLINE static int gpart_is_inhibited(
  * @return 1 if the #gpart_foreign is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int gpart_foreign_is_inhibited(
-    const struct gpart_foreign *gp, const struct engine *e) {
+    const struct gpart_foreign* gp, const struct engine* e) {
   return gp->time_bin == time_bin_inhibited;
 }
 
@@ -552,7 +552,7 @@ __attribute__((always_inline)) INLINE static int gpart_foreign_is_inhibited(
  * @return 1 if the #spart is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int spart_is_inhibited(
-    const struct spart *sp, const struct engine *e) {
+    const struct spart* sp, const struct engine* e) {
   return sp->time_bin == time_bin_inhibited;
 }
 
@@ -564,7 +564,7 @@ __attribute__((always_inline)) INLINE static int spart_is_inhibited(
  * @return 1 if the #sink is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int sink_is_inhibited(
-    const struct sink *sink, const struct engine *e) {
+    const struct sink* sink, const struct engine* e) {
   return sink->time_bin == time_bin_inhibited;
 }
 
@@ -576,7 +576,7 @@ __attribute__((always_inline)) INLINE static int sink_is_inhibited(
  * @return 1 if the #bpart is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int bpart_is_inhibited(
-    const struct bpart *bp, const struct engine *e) {
+    const struct bpart* bp, const struct engine* e) {
   return bp->time_bin == time_bin_inhibited;
 }
 
@@ -590,7 +590,7 @@ __attribute__((always_inline)) INLINE static int bpart_is_inhibited(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_starting_hydro(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_beg_max > e->ti_current)
@@ -612,7 +612,7 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_hydro(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_starting_gravity(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->grav.ti_beg_max > e->ti_current)
@@ -634,7 +634,7 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_gravity(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_starting_stars(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->stars.ti_beg_max > e->ti_current)
@@ -656,7 +656,7 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_stars(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_starting_sinks(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->sinks.ti_beg_max > e->ti_current)
@@ -678,7 +678,7 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_sinks(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_starting_black_holes(
-    const struct cell *c, const struct engine *e) {
+    const struct cell* c, const struct engine* e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->black_holes.ti_beg_max > e->ti_current)
@@ -700,7 +700,7 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_black_holes(
  * @return 1 if the #part is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int part_is_starting(
-    const struct part *p, const struct engine *e) {
+    const struct part* p, const struct engine* e) {
 
   const timebin_t max_active_bin = e->max_active_bin;
   const timebin_t part_bin = p->time_bin;
@@ -728,7 +728,7 @@ __attribute__((always_inline)) INLINE static int part_is_starting(
  * @return 1 if the #gpart is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int gpart_is_starting(
-    const struct gpart *gp, const struct engine *e) {
+    const struct gpart* gp, const struct engine* e) {
 
   const timebin_t max_active_bin = e->max_active_bin;
   const timebin_t gpart_bin = gp->time_bin;
@@ -756,7 +756,7 @@ __attribute__((always_inline)) INLINE static int gpart_is_starting(
  * @return 1 if the #spart is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int spart_is_starting(
-    const struct spart *sp, const struct engine *e) {
+    const struct spart* sp, const struct engine* e) {
 
   const timebin_t max_active_bin = e->max_active_bin;
   const timebin_t spart_bin = sp->time_bin;
@@ -784,7 +784,7 @@ __attribute__((always_inline)) INLINE static int spart_is_starting(
  * @return 1 if the #bpart is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int bpart_is_starting(
-    const struct bpart *bp, const struct engine *e) {
+    const struct bpart* bp, const struct engine* e) {
 
   const timebin_t max_active_bin = e->max_active_bin;
   const timebin_t bpart_bin = bp->time_bin;
@@ -812,7 +812,7 @@ __attribute__((always_inline)) INLINE static int bpart_is_starting(
  * @return 1 if the #sink is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int sink_is_starting(
-    const struct sink *sink, const struct engine *e) {
+    const struct sink* sink, const struct engine* e) {
 
   const timebin_t max_active_bin = e->max_active_bin;
   const timebin_t sink_bin = sink->time_bin;

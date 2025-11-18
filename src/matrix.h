@@ -44,12 +44,12 @@ struct sym_matrix {
 };
 
 __attribute__((always_inline)) INLINE static void zero_sym_matrix(
-    struct sym_matrix *M) {
+    struct sym_matrix* M) {
   for (int i = 0; i < 6; ++i) M->elements[i] = 0.f;
 }
 
 __attribute__((always_inline)) INLINE static void get_matrix_from_sym_matrix(
-    float out[3][3], const struct sym_matrix *in) {
+    float out[3][3], const struct sym_matrix* in) {
 
   out[0][0] = in->xx;
   out[0][1] = in->xy;
@@ -63,7 +63,7 @@ __attribute__((always_inline)) INLINE static void get_matrix_from_sym_matrix(
 }
 
 __attribute__((always_inline)) INLINE static void get_sym_matrix_from_matrix(
-    struct sym_matrix *out, const float in[3][3]) {
+    struct sym_matrix* out, const float in[3][3]) {
   out->xx = in[0][0];
   out->yy = in[1][1];
   out->zz = in[2][2];
@@ -73,7 +73,7 @@ __attribute__((always_inline)) INLINE static void get_sym_matrix_from_matrix(
 }
 
 __attribute__((always_inline)) INLINE static void sym_matrix_multiply_by_vector(
-    float out[3], const struct sym_matrix *M, const float v[3]) {
+    float out[3], const struct sym_matrix* M, const float v[3]) {
 
   out[0] = M->xx * v[0] + M->xy * v[1] + M->xz * v[2];
   out[1] = M->xy * v[0] + M->yy * v[1] + M->yz * v[2];
@@ -81,7 +81,7 @@ __attribute__((always_inline)) INLINE static void sym_matrix_multiply_by_vector(
 }
 
 __attribute__((always_inline)) INLINE static void sym_matrix_print(
-    const struct sym_matrix *M) {
+    const struct sym_matrix* M) {
   message("|%.4f %.4f %.4f|", M->xx, M->xy, M->xz);
   message("|%.4f %.4f %.4f|", M->xy, M->yy, M->yz);
   message("|%.4f %.4f %.4f|", M->xz, M->yz, M->zz);

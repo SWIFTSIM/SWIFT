@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void compute_interaction(struct part *pi, struct part *pj, float mu_0, float a,
+void compute_interaction(struct part* pi, struct part* pj, float mu_0, float a,
                          float H) {
 
   /* Compute the distance between the two particles */
@@ -67,8 +67,8 @@ void test(void) {
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
   for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
-    *(((float *)&pi) + i) = (float)random_uniform(0., 2.);
-    *(((float *)&pj) + i) = (float)random_uniform(0., 2.);
+    *(((float*)&pi) + i) = (float)random_uniform(0., 2.);
+    *(((float*)&pj) + i) = (float)random_uniform(0., 2.);
   }
 
   /* Make the particle smoothing length, id and time-bin reasonable */
@@ -102,7 +102,7 @@ void test(void) {
   compute_interaction(&pi, &pj, mu_0, a, H);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

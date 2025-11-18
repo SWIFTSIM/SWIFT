@@ -28,7 +28,7 @@
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_debug_particle(
-    const struct part *p, const struct xpart *xp) {
+    const struct part* p, const struct xpart* xp) {
   printf(
       "Bpred=[%.3e,%.3e,%.3e], "
       "Apred=[%.3e,%.3e,%.3e], "

@@ -55,10 +55,10 @@
  * @param us The internal unit system.
  * @param params The parsed parameters.
  */
-void hydro_props_init(struct hydro_props *p,
-                      const struct phys_const *phys_const,
-                      const struct unit_system *us,
-                      struct swift_params *params) {
+void hydro_props_init(struct hydro_props* p,
+                      const struct phys_const* phys_const,
+                      const struct unit_system* us,
+                      struct swift_params* params) {
 
   /* ------ Smoothing lengths parameters ---------- */
 
@@ -221,7 +221,7 @@ void hydro_props_init(struct hydro_props *p,
  *
  * @param p The #hydro_props.
  */
-void hydro_props_print(const struct hydro_props *p) {
+void hydro_props_print(const struct hydro_props* p) {
 
   /* Print equation of state first */
   eos_print(&eos);
@@ -293,7 +293,7 @@ void hydro_props_print(const struct hydro_props *p) {
 }
 
 #if defined(HAVE_HDF5)
-void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
+void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props* p) {
 
   eos_print_snapshot(h_grpsph, &eos);
   pressure_floor_print_snapshot(h_grpsph);
@@ -358,7 +358,7 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
  *
  * @param p the struct
  */
-void hydro_props_init_no_hydro(struct hydro_props *p) {
+void hydro_props_init_no_hydro(struct hydro_props* p) {
 
   p->eta_neighbours = 1.2348;
   p->h_tolerance = hydro_props_default_h_tolerance;
@@ -401,8 +401,8 @@ void hydro_props_init_no_hydro(struct hydro_props *p) {
  * @param gp The properties of the gravity scheme.
  * @param cosmo The cosmological model.
  */
-void hydro_props_update(struct hydro_props *p, const struct gravity_props *gp,
-                        const struct cosmology *cosmo) {
+void hydro_props_update(struct hydro_props* p, const struct gravity_props* gp,
+                        const struct cosmology* cosmo) {
 
   /* Update the minimal allowed smoothing length
    *
@@ -419,8 +419,8 @@ void hydro_props_update(struct hydro_props *p, const struct gravity_props *gp,
  * @param p the struct
  * @param stream the file stream
  */
-void hydro_props_struct_dump(const struct hydro_props *p, FILE *stream) {
-  restart_write_blocks((void *)p, sizeof(struct hydro_props), 1, stream,
+void hydro_props_struct_dump(const struct hydro_props* p, FILE* stream) {
+  restart_write_blocks((void*)p, sizeof(struct hydro_props), 1, stream,
                        "hydroprops", "hydro props");
 }
 
@@ -431,7 +431,7 @@ void hydro_props_struct_dump(const struct hydro_props *p, FILE *stream) {
  * @param p the struct
  * @param stream the file stream
  */
-void hydro_props_struct_restore(const struct hydro_props *p, FILE *stream) {
-  restart_read_blocks((void *)p, sizeof(struct hydro_props), 1, stream, NULL,
+void hydro_props_struct_restore(const struct hydro_props* p, FILE* stream) {
+  restart_read_blocks((void*)p, sizeof(struct hydro_props), 1, stream, NULL,
                       "hydro props");
 }

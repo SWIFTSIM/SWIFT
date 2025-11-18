@@ -47,9 +47,9 @@
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_min(
-    volatile int *const address, const int y) {
+    volatile int* const address, const int y) {
 
-  int *int_ptr = (int *)address;
+  int* int_ptr = (int*)address;
 
   int test_val, old_val, new_val;
   old_val = *address;
@@ -73,9 +73,9 @@ __attribute__((always_inline)) INLINE static void atomic_min(
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_min_f(
-    volatile float *const address, const float y) {
+    volatile float* const address, const float y) {
 
-  int *const int_ptr = (int *)address;
+  int* const int_ptr = (int*)address;
 
   typedef union {
     float as_float;
@@ -104,9 +104,9 @@ __attribute__((always_inline)) INLINE static void atomic_min_f(
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_min_d(
-    volatile double *const address, const double y) {
+    volatile double* const address, const double y) {
 
-  long long *const long_long_ptr = (long long *)address;
+  long long* const long_long_ptr = (long long*)address;
 
   typedef union {
     double as_double;
@@ -133,7 +133,7 @@ __attribute__((always_inline)) INLINE static void atomic_min_d(
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_max_c(
-    volatile int8_t *const address, const int8_t y) {
+    volatile int8_t* const address, const int8_t y) {
 
   int8_t test_val, old_val, new_val;
   old_val = *address;
@@ -154,9 +154,9 @@ __attribute__((always_inline)) INLINE static void atomic_max_c(
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_max(
-    volatile int *const address, const int y) {
+    volatile int* const address, const int y) {
 
-  int *int_ptr = (int *)address;
+  int* int_ptr = (int*)address;
 
   int test_val, old_val, new_val;
   old_val = *address;
@@ -177,7 +177,7 @@ __attribute__((always_inline)) INLINE static void atomic_max(
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_max_ll(
-    volatile long long *const address, const long long y) {
+    volatile long long* const address, const long long y) {
 
   long long test_val, old_val, new_val;
   old_val = *address;
@@ -201,9 +201,9 @@ __attribute__((always_inline)) INLINE static void atomic_max_ll(
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_max_f(
-    volatile float *const address, const float y) {
+    volatile float* const address, const float y) {
 
-  int *const int_ptr = (int *)address;
+  int* const int_ptr = (int*)address;
 
   typedef union {
     float as_float;
@@ -232,9 +232,9 @@ __attribute__((always_inline)) INLINE static void atomic_max_f(
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_max_d(
-    volatile double *const address, const double y) {
+    volatile double* const address, const double y) {
 
-  long long *const long_long_ptr = (long long *)address;
+  long long* const long_long_ptr = (long long*)address;
 
   typedef union {
     double as_double;
@@ -264,9 +264,9 @@ __attribute__((always_inline)) INLINE static void atomic_max_d(
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_add_f(
-    volatile float *const address, const float y) {
+    volatile float* const address, const float y) {
 
-  int *const int_ptr = (int *)address;
+  int* const int_ptr = (int*)address;
 
   typedef union {
     float as_float;
@@ -295,9 +295,9 @@ __attribute__((always_inline)) INLINE static void atomic_add_f(
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_add_d(
-    volatile double *const address, const double y) {
+    volatile double* const address, const double y) {
 
-  long long *const long_long_ptr = (long long *)address;
+  long long* const long_long_ptr = (long long*)address;
 
   typedef union {
     double as_double;

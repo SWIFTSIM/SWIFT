@@ -60,19 +60,19 @@
 /**
  * @brief Re-set the list of active tasks.
  */
-void scheduler_clear_active(struct scheduler *s) { s->active_count = 0; }
+void scheduler_clear_active(struct scheduler* s) { s->active_count = 0; }
 
 /**
  * @brief Increase the space available for unlocks. Only call when
  *        current index == s->size_unlock;
  */
-static void scheduler_extend_unlocks(struct scheduler *s) {
+static void scheduler_extend_unlocks(struct scheduler* s) {
   /* Allocate the new buffer. */
   const int size_unlocks_new = s->size_unlocks * 2;
-  struct task **unlocks_new = (struct task **)swift_malloc(
-      "unlocks", sizeof(struct task *) * size_unlocks_new);
-  int *unlock_ind_new =
-      (int *)swift_malloc("unlock_ind", sizeof(int) * size_unlocks_new);
+  struct task** unlocks_new = (struct task**)swift_malloc(
+      "unlocks", sizeof(struct task*) * size_unlocks_new);
+  int* unlock_ind_new =
+      (int*)swift_malloc("unlock_ind", sizeof(int) * size_unlocks_new);
   if (unlocks_new == NULL || unlock_ind_new == NULL)
     error("Failed to re-allocate unlocks.");
 
@@ -82,7 +82,7 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
   }
 
   /* Copy the buffers. */
-  memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->size_unlocks);
+  memcpy(unlocks_new, s->unlocks, sizeof(struct task*) * s->size_unlocks);
   memcpy(unlock_ind_new, s->unlock_ind, sizeof(int) * s->size_unlocks);
   swift_free("unlocks", s->unlocks);
   swift_free("unlock_ind", s->unlock_ind);
@@ -101,8 +101,8 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
  * @param tb The #task that will be unlocked.
 
  */
-void scheduler_addunlock(struct scheduler *s, struct task *ta,
-                         struct task *tb) {
+void scheduler_addunlock(struct scheduler* s, struct task* ta,
+                         struct task* tb) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (ta == NULL) error("Unlocking task is NULL.");
   if (tb == NULL) error("Unlocked task is NULL.");
@@ -208,7 +208,7 @@ struct task_dependency {
  *
  * @param tstype The MPI_Datatype to initialize
  */
-void task_dependency_define(MPI_Datatype *tstype) {
+void task_dependency_define(MPI_Datatype* tstype) {
   /* Define the variables */
   const int count = 14;
   int blocklens[count];
@@ -267,11 +267,11 @@ void task_dependency_define(MPI_Datatype *tstype) {
  * @param len The length of the arrays
  * @param type The MPI datatype
  */
-void task_dependency_sum(void *in_p, void *out_p, int *len,
-                         MPI_Datatype *type) {
+void task_dependency_sum(void* in_p, void* out_p, int* len,
+                         MPI_Datatype* type) {
   /* change pointer type */
-  struct task_dependency *in = (struct task_dependency *)in_p;
-  struct task_dependency *out = (struct task_dependency *)out_p;
+  struct task_dependency* in = (struct task_dependency*)in_p;
+  struct task_dependency* out = (struct task_dependency*)out_p;
 
   /* Loop over all the current objects */
   for (int i = 0; i < *len; i++) {
@@ -379,7 +379,7 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
  * @param verbose Are we verbose about this?
  * @param step The current step number.
  */
-void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
+void scheduler_write_dependencies(struct scheduler* s, int verbose, int step) {
   const ticks tic = getticks();
 
   /* Number of possible relations between tasks */
@@ -389,13 +389,13 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
    * ind = (ta * task_subtype_count + sa)
    * where ta is the value of task_type and sa is the value of
    * task_subtype  */
-  struct task_dependency *task_dep = (struct task_dependency *)malloc(
+  struct task_dependency* task_dep = (struct task_dependency*)malloc(
       nber_tasks * sizeof(struct task_dependency));
   /* keep track of whether a task exists in this run */
-  int *task_exists = (int *)malloc(nber_tasks * sizeof(int));
+  int* task_exists = (int*)malloc(nber_tasks * sizeof(int));
   /* keep track of whether a task has a dependency or an unlock,
    * and hence will be drawn in the task graph */
-  int *task_has_deps = (int *)malloc(nber_tasks * sizeof(int));
+  int* task_has_deps = (int*)malloc(nber_tasks * sizeof(int));
 
   /* Special marker for tasks with no dependencies. */
   const int no_dependency = -3;
@@ -429,7 +429,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
 
   /* loop over all tasks */
   for (int i = 0; i < s->nr_tasks; i++) {
-    const struct task *ta = &s->tasks[i];
+    const struct task* ta = &s->tasks[i];
 
     /* Are we using this task?
      * For the 0-step, we wish to show all the tasks (even the inactives). */
@@ -438,7 +438,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     /* Current index */
     const int ind = ta->type * task_subtype_count + ta->subtype;
 
-    struct task_dependency *cur = &task_dep[ind];
+    struct task_dependency* cur = &task_dep[ind];
     task_exists[ind]++;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -453,8 +453,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     cur->implicit_in = ta->implicit;
 
     /* Set the task level. */
-    const struct cell *ci = ta->ci;
-    const struct cell *cj = ta->cj;
+    const struct cell* ci = ta->ci;
+    const struct cell* cj = ta->cj;
     const int is_ci_top = ci == NULL || (ci != NULL && ci == ci->top);
     const int is_cj_top = cj == NULL || (cj != NULL && cj == cj->top);
     const int is_hydro_super =
@@ -514,7 +514,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
 
     /* This task unlocks stuff, so check the dependencies */
     for (int j = 0; j < ta->nr_unlock_tasks; j++) {
-      const struct task *tb = ta->unlock_tasks[j];
+      const struct task* tb = ta->unlock_tasks[j];
 
       /* Are we using this task?
        * For the 0-step, we wish to show all the tasks (even the inactive). */
@@ -523,7 +523,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
       int indj = tb->type * task_subtype_count + tb->subtype;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      const struct task_dependency *target = &task_dep[indj];
+      const struct task_dependency* target = &task_dep[indj];
       if (target->type_in != tb->type)
         error("wrong indexing for task %d: Expect type %d got %d", i,
               target->type_in, tb->type);
@@ -533,8 +533,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
 #endif
       task_exists[indj]++;
 
-      const struct cell *ci_b = tb->ci;
-      const struct cell *cj_b = tb->cj;
+      const struct cell* ci_b = tb->ci;
+      const struct cell* cj_b = tb->cj;
       const int is_ci_b_top =
           ci_b == NULL || (ci_b != NULL && ci_b == ci_b->top);
       const int is_cj_b_top =
@@ -615,13 +615,13 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
   MPI_Op_create(task_dependency_sum, /* commute */ 1, &dependency_sum);
 
   /* create recv buffer */
-  struct task_dependency *recv = NULL;
-  int *recv_exists = NULL;
+  struct task_dependency* recv = NULL;
+  int* recv_exists = NULL;
 
   if (s->nodeID == 0) {
-    recv = (struct task_dependency *)malloc(nber_tasks *
-                                            sizeof(struct task_dependency));
-    recv_exists = (int *)malloc(nber_tasks * sizeof(int));
+    recv = (struct task_dependency*)malloc(nber_tasks *
+                                           sizeof(struct task_dependency));
+    recv_exists = (int*)malloc(nber_tasks * sizeof(int));
 
     /* reset counter */
     for (int i = 0; i < nber_tasks; i++) {
@@ -655,7 +655,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     /* Create file */
     char filename[50];
     sprintf(filename, "dependency_graph_%i.csv", step);
-    FILE *f = fopen(filename, "w");
+    FILE* f = fopen(filename, "w");
     if (f == NULL) error("Error opening dependency graph file.");
 
     /* Write header */
@@ -767,7 +767,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
         /* text to write */
         char ta_name[200];
         task_get_full_name(ta_type, ta_subtype, ta_name);
-        char *tb_name = "task_unlocks_nothing\0";
+        char* tb_name = "task_unlocks_nothing\0";
 
         /* Check if MPI */
         int ta_mpi = 0;
@@ -778,7 +778,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
         /* Get group name */
         char ta_cluster[20];
         task_get_group_name(ta_type, ta_subtype, ta_cluster);
-        char *tb_cluster = "None\0";
+        char* tb_cluster = "None\0";
 
         fprintf(f, "%s,%s,%d,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
                 ta_name, tb_name, ta_implicit, tb_implicit, ta_mpi, tb_mpi,
@@ -842,7 +842,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
  * @param verbose Are we verbose about this?
  * @param step The current step number.
  */
-void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
+void scheduler_write_cell_dependencies(struct scheduler* s, int verbose,
                                        int step) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
@@ -859,7 +859,7 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
    * ind = (ta * task_subtype_count + sa)
    * where ta is the value of task_type and sa is the value of
    * task_subtype  */
-  struct task_dependency *task_dep = (struct task_dependency *)malloc(
+  struct task_dependency* task_dep = (struct task_dependency*)malloc(
       nber_tasks * sizeof(struct task_dependency));
 
   /* Keep track whether the requested cell is also involved in the
@@ -895,7 +895,7 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
   /* loop over all tasks */
   int local_count = 0;
   for (int i = 0; i < s->nr_tasks; i++) {
-    const struct task *ta = &s->tasks[i];
+    const struct task* ta = &s->tasks[i];
 
     /* Are we using this task?
      * For the 0-step, we wish to show all the tasks (even the inactives). */
@@ -907,7 +907,7 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
 
     /* Current index */
     const int ind = ta->type * task_subtype_count + ta->subtype;
-    struct task_dependency *cur = &task_dep[ind];
+    struct task_dependency* cur = &task_dep[ind];
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (cur->type_in != ta->type)
@@ -921,8 +921,8 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
     cur->implicit_in = ta->implicit;
 
     /* Set the task level. */
-    const struct cell *ci = ta->ci;
-    const struct cell *cj = ta->cj;
+    const struct cell* ci = ta->ci;
+    const struct cell* cj = ta->cj;
     const int is_ci_top = ci == NULL || (ci != NULL && ci == ci->top);
     const int is_cj_top = cj == NULL || (cj != NULL && cj == cj->top);
     const int is_hydro_super =
@@ -947,7 +947,7 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
 
     /* and their dependencies */
     for (int j = 0; j < ta->nr_unlock_tasks; j++) {
-      const struct task *tb = ta->unlock_tasks[j];
+      const struct task* tb = ta->unlock_tasks[j];
 
       /* Are we using this task?
        * For the 0-step, we wish to show all the tasks (even the inactive). */
@@ -956,8 +956,8 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
       /* Found a task with a dependency. */
       local_count++;
 
-      const struct cell *ci_b = tb->ci;
-      const struct cell *cj_b = tb->cj;
+      const struct cell* ci_b = tb->ci;
+      const struct cell* cj_b = tb->cj;
       const int is_ci_b_top =
           ci_b == NULL || (ci_b != NULL && ci_b == ci_b->top);
       const int is_cj_b_top =
@@ -1058,7 +1058,7 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
     char filename[50];
     sprintf(filename, "dependency_graph_cell_%lld_step_%i_rank_%i.csv", cellID,
             step, engine_rank);
-    FILE *f = fopen(filename, "w");
+    FILE* f = fopen(filename, "w");
     if (f == NULL) error("Error opening dependency graph file.");
 
     /* Write header */
@@ -1153,7 +1153,7 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
  * @param t The #task
  * @param s The #scheduler we are working in.
  */
-static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
+static void scheduler_splittask_hydro(struct task* t, struct scheduler* s) {
   /* Are we considering both stars and hydro when splitting? */
   /* Note this is not very clean as the scheduler should not really
      access the engine... */
@@ -1201,7 +1201,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     /* Self-interaction? */
     if (t->type == task_type_self) {
       /* Get a handle on the cell involved. */
-      struct cell *ci = t->ci;
+      struct cell* ci = t->ci;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -1268,8 +1268,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     /* Pair interaction? */
     else if (t->type == task_type_pair) {
       /* Get a handle on the cells involved. */
-      struct cell *ci = t->ci;
-      struct cell *cj = t->cj;
+      struct cell* ci = t->ci;
+      struct cell* cj = t->cj;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
@@ -1334,7 +1334,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
           /* Loop over the sub-cell pairs for the current sid and add new tasks
            * for them. */
-          struct cell_split_pair *csp = &cell_split_pairs[sid];
+          struct cell_split_pair* csp = &cell_split_pairs[sid];
 
           t->ci = ci->progeny[csp->pairs[0].pid];
           t->cj = cj->progeny[csp->pairs[0].pjd];
@@ -1365,7 +1365,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           if (ci->progeny[j] != NULL && ci->progeny[j]->hydro.count)
             for (int k = 0; k < 8; k++)
               if (cj->progeny[k] != NULL && cj->progeny[k]->hydro.count) {
-                struct task *tl =
+                struct task* tl =
                     scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
                                       ci->progeny[j], cj->progeny[k]);
                 scheduler_splittask_hydro(tl, s);
@@ -1383,9 +1383,9 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
  * @param t The #task
  * @param s The #scheduler we are working in.
  */
-static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
-  const struct space *sp = s->space;
-  struct engine *e = sp->e;
+static void scheduler_splittask_gravity(struct task* t, struct scheduler* s) {
+  const struct space* sp = s->space;
+  struct engine* e = sp->e;
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -1406,7 +1406,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
     /* Self-interaction? */
     if (t->type == task_type_self) {
       /* Get a handle on the cell involved. */
-      const struct cell *ci = t->ci;
+      const struct cell* ci = t->ci;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -1456,8 +1456,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
     /* Pair interaction? */
     else if (t->type == task_type_pair) {
       /* Get a handle on the cells involved. */
-      struct cell *ci = t->ci;
-      struct cell *cj = t->cj;
+      struct cell* ci = t->ci;
+      struct cell* cj = t->cj;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
@@ -1533,7 +1533,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
  * @param t The #task
  * @param s The #scheduler we are working in.
  */
-static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
+static void scheduler_splittask_fof(struct task* t, struct scheduler* s) {
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -1557,7 +1557,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
     if (t->type == task_type_fof_self) {
 
       /* Get a handle on the cell involved. */
-      struct cell *ci = t->ci;
+      struct cell* ci = t->ci;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -1605,14 +1605,14 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
  * @param num_elements the number of tasks.
  * @param extra_data The #scheduler we are working in.
  */
-void scheduler_splittasks_fof_mapper(void *map_data, int num_elements,
-                                     void *extra_data) {
+void scheduler_splittasks_fof_mapper(void* map_data, int num_elements,
+                                     void* extra_data) {
   /* Extract the parameters. */
-  struct scheduler *s = (struct scheduler *)extra_data;
-  struct task *tasks = (struct task *)map_data;
+  struct scheduler* s = (struct scheduler*)extra_data;
+  struct task* tasks = (struct task*)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
+    struct task* t = &tasks[ind];
 
     /* Invoke the correct splitting strategy */
     if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
@@ -1628,14 +1628,14 @@ void scheduler_splittasks_fof_mapper(void *map_data, int num_elements,
  * @param num_elements the number of tasks.
  * @param extra_data The #scheduler we are working in.
  */
-void scheduler_splittasks_mapper(void *map_data, int num_elements,
-                                 void *extra_data) {
+void scheduler_splittasks_mapper(void* map_data, int num_elements,
+                                 void* extra_data) {
   /* Extract the parameters. */
-  struct scheduler *s = (struct scheduler *)extra_data;
-  struct task *tasks = (struct task *)map_data;
+  struct scheduler* s = (struct scheduler*)extra_data;
+  struct task* tasks = (struct task*)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
+    struct task* t = &tasks[ind];
 
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
@@ -1661,7 +1661,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  * (0)?
  * @param verbose Are we talkative?
  */
-void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
+void scheduler_splittasks(struct scheduler* s, const int fof_tasks,
                           const int verbose) {
 
   if (verbose) {
@@ -1699,9 +1699,9 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
  * @param ci The first cell to interact.
  * @param cj The second cell to interact.
  */
-struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
+struct task* scheduler_addtask(struct scheduler* s, enum task_types type,
                                enum task_subtypes subtype, long long flags,
-                               int implicit, struct cell *ci, struct cell *cj) {
+                               int implicit, struct cell* ci, struct cell* cj) {
   /* Get the next free task. */
   const int ind = atomic_inc(&s->tasks_next);
 
@@ -1713,7 +1713,7 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
         ind);
 
   /* Get a pointer to the new task. */
-  struct task *t = &s->tasks[ind];
+  struct task* t = &s->tasks[ind];
 
   /* Copy the data. */
   t->type = type;
@@ -1747,11 +1747,11 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
 }
 
 struct unlock_extra_data {
-  struct scheduler *s;
-  int *counts;
-  int *offsets;
-  struct task **unlocks;
-  struct task **scheduler_unlocks;
+  struct scheduler* s;
+  int* counts;
+  int* offsets;
+  struct task** unlocks;
+  struct task** scheduler_unlocks;
 };
 
 /**
@@ -1761,13 +1761,13 @@ struct unlock_extra_data {
  * @param num_elements the number of indexes in this pool thread
  * @param extra_data The scheduler and the count array.
  */
-void scheduler_set_unlock_counts_mapper(void *map_data, int num_elements,
-                                        void *extra_data) {
+void scheduler_set_unlock_counts_mapper(void* map_data, int num_elements,
+                                        void* extra_data) {
 
-  struct unlock_extra_data *data = (struct unlock_extra_data *)extra_data;
-  int *counts = (int *)data->counts;
-  struct scheduler *s = data->s;
-  int *volatile unlock_ind = (int *)map_data;
+  struct unlock_extra_data* data = (struct unlock_extra_data*)extra_data;
+  int* counts = (int*)data->counts;
+  struct scheduler* s = data->s;
+  int* volatile unlock_ind = (int*)map_data;
 
   for (int k = 0; k < num_elements; k++) {
     atomic_inc(&counts[unlock_ind[k]]);
@@ -1793,14 +1793,14 @@ void scheduler_set_unlock_counts_mapper(void *map_data, int num_elements,
  * @param num_elements the number of indexes in this pool thread
  * @param extra_data The scheduler and the list of offsets
  */
-void scheduler_set_unlock_sorts_mapper(void *map_data, int num_elements,
-                                       void *extra_data) {
+void scheduler_set_unlock_sorts_mapper(void* map_data, int num_elements,
+                                       void* extra_data) {
 
-  struct unlock_extra_data *data = (struct unlock_extra_data *)extra_data;
-  const struct scheduler *s = data->s;
-  struct task **unlocks = data->unlocks;
-  int *volatile offsets = data->offsets;
-  int *unlock_ind = (int *)map_data;
+  struct unlock_extra_data* data = (struct unlock_extra_data*)extra_data;
+  const struct scheduler* s = data->s;
+  struct task** unlocks = data->unlocks;
+  int* volatile offsets = data->offsets;
+  int* unlock_ind = (int*)map_data;
   const size_t delta = unlock_ind - s->unlock_ind;
 
   for (int k = 0; k < num_elements; k++) {
@@ -1815,14 +1815,14 @@ void scheduler_set_unlock_sorts_mapper(void *map_data, int num_elements,
  * @param s The #scheduler.
  * @param tp the #threadpool.
  */
-void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp) {
+void scheduler_set_unlocks(struct scheduler* s, struct threadpool* tp) {
 
   /* Temporary extra data for the threadpool */
   struct unlock_extra_data extra_data;
 
   /* Store the counts for each task. */
-  int *counts;
-  if ((counts = (int *)swift_malloc("counts", sizeof(int) * s->nr_tasks)) ==
+  int* counts;
+  if ((counts = (int*)swift_malloc("counts", sizeof(int) * s->nr_tasks)) ==
       NULL)
     error("Failed to allocate temporary counts array.");
   bzero(counts, sizeof(int) * s->nr_tasks);
@@ -1834,9 +1834,9 @@ void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp) {
                  &extra_data);
 
   /* Compute the offset for each unlock block. */
-  int *offsets;
-  if ((offsets = (int *)swift_malloc("offsets",
-                                     sizeof(int) * (s->nr_tasks + 1))) == NULL)
+  int* offsets;
+  if ((offsets = (int*)swift_malloc("offsets",
+                                    sizeof(int) * (s->nr_tasks + 1))) == NULL)
     error("Failed to allocate temporary offsets array.");
   offsets[0] = 0;
   for (int k = 0; k < s->nr_tasks; k++) {
@@ -1849,9 +1849,9 @@ void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp) {
   }
 
   /* Create and fill a temporary array with the sorted unlocks. */
-  struct task **unlocks;
-  if ((unlocks = (struct task **)swift_malloc(
-           "unlocks", sizeof(struct task *) * s->size_unlocks)) == NULL)
+  struct task** unlocks;
+  if ((unlocks = (struct task**)swift_malloc(
+           "unlocks", sizeof(struct task*) * s->size_unlocks)) == NULL)
     error("Failed to allocate temporary unlocks array.");
 
   extra_data.offsets = offsets;
@@ -1871,7 +1871,7 @@ void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp) {
 
   /* Set the unlocks in the tasks. */
   for (int k = 0; k < s->nr_tasks; k++) {
-    struct task *t = &s->tasks[k];
+    struct task* t = &s->tasks[k];
     t->nr_unlock_tasks = counts[k];
     t->unlock_tasks = &s->unlocks[offsets[k]];
   }
@@ -1879,7 +1879,7 @@ void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that there are no duplicate unlocks. */
   for (int k = 0; k < s->nr_tasks; k++) {
-    struct task *t = &s->tasks[k];
+    struct task* t = &s->tasks[k];
     for (int i = 0; i < t->nr_unlock_tasks; i++) {
       for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
         if (t->unlock_tasks[i] == t->unlock_tasks[j])
@@ -1902,14 +1902,14 @@ void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp) {
  *
  * @param s The #scheduler.
  */
-void scheduler_ranktasks(struct scheduler *s) {
-  struct task *tasks = s->tasks;
-  int *tid = s->tasks_ind;
+void scheduler_ranktasks(struct scheduler* s) {
+  struct task* tasks = s->tasks;
+  int* tid = s->tasks_ind;
   const int nr_tasks = s->nr_tasks;
 
   /* Run through the tasks and get all the waits right. */
   for (int i = 0; i < nr_tasks; i++) {
-    struct task *t = &tasks[i];
+    struct task* t = &tasks[i];
 
     // Increment the waits of the dependances
     for (int k = 0; k < t->nr_unlock_tasks; k++) {
@@ -1933,13 +1933,13 @@ void scheduler_ranktasks(struct scheduler *s) {
     /* Unlock the next layer of tasks. */
     const int left_old = left;
     for (; j < left_old; j++) {
-      struct task *t = &tasks[tid[j]];
+      struct task* t = &tasks[tid[j]];
       t->rank = rank;
       /* message( "task %i of type %s has rank %i." , i ,
           (t->type == task_type_self) ? "self" : (t->type == task_type_pair) ?
          "pair" : "sort" , rank ); */
       for (int k = 0; k < t->nr_unlock_tasks; k++) {
-        struct task *u = t->unlock_tasks[k];
+        struct task* u = t->unlock_tasks[k];
         if (--u->wait == 0) {
           tid[left] = u - tasks;
           left += 1;
@@ -1965,7 +1965,7 @@ void scheduler_ranktasks(struct scheduler *s) {
  * @param s The #scheduler.
  * @param size The maximum number of tasks in the #scheduler.
  */
-void scheduler_reset(struct scheduler *s, int size) {
+void scheduler_reset(struct scheduler* s, int size) {
 
   /* Do we need to re-allocate? */
   if (size > s->size) {
@@ -1973,16 +1973,16 @@ void scheduler_reset(struct scheduler *s, int size) {
     scheduler_free_tasks(s);
 
     /* Allocate the new lists. */
-    if (swift_memalign("tasks", (void **)&s->tasks, task_align,
+    if (swift_memalign("tasks", (void**)&s->tasks, task_align,
                        size * sizeof(struct task)) != 0)
       error("Failed to allocate task array.");
 
-    if ((s->tasks_ind = (int *)swift_malloc("tasks_ind", sizeof(int) * size)) ==
+    if ((s->tasks_ind = (int*)swift_malloc("tasks_ind", sizeof(int) * size)) ==
         NULL)
       error("Failed to allocate task lists.");
 
     if ((s->tid_active =
-             (int *)swift_malloc("tid_active", sizeof(int) * size)) == NULL)
+             (int*)swift_malloc("tid_active", sizeof(int) * size)) == NULL)
       error("Failed to allocate aactive task lists.");
   }
 
@@ -2006,17 +2006,17 @@ void scheduler_reset(struct scheduler *s, int size) {
  * @param s The #scheduler.
  * @param verbose Are we talkative?
  */
-void scheduler_reweight(struct scheduler *s, int verbose) {
+void scheduler_reweight(struct scheduler* s, int verbose) {
   const int nr_tasks = s->nr_tasks;
-  int *tid = s->tasks_ind;
-  struct task *tasks = s->tasks;
+  int* tid = s->tasks_ind;
+  struct task* tasks = s->tasks;
   const int nodeID = s->nodeID;
   const float wscale = 0.001f;
   const ticks tic = getticks();
 
   /* Run through the tasks backwards and set their weights. */
   for (int k = nr_tasks - 1; k >= 0; k--) {
-    struct task *t = &tasks[tid[k]];
+    struct task* t = &tasks[tid[k]];
     float cost = 0.f;
     t->weight = 0.f;
 
@@ -2317,13 +2317,13 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
  * @brief #threadpool_map function which runs through the task
  *        graph and re-computes the task wait counters.
  */
-void scheduler_rewait_mapper(void *map_data, int num_elements,
-                             void *extra_data) {
-  struct scheduler *s = (struct scheduler *)extra_data;
-  const int *tid = (int *)map_data;
+void scheduler_rewait_mapper(void* map_data, int num_elements,
+                             void* extra_data) {
+  struct scheduler* s = (struct scheduler*)extra_data;
+  const int* tid = (int*)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &s->tasks[tid[ind]];
+    struct task* t = &s->tasks[tid[ind]];
 
     /* Ignore skipped tasks. */
     if (t->skip) continue;
@@ -2341,19 +2341,19 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
 
     /* Sets the waits of the dependances */
     for (int k = 0; k < t->nr_unlock_tasks; k++) {
-      struct task *u = t->unlock_tasks[k];
+      struct task* u = t->unlock_tasks[k];
       atomic_inc(&u->wait);
     }
   }
 }
 
-void scheduler_enqueue_mapper(void *map_data, int num_elements,
-                              void *extra_data) {
-  struct scheduler *s = (struct scheduler *)extra_data;
-  const int *tid = (int *)map_data;
-  struct task *tasks = s->tasks;
+void scheduler_enqueue_mapper(void* map_data, int num_elements,
+                              void* extra_data) {
+  struct scheduler* s = (struct scheduler*)extra_data;
+  const int* tid = (int*)map_data;
+  struct task* tasks = s->tasks;
   for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[tid[ind]];
+    struct task* t = &tasks[tid[ind]];
     if (atomic_dec(&t->wait) == 1 && !t->skip) {
       scheduler_enqueue(s, t);
     }
@@ -2366,7 +2366,7 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  *
  * @param s The #scheduler.
  */
-void scheduler_start(struct scheduler *s) {
+void scheduler_start(struct scheduler* s) {
 
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
@@ -2399,7 +2399,7 @@ void scheduler_start(struct scheduler *s) {
  * @param s The #scheduler.
  * @param t The #task.
  */
-void scheduler_enqueue(struct scheduler *s, struct task *t) {
+void scheduler_enqueue(struct scheduler* s, struct task* t) {
 
   /* Ignore skipped tasks */
   if (t->skip) return;
@@ -2421,7 +2421,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 #endif
     t->skip = 1;
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
-      struct task *t2 = t->unlock_tasks[j];
+      struct task* t2 = t->unlock_tasks[j];
       if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
     }
   }
@@ -2435,7 +2435,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     /* Find the previous owner for each task type, and do
      * any pre-processing needed. */
     short int qid = -1;
-    short int *owner = NULL;
+    short int* owner = NULL;
     switch (t->type) {
       case task_type_self:
         if (t->subtype == task_subtype_grav ||
@@ -2482,7 +2482,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         size_t size = 0;              /* Size in bytes. */
         size_t count = 0;             /* Number of elements to receive */
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
-        void *buff = NULL;            /* Buffer to accept elements */
+        void* buff = NULL;            /* Buffer to accept elements */
 
         if (t->subtype == task_subtype_tend) {
 
@@ -2515,7 +2515,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_limiter) {
 
           size = count = t->ci->hydro.count * sizeof(timebin_t);
-          if (posix_memalign((void **)&buff, SWIFT_CACHE_ALIGNMENT, count) != 0)
+          if (posix_memalign((void**)&buff, SWIFT_CACHE_ALIGNMENT, count) != 0)
             error("Error allocating timebin recv buffer");
           type = MPI_BYTE;
           t->buff = buff;
@@ -2588,20 +2588,20 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         size_t size = 0;              /* Size in bytes. */
         size_t count = 0;             /* Number of elements to send */
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
-        void *buff = NULL;            /* Buffer to send */
+        void* buff = NULL;            /* Buffer to send */
 
         if (t->subtype == task_subtype_tend) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
           buff = t->buff = malloc(size);
-          cell_pack_end_step(t->ci, (struct pcell_step *)buff);
+          cell_pack_end_step(t->ci, (struct pcell_step*)buff);
 
         } else if (t->subtype == task_subtype_part_swallow) {
 
           size = count =
               t->ci->hydro.count * sizeof(struct black_holes_part_data);
           buff = t->buff = malloc(size);
-          cell_pack_part_swallow(t->ci, (struct black_holes_part_data *)buff);
+          cell_pack_part_swallow(t->ci, (struct black_holes_part_data*)buff);
 
         } else if (t->subtype == task_subtype_bpart_merger) {
 
@@ -2609,7 +2609,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
               sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
           buff = t->buff = malloc(size);
           cell_pack_bpart_swallow(t->ci,
-                                  (struct black_holes_bpart_data *)t->buff);
+                                  (struct black_holes_bpart_data*)t->buff);
 
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
@@ -2663,13 +2663,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
           buff = t->buff = malloc(size);
-          cell_pack_sf_counts(t->ci, (struct pcell_sf_stars *)t->buff);
+          cell_pack_sf_counts(t->ci, (struct pcell_sf_stars*)t->buff);
 
         } else if (t->subtype == task_subtype_grav_counts) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
           buff = t->buff = malloc(size);
-          cell_pack_grav_counts(t->ci, (struct pcell_sf_grav *)t->buff);
+          cell_pack_grav_counts(t->ci, (struct pcell_sf_grav*)t->buff);
 
         } else {
           error("Unknown communication sub-type");
@@ -2726,14 +2726,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
  * @return A pointer to the next task, if a suitable one has
  *         been identified.
  */
-struct task *scheduler_done(struct scheduler *s, struct task *t) {
+struct task* scheduler_done(struct scheduler* s, struct task* t) {
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
-    struct task *t2 = t->unlock_tasks[k];
+    struct task* t2 = t->unlock_tasks[k];
     if (t2->skip) continue;
 
     const int res = atomic_dec(&t2->wait);
@@ -2772,11 +2772,11 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
  * @return A pointer to the next task, if a suitable one has
  *         been identified.
  */
-struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
+struct task* scheduler_unlock(struct scheduler* s, struct task* t) {
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
-    struct task *t2 = t->unlock_tasks[k];
+    struct task* t2 = t->unlock_tasks[k];
     const int res = atomic_dec(&t2->wait);
     if (res < 1) {
       error("Negative wait!");
@@ -2807,7 +2807,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
  *
  * @param s The #scheduler.
  */
-void scheduler_mark_last_fetch(struct scheduler *s) {
+void scheduler_mark_last_fetch(struct scheduler* s) {
 
 #if defined(SWIFT_DEBUG_CHECKS)
   if (s->deadlock_waiting_time_ms <= 0.f) return;
@@ -2830,7 +2830,7 @@ void scheduler_mark_last_fetch(struct scheduler *s) {
  *
  * @param s The #scheduler.
  */
-void scheduler_check_deadlock(struct scheduler *s) {
+void scheduler_check_deadlock(struct scheduler* s) {
 
 #if defined(SWIFT_DEBUG_CHECKS)
   if (s->deadlock_waiting_time_ms <= 0.f) return;
@@ -2881,9 +2881,9 @@ void scheduler_check_deadlock(struct scheduler *s) {
  *
  * @return A pointer to a #task or @c NULL if there are no available tasks.
  */
-struct task *scheduler_gettask(struct scheduler *s, int qid,
-                               const struct task *prev) {
-  struct task *res = NULL;
+struct task* scheduler_gettask(struct scheduler* s, int qid,
+                               const struct task* prev) {
+  struct task* res = NULL;
   const int nr_queues = s->nr_queues;
   unsigned int seed = qid;
 
@@ -2967,14 +2967,14 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
  * @param nodeID The MPI rank
  * @param tp Parallel processing threadpool.
  */
-void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
+void scheduler_init(struct scheduler* s, struct space* space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID,
-                    struct threadpool *tp) {
+                    struct threadpool* tp) {
   /* Init the lock. */
   lock_init(&s->lock);
 
   /* Allocate the queues. */
-  if (swift_memalign("queues", (void **)&s->queues, queue_struct_align,
+  if (swift_memalign("queues", (void**)&s->queues, queue_struct_align,
                      sizeof(struct queue) * nr_queues) != 0)
     error("Failed to allocate queues.");
 
@@ -2987,10 +2987,10 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
     error("Failed to initialize sleep barrier.");
 
   /* Init the unlocks. */
-  if ((s->unlocks = (struct task **)swift_malloc(
-           "unlocks", sizeof(struct task *) * scheduler_init_nr_unlocks)) ==
+  if ((s->unlocks = (struct task**)swift_malloc(
+           "unlocks", sizeof(struct task*) * scheduler_init_nr_unlocks)) ==
           NULL ||
-      (s->unlock_ind = (int *)swift_malloc(
+      (s->unlock_ind = (int*)swift_malloc(
            "unlock_ind", sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
     error("Failed to allocate unlocks.");
   s->nr_unlocks = 0;
@@ -3021,11 +3021,11 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
  * @param s The #scheduler
  * @param fileName Name of the file to write to
  */
-void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
+void scheduler_print_tasks(const struct scheduler* s, const char* fileName) {
   const int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
 
-  FILE *file = fopen(fileName, "w");
+  FILE* file = fopen(fileName, "w");
   if (file == NULL) error("Could not create file '%s'.", fileName);
 
   fprintf(file, "# Rank  Name  Subname  unlocks  waits\n");
@@ -3043,7 +3043,7 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
 /**
  * @brief Frees up the memory allocated for this #scheduler
  */
-void scheduler_clean(struct scheduler *s) {
+void scheduler_clean(struct scheduler* s) {
   scheduler_free_tasks(s);
   swift_free("unlocks", s->unlocks);
   swift_free("unlock_ind", s->unlock_ind);
@@ -3054,7 +3054,7 @@ void scheduler_clean(struct scheduler *s) {
 /**
  * @brief Free the task arrays allocated by this #scheduler.
  */
-void scheduler_free_tasks(struct scheduler *s) {
+void scheduler_free_tasks(struct scheduler* s) {
   if (s->tasks != NULL) {
     swift_free("tasks", s->tasks);
     s->tasks = NULL;
@@ -3080,23 +3080,23 @@ void scheduler_free_tasks(struct scheduler *s) {
  * @param s The #scheduler we are working in.
  * @param step The current step number.
  */
-void scheduler_write_task_level(const struct scheduler *s, int step) {
+void scheduler_write_task_level(const struct scheduler* s, int step) {
 
   /* init */
   const int max_depth = 30;
-  const struct task *tasks = s->tasks;
+  const struct task* tasks = s->tasks;
   int nr_tasks = s->nr_tasks;
 
   /* Init counter */
   int size = task_type_count * task_subtype_count * max_depth;
-  int *count = (int *)malloc(size * sizeof(int));
+  int* count = (int*)malloc(size * sizeof(int));
   if (count == NULL) error("Failed to allocate memory");
 
   for (int i = 0; i < size; i++) count[i] = 0;
 
   /* Count tasks */
   for (int i = 0; i < nr_tasks; i++) {
-    const struct task *t = &tasks[i];
+    const struct task* t = &tasks[i];
     if (t->ci) {
       if ((int)t->ci->depth >= max_depth)
         error("Cell is too deep, you need to increase max_depth");
@@ -3121,7 +3121,7 @@ void scheduler_write_task_level(const struct scheduler *s, int step) {
   strcat(filename, stepstr);
 
   /* Open file */
-  FILE *f = fopen(filename, "w");
+  FILE* f = fopen(filename, "w");
   if (f == NULL) error("Error opening task level file.");
 
   /* Print header */
@@ -3149,9 +3149,9 @@ void scheduler_write_task_level(const struct scheduler *s, int step) {
  *
  * @param e the #scheduler
  */
-void scheduler_dump_queues(struct engine *e) {
+void scheduler_dump_queues(struct engine* e) {
 
-  struct scheduler *s = &e->sched;
+  struct scheduler* s = &e->sched;
   char dumpfile[35];
 
 #ifdef WITH_MPI
@@ -3163,7 +3163,7 @@ void scheduler_dump_queues(struct engine *e) {
   snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d.dat", e->step);
 #endif
 
-  FILE *file_thread = fopen(dumpfile, "w");
+  FILE* file_thread = fopen(dumpfile, "w");
   if (file_thread == NULL) error("Could not create file '%s'.", dumpfile);
   fprintf(file_thread, "# rank queue index type subtype weight\n");
   for (int l = 0; l < s->nr_queues; l++) {
@@ -3172,17 +3172,17 @@ void scheduler_dump_queues(struct engine *e) {
   fclose(file_thread);
 }
 
-void scheduler_report_task_times_mapper(void *map_data, int num_elements,
-                                        void *extra_data) {
+void scheduler_report_task_times_mapper(void* map_data, int num_elements,
+                                        void* extra_data) {
 
-  struct task *tasks = (struct task *)map_data;
+  struct task* tasks = (struct task*)map_data;
   float time_local[task_category_count] = {0};
-  float *time_global = (float *)extra_data;
+  float* time_global = (float*)extra_data;
 
   /* Gather the times spent in the different task categories */
   for (int i = 0; i < num_elements; ++i) {
 
-    const struct task *t = &tasks[i];
+    const struct task* t = &tasks[i];
     const float total_time = clocks_from_ticks(t->total_ticks);
     const enum task_categories cat = task_get_category(t);
     time_local[cat] += total_time;
@@ -3200,7 +3200,7 @@ void scheduler_report_task_times_mapper(void *map_data, int num_elements,
  * @param s The #scheduler.
  * @param nr_threads The number of threads used in the engine.
  */
-void scheduler_report_task_times(const struct scheduler *s,
+void scheduler_report_task_times(const struct scheduler* s,
                                  const int nr_threads) {
 
   const ticks tic = getticks();

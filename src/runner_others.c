@@ -72,13 +72,13 @@ extern const int sort_stack_size;
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
+void runner_do_grav_external(struct runner* r, struct cell* c, int timer) {
 
-  struct gpart *restrict gparts = c->grav.parts;
+  struct gpart* restrict gparts = c->grav.parts;
   const int gcount = c->grav.count;
-  const struct engine *e = r->e;
-  const struct external_potential *potential = e->external_potential;
-  const struct phys_const *constants = e->physical_constants;
+  const struct engine* e = r->e;
+  const struct external_potential* potential = e->external_potential;
+  const struct phys_const* constants = e->physical_constants;
   const double time = r->e->time;
 
   TIMER_TIC;
@@ -96,7 +96,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
     for (int i = 0; i < gcount; i++) {
 
       /* Get a direct pointer on the part. */
-      struct gpart *restrict gp = &gparts[i];
+      struct gpart* restrict gp = &gparts[i];
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (gp->time_bin == time_bin_not_created)
@@ -121,21 +121,21 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
+void runner_do_cooling(struct runner* r, struct cell* c, int timer) {
 
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const struct cooling_function_data *cooling_func = e->cooling_func;
-  const struct phys_const *constants = e->physical_constants;
-  const struct unit_system *us = e->internal_units;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct entropy_floor_properties *entropy_floor_props = e->entropy_floor;
-  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+  const struct cooling_function_data* cooling_func = e->cooling_func;
+  const struct phys_const* constants = e->physical_constants;
+  const struct unit_system* us = e->internal_units;
+  const struct hydro_props* hydro_props = e->hydro_properties;
+  const struct entropy_floor_properties* entropy_floor_props = e->entropy_floor;
+  const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
+  struct part* restrict parts = c->hydro.parts;
+  struct xpart* restrict xparts = c->hydro.xparts;
   const int count = c->hydro.count;
   const double time = e->time;
 
@@ -156,8 +156,8 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
     for (int i = 0; i < count; i++) {
 
       /* Get a direct pointer on the part. */
-      struct part *restrict p = &parts[i];
-      struct xpart *restrict xp = &xparts[i];
+      struct part* restrict p = &parts[i];
+      struct xpart* restrict xp = &xparts[i];
 
       /* Anything to do here? (i.e. does this particle need updating?) */
       if (part_is_active(p, e)) {
@@ -196,21 +196,21 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_star_formation_sink(struct runner *r, struct cell *c,
+void runner_do_star_formation_sink(struct runner* r, struct cell* c,
                                    int timer) {
 #ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
   return;
 #endif
 
-  struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct sink_props *sink_props = e->sink_properties;
+  struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct phys_const* phys_const = e->physical_constants;
+  const struct sink_props* sink_props = e->sink_properties;
   const int count = c->sinks.count;
-  struct sink *restrict sinks = c->sinks.parts;
+  struct sink* restrict sinks = c->sinks.parts;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_feedback = (e->policy & engine_policy_feedback);
-  const struct unit_system *restrict us = e->internal_units;
+  const struct unit_system* restrict us = e->internal_units;
   const int current_stars_count = c->stars.count;
 
   TIMER_TIC;
@@ -230,7 +230,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         /* Load the child cell */
-        struct cell *restrict cp = c->progeny[k];
+        struct cell* restrict cp = c->progeny[k];
 
         /* Do the recursion */
         runner_do_star_formation_sink(r, cp, 0);
@@ -246,7 +246,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct sink *restrict s = &sinks[k];
+      struct sink* restrict s = &sinks[k];
 
       /* Only work on active particles */
       if (sink_is_active(s, e)) {
@@ -267,7 +267,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
              star_counter++) {
 
           /* Create a new star with a mass s->target_mass */
-          struct spart *sp = cell_spawn_new_spart_from_sink(e, c, s);
+          struct spart* sp = cell_spawn_new_spart_from_sink(e, c, s);
           if (sp == NULL)
             error("Run out of available star particles or gparts");
 
@@ -320,20 +320,20 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
-  struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
-  const struct star_formation *sf_props = e->star_formation;
-  const struct phys_const *phys_const = e->physical_constants;
+void runner_do_star_formation(struct runner* r, struct cell* c, int timer) {
+  struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct star_formation* sf_props = e->star_formation;
+  const struct phys_const* phys_const = e->physical_constants;
   const int count = c->hydro.count;
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
+  struct part* restrict parts = c->hydro.parts;
+  struct xpart* restrict xparts = c->hydro.xparts;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_feedback = (e->policy & engine_policy_feedback);
-  const struct hydro_props *restrict hydro_props = e->hydro_properties;
-  const struct unit_system *restrict us = e->internal_units;
-  struct cooling_function_data *restrict cooling = e->cooling_func;
-  const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
+  const struct hydro_props* restrict hydro_props = e->hydro_properties;
+  const struct unit_system* restrict us = e->internal_units;
+  struct cooling_function_data* restrict cooling = e->cooling_func;
+  const struct entropy_floor_properties* entropy_floor = e->entropy_floor;
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
   const int current_stars_count = c->stars.count;
@@ -359,7 +359,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         /* Load the child cell */
-        struct cell *restrict cp = c->progeny[k];
+        struct cell* restrict cp = c->progeny[k];
 
         /* Do the recursion */
         runner_do_star_formation(r, cp, 0);
@@ -386,8 +386,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct part *restrict p = &parts[k];
-      struct xpart *restrict xp = &xparts[k];
+      struct part* restrict p = &parts[k];
+      struct xpart* restrict xp = &xparts[k];
 
       /* Only work on active particles */
       if (part_is_active(p, e)) {
@@ -437,7 +437,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
             while (n_spart_to_create > 0) {
 
-              struct spart *sp = NULL;
+              struct spart* sp = NULL;
               int part_converted;
 
               /* Are we using a model that actually generates star particles? */
@@ -568,24 +568,24 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
  * @param r runner task
  * @param c cell
  */
-void runner_do_sink_formation(struct runner *r, struct cell *c) {
+void runner_do_sink_formation(struct runner* r, struct cell* c) {
 
 #ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
   return;
 #endif
 
-  struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
-  const struct sink_props *sink_props = e->sink_properties;
-  const struct phys_const *phys_const = e->physical_constants;
+  struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct sink_props* sink_props = e->sink_properties;
+  const struct phys_const* phys_const = e->physical_constants;
   const int count = c->hydro.count;
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
+  struct part* restrict parts = c->hydro.parts;
+  struct xpart* restrict xparts = c->hydro.xparts;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const struct hydro_props *restrict hydro_props = e->hydro_properties;
-  const struct unit_system *restrict us = e->internal_units;
-  struct cooling_function_data *restrict cooling = e->cooling_func;
-  const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
+  const struct hydro_props* restrict hydro_props = e->hydro_properties;
+  const struct unit_system* restrict us = e->internal_units;
+  struct cooling_function_data* restrict cooling = e->cooling_func;
+  const struct entropy_floor_properties* entropy_floor = e->entropy_floor;
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
 
@@ -604,7 +604,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         /* Load the child cell */
-        struct cell *restrict cp = c->progeny[k];
+        struct cell* restrict cp = c->progeny[k];
 
         /* Do the recursion */
         runner_do_sink_formation(r, cp);
@@ -620,8 +620,8 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct part *restrict p = &parts[k];
-      struct xpart *restrict xp = &xparts[k];
+      struct part* restrict p = &parts[k];
+      struct xpart* restrict xp = &xparts[k];
 
       /* Only work on active particles */
       if (part_is_active(p, e)) {
@@ -655,7 +655,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
 #endif
 
             /* Convert the gas particle to a sink particle */
-            struct sink *sink = NULL;
+            struct sink* sink = NULL;
 
             /* Convert the gas particle to a sink particle */
             sink = cell_convert_part_to_sink(e, c, p, xp);
@@ -687,9 +687,9 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
  * @param c The #cell.
  * @param timer Are we timing this ?
  */
-void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
+void runner_do_end_hydro_force(struct runner* r, struct cell* c, int timer) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
   TIMER_TIC;
@@ -703,17 +703,17 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_end_hydro_force(r, c->progeny[k], 0);
   } else {
 
-    const struct cosmology *cosmo = e->cosmology;
+    const struct cosmology* cosmo = e->cosmology;
     const int count = c->hydro.count;
-    struct part *restrict parts = c->hydro.parts;
-    struct xpart *restrict xparts = c->hydro.xparts;
+    struct part* restrict parts = c->hydro.parts;
+    struct xpart* restrict xparts = c->hydro.xparts;
 
     /* Loop over the gas particles in this cell. */
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct part *restrict p = &parts[k];
-      struct xpart *restrict xp = &xparts[k];
+      struct part* restrict p = &parts[k];
+      struct xpart* restrict xp = &xparts[k];
 
       double dt = 0;
       if (part_is_active(p, e)) {
@@ -785,9 +785,9 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
  * @param c The #cell.
  * @param timer Are we timing this ?
  */
-void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
+void runner_do_end_grav_force(struct runner* r, struct cell* c, int timer) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_sinks = (e->policy & engine_policy_sinks);
@@ -803,7 +803,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_end_grav_force(r, c->progeny[k], 0);
   } else {
 
-    const struct space *s = e->s;
+    const struct space* s = e->s;
     const int periodic = s->periodic;
     const float G_newton = e->physical_constants->const_newton_G;
 
@@ -816,13 +816,13 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
     }
 
     const int gcount = c->grav.count;
-    struct gpart *restrict gparts = c->grav.parts;
+    struct gpart* restrict gparts = c->grav.parts;
 
     /* Loop over the g-particles in this cell. */
     for (int k = 0; k < gcount; k++) {
 
       /* Get a handle on the gpart. */
-      struct gpart *restrict gp = &gparts[k];
+      struct gpart* restrict gp = &gparts[k];
 
       if (gpart_is_active(gp, e)) {
 
@@ -930,16 +930,16 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_csds(struct runner *r, struct cell *c, int timer) {
+void runner_do_csds(struct runner* r, struct cell* c, int timer) {
 
 #ifdef WITH_CSDS
   TIMER_TIC;
 
-  const struct engine *e = r->e;
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
-  struct gpart *restrict gparts = c->grav.parts;
-  struct spart *restrict sparts = c->stars.parts;
+  const struct engine* e = r->e;
+  struct part* restrict parts = c->hydro.parts;
+  struct xpart* restrict xparts = c->hydro.xparts;
+  struct gpart* restrict gparts = c->grav.parts;
+  struct spart* restrict sparts = c->stars.parts;
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -966,8 +966,8 @@ void runner_do_csds(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct part *restrict p = &parts[k];
-      struct xpart *restrict xp = &xparts[k];
+      struct part* restrict p = &parts[k];
+      struct xpart* restrict xp = &xparts[k];
 
       /* If particle needs to be log */
       if (part_is_active(p, e)) {
@@ -987,7 +987,7 @@ void runner_do_csds(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < gcount; k++) {
 
       /* Get a handle on the part. */
-      struct gpart *restrict gp = &gparts[k];
+      struct gpart* restrict gp = &gparts[k];
 
       /* Write only the dark matter particles */
       if (gp->type != swift_type_dark_matter &&
@@ -1013,7 +1013,7 @@ void runner_do_csds(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < scount; k++) {
 
       /* Get a handle on the part. */
-      struct spart *restrict sp = &sparts[k];
+      struct spart* restrict sp = &sparts[k];
 
       /* If particle needs to be log */
       if (spart_is_active(sp, e)) {
@@ -1044,17 +1044,17 @@ void runner_do_csds(struct runner *r, struct cell *c, int timer) {
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_search_self(struct runner *r, struct cell *c, int timer) {
+void runner_do_fof_search_self(struct runner* r, struct cell* c, int timer) {
 
 #ifdef WITH_FOF
 
   TIMER_TIC;
 
-  const struct engine *e = r->e;
-  struct space *s = e->s;
+  const struct engine* e = r->e;
+  struct space* s = e->s;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
-  const struct gpart *const gparts = s->gparts;
+  const struct gpart* const gparts = s->gparts;
   const double search_r2 = e->fof_properties->l_x2;
 
   rec_fof_search_self(e->fof_properties, dim, search_r2, periodic, gparts, c);
@@ -1074,8 +1074,8 @@ void runner_do_fof_search_self(struct runner *r, struct cell *c, int timer) {
  * @param cj cell j
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_search_pair(struct runner *r, struct cell *ci,
-                               struct cell *cj, int timer) {
+void runner_do_fof_search_pair(struct runner* r, struct cell* ci,
+                               struct cell* cj, int timer) {
 
 #ifdef WITH_FOF
 
@@ -1085,11 +1085,11 @@ void runner_do_fof_search_pair(struct runner *r, struct cell *ci,
   if (ci->nodeID != cj->nodeID) error("Searching foreign cells!");
 #endif
 
-  const struct engine *e = r->e;
-  struct space *s = e->s;
+  const struct engine* e = r->e;
+  struct space* s = e->s;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
-  const struct gpart *const gparts = s->gparts;
+  const struct gpart* const gparts = s->gparts;
   const double search_r2 = e->fof_properties->l_x2;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1112,17 +1112,17 @@ void runner_do_fof_search_pair(struct runner *r, struct cell *ci,
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_attach_self(struct runner *r, struct cell *c, int timer) {
+void runner_do_fof_attach_self(struct runner* r, struct cell* c, int timer) {
 
 #ifdef WITH_FOF
 
   TIMER_TIC;
 
-  const struct engine *e = r->e;
-  struct space *s = e->s;
+  const struct engine* e = r->e;
+  struct space* s = e->s;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
-  const struct gpart *const gparts = s->gparts;
+  const struct gpart* const gparts = s->gparts;
   const double attach_r2 = e->fof_properties->l_x2;
 
   rec_fof_attach_self(e->fof_properties, dim, attach_r2, periodic, gparts,
@@ -1143,18 +1143,18 @@ void runner_do_fof_attach_self(struct runner *r, struct cell *c, int timer) {
  * @param cj cell j
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_attach_pair(struct runner *r, struct cell *ci,
-                               struct cell *cj, int timer) {
+void runner_do_fof_attach_pair(struct runner* r, struct cell* ci,
+                               struct cell* cj, int timer) {
 
 #ifdef WITH_FOF
 
   TIMER_TIC;
 
-  const struct engine *e = r->e;
-  struct space *s = e->s;
+  const struct engine* e = r->e;
+  struct space* s = e->s;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
-  const struct gpart *const gparts = s->gparts;
+  const struct gpart* const gparts = s->gparts;
   const double attach_r2 = e->fof_properties->l_x2;
 
   rec_fof_attach_pair(e->fof_properties, dim, attach_r2, periodic, gparts,
@@ -1175,16 +1175,16 @@ void runner_do_fof_attach_pair(struct runner *r, struct cell *ci,
  * @param c The #cell.
  * @param timer Are we timing this ?
  */
-void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
+void runner_do_rt_tchem(struct runner* r, struct cell* c, int timer) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const int count = c->hydro.count;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  struct rt_props *rt_props = e->rt_props;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct cosmology *cosmo = e->cosmology;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct unit_system *us = e->internal_units;
+  struct rt_props* rt_props = e->rt_props;
+  const struct hydro_props* hydro_props = e->hydro_properties;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct phys_const* phys_const = e->physical_constants;
+  const struct unit_system* us = e->internal_units;
 
   /* Anything to do here? */
   if (count == 0) return;
@@ -1198,15 +1198,15 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_rt_tchem(r, c->progeny[k], 0);
   } else {
 
-    struct part *restrict parts = c->hydro.parts;
-    struct xpart *restrict xparts = c->hydro.xparts;
+    struct part* restrict parts = c->hydro.parts;
+    struct xpart* restrict xparts = c->hydro.xparts;
 
     /* Loop over the gas particles in this cell. */
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct part *restrict p = &parts[k];
-      struct xpart *restrict xp = &xparts[k];
+      struct part* restrict p = &parts[k];
+      struct xpart* restrict xp = &xparts[k];
 
       /* Skip inhibited parts */
       if (part_is_inhibited(p, e)) continue;

@@ -19,7 +19,7 @@
 
 #include "swift.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   greetings(/*fof=*/0);
   greetings(/*fof=*/1);

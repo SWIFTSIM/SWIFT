@@ -26,7 +26,7 @@
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
-    const struct part *p, const struct xpart *xp, const float mu_0,
+    const struct part* p, const struct xpart* xp, const float mu_0,
     const float a) {
   return 0.f;
 }
@@ -38,7 +38,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_Bms(
-    const struct part *p, const struct xpart *xp) {
+    const struct part* p, const struct xpart* xp) {
 
   return 0.f;
 }
@@ -50,7 +50,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_Bms(
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
-    const struct part *p, const struct xpart *xp) {
+    const struct part* p, const struct xpart* xp) {
 
   error("Calling mhd_get_magnetic_divergence when compiling without MHD!");
   return 0.f;
@@ -63,7 +63,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
-    const struct part *p, const struct xpart *xp) {
+    const struct part* p, const struct xpart* xp) {
 
   return 0.f;
 }
@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
-    const struct part *p, const struct xpart *xp) {
+    const struct part* p, const struct xpart* xp) {
 
   return 0.f;
 }
@@ -89,7 +89,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
-    const struct part *p, const struct xpart *xp) {
+    const struct part* p, const struct xpart* xp) {
 
   return 0.f;
 }
@@ -106,8 +106,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
-    const struct part *p, const struct xpart *xp,
-    const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
+    const struct part* p, const struct xpart* xp,
+    const struct hydro_props* hydro_properties, const struct cosmology* cosmo,
     const float mu_0) {
 
   return FLT_MAX;
@@ -116,7 +116,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
  * @brief Compute magnetosonic speed
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
-    const struct part *restrict p, const float a, const float mu_0) {
+    const struct part* restrict p, const float a, const float mu_0) {
 
   error("Calling mhd_get_fast_magnetosonic_speed when compiling without MHD!");
   return -1.f;
@@ -127,7 +127,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
  */
 __attribute__((always_inline)) INLINE static float
 mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
-                                              const struct part *restrict p,
+                                              const struct part* restrict p,
                                               const float a, const float mu_0) {
   error("Calling mhd_get_fast_magnetosonic_wave when compiling without MHD!");
   return -1.f;
@@ -144,7 +144,7 @@ mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
  * @brief beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
-    const float dx[3], const struct part *pi, const struct part *pj,
+    const float dx[3], const struct part* pi, const struct part* pj,
     const float mu_ij, const float beta) {
 
   error("Calling an MHD signal velocity when compiling without MHD!");
@@ -161,7 +161,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_init_part(
-    struct part *p) {}
+    struct part* p) {}
 
 /**
  * @brief Finishes the density calculation.
@@ -177,7 +177,7 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_density(
-    struct part *p, const struct cosmology *cosmo) {}
+    struct part* p, const struct cosmology* cosmo) {}
 
 /**
  * @brief Prepare a particle for the gradient calculation.
@@ -190,8 +190,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
  * @param hydro_props Hydrodynamic properties.
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props, const float mu_0) {}
+    struct part* p, struct xpart* xp, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props, const float mu_0) {}
 
 /**
  * @brief Resets the variables that are required for a gradient calculation.
@@ -203,7 +203,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
-    struct part *p) {}
+    struct part* p) {}
 
 /**
  * @brief Finishes the gradient calculation.
@@ -213,7 +213,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
-    struct part *p) {}
+    struct part* p) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -227,7 +227,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo) {}
+    struct part* p, struct xpart* xp, const struct cosmology* cosmo) {}
 
 /**
  * @brief Prepare a particle for the force calculation.
@@ -247,8 +247,8 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
  *                 as the artificial viscosity.
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_force(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props, const float dt_alpha,
+    struct part* p, struct xpart* xp, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props, const float dt_alpha,
     const float mu_0) {}
 
 /**
@@ -260,7 +260,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
-    struct part *p) {}
+    struct part* p) {}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
@@ -271,7 +271,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
  * @param cosmo The cosmological model
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
-    struct part *p, const struct xpart *xp, const struct cosmology *cosmo,
+    struct part* p, const struct xpart* xp, const struct cosmology* cosmo,
     const float mu_0) {}
 
 /**
@@ -290,10 +290,10 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
  * @param mu_0 The vacuum magnetic permeability.
  */
 __attribute__((always_inline)) INLINE static void mhd_predict_extra(
-    struct part *p, const struct xpart *xp, const float dt_drift,
-    const float dt_therm, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props, const float mu_0) {}
+    struct part* p, const struct xpart* xp, const float dt_drift,
+    const float dt_therm, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props, const float mu_0) {}
 
 /**
  * @brief Finishes the force calculation.
@@ -308,8 +308,8 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-    struct part *p, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props, const float mu_0) {}
+    struct part* p, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props, const float mu_0) {}
 
 /**
  * @brief Kick the additional variables
@@ -328,10 +328,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
  * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void mhd_kick_extra(
-    struct part *p, struct xpart *xp, const float dt_therm, const float dt_grav,
+    struct part* p, struct xpart* xp, const float dt_therm, const float dt_grav,
     const float dt_hydro, const float dt_kick_corr,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {}
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props) {}
 
 /**
  * @brief Converts MHD quantities of a particle at the start of a run
@@ -348,8 +348,8 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
  * @param hydro_props The constants used in the scheme.
  */
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props, const float mu_0) {}
+    struct part* p, struct xpart* xp, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props, const float mu_0) {}
 
 /**
  * @brief Initialises the particles for the first time
@@ -362,7 +362,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
-    struct part *p, struct xpart *xp, const struct mhd_global_data *mhd_data,
+    struct part* p, struct xpart* xp, const struct mhd_global_data* mhd_data,
     const double Lsize) {
 
   mhd_reset_acceleration(p);

@@ -43,11 +43,11 @@
  * @param multipole_rec_end Pointer to the end of the list of multipoles to
  * recycle.
  */
-void space_rebuild_recycle_rec(struct space *s, struct cell *c,
-                               struct cell **cell_rec_begin,
-                               struct cell **cell_rec_end,
-                               struct gravity_tensors **multipole_rec_begin,
-                               struct gravity_tensors **multipole_rec_end) {
+void space_rebuild_recycle_rec(struct space* s, struct cell* c,
+                               struct cell** cell_rec_begin,
+                               struct cell** cell_rec_end,
+                               struct gravity_tensors** multipole_rec_begin,
+                               struct gravity_tensors** multipole_rec_end) {
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
@@ -72,14 +72,14 @@ void space_rebuild_recycle_rec(struct space *s, struct cell *c,
       }
 }
 
-void space_rebuild_recycle_mapper(void *map_data, int num_elements,
-                                  void *extra_data) {
+void space_rebuild_recycle_mapper(void* map_data, int num_elements,
+                                  void* extra_data) {
 
-  struct space *s = (struct space *)extra_data;
-  struct cell *cells = (struct cell *)map_data;
+  struct space* s = (struct space*)extra_data;
+  struct cell* cells = (struct cell*)map_data;
 
   for (int k = 0; k < num_elements; k++) {
-    struct cell *c = &cells[k];
+    struct cell* c = &cells[k];
     struct cell *cell_rec_begin = NULL, *cell_rec_end = NULL;
     struct gravity_tensors *multipole_rec_begin = NULL,
                            *multipole_rec_end = NULL;
@@ -246,7 +246,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
  * @param s The #space.
  * @param c The #cell.
  */
-void space_recycle(struct space *s, struct cell *c) {
+void space_recycle(struct space* s, struct cell* c) {
 
   /* Clear the cell. */
   if (lock_destroy(&c->hydro.lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
@@ -288,15 +288,15 @@ void space_recycle(struct space *s, struct cell *c) {
  *        multipoles joined by their @c next pointers. It is assumed that this
  *        multipole's @c next pointer is @c NULL.
  */
-void space_recycle_list(struct space *s, struct cell *cell_list_begin,
-                        struct cell *cell_list_end,
-                        struct gravity_tensors *multipole_list_begin,
-                        struct gravity_tensors *multipole_list_end) {
+void space_recycle_list(struct space* s, struct cell* cell_list_begin,
+                        struct cell* cell_list_end,
+                        struct gravity_tensors* multipole_list_begin,
+                        struct gravity_tensors* multipole_list_end) {
 
   int count = 0;
 
   /* Clean up the list of cells. */
-  for (struct cell *c = cell_list_begin; c != NULL; c = c->next) {
+  for (struct cell* c = cell_list_begin; c != NULL; c = c->next) {
     /* Clear the cell. */
     if (lock_destroy(&c->hydro.lock) != 0 ||
         lock_destroy(&c->grav.plock) != 0 ||
@@ -339,7 +339,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
  *
  * @param s The #space.
  */
-void space_free_cells(struct space *s) {
+void space_free_cells(struct space* s) {
 
   ticks tic = getticks();
 

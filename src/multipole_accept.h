@@ -79,8 +79,8 @@ __attribute__((const)) INLINE static float gravity_f_MAC_inverse(
  * @param periodic Are we using periodic BCs?
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
-    const struct gravity_props *props, const struct gravity_tensors *restrict A,
-    const struct gravity_tensors *restrict B, const float r2,
+    const struct gravity_props* props, const struct gravity_tensors* restrict A,
+    const struct gravity_tensors* restrict B, const float r2,
     const int use_rebuild_sizes, const int periodic) {
 
   /* Order of the expansion */
@@ -198,8 +198,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
  * @param periodic Are we using periodic BCs?
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
-    const struct gravity_props *props, const struct gravity_tensors *restrict A,
-    const struct gravity_tensors *restrict B, const float r2,
+    const struct gravity_props* props, const struct gravity_tensors* restrict A,
+    const struct gravity_tensors* restrict B, const float r2,
     const int use_rebuild_sizes, const int periodic) {
 
   return gravity_M2L_accept(props, A, B, r2, use_rebuild_sizes, periodic) &&
@@ -222,7 +222,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
  */
 __attribute__((nonnull, pure)) INLINE static float
 gravity_M2L_min_accept_distance(
-    const struct gravity_props *props, const float size,
+    const struct gravity_props* props, const float size,
     const float max_softening, const float min_a_grav,
     const float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1],
     const int periodic) {
@@ -288,8 +288,8 @@ gravity_M2L_min_accept_distance(
  * @param periodic Are we using periodic BCs?
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
-    const struct gravity_props *props, const struct gpart *pa,
-    const struct gravity_tensors *B, const float r2, const int periodic) {
+    const struct gravity_props* props, const struct gpart* pa,
+    const struct gravity_tensors* B, const float r2, const int periodic) {
 
   /* Order of the expansion */
   const int p = 2;

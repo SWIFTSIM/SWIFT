@@ -37,7 +37,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    struct part* restrict pi, struct part* restrict pj, const float mu_0,
     const float a, const float H) {
 
   float wi, wj, wi_dx, wj_dx;
@@ -100,8 +100,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                const float hi, const float hj,
-                               struct part *restrict pi,
-                               const struct part *restrict pj,
+                               struct part* restrict pi,
+                               const struct part* restrict pj,
                                const double mu_0, const float a,
                                const float H) {
   float wi, wi_dx;
@@ -152,7 +152,7 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    struct part* restrict pi, struct part* restrict pj, const float mu_0,
     const float a, const float H) {
 
   /* Define kernel variables */
@@ -377,8 +377,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 const float hi, const float hj,
-                                struct part *restrict pi,
-                                const struct part *restrict pj,
+                                struct part* restrict pi,
+                                const struct part* restrict pj,
                                 const float mu_0, const float a,
                                 const float H) {
 
@@ -544,7 +544,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    struct part* restrict pi, struct part* restrict pj, const float mu_0,
     const float a, const float H) {
 
   /* Get r and 1/r. */
@@ -758,7 +758,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float mu_0,
+    struct part* restrict pi, const struct part* restrict pj, const float mu_0,
     const float a, const float H) {
 
   /* Cosmological factors entering the EoMs */

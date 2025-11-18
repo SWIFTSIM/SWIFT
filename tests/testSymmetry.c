@@ -28,10 +28,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-void print_bytes(void *p, size_t len) {
+void print_bytes(void* p, size_t len) {
   printf("(");
   for (size_t i = 0; i < len; ++i) {
-    printf("%02x", ((unsigned char *)p)[i]);
+    printf("%02x", ((unsigned char*)p)[i]);
     if (i % 4 == 3) printf("|");
   }
   printf(")\n");
@@ -49,8 +49,8 @@ void test(void) {
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
   for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
-    *(((float *)&pi) + i) = (float)random_uniform(0., 2.);
-    *(((float *)&pj) + i) = (float)random_uniform(0., 2.);
+    *(((float*)&pi) + i) = (float)random_uniform(0., 2.);
+    *(((float*)&pj) + i) = (float)random_uniform(0., 2.);
   }
 
   /* Make the particle smoothing length and position reasonable */
@@ -194,8 +194,8 @@ void test(void) {
   runner_iact_nonsym_gradient(r2, dx, pj2.h, pi2.h, &pj2, &pi2, mu_0, a, H);
   runner_iact_nonsym_mhd_gradient(r2, dx, pj2.h, pi2.h, &pj2, &pi2, mu_0, a, H);
 
-  i_not_ok = memcmp((char *)&pi, (char *)&pi2, sizeof(struct part));
-  j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));
+  i_not_ok = memcmp((char*)&pi, (char*)&pi2, sizeof(struct part));
+  j_not_ok = memcmp((char*)&pj, (char*)&pj2, sizeof(struct part));
 
   if (i_not_ok) {
     printParticle_single(&pi, &xpi);
@@ -246,15 +246,15 @@ void test(void) {
   for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
 
     /* try this first to avoid dealing with NaNs and infinities */
-    int check_i = memcmp((float *)&pi + i, (float *)&pi2 + i, sizeof(float));
-    int check_j = memcmp((float *)&pj + i, (float *)&pj2 + i, sizeof(float));
+    int check_i = memcmp((float*)&pi + i, (float*)&pi2 + i, sizeof(float));
+    int check_j = memcmp((float*)&pj + i, (float*)&pj2 + i, sizeof(float));
 
     if (!check_i && !check_j) continue;
 
     if (check_i) {
       /* allow some wiggle room for roundoff errors */
-      float aa = *(((float *)&pi) + i);
-      float bb = *(((float *)&pi2) + i);
+      float aa = *(((float*)&pi) + i);
+      float bb = *(((float*)&pi2) + i);
 
       int a_is_not_b;
       if ((aa + bb)) {
@@ -272,8 +272,8 @@ void test(void) {
 
     if (check_j) {
       /* allow some wiggle room for roundoff errors */
-      float cc = *(((float *)&pj) + i);
-      float dd = *(((float *)&pj2) + i);
+      float cc = *(((float*)&pj) + i);
+      float dd = *(((float*)&pj2) + i);
       int c_is_not_d;
       if ((cc + dd)) {
         c_is_not_d = (fabs((cc - dd) / (cc + dd)) > 1.e-4);
@@ -289,8 +289,8 @@ void test(void) {
     }
   }
 #else
-  i_not_ok = memcmp((char *)&pi, (char *)&pi2, sizeof(struct part));
-  j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));
+  i_not_ok = memcmp((char*)&pi, (char*)&pi2, sizeof(struct part));
+  j_not_ok = memcmp((char*)&pj, (char*)&pj2, sizeof(struct part));
 #endif
 
   if (i_not_ok) {
@@ -309,7 +309,7 @@ void test(void) {
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

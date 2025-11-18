@@ -93,37 +93,37 @@ struct entropy_floor_properties {
 };
 
 float entropy_floor_gas_pressure(const float rho_phys, const float rho_com,
-                                 const struct cosmology *cosmo,
-                                 const struct entropy_floor_properties *props);
+                                 const struct cosmology* cosmo,
+                                 const struct entropy_floor_properties* props);
 
-float entropy_floor(const struct part *p, const struct cosmology *cosmo,
-                    const struct entropy_floor_properties *props);
+float entropy_floor(const struct part* p, const struct cosmology* cosmo,
+                    const struct entropy_floor_properties* props);
 
 float entropy_floor_gas_temperature(
-    const float rho_phys, const float rho_com, const struct cosmology *cosmo,
-    const struct entropy_floor_properties *props);
+    const float rho_phys, const float rho_com, const struct cosmology* cosmo,
+    const struct entropy_floor_properties* props);
 
-float entropy_floor_temperature(const struct part *p,
-                                const struct cosmology *cosmo,
-                                const struct entropy_floor_properties *props);
+float entropy_floor_temperature(const struct part* p,
+                                const struct cosmology* cosmo,
+                                const struct entropy_floor_properties* props);
 
-void entropy_floor_init(struct entropy_floor_properties *props,
-                        const struct phys_const *phys_const,
-                        const struct unit_system *us,
-                        const struct hydro_props *hydro_props,
-                        struct swift_params *params);
+void entropy_floor_init(struct entropy_floor_properties* props,
+                        const struct phys_const* phys_const,
+                        const struct unit_system* us,
+                        const struct hydro_props* hydro_props,
+                        struct swift_params* params);
 
-void entropy_floor_print(const struct entropy_floor_properties *props);
+void entropy_floor_print(const struct entropy_floor_properties* props);
 
 #ifdef HAVE_HDF5
 
 void entropy_floor_write_flavour(hid_t h_grp);
 #endif
 
-void entropy_floor_struct_dump(const struct entropy_floor_properties *props,
-                               FILE *stream);
+void entropy_floor_struct_dump(const struct entropy_floor_properties* props,
+                               FILE* stream);
 
-void entropy_floor_struct_restore(struct entropy_floor_properties *props,
-                                  FILE *stream);
+void entropy_floor_struct_restore(struct entropy_floor_properties* props,
+                                  FILE* stream);
 
 #endif /* SWIFT_ENTROPY_FLOOR_EAGLE_H */

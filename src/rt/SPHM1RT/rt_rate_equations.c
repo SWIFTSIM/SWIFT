@@ -48,10 +48,10 @@
  * @param ydot Vector containing the time derivatives of the variables.
  * @param user_data The #RTUserData struct containing the input data.
  */
-int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
-  struct RTUserData *data;
+int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void* user_data) {
+  struct RTUserData* data;
 
-  data = (struct RTUserData *)user_data;
+  data = (struct RTUserData*)user_data;
 
   /* First, loop through the enum types of all
    * non-eq species. If they are included in

@@ -39,9 +39,9 @@
    assumed to be of type uint8_t* so that the pointer arithmetic works. */
 #define swap_loop(type, a, b, count) \
   while (count >= sizeof(type)) {    \
-    register type temp = *(type *)a; \
-    *(type *)a = *(type *)b;         \
-    *(type *)b = temp;               \
+    register type temp = *(type*)a;  \
+    *(type*)a = *(type*)b;           \
+    *(type*)b = temp;                \
     a += sizeof(type);               \
     b += sizeof(type);               \
     count -= sizeof(type);           \
@@ -63,10 +63,10 @@
  * @param void_b Pointer to the second element.
  * @param bytes Size, in bytes, of the data pointed to by @c a and @c b.
  */
-__attribute__((always_inline)) inline void memswap(void *restrict void_a,
-                                                   void *restrict void_b,
+__attribute__((always_inline)) inline void memswap(void* restrict void_a,
+                                                   void* restrict void_b,
                                                    size_t bytes) {
-  int8_t *restrict a = (int8_t *)void_a, *restrict b = (int8_t *)void_b;
+  int8_t* restrict a = (int8_t*)void_a, * restrict b = (int8_t*)void_b;
 #if defined(__AVX512F__) && defined(__INTEL_COMPILER)
   swap_loop(__m512i, a, b, bytes);
 #endif
@@ -105,14 +105,14 @@ __attribute__((always_inline)) inline void memswap(void *restrict void_a,
  * @param bytes Size, in bytes, of the data pointed to by @c a and @c b.
  */
 __attribute__((always_inline)) inline void memswap_unaligned(
-    void *restrict void_a, void *restrict void_b, size_t bytes) {
-  int8_t *restrict a = (int8_t *)void_a, *restrict b = (int8_t *)void_b;
+    void* restrict void_a, void* restrict void_b, size_t bytes) {
+  int8_t* restrict a = (int8_t*)void_a, * restrict b = (int8_t*)void_b;
 #ifdef __AVX512F__
   while (bytes >= sizeof(__m512i)) {
     register __m512i temp;
-    temp = _mm512_loadu_si512((__m512i *)a);
-    _mm512_storeu_si512((__m512i *)a, _mm512_loadu_si512((__m512i *)b));
-    _mm512_storeu_si512((__m512i *)b, temp);
+    temp = _mm512_loadu_si512((__m512i*)a);
+    _mm512_storeu_si512((__m512i*)a, _mm512_loadu_si512((__m512i*)b));
+    _mm512_storeu_si512((__m512i*)b, temp);
     a += sizeof(__m512i);
     b += sizeof(__m512i);
     bytes -= sizeof(__m512i);
@@ -121,9 +121,9 @@ __attribute__((always_inline)) inline void memswap_unaligned(
 #ifdef __AVX__
   while (bytes >= sizeof(__m256i)) {
     register __m256i temp;
-    temp = _mm256_loadu_si256((__m256i *)a);
-    _mm256_storeu_si256((__m256i *)a, _mm256_loadu_si256((__m256i *)b));
-    _mm256_storeu_si256((__m256i *)b, temp);
+    temp = _mm256_loadu_si256((__m256i*)a);
+    _mm256_storeu_si256((__m256i*)a, _mm256_loadu_si256((__m256i*)b));
+    _mm256_storeu_si256((__m256i*)b, temp);
     a += sizeof(__m256i);
     b += sizeof(__m256i);
     bytes -= sizeof(__m256i);
@@ -132,9 +132,9 @@ __attribute__((always_inline)) inline void memswap_unaligned(
 #ifdef __SSE2__
   while (bytes >= sizeof(__m128i)) {
     register __m128i temp;
-    temp = _mm_loadu_si128((__m128i *)a);
-    _mm_storeu_si128((__m128i *)a, _mm_loadu_si128((__m128i *)b));
-    _mm_storeu_si128((__m128i *)b, temp);
+    temp = _mm_loadu_si128((__m128i*)a);
+    _mm_storeu_si128((__m128i*)a, _mm_loadu_si128((__m128i*)b));
+    _mm_storeu_si128((__m128i*)b, temp);
     a += sizeof(__m128i);
     b += sizeof(__m128i);
     bytes -= sizeof(__m128i);

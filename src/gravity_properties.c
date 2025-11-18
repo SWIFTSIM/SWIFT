@@ -44,9 +44,9 @@
 #define gravity_props_default_max_adaptive_softening FLT_MAX
 #define gravity_props_default_min_adaptive_softening 0.f
 
-void gravity_props_init(struct gravity_props *p, struct swift_params *params,
-                        const struct phys_const *phys_const,
-                        const struct cosmology *cosmo, const int with_cosmology,
+void gravity_props_init(struct gravity_props* p, struct swift_params* params,
+                        const struct phys_const* phys_const,
+                        const struct cosmology* cosmo, const int with_cosmology,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
                         const int has_neutrinos, const int is_zoom_simulation,
@@ -263,15 +263,15 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   gravity_props_update(p, cosmo);
 }
 
-void gravity_props_update_MAC_choice(struct gravity_props *p) {
+void gravity_props_update_MAC_choice(struct gravity_props* p) {
 
   /* Now that we have run initial accelerations,
    * switch to the better MAC */
   if (p->use_adaptive_tolerance) p->use_advanced_MAC = 1;
 }
 
-void gravity_props_update(struct gravity_props *p,
-                          const struct cosmology *cosmo) {
+void gravity_props_update(struct gravity_props* p,
+                          const struct cosmology* cosmo) {
 
   /* Current softening length for the high-res. DM particles. */
   double DM_softening, baryon_softening, neutrino_softening;
@@ -303,7 +303,7 @@ void gravity_props_update(struct gravity_props *p,
   p->epsilon_nu_cur = neutrino_softening;
 }
 
-void gravity_props_print(const struct gravity_props *p) {
+void gravity_props_print(const struct gravity_props* p) {
 
   message("Self-gravity scheme: %s", GRAVITY_IMPLEMENTATION);
 
@@ -385,7 +385,7 @@ void gravity_props_print(const struct gravity_props *p) {
 
 #if defined(HAVE_HDF5)
 void gravity_props_print_snapshot(hid_t h_grpgrav,
-                                  const struct gravity_props *p) {
+                                  const struct gravity_props* p) {
 
   io_write_attribute_f(h_grpgrav, "Time integration eta", p->eta);
   io_write_attribute_s(h_grpgrav, "Softening style",
@@ -459,8 +459,8 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
  * @param p the struct
  * @param stream the file stream
  */
-void gravity_props_struct_dump(const struct gravity_props *p, FILE *stream) {
-  restart_write_blocks((void *)p, sizeof(struct gravity_props), 1, stream,
+void gravity_props_struct_dump(const struct gravity_props* p, FILE* stream) {
+  restart_write_blocks((void*)p, sizeof(struct gravity_props), 1, stream,
                        "gravity", "gravity props");
 }
 
@@ -471,7 +471,7 @@ void gravity_props_struct_dump(const struct gravity_props *p, FILE *stream) {
  * @param p the struct
  * @param stream the file stream
  */
-void gravity_props_struct_restore(struct gravity_props *p, FILE *stream) {
-  restart_read_blocks((void *)p, sizeof(struct gravity_props), 1, stream, NULL,
+void gravity_props_struct_restore(struct gravity_props* p, FILE* stream) {
+  restart_read_blocks((void*)p, sizeof(struct gravity_props), 1, stream, NULL,
                       "gravity props");
 }

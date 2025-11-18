@@ -38,6 +38,6 @@ struct hydro_space {
 struct hydro_space {};
 #endif
 
-void hydro_space_init(struct hydro_space *hs, const struct space *s);
+void hydro_space_init(struct hydro_space* hs, const struct space* s);
 
 #endif /* SWIFT_HYDRO_SPACE_H */

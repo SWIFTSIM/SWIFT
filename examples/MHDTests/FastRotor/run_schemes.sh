@@ -74,7 +74,8 @@ do
       cur_dir=`pwd`
       cd ../../../../
       pwd
-      ./TestAllMHD.sh $IDD "--with-adiabatic-index=7/5 --with-kernel=quintic-spline --disable-hand-vec --disable-mpi"
+      #./TestAllMHD.sh $IDD "--with-adiabatic-index=7/5 --with-kernel=quintic-spline --disable-hand-vec --disable-mpi"
+      ./TestAllMHD.sh $IDD "--with-hydro=magma2 --with-adiabatic-index=7/5 --with-kernel=quintic-spline --disable-hand-vec --disable-mpi"
       cd $cur_dir
       cp ../../../../sw_$ID .
    fi

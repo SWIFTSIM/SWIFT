@@ -49,7 +49,7 @@
 #include "mpiuse.h"
 
 /* Task type names. */
-const char *taskID_names[task_type_count] = {
+const char* taskID_names[task_type_count] = {
     "none",
     "sort",
     "self",
@@ -129,7 +129,7 @@ const char *taskID_names[task_type_count] = {
 };
 
 /* Sub-task type names. */
-const char *subtaskID_names[task_subtype_count] = {
+const char* subtaskID_names[task_subtype_count] = {
     "none",
     "density",
     "gradient",
@@ -168,7 +168,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "rt_transport",
 };
 
-const char *task_category_names[task_category_count] = {
+const char* task_category_names[task_category_count] = {
     "drift",       "sorts",    "resort",
     "hydro",       "gravity",  "feedback",
     "black holes", "cooling",  "star formation",
@@ -191,8 +191,8 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
  */
 #define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                    \
   __attribute__((always_inline)) INLINE static size_t            \
-  task_cell_overlap_##TYPE(const struct cell *restrict ci,       \
-                           const struct cell *restrict cj) {     \
+  task_cell_overlap_##TYPE(const struct cell* restrict ci,       \
+                           const struct cell* restrict cj) {     \
                                                                  \
     if (ci == NULL || cj == NULL) return 0;                      \
                                                                  \
@@ -219,7 +219,7 @@ TASK_CELL_OVERLAP(bpart, black_holes.parts, black_holes.count);
  * @param t The #task.
  */
 __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
-    const struct task *t) {
+    const struct task* t) {
 
   switch (t->type) {
 
@@ -380,8 +380,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
  * @param ta The first #task.
  * @param tb The second #task.
  */
-float task_overlap(const struct task *restrict ta,
-                   const struct task *restrict tb) {
+float task_overlap(const struct task* restrict ta,
+                   const struct task* restrict tb) {
 
   if (ta == NULL || tb == NULL) return 0.f;
 
@@ -523,7 +523,7 @@ float task_overlap(const struct task *restrict ta,
  *
  * @param t The #task.
  */
-void task_unlock(struct task *t) {
+void task_unlock(struct task* t) {
 
   const enum task_types type = t->type;
   const enum task_subtypes subtype = t->subtype;
@@ -712,7 +712,7 @@ void task_unlock(struct task *t) {
  *
  * @param t the #task.
  */
-int task_lock(struct task *t) {
+int task_lock(struct task* t) {
 
   const enum task_types type = t->type;
   const enum task_subtypes subtype = t->subtype;
@@ -1088,7 +1088,7 @@ int task_lock(struct task *t) {
  *
  * @param The #task.
  */
-struct task *task_get_unique_dependent(const struct task *t) {
+struct task* task_get_unique_dependent(const struct task* t) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (t->nr_unlock_tasks != 1)
@@ -1103,7 +1103,7 @@ struct task *task_get_unique_dependent(const struct task *t) {
  *
  * @param t The #task.
  */
-void task_print(const struct task *t) {
+void task_print(const struct task* t) {
 
   message("Type:'%s' sub_type:'%s' wait=%d nr_unlocks=%d skip=%d",
           taskID_names[t->type], subtaskID_names[t->subtype], t->wait,
@@ -1120,7 +1120,7 @@ void task_print(const struct task *t) {
  * @param subtype The #task subtype.
  * @param cluster (return) The group name (should be allocated)
  */
-void task_get_group_name(int type, int subtype, char *cluster) {
+void task_get_group_name(int type, int subtype, char* cluster) {
 
   if (type == task_type_grav_long_range || type == task_type_grav_mm) {
 
@@ -1218,7 +1218,7 @@ void task_get_group_name(int type, int subtype, char *cluster) {
  * @param subtype The #task type.
  * @param name (return) The formatted string
  */
-void task_get_full_name(int type, int subtype, char *name) {
+void task_get_full_name(int type, int subtype, char* name) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check input */
@@ -1235,10 +1235,10 @@ void task_get_full_name(int type, int subtype, char *name) {
     sprintf(name, "%s_%s", taskID_names[type], subtaskID_names[subtype]);
 }
 
-void task_create_name_files(const char *file_prefix) {
+void task_create_name_files(const char* file_prefix) {
   char file_name[200];
   sprintf(file_name, "%s_task_types.txt", file_prefix);
-  FILE *file = fopen(file_name, "w");
+  FILE* file = fopen(file_name, "w");
   if (file == NULL) error("Could not create file '%s'.", file_name);
   fprintf(file, "# type\tname\n");
   for (int type = 0; type < task_type_count; type++) {
@@ -1286,7 +1286,7 @@ void task_free_mpi_comms(void) {
  * @param e the #engine
  * @param step the current step.
  */
-void task_dump_all(struct engine *e, int step) {
+void task_dump_all(struct engine* e, int step) {
 
 #ifdef SWIFT_DEBUG_TASKS
 
@@ -1299,7 +1299,7 @@ void task_dump_all(struct engine *e, int step) {
   /* Make sure output file is empty, only on one rank. */
   char dumpfile[35];
   snprintf(dumpfile, sizeof(dumpfile), "thread_info_MPI-step%d.dat", step);
-  FILE *file_thread;
+  FILE* file_thread;
   if (engine_rank == 0) {
     file_thread = fopen(dumpfile, "w");
     if (file_thread == NULL)
@@ -1359,7 +1359,7 @@ void task_dump_all(struct engine *e, int step) {
   /* Non-MPI, so just a single engine's worth of tasks to dump. */
   char dumpfile[32];
   snprintf(dumpfile, sizeof(dumpfile), "thread_info-step%d.dat", step);
-  FILE *file_thread;
+  FILE* file_thread;
   file_thread = fopen(dumpfile, "w");
   if (file_thread == NULL) error("Could not create file '%s'.", dumpfile);
 
@@ -1419,7 +1419,7 @@ void task_dump_all(struct engine *e, int step) {
  * @param allranks do the statistics over all ranks, if not just the current
  *                 one, only used if header is false.
  */
-void task_dump_stats(const char *dumpfile, struct engine *e,
+void task_dump_stats(const char* dumpfile, struct engine* e,
                      float dump_tasks_threshold, int header, int allranks) {
 
   const ticks function_tic = getticks();
@@ -1536,7 +1536,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
   if (!allranks || (engine_rank == 0 && (allranks || header))) {
 #endif
 
-    FILE *dfile = fopen(dumpfile, "w");
+    FILE* dfile = fopen(dumpfile, "w");
     if (dfile == NULL) error("Could not create file '%s'.", dumpfile);
     if (header) {
       fprintf(dfile, "/* use as src/partition_fixed_costs.h */\n");
@@ -1548,7 +1548,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
     }
 
     for (int j = 0; j < task_type_count; j++) {
-      const char *taskID = taskID_names[j];
+      const char* taskID = taskID_names[j];
       for (int k = 0; k < task_subtype_count; k++) {
         if (sum[j][k] > 0.0) {
 
@@ -1599,7 +1599,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
  *
  * @param e the #engine
  */
-void task_dump_active(struct engine *e) {
+void task_dump_active(struct engine* e) {
 
   const ticks tic = getticks();
 
@@ -1614,7 +1614,7 @@ void task_dump_active(struct engine *e) {
   snprintf(dumpfile, sizeof(dumpfile), "task_dump-step%d.dat", e->step);
 #endif
 
-  FILE *file_thread = fopen(dumpfile, "w");
+  FILE* file_thread = fopen(dumpfile, "w");
   if (file_thread == NULL) error("Could not create file '%s'.", dumpfile);
   fprintf(file_thread,
           "# rank otherrank type subtype waits pair tic toc"
@@ -1627,7 +1627,7 @@ void task_dump_active(struct engine *e) {
           engine_rank, (long long int)e->tic_step, (long long int)e->toc_step,
           e->updates, e->g_updates, e->s_updates, cpufreq);
   for (int l = 0; l < e->sched.nr_tasks; l++) {
-    struct task *t = &e->sched.tasks[l];
+    struct task* t = &e->sched.tasks[l];
 
     /* Not implicit and not skipped. */
     if (!t->implicit && !t->skip) {
@@ -1659,7 +1659,7 @@ void task_dump_active(struct engine *e) {
  *
  * @param t The #task.
  */
-enum task_categories task_get_category(const struct task *t) {
+enum task_categories task_get_category(const struct task* t) {
 
   switch (t->type) {
 

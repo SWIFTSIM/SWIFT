@@ -90,7 +90,7 @@ make_integer_timestep(const float new_dt, const timebin_t old_bin,
  * @param e The #engine (used to get some constants).
  */
 __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
-    const struct gpart *restrict gp, const struct engine *restrict e) {
+    const struct gpart* restrict gp, const struct engine* restrict e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->time_bin == time_bin_not_created) {
@@ -140,8 +140,8 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
  * @param new_dti_rt The new radiation integer time step.
  */
 __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
-    const struct part *restrict p, const struct xpart *restrict xp,
-    const struct engine *restrict e, const integertime_t new_dti_rt) {
+    const struct part* restrict p, const struct xpart* restrict xp,
+    const struct engine* restrict e, const integertime_t new_dti_rt) {
 
   /* Compute the next timestep (hydro condition) */
   const float new_dt_hydro =
@@ -256,8 +256,8 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
  * @param e The #engine (used to get some constants).
  */
 __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
-    const struct part *restrict p, const struct xpart *restrict xp,
-    const struct engine *restrict e) {
+    const struct part* restrict p, const struct xpart* restrict xp,
+    const struct engine* restrict e) {
 
   if (!(e->policy & engine_policy_rt))
     return get_integer_timestep(num_time_bins);
@@ -301,7 +301,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
  * @param e The #engine (used to get some constants).
  */
 __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
-    const struct spart *restrict sp, const struct engine *restrict e) {
+    const struct spart* restrict sp, const struct engine* restrict e) {
 
   /* Stellar time-step */
   float new_dt_stars = stars_compute_timestep(
@@ -354,7 +354,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
  * @param e The #engine (used to get some constants).
  */
 __attribute__((always_inline)) INLINE static integertime_t get_bpart_timestep(
-    const struct bpart *restrict bp, const struct engine *restrict e) {
+    const struct bpart* restrict bp, const struct engine* restrict e) {
 
   /* Black hole internal time-step */
   float new_dt_black_holes = black_holes_compute_timestep(
@@ -402,7 +402,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_bpart_timestep(
  * @param e The #engine (used to get some constants).
  */
 __attribute__((always_inline)) INLINE static integertime_t get_sink_timestep(
-    const struct sink *restrict sink, const struct engine *restrict e) {
+    const struct sink* restrict sink, const struct engine* restrict e) {
 
   /* Sink time-step */
   float new_dt_sink = sink_compute_timestep(

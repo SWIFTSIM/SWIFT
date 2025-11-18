@@ -53,15 +53,15 @@ static float print_cooling_rate_contribution_flag = 0;
  * @param abundance_ratio Ratio of element abundance to solar
  */
 INLINE static double eagle_print_metal_cooling_rate(
-    int n_h_i, float d_n_h, int He_i, float d_He, const struct part *restrict p,
-    const struct xpart *restrict xp,
-    const struct cooling_function_data *restrict cooling,
-    const struct cosmology *restrict cosmo, const struct phys_const *phys_const,
-    float *abundance_ratio) {
+    int n_h_i, float d_n_h, int He_i, float d_He, const struct part* restrict p,
+    const struct xpart* restrict xp,
+    const struct cooling_function_data* restrict cooling,
+    const struct cosmology* restrict cosmo, const struct phys_const* phys_const,
+    float* abundance_ratio) {
 
   /* array to store contributions to cooling rates from each of the
    * elements */
-  double *element_lambda;
+  double* element_lambda;
   element_lambda = malloc((eagle_cooling_N_metal + 2) * sizeof(double));
 
   /* Get the H and He mass fractions */
@@ -80,7 +80,7 @@ INLINE static double eagle_print_metal_cooling_rate(
   /* Open files for writing contributions to cooling rate. Each element
    * gets its own file.  */
   char output_filename[32];
-  FILE **output_file = malloc((eagle_cooling_N_metal + 2) * sizeof(FILE *));
+  FILE** output_file = malloc((eagle_cooling_N_metal + 2) * sizeof(FILE*));
 
   /* Once this flag reaches 1 we stop overwriting and start appending.  */
   print_cooling_rate_contribution_flag += 1.0 / (eagle_cooling_N_metal + 2);
@@ -131,11 +131,11 @@ INLINE static double eagle_print_metal_cooling_rate(
  * @param nh Hydrogen number density (cgs units)
  * @param u Internal energy (cgs units)
  */
-void set_quantities(struct part *restrict p, struct xpart *restrict xp,
-                    const struct unit_system *restrict us,
-                    const struct cooling_function_data *restrict cooling,
-                    const struct cosmology *restrict cosmo,
-                    const struct phys_const *restrict internal_const, float nh,
+void set_quantities(struct part* restrict p, struct xpart* restrict xp,
+                    const struct unit_system* restrict us,
+                    const struct cooling_function_data* restrict cooling,
+                    const struct cosmology* restrict cosmo,
+                    const struct phys_const* restrict internal_const, float nh,
                     double u) {
 
   double hydrogen_number_density =
@@ -156,9 +156,9 @@ void set_quantities(struct part *restrict p, struct xpart *restrict xp,
  * tests 1d and 4d table interpolations produce
  * same results for cooling rate, dlambda/du and temperature.
  */
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   // Declare relevant structs
-  struct swift_params *params = malloc(sizeof(struct swift_params));
+  struct swift_params* params = malloc(sizeof(struct swift_params));
   struct unit_system us;
   struct chemistry_global_data chem_data;
   struct part p;
@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
   struct cooling_function_data cooling;
   struct cosmology cosmo;
   struct space s;
-  const char *parametersFileName = "./cooling_rates.yml";
+  const char* parametersFileName = "./cooling_rates.yml";
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
 
   // Calculate contributions from metals to cooling rate
   // open file
-  FILE *output_file = fopen("cooling_output.dat", "w");
+  FILE* output_file = fopen("cooling_output.dat", "w");
   if (output_file == NULL) {
     error("Error opening output file!\n");
   }
@@ -320,7 +320,7 @@ int main(int argc, char **argv) {
 
 #else
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

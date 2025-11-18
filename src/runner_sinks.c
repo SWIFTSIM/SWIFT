@@ -49,19 +49,19 @@
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
+void runner_do_sinks_gas_swallow(struct runner* r, struct cell* c, int timer) {
 
-  struct engine *e = r->e;
-  struct space *s = e->s;
+  struct engine* e = r->e;
+  struct space* s = e->s;
 
-  struct sink *sinks = s->sinks;
+  struct sink* sinks = s->sinks;
   const size_t nr_sink = s->nr_sinks;
 #ifdef WITH_MPI
   error("MPI is not implemented yet for sink particles.");
 #endif
 
-  struct part *parts = c->hydro.parts;
-  struct xpart *xparts = c->hydro.xparts;
+  struct part* parts = c->hydro.parts;
+  struct xpart* xparts = c->hydro.xparts;
 
   integertime_t ti_current = e->ti_current;
   integertime_t ti_beg_max = 0;
@@ -78,7 +78,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *restrict cp = c->progeny[k];
+        struct cell* restrict cp = c->progeny[k];
 
         runner_do_sinks_gas_swallow(r, cp, 0);
 
@@ -95,8 +95,8 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
-      struct part *const p = &parts[k];
-      struct xpart *const xp = &xparts[k];
+      struct part* const p = &parts[k];
+      struct xpart* const xp = &xparts[k];
 
       /* Ignore inhibited particles (they have already been removed!) */
       if (part_is_inhibited(p, e)) continue;
@@ -122,7 +122,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
         for (size_t i = 0; i < nr_sink; ++i) {
 
           /* Get a handle on the bpart. */
-          struct sink *sp = &sinks[i];
+          struct sink* sp = &sinks[i];
 
           if (sp->id == sink_id) {
 
@@ -208,7 +208,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c,
+void runner_do_sinks_gas_swallow_self(struct runner* r, struct cell* c,
                                       int timer) {
 #ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
   return;
@@ -231,13 +231,13 @@ void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c,
  * @param cj Second #cell.
  * @param timer Are we timing this?
  */
-void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
-                                      struct cell *cj, int timer) {
+void runner_do_sinks_gas_swallow_pair(struct runner* r, struct cell* ci,
+                                      struct cell* cj, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
   return;
 #endif
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != e->nodeID && cj->nodeID != e->nodeID)
@@ -267,18 +267,18 @@ void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
+void runner_do_sinks_sink_swallow(struct runner* r, struct cell* c, int timer) {
 
-  struct engine *e = r->e;
-  struct space *s = e->s;
+  struct engine* e = r->e;
+  struct space* s = e->s;
 
-  struct sink *sinks = s->sinks;
+  struct sink* sinks = s->sinks;
   const size_t nr_sink = s->nr_sinks;
 #ifdef WITH_MPI
   error("MPI is not implemented yet for sink particles.");
 #endif
 
-  struct sink *cell_sinks = c->sinks.parts;
+  struct sink* cell_sinks = c->sinks.parts;
 
   /* Early abort?
    * (We only want cells for which we drifted the sink as these are
@@ -292,7 +292,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *restrict cp = c->progeny[k];
+        struct cell* restrict cp = c->progeny[k];
 
         runner_do_sinks_sink_swallow(r, cp, 0);
       }
@@ -306,7 +306,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_cell_sinks; k++) {
 
       /* Get a handle on the part. */
-      struct sink *const cell_sp = &cell_sinks[k];
+      struct sink* const cell_sp = &cell_sinks[k];
 
       /* Ignore inhibited particles (they have already been removed!) */
       if (sink_is_inhibited(cell_sp, e)) continue;
@@ -333,7 +333,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
         for (size_t i = 0; i < nr_sink; ++i) {
 
           /* Get a handle on the bpart. */
-          struct sink *sp = &sinks[i];
+          struct sink* sp = &sinks[i];
 
           if (sp->id == sink_id) {
 
@@ -403,7 +403,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
+void runner_do_sinks_sink_swallow_self(struct runner* r, struct cell* c,
                                        int timer) {
 #ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
   return;
@@ -426,13 +426,13 @@ void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
  * @param cj Second #cell.
  * @param timer Are we timing this?
  */
-void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
-                                       struct cell *cj, int timer) {
+void runner_do_sinks_sink_swallow_pair(struct runner* r, struct cell* ci,
+                                       struct cell* cj, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
   return;
 #endif
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != e->nodeID && cj->nodeID != e->nodeID)
@@ -456,24 +456,24 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
  * @param p The #part.
  * @param xp The #xpart data of the particle p.
  */
-void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
-                                           struct part *restrict p,
-                                           struct xpart *restrict xp) {
-  struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+void runner_do_prepare_part_sink_formation(struct runner* r, struct cell* c,
+                                           struct part* restrict p,
+                                           struct xpart* restrict xp) {
+  struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
-  const struct sink_props *sink_props = e->sink_properties;
+  const struct sink_props* sink_props = e->sink_properties;
   const int count = c->hydro.count;
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
+  struct part* restrict parts = c->hydro.parts;
+  struct xpart* restrict xparts = c->hydro.xparts;
 
   /* Loop over all particles to find the neighbours within r_acc. Then,
      compute all quantities you need.  */
   for (int i = 0; i < count; i++) {
 
     /*Get a handle on the part */
-    struct part *restrict pi = &parts[i];
-    struct xpart *restrict xpi = &xparts[i];
+    struct part* restrict pi = &parts[i];
+    struct xpart* restrict xpi = &xparts[i];
 
     /* Compute the quantities required to later decide to form a sink or not. */
     sink_prepare_part_sink_formation_gas_criteria(e, p, xp, pi, xpi, cosmo,
@@ -483,12 +483,12 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
   /* Check that we are not forming a sink in the accretion radius of another
      one. The new sink may be swallowed by the older one.) */
   const int scount = c->sinks.count;
-  struct sink *restrict sinks = c->sinks.parts;
+  struct sink* restrict sinks = c->sinks.parts;
 
   for (int i = 0; i < scount; i++) {
 
     /* Get a hold of the ith sinks in ci. */
-    struct sink *restrict si = &sinks[i];
+    struct sink* restrict si = &sinks[i];
 
     /* Compute the quantities required to later decide to form a sink or not. */
     sink_prepare_part_sink_formation_sink_criteria(e, p, xp, si, with_cosmology,

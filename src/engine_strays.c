@@ -74,15 +74,15 @@
  * gparts, i.e. the received particles have correct linkeage.
  */
 void engine_exchange_strays(
-    struct engine *e, const size_t offset_parts, const int *restrict ind_part,
-    size_t *Npart, const size_t offset_gparts, const int *restrict ind_gpart,
-    size_t *Ngpart, const size_t offset_sparts, const int *restrict ind_spart,
-    size_t *Nspart, const size_t offset_bparts, const int *restrict ind_bpart,
-    size_t *Nbpart, const size_t offset_sinks, const int *restrict ind_sink,
-    size_t *Nsink) {
+    struct engine* e, const size_t offset_parts, const int* restrict ind_part,
+    size_t* Npart, const size_t offset_gparts, const int* restrict ind_gpart,
+    size_t* Ngpart, const size_t offset_sparts, const int* restrict ind_spart,
+    size_t* Nspart, const size_t offset_bparts, const int* restrict ind_bpart,
+    size_t* Nbpart, const size_t offset_sinks, const int* restrict ind_sink,
+    size_t* Nsink) {
 
 #ifdef WITH_MPI
-  struct space *s = e->s;
+  struct space* s = e->s;
   ticks tic = getticks();
 
   /* Re-set the proxies. */
@@ -353,11 +353,11 @@ void engine_exchange_strays(
   /* Reallocate the particle arrays if necessary */
   if (offset_parts + count_parts_in > s->size_parts) {
     s->size_parts = (offset_parts + count_parts_in) * engine_parts_size_grow;
-    struct part *parts_new = NULL;
-    struct xpart *xparts_new = NULL;
-    if (swift_memalign("parts", (void **)&parts_new, part_align,
+    struct part* parts_new = NULL;
+    struct xpart* xparts_new = NULL;
+    if (swift_memalign("parts", (void**)&parts_new, part_align,
                        sizeof(struct part) * s->size_parts) != 0 ||
-        swift_memalign("xparts", (void **)&xparts_new, xpart_align,
+        swift_memalign("xparts", (void**)&xparts_new, xpart_align,
                        sizeof(struct xpart) * s->size_parts) != 0)
       error("Failed to allocate new part data.");
     memcpy(parts_new, s->parts, sizeof(struct part) * offset_parts);
@@ -377,8 +377,8 @@ void engine_exchange_strays(
 
   if (offset_sparts + count_sparts_in > s->size_sparts) {
     s->size_sparts = (offset_sparts + count_sparts_in) * engine_parts_size_grow;
-    struct spart *sparts_new = NULL;
-    if (swift_memalign("sparts", (void **)&sparts_new, spart_align,
+    struct spart* sparts_new = NULL;
+    if (swift_memalign("sparts", (void**)&sparts_new, spart_align,
                        sizeof(struct spart) * s->size_sparts) != 0)
       error("Failed to allocate new spart data.");
     memcpy(sparts_new, s->sparts, sizeof(struct spart) * offset_sparts);
@@ -395,8 +395,8 @@ void engine_exchange_strays(
 
   if (offset_bparts + count_bparts_in > s->size_bparts) {
     s->size_bparts = (offset_bparts + count_bparts_in) * engine_parts_size_grow;
-    struct bpart *bparts_new = NULL;
-    if (swift_memalign("bparts", (void **)&bparts_new, bpart_align,
+    struct bpart* bparts_new = NULL;
+    if (swift_memalign("bparts", (void**)&bparts_new, bpart_align,
                        sizeof(struct bpart) * s->size_bparts) != 0)
       error("Failed to allocate new bpart data.");
     memcpy(bparts_new, s->bparts, sizeof(struct bpart) * offset_bparts);
@@ -413,8 +413,8 @@ void engine_exchange_strays(
 
   if (offset_sinks + count_sinks_in > s->size_sinks) {
     s->size_sinks = (offset_sinks + count_sinks_in) * engine_parts_size_grow;
-    struct sink *sinks_new = NULL;
-    if (swift_memalign("sinks", (void **)&sinks_new, sink_align,
+    struct sink* sinks_new = NULL;
+    if (swift_memalign("sinks", (void**)&sinks_new, sink_align,
                        sizeof(struct sink) * s->size_sinks) != 0)
       error("Failed to allocate new sink data.");
     memcpy(sinks_new, s->sinks, sizeof(struct sink) * offset_sinks);
@@ -431,8 +431,8 @@ void engine_exchange_strays(
 
   if (offset_gparts + count_gparts_in > s->size_gparts) {
     s->size_gparts = (offset_gparts + count_gparts_in) * engine_parts_size_grow;
-    struct gpart *gparts_new = NULL;
-    if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
+    struct gpart* gparts_new = NULL;
+    if (swift_memalign("gparts", (void**)&gparts_new, gpart_align,
                        sizeof(struct gpart) * s->size_gparts) != 0)
       error("Failed to allocate new gpart data.");
     memcpy(gparts_new, s->gparts, sizeof(struct gpart) * offset_gparts);
@@ -563,7 +563,7 @@ void engine_exchange_strays(
         reqs_in[pid + 4] == MPI_REQUEST_NULL &&
         reqs_in[pid + 5] == MPI_REQUEST_NULL) {
       /* Copy the particle data to the part/xpart/gpart arrays. */
-      struct proxy *prox = &e->proxies[pid / MPI_REQUEST_NUMBER_PARTICLE_TYPES];
+      struct proxy* prox = &e->proxies[pid / MPI_REQUEST_NUMBER_PARTICLE_TYPES];
       memcpy(&s->parts[offset_parts + count_parts], prox->parts_in,
              sizeof(struct part) * prox->nr_parts_in);
       memcpy(&s->xparts[offset_parts + count_parts], prox->xparts_in,
@@ -579,10 +579,10 @@ void engine_exchange_strays(
 
 #ifdef WITH_CSDS
       if (e->policy & engine_policy_csds) {
-        struct part *parts = &s->parts[offset_parts + count_parts];
-        struct xpart *xparts = &s->xparts[offset_parts + count_parts];
-        struct spart *sparts = &s->sparts[offset_sparts + count_sparts];
-        struct gpart *gparts = &s->gparts[offset_gparts + count_gparts];
+        struct part* parts = &s->parts[offset_parts + count_parts];
+        struct xpart* xparts = &s->xparts[offset_parts + count_parts];
+        struct spart* sparts = &s->sparts[offset_sparts + count_sparts];
+        struct gpart* gparts = &s->gparts[offset_gparts + count_gparts];
 
         /* Log the gas particles */
         csds_log_parts(e->csds, parts, xparts, prox->nr_parts_in, e,
@@ -619,25 +619,25 @@ void engine_exchange_strays(
 
       /* Re-link the gparts. */
       for (int kk = 0; kk < prox->nr_gparts_in; kk++) {
-        struct gpart *gp = &s->gparts[offset_gparts + count_gparts + kk];
+        struct gpart* gp = &s->gparts[offset_gparts + count_gparts + kk];
 
         if (gp->type == swift_type_gas) {
-          struct part *p =
+          struct part* p =
               &s->parts[offset_parts + count_parts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->parts - p;
           p->gpart = gp;
         } else if (gp->type == swift_type_stars) {
-          struct spart *sp =
+          struct spart* sp =
               &s->sparts[offset_sparts + count_sparts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->sparts - sp;
           sp->gpart = gp;
         } else if (gp->type == swift_type_black_hole) {
-          struct bpart *bp =
+          struct bpart* bp =
               &s->bparts[offset_bparts + count_bparts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->bparts - bp;
           bp->gpart = gp;
         } else if (gp->type == swift_type_sink) {
-          struct sink *sink =
+          struct sink* sink =
               &s->sinks[offset_sinks + count_sinks - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->sinks - sink;
           sink->gpart = gp;

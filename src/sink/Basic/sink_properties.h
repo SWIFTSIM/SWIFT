@@ -70,10 +70,10 @@ struct sink_props {
  * @param with_feedback Are we running with feedback?
  */
 INLINE static void sink_props_init(
-    struct sink_props *sp, struct feedback_props *fp,
-    const struct phys_const *phys_const, const struct unit_system *us,
-    struct swift_params *params, const struct hydro_props *hydro_props,
-    const struct cosmology *cosmo, const int with_feedback) {
+    struct sink_props* sp, struct feedback_props* fp,
+    const struct phys_const* phys_const, const struct unit_system* us,
+    struct swift_params* params, const struct hydro_props* hydro_props,
+    const struct cosmology* cosmo, const int with_feedback) {
 
   /* We don't use a fixed cutoff radius in this model. This property must always
    * be present, as we use it to skip smoothing length iterations in
@@ -126,9 +126,9 @@ INLINE static void sink_props_init(
  * @param props the sink properties struct
  * @param stream the file stream
  */
-INLINE static void sink_struct_dump(const struct sink_props *props,
-                                    FILE *stream) {
-  restart_write_blocks((void *)props, sizeof(struct sink_props), 1, stream,
+INLINE static void sink_struct_dump(const struct sink_props* props,
+                                    FILE* stream) {
+  restart_write_blocks((void*)props, sizeof(struct sink_props), 1, stream,
                        "sink props", "Sink props");
 }
 
@@ -139,9 +139,9 @@ INLINE static void sink_struct_dump(const struct sink_props *props,
  * @param props the sink properties struct
  * @param stream the file stream
  */
-INLINE static void sink_struct_restore(const struct sink_props *props,
-                                       FILE *stream) {
-  restart_read_blocks((void *)props, sizeof(struct sink_props), 1, stream, NULL,
+INLINE static void sink_struct_restore(const struct sink_props* props,
+                                       FILE* stream) {
+  restart_read_blocks((void*)props, sizeof(struct sink_props), 1, stream, NULL,
                       "Sink props");
 }
 

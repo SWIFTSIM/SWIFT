@@ -45,7 +45,7 @@ extern int engine_rank;
  * @param ics Pointer to the struct
  * @param params The Swift parameter set
  */
-void ic_info_init(struct ic_info *ics, struct swift_params *params) {
+void ic_info_init(struct ic_info* ics, struct swift_params* params) {
 
   /* Initially we have no file image */
   ics->file_image_length = 0;
@@ -61,7 +61,7 @@ void ic_info_init(struct ic_info *ics, struct swift_params *params) {
  *
  * @param ics Pointer to the struct
  */
-void ic_info_clean(struct ic_info *ics) {
+void ic_info_clean(struct ic_info* ics) {
 
   /* Deallocate file image, if it exists */
   if (ics->file_image_data) {
@@ -77,7 +77,7 @@ void ic_info_clean(struct ic_info *ics) {
  * @param ics Pointer to the struct
  * @param stream The file to write to
  */
-void ic_info_struct_dump(struct ic_info *ics, FILE *stream) {
+void ic_info_struct_dump(struct ic_info* ics, FILE* stream) {
 
   /* Write the struct */
   restart_write_blocks(ics, sizeof(struct ic_info), 1, stream, "ic_info",
@@ -96,7 +96,7 @@ void ic_info_struct_dump(struct ic_info *ics, FILE *stream) {
  * @param ics Pointer to the struct
  * @param stream The file to read from
  */
-void ic_info_struct_restore(struct ic_info *ics, FILE *stream) {
+void ic_info_struct_restore(struct ic_info* ics, FILE* stream) {
 
   /* Read in the struct */
   restart_read_blocks(ics, sizeof(struct ic_info), 1, stream, NULL,
@@ -116,7 +116,7 @@ void ic_info_struct_restore(struct ic_info *ics, FILE *stream) {
  * @param ics Pointer to the struct
  * @param root The root rank for the broadcast operation
  */
-void ic_info_struct_broadcast(struct ic_info *ics, int root) {
+void ic_info_struct_broadcast(struct ic_info* ics, int root) {
 
 #ifdef WITH_MPI
 
@@ -144,7 +144,7 @@ void ic_info_struct_broadcast(struct ic_info *ics, int root) {
  * @param ics Pointer to the struct
  * @param file_id The HDF5 file (or group) to write to
  */
-void ic_info_read_hdf5(struct ic_info *ics, hid_t file_id) {
+void ic_info_read_hdf5(struct ic_info* ics, hid_t file_id) {
 
   /* Check that the named group exists as a link in the ICs file */
   if (H5Lexists(file_id, ics->group_name, H5P_DEFAULT) > 0) {
@@ -172,7 +172,7 @@ void ic_info_read_hdf5(struct ic_info *ics, hid_t file_id) {
  * @param ics Pointer to the struct
  * @param file_id The HDF5 file (or group) to read from
  */
-void ic_info_write_hdf5(struct ic_info *ics, hid_t file_id) {
+void ic_info_write_hdf5(struct ic_info* ics, hid_t file_id) {
 
   if (ics->file_image_data) {
     blob_to_hdf5_object(ics->file_image_length, ics->file_image_data, file_id,

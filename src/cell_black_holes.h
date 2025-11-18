@@ -40,40 +40,40 @@ struct cell_black_holes {
 #endif
 
     /*! Pointer to the #bpart data. */
-    struct bpart *parts;
+    struct bpart* parts;
 
     /*! The drift task for bparts */
-    struct task *drift;
+    struct task* drift;
 
     /*! Implicit tasks marking the entry of the BH physics block of tasks */
-    struct task *black_holes_in;
+    struct task* black_holes_in;
 
     /*! Implicit tasks marking the exit of the BH physics block of tasks */
-    struct task *black_holes_out;
+    struct task* black_holes_out;
 
     /*! The black hole ghost task itself */
-    struct task *density_ghost;
+    struct task* density_ghost;
 
     /*! The ghost tasks related to BH swallowing */
-    struct task *swallow_ghost_1;
-    struct task *swallow_ghost_2;
-    struct task *swallow_ghost_3;
+    struct task* swallow_ghost_1;
+    struct task* swallow_ghost_2;
+    struct task* swallow_ghost_3;
 
     /*! Linked list of the tasks computing this cell's BH density. */
-    struct link *density;
+    struct link* density;
 
     /*! Linked list of the tasks computing this cell's BH swallowing and
      * merging. */
-    struct link *swallow;
+    struct link* swallow;
 
     /*! Linked list of the tasks processing the particles to swallow */
-    struct link *do_gas_swallow;
+    struct link* do_gas_swallow;
 
     /*! Linked list of the tasks processing the particles to swallow */
-    struct link *do_bh_swallow;
+    struct link* do_bh_swallow;
 
     /*! Linked list of the tasks computing this cell's BH feedback. */
-    struct link *feedback;
+    struct link* feedback;
 
     /*! Last (integer) time the cell's bpart were drifted forward in time. */
     integertime_t ti_old_part;

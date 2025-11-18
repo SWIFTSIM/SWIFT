@@ -44,11 +44,11 @@
  * @param clear_sorts Should we clear the sort flag and hence trigger a sort ?
  * @param timer Are we timing this ?
  */
-void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
+void runner_do_recv_part(struct runner* r, struct cell* c, int clear_sorts,
                          int timer) {
 #ifdef WITH_MPI
 
-  struct part *restrict parts = c->hydro.parts;
+  struct part* restrict parts = c->hydro.parts;
   const size_t nr_parts = c->hydro.count;
   const integertime_t ti_current = r->e->ti_current;
   const timebin_t max_active_bin = r->e->max_active_bin;
@@ -150,11 +150,11 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
+void runner_do_recv_gpart(struct runner* r, struct cell* c, int timer) {
 
 #ifdef WITH_MPI
 
-  const struct gpart_foreign *restrict gparts_foreign = c->grav.parts_foreign;
+  const struct gpart_foreign* restrict gparts_foreign = c->grav.parts_foreign;
   const size_t nr_gparts = c->grav.count;
   const integertime_t ti_current = r->e->ti_current;
 
@@ -222,15 +222,15 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
  * @param clear_sorts Should we clear the sort flag and hence trigger a sort ?
  * @param timer Are we timing this ?
  */
-void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
+void runner_do_recv_spart(struct runner* r, struct cell* c, int clear_sorts,
                           int timer) {
 
 #ifdef WITH_MPI
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
   const int with_rt = (e->policy & engine_policy_rt);
   const integertime_t ti_current = e->ti_current;
-  struct spart *restrict sparts = c->stars.parts;
+  struct spart* restrict sparts = c->stars.parts;
   const size_t nr_sparts = c->stars.count;
 
   TIMER_TIC;
@@ -316,12 +316,12 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
  * @param clear_sorts Should we clear the sort flag and hence trigger a sort ?
  * @param timer Are we timing this ?
  */
-void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
+void runner_do_recv_bpart(struct runner* r, struct cell* c, int clear_sorts,
                           int timer) {
 
 #ifdef WITH_MPI
 
-  struct bpart *restrict bparts = c->black_holes.parts;
+  struct bpart* restrict bparts = c->black_holes.parts;
   const size_t nr_bparts = c->black_holes.count;
   const integertime_t ti_current = r->e->ti_current;
   const timebin_t max_active_bin = r->e->max_active_bin;

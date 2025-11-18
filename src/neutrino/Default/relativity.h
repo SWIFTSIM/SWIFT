@@ -26,7 +26,7 @@
  * @param a Scale-factor
  * @param c Speed of light
  */
-INLINE static float relativistic_drift_factor(const float *v, float a,
+INLINE static float relativistic_drift_factor(const float* v, float a,
                                               float c) {
   const float v2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
   const float ac = a * c;

@@ -40,68 +40,68 @@ struct cell_hydro {
 #endif
 
     /*! Pointer to the #part data. */
-    struct part *parts;
+    struct part* parts;
 
     /*! Pointer to the #xpart data. */
-    struct xpart *xparts;
+    struct xpart* xparts;
 
     /*! Pointer for the sorted indices. */
-    struct sort_entry *sort;
+    struct sort_entry* sort;
 
     /*! Super cell, i.e. the highest-level parent cell that has a hydro
      * pair/self tasks */
-    struct cell *super;
+    struct cell* super;
 
     /*! The task computing this cell's sorts. */
-    struct task *sorts;
+    struct task* sorts;
 
     /*! The drift task for parts */
-    struct task *drift;
+    struct task* drift;
 
     /*! Linked list of the tasks computing this cell's hydro density. */
-    struct link *density;
+    struct link* density;
 
     /* Linked list of the tasks computing this cell's hydro gradients. */
-    struct link *gradient;
+    struct link* gradient;
 
     /*! Linked list of the tasks computing this cell's hydro forces. */
-    struct link *force;
+    struct link* force;
 
     /*! Linked list of the tasks computing this cell's limiter. */
-    struct link *limiter;
+    struct link* limiter;
 
     /*! Dependency implicit task for the ghost  (in->ghost->out)*/
-    struct task *ghost_in;
+    struct task* ghost_in;
 
     /*! Dependency implicit task for the ghost  (in->ghost->out)*/
-    struct task *ghost_out;
+    struct task* ghost_out;
 
     /*! The ghost task itself */
-    struct task *ghost;
+    struct task* ghost;
 
     /*! The hydro ghost task related to kinetic feedback */
-    struct task *prep1_ghost;
+    struct task* prep1_ghost;
 
     /*! The extra ghost task for complex hydro schemes */
-    struct task *extra_ghost;
+    struct task* extra_ghost;
 
     /*! The task to end the force calculation */
-    struct task *end_force;
+    struct task* end_force;
 
     /*! Dependency implicit task for cooling (in->cooling->out) */
-    struct task *cooling_in;
+    struct task* cooling_in;
 
     /*! Dependency implicit task for cooling (in->cooling->out) */
-    struct task *cooling_out;
+    struct task* cooling_out;
 
     /*! Task for cooling */
-    struct task *cooling;
+    struct task* cooling;
 
     /*! Task for star formation */
-    struct task *star_formation;
+    struct task* star_formation;
 
     /*! Task for sorting the stars again after a SF event */
-    struct task *stars_resort;
+    struct task* stars_resort;
 
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;

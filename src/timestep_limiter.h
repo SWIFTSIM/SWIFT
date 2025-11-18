@@ -32,8 +32,8 @@
  * @param xp The #xpart.
  */
 __attribute__((always_inline)) INLINE static void
-timestep_limiter_prepare_force(struct part *restrict p,
-                               struct xpart *restrict xp) {
+timestep_limiter_prepare_force(struct part* restrict p,
+                               struct xpart* restrict xp) {
 
   p->limiter_data.min_ngb_time_bin = num_time_bins + 1;
 }
@@ -44,7 +44,7 @@ timestep_limiter_prepare_force(struct part *restrict p,
  * @param p The #part.
  */
 __attribute__((always_inline)) INLINE static void timestep_limiter_end_force(
-    struct part *restrict p) {
+    struct part* restrict p) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->limiter_data.min_ngb_time_bin == 0)
     error("Minimal time-bin of neighbours is 0");
@@ -62,10 +62,10 @@ __attribute__((always_inline)) INLINE static void timestep_limiter_end_force(
  * @return The updated integer end-of-step of the particle.
  */
 __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
-    struct part *restrict p, struct xpart *restrict xp,
-    const struct engine *e) {
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct engine* e) {
 
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;

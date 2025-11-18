@@ -53,7 +53,7 @@
 struct profiler prof;
 
 /*  Usage string. */
-static const char *const fof_usage[] = {
+static const char* const fof_usage[] = {
     "fof [options] [[--] param-file]",
     "fof [options] param-file",
     "fof_mpi [options] [[--] param-file]",
@@ -63,14 +63,14 @@ static const char *const fof_usage[] = {
 
 /* Function to handle multiple -P arguments. */
 struct cmdparams {
-  const char *param[PARSER_MAX_NO_OF_PARAMS];
+  const char* param[PARSER_MAX_NO_OF_PARAMS];
   int nparam;
 };
 
-static int handle_cmdparam(struct argparse *self,
-                           const struct argparse_option *opt) {
-  struct cmdparams *cmdps = (struct cmdparams *)opt->data;
-  cmdps->param[cmdps->nparam] = *(char **)opt->value;
+static int handle_cmdparam(struct argparse* self,
+                           const struct argparse_option* opt) {
+  struct cmdparams* cmdps = (struct cmdparams*)opt->data;
+  cmdps->param[cmdps->nparam] = *(char**)opt->value;
   cmdps->nparam++;
   return 1;
 }
@@ -79,7 +79,7 @@ static int handle_cmdparam(struct argparse *self,
  * @brief Main routine that loads a few particles and generates some output.
  *
  */
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   struct clocks_time tic, toc;
   struct engine e;
@@ -88,17 +88,17 @@ int main(int argc, char *argv[]) {
    * scope.  */
   struct cosmology cosmo;
   struct pm_mesh mesh;
-  struct gpart *gparts = NULL;
+  struct gpart* gparts = NULL;
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
   struct fof_props fof_properties;
   struct neutrino_props neutrino_properties;
-  struct part *parts = NULL;
+  struct part* parts = NULL;
   struct phys_const prog_const;
   struct space s;
-  struct spart *sparts = NULL;
-  struct sink *sinks = NULL;
-  struct bpart *bparts = NULL;
+  struct spart* sparts = NULL;
+  struct sink* sinks = NULL;
+  struct bpart* bparts = NULL;
   struct unit_system us;
   struct ic_info ics_metadata;
 
@@ -151,14 +151,14 @@ int main(int argc, char *argv[]) {
   int with_hydro = 0;
   int verbose = 0;
   int nr_threads = 1;
-  char *output_parameters_filename = NULL;
-  char *cpufreqarg = NULL;
-  char *param_filename = NULL;
+  char* output_parameters_filename = NULL;
+  char* cpufreqarg = NULL;
+  char* param_filename = NULL;
   unsigned long long cpufreq = 0;
   struct cmdparams cmdps;
   cmdps.nparam = 0;
   cmdps.param[0] = NULL;
-  char *buffer = NULL;
+  char* buffer = NULL;
 
   /* Parse the command-line parameters. */
   struct argparse_option options[] = {
@@ -210,7 +210,7 @@ int main(int argc, char *argv[]) {
   argparse_describe(&argparse, "\nParameters:",
                     "\nSee the file examples/parameter_example.yml for an "
                     "example of parameter file.");
-  int nargs = argparse_parse(&argparse, argc, (const char **)argv);
+  int nargs = argparse_parse(&argparse, argc, (const char**)argv);
 
   /* Need a parameter file. */
   if (nargs != 1) {
@@ -338,8 +338,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Read the parameter file. */
-  struct swift_params *params =
-      (struct swift_params *)malloc(sizeof(struct swift_params));
+  struct swift_params* params =
+      (struct swift_params*)malloc(sizeof(struct swift_params));
   if (params == NULL) error("Error allocating memory for the parameter file.");
   if (myrank == 0) {
     message("Reading runtime parameters from file '%s'", param_filename);
@@ -362,15 +362,15 @@ int main(int argc, char *argv[]) {
   /* "Read" the Select Output file - this should actually do nothing, but
    * we need to mock the struct up for passing to `engine_init` */
 
-  struct output_options *output_options =
-      (struct output_options *)malloc(sizeof(struct output_options));
+  struct output_options* output_options =
+      (struct output_options*)malloc(sizeof(struct output_options));
   output_options_init(params, myrank, output_options);
 
   /* Check that we can write the snapshots by testing if the output
    * directory exists and is searchable and writable. */
   char basename[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(params, "Snapshots:basename", basename);
-  const char *dirp = dirname(basename);
+  const char* dirp = dirname(basename);
   if (access(dirp, W_OK | X_OK) != 0) {
     error("Cannot write snapshots in directory %s (%s)", dirp, strerror(errno));
   }

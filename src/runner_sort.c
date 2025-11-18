@@ -44,7 +44,7 @@ const int sort_stack_size = 10;
  * @param c The top-level cell to run on.
  * @param timer Are we timing this?
  */
-void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer) {
+void runner_do_stars_resort(struct runner* r, struct cell* c, const int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Task must be run locally!");
@@ -67,7 +67,7 @@ void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer) {
  * @param sort The entries
  * @param N The number of entries.
  */
-void runner_do_sort_ascending(struct sort_entry *sort, int N) {
+void runner_do_sort_ascending(struct sort_entry* sort, int N) {
 
   struct {
     short int lo, hi;
@@ -169,7 +169,7 @@ void runner_do_sort_ascending(struct sort_entry *sort, int N) {
  * Debugging function. Exists in two flavours: hydro & stars.
  */
 #define RUNNER_CHECK_SORTS(TYPE)                                               \
-  void runner_check_sorts_##TYPE(struct cell *c, int flags) {                  \
+  void runner_check_sorts_##TYPE(struct cell* c, int flags) {                  \
                                                                                \
     if (flags & ~c->TYPE.sorted) error("Inconsistent sort flags (downward)!"); \
     if (c->split)                                                              \
@@ -179,7 +179,7 @@ void runner_do_sort_ascending(struct sort_entry *sort, int N) {
   }
 #else
 #define RUNNER_CHECK_SORTS(TYPE)                                       \
-  void runner_check_sorts_##TYPE(struct cell *c, int flags) {          \
+  void runner_check_sorts_##TYPE(struct cell* c, int flags) {          \
     error("Calling debugging code without debugging flag activated."); \
   }
 #endif
@@ -200,14 +200,14 @@ RUNNER_CHECK_SORTS(stars)
  * @param clock Flag indicating whether to record the timing or not, needed
  *      for recursive calls.
  */
-void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
+void runner_do_hydro_sort(struct runner* r, struct cell* c, int flags,
                           const int cleanup, const int lock,
                           const int rt_requests_sort, const int clock) {
 
-  struct sort_entry *fingers[8];
+  struct sort_entry* fingers[8];
   const int count = c->hydro.count;
-  const struct part *parts = c->hydro.parts;
-  struct xpart *xparts = c->hydro.xparts;
+  const struct part* parts = c->hydro.parts;
+  struct xpart* xparts = c->hydro.xparts;
   float buff[8];
 
   TIMER_TIC;
@@ -248,7 +248,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   runner_check_sorts_hydro(c, c->hydro.sorted);
 
   /* Make sure the sort flags are consistent (upward). */
-  for (struct cell *finger = c->parent; finger != NULL;
+  for (struct cell* finger = c->parent; finger != NULL;
        finger = finger->parent) {
     if (finger->hydro.sorted & ~c->hydro.sorted)
       error("Inconsistent sort flags (upward).");
@@ -330,7 +330,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
           }
 
       /* For each entry in the new sort list. */
-      struct sort_entry *finger = cell_get_hydro_sorts(c, j);
+      struct sort_entry* finger = cell_get_hydro_sorts(c, j);
       for (int ind = 0; ind < count; ind++) {
 
         /* Copy the minimum into the new sort array. */
@@ -352,7 +352,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 
       /* Add a sentinel. */
 
-      struct sort_entry *entries = cell_get_hydro_sorts(c, j);
+      struct sort_entry* entries = cell_get_hydro_sorts(c, j);
       entries[count].d = FLT_MAX;
       entries[count].i = 0;
 
@@ -390,7 +390,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
       const double px[3] = {parts[k].x[0], parts[k].x[1], parts[k].x[2]};
       for (int j = 0; j < 13; j++)
         if (flags & (1 << j)) {
-          struct sort_entry *entries = cell_get_hydro_sorts(c, j);
+          struct sort_entry* entries = cell_get_hydro_sorts(c, j);
           entries[k].i = k;
           entries[k].d = px[0] * runner_shift[j][0] +
                          px[1] * runner_shift[j][1] +
@@ -401,7 +401,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
     /* Add the sentinel and sort. */
     for (int j = 0; j < 13; j++)
       if (flags & (1 << j)) {
-        struct sort_entry *entries = cell_get_hydro_sorts(c, j);
+        struct sort_entry* entries = cell_get_hydro_sorts(c, j);
         entries[count].d = FLT_MAX;
         entries[count].i = 0;
         runner_do_sort_ascending(entries, count);
@@ -413,7 +413,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   /* Verify the sorting. */
   for (int j = 0; j < 13; j++) {
     if (!(flags & (1 << j))) continue;
-    struct sort_entry *finger = cell_get_hydro_sorts(c, j);
+    struct sort_entry* finger = cell_get_hydro_sorts(c, j);
     for (int k = 1; k < count; k++) {
       if (finger[k].d < finger[k - 1].d)
         error("Sorting failed, ascending array.");
@@ -425,7 +425,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   runner_check_sorts_hydro(c, flags);
 
   /* Make sure the sort flags are consistent (upward). */
-  for (struct cell *finger = c->parent; finger != NULL;
+  for (struct cell* finger = c->parent; finger != NULL;
        finger = finger->parent) {
     if (finger->hydro.sorted & ~c->hydro.sorted)
       error("Inconsistent sort flags.");
@@ -458,12 +458,12 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
  * @param clock Flag indicating whether to record the timing or not, needed
  *      for recursive calls.
  */
-void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
+void runner_do_stars_sort(struct runner* r, struct cell* c, int flags,
                           int cleanup, int clock) {
 
-  struct sort_entry *fingers[8];
+  struct sort_entry* fingers[8];
   const int count = c->stars.count;
-  struct spart *sparts = c->stars.parts;
+  struct spart* sparts = c->stars.parts;
   float buff[8];
 
   TIMER_TIC;
@@ -491,7 +491,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
   runner_check_sorts_stars(c, c->stars.sorted);
 
   /* Make sure the sort flags are consistent (upward). */
-  for (struct cell *finger = c->parent; finger != NULL;
+  for (struct cell* finger = c->parent; finger != NULL;
        finger = finger->parent) {
     if (finger->stars.sorted & ~c->stars.sorted)
       error("Inconsistent sort flags (upward).");
@@ -572,7 +572,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
           }
 
       /* For each entry in the new sort list. */
-      struct sort_entry *finger = cell_get_stars_sorts(c, j);
+      struct sort_entry* finger = cell_get_stars_sorts(c, j);
       for (int ind = 0; ind < count; ind++) {
 
         /* Copy the minimum into the new sort array. */
@@ -593,7 +593,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
       } /* Merge. */
 
       /* Add a sentinel. */
-      struct sort_entry *entries = cell_get_stars_sorts(c, j);
+      struct sort_entry* entries = cell_get_stars_sorts(c, j);
       entries[count].d = FLT_MAX;
       entries[count].i = 0;
 
@@ -625,7 +625,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
       const double px[3] = {sparts[k].x[0], sparts[k].x[1], sparts[k].x[2]};
       for (int j = 0; j < 13; j++)
         if (flags & (1 << j)) {
-          struct sort_entry *entries = cell_get_stars_sorts(c, j);
+          struct sort_entry* entries = cell_get_stars_sorts(c, j);
           entries[k].i = k;
           entries[k].d = px[0] * runner_shift[j][0] +
                          px[1] * runner_shift[j][1] +
@@ -636,7 +636,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
     /* Add the sentinel and sort. */
     for (int j = 0; j < 13; j++)
       if (flags & (1 << j)) {
-        struct sort_entry *entries = cell_get_stars_sorts(c, j);
+        struct sort_entry* entries = cell_get_stars_sorts(c, j);
         entries[count].d = FLT_MAX;
         entries[count].i = 0;
         runner_do_sort_ascending(entries, count);
@@ -648,7 +648,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
   /* Verify the sorting. */
   for (int j = 0; j < 13; j++) {
     if (!(flags & (1 << j))) continue;
-    struct sort_entry *finger = cell_get_stars_sorts(c, j);
+    struct sort_entry* finger = cell_get_stars_sorts(c, j);
     for (int k = 1; k < count; k++) {
       if (finger[k].d < finger[k - 1].d)
         error("Sorting failed, ascending array.");
@@ -660,7 +660,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
   runner_check_sorts_stars(c, flags);
 
   /* Make sure the sort flags are consistent (upward). */
-  for (struct cell *finger = c->parent; finger != NULL;
+  for (struct cell* finger = c->parent; finger != NULL;
        finger = finger->parent) {
     if (finger->stars.sorted & ~c->stars.sorted)
       error("Inconsistent sort flags.");
@@ -686,7 +686,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
  * @param r the #runner.
  * @param c the #cell.
  */
-void runner_do_all_hydro_sort(struct runner *r, struct cell *c) {
+void runner_do_all_hydro_sort(struct runner* r, struct cell* c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank) error("Function called on a foreign cell!");
@@ -731,7 +731,7 @@ void runner_do_all_hydro_sort(struct runner *r, struct cell *c) {
  * @param r the #runner.
  * @param c the #cell.
  */
-void runner_do_all_stars_sort(struct runner *r, struct cell *c) {
+void runner_do_all_stars_sort(struct runner* r, struct cell* c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank) error("Function called on a foreign cell!");

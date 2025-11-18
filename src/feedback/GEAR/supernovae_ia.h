@@ -23,40 +23,40 @@
 #include "stellar_evolution.h"
 #include "stellar_evolution_struct.h"
 
-void supernovae_ia_print(const struct supernovae_ia *snia);
-int supernovae_ia_can_explode(const struct supernovae_ia *snia, float m_low,
+void supernovae_ia_print(const struct supernovae_ia* snia);
+int supernovae_ia_can_explode(const struct supernovae_ia* snia, float m_low,
                               float m_high);
-const float *supernovae_ia_get_yields(const struct supernovae_ia *snia);
+const float* supernovae_ia_get_yields(const struct supernovae_ia* snia);
 float supernovae_ia_get_ejected_mass_processed(
-    const struct supernovae_ia *snia);
-float supernovae_ia_get_companion_fraction(const struct supernovae_ia *snia,
+    const struct supernovae_ia* snia);
+float supernovae_ia_get_companion_fraction(const struct supernovae_ia* snia,
                                            float m1, float m2,
                                            int companion_type);
-float supernovae_ia_get_number_per_unit_mass(const struct supernovae_ia *snia,
+float supernovae_ia_get_number_per_unit_mass(const struct supernovae_ia* snia,
                                              float m1, float m2);
 
-void supernovae_ia_read_yields(struct supernovae_ia *snia,
-                               struct swift_params *params,
-                               const struct stellar_model *sm,
-                               const char *filename);
+void supernovae_ia_read_yields(struct supernovae_ia* snia,
+                               struct swift_params* params,
+                               const struct stellar_model* sm,
+                               const char* filename);
 
-void supernovae_ia_init_companion(struct supernovae_ia *snia);
+void supernovae_ia_init_companion(struct supernovae_ia* snia);
 
-void supernovae_ia_read_from_tables(struct supernovae_ia *snia,
-                                    struct swift_params *params,
-                                    const char *filename);
+void supernovae_ia_read_from_tables(struct supernovae_ia* snia,
+                                    struct swift_params* params,
+                                    const char* filename);
 
-void supernovae_ia_init(struct supernovae_ia *snia,
-                        const struct phys_const *phys_const,
-                        const struct unit_system *us,
-                        struct swift_params *params,
-                        const struct stellar_model *sm);
+void supernovae_ia_init(struct supernovae_ia* snia,
+                        const struct phys_const* phys_const,
+                        const struct unit_system* us,
+                        struct swift_params* params,
+                        const struct stellar_model* sm);
 
-void supernovae_ia_dump(const struct supernovae_ia *snia, FILE *stream,
-                        const struct stellar_model *sm);
+void supernovae_ia_dump(const struct supernovae_ia* snia, FILE* stream,
+                        const struct stellar_model* sm);
 
-void supernovae_ia_restore(struct supernovae_ia *snia, FILE *stream,
-                           const struct stellar_model *sm);
-void supernovae_ia_clean(struct supernovae_ia *snia);
+void supernovae_ia_restore(struct supernovae_ia* snia, FILE* stream,
+                           const struct stellar_model* sm);
+void supernovae_ia_clean(struct supernovae_ia* snia);
 
 #endif  // SWIFT_SUPERNOVAE_IA_GEAR_H

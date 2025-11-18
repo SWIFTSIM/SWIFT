@@ -31,7 +31,7 @@
  * Return -1 and n for x below and above the array edge values respectively.
  */
 INLINE static int find_value_in_monot_incr_array(const float x,
-                                                 const float *array,
+                                                 const float* array,
                                                  const int n) {
 
   int index_mid, index_low = 0, index_high = n;
@@ -70,7 +70,7 @@ INLINE static int find_value_in_monot_incr_array(const float x,
  * Return -1 and n for x below and above the array edge values respectively.
  */
 INLINE static int vertical_find_value_in_monot_incr_array(const float x,
-                                                          const float *array,
+                                                          const float* array,
                                                           const int n_row,
                                                           const int n_col,
                                                           const int j) {

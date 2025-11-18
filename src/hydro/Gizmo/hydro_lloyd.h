@@ -40,7 +40,7 @@
  * @param v Particle velocity array (size 3 or more).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gizmo_lloyd_initialize_particle(float *W, float *Q, float *v) {
+hydro_gizmo_lloyd_initialize_particle(float* W, float* Q, float* v) {
 
   W[0] = 1.0f;
   W[1] = 0.0f;
@@ -66,7 +66,7 @@ hydro_gizmo_lloyd_initialize_particle(float *W, float *Q, float *v) {
  * @param W Primitive variable array (size 5 or more).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gizmo_lloyd_reset_primitive_variables(float *W) {
+hydro_gizmo_lloyd_reset_primitive_variables(float* W) {
 
   W[0] = 1.0f;
   W[1] = 0.0f;
@@ -82,7 +82,7 @@ hydro_gizmo_lloyd_reset_primitive_variables(float *W) {
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gizmo_lloyd_reset_gradients(struct part *restrict p) {
+hydro_gizmo_lloyd_reset_gradients(struct part* restrict p) {
   hydro_gradients_init(p);
 }
 
@@ -93,7 +93,7 @@ hydro_gizmo_lloyd_reset_gradients(struct part *restrict p) {
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_gizmo_lloyd_end_force(
-    struct part *restrict p) {
+    struct part* restrict p) {
 
   p->force.h_dt = 0.0f;
 }
@@ -107,7 +107,7 @@ __attribute__((always_inline)) INLINE static void hydro_gizmo_lloyd_end_force(
  * @param dt Kick time step.
  */
 __attribute__((always_inline)) INLINE static void hydro_gizmo_lloyd_kick(
-    struct part *restrict p, struct xpart *restrict xp, const float dt) {
+    struct part* restrict p, struct xpart* restrict xp, const float dt) {
 
   /* reset conserved variables to safe values */
   p->conserved.mass = 1.;
@@ -133,19 +133,19 @@ __attribute__((always_inline)) INLINE static void hydro_gizmo_lloyd_kick(
 #define hydro_gizmo_lloyd_skip_drift()
 
 __attribute__((always_inline)) INLINE static void
-hydro_gizmo_lloyd_initialize_particle(float *W, float *Q, float *v) {}
+hydro_gizmo_lloyd_initialize_particle(float* W, float* Q, float* v) {}
 
 __attribute__((always_inline)) INLINE static void
-hydro_gizmo_lloyd_reset_primitive_variables(float *W) {}
+hydro_gizmo_lloyd_reset_primitive_variables(float* W) {}
 
 __attribute__((always_inline)) INLINE static void
-hydro_gizmo_lloyd_reset_gradients(struct part *restrict p) {}
+hydro_gizmo_lloyd_reset_gradients(struct part* restrict p) {}
 
 __attribute__((always_inline)) INLINE static void hydro_gizmo_lloyd_end_force(
-    struct part *restrict p) {}
+    struct part* restrict p) {}
 
 __attribute__((always_inline)) INLINE static void hydro_gizmo_lloyd_kick(
-    struct part *restrict p, struct xpart *restrict xp, const float dt) {}
+    struct part* restrict p, struct xpart* restrict xp, const float dt) {}
 
 #endif /* GIZMO_LLOYD_ITERATION */
 

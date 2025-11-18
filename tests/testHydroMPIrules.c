@@ -27,10 +27,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-void print_bytes(void *p, size_t len) {
+void print_bytes(void* p, size_t len) {
   printf("(");
   for (size_t i = 0; i < len; ++i) {
-    printf("%02x", ((unsigned char *)p)[i]);
+    printf("%02x", ((unsigned char*)p)[i]);
     if (i % 4 == 3) printf("|");
   }
   printf(")\n");
@@ -46,8 +46,8 @@ void test(void) {
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
   for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
-    *(((float *)&pi) + i) = (float)random_uniform(0., 2.);
-    *(((float *)&pj) + i) = (float)random_uniform(0., 2.);
+    *(((float*)&pi) + i) = (float)random_uniform(0., 2.);
+    *(((float*)&pj) + i) = (float)random_uniform(0., 2.);
   }
 
   /* Make the particle smoothing length and position reasonable */
@@ -108,7 +108,7 @@ void test(void) {
   runner_iact_nonsym_mhd_gradient(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
 
   /* Check whether pj has been modified */
-  j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));
+  j_not_ok = memcmp((char*)&pj, (char*)&pj2, sizeof(struct part));
 
   if (j_not_ok) {
     printParticle_single(&pj, &xpj);
@@ -124,7 +124,7 @@ void test(void) {
   runner_iact_nonsym_mhd_force(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
 
   /* Check that the particles are the same */
-  j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));
+  j_not_ok = memcmp((char*)&pj, (char*)&pj2, sizeof(struct part));
 
   if (j_not_ok) {
     printParticle_single(&pj, &xpj);
@@ -135,7 +135,7 @@ void test(void) {
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

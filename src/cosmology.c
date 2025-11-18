@@ -61,7 +61,7 @@ const size_t GSL_workspace_size = 100000;
  * @param x_min The mininum of the range of x.
  * @param x_max The maximum of the range of x.
  */
-static INLINE double interp_table(const double *table, const double x,
+static INLINE double interp_table(const double* table, const double x,
                                   const double x_min, const double x_max) {
 
   const double xx =
@@ -96,9 +96,9 @@ static INLINE double interp_table(const double *table, const double x,
  *
  */
 #ifdef HAVE_LIBGSL
-static void invert_table(const double *y_table, const double log_a_begin,
+static void invert_table(const double* y_table, const double log_a_begin,
                          const double delta_y, const double delta_log_a,
-                         double *a_table) {
+                         double* a_table) {
 
   int i_a = 0;
   for (int i_y = 0; i_y < cosmology_table_length; i_y++) {
@@ -201,7 +201,7 @@ __attribute__((const)) static INLINE double E(
  * @param c The current #cosmology.
  * @param a Scale-factor of interest.
  */
-double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
+double cosmology_get_time_since_big_bang(const struct cosmology* c, double a) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (a < c->a_begin) error("Error a can't be smaller than a_begin");
@@ -221,7 +221,7 @@ double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
  * @param phys_const The physical constants in the internal units.
  * @param ti_current The current (integer) time.
  */
-void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
+void cosmology_update(struct cosmology* c, const struct phys_const* phys_const,
                       integertime_t ti_current) {
 
   /* Save the previous state */
@@ -305,9 +305,9 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
  * @param a The scale-factor of interest.
  * @param param The current #cosmology.
  */
-double drift_integrand(double a, void *param) {
+double drift_integrand(double a, void* param) {
 
-  const struct cosmology *c = (const struct cosmology *)param;
+  const struct cosmology* c = (const struct cosmology*)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_r = c->Omega_r + Omega_nu;
   const double Omega_m = c->Omega_cdm + c->Omega_b;
@@ -330,9 +330,9 @@ double drift_integrand(double a, void *param) {
  * @param a The scale-factor of interest.
  * @param param The current #cosmology.
  */
-double gravity_kick_integrand(double a, void *param) {
+double gravity_kick_integrand(double a, void* param) {
 
-  const struct cosmology *c = (const struct cosmology *)param;
+  const struct cosmology* c = (const struct cosmology*)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_r = c->Omega_r + Omega_nu;
   const double Omega_m = c->Omega_cdm + c->Omega_b;
@@ -355,9 +355,9 @@ double gravity_kick_integrand(double a, void *param) {
  * @param a The scale-factor of interest.
  * @param param The current #cosmology.
  */
-double comoving_distance_integrand(double a, void *param) {
+double comoving_distance_integrand(double a, void* param) {
 
-  const struct cosmology *c = (const struct cosmology *)param;
+  const struct cosmology* c = (const struct cosmology*)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_r = c->Omega_r + Omega_nu;
   const double Omega_m = c->Omega_cdm + c->Omega_b;
@@ -380,9 +380,9 @@ double comoving_distance_integrand(double a, void *param) {
  * @param a The scale-factor of interest.
  * @param param The current #cosmology.
  */
-double hydro_kick_integrand(double a, void *param) {
+double hydro_kick_integrand(double a, void* param) {
 
-  const struct cosmology *c = (const struct cosmology *)param;
+  const struct cosmology* c = (const struct cosmology*)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_r = c->Omega_r + Omega_nu;
   const double Omega_m = c->Omega_cdm + c->Omega_b;
@@ -407,9 +407,9 @@ double hydro_kick_integrand(double a, void *param) {
  * @param a The scale-factor of interest.
  * @param param The current #cosmology.
  */
-double hydro_kick_corr_integrand(double a, void *param) {
+double hydro_kick_corr_integrand(double a, void* param) {
 
-  const struct cosmology *c = (const struct cosmology *)param;
+  const struct cosmology* c = (const struct cosmology*)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_r = c->Omega_r + Omega_nu;
   const double Omega_m = c->Omega_cdm + c->Omega_b;
@@ -431,9 +431,9 @@ double hydro_kick_corr_integrand(double a, void *param) {
  * @param a The scale-factor of interest.
  * @param param The current #cosmology.
  */
-double time_integrand(double a, void *param) {
+double time_integrand(double a, void* param) {
 
-  const struct cosmology *c = (const struct cosmology *)param;
+  const struct cosmology* c = (const struct cosmology*)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_r = c->Omega_r + Omega_nu;
   const double Omega_m = c->Omega_cdm + c->Omega_b;
@@ -461,8 +461,8 @@ double time_integrand(double a, void *param) {
  * @param param Neutrino mass y scaled by temperature at redshift of interest.
  * @return The integrand evaluated at x
  */
-double neutrino_density_integrand(double x, void *param) {
-  double y = *(double *)param;
+double neutrino_density_integrand(double x, void* param) {
+  double y = *(double*)param;
   double numerator = x * x * hypot(x, y);
 
   /* Handle overflows */
@@ -484,7 +484,7 @@ double neutrino_density_integrand(double x, void *param) {
  * @param param Neutrino mass y scaled by temperature at redshift of interest.
  * @return The integrand evaluated at w
  */
-double neutrino_density_integrand_transformed(double w, void *param) {
+double neutrino_density_integrand_transformed(double w, void* param) {
   return neutrino_density_integrand(1. / w, param) / (w * w);
 }
 
@@ -500,7 +500,7 @@ double neutrino_density_integrand_transformed(double w, void *param) {
  * @param y Neutrino mass y scaled by temperature at redshift of interest.
  * @return The integral evaluated at y
  */
-double neutrino_density_integrate(gsl_integration_workspace *space, double y) {
+double neutrino_density_integrate(gsl_integration_workspace* space, double y) {
   double intermediate, abserr;
 
   double result = 0;
@@ -529,7 +529,7 @@ double neutrino_density_integrate(gsl_integration_workspace *space, double y) {
  * @param c The cosmology structure
  * @param tol Tolerance in density integral
  */
-void neutrino_find_relativistic_redshift(struct cosmology *c, double tol) {
+void neutrino_find_relativistic_redshift(struct cosmology* c, double tol) {
 
   /* Find the largest neutrino mass */
   double M_max_eV = c->M_nu_eV[0];
@@ -558,7 +558,7 @@ void neutrino_find_relativistic_redshift(struct cosmology *c, double tol) {
 /**
  * @brief Initialise the neutrino density interpolation tables (early and late).
  */
-void cosmology_init_neutrino_tables(struct cosmology *c) {
+void cosmology_init_neutrino_tables(struct cosmology* c) {
 
   /* Skip if we have no massive neutrinos */
   if (c->N_nu == 0) return;
@@ -566,17 +566,17 @@ void cosmology_init_neutrino_tables(struct cosmology *c) {
 #ifdef HAVE_LIBGSL
 
   /* Allocate memory for longer interpolation tables */
-  if (swift_memalign("cosmo.table", (void **)&c->neutrino_density_early_table,
+  if (swift_memalign("cosmo.table", (void**)&c->neutrino_density_early_table,
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
-  if (swift_memalign("cosmo.table", (void **)&c->neutrino_density_late_table,
+  if (swift_memalign("cosmo.table", (void**)&c->neutrino_density_late_table,
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
 
   /* Initalise the GSL workspace */
-  gsl_integration_workspace *space =
+  gsl_integration_workspace* space =
       gsl_integration_workspace_alloc(GSL_workspace_size);
 
   /* Find a safe redshift to start the neutrino density interpolation table */
@@ -633,7 +633,7 @@ void cosmology_init_neutrino_tables(struct cosmology *c) {
 /**
  * @brief Initialise the interpolation tables for the integrals.
  */
-void cosmology_init_tables(struct cosmology *c) {
+void cosmology_init_tables(struct cosmology* c) {
 
 #ifdef HAVE_LIBGSL
 
@@ -642,49 +642,49 @@ void cosmology_init_tables(struct cosmology *c) {
   const double a_end = c->a_end;
 
   /* Allocate memory for the interpolation tables */
-  if (swift_memalign("cosmo.table", (void **)&c->drift_fac_interp_table,
+  if (swift_memalign("cosmo.table", (void**)&c->drift_fac_interp_table,
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
-  if (swift_memalign("cosmo.table", (void **)&c->grav_kick_fac_interp_table,
+  if (swift_memalign("cosmo.table", (void**)&c->grav_kick_fac_interp_table,
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
-  if (swift_memalign("cosmo.table", (void **)&c->hydro_kick_fac_interp_table,
+  if (swift_memalign("cosmo.table", (void**)&c->hydro_kick_fac_interp_table,
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
-  if (swift_memalign("cosmo.table", (void **)&c->hydro_kick_corr_interp_table,
+  if (swift_memalign("cosmo.table", (void**)&c->hydro_kick_corr_interp_table,
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
-  if (swift_memalign("cosmo.table", (void **)&c->time_interp_table,
+  if (swift_memalign("cosmo.table", (void**)&c->time_interp_table,
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
-  if (swift_memalign("cosmo.table", (void **)&c->scale_factor_interp_table,
+  if (swift_memalign("cosmo.table", (void**)&c->scale_factor_interp_table,
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
-  if (swift_memalign("cosmo.table", (void **)&c->comoving_distance_interp_table,
+  if (swift_memalign("cosmo.table", (void**)&c->comoving_distance_interp_table,
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
   if (swift_memalign(
-          "cosmo.table", (void **)&c->comoving_distance_inverse_interp_table,
+          "cosmo.table", (void**)&c->comoving_distance_inverse_interp_table,
           SWIFT_STRUCT_ALIGNMENT, cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
 
   /* Prepare a table of scale factors for the integral bounds */
   const double delta_a =
       (c->log_a_end - c->log_a_begin) / cosmology_table_length;
-  double *a_table = (double *)swift_malloc(
+  double* a_table = (double*)swift_malloc(
       "cosmo.table", cosmology_table_length * sizeof(double));
   for (int i = 0; i < cosmology_table_length; i++)
     a_table[i] = exp(c->log_a_begin + delta_a * (i + 1));
 
   /* Initalise the GSL workspace */
-  gsl_integration_workspace *space =
+  gsl_integration_workspace* space =
       gsl_integration_workspace_alloc(GSL_workspace_size);
 
   double result, abserr;
@@ -854,8 +854,8 @@ void cosmology_init_tables(struct cosmology *c) {
  * @param phys_const The physical constants in the current system of units.
  * @param c The #cosmology to initialise.
  */
-void cosmology_init(struct swift_params *params, const struct unit_system *us,
-                    const struct phys_const *phys_const, struct cosmology *c) {
+void cosmology_init(struct swift_params* params, const struct unit_system* us,
+                    const struct phys_const* phys_const, struct cosmology* c) {
 
   /* Check first for outdated parameter files still giving Omega_m */
   const double test_Omega_m =
@@ -891,8 +891,8 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
 
   /* If there are massive neutrinos, read the masses and degeneracies */
   if (c->N_nu > 0) {
-    c->M_nu_eV = (double *)swift_malloc("Mnu", c->N_nu * sizeof(double));
-    c->deg_nu = (double *)swift_malloc("degnu", c->N_nu * sizeof(double));
+    c->M_nu_eV = (double*)swift_malloc("Mnu", c->N_nu * sizeof(double));
+    c->deg_nu = (double*)swift_malloc("degnu", c->N_nu * sizeof(double));
 
     /* Set default values */
     for (int i = 0; i < c->N_nu; i++) {
@@ -1052,7 +1052,7 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
  *
  * @param c The #cosmology to initialise.
  */
-void cosmology_init_no_cosmo(struct cosmology *c) {
+void cosmology_init_no_cosmo(struct cosmology* c) {
 
   c->Omega_cdm = 0.;
   c->Omega_r = 0.;
@@ -1143,7 +1143,7 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
-double cosmology_get_drift_factor(const struct cosmology *c,
+double cosmology_get_drift_factor(const struct cosmology* c,
                                   const integertime_t ti_start,
                                   const integertime_t ti_end) {
 
@@ -1171,7 +1171,7 @@ double cosmology_get_drift_factor(const struct cosmology *c,
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
-double cosmology_get_grav_kick_factor(const struct cosmology *c,
+double cosmology_get_grav_kick_factor(const struct cosmology* c,
                                       const integertime_t ti_start,
                                       const integertime_t ti_end) {
 
@@ -1200,7 +1200,7 @@ double cosmology_get_grav_kick_factor(const struct cosmology *c,
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
-double cosmology_get_hydro_kick_factor(const struct cosmology *c,
+double cosmology_get_hydro_kick_factor(const struct cosmology* c,
                                        const integertime_t ti_start,
                                        const integertime_t ti_end) {
 
@@ -1229,7 +1229,7 @@ double cosmology_get_hydro_kick_factor(const struct cosmology *c,
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
-double cosmology_get_corr_kick_factor(const struct cosmology *c,
+double cosmology_get_corr_kick_factor(const struct cosmology* c,
                                       const integertime_t ti_start,
                                       const integertime_t ti_end) {
 
@@ -1258,7 +1258,7 @@ double cosmology_get_corr_kick_factor(const struct cosmology *c,
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
-double cosmology_get_therm_kick_factor(const struct cosmology *c,
+double cosmology_get_therm_kick_factor(const struct cosmology* c,
                                        const integertime_t ti_start,
                                        const integertime_t ti_end) {
 
@@ -1285,7 +1285,7 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
  * @param ti_start the (integer) time of the start.
  * @param ti_end the (integer) time of the end.
  */
-double cosmology_get_delta_time(const struct cosmology *c,
+double cosmology_get_delta_time(const struct cosmology* c,
                                 const integertime_t ti_start,
                                 const integertime_t ti_end) {
 
@@ -1313,7 +1313,7 @@ double cosmology_get_delta_time(const struct cosmology *c,
  * @param c The current #cosmology.
  * @param a The scale factor
  */
-double cosmology_get_comoving_distance(const struct cosmology *c,
+double cosmology_get_comoving_distance(const struct cosmology* c,
                                        const double a) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1338,7 +1338,7 @@ double cosmology_get_comoving_distance(const struct cosmology *c,
  * @param r The comoving distance
  * @return The scale factor.
  */
-double cosmology_scale_factor_at_comoving_distance(const struct cosmology *c,
+double cosmology_scale_factor_at_comoving_distance(const struct cosmology* c,
                                                    double r) {
 
   /* Get comoving distance from a_begin to a corresponding to input r */
@@ -1358,7 +1358,7 @@ double cosmology_scale_factor_at_comoving_distance(const struct cosmology *c,
  * @param a The scale factor
  * @return The density parameter
  */
-double cosmology_get_neutrino_density(const struct cosmology *c, double a) {
+double cosmology_get_neutrino_density(const struct cosmology* c, double a) {
 
   if (c->N_nu == 0) return 0.;
 
@@ -1381,7 +1381,7 @@ double cosmology_get_neutrino_density(const struct cosmology *c, double a) {
  * @param a_start the starting scale factor
  * @param a_end the ending scale factor
  */
-double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
+double cosmology_get_delta_time_from_scale_factors(const struct cosmology* c,
                                                    const double a_start,
                                                    const double a_end) {
 
@@ -1415,7 +1415,7 @@ double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
  *
  * @return The time corresponding to c->time_base in internal time units.
  */
-double cosmology_get_timebase(struct cosmology *c,
+double cosmology_get_timebase(struct cosmology* c,
                               const integertime_t ti_current) {
 
 #ifdef HAVE_LIBGSL
@@ -1434,7 +1434,7 @@ double cosmology_get_timebase(struct cosmology *c,
   const double a_end = exp(log_a_end);
 
   /* Initalise the GSL workspace and function */
-  gsl_integration_workspace *space =
+  gsl_integration_workspace* space =
       gsl_integration_workspace_alloc(GSL_workspace_size);
   gsl_function F = {&time_integrand, c};
 
@@ -1463,7 +1463,7 @@ double cosmology_get_timebase(struct cosmology *c,
  * @param t time since the big bang
  * @return The scale factor.
  */
-double cosmology_get_scale_factor(const struct cosmology *c, double t) {
+double cosmology_get_scale_factor(const struct cosmology* c, double t) {
   /* scale factor between time_begin and t */
   const double a =
       interp_table(c->scale_factor_interp_table, t, c->time_interp_table_offset,
@@ -1474,7 +1474,7 @@ double cosmology_get_scale_factor(const struct cosmology *c, double t) {
 /**
  * @brief Prints the #cosmology model to stdout.
  */
-void cosmology_print(const struct cosmology *c) {
+void cosmology_print(const struct cosmology* c) {
 
   const double Omega_m = c->Omega_cdm + c->Omega_b;
   message(
@@ -1507,7 +1507,7 @@ void cosmology_print(const struct cosmology *c) {
           c->universe_age_at_present_day);
 }
 
-void cosmology_clean(struct cosmology *c) {
+void cosmology_clean(struct cosmology* c) {
 
   swift_free("cosmo.table", c->drift_fac_interp_table);
   swift_free("cosmo.table", c->grav_kick_fac_interp_table);
@@ -1526,7 +1526,7 @@ void cosmology_clean(struct cosmology *c) {
 }
 
 #ifdef HAVE_HDF5
-void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
+void cosmology_write_model(hid_t h_grp, const struct cosmology* c) {
 
   io_write_attribute_d(h_grp, "a_beg", c->a_begin);
   io_write_attribute_d(h_grp, "a_end", c->a_end);
@@ -1585,16 +1585,16 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
  * @param cosmology the struct
  * @param stream the file stream
  */
-void cosmology_struct_dump(const struct cosmology *cosmology, FILE *stream) {
-  restart_write_blocks((void *)cosmology, sizeof(struct cosmology), 1, stream,
+void cosmology_struct_dump(const struct cosmology* cosmology, FILE* stream) {
+  restart_write_blocks((void*)cosmology, sizeof(struct cosmology), 1, stream,
                        "cosmology", "cosmology function");
 
   /* Also store the neutrino mass and degeneracy arrays if necessary */
   if (cosmology->N_nu > 0) {
-    restart_write_blocks((double *)cosmology->M_nu_eV, sizeof(double),
+    restart_write_blocks((double*)cosmology->M_nu_eV, sizeof(double),
                          cosmology->N_nu, stream, "cosmology->M_nu_eV",
                          "neutrino masses eV");
-    restart_write_blocks((double *)cosmology->deg_nu, sizeof(double),
+    restart_write_blocks((double*)cosmology->deg_nu, sizeof(double),
                          cosmology->N_nu, stream, "cosmology->deg_nu",
                          "neutrino degeneracies");
   }
@@ -1608,20 +1608,20 @@ void cosmology_struct_dump(const struct cosmology *cosmology, FILE *stream) {
  * @param cosmology the struct
  * @param stream the file stream
  */
-void cosmology_struct_restore(int enabled, struct cosmology *cosmology,
-                              FILE *stream) {
-  restart_read_blocks((void *)cosmology, sizeof(struct cosmology), 1, stream,
+void cosmology_struct_restore(int enabled, struct cosmology* cosmology,
+                              FILE* stream) {
+  restart_read_blocks((void*)cosmology, sizeof(struct cosmology), 1, stream,
                       NULL, "cosmology function");
 
   /* Restore the neutrino mass and degeneracy arrays if necessary */
   if (cosmology->N_nu > 0) {
     cosmology->M_nu_eV =
-        (double *)swift_malloc("Mnu", cosmology->N_nu * sizeof(double));
-    restart_read_blocks((double *)cosmology->M_nu_eV, sizeof(double),
+        (double*)swift_malloc("Mnu", cosmology->N_nu * sizeof(double));
+    restart_read_blocks((double*)cosmology->M_nu_eV, sizeof(double),
                         cosmology->N_nu, stream, NULL, "neutrino masses eV");
     cosmology->deg_nu =
-        (double *)swift_malloc("degnu", cosmology->N_nu * sizeof(double));
-    restart_read_blocks((double *)cosmology->deg_nu, sizeof(double),
+        (double*)swift_malloc("degnu", cosmology->N_nu * sizeof(double));
+    restart_read_blocks((double*)cosmology->deg_nu, sizeof(double),
                         cosmology->N_nu, stream, NULL, "neutrino degeneracies");
   }
 

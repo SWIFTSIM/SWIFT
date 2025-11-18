@@ -41,7 +41,7 @@ enum interpolate_boundary_condition {
  */
 struct interpolation_1d {
   /* Data to interpolate */
-  float *data;
+  float* data;
 
   /* Minimal x */
   float xmin;
@@ -71,8 +71,8 @@ struct interpolation_1d {
  * @param boundary_condition The type of #interpolate_boundary_condition.
  */
 __attribute__((always_inline)) static INLINE void interpolate_1d_init(
-    struct interpolation_1d *interp, float xmin, float xmax, int N,
-    float log_data_xmin, float step_size, int N_data, const float *data,
+    struct interpolation_1d* interp, float xmin, float xmax, int N,
+    float log_data_xmin, float step_size, int N_data, const float* data,
     enum interpolate_boundary_condition boundary_condition) {
 
   /* Save the variables */
@@ -144,7 +144,7 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_init(
  * @return The interpolated value y.
  */
 __attribute__((always_inline)) static INLINE float interpolate_1d(
-    const struct interpolation_1d *interp, float x) {
+    const struct interpolation_1d* interp, float x) {
 
   /* Find indice */
   const float i = (x - interp->xmin) / interp->dx;
@@ -190,7 +190,7 @@ __attribute__((always_inline)) static INLINE float interpolate_1d(
  * @param interp The #interpolation_1d.
  */
 __attribute__((always_inline)) static INLINE void interpolate_1d_print(
-    const struct interpolation_1d *interp) {
+    const struct interpolation_1d* interp) {
 
   message("Interpolation between %g and %g", interp->xmin,
           interp->xmin + interp->dx * interp->N);
@@ -211,7 +211,7 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_print(
  * @param interp The #interpolation_1d.
  */
 __attribute__((always_inline)) static INLINE void interpolate_1d_free(
-    struct interpolation_1d *interp) {
+    struct interpolation_1d* interp) {
 
   /* Free the allocated memory */
   free(interp->data);

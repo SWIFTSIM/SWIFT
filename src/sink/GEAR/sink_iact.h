@@ -45,7 +45,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   /* In order to prevent the formation of two sink particles too close together,
@@ -91,7 +91,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
     const float H) {
 
   /* In order to prevent the formation of two sink particles too close together,
@@ -131,9 +131,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct sink *si, const struct part *pj, const int with_cosmology,
-    const struct cosmology *cosmo, const struct gravity_props *grav_props,
-    const struct sink_props *sink_props, const integertime_t ti_current,
+    struct sink* si, const struct part* pj, const int with_cosmology,
+    const struct cosmology* cosmo, const struct gravity_props* grav_props,
+    const struct sink_props* sink_props, const integertime_t ti_current,
     const double time) {
 
   /* Contribution to the number of neighbours in cutoff radius */
@@ -198,9 +198,9 @@ runner_iact_nonsym_sinks_gas_density(
 __attribute__((always_inline)) INLINE static void
 sink_collect_properties_from_sink(const float r2, const float dx[3],
                                   const float hi, const float hj,
-                                  struct sink *restrict si,
-                                  struct sink *restrict sj,
-                                  const struct gravity_props *grav_props) {
+                                  struct sink* restrict si,
+                                  struct sink* restrict sj,
+                                  const struct gravity_props* grav_props) {
 
   /* Neighbour's (drifted) velocity in the frame of the sink i
    * (we don't include a Hubble term since we are interested in the
@@ -258,10 +258,10 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct sink *restrict si, struct sink *restrict sj,
-    const int with_cosmology, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props,
-    const struct sink_props *sink_properties, const integertime_t ti_current,
+    struct sink* restrict si, struct sink* restrict sj,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const struct gravity_props* grav_props,
+    const struct sink_props* sink_properties, const integertime_t ti_current,
     const double time) {
 
   /* Convert the smoothing length back into a cutoff radius */
@@ -448,10 +448,10 @@ runner_iact_nonsym_sinks_sink_swallow(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_swallow(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct sink *restrict si, struct part *restrict pj,
-    const int with_cosmology, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props,
-    const struct sink_props *sink_properties, const integertime_t ti_current,
+    struct sink* restrict si, struct part* restrict pj,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const struct gravity_props* grav_props,
+    const struct sink_props* sink_properties, const integertime_t ti_current,
     const double time) {
 
   /* Convert the smoothing length back into a cutoff radius */

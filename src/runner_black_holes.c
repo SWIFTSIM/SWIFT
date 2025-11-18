@@ -49,22 +49,22 @@
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
+void runner_do_gas_swallow(struct runner* r, struct cell* c, int timer) {
 
-  struct engine *e = r->e;
-  struct space *s = e->s;
-  const struct black_holes_props *props = e->black_holes_properties;
+  struct engine* e = r->e;
+  struct space* s = e->s;
+  const struct black_holes_props* props = e->black_holes_properties;
   const int use_nibbling = props->use_nibbling;
 
-  struct bpart *bparts = s->bparts;
+  struct bpart* bparts = s->bparts;
   const size_t nr_bpart = s->nr_bparts;
 #ifdef WITH_MPI
-  struct bpart *bparts_foreign = s->bparts_foreign;
+  struct bpart* bparts_foreign = s->bparts_foreign;
   const size_t nr_bparts_foreign = s->nr_bparts_foreign;
 #endif
 
-  struct part *parts = c->hydro.parts;
-  struct xpart *xparts = c->hydro.xparts;
+  struct part* parts = c->hydro.parts;
+  struct xpart* xparts = c->hydro.xparts;
 
   /* Nothing to do here if the cell is foreign and we are nibbling */
   if (c->nodeID != e->nodeID && use_nibbling) {
@@ -83,7 +83,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *restrict cp = c->progeny[k];
+        struct cell* restrict cp = c->progeny[k];
 
         runner_do_gas_swallow(r, cp, 0);
       }
@@ -96,8 +96,8 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
-      struct part *const p = &parts[k];
-      struct xpart *const xp = &xparts[k];
+      struct part* const p = &parts[k];
+      struct xpart* const xp = &xparts[k];
 
       /* Ignore inhibited particles (they have already been removed!) */
       if (part_is_inhibited(p, e)) continue;
@@ -131,7 +131,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
         for (size_t i = 0; i < nr_bpart; ++i) {
 
           /* Get a handle on the bpart. */
-          struct bpart *bp = &bparts[i];
+          struct bpart* bp = &bparts[i];
 
           if (bp->id == BH_id) {
 
@@ -187,7 +187,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
           for (size_t i = 0; i < nr_bparts_foreign; ++i) {
 
             /* Get a handle on the bpart. */
-            struct bpart *bp = &bparts_foreign[i];
+            struct bpart* bp = &bparts_foreign[i];
 
             if (bp->id == BH_id) {
 
@@ -232,7 +232,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_gas_swallow_self(struct runner *r, struct cell *c, int timer) {
+void runner_do_gas_swallow_self(struct runner* r, struct cell* c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
@@ -251,10 +251,10 @@ void runner_do_gas_swallow_self(struct runner *r, struct cell *c, int timer) {
  * @param cj Second #cell.
  * @param timer Are we timing this?
  */
-void runner_do_gas_swallow_pair(struct runner *r, struct cell *ci,
-                                struct cell *cj, int timer) {
+void runner_do_gas_swallow_pair(struct runner* r, struct cell* ci,
+                                struct cell* cj, int timer) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != e->nodeID && cj->nodeID != e->nodeID)
@@ -284,22 +284,22 @@ void runner_do_gas_swallow_pair(struct runner *r, struct cell *ci,
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
+void runner_do_bh_swallow(struct runner* r, struct cell* c, int timer) {
 
-  struct engine *e = r->e;
-  struct space *s = e->s;
+  struct engine* e = r->e;
+  struct space* s = e->s;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const struct black_holes_props *props = e->black_holes_properties;
+  const struct black_holes_props* props = e->black_holes_properties;
   const int use_nibbling = props->use_nibbling;
 
-  struct bpart *bparts = s->bparts;
+  struct bpart* bparts = s->bparts;
   const size_t nr_bpart = s->nr_bparts;
 #ifdef WITH_MPI
-  struct bpart *bparts_foreign = s->bparts_foreign;
+  struct bpart* bparts_foreign = s->bparts_foreign;
   const size_t nr_bparts_foreign = s->nr_bparts_foreign;
 #endif
 
-  struct bpart *cell_bparts = c->black_holes.parts;
+  struct bpart* cell_bparts = c->black_holes.parts;
 
   /* Early abort?
    * (We only want cells for which we drifted the BH as these are
@@ -314,7 +314,7 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *restrict cp = c->progeny[k];
+        struct cell* restrict cp = c->progeny[k];
 
         runner_do_bh_swallow(r, cp, 0);
       }
@@ -328,7 +328,7 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_cell_bparts; k++) {
 
       /* Get a handle on the part. */
-      struct bpart *const cell_bp = &cell_bparts[k];
+      struct bpart* const cell_bp = &cell_bparts[k];
 
       /* Ignore inhibited particles (they have already been removed!) */
       if (bpart_is_inhibited(cell_bp, e)) continue;
@@ -364,7 +364,7 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
         for (size_t i = 0; i < nr_bpart; ++i) {
 
           /* Get a handle on the bpart. */
-          struct bpart *bp = &bparts[i];
+          struct bpart* bp = &bparts[i];
 
           if (bp->id == BH_id) {
 
@@ -425,7 +425,7 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
           for (size_t i = 0; i < nr_bparts_foreign; ++i) {
 
             /* Get a handle on the bpart. */
-            struct bpart *bp = &bparts_foreign[i];
+            struct bpart* bp = &bparts_foreign[i];
 
             if (bp->id == BH_id) {
 
@@ -471,7 +471,7 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_bh_swallow_self(struct runner *r, struct cell *c, int timer) {
+void runner_do_bh_swallow_self(struct runner* r, struct cell* c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
@@ -490,10 +490,10 @@ void runner_do_bh_swallow_self(struct runner *r, struct cell *c, int timer) {
  * @param cj Second #cell.
  * @param timer Are we timing this?
  */
-void runner_do_bh_swallow_pair(struct runner *r, struct cell *ci,
-                               struct cell *cj, int timer) {
+void runner_do_bh_swallow_pair(struct runner* r, struct cell* ci,
+                               struct cell* cj, int timer) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != e->nodeID && cj->nodeID != e->nodeID)

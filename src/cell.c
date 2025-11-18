@@ -149,7 +149,7 @@ struct cell_split_pair cell_split_pairs[13] = {
  *
  * @param c The #cell.
  */
-int cell_get_tree_size(struct cell *c) {
+int cell_get_tree_size(struct cell* c) {
   /* Number of cells in this subtree. */
   int count = 1;
 
@@ -170,7 +170,7 @@ int cell_get_tree_size(struct cell *c) {
  *
  * @return The number of particles linked.
  */
-int cell_link_parts(struct cell *c, struct part *parts) {
+int cell_link_parts(struct cell* c, struct part* parts) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
     error("Linking foreign particles in a local cell!");
@@ -202,7 +202,7 @@ int cell_link_parts(struct cell *c, struct part *parts) {
  *
  * @return The number of particles linked.
  */
-int cell_link_gparts(struct cell *c, struct gpart_foreign *gparts_foreign) {
+int cell_link_gparts(struct cell* c, struct gpart_foreign* gparts_foreign) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
     error("Linking foreign particles in a local cell!");
@@ -235,8 +235,8 @@ int cell_link_gparts(struct cell *c, struct gpart_foreign *gparts_foreign) {
  *
  * @return The number of particles linked.
  */
-int cell_link_fof_gparts(struct cell *c,
-                         struct gpart_fof_foreign *gparts_fof_foreign) {
+int cell_link_fof_gparts(struct cell* c,
+                         struct gpart_fof_foreign* gparts_fof_foreign) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
     error("Linking foreign particles in a local cell!");
@@ -270,7 +270,7 @@ int cell_link_fof_gparts(struct cell *c,
  *
  * @return The number of particles linked.
  */
-int cell_link_sparts(struct cell *c, struct spart *sparts) {
+int cell_link_sparts(struct cell* c, struct spart* sparts) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
     error("Linking foreign particles in a local cell!");
@@ -303,7 +303,7 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
  *
  * @return The number of particles linked.
  */
-int cell_link_bparts(struct cell *c, struct bpart *bparts) {
+int cell_link_bparts(struct cell* c, struct bpart* bparts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
@@ -336,7 +336,7 @@ int cell_link_bparts(struct cell *c, struct bpart *bparts) {
  *
  * @return The number of particles linked.
  */
-int cell_link_sinks(struct cell *c, struct sink *sinks) {
+int cell_link_sinks(struct cell* c, struct sink* sinks) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
     error("Linking foreign particles in a local cell!");
@@ -371,7 +371,7 @@ int cell_link_sinks(struct cell *c, struct sink *sinks) {
  *
  * @return The number of particles linked.
  */
-int cell_link_foreign_parts(struct cell *c, struct part *parts) {
+int cell_link_foreign_parts(struct cell* c, struct part* parts) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -419,8 +419,8 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
  *
  * @return The number of particles linked.
  */
-int cell_link_foreign_gparts(struct cell *c,
-                             struct gpart_foreign *gparts_foreign) {
+int cell_link_foreign_gparts(struct cell* c,
+                             struct gpart_foreign* gparts_foreign) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -472,8 +472,8 @@ int cell_link_foreign_gparts(struct cell *c,
  *
  * @return The number of particles linked.
  */
-int cell_link_foreign_fof_gparts(struct cell *c,
-                                 struct gpart_fof_foreign *gparts_fof_foreign) {
+int cell_link_foreign_fof_gparts(struct cell* c,
+                                 struct gpart_fof_foreign* gparts_fof_foreign) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -525,7 +525,7 @@ int cell_link_foreign_fof_gparts(struct cell *c,
  *
  * @param c The #cell to act on.
  */
-void cell_unlink_foreign_particles(struct cell *c) {
+void cell_unlink_foreign_particles(struct cell* c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
@@ -555,7 +555,7 @@ void cell_unlink_foreign_particles(struct cell *c) {
  *
  * @return The number of particles linked.
  */
-int cell_count_parts_for_tasks(const struct cell *c) {
+int cell_count_parts_for_tasks(const struct cell* c) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -593,7 +593,7 @@ int cell_count_parts_for_tasks(const struct cell *c) {
  *
  * @return The number of particles linked.
  */
-int cell_count_gparts_for_tasks(const struct cell *c) {
+int cell_count_gparts_for_tasks(const struct cell* c) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -633,11 +633,11 @@ int cell_count_gparts_for_tasks(const struct cell *c) {
  * @param c The cell.
  * @param treated Has the cell already been sanitized at this level ?
  */
-void cell_sanitize(struct cell *c, int treated) {
+void cell_sanitize(struct cell* c, int treated) {
   const int count = c->hydro.count;
   const int scount = c->stars.count;
-  struct part *parts = c->hydro.parts;
-  struct spart *sparts = c->stars.parts;
+  struct part* parts = c->hydro.parts;
+  struct spart* sparts = c->stars.parts;
   float h_max = 0.f;
   float h_max_active = 0.f;
   float stars_h_max = 0.f;
@@ -698,7 +698,7 @@ void cell_sanitize(struct cell *c, int treated) {
  * @param c Cell to act upon
  * @param data Unused parameter
  */
-void cell_clean_links(struct cell *c, void *data) {
+void cell_clean_links(struct cell* c, void* data) {
   c->hydro.density = NULL;
   c->hydro.gradient = NULL;
   c->hydro.force = NULL;
@@ -731,10 +731,10 @@ void cell_clean_links(struct cell *c, void *data) {
  * @param c Cell to act upon
  * @param data The current time on the integer time-line
  */
-void cell_check_part_drift_point(struct cell *c, void *data) {
+void cell_check_part_drift_point(struct cell* c, void* data) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  const integertime_t ti_drift = *(integertime_t *)data;
+  const integertime_t ti_drift = *(integertime_t*)data;
 
   /* Only check local cells */
   if (c->nodeID != engine_rank) return;
@@ -753,7 +753,7 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
             c->hydro.parts[i].ti_drift, ti_drift);
 
   for (int i = 0; i < c->hydro.count; ++i) {
-    const struct part *p = &c->hydro.parts[i];
+    const struct part* p = &c->hydro.parts[i];
     if (p->depth_h == c->depth) {
       if (!(p->h >= c->h_min_allowed && p->h < c->h_max_allowed) && c->split) {
         error(
@@ -777,10 +777,10 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
  * @param c Cell to act upon
  * @param data The current time on the integer time-line
  */
-void cell_check_gpart_drift_point(struct cell *c, void *data) {
+void cell_check_gpart_drift_point(struct cell* c, void* data) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  const integertime_t ti_drift = *(integertime_t *)data;
+  const integertime_t ti_drift = *(integertime_t*)data;
 
   /* Only check local cells */
   if (c->nodeID != engine_rank) return;
@@ -813,10 +813,10 @@ void cell_check_gpart_drift_point(struct cell *c, void *data) {
  * @param c Cell to act upon
  * @param data The current time on the integer time-line
  */
-void cell_check_sink_drift_point(struct cell *c, void *data) {
+void cell_check_sink_drift_point(struct cell* c, void* data) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  const integertime_t ti_drift = *(integertime_t *)data;
+  const integertime_t ti_drift = *(integertime_t*)data;
 
   /* Only check local cells */
   if (c->nodeID != engine_rank) return;
@@ -839,7 +839,7 @@ void cell_check_sink_drift_point(struct cell *c, void *data) {
           c->sinks.parts[i].ti_drift, ti_drift);
 
   for (int i = 0; i < c->sinks.count; ++i) {
-    const struct sink *sp = &c->sinks.parts[i];
+    const struct sink* sp = &c->sinks.parts[i];
     if (sp->depth_h == c->depth) {
       if (!(sp->h >= c->h_min_allowed && sp->h < c->h_max_allowed) &&
           c->split) {
@@ -865,10 +865,10 @@ void cell_check_sink_drift_point(struct cell *c, void *data) {
  * @param c Cell to act upon
  * @param data The current time on the integer time-line
  */
-void cell_check_spart_drift_point(struct cell *c, void *data) {
+void cell_check_spart_drift_point(struct cell* c, void* data) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  const integertime_t ti_drift = *(integertime_t *)data;
+  const integertime_t ti_drift = *(integertime_t*)data;
 
   /* Only check local cells */
   if (c->nodeID != engine_rank) return;
@@ -889,7 +889,7 @@ void cell_check_spart_drift_point(struct cell *c, void *data) {
             c->stars.parts[i].ti_drift, ti_drift);
 
   for (int i = 0; i < c->stars.count; ++i) {
-    const struct spart *p = &c->stars.parts[i];
+    const struct spart* p = &c->stars.parts[i];
     if (p->depth_h == c->depth) {
       if (!(p->h >= c->h_min_allowed && p->h < c->h_max_allowed) && c->split) {
         error(
@@ -913,10 +913,10 @@ void cell_check_spart_drift_point(struct cell *c, void *data) {
  * @param c Cell to act upon
  * @param data The current time on the integer time-line
  */
-void cell_check_bpart_drift_point(struct cell *c, void *data) {
+void cell_check_bpart_drift_point(struct cell* c, void* data) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  const integertime_t ti_drift = *(integertime_t *)data;
+  const integertime_t ti_drift = *(integertime_t*)data;
 
   /* Only check local cells */
   if (c->nodeID != engine_rank) return;
@@ -937,7 +937,7 @@ void cell_check_bpart_drift_point(struct cell *c, void *data) {
             c->black_holes.parts[i].ti_drift, ti_drift);
 
   for (int i = 0; i < c->black_holes.count; ++i) {
-    const struct bpart *bp = &c->black_holes.parts[i];
+    const struct bpart* bp = &c->black_holes.parts[i];
     if (bp->depth_h == c->depth) {
       if (!(bp->h >= c->h_min_allowed && bp->h < c->h_max_allowed) &&
           c->split) {
@@ -961,10 +961,10 @@ void cell_check_bpart_drift_point(struct cell *c, void *data) {
  * @param c Cell to act upon
  * @param data The current time on the integer time-line
  */
-void cell_check_multipole_drift_point(struct cell *c, void *data) {
+void cell_check_multipole_drift_point(struct cell* c, void* data) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  const integertime_t ti_drift = *(integertime_t *)data;
+  const integertime_t ti_drift = *(integertime_t*)data;
 
   /* Only check local cells */
   if (c->nodeID != engine_rank) return;
@@ -991,7 +991,7 @@ void cell_check_multipole_drift_point(struct cell *c, void *data) {
  *
  * @param c The #cell to reset.
  */
-void cell_reset_task_counters(struct cell *c) {
+void cell_reset_task_counters(struct cell* c) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int t = 0; t < task_type_count; ++t) c->tasks_executed[t] = 0;
   for (int t = 0; t < task_subtype_count; ++t) c->subtasks_executed[t] = 0;
@@ -1009,8 +1009,8 @@ void cell_reset_task_counters(struct cell *c) {
  * @param ti_current The current integer time.
  * @param grav_props The properties of the gravity scheme.
  */
-void cell_make_multipoles(struct cell *c, integertime_t ti_current,
-                          const struct gravity_props *const grav_props) {
+void cell_make_multipoles(struct cell* c, integertime_t ti_current,
+                          const struct gravity_props* const grav_props) {
 
   /* Reset everything */
   gravity_reset(c->grav.multipole);
@@ -1032,7 +1032,7 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
 
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
-        const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
+        const struct gravity_tensors* m = c->progeny[k]->grav.multipole;
 
         mass += m->m_pole.M_000;
 
@@ -1076,8 +1076,8 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
     double r_max = 0.;
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
-        const struct cell *cp = c->progeny[k];
-        const struct multipole *m = &cp->grav.multipole->m_pole;
+        const struct cell* cp = c->progeny[k];
+        const struct multipole* m = &cp->grav.multipole->m_pole;
 
         /* Contribution to multipole */
         gravity_M2M(&temp, m, c->grav.multipole->CoM, cp->grav.multipole->CoM);
@@ -1149,7 +1149,7 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
  *
  * @param c The #cell to recursively search and verify.
  */
-void cell_check_foreign_multipole(const struct cell *c) {
+void cell_check_foreign_multipole(const struct cell* c) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   if (c->split) {
@@ -1157,7 +1157,7 @@ void cell_check_foreign_multipole(const struct cell *c) {
     long long num_gpart = 0;
 
     for (int k = 0; k < 8; k++) {
-      const struct cell *cp = c->progeny[k];
+      const struct cell* cp = c->progeny[k];
 
       if (cp != NULL) {
         /* Check the mass */
@@ -1190,8 +1190,8 @@ void cell_check_foreign_multipole(const struct cell *c) {
  * @param c Cell to act upon
  * @param grav_props The properties of the gravity scheme.
  */
-void cell_check_multipole(struct cell *c,
-                          const struct gravity_props *const grav_props) {
+void cell_check_multipole(struct cell* c,
+                          const struct gravity_props* const grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   struct gravity_tensors ma;
@@ -1239,7 +1239,7 @@ void cell_check_multipole(struct cell *c,
  *
  * @param c The #cell.
  */
-void cell_clean(struct cell *c) {
+void cell_clean(struct cell* c) {
   /* Hydro */
   cell_free_hydro_sorts(c);
 
@@ -1257,7 +1257,7 @@ void cell_clean(struct cell *c) {
 /**
  * @brief Clear the drift flags on the given cell.
  */
-void cell_clear_drift_flags(struct cell *c, void *data) {
+void cell_clear_drift_flags(struct cell* c, void* data) {
   cell_clear_flag(c, cell_flag_do_hydro_drift | cell_flag_do_hydro_sub_drift |
                          cell_flag_do_grav_drift | cell_flag_do_grav_sub_drift |
                          cell_flag_do_bh_drift | cell_flag_do_bh_sub_drift |
@@ -1269,7 +1269,7 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
 /**
  * @brief Clear the limiter flags on the given cell.
  */
-void cell_clear_limiter_flags(struct cell *c, void *data) {
+void cell_clear_limiter_flags(struct cell* c, void* data) {
   cell_clear_flag(c,
                   cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 }
@@ -1283,7 +1283,7 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
  * @param with_hydro Are we running with hydrodynamics on?
  * @param with_grav Are we running with gravity on?
  */
-void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
+void cell_set_super(struct cell* c, struct cell* super, const int with_hydro,
                     const int with_grav) {
   /* Are we in a cell which is either the hydro or gravity super? */
   if (super == NULL && ((with_hydro && c->hydro.super != NULL) ||
@@ -1307,7 +1307,7 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
  * @param super_hydro Pointer to the deepest cell with tasks in this part of
  * the tree.
  */
-void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
+void cell_set_super_hydro(struct cell* c, struct cell* super_hydro) {
   /* Are we in a cell with some kind of self/pair task ? */
   if (super_hydro == NULL && c->hydro.density != NULL) super_hydro = c;
 
@@ -1328,7 +1328,7 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
  * @param super_gravity Pointer to the deepest cell with tasks in this part of
  * the tree.
  */
-void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
+void cell_set_super_gravity(struct cell* c, struct cell* super_gravity) {
   /* Are we in a cell with some kind of self/pair task ? */
   if (super_gravity == NULL && (c->grav.grav != NULL || c->grav.mm != NULL))
     super_gravity = c;
@@ -1350,15 +1350,15 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
  * @param num_elements The number of top-level cells.
  * @param extra_data Unused parameter.
  */
-void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
-  const struct engine *e = (const struct engine *)extra_data;
+void cell_set_super_mapper(void* map_data, int num_elements, void* extra_data) {
+  const struct engine* e = (const struct engine*)extra_data;
 
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_grav = (e->policy & engine_policy_self_gravity) ||
                         (e->policy & engine_policy_external_gravity);
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &((struct cell *)map_data)[ind];
+    struct cell* c = &((struct cell*)map_data)[ind];
 
     /* All top-level cells get an MPI tag. */
 #ifdef WITH_MPI
@@ -1384,7 +1384,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  *
  * @param c The #cell to probe.
  */
-int cell_has_tasks(struct cell *c) {
+int cell_has_tasks(struct cell* c) {
 #ifdef WITH_MPI
   return (c->timestep_collect != NULL || c->mpi.recv != NULL);
 #else
@@ -1404,7 +1404,7 @@ int cell_has_tasks(struct cell *c) {
  * @param c The #cell to clean.
  * @param clear_unused_flags Do we also clean the flags demanding a sort?
  */
-void cell_clear_stars_sort_flags(struct cell *c, const int clear_unused_flags) {
+void cell_clear_stars_sort_flags(struct cell* c, const int clear_unused_flags) {
 
   /* Clear the flags that have not been reset by the sort task? */
   if (clear_unused_flags) {
@@ -1439,7 +1439,7 @@ void cell_clear_stars_sort_flags(struct cell *c, const int clear_unused_flags) {
  * @param c The #cell to clean.
  * @param clear_unused_flags Do we also clean the flags demanding a sort?
  */
-void cell_clear_hydro_sort_flags(struct cell *c, const int clear_unused_flags) {
+void cell_clear_hydro_sort_flags(struct cell* c, const int clear_unused_flags) {
 
   /* Clear the flags that have not been reset by the sort task? */
   if (clear_unused_flags) {
@@ -1465,7 +1465,7 @@ void cell_clear_hydro_sort_flags(struct cell *c, const int clear_unused_flags) {
 /**
  * @brief Recursively checks that all particles in a cell have a time-step
  */
-void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
+void cell_check_timesteps(const struct cell* c, const integertime_t ti_current,
                           const timebin_t max_bin) {
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -1495,7 +1495,7 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
 
   for (int i = 0; i < c->hydro.count; ++i) {
 
-    const struct part *p = &c->hydro.parts[i];
+    const struct part* p = &c->hydro.parts[i];
     if (p->time_bin == time_bin_inhibited) continue;
     if (p->time_bin == time_bin_not_created) continue;
 
@@ -1550,8 +1550,8 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
 #endif
 }
 
-void cell_check_spart_pos(const struct cell *c,
-                          const struct spart *global_sparts) {
+void cell_check_spart_pos(const struct cell* c,
+                          const struct spart* global_sparts) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Recurse */
@@ -1561,10 +1561,10 @@ void cell_check_spart_pos(const struct cell *c,
         cell_check_spart_pos(c->progeny[k], global_sparts);
   }
 
-  struct spart *sparts = c->stars.parts;
+  struct spart* sparts = c->stars.parts;
   const int count = c->stars.count;
   for (int i = 0; i < count; ++i) {
-    const struct spart *sp = &sparts[i];
+    const struct spart* sp = &sparts[i];
     if ((sp->x[0] < c->loc[0] / space_stretch) ||
         (sp->x[1] < c->loc[1] / space_stretch) ||
         (sp->x[2] < c->loc[2] / space_stretch) ||
@@ -1575,7 +1575,7 @@ void cell_check_spart_pos(const struct cell *c,
 
     if (sp->time_bin != time_bin_not_created &&
         sp->time_bin != time_bin_inhibited) {
-      const struct gpart *gp = sp->gpart;
+      const struct gpart* gp = sp->gpart;
       if (gp == NULL && sp->time_bin != time_bin_not_created)
         error("Unlinked spart!");
 
@@ -1597,7 +1597,7 @@ void cell_check_spart_pos(const struct cell *c,
  *
  * @param c The #cell to check.
  */
-void cell_check_sort_flags(const struct cell *c) {
+void cell_check_sort_flags(const struct cell* c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   const int do_hydro_sub_sort = cell_get_flag(c, cell_flag_do_hydro_sub_sort);
@@ -1635,12 +1635,12 @@ void cell_check_sort_flags(const struct cell *c) {
  * @param is_tree_walk Are we calling this in the tree walk (1) or for the
  * top-level task construction (0)?
  */
-int cell_can_use_pair_mm(const struct cell *restrict ci,
-                         const struct cell *restrict cj, const struct engine *e,
-                         const struct space *s, const int use_rebuild_data,
+int cell_can_use_pair_mm(const struct cell* restrict ci,
+                         const struct cell* restrict cj, const struct engine* e,
+                         const struct space* s, const int use_rebuild_data,
                          const int is_tree_walk) {
 
-  const struct gravity_props *props = e->gravity_properties;
+  const struct gravity_props* props = e->gravity_properties;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
@@ -1649,8 +1649,8 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
   if (is_tree_walk && cj->grav.count <= 1) return 0;
 
   /* Recover the multipole information */
-  const struct gravity_tensors *restrict multi_i = ci->grav.multipole;
-  const struct gravity_tensors *restrict multi_j = cj->grav.multipole;
+  const struct gravity_tensors* restrict multi_i = ci->grav.multipole;
+  const struct gravity_tensors* restrict multi_j = cj->grav.multipole;
 
   double dx, dy, dz;
 

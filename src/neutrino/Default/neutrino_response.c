@@ -45,7 +45,7 @@ const hsize_t wavenumber_length = 10000;
  * @param length (Output) The vector length
  */
 void read_vector_length(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
-                        hsize_t *length) {
+                        hsize_t* length) {
 
   /* Open the dataset */
   hid_t h_data = H5Dopen2(h_file, title, H5P_DEFAULT);
@@ -79,7 +79,7 @@ void read_vector_length(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
  * @param N_k Expected number of wavenumbers
  */
 void read_transfer_function(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
-                            double *dest, hsize_t N_z, hsize_t N_k) {
+                            double* dest, hsize_t N_z, hsize_t N_k) {
 
   /* Open the dataset */
   hid_t h_data = H5Dopen2(h_file, title, H5P_DEFAULT);
@@ -122,12 +122,12 @@ void read_transfer_function(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
  * @param gp The #gravity_props used for this run.
  * @param verbose Are we talkative ?
  */
-void neutrino_response_init(struct neutrino_response *numesh,
-                            struct swift_params *params,
-                            const struct unit_system *us, const double dim[3],
-                            const struct cosmology *c,
-                            const struct neutrino_props *np,
-                            const struct gravity_props *gp, int rank,
+void neutrino_response_init(struct neutrino_response* numesh,
+                            struct swift_params* params,
+                            const struct unit_system* us, const double dim[3],
+                            const struct cosmology* c,
+                            const struct neutrino_props* np,
+                            const struct gravity_props* gp, int rank,
                             int verbose) {
 
   /* Do we need to do anything? */
@@ -179,21 +179,21 @@ void neutrino_response_init(struct neutrino_response *numesh,
   const hsize_t tf_size = N_z * N_k;
 
   /* Allocate temporary memory for the transfer functions */
-  double *delta_cdm;
-  double *delta_b;
-  double *delta_ncdm;
-  double *ncdm_over_cb;
-  if ((delta_cdm = (double *)swift_malloc("delta_cdm",
-                                          sizeof(double) * tf_size)) == NULL)
+  double* delta_cdm;
+  double* delta_b;
+  double* delta_ncdm;
+  double* ncdm_over_cb;
+  if ((delta_cdm = (double*)swift_malloc("delta_cdm",
+                                         sizeof(double) * tf_size)) == NULL)
     error("Failed to allocate memory for delta_cdm.");
-  if ((delta_b = (double *)swift_malloc("delta_b", sizeof(double) * tf_size)) ==
+  if ((delta_b = (double*)swift_malloc("delta_b", sizeof(double) * tf_size)) ==
       NULL)
     error("Failed to allocate memory for delta_b.");
-  if ((delta_ncdm = (double *)swift_malloc("delta_ncdm",
-                                           sizeof(double) * tf_size)) == NULL)
+  if ((delta_ncdm = (double*)swift_malloc("delta_ncdm",
+                                          sizeof(double) * tf_size)) == NULL)
     error("Failed to allocate memory for delta_ncdm.");
-  if ((ncdm_over_cb = (double *)swift_malloc("ncdm_over_cb",
-                                             sizeof(double) * tf_size)) == NULL)
+  if ((ncdm_over_cb = (double*)swift_malloc("ncdm_over_cb",
+                                            sizeof(double) * tf_size)) == NULL)
     error("Failed to allocate memory for ncdm_over_cb.");
 
   /* Read the necessary transfer functions */
@@ -266,13 +266,13 @@ void neutrino_response_init(struct neutrino_response *numesh,
   const double z_min = 1.0 / a_max - 1.0;
 
   /* Allocate temporary memory for the redshifts and wavenumbers */
-  double *redshifts;
-  double *wavenumbers;
-  if ((redshifts = (double *)swift_malloc("redshifts", sizeof(double) * N_z)) ==
+  double* redshifts;
+  double* wavenumbers;
+  if ((redshifts = (double*)swift_malloc("redshifts", sizeof(double) * N_z)) ==
       NULL)
     error("Failed to allocate memory for redshifts.");
   if ((wavenumbers =
-           (double *)swift_malloc("wavenumbers", sizeof(double) * N_k)) == NULL)
+           (double*)swift_malloc("wavenumbers", sizeof(double) * N_k)) == NULL)
     error("Failed to allocate memory for wavenumbers.");
 
   /* Open the redshifts dataset, read the data, then close it */
@@ -332,13 +332,13 @@ void neutrino_response_init(struct neutrino_response *numesh,
   numesh->delta_log_k = delta_log_k;
 
   /* Allocate temporary memory for the log of scale factors and wavenumbers */
-  double *log_scale_factors;
-  double *log_wavenumbers;
-  if ((log_scale_factors = (double *)swift_malloc(
-           "log_scale_factors", sizeof(double) * N_z)) == NULL)
+  double* log_scale_factors;
+  double* log_wavenumbers;
+  if ((log_scale_factors = (double*)swift_malloc("log_scale_factors",
+                                                 sizeof(double) * N_z)) == NULL)
     error("Failed to allocate memory for log_scale_factors.");
-  if ((log_wavenumbers = (double *)swift_malloc("log_wavenumbers",
-                                                sizeof(double) * N_k)) == NULL)
+  if ((log_wavenumbers = (double*)swift_malloc("log_wavenumbers",
+                                               sizeof(double) * N_k)) == NULL)
     error("Failed to allocate memory for log_wavenumbers.");
 
   /* Convert units and compute logarithms */
@@ -356,15 +356,15 @@ void neutrino_response_init(struct neutrino_response *numesh,
   /* Initialize GSL interpolation */
   /* NB: GSL uses column major indices, but we use row major. This is why we
    * feed the transpose into spline2d_init. */
-  const gsl_interp2d_type *T = gsl_interp2d_bilinear;
-  gsl_spline2d *spline = gsl_spline2d_alloc(T, N_k, N_z);
-  gsl_interp_accel *a_acc = gsl_interp_accel_alloc();
-  gsl_interp_accel *k_acc = gsl_interp_accel_alloc();
+  const gsl_interp2d_type* T = gsl_interp2d_bilinear;
+  gsl_spline2d* spline = gsl_spline2d_alloc(T, N_k, N_z);
+  gsl_interp_accel* a_acc = gsl_interp_accel_alloc();
+  gsl_interp_accel* k_acc = gsl_interp_accel_alloc();
   gsl_spline2d_init(spline, log_wavenumbers, log_scale_factors, ncdm_over_cb,
                     N_k, N_z);
 
   /* Allocate memory for the transfer function ratio with constant spacing */
-  if ((numesh->pt_density_ratio = (double *)swift_malloc(
+  if ((numesh->pt_density_ratio = (double*)swift_malloc(
            "numesh.pt_density_ratio", sizeof(double) * remap_tf_size)) == NULL)
     error("Failed to allocate memory for numesh.pt_density_ratio.");
 
@@ -395,7 +395,7 @@ void neutrino_response_init(struct neutrino_response *numesh,
 #endif
 }
 
-void neutrino_response_clean(struct neutrino_response *numesh) {
+void neutrino_response_clean(struct neutrino_response* numesh) {
   swift_free("numesh.pt_density_ratio", numesh->pt_density_ratio);
 }
 
@@ -408,7 +408,7 @@ struct neutrino_response_tp_data {
 
   /* Mesh properties */
   int N;
-  fftw_complex *frho;
+  fftw_complex* frho;
   double boxlen;
   int slice_offset;
   int slice_width;
@@ -421,7 +421,7 @@ struct neutrino_response_tp_data {
 
   /* Background and perturbed density ratios */
   double bg_density_ratio;
-  const double *pt_density_ratio;
+  const double* pt_density_ratio;
 };
 
 /**
@@ -431,15 +431,15 @@ struct neutrino_response_tp_data {
  * @param num The number of elements to iterate on (along the x-axis).
  * @param extra The properties of the neutrino mesh.
  */
-void neutrino_response_apply_neutrino_response_mapper(void *map_data,
+void neutrino_response_apply_neutrino_response_mapper(void* map_data,
                                                       const int num,
-                                                      void *extra) {
+                                                      void* extra) {
 
-  struct neutrino_response_tp_data *data =
-      (struct neutrino_response_tp_data *)extra;
+  struct neutrino_response_tp_data* data =
+      (struct neutrino_response_tp_data*)extra;
 
   /* Unpack the mesh properties */
-  fftw_complex *const frho = data->frho;
+  fftw_complex* const frho = data->frho;
   const int N = data->N;
   const int N_half = N / 2;
   const double delta_k = 2.0 * M_PI / data->boxlen;
@@ -453,13 +453,13 @@ void neutrino_response_apply_neutrino_response_mapper(void *map_data,
 
   /* Unpack the density ratios (background & perturbation) */
   const double bg_density_ratio = data->bg_density_ratio;
-  const double *pt_density_ratio = data->pt_density_ratio;
+  const double* pt_density_ratio = data->pt_density_ratio;
 
   /* Find what slice of the full mesh is stored on this MPI rank */
   const int slice_offset = data->slice_offset;
 
   /* Range of x coordinates in the full mesh handled by this call */
-  const int x_start = ((fftw_complex *)map_data - frho) + slice_offset;
+  const int x_start = ((fftw_complex*)map_data - frho) + slice_offset;
   const int x_end = x_start + num;
 
   /* Loop over the x range corresponding to this thread */
@@ -525,14 +525,14 @@ void neutrino_response_apply_neutrino_response_mapper(void *map_data,
  * @param slice_width The width of the local slice on this MPI rank
  * @param verbose Are we talkative?
  */
-void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
-                               struct threadpool *tp, fftw_complex *frho,
+void neutrino_response_compute(const struct space* s, struct pm_mesh* mesh,
+                               struct threadpool* tp, fftw_complex* frho,
                                const int slice_offset, const int slice_width,
                                int verbose) {
 #ifdef HAVE_FFTW
 
-  const struct cosmology *c = s->e->cosmology;
-  struct neutrino_response *numesh = s->e->neutrino_response;
+  const struct cosmology* c = s->e->cosmology;
+  struct neutrino_response* numesh = s->e->neutrino_response;
 
   /* Grid size */
   const int N = mesh->N;
@@ -607,14 +607,14 @@ void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
  * @param numesh the struct
  * @param stream the file stream
  */
-void neutrino_response_struct_dump(const struct neutrino_response *numesh,
-                                   FILE *stream) {
-  restart_write_blocks((void *)numesh, sizeof(struct neutrino_response), 1,
+void neutrino_response_struct_dump(const struct neutrino_response* numesh,
+                                   FILE* stream) {
+  restart_write_blocks((void*)numesh, sizeof(struct neutrino_response), 1,
                        stream, "numesh", "neutrino mesh");
 
   /* Store the perturbation data */
   if (numesh->tf_size > 0) {
-    restart_write_blocks((double *)numesh->pt_density_ratio, sizeof(double),
+    restart_write_blocks((double*)numesh->pt_density_ratio, sizeof(double),
                          numesh->tf_size, stream, "pt_density_ratio",
                          "pt_density_ratio");
   }
@@ -627,16 +627,16 @@ void neutrino_response_struct_dump(const struct neutrino_response *numesh,
  * @param numesh the struct
  * @param stream the file stream
  */
-void neutrino_response_struct_restore(struct neutrino_response *numesh,
-                                      FILE *stream) {
-  restart_read_blocks((void *)numesh, sizeof(struct neutrino_response), 1,
+void neutrino_response_struct_restore(struct neutrino_response* numesh,
+                                      FILE* stream) {
+  restart_read_blocks((void*)numesh, sizeof(struct neutrino_response), 1,
                       stream, NULL, "neutrino mesh");
 
   /* Restore the perturbation data */
   if (numesh->tf_size > 0) {
-    numesh->pt_density_ratio = (double *)swift_malloc(
+    numesh->pt_density_ratio = (double*)swift_malloc(
         "numesh.pt_density_ratio", numesh->tf_size * sizeof(double));
-    restart_read_blocks((double *)numesh->pt_density_ratio, sizeof(double),
+    restart_read_blocks((double*)numesh->pt_density_ratio, sizeof(double),
                         numesh->tf_size, stream, NULL, "pt_density_ratio");
   }
 }

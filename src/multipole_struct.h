@@ -193,7 +193,7 @@ struct gravity_tensors {
   union {
 
     /*! Linking pointer for "memory management". */
-    struct gravity_tensors *next;
+    struct gravity_tensors* next;
 
     /*! The actual content */
     struct {

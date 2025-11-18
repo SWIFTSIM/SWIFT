@@ -88,46 +88,46 @@ struct fof_props {
   long long num_groups;
 
   /*! Index of the root particle of the group a given gpart belongs to. */
-  size_t *group_index;
+  size_t* group_index;
 
   /*! Index of the root particle of the group a given gpart is attached to. */
-  size_t *attach_index;
+  size_t* attach_index;
 
   /*! Has the particle found a linkable to attach to? */
-  char *found_attachable_link;
+  char* found_attachable_link;
 
   /*! For attachable particles: distance to the current nearest linkable part */
-  float *distance_to_link;
+  float* distance_to_link;
 
   /*! Size of the group a given gpart belongs to. */
-  size_t *group_size;
+  size_t* group_size;
 
   /*! Size of the local groups a given gpart belongs to. */
-  struct group_length *high_group_sizes;
+  struct group_length* high_group_sizes;
 
   /*! Final size of the group a given gpart belongs to. */
-  long long *final_group_size;
+  long long* final_group_size;
 
   /*! Final index of the group a given gpart belongs to. */
-  long long *final_group_index;
+  long long* final_group_index;
 
   /*! Mass of the group a given gpart belongs to. */
-  double *group_mass;
+  double* group_mass;
 
   /*! Does the group have a black hole? */
-  char *has_black_hole;
+  char* has_black_hole;
 
   /*! Centre of mass of the group a given gpart belongs to. */
-  double *group_centre_of_mass;
+  double* group_centre_of_mass;
 
   /*! Maximal density of all parts of each group. */
-  float *max_part_density;
+  float* max_part_density;
 
   /* Number of groups on each node */
-  size_t *num_on_node;
+  size_t* num_on_node;
 
   /* First group on each node */
-  size_t *first_on_node;
+  size_t* first_on_node;
 
   /* Total number of groups on lower numbered MPI ranks */
   size_t num_groups_prev;
@@ -143,7 +143,7 @@ struct fof_props {
 
   /*! The links between pairs of particles on this node and a foreign
    * node */
-  struct fof_mpi *group_links;
+  struct fof_mpi* group_links;
 };
 
 #ifdef WITH_MPI
@@ -184,7 +184,7 @@ struct fof_final_mass {
 /* Struct used to iterate over the hash table and unpack the mass fragments of a
  * group when using MPI */
 struct fof_mass_send_hashmap {
-  struct fof_final_mass *mass_send;
+  struct fof_final_mass* mass_send;
   size_t nsend;
 };
 
@@ -195,46 +195,46 @@ struct cell_pair_indices {
 #endif
 
 /* Function prototypes. */
-void fof_init(struct fof_props *props, struct swift_params *params,
-              const struct phys_const *phys_const, const struct unit_system *us,
+void fof_init(struct fof_props* props, struct swift_params* params,
+              const struct phys_const* phys_const, const struct unit_system* us,
               const int stand_alone_fof);
 void fof_create_mpi_types(void);
-void fof_allocate(const struct space *s, struct fof_props *props);
-void fof_compute_local_sizes(struct fof_props *props, struct space *s);
-void fof_search_foreign_cells(struct fof_props *props, const struct space *s);
-void fof_link_attachable_particles(struct fof_props *props,
-                                   const struct space *s);
-void fof_finalise_attachables(struct fof_props *props, struct space *s);
-void fof_link_foreign_fragments(struct fof_props *props, const struct space *s);
-void fof_assign_group_ids(struct fof_props *props, struct space *s);
-void fof_compute_group_props(struct fof_props *props,
-                             const struct black_holes_props *bh_props,
-                             const struct phys_const *constants,
-                             const struct cosmology *cosmo, struct space *s,
+void fof_allocate(const struct space* s, struct fof_props* props);
+void fof_compute_local_sizes(struct fof_props* props, struct space* s);
+void fof_search_foreign_cells(struct fof_props* props, const struct space* s);
+void fof_link_attachable_particles(struct fof_props* props,
+                                   const struct space* s);
+void fof_finalise_attachables(struct fof_props* props, struct space* s);
+void fof_link_foreign_fragments(struct fof_props* props, const struct space* s);
+void fof_assign_group_ids(struct fof_props* props, struct space* s);
+void fof_compute_group_props(struct fof_props* props,
+                             const struct black_holes_props* bh_props,
+                             const struct phys_const* constants,
+                             const struct cosmology* cosmo, struct space* s,
                              const int dump_results,
                              const int dump_debug_results,
                              const int seed_black_holes);
-void rec_fof_search_self(const struct fof_props *props, const double dim[3],
+void rec_fof_search_self(const struct fof_props* props, const double dim[3],
                          const double search_r2, const int periodic,
-                         const struct gpart *const space_gparts,
-                         struct cell *c);
-void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
+                         const struct gpart* const space_gparts,
+                         struct cell* c);
+void rec_fof_search_pair(const struct fof_props* props, const double dim[3],
                          const double search_r2, const int periodic,
-                         const struct gpart *const space_gparts,
-                         struct cell *restrict ci, struct cell *restrict cj);
-void rec_fof_attach_self(const struct fof_props *props, const double dim[3],
+                         const struct gpart* const space_gparts,
+                         struct cell* restrict ci, struct cell* restrict cj);
+void rec_fof_attach_self(const struct fof_props* props, const double dim[3],
                          const double search_r2, const int periodic,
-                         const struct gpart *const space_gparts,
-                         const size_t nr_gparts, struct cell *c);
-void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
+                         const struct gpart* const space_gparts,
+                         const size_t nr_gparts, struct cell* c);
+void rec_fof_attach_pair(const struct fof_props* props, const double dim[3],
                          const double search_r2, const int periodic,
-                         const struct gpart *const space_gparts,
-                         const size_t nr_gparts, struct cell *restrict ci,
-                         struct cell *restrict cj, const int ci_local,
+                         const struct gpart* const space_gparts,
+                         const size_t nr_gparts, struct cell* restrict ci,
+                         struct cell* restrict cj, const int ci_local,
                          const int cj_local);
-void fof_free_arrays(struct fof_props *props);
-void fof_struct_dump(const struct fof_props *props, FILE *stream);
-void fof_struct_restore(struct fof_props *props, FILE *stream);
+void fof_free_arrays(struct fof_props* props);
+void fof_struct_dump(const struct fof_props* props, FILE* stream);
+void fof_struct_restore(struct fof_props* props, FILE* stream);
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */

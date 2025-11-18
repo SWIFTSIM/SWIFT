@@ -47,11 +47,11 @@
  * @brief Initialise the properties of the lightcone code.
  *
  */
-void lightcone_array_init(struct lightcone_array_props *props,
-                          const struct space *s, const struct cosmology *cosmo,
-                          struct swift_params *params,
-                          const struct unit_system *internal_units,
-                          const struct phys_const *physical_constants,
+void lightcone_array_init(struct lightcone_array_props* props,
+                          const struct space* s, const struct cosmology* cosmo,
+                          struct swift_params* params,
+                          const struct unit_system* internal_units,
+                          const struct phys_const* physical_constants,
                           const int verbose) {
 
   /* Determine number of lightcones */
@@ -70,7 +70,7 @@ void lightcone_array_init(struct lightcone_array_props *props,
     message("found %d lightcones to generate", props->nr_lightcones);
 
   /* Allocate array of lightcones */
-  props->lightcone = (struct lightcone_props *)malloc(
+  props->lightcone = (struct lightcone_props*)malloc(
       sizeof(struct lightcone_props) * props->nr_lightcones);
   if (!props->lightcone) error("Failed to allocate lightcone array");
 
@@ -94,8 +94,8 @@ void lightcone_array_init(struct lightcone_array_props *props,
   for (int i = 0; i < props->nr_lightcones; i += 1) {
     for (int j = 0; j < props->nr_lightcones; j += 1) {
       if (i != j) {
-        const struct lightcone_props *lc1 = props->lightcone + i;
-        const struct lightcone_props *lc2 = props->lightcone + j;
+        const struct lightcone_props* lc1 = props->lightcone + i;
+        const struct lightcone_props* lc2 = props->lightcone + j;
         if (strcmp(lc1->basename, lc2->basename) == 0)
           error("Lightcones must have unique basenames!");
       }
@@ -105,19 +105,19 @@ void lightcone_array_init(struct lightcone_array_props *props,
   props->verbose = verbose;
 }
 
-void lightcone_array_clean(struct lightcone_array_props *props) {
+void lightcone_array_clean(struct lightcone_array_props* props) {
 
   for (int i = 0; i < props->nr_lightcones; i += 1)
     lightcone_clean(props->lightcone + i);
   free(props->lightcone);
 }
 
-void lightcone_array_struct_dump(const struct lightcone_array_props *props,
-                                 FILE *stream) {
+void lightcone_array_struct_dump(const struct lightcone_array_props* props,
+                                 FILE* stream) {
 
   struct lightcone_array_props tmp = *props;
   tmp.lightcone = NULL;
-  restart_write_blocks((void *)&tmp, sizeof(struct lightcone_array_props), 1,
+  restart_write_blocks((void*)&tmp, sizeof(struct lightcone_array_props), 1,
                        stream, "lightcone_array_props",
                        "lightcone_array_props");
 
@@ -125,13 +125,13 @@ void lightcone_array_struct_dump(const struct lightcone_array_props *props,
     lightcone_struct_dump(props->lightcone + i, stream);
 }
 
-void lightcone_array_struct_restore(struct lightcone_array_props *props,
-                                    FILE *stream) {
+void lightcone_array_struct_restore(struct lightcone_array_props* props,
+                                    FILE* stream) {
 
-  restart_read_blocks((void *)props, sizeof(struct lightcone_array_props), 1,
+  restart_read_blocks((void*)props, sizeof(struct lightcone_array_props), 1,
                       stream, NULL, "lightcone_array_props");
 
-  props->lightcone = (struct lightcone_props *)malloc(
+  props->lightcone = (struct lightcone_props*)malloc(
       sizeof(struct lightcone_props) * props->nr_lightcones);
   if (!props->lightcone) error("Failed to allocate lightcone array");
 
@@ -139,8 +139,8 @@ void lightcone_array_struct_restore(struct lightcone_array_props *props,
     lightcone_struct_restore(props->lightcone + i, stream);
 }
 
-void lightcone_array_prepare_for_step(struct lightcone_array_props *props,
-                                      const struct cosmology *cosmo,
+void lightcone_array_prepare_for_step(struct lightcone_array_props* props,
+                                      const struct cosmology* cosmo,
                                       const integertime_t ti_earliest_undrifted,
                                       const integertime_t ti_current) {
 
@@ -163,7 +163,7 @@ void lightcone_array_prepare_for_step(struct lightcone_array_props *props,
   }
 }
 
-int lightcone_array_trigger_map_update(struct lightcone_array_props *props) {
+int lightcone_array_trigger_map_update(struct lightcone_array_props* props) {
 
   for (int i = 0; i < props->nr_lightcones; i += 1) {
     if (lightcone_trigger_map_update(props->lightcone + i)) return 1;
@@ -184,10 +184,10 @@ int lightcone_array_trigger_map_update(struct lightcone_array_props *props) {
  * dump_all_shells immediately output all remaining healpix maps
  *
  */
-void lightcone_array_flush(struct lightcone_array_props *props,
-                           struct threadpool *tp, const struct cosmology *cosmo,
-                           const struct unit_system *internal_units,
-                           const struct unit_system *snapshot_units,
+void lightcone_array_flush(struct lightcone_array_props* props,
+                           struct threadpool* tp, const struct cosmology* cosmo,
+                           const struct unit_system* internal_units,
+                           const struct unit_system* snapshot_units,
                            int flush_map_updates, int flush_particles,
                            int end_file, int dump_all_shells) {
 
@@ -198,7 +198,7 @@ void lightcone_array_flush(struct lightcone_array_props *props,
   for (int lightcone_nr = 0; lightcone_nr < nr_lightcones; lightcone_nr += 1) {
 
     /* Get a pointer to this lightcone */
-    struct lightcone_props *lc_props = props->lightcone + lightcone_nr;
+    struct lightcone_props* lc_props = props->lightcone + lightcone_nr;
 
     /* Apply lightcone map updates if requested */
     if (flush_map_updates) lightcone_flush_map_updates(lc_props, tp);
@@ -224,21 +224,21 @@ void lightcone_array_flush(struct lightcone_array_props *props,
  * cell the #cell for which we're making replication lists
  *
  */
-struct replication_list *lightcone_array_refine_replications(
-    struct lightcone_array_props *props, const struct cell *cell) {
+struct replication_list* lightcone_array_refine_replications(
+    struct lightcone_array_props* props, const struct cell* cell) {
 
   /* Get number of lightcones */
   const int nr_lightcones = props->nr_lightcones;
 
   /* Allocate a replication list for each lightcone */
-  struct replication_list *lists = (struct replication_list *)malloc(
+  struct replication_list* lists = (struct replication_list*)malloc(
       sizeof(struct replication_list) * nr_lightcones);
 
   /* Loop over lightcones */
   for (int lightcone_nr = 0; lightcone_nr < nr_lightcones; lightcone_nr += 1) {
 
     /* Make refined replication list for this lightcone */
-    struct lightcone_props *lightcone = props->lightcone + lightcone_nr;
+    struct lightcone_props* lightcone = props->lightcone + lightcone_nr;
     replication_list_subset_for_cell(&lightcone->replication_list, cell,
                                      lightcone->observer_position,
                                      lists + lightcone_nr);
@@ -254,8 +254,8 @@ struct replication_list *lightcone_array_refine_replications(
  * lists the array of struct #replication_list to free
  *
  */
-void lightcone_array_free_replications(struct lightcone_array_props *props,
-                                       struct replication_list *lists) {
+void lightcone_array_free_replications(struct lightcone_array_props* props,
+                                       struct replication_list* lists) {
 
   /* Get number of lightcones */
   const int nr_lightcones = props->nr_lightcones;
@@ -275,9 +275,9 @@ void lightcone_array_free_replications(struct lightcone_array_props *props,
  * props the #lightcone_array_props struct
  *
  */
-void lightcone_array_write_index(struct lightcone_array_props *props,
-                                 const struct unit_system *internal_units,
-                                 const struct unit_system *snapshot_units) {
+void lightcone_array_write_index(struct lightcone_array_props* props,
+                                 const struct unit_system* internal_units,
+                                 const struct unit_system* snapshot_units) {
 
   /* Get number of lightcones */
   const int nr_lightcones = props->nr_lightcones;
@@ -289,7 +289,7 @@ void lightcone_array_write_index(struct lightcone_array_props *props,
   }
 }
 
-void lightcone_array_report_memory_use(struct lightcone_array_props *props) {
+void lightcone_array_report_memory_use(struct lightcone_array_props* props) {
 
   long long memuse_local[4] = {0LL, 0LL, 0LL, 0LL};
 

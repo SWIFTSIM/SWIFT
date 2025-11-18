@@ -33,8 +33,8 @@
 #include "version.h"
 
 struct exact_density_data {
-  const struct engine *e;
-  const struct space *s;
+  const struct engine* e;
+  const struct space* s;
   int counter_global;
 };
 
@@ -46,22 +46,22 @@ struct exact_density_data {
  * @brief extra_data Pointers to the structure containing global interaction
  * counters.
  */
-void sink_exact_density_compute_mapper(void *map_data, int nr_sinks,
-                                       void *extra_data) {
+void sink_exact_density_compute_mapper(void* map_data, int nr_sinks,
+                                       void* extra_data) {
 #ifdef SWIFT_SINK_DENSITY_CHECKS
 
   /* Unpack the data */
-  struct sink *restrict sinks = (struct sink *)map_data;
-  struct exact_density_data *data = (struct exact_density_data *)extra_data;
-  const struct space *s = data->s;
-  const struct engine *e = data->e;
+  struct sink* restrict sinks = (struct sink*)map_data;
+  struct exact_density_data* data = (struct exact_density_data*)extra_data;
+  const struct space* s = data->s;
+  const struct engine* e = data->e;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   int counter = 0;
 
   for (int i = 0; i < nr_sinks; ++i) {
 
-    struct sink *si = &sinks[i];
+    struct sink* si = &sinks[i];
     const long long id = si->id;
 
     /* Is the particle active and part of the subset to be tested ? */
@@ -81,7 +81,7 @@ void sink_exact_density_compute_mapper(void *map_data, int nr_sinks,
       /* Interact it with all other particles in the space.*/
       for (int j = 0; j < (int)s->nr_parts; ++j) {
 
-        const struct part *pj = &s->parts[j];
+        const struct part* pj = &s->parts[j];
 
         /* Compute the pairwise distance. */
         double dx = pj->x[0] - pix[0];
@@ -150,7 +150,7 @@ void sink_exact_density_compute_mapper(void *map_data, int nr_sinks,
  * @param s The #space.
  * @param e The #engine.
  */
-void sink_exact_density_compute(struct space *s, const struct engine *e) {
+void sink_exact_density_compute(struct space* s, const struct engine* e) {
 
 #ifdef SWIFT_SINK_DENSITY_CHECKS
 
@@ -181,14 +181,14 @@ void sink_exact_density_compute(struct space *s, const struct engine *e) {
  * @param e The #engine.
  * @param rel_tol Relative tolerance for the checks
  */
-void sink_exact_density_check(struct space *s, const struct engine *e,
+void sink_exact_density_check(struct space* s, const struct engine* e,
                               const double rel_tol) {
 
 #ifdef SWIFT_SINK_DENSITY_CHECKS
 
   const ticks tic = getticks();
 
-  const struct sink *sinks = s->sinks;
+  const struct sink* sinks = s->sinks;
   const size_t nr_sinks = s->nr_sinks;
 
   const double eta = e->sink_properties->eta_neighbours;
@@ -204,7 +204,7 @@ void sink_exact_density_check(struct space *s, const struct engine *e,
   sprintf(file_name_swift, "sink_checks_swift_step%.4d.dat", e->step);
 
   /* Creare files and write header */
-  FILE *file_swift = fopen(file_name_swift, "w");
+  FILE* file_swift = fopen(file_name_swift, "w");
   if (file_swift == NULL) error("Could not create file '%s'.", file_name_swift);
   fprintf(file_swift, "# Sink accuracy test - SWIFT DENSITIES\n");
   fprintf(file_swift, "# N= %d\n", SWIFT_SINK_DENSITY_CHECKS);
@@ -220,7 +220,7 @@ void sink_exact_density_check(struct space *s, const struct engine *e,
   /* Output particle SWIFT densities */
   for (size_t i = 0; i < nr_sinks; ++i) {
 
-    const struct sink *si = &sinks[i];
+    const struct sink* si = &sinks[i];
     const long long id = si->id;
 
     const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
@@ -247,7 +247,7 @@ void sink_exact_density_check(struct space *s, const struct engine *e,
   sprintf(file_name_exact, "sink_checks_exact_step%.4d.dat", e->step);
 
   /* Creare files and write header */
-  FILE *file_exact = fopen(file_name_exact, "w");
+  FILE* file_exact = fopen(file_name_exact, "w");
   if (file_exact == NULL) error("Could not create file '%s'.", file_name_exact);
   fprintf(file_exact, "# Sink accuracy test - EXACT DENSITIES\n");
   fprintf(file_exact, "# N= %d\n", SWIFT_SINK_DENSITY_CHECKS);
@@ -267,7 +267,7 @@ void sink_exact_density_check(struct space *s, const struct engine *e,
   /* Output particle SWIFT densities */
   for (size_t i = 0; i < nr_sinks; ++i) {
 
-    const struct sink *si = &sinks[i];
+    const struct sink* si = &sinks[i];
     const long long id = si->id;
     const int found_inhibited = si->inhibited_check_exact;
 

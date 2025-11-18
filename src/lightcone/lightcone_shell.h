@@ -95,7 +95,7 @@ struct lightcone_particle_type {
 
   /*! Indices of the lightcone maps this particle type contributes to.
     Smoothed maps will be stored first in the array. */
-  int *map_index;
+  int* map_index;
 
   /*! Amount of data to store per particle: theta, phi, radius and the value to
    * add to each healpix map */
@@ -137,7 +137,7 @@ struct lightcone_shell {
   int nr_maps;
 
   /*! Array of lightcone maps for this shell */
-  struct lightcone_map *map;
+  struct lightcone_map* map;
 
   /*! Buffers to store the map updates for each particle type */
   struct particle_buffer buffer[swift_type_count];
@@ -158,25 +158,25 @@ struct lightcone_shell {
   pixel_index_t pix_per_rank;
 };
 
-struct lightcone_shell *lightcone_shell_array_init(
-    const struct cosmology *cosmo, const char *radius_file, int nr_maps,
-    struct lightcone_map_type *map_type, int nside, pixel_index_t total_nr_pix,
-    struct lightcone_particle_type *part_type, size_t elements_per_block,
-    int *nr_shells_out);
+struct lightcone_shell* lightcone_shell_array_init(
+    const struct cosmology* cosmo, const char* radius_file, int nr_maps,
+    struct lightcone_map_type* map_type, int nside, pixel_index_t total_nr_pix,
+    struct lightcone_particle_type* part_type, size_t elements_per_block,
+    int* nr_shells_out);
 
-void lightcone_shell_array_free(struct lightcone_shell *shell, int nr_shells);
+void lightcone_shell_array_free(struct lightcone_shell* shell, int nr_shells);
 
-void lightcone_shell_array_dump(const struct lightcone_shell *shell,
-                                int nr_shells, FILE *stream);
+void lightcone_shell_array_dump(const struct lightcone_shell* shell,
+                                int nr_shells, FILE* stream);
 
-struct lightcone_shell *lightcone_shell_array_restore(
-    FILE *stream, int nr_shells, struct lightcone_particle_type *part_type,
+struct lightcone_shell* lightcone_shell_array_restore(
+    FILE* stream, int nr_shells, struct lightcone_particle_type* part_type,
     size_t elements_per_block);
 
 void lightcone_shell_flush_map_updates(
-    struct lightcone_shell *shell, struct threadpool *tp,
-    struct lightcone_particle_type *part_type,
+    struct lightcone_shell* shell, struct threadpool* tp,
+    struct lightcone_particle_type* part_type,
     const double max_map_update_send_size_mb,
-    struct projected_kernel_table *kernel_table, int verbose);
+    struct projected_kernel_table* kernel_table, int verbose);
 
 #endif /* SWIFT_LIGHTCONE_SHELL_H */

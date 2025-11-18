@@ -35,12 +35,12 @@
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
-                   struct cell *restrict cj, const int limit_min_h,
+void DOPAIR1_NAIVE(struct runner* r, struct cell* restrict ci,
+                   struct cell* restrict cj, const int limit_min_h,
                    const int limit_max_h) {
 
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
 
   TIMER_TIC;
 
@@ -53,8 +53,8 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
-  struct part *restrict parts_i = ci->hydro.parts;
-  struct part *restrict parts_j = cj->hydro.parts;
+  struct part* restrict parts_i = ci->hydro.parts;
+  struct part* restrict parts_j = cj->hydro.parts;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->dmin != cj->dmin) error("Cells of different size!");
@@ -83,7 +83,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   for (int pid = 0; pid < count_i; pid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct part *restrict pi = &parts_i[pid];
+    struct part* restrict pi = &parts_i[pid];
 
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
@@ -100,7 +100,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
     for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
+      struct part* restrict pj = &parts_j[pjd];
       const char depth_j = pj->depth_h;
 
       /* Skip inhibited particles. */
@@ -166,11 +166,11 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param r The #runner.
  * @param c The #cell.
  */
-void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
+void DOSELF1_NAIVE(struct runner* r, const struct cell* c,
                    const int limit_min_h, const int limit_max_h) {
 
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
 
   TIMER_TIC;
 
@@ -182,7 +182,7 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
   const float H = cosmo->H;
 
   const int count = c->hydro.count;
-  struct part *parts = c->hydro.parts;
+  struct part* parts = c->hydro.parts;
 
   /* Get the depth limits (if any) */
   const char min_depth = limit_max_h ? c->depth : 0;
@@ -198,7 +198,7 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
   for (int pid = 0; pid < count; pid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct part *restrict pi = &parts[pid];
+    struct part* restrict pi = &parts[pid];
 
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
@@ -215,7 +215,7 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
     for (int pjd = pid + 1; pjd < count; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts[pjd];
+      struct part* restrict pj = &parts[pjd];
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
@@ -288,12 +288,12 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
  * @param sid The direction of the pair.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DOPAIR1(struct runner *r, const struct cell *restrict ci,
-             const struct cell *restrict cj, const int limit_min_h,
+void DOPAIR1(struct runner* r, const struct cell* restrict ci,
+             const struct cell* restrict cj, const int limit_min_h,
              const int limit_max_h, const int sid, const double shift[3]) {
 
-  const struct engine *restrict e = r->e;
-  const struct cosmology *restrict cosmo = e->cosmology;
+  const struct engine* restrict e = r->e;
+  const struct cosmology* restrict cosmo = e->cosmology;
 
   TIMER_TIC;
 
@@ -302,8 +302,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
-  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
+  const struct sort_entry* restrict sort_i = cell_get_hydro_sorts(ci, sid);
+  const struct sort_entry* restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
@@ -334,8 +334,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
   const double hj_max = min(h_max, cj->hydro.h_max_active) * kernel_gamma;
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
-  struct part *restrict parts_i = ci->hydro.parts;
-  struct part *restrict parts_j = cj->hydro.parts;
+  struct part* restrict parts_i = ci->hydro.parts;
+  struct part* restrict parts_j = cj->hydro.parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
@@ -352,7 +352,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
 
       /* Get a hold of the ith part in ci. */
-      struct part *restrict pi = &parts_i[sort_i[pid].i];
+      struct part* restrict pi = &parts_i[sort_i[pid].i];
       const char depth_i = pi->depth_h;
       const float hi = pi->h;
 
@@ -382,7 +382,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
 
         /* Recover pj */
-        struct part *pj = &parts_j[sort_j[pjd].i];
+        struct part* pj = &parts_j[sort_j[pjd].i];
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -451,7 +451,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
          pjd++) {
 
       /* Get a hold of the jth part in cj. */
-      struct part *pj = &parts_j[sort_j[pjd].i];
+      struct part* pj = &parts_j[sort_j[pjd].i];
       const char depth_j = pj->depth_h;
       const float hj = pj->h;
 
@@ -481,7 +481,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
       for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
 
         /* Recover pi */
-        struct part *pi = &parts_i[sort_i[pid].i];
+        struct part* pi = &parts_i[sort_i[pid].i];
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pi, e)) continue;
@@ -555,10 +555,10 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
  * @param cj #cell cj
  *
  */
-void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
+void DOPAIR1_BRANCH(struct runner* r, struct cell* ci, struct cell* cj,
                     const int limit_min_h, const int limit_max_h) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   /* Anything to do here? */
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
@@ -597,15 +597,15 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
  * @param r The #runner.
  * @param c The #cell.
  */
-void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
+void DOSELF1(struct runner* r, const struct cell* c, const int limit_min_h,
              const int limit_max_h) {
 
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
 
   TIMER_TIC;
 
-  struct part *parts = c->hydro.parts;
+  struct part* parts = c->hydro.parts;
   const int count = c->hydro.count;
 
   /* Get the depth limits (if any) */
@@ -619,13 +619,13 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
 #endif
 
   /* Set up a list of the particles for which we want to compute interactions */
-  int *indt = NULL;
+  int* indt = NULL;
   int countdt = 0, firstdt = 0;
-  if (posix_memalign((void **)&indt, VEC_SIZE * sizeof(int),
+  if (posix_memalign((void**)&indt, VEC_SIZE * sizeof(int),
                      count * sizeof(int)) != 0)
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++) {
-    const struct part *p = &parts[k];
+    const struct part* p = &parts[k];
     const char depth = p->depth_h;
     if (part_is_starting(&parts[k], e) && (depth >= min_depth) &&
         (depth <= max_depth)) {
@@ -645,7 +645,7 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
   for (int pid = 0; pid < count; pid++) {
 
     /* Get a pointer to the ith particle. */
-    struct part *restrict pi = &parts[pid];
+    struct part* restrict pi = &parts[pid];
     const char depth_i = pi->depth_h;
 
     /* Skip inhibited particles. */
@@ -667,7 +667,7 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
       for (int pjd = firstdt; pjd < countdt; pjd++) {
 
         /* Get a pointer to the jth particle. (by construction pi != pj) */
-        struct part *restrict pj = &parts[indt[pjd]];
+        struct part* restrict pj = &parts[indt[pjd]];
 
         /* This particle's (square of) search radius. */
         const float hj = pj->h;
@@ -714,7 +714,7 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
       for (int pjd = pid + 1; pjd < count; pjd++) {
 
         /* Get a pointer to the jth particle (by construction pi != pj). */
-        struct part *restrict pj = &parts[pjd];
+        struct part* restrict pj = &parts[pjd];
         const char depth_j = pj->depth_h;
 
         /* Skip inhibited particles. */
@@ -805,10 +805,10 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
  * @param c #cell c
  *
  */
-void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
+void DOSELF1_BRANCH(struct runner* r, const struct cell* c,
                     const int limit_min_h, const int limit_max_h) {
 
-  const struct engine *restrict e = r->e;
+  const struct engine* restrict e = r->e;
 
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
@@ -849,11 +849,11 @@ void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
-void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
+void DOSUB_PAIR1(struct runner* r, struct cell* ci, struct cell* cj,
                  int recurse_below_h_max, const int gettimer) {
 
-  struct space *s = r->e->s;
-  const struct engine *e = r->e;
+  struct space* s = r->e->s;
+  const struct engine* e = r->e;
 
   TIMER_TIC;
 
@@ -933,7 +933,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
     }
 
     /* Recurse to the lower levels. */
-    const struct cell_split_pair *const csp = &cell_split_pairs[sid];
+    const struct cell_split_pair* const csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
@@ -954,7 +954,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1(struct runner *r, struct cell *c, int recurse_below_h_max,
+void DOSUB_SELF1(struct runner* r, struct cell* c, int recurse_below_h_max,
                  const int gettimer) {
 
   TIMER_TIC;

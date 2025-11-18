@@ -49,9 +49,9 @@
  * @param nr_shells returns the number of shells
  * @param shell_out returns the array of shells
  */
-static void read_shell_radii(const struct cosmology *cosmo,
-                             const char *radius_file, int *nr_shells,
-                             struct lightcone_shell **shell_out) {
+static void read_shell_radii(const struct cosmology* cosmo,
+                             const char* radius_file, int* nr_shells,
+                             struct lightcone_shell** shell_out) {
 
   /* Allow shell radii to be specified in several different units */
   enum shell_units {
@@ -61,18 +61,18 @@ static void read_shell_radii(const struct cosmology *cosmo,
     expansion_factor = 3
   };
 
-  FILE *fd = fopen(radius_file, "r");
+  FILE* fd = fopen(radius_file, "r");
   if (!fd) error("Failed to open lightcone radius file %s", radius_file);
 
   /* Count number of non-zero length lines */
   size_t len = 0;
-  char *line = NULL;
+  char* line = NULL;
   int nr_lines = 0;
   while (getline(&line, &len, fd) != -1 && strlen(line) > 0) nr_lines += 1;
   rewind(fd);
 
   /* Allocate output array */
-  struct lightcone_shell *shell = (struct lightcone_shell *)malloc(
+  struct lightcone_shell* shell = (struct lightcone_shell*)malloc(
       sizeof(struct lightcone_shell) * (nr_lines - 1));
 
   /* Check header */
@@ -171,22 +171,22 @@ static void read_shell_radii(const struct cosmology *cosmo,
  * @param nr_shells_out returns the number of lightcone shells in the array
  *
  */
-struct lightcone_shell *lightcone_shell_array_init(
-    const struct cosmology *cosmo, const char *radius_file, int nr_maps,
-    struct lightcone_map_type *map_type, int nside, pixel_index_t total_nr_pix,
-    struct lightcone_particle_type *part_type, size_t elements_per_block,
-    int *nr_shells_out) {
+struct lightcone_shell* lightcone_shell_array_init(
+    const struct cosmology* cosmo, const char* radius_file, int nr_maps,
+    struct lightcone_map_type* map_type, int nside, pixel_index_t total_nr_pix,
+    struct lightcone_particle_type* part_type, size_t elements_per_block,
+    int* nr_shells_out) {
 
   /* Read in the shell radii */
   int nr_shells = 0;
-  struct lightcone_shell *shell = NULL;
+  struct lightcone_shell* shell = NULL;
   if (engine_rank == 0)
     read_shell_radii(cosmo, radius_file, &nr_shells, &shell);
 #ifdef WITH_MPI
   MPI_Bcast(&nr_shells, 1, MPI_INT, 0, MPI_COMM_WORLD);
   if (engine_rank != 0)
-    shell = (struct lightcone_shell *)malloc(sizeof(struct lightcone_shell) *
-                                             nr_shells);
+    shell = (struct lightcone_shell*)malloc(sizeof(struct lightcone_shell) *
+                                            nr_shells);
   MPI_Bcast(shell, sizeof(struct lightcone_shell) * nr_shells, MPI_BYTE, 0,
             MPI_COMM_WORLD);
 #endif
@@ -209,7 +209,7 @@ struct lightcone_shell *lightcone_shell_array_init(
   for (int shell_nr = 0; shell_nr < nr_shells; shell_nr += 1) {
     shell[shell_nr].nr_maps = nr_maps;
     shell[shell_nr].map =
-        (struct lightcone_map *)malloc(nr_maps * sizeof(struct lightcone_map));
+        (struct lightcone_map*)malloc(nr_maps * sizeof(struct lightcone_map));
   }
 
   int comm_rank = 0, comm_size = 1;
@@ -271,7 +271,7 @@ struct lightcone_shell *lightcone_shell_array_init(
  * @param shell pointer to the array of lightcone_shells
  * @param nr_shells number of shells in the array
  */
-void lightcone_shell_array_free(struct lightcone_shell *shell, int nr_shells) {
+void lightcone_shell_array_free(struct lightcone_shell* shell, int nr_shells) {
 
   /* Free the lightcone healpix maps for each shell */
   for (int shell_nr = 0; shell_nr < nr_shells; shell_nr += 1) {
@@ -304,11 +304,11 @@ void lightcone_shell_array_free(struct lightcone_shell *shell, int nr_shells) {
  * @param nr_shells number of shells in the array
  * @param stream the output stream to write to
  */
-void lightcone_shell_array_dump(const struct lightcone_shell *shell,
-                                int nr_shells, FILE *stream) {
+void lightcone_shell_array_dump(const struct lightcone_shell* shell,
+                                int nr_shells, FILE* stream) {
 
   /* Dump the array of shell structs  */
-  restart_write_blocks((void *)shell, sizeof(struct lightcone_shell), nr_shells,
+  restart_write_blocks((void*)shell, sizeof(struct lightcone_shell), nr_shells,
                        stream, "lightcone_shells", "lightcone_shells");
 
   /* Dump the lightcone maps associated with each shell */
@@ -329,21 +329,21 @@ void lightcone_shell_array_dump(const struct lightcone_shell *shell,
  * @param elements_per_block size of blocks used in the update buffers
  *
  */
-struct lightcone_shell *lightcone_shell_array_restore(
-    FILE *stream, int nr_shells, struct lightcone_particle_type *part_type,
+struct lightcone_shell* lightcone_shell_array_restore(
+    FILE* stream, int nr_shells, struct lightcone_particle_type* part_type,
     size_t elements_per_block) {
 
   /* Restore the array of lightcone_shell structs */
-  struct lightcone_shell *shell = (struct lightcone_shell *)malloc(
+  struct lightcone_shell* shell = (struct lightcone_shell*)malloc(
       sizeof(struct lightcone_shell) * nr_shells);
-  restart_read_blocks((void *)shell, sizeof(struct lightcone_shell), nr_shells,
+  restart_read_blocks((void*)shell, sizeof(struct lightcone_shell), nr_shells,
                       stream, NULL, "lightcone_shells");
 
   /* Restore the lightcone maps associated with each shell */
   for (int shell_nr = 0; shell_nr < nr_shells; shell_nr += 1) {
     const int nr_maps = shell[shell_nr].nr_maps;
     shell[shell_nr].map =
-        (struct lightcone_map *)malloc(sizeof(struct lightcone_map) * nr_maps);
+        (struct lightcone_map*)malloc(sizeof(struct lightcone_map) * nr_maps);
     for (int map_nr = 0; map_nr < nr_maps; map_nr += 1) {
       lightcone_map_struct_restore(&shell[shell_nr].map[map_nr], stream);
     }
@@ -367,16 +367,16 @@ struct healpix_smoothing_mapper_data {
   int comm_rank, comm_size;
 
   /*! Pointer to the lightcone shell we're updating */
-  struct lightcone_shell *shell;
+  struct lightcone_shell* shell;
 
   /*! Information about the particle type we're updating */
-  struct lightcone_particle_type *part_type;
+  struct lightcone_particle_type* part_type;
 
   /*! Pointer to the send buffer for communication */
-  union lightcone_map_buffer_entry *sendbuf;
+  union lightcone_map_buffer_entry* sendbuf;
 
   /*! Pointer to the projected kernel table */
-  struct projected_kernel_table *kernel_table;
+  struct projected_kernel_table* kernel_table;
 };
 
 #ifdef HAVE_CHEALPIX
@@ -392,19 +392,19 @@ static pixel_index_t angle_to_pixel(int nside, double theta, double phi) {
 struct buffer_block_info {
 
   /*! Pointer to the buffer block */
-  struct particle_buffer_block *block;
+  struct particle_buffer_block* block;
 
   /*! Number of elements from this block to go to each MPI rank */
-  size_t *count;
+  size_t* count;
 
   /*! Offsets at which to write elements in the send buffer */
-  size_t *offset;
+  size_t* offset;
 
   /*! First destination rank each entry is to be sent to */
-  int *first_dest;
+  int* first_dest;
 
   /*! Last destination rank each entry is to be sent to */
-  int *last_dest;
+  int* last_dest;
 };
 
 #ifdef HAVE_CHEALPIX
@@ -431,18 +431,18 @@ static int pixel_to_rank(int comm_size, pixel_index_t pix_per_rank,
  * @param extra_data Pointer to healpix_smoothing_mapper_data struct
  *
  */
-static void count_elements_to_send_mapper(void *map_data, int num_elements,
-                                          void *extra_data) {
+static void count_elements_to_send_mapper(void* map_data, int num_elements,
+                                          void* extra_data) {
 #ifdef HAVE_CHEALPIX
 
   /* Unpack information about the array of blocks to process */
-  struct buffer_block_info *block_info = (struct buffer_block_info *)map_data;
+  struct buffer_block_info* block_info = (struct buffer_block_info*)map_data;
 
   /* Unpack extra input parameters we need */
-  struct healpix_smoothing_mapper_data *mapper_data =
-      (struct healpix_smoothing_mapper_data *)extra_data;
-  struct lightcone_particle_type *part_type = mapper_data->part_type;
-  struct lightcone_shell *shell = mapper_data->shell;
+  struct healpix_smoothing_mapper_data* mapper_data =
+      (struct healpix_smoothing_mapper_data*)extra_data;
+  struct lightcone_particle_type* part_type = mapper_data->part_type;
+  struct lightcone_shell* shell = mapper_data->shell;
 
   /* Number of healpix maps we're updating */
   const int nr_maps = part_type->nr_maps;
@@ -457,13 +457,13 @@ static void count_elements_to_send_mapper(void *map_data, int num_elements,
   for (int block_nr = 0; block_nr < num_elements; block_nr += 1) {
 
     /* Find the count and offset for this block */
-    size_t *count = block_info[block_nr].count;
-    size_t *offset = block_info[block_nr].offset;
-    int *first_dest = block_info[block_nr].first_dest;
-    int *last_dest = block_info[block_nr].last_dest;
+    size_t* count = block_info[block_nr].count;
+    size_t* offset = block_info[block_nr].offset;
+    int* first_dest = block_info[block_nr].first_dest;
+    int* last_dest = block_info[block_nr].last_dest;
 
     /* Get a pointer to the block itself */
-    struct particle_buffer_block *block = block_info[block_nr].block;
+    struct particle_buffer_block* block = block_info[block_nr].block;
 
     /* Initialise count and offset into the send buffer for this block */
     for (int i = 0; i < comm_size; i += 1) {
@@ -472,8 +472,8 @@ static void count_elements_to_send_mapper(void *map_data, int num_elements,
     }
 
     /* Loop over lightcone map contributions in this block */
-    union lightcone_map_buffer_entry *update_data =
-        (union lightcone_map_buffer_entry *)block->data;
+    union lightcone_map_buffer_entry* update_data =
+        (union lightcone_map_buffer_entry*)block->data;
     for (size_t i = 0; i < block->num_elements; i += 1) {
 
       /* Find the particle angular coordinates and size for this update */
@@ -535,17 +535,17 @@ static void count_elements_to_send_mapper(void *map_data, int num_elements,
  * @param extra_data Pointer to healpix_smoothing_mapper_data struct
  *
  */
-static void store_elements_to_send_mapper(void *map_data, int num_elements,
-                                          void *extra_data) {
+static void store_elements_to_send_mapper(void* map_data, int num_elements,
+                                          void* extra_data) {
 
   /* Unpack input data */
-  struct buffer_block_info *block_info = (struct buffer_block_info *)map_data;
-  struct healpix_smoothing_mapper_data *mapper_data =
-      (struct healpix_smoothing_mapper_data *)extra_data;
-  struct lightcone_particle_type *part_type = mapper_data->part_type;
+  struct buffer_block_info* block_info = (struct buffer_block_info*)map_data;
+  struct healpix_smoothing_mapper_data* mapper_data =
+      (struct healpix_smoothing_mapper_data*)extra_data;
+  struct lightcone_particle_type* part_type = mapper_data->part_type;
 
   /* Find the send buffer where we will place the updates from this block */
-  union lightcone_map_buffer_entry *sendbuf = mapper_data->sendbuf;
+  union lightcone_map_buffer_entry* sendbuf = mapper_data->sendbuf;
 
   /* Find how many elements we have per update */
   const int nr_elements_per_update = 3 + part_type->nr_maps;
@@ -556,22 +556,22 @@ static void store_elements_to_send_mapper(void *map_data, int num_elements,
     /* Find the offset into the send buffer where we will place the
        the first element from this block to go to each MPI rank.
        Offset is in units of number of updates. */
-    size_t *offset = block_info[block_nr].offset;
+    size_t* offset = block_info[block_nr].offset;
 
     /* Find range of MPI ranks to send each element in this block to */
-    int *first_dest_rank = block_info[block_nr].first_dest;
-    int *last_dest_rank = block_info[block_nr].last_dest;
+    int* first_dest_rank = block_info[block_nr].first_dest;
+    int* last_dest_rank = block_info[block_nr].last_dest;
 
     /* Get a pointer to the block itself */
-    struct particle_buffer_block *block = block_info[block_nr].block;
+    struct particle_buffer_block* block = block_info[block_nr].block;
 
     /* Loop over lightcone map updates in this block */
-    union lightcone_map_buffer_entry *update_data =
-        (union lightcone_map_buffer_entry *)block->data;
+    union lightcone_map_buffer_entry* update_data =
+        (union lightcone_map_buffer_entry*)block->data;
     for (size_t i = 0; i < block->num_elements; i += 1) {
 
       /* Find the data to send for this update */
-      union lightcone_map_buffer_entry *block_data =
+      union lightcone_map_buffer_entry* block_data =
           &update_data[i * nr_elements_per_update];
 
       /* Store this contribution to the send buffer (possibly multiple times) */
@@ -579,7 +579,7 @@ static void store_elements_to_send_mapper(void *map_data, int num_elements,
            rank += 1) {
 
         /* Find where in the send buffer to write the update */
-        union lightcone_map_buffer_entry *dest =
+        union lightcone_map_buffer_entry* dest =
             sendbuf + (offset[rank] * nr_elements_per_update);
 
         /* Copy the update to the send buffer */
@@ -612,24 +612,24 @@ static void store_elements_to_send_mapper(void *map_data, int num_elements,
  * @param extra_data Pointer to healpix_smoothing_mapper_data struct
  *
  */
-void healpix_smoothing_mapper(void *map_data, int num_elements,
-                              void *extra_data) {
+void healpix_smoothing_mapper(void* map_data, int num_elements,
+                              void* extra_data) {
 
 #ifdef HAVE_CHEALPIX
 
   /* Unpack pointers to the lightcone shell and particle_type structs */
-  struct healpix_smoothing_mapper_data *mapper_data =
-      (struct healpix_smoothing_mapper_data *)extra_data;
-  struct lightcone_shell *shell = mapper_data->shell;
-  struct lightcone_particle_type *part_type = mapper_data->part_type;
-  struct projected_kernel_table *kernel_table = mapper_data->kernel_table;
+  struct healpix_smoothing_mapper_data* mapper_data =
+      (struct healpix_smoothing_mapper_data*)extra_data;
+  struct lightcone_shell* shell = mapper_data->shell;
+  struct lightcone_particle_type* part_type = mapper_data->part_type;
+  struct projected_kernel_table* kernel_table = mapper_data->kernel_table;
 
   /* Get maximum radius of any pixel in the map */
   const double max_pixrad = healpix_max_pixrad(shell->nside);
 
   /* Find the array of updates to apply to the healpix maps */
-  union lightcone_map_buffer_entry *update_data =
-      (union lightcone_map_buffer_entry *)map_data;
+  union lightcone_map_buffer_entry* update_data =
+      (union lightcone_map_buffer_entry*)map_data;
 
   /* Find range of pixel indexes stored locally. Here we assume all maps
      have the same number of pixels and distribution between MPI ranks */
@@ -649,7 +649,7 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
     const double smoothing_radius = update_data[index + 2].f;
     /* Compute angular radius at which the projected kernel reaches zero */
     const double search_radius = smoothing_radius * kernel_gamma;
-    const union lightcone_map_buffer_entry *value = &update_data[index + 3];
+    const union lightcone_map_buffer_entry* value = &update_data[index + 3];
 
     if (search_radius < max_pixrad) {
 
@@ -691,7 +691,7 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
         ang2vec(theta, phi, part_vec);
         pixel_index_t pix_min, pix_max;
         int nr_ranges;
-        struct pixel_range *range;
+        struct pixel_range* range;
         healpix_query_disc_range(shell->nside, part_vec, search_radius,
                                  &pix_min, &pix_max, &nr_ranges, &range);
 
@@ -827,10 +827,10 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
  *
  */
 void lightcone_shell_flush_map_updates_for_type(
-    struct lightcone_shell *shell, struct threadpool *tp,
-    struct lightcone_particle_type *part_type, int ptype,
+    struct lightcone_shell* shell, struct threadpool* tp,
+    struct lightcone_particle_type* part_type, int ptype,
     const double max_map_update_send_size_mb,
-    struct projected_kernel_table *kernel_table, int verbose) {
+    struct projected_kernel_table* kernel_table, int verbose) {
 
   int comm_rank = 0, comm_size = 1;
 #ifdef WITH_MPI
@@ -851,8 +851,8 @@ void lightcone_shell_flush_map_updates_for_type(
 
   /* Count data blocks and ensure number of elements is in range */
   int nr_blocks = 0;
-  struct particle_buffer *buffer = &shell->buffer[ptype];
-  struct particle_buffer_block *block = buffer->first_block;
+  struct particle_buffer* buffer = &shell->buffer[ptype];
+  struct particle_buffer_block* block = buffer->first_block;
   while (block) {
     if (block->num_elements > buffer->elements_per_block)
       block->num_elements = buffer->elements_per_block;
@@ -861,7 +861,7 @@ void lightcone_shell_flush_map_updates_for_type(
   }
 
   /* Allocate array with counts and offsets for each block */
-  struct buffer_block_info *block_info = (struct buffer_block_info *)malloc(
+  struct buffer_block_info* block_info = (struct buffer_block_info*)malloc(
       sizeof(struct buffer_block_info) * nr_blocks);
 
   /* Initialize array of blocks */
@@ -869,12 +869,12 @@ void lightcone_shell_flush_map_updates_for_type(
   block = buffer->first_block;
   while (block) {
     block_info[nr_blocks].block = block;
-    block_info[nr_blocks].count = (size_t *)malloc(sizeof(size_t) * comm_size);
-    block_info[nr_blocks].offset = (size_t *)malloc(sizeof(size_t) * comm_size);
+    block_info[nr_blocks].count = (size_t*)malloc(sizeof(size_t) * comm_size);
+    block_info[nr_blocks].offset = (size_t*)malloc(sizeof(size_t) * comm_size);
     block_info[nr_blocks].first_dest =
-        (int *)malloc(sizeof(int) * block->num_elements);
+        (int*)malloc(sizeof(int) * block->num_elements);
     block_info[nr_blocks].last_dest =
-        (int *)malloc(sizeof(int) * block->num_elements);
+        (int*)malloc(sizeof(int) * block->num_elements);
     nr_blocks += 1;
     block = block->next;
   }
@@ -909,7 +909,7 @@ void lightcone_shell_flush_map_updates_for_type(
       nr_blocks_iter = max_blocks_per_iteration;
 
     /* Get a pointer to the blocks to do on this iteration */
-    struct buffer_block_info *block_info_iter = block_info + nr_blocks_done;
+    struct buffer_block_info* block_info_iter = block_info + nr_blocks_done;
 
     /* For each block, count how many elements are to be sent to each MPI rank
      */
@@ -918,7 +918,7 @@ void lightcone_shell_flush_map_updates_for_type(
                    &mapper_data);
 
     /* Find total number of elements to go to each rank */
-    size_t *send_count = (size_t *)malloc(sizeof(size_t) * comm_size);
+    size_t* send_count = (size_t*)malloc(sizeof(size_t) * comm_size);
     for (int i = 0; i < comm_size; i += 1) send_count[i] = 0;
     for (int block_nr = 0; block_nr < nr_blocks_iter; block_nr += 1) {
       for (int i = 0; i < comm_size; i += 1)
@@ -927,7 +927,7 @@ void lightcone_shell_flush_map_updates_for_type(
 
     /* Find offset to the first element to go to each rank if we sort them by
      * destination */
-    size_t *send_offset = (size_t *)malloc(sizeof(size_t) * comm_size);
+    size_t* send_offset = (size_t*)malloc(sizeof(size_t) * comm_size);
     send_offset[0] = 0;
     for (int i = 1; i < comm_size; i += 1) {
       send_offset[i] = send_offset[i - 1] + send_count[i - 1];
@@ -955,8 +955,8 @@ void lightcone_shell_flush_map_updates_for_type(
     for (int i = 0; i < comm_size; i += 1) total_nr_send += send_count[i];
 
     /* Allocate the send buffer */
-    union lightcone_map_buffer_entry *sendbuf =
-        (union lightcone_map_buffer_entry *)malloc(
+    union lightcone_map_buffer_entry* sendbuf =
+        (union lightcone_map_buffer_entry*)malloc(
             part_type[ptype].buffer_element_size * total_nr_send);
     mapper_data.sendbuf = sendbuf;
 
@@ -966,15 +966,15 @@ void lightcone_shell_flush_map_updates_for_type(
                    &mapper_data);
 
     /* Determine number of elements to receive */
-    size_t *recv_count = (size_t *)malloc(comm_size * sizeof(size_t));
+    size_t* recv_count = (size_t*)malloc(comm_size * sizeof(size_t));
     MPI_Alltoall(send_count, sizeof(size_t), MPI_BYTE, recv_count,
                  sizeof(size_t), MPI_BYTE, MPI_COMM_WORLD);
     size_t total_nr_recv = 0;
     for (int i = 0; i < comm_size; i += 1) total_nr_recv += recv_count[i];
 
     /* Allocate receive buffer */
-    union lightcone_map_buffer_entry *recvbuf =
-        (union lightcone_map_buffer_entry *)malloc(
+    union lightcone_map_buffer_entry* recvbuf =
+        (union lightcone_map_buffer_entry*)malloc(
             part_type[ptype].buffer_element_size * total_nr_recv);
 
     /* Exchange data */
@@ -1015,12 +1015,12 @@ void lightcone_shell_flush_map_updates_for_type(
 
   /* If not using MPI, we can update the healpix maps directly from the buffer
    */
-  struct particle_buffer_block *block = NULL;
+  struct particle_buffer_block* block = NULL;
   size_t num_elements;
-  double *update_data;
+  double* update_data;
   do {
     particle_buffer_iterate(&shell->buffer[ptype], &block, &num_elements,
-                            (void **)&update_data);
+                            (void**)&update_data);
     threadpool_map(tp, healpix_smoothing_mapper, update_data, num_elements,
                    part_type[ptype].buffer_element_size,
                    threadpool_auto_chunk_size, &mapper_data);
@@ -1040,10 +1040,10 @@ void lightcone_shell_flush_map_updates_for_type(
  *
  */
 void lightcone_shell_flush_map_updates(
-    struct lightcone_shell *shell, struct threadpool *tp,
-    struct lightcone_particle_type *part_type,
+    struct lightcone_shell* shell, struct threadpool* tp,
+    struct lightcone_particle_type* part_type,
     const double max_map_update_send_size_mb,
-    struct projected_kernel_table *kernel_table, int verbose) {
+    struct projected_kernel_table* kernel_table, int verbose) {
 
   if (shell->state != shell_current)
     error("Attempt to flush updates for non-current shell!");

@@ -36,7 +36,7 @@
  * @param sf the star_formation_history struct of the current cell
  */
 INLINE static void star_formation_logger_log_new_spart(
-    struct spart *sp, struct star_formation_history *sf) {}
+    struct spart* sp, struct star_formation_history* sf) {}
 
 /**
  * @brief Initialize the star formation history struct in the case the cell is
@@ -45,7 +45,7 @@ INLINE static void star_formation_logger_log_new_spart(
  * @param sf the star_formation_history struct we want to initialize
  */
 INLINE static void star_formation_logger_log_inactive_cell(
-    struct star_formation_history *sf) {}
+    struct star_formation_history* sf) {}
 
 /**
  * @brief add a star formation history struct to an other star formation history
@@ -56,8 +56,8 @@ INLINE static void star_formation_logger_log_inactive_cell(
  * @param sf_update the star formation structure which we want to update
  */
 INLINE static void star_formation_logger_add(
-    struct star_formation_history *sf_update,
-    const struct star_formation_history *sf_add) {}
+    struct star_formation_history* sf_update,
+    const struct star_formation_history* sf_add) {}
 
 /**
  * @brief add a star formation history accumulator struct to an other star
@@ -68,8 +68,8 @@ INLINE static void star_formation_logger_add(
  * @param sf_update the star formation structure which we want to update
  */
 INLINE static void star_formation_logger_add_to_accumulator(
-    struct star_formation_history_accumulator *sf_update,
-    const struct star_formation_history *sf_add) {}
+    struct star_formation_history_accumulator* sf_update,
+    const struct star_formation_history* sf_add) {}
 
 /**
  * @brief Initialize the star formation history structure in the #engine
@@ -77,7 +77,7 @@ INLINE static void star_formation_logger_add_to_accumulator(
  * @param sfh The pointer to the star formation history structure
  */
 INLINE static void star_formation_logger_init(
-    struct star_formation_history *sfh) {}
+    struct star_formation_history* sfh) {}
 
 /**
  * @brief Initialize the star formation history structure in the #engine
@@ -85,7 +85,7 @@ INLINE static void star_formation_logger_init(
  * @param sfh The pointer to the star formation history structure
  */
 INLINE static void star_formation_logger_accumulator_init(
-    struct star_formation_history_accumulator *sfh) {}
+    struct star_formation_history_accumulator* sfh) {}
 
 /**
  * @brief Write the final SFH to a file
@@ -98,7 +98,7 @@ INLINE static void star_formation_logger_accumulator_init(
  * @param step The time-step of the simulation.
  */
 INLINE static void star_formation_logger_write_to_log_file(
-    FILE *fp, const double time, const double a, const double z,
+    FILE* fp, const double time, const double a, const double z,
     const struct star_formation_history_accumulator sf, const int step) {}
 
 /**
@@ -109,8 +109,8 @@ INLINE static void star_formation_logger_write_to_log_file(
  * @param phys_const Physical constants in internal units
  */
 INLINE static void star_formation_logger_init_log_file(
-    FILE *fp, const struct unit_system *restrict us,
-    const struct phys_const *phys_const) {}
+    FILE* fp, const struct unit_system* restrict us,
+    const struct phys_const* phys_const) {}
 
 /**
  * @brief Add the SFR tracer to the total active SFR of this cell
@@ -120,8 +120,8 @@ INLINE static void star_formation_logger_init_log_file(
  * @param sf the SFH logger struct
  */
 INLINE static void star_formation_logger_log_active_part(
-    const struct part *p, const struct xpart *xp,
-    struct star_formation_history *sf, const double dt_star) {}
+    const struct part* p, const struct xpart* xp,
+    struct star_formation_history* sf, const double dt_star) {}
 
 /**
  * @brief Add the SFR tracer to the total inactive SFR of this cell as long as
@@ -132,7 +132,7 @@ INLINE static void star_formation_logger_log_active_part(
  * @param sf the SFH logger struct
  */
 INLINE static void star_formation_logger_log_inactive_part(
-    const struct part *p, const struct xpart *xp,
-    struct star_formation_history *sf) {}
+    const struct part* p, const struct xpart* xp,
+    struct star_formation_history* sf) {}
 
 #endif /* SWIFT_NONE_STARFORMATION_LOGGER_H */

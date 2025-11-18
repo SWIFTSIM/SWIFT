@@ -36,7 +36,7 @@
  * Calls #error() if an error occurs.
  */
 __attribute__((always_inline)) INLINE static void
-io_read_string_array_attribute(hid_t grp, const char *name, char *data,
+io_read_string_array_attribute(hid_t grp, const char* name, char* data,
                                hsize_t number_element,
                                hsize_t size_per_element) {
 
@@ -68,7 +68,7 @@ io_read_string_array_attribute(hid_t grp, const char *name, char *data,
   }
 
   /* Allocate the temporary array */
-  char *tmp = malloc(sizeof(char) * sdim * number_element);
+  char* tmp = malloc(sizeof(char) * sdim * number_element);
   if (tmp == NULL) {
     error("Failed to allocate the temporary array.");
   }
@@ -79,8 +79,8 @@ io_read_string_array_attribute(hid_t grp, const char *name, char *data,
 
   /* Copy the attribute correctly */
   for (hsize_t i = 0; i < number_element; i++) {
-    char *src = tmp + i * sdim;
-    char *dest = data + i * size_per_element;
+    char* src = tmp + i * sdim;
+    char* dest = data + i * size_per_element;
     memcpy(dest, src, sdim);
   }
 
@@ -99,7 +99,7 @@ io_read_string_array_attribute(hid_t grp, const char *name, char *data,
  *
  */
 __attribute__((always_inline)) INLINE static void h5_open_group(
-    const char *filename, char *group_name, hid_t *file_id, hid_t *group_id) {
+    const char* filename, char* group_name, hid_t* file_id, hid_t* group_id) {
 
   /* Open file. */
   *file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);

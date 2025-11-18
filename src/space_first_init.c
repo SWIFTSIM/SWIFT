@@ -41,33 +41,33 @@
 #include "threadpool.h"
 #include "tracers.h"
 
-void space_first_init_parts_mapper(void *restrict map_data, int count,
-                                   void *restrict extra_data) {
+void space_first_init_parts_mapper(void* restrict map_data, int count,
+                                   void* restrict extra_data) {
 
-  struct part *restrict p = (struct part *)map_data;
-  const struct space *restrict s = (struct space *)extra_data;
-  const struct engine *e = s->e;
+  struct part* restrict p = (struct part*)map_data;
+  const struct space* restrict s = (struct space*)extra_data;
+  const struct engine* e = s->e;
 
   const ptrdiff_t delta = p - s->parts;
-  struct xpart *restrict xp = s->xparts + delta;
+  struct xpart* restrict xp = s->xparts + delta;
 
   /* Extract some constants */
-  const struct cosmology *cosmo = s->e->cosmology;
-  const struct phys_const *phys_const = s->e->physical_constants;
-  const struct unit_system *us = s->e->internal_units;
+  const struct cosmology* cosmo = s->e->cosmology;
+  const struct phys_const* phys_const = s->e->physical_constants;
+  const struct unit_system* us = s->e->internal_units;
   const float a_factor_vel = cosmo->a;
 
-  const struct hydro_props *hydro_props = s->e->hydro_properties;
+  const struct hydro_props* hydro_props = s->e->hydro_properties;
   const float u_init = hydro_props->initial_internal_energy;
   const float hydro_h_min_ratio = e->hydro_properties->h_min_ratio;
 
-  const struct gravity_props *grav_props = s->e->gravity_properties;
+  const struct gravity_props* grav_props = s->e->gravity_properties;
   const int with_gravity = e->policy & engine_policy_self_gravity;
 
-  const struct chemistry_global_data *chemistry = e->chemistry;
-  const struct star_formation *star_formation = e->star_formation;
-  const struct cooling_function_data *cool_func = e->cooling_func;
-  const struct rt_props *rt_props = e->rt_props;
+  const struct chemistry_global_data* chemistry = e->chemistry;
+  const struct star_formation* star_formation = e->star_formation;
+  const struct cooling_function_data* cool_func = e->cooling_func;
+  const struct rt_props* rt_props = e->rt_props;
 
   /* Check that the smoothing lengths are non-zero */
   for (int k = 0; k < count; k++) {
@@ -76,7 +76,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
             p[k].h);
 
     if (with_gravity) {
-      const struct gpart *gp = p[k].gpart;
+      const struct gpart* gp = p[k].gpart;
       const float softening = gravity_get_softening(gp, grav_props);
       p->h = max(p->h, softening * hydro_h_min_ratio);
     }
@@ -166,7 +166,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
  * Calls chemistry_first_init_part() on all the particles
  * Calls cooling_first_init_part() on all the particles
  */
-void space_first_init_parts(struct space *s, int verbose) {
+void space_first_init_parts(struct space* s, int verbose) {
 
   const ticks tic = getticks();
   if (s->nr_parts > 0)
@@ -179,15 +179,15 @@ void space_first_init_parts(struct space *s, int verbose) {
             clocks_getunit());
 }
 
-void space_first_init_gparts_mapper(void *restrict map_data, int count,
-                                    void *restrict extra_data) {
+void space_first_init_gparts_mapper(void* restrict map_data, int count,
+                                    void* restrict extra_data) {
 
-  struct gpart *restrict gp = (struct gpart *)map_data;
-  const struct space *restrict s = (struct space *)extra_data;
+  struct gpart* restrict gp = (struct gpart*)map_data;
+  const struct space* restrict s = (struct space*)extra_data;
 
-  const struct cosmology *cosmo = s->e->cosmology;
+  const struct cosmology* cosmo = s->e->cosmology;
   const float a_factor_vel = cosmo->a;
-  const struct gravity_props *grav_props = s->e->gravity_properties;
+  const struct gravity_props* grav_props = s->e->gravity_properties;
 
   /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
@@ -232,7 +232,7 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
  *
  * Calls gravity_first_init_gpart() on all the particles
  */
-void space_first_init_gparts(struct space *s, int verbose) {
+void space_first_init_gparts(struct space* s, int verbose) {
 
   const ticks tic = getticks();
   if (s->nr_gparts > 0)
@@ -245,14 +245,14 @@ void space_first_init_gparts(struct space *s, int verbose) {
             clocks_getunit());
 }
 
-void space_first_init_sparts_mapper(void *restrict map_data, int count,
-                                    void *restrict extra_data) {
+void space_first_init_sparts_mapper(void* restrict map_data, int count,
+                                    void* restrict extra_data) {
 
-  struct spart *restrict sp = (struct spart *)map_data;
-  const struct space *restrict s = (struct space *)extra_data;
-  const struct engine *e = s->e;
+  struct spart* restrict sp = (struct spart*)map_data;
+  const struct space* restrict s = (struct space*)extra_data;
+  const struct engine* e = s->e;
 
-  const struct chemistry_global_data *chemistry = e->chemistry;
+  const struct chemistry_global_data* chemistry = e->chemistry;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = sp - s->sparts;
@@ -263,11 +263,11 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
-  const struct cosmology *cosmo = e->cosmology;
-  const struct stars_props *stars_properties = e->stars_properties;
-  const struct feedback_props *feedback_properties = e->feedback_props;
-  const struct phys_const *phys_const = s->e->physical_constants;
-  const struct unit_system *us = s->e->internal_units;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct stars_props* stars_properties = e->stars_properties;
+  const struct feedback_props* feedback_properties = e->feedback_props;
+  const struct phys_const* phys_const = s->e->physical_constants;
+  const struct unit_system* us = s->e->internal_units;
   const float a_factor_vel = cosmo->a;
 
   /* Convert velocities to internal units */
@@ -341,7 +341,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
  *
  * Calls stars_first_init_spart() on all the particles
  */
-void space_first_init_sparts(struct space *s, int verbose) {
+void space_first_init_sparts(struct space* s, int verbose) {
   const ticks tic = getticks();
   if (s->nr_sparts > 0)
     threadpool_map(&s->e->threadpool, space_first_init_sparts_mapper, s->sparts,
@@ -353,13 +353,13 @@ void space_first_init_sparts(struct space *s, int verbose) {
             clocks_getunit());
 }
 
-void space_first_init_bparts_mapper(void *restrict map_data, int count,
-                                    void *restrict extra_data) {
+void space_first_init_bparts_mapper(void* restrict map_data, int count,
+                                    void* restrict extra_data) {
 
-  struct bpart *restrict bp = (struct bpart *)map_data;
-  const struct space *restrict s = (struct space *)extra_data;
-  const struct engine *e = s->e;
-  const struct black_holes_props *props = e->black_holes_properties;
+  struct bpart* restrict bp = (struct bpart*)map_data;
+  const struct space* restrict s = (struct space*)extra_data;
+  const struct engine* e = s->e;
+  const struct black_holes_props* props = e->black_holes_properties;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = bp - s->bparts;
@@ -367,9 +367,9 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
 
   const float initial_h = s->initial_bpart_h;
 
-  const struct cosmology *cosmo = e->cosmology;
-  const struct phys_const *phys_const = s->e->physical_constants;
-  const struct unit_system *us = s->e->internal_units;
+  const struct cosmology* cosmo = e->cosmology;
+  const struct phys_const* phys_const = s->e->physical_constants;
+  const struct unit_system* us = s->e->internal_units;
   const float a_factor_vel = cosmo->a;
 
   /* Convert velocities to internal units */
@@ -432,7 +432,7 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
  *
  * Calls stars_first_init_bpart() on all the particles
  */
-void space_first_init_bparts(struct space *s, int verbose) {
+void space_first_init_bparts(struct space* s, int verbose) {
   const ticks tic = getticks();
   if (s->nr_bparts > 0)
     threadpool_map(&s->e->threadpool, space_first_init_bparts_mapper, s->bparts,
@@ -444,20 +444,20 @@ void space_first_init_bparts(struct space *s, int verbose) {
             clocks_getunit());
 }
 
-void space_first_init_sinks_mapper(void *restrict map_data, int count,
-                                   void *restrict extra_data) {
+void space_first_init_sinks_mapper(void* restrict map_data, int count,
+                                   void* restrict extra_data) {
 
-  struct sink *restrict sink = (struct sink *)map_data;
-  const struct space *restrict s = (struct space *)extra_data;
-  const struct engine *e = s->e;
-  const struct sink_props *props = e->sink_properties;
-  const struct chemistry_global_data *chemistry = e->chemistry;
+  struct sink* restrict sink = (struct sink*)map_data;
+  const struct space* restrict s = (struct space*)extra_data;
+  const struct engine* e = s->e;
+  const struct sink_props* props = e->sink_properties;
+  const struct chemistry_global_data* chemistry = e->chemistry;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = sink - s->sinks;
 #endif
 
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
   const float a_factor_vel = cosmo->a;
 
   /* Convert velocities to internal units */
@@ -510,7 +510,7 @@ void space_first_init_sinks_mapper(void *restrict map_data, int count,
  *
  * Calls stars_first_init_sink() on all the particles
  */
-void space_first_init_sinks(struct space *s, int verbose) {
+void space_first_init_sinks(struct space* s, int verbose) {
   const ticks tic = getticks();
   if (s->nr_sinks > 0)
     threadpool_map(&s->e->threadpool, space_first_init_sinks_mapper, s->sinks,

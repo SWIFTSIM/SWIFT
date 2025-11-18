@@ -37,16 +37,16 @@ struct memuse_rnode {
   int64_t value;
 
   /* Sorted pointers to children of this node. */
-  struct memuse_rnode **children;
+  struct memuse_rnode** children;
   unsigned int count;
 };
 
-void memuse_rnode_dump(int depth, struct memuse_rnode *node, int full);
-void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
-                               uint8_t *key, uint8_t keylen, int64_t value);
-struct memuse_rnode *memuse_rnode_find_child(struct memuse_rnode *node,
-                                             uint8_t depth, uint8_t *key,
+void memuse_rnode_dump(int depth, struct memuse_rnode* node, int full);
+void memuse_rnode_insert_child(struct memuse_rnode* node, uint8_t depth,
+                               uint8_t* key, uint8_t keylen, int64_t value);
+struct memuse_rnode* memuse_rnode_find_child(struct memuse_rnode* node,
+                                             uint8_t depth, uint8_t* key,
                                              uint8_t keylen);
-void memuse_rnode_cleanup(struct memuse_rnode *node);
+void memuse_rnode_cleanup(struct memuse_rnode* node);
 
 #endif /* SWIFT_MEMUSE_RNODE_H */

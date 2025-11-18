@@ -42,8 +42,8 @@
 #include "version.h"
 
 struct exact_force_data {
-  const struct engine *e;
-  const struct space *s;
+  const struct engine* e;
+  const struct space* s;
   int counter_global;
   double const_G;
 };
@@ -329,7 +329,7 @@ void gravity_exact_force_ewald_init(const double boxSize) {
  * @param corr_p (return) The Ewald correction for the potential.
  */
 void gravity_exact_force_ewald_evaluate(double rx, double ry, double rz,
-                                        double corr_f[3], double *corr_p) {
+                                        double corr_f[3], double* corr_p) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
@@ -413,7 +413,7 @@ void gravity_exact_force_ewald_evaluate(double rx, double ry, double rz,
  *
  * @param e The #engine.
  */
-int gravity_exact_force_file_exits(const struct engine *e) {
+int gravity_exact_force_file_exits(const struct engine* e) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
@@ -428,7 +428,7 @@ int gravity_exact_force_file_exits(const struct engine *e) {
   if (access(file_name, R_OK | W_OK) == 0) {
 
     /* Let's check whether the header matches the parameters of this run */
-    FILE *file = fopen(file_name, "r");
+    FILE* file = fopen(file_name, "r");
     if (file == NULL) error("Problem reading gravity_check file");
 
     char line[100];
@@ -462,18 +462,18 @@ int gravity_exact_force_file_exits(const struct engine *e) {
 /**
  * @brief Mapper function for the exact gravity calculation.
  */
-void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
-                                        void *extra_data) {
+void gravity_exact_force_compute_mapper(void* map_data, int nr_gparts,
+                                        void* extra_data) {
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
   /* Unpack the data */
-  struct gpart *restrict gparts = (struct gpart *)map_data;
-  struct exact_force_data *data = (struct exact_force_data *)extra_data;
-  const struct space *s = data->s;
-  const struct part *parts = s->parts;
-  const struct spart *sparts = s->sparts;
-  const struct bpart *bparts = s->bparts;
-  const struct engine *e = data->e;
+  struct gpart* restrict gparts = (struct gpart*)map_data;
+  struct exact_force_data* data = (struct exact_force_data*)extra_data;
+  const struct space* s = data->s;
+  const struct part* parts = s->parts;
+  const struct spart* sparts = s->sparts;
+  const struct bpart* bparts = s->bparts;
+  const struct engine* e = data->e;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double const_G = data->const_G;
@@ -481,7 +481,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
   for (int i = 0; i < nr_gparts; ++i) {
 
-    struct gpart *gpi = &gparts[i];
+    struct gpart* gpi = &gparts[i];
 
     /* Get the particle ID */
     long long id = 0;
@@ -512,7 +512,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
       /* Interact it with all other particles in the space.*/
       for (int j = 0; j < (int)s->nr_gparts; ++j) {
 
-        const struct gpart *gpj = &s->gparts[j];
+        const struct gpart* gpj = &s->gparts[j];
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (gpj->time_bin == time_bin_not_created) {
@@ -632,7 +632,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
  * @param s The #space to use.
  * @param e The #engine (to access the current time).
  */
-void gravity_exact_force_compute(struct space *s, const struct engine *e) {
+void gravity_exact_force_compute(struct space* s, const struct engine* e) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
@@ -677,14 +677,14 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
  * @param rel_tol The maximal relative error. Will call error() if one particle
  * has a larger error.
  */
-void gravity_exact_force_check(struct space *s, const struct engine *e,
+void gravity_exact_force_check(struct space* s, const struct engine* e,
                                float rel_tol) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
-  const struct part *parts = s->parts;
-  const struct spart *sparts = s->sparts;
-  const struct bpart *bparts = s->bparts;
+  const struct part* parts = s->parts;
+  const struct spart* sparts = s->sparts;
+  const struct bpart* bparts = s->bparts;
 
   /* File name */
   char file_name_swift[100];
@@ -692,7 +692,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
           SELF_GRAVITY_MULTIPOLE_ORDER);
 
   /* Creare files and write header */
-  FILE *file_swift = fopen(file_name_swift, "w");
+  FILE* file_swift = fopen(file_name_swift, "w");
   if (file_swift == NULL) error("Could not create file '%s'.", file_name_swift);
   fprintf(file_swift, "# Gravity accuracy test - SWIFT FORCES\n");
   fprintf(file_swift, "# G= %16.8e\n", e->physical_constants->const_newton_G);
@@ -713,7 +713,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
   /* Output particle SWIFT accelerations  */
   for (size_t i = 0; i < s->nr_gparts; ++i) {
 
-    struct gpart *gpi = &s->gparts[i];
+    struct gpart* gpi = &s->gparts[i];
 
     /* Get the particle ID */
     long long id = 0;
@@ -762,7 +762,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     else
       sprintf(file_name_exact, "gravity_checks_exact_step%.4d.dat", e->step);
 
-    FILE *file_exact = fopen(file_name_exact, "w");
+    FILE* file_exact = fopen(file_name_exact, "w");
     if (file_exact == NULL)
       error("Could not create file '%s'.", file_name_exact);
     fprintf(file_exact, "# Gravity accuracy test - EXACT FORCES\n");
@@ -782,7 +782,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     /* Output particle exact accelerations  */
     for (size_t i = 0; i < s->nr_gparts; ++i) {
 
-      struct gpart *gpi = &s->gparts[i];
+      struct gpart* gpi = &s->gparts[i];
 
       long long id = 0;
       if (gpi->type == swift_type_gas)

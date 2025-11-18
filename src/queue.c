@@ -47,9 +47,9 @@
  *
  * @return The new index of the entry.
  */
-int queue_bubble_up(struct queue *q, int ind) {
+int queue_bubble_up(struct queue* q, int ind) {
   /* Set some pointers we will use often. */
-  struct queue_entry *entries = q->entries;
+  struct queue_entry* entries = q->entries;
   const float w = entries[ind].weight;
 
   /* While we are not yet at the top of the heap... */
@@ -75,9 +75,9 @@ int queue_bubble_up(struct queue *q, int ind) {
  *
  * @return The new index of the entry.
  */
-int queue_sift_down(struct queue *q, int ind) {
+int queue_sift_down(struct queue* q, int ind) {
   /* Set some pointers we will use often. */
-  struct queue_entry *entries = q->entries;
+  struct queue_entry* entries = q->entries;
   const int qcount = q->count;
   const float w = entries[ind].weight;
 
@@ -107,9 +107,9 @@ int queue_sift_down(struct queue *q, int ind) {
  *
  * @param q The #queue, assumed to be locked.
  */
-void queue_get_incoming(struct queue *q) {
+void queue_get_incoming(struct queue* q) {
 
-  struct queue_entry *entries = q->entries;
+  struct queue_entry* entries = q->entries;
 
   /* Loop over the incoming DEQ. */
   while (1) {
@@ -124,10 +124,10 @@ void queue_get_incoming(struct queue *q) {
 
     /* Does the queue need to be grown? */
     if (q->count == q->size) {
-      struct queue_entry *temp;
+      struct queue_entry* temp;
       q->size *= queue_sizegrow;
-      if ((temp = (struct queue_entry *)malloc(sizeof(struct queue_entry) *
-                                               q->size)) == NULL)
+      if ((temp = (struct queue_entry*)malloc(sizeof(struct queue_entry) *
+                                              q->size)) == NULL)
         error("Failed to allocate new indices.");
       memcpy(temp, entries, sizeof(struct queue_entry) * q->count);
       free(entries);
@@ -158,7 +158,7 @@ void queue_get_incoming(struct queue *q) {
  * @param q The #queue.
  * @param t The #task.
  */
-void queue_insert(struct queue *q, struct task *t) {
+void queue_insert(struct queue* q, struct task* t) {
   /* Get an index in the DEQ. */
   const int ind = atomic_inc(&q->last_incoming) % queue_incoming_size;
 
@@ -189,12 +189,12 @@ void queue_insert(struct queue *q, struct task *t) {
  * @param q The #queue.
  * @param tasks List of tasks to which the queue indices refer to.
  */
-void queue_init(struct queue *q, struct task *tasks) {
+void queue_init(struct queue* q, struct task* tasks) {
 
   /* Allocate the task list if needed. */
   q->size = queue_sizeinit;
-  if ((q->entries = (struct queue_entry *)malloc(sizeof(struct queue_entry) *
-                                                 q->size)) == NULL)
+  if ((q->entries = (struct queue_entry*)malloc(sizeof(struct queue_entry) *
+                                                q->size)) == NULL)
     error("Failed to allocate queue entries.");
 
   /* Set the tasks pointer. */
@@ -207,7 +207,7 @@ void queue_init(struct queue *q, struct task *tasks) {
   if (lock_init(&q->lock) != 0) error("Failed to init queue lock.");
 
   /* Init the incoming DEQ. */
-  if ((q->tid_incoming = (int *)malloc(sizeof(int) * queue_incoming_size)) ==
+  if ((q->tid_incoming = (int*)malloc(sizeof(int) * queue_incoming_size)) ==
       NULL)
     error("Failed to allocate queue incoming buffer.");
   for (int k = 0; k < queue_incoming_size; k++) {
@@ -225,11 +225,11 @@ void queue_init(struct queue *q, struct task *tasks) {
  * @param prev The previous #task extracted from this #queue.
  * @param blocking Block until access to the queue is granted.
  */
-struct task *queue_gettask(struct queue *q, const struct task *prev,
+struct task* queue_gettask(struct queue* q, const struct task* prev,
                            int blocking) {
 
-  swift_lock_type *qlock = &q->lock;
-  struct task *res = NULL;
+  swift_lock_type* qlock = &q->lock;
+  struct task* res = NULL;
 
   /* Grab the task lock. */
   if (blocking) {
@@ -248,8 +248,8 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   }
 
   /* Set some pointers we will use often. */
-  struct queue_entry *entries = q->entries;
-  struct task *qtasks = q->tasks;
+  struct queue_entry* entries = q->entries;
+  struct task* qtasks = q->tasks;
   const int old_qcount = q->count;
 
   /* Loop over the queue entries. */
@@ -308,7 +308,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   return res;
 }
 
-void queue_clean(struct queue *q) {
+void queue_clean(struct queue* q) {
 
   free(q->entries);
   free(q->tid_incoming);
@@ -322,9 +322,9 @@ void queue_clean(struct queue *q) {
  * @param file the FILE stream, should opened for write.
  * @param q The task #queue.
  */
-void queue_dump(int nodeID, int index, FILE *file, struct queue *q) {
+void queue_dump(int nodeID, int index, FILE* file, struct queue* q) {
 
-  swift_lock_type *qlock = &q->lock;
+  swift_lock_type* qlock = &q->lock;
 
   /* Grab the queue lock. */
   if (lock_lock(qlock) != 0) error("Locking the qlock failed.\n");
@@ -334,7 +334,7 @@ void queue_dump(int nodeID, int index, FILE *file, struct queue *q) {
 
   /* Loop over the queue entries. */
   for (int k = 0; k < q->count; k++) {
-    struct task *t = &q->tasks[q->entries[k].tid];
+    struct task* t = &q->tasks[q->entries[k].tid];
 
     fprintf(file, "%d %d %d %s %s %.2f\n", nodeID, index, k,
             taskID_names[t->type], subtaskID_names[t->subtype], t->weight);

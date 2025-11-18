@@ -58,16 +58,16 @@ struct pm_mesh_patch {
   int mesh_max[3];
 
   /*! Pointer to the mesh data */
-  double *mesh;
+  double* mesh;
 };
 
-void pm_mesh_patch_init(struct pm_mesh_patch *patch, const struct cell *cell,
+void pm_mesh_patch_init(struct pm_mesh_patch* patch, const struct cell* cell,
                         const int N, const double fac, const double dim[3],
                         const int boundary_size);
 
-void pm_mesh_patch_zero(struct pm_mesh_patch *patch);
+void pm_mesh_patch_zero(struct pm_mesh_patch* patch);
 
-void pm_mesh_patch_clean(struct pm_mesh_patch *patch);
+void pm_mesh_patch_clean(struct pm_mesh_patch* patch);
 
 /**
  * @brief Return the array index in the patch corresponding to
@@ -80,7 +80,7 @@ void pm_mesh_patch_clean(struct pm_mesh_patch *patch);
  *
  */
 __attribute__((always_inline)) INLINE static int pm_mesh_patch_index(
-    const struct pm_mesh_patch *patch, const int i, const int j, const int k) {
+    const struct pm_mesh_patch* patch, const int i, const int j, const int k) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (i < 0 || i >= patch->mesh_size[0])
@@ -111,7 +111,7 @@ __attribute__((always_inline)) INLINE static int pm_mesh_patch_index(
  *
  */
 __attribute__((always_inline)) INLINE static double pm_mesh_patch_CIC_get(
-    const struct pm_mesh_patch *patch, const int i, const int j, const int k,
+    const struct pm_mesh_patch* patch, const int i, const int j, const int k,
     const double tx, const double ty, const double tz, const double dx,
     const double dy, const double dz) {
 
@@ -149,7 +149,7 @@ __attribute__((always_inline)) INLINE static double pm_mesh_patch_CIC_get(
  * @param value The value to set
  */
 __attribute__((always_inline)) INLINE static void pm_mesh_patch_CIC_set(
-    const struct pm_mesh_patch *patch, const int i, const int j, const int k,
+    const struct pm_mesh_patch* patch, const int i, const int j, const int k,
     const double tx, const double ty, const double tz, const double dx,
     const double dy, const double dz, const double value) {
 
@@ -167,7 +167,7 @@ __attribute__((always_inline)) INLINE static void pm_mesh_patch_CIC_set(
   mesh[pm_mesh_patch_index(patch, i + 1, j + 1, k + 1)] += value * dx * dy * dz;
 }
 
-void pm_add_patch_to_global_mesh(double *const global_mesh,
-                                 const struct pm_mesh_patch *patch);
+void pm_add_patch_to_global_mesh(double* const global_mesh,
+                                 const struct pm_mesh_patch* patch);
 
 #endif

@@ -28,7 +28,7 @@
  * @brief Get the IMF exponent in between mass_min and mass_max.
  */
 float initial_mass_function_get_exponent(
-    const struct initial_mass_function *imf, float mass_min, float mass_max) {
+    const struct initial_mass_function* imf, float mass_min, float mass_max) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (mass_max > imf->mass_max)
@@ -64,7 +64,7 @@ float initial_mass_function_get_exponent(
 }
 
 /** @brief Print the initial mass function */
-void initial_mass_function_print(const struct initial_mass_function *imf) {
+void initial_mass_function_print(const struct initial_mass_function* imf) {
 
   if (engine_rank != 0) {
     return;
@@ -84,7 +84,7 @@ void initial_mass_function_print(const struct initial_mass_function *imf) {
 }
 
 /** @brief Sample the initial mass function */
-float initial_mass_function_sample(const struct initial_mass_function *imf,
+float initial_mass_function_sample(const struct initial_mass_function* imf,
                                    float f) {
 
   for (int i = 0; i < imf->n_parts; i++)
@@ -116,8 +116,8 @@ float initial_mass_function_sample(const struct initial_mass_function *imf,
  * @param log_mass_min The value of the first element.
  * @param step_size The distance between two points.
  */
-void initial_mass_function_integrate(const struct initial_mass_function *imf,
-                                     float *data, size_t count,
+void initial_mass_function_integrate(const struct initial_mass_function* imf,
+                                     float* data, size_t count,
                                      float log_mass_min, float step_size) {
 
   /* Index in the data */
@@ -127,7 +127,7 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
 
   float m = mass_min;
 
-  float *tmp = (float *)malloc(sizeof(float) * count);
+  float* tmp = (float*)malloc(sizeof(float) * count);
 
   /* Set lower limit */
   tmp[0] = 0;
@@ -200,7 +200,7 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
  * @return The imf's coefficient of the interval.
  */
 float initial_mass_function_get_coefficient(
-    const struct initial_mass_function *imf, float mass_min, float mass_max) {
+    const struct initial_mass_function* imf, float mass_min, float mass_max) {
 
   for (int i = 0; i < imf->n_parts; i++) {
 
@@ -233,7 +233,7 @@ float initial_mass_function_get_coefficient(
  * @return The number fraction.
  */
 float initial_mass_function_get_integral_xi(
-    const struct initial_mass_function *imf, float m1, float m2) {
+    const struct initial_mass_function* imf, float m1, float m2) {
 
   /* Ensure the masses to be withing the limits */
   m1 = min(m1, imf->mass_max);
@@ -277,7 +277,7 @@ float initial_mass_function_get_integral_xi(
  *
  * @return The mass fraction.
  */
-float initial_mass_function_get_imf(const struct initial_mass_function *imf,
+float initial_mass_function_get_imf(const struct initial_mass_function* imf,
                                     float m) {
 
   /* Check the mass to be within the limits */
@@ -308,7 +308,7 @@ float initial_mass_function_get_imf(const struct initial_mass_function *imf,
  * @return The integral of the mass fraction.
  */
 float initial_mass_function_get_imf_mass_fraction(
-    const struct initial_mass_function *imf, float m1, float m2) {
+    const struct initial_mass_function* imf, float m1, float m2) {
 
   /* Check that m2 is > m1 */
   if (m1 > m2)
@@ -357,7 +357,7 @@ float initial_mass_function_get_imf_mass_fraction(
  * @return The integral of the mass fraction.
  */
 float initial_mass_function_get_imf_number_fraction(
-    const struct initial_mass_function *imf, float m1, float m2) {
+    const struct initial_mass_function* imf, float m1, float m2) {
 
   /* Check that m2 is > m1 */
   if (m1 > m2)
@@ -402,10 +402,10 @@ float initial_mass_function_get_imf_number_fraction(
  * @param imf The #initial_mass_function.
  */
 void initial_mass_function_compute_coefficients(
-    struct initial_mass_function *imf) {
+    struct initial_mass_function* imf) {
 
   /* Allocate memory */
-  if ((imf->coef = (float *)malloc(sizeof(float) * imf->n_parts)) == NULL)
+  if ((imf->coef = (float*)malloc(sizeof(float) * imf->n_parts)) == NULL)
     error("Failed to allocate the IMF coefficients.");
 
   /* Suppose that the first coefficients is 1 (will be corrected later) */
@@ -437,7 +437,7 @@ void initial_mass_function_compute_coefficients(
 
   /* Allocate the memory for the mass fraction */
   if ((imf->mass_fraction =
-           (float *)malloc(sizeof(float) * (imf->n_parts + 1))) == NULL)
+           (float*)malloc(sizeof(float) * (imf->n_parts + 1))) == NULL)
     error("Failed to allocate the IMF mass_fraction.");
 
   for (int i = 0; i < imf->n_parts + 1; i++) {
@@ -454,9 +454,9 @@ void initial_mass_function_compute_coefficients(
  * @param params The #swift_params.
  * @param filename The filename of the chemistry table.
  */
-void initial_mass_function_read_from_table(struct initial_mass_function *imf,
-                                           struct swift_params *params,
-                                           const char *filename) {
+void initial_mass_function_read_from_table(struct initial_mass_function* imf,
+                                           struct swift_params* params,
+                                           const char* filename) {
 
   hid_t file_id, group_id;
 
@@ -470,15 +470,15 @@ void initial_mass_function_read_from_table(struct initial_mass_function *imf,
   imf->n_parts += 1;
 
   /* Allocate the memory for the exponents */
-  if ((imf->exp = (float *)malloc(sizeof(float) * imf->n_parts)) == NULL)
+  if ((imf->exp = (float*)malloc(sizeof(float) * imf->n_parts)) == NULL)
     error("Failed to allocate the IMF exponents.");
 
   /* Read the exponents */
   io_read_array_attribute(group_id, "as", FLOAT, imf->exp, imf->n_parts);
 
   /* Allocate the memory for the temporary mass limits */
-  if ((imf->mass_limits =
-           (float *)malloc(sizeof(float) * (imf->n_parts + 1))) == NULL)
+  if ((imf->mass_limits = (float*)malloc(sizeof(float) * (imf->n_parts + 1))) ==
+      NULL)
     error("Failed to allocate the IMF masses.");
 
   /* Read the mass limits */
@@ -509,11 +509,11 @@ void initial_mass_function_read_from_table(struct initial_mass_function *imf,
  * @param params The #swift_params.
  * @param filename The filename of the chemistry table.
  */
-void initial_mass_function_init(struct initial_mass_function *imf,
-                                const struct phys_const *phys_const,
-                                const struct unit_system *us,
-                                struct swift_params *params,
-                                const char *filename) {
+void initial_mass_function_init(struct initial_mass_function* imf,
+                                const struct phys_const* phys_const,
+                                const struct unit_system* us,
+                                struct swift_params* params,
+                                const char* filename) {
 
   /* Read the parameters from the yields table */
   initial_mass_function_read_from_table(imf, params, filename);
@@ -540,25 +540,25 @@ void initial_mass_function_init(struct initial_mass_function *imf,
  * @param stream the file stream
  * @param sm The #stellar_model.
  */
-void initial_mass_function_dump(const struct initial_mass_function *imf,
-                                FILE *stream, const struct stellar_model *sm) {
+void initial_mass_function_dump(const struct initial_mass_function* imf,
+                                FILE* stream, const struct stellar_model* sm) {
 
   /* Dump the mass limits. */
   if (imf->mass_limits != NULL) {
-    restart_write_blocks((void *)imf->mass_limits, sizeof(float),
+    restart_write_blocks((void*)imf->mass_limits, sizeof(float),
                          imf->n_parts + 1, stream, "imf_mass_limits",
                          "imf_mass_limits");
   }
 
   /*! Dump the exponents. */
   if (imf->exp != NULL) {
-    restart_write_blocks((void *)imf->exp, sizeof(float), imf->n_parts, stream,
+    restart_write_blocks((void*)imf->exp, sizeof(float), imf->n_parts, stream,
                          "imf_exponents", "imf_exponents");
   }
 
   /*! Dump the coefficients. */
   if (imf->coef != NULL) {
-    restart_write_blocks((void *)imf->coef, sizeof(float), imf->n_parts, stream,
+    restart_write_blocks((void*)imf->coef, sizeof(float), imf->n_parts, stream,
                          "imf_coef", "imf_coef");
   }
 }
@@ -574,28 +574,28 @@ void initial_mass_function_dump(const struct initial_mass_function *imf,
  * @param stream the file stream
  * @param sm The #stellar_model.
  */
-void initial_mass_function_restore(struct initial_mass_function *imf,
-                                   FILE *stream,
-                                   const struct stellar_model *sm) {
+void initial_mass_function_restore(struct initial_mass_function* imf,
+                                   FILE* stream,
+                                   const struct stellar_model* sm) {
 
   /* Restore the mass limits */
   if (imf->mass_limits != NULL) {
-    imf->mass_limits = (float *)malloc(sizeof(float) * imf->n_parts + 1);
-    restart_read_blocks((void *)imf->mass_limits, sizeof(float),
+    imf->mass_limits = (float*)malloc(sizeof(float) * imf->n_parts + 1);
+    restart_read_blocks((void*)imf->mass_limits, sizeof(float),
                         imf->n_parts + 1, stream, NULL, "imf_mass_limits");
   }
 
   /* Restore the exponents */
   if (imf->exp != NULL) {
-    imf->exp = (float *)malloc(sizeof(float) * imf->n_parts);
-    restart_read_blocks((void *)imf->exp, sizeof(float), imf->n_parts, stream,
+    imf->exp = (float*)malloc(sizeof(float) * imf->n_parts);
+    restart_read_blocks((void*)imf->exp, sizeof(float), imf->n_parts, stream,
                         NULL, "imf_exponents");
   }
 
   /* Restore the coefficients */
   if (imf->coef != NULL) {
-    imf->coef = (float *)malloc(sizeof(float) * imf->n_parts);
-    restart_read_blocks((void *)imf->coef, sizeof(float), imf->n_parts, stream,
+    imf->coef = (float*)malloc(sizeof(float) * imf->n_parts);
+    restart_read_blocks((void*)imf->coef, sizeof(float), imf->n_parts, stream,
                         NULL, "imf_coef");
   }
 }
@@ -605,7 +605,7 @@ void initial_mass_function_restore(struct initial_mass_function *imf,
  *
  * @param imf the #initial_mass_function.
  */
-void initial_mass_function_clean(struct initial_mass_function *imf) {
+void initial_mass_function_clean(struct initial_mass_function* imf) {
 
   /* Free the pointers */
   free(imf->mass_limits);
@@ -656,8 +656,8 @@ INLINE double initial_mass_function_sample_power_law(double min_mass,
  * @param (return) M_tot Total mass of the IMF.
  */
 void initial_mass_function_compute_Mc_Md_Mtot(
-    const struct initial_mass_function *imf, double *M_continuous,
-    double *M_discrete, double *M_tot) {
+    const struct initial_mass_function* imf, double* M_continuous,
+    double* M_discrete, double* M_tot) {
 
   /* f_continuous is the imf mass fraction of the continuous part (of the IMF).
    */

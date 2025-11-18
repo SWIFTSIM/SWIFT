@@ -64,8 +64,8 @@
  * @param xp The extended data of the particle of interest.
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_comoving_internal_energy(const struct part *restrict p,
-                                   const struct xpart *restrict xp) {
+hydro_get_comoving_internal_energy(const struct part* restrict p,
+                                   const struct xpart* restrict xp) {
 
   return xp->u_full;
 }
@@ -84,9 +84,9 @@ hydro_get_comoving_internal_energy(const struct part *restrict p,
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_physical_internal_energy(const struct part *restrict p,
-                                   const struct xpart *restrict xp,
-                                   const struct cosmology *cosmo) {
+hydro_get_physical_internal_energy(const struct part* restrict p,
+                                   const struct xpart* restrict xp,
+                                   const struct cosmology* cosmo) {
 
   return xp->u_full * cosmo->a_factor_internal_energy;
 }
@@ -99,7 +99,7 @@ hydro_get_physical_internal_energy(const struct part *restrict p,
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
-    const struct part *restrict p) {
+    const struct part* restrict p) {
 
   return p->pressure_bar;
 }
@@ -114,7 +114,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
-    const struct part *restrict p, const struct cosmology *cosmo) {
+    const struct part* restrict p, const struct cosmology* cosmo) {
 
   return cosmo->a_factor_pressure * p->pressure_bar;
 }
@@ -129,7 +129,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
-    const struct part *restrict p) {
+    const struct part* restrict p) {
 
   return gas_entropy_from_internal_energy(p->rho, p->u);
 }
@@ -146,8 +146,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
-    const struct part *restrict p, const struct xpart *restrict xp,
-    const struct cosmology *cosmo) {
+    const struct part* restrict p, const struct xpart* restrict xp,
+    const struct cosmology* cosmo) {
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */
@@ -160,7 +160,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_comoving_soundspeed(const struct part *restrict p) {
+hydro_get_comoving_soundspeed(const struct part* restrict p) {
 
   /* Compute the sound speed -- see theory section for justification */
   /* IDEAL GAS ONLY -- P-U does not work with generic EoS. */
@@ -175,8 +175,8 @@ hydro_get_comoving_soundspeed(const struct part *restrict p) {
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_physical_soundspeed(const struct part *restrict p,
-                              const struct cosmology *cosmo) {
+hydro_get_physical_soundspeed(const struct part* restrict p,
+                              const struct cosmology* cosmo) {
 
   return cosmo->a_factor_sound_speed * p->force.soundspeed;
 }
@@ -188,7 +188,7 @@ hydro_get_physical_soundspeed(const struct part *restrict p,
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_drifted_comoving_internal_energy(const struct part *restrict p) {
+hydro_get_drifted_comoving_internal_energy(const struct part* restrict p) {
 
   return p->u;
 }
@@ -201,8 +201,8 @@ hydro_get_drifted_comoving_internal_energy(const struct part *restrict p) {
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_drifted_physical_internal_energy(const struct part *restrict p,
-                                           const struct cosmology *cosmo) {
+hydro_get_drifted_physical_internal_energy(const struct part* restrict p,
+                                           const struct cosmology* cosmo) {
 
   return p->u * cosmo->a_factor_internal_energy;
 }
@@ -214,7 +214,7 @@ hydro_get_drifted_physical_internal_energy(const struct part *restrict p,
  * @param p The particle of interest.
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_drifted_comoving_entropy(const struct part *restrict p) {
+hydro_get_drifted_comoving_entropy(const struct part* restrict p) {
 
   return gas_entropy_from_internal_energy(p->rho, p->u);
 }
@@ -227,8 +227,8 @@ hydro_get_drifted_comoving_entropy(const struct part *restrict p) {
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_drifted_physical_entropy(const struct part *restrict p,
-                                   const struct cosmology *cosmo) {
+hydro_get_drifted_physical_entropy(const struct part* restrict p,
+                                   const struct cosmology* cosmo) {
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */
@@ -241,7 +241,7 @@ hydro_get_drifted_physical_entropy(const struct part *restrict p,
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_density(
-    const struct part *restrict p) {
+    const struct part* restrict p) {
 
   return p->rho;
 }
@@ -253,7 +253,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_density(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
-    const struct part *restrict p, const struct cosmology *cosmo) {
+    const struct part* restrict p, const struct cosmology* cosmo) {
 
   return cosmo->a3_inv * p->rho;
 }
@@ -264,7 +264,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float hydro_get_mass(
-    const struct part *restrict p) {
+    const struct part* restrict p) {
 
   return p->mass;
 }
@@ -276,7 +276,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
  * @param m The mass to set.
  */
 __attribute__((always_inline)) INLINE static void hydro_set_mass(
-    struct part *restrict p, float m) {
+    struct part* restrict p, float m) {
 
   p->mass = m;
 }
@@ -289,7 +289,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_mass(
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_comoving_internal_energy_dt(const struct part *restrict p) {
+hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
 
   return p->u_dt;
 }
@@ -303,8 +303,8 @@ hydro_get_comoving_internal_energy_dt(const struct part *restrict p) {
  * @param cosmo Cosmology data structure
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_physical_internal_energy_dt(const struct part *restrict p,
-                                      const struct cosmology *cosmo) {
+hydro_get_physical_internal_energy_dt(const struct part* restrict p,
+                                      const struct cosmology* cosmo) {
 
   return p->u_dt * cosmo->a_factor_internal_energy;
 }
@@ -318,7 +318,7 @@ hydro_get_physical_internal_energy_dt(const struct part *restrict p,
  * @param du_dt The new time derivative of the internal energy.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_comoving_internal_energy_dt(struct part *restrict p, float du_dt) {
+hydro_set_comoving_internal_energy_dt(struct part* restrict p, float du_dt) {
 
   p->u_dt = du_dt;
 }
@@ -333,8 +333,8 @@ hydro_set_comoving_internal_energy_dt(struct part *restrict p, float du_dt) {
  * @param du_dt The new time derivative of the internal energy.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_physical_internal_energy_dt(struct part *restrict p,
-                                      const struct cosmology *cosmo,
+hydro_set_physical_internal_energy_dt(struct part* restrict p,
+                                      const struct cosmology* cosmo,
                                       float du_dt) {
 
   p->u_dt = du_dt / cosmo->a_factor_internal_energy;
@@ -349,7 +349,7 @@ hydro_set_physical_internal_energy_dt(struct part *restrict p,
  * @param entropy The physical entropy
  */
 __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    struct part* p, struct xpart* xp, const struct cosmology* cosmo,
     const float entropy) {
 
   /* Note there is no conversion from physical to comoving entropy */
@@ -366,8 +366,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
  * @param u The physical internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
-                                   const struct cosmology *cosmo,
+hydro_set_physical_internal_energy(struct part* p, struct xpart* xp,
+                                   const struct cosmology* cosmo,
                                    const float u) {
 
   xp->u_full = u / cosmo->a_factor_internal_energy;
@@ -382,8 +382,8 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
  */
 __attribute__((always_inline)) INLINE static void
 hydro_set_drifted_physical_internal_energy(
-    struct part *p, const struct cosmology *cosmo,
-    const struct pressure_floor_props *pressure_floor, const float u) {
+    struct part* p, const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor, const float u) {
 
   /* Store ratio of new internal energy to old internal energy, as we use this
    * in the drifting of the pressure. */
@@ -419,8 +419,8 @@ hydro_set_drifted_physical_internal_energy(
  * physical units (note that dv_phys must be positive or equal to zero)
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_v_sig_based_on_velocity_kick(struct part *p,
-                                       const struct cosmology *cosmo,
+hydro_set_v_sig_based_on_velocity_kick(struct part* p,
+                                       const struct cosmology* cosmo,
                                        const float dv_phys) {
 
   /* Compute the velocity kick in comoving coordinates */
@@ -441,7 +441,7 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
  * @param alpha the new value for the viscosity coefficient.
  */
 __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
-    struct part *restrict p, float alpha) {
+    struct part* restrict p, float alpha) {
   p->alpha = alpha;
 }
 
@@ -452,7 +452,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
  * @param p the particle of interest
  */
 __attribute__((always_inline)) INLINE static void
-hydro_diffusive_feedback_reset(struct part *restrict p) {
+hydro_diffusive_feedback_reset(struct part* restrict p) {
   hydro_set_viscosity_alpha(p,
                             hydro_props_default_viscosity_alpha_feedback_reset);
 }
@@ -469,9 +469,9 @@ hydro_diffusive_feedback_reset(struct part *restrict p) {
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
-    const struct part *restrict p, const struct xpart *restrict xp,
-    const struct hydro_props *restrict hydro_properties,
-    const struct cosmology *restrict cosmo) {
+    const struct part* restrict p, const struct xpart* restrict xp,
+    const struct hydro_props* restrict hydro_properties,
+    const struct cosmology* restrict cosmo) {
 
   const float CFL_condition = hydro_properties->CFL_condition;
 
@@ -495,8 +495,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @brief beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
-    const float dx[3], const struct part *restrict pi,
-    const struct part *restrict pj, const float mu_ij, const float beta) {
+    const float dx[3], const struct part* restrict pi,
+    const struct part* restrict pj, const float mu_ij, const float beta) {
 
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
@@ -512,7 +512,7 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
  * @param dt Physical time step of the particle during the next step.
  */
 __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
-    struct part *p, float dt) {}
+    struct part* p, float dt) {}
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -525,7 +525,7 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
  * @param hs #hydro_space containing hydro specific space information.
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
-    struct part *restrict p, const struct hydro_space *hs) {
+    struct part* restrict p, const struct hydro_space* hs) {
 
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
@@ -554,7 +554,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density(
-    struct part *restrict p, const struct cosmology *cosmo) {
+    struct part* restrict p, const struct cosmology* cosmo) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -603,8 +603,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param hydro_props Hydrodynamic properties.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
-    struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props) {}
 
 /**
  * @brief Resets the variables that are required for a gradient calculation.
@@ -617,7 +617,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
-    struct part *restrict p) {}
+    struct part* restrict p) {}
 
 /**
  * @brief Finishes the gradient calculation.
@@ -627,7 +627,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
-    struct part *p) {}
+    struct part* p) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -641,8 +641,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
-    struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo) {
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct cosmology* cosmo) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -688,9 +688,9 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor, const float dt_alpha,
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor, const float dt_alpha,
     const float dt_therm) {
 
   const float fac_B = cosmo->a_factor_Balsara_eps;
@@ -774,7 +774,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
-    struct part *restrict p) {
+    struct part* restrict p) {
 
   /* Reset the acceleration. */
   p->a_hydro[0] = 0.0f;
@@ -796,9 +796,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part *restrict p, const struct xpart *restrict xp,
-    const struct cosmology *cosmo,
-    const struct pressure_floor_props *pressure_floor) {
+    struct part* restrict p, const struct xpart* restrict xp,
+    const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor) {
 
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];
@@ -833,11 +833,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part *restrict p, const struct xpart *restrict xp, float dt_drift,
-    float dt_therm, float dt_kick_grav, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props,
-    const struct pressure_floor_props *pressure_floor) {
+    struct part* restrict p, const struct xpart* restrict xp, float dt_drift,
+    float dt_therm, float dt_kick_grav, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   /* Store ratio of new internal energy to old internal energy, as we use this
    * in the drifting of the pressure. */
@@ -909,7 +909,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part *restrict p, const struct cosmology *cosmo) {
+    struct part* restrict p, const struct cosmology* cosmo) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
 }
@@ -932,10 +932,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part *restrict p, struct xpart *restrict xp, float dt_therm,
+    struct part* restrict p, struct xpart* restrict xp, float dt_therm,
     float dt_grav, float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props) {
 
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
@@ -974,9 +974,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * @param hydro_props The constants used in the scheme.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor) {
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   /* Convert the physcial internal energy to the comoving one. */
   /* u' = a^(3(g-1)) u */
@@ -1011,7 +1011,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
-    struct part *restrict p, struct xpart *restrict xp) {
+    struct part* restrict p, struct xpart* restrict xp) {
 
   p->time_bin = 0;
   xp->v_full[0] = p->v[0];
@@ -1035,7 +1035,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  * @param u_init The new initial internal energy.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_init_internal_energy(struct part *p, float u_init) {
+hydro_set_init_internal_energy(struct part* p, float u_init) {
 
   p->u = u_init;
 }
@@ -1049,6 +1049,6 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
  * @param time The simulation time.
  */
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
-    const struct part *p, const struct xpart *xp, const double time) {}
+    const struct part* p, const struct xpart* xp, const double time) {}
 
 #endif /* SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_H */

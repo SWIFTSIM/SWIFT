@@ -58,7 +58,7 @@ extern int engine_max_parts_per_cooling;
  *
  * @param e the #engine
  */
-void engine_dump_diagnostic_data(struct engine *e) {
+void engine_dump_diagnostic_data(struct engine* e) {
   /* OK, do our work. */
   message("Dumping engine tasks in step: %d", e->step);
   task_dump_active(e);
@@ -88,14 +88,14 @@ void engine_dump_diagnostic_data(struct engine *e) {
  *
  * @param p the #engine
  */
-static void *engine_dumper_poll(void *p) {
-  struct engine *e = (struct engine *)p;
+static void* engine_dumper_poll(void* p) {
+  struct engine* e = (struct engine*)p;
 
 #ifdef WITH_MPI
   char dumpfile[10];
   snprintf(dumpfile, sizeof(dumpfile), ".dump.%d", e->nodeID);
 #else
-  const char *dumpfile = ".dump";
+  const char* dumpfile = ".dump";
 #endif
 
   while (1) {
@@ -127,14 +127,14 @@ static void *engine_dumper_poll(void *p) {
  * @param e the #engine
  *
  */
-static void engine_dumper_init(struct engine *e) {
+static void engine_dumper_init(struct engine* e) {
   pthread_t dumper;
 
 #ifdef WITH_MPI
   char dumpfile[10];
   snprintf(dumpfile, sizeof(dumpfile), ".dump.%d", e->nodeID);
 #else
-  const char *dumpfile = ".dump";
+  const char* dumpfile = ".dump";
 #endif
 
   /* Make sure the .dump file is not present, that is bad when starting up. */
@@ -172,11 +172,11 @@ static void engine_dumper_init(struct engine *e) {
  * @param restart_file The name of our restart file.
  * @param reparttype What type of repartition algorithm are we using.
  */
-void engine_config(int restart, int fof, struct engine *e,
-                   struct swift_params *params, int nr_nodes, int nodeID,
+void engine_config(int restart, int fof, struct engine* e,
+                   struct swift_params* params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_dir,
-                   const char *restart_file, struct repartition *reparttype) {
+                   int verbose, const char* restart_dir,
+                   const char* restart_file, struct repartition* reparttype) {
 
   struct clocks_time tic, toc;
   if (nodeID == 0) clocks_gettime(&tic);
@@ -215,7 +215,7 @@ void engine_config(int restart, int fof, struct engine *e,
    * already allocated and freed on exit, so we need to copy over. */
 #ifdef WITH_MPI
   if (restart) {
-    int *celllist = e->reparttype->celllist;
+    int* celllist = e->reparttype->celllist;
     int ncelllist = e->reparttype->ncelllist;
     memcpy(e->reparttype, reparttype, sizeof(struct repartition));
     e->reparttype->celllist = celllist;
@@ -284,14 +284,14 @@ void engine_config(int restart, int fof, struct engine *e,
 /* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)
   const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
-  cpu_set_t *entry_affinity = engine_entry_affinity();
+  cpu_set_t* entry_affinity = engine_entry_affinity();
   const int nr_affinity_cores = CPU_COUNT(entry_affinity);
 
   if (nr_cores > CPU_SETSIZE) /* Unlikely, except on e.g. SGI UV. */
     error("must allocate dynamic cpu_set_t (too many cores per node)");
 
   if (verbose && with_aff) {
-    char *buf = (char *)malloc((nr_cores + 1) * sizeof(char));
+    char* buf = (char*)malloc((nr_cores + 1) * sizeof(char));
     buf[nr_cores] = '\0';
     for (int j = 0; j < nr_cores; ++j) {
       /* Reversed bit order from convention, but same as e.g. Intel MPI's
@@ -302,12 +302,12 @@ void engine_config(int restart, int fof, struct engine *e,
     free(buf);
   }
 
-  int *cpuid = NULL;
+  int* cpuid = NULL;
   cpu_set_t cpuset;
 
   if (with_aff) {
 
-    cpuid = (int *)malloc(nr_affinity_cores * sizeof(int));
+    cpuid = (int*)malloc(nr_affinity_cores * sizeof(int));
 
     int skip = 0;
     for (int k = 0; k < nr_affinity_cores; k++) {
@@ -326,7 +326,7 @@ void engine_config(int restart, int fof, struct engine *e,
         if (nodeID == 0) message("prefer NUMA-distant CPUs");
 
         /* Get list of numa nodes of all available cores. */
-        int *nodes = (int *)malloc(nr_affinity_cores * sizeof(int));
+        int* nodes = (int*)malloc(nr_affinity_cores * sizeof(int));
         int nnodes = 0;
         for (int i = 0; i < nr_affinity_cores; i++) {
           nodes[i] = numa_node_of_cpu(cpuid[i]);
@@ -335,7 +335,7 @@ void engine_config(int restart, int fof, struct engine *e,
         nnodes += 1;
 
         /* Count cores per node. */
-        int *core_counts = (int *)malloc(nnodes * sizeof(int));
+        int* core_counts = (int*)malloc(nnodes * sizeof(int));
         for (int i = 0; i < nr_affinity_cores; i++) {
           core_counts[nodes[i]] = 0;
         }
@@ -344,7 +344,7 @@ void engine_config(int restart, int fof, struct engine *e,
         }
 
         /* Index cores within each node. */
-        int *core_indices = (int *)malloc(nr_affinity_cores * sizeof(int));
+        int* core_indices = (int*)malloc(nr_affinity_cores * sizeof(int));
         for (int i = nr_affinity_cores - 1; i >= 0; i--) {
           core_indices[i] = core_counts[nodes[i]];
           core_counts[nodes[i]] -= 1;
@@ -409,8 +409,8 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Make sure the corresponding policy is set and make space for the proxies
      */
     e->policy |= engine_policy_mpi;
-    if ((e->proxies = (struct proxy *)calloc(engine_maxproxies,
-                                             sizeof(struct proxy))) == NULL)
+    if ((e->proxies = (struct proxy*)calloc(engine_maxproxies,
+                                            sizeof(struct proxy))) == NULL)
       error("Failed to allocate memory for proxies.");
     e->nr_proxies = 0;
 
@@ -424,11 +424,11 @@ void engine_config(int restart, int fof, struct engine *e,
     char my_hostname[256] = {0};
     sprintf(my_hostname, "%s", hostname());
 
-    char *hostnames = NULL;
+    char* hostnames = NULL;
 
     if (nodeID == 0) {
       hostnames =
-          (char *)calloc(nr_nodes * hostname_buffer_length, sizeof(char));
+          (char*)calloc(nr_nodes * hostname_buffer_length, sizeof(char));
       if (hostnames == NULL)
         error("Failed to allocate memory for hostname list");
     }
@@ -437,7 +437,7 @@ void engine_config(int restart, int fof, struct engine *e,
                hostname_buffer_length, MPI_BYTE, 0, MPI_COMM_WORLD);
 
     if (nodeID == 0) {
-      FILE *ranklog = NULL;
+      FILE* ranklog = NULL;
       if (restart) {
         ranklog = fopen("rank_hostname.log", "a");
         if (ranklog == NULL)
@@ -465,7 +465,7 @@ void engine_config(int restart, int fof, struct engine *e,
   if (!fof && e->nodeID == 0) {
 
     /* When restarting append to these files. */
-    const char *mode;
+    const char* mode;
     if (restart)
       mode = "a";
     else
@@ -886,9 +886,9 @@ void engine_config(int restart, int fof, struct engine *e,
 
   /* Cells per thread buffer. */
   e->s->cells_sub =
-      (struct cell **)calloc(nr_pool_threads + 1, sizeof(struct cell *));
-  e->s->multipoles_sub = (struct gravity_tensors **)calloc(
-      nr_pool_threads + 1, sizeof(struct gravity_tensors *));
+      (struct cell**)calloc(nr_pool_threads + 1, sizeof(struct cell*));
+  e->s->multipoles_sub = (struct gravity_tensors**)calloc(
+      nr_pool_threads + 1, sizeof(struct gravity_tensors*));
 
   /* First of all, init the barrier and lock it. */
   if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
@@ -980,7 +980,7 @@ void engine_config(int restart, int fof, struct engine *e,
   }
 
   /* Allocate and init the threads. */
-  if (swift_memalign("runners", (void **)&e->runners, SWIFT_CACHE_ALIGNMENT,
+  if (swift_memalign("runners", (void**)&e->runners, SWIFT_CACHE_ALIGNMENT,
                      e->nr_threads * sizeof(struct runner)) != 0)
     error("Failed to allocate threads array.");
 

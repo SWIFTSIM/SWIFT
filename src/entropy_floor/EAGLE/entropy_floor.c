@@ -37,8 +37,8 @@
  * @param props The properties of the entropy floor.
  */
 float entropy_floor_gas_pressure(const float rho_phys, const float rho_com,
-                                 const struct cosmology *cosmo,
-                                 const struct entropy_floor_properties *props) {
+                                 const struct cosmology* cosmo,
+                                 const struct entropy_floor_properties* props) {
 
   /* Mean baryon density in co-moving internal units for over-density condition
    * (Recall cosmo->critical_density_0 is 0 in a non-cosmological run,
@@ -85,8 +85,8 @@ float entropy_floor_gas_pressure(const float rho_phys, const float rho_com,
  * @param cosmo The cosmological model.
  * @param props The properties of the entropy floor.
  */
-float entropy_floor(const struct part *p, const struct cosmology *cosmo,
-                    const struct entropy_floor_properties *props) {
+float entropy_floor(const struct part* p, const struct cosmology* cosmo,
+                    const struct entropy_floor_properties* props) {
 
   /* Comoving density in internal units */
   const float rho_com = hydro_get_comoving_density(p);
@@ -115,8 +115,8 @@ float entropy_floor(const struct part *p, const struct cosmology *cosmo,
  * @param props The properties of the entropy floor.
  */
 float entropy_floor_gas_temperature(
-    const float rho_phys, const float rho_com, const struct cosmology *cosmo,
-    const struct entropy_floor_properties *props) {
+    const float rho_phys, const float rho_com, const struct cosmology* cosmo,
+    const struct entropy_floor_properties* props) {
 
   /* Mean baryon density in co-moving internal units for over-density condition
    * (Recall cosmo->critical_density_0 is 0 in a non-cosmological run,
@@ -168,9 +168,9 @@ float entropy_floor_gas_temperature(
  * @param cosmo The cosmological model.
  * @param props The properties of the entropy floor.
  */
-float entropy_floor_temperature(const struct part *p,
-                                const struct cosmology *cosmo,
-                                const struct entropy_floor_properties *props) {
+float entropy_floor_temperature(const struct part* p,
+                                const struct cosmology* cosmo,
+                                const struct entropy_floor_properties* props) {
 
   /* Comoving density in internal units */
   const float rho_com = hydro_get_comoving_density(p);
@@ -194,11 +194,11 @@ float entropy_floor_temperature(const struct part *p,
  * @param hydro_props The propoerties of the hydro scheme.
  * @param props The entropy floor properties to fill.
  */
-void entropy_floor_init(struct entropy_floor_properties *props,
-                        const struct phys_const *phys_const,
-                        const struct unit_system *us,
-                        const struct hydro_props *hydro_props,
-                        struct swift_params *params) {
+void entropy_floor_init(struct entropy_floor_properties* props,
+                        const struct phys_const* phys_const,
+                        const struct unit_system* us,
+                        const struct hydro_props* hydro_props,
+                        struct swift_params* params) {
 
   /* Read the parameters in the units they are set */
   props->Jeans_density_threshold_H_p_cm3 = parser_get_param_float(
@@ -274,7 +274,7 @@ void entropy_floor_init(struct entropy_floor_properties *props,
  *
  * @param props The entropy floor properties.
  */
-void entropy_floor_print(const struct entropy_floor_properties *props) {
+void entropy_floor_print(const struct entropy_floor_properties* props) {
 
   message("Entropy floor is 'EAGLE' with:");
   message("Jeans limiter with slope n=%.3f at rho=%e (%e H/cm^3) and T=%.1f K",
@@ -304,11 +304,11 @@ void entropy_floor_write_flavour(hid_t h_grp) {
  * @param props the struct
  * @param stream the file stream
  */
-void entropy_floor_struct_dump(const struct entropy_floor_properties *props,
-                               FILE *stream) {
+void entropy_floor_struct_dump(const struct entropy_floor_properties* props,
+                               FILE* stream) {
 
-  restart_write_blocks((void *)props, sizeof(struct entropy_floor_properties),
-                       1, stream, "entropy floor", "entropy floor properties");
+  restart_write_blocks((void*)props, sizeof(struct entropy_floor_properties), 1,
+                       stream, "entropy floor", "entropy floor properties");
 }
 
 /**
@@ -318,9 +318,9 @@ void entropy_floor_struct_dump(const struct entropy_floor_properties *props,
  * @param props the struct
  * @param stream the file stream
  */
-void entropy_floor_struct_restore(struct entropy_floor_properties *props,
-                                  FILE *stream) {
+void entropy_floor_struct_restore(struct entropy_floor_properties* props,
+                                  FILE* stream) {
 
-  restart_read_blocks((void *)props, sizeof(struct entropy_floor_properties), 1,
+  restart_read_blocks((void*)props, sizeof(struct entropy_floor_properties), 1,
                       stream, NULL, "entropy floor properties");
 }

@@ -38,7 +38,7 @@ extern int engine_star_resort_task_depth;
  *
  * @param c The #cell to act on.
  */
-void cell_set_star_resort_flag(struct cell *c) {
+void cell_set_star_resort_flag(struct cell* c) {
 
   cell_set_flag(c, cell_flag_do_stars_resort);
 
@@ -60,7 +60,7 @@ void cell_set_star_resort_flag(struct cell *c) {
  * @param c The #cell to recurse into.
  * @param s The #scheduler.
  */
-void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
+void cell_activate_star_resort_tasks(struct cell* c, struct scheduler* s) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.super != NULL && c->hydro.super != c)
@@ -90,7 +90,7 @@ void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
  * @param s The #scheduler.
  * @param with_feedback Are we running with feedback?
  */
-void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s,
+void cell_activate_star_formation_tasks(struct cell* c, struct scheduler* s,
                                         const int with_feedback) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -119,8 +119,8 @@ void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s,
  * @param s The #scheduler.
  * @param with_feedback Are we running with feedback?
  */
-void cell_activate_star_formation_sink_tasks(struct cell *c,
-                                             struct scheduler *s,
+void cell_activate_star_formation_sink_tasks(struct cell* c,
+                                             struct scheduler* s,
                                              const int with_feedback) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -147,7 +147,7 @@ void cell_activate_star_formation_sink_tasks(struct cell *c,
  * @param c The (top-level) #cell.
  * @param s The #scheduler.
  */
-void cell_activate_sink_formation_tasks(struct cell *c, struct scheduler *s) {
+void cell_activate_sink_formation_tasks(struct cell* c, struct scheduler* s) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->depth != 0) error("Function should be called at the top-level only");
@@ -168,8 +168,8 @@ void cell_activate_sink_formation_tasks(struct cell *c, struct scheduler *s) {
  * @param s The #scheduler.
  * @param e The #engine.
  */
-void cell_recursively_activate_hydro_ghosts(struct cell *c, struct scheduler *s,
-                                            const struct engine *e) {
+void cell_recursively_activate_hydro_ghosts(struct cell* c, struct scheduler* s,
+                                            const struct engine* e) {
   /* Early abort? */
   if ((c->hydro.count == 0) || !cell_is_active_hydro(c, e)) return;
 
@@ -197,8 +197,8 @@ void cell_recursively_activate_hydro_ghosts(struct cell *c, struct scheduler *s,
  * @param s The #scheduler.
  * @param e The #engine.
  */
-void cell_activate_hydro_ghosts(struct cell *c, struct scheduler *s,
-                                const struct engine *e) {
+void cell_activate_hydro_ghosts(struct cell* c, struct scheduler* s,
+                                const struct engine* e) {
   scheduler_activate(s, c->hydro.ghost_in);
   scheduler_activate(s, c->hydro.ghost_out);
   cell_recursively_activate_hydro_ghosts(c, s, e);
@@ -212,8 +212,8 @@ void cell_activate_hydro_ghosts(struct cell *c, struct scheduler *s,
  * @param s The #scheduler.
  * @param e The #engine.
  */
-void cell_recursively_activate_cooling(struct cell *c, struct scheduler *s,
-                                       const struct engine *e) {
+void cell_recursively_activate_cooling(struct cell* c, struct scheduler* s,
+                                       const struct engine* e) {
   /* Early abort? */
   if ((c->hydro.count == 0) || !cell_is_active_hydro(c, e)) return;
 
@@ -241,8 +241,8 @@ void cell_recursively_activate_cooling(struct cell *c, struct scheduler *s,
  * @param s The #scheduler.
  * @param e The #engine.
  */
-void cell_activate_cooling(struct cell *c, struct scheduler *s,
-                           const struct engine *e) {
+void cell_activate_cooling(struct cell* c, struct scheduler* s,
+                           const struct engine* e) {
   scheduler_activate(s, c->hydro.cooling_in);
   scheduler_activate(s, c->hydro.cooling_out);
   cell_recursively_activate_cooling(c, s, e);
@@ -255,7 +255,7 @@ void cell_activate_cooling(struct cell *c, struct scheduler *s,
  * @param c The #cell to recurse into.
  * @param s The #scheduler.
  */
-void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s) {
+void cell_activate_super_spart_drifts(struct cell* c, struct scheduler* s) {
 
   /* Early abort?
    * We can stop if there is no gas as none of it will turn into stars */
@@ -286,7 +286,7 @@ void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s) {
  * @param c The #cell to recurse into.
  * @param s The #scheduler.
  */
-void cell_activate_super_sink_drifts(struct cell *c, struct scheduler *s) {
+void cell_activate_super_sink_drifts(struct cell* c, struct scheduler* s) {
 
   /* Early abort? */
   if (c->hydro.count == 0) return;
@@ -311,7 +311,7 @@ void cell_activate_super_sink_drifts(struct cell *c, struct scheduler *s) {
 /**
  * @brief Activate the #part drifts on the given cell.
  */
-void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
+void cell_activate_drift_part(struct cell* c, struct scheduler* s) {
   /* If this cell is already marked for drift, quit early. */
   if (cell_get_flag(c, cell_flag_do_hydro_drift)) return;
 
@@ -327,7 +327,7 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
 #endif
     scheduler_activate(s, c->hydro.drift);
   } else {
-    for (struct cell *parent = c->parent;
+    for (struct cell* parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_drift);
          parent = parent->parent) {
       /* Mark this cell for drifting */
@@ -348,7 +348,7 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
 /**
  * @brief Activate the #part sync tasks on the given cell.
  */
-void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
+void cell_activate_sync_part(struct cell* c, struct scheduler* s) {
 
   /* If this cell is already marked for sync, quit early. */
   if (cell_get_flag(c, cell_flag_do_hydro_sync)) return;
@@ -367,7 +367,7 @@ void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
     scheduler_activate(s, c->top->timestep_collect);
     scheduler_activate(s, c->kick1);
   } else {
-    for (struct cell *parent = c->parent;
+    for (struct cell* parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_sync);
          parent = parent->parent) {
       /* Mark this cell for drifting */
@@ -390,7 +390,7 @@ void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
 /**
  * @brief Activate the #gpart drifts on the given cell.
  */
-void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
+void cell_activate_drift_gpart(struct cell* c, struct scheduler* s) {
   /* If this cell is already marked for drift, quit early. */
   if (cell_get_flag(c, cell_flag_do_grav_drift)) return;
 
@@ -408,7 +408,7 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
 #endif
     scheduler_activate(s, c->grav.drift);
   } else {
-    for (struct cell *parent = c->parent;
+    for (struct cell* parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_grav_sub_drift);
          parent = parent->parent) {
       cell_set_flag(parent, cell_flag_do_grav_sub_drift);
@@ -432,7 +432,7 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
 /**
  * @brief Activate the #spart drifts on the given cell.
  */
-void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
+void cell_activate_drift_spart(struct cell* c, struct scheduler* s) {
   /* If this cell is already marked for drift, quit early. */
   if (cell_get_flag(c, cell_flag_do_stars_drift)) return;
 
@@ -448,7 +448,7 @@ void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
 #endif
     scheduler_activate(s, c->stars.drift);
   } else {
-    for (struct cell *parent = c->parent;
+    for (struct cell* parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_stars_sub_drift);
          parent = parent->parent) {
       /* Mark this cell for drifting */
@@ -469,7 +469,7 @@ void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
 /**
  * @brief Activate the #bpart drifts on the given cell.
  */
-void cell_activate_drift_bpart(struct cell *c, struct scheduler *s) {
+void cell_activate_drift_bpart(struct cell* c, struct scheduler* s) {
 
   /* If this cell is already marked for drift, quit early. */
   if (cell_get_flag(c, cell_flag_do_bh_drift)) return;
@@ -486,7 +486,7 @@ void cell_activate_drift_bpart(struct cell *c, struct scheduler *s) {
 #endif
     scheduler_activate(s, c->black_holes.drift);
   } else {
-    for (struct cell *parent = c->parent;
+    for (struct cell* parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_bh_sub_drift);
          parent = parent->parent) {
       /* Mark this cell for drifting */
@@ -507,7 +507,7 @@ void cell_activate_drift_bpart(struct cell *c, struct scheduler *s) {
 /**
  * @brief Activate the #sink drifts on the given cell.
  */
-void cell_activate_drift_sink(struct cell *c, struct scheduler *s) {
+void cell_activate_drift_sink(struct cell* c, struct scheduler* s) {
 
   /* If this cell is already marked for drift, quit early. */
   if (cell_get_flag(c, cell_flag_do_sink_drift)) return;
@@ -524,7 +524,7 @@ void cell_activate_drift_sink(struct cell *c, struct scheduler *s) {
 #endif
     scheduler_activate(s, c->sinks.drift);
   } else {
-    for (struct cell *parent = c->parent;
+    for (struct cell* parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_sink_sub_drift);
          parent = parent->parent) {
       /* Mark this cell for drifting */
@@ -545,7 +545,7 @@ void cell_activate_drift_sink(struct cell *c, struct scheduler *s) {
 /**
  * @brief Activate the drifts on the given cell.
  */
-void cell_activate_limiter(struct cell *c, struct scheduler *s) {
+void cell_activate_limiter(struct cell* c, struct scheduler* s) {
   /* If this cell is already marked for limiting, quit early. */
   if (cell_get_flag(c, cell_flag_do_hydro_limiter)) return;
 
@@ -563,7 +563,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
     scheduler_activate(s, c->top->timestep_collect);
     scheduler_activate(s, c->kick1);
   } else {
-    for (struct cell *parent = c->parent;
+    for (struct cell* parent = c->parent;
          parent != NULL &&
          !cell_get_flag(parent, cell_flag_do_hydro_sub_limiter);
          parent = parent->parent) {
@@ -587,7 +587,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
 /**
  * @brief Activate the sorts up a cell hierarchy.
  */
-void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
+void cell_activate_hydro_sorts_up(struct cell* c, struct scheduler* s) {
   if (c == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->hydro.sorts == NULL)
@@ -597,7 +597,7 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
     cell_set_flag(c, cell_flag_skip_rt_sort);
     if (c->nodeID == engine_rank) cell_activate_drift_part(c, s);
   } else {
-    for (struct cell *parent = c->parent;
+    for (struct cell* parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_sort);
          parent = parent->parent) {
       cell_set_flag(parent, cell_flag_do_hydro_sub_sort);
@@ -618,11 +618,11 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
 /**
  * @brief Activate the sorts on a given cell, if needed.
  */
-void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
+void cell_activate_hydro_sorts(struct cell* c, int sid, struct scheduler* s) {
   /* Do we need to re-sort? */
   if (c->hydro.dx_max_sort > space_maxreldx * c->dmin) {
     /* Climb up the tree to active the sorts in that direction */
-    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+    for (struct cell* finger = c; finger != NULL; finger = finger->parent) {
       if (finger->hydro.requires_sorts) {
         atomic_or(&finger->hydro.do_sort, finger->hydro.requires_sorts);
         cell_activate_hydro_sorts_up(finger, s);
@@ -642,7 +642,7 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
  * @brief Activate the sorts up a cell hierarchy. Activate drifts
  * and hydro sorts on local cells, and rt_sorts on foreign cells.
  */
-void cell_activate_rt_sorts_up(struct cell *c, struct scheduler *s) {
+void cell_activate_rt_sorts_up(struct cell* c, struct scheduler* s) {
 
   cell_set_flag(c, cell_flag_rt_requests_sort);
 
@@ -661,7 +661,7 @@ void cell_activate_rt_sorts_up(struct cell *c, struct scheduler *s) {
     }
   } else {
 
-    for (struct cell *parent = c->parent;
+    for (struct cell* parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_rt_sub_sort);
          parent = parent->parent) {
 
@@ -697,11 +697,11 @@ void cell_activate_rt_sorts_up(struct cell *c, struct scheduler *s) {
  * @brief Activate the sorts on a given cell, if needed. Activate
  * hydro sorts on local cells, and rt_sorts on foreign cells.
  */
-void cell_activate_rt_sorts(struct cell *c, int sid, struct scheduler *s) {
+void cell_activate_rt_sorts(struct cell* c, int sid, struct scheduler* s) {
   /* Do we need to re-sort? */
   if (c->hydro.dx_max_sort > space_maxreldx * c->dmin) {
     /* Climb up the tree to active the sorts in that direction */
-    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+    for (struct cell* finger = c; finger != NULL; finger = finger->parent) {
       if (finger->hydro.requires_sorts) {
         atomic_or(&finger->hydro.do_sort, finger->hydro.requires_sorts);
         cell_activate_rt_sorts_up(finger, s);
@@ -720,9 +720,9 @@ void cell_activate_rt_sorts(struct cell *c, int sid, struct scheduler *s) {
 /**
  * @brief Mark cells up a hierarchy to not run RT sorts.
  * */
-void cell_set_skip_rt_sort_flag_up(struct cell *c) {
+void cell_set_skip_rt_sort_flag_up(struct cell* c) {
 
-  for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+  for (struct cell* finger = c; finger != NULL; finger = finger->parent) {
     cell_set_flag(finger, cell_flag_skip_rt_sort);
   }
 }
@@ -730,7 +730,7 @@ void cell_set_skip_rt_sort_flag_up(struct cell *c) {
 /**
  * @brief Activate the sorts up a cell hierarchy.
  */
-void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
+void cell_activate_stars_sorts_up(struct cell* c, struct scheduler* s) {
 
   if (c == c->hydro.super) {
 
@@ -745,7 +745,7 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
   } else {
 
     /* Climb up the tree and set the flags */
-    for (struct cell *parent = c->parent;
+    for (struct cell* parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_stars_sub_sort);
          parent = parent->parent) {
 
@@ -769,13 +769,13 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 /**
  * @brief Activate the sorts on a given cell, if needed.
  */
-void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
+void cell_activate_stars_sorts(struct cell* c, int sid, struct scheduler* s) {
 
   /* Do we need to re-sort? */
   if (c->stars.dx_max_sort > space_maxreldx * c->dmin) {
 
     /* Climb up the tree to active the sorts in that direction */
-    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+    for (struct cell* finger = c; finger != NULL; finger = finger->parent) {
       if (finger->stars.requires_sorts) {
         atomic_or(&finger->stars.do_sort, finger->stars.requires_sorts);
         cell_activate_stars_sorts_up(finger, s);
@@ -800,10 +800,10 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
  * @param s The task #scheduler.
  * @param with_timestep_limiter Are we running with time-step limiting on?
  */
-void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s,
+void cell_activate_subcell_hydro_tasks(struct cell* ci, struct cell* cj,
+                                       struct scheduler* s,
                                        const int with_timestep_limiter) {
-  const struct engine *e = s->space->e;
+  const struct engine* e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
@@ -852,7 +852,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     /* recurse? */
     if (cell_can_recurse_in_pair_hydro_task(ci) &&
         cell_can_recurse_in_pair_hydro_task(cj)) {
-      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      const struct cell_split_pair* csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
@@ -899,12 +899,12 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
  * switched on?
  * @param with_timestep_sync Are we running with time-step synchronization on?
  */
-void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s,
+void cell_activate_subcell_stars_tasks(struct cell* ci, struct cell* cj,
+                                       struct scheduler* s,
                                        const int with_star_formation,
                                        const int with_star_formation_sink,
                                        const int with_timestep_sync) {
-  const struct engine *e = s->space->e;
+  const struct engine* e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
   ci->stars.dx_max_part_old = ci->stars.dx_max_part;
@@ -973,7 +973,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     if (cell_can_recurse_in_pair_stars_task(ci) &&
         cell_can_recurse_in_pair_stars_task(cj)) {
 
-      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      const struct cell_split_pair* csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
@@ -1039,10 +1039,10 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
  * @param s The task #scheduler.
  * @param with_timestep_sync Are we running with time-step synchronization on?
  */
-void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
-                                             struct scheduler *s,
+void cell_activate_subcell_black_holes_tasks(struct cell* ci, struct cell* cj,
+                                             struct scheduler* s,
                                              const int with_timestep_sync) {
-  const struct engine *e = s->space->e;
+  const struct engine* e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
   ci->black_holes.dx_max_part_old = ci->black_holes.dx_max_part;
@@ -1101,7 +1101,7 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
     /* recurse? */
     if (cell_can_recurse_in_pair_black_holes_task(ci, cj) &&
         cell_can_recurse_in_pair_black_holes_task(cj, ci)) {
-      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      const struct cell_split_pair* csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
@@ -1144,10 +1144,10 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
  * @param s The task #scheduler.
  * @param with_timestep_sync Are we running with time-step synchronization on?
  */
-void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s,
+void cell_activate_subcell_sinks_tasks(struct cell* ci, struct cell* cj,
+                                       struct scheduler* s,
                                        const int with_timestep_sync) {
-  const struct engine *e = s->space->e;
+  const struct engine* e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
   ci->sinks.dx_max_part_old = ci->sinks.dx_max_part;
@@ -1211,7 +1211,7 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
     if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
         cell_can_recurse_in_pair_sinks_task(cj, ci)) {
 
-      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      const struct cell_split_pair* csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
@@ -1279,13 +1279,13 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
  *
  * @return 1 if the cell and its progeny have fully been treated.
  */
-int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
-                                     struct cell *restrict cj,
-                                     struct scheduler *s) {
+int cell_activate_subcell_grav_tasks(struct cell* restrict ci,
+                                     struct cell* restrict cj,
+                                     struct scheduler* s) {
 
   /* Some constants */
-  const struct space *sp = s->space;
-  const struct engine *e = sp->e;
+  const struct space* sp = s->space;
+  const struct engine* e = sp->e;
   const int nodeID = e->nodeID;
 
   /* Self interaction? */
@@ -1379,8 +1379,8 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
     else {
 
       /* Recover the multipole information */
-      const struct gravity_tensors *const multi_i = ci->grav.multipole;
-      const struct gravity_tensors *const multi_j = cj->grav.multipole;
+      const struct gravity_tensors* const multi_i = ci->grav.multipole;
+      const struct gravity_tensors* const multi_j = cj->grav.multipole;
       const double ri_max = multi_i->r_max;
       const double rj_max = multi_j->r_max;
 
@@ -1506,11 +1506,11 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
  * @param ci The #cell we recurse in.
  * @param s The task #scheduler.
  */
-void cell_activate_subcell_external_grav_tasks(struct cell *ci,
-                                               struct scheduler *s) {
+void cell_activate_subcell_external_grav_tasks(struct cell* ci,
+                                               struct scheduler* s) {
   /* Some constants */
-  const struct space *sp = s->space;
-  const struct engine *e = sp->e;
+  const struct space* sp = s->space;
+  const struct engine* e = sp->e;
 
   /* Do anything? */
   if (!cell_is_active_gravity(ci, e)) return;
@@ -1538,12 +1538,12 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
  * @param s The task #scheduler.
  * @param sub_cycle Are we in a subcycle or not?
  */
-void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
-                                    struct scheduler *s, const int sub_cycle) {
+void cell_activate_subcell_rt_tasks(struct cell* ci, struct cell* cj,
+                                    struct scheduler* s, const int sub_cycle) {
 
   /* Only do this during real time steps, not during subcycling. */
   if (sub_cycle) return;
-  const struct engine *e = s->space->e;
+  const struct engine* e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
@@ -1591,7 +1591,7 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
     /* recurse? */
     if (cell_can_recurse_in_pair_hydro_task(ci) &&
         cell_can_recurse_in_pair_hydro_task(cj)) {
-      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      const struct cell_split_pair* csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
@@ -1626,8 +1626,8 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
-  struct engine *e = s->space->e;
+int cell_unskip_hydro_tasks(struct cell* c, struct scheduler* s) {
+  struct engine* e = s->space->e;
   const int nodeID = e->nodeID;
   const int with_feedback = e->policy & engine_policy_feedback;
   const int with_timestep_limiter =
@@ -1639,10 +1639,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   int rebuild = 0;
 
   /* Un-skip the density tasks involved with this cell. */
-  for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->hydro.density; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
     const int ci_active = cell_is_active_hydro(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
 #ifdef WITH_MPI
@@ -1891,14 +1891,14 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   /* Unskip all the other task types. */
   int c_active = cell_is_active_hydro(c, e);
   if (c->nodeID == nodeID && c_active) {
-    for (struct link *l = c->hydro.gradient; l != NULL; l = l->next) {
+    for (struct link* l = c->hydro.gradient; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
     }
-    for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
+    for (struct link* l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
     }
 
-    for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
+    for (struct link* l = c->hydro.limiter; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
 
     if (c->hydro.extra_ghost != NULL)
@@ -1925,13 +1925,13 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
    * so, we have to do this now, from the active remote cell). */
   else if (c->nodeID != nodeID && c_active) {
 #if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
-    for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
-      struct task *t = l->t;
+    for (struct link* l = c->hydro.force; l != NULL; l = l->next) {
+      struct task* t = l->t;
 
       if (t->type != task_type_pair) continue;
 
-      struct cell *ci = l->t->ci;
-      struct cell *cj = l->t->cj;
+      struct cell* ci = l->t->ci;
+      struct cell* cj = l->t->cj;
 
       const int ci_active = cell_is_active_hydro(ci, e);
       const int cj_active = cell_is_active_hydro(cj, e);
@@ -1964,8 +1964,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
-  struct engine *e = s->space->e;
+int cell_unskip_gravity_tasks(struct cell* c, struct scheduler* s) {
+  struct engine* e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
@@ -1974,10 +1974,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
   /* Un-skip the gravity tasks involved with this cell. */
-  for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->grav.grav; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
     const int ci_active = cell_is_active_gravity(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_gravity(cj, e) : 0;
 #ifdef WITH_MPI
@@ -2077,10 +2077,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
-  for (struct link *l = c->grav.mm; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->grav.mm; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
     const int ci_active = cell_is_active_gravity_mm(ci, e);
     const int cj_active = cell_is_active_gravity_mm(cj, e);
 #ifdef WITH_MPI
@@ -2137,11 +2137,11 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
+int cell_unskip_stars_tasks(struct cell* c, struct scheduler* s,
                             const int with_star_formation,
                             const int with_star_formation_sink) {
 
-  struct engine *e = s->space->e;
+  struct engine* e = s->space->e;
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
   const int nodeID = e->nodeID;
   int rebuild = 0;
@@ -2155,10 +2155,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
   }
 
   /* Un-skip the density tasks involved with this cell. */
-  for (struct link *l = c->stars.density; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->stars.density; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -2300,10 +2300,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     }
   }
 
-  for (struct link *l = c->stars.prepare1; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->stars.prepare1; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -2360,10 +2360,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     }
   }
 
-  for (struct link *l = c->stars.prepare2; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->stars.prepare2; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -2408,10 +2408,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
   }
 
   /* Un-skip the feedback tasks involved with this cell. */
-  for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->stars.feedback; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -2499,9 +2499,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
+int cell_unskip_black_holes_tasks(struct cell* c, struct scheduler* s) {
 
-  struct engine *e = s->space->e;
+  struct engine* e = s->space->e;
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
   const int nodeID = e->nodeID;
   int rebuild = 0;
@@ -2512,10 +2512,10 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Un-skip the density tasks involved with this cell. */
-  for (struct link *l = c->black_holes.density; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->black_holes.density; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
     const int ci_active =
         ci->black_holes.count > 0 && cell_is_active_black_holes(ci, e);
     const int cj_active = (cj != NULL) ? (cj->black_holes.count > 0 &&
@@ -2664,10 +2664,10 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Un-skip the swallow tasks involved with this cell. */
-  for (struct link *l = c->black_holes.swallow; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->black_holes.swallow; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
     const int ci_active = cell_is_active_black_holes(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
 #ifdef WITH_MPI
@@ -2687,10 +2687,10 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Un-skip the swallow tasks involved with this cell. */
-  for (struct link *l = c->black_holes.do_gas_swallow; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->black_holes.do_gas_swallow; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
     const int ci_active = cell_is_active_black_holes(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
 #ifdef WITH_MPI
@@ -2710,10 +2710,10 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Un-skip the swallow tasks involved with this cell. */
-  for (struct link *l = c->black_holes.do_bh_swallow; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->black_holes.do_bh_swallow; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
     const int ci_active = cell_is_active_black_holes(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
 #ifdef WITH_MPI
@@ -2733,10 +2733,10 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Un-skip the feedback tasks involved with this cell. */
-  for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->black_holes.feedback; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
     const int ci_active = cell_is_active_black_holes(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
 #ifdef WITH_MPI
@@ -2808,9 +2808,9 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
+int cell_unskip_sinks_tasks(struct cell* c, struct scheduler* s) {
 
-  struct engine *e = s->space->e;
+  struct engine* e = s->space->e;
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
   const int with_feedback = e->policy & engine_policy_feedback;
   const int nodeID = e->nodeID;
@@ -2822,10 +2822,10 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     }
 
   /* Un-skip the density tasks involved with this cell. */
-  for (struct link *l = c->sinks.density; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->sinks.density; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
 
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
@@ -2879,10 +2879,10 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Un-skip the swallow tasks involved with this cell. */
-  for (struct link *l = c->sinks.swallow; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->sinks.swallow; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -2905,10 +2905,10 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Un-skip the do_sink_swallow tasks involved with this cell. */
-  for (struct link *l = c->sinks.do_sink_swallow; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->sinks.do_sink_swallow; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -2930,10 +2930,10 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Un-skip the do_gas_swallow tasks involved with this cell. */
-  for (struct link *l = c->sinks.do_gas_swallow; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  for (struct link* l = c->sinks.do_gas_swallow; l != NULL; l = l->next) {
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -3006,24 +3006,24 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
+int cell_unskip_rt_tasks(struct cell* c, struct scheduler* s,
                          const int sub_cycle) {
 
   /* Do we have work here? */
   if (c->hydro.count == 0) return 0;
 
-  struct engine *e = s->space->e;
+  struct engine* e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0; /* TODO: implement rebuild conditions? */
 
   /* Note: we only get this far if engine_policy_rt is flagged. */
   if (!(e->policy & engine_policy_rt)) error("Unskipping RT tasks without RT");
 
-  for (struct link *l = c->rt.rt_gradient; l != NULL; l = l->next) {
+  for (struct link* l = c->rt.rt_gradient; l != NULL; l = l->next) {
 
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -3173,11 +3173,11 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
     }
   }
 
-  for (struct link *l = c->rt.rt_transport; l != NULL; l = l->next) {
+  for (struct link* l = c->rt.rt_transport; l != NULL; l = l->next) {
 
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+    struct task* t = l->t;
+    struct cell* ci = t->ci;
+    struct cell* cj = t->cj;
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -3220,12 +3220,12 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
       /* Additionally unskip force interactions between inactive local cell and
        * active remote cell. (The cell unskip will only be called for active
        * cells, so, we have to do this now, from the active remote cell). */
-      for (struct link *l = c->rt.rt_transport; l != NULL; l = l->next) {
-        struct task *t = l->t;
+      for (struct link* l = c->rt.rt_transport; l != NULL; l = l->next) {
+        struct task* t = l->t;
         if (t->type != task_type_pair) continue;
 
-        struct cell *ci = l->t->ci;
-        struct cell *cj = l->t->cj;
+        struct cell* ci = l->t->ci;
+        struct cell* cj = l->t->cj;
 
         const int ci_active = cell_is_rt_active(ci, e);
         const int cj_active = cell_is_rt_active(cj, e);

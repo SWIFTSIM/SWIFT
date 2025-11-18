@@ -28,7 +28,7 @@
  * @param p The #part.
  */
 __attribute__((always_inline)) INLINE static void timestep_sync_part(
-    struct part *p) {
+    struct part* p) {
 
   p->limiter_data.to_be_synchronized = 1;
 }

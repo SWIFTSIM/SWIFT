@@ -20,7 +20,7 @@
 #ifndef SWIFT_EXCHANGE_STRUCTS_H
 #define SWIFT_EXCHANGE_STRUCTS_H
 
-void exchange_structs(size_t *nr_send, void *sendbuf, size_t *nr_recv,
-                      void *recvbuf, size_t element_size);
+void exchange_structs(size_t* nr_send, void* sendbuf, size_t* nr_recv,
+                      void* recvbuf, size_t element_size);
 
 #endif

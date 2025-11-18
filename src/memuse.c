@@ -79,7 +79,7 @@ struct memuse_log_entry {
   /* Address of memory. Use union as easy way to convert into an array of
    * bytes. */
   union {
-    void *ptr;
+    void* ptr;
     uint8_t vptr[sizeof(uintptr_t)];
   };
 
@@ -95,7 +95,7 @@ struct memuse_log_entry {
 
 /* The log of allocations and frees. All volatile as accessed from threads
  * that use the value to synchronise. */
-static struct memuse_log_entry *volatile memuse_log = NULL;
+static struct memuse_log_entry* volatile memuse_log = NULL;
 static volatile size_t memuse_log_size = 0;
 static volatile size_t memuse_log_count = 0;
 static volatile size_t memuse_old_count = 0;
@@ -115,7 +115,7 @@ struct memuse_labelled_item {
 };
 
 /* Persistent radix trie root node. Holds active logs between dumps. */
-static struct memuse_rnode *memuse_rnode_root;
+static struct memuse_rnode* memuse_rnode_root;
 static int memuse_rnode_root_init = 1;
 
 /**
@@ -126,7 +126,7 @@ static void memuse_log_reallocate(size_t ind) {
   if (ind == 0) {
 
     /* Need to perform initialization. Be generous. */
-    if ((memuse_log = (struct memuse_log_entry *)malloc(
+    if ((memuse_log = (struct memuse_log_entry*)malloc(
              sizeof(struct memuse_log_entry) * MEMUSE_INITLOG)) == NULL)
       error("Failed to allocate memuse log.");
 
@@ -142,8 +142,8 @@ static void memuse_log_reallocate(size_t ind) {
      * memory, otherwise we could free the memory while the dump is underway. */
     if (lock_lock(&realloc_lock) == 0) {
 
-      struct memuse_log_entry *new_log;
-      if ((new_log = (struct memuse_log_entry *)malloc(
+      struct memuse_log_entry* new_log;
+      if ((new_log = (struct memuse_log_entry*)malloc(
                sizeof(struct memuse_log_entry) *
                (memuse_log_size + MEMUSE_INITLOG))) == NULL)
         error("Failed to re-allocate memuse log.");
@@ -158,7 +158,7 @@ static void memuse_log_reallocate(size_t ind) {
              sizeof(struct memuse_log_entry) * memuse_log_size);
 
       /* And carefully flip. */
-      struct memuse_log_entry *tmp = memuse_log;
+      struct memuse_log_entry* tmp = memuse_log;
       memuse_log = new_log;
       free(tmp);
 
@@ -181,7 +181,7 @@ static void memuse_log_reallocate(size_t ind) {
  * @param size the size in byte of memory allocated, set to 0 when
  *             deallocating.
  */
-void memuse_log_allocation(const char *label, void *ptr, int allocated,
+void memuse_log_allocation(const char* label, void* ptr, int allocated,
                            size_t size) {
 
   size_t ind = atomic_inc(&memuse_log_count);
@@ -215,7 +215,7 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
  *
  * @param filename name of file for log dump.
  */
-void memuse_log_dump(const char *filename) {
+void memuse_log_dump(const char* filename) {
 
   /* Skip if nothing allocated this step. */
   if (memuse_log_count == memuse_old_count) return;
@@ -225,7 +225,7 @@ void memuse_log_dump(const char *filename) {
   /* Create the radix tree. If not already done. */
   if (memuse_rnode_root_init) {
     memuse_rnode_root =
-        (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
+        (struct memuse_rnode*)calloc(1, sizeof(struct memuse_rnode));
     memuse_rnode_root->value = -1;
     memuse_rnode_root_init = 0;
   }
@@ -240,7 +240,7 @@ void memuse_log_dump(const char *filename) {
     size_t old_count = memuse_old_count;
 
     /* Open the output file. */
-    FILE *fd;
+    FILE* fd;
     if ((fd = fopen(filename, "w")) == NULL) {
       message("Failed to create memuse log file '%s', logs not dumped.",
               filename);
@@ -254,7 +254,7 @@ void memuse_log_dump(const char *filename) {
     for (size_t k = old_count; k < log_count; k++) {
 
       /* Check if this address has already been recorded. */
-      struct memuse_rnode *child = memuse_rnode_find_child(
+      struct memuse_rnode* child = memuse_rnode_find_child(
           memuse_rnode_root, 0, memuse_log[k].vptr, sizeof(uintptr_t));
 
       if (child != NULL && child->value != -1) {
@@ -330,14 +330,14 @@ void memuse_log_dump(const char *filename) {
 
     /* Now we find all the still active nodes and gather their sizes against the
      * labels. */
-    struct memuse_rnode *activernodes =
-        (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
+    struct memuse_rnode* activernodes =
+        (struct memuse_rnode*)calloc(1, sizeof(struct memuse_rnode));
     activernodes->value = -1;
     size_t newcount = 0;
-    struct memuse_rnode *labelledrnodes =
-        (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
+    struct memuse_rnode* labelledrnodes =
+        (struct memuse_rnode*)calloc(1, sizeof(struct memuse_rnode));
     labelledrnodes->value = -1;
-    size_t *lindices = (size_t *)calloc(log_count, sizeof(size_t));
+    size_t* lindices = (size_t*)calloc(log_count, sizeof(size_t));
     size_t lcount = 0;
     for (size_t k = 0; k < log_count; k++) {
 
@@ -345,26 +345,26 @@ void memuse_log_dump(const char *filename) {
       if (memuse_log[k].allocated && memuse_log[k].active) {
 
         /* Look for this label in our tree. */
-        struct memuse_rnode *labelchild = memuse_rnode_find_child(
-            labelledrnodes, 0, (uint8_t *)memuse_log[k].label,
+        struct memuse_rnode* labelchild = memuse_rnode_find_child(
+            labelledrnodes, 0, (uint8_t*)memuse_log[k].label,
             strlen(memuse_log[k].label));
-        struct memuse_labelled_item *item = NULL;
+        struct memuse_labelled_item* item = NULL;
         if (labelchild == NULL || labelchild->value == -1) {
 
           /* New, so create an instance to keep the count. */
-          item = (struct memuse_labelled_item *)calloc(
+          item = (struct memuse_labelled_item*)calloc(
               1, sizeof(struct memuse_labelled_item));
           item->sum = 0;
           item->count = 0;
           memuse_rnode_insert_child(labelledrnodes, 0,
-                                    (uint8_t *)memuse_log[k].label,
+                                    (uint8_t*)memuse_log[k].label,
                                     strlen(memuse_log[k].label), (int64_t)item);
 
           /* Keep for indexing next time. */
           lindices[lcount] = newcount;
           lcount++;
         } else {
-          item = (struct memuse_labelled_item *)labelchild->value;
+          item = (struct memuse_labelled_item*)labelchild->value;
         }
 
         /* And increment sum. */
@@ -397,11 +397,11 @@ void memuse_log_dump(const char *filename) {
       size_t ind = lindices[k];
 
       /* Find this entry. */
-      struct memuse_rnode *labelchild = memuse_rnode_find_child(
-          labelledrnodes, 0, (uint8_t *)memuse_log[ind].label,
+      struct memuse_rnode* labelchild = memuse_rnode_find_child(
+          labelledrnodes, 0, (uint8_t*)memuse_log[ind].label,
           strlen(memuse_log[ind].label));
-      struct memuse_labelled_item *item =
-          (struct memuse_labelled_item *)labelchild->value;
+      struct memuse_labelled_item* item =
+          (struct memuse_labelled_item*)labelchild->value;
       fprintf(fd, "## %30s %16.3f %16zd\n", memuse_log[ind].label,
               item->sum / MEGABYTE, item->count);
       total_mem += item->sum;
@@ -472,13 +472,13 @@ void memuse_log_dump_error(int rank) {
  * @param library  library resident set (0 for Linux)
  * @param dirty    dirty pages (nDRT = 0 for Linux)
  */
-void memuse_use(long *size, long *resident, long *shared, long *text,
-                long *data, long *library, long *dirty) {
+void memuse_use(long* size, long* resident, long* shared, long* text,
+                long* data, long* library, long* dirty) {
 
 #ifdef SWIFT_MEMUSE_STATM
 
   /* Open the file. */
-  FILE *file = fopen("/proc/self/statm", "r");
+  FILE* file = fopen("/proc/self/statm", "r");
   if (file != NULL) {
     int nscan = fscanf(file, "%ld %ld %ld %ld %ld %ld %ld", size, resident,
                        shared, text, library, data, dirty);
@@ -530,7 +530,7 @@ void memuse_use(long *size, long *resident, long *shared, long *text,
  * @result the memory use of the process, note make a copy if not used
  * immediately.
  */
-const char *memuse_process(int inmb) {
+const char* memuse_process(int inmb) {
   static char buffer[256];
 
   long size, resident, shared, text, library, data, dirty;

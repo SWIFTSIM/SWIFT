@@ -32,7 +32,7 @@
 #define M_ZETA_3 1.2020569031595942853997
 #define M_ZETA_5 1.0369277551433699263314
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   /* Exact integrals of x^n / (exp(x) + 1) on (0, infinity) */
   double integral2 = M_ZETA_3 * 1.5;
   double integral3 = M_PI * M_PI * M_PI * M_PI * 7.0 / 120.0;
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
 
   /* We also construct a histogram */
   int bins = 1000;
-  int *histogram1 = (int *)calloc(bins + 1, sizeof(int));
+  int* histogram1 = (int*)calloc(bins + 1, sizeof(int));
 
   /* Generate the same numbers again and compute statistics and histogram */
   for (int i = 0; i < N; i++) {

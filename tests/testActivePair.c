@@ -32,15 +32,15 @@
 #define NODE_ID 0
 
 /* Typdef function pointer for interaction function. */
-typedef void (*serial_interaction_func)(struct runner *, struct cell *,
-                                        struct cell *);
-typedef void (*interaction_func)(struct runner *, struct cell *, struct cell *,
+typedef void (*serial_interaction_func)(struct runner*, struct cell*,
+                                        struct cell*);
+typedef void (*interaction_func)(struct runner*, struct cell*, struct cell*,
                                  int, int);
-typedef void (*init_func)(struct cell *, const struct cosmology *,
-                          const struct hydro_props *,
-                          const struct pressure_floor_props *);
-typedef void (*finalise_func)(struct cell *, const struct cosmology *,
-                              const struct gravity_props *);
+typedef void (*init_func)(struct cell*, const struct cosmology*,
+                          const struct hydro_props*,
+                          const struct pressure_floor_props*);
+typedef void (*finalise_func)(struct cell*, const struct cosmology*,
+                              const struct gravity_props*);
 
 /**
  * @brief Constructs a cell and all of its particle in a valid state prior to
@@ -59,32 +59,32 @@ typedef void (*finalise_func)(struct cell *, const struct cosmology *,
  * @param fraction_active The fraction of particles that should be active in the
  * cell.
  */
-struct cell *make_cell(size_t n, double *offset, double size, double h,
-                       double density, long long *partId, double pert,
+struct cell* make_cell(size_t n, double* offset, double size, double h,
+                       double density, long long* partId, double pert,
                        double h_pert, double fraction_active) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
   float h_max_active = 0.f;
-  struct cell *cell = NULL;
-  if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
+  struct cell* cell = NULL;
+  if (posix_memalign((void**)&cell, cell_align, sizeof(struct cell)) != 0) {
     error("Couldn't allocate the cell");
   }
   bzero(cell, sizeof(struct cell));
 
-  if (posix_memalign((void **)&cell->hydro.parts, part_align,
+  if (posix_memalign((void**)&cell->hydro.parts, part_align,
                      count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
   bzero(cell->hydro.parts, count * sizeof(struct part));
-  if (posix_memalign((void **)&cell->hydro.xparts, part_align,
+  if (posix_memalign((void**)&cell->hydro.xparts, part_align,
                      count * sizeof(struct xpart)) != 0) {
     error("couldn't allocate x particles, no. of particles: %d", (int)count);
   }
   bzero(cell->hydro.xparts, count * sizeof(struct xpart));
 
   /* Construct the parts */
-  struct part *part = cell->hydro.parts;
+  struct part* part = cell->hydro.parts;
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
@@ -193,7 +193,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   return cell;
 }
 
-void clean_up(struct cell *ci) {
+void clean_up(struct cell* ci) {
   cell_free_hydro_sorts(ci);
   free(ci->hydro.parts);
   free(ci->hydro.xparts);
@@ -204,9 +204,9 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields_density(
-    struct cell *c, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor) {
+    struct cell* c, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   for (int pid = 0; pid < c->hydro.count; pid++) {
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
@@ -223,13 +223,13 @@ void zero_particle_fields_density(
  * @brief Initializes all particles field to be ready for a force calculation
  */
 void zero_particle_fields_force(
-    struct cell *c, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor) {
+    struct cell* c, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   for (int pid = 0; pid < c->hydro.count; pid++) {
-    struct part *p = &c->hydro.parts[pid];
-    struct xpart *xp = &c->hydro.xparts[pid];
+    struct part* p = &c->hydro.parts[pid];
+    struct xpart* xp = &c->hydro.xparts[pid];
 
 /* Mimic the result of a density calculation */
 #ifdef GADGET2_SPH
@@ -339,8 +339,8 @@ void zero_particle_fields_force(
 /**
  * @brief Ends the density loop by adding the appropriate coefficients
  */
-void end_calculation_density(struct cell *c, const struct cosmology *cosmo,
-                             const struct gravity_props *gravity_props) {
+void end_calculation_density(struct cell* c, const struct cosmology* cosmo,
+                             const struct gravity_props* gravity_props) {
 
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_end_density(&c->hydro.parts[pid], cosmo);
@@ -362,10 +362,10 @@ void end_calculation_density(struct cell *c, const struct cosmology *cosmo,
 /**
  * @brief Ends the force loop by adding the appropriate coefficients
  */
-void end_calculation_force(struct cell *c, const struct cosmology *cosmo,
-                           const struct gravity_props *gravity_props) {
+void end_calculation_force(struct cell* c, const struct cosmology* cosmo,
+                           const struct gravity_props* gravity_props) {
   for (int pid = 0; pid < c->hydro.count; pid++) {
-    struct part *volatile part = &c->hydro.parts[pid];
+    struct part* volatile part = &c->hydro.parts[pid];
     hydro_end_force(part, cosmo);
   }
 }
@@ -373,8 +373,8 @@ void end_calculation_force(struct cell *c, const struct cosmology *cosmo,
 /**
  * @brief Dump all the particles to a file
  */
-void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
-  FILE *file = fopen(fileName, "a");
+void dump_particle_fields(char* fileName, struct cell* ci, struct cell* cj) {
+  FILE* file = fopen(fileName, "a");
 
   /* Write header */
   fprintf(file, "# %4s %13s %13s\n", "ID", "wcount", "h_dt");
@@ -399,28 +399,28 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 }
 
 /* Just a forward declaration... */
-void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
-                              struct cell *cj);
-void runner_doself1_density_vec(struct runner *r, struct cell *ci);
-void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj, int limit_h_min,
+void runner_dopair2_force_vec(struct runner* r, struct cell* ci,
+                              struct cell* cj);
+void runner_doself1_density_vec(struct runner* r, struct cell* ci);
+void runner_dopair1_branch_density(struct runner* r, struct cell* ci,
+                                   struct cell* cj, int limit_h_min,
                                    int limit_h_max);
-void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
-                                 struct cell *cj, int limit_h_min,
+void runner_dopair2_branch_force(struct runner* r, struct cell* ci,
+                                 struct cell* cj, int limit_h_min,
                                  int limit_h_max);
 
 /**
  * @brief Computes the pair interactions of two cells using SWIFT and a brute
  * force implementation.
  */
-void test_pair_interactions(struct runner *runner, struct cell **ci,
-                            struct cell **cj, char *swiftOutputFileName,
-                            char *bruteForceOutputFileName,
+void test_pair_interactions(struct runner* runner, struct cell** ci,
+                            struct cell** cj, char* swiftOutputFileName,
+                            char* bruteForceOutputFileName,
                             serial_interaction_func serial_interaction,
                             interaction_func vec_interaction, init_func init,
                             finalise_func finalise) {
 
-  const struct engine *e = runner->e;
+  const struct engine* e = runner->e;
 
   runner_do_hydro_sort(runner, *ci, 0x1FFF, 0, 0, 0, 0);
   runner_do_hydro_sort(runner, *cj, 0x1FFF, 0, 0, 0, 0);
@@ -459,9 +459,9 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
  * @brief Computes the pair interactions of two cells in various configurations.
  */
 void test_all_pair_interactions(
-    struct runner *runner, double *offset2, size_t particles, double size,
-    double h, double rho, long long *partId, double perturbation, double h_pert,
-    char *swiftOutputFileName, char *bruteForceOutputFileName,
+    struct runner* runner, double* offset2, size_t particles, double size,
+    double h, double rho, long long* partId, double perturbation, double h_pert,
+    char* swiftOutputFileName, char* bruteForceOutputFileName,
     serial_interaction_func serial_interaction,
     interaction_func vec_interaction, init_func init, finalise_func finalise) {
 
@@ -607,7 +607,7 @@ void test_all_pair_interactions(
   clean_up(cj);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   size_t particles = 0, runs = 0, type = 0;
   double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0.1, h_pert = 1.1;
@@ -619,7 +619,7 @@ int main(int argc, char *argv[]) {
   struct pressure_floor_props pressure_floor;
   struct sink_props sink_props;
   struct phys_const prog_const;
-  struct runner *runner;
+  struct runner* runner;
   static long long partId = 0;
   char outputFileNameExtension[100] = "";
   char swiftOutputFileName[200] = "";
@@ -714,7 +714,7 @@ int main(int argc, char *argv[]) {
   bzero(&sink_props, sizeof(struct sink_props));
   engine.sink_properties = &sink_props;
 
-  if (posix_memalign((void **)&runner, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void**)&runner, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct runner)) != 0) {
     error("couldn't allocate runner");
   }

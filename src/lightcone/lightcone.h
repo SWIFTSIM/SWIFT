@@ -194,13 +194,13 @@ struct lightcone_props {
   int nr_shells;
 
   /*! Array of lightcone shells */
-  struct lightcone_shell *shell;
+  struct lightcone_shell* shell;
 
   /*! Number of healpix maps we're making for each shell */
   int nr_maps;
 
   /*! Types of healpix map we're making for each shell */
-  struct lightcone_map_type *map_type;
+  struct lightcone_map_type* map_type;
 
   /*! Range of shells that might be updated this step */
   int shell_nr_min, shell_nr_max;
@@ -215,59 +215,59 @@ struct lightcone_props {
   struct projected_kernel_table kernel_table;
 };
 
-void lightcone_init(struct lightcone_props *props, const int index,
-                    const struct space *s, const struct cosmology *cosmo,
-                    struct swift_params *params,
-                    const struct unit_system *internal_units,
-                    const struct phys_const *physical_constants,
+void lightcone_init(struct lightcone_props* props, const int index,
+                    const struct space* s, const struct cosmology* cosmo,
+                    struct swift_params* params,
+                    const struct unit_system* internal_units,
+                    const struct phys_const* physical_constants,
                     const int verbose);
 
-void lightcone_clean(struct lightcone_props *props);
+void lightcone_clean(struct lightcone_props* props);
 
-void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream);
+void lightcone_struct_dump(const struct lightcone_props* props, FILE* stream);
 
-void lightcone_struct_restore(struct lightcone_props *props, FILE *stream);
+void lightcone_struct_restore(struct lightcone_props* props, FILE* stream);
 
-void lightcone_prepare_for_step(struct lightcone_props *props,
-                                const struct cosmology *cosmo,
+void lightcone_prepare_for_step(struct lightcone_props* props,
+                                const struct cosmology* cosmo,
                                 const integertime_t ti_earliest_undrifted,
                                 const integertime_t ti_current);
 
-void lightcone_buffer_particle(struct lightcone_props *props,
-                               const struct engine *e, const struct gpart *gp,
+void lightcone_buffer_particle(struct lightcone_props* props,
+                               const struct engine* e, const struct gpart* gp,
                                const double a_cross, const double x_cross[3]);
 
-void lightcone_flush_particle_buffers(struct lightcone_props *props, double a,
-                                      const struct unit_system *internal_units,
-                                      const struct unit_system *snapshot_units,
+void lightcone_flush_particle_buffers(struct lightcone_props* props, double a,
+                                      const struct unit_system* internal_units,
+                                      const struct unit_system* snapshot_units,
                                       int flush_all, int end_file);
 
-void lightcone_buffer_map_update(struct lightcone_props *props,
-                                 const struct engine *e, const struct gpart *gp,
+void lightcone_buffer_map_update(struct lightcone_props* props,
+                                 const struct engine* e, const struct gpart* gp,
                                  const double a_cross, const double x_cross[3]);
 
-void lightcone_flush_map_updates(struct lightcone_props *props,
-                                 struct threadpool *tp);
+void lightcone_flush_map_updates(struct lightcone_props* props,
+                                 struct threadpool* tp);
 
-void lightcone_dump_completed_shells(struct lightcone_props *props,
-                                     struct threadpool *tp,
-                                     const struct cosmology *c,
-                                     const struct unit_system *internal_units,
-                                     const struct unit_system *snapshot_units,
+void lightcone_dump_completed_shells(struct lightcone_props* props,
+                                     struct threadpool* tp,
+                                     const struct cosmology* c,
+                                     const struct unit_system* internal_units,
+                                     const struct unit_system* snapshot_units,
                                      const int dump_all, const int need_flush);
 
-int lightcone_trigger_map_update(struct lightcone_props *props);
+int lightcone_trigger_map_update(struct lightcone_props* props);
 
-void lightcone_memory_use(struct lightcone_props *props,
-                          size_t *particle_buffer_bytes,
-                          size_t *map_buffer_bytes, size_t *pixel_data_bytes);
+void lightcone_memory_use(struct lightcone_props* props,
+                          size_t* particle_buffer_bytes,
+                          size_t* map_buffer_bytes, size_t* pixel_data_bytes);
 
-void lightcone_write_index(struct lightcone_props *props,
-                           const struct unit_system *internal_units,
-                           const struct unit_system *snapshot_units);
+void lightcone_write_index(struct lightcone_props* props,
+                           const struct unit_system* internal_units,
+                           const struct unit_system* snapshot_units);
 
-void lightcone_map_set_baseline(const struct cosmology *c,
-                                struct lightcone_props *props,
-                                struct lightcone_map *map);
+void lightcone_map_set_baseline(const struct cosmology* c,
+                                struct lightcone_props* props,
+                                struct lightcone_map* map);
 
 #endif /* SWIFT_LIGHTCONE_H */

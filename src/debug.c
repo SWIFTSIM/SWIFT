@@ -123,7 +123,7 @@
  *
  * (Should be used for debugging only as it runs in O(N).)
  */
-void printParticle(const struct part *parts, const struct xpart *xparts,
+void printParticle(const struct part* parts, const struct xpart* xparts,
                    long long int id, size_t N) {
 
   int found = 0;
@@ -163,7 +163,7 @@ void printParticle(const struct part *parts, const struct xpart *xparts,
  *
  * (Should be used for debugging only as it runs in O(N).)
  */
-void printgParticle(const struct gpart *gparts, const struct part *parts,
+void printgParticle(const struct gpart* gparts, const struct part* parts,
                     long long int id, size_t N) {
 
   int found = 0;
@@ -192,7 +192,7 @@ void printgParticle(const struct gpart *gparts, const struct part *parts,
  * @param p The particle to print
  * @param xp The extended data ot the particle to print
  */
-void printParticle_single(const struct part *p, const struct xpart *xp) {
+void printParticle_single(const struct part* p, const struct xpart* xp) {
 
   warning("[PID%lld] ## Particle: id=%lld ", p->id, p->id);
   hydro_debug_particle(p, xp);
@@ -216,7 +216,7 @@ void printParticle_single(const struct part *p, const struct xpart *xp) {
  *
  * @param gp The g-particle to print
  */
-void printgParticle_single(struct gpart *gp) {
+void printgParticle_single(struct gpart* gp) {
 
   printf("## g-Particle: id=%lld ", gp->id_or_neg_offset);
   gravity_debug_particle(gp);
@@ -230,7 +230,7 @@ void printgParticle_single(struct gpart *gp) {
  * @param s the space.
  * @result 1 or 0
  */
-int checkSpacehmax(struct space *s) {
+int checkSpacehmax(struct space* s) {
 
   /* Loop over local cells. */
   float cell_h_max = 0.0f;
@@ -351,7 +351,7 @@ int checkSpacehmax(struct space *s) {
  * @param depth the recursion depth for use in messages. Set to 0 initially.
  * @result 1 or 0
  */
-int checkCellhdxmax(const struct cell *c, int *depth) {
+int checkCellhdxmax(const struct cell* c, int* depth) {
 
   *depth = *depth + 1;
 
@@ -368,12 +368,12 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
                              c->loc[2] + c->width[2]};
 
   const size_t nr_parts = c->hydro.count;
-  struct part *parts = c->hydro.parts;
-  struct xpart *xparts = c->hydro.xparts;
+  struct part* parts = c->hydro.parts;
+  struct xpart* xparts = c->hydro.xparts;
   for (size_t k = 0; k < nr_parts; k++) {
 
-    struct part *const p = &parts[k];
-    struct xpart *const xp = &xparts[k];
+    struct part* const p = &parts[k];
+    struct xpart* const xp = &xparts[k];
 
     if (p->x[0] < loc_min[0] || p->x[0] >= loc_max[0] || p->x[1] < loc_min[1] ||
         p->x[1] >= loc_max[1] || p->x[2] < loc_min[2] ||
@@ -397,10 +397,10 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   }
 
   const size_t nr_sparts = c->stars.count;
-  struct spart *sparts = c->stars.parts;
+  struct spart* sparts = c->stars.parts;
   for (size_t k = 0; k < nr_sparts; k++) {
 
-    struct spart *const sp = &sparts[k];
+    struct spart* const sp = &sparts[k];
 
     if (sp->x[0] < loc_min[0] || sp->x[0] >= loc_max[0] ||
         sp->x[1] < loc_min[1] || sp->x[1] >= loc_max[1] ||
@@ -424,10 +424,10 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   }
 
   const size_t nr_sinks = c->sinks.count;
-  struct sink *sinks = c->sinks.parts;
+  struct sink* sinks = c->sinks.parts;
   for (size_t k = 0; k < nr_sinks; k++) {
 
-    struct sink *const sp = &sinks[k];
+    struct sink* const sp = &sinks[k];
 
     if (sp->x[0] < loc_min[0] || sp->x[0] >= loc_max[0] ||
         sp->x[1] < loc_min[1] || sp->x[1] >= loc_max[1] ||
@@ -453,7 +453,7 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
+        struct cell* cp = c->progeny[k];
         checkCellhdxmax(cp, depth);
       }
     }
@@ -505,10 +505,10 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
 /**
  * @brief map function for dumping cells.
  */
-static void dumpCells_map(struct cell *c, void *data) {
-  size_t *ldata = (size_t *)data;
-  FILE *file = (FILE *)ldata[0];
-  struct engine *e = (struct engine *)ldata[1];
+static void dumpCells_map(struct cell* c, void* data) {
+  size_t* ldata = (size_t*)data;
+  FILE* file = (FILE*)ldata[0];
+  struct engine* e = (struct engine*)ldata[1];
   int super = (int)ldata[2];
   int active = (int)ldata[3];
   int mpiactive = (int)ldata[4];
@@ -548,7 +548,7 @@ static void dumpCells_map(struct cell *c, void *data) {
        * cell. Also accumulate all the time used by tasks of this cell and
        * form some idea of the effective task depth. */
       float ntasks = 0.0f;
-      struct task *tasks = e->sched.tasks;
+      struct task* tasks = e->sched.tasks;
       int nr_tasks = e->sched.nr_tasks;
       double ticsum = 0.0; /* Sum of work for this cell. */
       double dsum = 0.0;
@@ -576,13 +576,13 @@ static void dumpCells_map(struct cell *c, void *data) {
       /* If requested we work out how many particles are active in this cell. */
       int pactcount = 0;
       if (pactive) {
-        const struct part *parts = c->hydro.parts;
+        const struct part* parts = c->hydro.parts;
         for (int k = 0; k < c->hydro.count; k++)
           if (part_is_active(&parts[k], e)) pactcount++;
-        struct gpart *gparts = c->grav.parts;
+        struct gpart* gparts = c->grav.parts;
         for (int k = 0; k < c->grav.count; k++)
           if (gpart_is_active(&gparts[k], e)) pactcount++;
-        struct spart *sparts = c->stars.parts;
+        struct spart* sparts = c->stars.parts;
         for (int k = 0; k < c->stars.count; k++)
           if (spart_is_active(&sparts[k], e)) pactcount++;
       }
@@ -616,10 +616,10 @@ static void dumpCells_map(struct cell *c, void *data) {
  * @param rank node ID of MPI rank, or 0 if not relevant.
  * @param step the current engine step, or some unique integer.
  */
-void dumpCells(const char *prefix, int super, int active, int mpiactive,
-               int pactive, struct space *s, int rank, int step) {
+void dumpCells(const char* prefix, int super, int active, int mpiactive,
+               int pactive, struct space* s, int rank, int step) {
 
-  FILE *file = NULL;
+  FILE* file = NULL;
 
   /* Name of output file. */
   char fname[200];
@@ -672,12 +672,12 @@ void dumpCells(const char *prefix, int super, int active, int mpiactive,
  * @param vertexsizes size of vertices
  * @param edgeweights weights of edges
  */
-void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
-                    idx_t *cellconruns, idx_t *cellcon, idx_t *vertexweights,
-                    idx_t *vertexsizes, idx_t *edgeweights) {
-  FILE *stdfile = NULL;
-  FILE *simplefile = NULL;
-  FILE *weightfile = NULL;
+void dumpMETISGraph(const char* prefix, idx_t nvertices, idx_t nvertexweights,
+                    idx_t* cellconruns, idx_t* cellcon, idx_t* vertexweights,
+                    idx_t* vertexsizes, idx_t* edgeweights) {
+  FILE* stdfile = NULL;
+  FILE* simplefile = NULL;
+  FILE* weightfile = NULL;
   char fname[200];
   int haveedgeweight = 0;
   int havevertexsize = 0;
@@ -804,9 +804,9 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
  * @param cells_top the top-level cells.
  * @param nr_cells the number of cells.
  */
-void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells) {
+void dumpCellRanks(const char* prefix, struct cell* cells_top, int nr_cells) {
 
-  FILE *file = NULL;
+  FILE* file = NULL;
 
   /* Name of output file. */
   static int nseq = 0;
@@ -823,7 +823,7 @@ void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells) {
 
   /* Output */
   for (int i = 0; i < nr_cells; i++) {
-    struct cell *c = &cells_top[i];
+    struct cell* c = &cells_top[i];
     fprintf(file, "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d\n", c->loc[0],
             c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2],
             c->nodeID);
@@ -841,15 +841,15 @@ void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells) {
  *
  * @param description some string to output along with the stack.
  */
-void print_backtrace(const char *description) {
+void print_backtrace(const char* description) {
 #ifdef HAVE_BACKTRACE
 
   message("%s", description);
 
   /* Boiler plate from the man page. */
-  void *buffer[100];
+  void* buffer[100];
   int nptrs = backtrace(buffer, 100);
-  char **strings = backtrace_symbols(buffer, nptrs);
+  char** strings = backtrace_symbols(buffer, nptrs);
   if (strings == NULL) {
     perror("backtrace_symbols");
   } else {

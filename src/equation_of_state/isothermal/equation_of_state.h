@@ -194,8 +194,8 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
  * @param params The parsed parameters.
  */
 __attribute__((always_inline)) INLINE static void eos_init(
-    struct eos_parameters *e, const struct phys_const *phys_const,
-    const struct unit_system *us, struct swift_params *params) {
+    struct eos_parameters* e, const struct phys_const* phys_const,
+    const struct unit_system* us, struct swift_params* params) {
 
   e->isothermal_internal_energy =
       parser_get_param_float(params, "EoS:isothermal_internal_energy");
@@ -207,7 +207,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
  * @param e The #eos_parameters
  */
 __attribute__((always_inline)) INLINE static void eos_print(
-    const struct eos_parameters *e) {
+    const struct eos_parameters* e) {
 
   message(
       "Equation of state: Isothermal with internal energy "
@@ -225,7 +225,7 @@ __attribute__((always_inline)) INLINE static void eos_print(
  * @param e The #eos_parameters
  */
 __attribute__((always_inline)) INLINE static void eos_print_snapshot(
-    hid_t h_grpsph, const struct eos_parameters *e) {
+    hid_t h_grpsph, const struct eos_parameters* e) {
 
   io_write_attribute_f(h_grpsph, "Adiabatic index", hydro_gamma);
 

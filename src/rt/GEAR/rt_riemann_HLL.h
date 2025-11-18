@@ -51,8 +51,8 @@
  */
 
 __attribute__((always_inline)) INLINE static void
-rt_riemann_interpolate_eigenvals(float f, float theta, float *lambda_min,
-                                 float *lambda_max) {
+rt_riemann_interpolate_eigenvals(float f, float theta, float* lambda_min,
+                                 float* lambda_max) {
 
   /* find lower table indices for f and theta */
   int f_ind = floor(RT_RIEMANN_HLL_ONE_OVER_DF * f);

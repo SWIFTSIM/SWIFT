@@ -86,10 +86,10 @@ struct csds_writer {
   int max_record_size;
 
   /* Description of all the fields that can be written. */
-  struct csds_field *list_fields;
+  struct csds_field* list_fields;
 
   /* Pointer to the variable list_fields for each module. */
-  struct csds_field *field_pointers[swift_type_count];
+  struct csds_field* field_pointers[swift_type_count];
 
   /* Number of fields for each particle type. */
   int number_fields[swift_type_count];
@@ -109,51 +109,51 @@ struct csds_part_data {
 };
 
 /* Function prototypes. */
-void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
+void csds_log_all_particles(struct csds_writer* log, const struct engine* e,
                             const enum csds_special_flags flag);
-void csds_log_part(struct csds_writer *log, const struct part *p,
-                   struct xpart *xp, const struct engine *e,
+void csds_log_part(struct csds_writer* log, const struct part* p,
+                   struct xpart* xp, const struct engine* e,
                    const int log_all_fields, const enum csds_special_flags flag,
                    const int flag_data);
-void csds_log_parts(struct csds_writer *log, const struct part *p,
-                    struct xpart *xp, int count, const struct engine *e,
+void csds_log_parts(struct csds_writer* log, const struct part* p,
+                    struct xpart* xp, int count, const struct engine* e,
                     const int log_all_fields,
                     const enum csds_special_flags flag, const int flag_data);
-void csds_log_spart(struct csds_writer *log, struct spart *p,
-                    const struct engine *e, const int log_all_fields,
+void csds_log_spart(struct csds_writer* log, struct spart* p,
+                    const struct engine* e, const int log_all_fields,
                     const enum csds_special_flags flag, const int flag_data);
-void csds_log_sparts(struct csds_writer *log, struct spart *sp, int count,
-                     const struct engine *e, const int log_all_fields,
+void csds_log_sparts(struct csds_writer* log, struct spart* sp, int count,
+                     const struct engine* e, const int log_all_fields,
                      const enum csds_special_flags flag, const int flag_data);
-void csds_log_gpart(struct csds_writer *log, struct gpart *p,
-                    const struct engine *e, const int log_all_fields,
+void csds_log_gpart(struct csds_writer* log, struct gpart* p,
+                    const struct engine* e, const int log_all_fields,
                     const enum csds_special_flags flag, const int flag_data);
-void csds_log_gparts(struct csds_writer *log, struct gpart *gp, int count,
-                     const struct engine *e, const int log_all_fields,
+void csds_log_gparts(struct csds_writer* log, struct gpart* gp, int count,
+                     const struct engine* e, const int log_all_fields,
                      const enum csds_special_flags flag, const int flag_data);
-void csds_init(struct csds_writer *log, const struct engine *e,
-               struct swift_params *params);
-void csds_free(struct csds_writer *log);
-void csds_log_timestamp(struct csds_writer *log, integertime_t t, double time,
-                        size_t *offset);
-void csds_ensure_size(struct csds_writer *log, const struct engine *e);
-void csds_write_file_header(struct csds_writer *log);
+void csds_init(struct csds_writer* log, const struct engine* e,
+               struct swift_params* params);
+void csds_free(struct csds_writer* log);
+void csds_log_timestamp(struct csds_writer* log, integertime_t t, double time,
+                        size_t* offset);
+void csds_ensure_size(struct csds_writer* log, const struct engine* e);
+void csds_write_file_header(struct csds_writer* log);
 
-int csds_read_part(const struct csds_writer *log, struct part *p,
-                   size_t *offset, const char *buff);
-int csds_read_gpart(const struct csds_writer *log, struct gpart *p,
-                    size_t *offset, const char *buff);
-int csds_read_timestamp(const struct csds_writer *log, integertime_t *t,
-                        double *time, size_t *offset, const char *buff);
-void csds_struct_dump(const struct csds_writer *log, FILE *stream);
-void csds_struct_restore(struct csds_writer *log, FILE *stream);
+int csds_read_part(const struct csds_writer* log, struct part* p,
+                   size_t* offset, const char* buff);
+int csds_read_gpart(const struct csds_writer* log, struct gpart* p,
+                    size_t* offset, const char* buff);
+int csds_read_timestamp(const struct csds_writer* log, integertime_t* t,
+                        double* time, size_t* offset, const char* buff);
+void csds_struct_dump(const struct csds_writer* log, FILE* stream);
+void csds_struct_restore(struct csds_writer* log, FILE* stream);
 
 /**
  * @brief Initialize the csds data for a particle.
  *
  * @param csds The #csds_part_data.
  */
-INLINE static void csds_part_data_init(struct csds_part_data *csds) {
+INLINE static void csds_part_data_init(struct csds_part_data* csds) {
   csds->last_offset = 0;
   csds->steps_since_last_output = 0;
 }
@@ -167,7 +167,7 @@ INLINE static void csds_part_data_init(struct csds_part_data *csds) {
  * @return 1 if the particle should be writen, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int csds_should_write(
-    const struct csds_part_data *csds_data, const struct csds_writer *log) {
+    const struct csds_part_data* csds_data, const struct csds_writer* log) {
 
   return (csds_data->steps_since_last_output > log->delta_step);
 }

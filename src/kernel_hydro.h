@@ -255,7 +255,7 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
  * @param dW_dx (return) The norm of the gradient of \f$|\nabla W(x,h)|\f$.
  */
 __attribute__((always_inline)) INLINE static void kernel_deval(
-    float u, float *restrict W, float *restrict dW_dx) {
+    float u, float* restrict W, float* restrict dW_dx) {
 
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * kernel_gamma_inv;
@@ -263,7 +263,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x * kernel_ivals_f);
   const int ind = temp > kernel_ivals ? kernel_ivals : temp;
-  const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
+  const float* const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
 
   /* First two terms of the polynomial ... */
   float w = coeffs[0] * x + coeffs[1];
@@ -295,7 +295,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
  * @param W (return) The value of the kernel function \f$W(x,h)\f$.
  */
 __attribute__((always_inline)) INLINE static void kernel_eval(
-    float u, float *restrict W) {
+    float u, float* restrict W) {
 
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * kernel_gamma_inv;
@@ -303,7 +303,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval(
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x * kernel_ivals_f);
   const int ind = temp > kernel_ivals ? kernel_ivals : temp;
-  const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
+  const float* const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
 
   /* First two terms of the polynomial ... */
   float w = coeffs[0] * x + coeffs[1];
@@ -333,7 +333,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval(
  * @param W (return) The value of the kernel function \f$W(x,h)\f$.
  */
 __attribute__((always_inline)) INLINE static void kernel_eval_double(
-    double u, double *restrict W) {
+    double u, double* restrict W) {
 
   /* Go to the range [0,1[ from [0,H[ */
   const double x = u * kernel_gamma_inv;
@@ -341,7 +341,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_double(
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x * kernel_ivals_f);
   const int ind = temp > kernel_ivals ? kernel_ivals : temp;
-  const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
+  const float* const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
 
   /* First two terms of the polynomial ... */
   double w = ((double)coeffs[0]) * x + ((double)coeffs[1]);
@@ -367,7 +367,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_double(
  * @param dW_dx (return) The norm of the gradient of \f$|\nabla W(x,h)|\f$.
  */
 __attribute__((always_inline)) INLINE static void kernel_eval_dWdx(
-    float u, float *restrict dW_dx) {
+    float u, float* restrict dW_dx) {
 
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * kernel_gamma_inv;
@@ -375,7 +375,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx(
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x * kernel_ivals_f);
   const int ind = temp > kernel_ivals ? kernel_ivals : temp;
-  const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
+  const float* const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
 
   /* First two terms of the polynomial ... */
   float dw_dx = ((float)kernel_degree * coeffs[0] * x) +
@@ -439,7 +439,7 @@ __attribute__((always_inline, const)) INLINE static float potential_dh(
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
  */
 __attribute__((always_inline)) INLINE static void kernel_deval_vec(
-    vector *u, vector *w, vector *dw_dx) {
+    vector* u, vector* w, vector* dw_dx) {
 
   /* Go to the range [0,1[ from [0,H[ */
   vector x;
@@ -532,7 +532,7 @@ static const vector cond = FILL_VEC(0.5f);
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
  */
 __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
-    vector *u, vector *w, vector *dw_dx) {
+    vector* u, vector* w, vector* dw_dx) {
 
   /* Go to the range [0,1[ from [0,H[ */
   vector x;
@@ -618,8 +618,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
  * second particle.
  */
 __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
-    vector *u, vector *w, vector *dw_dx, vector *u2, vector *w2,
-    vector *dw_dx2) {
+    vector* u, vector* w, vector* dw_dx, vector* u2, vector* w2,
+    vector* dw_dx2) {
 
   /* Go to the range [0,1[ from [0,H[ */
   vector x, x2;
@@ -734,8 +734,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param w (return) The value of the kernel function $W(x,h)$.
  */
-__attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector *u,
-                                                                    vector *w) {
+__attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector* u,
+                                                                    vector* w) {
 
   /* Go to the range [0,1[ from [0,H[ */
   vector x;
@@ -796,7 +796,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector *u,
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
  */
 __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_vec(
-    vector *u, vector *dw_dx) {
+    vector* u, vector* dw_dx) {
 
   /* Go to the range [0,1[ from [0,H[ */
   vector x;
@@ -858,7 +858,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_vec(
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
  */
 __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_vec(
-    vector *u, vector *dw_dx) {
+    vector* u, vector* dw_dx) {
 
   /* Go to the range [0,1[ from [0,H[ */
   vector x;
@@ -930,7 +930,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_vec(
  * second particle.
  */
 __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
-    vector *u, vector *dw_dx, vector *u_2, vector *dw_dx_2) {
+    vector* u, vector* dw_dx, vector* u_2, vector* dw_dx_2) {
 
   /* Go to the range [0,1[ from [0,H[ */
   vector x, x_2;

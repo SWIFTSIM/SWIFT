@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char *const usages[] = {
+static const char* const usages[] = {
     "test_argparse [options] [[--] args]",
     "test_argparse [options]",
     NULL,
@@ -15,19 +15,19 @@ static const char *const usages[] = {
 #define PERM_EXEC (1 << 2)
 
 struct stuff {
-  const char *path[10];
+  const char* path[10];
   int npath;
 };
 
-static int callback(struct argparse *self, const struct argparse_option *opt) {
-  printf("Called back... %s\n", *(char **)opt->value);
-  struct stuff *data = (struct stuff *)opt->data;
-  data->path[data->npath] = *(char **)opt->value;
+static int callback(struct argparse* self, const struct argparse_option* opt) {
+  printf("Called back... %s\n", *(char**)opt->value);
+  struct stuff* data = (struct stuff*)opt->data;
+  data->path[data->npath] = *(char**)opt->value;
   data->npath++;
   return 1;
 }
 
-int main(int argc, const char **argv) {
+int main(int argc, const char** argv) {
   int force = 0;
   int self_gravity = 0;
   int int_num = 0;
@@ -35,7 +35,7 @@ int main(int argc, const char **argv) {
   struct stuff data;
   data.npath = 0;
   data.path[0] = NULL;
-  const char *buffer;
+  const char* buffer;
   int perms = 0;
   int npath;
 

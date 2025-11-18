@@ -52,10 +52,10 @@
  */
 struct space_index_data {
   /*! The space we play with */
-  const struct space *s;
+  const struct space* s;
 
   /*! The #statistics aggregator to fill */
-  struct statistics *stats;
+  struct statistics* stats;
 };
 
 /**
@@ -66,7 +66,7 @@ struct space_index_data {
  * @param a The #statistics structure to update.
  * @param b The #statistics structure to add to a.
  */
-void stats_add(struct statistics *a, const struct statistics *b) {
+void stats_add(struct statistics* a, const struct statistics* b) {
 
   /* Add everything */
   a->E_kin += b->E_kin;
@@ -114,7 +114,7 @@ void stats_add(struct statistics *a, const struct statistics *b) {
  *
  * @param s The #statistics aggregator to initialise
  */
-void stats_init(struct statistics *s) {
+void stats_init(struct statistics* s) {
 
   /* Zero everything */
   bzero(s, sizeof(struct statistics));
@@ -130,23 +130,23 @@ void stats_init(struct statistics *s) {
  * @param nr_parts The number of particles in this chunk
  * @param extra_data The #statistics aggregator.
  */
-void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
+void stats_collect_part_mapper(void* map_data, int nr_parts, void* extra_data) {
 
   /* Unpack the data */
-  const struct space_index_data *data = (struct space_index_data *)extra_data;
-  const struct space *s = data->s;
-  const struct engine *e = s->e;
+  const struct space_index_data* data = (struct space_index_data*)extra_data;
+  const struct space* s = data->s;
+  const struct engine* e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
   const double time = e->time;
-  const struct part *const parts = (struct part *)map_data;
-  const struct xpart *const xparts = s->xparts + (ptrdiff_t)(parts - s->parts);
-  struct statistics *const global_stats = data->stats;
+  const struct part* const parts = (struct part*)map_data;
+  const struct xpart* const xparts = s->xparts + (ptrdiff_t)(parts - s->parts);
+  struct statistics* const global_stats = data->stats;
 
   /* Some information about the physical model */
-  const struct external_potential *potential = e->external_potential;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct external_potential* potential = e->external_potential;
+  const struct phys_const* phys_const = e->physical_constants;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Information about the MHD model */
   const float mu_0 = phys_const->const_vacuum_permeability;
@@ -163,9 +163,9 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
   for (int k = 0; k < nr_parts; k++) {
 
     /* Get the particle */
-    const struct part *p = &parts[k];
-    const struct xpart *xp = &xparts[k];
-    const struct gpart *gp = p->gpart;
+    const struct part* p = &parts[k];
+    const struct xpart* xp = &xparts[k];
+    const struct gpart* gp = p->gpart;
 
     /* Ignore non-existing particles */
     if (p->time_bin == time_bin_inhibited ||
@@ -191,10 +191,10 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 #if defined(CHEMISTRY_EAGLE)
 #if defined(COOLING_EAGLE) || defined(COOLING_PS2020)
 
-    const struct unit_system *us = e->internal_units;
-    const struct hydro_props *hydro_props = e->hydro_properties;
-    const struct entropy_floor_properties *floor_props = e->entropy_floor;
-    const struct cooling_function_data *cooling = e->cooling_func;
+    const struct unit_system* us = e->internal_units;
+    const struct hydro_props* hydro_props = e->hydro_properties;
+    const struct entropy_floor_properties* floor_props = e->entropy_floor;
+    const struct cooling_function_data* cooling = e->cooling_func;
 
     /* Collect H and He species */
     const float H_mass_frac =
@@ -278,23 +278,23 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
  * @param nr_sparts The number of particles in this chunk
  * @param extra_data The #statistics aggregator.
  */
-void stats_collect_spart_mapper(void *map_data, int nr_sparts,
-                                void *extra_data) {
+void stats_collect_spart_mapper(void* map_data, int nr_sparts,
+                                void* extra_data) {
 
   /* Unpack the data */
-  const struct space_index_data *data = (struct space_index_data *)extra_data;
-  const struct space *s = data->s;
-  const struct engine *e = s->e;
+  const struct space_index_data* data = (struct space_index_data*)extra_data;
+  const struct space* s = data->s;
+  const struct engine* e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
   const double time = e->time;
-  const struct spart *const sparts = (struct spart *)map_data;
-  struct statistics *const global_stats = data->stats;
+  const struct spart* const sparts = (struct spart*)map_data;
+  struct statistics* const global_stats = data->stats;
 
   /* Some information about the physical model */
-  const struct external_potential *potential = e->external_potential;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct external_potential* potential = e->external_potential;
+  const struct phys_const* phys_const = e->physical_constants;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Some constants from cosmology */
   const float a_inv = cosmo->a_inv;
@@ -308,8 +308,8 @@ void stats_collect_spart_mapper(void *map_data, int nr_sparts,
   for (int k = 0; k < nr_sparts; k++) {
 
     /* Get the particle */
-    const struct spart *sp = &sparts[k];
-    const struct gpart *gp = sp->gpart;
+    const struct spart* sp = &sparts[k];
+    const struct gpart* gp = sp->gpart;
 
     /* Ignore non-existing particles */
     if (sp->time_bin == time_bin_inhibited ||
@@ -367,22 +367,22 @@ void stats_collect_spart_mapper(void *map_data, int nr_sparts,
  * @param nr_sinks The number of particles in this chunk
  * @param extra_data The #statistics aggregator.
  */
-void stats_collect_sink_mapper(void *map_data, int nr_sinks, void *extra_data) {
+void stats_collect_sink_mapper(void* map_data, int nr_sinks, void* extra_data) {
 
   /* Unpack the data */
-  const struct space_index_data *data = (struct space_index_data *)extra_data;
-  const struct space *s = data->s;
-  const struct engine *e = s->e;
+  const struct space_index_data* data = (struct space_index_data*)extra_data;
+  const struct space* s = data->s;
+  const struct engine* e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
   const double time = e->time;
-  const struct sink *const sinks = (struct sink *)map_data;
-  struct statistics *const global_stats = data->stats;
+  const struct sink* const sinks = (struct sink*)map_data;
+  struct statistics* const global_stats = data->stats;
 
   /* Some information about the physical model */
-  const struct external_potential *potential = e->external_potential;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct external_potential* potential = e->external_potential;
+  const struct phys_const* phys_const = e->physical_constants;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Some constants from cosmology */
   const float a_inv = cosmo->a_inv;
@@ -396,8 +396,8 @@ void stats_collect_sink_mapper(void *map_data, int nr_sinks, void *extra_data) {
   for (int k = 0; k < nr_sinks; k++) {
 
     /* Get the particle */
-    const struct sink *sp = &sinks[k];
-    const struct gpart *gp = sp->gpart;
+    const struct sink* sp = &sinks[k];
+    const struct gpart* gp = sp->gpart;
 
     /* Ignore non-existing particles */
     if (sp->time_bin == time_bin_inhibited ||
@@ -452,23 +452,23 @@ void stats_collect_sink_mapper(void *map_data, int nr_sinks, void *extra_data) {
  * @param nr_bparts The number of particles in this chunk
  * @param extra_data The #statistics aggregator.
  */
-void stats_collect_bpart_mapper(void *map_data, int nr_bparts,
-                                void *extra_data) {
+void stats_collect_bpart_mapper(void* map_data, int nr_bparts,
+                                void* extra_data) {
 
   /* Unpack the data */
-  const struct space_index_data *data = (struct space_index_data *)extra_data;
-  const struct space *s = data->s;
-  const struct engine *e = s->e;
+  const struct space_index_data* data = (struct space_index_data*)extra_data;
+  const struct space* s = data->s;
+  const struct engine* e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
   const double time = e->time;
-  const struct bpart *const bparts = (struct bpart *)map_data;
-  struct statistics *const global_stats = data->stats;
+  const struct bpart* const bparts = (struct bpart*)map_data;
+  struct statistics* const global_stats = data->stats;
 
   /* Some information about the physical model */
-  const struct external_potential *potential = e->external_potential;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct external_potential* potential = e->external_potential;
+  const struct phys_const* phys_const = e->physical_constants;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Some constants from cosmology */
   const float a_inv = cosmo->a_inv;
@@ -482,8 +482,8 @@ void stats_collect_bpart_mapper(void *map_data, int nr_bparts,
   for (int k = 0; k < nr_bparts; k++) {
 
     /* Get the particle */
-    const struct bpart *bp = &bparts[k];
-    const struct gpart *gp = bp->gpart;
+    const struct bpart* bp = &bparts[k];
+    const struct gpart* gp = bp->gpart;
 
     /* Ignore non-existing particles */
     if (bp->time_bin == time_bin_inhibited ||
@@ -553,23 +553,23 @@ void stats_collect_bpart_mapper(void *map_data, int nr_bparts,
  * @param nr_gparts The number of g-particles in this chunk
  * @param extra_data The #statistics aggregator.
  */
-void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
-                                void *extra_data) {
+void stats_collect_gpart_mapper(void* map_data, int nr_gparts,
+                                void* extra_data) {
 
   /* Unpack the data */
-  const struct space_index_data *data = (struct space_index_data *)extra_data;
-  const struct space *s = data->s;
-  const struct engine *e = s->e;
+  const struct space_index_data* data = (struct space_index_data*)extra_data;
+  const struct space* s = data->s;
+  const struct engine* e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
   const double time = e->time;
-  const struct gpart *restrict gparts = (struct gpart *)map_data;
-  struct statistics *const global_stats = data->stats;
+  const struct gpart* restrict gparts = (struct gpart*)map_data;
+  struct statistics* const global_stats = data->stats;
 
   /* Some information about the physical model */
-  const struct external_potential *potential = e->external_potential;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct external_potential* potential = e->external_potential;
+  const struct phys_const* phys_const = e->physical_constants;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Some constants from cosmology */
   const float a_inv = cosmo->a_inv;
@@ -583,7 +583,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
   for (int k = 0; k < nr_gparts; k++) {
 
     /* Get the particle */
-    const struct gpart *gp = &gparts[k];
+    const struct gpart* gp = &gparts[k];
 
     /* Ignore the hydro particles as they are already computed and skip
      * neutrinos */
@@ -643,7 +643,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
  * @param s The #space to collect from.
  * @param stats The #statistics aggregator to fill.
  */
-void stats_collect(const struct space *s, struct statistics *stats) {
+void stats_collect(const struct space* s, struct statistics* stats) {
 
   /* Prepare the data */
   struct space_index_data extra_data;
@@ -687,7 +687,7 @@ void stats_collect(const struct space *s, struct statistics *stats) {
  * @param stats The #statistics to work on.
  * @param e The #engine we run with.
  */
-void stats_finalize(struct statistics *stats, const struct engine *e) {
+void stats_finalize(struct statistics* stats, const struct engine* e) {
 
   stats->total_mass = stats->gas_mass + stats->dm_mass + stats->sink_mass +
                       stats->star_mass + stats->bh_mass;
@@ -706,8 +706,8 @@ void stats_finalize(struct statistics *stats, const struct engine *e) {
   stats->Brms = sqrtf(stats->Brms);
 }
 
-void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
-                             const struct phys_const *phys_const) {
+void stats_write_file_header(FILE* file, const struct unit_system* restrict us,
+                             const struct phys_const* phys_const) {
 
   fprintf(file, "# Global statistics file\n");
   fprintf(file, "######################################################\n");
@@ -936,7 +936,7 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
  * @param z The current redshift.
  * @param step The current time-step.
  */
-void stats_write_to_file(FILE *file, const struct statistics *stats,
+void stats_write_to_file(FILE* file, const struct statistics* stats,
                          const double time, const double a, const double z,
                          const int step) {
 
@@ -981,11 +981,11 @@ MPI_Op statistics_mpi_reduce_op;
 /**
  * @brief MPI reduce operator for #statistics structures.
  */
-void stats_add_mpi(void *in, void *inout, int *len, MPI_Datatype *datatype) {
+void stats_add_mpi(void* in, void* inout, int* len, MPI_Datatype* datatype) {
 
   for (int i = 0; i < *len; ++i)
-    stats_add(&((struct statistics *)inout)[0],
-              &((const struct statistics *)in)[i]);
+    stats_add(&((struct statistics*)inout)[0],
+              &((const struct statistics*)in)[i]);
 }
 
 /**

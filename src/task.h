@@ -210,17 +210,17 @@ enum task_categories {
 /**
  * @brief Names of the task types.
  */
-extern const char *taskID_names[];
+extern const char* taskID_names[];
 
 /**
  * @brief Names of the task sub-types.
  */
-extern const char *subtaskID_names[];
+extern const char* subtaskID_names[];
 
 /**
  * @brief Names of the task categories.
  */
-extern const char *task_category_names[];
+extern const char* task_category_names[];
 
 /**
  *  @brief The MPI communicators for the different subtypes.
@@ -238,7 +238,7 @@ struct task {
   struct cell *ci, *cj;
 
   /*! List of tasks unlocked by this one */
-  struct task **unlock_tasks;
+  struct task** unlock_tasks;
 
   /*! Flags used to carry additional information (e.g. sort directions) */
   long long flags;
@@ -246,7 +246,7 @@ struct task {
 #ifdef WITH_MPI
 
   /*! Buffer for this task's communications */
-  void *buff;
+  void* buff;
 
   /*! MPI request corresponding to this task */
   MPI_Request req;
@@ -299,19 +299,19 @@ struct task {
 } SWIFT_STRUCT_ALIGN;
 
 /* Function prototypes. */
-void task_unlock(struct task *t);
-float task_overlap(const struct task *ta, const struct task *tb);
-int task_lock(struct task *t);
-struct task *task_get_unique_dependent(const struct task *t);
-void task_print(const struct task *t);
-void task_dump_all(struct engine *e, int step);
-void task_dump_stats(const char *dumpfile, struct engine *e,
+void task_unlock(struct task* t);
+float task_overlap(const struct task* ta, const struct task* tb);
+int task_lock(struct task* t);
+struct task* task_get_unique_dependent(const struct task* t);
+void task_print(const struct task* t);
+void task_dump_all(struct engine* e, int step);
+void task_dump_stats(const char* dumpfile, struct engine* e,
                      float dump_tasks_threshold, int header, int allranks);
-void task_dump_active(struct engine *e);
-void task_get_full_name(int type, int subtype, char *name);
-void task_create_name_files(const char *file_prefix);
-void task_get_group_name(int type, int subtype, char *cluster);
-enum task_categories task_get_category(const struct task *t);
+void task_dump_active(struct engine* e);
+void task_get_full_name(int type, int subtype, char* name);
+void task_create_name_files(const char* file_prefix);
+void task_get_group_name(int type, int subtype, char* cluster);
+enum task_categories task_get_category(const struct task* t);
 
 #ifdef WITH_MPI
 void task_create_mpi_comms(void);

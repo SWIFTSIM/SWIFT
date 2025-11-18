@@ -26,7 +26,7 @@
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
+void DOSELF1_SINKS(struct runner* r, struct cell* c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank) error("Should be run on a different node");
@@ -34,8 +34,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Anything to do here? */
@@ -44,8 +44,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 
   const int scount = c->sinks.count;
   const int count = c->hydro.count;
-  struct sink *restrict sinks = c->sinks.parts;
-  struct part *restrict parts = c->hydro.parts;
+  struct sink* restrict sinks = c->sinks.parts;
+  struct part* restrict parts = c->hydro.parts;
 
   /* Do we actually have any gas neighbours? */
   if (c->hydro.count != 0) {
@@ -54,7 +54,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
     for (int sid = 0; sid < scount; sid++) {
 
       /* Get a hold of the ith sinks in ci. */
-      struct sink *restrict si = &sinks[sid];
+      struct sink* restrict si = &sinks[sid];
 
       /* Skip inactive particles */
       if (!sink_is_active(si, e)) continue;
@@ -69,7 +69,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
       for (int pjd = 0; pjd < count; pjd++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts[pjd];
+        struct part* restrict pj = &parts[pjd];
         const float hj = pj->h;
 
         /* Early abort? */
@@ -107,7 +107,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
   for (int sid = 0; sid < scount; sid++) {
 
     /* Get a hold of the ith sink in ci. */
-    struct sink *restrict si = &sinks[sid];
+    struct sink* restrict si = &sinks[sid];
 
     /* Skip inactive particles */
     if (!sink_is_active(si, e)) continue;
@@ -125,7 +125,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
       if (sid == sjd) continue;
 
       /* Get a pointer to the jth particle. */
-      struct sink *restrict sj = &sinks[sjd];
+      struct sink* restrict sj = &sinks[sjd];
       const float hj = sj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
 
@@ -167,8 +167,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
  * @param ci The first #cell
  * @param cj The second #cell
  */
-void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
-                                 struct cell *restrict cj) {
+void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner* r, struct cell* restrict ci,
+                                 struct cell* restrict cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -176,8 +176,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #endif
 
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Anything to do here? */
@@ -186,8 +186,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
   const int scount_i = ci->sinks.count;
   const int count_j = cj->hydro.count;
-  struct sink *restrict sinks_i = ci->sinks.parts;
-  struct part *restrict parts_j = cj->hydro.parts;
+  struct sink* restrict sinks_i = ci->sinks.parts;
+  struct part* restrict parts_j = cj->hydro.parts;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -205,7 +205,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
     for (int sid = 0; sid < scount_i; sid++) {
 
       /* Get a hold of the ith sink in ci. */
-      struct sink *restrict si = &sinks_i[sid];
+      struct sink* restrict si = &sinks_i[sid];
 
       /* Skip inactive particles */
       if (!sink_is_active(si, e)) continue;
@@ -220,7 +220,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
       for (int pjd = 0; pjd < count_j; pjd++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts_j[pjd];
+        struct part* restrict pj = &parts_j[pjd];
         const float hj = pj->h;
 
         /* Skip inhibited particles. */
@@ -255,13 +255,13 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
 
   const int scount_j = cj->sinks.count;
-  struct sink *restrict sinks_j = cj->sinks.parts;
+  struct sink* restrict sinks_j = cj->sinks.parts;
 
   /* Loop over the sinks in ci. */
   for (int sid = 0; sid < scount_i; sid++) {
 
     /* Get a hold of the ith sink in ci. */
-    struct sink *restrict si = &sinks_i[sid];
+    struct sink* restrict si = &sinks_i[sid];
 
     /* Skip inactive particles */
     if (!sink_is_active(si, e)) continue;
@@ -276,7 +276,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
     for (int sjd = 0; sjd < scount_j; sjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct sink *restrict sj = &sinks_j[sjd];
+      struct sink* restrict sj = &sinks_j[sjd];
       const float hj = sj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
 
@@ -317,8 +317,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param ci The first #cell
  * @param cj The second #cell
  */
-void DOPAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
-                         struct cell *restrict cj, int timer) {
+void DOPAIR1_SINKS_NAIVE(struct runner* r, struct cell* restrict ci,
+                         struct cell* restrict cj, int timer) {
 
   TIMER_TIC;
 
@@ -351,20 +351,20 @@ void DOPAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param cj The second #cell.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DOPAIR1_SUBSET_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
-                                struct sink *restrict sinks_i,
-                                int *restrict ind, const int scount,
-                                struct cell *restrict cj, const double *shift) {
+void DOPAIR1_SUBSET_SINKS_NAIVE(struct runner* r, struct cell* restrict ci,
+                                struct sink* restrict sinks_i,
+                                int* restrict ind, const int scount,
+                                struct cell* restrict cj, const double* shift) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
 #endif
 
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int count_j = cj->hydro.count;
-  struct part *restrict parts_j = cj->hydro.parts;
+  struct part* restrict parts_j = cj->hydro.parts;
 
   /* Early abort? */
   if (count_j == 0) return;
@@ -373,7 +373,7 @@ void DOPAIR1_SUBSET_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
   for (int sid = 0; sid < scount; sid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct sink *restrict si = &sinks_i[ind[sid]];
+    struct sink* restrict si = &sinks_i[ind[sid]];
 
     const double six = si->x[0] - (shift[0]);
     const double siy = si->x[1] - (shift[1]);
@@ -390,7 +390,7 @@ void DOPAIR1_SUBSET_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
     for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
+      struct part* restrict pj = &parts_j[pjd];
 
       /* Skip inhibited particles */
       if (part_is_inhibited(pj, e)) continue;
@@ -430,19 +430,19 @@ void DOPAIR1_SUBSET_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param scount The number of particles in @c ind.
  */
-void DOSELF1_SUBSET_SINKS(struct runner *r, struct cell *restrict ci,
-                          struct sink *restrict sinks, int *restrict ind,
+void DOSELF1_SUBSET_SINKS(struct runner* r, struct cell* restrict ci,
+                          struct sink* restrict sinks, int* restrict ind,
                           const int scount) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
 #endif
 
-  const struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct engine* e = r->e;
+  const struct cosmology* cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int count_i = ci->hydro.count;
-  struct part *restrict parts_j = ci->hydro.parts;
+  struct part* restrict parts_j = ci->hydro.parts;
 
   /* Early abort? */
   if (count_i == 0) return;
@@ -451,7 +451,7 @@ void DOSELF1_SUBSET_SINKS(struct runner *r, struct cell *restrict ci,
   for (int sid = 0; sid < scount; sid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct sink *si = &sinks[ind[sid]];
+    struct sink* si = &sinks[ind[sid]];
     const float six[3] = {(float)(si->x[0] - ci->loc[0]),
                           (float)(si->x[1] - ci->loc[1]),
                           (float)(si->x[2] - ci->loc[2])};
@@ -466,7 +466,7 @@ void DOSELF1_SUBSET_SINKS(struct runner *r, struct cell *restrict ci,
     for (int pjd = 0; pjd < count_i; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
+      struct part* restrict pj = &parts_j[pjd];
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
@@ -504,8 +504,8 @@ void DOSELF1_SUBSET_SINKS(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param scount The number of particles in @c ind.
  */
-void DOSELF1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
-                                 struct sink *restrict sinks, int *restrict ind,
+void DOSELF1_SUBSET_BRANCH_SINKS(struct runner* r, struct cell* restrict ci,
+                                 struct sink* restrict sinks, int* restrict ind,
                                  const int scount) {
 
   DOSELF1_SUBSET_SINKS(r, ci, sinks, ind, scount);
@@ -523,12 +523,12 @@ void DOSELF1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
  * @param scount The number of particles in @c ind.
  * @param cj The second #cell.
  */
-void DOPAIR1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
-                                 struct sink *restrict sinks_i,
-                                 int *restrict ind, int const scount,
-                                 struct cell *restrict cj) {
+void DOPAIR1_SUBSET_BRANCH_SINKS(struct runner* r, struct cell* restrict ci,
+                                 struct sink* restrict sinks_i,
+                                 int* restrict ind, int const scount,
+                                 struct cell* restrict cj) {
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
   /* Anything to do here? */
   if (cj->hydro.count == 0) return;
@@ -545,12 +545,12 @@ void DOPAIR1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
   DOPAIR1_SUBSET_SINKS_NAIVE(r, ci, sinks_i, ind, scount, cj, shift);
 }
 
-void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
-                        int *ind, const int scount, struct cell *cj,
+void DOSUB_SUBSET_SINKS(struct runner* r, struct cell* ci, struct sink* sinks,
+                        int* ind, const int scount, struct cell* cj,
                         int gettimer) {
 
-  const struct engine *e = r->e;
-  struct space *s = e->s;
+  const struct engine* e = r->e;
+  struct space* s = e->s;
 
   /* Should we even bother? */
   if (!cell_is_active_sinks(ci, e) &&
@@ -558,7 +558,7 @@ void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
     return;
 
   /* Find out in which sub-cell of ci the parts are. */
-  struct cell *sub = NULL;
+  struct cell* sub = NULL;
   if (ci->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL) {
@@ -602,7 +602,7 @@ void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
       double shift[3] = {0.0, 0.0, 0.0};
       const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
-      struct cell_split_pair *csp = &cell_split_pairs[sid];
+      struct cell_split_pair* csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
@@ -637,13 +637,13 @@ void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
  * @param c #cell c
  *
  */
-void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
+void DOSELF1_BRANCH_SINKS(struct runner* r, struct cell* c) {
 
 #ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
   return;
 #endif
 
-  const struct engine *restrict e = r->e;
+  const struct engine* restrict e = r->e;
 
   /* Anything to do here? */
   if (c->sinks.count == 0) return;
@@ -666,13 +666,13 @@ void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
  * @param cj #cell cj
  *
  */
-void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
+void DOPAIR1_BRANCH_SINKS(struct runner* r, struct cell* ci, struct cell* cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
   return;
 #endif
 
-  const struct engine *restrict e = r->e;
+  const struct engine* restrict e = r->e;
 
   const int ci_active = cell_is_active_sinks(ci, e);
   const int cj_active = cell_is_active_sinks(cj, e);
@@ -716,7 +716,7 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
-void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
+void DOSUB_PAIR1_SINKS(struct runner* r, struct cell* ci, struct cell* cj,
                        int timer) {
 #ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
   return;
@@ -724,8 +724,8 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
 
   TIMER_TIC;
 
-  struct space *s = r->e->s;
-  const struct engine *e = r->e;
+  struct space* s = r->e->s;
+  const struct engine* e = r->e;
 
   /* Should we even bother? */
   const int should_do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
@@ -740,7 +740,7 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
   /* Recurse? */
   if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
       cell_can_recurse_in_pair_sinks_task(cj, ci)) {
-    struct cell_split_pair *csp = &cell_split_pairs[sid];
+    struct cell_split_pair* csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
@@ -799,14 +799,14 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int timer) {
+void DOSUB_SELF1_SINKS(struct runner* r, struct cell* ci, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
   return;
 #endif
 
   TIMER_TIC;
 
-  const struct engine *e = r->e;
+  const struct engine* e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank)

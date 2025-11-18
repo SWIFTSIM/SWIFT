@@ -66,7 +66,7 @@ struct rt_spectrum_integration_params {
   /* speed of light in correct units */
   double c;
   /* Values for the cross section parametrization */
-  struct rt_photoion_cs_parameters *cs_params;
+  struct rt_photoion_cs_parameters* cs_params;
 };
 
 /**
@@ -130,7 +130,7 @@ rt_init_photoion_cs_params_cgs(void) {
  */
 __attribute__((always_inline)) INLINE static double
 photoionization_cross_section(const double E, const int species,
-                              const struct rt_photoion_cs_parameters *params) {
+                              const struct rt_photoion_cs_parameters* params) {
 
   const double E0 = params->E_zero[species];
   const double E_ion = params->E_ion[species];

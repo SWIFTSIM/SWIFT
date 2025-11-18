@@ -141,11 +141,11 @@
  *
  * @param data A pointer to this thread's data.
  */
-void *runner_main(void *data) {
+void* runner_main(void* data) {
 
-  struct runner *r = (struct runner *)data;
-  struct engine *e = r->e;
-  struct scheduler *sched = &e->sched;
+  struct runner* r = (struct runner*)data;
+  struct engine* e = r->e;
+  struct scheduler* sched = &e->sched;
 
   /* Main loop. */
   while (1) {
@@ -157,8 +157,8 @@ void *runner_main(void *data) {
     if (e->step_props & engine_step_prop_done) break;
 
     /* Re-set the pointer to the previous task, as there is none. */
-    struct task *t = NULL;
-    struct task *prev = NULL;
+    struct task* t = NULL;
+    struct task* prev = NULL;
 
     /* Loop while there are tasks... */
     while (1) {
@@ -176,8 +176,8 @@ void *runner_main(void *data) {
       }
 
       /* Get the cells. */
-      struct cell *ci = t->ci;
-      struct cell *cj = t->cj;
+      struct cell* ci = t->ci;
+      struct cell* cj = t->cj;
 
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
@@ -185,8 +185,8 @@ void *runner_main(void *data) {
 
       /* And recover the pair direction */
       if (t->type == task_type_pair) {
-        struct cell *ci_temp = ci;
-        struct cell *cj_temp = cj;
+        struct cell* ci_temp = ci;
+        struct cell* cj_temp = cj;
         double shift[3];
         t->sid = space_getsid_and_swap_cells(e->s, &ci_temp, &cj_temp, shift);
       } else {
@@ -435,14 +435,14 @@ void *runner_main(void *data) {
           break;
         case task_type_recv:
           if (t->subtype == task_subtype_tend) {
-            cell_unpack_end_step(ci, (struct pcell_step *)t->buff);
+            cell_unpack_end_step(ci, (struct pcell_step*)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_sf_counts) {
-            cell_unpack_sf_counts(ci, (struct pcell_sf_stars *)t->buff);
+            cell_unpack_sf_counts(ci, (struct pcell_sf_stars*)t->buff);
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
             free(t->buff);
           } else if (t->subtype == task_subtype_grav_counts) {
-            cell_unpack_grav_counts(ci, (struct pcell_sf_grav *)t->buff);
+            cell_unpack_grav_counts(ci, (struct pcell_sf_grav*)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
@@ -456,11 +456,11 @@ void *runner_main(void *data) {
             runner_do_recv_part(r, ci, -1, 1);
           } else if (t->subtype == task_subtype_part_swallow) {
             cell_unpack_part_swallow(ci,
-                                     (struct black_holes_part_data *)t->buff);
+                                     (struct black_holes_part_data*)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_bpart_merger) {
             cell_unpack_bpart_swallow(ci,
-                                      (struct black_holes_bpart_data *)t->buff);
+                                      (struct black_holes_bpart_data*)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             /* Nothing to do here. Unpacking done in a separate task */
@@ -587,8 +587,8 @@ void *runner_main(void *data) {
   return NULL;
 }
 
-ticks runner_get_active_time(const struct runner *restrict r) {
+ticks runner_get_active_time(const struct runner* restrict r) {
   return r->active_time;
 }
 
-void runner_reset_active_time(struct runner *restrict r) { r->active_time = 0; }
+void runner_reset_active_time(struct runner* restrict r) { r->active_time = 0; }

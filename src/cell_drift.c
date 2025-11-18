@@ -50,10 +50,10 @@
  * @param c The #cell
  * @param replication_list_in The input replication_list struct
  */
-static struct replication_list *refine_replications(
-    const struct engine *e, const struct cell *c,
-    struct replication_list *replication_list_in) {
-  struct replication_list *replication_list;
+static struct replication_list* refine_replications(
+    const struct engine* e, const struct cell* c,
+    struct replication_list* replication_list_in) {
+  struct replication_list* replication_list;
   if (e->lightcone_array_properties->nr_lightcones > 0) {
     if (replication_list_in) {
       /* We're not at the top of the hierarchy, so use the replication lists
@@ -78,7 +78,7 @@ static struct replication_list *refine_replications(
  * @param c The cell to update.
  * @param ti The current integer time.
  */
-void cell_set_ti_old_part(struct cell *c, const integertime_t ti) {
+void cell_set_ti_old_part(struct cell* c, const integertime_t ti) {
 
   c->hydro.ti_old_part = ti;
   if (c->split) {
@@ -94,7 +94,7 @@ void cell_set_ti_old_part(struct cell *c, const integertime_t ti) {
  * @param c The cell to update.
  * @param ti The current integer time.
  */
-void cell_set_ti_old_gpart(struct cell *c, const integertime_t ti) {
+void cell_set_ti_old_gpart(struct cell* c, const integertime_t ti) {
 
   c->grav.ti_old_part = ti;
   if (c->split) {
@@ -110,7 +110,7 @@ void cell_set_ti_old_gpart(struct cell *c, const integertime_t ti) {
  * @param c The cell to update.
  * @param ti The current integer time.
  */
-void cell_set_ti_old_spart(struct cell *c, const integertime_t ti) {
+void cell_set_ti_old_spart(struct cell* c, const integertime_t ti) {
 
   c->stars.ti_old_part = ti;
   if (c->split) {
@@ -126,7 +126,7 @@ void cell_set_ti_old_spart(struct cell *c, const integertime_t ti) {
  * @param c The cell to update.
  * @param ti The current integer time.
  */
-void cell_set_ti_old_bpart(struct cell *c, const integertime_t ti) {
+void cell_set_ti_old_bpart(struct cell* c, const integertime_t ti) {
 
   c->black_holes.ti_old_part = ti;
   if (c->split) {
@@ -142,7 +142,7 @@ void cell_set_ti_old_bpart(struct cell *c, const integertime_t ti) {
  * @param c The cell to update.
  * @param ti The current integer time.
  */
-void cell_set_ti_old_sink(struct cell *c, const integertime_t ti) {
+void cell_set_ti_old_sink(struct cell* c, const integertime_t ti) {
 
   c->sinks.ti_old_part = ti;
   if (c->split) {
@@ -159,8 +159,8 @@ void cell_set_ti_old_sink(struct cell *c, const integertime_t ti) {
  * @param e The #engine (to get ti_current).
  * @param force Drift the particles irrespective of the #cell flags.
  */
-void cell_drift_part(struct cell *c, const struct engine *e, int force,
-                     struct replication_list *replication_list_in) {
+void cell_drift_part(struct cell* c, const struct engine* e, int force,
+                     struct replication_list* replication_list_in) {
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -168,8 +168,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   const float hydro_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_part = c->hydro.ti_old_part;
   const integertime_t ti_current = e->ti_current;
-  struct part *const parts = c->hydro.parts;
-  struct xpart *const xparts = c->hydro.xparts;
+  struct part* const parts = c->hydro.parts;
+  struct xpart* const xparts = c->hydro.xparts;
 
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
@@ -203,7 +203,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
      IMPORTANT: after this point we must not return without freeing the
      replication lists if we allocated them.
   */
-  struct replication_list *replication_list = NULL;
+  struct replication_list* replication_list = NULL;
 #ifdef WITH_LIGHTCONE
   replication_list = refine_replications(e, c, replication_list_in);
 #endif
@@ -214,7 +214,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
     /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
+        struct cell* cp = c->progeny[k];
 
         /* Collect */
         cell_drift_part(cp, e, force, replication_list);
@@ -259,8 +259,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
     const size_t nr_parts = c->hydro.count;
     for (size_t k = 0; k < nr_parts; k++) {
       /* Get a handle on the part. */
-      struct part *const p = &parts[k];
-      struct xpart *const xp = &xparts[k];
+      struct part* const p = &parts[k];
+      struct xpart* const xp = &xparts[k];
 
       /* Ignore inhibited particles */
       if (part_is_inhibited(p, e)) continue;
@@ -414,15 +414,15 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
  * @param e The #engine (to get ti_current).
  * @param force Drift the particles irrespective of the #cell flags.
  */
-void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
-                      struct replication_list *replication_list_in) {
+void cell_drift_gpart(struct cell* c, const struct engine* e, int force,
+                      struct replication_list* replication_list_in) {
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const integertime_t ti_old_gpart = c->grav.ti_old_part;
   const integertime_t ti_current = e->ti_current;
-  struct gpart *const gparts = c->grav.parts;
-  const struct gravity_props *grav_props = e->gravity_properties;
+  struct gpart* const gparts = c->grav.parts;
+  const struct gravity_props* grav_props = e->gravity_properties;
   const double a = e->cosmology->a;
   const double c_vel = e->physical_constants->const_speed_light_c;
   const int with_neutrinos = e->s->with_neutrinos;
@@ -455,7 +455,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
      IMPORTANT: after this point we must not return without freeing the
      replication lists if we allocated them.
   */
-  struct replication_list *replication_list = NULL;
+  struct replication_list* replication_list = NULL;
 #ifdef WITH_LIGHTCONE
   replication_list = refine_replications(e, c, replication_list_in);
 #endif
@@ -466,7 +466,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
     /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
+        struct cell* cp = c->progeny[k];
 
         /* Recurse */
         cell_drift_gpart(cp, e, force, replication_list);
@@ -490,7 +490,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
     const size_t nr_gparts = c->grav.count;
     for (size_t k = 0; k < nr_gparts; k++) {
       /* Get a handle on the gpart. */
-      struct gpart *const gp = &gparts[k];
+      struct gpart* const gp = &gparts[k];
 
       /* Ignore inhibited particles */
       if (gpart_is_inhibited(gp, e)) continue;
@@ -583,8 +583,8 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
  * @param e The #engine (to get ti_current).
  * @param force Drift the particles irrespective of the #cell flags.
  */
-void cell_drift_spart(struct cell *c, const struct engine *e, int force,
-                      struct replication_list *replication_list_in) {
+void cell_drift_spart(struct cell* c, const struct engine* e, int force,
+                      struct replication_list* replication_list_in) {
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -593,7 +593,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
   const float stars_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_spart = c->stars.ti_old_part;
   const integertime_t ti_current = e->ti_current;
-  struct spart *const sparts = c->stars.parts;
+  struct spart* const sparts = c->stars.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
@@ -627,7 +627,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
      IMPORTANT: after this point we must not return without freeing the
      replication lists if we allocated them.
   */
-  struct replication_list *replication_list = NULL;
+  struct replication_list* replication_list = NULL;
 #ifdef WITH_LIGHTCONE
   replication_list = refine_replications(e, c, replication_list_in);
 #endif
@@ -638,7 +638,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
     /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
+        struct cell* cp = c->progeny[k];
 
         /* Recurse */
         cell_drift_spart(cp, e, force, replication_list);
@@ -674,7 +674,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
     const size_t nr_sparts = c->stars.count;
     for (size_t k = 0; k < nr_sparts; k++) {
       /* Get a handle on the spart. */
-      struct spart *const sp = &sparts[k];
+      struct spart* const sp = &sparts[k];
 
       /* Ignore inhibited particles */
       if (spart_is_inhibited(sp, e)) continue;
@@ -792,8 +792,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
  * @param e The #engine (to get ti_current).
  * @param force Drift the particles irrespective of the #cell flags.
  */
-void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
-                      struct replication_list *replication_list_in) {
+void cell_drift_bpart(struct cell* c, const struct engine* e, int force,
+                      struct replication_list* replication_list_in) {
 
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
@@ -802,7 +802,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
   const float black_holes_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_bpart = c->black_holes.ti_old_part;
   const integertime_t ti_current = e->ti_current;
-  struct bpart *const bparts = c->black_holes.parts;
+  struct bpart* const bparts = c->black_holes.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
   float cell_h_max = 0.f;
@@ -836,7 +836,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
      IMPORTANT: after this point we must not return without freeing the
      replication lists if we allocated them.
   */
-  struct replication_list *replication_list = NULL;
+  struct replication_list* replication_list = NULL;
 #ifdef WITH_LIGHTCONE
   replication_list = refine_replications(e, c, replication_list_in);
 #endif
@@ -847,7 +847,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
     /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
+        struct cell* cp = c->progeny[k];
 
         /* Recurse */
         cell_drift_bpart(cp, e, force, replication_list);
@@ -884,7 +884,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
     for (size_t k = 0; k < nr_bparts; k++) {
 
       /* Get a handle on the bpart. */
-      struct bpart *const bp = &bparts[k];
+      struct bpart* const bp = &bparts[k];
 
       /* Ignore inhibited particles */
       if (bpart_is_inhibited(bp, e)) continue;
@@ -992,7 +992,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
  * @param e The #engine (to get ti_current).
  * @param force Drift the particles irrespective of the #cell flags.
  */
-void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
+void cell_drift_sink(struct cell* c, const struct engine* e, int force) {
 
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
@@ -1001,7 +1001,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
   const float sinks_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_sink = c->sinks.ti_old_part;
   const integertime_t ti_current = e->ti_current;
-  struct sink *const sinks = c->sinks.parts;
+  struct sink* const sinks = c->sinks.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
   float cell_h_max = 0.f;
@@ -1038,7 +1038,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
     /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
+        struct cell* cp = c->progeny[k];
 
         /* Recurse */
         cell_drift_sink(cp, e, force);
@@ -1074,7 +1074,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
     for (size_t k = 0; k < nr_sinks; k++) {
 
       /* Get a handle on the sink. */
-      struct sink *const sink = &sinks[k];
+      struct sink* const sink = &sinks[k];
 
       /* Ignore inhibited particles */
       if (sink_is_inhibited(sink, e)) continue;
@@ -1171,7 +1171,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
  */
-void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
+void cell_drift_all_multipoles(struct cell* c, const struct engine* e) {
   const integertime_t ti_old_multipole = c->grav.ti_old_multipole;
   const integertime_t ti_current = e->ti_current;
 
@@ -1211,7 +1211,7 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
  */
-void cell_drift_multipole(struct cell *c, const struct engine *e) {
+void cell_drift_multipole(struct cell* c, const struct engine* e) {
   const integertime_t ti_old_multipole = c->grav.ti_old_multipole;
   const integertime_t ti_current = e->ti_current;
 

@@ -27,7 +27,7 @@
  * @param max_number_of_rays Maximum number of rays in the feedback scheme
  */
 __attribute__((always_inline)) INLINE static void ray_init(
-    struct ray_data *rays, const int max_number_of_rays) {
+    struct ray_data* rays, const int max_number_of_rays) {
 
   /* Set all fields in the ray struct at their default values */
   for (int i = 0; i < max_number_of_rays; i++) {
@@ -45,7 +45,7 @@ __attribute__((always_inline)) INLINE static void ray_init(
  * @param gas_part_id The id of the gas particle the ray is pointing to
  */
 __attribute__((always_inline)) INLINE static void ray_reset_part_id(
-    struct ray_data *rays, const int max_number_of_rays,
+    struct ray_data* rays, const int max_number_of_rays,
     const long long gas_part_id) {
 
   /* Loop over all rays the provided stellar/BH particle has */
@@ -70,7 +70,7 @@ __attribute__((always_inline)) INLINE static void ray_reset_part_id(
  * @param max_number_of_rays Maximum number of rays in the feedback scheme
  */
 __attribute__((always_inline)) INLINE static void ray_extra_init(
-    struct ray_data_extra *rays_ext, const int max_number_of_rays) {
+    struct ray_data_extra* rays_ext, const int max_number_of_rays) {
 
   /* Set all fields in the ray struct at their default values */
   for (int i = 0; i < max_number_of_rays; i++) {
@@ -132,10 +132,10 @@ __attribute__((always_inline)) INLINE static float ray_arclength(
  * @param v Gas particle velocity
  */
 __attribute__((always_inline)) INLINE static void ray_minimise_arclength(
-    const float dx[3], const float r, struct ray_data *ray,
+    const float dx[3], const float r, struct ray_data* ray,
     const ray_feedback_type ray_type, const long long gas_part_id,
     const double rand_theta_gen, const double rand_phi_gen, const float m,
-    struct ray_data_extra *ray_ext, const float *v) {
+    struct ray_data_extra* ray_ext, const float* v) {
 
   /* Angular coordinates of the particle with respect to the star/BH */
   const double theta_j = acos(-dx[2] / r);
@@ -208,10 +208,10 @@ __attribute__((always_inline)) INLINE static void ray_minimise_arclength(
  */
 __attribute__((always_inline)) INLINE static void
 ray_kinetic_feedback_compute_kick_velocity(
-    float *v_kick, float *v_kick_abs, const struct ray_data_extra *ray_ext_true,
-    const struct ray_data_extra *ray_ext_mirr, const ray_feedback_type ray_type,
-    const double energy_pair, const struct cosmology *cosmo,
-    const double current_mass, const float *v_star, const double rand_theta_gen,
+    float* v_kick, float* v_kick_abs, const struct ray_data_extra* ray_ext_true,
+    const struct ray_data_extra* ray_ext_mirr, const ray_feedback_type ray_type,
+    const double energy_pair, const struct cosmology* cosmo,
+    const double current_mass, const float* v_star, const double rand_theta_gen,
     const double rand_phi_gen, const double mass_true,
     const double mass_mirror) {
 
@@ -454,7 +454,7 @@ ray_kinetic_feedback_compute_kick_velocity(
  * @param m Gas particle mass
  */
 __attribute__((always_inline)) INLINE static void ray_minimise_distance(
-    const float r, struct ray_data *ray, const int N_ray_arr,
+    const float r, struct ray_data* ray, const int N_ray_arr,
     const long long gas_part_id, const float m) {
 
   /* Id of the element of the ray array that we want to update */

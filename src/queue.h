@@ -66,24 +66,24 @@ struct queue {
   int size, count;
 
   /* The actual tasks to which the indices refer. */
-  struct task *tasks;
+  struct task* tasks;
 
   /* The task indices and weights. */
-  struct queue_entry *entries;
+  struct queue_entry* entries;
 
   /* DEQ for incoming tasks. */
-  int *tid_incoming;
+  int* tid_incoming;
   volatile unsigned int first_incoming, last_incoming, count_incoming;
 
 } __attribute__((aligned(queue_struct_align)));
 
 /* Function prototypes. */
-struct task *queue_gettask(struct queue *q, const struct task *prev,
+struct task* queue_gettask(struct queue* q, const struct task* prev,
                            int blocking);
-void queue_init(struct queue *q, struct task *tasks);
-void queue_insert(struct queue *q, struct task *t);
-void queue_clean(struct queue *q);
+void queue_init(struct queue* q, struct task* tasks);
+void queue_insert(struct queue* q, struct task* t);
+void queue_clean(struct queue* q);
 
-void queue_dump(int nodeID, int index, FILE *file, struct queue *q);
+void queue_dump(int nodeID, int index, FILE* file, struct queue* q);
 
 #endif /* SWIFT_QUEUE_H */

@@ -53,7 +53,7 @@
 struct profiler prof;
 
 /*  Usage string. */
-static const char *const swift_usage[] = {
+static const char* const swift_usage[] = {
     "swift [options] [[--] param-file]",
     "swift [options] param-file",
     "swift_mpi [options] [[--] param-file]",
@@ -63,14 +63,14 @@ static const char *const swift_usage[] = {
 
 /* Function to handle multiple -P arguments. */
 struct cmdparams {
-  const char *param[PARSER_MAX_NO_OF_PARAMS];
+  const char* param[PARSER_MAX_NO_OF_PARAMS];
   int nparam;
 };
 
-static int handle_cmdparam(struct argparse *self,
-                           const struct argparse_option *opt) {
-  struct cmdparams *cmdps = (struct cmdparams *)opt->data;
-  cmdps->param[cmdps->nparam] = *(char **)opt->value;
+static int handle_cmdparam(struct argparse* self,
+                           const struct argparse_option* opt) {
+  struct cmdparams* cmdps = (struct cmdparams*)opt->data;
+  cmdps->param[cmdps->nparam] = *(char**)opt->value;
   cmdps->nparam++;
   return 1;
 }
@@ -79,7 +79,7 @@ static int handle_cmdparam(struct argparse *self,
  * @brief Main routine that loads a few particles and generates some output.
  *
  */
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   struct clocks_time tic, toc;
   struct engine e;
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
   struct star_formation starform;
   struct pm_mesh mesh;
   struct power_spectrum_data pow_data;
-  struct gpart *gparts = NULL;
+  struct gpart* gparts = NULL;
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
@@ -109,12 +109,12 @@ int main(int argc, char *argv[]) {
   struct black_holes_props black_holes_properties;
   struct fof_props fof_properties;
   struct lightcone_array_props lightcone_array_properties;
-  struct part *parts = NULL;
+  struct part* parts = NULL;
   struct phys_const prog_const;
   struct space s;
-  struct spart *sparts = NULL;
-  struct bpart *bparts = NULL;
-  struct sink *sinks = NULL;
+  struct spart* sparts = NULL;
+  struct bpart* bparts = NULL;
+  struct sink* sinks = NULL;
   struct unit_system us;
   struct los_props los_properties;
   struct ic_info ics_metadata;
@@ -206,16 +206,16 @@ int main(int argc, char *argv[]) {
   int nr_threads = 1;
   int nr_pool_threads = -1;
   int with_verbose_timers = 0;
-  char *output_parameters_filename = NULL;
-  char *cpufreqarg = NULL;
-  char *param_filename = NULL;
+  char* output_parameters_filename = NULL;
+  char* cpufreqarg = NULL;
+  char* param_filename = NULL;
   char restart_file[200] = "";
   unsigned long long cpufreq = 0;
   float dump_tasks_threshold = 0.f;
   struct cmdparams cmdps;
   cmdps.nparam = 0;
   cmdps.param[0] = NULL;
-  char *buffer = NULL;
+  char* buffer = NULL;
 
   /* Parse the command-line parameters. */
   struct argparse_option options[] = {
@@ -371,7 +371,7 @@ int main(int argc, char *argv[]) {
   argparse_describe(&argparse, "\nParameters:",
                     "\nSee the file examples/parameter_example.yml for an "
                     "example of parameter file.");
-  int nargs = argparse_parse(&argparse, argc, (const char **)argv);
+  int nargs = argparse_parse(&argparse, argc, (const char**)argv);
 
   /* Deal with meta options */
   if (with_qla) {
@@ -803,11 +803,11 @@ int main(int argc, char *argv[]) {
   }
 
   /* Read the parameter file */
-  struct swift_params *params =
-      (struct swift_params *)malloc(sizeof(struct swift_params));
+  struct swift_params* params =
+      (struct swift_params*)malloc(sizeof(struct swift_params));
 
   /* In scope reference for a potential copy when restarting. */
-  struct swift_params *refparams = NULL;
+  struct swift_params* refparams = NULL;
   if (params == NULL) error("Error allocating memory for the parameter file.");
   if (myrank == 0) {
     message("Reading runtime parameters from file '%s'", param_filename);
@@ -832,8 +832,8 @@ int main(int argc, char *argv[]) {
    * do this after broadcasting the parameters as there may be code in this
    * function that is repeated on each node based on the parameter file. */
 
-  struct output_options *output_options =
-      (struct output_options *)malloc(sizeof(struct output_options));
+  struct output_options* output_options =
+      (struct output_options*)malloc(sizeof(struct output_options));
   output_options_init(params, myrank, output_options);
 
   /* Temporary early aborts for modes not supported over MPI. */
@@ -854,7 +854,7 @@ int main(int argc, char *argv[]) {
    * directory exists and is searchable and writable. */
   char basename[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(params, "Snapshots:basename", basename);
-  const char *dirp = dirname(basename);
+  const char* dirp = dirname(basename);
   if (access(dirp, W_OK | X_OK) != 0) {
     error("Cannot write snapshots in directory %s (%s)", dirp, strerror(errno));
   }
@@ -864,7 +864,7 @@ int main(int argc, char *argv[]) {
   if (with_structure_finding) {
     char stfbasename[PARSER_MAX_LINE_SIZE];
     parser_get_param_string(params, "StructureFinding:basename", stfbasename);
-    const char *stfdirp = dirname(stfbasename);
+    const char* stfdirp = dirname(stfbasename);
     if (access(stfdirp, W_OK | X_OK) != 0) {
       error("Cannot write stf catalogues in directory %s (%s)", stfdirp,
             strerror(errno));
@@ -876,7 +876,7 @@ int main(int argc, char *argv[]) {
   if (with_line_of_sight) {
     char losbasename[PARSER_MAX_LINE_SIZE];
     parser_get_param_string(params, "LineOfSight:basename", losbasename);
-    const char *losdirp = dirname(losbasename);
+    const char* losdirp = dirname(losbasename);
     if (access(losdirp, W_OK | X_OK) != 0) {
       error("Cannot write line of sight in directory %s (%s)", losdirp,
             strerror(errno));
@@ -942,7 +942,7 @@ int main(int argc, char *argv[]) {
   if (restart) {
 
     /* Attempting a restart. */
-    char **restart_files = NULL;
+    char** restart_files = NULL;
     int restart_nfiles = 0;
 
     if (myrank == 0) {
@@ -1022,7 +1022,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Keep a copy of the params from the restart. */
-    refparams = (struct swift_params *)malloc(sizeof(struct swift_params));
+    refparams = (struct swift_params*)malloc(sizeof(struct swift_params));
     memcpy(refparams, e.parameter_file, sizeof(struct swift_params));
 
     /* And initialize the engine with the space and policies. */
@@ -1691,8 +1691,8 @@ int main(int argc, char *argv[]) {
   /* dump the parameters as used. */
   if (myrank == 0) {
 
-    const char *usedname = "used_parameters.yml";
-    const char *unusedname = "unused_parameters.yml";
+    const char* usedname = "used_parameters.yml";
+    const char* unusedname = "unused_parameters.yml";
     if (restart) {
 
       /* The used parameters can change, so try to track that. */

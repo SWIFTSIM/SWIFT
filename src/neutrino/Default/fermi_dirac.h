@@ -46,7 +46,7 @@ INLINE static float fermi_dirac_density(float z) {
  * @param seed The seed of the neutrino particle
  */
 INLINE static double neutrino_seed_to_mass(const int N_nu,
-                                           const double *m_eV_array,
+                                           const double* m_eV_array,
                                            uint64_t seed) {
   return m_eV_array[(int)(seed % N_nu)];
 }
@@ -60,7 +60,7 @@ INLINE static double neutrino_seed_to_mass(const int N_nu,
  * @param seed The seed of the neutrino particle
  */
 INLINE static double neutrino_seed_to_degeneracy(const int N_nu,
-                                                 const double *deg_array,
+                                                 const double* deg_array,
                                                  uint64_t seed) {
   return deg_array[(int)(seed % N_nu)];
 }

@@ -40,21 +40,21 @@ struct clocks_time {
 /* Ticks used as the start of time. */
 extern ticks clocks_start_ticks;
 
-void clocks_gettime(struct clocks_time *time);
-double clocks_diff(struct clocks_time *start, struct clocks_time *end);
-const char *clocks_getunit(void);
+void clocks_gettime(struct clocks_time* time);
+double clocks_diff(struct clocks_time* start, struct clocks_time* end);
+const char* clocks_getunit(void);
 
 void clocks_set_cpufreq(unsigned long long freq);
 unsigned long long clocks_get_cpufreq(void);
 double clocks_from_ticks(ticks tics);
 ticks clocks_to_ticks(double interval);
 double clocks_diff_ticks(ticks tic, ticks toc);
-const char *clocks_get_timesincestart(void);
+const char* clocks_get_timesincestart(void);
 double clocks_get_hours_since_start(void);
 
-void clocks_get_cputimes_used(double *usertime, double *systime);
+void clocks_get_cputimes_used(double* usertime, double* systime);
 int clocks_random_seed(void);
 
-const char *clocks_now(int swift);
+const char* clocks_now(int swift);
 
 #endif /* SWIFT_CLOCKS_H */
