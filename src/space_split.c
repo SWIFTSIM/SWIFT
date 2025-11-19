@@ -737,7 +737,7 @@ int space_depth_guess_from_count(struct cell *c, struct space *s) {
 
   while (cell_count > space_splitsize) {
     /* Ceil division by 8: N_next = ceil(N / 8). */
-    N = (N + 7) / 8;
+    cell_count = (cell_count + 7) / 8;
     depth++;
   }
 
