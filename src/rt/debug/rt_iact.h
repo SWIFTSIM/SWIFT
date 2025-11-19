@@ -50,6 +50,16 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float dx[3],
                                      const struct rt_props *rt_props) {
 
   si->rt_data.debug_iact_hydro_inject_prep += 1;
+
+  si->rt_data.debug_iact_star_density_count += 1;
+  if (si->id == 28582ll){
+    const float r = sqrtf(r2);
+    const float higamma = hi * kernel_gamma;
+    message("star %6lld iact part %6lld r=%.6e h=%.6e H=%.6e r/H=%.6e counts=%3d/%3d", 
+            si->id, pj->id, r, hi, higamma, r/higamma, 
+            si->rt_data.debug_iact_star_density_count, 
+            si->rt_data.debug_iact_star_feedback_count);
+  }
 }
 
 /**
@@ -88,6 +98,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
 
   pj->rt_data.debug_iact_stars_inject += 1;
   pj->rt_data.debug_radiation_absorbed_tot += 1ULL;
+
+  si->rt_data.debug_iact_star_feedback_count += 1;
+  if (si->id == 28582ll){
+    const float r = sqrtf(r2);
+    const float higamma = hi * kernel_gamma;
+    message("star %6lld iact part %6lld r=%.6e h=%.6e H=%.6e r/H=%.6e counts=%3d/%3d", 
+            si->id, pj->id, r, hi, higamma, r/higamma, 
+            si->rt_data.debug_iact_star_density_count, 
+            si->rt_data.debug_iact_star_feedback_count);
+  }
+  if (si->rt_data.debug_iact_star_feedback_count >
+      si->rt_data.debug_iact_star_density_count)
+    error("Star %lld has more interactions in feedback loop vs density loop: %d, %d",
+          si->id,
+          si->rt_data.debug_iact_star_feedback_count,
+          si->rt_data.debug_iact_star_density_count);
 }
 
 /**
