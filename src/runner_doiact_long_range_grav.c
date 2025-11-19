@@ -72,8 +72,7 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
 
     if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                              /*is_tree_walk=*/0,
-                             /*periodic boundaries*/ s->periodic,
-                             /*use_mesh*/ s->periodic)) {
+                             /*periodic boundaries*/ s->periodic)) {
 
       /* Call the PM interaction function on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym(r, ci, cj);
@@ -154,7 +153,8 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
         if (multi_j->m_pole.M_000 == 0.f) continue;
 
         /* Minimal distance between any pair of particles */
-        const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
+        const double min_radius2 =
+            cell_min_dist2_same_size(top, cj, periodic, dim);
 
         /* Are we beyond the distance where the truncated forces are 0 ?*/
         if (min_radius2 > max_distance2) {
@@ -169,8 +169,7 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
         /* Shall we interact with this cell? */
         if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                                  /*is_tree_walk=*/0,
-                                 /*periodic boundaries*/ s->periodic,
-                                 /*use_mesh*/ s->periodic)) {
+                                 /*periodic boundaries*/ s->periodic)) {
 
           /* Call the PM interaction function on the active sub-cells of ci
            */
