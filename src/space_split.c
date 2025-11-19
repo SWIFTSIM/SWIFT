@@ -891,8 +891,7 @@ void space_split_collect_recursive(struct space *s, struct cell *c) {
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-static void space_split_build_mapper(void *map_data, int num_cells,
-                                     void *extra_data) {
+void space_split_build_mapper(void *map_data, int num_cells, void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
@@ -937,8 +936,8 @@ static void space_split_build_mapper(void *map_data, int num_cells,
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-static void space_split_collect_mapper(void *map_data, int num_cells,
-                                       void *extra_data) {
+void space_split_collect_mapper(void *map_data, int num_cells,
+                                void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
