@@ -19,9 +19,16 @@
  ******************************************************************************/
 #ifndef SWIFT_RUNNER_DOIACT_GRAV_H
 #define SWIFT_RUNNER_DOIACT_GRAV_H
-
+/* Config */
 #include <config.h>
 
+/* Local includes */
+#include "active.h"
+#include "inline.h"
+#include "multipole.h"
+#include "timers.h"
+
+/* Avoid cyclic inclusions. */
 struct runner;
 struct cell;
 
@@ -35,7 +42,8 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
 
 void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
                                   struct cell *cj, int gettimer);
-
+void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
+                           struct cell *restrict cj);
 void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
                                      struct cell *restrict ci,
                                      struct cell *restrict cj);
@@ -53,7 +61,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
  * @brief Computes the interaction of the field tensor in a cell with the
  * multipole of another cell.
  *
- * Defined here to enable inlining while this function is called from
+ * Defined here to enable inlining while this function is called from both
  * runner_doiact_grav.c and runner_doiact_long_range_grav.c.
  *
  * @param r The #runner.
