@@ -111,33 +111,11 @@ runner_iact_nonsym_feedback_apply(
                                    : 1. / si->feedback_data.enrichment_weight;
 
   /* Mass received */
-  const double m_ej = si->feedback_data.mass_ejected;
+  const double m_ej =
+      si->feedback_data.preSN.mass_ejected + si->feedback_data.mass_ejected;
   const double weight = mj * wi * si_inv_weight;
   const double dm = m_ej * weight;
   const double new_mass = mj + dm;
-
-  /* Distribute SN */
-  if (e_sn != 0.0) {
-    /* Energy received */
-    const double du = (e_sn)*weight / new_mass;
-
-    xpj->feedback_data.delta_mass += dm;
-    xpj->feedback_data.delta_u += du;
-
-    /* Compute momentum received. */
-    for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dm * (si->v[i] - xpj->v_full[i]);
-    }
-
-    /* Add the metals */
-    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-      pj->chemistry_data.metal_mass[i] +=
-          weight * si->feedback_data.metal_mass_ejected[i];
-    }
-
-    /* Set the indication of SN event for cooling*/
-    xpj->feedback_data.hit_by_SN = 1;
-  }
 
   /* Distribute pre-SN */
   if (e_preSN != 0.0 && weight > 0.0) {
@@ -266,6 +244,29 @@ runner_iact_nonsym_feedback_apply(
 
       xpj->feedback_data.hit_by_preSN = 1;
     }
+  }
+
+  /* Distribute SN */
+  if (e_sn != 0.0) {
+    /* Energy received */
+    const double du = (e_sn)*weight / new_mass;
+
+    xpj->feedback_data.delta_mass += dm;
+    xpj->feedback_data.delta_u += du;
+
+    /* Compute momentum received. */
+    for (int i = 0; i < 3; i++) {
+      xpj->feedback_data.delta_p[i] += dm * (si->v[i] - xpj->v_full[i]);
+    }
+
+    /* Add the metals */
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+      pj->chemistry_data.metal_mass[i] +=
+          weight * si->feedback_data.metal_mass_ejected[i];
+    }
+
+    /* Set the indication of SN event for cooling*/
+    xpj->feedback_data.hit_by_SN = 1;
   }
 
   /* Impose maximal viscosity (only for SN) */

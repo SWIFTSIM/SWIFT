@@ -24,12 +24,14 @@ import numpy as np
 import argparse
 import unyt
 
+
 class store_as_array(argparse._StoreAction):
     """Provides numpy array as argparse arguments."""
 
     def __call__(self, parser, namespace, values, option_string=None):
         values = np.array(values)
         return super().__call__(parser, namespace, values, option_string)
+
 
 def parse_options():
 
@@ -124,6 +126,7 @@ def parse_options():
     # Ajouter mass etoile, position. Dans le code, dire que c'est une etoile discrete
     options = parser.parse_args()
     return options
+
 
 ########################################
 # main
