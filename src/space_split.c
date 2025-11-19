@@ -700,6 +700,51 @@ void space_split_recursive(struct space *s, struct cell *c,
 }
 
 /**
+ * @brief Compute the depth a cell will need to reach in order to reach the
+ *        leaves.
+ *
+ * This assumes that each cell splits into 8 children at each level, and that
+ * the particles are evenly distributed. In reality, this is just a best
+ * guess but should be sufficient for splitting the threadpool work evenly
+ * enough.
+ *
+ * @param c The cell to evaluate.
+ * @param s The #space.
+ * @return The required octree depth.
+ */
+int space_depth_guess_from_count(struct cell *c, struct space *s) {
+
+  /* How many particles are in this cell? */
+  const int count = c->hydro.count;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
+  const int bcount = c->black_holes.count;
+  const int sink_count = c->sinks.count;
+
+  /* Doing self-gravity ? */
+  const int with_self_gravity = s->with_self_gravity;
+
+  /* Get the cell count */
+  int cell_count;
+  if (with_self_gravity) {
+    cell_count = gcount;
+  } else {
+    cell_count = count + scount + sink_count + bcount;
+  }
+
+  /* Initialise the depth */
+  int depth = 0;
+
+  while (cell_count > space_splitsize) {
+    /* Ceil division by 8: N_next = ceil(N / 8). */
+    N = (N + 7) / 8;
+    depth++;
+  }
+
+  return depth;
+}
+
+/**
  * @brief #threadpool mapper function to split cells if they contain
  *        too many particles.
  *
@@ -755,6 +800,49 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 }
 
 /**
+ * @brief Define the struct we'll use to record which leaf we are recursing to.
+ *
+ * This sign posts which progeny we should be working on in the splitting
+ * process.
+ */
+struct space_split_progeny_info {
+  struct cell *top;
+  int depth;
+  int progeny_index; /* 0-7 */
+};
+
+/**
+ * @brief Allocate the progeny pointers array for splitting.
+ *
+ * @param s The #space.
+ * @param nr_leaves_estimate An estimate of the number of leaves we will need.
+ */
+void space_populate_progeny_list(
+    struct space *s, int nr_leaves_estimate,
+    struct space_split_progeny_info *progeny_pointers) {
+
+  /* Loop until we have filled all the progeny pointers we need. */
+  for (int i = 0; i < s->nr_local_cells_with_particles; i++) {
+    struct cell *c = &s->cells_top[s->local_cells_with_particles_top[i]];
+    int maxdepth = space_depth_guess_from_count(c, s);
+
+    /* Loop over all depths for this cell adding progeny pointers. */
+    int depth = 0;
+    while (depth < maxdepth) {
+      const int n_progeny = 1 << (3 * depth);
+      for (int j = 0; j < n_progeny; j++) {
+        struct space_split_progeny_info *info =
+            &progeny_pointers[s->nr_progeny_pointers++];
+        info->top = c;
+        info->depth = depth;
+        info->progeny_index = j;
+      }
+      depth++;
+    }
+  }
+}
+
+/**
  * @brief Split particles between cells of a hierarchy.
  *
  * This is done in parallel using threads in the #threadpool.
@@ -764,8 +852,30 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
  * @param verbose Are we talkative ?
  */
 void space_split(struct space *s, int verbose) {
-
   const ticks tic = getticks();
+
+  const ticks tic_setup = getticks();
+
+  /* Attempt to find the number of leaves we will need. */
+  int nr_leaves_estimate = 0;
+  for (int i = 0; i < s->nr_local_cells_with_particles; i++) {
+    struct cell *c = &s->cells_top[s->local_cells_with_particles_top[i]];
+    const int depth = space_depth_guess_from_count(c, s);
+    nr_leaves_estimate += (1 << (3 * depth));
+  }
+
+  if (verbose)
+    message("Estimating we'll end up with ~%d leaf cells after splitting.",
+            nr_leaves_estimate);
+
+  /* Allocate and populate the list of progeny we will split. */
+  struct space_split_progeny_info *progeny_pointers =
+      malloc(nr_leaves_estimate * sizeof(struct space_split_progeny_info));
+  space_populate_progeny_list(s, nr_leaves_estimate, progeny_pointers);
+
+  if (verbose)
+    message("Setup for splitting took %.3f %s.",
+            clocks_from_ticks(getticks() - tic_setup), clocks_getunit());
 
   s->min_a_grav = FLT_MAX;
   s->max_softening = 0.f;
@@ -775,6 +885,8 @@ void space_split(struct space *s, int verbose) {
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
                  threadpool_auto_chunk_size, s);
+
+  free(progeny_pointers);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
