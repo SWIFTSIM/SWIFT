@@ -1236,8 +1236,8 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   const float m_init = 0;
 
   /* initialize */
-  sp->feedback_data.preSN.energy_ejected = 0;
-  sp->feedback_data.preSN.mass_ejected = 0;
+  sp->feedback_data.preSN.energy_ejected = 0.0;
+  sp->feedback_data.preSN.mass_ejected = 0.0;
 
   /* The duration of the preSN feedback in yr*/
   const float feedback_duration_yr =
@@ -1336,8 +1336,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
       stellar_evolution_compute_initial_mass(sp, sm, phys_const);
 
   /* initialize */
-  sp->feedback_data.preSN.energy_ejected = 0;
-  sp->feedback_data.preSN.mass_ejected = 0;
+  sp->feedback_data.preSN.energy_ejected = 0.0;
+  sp->feedback_data.preSN.mass_ejected = 0.0;
 
   /* compute pre-SN properties */
   stellar_evolution_compute_preSN_properties(sp, sm, phys_const, m_beg_step,
