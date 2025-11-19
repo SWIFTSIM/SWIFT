@@ -163,6 +163,10 @@ static const unsigned int t3d[12][8][2] = {
  * The returned key is 192 bits wide and can represent up to nbits == 64
  * without collisions.
  *
+ * This implementation builds the key using an explicit 192-bit accumulator
+ * in three 64-bit words and performs a branchless 3-bit left shift at each
+ * step to append the next octant digit.
+ *
  * @param bits  Array of length 3 with the x, y, z coordinates as unsigned long.
  * @param nbits Number of bits per coordinate to use (1 <= nbits <= 64).
  *
@@ -170,6 +174,7 @@ static const unsigned int t3d[12][8][2] = {
  */
 inline static hilbert_key_3d hilbert_get_key_3d(const unsigned long *bits,
                                                 unsigned int nbits) {
+
   hilbert_key_3d key;
   hilbert_key_3d_clear(&key);
 
@@ -183,29 +188,51 @@ inline static hilbert_key_3d hilbert_get_key_3d(const unsigned long *bits,
     nbits = word_bits;
   }
 
+  /* Local 192-bit accumulator in three words (MSW w0, then w1, LSW w2). */
+  unsigned long w0 = 0UL;
+  unsigned long w1 = 0UL;
+  unsigned long w2 = 0UL;
+
+  /* We always shift by three bits per Hilbert digit. */
+  const unsigned int s = 3U;
+  const unsigned int r = word_bits - s;
+
   /* Start with a mask on the most-significant bit we actually use. */
   unsigned long mask = 1UL;
   mask <<= (nbits - 1U);
 
-  unsigned int x[3];
-  unsigned int ci;
-  unsigned int si = 4U; /* Initial state, as in the original implementation. */
+  /* Initial state, as in the original implementation. */
+  unsigned int si = 4U;
 
   for (unsigned int i = nbits; i--;) {
-    x[0] = (bits[0] & mask) != 0UL;
-    x[1] = (bits[1] & mask) != 0UL;
-    x[2] = (bits[2] & mask) != 0UL;
 
-    ci = (x[0] << 2) | (x[1] << 1) | x[2];
+    /* Extract the next bit of each coordinate. */
+    const unsigned int x0 = (bits[0] & mask) != 0UL;
+    const unsigned int x1 = (bits[1] & mask) != 0UL;
+    const unsigned int x2 = (bits[2] & mask) != 0UL;
 
-    /* Append the 3-bit digit corresponding to this octant. */
-    hilbert_key_3d_push_digit(&key, t3d[si][ci][1]);
+    const unsigned int ci = (x0 << 2) | (x1 << 1) | x2;
+    const unsigned int digit = t3d[si][ci][1];
+
+    /* Branchless 192-bit left shift by 3 bits and append new digit. */
+    const unsigned long new_w0 = (w0 << s) | (w1 >> r);
+    const unsigned long new_w1 = (w1 << s) | (w2 >> r);
+    const unsigned long new_w2 = (w2 << s) | (unsigned long)digit;
+
+    w0 = new_w0;
+    w1 = new_w1;
+    w2 = new_w2;
 
     /* Update state for the next level. */
     si = t3d[si][ci][0];
 
+    /* Move on to the next less-significant bit. */
     mask >>= 1U;
   }
+
+  key.w[0] = w0;
+  key.w[1] = w1;
+  key.w[2] = w2;
 
   return key;
 }

@@ -706,10 +706,10 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
  *        space's sinks array, i.e. c->sinks.parts - s->sinks.
  * @param thread_id ID of the thread calling this function (currently unused).
  */
-void cell_split_sort(struct cell *c, const ptrdiff_t parts_offset,
-                     const ptrdiff_t sparts_offset,
-                     const ptrdiff_t bparts_offset,
-                     const ptrdiff_t sinks_offset) {
+void cell_sort_hilbert(struct cell *c, const ptrdiff_t parts_offset,
+                       const ptrdiff_t sparts_offset,
+                       const ptrdiff_t bparts_offset,
+                       const ptrdiff_t sinks_offset) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
