@@ -210,14 +210,13 @@ void runner_count_mesh_interactions_recursive(struct gravity_tensors *multi_i,
   if (min_radius2 > max_distance2) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Need to account for the interactions we missed */
-    accumulate_add_ll(&multi_i->pot.num_interacted,
-                      cj->grav.multipole->m_pole.num_gpart);
+    accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     /* Need to account for the interactions we missed */
     accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                      cj->grav.multipole->m_pole.num_gpart);
+                      multi_j->m_pole.num_gpart);
 #endif
 
     /* Record that this multipole received a contribution */
