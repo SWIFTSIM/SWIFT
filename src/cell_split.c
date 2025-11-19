@@ -711,10 +711,6 @@ void cell_split_sort(struct cell *c, const ptrdiff_t parts_offset,
                      const ptrdiff_t bparts_offset,
                      const ptrdiff_t sinks_offset) {
 
-  /* Currently unused. Kept for interface compatibility and future use. */
-  (void)s;
-  (void)thread_id;
-
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
