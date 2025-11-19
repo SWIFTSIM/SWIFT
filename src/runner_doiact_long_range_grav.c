@@ -71,8 +71,7 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/0,
-                             /*periodic boundaries*/ s->periodic)) {
+                             /*is_tree_walk=*/0)) {
 
       /* Call the PM interaction function on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym(r, ci, cj);
@@ -168,8 +167,7 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
 
         /* Shall we interact with this cell? */
         if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/0,
-                                 /*periodic boundaries*/ s->periodic)) {
+                                 /*is_tree_walk=*/0)) {
 
           /* Call the PM interaction function on the active sub-cells of ci
            */
@@ -208,7 +206,8 @@ void runner_count_mesh_interactions_recursive(struct gravity_tensors *multi_i,
   struct gravity_tensors *multi_j = cj->grav.multipole;
 
   /* Are we beyond the mesh distance? */
-  const double min_radius2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
+  const double min_radius2 =
+      cell_min_dist2_same_size(ci, cj, s->periodic, s->dim);
   if (min_radius2 > max_distance2) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Need to account for the interactions we missed */
@@ -231,8 +230,8 @@ void runner_count_mesh_interactions_recursive(struct gravity_tensors *multi_i,
       if (ci->progeny[i] == NULL) continue;
       for (int j = 0; j < 8; j++) {
         if (cj->progeny[j] == NULL) continue;
-        runner_count_mesh_interactions_recursive(ci->progeny[i], cj->progeny[j],
-                                                 s);
+        runner_count_mesh_interactions_recursive(multi_i, ci->progeny[i],
+                                                 cj->progeny[j], s);
       }
     }
   }
