@@ -262,9 +262,9 @@ void stellar_evolution_compute_continuous_feedback_properties(
   sp->feedback_data.mass_ejected = mass_frac_snii * sp->sf_data.birth_mass +
                                    mass_snia * phys_const->const_solar_mass;
 
-  /* Check the mass that have to be expulsed by SN in case if the cumulated SW + SN mass-loss is negative. 
-  No need to check for population type as both behave the same way in this case, i.e. expulsing all the remaining mass.
-  Is checked only if the stellar wind actually ejected mass. (In the case of stellar winds without mass-loss) */
+/* Check whether the mass that has to be expelled by SN in case the cumulated SW + SN mass-loss is negative. 
+ No need to check for population types as both behave the same way in this case, i.e., expelling all the remaining mass.
+ It is checked only if the stellar wind actually ejects mass. (In the case of stellar winds without mass-loss) */
   if (sp->feedback_data.preSN.mass_ejected != 0.0) {
     /* The `stellar_evolution_preSN_apply_ejected_mass(...)` function has already been called at this stage,
         verrifying that `sp->feedback_data.preSN.mass_ejected` is not bigger than `sp->mass`*/
@@ -359,9 +359,9 @@ void stellar_evolution_compute_discrete_feedback_properties(
   /* Transform into internal units */
   sp->feedback_data.mass_ejected *= phys_const->const_solar_mass;
  
-  /* Check the mass that have to be expulsed by SN in case if the cumulated SW + SN mass-loss is negative. 
-  No need to check for population type as both behave the same way in this case, i.e. expulsing all the remaining mass.
-  Is checked only if the stellar wind actually ejected mass. (In the case of stellar winds without mass-loss) */
+/* Check whether the mass that has to be expelled by SN in case the cumulated SW + SN mass-loss is negative. 
+ No need to check for population types as both behave the same way in this case, i.e., expelling all the remaining mass.
+ It is checked only if the stellar wind actually ejects mass. (In the case of stellar winds without mass-loss) */
   if (sp->feedback_data.preSN.mass_ejected != 0.0) {
     /* The `stellar_evolution_preSN_apply_ejected_mass(...)` function has already been called at this stage,
         verrifying that `sp->feedback_data.preSN.mass_ejected` is not bigger than `sp->mass`*/
