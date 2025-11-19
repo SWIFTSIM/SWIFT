@@ -81,7 +81,8 @@ chemistry_riemann_compute_K_star(const struct part *restrict pi,
   /* Compute K_star = 0.5 * (KR + KL) */
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
-      K_star[i][j] += 0.5 * (KR[i][j] + KL[i][j]);
+      /* K_star[i][j] += 0.5 * (KR[i][j] + KL[i][j]); */
+      K_star[i][j] += KR[i][j] * KL[i][j] / (KR[i][j] + KL[i][j]);
     }
   }
 }
