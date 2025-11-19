@@ -244,20 +244,27 @@ def extract_stellar_feedback(log_file_path: str):
     # Define compiled patterns specific to the user's log format (rates)
     # 1. Energy pattern targets: "Energy[erg/yr]=" followed by the float
     energy_pattern = re.compile(r"Energy\[erg/yr\]=" + float_pattern)
+    energy_continuous_pattern = re.compile(
+        r"Energy_per_progenitor_mass\[erg/yr/Msol\]=" + float_pattern
+    )
 
     # 2. Mass pattern targets: "Mass_ejected[Msol/yr]=" followed by the float
     mass_pattern = re.compile(r"Mass_ejected\[Msol/yr\]=" + float_pattern)
+    mass_continuous_pattern = re.compile(
+        r"Mass_ejected_per_progenitor_mass\[Msol/yr/Msol\]=" + float_pattern
+    )
 
     # 3. Lifetime pattern targets: "lifetime_myr=" followed by the float
     lifetime_pattern = re.compile(r"lifetime_myr=" + float_pattern)
+
+    # 4. Init_mass for continuous particle
+    init_mass_pattern = re.compile(r"init_mass\[M_odot\]=" + float_pattern)
 
     # Initialize quantities
     energy_rate = 0.0
     mass_loss = 0.0
 
-    print(
-        f"\nSearching for stellar feedback data (cumulative rates) in {log_file_path}..."
-    )
+    print(f"\nSearching for stellar feedback data  in {log_file_path}...")
 
     try:
         with open(log_file_path, "r") as f:
@@ -266,16 +273,27 @@ def extract_stellar_feedback(log_file_path: str):
                 # Reset temporary variables for the current line check
                 current_energy = None
                 current_mass = None
+                current_init_mass = None
 
                 # Search for energy rate
                 match_e = energy_pattern.search(line)
+                match_e_cont = energy_continuous_pattern.search(line)
                 if match_e:
                     current_energy = float(match_e.group(1))
+                if match_e_cont:
+                    current_energy = float(match_e_cont.group(1))
+                    # Search for mass init if continuous case only
+                    match_init_mass = init_mass_pattern.search(line)
+                    if match_init_mass:
+                        current_init_mass = float(match_init_mass.group(1))
 
                 # Search for mass rate
                 match_m = mass_pattern.search(line)
+                match_m_cont = mass_continuous_pattern.search(line)
                 if match_m:
                     current_mass = float(match_m.group(1))
+                if match_m_cont:
+                    current_mass = float(match_m_cont.group(1))
 
                 # Search for star death
                 match_time = lifetime_pattern.search(line)
@@ -287,6 +305,11 @@ def extract_stellar_feedback(log_file_path: str):
                     energy_rate = current_energy
                     mass_loss = current_mass
 
+                # Check if continuous star particle, if it's the case, then multiply the energy/mass by the init_mass
+                if current_init_mass is not None:
+                    energy_rate *= current_init_mass
+                    mass_loss *= current_init_mass
+
                 if GLOBAL_LIFETIME is not None:
                     break
 
@@ -294,7 +317,7 @@ def extract_stellar_feedback(log_file_path: str):
         print(f"Error reading or parsing feedback file: {e}")
         return None, None, None
 
-    # if lifetime not found, it means the star is still alive
+    # if lifetime not found, it means the star is still alive or/and continuous/SSP
     if GLOBAL_LIFETIME is None:
         GLOBAL_LIFETIME = 0.0
 
@@ -465,17 +488,34 @@ def write_quantities(
 
     # Density Peak
     # Find the index of the maximum density value
-    rho_max = np.max(densities_sorted)
-    idx_rho_max = np.argmin(
-        np.where(densities_sorted == rho_max, r_val, np.inf)
+    rho_max = np.zeros(9)
+    rho_max[0] = np.max(densities_sorted)
+    idx_rho_max = np.zeros(9, dtype=int)
+    idx_rho_max[0] = np.argmin(
+        np.where(densities_sorted == rho_max[0], r_val, np.inf)
     )  # In case of multiple maxima, take the smallest radius, because at the begining the all have the same values
-    r_rho_max = r_sorted[idx_rho_max]
+    for i in range(8):
+        print(i)
+        densities_sorted = np.where(
+            densities_sorted == rho_max[i], -np.inf, densities_sorted
+        )
+        rho_max[i + 1] = np.max(densities_sorted)
+        idx_rho_max[i] = np.argmin(
+            np.where(densities_sorted == rho_max[i + 1], r_val, np.inf)
+        )
+
+    mean_idx_rho_max = int(np.mean(idx_rho_max))
+    r_rho_max = np.mean(r_sorted[mean_idx_rho_max])
+    mean_rho_max = np.mean(rho_max)
+    print(r_rho_max, mean_rho_max)
 
     # The min density correspond to the hot compressed wind region (closer than the shockwave contact surface)
     rho_min = np.min(densities_sorted)
-    idx_rho_min = np.argmin(np.where(densities_sorted == rho_max, r_val, np.inf))
+    idx_rho_min = np.argmin(np.where(densities_sorted == rho_max[0], r_val, np.inf))
     r_rho_min = r_sorted[idx_rho_min]
-    peak_data += f"\t{r_rho_max:.4f}\t{rho_max:.4f}\t{r_rho_min:.4f}\t{rho_min:.4f}"
+    peak_data += (
+        f"\t{r_rho_max:.4f}\t{mean_rho_max:.4f}\t{r_rho_min:.4f}\t{rho_min:.4f}"
+    )
 
     # Velocity Peak (Using argmax on the magnitude of the velocity array values)
     idx_v_max = np.argmax(velocities_value_sorted)
@@ -483,7 +523,7 @@ def write_quantities(
     peak_data += f"\t{r_v_max:.4f}\t{velocities_value_sorted[idx_v_max]:.4f}"
 
     # Velocity at shockwave
-    peak_data += f"\t{velocities_value_sorted[idx_rho_max]:.4f}"
+    peak_data += f"\t{velocities_value_sorted[mean_idx_rho_max]:.4f}"
 
     # Temperature Peak
     idx_temp_max = np.argmax(temperatures_sorted)
@@ -491,7 +531,7 @@ def write_quantities(
     peak_data += f"\t{r_temp_max:.4f}\t{temperatures_sorted[idx_temp_max]:.4f}"
 
     # Temperature at shockwave
-    temp_at_rho_peak = temperatures_sorted[idx_rho_max]
+    temp_at_rho_peak = temperatures_sorted[mean_idx_rho_max]
     temp_at_v_peak = temperatures_sorted[idx_v_max]
     peak_data += f"\t{temp_at_rho_peak:.4f}\t{temp_at_v_peak:.4f}"
 
