@@ -231,10 +231,10 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
   for (int i_T = 0; i_T < mat->num_T; i_T++) {
     for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
       c = fscanf(f, "%f %f %f %f",
-                  &mat->table_log_u_rho_T[i_rho * mat->num_T + i_T],
-                  &mat->table_P_rho_T[i_rho * mat->num_T + i_T],
-                  &mat->table_c_rho_T[i_rho * mat->num_T + i_T],
-                  &mat->table_log_s_rho_T[i_rho * mat->num_T + i_T]);
+                 &mat->table_log_u_rho_T[i_rho * mat->num_T + i_T],
+                 &mat->table_P_rho_T[i_rho * mat->num_T + i_T],
+                 &mat->table_c_rho_T[i_rho * mat->num_T + i_T],
+                 &mat->table_log_s_rho_T[i_rho * mat->num_T + i_T]);
       if (c != 4) error("Failed to read the SESAME EoS table %s", table_file);
     }
   }
@@ -654,7 +654,7 @@ INLINE static float SESAME_soundspeed_from_internal_energy(
   // Density index
   int idx_rho =
       find_value_in_monot_incr_array(log_rho, mat->table_log_rho, mat->num_rho);
-      
+
   // If outside the table then extrapolate from the edge and edge-but-one values
   if (idx_rho <= -1) {
     idx_rho = 0;
@@ -780,7 +780,7 @@ INLINE static float SESAME_temperature_from_internal_energy(
   // Density index
   int idx_rho =
       find_value_in_monot_incr_array(log_rho, mat->table_log_rho, mat->num_rho);
-      
+
   // If outside the table then extrapolate from the edge and edge-but-one values
   if (idx_rho <= -1) {
     idx_rho = 0;
@@ -993,7 +993,7 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
   log_rho_min -= search_factor_log_rho;
   idx_rho_below_min = find_value_in_monot_incr_array(
       log_rho_min, mat->table_log_rho, mat->num_rho);
-      
+
   // Ensure not outside the table
   if (idx_rho_above_max >= mat->num_rho) {
     idx_rho_above_max = mat->num_rho - 1;
