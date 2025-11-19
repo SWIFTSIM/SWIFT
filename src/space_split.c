@@ -822,6 +822,7 @@ void space_populate_progeny_list(
     struct space_split_progeny_info *progeny_pointers) {
 
   /* Loop until we have filled all the progeny pointers we need. */
+  int progeny_count = 0;
   for (int i = 0; i < s->nr_local_cells_with_particles; i++) {
     struct cell *c = &s->cells_top[s->local_cells_with_particles_top[i]];
     int maxdepth = space_depth_guess_from_count(c, s);
@@ -832,7 +833,7 @@ void space_populate_progeny_list(
       const int n_progeny = 1 << (3 * depth);
       for (int j = 0; j < n_progeny; j++) {
         struct space_split_progeny_info *info =
-            &progeny_pointers[s->nr_progeny_pointers++];
+            &progeny_pointers[progeny_count++];
         info->top = c;
         info->depth = depth;
         info->progeny_index = j;
@@ -840,6 +841,16 @@ void space_populate_progeny_list(
       depth++;
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* We may have already crashed by now if this happened... but check we
+   * didn't underestimate the number of leaves we would need. */
+  if (progeny_count > nr_leaves_estimate)
+    error(
+        "Underestimated the number of leaves needed during splitting "
+        "(needed %d, estimated %d).",
+        progeny_count, nr_leaves_estimate);
+#endif
 }
 
 /**
