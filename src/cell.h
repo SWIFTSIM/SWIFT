@@ -529,6 +529,10 @@ struct cell {
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
+void cell_sort_hilbert(struct cell *c, const ptrdiff_t parts_offset,
+                       const ptrdiff_t sparts_offset,
+                       const ptrdiff_t bparts_offset,
+                       const ptrdiff_t sinks_offset);
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                 ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
                 struct cell_buff *buff, struct cell_buff *sbuff,

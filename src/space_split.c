@@ -31,6 +31,7 @@
 #include "cell.h"
 #include "debug.h"
 #include "engine.h"
+#include "hilbert.h"
 #include "multipole.h"
 #include "star_formation_logger.h"
 #include "threadpool.h"
@@ -884,6 +885,36 @@ void space_split_collect_recursive(struct space *s, struct cell *c) {
 }
 
 /**
+ * @brief #threadpool mapper to sort all particles into leaf order in the
+ *       top-level cells.
+ *
+ * This mapper will compute the hilbert indices (192 bits to reach the
+ * maximum depth) of all particles in the top-level cell, and then sort them
+ * into leaf order so no further sorting is needed when splitting cells.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void space_sort_particles_mapper(void *map_data, int num_cells,
+                                 void *extra_data) {
+  /* Unpack the inputs. */
+  struct space *s = (struct space *)extra_data;
+  struct cell *cells_top = s->cells_top;
+  int *local_cells_with_particles = (int *)map_data;
+
+  /* Loop over the non-empty cells */
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[local_cells_with_particles[ind]];
+
+    /* Sort the particles in this top-level cell into leaf order. */
+    cell_sort_hilbert(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
+                      c->black_holes.parts - s->bparts,
+                      c->sinks.parts - s->sinks);
+  }
+}
+
+/**
  * @brief #threadpool mapper function to split cells if they contain
  *        too many particles.
  *
@@ -892,7 +923,6 @@ void space_split_collect_recursive(struct space *s, struct cell *c) {
  * @param extra_data Pointers to the #space.
  */
 void space_split_build_mapper(void *map_data, int num_cells, void *extra_data) {
-
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
   struct cell *cells_top = s->cells_top;
@@ -938,7 +968,6 @@ void space_split_build_mapper(void *map_data, int num_cells, void *extra_data) {
  */
 void space_split_collect_mapper(void *map_data, int num_cells,
                                 void *extra_data) {
-
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
   struct cell *cells_top = s->cells_top;
@@ -995,15 +1024,25 @@ void space_split_collect_mapper(void *map_data, int num_cells,
  * @param verbose Are we talkative ?
  */
 void space_split(struct space *s, int verbose) {
-
   const ticks tot_tic = getticks();
 
   s->min_a_grav = FLT_MAX;
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
+  /* Sort particles into progeny order at the top level so we don't have to
+   * sort them again when splitting cells. */
   ticks tic = getticks();
+  threadpool_map(&s->e->threadpool, space_sort_particles_mapper,
+                 s->local_cells_with_particles_top,
+                 s->nr_local_cells_with_particles, sizeof(int),
+                 threadpool_auto_chunk_size, s);
+  if (verbose)
+    message("Sorting particles into leaf order took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
+  /* Now, do the actual splitting, allocating and attaching of progeny. */
+  tic = getticks();
   threadpool_map(&s->e->threadpool, space_split_build_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
@@ -1013,8 +1052,9 @@ void space_split(struct space *s, int verbose) {
     message("Building cell tree took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
+  /* Finally, collect properties from the particles in the cells,
+   * and construct multipoles if needed. */
   tic = getticks();
-
   threadpool_map(&s->e->threadpool, space_split_collect_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),

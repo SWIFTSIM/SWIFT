@@ -24,6 +24,7 @@
 
 /* This object's header. */
 #include "cell.h"
+#include "hilbert.h"
 
 /* Local headers. */
 #include "memswap.h"
@@ -686,4 +687,549 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
     }
   }
 #endif
+}
+
+/**
+ * @brief Compute hilbert indices for particles and sort them.
+ *        Then split cells into octants recursively.
+ *
+ * @param c The #cell to be sorted.
+ * @param parts_offset Offset of the cell parts array relative to the
+ *        space's parts array, i.e. c->hydro.parts - s->parts.
+ * @param sparts_offset Offset of the cell sparts array relative to the
+ *        space's sparts array, i.e. c->stars.parts - s->stars.parts.
+ * @param bparts_offset Offset of the cell bparts array relative to the
+ *        space's bparts array, i.e. c->black_holes.parts -
+ *        s->black_holes.parts.
+ * @param sinks_offset Offset of the cell sink array relative to the
+ *        space's sink array, i.e. c->sinks.parts - s->sinks.parts.
+ */
+void cell_sort_hilbert(struct cell *c, const ptrdiff_t parts_offset,
+                       const ptrdiff_t sparts_offset,
+                       const ptrdiff_t bparts_offset,
+                       const ptrdiff_t sinks_offset) {
+
+  /* Collect the counts together. */
+  const int count = c->hydro.count;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
+  const int bcount = c->black_holes.count;
+  const int sink_count = c->sinks.count;
+
+  /* Unpack the particle arrays. */
+  struct part *parts = c->hydro.parts;
+  struct xpart *xparts = c->hydro.xparts;
+  struct gpart *gparts = c->grav.parts;
+  struct spart *sparts = c->stars.parts;
+  struct bpart *bparts = c->black_holes.parts;
+  struct sink *sinks = c->sinks.parts;
+
+  /* Cell location and width. */
+  const double cell_loc[3] = {c->loc[0], c->loc[1], c->loc[2]};
+  const double cell_width[3] = {c->width[0], c->width[1], c->width[2]};
+
+  /* 64 bits per axis for hilbert indices. */
+  const unsigned int bits_per_axis = 64u;
+  const unsigned long hilbert_scale = 1ul << (bits_per_axis - 1u);
+
+  /* Get hilbert keys for parts and sort them. */
+  if (count > 0) {
+
+    hilbert_key_3d *part_keys =
+        (hilbert_key_3d *)malloc(count * sizeof(hilbert_key_3d));
+    int *part_sinds = (int *)malloc(count * sizeof(int));
+
+    if (part_keys == NULL || part_sinds == NULL)
+      error("Failed to allocate Hilbert key buffers for hydro particles.");
+
+    /* Loop over particles */
+    for (int k = 0; k < count; k++) {
+
+      /* Convert position to 64-bit integer coordinates */
+      unsigned long bits[3];
+      bits[0] = hilbert_scale * ((parts[k].x[0] - cell_loc[0]) / cell_width[0]);
+      bits[1] = hilbert_scale * ((parts[k].x[1] - cell_loc[1]) / cell_width[1]);
+      bits[2] = hilbert_scale * ((parts[k].x[2] - cell_loc[2]) / cell_width[2]);
+
+      /* Get hilbert key */
+      part_keys[k] = hilbert_get_key_3d(bits, bits_per_axis);
+
+      /* Set index */
+      part_sinds[k] = k;
+    }
+
+    /* Now we can sort */
+    qsort_r(part_sinds, count, sizeof(int), sort_h_comp, part_keys);
+
+    /* Finally, loop over the particles swapping particles to the
+     * correct place */
+    for (int k = 0; k < count; k++) {
+
+      /* Get the sorted index and swap particles if necessary. */
+      if (k != part_sinds[k]) {
+
+        struct part temp_part = parts[k];
+        struct xpart temp_xpart = xparts[k];
+        hilbert_key_3d temp_key = part_keys[k];
+
+        int j = k;
+        int sind = part_sinds[j];
+
+        /* Loop until particles are in the right place. */
+        while (k != sind) {
+
+          /* Swap particles in memory */
+          memswap(&parts[j], &parts[sind], sizeof(struct part));
+          memswap(&xparts[j], &xparts[sind], sizeof(struct xpart));
+          memswap_unaligned(&part_keys[j], &part_keys[sind],
+                            sizeof(hilbert_key_3d));
+
+          /* Corrected the now sorted sind */
+          part_sinds[j] = j;
+
+          /* Move on to the next */
+          j = sind;
+          sind = part_sinds[sind];
+        }
+
+        /* Return the temporary particle and set index. */
+        parts[j] = temp_part;
+        xparts[j] = temp_xpart;
+        part_keys[j] = temp_key;
+        part_sinds[j] = j;
+      }
+
+      if (parts[k].gpart)
+        parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
+    }
+
+    free(part_keys);
+    free(part_sinds);
+  }
+
+  /* Get hilbert keys for sparts and sort them. */
+  if (scount > 0) {
+
+    hilbert_key_3d *spart_keys =
+        (hilbert_key_3d *)malloc(scount * sizeof(hilbert_key_3d));
+    int *spart_sinds = (int *)malloc(scount * sizeof(int));
+
+    if (spart_keys == NULL || spart_sinds == NULL)
+      error("Failed to allocate Hilbert key buffers for star particles.");
+
+    /* Loop over particles */
+    for (int k = 0; k < scount; k++) {
+
+      /* Convert position to 64-bit integer coordinates */
+      unsigned long bits[3];
+      bits[0] =
+          hilbert_scale * ((sparts[k].x[0] - cell_loc[0]) / cell_width[0]);
+      bits[1] =
+          hilbert_scale * ((sparts[k].x[1] - cell_loc[1]) / cell_width[1]);
+      bits[2] =
+          hilbert_scale * ((sparts[k].x[2] - cell_loc[2]) / cell_width[2]);
+
+      /* Get hilbert key */
+      spart_keys[k] = hilbert_get_key_3d(bits, bits_per_axis);
+
+      /* Set index */
+      spart_sinds[k] = k;
+    }
+
+    /* Now we can sort */
+    qsort_r(spart_sinds, scount, sizeof(int), sort_h_comp, spart_keys);
+
+    /* Finally, loop over the particles swapping particles to the
+     * correct place */
+    for (int k = 0; k < scount; k++) {
+
+      /* Get the sorted index and swap particles if necessary. */
+      if (k != spart_sinds[k]) {
+
+        struct spart temp_spart = sparts[k];
+        hilbert_key_3d temp_key = spart_keys[k];
+
+        int j = k;
+        int sind = spart_sinds[j];
+
+        /* Loop until particles are in the right place. */
+        while (k != sind) {
+
+          /* Swap particles in memory */
+          memswap(&sparts[j], &sparts[sind], sizeof(struct spart));
+          memswap_unaligned(&spart_keys[j], &spart_keys[sind],
+                            sizeof(hilbert_key_3d));
+
+          /* Corrected the now sorted sind */
+          spart_sinds[j] = j;
+
+          /* Move on to the next */
+          j = sind;
+          sind = spart_sinds[sind];
+        }
+
+        /* Return the temporary particle and set index. */
+        sparts[j] = temp_spart;
+        spart_keys[j] = temp_key;
+        spart_sinds[j] = j;
+      }
+
+      if (sparts[k].gpart)
+        sparts[k].gpart->id_or_neg_offset = -(k + sparts_offset);
+    }
+
+    free(spart_keys);
+    free(spart_sinds);
+  }
+
+  /* Get hilbert keys for bparts and sort them. */
+  if (bcount > 0) {
+
+    hilbert_key_3d *bpart_keys =
+        (hilbert_key_3d *)malloc(bcount * sizeof(hilbert_key_3d));
+    int *bpart_sinds = (int *)malloc(bcount * sizeof(int));
+
+    if (bpart_keys == NULL || bpart_sinds == NULL)
+      error("Failed to allocate Hilbert key buffers for black hole particles.");
+
+    /* Loop over particles */
+    for (int k = 0; k < bcount; k++) {
+
+      /* Convert position to 64-bit integer coordinates */
+      unsigned long bits[3];
+      bits[0] =
+          hilbert_scale * ((bparts[k].x[0] - cell_loc[0]) / cell_width[0]);
+      bits[1] =
+          hilbert_scale * ((bparts[k].x[1] - cell_loc[1]) / cell_width[1]);
+      bits[2] =
+          hilbert_scale * ((bparts[k].x[2] - cell_loc[2]) / cell_width[2]);
+
+      /* Get hilbert key */
+      bpart_keys[k] = hilbert_get_key_3d(bits, bits_per_axis);
+
+      /* Set index */
+      bpart_sinds[k] = k;
+    }
+
+    /* Now we can sort */
+    qsort_r(bpart_sinds, bcount, sizeof(int), sort_h_comp, bpart_keys);
+
+    /* Finally, loop over the particles swapping particles to the
+     * correct place */
+    for (int k = 0; k < bcount; k++) {
+
+      /* Get the sorted index and swap particles if necessary. */
+      if (k != bpart_sinds[k]) {
+
+        struct bpart temp_bpart = bparts[k];
+        hilbert_key_3d temp_key = bpart_keys[k];
+
+        int j = k;
+        int sind = bpart_sinds[j];
+
+        /* Loop until particles are in the right place. */
+        while (k != sind) {
+
+          /* Swap particles in memory */
+          memswap(&bparts[j], &bparts[sind], sizeof(struct bpart));
+          memswap_unaligned(&bpart_keys[j], &bpart_keys[sind],
+                            sizeof(hilbert_key_3d));
+
+          /* Corrected the now sorted sind */
+          bpart_sinds[j] = j;
+
+          /* Move on to the next */
+          j = sind;
+          sind = bpart_sinds[sind];
+        }
+
+        /* Return the temporary particle and set index. */
+        bparts[j] = temp_bpart;
+        bpart_keys[j] = temp_key;
+        bpart_sinds[j] = j;
+      }
+
+      if (bparts[k].gpart)
+        bparts[k].gpart->id_or_neg_offset = -(k + bparts_offset);
+    }
+
+    free(bpart_keys);
+    free(bpart_sinds);
+  }
+
+  /* Get hilbert keys for sinks and sort them. */
+  if (sink_count > 0) {
+
+    hilbert_key_3d *sink_keys =
+        (hilbert_key_3d *)malloc(sink_count * sizeof(hilbert_key_3d));
+    int *sink_sinds = (int *)malloc(sink_count * sizeof(int));
+
+    if (sink_keys == NULL || sink_sinds == NULL)
+      error("Failed to allocate Hilbert key buffers for sink particles.");
+
+    /* Loop over particles */
+    for (int k = 0; k < sink_count; k++) {
+
+      /* Convert position to 64-bit integer coordinates */
+      unsigned long bits[3];
+      bits[0] = hilbert_scale * ((sinks[k].x[0] - cell_loc[0]) / cell_width[0]);
+      bits[1] = hilbert_scale * ((sinks[k].x[1] - cell_loc[1]) / cell_width[1]);
+      bits[2] = hilbert_scale * ((sinks[k].x[2] - cell_loc[2]) / cell_width[2]);
+
+      /* Get hilbert key */
+      sink_keys[k] = hilbert_get_key_3d(bits, bits_per_axis);
+
+      /* Set index */
+      sink_sinds[k] = k;
+    }
+
+    /* Now we can sort */
+    qsort_r(sink_sinds, sink_count, sizeof(int), sort_h_comp, sink_keys);
+
+    /* Finally, loop over the particles swapping particles to the
+     * correct place */
+    for (int k = 0; k < sink_count; k++) {
+
+      /* Get the sorted index and swap particles if necessary. */
+      if (k != sink_sinds[k]) {
+
+        struct sink temp_sink = sinks[k];
+        hilbert_key_3d temp_key = sink_keys[k];
+
+        int j = k;
+        int sind = sink_sinds[j];
+
+        /* Loop until particles are in the right place. */
+        while (k != sind) {
+
+          /* Swap particles in memory */
+          memswap(&sinks[j], &sinks[sind], sizeof(struct sink));
+          memswap_unaligned(&sink_keys[j], &sink_keys[sind],
+                            sizeof(hilbert_key_3d));
+
+          /* Corrected the now sorted sind */
+          sink_sinds[j] = j;
+
+          /* Move on to the next */
+          j = sind;
+          sind = sink_sinds[sind];
+        }
+
+        /* Return the temporary particle and set index. */
+        sinks[j] = temp_sink;
+        sink_keys[j] = temp_key;
+        sink_sinds[j] = j;
+      }
+
+      if (sinks[k].gpart)
+        sinks[k].gpart->id_or_neg_offset = -(k + sinks_offset);
+    }
+
+    free(sink_keys);
+    free(sink_sinds);
+  }
+
+  /* Get hilbert keys for gparts and sort them. */
+  if (gcount > 0) {
+
+    hilbert_key_3d *gpart_keys =
+        (hilbert_key_3d *)malloc(gcount * sizeof(hilbert_key_3d));
+    int *gpart_sinds = (int *)malloc(gcount * sizeof(int));
+
+    if (gpart_keys == NULL || gpart_sinds == NULL)
+      error("Failed to allocate Hilbert key buffers for gravity particles.");
+
+    /* Loop over particles */
+    for (int k = 0; k < gcount; k++) {
+
+      /* Convert position to 64-bit integer coordinates */
+      unsigned long bits[3];
+      bits[0] =
+          hilbert_scale * ((gparts[k].x[0] - cell_loc[0]) / cell_width[0]);
+      bits[1] =
+          hilbert_scale * ((gparts[k].x[1] - cell_loc[1]) / cell_width[1]);
+      bits[2] =
+          hilbert_scale * ((gparts[k].x[2] - cell_loc[2]) / cell_width[2]);
+
+      /* Get hilbert key */
+      gpart_keys[k] = hilbert_get_key_3d(bits, bits_per_axis);
+
+      /* Set index */
+      gpart_sinds[k] = k;
+    }
+
+    /* Now we can sort */
+    qsort_r(gpart_sinds, gcount, sizeof(int), sort_h_comp, gpart_keys);
+
+    /* Finally, loop over the particles swapping particles to the
+     * correct place */
+    for (int k = 0; k < gcount; k++) {
+
+      /* Get the sorted index and swap particles if necessary. */
+      if (k != gpart_sinds[k]) {
+
+        struct gpart temp_gpart = gparts[k];
+        hilbert_key_3d temp_key = gpart_keys[k];
+
+        int j = k;
+        int sind = gpart_sinds[j];
+
+        /* Loop until particles are in the right place. */
+        while (k != sind) {
+
+          /* Swap particles in memory */
+          memswap_unaligned(&gparts[j], &gparts[sind], sizeof(struct gpart));
+          memswap_unaligned(&gpart_keys[j], &gpart_keys[sind],
+                            sizeof(hilbert_key_3d));
+
+          /* Correct the now sorted sind */
+          gpart_sinds[j] = j;
+
+          /* Move on to the next */
+          j = sind;
+          sind = gpart_sinds[sind];
+        }
+
+        /* Return the temporary particle and set index. */
+        gparts[j] = temp_gpart;
+        gpart_keys[j] = temp_key;
+        gpart_sinds[j] = j;
+      }
+
+      /* Make sure all hydro/star/sink/BH particles are pointing to the
+       * correct gpart. */
+      if (gparts[k].type == swift_type_gas) {
+        parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
+      } else if (gparts[k].type == swift_type_stars) {
+        sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart = &gparts[k];
+      } else if (gparts[k].type == swift_type_sink) {
+        sinks[-gparts[k].id_or_neg_offset - sinks_offset].gpart = &gparts[k];
+      } else if (gparts[k].type == swift_type_black_hole) {
+        bparts[-gparts[k].id_or_neg_offset - bparts_offset].gpart = &gparts[k];
+      }
+    }
+
+    free(gpart_keys);
+    free(gpart_sinds);
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* ---------------------------------------------------------------------- */
+  /* Check that all arrays are sorted in Hilbert order.                     */
+  /* ---------------------------------------------------------------------- */
+
+  if (count > 1) {
+    unsigned long bits[3];
+
+    bits[0] = hilbert_scale * ((parts[0].x[0] - cell_loc[0]) / cell_width[0]);
+    bits[1] = hilbert_scale * ((parts[0].x[1] - cell_loc[1]) / cell_width[1]);
+    bits[2] = hilbert_scale * ((parts[0].x[2] - cell_loc[2]) / cell_width[2]);
+    hilbert_key_3d prev = hilbert_get_key_3d(bits, bits_per_axis);
+
+    for (int k = 1; k < count; k++) {
+      bits[0] = hilbert_scale * ((parts[k].x[0] - cell_loc[0]) / cell_width[0]);
+      bits[1] = hilbert_scale * ((parts[k].x[1] - cell_loc[1]) / cell_width[1]);
+      bits[2] = hilbert_scale * ((parts[k].x[2] - cell_loc[2]) / cell_width[2]);
+      hilbert_key_3d curr = hilbert_get_key_3d(bits, bits_per_axis);
+
+      if (compare_hilbert_key_3d(&prev, &curr) > 0)
+        error("Hydro particles not sorted in Hilbert order.");
+
+      prev = curr;
+    }
+  }
+
+  if (scount > 1) {
+    unsigned long bits[3];
+
+    bits[0] = hilbert_scale * ((sparts[0].x[0] - cell_loc[0]) / cell_width[0]);
+    bits[1] = hilbert_scale * ((sparts[0].x[1] - cell_loc[1]) / cell_width[1]);
+    bits[2] = hilbert_scale * ((sparts[0].x[2] - cell_loc[2]) / cell_width[2]);
+    hilbert_key_3d prev = hilbert_get_key_3d(bits, bits_per_axis);
+
+    for (int k = 1; k < scount; k++) {
+      bits[0] =
+          hilbert_scale * ((sparts[k].x[0] - cell_loc[0]) / cell_width[0]);
+      bits[1] =
+          hilbert_scale * ((sparts[k].x[1] - cell_loc[1]) / cell_width[1]);
+      bits[2] =
+          hilbert_scale * ((sparts[k].x[2] - cell_loc[2]) / cell_width[2]);
+      hilbert_key_3d curr = hilbert_get_key_3d(bits, bits_per_axis);
+
+      if (compare_hilbert_key_3d(&prev, &curr) > 0)
+        error("Star particles not sorted in Hilbert order.");
+
+      prev = curr;
+    }
+  }
+
+  if (bcount > 1) {
+    unsigned long bits[3];
+
+    bits[0] = hilbert_scale * ((bparts[0].x[0] - cell_loc[0]) / cell_width[0]);
+    bits[1] = hilbert_scale * ((bparts[0].x[1] - cell_loc[1]) / cell_width[1]);
+    bits[2] = hilbert_scale * ((bparts[0].x[2] - cell_loc[2]) / cell_width[2]);
+    hilbert_key_3d prev = hilbert_get_key_3d(bits, bits_per_axis);
+
+    for (int k = 1; k < bcount; k++) {
+      bits[0] =
+          hilbert_scale * ((bparts[k].x[0] - cell_loc[0]) / cell_width[0]);
+      bits[1] =
+          hilbert_scale * ((bparts[k].x[1] - cell_loc[1]) / cell_width[1]);
+      bits[2] =
+          hilbert_scale * ((bparts[k].x[2] - cell_loc[2]) / cell_width[2]);
+      hilbert_key_3d curr = hilbert_get_key_3d(bits, bits_per_axis);
+
+      if (compare_hilbert_key_3d(&prev, &curr) > 0)
+        error("Black hole particles not sorted in Hilbert order.");
+
+      prev = curr;
+    }
+  }
+
+  if (sink_count > 1) {
+    unsigned long bits[3];
+
+    bits[0] = hilbert_scale * ((sinks[0].x[0] - cell_loc[0]) / cell_width[0]);
+    bits[1] = hilbert_scale * ((sinks[0].x[1] - cell_loc[1]) / cell_width[1]);
+    bits[2] = hilbert_scale * ((sinks[0].x[2] - cell_loc[2]) / cell_width[2]);
+    hilbert_key_3d prev = hilbert_get_key_3d(bits, bits_per_axis);
+
+    for (int k = 1; k < sink_count; k++) {
+      bits[0] = hilbert_scale * ((sinks[k].x[0] - cell_loc[0]) / cell_width[0]);
+      bits[1] = hilbert_scale * ((sinks[k].x[1] - cell_loc[1]) / cell_width[1]);
+      bits[2] = hilbert_scale * ((sinks[k].x[2] - cell_loc[2]) / cell_width[2]);
+      hilbert_key_3d curr = hilbert_get_key_3d(bits, bits_per_axis);
+
+      if (compare_hilbert_key_3d(&prev, &curr) > 0)
+        error("Sink particles not sorted in Hilbert order.");
+
+      prev = curr;
+    }
+  }
+
+  if (gcount > 1) {
+    unsigned long bits[3];
+
+    bits[0] = hilbert_scale * ((gparts[0].x[0] - cell_loc[0]) / cell_width[0]);
+    bits[1] = hilbert_scale * ((gparts[0].x[1] - cell_loc[1]) / cell_width[1]);
+    bits[2] = hilbert_scale * ((gparts[0].x[2] - cell_loc[2]) / cell_width[2]);
+    hilbert_key_3d prev = hilbert_get_key_3d(bits, bits_per_axis);
+
+    for (int k = 1; k < gcount; k++) {
+      bits[0] =
+          hilbert_scale * ((gparts[k].x[0] - cell_loc[0]) / cell_width[0]);
+      bits[1] =
+          hilbert_scale * ((gparts[k].x[1] - cell_loc[1]) / cell_width[1]);
+      bits[2] =
+          hilbert_scale * ((gparts[k].x[2] - cell_loc[2]) / cell_width[2]);
+      hilbert_key_3d curr = hilbert_get_key_3d(bits, bits_per_axis);
+
+      if (compare_hilbert_key_3d(&prev, &curr) > 0)
+        error("Gravity particles not sorted in Hilbert order.");
+
+      prev = curr;
+    }
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
 }
