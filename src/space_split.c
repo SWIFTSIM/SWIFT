@@ -837,20 +837,18 @@ void space_populate_progeny_list(
         info->top = c;
         info->depth = depth;
         info->progeny_index = j;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (progeny_count > nr_leaves_estimate)
+          error(
+              "Overestimated the number of leaves needed during splitting "
+              "(needed more than %d).",
+              nr_leaves_estimate);
+#endif
       }
       depth++;
     }
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* We may have already crashed by now if this happened... but check we
-   * didn't underestimate the number of leaves we would need. */
-  if (progeny_count > nr_leaves_estimate)
-    error(
-        "Underestimated the number of leaves needed during splitting "
-        "(needed %d, estimated %d).",
-        progeny_count, nr_leaves_estimate);
-#endif
 }
 
 /**
