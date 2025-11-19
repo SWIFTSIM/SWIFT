@@ -46,7 +46,6 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
                                             struct cell *top) {
 
   struct engine *e = r->e;
-  struct space *s = e->s;
 
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
@@ -211,13 +210,13 @@ void runner_count_mesh_interactions_recursive(struct gravity_tensors *multi_i,
   if (min_radius2 > max_distance2) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Need to account for the interactions we missed */
-    accumulate_add_ll(&multi_i->grav.multipole->pot.num_interacted,
+    accumulate_add_ll(&multi_i->pot.num_interacted,
                       cj->grav.multipole->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     /* Need to account for the interactions we missed */
-    accumulate_add_ll(&multi_i->grav.multipole->pot.num_interacted_pm,
+    accumulate_add_ll(&multi_i->pot.num_interacted_pm,
                       cj->grav.multipole->m_pole.num_gpart);
 #endif
 
