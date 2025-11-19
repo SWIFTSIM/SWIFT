@@ -194,7 +194,7 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
  * @param cj The background #cell.
  * @param s The #space.
  */
-void runner_count_mesh_interactions_recursive(struct cell *multi_i,
+void runner_count_mesh_interactions_recursive(struct gravity_tensors *multi_i,
                                               struct cell *ci, struct cell *cj,
                                               struct space *s) {
 
