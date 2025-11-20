@@ -495,7 +495,6 @@ def write_quantities(
         np.where(densities_sorted == rho_max[0], r_val, np.inf)
     )  # In case of multiple maxima, take the smallest radius, because at the begining the all have the same values
     for i in range(8):
-        print(i)
         densities_sorted = np.where(
             densities_sorted == rho_max[i], -np.inf, densities_sorted
         )
@@ -507,7 +506,6 @@ def write_quantities(
     mean_idx_rho_max = int(np.mean(idx_rho_max))
     r_rho_max = np.mean(r_sorted[mean_idx_rho_max])
     mean_rho_max = np.mean(rho_max)
-    print(r_rho_max, mean_rho_max)
 
     # The min density correspond to the hot compressed wind region (closer than the shockwave contact surface)
     rho_min = np.min(densities_sorted)
