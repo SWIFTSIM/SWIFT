@@ -29,8 +29,8 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-INLINE static void sidm_read_particles(struct sipart* siparts,
-                                       struct io_props* list, int* num_fields) {
+INLINE static void sidm_read_particles(struct sipart *siparts,
+                                       struct io_props *list, int *num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 4;
@@ -46,10 +46,10 @@ INLINE static void sidm_read_particles(struct sipart* siparts,
                                 UNIT_CONV_NO_UNITS, siparts, id);
 }
 
-INLINE static void convert_sipart_pos(const struct engine* e,
-                                      const struct sipart* sip, double* ret) {
+INLINE static void convert_sipart_pos(const struct engine *e,
+                                      const struct sipart *sip, double *ret) {
 
-  const struct space* s = e->s;
+  const struct space *s = e->s;
   if (s->periodic) {
     ret[0] = box_wrap(sip->x[0], 0.0, s->dim[0]);
     ret[1] = box_wrap(sip->x[1], 0.0, s->dim[1]);
@@ -66,11 +66,11 @@ INLINE static void convert_sipart_pos(const struct engine* e,
   }
 }
 
-INLINE static void convert_sipart_vel(const struct engine* e,
-                                      const struct sipart* sip, float* ret) {
+INLINE static void convert_sipart_vel(const struct engine *e,
+                                      const struct sipart *sip, float *ret) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const struct cosmology* cosmo = e->cosmology;
+  const struct cosmology *cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
   const float dt_kick_grav_mesh = e->dt_kick_grav_mesh_for_io;
@@ -87,7 +87,7 @@ INLINE static void convert_sipart_vel(const struct engine* e,
                             with_cosmology, cosmo);
 
   /* Extrapolate the velocites to the current time */
-  const struct gpart* gp = sip->gpart;
+  const struct gpart *gp = sip->gpart;
   ret[0] = gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;
   ret[1] = gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
   ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
@@ -103,9 +103,9 @@ INLINE static void convert_sipart_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
-INLINE static void convert_sipart_potential(const struct engine* e,
-                                            const struct sipart* sip,
-                                            float* ret) {
+INLINE static void convert_sipart_potential(const struct engine *e,
+                                            const struct sipart *sip,
+                                            float *ret) {
 
   if (sip->gpart != NULL)
     ret[0] = gravity_get_comoving_potential(sip->gpart);
@@ -122,8 +122,8 @@ INLINE static void convert_sipart_potential(const struct engine* e,
  * @param with_cosmology Are we running a cosmological simulation?
  * @todo Add DEBUG_INTERACTIONS at a later stage
  */
-INLINE static void sidm_write_particles(const struct sipart* siparts,
-                                        struct io_props* list, int* num_fields,
+INLINE static void sidm_write_particles(const struct sipart *siparts,
+                                        struct io_props *list, int *num_fields,
                                         int with_cosmology) {
 
   /* Say how much we want to write */

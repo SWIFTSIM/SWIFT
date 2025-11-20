@@ -33,7 +33,7 @@
  * @param time The current time (used if running without cosmology).
  */
 __attribute__((always_inline)) INLINE static void sidm_first_init_sipart(
-    struct sipart* sip, const struct sidm_props* sidm_properties) {
+    struct sipart *sip, const struct sidm_props *sidm_properties) {
   sip->time_bin = 0;
 }
 
@@ -43,7 +43,7 @@ __attribute__((always_inline)) INLINE static void sidm_first_init_sipart(
  * @param sip The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void sidm_init_sipart(
-    struct sipart* sip) {}
+    struct sipart *sip) {}
 
 /**
  * @brief Finishes the calculation of density on SIDM
@@ -52,7 +52,7 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sidm_end_density(
-    struct sipart* sip, const struct cosmology* cosmo) {}
+    struct sipart *sip, const struct cosmology *cosmo) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #sipart has 0
@@ -62,6 +62,6 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sidm_sipart_has_no_neighbours(
-    struct sipart* restrict sip, const struct cosmology* cosmo) {}
+    struct sipart *restrict sip, const struct cosmology *cosmo) {}
 
 #endif /* SWIFT_NONE_SIDM_H */

@@ -87,7 +87,7 @@ static const float correction_shift_k_values[number_of_corrected_bins] = {
 /**
  * @brief Return the #power_type corresponding to a given string.
  */
-INLINE static enum power_type power_spectrum_get_type(const char* name) {
+INLINE static enum power_type power_spectrum_get_type(const char *name) {
   if (strcasecmp(name, "matter") == 0)
     return pow_type_matter;
   else if (strcasecmp(name, "cdm") == 0)
@@ -114,9 +114,9 @@ INLINE static enum power_type power_spectrum_get_type(const char* name) {
  *
  * @param type The #power_type for which we want the name.
  */
-INLINE static const char* get_powtype_name(const enum power_type type) {
+INLINE static const char *get_powtype_name(const enum power_type type) {
 
-  static const char* powtype_names[pow_type_count] = {"Matter",
+  static const char *powtype_names[pow_type_count] = {"Matter",
                                                       "CDM",
                                                       "gas",
                                                       "stars/BHs",
@@ -128,9 +128,9 @@ INLINE static const char* get_powtype_name(const enum power_type type) {
   return powtype_names[type];
 }
 
-INLINE static const char* get_powtype_filename(const enum power_type type) {
+INLINE static const char *get_powtype_filename(const enum power_type type) {
 
-  static const char* powtype_filenames[pow_type_count] = {
+  static const char *powtype_filenames[pow_type_count] = {
       "matter",   "cdm",      "gas",       "starBH",
       "pressure", "neutrino", "neutrino0", "neutrino1"};
 
@@ -142,12 +142,12 @@ INLINE static const char* get_powtype_filename(const enum power_type type) {
  * pool.
  */
 struct shot_mapper_data {
-  const struct cell* cells;
+  const struct cell *cells;
   double tot12;
   enum power_type type1;
   enum power_type type2;
-  const struct engine* e;
-  struct neutrino_model* nu_model;
+  const struct engine *e;
+  struct neutrino_model *nu_model;
 };
 
 /**
@@ -155,15 +155,15 @@ struct shot_mapper_data {
  * pool.
  */
 struct grid_mapper_data {
-  const struct cell* cells;
-  double* dens;
+  const struct cell *cells;
+  double *dens;
   int N;
   enum power_type type;
   int windoworder;
   double dim[3];
   double fac;
-  const struct engine* e;
-  struct neutrino_model* nu_model;
+  const struct engine *e;
+  struct neutrino_model *nu_model;
 };
 
 /**
@@ -171,7 +171,7 @@ struct grid_mapper_data {
  * pool.
  */
 struct conv_mapper_data {
-  double* grid;
+  double *grid;
   int Ngrid;
   double invcellmean;
 };
@@ -180,13 +180,13 @@ struct conv_mapper_data {
  * @brief Shared information needed for calculating power from a Fourier grid.
  */
 struct pow_mapper_data {
-  fftw_complex* powgridft;
-  fftw_complex* powgridft2;
+  fftw_complex *powgridft;
+  fftw_complex *powgridft2;
   int Ngrid;
   int windoworder;
-  int* kbin;
-  int* modecounts;
-  double* powersum;
+  int *kbin;
+  int *modecounts;
+  double *powersum;
   double jfac;
 };
 
@@ -194,7 +194,7 @@ struct pow_mapper_data {
  * @brief Decided whether or not a given particle should be considered or
  * not for the specific #power_type we are computing.
  */
-int should_collect_mass(const enum power_type type, const struct gpart* gp,
+int should_collect_mass(const enum power_type type, const struct gpart *gp,
                         const integertime_t ti_current) {
 
   if (type == pow_type_matter) {
@@ -240,23 +240,23 @@ int should_collect_mass(const enum power_type type, const struct gpart* gp,
  * @param type2 The component type of field 2.
  * @param e The #engine.
  */
-void shotnoiseterms(const struct cell* c, double* tot12,
+void shotnoiseterms(const struct cell *c, double *tot12,
                     const enum power_type type1, const enum power_type type2,
-                    const struct engine* e, struct neutrino_model* nu_model) {
+                    const struct engine *e, struct neutrino_model *nu_model) {
 
   const int gcount = c->grav.count;
-  const struct gpart* gparts = c->grav.parts;
+  const struct gpart *gparts = c->grav.parts;
 
   /* Handle on the other particle types */
-  const struct part* parts = e->s->parts;
-  const struct xpart* xparts = e->s->xparts;
+  const struct part *parts = e->s->parts;
+  const struct xpart *xparts = e->s->xparts;
 
   /* Handle on the physics modules */
-  const struct cosmology* cosmo = e->cosmology;
-  const struct hydro_props* hydro_props = e->hydro_properties;
-  const struct unit_system* us = e->internal_units;
-  const struct phys_const* phys_const = e->physical_constants;
-  const struct cooling_function_data* cool_func = e->cooling_func;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct unit_system *us = e->internal_units;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct cooling_function_data *cool_func = e->cooling_func;
 
   /* Local accumulator for this cell */
   double local_tot12 = 0.;
@@ -275,8 +275,8 @@ void shotnoiseterms(const struct cell* c, double* tot12,
       /* Skip non-gas particles */
       if (gparts[i].type != swift_type_gas) continue;
 
-      const struct part* p = &parts[-gparts[i].id_or_neg_offset];
-      const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
+      const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+      const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
       quantity1 = cooling_get_electron_pressure(phys_const, hydro_props, us,
                                                 cosmo, cool_func, p, xp);
     } else {
@@ -312,8 +312,8 @@ void shotnoiseterms(const struct cell* c, double* tot12,
         /* Skip non-gas particles */
         if (gparts[i].type != swift_type_gas) continue;
 
-        const struct part* p = &parts[-gparts[i].id_or_neg_offset];
-        const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
+        const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+        const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
         quantity2 = cooling_get_electron_pressure(phys_const, hydro_props, us,
                                                   cosmo, cool_func, p, xp);
       } else {
@@ -349,21 +349,21 @@ void shotnoiseterms(const struct cell* c, double* tot12,
  * @param num The number of cells in the chunk.
  * @param extra The information about the cells.
  */
-void shotnoise_mapper(void* map_data, int num, void* extra) {
+void shotnoise_mapper(void *map_data, int num, void *extra) {
 
   /* Unpack the shared information */
-  struct shot_mapper_data* data = (struct shot_mapper_data*)extra;
-  const struct cell* cells = data->cells;
-  const struct engine* e = data->e;
-  struct neutrino_model* nu_model = data->nu_model;
+  struct shot_mapper_data *data = (struct shot_mapper_data *)extra;
+  const struct cell *cells = data->cells;
+  const struct engine *e = data->e;
+  struct neutrino_model *nu_model = data->nu_model;
 
   /* Pointer to the chunk to be processed */
-  int* local_cells = (int*)map_data;
+  int *local_cells = (int *)map_data;
 
   /* Loop over the elements assigned to this thread */
   for (int i = 0; i < num; ++i) {
     /* Pointer to local cell */
-    const struct cell* c = &cells[local_cells[i]];
+    const struct cell *c = &cells[local_cells[i]];
 
     /* Calculate the necessary mass terms */
     shotnoiseterms(c, &data->tot12, data->type1, data->type2, e, nu_model);
@@ -371,7 +371,7 @@ void shotnoise_mapper(void* map_data, int num, void* extra) {
 }
 
 __attribute__((always_inline)) INLINE static void TSC_set(
-    double* mesh, const int N, const int i, const int j, const int k,
+    double *mesh, const int N, const int i, const int j, const int k,
     const double dx, const double dy, const double dz, const double value) {
 
   const double lx = 0.5 * (0.5 - dx) * (0.5 - dx); /* left side, dist 1 + dx  */
@@ -470,7 +470,7 @@ __attribute__((always_inline)) INLINE static void TSC_set(
       value * rx * ry * rz);
 }
 
-INLINE static void gpart_to_grid_TSC(const struct gpart* gp, double* rho,
+INLINE static void gpart_to_grid_TSC(const struct gpart *gp, double *rho,
                                      const int N, const double fac,
                                      const double dim[3], const double value) {
 
@@ -499,7 +499,7 @@ INLINE static void gpart_to_grid_TSC(const struct gpart* gp, double* rho,
 }
 
 __attribute__((always_inline)) INLINE static void CIC_set(
-    double* mesh, const int N, const int i, const int j, const int k,
+    double *mesh, const int N, const int i, const int j, const int k,
     const double tx, const double ty, const double tz, const double dx,
     const double dy, const double dz, const double value) {
 
@@ -530,7 +530,7 @@ __attribute__((always_inline)) INLINE static void CIC_set(
       value * dx * dy * dz);
 }
 
-INLINE static void gpart_to_grid_CIC(const struct gpart* gp, double* rho,
+INLINE static void gpart_to_grid_CIC(const struct gpart *gp, double *rho,
                                      const int N, const double fac,
                                      const double dim[3], const double value) {
 
@@ -561,7 +561,7 @@ INLINE static void gpart_to_grid_CIC(const struct gpart* gp, double* rho,
   CIC_set(rho, N, i, j, k, tx, ty, tz, dx, dy, dz, value);
 }
 
-INLINE static void gpart_to_grid_NGP(const struct gpart* gp, double* rho,
+INLINE static void gpart_to_grid_NGP(const struct gpart *gp, double *rho,
                                      const int N, const double fac,
                                      const double dim[3], const double value) {
 
@@ -588,24 +588,24 @@ INLINE static void gpart_to_grid_NGP(const struct gpart* gp, double* rho,
  * @param windoworder The window to use for grid assignment.
  * @param e The #engine.
  */
-void cell_to_powgrid(const struct cell* c, double* rho, const int N,
+void cell_to_powgrid(const struct cell *c, double *rho, const int N,
                      const double fac, const enum power_type type,
                      const int windoworder, const double dim[3],
-                     const struct engine* e, struct neutrino_model* nu_model) {
+                     const struct engine *e, struct neutrino_model *nu_model) {
 
   const int gcount = c->grav.count;
-  const struct gpart* gparts = c->grav.parts;
+  const struct gpart *gparts = c->grav.parts;
 
   /* Handle on the other particle types */
-  const struct part* parts = e->s->parts;
-  const struct xpart* xparts = e->s->xparts;
+  const struct part *parts = e->s->parts;
+  const struct xpart *xparts = e->s->xparts;
 
   /* Handle on the physics modules */
-  const struct cosmology* cosmo = e->cosmology;
-  const struct hydro_props* hydro_props = e->hydro_properties;
-  const struct unit_system* us = e->internal_units;
-  const struct phys_const* phys_const = e->physical_constants;
-  const struct cooling_function_data* cool_func = e->cooling_func;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct unit_system *us = e->internal_units;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct cooling_function_data *cool_func = e->cooling_func;
 
   /* Assign all the gpart of that cell to the mesh */
   for (int i = 0; i < gcount; ++i) {
@@ -622,8 +622,8 @@ void cell_to_powgrid(const struct cell* c, double* rho, const int N,
       /* Skip non-gas particles */
       if (gparts[i].type != swift_type_gas) continue;
 
-      const struct part* p = &parts[-gparts[i].id_or_neg_offset];
-      const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
+      const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+      const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
       quantity = cooling_get_electron_pressure(phys_const, hydro_props, us,
                                                cosmo, cool_func, p, xp);
     } else {
@@ -669,27 +669,27 @@ void cell_to_powgrid(const struct cell* c, double* rho, const int N,
  * @param num The number of cells in the chunk.
  * @param extra The information about the grid and cells.
  */
-void cell_to_powgrid_mapper(void* map_data, int num, void* extra) {
+void cell_to_powgrid_mapper(void *map_data, int num, void *extra) {
 
   /* Unpack the shared information */
-  const struct grid_mapper_data* data = (struct grid_mapper_data*)extra;
-  const struct cell* cells = data->cells;
-  double* grid = data->dens;
+  const struct grid_mapper_data *data = (struct grid_mapper_data *)extra;
+  const struct cell *cells = data->cells;
+  double *grid = data->dens;
   const int Ngrid = data->N;
   const enum power_type type = data->type;
   const int order = data->windoworder;
   const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
   const double gridfac = data->fac;
-  const struct engine* e = data->e;
-  struct neutrino_model* nu_model = data->nu_model;
+  const struct engine *e = data->e;
+  struct neutrino_model *nu_model = data->nu_model;
 
   /* Pointer to the chunk to be processed */
-  int* local_cells = (int*)map_data;
+  int *local_cells = (int *)map_data;
 
   /* Loop over the elements assigned to this thread */
   for (int i = 0; i < num; ++i) {
     /* Pointer to local cell */
-    const struct cell* c = &cells[local_cells[i]];
+    const struct cell *c = &cells[local_cells[i]];
 
     /* Assign this cell's content to the grid */
     cell_to_powgrid(c, grid, Ngrid, gridfac, type, order, dim, e, nu_model);
@@ -703,16 +703,16 @@ void cell_to_powgrid_mapper(void* map_data, int num, void* extra) {
  * @param num The number of elements to iterate on (along the x-axis).
  * @param extra The information about the grid and conversion.
  */
-void mass_to_contrast_mapper(void* map_data, int num, void* extra) {
+void mass_to_contrast_mapper(void *map_data, int num, void *extra) {
 
   /* Unpack the shared information */
-  const struct conv_mapper_data* data = (struct conv_mapper_data*)extra;
-  double* grid = data->grid;
+  const struct conv_mapper_data *data = (struct conv_mapper_data *)extra;
+  double *grid = data->grid;
   const int Ngrid = data->Ngrid;
   const double invcellmean = data->invcellmean;
 
   /* Range handled by this call */
-  const int xi_start = (double*)map_data - grid;
+  const int xi_start = (double *)map_data - grid;
   const int xi_end = xi_start + num;
 
   /* Loop over the assigned cells, convert to density contrast */
@@ -734,26 +734,26 @@ void mass_to_contrast_mapper(void* map_data, int num, void* extra) {
  * @param num The number of elements to iterate on (along the x-axis).
  * @param extra Arrays to store the results/helper variables.
  */
-void pow_from_grid_mapper(void* map_data, const int num, void* extra) {
+void pow_from_grid_mapper(void *map_data, const int num, void *extra) {
 
-  struct pow_mapper_data* data = (struct pow_mapper_data*)extra;
+  struct pow_mapper_data *data = (struct pow_mapper_data *)extra;
 
   /* Unpack the data struct */
-  fftw_complex* restrict powgridft = data->powgridft;
-  fftw_complex* restrict powgridft2 = data->powgridft2;
+  fftw_complex *restrict powgridft = data->powgridft;
+  fftw_complex *restrict powgridft2 = data->powgridft2;
   const int Ngrid = data->Ngrid;
   const int Nhalf = Ngrid / 2;
   const int nyq2 = Nhalf * Nhalf;
   const int windoworder = data->windoworder;
-  const int* restrict kbin = data->kbin;
+  const int *restrict kbin = data->kbin;
   const double jfac = data->jfac;
 
   /* Output data */
-  int* restrict modecounts = data->modecounts;
-  double* restrict powersum = data->powersum;
+  int *restrict modecounts = data->modecounts;
+  double *restrict powersum = data->powersum;
 
   /* Range handled by this call */
-  const int xi_start = (fftw_complex*)map_data - powgridft;
+  const int xi_start = (fftw_complex *)map_data - powgridft;
   const int xi_end = xi_start + num;
 
   /* Loop over the assigned FT'd cells, get deconvolved power from them */
@@ -815,10 +815,10 @@ void pow_from_grid_mapper(void* map_data, const int num, void* extra) {
  * @param us The current internal system of units.
  * @param phys_const Physical constants in internal units
  */
-INLINE static void power_init_output_file(FILE* fp, const enum power_type type1,
+INLINE static void power_init_output_file(FILE *fp, const enum power_type type1,
                                           const enum power_type type2,
-                                          const struct unit_system* restrict us,
-                                          const struct phys_const* phys_const) {
+                                          const struct unit_system *restrict us,
+                                          const struct phys_const *phys_const) {
 
   /* Write a header to the output file */
   if (type1 != type2)
@@ -888,14 +888,14 @@ INLINE static void power_init_output_file(FILE* fp, const enum power_type type1,
  * @param verbose Are we talkative?
  */
 void power_spectrum(const enum power_type type1, const enum power_type type2,
-                    struct power_spectrum_data* pow_data, const struct space* s,
-                    struct threadpool* tp, const int verbose) {
+                    struct power_spectrum_data *pow_data, const struct space *s,
+                    struct threadpool *tp, const int verbose) {
 
-  const int* local_cells = s->local_cells_top;
+  const int *local_cells = s->local_cells_top;
   const int nr_local_cells = s->nr_local_cells;
-  const struct engine* e = s->e;
-  const struct unit_system* us = e->internal_units;
-  const struct phys_const* phys_const = e->physical_constants;
+  const struct engine *e = s->e;
+  const struct unit_system *us = e->internal_units;
+  const struct phys_const *phys_const = e->physical_constants;
   const int snapnum = e->ps_output_count; /* -1 if after snapshot dump */
 
   /* Extract some useful constants */
@@ -925,12 +925,12 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   pow_data->powgrid = fftw_alloc_real(Ngrid2 * (Ngrid + 2));
   memuse_log_allocation("fftw_grid.grid", pow_data->powgrid, 1,
                         sizeof(double) * Ngrid2 * (Ngrid + 2));
-  pow_data->powgridft = (fftw_complex*)pow_data->powgrid;
+  pow_data->powgridft = (fftw_complex *)pow_data->powgrid;
   if (type1 != type2) {
     pow_data->powgrid2 = fftw_alloc_real(Ngrid2 * (Ngrid + 2));
     memuse_log_allocation("fftw_grid.grid2", pow_data->powgrid2, 1,
                           sizeof(double) * Ngrid2 * (Ngrid + 2));
-    pow_data->powgridft2 = (fftw_complex*)pow_data->powgrid2;
+    pow_data->powgridft2 = (fftw_complex *)pow_data->powgrid2;
   } else {
     pow_data->powgrid2 = pow_data->powgrid;
     pow_data->powgridft2 = pow_data->powgridft;
@@ -1004,8 +1004,8 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
     shotdata.type2 = type2;
     shotdata.e = s->e;
     shotdata.nu_model = &nu_model;
-    threadpool_map(tp, shotnoise_mapper, (void*)local_cells, nr_local_cells,
-                   sizeof(int), threadpool_auto_chunk_size, (void*)&shotdata);
+    threadpool_map(tp, shotnoise_mapper, (void *)local_cells, nr_local_cells,
+                   sizeof(int), threadpool_auto_chunk_size, (void *)&shotdata);
 #ifdef WITH_MPI
     /* Add up everybody's shot noise term */
     MPI_Allreduce(MPI_IN_PLACE, &shotdata.tot12, 1, MPI_DOUBLE, MPI_SUM,
@@ -1030,7 +1030,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   convdata.Ngrid = Ngrid;
 
   /* Create a lookup table for k (could also do this when initializing) */
-  int* kbin = (int*)malloc((Nhalf * Nhalf + 1) * sizeof(int));
+  int *kbin = (int *)malloc((Nhalf * Nhalf + 1) * sizeof(int));
   for (int i = 0; i < Nhalf; ++i) {
     for (int j = 0; j <= i; ++j) kbin[i * i + j] = i;
     for (int j = i + 1; j <= 2 * i; ++j) kbin[i * i + j] = i + 1;
@@ -1038,8 +1038,8 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   kbin[Nhalf * Nhalf] = Nhalf;
 
   /* Allocate arrays for power computation from FFT */
-  int* modecounts = (int*)malloc((Nhalf + 1) * sizeof(int));
-  double* powersum = (double*)malloc((Nhalf + 1) * sizeof(double));
+  int *modecounts = (int *)malloc((Nhalf + 1) * sizeof(int));
+  double *powersum = (double *)malloc((Nhalf + 1) * sizeof(double));
 
   struct pow_mapper_data powmapdata;
   powmapdata.powgridft = pow_data->powgridft;
@@ -1060,8 +1060,8 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   const int numtot = kcutleft + (Nfold - 1) * (kcutleft - kcutright + 1);
   int numstart = 0;
 
-  double* kcomb = (double*)malloc(numtot * sizeof(double));
-  double* pcomb = (double*)malloc(numtot * sizeof(double));
+  double *kcomb = (double *)malloc(numtot * sizeof(double));
+  double *pcomb = (double *)malloc(numtot * sizeof(double));
 
   /* Determine output file name */
   char outputfileBase[200] = "";
@@ -1095,13 +1095,13 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       bzero(pow_data->powgrid2, Ngrid2 * (Ngrid + 2) * sizeof(double));
 
     /* Fill out the folded grid(s) */
-    threadpool_map(tp, cell_to_powgrid_mapper, (void*)local_cells,
+    threadpool_map(tp, cell_to_powgrid_mapper, (void *)local_cells,
                    nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                   (void*)&densdata);
+                   (void *)&densdata);
     if (type1 != type2)
-      threadpool_map(tp, cell_to_powgrid_mapper, (void*)local_cells,
+      threadpool_map(tp, cell_to_powgrid_mapper, (void *)local_cells,
                      nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                     (void*)&densdata2);
+                     (void *)&densdata2);
 #ifdef WITH_MPI
     /* Merge everybody's share of the grid onto rank 0 */
     if (e->nodeID == 0)
@@ -1174,7 +1174,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       const double volfac = (volume / Ngrid3) / Ngrid3;
       sprintf(outputfileName, "%s/%s_%04d_%d.txt", "power_spectra/foldings",
               outputfileBase, snapnum, i);
-      FILE* outputfile = fopen(outputfileName, "w");
+      FILE *outputfile = fopen(outputfileName, "w");
 
       /* Determine units of power */
       char powunits[32] = "";
@@ -1235,7 +1235,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
     sprintf(outputfileName, "%s/%s_%04d.txt", "power_spectra", outputfileBase,
             snapnum);
 
-    FILE* outputfile = fopen(outputfileName, "w");
+    FILE *outputfile = fopen(outputfileName, "w");
 
     /* Header and units */
     power_init_output_file(outputfile, type1, type2, us, phys_const);
@@ -1287,7 +1287,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
  *
  * @param nr_threads The number of threads used.
  */
-void power_init(struct power_spectrum_data* p, struct swift_params* params,
+void power_init(struct power_spectrum_data *p, struct swift_params *params,
                 int nr_threads) {
 
 #ifdef HAVE_FFTW
@@ -1340,19 +1340,19 @@ void power_init(struct power_spectrum_data* p, struct swift_params* params,
   message("Note that FFTW is not threaded!");
 #endif
 
-  char** requested_spectra = NULL;
+  char **requested_spectra = NULL;
   parser_get_param_string_array(params, "PowerSpectrum:requested_spectra",
                                 &p->spectrumcount, &requested_spectra);
 
   p->types1 =
-      (enum power_type*)malloc(p->spectrumcount * sizeof(enum power_type));
+      (enum power_type *)malloc(p->spectrumcount * sizeof(enum power_type));
   p->types2 =
-      (enum power_type*)malloc(p->spectrumcount * sizeof(enum power_type));
+      (enum power_type *)malloc(p->spectrumcount * sizeof(enum power_type));
 
   /* Parse which spectra are being requested */
   for (int i = 0; i < p->spectrumcount; ++i) {
 
-    char* pstr = strtok(requested_spectra[i], "-");
+    char *pstr = strtok(requested_spectra[i], "-");
     if (pstr == NULL)
       error("Requested power spectra are not in the format type1-type2!");
     char type1[32];
@@ -1376,7 +1376,7 @@ void power_init(struct power_spectrum_data* p, struct swift_params* params,
   /* Grid is padded to allow for in-place FFT */
   p->powgrid = fftw_alloc_real(Ngrid * Ngrid * (Ngrid + 2));
   /* Pointer to grid to interpret it as complex data */
-  p->powgridft = (fftw_complex*)p->powgrid;
+  p->powgridft = (fftw_complex *)p->powgrid;
 
   p->fftplanpow = fftw_plan_dft_r2c_3d(Ngrid, Ngrid, Ngrid, p->powgrid,
                                        p->powgridft, FFTW_MEASURE);
@@ -1390,7 +1390,7 @@ void power_init(struct power_spectrum_data* p, struct swift_params* params,
   /* Grid is padded to allow for in-place FFT */
   p->powgrid2 = fftw_alloc_real(Ngrid * Ngrid * (Ngrid + 2));
   /* Pointer to grid to interpret it as complex data */
-  p->powgridft2 = (fftw_complex*)p->powgrid2;
+  p->powgridft2 = (fftw_complex *)p->powgrid2;
 
   p->fftplanpow2 = fftw_plan_dft_r2c_3d(Ngrid, Ngrid, Ngrid, p->powgrid2,
                                         p->powgridft2, FFTW_MEASURE);
@@ -1410,8 +1410,8 @@ void power_init(struct power_spectrum_data* p, struct swift_params* params,
 #endif
 }
 
-void calc_all_power_spectra(struct power_spectrum_data* pow_data,
-                            const struct space* s, struct threadpool* tp,
+void calc_all_power_spectra(struct power_spectrum_data *pow_data,
+                            const struct space *s, struct threadpool *tp,
                             const int verbose) {
 #ifdef HAVE_FFTW
 
@@ -1436,7 +1436,7 @@ void calc_all_power_spectra(struct power_spectrum_data* pow_data,
 #endif /* HAVE_FFTW */
 }
 
-void power_clean(struct power_spectrum_data* pow_data) {
+void power_clean(struct power_spectrum_data *pow_data) {
 #ifdef HAVE_FFTW
   fftw_destroy_plan(pow_data->fftplanpow);
   fftw_destroy_plan(pow_data->fftplanpow2);
@@ -1458,10 +1458,10 @@ void power_clean(struct power_spectrum_data* pow_data) {
  * @param p the struct
  * @param stream the file stream
  */
-void power_spectrum_struct_dump(const struct power_spectrum_data* p,
-                                FILE* stream) {
+void power_spectrum_struct_dump(const struct power_spectrum_data *p,
+                                FILE *stream) {
 #ifdef HAVE_FFTW
-  restart_write_blocks((void*)p, sizeof(struct power_spectrum_data), 1, stream,
+  restart_write_blocks((void *)p, sizeof(struct power_spectrum_data), 1, stream,
                        "power spectrum data", "power spectrum data");
   restart_write_blocks(p->types1, p->spectrumcount, sizeof(enum power_type),
                        stream, "power types 1", "power types 1");
@@ -1477,17 +1477,17 @@ void power_spectrum_struct_dump(const struct power_spectrum_data* p,
  * @param p the struct
  * @param stream the file stream
  */
-void power_spectrum_struct_restore(struct power_spectrum_data* p,
-                                   FILE* stream) {
+void power_spectrum_struct_restore(struct power_spectrum_data *p,
+                                   FILE *stream) {
 #ifdef HAVE_FFTW
-  restart_read_blocks((void*)p, sizeof(struct power_spectrum_data), 1, stream,
+  restart_read_blocks((void *)p, sizeof(struct power_spectrum_data), 1, stream,
                       NULL, "power spectrum data");
   p->types1 =
-      (enum power_type*)malloc(p->spectrumcount * sizeof(enum power_type));
+      (enum power_type *)malloc(p->spectrumcount * sizeof(enum power_type));
   restart_read_blocks(p->types1, p->spectrumcount, sizeof(enum power_type),
                       stream, NULL, "power types 1");
   p->types2 =
-      (enum power_type*)malloc(p->spectrumcount * sizeof(enum power_type));
+      (enum power_type *)malloc(p->spectrumcount * sizeof(enum power_type));
   restart_read_blocks(p->types2, p->spectrumcount, sizeof(enum power_type),
                       stream, NULL, "power types 2");
 
@@ -1509,7 +1509,7 @@ void power_spectrum_struct_restore(struct power_spectrum_data* p,
   /* Grid is padded to allow for in-place FFT */
   p->powgrid = fftw_alloc_real(Ngrid * Ngrid * (Ngrid + 2));
   /* Pointer to grid to interpret it as complex data */
-  p->powgridft = (fftw_complex*)p->powgrid;
+  p->powgridft = (fftw_complex *)p->powgrid;
 
   p->fftplanpow = fftw_plan_dft_r2c_3d(Ngrid, Ngrid, Ngrid, p->powgrid,
                                        p->powgridft, FFTW_MEASURE);
@@ -1523,7 +1523,7 @@ void power_spectrum_struct_restore(struct power_spectrum_data* p,
   /* Grid is padded to allow for in-place FFT */
   p->powgrid2 = fftw_alloc_real(Ngrid * Ngrid * (Ngrid + 2));
   /* Pointer to grid to interpret it as complex data */
-  p->powgridft2 = (fftw_complex*)p->powgrid2;
+  p->powgridft2 = (fftw_complex *)p->powgrid2;
 
   p->fftplanpow2 = fftw_plan_dft_r2c_3d(Ngrid, Ngrid, Ngrid, p->powgrid2,
                                         p->powgridft2, FFTW_MEASURE);

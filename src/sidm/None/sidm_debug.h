@@ -20,6 +20,6 @@
 #define SWIFT_SIDM_NONE_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void sidm_debug_particle(
-    const struct sipart* sip) {}
+    const struct sipart *sip) {}
 
 #endif /* SWIFT_SIDM_NONE_DEBUG_H */

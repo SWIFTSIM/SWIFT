@@ -205,6 +205,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
                       hydro_props, entropy_floor, pressure_floor);
   mhd_predict_extra(p, xp, dt_drift, dt_therm, cosmo, hydro_props,
                     entropy_floor);
+  chemistry_predict_extra(p, xp, dt_drift, dt_therm, cosmo, e->chemistry);
   rt_predict_extra(p, xp, dt_drift);
   if (p->gpart) gravity_update_softening(p->gpart, p, e->gravity_properties);
 

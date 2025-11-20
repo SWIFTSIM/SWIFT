@@ -215,7 +215,7 @@ int engine_dump_restarts(struct engine *e, const int drifted_all,
       /* Drift all particles first (may have just been done). */
       if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
 
-        /* Free the foreign particles to get more breathing space. */
+      /* Free the foreign particles to get more breathing space. */
 #ifdef WITH_MPI
       if (e->free_foreign_when_dumping_restart)
         space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
@@ -515,8 +515,8 @@ void engine_io(struct engine *e) {
         if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
           pm_mesh_free(e->mesh);
 
-          /* Free the foreign particles to get more breathing space.
-           * If called, the FOF code itself will reallocate what it needs. */
+        /* Free the foreign particles to get more breathing space.
+         * If called, the FOF code itself will reallocate what it needs. */
 #ifdef WITH_MPI
         space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
 #endif

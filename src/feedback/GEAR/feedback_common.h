@@ -33,38 +33,38 @@
  */
 
 float feedback_compute_spart_timestep(
-    const struct spart* const sp, const struct feedback_props* feedback_props,
-    const struct phys_const* phys_const, const struct unit_system* us,
-    const int with_cosmology, const struct cosmology* cosmo,
+    const struct spart *const sp, const struct feedback_props *feedback_props,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const int with_cosmology, const struct cosmology *cosmo,
     const integertime_t ti_current, const double time, const double time_base);
 
 void feedback_will_do_feedback(
-    struct spart* sp, const struct feedback_props* feedback_props,
-    const int with_cosmology, const struct cosmology* cosmo, const double time,
-    const struct unit_system* us, const struct phys_const* phys_const,
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const int with_cosmology, const struct cosmology *cosmo, const double time,
+    const struct unit_system *us, const struct phys_const *phys_const,
     const integertime_t ti_current, const double time_base);
 
-void compute_time(struct spart* sp, const int with_cosmology,
-                  const struct cosmology* cosmo, double* star_age_beg_of_step,
-                  double* dt_enrichment, integertime_t* ti_begin_star,
+void compute_time(struct spart *sp, const int with_cosmology,
+                  const struct cosmology *cosmo, double *star_age_beg_of_step,
+                  double *dt_enrichment, integertime_t *ti_begin_star,
                   const integertime_t ti_current, const double time_base,
                   const double time);
 
-double feedback_get_enrichment_timestep(const struct spart* sp,
+double feedback_get_enrichment_timestep(const struct spart *sp,
                                         const int with_cosmology,
-                                        const struct cosmology* cosmo,
+                                        const struct cosmology *cosmo,
                                         const double time,
                                         const double dt_star);
 
 void feedback_init_after_star_formation(
-    struct spart* sp, const struct feedback_props* feedback_props,
+    struct spart *sp, const struct feedback_props *feedback_props,
     enum stellar_type star_type);
 
-void feedback_first_init_spart(struct spart* sp,
-                               const struct feedback_props* feedback_props);
+void feedback_first_init_spart(struct spart *sp,
+                               const struct feedback_props *feedback_props);
 
-void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);
-void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);
-void feedback_clean(struct feedback_props* feedback);
+void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
+void feedback_struct_restore(struct feedback_props *feedback, FILE *stream);
+void feedback_clean(struct feedback_props *feedback);
 
 #endif /* SWIFT_FEEDBACK_GEAR_COMMON_H */
