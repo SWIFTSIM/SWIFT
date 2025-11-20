@@ -136,6 +136,12 @@
 #include "runner_doiact_hydro.h"
 #include "runner_doiact_undef.h"
 
+/* Import the SIDM density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_sidm.h"
+#include "runner_doiact_undef.h"
+
 /**
  * @brief The #runner main thread routine.
  *

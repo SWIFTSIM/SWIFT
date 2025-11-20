@@ -1024,6 +1024,64 @@ cell_can_recurse_in_self_sinks_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair sidm task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_sidm_task(const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return c->split && ((kernel_gamma * c->sidm.h_max_old +
+                       c->sidm.dx_max_part_old) < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-pair sidm task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subpair_sidm_task(const struct cell *c) {
+
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  return ((kernel_gamma * c->sidm.h_max_active + c->sidm.dx_max_part_old) <
+          0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-self sidm task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_sidm_task(const struct cell *c) {
+
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split && (kernel_gamma * c->sidm.h_max_old < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-self sidm task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subself_sidm_task(const struct cell *c) {
+
+  /* Is the cell not smaller than the smoothing length? */
+  return (kernel_gamma * c->sidm.h_max_active < 0.5f * c->dmin);
+}
+
+/**
  * @brief Can a pair hydro task associated with a cell be split into smaller
  * sub-tasks.
  *
