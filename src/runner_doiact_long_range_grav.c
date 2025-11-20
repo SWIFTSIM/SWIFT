@@ -190,7 +190,8 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
  * @param cj The background #cell.
  * @param s The #space.
  */
-void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cj,
+void runner_count_mesh_interactions_recursive(struct gravity_tensors *multi_i,
+                                              struct cell *ci, struct cell *cj,
                                               struct space *s) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
@@ -201,11 +202,7 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cj,
   const double max_distance2 = max_distance * max_distance;
 
   /* Handle on the pair's gravity business. */
-  struct gravity_tensors *multi_i = ci->grav.multipole;
   struct gravity_tensors *multi_j = cj->grav.multipole;
-
-  /* Don't go below the task level */
-  if (ci->grav.super == ci || cj->grav.super == cj) return;
 
   /* Are we beyond the mesh distance? */
   const double min_radius2 =
@@ -231,8 +228,8 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cj,
       if (ci->progeny[i] == NULL) continue;
       for (int j = 0; j < 8; j++) {
         if (cj->progeny[j] == NULL) continue;
-        runner_count_mesh_interactions_recursive(ci->progeny[i], cj->progeny[j],
-                                                 s);
+        runner_count_mesh_interactions_recursive(multi_i, ci->progeny[i],
+                                                 cj->progeny[j], s);
       }
     }
   }
@@ -259,6 +256,9 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
 
+  /* Get the multipole of the cell we are interacting. */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+
   /* Loop over all cells. */
   for (int n = 0; n < s->nr_cells; n++) {
 
@@ -273,7 +273,7 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
     if (top == cj) continue;
 
     /* Did we interact via the mesh with this pair or any of their progeny? */
-    runner_count_mesh_interactions_recursive(ci, cj, s);
+    runner_count_mesh_interactions_recursive(multi_i, top, cj, s);
   }
 #else
   error(
