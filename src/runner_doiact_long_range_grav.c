@@ -205,6 +205,9 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cpi,
   struct gravity_tensors *multi_i = ci->grav.multipole;
   struct gravity_tensors *multi_j = cpj->grav.multipole;
 
+  /* Don't allow self-interactions */
+  if (cpi == cpj) return;
+
   /* Are we beyond the mesh distance? */
   const double min_radius2 =
       cell_min_dist2_same_size(cpi, cpj, s->periodic, s->dim);
@@ -268,9 +271,6 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
-
-    /* Avoid self contributions */
-    if (top == cj) continue;
 
     /* Did we interact via the mesh with this pair or any of their progeny? */
     runner_count_mesh_interactions_recursive(ci, top, cj, s);
