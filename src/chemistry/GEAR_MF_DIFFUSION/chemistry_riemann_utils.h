@@ -24,6 +24,7 @@
 
 /* Local headers */
 #include "chemistry_getters.h"
+#include "chemistry_gradients.h"
 #include "part.h"
 
 /**
@@ -201,6 +202,81 @@ chemistry_riemann_compute_alpha(const double c_s_L, const double c_s_R,
 
   /* Treat pathological cases (physical solutions to the equation) */
   if (U_star == 0.0 || norm_K_star == 0.0) {
+    alpha = 0.0;
+  }
+
+  return alpha;
+}
+
+/**
+ * @brief Compute the blending factor between the hyperbolic flux and the
+ * parabolic flux to reduce numerical diffusion.
+ *
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param pi Left particle
+ * @param pj Right particle
+ * @param UL left diffusion state (metal density, in physical units)
+ * @param UR right diffusion state (metal density, in physical units)
+ * @param m Index of metal specie to update.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The #cosmology.
+ *
+ * @return The blending factor.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_riemann_compute_hyperbolic_blending_factor(
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const double UL[4], const double UR[4],
+    const int m, const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo) {
+
+  /* Get the correct diffusion driver depending on the diffusion mode */
+  double qL, qR;
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    /* For constant isotropic case, U = q = rho*Z.
+       This is already predicted at the cell interface, nothing else to do. */
+    qL = UL[0];
+    qR = UR[0];
+  } else {
+    /* In these cases, U = rho*Z, q = Z */
+    qL = chemistry_get_metal_mass_fraction(pi, m);
+    qR = chemistry_get_metal_mass_fraction(pj, m);
+
+    chemistry_gradients_predict_Z(pi, pj, m, dx, cosmo, &qL, &qR);
+  }
+  const double q_star = 0.5 * (qL + qR);
+  const double U_star = 0.5 * (UR[0] + UL[0]);
+
+  /* Compute diffusion matrix K_star = 0.5*(KR + KL) */
+  double K_star[3][3];
+  chemistry_riemann_compute_K_star(pi, pj, chem_data, cosmo, K_star);
+  const double norm_K_star = chemistry_get_matrix_norm(K_star);
+  const double norm_D_star = norm_K_star*q_star/U_star;
+  const double delta_x = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const double tau_numerical = delta_x * delta_x / norm_D_star;
+
+  /* Harmonic mean weigths better if we have widely different tau */
+  const double tau_L = pi->chemistry_data.tau;
+  const double tau_R = pj->chemistry_data.tau;
+  const double tau_star = tau_L * tau_R / (tau_L + tau_R);
+  const double ratio = tau_star / tau_numerical;
+
+  /* This is a smooth function. When ratio << 1, we are in parabolic diffusion
+     regime, then alpha ~ ratio. When ratio >> 1, we are in hyperbolic
+     diffusion regime so alpha ~= 1.
+     The 0.1 constant is chosen to reach alpha = 1 faster when ratio >= 1.*/
+  double alpha = (ratio) / (0.1 + ratio);
+
+  /* Safeguards */
+  if (isnan(alpha) || isinf(alpha)) {
+    alpha = 1.0;
+  }
+  /* \alpha \in [0, 1] so enforce this. (It should never happen) */
+  if (alpha > 1.0) {
+    alpha = 1.0;
+  }
+  if(alpha < 0.0) {
     alpha = 0.0;
   }
 

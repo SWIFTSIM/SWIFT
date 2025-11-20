@@ -19,12 +19,12 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_RIEMANN_HLL_H
 #define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_RIEMANN_HLL_H
 
-#include "../chemistry_gradients.h"
+
 #include "../chemistry_riemann_checks.h"
 #include "../chemistry_riemann_utils.h"
 #include "../chemistry_struct.h"
+#include "../parabolic/chemistry_riemann_HLL.h"
 #include "hydro.h"
-#include "sign.h"
 
 /**
  * @brief HLL riemann solver.
@@ -93,50 +93,75 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /* Project the fluxes to reduce to a 1D Problem with 4 quantities */
   double fluxL[4];
   fluxL[0] = hyperFluxL[0][0] * n_unit[0] + hyperFluxL[0][1] * n_unit[1] +
-             hyperFluxL[0][2] * n_unit[2];
+	     hyperFluxL[0][2] * n_unit[2];
   fluxL[1] = hyperFluxL[1][0] * n_unit[0] + hyperFluxL[1][1] * n_unit[1] +
-             hyperFluxL[1][2] * n_unit[2];
+	     hyperFluxL[1][2] * n_unit[2];
   fluxL[2] = hyperFluxL[2][0] * n_unit[0] + hyperFluxL[2][1] * n_unit[1] +
-             hyperFluxL[2][2] * n_unit[2];
+	     hyperFluxL[2][2] * n_unit[2];
   fluxL[3] = hyperFluxL[3][0] * n_unit[0] + hyperFluxL[3][1] * n_unit[1] +
-             hyperFluxL[3][2] * n_unit[2];
+	     hyperFluxL[3][2] * n_unit[2];
 
   double fluxR[4];
   fluxR[0] = hyperFluxR[0][0] * n_unit[0] + hyperFluxR[0][1] * n_unit[1] +
-             hyperFluxR[0][2] * n_unit[2];
+	     hyperFluxR[0][2] * n_unit[2];
   fluxR[1] = hyperFluxR[1][0] * n_unit[0] + hyperFluxR[1][1] * n_unit[1] +
-             hyperFluxR[1][2] * n_unit[2];
+	     hyperFluxR[1][2] * n_unit[2];
   fluxR[2] = hyperFluxR[2][0] * n_unit[0] + hyperFluxR[2][1] * n_unit[1] +
-             hyperFluxR[2][2] * n_unit[2];
+	     hyperFluxR[2][2] * n_unit[2];
   fluxR[3] = hyperFluxR[3][0] * n_unit[0] + hyperFluxR[3][1] * n_unit[1] +
-             hyperFluxR[3][2] * n_unit[2];
+	     hyperFluxR[3][2] * n_unit[2];
 
   /***************************************************************************/
   /* Now solve the Riemann problem */
 
-  /* const double delta_lambda = lambda_plus - lambda_minus; */
-  /* if (fabs(delta_lambda) < 1e-8) { */
-  /*   *metal_flux = 0.0; */
-  /*   return; */
-  /* } */
-
   if (lambda_minus > 0.0) {
-    message("lambda_minus > 0 (UL[0], UR[0]) = (%e %e)", UL[0], UR[0]);
     for (int i = 0; i < 4; i++) {
       fluxes[i] = fluxL[i];
     }
   } else if (lambda_minus <= 0.0 && lambda_plus >= 0.0) {
-    /* message("lambda_minus >= 0, lambda_plus >= 0 (UL[0], UR[0]) = (%e %e)", UL[0], UR[0]); */
-    const double one_over_dl = 1.f / (lambda_plus - lambda_minus);
-    const double lprod = lambda_plus*lambda_minus;
 
-    fluxes[0] = (lambda_plus*fluxL[0] - lambda_minus*fluxR[0] + lprod*(UR[0] -UL[0]))*one_over_dl;
-    fluxes[1] = (lambda_plus*fluxL[1] - lambda_minus*fluxR[1] + lprod*(UR[1] -UL[1]))*one_over_dl;
-    fluxes[2] = (lambda_plus*fluxL[2] - lambda_minus*fluxR[2] + lprod*(UR[2] -UL[2]))*one_over_dl;
-    fluxes[3] = (lambda_plus*fluxL[3] - lambda_minus*fluxR[3] + lprod*(UR[3] -UL[3]))*one_over_dl;
+    /************************************************************************/
+    /* HLL flux */
+    const double one_over_dl = 1.f / (lambda_plus - lambda_minus);
+    const double lprod = lambda_plus * lambda_minus;
+    const double fluxes_HLL[4] = {
+	(lambda_plus * fluxL[0] - lambda_minus * fluxR[0] +
+	 lprod * (UR[0] - UL[0])) * one_over_dl,
+	(lambda_plus * fluxL[1] - lambda_minus * fluxR[1] +
+	 lprod * (UR[1] - UL[1])) * one_over_dl,
+	(lambda_plus * fluxL[2] - lambda_minus * fluxR[2] +
+	 lprod * (UR[2] - UL[2])) * one_over_dl,
+	(lambda_plus * fluxL[3] - lambda_minus * fluxR[3] +
+	 lprod * (UR[3] - UL[3])) * one_over_dl};
+
+    /* The pure hyperbolic HLL flux is unstable when tau -> 0, i.e. in the
+       parabolic diffusion regime. To make the solution stable, we use the
+       parabolic diffusion solver and we blend the two together.
+       The blending uses the ratio of the physical relaxtion time and the
+       numerical one. */
+    const double alpha = chemistry_riemann_compute_hyperbolic_blending_factor(
+	dx, pi, pj, UL, UR, m, chem_data, cosmo);
+
+    /* Compute the parabolic diffusion solution */
+    double F_par_L[3], F_par_R[3];
+    chemistry_get_physical_parabolic_flux(pi, m, F_par_L, chem_data, cosmo);
+    chemistry_get_physical_parabolic_flux(pj, m, F_par_R, chem_data, cosmo);
+    double metal_flux_parabolic = 0.0;
+    chemistry_riemann_solver_hopkins2017_HLL(
+	dx, pi, pj, UL[0], UR[0], WL, WR, F_par_L, F_par_R, Anorm, n_unit, m,
+	chem_data, cosmo, &metal_flux_parabolic);
+
+    /* Now blend the fluxes, similarly to Berthon et al (2007)
+       (https://link.springer.com/10.1007/s10915-006-9108-6).
+       In the hyperbolic regime, alpha ~ 1, so the parabolic flux is
+       negligible. In parabolic regime, the hyperbolic flux is negligible and
+       the parabolic flux dominates. */
+    fluxes[0] = alpha * fluxes_HLL[0] + (1.0 - alpha) * metal_flux_parabolic;
+    fluxes[1] = alpha * fluxes_HLL[1];
+    fluxes[2] = alpha * fluxes_HLL[2];
+    fluxes[3] = alpha * fluxes_HLL[3];
 
   } else if (lambda_plus < 0.0) {
-    message("lambda_plus < 0 (UL[0], UR[0]) = (%e %e)", UL[0], UR[0]);
     for (int i = 0; i < 4; i++) {
       fluxes[i] = fluxR[i];
     }

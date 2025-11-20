@@ -247,6 +247,10 @@ chemistry_riemann_solver_hopkins2017_HLL(
   }
 }
 
+/* This prevents compilation issues with hyperbolic diffusion because of the
+   different definitions of the following function and the riemann_check
+   functions it calls */
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
 /**
  * @brief Solve the Riemann problem for the diffusion equations and return the
  * flux at the interface.
@@ -296,5 +300,6 @@ chemistry_riemann_solve_for_flux(
 
   chemistry_riemann_check_output(WL, WR, UL, UR, n_unit, metal_flux);
 }
+#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_PARABIOLIC_DIFFUSION_RIEMANN_HLL_H */
