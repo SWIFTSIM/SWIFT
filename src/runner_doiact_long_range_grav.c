@@ -205,7 +205,7 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cj,
   struct gravity_tensors *multi_j = cj->grav.multipole;
 
   /* Don't go below the task level */
-  if (c->grav->super == ci || c->grav->super == cj) return;
+  if (ci->grav->super == ci || cj->grav->super == cj) return;
 
   /* Are we beyond the mesh distance? */
   const double min_radius2 =
