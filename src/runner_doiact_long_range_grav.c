@@ -223,11 +223,11 @@ void runner_count_mesh_interactions_recursive(struct gravity_tensors *multi_i,
     multi_i->pot.interacted = 1;
 
   } else {
-    /* Ok, well recurse down if we can */
+    /* Ok, well recurse down but don't go further than where the tasks are. */
     for (int i = 0; i < 8; i++) {
-      if (ci->progeny[i] == NULL) continue;
+      if (ci->progeny[i] == NULL && ci->grav.super != ci) continue;
       for (int j = 0; j < 8; j++) {
-        if (cj->progeny[j] == NULL) continue;
+        if (cj->progeny[j] == NULL && cj->grav.super != cj) continue;
         runner_count_mesh_interactions_recursive(multi_i, ci->progeny[i],
                                                  cj->progeny[j], s);
       }
