@@ -2430,8 +2430,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     /* Nothing more to do here, all drifts and sorts activated above */
   }
 
+#ifdef STARS_SIDM_INTERACTIONS
   /* Un-skip the star-SIDM density tasks involved with this cell. */
-  /* NOT FINISHED */
   for (struct link *l = c->stars.density_sidm; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
@@ -2458,6 +2458,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       scheduler_activate(s, t);
     }
   }
+#endif
 
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID) {
