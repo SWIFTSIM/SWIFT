@@ -123,7 +123,12 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
   /* Maximal distance any interaction can take place before the mesh kicks in,
    * rounded up to the next integer */
   int d =
-      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
+      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 5;
+
+  /* Ensure we don't go out of bounds */
+  if (d > s->cdim[0] / 2) d = s->cdim[0] / 2;
+  if (d > s->cdim[1] / 2) d = s->cdim[1] / 2;
+  if (d > s->cdim[2] / 2) d = s->cdim[2] / 2;
 
   /* Loop over plausibly useful cells */
   for (int ii = top_i - d; ii <= top_i + d; ++ii) {
