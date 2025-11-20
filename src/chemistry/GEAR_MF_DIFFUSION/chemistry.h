@@ -44,10 +44,10 @@
 #include "units.h"
 
 /* Some constants */
-#define FILTERING_SMOOTHING_FACTOR 0.8
-#define DEFAULT_DIFFUSION_NORMALISATION 1
-#define DEFAULT_PSI_RIEMANN_SOLVER 0.1
-#define DEFAULT_EPSILON_RIEMANN_SOLVER 0.1
+#define GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR 0.8
+#define GEAR_MFVP_DIFFUSION_NORMALISATION_DEFAULT 1
+#define GEAR_MFVP_DIFFUSION_PSI_RIEMANN_SOLVER_DEFAULT 0.1
+#define GEAR_MFVP_DIFFUSION_EPSILON_RIEMANN_SOLVER_DEFAULT 0.1
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.
@@ -273,7 +273,7 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
   /***************************************************************************/
   data->diffusion_coefficient = parser_get_opt_param_double(
       parameter_file, "GEARChemistry:diffusion_coefficient",
-      DEFAULT_DIFFUSION_NORMALISATION);
+      GEAR_MFVP_DIFFUSION_NORMALISATION_DEFAULT);
 
   char temp[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(parameter_file, "GEARChemistry:diffusion_mode", temp);
@@ -294,7 +294,7 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
   /* Read parameters for the Riemann solver */
   data->hll_riemann_solver_psi = parser_get_opt_param_float(
       parameter_file, "GEARChemistry:hll_riemann_solver_psi",
-      DEFAULT_PSI_RIEMANN_SOLVER);
+      GEAR_MFVP_DIFFUSION_PSI_RIEMANN_SOLVER_DEFAULT);
 
   if ((data->hll_riemann_solver_psi < 0)) {
     error("hll_riemann_solver_psi must be positive!");
@@ -302,7 +302,7 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
 
   data->hll_riemann_solver_epsilon = parser_get_opt_param_float(
       parameter_file, "GEARChemistry:hll_riemann_solver_epsilon",
-      DEFAULT_EPSILON_RIEMANN_SOLVER);
+      GEAR_MFVP_DIFFUSION_EPSILON_RIEMANN_SOLVER_DEFAULT);
 
   if ((data->hll_riemann_solver_epsilon > 1) ||
       (data->hll_riemann_solver_epsilon < 0)) {
@@ -394,9 +394,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   /*****************************************/
   /* Finish computations on the filtered quantities */
   /* Multiply by the smoothing factor */
-  p->chemistry_data.filtered.rho_v[0] *= FILTERING_SMOOTHING_FACTOR;
-  p->chemistry_data.filtered.rho_v[1] *= FILTERING_SMOOTHING_FACTOR;
-  p->chemistry_data.filtered.rho_v[2] *= FILTERING_SMOOTHING_FACTOR;
+  p->chemistry_data.filtered.rho_v[0] *= GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
+  p->chemistry_data.filtered.rho_v[1] *= GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
+  p->chemistry_data.filtered.rho_v[2] *= GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
 
   /* Add self term (is it needed for rho? the formula does not include it) */
   /* p->chemistry_data.filtered.rho += hydro_get_mass(p) * kernel_root; */
