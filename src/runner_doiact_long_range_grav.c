@@ -123,7 +123,7 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
   /* Maximal distance any interaction can take place before the mesh kicks in,
    * rounded up to the next integer */
   int d =
-      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 5;
+      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
 
   /* Ensure we don't go out of bounds */
   if (d > s->cdim[0] / 2) d = s->cdim[0] / 2;
@@ -234,7 +234,7 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cpi,
   }
 
   /* Ok, recurse down but don't go further than where the tasks are. */
-  else if (cpi->depth < ci->depth) {
+  else {
     for (int i = 0; i < 8; i++) {
       if (cpi->progeny[i] == NULL) continue;
       for (int j = 0; j < 8; j++) {
