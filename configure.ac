@@ -2790,6 +2790,9 @@ case "$with_stars" in
    basic)
       AC_DEFINE([STARS_BASIC], [1], [Basic stellar model])
    ;;
+   test_df)
+      AC_DEFINE([STARS_TEST_DF], [1], [Basic stellar model with DF])
+   ;;
    none)
       AC_DEFINE([STARS_NONE], [1], [No stellar model])
    ;;
