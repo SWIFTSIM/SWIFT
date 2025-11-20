@@ -110,6 +110,10 @@ void feedback_will_do_feedback(
     error("Negative age for a star");
   }
 #endif
+
+  /* No Feedback event for the initial fake step */
+  if(ti_begin == 0) return;
+
   /* Ensure that the age is positive (rounding errors) */
   const double star_age_beg_step_safe =
       star_age_beg_step < 0 ? 0 : star_age_beg_step;
