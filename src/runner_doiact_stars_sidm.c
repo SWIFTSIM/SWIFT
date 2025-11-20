@@ -25,6 +25,7 @@
 /* Local headers. */
 #include "active.h"
 // #include "black_holes_iact.h" // Eventually we will have "dynamical_friction_iact.h" here, or similar
+#include "stars.h"
 #include "cell.h"
 #include "engine.h"
 #include "runner.h"

@@ -244,7 +244,7 @@ void *runner_main(void *data) {
 #endif
 #ifdef STARS_SIDM_INTERACTIONS
           else if (t->subtype == task_subtype_stars_sidm_density)
-            runner_dosub_self_stars_sidm_density(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self_stars_sidm_density(r, ci, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_self_stars_feedback(r, ci, /*below_h_max=*/0, 1);
@@ -302,7 +302,7 @@ void *runner_main(void *data) {
 #endif
 #ifdef STARS_SIDM_INTERACTIONS
           else if (t->subtype == task_subtype_stars_sidm_density)
-            runner_dosub_pair_stars_sidm_density(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair_stars_sidm_density(r, ci, cj, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_pair_stars_feedback(r, ci, cj, /*below_h_max=*/0, 1);

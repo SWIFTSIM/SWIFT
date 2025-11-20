@@ -2492,12 +2492,10 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
 
-  const float stars_h_max = e->stars_properties->h_max_sidm;
-  const float stars_h_min = e->stars_properties->h_min_sidm;
+  const float stars_h_max = e->hydro_properties->h_max; // to be updated, probably don't want to use the hydro values
+  const float stars_h_min = e->hydro_properties->h_min;
   const float eps = e->stars_properties->h_tolerance_sidm;
   const float stars_eta_dim = pow_dimension(e->stars_properties->eta_neighbours_sidm);
-  const int use_mass_weighted_num_ngb =
-      e->stars_properties->use_mass_weighted_num_ngb_sidm;
   const int max_smoothing_iter = e->stars_properties->max_smoothing_iterations_sidm;
   int redo = 0, count = 0;
 
@@ -2594,14 +2592,6 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
           /* Finish the density calculation */
           stars_sidm_end_density(sp, cosmo);
 
-          /* Are we using the alternative definition of the
-             number of neighbours? */
-          if (use_mass_weighted_num_ngb) {
-            const float inv_mass = 1.f / sp->mass;
-            sp->density_sidm.wcount = sp->rho_sidm * inv_mass;
-            sp->density_sidm.wcount_dh = sp->density_sidm.rho_dh * inv_mass;
-          }
-
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = sp->density_sidm.wcount * h_old_dim;
           const float n_target = stars_eta_dim;
@@ -2658,7 +2648,7 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
           if (((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old)) &&
-              (h_old < 0.999f * sidm_h_max))
+              (h_old < 0.999f * stars_h_max))
             error(
                 "Smoothing length correction not going in the right direction");
 #endif
@@ -2821,7 +2811,7 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
 
     if (h > c->stars.h_max_sidm)
       error("Particle has h larger than h_max (id=%lld)", sp->id);
-    if (sipart_is_active(sp, e) && h > c->stars.h_max_active_sidm)
+    if (spart_is_active(sp, e) && h > c->stars.h_max_active_sidm)
       error("Active particle has h larger than h_max_active (id=%lld)",
             sp->id);
   }

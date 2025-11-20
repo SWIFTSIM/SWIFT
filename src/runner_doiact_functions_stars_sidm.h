@@ -95,7 +95,7 @@ void DOSELF1_STARS_SIDM(struct runner *r, struct cell *c, int timer) {
         /* Check that particles have been drifted to the current time */
         if (si->ti_drift != e->ti_current)
           error("Particle si not drifted to current time");
-        if (pj->ti_drift != e->ti_current)
+        if (sipj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
 
@@ -247,7 +247,7 @@ void DOPAIR1_SUBSET_STARS_SIDM_NAIVE(struct runner *r, struct cell *restrict ci,
   if (count_j == 0) return;
 
   /* Loop over the siparts_i. */
-  for (int sid = 0; sid < bcount; sid++) {
+  for (int sid = 0; sid < scount; sid++) {
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts_i[ind[sid]];
@@ -365,7 +365,7 @@ void DOSELF1_SUBSET_STARS_SIDM(struct runner *r, struct cell *restrict ci,
 
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_STARS_SIDM(r2, dx, hi, pj->h, si, sipj, with_cosmology, cosmo,
+        IACT_STARS_SIDM(r2, dx, hi, sipj->h, si, sipj, with_cosmology, cosmo,
                     e->gravity_properties, e->stars_properties, ti_current, e->time);
       }
     } /* loop over the siparts in cj. */
