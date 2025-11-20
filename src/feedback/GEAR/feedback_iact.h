@@ -111,7 +111,8 @@ runner_iact_nonsym_feedback_apply(
                                    : 1. / si->feedback_data.enrichment_weight;
 
   /* Mass received */
-  const double m_ej = si->feedback_data.preSN.mass_ejected + si->feedback_data.mass_ejected;
+  const double m_ej =
+      si->feedback_data.preSN.mass_ejected + si->feedback_data.mass_ejected;
   const double weight = mj * wi * si_inv_weight;
   const double dm = m_ej * weight;
   const double new_mass = mj + dm;
