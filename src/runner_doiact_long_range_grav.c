@@ -222,12 +222,14 @@ void runner_count_mesh_interactions_recursive(struct gravity_tensors *multi_i,
     /* Record that this multipole received a contribution */
     multi_i->pot.interacted = 1;
 
-  } else {
-    /* Ok, well recurse down but don't go further than where the tasks are. */
+  }
+
+  /* Ok, recurse down but don't go further than where the tasks are. */
+  else if (ci->grav.super != ci) {
     for (int i = 0; i < 8; i++) {
-      if (ci->progeny[i] == NULL && ci->grav.super != ci) continue;
+      if (ci->progeny[i] == NULL) continue;
       for (int j = 0; j < 8; j++) {
-        if (cj->progeny[j] == NULL && cj->grav.super != cj) continue;
+        if (cj->progeny[j] == NULL) continue;
         runner_count_mesh_interactions_recursive(multi_i, ci->progeny[i],
                                                  cj->progeny[j], s);
       }
