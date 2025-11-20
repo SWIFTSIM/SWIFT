@@ -202,6 +202,7 @@ void runner_count_mesh_interactions_recursive(struct gravity_tensors *multi_i,
   const double max_distance2 = max_distance * max_distance;
 
   /* Handle on the pair's gravity business. */
+  multi_i = ci->grav.multipole;
   struct gravity_tensors *multi_j = cj->grav.multipole;
 
   /* Are we beyond the mesh distance? */
