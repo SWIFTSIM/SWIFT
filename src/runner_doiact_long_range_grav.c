@@ -185,13 +185,13 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
 /**
  * @brief Recurse accumulating mesh interactions.
  *
- * @param multi_i The #multipole whose counter we are updating.
- * @param ci The zoom #cell.
- * @param cj The background #cell.
+ * @param ci The #cell of interest.
+ * @param cpi The #cell progenitor of ci.
+ * @param cpj The #cell progenitor of cj.
  * @param s The #space.
  */
-void runner_count_mesh_interactions_recursive(struct gravity_tensors *multi_i,
-                                              struct cell *ci, struct cell *cj,
+void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cpi,
+                                              struct cell *cpj,
                                               struct space *s) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
@@ -202,12 +202,12 @@ void runner_count_mesh_interactions_recursive(struct gravity_tensors *multi_i,
   const double max_distance2 = max_distance * max_distance;
 
   /* Handle on the pair's gravity business. */
-  multi_i = ci->grav.multipole;
-  struct gravity_tensors *multi_j = cj->grav.multipole;
+  struct gravity_tensors *multi_i = cpi->grav.multipole;
+  struct gravity_tensors *multi_j = cpj->grav.multipole;
 
   /* Are we beyond the mesh distance? */
   const double min_radius2 =
-      cell_min_dist2_same_size(ci, cj, s->periodic, s->dim);
+      cell_min_dist2_same_size(cpi, cpj, s->periodic, s->dim);
   if (min_radius2 > max_distance2) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Need to account for the interactions we missed */
@@ -226,13 +226,13 @@ void runner_count_mesh_interactions_recursive(struct gravity_tensors *multi_i,
   }
 
   /* Ok, recurse down but don't go further than where the tasks are. */
-  else if (ci->grav.super != ci) {
+  else if (cpi->depth < ci->depth) {
     for (int i = 0; i < 8; i++) {
-      if (ci->progeny[i] == NULL) continue;
+      if (cpi->progeny[i] == NULL) continue;
       for (int j = 0; j < 8; j++) {
-        if (cj->progeny[j] == NULL) continue;
-        runner_count_mesh_interactions_recursive(multi_i, ci->progeny[i],
-                                                 cj->progeny[j], s);
+        if (cpj->progeny[j] == NULL) continue;
+        runner_count_mesh_interactions_recursive(ci, cpi->progeny[i],
+                                                 cpj->progeny[j], s);
       }
     }
   }
@@ -259,9 +259,6 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
 
-  /* Get the multipole of the cell we are interacting. */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
-
   /* Loop over all cells. */
   for (int n = 0; n < s->nr_cells; n++) {
 
@@ -276,7 +273,7 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
     if (top == cj) continue;
 
     /* Did we interact via the mesh with this pair or any of their progeny? */
-    runner_count_mesh_interactions_recursive(multi_i, top, cj, s);
+    runner_count_mesh_interactions_recursive(ci, top, cj, s);
   }
 #else
   error(
