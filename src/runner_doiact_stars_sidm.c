@@ -1,6 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,24 +18,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STARS_IO_H
-#define SWIFT_STARS_IO_H
 
+/* Config parameters. */
 #include <config.h>
 
-/* Load the correct star type */
-#if defined(STARS_NONE)
-#include "./stars/None/stars_io.h"
-#elif defined(STARS_BASIC)
-#include "./stars/Basic/stars_io.h"
-#elif defined(STARS_TEST_DF)
-#include "./stars/test_df/stars_io.h"
-#elif defined(STARS_EAGLE)
-#include "./stars/EAGLE/stars_io.h"
-#elif defined(STARS_GEAR)
-#include "./stars/GEAR/stars_io.h"
-#else
-#error "Invalid choice of star model"
-#endif
+/* Local headers. */
+#include "active.h"
+// #include "black_holes_iact.h" // Eventually we will have "dynamical_friction_iact.h" here, or similar
+#include "stars.h"
+#include "cell.h"
+#include "engine.h"
+#include "runner.h"
+#include "space_getsid.h"
+#include "timers.h"
 
-#endif /* SWIFT_STARS_IO_H */
+/* Import the density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_functions_stars_sidm.h"
+#include "runner_doiact_undef.h"
+

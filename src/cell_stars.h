@@ -82,6 +82,15 @@ struct cell_stars {
     /*! Implicit tasks marking the exit of the stellar physics block of tasks */
     struct task *stars_out;
 
+#ifdef STARS_SIDM_INTERACTIONS
+    /*! Linked list of the tasks computing this cell's star density from SIDM. */
+    struct link *density_sidm;
+
+    /*! The star-SIDM density ghost task */
+    struct task *density_sidm_ghost;
+
+#endif
+
     /*! Pointer for the sorted indices. */
     struct sort_entry *sort;
 
@@ -99,6 +108,16 @@ struct cell_stars {
 
     /*! Values of h_max before the drifts, used for sub-cell tasks. */
     float h_max_old;
+
+#ifdef STARS_SIDM_INTERACTIONS
+
+    /*! Max SIDM smoothing length of active particles in this cell. */
+    float h_max_active_sidm;
+
+    /*! Values of h_max_sidm before the drifts, used for sub-cell tasks. */
+    float h_max_old_sidm;
+
+#endif
 
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
@@ -148,6 +167,13 @@ struct cell_stars {
 
   /*! Max smoothing length in this cell. */
   float h_max;
+
+#ifdef STARS_SIDM_INTERACTIONS
+
+  /*! Max SIDM smoothing length in this cell. */
+  float h_max_sidm;
+
+#endif
 
   /*! Number of #spart updated in this cell. */
   int updated;
