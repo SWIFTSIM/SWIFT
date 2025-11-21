@@ -8,8 +8,8 @@ InternalUnitSystem:
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
-  time_begin:        0.    # The starting time of the simulation (in internal units).
-  time_end:          5     # The end time of the simulation (in internal units).
+  time_begin:        0.0   # The starting time of the simulation (in internal units).
+  time_end:          5.0   # The end time of the simulation (in internal units).
   dt_min:            1e-15 # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
 
@@ -22,7 +22,7 @@ Snapshots:
 
 Scheduler:
   cell_extra_gparts: 100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sinks: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks:  100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_sparts: 100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells: 3        #
 
@@ -33,7 +33,7 @@ Statistics:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:          ICs_homogeneous_box.hdf5
+  file_name:          metal_diffusion_two_peaks.hdf5
   periodic:               1       # Are we running with periodic ICs?
   shift:              [0.0,0.0,0.0]
 
@@ -47,14 +47,13 @@ GEARChemistry:
   initial_metallicity: -1
   diffusion_coefficient : 2.516849e-03   # (Optional, GEAR (MF) diffusion only) Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). Default: 1
   diffusion_mode:  Isotropic_constant    # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
+  C_CFL_chemistry: 0.9                   # Courant-Friedrich-Levy condition for time integration of the diffusion equation.
 
-  hll_riemann_solver_epsilon: 0.5        # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.5
-  hll_riemann_solver_psi:  0.1           # (Optional, parabolic diffusion only) Tolerance parameter (> 0) for artificial diffusion, eq (7) in Hi2017. (Default: 0.1)
+  hll_riemann_solver_epsilon: 0.0        # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.5
+  hll_riemann_solver_psi:  0.1           # (Optional) Tolerance parameter (> 0) for artificial diffusion, eq (7) in Hi2017. (Default: 0.1)
 
   relaxation_time_mode:  Constant        # Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
-  tau: 1e-1                              # (Optional, hyperbolic diffusion only) Relaxation time for the Isotropic_constant diffusion mode.
-  riemann_solver: HLL_hyperbolic_H17     # (Hyperbolic diffusion only) Riemann solver to use: HLL, HLL_parabolic_H17 or HLL_hyperbolic_H17
-  C_CFL_chemistry: 0.8                   # (Hyperbolic diffusion only) Courant-Friedrich-Levy condition for time integration of the hyperbolic diffusion.
+  tau: 1e1                               # (Optional, hyperbolic diffusion only) Relaxation time for the Isotropic_constant diffusion mode.
 
 GEARFeedback:
   supernovae_energy_erg: 0.              # supernovae energy, used only for SNIa
@@ -63,4 +62,4 @@ GEARFeedback:
   yields_table_first_stars: POPIIsw.h5
   discrete_yields: 1
   imf_transition_metallicity: -5         # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
-  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]  # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).

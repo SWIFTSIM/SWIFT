@@ -33,7 +33,7 @@ Statistics:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:          metal_diffusion.hdf5
+  file_name:          metal_diffusion_one_peak.hdf5
   periodic:               1       # Are we running with periodic ICs?
   shift:              [0.0,0.0,0.0]
 

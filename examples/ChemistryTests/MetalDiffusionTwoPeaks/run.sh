@@ -4,25 +4,28 @@
 set -e
 
 # Script parameters
-n_threads=${n_threads:=8}  #Number of threads to use
-level=${level:=5}  #Number of particles = 2^(3*level)
-gas_density=${gas_density:=1} #Gas density in atom/cm^3
-box_mass=${box_mass:=10000000} #Mass of the gas particles
+n_threads=${n_threads:=8}  # Number of threads to use
+level=${level:=5}  # Number of particles = 2^(3*level)
+gas_density=${gas_density:=1}  # Gas density in atom/cm^3
+box_mass=${box_mass:=10000000} # Mass of the gas particles
 vx=${vx:=0.0}  # Default velocity x-component
 vy=${vy:=0.0}  # Default velocity y-component
 vz=${vz:=0.0}  # Default velocity z-component
 with_hydro_MFM=${with_hydro_MFM:=0}
 random_positions=${random_positions:=0} # Use random positions instead of regular grid?
-run_name=${run_name:=""}
+run_name=${run_name:=""}                # Name of the run
+
+
+ICs_name="metal_diffusion_two_peaks.hdf5"
 
 # Remove the ICs
-if [ -e ICs_homogeneous_box.hdf5 ]
+if [ -e $ICs_name ]
 then
-    rm ICs_homogeneous_box.hdf5
+    rm $ICs_name
 fi
 
 #Create the ICs if they do not exist
-if [ ! -e ICs_homogeneous_box.hdf5 ]
+if [ ! -e $ICs_name ]
 then
     echo "Generating initial conditions to run the example..."
     random_flag=""
@@ -37,7 +40,7 @@ then
         --mass "$box_mass" \
         --velocity "$vx" "$vy" "$vz" \
         $random_flag \
-        -o ICs_homogeneous_box.hdf5
+        -o $ICs_name
 fi
 
 # Get the Grackle cooling table
@@ -72,12 +75,12 @@ printf "Running simulation..."
 if [ "$with_hydro_MFM" -eq 1 ]; then
     # ./configure --with-hydro=gizmo-mfm --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-stars=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks --with-riemann-solver=hllc && make clean && make -j12
     echo "Running with MFM hydro solver..."
-    ~/swiftsim/swift --hydro --external-gravity --stars \
+    ../../../swift --hydro --external-gravity --stars \
 		     --threads=$n_threads params.yml 2>&1 | tee output.log
 else
     # ./configure --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks
     echo "Running with SPH hydro solver"
-    ~/swiftsim/swift --hydro --external-gravity --stars --feedback \
+    ../../../swift --hydro --external-gravity --stars --feedback \
 		     --threads=$n_threads params.yml 2>&1 | tee output.log
 fi
 
@@ -85,7 +88,7 @@ fi
 python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5
 python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max=1.1
 python3 metal_projection.py snap/snapshot_*0.hdf5 --log --vmin -15 --vmax -9.5
-python3 metal_projection.py snap/snapshot_*0.hdf5
+python3 metal_projection.py snap/snapshot_*0.hdf5 --vmin -15 --vmax -9.5
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
