@@ -1056,7 +1056,7 @@ cell_can_recurse_in_self_stars_sidm_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split &&
-         (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin) &&
+         (kernel_gamma * c->stars.h_max_old_sidm < 0.5f * c->dmin) &&
          (kernel_gamma * c->sidm.h_max_old < 0.5f * c->dmin);
 }
 
