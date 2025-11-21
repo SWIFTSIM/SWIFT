@@ -93,15 +93,15 @@ chemistry_compute_physical_tau(const struct part *restrict p,
 }
 
 /**
- * @brief Get the gradients of diffusion flux for a given metal specie.
+ * @brief Get the comoving gradients of diffusion flux for a given metal specie.
  *
  * Note: Gradients are comoving;
  *
  * @param p Particle.
  * @param metal Index of metal specie.
- * @param dFx Gradient (of size 3) of the flux's x component.
- * @param dFy Gradient (of size 3) of the flux's y component.
- * @param dFz Gradient (of size 3) of the flux's z component.
+ * @param dFx Gradient (of size 3) of the flux's x component (in comoving).
+ * @param dFy Gradient (of size 3) of the flux's y component (in comoving).
+ * @param dFz Gradient (of size 3) of the flux's z component (in comoving).
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_get_hyperbolic_flux_gradients(const struct part *restrict p,
@@ -124,15 +124,13 @@ chemistry_get_hyperbolic_flux_gradients(const struct part *restrict p,
 }
 
 /**
- * @brief Get the gradients of diffusion flux for a given metal specie.
- *
- * Note: Gradients are comoving;
+ * @brief Get the *physical* gradients of diffusion flux for a given metal specie.
  *
  * @param p Particle.
  * @param metal Index of metal specie.
- * @param dFx Gradient (of size 3) of the flux's x component.
- * @param dFy Gradient (of size 3) of the flux's y component.
- * @param dFz Gradient (of size 3) of the flux's z component.
+ * @param dFx Gradient (of size 3) of the flux's x component (in physical).
+ * @param dFy Gradient (of size 3) of the flux's y component (in physical).
+ * @param dFz Gradient (of size 3) of the flux's z component (in physical).
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void

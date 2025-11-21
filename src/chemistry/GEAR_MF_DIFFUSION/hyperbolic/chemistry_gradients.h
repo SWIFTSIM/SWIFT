@@ -69,17 +69,18 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
      gradients to physical units */
   double dFx_i[3], dFy_i[3], dFz_i[3];
   double dFx_j[3], dFy_j[3], dFz_j[3];
-  chemistry_get_physical_hyperbolic_flux_gradients(pi, metal, dFx_i, dFy_i,
-                                                   dFz_i, cosmo);
-  chemistry_get_physical_hyperbolic_flux_gradients(pj, metal, dFx_j, dFy_j,
-                                                   dFz_j, cosmo);
+  chemistry_get_hyperbolic_flux_gradients(pi, metal, dFx_i, dFy_i, dFz_i);
+  chemistry_get_hyperbolic_flux_gradients(pj, metal, dFx_j, dFy_j, dFz_j);
 
   /* Compute interface position (relative to pj, since we don't need the
      actual position) eqn. (8)
      Do it this way in case dx contains periodicity corrections already */
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
-  /* Linear reconstruction of U_R and U_L (rho*Z) */
+  /* Linear reconstruction of U_R and U_L (rho*Z)
+     Note for the flux extrapolation: grad_p = a^{-1} grad_c and xij_i/j_p = a
+     * xij_i/j_p. Hence, the scale factors compensate and dUi/j[1-3] end up in
+     phyiscal units.*/
   double dUi[4], dUj[4];
   dUi[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i);
   dUi[1] = chemistry_gradients_extrapolate_double(dFx_i, xij_i);

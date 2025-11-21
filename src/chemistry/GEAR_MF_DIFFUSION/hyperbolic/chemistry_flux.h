@@ -146,7 +146,7 @@ chemistry_part_integrate_flux_source_term(
  * @param Anorm Surface area of the interface (in physical units).
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The current cosmological model.
- * @param fluxes (return) The resulting flux at the interface (of size 1).
+ * @param fluxes (return) The resulting flux at the interface (in physical units).
  */
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
     const float dx[3], const struct part *restrict pi,

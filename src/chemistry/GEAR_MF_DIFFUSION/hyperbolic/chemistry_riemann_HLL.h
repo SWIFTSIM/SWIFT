@@ -52,7 +52,7 @@
  * @param m Index of metal specie to update.
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The #cosmology.
- * @param fluxes (return) The resulting flux at the interface.
+ * @param fluxes (return) The resulting flux at the interface (in physical units).
  */
 __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
     const float dx[3], const struct part *restrict pi,

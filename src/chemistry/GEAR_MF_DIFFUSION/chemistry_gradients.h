@@ -560,7 +560,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
   const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
-  /* Linear reconstruction of Z_i and Z_j */
+  /* Linear reconstruction of Z_i and Z_j.
+     Note that grad_p = a^{-1} grad_c and xij_i/j_p = a * xij_i/j_p. Hence,
+     the scale factors compensate and dZi/j end up in phyiscal units. */
   double dZi = chemistry_gradients_extrapolate_double(grad_Z_i, xij_i);
   double dZj = chemistry_gradients_extrapolate_double(grad_Z_j, xij_j);
 
@@ -571,10 +573,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
   chemistry_slope_limit_face(Zi, Zj, &dZi, &dZj, xij_i, xij_j, r);
 #endif
 
-  /* Pay attention here to convert these gradient to physical units... Z is
-     always physical. */
-  *Zi += dZi * cosmo->a_inv;
-  *Zj += dZj * cosmo->a_inv;
+  /* dZi/j are already in phyiscal units. See comment above. */
+  *Zi += dZi;
+  *Zj += dZj;
 
   /* Check that we do not have unphysical values */
   chemistry_check_unphysical_metallicity(Zi, 0, metal, pi->id);
