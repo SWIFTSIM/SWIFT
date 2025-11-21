@@ -449,6 +449,7 @@ runner_iact_chemistry_fluxes_common(
   /* Now solve the Riemann problem for each metal specie */
   /* Helper variable */
   const float a2 = cosmo->a * cosmo->a;
+  const float Anorm_p = a2*Anorm;
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
 
     /* Predict the diffusion state at the interface to compute fluxes */
@@ -458,7 +459,7 @@ runner_iact_chemistry_fluxes_common(
 
     /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */
     double totflux[4] = {0.0, 0.0, 0.0, 0.0};
-    chemistry_compute_flux(dx, pi, pj, m, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm,
+    chemistry_compute_flux(dx, pi, pj, m, Ui, Uj, Wi, Wj, n_unit, Anorm_p,
                            chem_data, cosmo, totflux);
 
     /* Flux limiter */
