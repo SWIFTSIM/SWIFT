@@ -98,7 +98,7 @@ star_formation_write_sparticles(const struct spart *sparts,
 #if defined(CHEMISTRY_GEAR_MF_DIFFUSION) || \
     defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   list[4] = io_make_output_field(
-      "ProgenitorDiffusionMatrixNorms", DOUBLE, 1, UNIT_CONV_DIFF_COEFF, 0.f,
+      "ProgenitorDiffusionMatrixNorms", DOUBLE, 1, UNIT_CONV_MASS_DIFFUSIVITY, 0.f,
       sparts, sf_data.norm_matrix_K,
       "Physical diffusion matrix of the progenitor gas particle");
 
