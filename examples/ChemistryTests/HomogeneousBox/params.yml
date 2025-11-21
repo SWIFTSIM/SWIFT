@@ -76,9 +76,9 @@ GEARChemistry:
   diffusion_mode:  Smagorinsky        # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
   hll_riemann_solver_epsilon: 0.0     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.5
   hll_riemann_solver_psi:  0.1        # (Optional, parabolic diffusion only) Tolerance parameter (> 0) for artificial diffusion, eq (7) in Hi2017. (Default: 0.1)
-  C_CFL_chemistry: 0.9                # (Hyperbolic diffusion only) Courant-Friedrich-Levy condition for time integration of the hyperbolic diffusion.
-  relaxation_time_mode:  Turbulent    # Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
-  tau: 1e0                            # (Optional, hyperbolic diffusion only) Relaxation time for the Isotropic_constant diffusion mode.
+  C_CFL_chemistry: 0.9                # Courant-Friedrich-Levy condition for time integration.
+  relaxation_time_mode:  Constant     # (Hyperbolic diffusion only) Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
+  tau: 1e0                            # (Hyperbolic diffusion only) Relaxation time (physical and internal units) for the Constant relaxation time mode. In the Turbulent mode, this sets the normalisation of the final tau: pj.tau = tau/||Shear tensor||.
 
 GEARFeedback:
   supernovae_energy_erg: 1e51           # supernovae energy, used only for SNIa

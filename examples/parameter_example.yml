@@ -647,16 +647,15 @@ GEARChemistry:
   scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
   diffusion_coefficient: 1e-3    # (Optional, GEAR (MF) diffusion only) Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). In physical units and internal units. Default: 1
 
-  #GEAR MFVP diffusion only
+  # GEAR MFVP diffusion only
   diffusion_mode: Isotropic_constant  # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
-  hll_riemann_solver_psi:  0.1        # (Optional, parabolic diffusion only) Tolerance parameter (> 0) for artificial diffusion in HLL_hyperbolic_H17. See eq (7) in Hopkins 2017. (Default: 0.1)
+  hll_riemann_solver_psi:  0.1        # (Optional) Tolerance parameter (> 0) for artificial diffusion in HLL_hyperbolic_H17. See eq (7) in Hopkins 2017. (Default: 0.1)
   hll_riemann_solver_epsilon: 0.1     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.1
+  C_CFL_chemistry: 0.9                # Courant-Friedrich-Levy parameter for the CFL time integration of the diffusion equations.
 
   # MFVP hyperbolic diffusion only
-  riemann_solver: HLL_hyperbolic_H17  # (Hyperbolic diffusion only) Riemann solver to use: HLL, HLL_parabolic_H17 or HLL_hyperbolic_H17
-  relaxation_time_mode:  Constant     # Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
-  tau: 0.1                            # (Hyperbolic diffusion only) Relaxation time (physical and internal units) for the Constant relaxation time mode.
-  C_CFL_chemistry: 0.4                # (Hyperbolic diffusion) Courant-Friedrich-Levy condition for time integration of the hyperbolic diffusion.
+  relaxation_time_mode:  Constant     # (Hyperbolic diffusion only) Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
+  tau: 1e0                            # (Hyperbolic diffusion only) Relaxation time (physical and internal units) for the Constant relaxation time mode. In the Turbulent mode, this sets the normalisation of the final tau: pj.tau = tau/||Shear tensor||.
 
 # AGORA chemistry model (Kim et al. 2014)
 AGORAChemistry:
