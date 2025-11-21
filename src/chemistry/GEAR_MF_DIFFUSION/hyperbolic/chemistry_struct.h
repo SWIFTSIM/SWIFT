@@ -134,6 +134,9 @@ struct chemistry_part_data {
      * the sound speed of both particles. */
     float vmax;
 
+    /* Mean separation distance from Lanson & Vila (2008) */
+    float delxbar;
+
   } timestepvars;
 };
 

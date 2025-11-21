@@ -382,6 +382,12 @@ runner_iact_chemistry_fluxes_common(
   }
 #endif
 
+  /* Lanson & Vila (2008), denominator of equation (58) */
+  chi->timestepvars.delxbar += wj * hj_inv_dim * Anorm;
+  if (mode == 1) {
+    chj->timestepvars.delxbar += wi * hi_inv_dim * Anorm;
+  }
+
   /* Compute the normal vector of the interface */
   const float n_unit[3] = {A[0] * Anorm_inv, A[1] * Anorm_inv,
                            A[2] * Anorm_inv};

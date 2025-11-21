@@ -650,6 +650,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   /* Initialize time step criterion variables */
   chd->timestepvars.vmax = 0.0;
 #endif
+  chd->timestepvars.delxbar = 0.0;
 }
 
 /**
@@ -698,6 +699,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   }
   p->chemistry_data.timestepvars.vmax = 0.0;
 #endif
+  p->chemistry_data.timestepvars.delxbar = 0.0;
 }
 
 /**

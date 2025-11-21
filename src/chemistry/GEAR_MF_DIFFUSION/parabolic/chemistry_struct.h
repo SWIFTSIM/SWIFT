@@ -111,6 +111,13 @@ struct chemistry_part_data {
     /*! Gradient of tilde(v) */
     float grad_v_tilde[3][3];
   } filtered;
+
+  /*! Variables used for timestep calculation. */
+  struct {
+    /* Mean separation distance from Lanson & Vila (2008) */
+    float delxbar;
+
+  } timestepvars;
 };
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_MF_PARABOLIC_DIFFUSION_H */
