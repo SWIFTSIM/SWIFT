@@ -66,6 +66,9 @@ struct forcing_terms {
 
     /* keep track if the final injection has happened already */
     int final_injection;
+
+    /* store the max allowed dt here as well (FOR NOW) */
+    const float dt_max;
 };
 
 /**
@@ -113,7 +116,7 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
         time);
 
       /* store old specific energy and velocity */
-      double u_old = xp->u_full;
+      double u_old = p->u;
       double v_old = sqrtf(xp->v_full[0]*xp->v_full[0] + 
                            xp->v_full[1]*xp->v_full[1] +
                            xp->v_full[2]*xp->v_full[2]);
@@ -204,8 +207,37 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
     double time, const struct forcing_terms* terms,
     const struct phys_const* phys_const, const struct part* p,
     const struct xpart* xp) {
+ 
+  const int t_index = terms->t_index;
 
-  return FLT_MAX;
+  if ((terms->times[t_index] - time) > 2 * terms->dt_max) {
+    return FLT_MAX;
+  }
+  
+  float SN_loc[3];
+  SN_loc[0] = terms->x_SN[t_index];
+  SN_loc[1] = terms->y_SN[t_index];
+  SN_loc[2] = terms->z_SN[t_index];
+
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+
+  double dx = SN_loc[0] - p->x[0];
+  double dy = SN_loc[1] - p->x[1];
+  double dz = SN_loc[2] - p->x[2];
+
+  dx = nearest(dx, .2);
+  dy = nearest(dy, .2);
+  dz = nearest(dz, .2);
+
+  double distance = sqrtf( dx * dx + dy * dy + dz * dz);
+
+  if (distance < 2 * terms->r_inj) {
+    return 1.e-6;  
+  } 
+  else {
+    return FLT_MAX;
+  }
 }
 
 /**  
@@ -420,5 +452,7 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   terms->counter = 0;
   terms->final_injection = 0;
 
+  terms->dt_max = parser_get_param_float(parameter_file,
+        "TimeIntegration:dt_max");
 }
 #endif /* SWIFT_FORCING_BALSARAKIM_H */
