@@ -95,7 +95,7 @@ def parse_options():
         action="store",
         dest="outputfilename",
         type="string",
-        default="box.dat",
+        default="box.hdf5",
         help="output filename",
     )
 
