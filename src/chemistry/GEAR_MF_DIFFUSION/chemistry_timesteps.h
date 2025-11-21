@@ -36,16 +36,19 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
 
   const float CFL_condition = chem_data->C_CFL_chemistry;
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  const float delta_x = cosmo->a * kernel_gamma * p->h;
+  /* Note that we computed 1/delxbar so we need to take the inverse here. And
+     we need to convert to physical units. */
+  const float psize_lv =
+      0.5 * cosmo->a2_inv / p->chemistry_data.timestepvars.delxbar;
+  const float delta_x = psize_lv;
 
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* CFL condition */
   const float dt_cfl =
       CFL_condition * delta_x / p->chemistry_data.timestepvars.vmax;
   return dt_cfl;
 #else
   const struct chemistry_part_data *chd = &p->chemistry_data;
-  const float delta_x = kernel_gamma * p->h * cosmo->a;
 
   /* Compute the diffusion matrix K */
   double K[3][3];
