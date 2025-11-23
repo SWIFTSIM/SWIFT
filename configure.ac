@@ -562,7 +562,7 @@ if test "$with_artificial_stress" != "none"; then
          AC_DEFINE([STRENGTH_ARTIFICIAL_STRESS_MON2000], [1], [Mon2000 artificial stress])
       ;;
       *)
-         AC_MSG_ERROR([Unknown strength artificial stress: $with_artificial_stress])
+         AC_MSG_ERROR([Unknown strength artificial stress scheme: $with_artificial_stress])
       ;;
    esac
 fi
@@ -584,7 +584,7 @@ if test "$with_yield_stress" != "none"; then
          AC_DEFINE([STRENGTH_YIELD_STRESS_COLLINS], [1], [Collins yield stress])
       ;;
       *)
-         AC_MSG_ERROR([Unknown yield stress: $with_yield_stress])
+         AC_MSG_ERROR([Unknown yield stress scheme: $with_yield_stress])
       ;;
    esac
 
@@ -632,7 +632,7 @@ if test "$with_damage" != "none"; then
          AC_DEFINE([STRENGTH_DAMAGE_SHEAR_COLLINS], [1], [Collins shear damage])
       ;;
       *)
-         AC_MSG_ERROR([Unknown yield stress: $with_damage])
+         AC_MSG_ERROR([Unknown damage scheme: $with_damage])
       ;;
    esac
 

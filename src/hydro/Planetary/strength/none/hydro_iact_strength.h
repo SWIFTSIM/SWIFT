@@ -96,12 +96,15 @@ hydro_runner_iact_nonsym_density_strength(struct part *restrict pi,
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param Gi Kernel gradient for first particle.
  * @param Gj Kernel gradient for second particle.
+ * @param dv_dot_G_i Dot product of kernel gradient for first particle and (vi - vj).
+ * @param dv_dot_G_j Dot product of kernel gradient for second particle and (vi - vj).
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_force_strength(struct part *restrict pi,
                                        struct part *restrict pj,
                                        const float dx[3], const float Gi[3],
-                                       const float Gj[3]) {}
+                                       const float Gj[3], const float dv_dot_G_i,
+                                       const float dv_dot_G_j) {}
 
 /**
  * @brief Extra strength force interaction between two particles (non-symmetric)
@@ -111,11 +114,12 @@ hydro_runner_iact_force_strength(struct part *restrict pi,
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param Gi Kernel gradient for first particle.
  * @param Gj Kernel gradient for second particle.
+ * @param dv_dot_G_i Dot product of kernel gradient for first particle and (vi - vj).
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_nonsym_force_strength(struct part *restrict pi,
                                               const struct part *restrict pj,
                                               const float dx[3],
-                                              const float Gi[3]) {}
+                                              const float Gi[3], const float dv_dot_G_i) {}
 
 #endif /* SWIFT_PLANETARY_STRENGTH_IACT_NONE_H */

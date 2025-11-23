@@ -99,6 +99,8 @@ hydro_runner_iact_nonsym_density_strength(struct part *restrict pi,
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param Gi Kernel gradient for first particle.
  * @param Gj Kernel gradient for second particle.
+ * @param dv_dot_G_i Dot product of kernel gradient for first particle and (vi - vj).
+ * @param dv_dot_G_j Dot product of kernel gradient for second particle and (vi - vj).
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_force_strength(struct part *restrict pi,
@@ -108,8 +110,8 @@ hydro_runner_iact_force_strength(struct part *restrict pi,
                                        const float dv_dot_G_j) {
 
   /* Add contribution to drho/dt. */
-  pi->strength_data.drho_dt += mj * dv_dot_G_i;
-  pj->strength_data.drho_dt += mi * dv_dot_G_j;
+  pi->strength_data.drho_dt += pj->mass * dv_dot_G_i;
+  pj->strength_data.drho_dt += pi->mass * dv_dot_G_j;
 
   /* Add constribution to dv/dr if both particles are solid. */
   if ((pi->phase_state == mat_phase_state_solid) &&
@@ -133,6 +135,7 @@ hydro_runner_iact_force_strength(struct part *restrict pi,
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param Gi Kernel gradient for first particle.
  * @param Gj Kernel gradient for second particle.
+ * @param dv_dot_G_i Dot product of kernel gradient for first particle and (vi - vj).
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_nonsym_force_strength(struct part *restrict pi,
@@ -141,7 +144,7 @@ hydro_runner_iact_nonsym_force_strength(struct part *restrict pi,
                                               const float Gi[3], const float dv_dot_G_i) {
 
   /* Add contribution to drho/dt. */
-  pi->strength_data.drho_dt += mj * dv_dot_G_i;
+  pi->strength_data.drho_dt += pj->mass * dv_dot_G_i;
 
   /* Add constribution to dv/dr if both particles are solid. */
   if ((pi->phase_state == mat_phase_state_solid) &&

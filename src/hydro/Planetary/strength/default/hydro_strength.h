@@ -88,7 +88,7 @@ hydro_end_density_strength(struct part *restrict p) {}
  * @param u The specific internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp,
+hydro_prepare_force_strength(struct part *restrict p,
                                    const float density, const float u) {
 
   /* Set the density to be used in the force loop to be the evolved density. */
@@ -140,7 +140,7 @@ hydro_end_force_strength(struct part *restrict p) {
   /* Get quntities needed for dD/dt calculation. */
   const int mat_id = p->mat_id;
   const float mass = p->mass;
-  const float density = p->rho_evol;
+  const float density = p->strength_data.rho_evol;
   const float u = p->u;
   const float pressure = gas_pressure_from_internal_energy(density, u, mat_id);
   const float damage = strength_get_damage(p);
@@ -200,11 +200,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
 
   struct sym_matrix stress_tensor;
   const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
-  damage_compute_stress_tensor(stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
+  damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
 
   // ### Since I have to calc dD/d now for timesteps, could this just use p->dD/dt?
   /* Evolve damage. */
-  damage_predict_evolve(&stress_tensor, mat_id, mass, density, u, dt_therm);
+  damage_predict_evolve(p, stress_tensor, mat_id, mass, density, u, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
   stress_tensor_evolve_deviatoric_stress_tensor(&p->strength_data.deviatoric_stress_tensor, p, phase_state, dt_therm);
@@ -230,7 +230,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
   p->strength_data.rho_evol += p->strength_data.drho_dt * dt_therm;
 
   /* Compute minimum density */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  const float h_inv_dim = pow_dimension(1.0f / p->h); /* 1/h^d */
   const float min_rho = p->mass * kernel_root * h_inv_dim;
 
   /* Overwrite stored hydro qunatities with those calculated based on evolved density. */
@@ -283,7 +283,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
   damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
 
   /* Evolve damage. */
-  damage_kick_evolve(stress_tensor, mat_id, mass, density, u, dt_therm);
+  damage_kick_evolve(p, xp, stress_tensor, mat_id, mass, density, u, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
   stress_tensor_evolve_deviatoric_stress_tensor(&xp->strength_data.deviatoric_stress_tensor_full, p, phase_state, dt_therm);
