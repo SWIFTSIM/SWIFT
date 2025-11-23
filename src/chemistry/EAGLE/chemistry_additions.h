@@ -26,7 +26,7 @@
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
-    struct part* restrict p) {
+    struct part *restrict p) {
   for (int i = 0; i < chemistry_element_count; i++) {
     p->chemistry_data.metal_mass_fluxes[i] = 0.f;
   }
@@ -45,11 +45,13 @@ __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
  * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
  * @param cosmo Cosmology.
  * @param hydro_props Additional hydro properties.
+ * @param chem_data #chemistry_global_data containing chemistry properties.
  */
 __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
-    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
-    float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
+    struct part *p, float dt_therm, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props,
+    const struct chemistry_global_data *chem_data) {
   /* For hydro schemes that exchange mass fluxes between the particles,
    * we want to advect the metals. */
   if (p->flux.dt > 0.) {
@@ -133,7 +135,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
  * interaction.
  **/
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
-    struct part* restrict pi, struct part* restrict pj, float mass_flux,
+    struct part *restrict pi, struct part *restrict pj, float mass_flux,
     float flux_dt, int mode) {
 
   const float mass_flux_integrated = mass_flux * flux_dt;

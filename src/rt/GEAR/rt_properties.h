@@ -98,8 +98,8 @@ struct rt_props {
 
   /* Storage for integrated photoionization cross sections */
   /* Note: they are always in cgs. */
-  double** energy_weighted_cross_sections;
-  double** number_weighted_cross_sections;
+  double **energy_weighted_cross_sections;
+  double **number_weighted_cross_sections;
   /* Mean photon energy in frequency bin for user provided spectrum. In erg.*/
   double average_photon_energy[RT_NGROUPS];
   /* Integral over photon numbers of user provided spectrum. */
@@ -160,9 +160,9 @@ struct rt_props {
  * @param phys_const physical constants struct
  * @param us internal units struct
  **/
-void rt_cross_sections_init(struct rt_props* restrict rt_props,
-                            const struct phys_const* restrict phys_const,
-                            const struct unit_system* restrict us);
+void rt_cross_sections_init(struct rt_props *restrict rt_props,
+                            const struct phys_const *restrict phys_const,
+                            const struct unit_system *restrict us);
 
 /* Now for the good stuff                */
 /* ------------------------------------- */
@@ -173,7 +173,7 @@ void rt_cross_sections_init(struct rt_props* restrict rt_props,
  * @param rtp The #rt_props
  */
 __attribute__((always_inline)) INLINE static void rt_props_print(
-    const struct rt_props* rtp) {
+    const struct rt_props *rtp) {
 
   /* Only the master print */
   if (engine_rank != 0) return;
@@ -225,9 +225,9 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void rt_props_init(
-    struct rt_props* rtp, const struct phys_const* phys_const,
-    const struct unit_system* us, struct swift_params* params,
-    struct cosmology* cosmo) {
+    struct rt_props *rtp, const struct phys_const *phys_const,
+    const struct unit_system *us, struct swift_params *params,
+    struct cosmology *cosmo) {
 
   /* Make sure we reset debugging counters correctly after
    * zeroth step. */
@@ -466,8 +466,8 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 }
 
 __attribute__((always_inline)) INLINE static void rt_props_update(
-    struct rt_props* rtp, const struct unit_system* us,
-    struct cosmology* cosmo) {
+    struct rt_props *rtp, const struct unit_system *us,
+    struct cosmology *cosmo) {
   update_grackle_units_cosmo(&(rtp->grackle_units), us, cosmo);
 }
 
@@ -479,9 +479,9 @@ __attribute__((always_inline)) INLINE static void rt_props_update(
  * @param stream the file stream
  */
 __attribute__((always_inline)) INLINE static void rt_struct_dump(
-    const struct rt_props* props, FILE* stream) {
+    const struct rt_props *props, FILE *stream) {
 
-  restart_write_blocks((void*)props, sizeof(struct rt_props), 1, stream,
+  restart_write_blocks((void *)props, sizeof(struct rt_props), 1, stream,
                        "RT props", "RT properties struct");
   /* The RT parameters, in particular the reduced speed of light, are
    * not defined at compile time. So we need to read them in again. */
@@ -500,10 +500,10 @@ __attribute__((always_inline)) INLINE static void rt_struct_dump(
  * @param cosmo the #cosmology
  */
 __attribute__((always_inline)) INLINE static void rt_struct_restore(
-    struct rt_props* props, FILE* stream, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct cosmology* restrict cosmo) {
+    struct rt_props *props, FILE *stream, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cosmology *restrict cosmo) {
 
-  restart_read_blocks((void*)props, sizeof(struct rt_props), 1, stream, NULL,
+  restart_read_blocks((void *)props, sizeof(struct rt_props), 1, stream, NULL,
                       "RT properties struct");
   /* Set up stuff that needs array allocation */
   rt_init_grackle(&props->grackle_units, &props->grackle_chemistry_data,

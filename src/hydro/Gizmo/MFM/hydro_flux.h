@@ -27,7 +27,7 @@
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_reset_hydro_fluxes(
-    struct part* restrict p) {
+    struct part *restrict p) {
 
   p->flux.momentum[0] = 0.0f;
   p->flux.momentum[1] = 0.0f;
@@ -43,7 +43,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_reset_hydro_fluxes(
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_part_reset_gravity_fluxes(struct part* restrict p) {}
+hydro_part_reset_gravity_fluxes(struct part *restrict p) {}
 
 /**
  * @brief Get the fluxes for the given particle.
@@ -52,7 +52,7 @@ hydro_part_reset_gravity_fluxes(struct part* restrict p) {}
  * @param flux Fluxes for the particle (array of size 5 or more).
  */
 __attribute__((always_inline)) INLINE static void hydro_part_get_fluxes(
-    const struct part* restrict p, float* flux) {
+    const struct part *restrict p, float *flux) {
 
   flux[1] = p->flux.momentum[0];
   flux[2] = p->flux.momentum[1];
@@ -72,8 +72,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_fluxes(
  * @param fluxes Array to store the result in (of size 5 or more).
  */
 __attribute__((always_inline)) INLINE static void hydro_compute_flux(
-    const float* WL, const float* WR, const float* n_unit, const float* vLR,
-    const float Anorm, float* fluxes) {
+    const float *WL, const float *WR, const float *n_unit, const float *vLR,
+    const float Anorm, float *fluxes) {
 
   riemann_solve_for_middle_state_flux(WL, WR, n_unit, vLR, fluxes);
 
@@ -93,7 +93,7 @@ __attribute__((always_inline)) INLINE static void hydro_compute_flux(
  * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
-    struct part* restrict p, const float* fluxes, const float* dx,
+    struct part *restrict p, const float *fluxes, const float *dx,
     const float dt) {
 
   p->flux.momentum[0] -= fluxes[1] * dt;
@@ -118,8 +118,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
  * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
-                               const float* dx, const float dt) {
+hydro_part_update_fluxes_right(struct part *restrict p, const float *fluxes,
+                               const float *dx, const float dt) {
 
   p->flux.momentum[0] += fluxes[1] * dt;
   p->flux.momentum[1] += fluxes[2] * dt;
@@ -159,9 +159,9 @@ hydro_gizmo_mfv_density_drift_term(const float mass_flux, const float dt,
  * @param dt_kick_grav Time-step to kick the particle gravitationally.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gizmo_mfv_extra_velocity_drift(float* v, const float* restrict fluid_v,
-                                     const float* restrict v_full,
-                                     const float* restrict a_grav,
+hydro_gizmo_mfv_extra_velocity_drift(float *v, const float *restrict fluid_v,
+                                     const float *restrict v_full,
+                                     const float *restrict a_grav,
                                      float dt_kick_grav) {}
 
 /**
@@ -180,10 +180,10 @@ hydro_gizmo_mfv_extra_velocity_drift(float* v, const float* restrict fluid_v,
  */
 __attribute__((always_inline)) INLINE static float
 hydro_gizmo_mfv_gravity_energy_update_term(const float dt_kick_corr,
-                                           const struct part* restrict p,
-                                           const float* momentum,
-                                           const float* a_grav,
-                                           const float* grav_kick_factor) {
+                                           const struct part *restrict p,
+                                           const float *momentum,
+                                           const float *a_grav,
+                                           const float *grav_kick_factor) {
 
   return 0.0f;
 }
@@ -209,6 +209,6 @@ hydro_gizmo_mfv_mass_update_term(const float mass_flux, const float dt) {
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gizmo_mfv_update_gpart_mass(struct part* restrict p) {}
+hydro_gizmo_mfv_update_gpart_mass(struct part *restrict p) {}
 
 #endif /* SWIFT_GIZMO_MFM_HYDRO_FLUX_H */
