@@ -97,6 +97,9 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
       fabs(metal_mass_interface) > max_mass) {
     const double factor = max_mass / fabs(metal_mass_interface);
     fluxes[0] *= factor;
+    fluxes[1] *= factor;
+    fluxes[2] *= factor;
+    fluxes[3] *= factor;
   }
 }
 
