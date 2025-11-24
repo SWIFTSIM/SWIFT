@@ -131,6 +131,13 @@ struct statistics {
   /*! Total Magnetic helicity */
   double H_mag;
 
+  /* TODO: Do this better. Hide implementation details in a new stat module */
+#if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_MF_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* Total gas metal masses */
+  double gas_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+#endif
+
   /*! Lock for threaded access */
   swift_lock_type lock;
 };
