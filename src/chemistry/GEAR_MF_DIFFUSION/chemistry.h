@@ -472,6 +472,13 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 
   /* Sanity check on the total metal mass */
   chemistry_check_unphysical_total_metal_mass(p, 0);
+
+  /* Add a correction factor to wcount (to force a neighbour number increase if
+     the geometry matrix is close to singular) */
+  /* TODO: Determine if we should do that or not. Gizmo does. How does it
+     affect SPH? */
+  /* p->density.wcount *= p->geometry.wcorr; */
+  /* p->density.wcount_dh *= p->geometry.wcorr; */
 }
 
 /**
