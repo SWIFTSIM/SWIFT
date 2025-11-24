@@ -6,6 +6,11 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1                       # Amperes
   UnitTemp_in_cgs:     1                       # Kelvin
 
+Restarts:
+  enable:             1
+  delta_hours:        0.1        # (Optional) decimal hours between dumps of restart files.
+
+
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:           1e-3     # Time between statistics output
@@ -17,7 +22,6 @@ Scheduler:
   cell_extra_sparts: 1000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells: 3
 
-
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:   ICs_homogeneous_box.hdf5
@@ -27,13 +31,13 @@ InitialConditions:
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.    # The starting time of the simulation (in internal units).
-  time_end:          0.3   # The end time of the simulation (in internal units).
+  time_end:          0.4   # The end time of the simulation (in internal units).
   dt_min:            1e-10 # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
-  subdir: snap
+  subdir:     snap
   basename:   snapshot      # Common part of the name of output files
   time_first: 0.0           # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 1e-3          # Time difference between consecutive outputs (in internal units)
@@ -78,7 +82,7 @@ GEARChemistry:
   hll_riemann_solver_psi:  0.1        # (Optional, parabolic diffusion only) Tolerance parameter (> 0) for artificial diffusion, eq (7) in Hi2017. (Default: 0.1)
   C_CFL_chemistry: 0.9                # Courant-Friedrich-Levy condition for time integration.
   relaxation_time_mode:  Constant     # (Hyperbolic diffusion only) Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
-  tau: 1e0                            # (Hyperbolic diffusion only) Relaxation time (physical and internal units) for the Constant relaxation time mode. In the Turbulent mode, this sets the normalisation of the final tau: pj.tau = tau/||Shear tensor||.
+  tau: 1e-1                            # (Hyperbolic diffusion only) Relaxation time (physical and internal units) for the Constant relaxation time mode. In the Turbulent mode, this sets the normalisation of the final tau: pj.tau = tau/||Shear tensor||.
 
 GEARFeedback:
   supernovae_energy_erg: 1e51           # supernovae energy, used only for SNIa

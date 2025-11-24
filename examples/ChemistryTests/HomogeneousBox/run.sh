@@ -83,5 +83,6 @@ else
 	mv used_parameters.yml $run_name
 	mv *.png $run_name
 	mv output.log $run_name
+	mv statistics.txt $run_name
     fi
 fi
