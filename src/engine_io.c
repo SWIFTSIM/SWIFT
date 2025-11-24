@@ -232,8 +232,7 @@ int engine_dump_restarts(struct engine *e, const int drifted_all,
 #endif
 #endif
 
-      if (!(e->policy & engine_policy_no_io))
-        restart_write(e, e->restart_file);
+      if (!(e->policy & engine_policy_no_io)) restart_write(e, e->restart_file);
 
 #ifdef WITH_MPI
       /* Make sure all ranks finished writing to avoid having incomplete
@@ -333,18 +332,18 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
 
     if (!(e->policy & engine_policy_no_io))
       write_output_distributed(e, e->internal_units, e->snapshot_units, fof,
-                             e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
+                               e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
 
   } else {
 
 #if defined(HAVE_PARALLEL_HDF5)
     if (!(e->policy & engine_policy_no_io))
       write_output_parallel(e, e->internal_units, e->snapshot_units, fof,
-                          e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
+                            e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
 #else
     if (!(e->policy & engine_policy_no_io))
       write_output_serial(e, e->internal_units, e->snapshot_units, fof,
-          e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
+                          e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
 #endif
   }
   MPI_Info_free(&info);

@@ -91,7 +91,7 @@ enum engine_policy {
   engine_policy_power_spectra = (1 << 27),
   engine_policy_grid = (1 << 28),
   engine_policy_grid_hydro = (1 << 29),
-  engine_policy_no_io = (1<<30),
+  engine_policy_no_io = (1 << 30),
 };
 #define engine_maxpolicy 31
 extern const char *engine_policy_names[engine_maxpolicy + 1];
