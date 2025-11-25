@@ -537,6 +537,11 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     p->geometry.pair_connections_offset = pair_connections_offset;
     p->geometry.min_face_dist = (float)dist;
 
+#ifdef SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
+    p->geometry.max_face_angle = max_angle;
+#endif
+
+
     /* reset flags for all neighbours of this cell */
     neighbour_flags[gen_idx_in_d] = 0;
     for (int j = 0; j < neighbour_info_q.end; j++) {
