@@ -159,6 +159,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
     }
   }
 }
+#else
+/* For MFM: Nothing to do here */
+/**
+ * @brief update metal mass fluxes between two interacting particles during
+ * hydro_iact_(non)sym(...) calls.
+ *
+ * @param pi first interacting particle
+ * @param pj second interacting particle
+ * @param mass_flux the mass flux between these two particles.
+ * @param flux_dt the time-step over which the fluxes are exchanged
+ * @param mode 0: non-symmetric interaction, update i only. 1: symmetric
+ * interaction.
+ **/
+__attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
+    struct part *restrict pi, struct part *restrict pj, float mass_flux,
+    float flux_dt, int mode) {}
 #endif /* HYDRO_DOES_MASS_FLUX */
 
 /**
