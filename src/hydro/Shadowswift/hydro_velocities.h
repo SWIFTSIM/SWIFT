@@ -211,7 +211,9 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
       v[1] += ds[1] * fac;
       v[2] += ds[2] * fac;
     }
-#endif  // SHADOWSWIFT_STEER_MOTION
+#endif // Face Angle Flows
+#endif // Steering Motion
+
   }
 
   if (p->rho < hydro_properties->epsilon_rho) {

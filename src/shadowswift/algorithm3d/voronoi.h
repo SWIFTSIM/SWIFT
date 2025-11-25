@@ -336,6 +336,10 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     /* update flag of the other vertex */
     neighbour_flags[other_v_idx_in_d] = 1;
 
+#ifdef SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
+    float max_angle = 0.f; // Used for velocity steering
+#endif
+
     int counter_outer = 0;
     while (!int3_fifo_queue_is_empty(&neighbour_info_q)) {
       if (counter_outer++ >= VORONOI_CONSTRUCTION_MAX_FACES)
@@ -504,6 +508,14 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
           min_face_dist_sqrd = face_dist_sqrd;
           min_face_dist_ngb = ngb_idx_in_d;
         }
+
+#ifdef SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
+        /* Calculate Max Angle iteratively as described in
+         * Vogelsberger 2012 2.2.2 (i) */
+        float new_angle = sqrtf(face_area / (3.14159 * face_dist_sqrd));
+        max_angle = fmax(new_angle, max_angle);
+
+#endif
       }
     }
 
