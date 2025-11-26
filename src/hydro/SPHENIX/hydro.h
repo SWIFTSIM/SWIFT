@@ -816,6 +816,9 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   /* Probably not shocking, so this is safe to do */
   p->viscosity.div_v = 0.f;
   p->diffusion.laplace_u = 0.f;
+
+  /* Re-set geometry problematic values */
+  fvpm_geometry_part_has_no_neighbours(p);
 }
 
 /**

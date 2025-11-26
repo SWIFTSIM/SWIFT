@@ -25,6 +25,9 @@ struct fvpm_geometry_struct {
 
   /* Correction factor for wcount. */
   float wcorr;
+
+  /*! Condition number of matrix_E (eq C1) */
+  float condition_number;
 };
 
 #endif /* SWIFT_FVPM_GEOMETRY_STRUCT_GIZMO_H */
