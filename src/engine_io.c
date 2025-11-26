@@ -322,7 +322,7 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
   }
 
   /* Dump (depending on the chosen strategy) ... */
-  if (!(e->policy & engine_policy_no_io)){
+  if (!(e->policy & engine_policy_no_io)) {
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 
