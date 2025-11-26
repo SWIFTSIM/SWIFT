@@ -39,7 +39,7 @@ chemistry_get_metal_mass_fraction(const struct part *restrict p, int metal) {
 }
 
 /**
- * @brief Get comoving metal density from a specific metal group.
+ * @brief Get comoving metal density from a specific metal specie.
  *
  * @param p Particle.
  * @param metal Index of metal specie
@@ -51,7 +51,7 @@ chemistry_get_comoving_metal_density(const struct part *restrict p, int metal) {
 }
 
 /**
- * @brief Get the physical metal density from a specific metal group.
+ * @brief Get the physical metal density from a specific metal specie.
  *
  * @param p Particle.
  * @param metal Index of metal specie
@@ -64,7 +64,7 @@ chemistry_get_physical_metal_density(const struct part *restrict p, int metal,
 }
 
 /**
- * @brief Get metal mass from a specific metal group.
+ * @brief Get metal mass from a specific metal specie.
  *
  * This function sets the metal mass to 0 if metal_mass is within the negative
  * tolerance bound. If the mass is outside the tolerated negative mass bounds,
@@ -282,9 +282,7 @@ chemistry_get_diffusion_coefficient(
 }
 
 /**
- * @brief Get the gradients of metal mass density a given metal group.
- *
- * Get grad U = grad rho_Z.
+ * @brief Get the gradients of metal mass fraction a given metal specie.
  *
  * @param p Particle.
  * @param metal Index of metal specie.
@@ -299,7 +297,9 @@ chemistry_get_metal_mass_fraction_gradients(const struct part *restrict p,
 }
 
 /**
- * @brief Get the gradients of metal mass fraction a given metal group.
+ * @brief Get the gradients of metal density a given metal specie.
+ *
+ * Get grad U = grad rho_Z.
  *
  * @param p Particle.
  * @param metal Index of metal specie.
@@ -350,7 +350,7 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
 }
 
 /**
- * @brief Compute the parabolic diffusion flux of given metal group.
+ * @brief Compute the parabolic diffusion flux of given metal specie.
  *
  * F_diss = - K * \nabla \otimes q
  *
