@@ -579,6 +579,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->mhd_data.B_over_rho_dt[0] += mi * grad_psi * dx[0];
   pj->mhd_data.B_over_rho_dt[1] += mi * grad_psi * dx[1];
   pj->mhd_data.B_over_rho_dt[2] += mi * grad_psi * dx[2];
+  
+  /* Store Dedner terms */
+  pi->mhd_data.B_over_rho_dt_psi[0] -= mj * grad_psi * dx[0];
+  pi->mhd_data.B_over_rho_dt_psi[1] -= mj * grad_psi * dx[1];
+  pi->mhd_data.B_over_rho_dt_psi[2] -= mj * grad_psi * dx[2];
+
+  pj->mhd_data.B_over_rho_dt_psi[0] += mi * grad_psi * dx[0];
+  pj->mhd_data.B_over_rho_dt_psi[1] += mi * grad_psi * dx[1];
+  pj->mhd_data.B_over_rho_dt_psi[2] += mi * grad_psi * dx[2];
 
   /* Save induction sources */
   const float dB_dt_pref_Lap_i = 2.0f * r_inv / rhoj;
@@ -841,6 +850,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi * dx[0];
   pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi * dx[1];
   pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi * dx[2];
+
+  /* Store Dedner terms */
+  pi->mhd_data.B_over_rho_dt_psi[0] -= mj * grad_psi * dx[0];
+  pi->mhd_data.B_over_rho_dt_psi[1] -= mj * grad_psi * dx[1];
+  pi->mhd_data.B_over_rho_dt_psi[2] -= mj * grad_psi * dx[2];
 
   /* Save induction sources */
   const float dB_dt_pref_Lap = 2.0f * r_inv / rhoj;

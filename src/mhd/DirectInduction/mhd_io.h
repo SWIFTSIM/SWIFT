@@ -467,8 +467,19 @@ INLINE static int mhd_write_particles(const struct part* parts,
   list[15] = io_make_output_field_convert_part(
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
+  
+  list[16] = io_make_output_field(
+      "MagneticFluxDensitiesdtDedner", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME,
+      -1.5f * hydro_gamma + 3.f, parts, mhd_data.B_over_rho_dt_psi,
+      "Dedber contribution to time derivative of Magnetic flux densities of the "
+      "particles");
 
-  return 16;
+  list[17] = io_make_output_field(
+      "SignalVelocity", FLOAT, 1, UNIT_CONV_SPEED,
+      -1.f, parts, viscosity.v_sig,
+      "Signal velocity");
+
+  return 18;
 }
 
 /**

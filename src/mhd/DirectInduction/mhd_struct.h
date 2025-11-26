@@ -73,6 +73,9 @@ struct mhd_part_data {
   /* Time derivative of Dedner scalar over divergence cleaning speed */
   float psi_over_ch_dt;
 
+  /* Dedner contribution to time derivative magnetic field */
+  float B_over_rho_dt_psi[3];
+
   /* SPH <1> error */
   float mean_SPH_err;
 
