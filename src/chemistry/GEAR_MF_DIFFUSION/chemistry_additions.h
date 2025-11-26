@@ -22,7 +22,6 @@
 
 #include "chemistry_flux.h"
 #include "chemistry_struct.h"
-#include "chemistry_unphysical.h"
 
 /**
  * @file src/chemistry/GEAR/chemistry_additions.h
