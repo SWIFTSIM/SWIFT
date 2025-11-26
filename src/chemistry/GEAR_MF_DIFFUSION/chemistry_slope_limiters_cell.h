@@ -45,6 +45,10 @@ chemistry_slope_limit_cell_init(struct part *p) {
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     p->chemistry_data.limiter.Z[m][0] = FLT_MAX;
     p->chemistry_data.limiter.Z[m][1] = -FLT_MAX;
+
+    p->chemistry_data.limiter.rhoZ[m][0] = FLT_MAX;
+    p->chemistry_data.limiter.rhoZ[m][1] = -FLT_MAX;
+
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     /* Array index reminder: 1st: metal; 2nd: flux component x, y or z; 3rd
        component: limiter min or max value. */
@@ -99,6 +103,12 @@ chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
 
     /* Ensures metalicity never exceeds 1 */
     chi->limiter.Z[m][1] = min(1.0, chi->limiter.Z[m][1]);
+
+    /* Collect the comoving metal density */
+    chi->limiter.rhoZ[m][0] =
+        min(chemistry_get_comoving_metal_density(pj, m), chi->limiter.rhoZ[m][0]);
+    chi->limiter.rhoZ[m][1] =
+        max(chemistry_get_comoving_metal_density(pj, m), chi->limiter.rhoZ[m][1]);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     for (int i = 0; i < 3; i++) {
@@ -255,6 +265,15 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
         /*value=   */ chemistry_get_metal_mass_fraction(p, m),
         /*valmin=  */ chd->limiter.Z[m][0],
         /*valmax=  */ chd->limiter.Z[m][1],
+        /*condition_number*/ N_cond,
+        /*pos_preserve*/ 0);
+
+    chemistry_slope_limit_quantity(
+        /*gradient=*/chd->gradients.rhoZ[m],
+        /*maxr=    */ maxr,
+        /*value=   */ chemistry_get_comoving_metal_density(p, m),
+        /*valmin=  */ chd->limiter.rhoZ[m][0],
+        /*valmax=  */ chd->limiter.rhoZ[m][1],
         /*condition_number*/ N_cond,
         /*pos_preserve*/ 0);
 

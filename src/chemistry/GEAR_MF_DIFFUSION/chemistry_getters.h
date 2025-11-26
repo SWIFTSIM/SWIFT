@@ -308,18 +308,9 @@ chemistry_get_metal_mass_fraction_gradients(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static void
 chemistry_get_metal_density_gradients(const struct part *restrict p, int metal,
                                       double dF[3]) {
-
-  const struct chemistry_part_data *chd = &p->chemistry_data;
-
-  /* We have U = rho_Z and q = Z.  But we computed Grad Z and Grad rho, not
-     Grad (rho*Z). However, Grad (rho*Z) = Z*Grad_rho + rho*Grad_Z */
-  const double rho = hydro_get_comoving_density(p);
-  const double Z = chemistry_get_metal_mass_fraction(p, metal);
-
-  /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
-  dF[0] = chd->gradients.Z[metal][0] * rho + chd->gradients.rho[0] * Z;
-  dF[1] = chd->gradients.Z[metal][1] * rho + chd->gradients.rho[1] * Z;
-  dF[2] = chd->gradients.Z[metal][2] * rho + chd->gradients.rho[2] * Z;
+  dF[0] = p->chemistry_data.gradients.rhoZ[metal][0];
+  dF[1] = p->chemistry_data.gradients.rhoZ[metal][1];
+  dF[2] = p->chemistry_data.gradients.rhoZ[metal][2];
 }
 
 /**
@@ -375,15 +366,13 @@ chemistry_get_physical_parabolic_flux(
 
   if (chem_data->diffusion_mode == isotropic_constant) {
     /* Here, we use grad (rho Z) */
-    double grad_rhoZ[3];
-    chemistry_get_metal_density_gradients(p, metal, grad_rhoZ);
     const double a_inv_4 =
         cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
 
     /* a^-3 for density and a^-1 for gradient */
-    F_diff[0] = -kappa * grad_rhoZ[0] * a_inv_4;
-    F_diff[1] = -kappa * grad_rhoZ[1] * a_inv_4;
-    F_diff[2] = -kappa * grad_rhoZ[2] * a_inv_4;
+    F_diff[0] = -kappa * p->chemistry_data.gradients.rhoZ[metal][0] * a_inv_4;
+    F_diff[1] = -kappa * p->chemistry_data.gradients.rhoZ[metal][1] * a_inv_4;
+    F_diff[2] = -kappa * p->chemistry_data.gradients.rhoZ[metal][2] * a_inv_4;
   } else if (chem_data->diffusion_mode == isotropic_smagorinsky) {
     /* Here, we use grad Z */
     F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0] * cosmo->a_inv;

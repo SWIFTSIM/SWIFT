@@ -124,35 +124,56 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   }
 
   /*****************************************/
-  /* Update metal mass fraction gradients */
+  /* Update diffusion gradients */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
+    /**** Metal mass fraction gradients ****/
     const double Zi = chemistry_get_metal_mass_fraction(pi, g);
     const double Zj = chemistry_get_metal_mass_fraction(pj, g);
     const double dZ = Zi - Zj;
 
-    /* First do pi (i.e. \grad n = \nabla \otimes q = \grad U) */
-    double dU_i[3];
+    /* First do pi */
+    double dZ_i[3];
 
     /* There is a sign difference w.r.t. eqn. (6) because of the inverse
      * definition of dx */
-    dU_i[0] = dZ * psii_tilde[0];
-    dU_i[1] = dZ * psii_tilde[1];
-    dU_i[2] = dZ * psii_tilde[2];
-
-    chemistry_part_update_metal_mass_fraction_gradients(pi, g, dU_i);
+    dZ_i[0] = dZ * psii_tilde[0];
+    dZ_i[1] = dZ * psii_tilde[1];
+    dZ_i[2] = dZ * psii_tilde[2];
 
     /* Now do the gradients of pj */
-    double dU_j[3];
+    double dZ_j[3];
 
     /* We don't need a sign change here: both the dx and the dU
      * should switch their sign, resulting in no net change */
-    dU_j[0] = dZ * psij_tilde[0];
-    dU_j[1] = dZ * psij_tilde[1];
-    dU_j[2] = dZ * psij_tilde[2];
+    dZ_j[0] = dZ * psij_tilde[0];
+    dZ_j[1] = dZ * psij_tilde[1];
+    dZ_j[2] = dZ * psij_tilde[2];
 
-    chemistry_part_update_metal_mass_fraction_gradients(pj, g, dU_j);
+    /**** Metal density gradient ****/
+    const double rhoZi = chemistry_get_comoving_metal_density(pi, g);
+    const double rhoZj = chemistry_get_comoving_metal_density(pj, g);
+    const double drhoZ = rhoZi - rhoZj;
+
+    /* First do pi */
+    double drhoZ_i[3];
+
+    drhoZ_i[0] = drhoZ * psii_tilde[0];
+    drhoZ_i[1] = drhoZ * psii_tilde[1];
+    drhoZ_i[2] = drhoZ * psii_tilde[2];
+
+    chemistry_part_update_diffusion_gradients(pi, g, dZ_i, drhoZ_i);
+
+    /* Now do the gradients of pj */
+    double drhoZ_j[3];
+
+    drhoZ_j[0] = drhoZ * psij_tilde[0];
+    drhoZ_j[1] = drhoZ * psij_tilde[1];
+    drhoZ_j[2] = drhoZ * psij_tilde[2];
+
+    chemistry_part_update_diffusion_gradients(pj, g, dZ_j, drhoZ_j);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    /**** Flux gradients ****/
     const double dflux[3] = {chi->flux[g][0] - chj->flux[g][0],
                              chi->flux[g][1] - chj->flux[g][1],
                              chi->flux[g][2] - chj->flux[g][2]};
@@ -333,22 +354,35 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
   /*****************************************/
   /* Update diffusion gradients */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
+    /**** Metal mass fraction gradients ****/
     const double Zi = chemistry_get_metal_mass_fraction(pi, g);
     const double Zj = chemistry_get_metal_mass_fraction(pj, g);
     const double dZ = Zi - Zj;
 
-    double dU_i[3];
-
     /* Compute gradients for pi */
+    double dZ_i[3];
+
     /* There is a sign difference w.r.t. eqn. (6) because of the inverse
      * definition of dx */
-    dU_i[0] = dZ * psii_tilde[0];
-    dU_i[1] = dZ * psii_tilde[1];
-    dU_i[2] = dZ * psii_tilde[2];
+    dZ_i[0] = dZ * psii_tilde[0];
+    dZ_i[1] = dZ * psii_tilde[1];
+    dZ_i[2] = dZ * psii_tilde[2];
 
-    chemistry_part_update_metal_mass_fraction_gradients(pi, g, dU_i);
+    /**** Metal density gradient ****/
+    const double rhoZi = chemistry_get_comoving_metal_density(pi, g);
+    const double rhoZj = chemistry_get_comoving_metal_density(pj, g);
+    const double drhoZ = rhoZi - rhoZj;
+
+    double drhoZ_i[3];
+
+    drhoZ_i[0] = drhoZ * psii_tilde[0];
+    drhoZ_i[1] = drhoZ * psii_tilde[1];
+    drhoZ_i[2] = drhoZ * psii_tilde[2];
+
+    chemistry_part_update_diffusion_gradients(pi, g, dZ_i, drhoZ_i);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    /**** Flux gradients ****/
     const double dflux[3] = {chi->flux[g][0] - chj->flux[g][0],
                              chi->flux[g][1] - chj->flux[g][1],
                              chi->flux[g][2] - chj->flux[g][2]};
@@ -561,7 +595,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   /* Linear reconstruction of Z_i and Z_j.
-     Note that grad_p = a^{-1} grad_c and xij_i/j_p = a * xij_i/j_p. Hence,
+     Note that grad_p = a^{-1} grad_c and xij_i/j_p = a * xij_i/j_c. Hence,
      the scale factors compensate and dZi/j end up in phyiscal units. */
   double dZi = chemistry_gradients_extrapolate_double(grad_Z_i, xij_i);
   double dZj = chemistry_gradients_extrapolate_double(grad_Z_j, xij_j);
@@ -573,7 +607,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
   chemistry_slope_limit_face(Zi, Zj, &dZi, &dZj, xij_i, xij_j, r);
 #endif
 
-  /* dZi/j are already in phyiscal units. See comment above. */
+  /* dZi/j are already in physical units. See comment above. */
   *Zi += dZi;
   *Zj += dZj;
 

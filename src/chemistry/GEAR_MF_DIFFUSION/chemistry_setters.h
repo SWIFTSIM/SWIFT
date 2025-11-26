@@ -39,6 +39,10 @@ chemistry_part_reset_gradients(struct part *restrict p) {
     chd->gradients.Z[m][1] = 0.0f;
     chd->gradients.Z[m][2] = 0.0f;
 
+    chd->gradients.rhoZ[m][0] = 0.0f;
+    chd->gradients.rhoZ[m][1] = 0.0f;
+    chd->gradients.rhoZ[m][2] = 0.0f;
+
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     /* Iterate over the lines of the flux gradient matrix, for metal m */
     for (int i = 0; i < 3; i++) {
@@ -75,42 +79,28 @@ chemistry_part_reset_gradients(struct part *restrict p) {
 }
 
 /**
- * @brief Set the gradients for the given particle to the given values.
- *
- * @param p Particle.
- * @param metal Index of metal specie.
- * @param gradF Metal mass fraction gradient (of size 3) to set.
- */
-__attribute__((always_inline)) INLINE static void
-chemistry_part_set_metal_mass_fraction_gradients(struct part *restrict p,
-                                                 int metal,
-                                                 const double gradF[3]) {
-
-  struct chemistry_part_data *chd = &p->chemistry_data;
-
-  chd->gradients.Z[metal][0] = gradF[0];
-  chd->gradients.Z[metal][1] = gradF[1];
-  chd->gradients.Z[metal][2] = gradF[2];
-}
-
-/**
  * @brief Update the diffusion gradients for the given particle with the
  * given contributions.
  *
  * @param p Particle.
  * @param metal metal specie index to update (0 <= metal <
  * GEAR_CHEMISTRY_ELEMENT_COUNT).
- * @param dF Metal mass fraction gradient (of size 3).
+ * @param dZ Metal mass fraction gradient (of size 3).
+ * @param drhoZ Metal density gradient (of size 3).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_metal_mass_fraction_gradients(struct part *restrict p,
-                                                    int metal, double dF[3]) {
+chemistry_part_update_diffusion_gradients(struct part *restrict p,
+					  int metal, double dZ[3], double drhoZ[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
-  chd->gradients.Z[metal][0] += dF[0];
-  chd->gradients.Z[metal][1] += dF[1];
-  chd->gradients.Z[metal][2] += dF[2];
+  chd->gradients.Z[metal][0] += dZ[0];
+  chd->gradients.Z[metal][1] += dZ[1];
+  chd->gradients.Z[metal][2] += dZ[2];
+
+  chd->gradients.rhoZ[metal][0] += drhoZ[0];
+  chd->gradients.rhoZ[metal][1] += drhoZ[1];
+  chd->gradients.rhoZ[metal][2] += drhoZ[2];
 }
 
 /**
@@ -174,6 +164,10 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
     chd->gradients.Z[m][0] *= norm;
     chd->gradients.Z[m][1] *= norm;
     chd->gradients.Z[m][2] *= norm;
+
+    chd->gradients.rhoZ[m][0] *= norm;
+    chd->gradients.rhoZ[m][1] *= norm;
+    chd->gradients.rhoZ[m][2] *= norm;
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     /* Iterate over the lines of the flux gradient matrix, for metal m */

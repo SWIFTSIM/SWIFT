@@ -60,8 +60,11 @@ struct chemistry_part_data {
 
   /* Gradients. */
   struct {
-    /*! Gradient of the metals. It is used to compute the diffusion flux. */
+    /*! Metal mass fraction gradient. It is used to compute the diffusion flux. */
     double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
+
+    /*! Metal density gradient. */
+    double rhoZ[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
 
     /*! Density gradient */
     float rho[3];
@@ -76,6 +79,9 @@ struct chemistry_part_data {
     /*! Extreme values of the fluid metal mass fraction among the neighbours.
      */
     double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
+
+    /*! Extreme values of the fluid metal density among the neighbours. */
+    double rhoZ[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
 
     /*! Extreme values of the density among the neigbours. */
     float rho[2];
