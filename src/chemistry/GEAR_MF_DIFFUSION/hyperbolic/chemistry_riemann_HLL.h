@@ -74,8 +74,6 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo);
   const double c_diff_R =
       chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo);
-  /* const double lambda_plus = max(fabs(uL) + c_diff_L, fabs(uR) + c_diff_R); */
-  /* const double lambda_minus = - lambda_plus_diffusion; */
   const double lambda_plus = max(uL + c_diff_L, uR + c_diff_R); /* S_R */
   const double lambda_minus = max(uL - c_diff_L, uR - c_diff_R); /* S_L */
 
