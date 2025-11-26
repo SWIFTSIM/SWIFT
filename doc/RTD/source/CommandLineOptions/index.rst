@@ -79,6 +79,7 @@ can be found by typing ``./swift -h``:
                                       integration. Checks the validity of
                                       parameters and IC files as well as memory
                                       limits.
+    --no-io                           Skip writing snapshots and restart files.
     -e, --fpe                         Enable floating-point exceptions (debugging
                                       mode).
     -f, --cpu-frequency=<str>         Overwrite the CPU frequency (Hz) to be
