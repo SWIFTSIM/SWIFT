@@ -50,9 +50,6 @@ struct chemistry_part_data {
   double diffused_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 #endif
 
-  /*! Condition number of matrix_E (eq C1) */
-  float geometry_condition_number;
-
   /*! Particle chemistry time-step in physical units. */
   float flux_dt;
 

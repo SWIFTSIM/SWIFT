@@ -414,48 +414,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   p->chemistry_data.filtered.rho *= h_inv_dim;
 
-  /*****************************************/
-  /* Finish computations on the MF geometry quantities */
-
-  /* Store a copy of the matrix to avoid modifying it when computing its
-     inverse */
-  float matrix_E[3][3];
-  matrix_E[0][0] = p->geometry.matrix_E[0][0];
-  matrix_E[0][1] = p->geometry.matrix_E[0][1];
-  matrix_E[0][2] = p->geometry.matrix_E[0][2];
-
-  matrix_E[1][0] = p->geometry.matrix_E[1][0];
-  matrix_E[1][1] = p->geometry.matrix_E[1][1];
-  matrix_E[1][2] = p->geometry.matrix_E[1][2];
-
-  matrix_E[2][0] = p->geometry.matrix_E[2][0];
-  matrix_E[2][1] = p->geometry.matrix_E[2][1];
-  matrix_E[2][2] = p->geometry.matrix_E[2][2];
-
-  const float condition_number_E_inv =
-      matrix_E[0][0] * matrix_E[0][0] + matrix_E[0][1] * matrix_E[0][1] +
-      matrix_E[0][2] * matrix_E[0][2] + matrix_E[1][0] * matrix_E[1][0] +
-      matrix_E[1][1] * matrix_E[1][1] + matrix_E[1][2] * matrix_E[1][2] +
-      matrix_E[2][0] * matrix_E[2][0] + matrix_E[2][1] * matrix_E[2][1] +
-      matrix_E[2][2] * matrix_E[2][2];
-
-  if (invert_dimension_by_dimension_matrix(matrix_E) != 0) {
-    /* something went wrong in the inversion; force bad condition number */
-    p->chemistry_data.geometry_condition_number =
-        const_gizmo_max_condition_number + 1.0f;
-  } else {
-    const float condition_number_E =
-        matrix_E[0][0] * matrix_E[0][0] + matrix_E[0][1] * matrix_E[0][1] +
-        matrix_E[0][2] * matrix_E[0][2] + matrix_E[1][0] * matrix_E[1][0] +
-        matrix_E[1][1] * matrix_E[1][1] + matrix_E[1][2] * matrix_E[1][2] +
-        matrix_E[2][0] * matrix_E[2][0] + matrix_E[2][1] * matrix_E[2][1] +
-        matrix_E[2][2] * matrix_E[2][2];
-
-    p->chemistry_data.geometry_condition_number =
-        hydro_dimension_inv *
-        sqrtf(condition_number_E * condition_number_E_inv);
-  }
-
   /* Check that the metal masses are physical */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
     const double m_metal_old = p->chemistry_data.metal_mass[g];
@@ -605,22 +563,6 @@ chemistry_part_has_no_neighbours(struct part *restrict p,
                                  struct xpart *restrict xp,
                                  const struct chemistry_global_data *cd,
                                  const struct cosmology *cosmo) {
-
-  /* Re-set geometry problematic values */
-  p->geometry.volume = 1.0f;
-  p->geometry.matrix_E[0][0] = 1.0f;
-  p->geometry.matrix_E[0][1] = 0.0f;
-  p->geometry.matrix_E[0][2] = 0.0f;
-  p->geometry.matrix_E[1][0] = 0.0f;
-  p->geometry.matrix_E[1][1] = 1.0f;
-  p->geometry.matrix_E[1][2] = 0.0f;
-  p->geometry.matrix_E[2][0] = 0.0f;
-  p->geometry.matrix_E[2][1] = 0.0f;
-  p->geometry.matrix_E[2][2] = 1.0f;
-  p->chemistry_data.geometry_condition_number = hydro_dimension_inv * 1.f;
-
-  /* Reset the centroid to disable MFV velocity corrections for this particle */
-  fvpm_reset_centroids(p);
 
   /* Set density loop variables to meaningful values */
   p->chemistry_data.filtered.rho = hydro_get_comoving_density(p);

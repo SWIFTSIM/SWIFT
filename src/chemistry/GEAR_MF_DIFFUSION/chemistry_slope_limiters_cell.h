@@ -230,7 +230,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
     struct part *p, const struct chemistry_global_data *cd) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
-  const float N_cond = chd->geometry_condition_number;
+  const float N_cond = p->geometry.condition_number;
   const float maxr = chd->limiter.maxr;
   const float vxlim[2] = {chd->limiter.v[0][0], chd->limiter.v[0][1]};
   const float vylim[2] = {chd->limiter.v[1][0], chd->limiter.v[1][1]};
