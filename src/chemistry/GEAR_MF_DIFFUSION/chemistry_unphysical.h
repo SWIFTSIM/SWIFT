@@ -96,7 +96,7 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_diffusion_flux(double flux[3]) {
 
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   int nans = 0;
   for (int i = 0; i < 3; i++) {
     if (isnan(flux[i])) {
@@ -195,7 +195,7 @@ chemistry_check_unphysical_metallicity(double *Z, int callloc,
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_hyperbolic_flux(double flux[4][3]) {
 
-  /* #ifdef SWIFT_DEBUG_CHECKS */
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   int nans = 0;
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 3; j++) {
@@ -214,7 +214,7 @@ chemistry_check_unphysical_hyperbolic_flux(double flux[4][3]) {
         flux[0][0], flux[0][1], flux[0][2], flux[1][0], flux[1][1], flux[1][2],
         flux[2][0], flux[2][1], flux[2][2], flux[3][0], flux[3][1], flux[3][2]);
   }
-  /* #endif */
+#endif
 
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 3; j++) {

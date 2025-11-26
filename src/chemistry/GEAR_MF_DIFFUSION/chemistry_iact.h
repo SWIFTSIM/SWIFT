@@ -367,7 +367,7 @@ runner_iact_chemistry_fluxes_common(
   const float Anorm_inv = 1.0f / sqrtf(Anorm2);
   const float Anorm = Anorm2 * Anorm_inv;
 
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   /* For stability reasons, we do require A and dx to have opposite
    * directions (basically meaning that the surface normal for the surface
    * always points from particle i to particle j, as it would in a real
@@ -378,7 +378,7 @@ runner_iact_chemistry_fluxes_common(
    * happens. We curently just ignore this case and display a message. */
   const float rdim = pow_dimension(r);
   if (dA_dot_dx > 1.e-6f * rdim) {
-    message("Ill conditioned gradient matrix (%g %g %g %g %g)!", dA_dot_dx,
+    error("Ill conditioned gradient matrix (%g %g %g %g %g)!", dA_dot_dx,
             Anorm, Vi, Vj, r);
   }
 #endif
