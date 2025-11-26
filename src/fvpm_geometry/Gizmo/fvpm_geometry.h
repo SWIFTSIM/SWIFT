@@ -171,7 +171,7 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
 #endif
 #ifdef GIZMO_PATHOLOGICAL_WARNING
     message("Condition number too large: %g (> %g, p->id: %llu)!",
-            condition_number, const_gizmo_max_condition_number, p->id);
+            p->geometry.condition_number, const_gizmo_max_condition_number, p->id);
 #endif
     /* add a correction to the number of neighbours for this particle */
     p->geometry.wcorr = const_gizmo_w_correction_factor * p->geometry.wcorr;
