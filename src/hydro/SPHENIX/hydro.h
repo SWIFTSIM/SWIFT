@@ -518,6 +518,17 @@ __attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
 
   return p->viscosity.v_sig;
 }
+/**
+ * @brief sets the signal velocity
+ *
+ * @brief p  the particle
+ * @brief p  signal velocity of the particle
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_signal_velocity(
+    struct part* p, const float v_sig) {
+
+  p->viscosity.v_sig = v_sig;
+}
 
 /**
  * @brief returns the div_v

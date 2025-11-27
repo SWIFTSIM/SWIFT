@@ -257,7 +257,7 @@ mhd_set_drifted_physical_internal_energy(struct part *p) {
 
   /* Re-set MHD signal velocity */
   const float cms = mhd_get_comoving_magnetosonic_speed(p);
-  p->viscosity.v_sig = fmaxf(p->viscosity.v_sig, 2.0f * cms);
+  hydro_set_signal_velocity(p, fmaxf(hydro_get_signal_velocity(p), 2.0f * cms));
 }
 
 /**
@@ -281,10 +281,9 @@ mhd_set_v_sig_based_on_velocity_kick(struct part *p,
   const float cms = mhd_get_comoving_magnetosonic_speed(p);
   
   /* Update the signal velocity */
-  p->viscosity.v_sig =
-      fmaxf(2.f * cms, p->viscosity.v_sig + const_viscosity_beta * dv);
+  hydro_set_signal_velocity(p, fmaxf(2.f * cms, hydro_get_signal_velocity(p) +
+                                                    const_viscosity_beta * dv));
 }
-
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -360,7 +359,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
 
   /* Initialise MHD signal velocity */
   const float cms = mhd_get_comoving_magnetosonic_speed(p);
-  p->viscosity.v_sig = 2.0f * cms;
+  hydro_set_signal_velocity(p, 2.0f * cms);
 
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
@@ -441,7 +440,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float h_inv = 1.0f / h;
 
   /* Compute Dedner cleaning speed. */
-  const float ch = 0.5f * p->viscosity.v_sig;
+  const float ch = 0.5f * hydro_get_signal_velocity(p);
 
   /* Compute Dedner cleaning scalar time derivative. */
   const float hyp = hydro_props->mhd.hyp_dedner;
@@ -571,7 +570,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
 
   /* Re-set MHD signal velocity */
   const float cms = mhd_get_comoving_magnetosonic_speed(p);
-  p->viscosity.v_sig = fmaxf(p->viscosity.v_sig, 2.0f * cms);
+  hydro_set_signal_velocity(p, fmaxf(hydro_get_signal_velocity(p), 2.0f * cms));
 }
 
 /**
@@ -606,7 +605,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
 
   /* Initialise MHD signal velocity */
   const float cms = mhd_get_comoving_magnetosonic_speed(p);
-  p->viscosity.v_sig = fmaxf(p->viscosity.v_sig, 2.0f * cms);
+  hydro_set_signal_velocity(p, fmaxf(hydro_get_signal_velocity(p), 2.0f * cms));
 }
 
 /**
