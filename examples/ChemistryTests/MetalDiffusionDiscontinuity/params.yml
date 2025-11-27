@@ -2,7 +2,7 @@
 InternalUnitSystem:
   UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
   UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
-  UnitVelocity_in_cgs: 1e5   # km/s
+  UnitVelocity_in_cgs: 1e5 # km/s
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
@@ -34,7 +34,7 @@ Statistics:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:          ICs_homogeneous_box.hdf5
-  periodic:               1       # Are we running with periodic ICs?
+  periodic:               0       # Are we running with periodic ICs?
   shift:              [0.0,0.0,0.0]
 
 # Parameters for the hydrodynamics scheme

@@ -39,15 +39,6 @@ def parse_options():
     parser = argparse.ArgumentParser(description=usage)
 
     parser.add_argument(
-        "--rho",
-        action="store",
-        dest="rho",
-        type=float,
-        default=1,
-        help="Mean gas density in atom/cm3",
-    )
-
-    parser.add_argument(
         "--mass",
         action="store",
         dest="mass",
@@ -215,12 +206,33 @@ L = L.to(UnitLength).value
 
 # %% Generate particles positions
 
-if random_positions:
-    print("Sampling random positions in the box")
-    pos = np.random.random([N, dimension]) * L
+# Calculate the inter-particle spacing (size of one grid cell)
+if dimension == 1:
+    grid_size = L / (2**level)
 else:
-    print("Generating carthesian grid in the box")
-    points = np.linspace(0, L, 2**level, endpoint=False)
+    grid_size = L / (2**level) # This is the spacing along one dimension
+
+# Define a small half-shift (s): this ensures particles are centered in their cell,
+# moving them away from the 0 boundary.
+shift = 0.5 * grid_size
+
+if random_positions:
+    print("Sampling random positions in the box (Range: [0, L))")
+    # Add a minimal offset to ensure strict (0, L) if random() returns exactly 0
+    epsilon = 1e-12 * L
+    pos = np.random.random([N, dimension]) * (L - 2*epsilon) + epsilon
+
+else:
+    print("Generating carthesian grid in the box (Range: (0, L))")
+
+    # Start the grid points at a small offset (half a grid cell)
+    # This ensures the first particle is at 'shift' (e.g., L/2N) and the last is
+    # at L - shift, moving them all strictly off the boundary.
+    points = np.linspace(shift, L - shift, 2**level, endpoint=True)
+
+    # Note on np.linspace:
+    # We use endpoint=True here because we defined the range [shift, L-shift] for 2**level points.
+    # The step size will now be exactly 'grid_size', centered correctly.
 
     if dimension == 1:
         x = points
@@ -238,7 +250,7 @@ else:
     else:
         raise ValueError("Only dimensions 1, 2, or 3 are supported.")
 
-print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
+print("Inter-particle distance (code unit)   : {}".format(grid_size))
 
 # %% Velocity
 
