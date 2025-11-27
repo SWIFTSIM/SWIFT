@@ -138,7 +138,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
        The blending uses the ratio of the physical relaxtion time and the
        numerical one. */
     const double alpha = chemistry_riemann_compute_hyperbolic_blending_factor(
-	dx, pi, pj, UL, UR, m, chem_data, cosmo);
+        dx, pi, pj, UL, UR, m, chem_data, cosmo);
 
     /* Compute the parabolic diffusion solution */
     double F_par_L[3], F_par_R[3];

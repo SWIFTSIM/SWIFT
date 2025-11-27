@@ -210,10 +210,6 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
 
   /*****************************************/
   /* Update hydro gradients */
-  const double rhoi = hydro_get_comoving_density(pi);
-  const double rhoj = hydro_get_comoving_density(pj);
-  const double drho = rhoi - rhoj;
-
   const float dv[3] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1],
                        pi->v[2] - pj->v[2]};
   const float vi_tilde[3] = {chi->filtered.rho_v[0] / chi->filtered.rho,
@@ -227,12 +223,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
                              vi_tilde[2] - vj_tilde[2]};
 
   /* Compute velocity gradients for pi */
-  float drho_i[3], dvx_i[3], dvy_i[3], dvz_i[3], dvx_tilde_i[3], dvy_tilde_i[3],
+  float dvx_i[3], dvy_i[3], dvz_i[3], dvx_tilde_i[3], dvy_tilde_i[3],
       dvz_tilde_i[3];
-
-  drho_i[0] = drho * psii_tilde[0];
-  drho_i[1] = drho * psii_tilde[1];
-  drho_i[2] = drho * psii_tilde[2];
 
   dvx_i[0] = dv[0] * psii_tilde[0];
   dvx_i[1] = dv[0] * psii_tilde[1];
@@ -254,16 +246,12 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   dvz_tilde_i[1] = dv_tilde[2] * psii_tilde[1];
   dvz_tilde_i[2] = dv_tilde[2] * psii_tilde[2];
 
-  chemistry_part_update_hydro_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i,
+  chemistry_part_update_hydro_gradients(pi, dvx_i, dvy_i, dvz_i,
                                         dvx_tilde_i, dvy_tilde_i, dvz_tilde_i);
 
   /* Compute velocity gradients for pj */
-  float drho_j[3], dvx_j[3], dvy_j[3], dvz_j[3], dvx_tilde_j[3], dvy_tilde_j[3],
+  float dvx_j[3], dvy_j[3], dvz_j[3], dvx_tilde_j[3], dvy_tilde_j[3],
       dvz_tilde_j[3];
-
-  drho_j[0] = drho * psij_tilde[0];
-  drho_j[1] = drho * psij_tilde[1];
-  drho_j[2] = drho * psij_tilde[2];
 
   dvx_j[0] = dv[0] * psij_tilde[0];
   dvx_j[1] = dv[0] * psij_tilde[1];
@@ -285,7 +273,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   dvz_tilde_j[1] = dv_tilde[2] * psij_tilde[1];
   dvz_tilde_j[2] = dv_tilde[2] * psij_tilde[2];
 
-  chemistry_part_update_hydro_gradients(pj, drho_j, dvx_j, dvy_j, dvz_j,
+  chemistry_part_update_hydro_gradients(pj, dvx_j, dvy_j, dvz_j,
                                         dvx_tilde_j, dvy_tilde_j, dvz_tilde_j);
 
   /*****************************************/
@@ -405,10 +393,6 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
 
   /*****************************************/
   /* Update velocity gradients */
-  const double rhoi = hydro_get_comoving_density(pi);
-  const double rhoj = hydro_get_comoving_density(pj);
-  const double drho = rhoi - rhoj;
-
   const float dv[3] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1],
                        pi->v[2] - pj->v[2]};
   const float vi_tilde[3] = {chi->filtered.rho_v[0] / chi->filtered.rho,
@@ -422,7 +406,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
                              vi_tilde[2] - vj_tilde[2]};
 
   /* Compute velocity gradients for pi */
-  float drho_i[3], dvx_i[3], dvy_i[3], dvz_i[3], dvx_tilde_i[3], dvy_tilde_i[3],
+  float dvx_i[3], dvy_i[3], dvz_i[3], dvx_tilde_i[3], dvy_tilde_i[3],
       dvz_tilde_i[3];
 
   dvx_i[0] = dv[0] * psii_tilde[0];
@@ -435,10 +419,6 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
   dvz_i[1] = dv[2] * psii_tilde[1];
   dvz_i[2] = dv[2] * psii_tilde[2];
 
-  drho_i[0] = drho * psii_tilde[0];
-  drho_i[1] = drho * psii_tilde[1];
-  drho_i[2] = drho * psii_tilde[2];
-
   dvx_tilde_i[0] = dv_tilde[0] * psii_tilde[0];
   dvx_tilde_i[1] = dv_tilde[0] * psii_tilde[1];
   dvx_tilde_i[2] = dv_tilde[0] * psii_tilde[2];
@@ -449,8 +429,8 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
   dvz_tilde_i[1] = dv_tilde[2] * psii_tilde[1];
   dvz_tilde_i[2] = dv_tilde[2] * psii_tilde[2];
 
-  chemistry_part_update_hydro_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i,
-                                        dvx_tilde_i, dvy_tilde_i, dvz_tilde_i);
+  chemistry_part_update_hydro_gradients(pi, dvx_i, dvy_i, dvz_i, dvx_tilde_i,
+                                        dvy_tilde_i, dvz_tilde_i);
 
   /*****************************************/
   /* Collect the cell's min and max for the slope limiter. */
@@ -512,51 +492,36 @@ chemistry_gradients_predict_hydro(struct part *restrict pi,
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   /* Get the gradients */
-  float drho_i[3], drho_j[3];
   float dvx_i[3], dvy_i[3], dvz_i[3];
   float dvx_j[3], dvy_j[3], dvz_j[3];
-  chemistry_get_hydro_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i);
-  chemistry_get_hydro_gradients(pj, drho_j, dvx_j, dvy_j, dvz_j);
+  chemistry_get_hydro_gradients(pi, dvx_i, dvy_i, dvz_i);
+  chemistry_get_hydro_gradients(pj, dvx_j, dvy_j, dvz_j);
 
   /* Extrapolate the gradients on the face vector */
-  float drhoi_ext, dvi_ext[3];
-  drhoi_ext = chemistry_gradients_extrapolate_float(drho_i, xij_i);
+  float dvi_ext[3];
   dvi_ext[0] = chemistry_gradients_extrapolate_float(dvx_i, xij_i);
   dvi_ext[1] = chemistry_gradients_extrapolate_float(dvy_i, xij_i);
   dvi_ext[2] = chemistry_gradients_extrapolate_float(dvz_i, xij_i);
 
-  float drhoj_ext, dvj_ext[3];
-  drhoj_ext = chemistry_gradients_extrapolate_float(drho_j, xij_j);
+  float dvj_ext[3];
   dvj_ext[0] = chemistry_gradients_extrapolate_float(dvx_j, xij_j);
   dvj_ext[1] = chemistry_gradients_extrapolate_float(dvy_j, xij_j);
   dvj_ext[2] = chemistry_gradients_extrapolate_float(dvz_j, xij_j);
 
   /* Apply the slope limiter at this interface */
-  chemistry_slope_limit_face_hydro(Wi, Wj, drhoi_ext, drhoj_ext, dvi_ext,
-                                   dvj_ext, xij_i, xij_j, r);
+  chemistry_slope_limit_face_hydro(Wi, Wj, dvi_ext, dvj_ext, xij_i, xij_j, r);
 
   /* Reconstruct the values at the interface */
-  Wi[0] += drhoi_ext;
   Wi[1] += dvi_ext[0];
   Wi[2] += dvi_ext[1];
   Wi[3] += dvi_ext[2];
 
-  Wj[0] += drhoj_ext;
   Wj[1] += dvj_ext[0];
   Wj[2] += dvj_ext[1];
   Wj[3] += dvj_ext[2];
 
   /* Note: We do not reconstruct v_tilde at the interface since it is not used
      during the Riemann problem. */
-
-  /* If we have negative densities, perform a 0th order reconstruction */
-  if (Wi[0] < 0) {
-    Wi[0] = hydro_get_comoving_density(pi);
-  }
-
-  if (Wj[0] < 0) {
-    Wj[0] = hydro_get_comoving_density(pj);
-  }
 }
 
 /**
