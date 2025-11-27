@@ -41,7 +41,28 @@
 __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
     double *Ui, double *Uj, double *dUi, double *dUj, const float xij_i[3],
     const float *xij_j, float r) {
+
   chemistry_limiter_minmod(dUi, dUj);
+
+  /* const double alphai = chemistry_limiter_mc(*dUi, *dUj); */
+  /* const double alphaj = chemistry_limiter_mc(*dUj, *dUi); */
+  /* *dUi *= alphai; */
+  /* *dUj *= alphaj; */
+
+  /* const double alphai = chemistry_limiter_superbee(*dUi, *dUj); */
+  /* const double alphaj = chemistry_limiter_superbee(*dUj, *dUi); */
+  /* *dUi *= alphai; */
+  /* *dUj *= alphaj; */
+
+  /* const double alphai = chemistry_limiter_vanLeer(*dUi, *dUj); */
+  /* const double alphaj = chemistry_limiter_vanLeer(*dUj, *dUi); */
+  /* *dUi *= alphai; */
+  /* *dUj *= alphaj; */
+
+  /* const double alphai = chemistry_limiter_koren(*dUi, *dUj); */
+  /* const double alphaj = chemistry_limiter_koren(*dUj, *dUi); */
+  /* *dUi *= alphai; */
+  /* *dUj *= alphaj; */
 
   /* The Gizmo slope limiter works better. */
   /* const float xij_i_norm = */
