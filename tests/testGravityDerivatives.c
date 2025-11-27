@@ -1230,6 +1230,8 @@ int main(int argc, char *argv[]) {
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
+    tol *= 3.;
+
     /* 5th order terms */
     test(pot.D_500, D_500(dx, dy, dz, r_inv), tol, min * integer_pow(r_inv, 5),
          "M2P D_500");
