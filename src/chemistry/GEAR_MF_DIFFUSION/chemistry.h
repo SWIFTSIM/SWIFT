@@ -491,61 +491,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part *restrict p, const struct cosmology *cosmo,
     const int with_cosmology, const double time, const double dt,
-    const struct chemistry_global_data *cd) {
-
-  /* Update active particles */
-  struct chemistry_part_data *chd = &p->chemistry_data;
-
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    /* Update the conserved variable */
-    chd->metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i);
-
-#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
-    /* Update the diffused metal mass */
-    chd->diffused_metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i);
-#endif /* SWIFT_CHEMISTRY_DEBUG_CHECKS */
-  }
-
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  const float Vinv = 1.0 / p->geometry.volume;
-  const float dt_therm_phys = chd->flux_dt;
-
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    /* Homogeneous equation update */
-    /* For the flux, we are updating d(U*V)/dt = - Sum div F*A*dt and we want
-       U = flux, not V*U. For the metal mass, U = metal density so U*V = mass */
-    chd->flux[i][0] += chd->flux_riemann[i][0] * Vinv;
-    chd->flux[i][1] += chd->flux_riemann[i][1] * Vinv;
-    chd->flux[i][2] += chd->flux_riemann[i][2] * Vinv;
-
-    /* Update the source term to end the timestep (kick2 term) */
-    chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, cd, cosmo);
-  }
-#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
-
-  /* Reset the interface fluxes now that they have been applied */
-  chemistry_part_reset_fluxes(p);
-
-  /* Invalidate the particle time-step. It is considered to be inactive until
-     dt is set again in hydro_prepare_force() */
-  chd->flux_dt = -1.0f;
-
-  /* Element-wise sanity checks */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    const double m_metal_old = chd->metal_mass[i];
-    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
-                                     hydro_get_mass(p), /*callloc=*/2,
-                                     /*element*/ i, p->id);
-
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-    /* Check the fluxes */
-    chemistry_check_unphysical_diffusion_flux(chd->flux[i]);
-#endif
-  }
-
-  /* Sanity check on the total metal mass */
-  chemistry_check_unphysical_total_metal_mass(p, 2);
-}
+    const struct chemistry_global_data *cd) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0
@@ -896,59 +842,14 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   /* Update diffusion coefficient */
   chd->kappa = chemistry_get_diffusion_coefficient(p, chem_data, cosmo);
 
-  /***************************************************************************/
-  /* Update inactive particles that are drifted. This ensures metal mass
-     conservation to machine accuracy. */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    /* Update the conserved variable */
-    chd->metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i);
-
-#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
-    /* Update the diffused metal mass */
-    chd->diffused_metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i);
-#endif
-  }
-
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  const float Vinv = 1.0 / p->geometry.volume;
-  const float dt_therm_phys = dt_therm*cosmo->a*cosmo->a;
-
-  /* Homogeneous equation update for inactive particles */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    /* For the flux, we are updating d(U*V)/dt = - Sum div F*A*dt and we want
-       U = flux, not V*U. For the metal mass, U = metal density so U*V = mass */
-    chd->flux[i][0] += chd->flux_riemann[i][0] * Vinv;
-    chd->flux[i][1] += chd->flux_riemann[i][1] * Vinv;
-    chd->flux[i][2] += chd->flux_riemann[i][2] * Vinv;
-
-    /* Update the source term to the current time (active and inactive particles)*/
-    chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data, cosmo);
-  }
-#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
-
-  /* Reset the metal mass fluxes now that they have been applied */
-  chemistry_part_reset_fluxes(p);
-
-  /* We don't need to invalidate the part's timestep. The active ones were
-     reset in chemistry_end_force() and the inactive do not need an update
-     until the next chemistry_prepare_force() call. */
-
-  /***************************************************************************/
-
-  /* Element-wise sanity checks */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    const double m_metal_old = chd->metal_mass[i];
-    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
-                                     hydro_get_mass(p), /*callloc=*/3,
-                                     /*element*/ i, p->id);
-
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-    chemistry_check_unphysical_diffusion_flux(chd->flux[i]);
-#endif
-  }
-
-  /* Sanity check on the total metal mass */
-  chemistry_check_unphysical_total_metal_mass(p, 3);
+/* #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION) */
+  /* Not sure but maybe we can still predict here. SPHENIX does that for
+     internal energy: it kicks it in kick_extra() and predicts in
+     predict_extra() */
+    /* Predict the flux */
+    /* chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data, cosmo); */
+  /* } */
+/* #endif /\* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION *\/ */
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */
