@@ -53,10 +53,10 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
   const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
   *dUi = chemistry_slope_limit_face_quantity_double(
-      Ui[0], Uj[0], Ui[0] + dUi[0], xij_i_norm, r_inv, 1);
+      Ui[0], Uj[0], Ui[0] + dUi[0], xij_i_norm, r_inv, 0);
 
   *dUj = chemistry_slope_limit_face_quantity_double(
-      Uj[0], Ui[0], Uj[0] + dUj[0], xij_j_norm, r_inv, 1);
+      Uj[0], Ui[0], Uj[0] + dUj[0], xij_j_norm, r_inv, 0);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_PARABOLIC_DIFFUSION_SLOPE_LIMITERS_FACE_H */
