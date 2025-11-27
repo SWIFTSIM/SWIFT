@@ -41,22 +41,22 @@
 __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
     double *Ui, double *Uj, double *dUi, double *dUj, const float xij_i[3],
     const float *xij_j, float r) {
-  /* chemistry_limiter_minmod(dUi, dUj); */
+  chemistry_limiter_minmod(dUi, dUj);
 
   /* The Gizmo slope limiter works better. */
-  const float xij_i_norm =
-      sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
+  /* const float xij_i_norm = */
+  /*     sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]); */
 
-  const float xij_j_norm =
-      sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
+  /* const float xij_j_norm = */
+  /*     sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]); */
 
-  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
+  /* const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f; */
 
-  *dUi = chemistry_slope_limit_face_quantity_double(
-      Ui[0], Uj[0], Ui[0] + dUi[0], xij_i_norm, r_inv, 0);
+  /* *dUi = chemistry_slope_limit_face_quantity_double( */
+  /*     Ui[0], Uj[0], Ui[0] + dUi[0], xij_i_norm, r_inv, 0); */
 
-  *dUj = chemistry_slope_limit_face_quantity_double(
-      Uj[0], Ui[0], Uj[0] + dUj[0], xij_j_norm, r_inv, 0);
+  /* *dUj = chemistry_slope_limit_face_quantity_double( */
+  /*     Uj[0], Ui[0], Uj[0] + dUj[0], xij_j_norm, r_inv, 0); */
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_PARABOLIC_DIFFUSION_SLOPE_LIMITERS_FACE_H */
