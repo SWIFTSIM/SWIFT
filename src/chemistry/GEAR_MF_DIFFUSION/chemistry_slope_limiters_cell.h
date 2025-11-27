@@ -43,18 +43,18 @@ __attribute__((always_inline)) INLINE static void
 chemistry_slope_limit_cell_init(struct part *p) {
 
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
-    p->chemistry_data.limiter.Z[m][0] = FLT_MAX;
-    p->chemistry_data.limiter.Z[m][1] = -FLT_MAX;
+    p->chemistry_data.limiter.Z[m][0] = DBL_MAX;
+    p->chemistry_data.limiter.Z[m][1] = -DBL_MAX;
 
-    p->chemistry_data.limiter.rhoZ[m][0] = FLT_MAX;
-    p->chemistry_data.limiter.rhoZ[m][1] = -FLT_MAX;
+    p->chemistry_data.limiter.rhoZ[m][0] = DBL_MAX;
+    p->chemistry_data.limiter.rhoZ[m][1] = -DBL_MAX;
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     /* Array index reminder: 1st: metal; 2nd: flux component x, y or z; 3rd
        component: limiter min or max value. */
     for (int i = 0; i < 3; i++) {
-      p->chemistry_data.limiter.flux[m][i][0] = FLT_MAX;
-      p->chemistry_data.limiter.flux[m][i][1] = -FLT_MAX;
+      p->chemistry_data.limiter.flux[m][i][0] = DBL_MAX;
+      p->chemistry_data.limiter.flux[m][i][1] = -DBL_MAX;
     }
 #endif
   }
@@ -192,7 +192,7 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
       const double min_value =
           (value + valmin) * 0.5;  // Halfway between central and min value
       const double positive_definite_min =
-          (value > 0.0) ? value * FLT_MIN : 0.0;
+          (value > 0.0) ? value * DBL_MIN : 0.0;
       const double fmin =
           (f_corr_overshoot < min_value) ? f_corr_overshoot : min_value;
       const double final_fmin =
