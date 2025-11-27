@@ -959,7 +959,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
  */
 __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
     const struct cell *c) {
-
+  
   /* Is the cell split ? */
   /* If so, is the cut-off radius with some leeway smaller than */
   /* the sub-cell sizes ? */

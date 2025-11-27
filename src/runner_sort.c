@@ -43,9 +43,9 @@ void runner_do_hydro_resort(struct runner *r, struct cell *c, const int timer) {
 
   TIMER_TIC;
 
-  /* Did we demand a recalculation of the stars'sorts? */
+  
+  /* Did we demand a recalculation of the hydro sorts? */
   if (cell_get_flag(c, cell_flag_do_hydro_resort)) {
-    
     runner_do_all_hydro_sort(r, c);
     cell_clear_flag(c, cell_flag_do_hydro_resort);
   }
@@ -233,6 +233,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   TIMER_TIC;
   
 
+  
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.super == NULL) error("Task called above the super level!!!");
 #endif
@@ -704,7 +705,7 @@ void runner_do_all_hydro_sort(struct runner *r, struct cell *c) {
 
   /* Shall we sort at this level? */
   if (c->hydro.super == c) {
-
+    message("forced resort");
     /* Sort everything */
     runner_do_hydro_sort(r, c, 0x1FFF, /*cleanup=*/0, /*rt_requests_sort=*/0,
                          /*timer=*/0);

@@ -120,10 +120,10 @@ enum task_types {
   task_type_rt_advance_cell_time,
   task_type_rt_sort,
   task_type_rt_collect_times,
-  //lily                                                                                                                                                                                                                                     
+  //lily                                                                             
   task_type_particle_split,
-  task_type_count,
- 
+  task_type_hydro_resort,
+  task_type_count 
 } __attribute__((packed));
 
 /**
@@ -165,7 +165,6 @@ enum task_subtypes {
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
   task_subtype_count,
-
 } __attribute__((packed));
 
 /**

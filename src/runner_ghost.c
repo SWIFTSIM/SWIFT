@@ -1176,7 +1176,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* Is this part within the timestep? */
         if (!part_is_active(p, e)) error("Ghost applied to inactive particle");
 #endif
-
+	
         /* Get some useful values */
         const float h_init = h_0[i];
         const float h_old = p->h;

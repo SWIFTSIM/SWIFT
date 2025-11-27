@@ -1681,7 +1681,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_limiter(ci, s);
 	//lily
 	if (ci->hydro.particle_split)
-	  scheduler_activate(s, ci->hydro.particle_split);
+          scheduler_activate(s, ci->hydro.particle_split);
+	if (ci->hydro.hydro_resort)
+	  scheduler_activate(s, ci->hydro.hydro_resort);
+	
       }
 
       /* Set the correct sorting flags and activate hydro drifts */
@@ -1950,6 +1953,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif
     //lily
+    if (c->hydro.hydro_resort != NULL)
+      scheduler_activate(s, c->hydro.hydro_resort);
     if (c->hydro.particle_split != NULL)
       scheduler_activate(s, c->hydro.particle_split);
     if (c->top->hydro.star_formation != NULL) {

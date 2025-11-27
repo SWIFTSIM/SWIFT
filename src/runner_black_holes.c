@@ -89,7 +89,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
       }
     }
   } else {
-
+    
     /* Loop over all the gas particles in the cell
      * Note that the cell (and hence the parts) may be local or foreign. */
     const size_t nr_parts = c->hydro.count;
@@ -114,25 +114,23 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
           black_holes_get_part_swallow_id(&p->black_holes_data);
 
       //lily
-      /* --- Mark particle for splitting --- 
-      if (p->split_flag < 1){
-	for (size_t i = 0; i < nr_bpart; ++i) {
-	  struct bpart *bp = &bparts[i];
+      /* --- if any of the particles have been marked to be split, need to drift the cell --- 
+      if (p->split_flag == 1) {
+	struct cell *super = c->hydro.super;
+	
+	// Only mark if it hasn't been marked yet
+	if (!(cell_get_flag(super, cell_flag_do_hydro_drift)) ||
+	    !(cell_get_flag(super, cell_flag_do_grav_drift))) {
 	  
-	  // Compute distance to this BH
-	  double dx = p->x[0] - bp->x[0];
-	  double dy = p->x[1] - bp->x[1];
-	  double dz = p->x[2] - bp->x[2];
-	  double dist = sqrt(dx*dx + dy*dy + dz*dz);
+	  message("marked for drifting");
 	  
-	  // Within 2*BH smoothing length? Mark for splitting
-	  if (dist <= 2*bp->h) {
-	    p->split_flag = 1;
-	  }
+	  // Mark the super cell for drifting
+	  cell_set_flag(super, cell_flag_do_hydro_drift);
+	  cell_set_flag(super, cell_flag_do_grav_drift);
 	}
-      }
+	}*/
       
-      Has this particle been flagged for swallowing? */
+      /*Has this particle been flagged for swallowing? */
       if (swallow_id >= 0) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -260,6 +258,7 @@ void runner_do_gas_swallow_self(struct runner *r, struct cell *c, int timer) {
 #endif
 
   runner_do_gas_swallow(r, c, timer);
+
 }
 
 /**

@@ -543,7 +543,6 @@ runner_iact_nonsym_bh_gas_swallow(
   //lily                                                                                                                                                                    
   /* --- Mark particle for splitting --- */
   if (pj->split_flag < 1){
-
     // Compute distance to this BH                                                                                                                                           
     double pdx = pj->x[0] - bi->x[0];
     double pdy = pj->x[1] - bi->x[1];
@@ -553,9 +552,10 @@ runner_iact_nonsym_bh_gas_swallow(
     // Within 2*BH smoothing length? Mark for splitting                                                                                                                      
     if (dist <= 2*bi->h) {
       pj->split_flag = 1;
+      //message("marked inactive particle to be split, ACTIVATE");
     }
   }
-
+  
   
   float wi;
 
