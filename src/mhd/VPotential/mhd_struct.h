@@ -22,7 +22,10 @@
 /**
  * @brief Particle-carried fields for the MHD scheme.
  */
+#ifndef SWIFT_SYMMETRIC_MATRIX_H
+#define SWIFT_SYMMETRIC_MATRIX_H
 #include "symmetric_matrix.h"
+#endif
 
 struct mhd_part_data {
 

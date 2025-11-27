@@ -69,9 +69,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   const float Aij[3] = {pj->mhd_data.APred[0] - pi->mhd_data.APred[0],
                         pj->mhd_data.APred[1] - pi->mhd_data.APred[1],
                         pj->mhd_data.APred[2] - pi->mhd_data.APred[2]};
+#ifdef VP_ADV_GAUGE
   const float DAij[3] = {(pj->v[0] - pi->v[0]),
                          (pj->v[1] - pi->v[1]),
                          (pj->v[2] - pi->v[2])};
+  const float PI[3]  = {-pi->mhd_data.APred[0],
+                        -pi->mhd_data.APred[1],
+                        -pi->mhd_data.APred[2]};
+  const float PJ[3]  = {-pj->mhd_data.APred[0],
+                        -pj->mhd_data.APred[1],
+                        -pj->mhd_data.APred[2]};
+#else
+  const float DAij[3] = {(pj->mhd_data.APred[0] - pi->mhd_data.APred[0]),
+                         (pj->mhd_data.APred[1] - pi->mhd_data.APred[1]),
+                         (pj->mhd_data.APred[2] - pi->mhd_data.APred[2])};
+  const float PI[3]  = {pi->v[0],
+                        pi->v[1],
+                        pi->v[2]};
+  const float PJ[3]  = {pj->v[0],
+                        pj->v[1],
+                        pj->v[2]};
+#endif
   const float DGau = pj->mhd_data.Gau - pi->mhd_data.Gau;
   
   const float common_term_i = wi_dx * mj;
@@ -95,11 +113,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   for (int i = 0; i < 3; i++) 
     for (int j = 0; j < 3; j++) {
       pi->mhd_data.dens.Mat_b[i][j] -= common_term_i * Aij[i] * dx[j];
-      pi->mhd_data.grad.Mat_da[i][j] -= common_term_i * pi->mhd_data.APred[i] * DAij[i] * dx[j];
-      pi->mhd_data.grad.Mat_da[i][j] -= common_term_i * DGau * dx[j];
+      pi->mhd_data.grad.Mat_da[i][j] -= common_term_i * PI[i] * DAij[i] * dx[j];
+      pi->mhd_data.grad.Mat_da[i][j] += common_term_i * DGau * dx[j];
       pj->mhd_data.dens.Mat_b[i][j] -= common_term_j * Aij[i] * dx[j];
-      pj->mhd_data.grad.Mat_da[i][j] -= common_term_j * pj->mhd_data.APred[i] * DAij[i] * dx[j];
-      pj->mhd_data.grad.Mat_da[i][j] -= common_term_j * DGau * dx[j];
+      pj->mhd_data.grad.Mat_da[i][j] -= common_term_j * PJ[i] * DAij[i] * dx[j];
+      pj->mhd_data.grad.Mat_da[i][j] += common_term_j * DGau * dx[j];
     }
   
 }
@@ -140,9 +158,21 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   const float Aij[3] = {pj->mhd_data.APred[0] - pi->mhd_data.APred[0],
                         pj->mhd_data.APred[1] - pi->mhd_data.APred[1],
                         pj->mhd_data.APred[2] - pi->mhd_data.APred[2]};
+#ifdef VP_ADV_GAUGE
   const float DAij[3] = {(pj->v[0] - pi->v[0]),
                          (pj->v[1] - pi->v[1]),
                          (pj->v[2] - pi->v[2])};
+  const float PI[3]  = {-pi->mhd_data.APred[0],
+                        -pi->mhd_data.APred[1],
+                        -pi->mhd_data.APred[2]};
+#else
+  const float DAij[3] = {(pj->mhd_data.APred[0] - pi->mhd_data.APred[0]),
+                         (pj->mhd_data.APred[1] - pi->mhd_data.APred[1]),
+                         (pj->mhd_data.APred[2] - pi->mhd_data.APred[2])};
+  const float PI[3]  = {pi->v[0],
+                        pi->v[1],
+                        pi->v[2]};
+#endif
   const float DGau = pj->mhd_data.Gau - pi->mhd_data.Gau;
   
   const float common_term_i = wi_dx * mj;
@@ -158,8 +188,8 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   for (int i = 0; i < 3; i++) 
     for (int j = 0; j < 3; j++) {
       pi->mhd_data.dens.Mat_b[i][j] -= common_term_i * Aij[i] * dx[j];
-      pi->mhd_data.grad.Mat_da[i][j] -= common_term_i * pi->mhd_data.APred[i] * DAij[i] * dx[j];
-      pi->mhd_data.grad.Mat_da[i][j] -= common_term_i * DGau * dx[j];
+      pi->mhd_data.grad.Mat_da[i][j] -= common_term_i * PI[i] * DAij[i] * dx[j];
+      pi->mhd_data.grad.Mat_da[i][j] += common_term_i * DGau * dx[j];
     }
 }
 
@@ -474,8 +504,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Recover some data */
   const float mi = pi->mass;
   const float mj = pj->mass;
-  //const float Pi = pi->force.pressure;
-  //const float Pj = pj->force.pressure;
+  const float Pi = pi->force.pressure;
+  const float Pj = pj->force.pressure;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
@@ -525,7 +555,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     mm_i[j][j] -= 0.5 * (Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2]);
     mm_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
   }
-/*
   const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
   const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
 
@@ -550,7 +579,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
       pj->a_hydro[i] += mi * Bj[i] * tensile_correction_scale_j *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
-*/
   /* Save forces*/
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
@@ -672,7 +700,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Recover some data */
   const float mi = pi->mass;
   const float mj = pj->mass;
- // const float Pi = pi->force.pressure;
+  const float Pi = pi->force.pressure;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
@@ -723,7 +751,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     mm_i[j][j] -= 0.5 * (Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2]);
     mm_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
   }
-/*  
   const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
   const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
@@ -737,7 +764,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
       pi->a_hydro[i] -= mj * Bi[i] * tensile_correction_scale_i *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
-*/
   /* Save forces*/
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {

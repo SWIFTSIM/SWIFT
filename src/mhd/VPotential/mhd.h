@@ -248,6 +248,44 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 }
 
 /**
+ * @brief Adapts signal velocity to change in drifted physical internal energy of a particle at feedback events
+ *
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static void
+mhd_set_drifted_physical_internal_energy(struct part *p) {
+
+  /* Re-set MHD signal velocity */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p);
+  hydro_set_signal_velocity(p, fmaxf(hydro_get_signal_velocity(p), 2.0f * cms));
+}
+
+/**
+ * @brief Correct the signal velocity of the particle partaking in
+ * supernova (kinetic) feedback based on the velocity kick the particle receives
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param dv_phys The velocity kick received by the particle expressed in
+ * physical units (note that dv_phys must be positive or equal to zero)
+ */
+__attribute__((always_inline)) INLINE static void
+mhd_set_v_sig_based_on_velocity_kick(struct part *p,
+                                       const struct cosmology *cosmo,
+                                       const float dv_phys) {
+
+  /* Compute the velocity kick in comoving coordinates */
+  const float dv = dv_phys / cosmo->a_factor_sound_speed;
+
+  /* Fast magnetosonic speed */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p);
+  
+  /* Update the signal velocity */
+  hydro_set_signal_velocity(p, fmaxf(2.f * cms, hydro_get_signal_velocity(p) +
+                                                    const_viscosity_beta * dv));
+}
+
+/**
  * @brief Returns the Gauge Scalar Phi evolution
  * time the particle. Gauge all variables in full step
  *
@@ -258,7 +296,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
     const struct part *restrict p, const struct cosmology *c, const float mu0) {
 
   const float Gauge = p->mhd_data.Gau;
-  const float v_sig = mhd_get_comoving_magnetosonic_speed(p);
+  const float v_sig = 0.5f * hydro_get_signal_velocity(p);
   const float afac1 = pow(c->a, 2.f * c->a_factor_sound_speed);
   const float afac2 = pow(c->a, (c->a_factor_sound_speed + 1.f));
 
@@ -271,7 +309,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
   /* Cosmological term */
   const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * Gauge;
 
-  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 1.f * c->a *
+  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * 0.f * c->a *
          c->a;
 }
 
@@ -411,6 +449,10 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     }
   }
 
+  /* Initialise MHD signal velocity */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p);
+  hydro_set_signal_velocity(p, 2.0f * cms);
+
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
   for (int k = 0; k < 3; k++) {
@@ -426,7 +468,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
-    struct part *p) {
+    struct part *p, const float mu_0) {
 
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
@@ -548,16 +590,16 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     }
   }
 
-  const float alpha_AR_max = 0.0;
+  const float alpha_AR_max = 2.0;
 
   p->mhd_data.alpha_AR =
       normB ? fminf(alpha_AR_max, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
 
   /* Sets Induction equation */
   for (int i = 0; i < 3; i++) {
-      p->mhd_data.dAdt[i] =  -p->mhd_data.resistive_eta * p->mhd_data.JPred[i];
+      p->mhd_data.dAdt[i] = - p->mhd_data.resistive_eta * p->mhd_data.JPred[i];
       for (int k = 0; k < 3; k++) 
-         p->mhd_data.dAdt[i] -= p->mhd_data.grad.Mat_da[k][i];
+         p->mhd_data.dAdt[i] += p->mhd_data.grad.Mat_da[k][i];
   }
 }
 
@@ -604,6 +646,10 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
   p->mhd_data.Gau = xp->mhd_data.Gaufull;
 
   p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+
+  /* Re-set MHD signal velocity */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p);
+  hydro_set_signal_velocity(p, fmaxf(hydro_get_signal_velocity(p), 2.0f * cms));
 }
 
 /**
@@ -635,6 +681,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.Gau += p->mhd_data.Gau_dt * dt_therm;
 
   p->mhd_data.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+
+  /* Initialise MHD signal velocity */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p);
+  hydro_set_signal_velocity(p, fmaxf(hydro_get_signal_velocity(p), 2.0f * cms));
 }
 
 /**
@@ -661,11 +711,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
-  
+  /*
   for (int i = 0; i < 3; i++) 
       for (int k = 0; k < 3; k++) 
          p->a_hydro[i] += p->mhd_data.grad.Mat_F[i][k];
-  
+ */ 
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] *= p->mass;
