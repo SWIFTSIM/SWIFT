@@ -345,6 +345,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
   }
 
   if (timer) TIMER_TOC(timer_kick1);
+ 
 }
 
 /**
@@ -659,7 +660,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
   
   TIMER_TIC;
-  
+ 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
       !cell_is_active_stars(c, e) && !cell_is_active_sinks(c, e) &&
@@ -696,6 +697,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
 
+      
       /* If particle needs updating */
       if (part_is_active(p, e)) {
 
@@ -728,6 +730,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
         const integertime_t ti_new_step =
             get_part_timestep(p, xp, e, ti_rt_new_step);
+
+	
         /* Enforce RT time-step size <= hydro step size. */
         ti_rt_new_step = min(ti_new_step, ti_rt_new_step);
 

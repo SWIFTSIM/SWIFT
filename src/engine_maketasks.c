@@ -60,6 +60,7 @@ extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
 extern int engine_star_resort_task_depth;
 extern int engine_max_parts_per_cooling;
+extern int engine_hydro_resort_task_depth;
 
 /**
  * @brief Add send tasks for the gravity pairs to a hierarchy of cells.
@@ -1405,6 +1406,11 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
       scheduler_addunlock(s, c->grav.end_force, c->super->kick2);
 
+      //lily                                                                                                                                                                                             
+      if (c->hydro.particle_split){
+	scheduler_addunlock(s, c->grav.drift, c->hydro.particle_split);}
+      
+      
       if (is_self_gravity) {
 
         /* Initialisation of the multipoles */
@@ -1423,15 +1429,10 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
                                               task_subtype_none, 0, 1, c, NULL);
 
-
+	//lily
+	if (c->hydro.particle_split)
+          scheduler_addunlock(s, c->grav.drift_out, c->hydro.particle_split);
 	
-	/*lily Particle split waits for gravity drift to finish */
-	//if (c->hydro.particle_split) {
-	//  scheduler_addunlock(s, c->grav.drift, c->hydro.particle_split);
-	//  scheduler_addunlock(s, c->grav.drift_out, c->hydro.particle_split);
-	//}
-	//
- 
         c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
                                              task_subtype_none, 0, 1, c, NULL);
         c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
@@ -1476,14 +1477,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->parent->grav.init_out, c->grav.init_out);
         scheduler_addunlock(s, c->parent->grav.drift_out, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
-
-	
-	//lily
-	if (c->hydro.particle_split){
-	  if (c->grav.drift) 
-	    scheduler_addunlock(s, c->grav.drift, c->hydro.particle_split);
-	  if (c->grav.drift_out)
-	    scheduler_addunlock(s, c->grav.drift_out, c->hydro.particle_split);}
+       
       }
     }
   }
@@ -1579,7 +1573,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 #ifdef WITH_CSDS
   const int with_csds = (e->policy & engine_policy_csds);
 #endif
-
+   
   /* Are we are the level where we create the stars' resort tasks?
    * If the tree is shallow, we need to do this at the super-level if the
    * super-level is above the level we want */
@@ -1640,14 +1634,21 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
                                          task_subtype_none, 0, 0, c, NULL);
 
-      //<<lily>>: please work
+
+      
+      
+      //<<lily>>: please work   
+      c->hydro.hydro_resort = scheduler_addtask(s, task_type_hydro_resort,
+                                             task_subtype_none, 0, 0, c, NULL);
+
       c->hydro.particle_split = scheduler_addtask(s, task_type_particle_split,
-                                         task_subtype_none, 0, 0, c, NULL);
+						  task_subtype_none, 0, 0, c, NULL);
 
-      scheduler_addunlock(s, c->hydro.drift, c->hydro.particle_split);
-      scheduler_addunlock(s, c->hydro.particle_split, c->hydro.sorts);
-
-      //
+      scheduler_addunlock(s,  c->hydro.drift, c->hydro.particle_split);
+      scheduler_addunlock(s,  c->hydro.particle_split,  c->hydro.hydro_resort);
+      
+      if (c->hydro.sorts)
+	scheduler_addunlock(s,  c->hydro.hydro_resort, c->hydro.sorts);
       
       /* Add the task finishing the force calculation */
       c->hydro.end_force = scheduler_addtask(s, task_type_end_hydro_force,
@@ -1662,6 +1663,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                             /* implicit = */ 1, c, NULL);
       engine_add_ghosts(e, c, c->hydro.ghost_in, c->hydro.ghost_out);
 
+      
       /* Generate the extra ghost task. */
 #ifdef EXTRA_HYDRO_LOOP
       c->hydro.extra_ghost = scheduler_addtask(
@@ -1874,9 +1876,10 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         c->black_holes.swallow_ghost_2 =
             scheduler_addtask(s, task_type_bh_swallow_ghost2, task_subtype_none,
                               0, /* implicit =*/1, c, NULL);
-
+        
         c->black_holes.swallow_ghost_3 = scheduler_addtask(
             s, task_type_bh_swallow_ghost3, task_subtype_none, 0, 0, c, NULL);
+
 
 #ifdef WITH_CSDS
         if (with_csds) {
@@ -2198,7 +2201,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     } else if (t_type == task_type_pair) {
       atomic_inc(&ci->nr_tasks);
       atomic_inc(&cj->nr_tasks);
-
+      
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
@@ -2550,7 +2553,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Make the self-density tasks depend on the drift only. */
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
-
+      
       /* Task for the second hydro loop, */
       t_force = scheduler_addtask(sched, task_type_self, task_subtype_force,
                                   flags, 0, ci, NULL);
@@ -2812,12 +2815,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
         scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
       }
-
+      
       /* Make all density tasks depend on the sorts */
       scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
       if (ci->hydro.super != cj->hydro.super) {
         scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
       }
+
 
       /* New task for the force */
       t_force = scheduler_addtask(sched, task_type_pair, task_subtype_force,

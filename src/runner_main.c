@@ -452,11 +452,13 @@ void *runner_main(void *data) {
           runner_do_drift_gpart(r, ci, 1);
 	  break;
 	  //lily
-        case  task_type_particle_split: 
-	  if (r->e->time > 0){
-            runner_do_particle_split(r, ci,1);
-                }
+        case task_type_particle_split:
+	  runner_do_particle_split(r, ci,1);
 	  break;
+        case task_type_hydro_resort:
+	  runner_do_hydro_resort(r,ci,1);
+	  break;
+	  //end lily
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);
           break;
@@ -476,7 +478,7 @@ void *runner_main(void *data) {
           runner_do_timestep(r, ci, 1);
           break;
         case task_type_timestep_limiter:
-          runner_do_limiter(r, ci, 0, 1);
+          runner_do_limiter(r, ci, 0, 1); 
           break;
         case task_type_timestep_sync:
           runner_do_sync(r, ci, 0, 1);

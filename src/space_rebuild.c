@@ -621,7 +621,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Verify that the part have been sorted correctly. */
   for (size_t k = 0; k < nr_parts; k++) {
     const struct part *p = &s->parts[k];
-
+    
     if (p->time_bin == time_bin_inhibited)
       error("Inhibited particle sorted into a cell!");
 

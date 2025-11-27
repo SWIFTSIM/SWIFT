@@ -129,6 +129,7 @@ const char *taskID_names[task_type_count] = {
     "rt_collect_times",
     //lily
     "particle_split",
+    "hydro_resort",
 };
 
 /* Sub-task type names. */

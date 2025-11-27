@@ -66,13 +66,23 @@
 
 #include "kernel_hydro.h"
 
+
+// Linear search for parent in the cell ->inefficient but oh well
+int find_parent_linear(const struct part *parts, int cnt, long long id) {
+    for (int i = 0; i < cnt; i++) {
+        if (parts[i].id == id)
+            return i;
+    }
+    return -1; // not found
+}
+
 /**** split gas particles within BH hsml ****/
 void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
   struct engine *e = r->e;
-  const int count = c->hydro.count;
+  //leaf data
+  const int count_leaf = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
-
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -81,7 +91,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 #endif
 
    /* Anything to do here? */
-  if (count == 0 || !cell_is_active_hydro(c, e)) {
+  if (count_leaf == 0 || !cell_is_active_hydro(c, e)) {
     return;
   }
   
@@ -90,24 +100,21 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
 
-      struct cell *restrict cp = c->progeny[k];
-
-         runner_do_particle_split(r, cp, 0);
-	         c->hydro.h_max = max(c->hydro.h_max, cp->hydro.h_max);
-        c->hydro.h_max_active =
-            max(c->hydro.h_max_active, cp->hydro.h_max_active);
+	struct cell *restrict cp = c->progeny[k];
+	runner_do_particle_split(r, cp, 0);
+      
       }
   } else {
-
-    //hardcode splits for now
-    // options are nsplit = 1, 5, 7, 9 (odd because we count the og central particle
-    const int n_split = 7;
-
     
-    // Now loop over gas particles near BH
-    //for (int j = 0; j < c->hydro.count; j++) {
+    //hardcode splits for now
+    // options are nsplit = 7, 13 (odd because we count the og central particle
+    const int n_split = 7;
+    
+    // Now loop over gas particles at parent cell, this is broked but we get the full
+    //set of parent splits in one go, probs best to save the full parent list and then split
+    
     int j = 0;
-    while (j < c->hydro.count){
+    while (j < c->top->hydro.count){
       struct part *p  = &parts[j];
       struct xpart *xp = &xparts[j];
 
@@ -120,14 +127,28 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	j ++;
 	continue;
       }
-
-      
+   
       // If gas particle is marked for splitting
       if (p->split_flag == 1) {
-	//split into 3D cross
+	//immediately mark as split
+	p->split_flag = 2;                  
+        // Update the parent before any memmove
+        p->mass = child_mass;                                                                                                                                                                                                   
+        if (p->gpart){                                                                                                                                                                                             
+          p->gpart->mass = child_mass;
+	  if (!gpart_is_active(p->gpart, e)){                                                                                                                                      
+             message("gparent is not active, ACTIVATE!");                                                                                                                                                         
+             p->gpart->time_bin = e->min_active_bin;}   
+	}                                                                                                                                                                                                                    
+        //need to set it as active if its not (idk this is overkill but whatevs) 
+        if (!part_is_active(p, e)){                                                                                                                                                                               
+          message("parent is not active, ACTIVATE!");
+          p->time_bin = e->min_active_bin;}
+	
+	//split into 3D shape
 	message("------- splitting particles ------");
 	double delta = p->h / 4;
-	//3D cross
+	/*3D cross*/
 	double offsets[6][3] = {
 	  {+delta, 0.0, 0.0}, {-delta, 0.0, 0.0},
 	  {0.0, +delta, 0.0}, {0.0, -delta, 0.0},
@@ -142,22 +163,37 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 
 	// Spawn children
 	// problem of looping whilst list shifting
-	int parent_index = p - c->hydro.parts; //weird hack but works to get idx in cell list
-	struct part *parent = p;
-	struct xpart *parent_xp = xp;
-	message("Parent before splits: id=%lld, mass=%e, pos=(%g,%g,%g)",
-		parent->id, parent->mass, parent->x[0], parent->x[1], parent->x[2]);
+	//int parent_index = p - c->hydro.parts; //idx in cell list
+	const long long parent_id = p->id;
+	//struct part *parent = p;
+	//struct xpart *parent_xp = xp;
 
+	struct part parent = *p;    // copy all fields of parent 
+	struct xpart parent_xp = *xp;
 	
+	message("Cell: %p, Parent before splits: id=%lld, mass=%e, pos=(%g,%g,%g), vel=(%g,%g,%g)",
+		(void*)c, parent.id, parent.mass, parent.x[0], parent.x[1], parent.x[2],
+		parent.v[0], parent.v[1], parent.v[2]);
+
 	for (int n = 0; n < (n_split-1); n++) { 
 	  double pos_offsets[3] = {offsets[n][0], offsets[n][1], offsets[n][2]};
+	  //double pos_offsets[3] = { Off[n][0], Off[n][1], Off[n][2] };
+
+	  //pass pointers to copy of parent
+	  struct part *child = cell_spawn_new_part_from_part(e, c, &parent, &parent_xp, child_mass, pos_offsets, new_h);
 	  
-	  struct part *child = cell_spawn_new_part_from_part(e, c, parent, parent_xp, child_mass, pos_offsets, new_h);
+	  message("Cell: %p, has new child: id=%lld",
+                (void*)c, child->id);
 
-	  //update parent
-	  parent =  &c->hydro.parts[parent_index + n + 1];
-	  parent_xp = &c->hydro.xparts[parent_index + n + 1];
-
+	  int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id);
+	  if (parent_index == -1) error("parent not found!");
+	  
+	  message("child id=%lld  vel=(%g,%g,%g) pressure=%g", child->id, child->v[0], child->v[1], child->v[2], child->force.pressure);
+	  
+	  //update parent in top cell, otherwise they leave and never come back
+	  //parent =  &c->top->hydro.parts[parent_index];
+	  //if (parent->id != parent_id)error("parent lost!");
+	  //parent_xp = &c->top->hydro.xparts[parent_index]; 
 	  // switch split flag 
 	  if (child == NULL)
 	    error("Failed to spawn child particle in gas splitting.");
@@ -173,47 +209,54 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
 	double total_mass = child_mass + child_mass_sum;
 	double expected_mass = n_split * child_mass;
+       
 	if (fabs(total_mass - expected_mass) > 1e-8) // tighter tolerance
 	  error("Mass conservation broken in splitting: parent+children = %e, expected %e",
 		total_mass, n_split * child_mass);
 	
 #endif
-	// Update the real parent safely after all children are spawned
-	c->hydro.parts[parent_index + (n_split-1)].mass = child_mass;
-	c->hydro.parts[parent_index + (n_split-1)].h = new_h;
-	c->hydro.parts[parent_index + (n_split-1)].split_flag = 2;
-	//const int old_timebin = c->hydro.parts[parent_index + (n_split-1)].time_bin;
-	//c->hydro.parts[parent_index + (n_split-1)].time_bin = old_timebin - 1;
-	if (c->hydro.parts[parent_index + (n_split-1)].gpart){
-	  c->hydro.parts[parent_index + (n_split-1)].gpart->mass = child_mass;
-	  //c->hydro.parts[parent_index + (n_split-1)].gpart->time_bin = old_timebin - 1;
+	int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id); 
+	message("Leaf Cell: %p,Parent ID after full split: %lld, mass=%e",                                                                                                                                       
+                c,c->top->hydro.parts[parent_index].id, c->top->hydro.parts[parent_index].mass);     
+	/*
+	int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id); 
+	// Update the parent safely after all children are spawned at top level!
+	c->top->hydro.parts[parent_index].mass = child_mass;
+	c->top->hydro.parts[parent_index].h = new_h;
+	if (c->top->hydro.parts[parent_index].gpart){
+          c->top->hydro.parts[parent_index].gpart->mass = child_mass;}
+        
+	message("Leaf Cell: %p,Parent ID after full split: %lld, mass=%e",
+                c,
+                c->top->hydro.parts[parent_index].id, c->top->hydro.parts[parent_index].mass);
+	
+	//need to set it as active if its not (idk this is overkill but whatevs)
+	if (!part_is_active(&c->top->hydro.parts[parent_index], e)){
+	  message("parent is not active, ACTIVATE!");
+	  c->top->hydro.parts[parent_index].time_bin = e->min_active_bin;}
+	
+	if (c->top->hydro.parts[parent_index].gpart){
+	  c->top->hydro.parts[parent_index].gpart->mass = child_mass;
+	  if (!gpart_is_active(c->top->hydro.parts[parent_index].gpart, e)){
+	     message("gparent is not active, ACTIVATE!");
+	     c->top->hydro.parts[parent_index].gpart->time_bin = e->min_active_bin;}
 	}
-		
-	message("Parent ID after full split: %lld, mass=%e, position=(%g,%g,%g)",
-		c->hydro.parts[parent_index + (n_split-1)].id, c->hydro.parts[parent_index + (n_split-1)].mass,
-		c->hydro.parts[parent_index + (n_split-1)].x[0], c->hydro.parts[parent_index + (n_split-1)].x[1],
-		c->hydro.parts[parent_index + (n_split-1)].x[2]);
-		
+        */
       }
       j ++;
-    } 
-    
-  }
-
+    }
+  }    
   
-  /* If we formed any particles, the hydro sorts are now invalid. We need to                                                
-   * re-compute them. */
-  if ((c == c->top) && (count != c->hydro.count)) {
-    // If we formed any stars, the star sorts are now invalid. We need to                                                   
-    cell_set_hydro_resort_flag(c);
-  }
-
+  /* If we formed any hydro parts, need to force flag for resort and drift*/
+  if (c->hydro.count!= count_leaf) {
+    //message("setting resort flag");
+    //cell_set_hydro_resort_flag(c);
+    //cell_set_hydro_resort_flag(c->top);
+    cell_set_flag(c->top, cell_flag_do_hydro_drift);
+    cell_set_flag(c->top, cell_flag_do_grav_drift);
+    }
 
 }
-
-
-
-
 
 extern const int sort_stack_size;
 

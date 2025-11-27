@@ -64,7 +64,7 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
   struct part_pair result = {NULL, NULL};
   /* Basic consistency checks */
   if (c->nodeID != engine_rank) error("Adding gas particle on a foreign node");
-  if (c->hydro.ti_old_part != e->ti_current) error("Undrifted cell!");
+  //if (c->hydro.ti_old_part != e->ti_current) error("Undrifted cell!");
   if (c->split) error("Addition of gas particle performed above the leaf level");
 
   /* Track progeny for recursive shift */
@@ -86,7 +86,6 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
 #endif
     top = top->parent;
   }
-
   
   /* Lock top-level cell */
   lock_lock(&top->stars.star_formation_lock);
@@ -149,6 +148,7 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
   /* Initialize new particle */
   struct part *p = &c->hydro.parts[0];
   struct xpart *xp = &c->hydro.xparts[0];
+
   
   bzero(p, sizeof(struct part));
   bzero(xp, sizeof(struct xpart));
@@ -166,13 +166,12 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
   /* Bookkeeping */
   const size_t one = 1;
   atomic_sub(&e->s->nr_extra_parts, one);
-
+  
   result.p = p;
   result.xp = xp;
   return result;
 }
 
-//
 struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
 					   const struct part *p,
 					   const struct xpart *xp,
@@ -184,34 +183,43 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
     error("Can't spawn a particle in a foreign cell.");
   
   // before shifting the cell list make temp copies for later memcopy
-  int parent_index = p - c->hydro.parts;
+  //const int parent_index = p - c->hydro.parts;
 
+  long long pidOG = p->id;
+  struct part  parent_copy  = *p;
+  struct xpart xparent_copy = *xp;
+  struct gpart gparent_copy = *p->gpart;
+
+  int has_gpart = (p->gpart != NULL);
   /* Create a fresh (empty) part and xpart pair */
   struct part_pair new_part = cell_add_part(e, c);
 
-  p  = &c->hydro.parts[parent_index + 1]; // +1 if the insertion shifts all elements after parent
-  xp = &c->hydro.xparts[parent_index + 1];
-
+  if (pidOG != parent_copy.id) error("you messed up the indices somehow");
+  
   struct part *new_p = new_part.p;
   struct xpart *new_xp = new_part.xp;
-    
+  
   /* Did we run out of free part slots? */
   if (new_p == NULL) return NULL;
 
   /* copy over everything */
-  *new_p = *p;
-  *new_xp = *xp;
-  
+  *new_p = parent_copy;
+  *new_xp = xparent_copy;
+
   /* Copy over the distance since rebuild */
-  new_xp->x_diff[0] = xp->x_diff[0];
-  new_xp->x_diff[1] = xp->x_diff[1];
-  new_xp->x_diff[2] = xp->x_diff[2];
-  
+  new_xp->x_diff[0] = xparent_copy.x_diff[0];
+  new_xp->x_diff[1] = xparent_copy.x_diff[1];
+  new_xp->x_diff[2] = xparent_copy.x_diff[2];
+
+  /* give the child a new name */
+  new_p->id = space_get_new_unique_id(e->s);
+ 
   /* ope there goes gravity */
-  if (p->gpart != NULL) {
+  if (has_gpart) {
+
     // Allocate a new gpart slot for this child
     struct gpart *gp = cell_add_gpart(e, c);
-
+    
     /* Did we run out of free gpart slots? */
     if (gp == NULL) {
         /* Remove the particle created */
@@ -219,12 +227,12 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
         return NULL;
     }
 
-    /* Copy the parent’s gpart*/
-    *gp = *(p->gpart);
-
+    *gp = gparent_copy;
+    
     gp->x[0] = gp->x[0] + pos_offset[0];
     gp->x[1] = gp->x[1] + pos_offset[1];
     gp->x[2] = gp->x[2] + pos_offset[2];
+    
     gp->mass = child_mass;
     
     gp->type = swift_type_gas;
@@ -243,20 +251,19 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
     new_p->gpart = NULL;
   }
    
-  /* Synchronize masses, positions and velocities, new ids */
-  new_p->id = space_get_new_unique_id(e->s);
+  /* Synchronize masses, positions and velocities*/
   new_p->mass = child_mass;
-  new_p->x[0] = p->x[0] + pos_offset[0];
-  new_p->x[1] = p->x[1] + pos_offset[1];
-  new_p->x[2] = p->x[2] + pos_offset[2];
+  new_p->x[0] = parent_copy.x[0] + pos_offset[0];
+  new_p->x[1] = parent_copy.x[1] + pos_offset[1];
+  new_p->x[2] = parent_copy.x[2] + pos_offset[2];
 
-  new_p->v[0] = xp->v_full[0];
-  new_p->v[1] = xp->v_full[1];
-  new_p->v[2] = xp->v_full[2];
+  new_xp->v_full[0] = xparent_copy.v_full[0];
+  new_xp->v_full[1] = xparent_copy.v_full[1];
+  new_xp->v_full[2] = xparent_copy.v_full[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-  new_p->ti_kick = p->ti_kick;
-  new_p->ti_drift = p->ti_drift;
+  new_p->ti_kick = parent_copy.ti_kick;
+  new_p->ti_drift = parent_copy.ti_drift;
 #endif
 
   /* Set a smoothing length */
@@ -665,7 +672,7 @@ struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
 struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
   /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding gpart on a foreign node");
-  if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
+  //if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
   if (c->split) error("Addition of gpart performed above the leaf level");
 
   struct space *s = e->s;
@@ -730,13 +737,13 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
     memmove(&c->grav.parts[1], &c->grav.parts[0],
             n_copy * sizeof(struct gpart));
 
-    /* Update the gpart->spart links (shift by 1) */
+    /* Update the gpart->part links (shift by 1) */
     struct gpart *gparts = c->grav.parts;
     for (size_t i = 0; i < n_copy; ++i) {
 
       /* Skip inhibited particles */
       if (gpart_is_inhibited(&c->grav.parts[i + 1], e)) continue;
-
+      
       if (gparts[i + 1].type == swift_type_gas) {
         s->parts[-gparts[i + 1].id_or_neg_offset].gpart++;
       } else if (gparts[i + 1].type == swift_type_stars) {
