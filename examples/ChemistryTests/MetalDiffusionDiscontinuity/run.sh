@@ -97,8 +97,8 @@ fi
 
 #Do some data analysis to show what's in this box
 python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5
-python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 64 --x_min 1e-1 --x_max=1
-python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 64 --x_min 1e-1 --x_max=1 --log
+python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 32 --x_min 1e-1 --x_max=1
+python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 32 --x_min 1e-1 --x_max=1 --log
 python3 metal_projection.py snap/snapshot_*0.hdf5 --log --vmin -11 --vmax -6
 
 if [ -z "$run_name" ]; then
