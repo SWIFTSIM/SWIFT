@@ -81,14 +81,14 @@ yield_compute_damaged_yield_stress(const float yield_stress_fully_intact, const 
  *    Y_M: ### (Pa).
  *
  * @param mat_id The material ID.
- * @param phase_state The phase ID.
+ * @param state_type The state ID.
  * @param pressure The pressure.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_intact(
-    const int mat_id, const int phase_state, const float pressure) {
+    const int mat_id, const int state_type, const float pressure) {
 
   /* Return 0.f if the material is not solid. */
-  if (phase_state != mat_phase_state_solid) {
+  if (state_type != mat_state_type_solid) {
     return 0.f;
   }
 
@@ -118,14 +118,14 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
  *    Y_M: ### (Pa).
  *
  * @param mat_id The material ID.
- * @param phase_state The phase ID.
+ * @param state_type The phase ID.
  * @param pressure The pressure.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_damaged(
-    const int mat_id, const int phase_state, const float pressure) {
+    const int mat_id, const int state_type, const float pressure) {
 
   /* Return 0.f if the material is not solid. */
-  if (phase_state != mat_phase_state_solid) {
+  if (state_type != mat_state_type_solid) {
     return 0.f;
   }
 
@@ -134,7 +134,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
   // ### yield_stress_fully_intact? See e.g. Güldemeister et al. 2015; Winkler et al. 2018
   if (pressure > 0.f) {
     const float mu_d = material_mu_d(mat_id);
-    const float yield_stress_fully_intact = yield_compute_yield_stress_fully_intact(mat_id, phase_state, pressure);
+    const float yield_stress_fully_intact = yield_compute_yield_stress_fully_intact(mat_id, state_type, pressure);
     return fminf(mu_d, yield_stress_fully_intact);
   } else {
     return 0.f;
@@ -148,16 +148,16 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
  * and weakening.
  *
  * @param mat_id The material ID.
- * @param phase_state The phase ID.
+ * @param state_type The phase ID.
  * @param density The density.
  * @param u The specific internal energy.
  * @param damage The damage.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
-    const int mat_id, const int phase_state, const float density, const float u, const float damage) {
+    const int mat_id, const int state_type, const float density, const float u, const float damage) {
 
   /* Return 0.f if the material is not solid. */
-  if (phase_state != mat_phase_state_solid) {
+  if (state_type != mat_state_type_solid) {
     return 0.f;
   }
 
@@ -167,9 +167,9 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 
   /* Calculate yield stresses of fully intact and fully damaged material. */
   const float yield_stress_fully_intact =
-      yield_compute_yield_stress_fully_intact(mat_id, phase_state, pressure);
+      yield_compute_yield_stress_fully_intact(mat_id, state_type, pressure);
   const float yield_stress_fully_damaged =
-      yield_compute_yield_stress_fully_damaged(mat_id, phase_state, pressure);
+      yield_compute_yield_stress_fully_damaged(mat_id, state_type, pressure);
 
   /* Combine yield stresses based on how damaged the material is. */
   float yield_stress =

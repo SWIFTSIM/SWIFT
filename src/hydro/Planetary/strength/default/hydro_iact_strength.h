@@ -114,8 +114,8 @@ hydro_runner_iact_force_strength(struct part *restrict pi,
   pj->strength_data.drho_dt += pi->mass * dv_dot_G_j;
 
   /* Add constribution to dv/dr if both particles are solid. */
-  if ((pi->phase_state == mat_phase_state_solid) &&
-      (pj->phase_state == mat_phase_state_solid)) {
+  if ((pi->phase == mat_phase_solid) &&
+      (pj->phase == mat_phase_solid)) {
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
         pi->strength_data.dv_force_loop[i][j] +=
@@ -147,8 +147,8 @@ hydro_runner_iact_nonsym_force_strength(struct part *restrict pi,
   pi->strength_data.drho_dt += pj->mass * dv_dot_G_i;
 
   /* Add constribution to dv/dr if both particles are solid. */
-  if ((pi->phase_state == mat_phase_state_solid) &&
-      (pj->phase_state == mat_phase_state_solid)) {
+  if ((pi->phase == mat_phase_solid) &&
+      (pj->phase == mat_phase_solid)) {
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
         pi->strength_data.dv_force_loop[i][j] +=

@@ -440,10 +440,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                   pj->force.vac_switch *
                                   (pj->m0 * rhoj - rhoj) * mod_G * mean_rho_inv;
 
-  if (pi->phase_state != mat_phase_state_fluid) {
+  if (pi->phase != mat_phase_fluid) {
     drho_dt_norm_and_difn_i = 0.f;
   }
-  if (pj->phase_state != mat_phase_state_fluid) {
+  if (pj->phase != mat_phase_fluid) {
     drho_dt_norm_and_difn_j = 0.f;
   }
 
@@ -659,7 +659,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                   pi->force.vac_switch *
                                   (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
 
-  if (pi->phase_state != mat_phase_state_fluid) {
+  if (pi->phase != mat_phase_fluid) {
     drho_dt_norm_and_difn_i = 0.f;
   }
 

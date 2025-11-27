@@ -210,12 +210,12 @@ INLINE static float idg_density_from_pressure_and_internal_energy(
   return idg->one_over_gamma_minus_one * P / u;
 }
 
-// material_phase_state_from_internal_energy
-INLINE static float idg_phase_state_from_internal_energy(
+// material_phase_from_internal_energy
+INLINE static float idg_phase_from_internal_energy(
     const float density, const float u, const struct mat_params *idg,
     const struct idg_params *idg_eos) {
 
-  return mat_phase_state_fluid;
+  return mat_phase_fluid;
 }
 
 #endif /* SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H */

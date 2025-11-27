@@ -345,8 +345,8 @@ INLINE static float HM80_density_from_pressure_and_internal_energy(
   return 0.f;
 }
 
-// material_phase_state_from_internal_energy
-INLINE static float HM80_phase_state_from_internal_energy(
+// material_phase_from_internal_energy
+INLINE static float HM80_phase_from_internal_energy(
     const float density, const float u, const struct mat_params *hm80,
     const struct HM80_params *HM80_eos) {
 

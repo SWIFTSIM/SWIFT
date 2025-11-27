@@ -229,24 +229,32 @@ enum eos_planetary_material_id {
 };
 
 /**
- * @brief Phase state of the material.
+ * @brief State type of the material.
  */
-enum mat_phase_state {
+enum mat_state_type {
   /*! Always fluid */
-  mat_phase_state_fluid = 0,
+  mat_state_type_fluid = 0,
 
   /*! Always solid */
-  mat_phase_state_solid = 1,
+  mat_state_type_solid = 1,
 
   /*! Variable */
-  mat_phase_state_variable = 2,
+  mat_state_type_variable = 2,
+};
+
+/**
+ * @brief Phase state of a particle.
+ */
+enum mat_phase {
+  mat_phase_fluid = 0,
+  mat_phase_solid = 1,
 };
 
 /**
  * @brief Struct of material parameters beyond the base EoS.
  */
 struct mat_params {
-  enum mat_phase_state phase_state;
+  enum mat_state_type state_type;
 
 #ifdef MATERIAL_STRENGTH
   float shear_mod;

@@ -46,13 +46,13 @@
 #include "units.h"
 
 /**
- * @brief Returns whether or not the material is in a solid state and not fluid.
+ * @brief Returns whether or not the material is in a solid phase and not fluid.
  *
  * @param density The density \f$\rho\f$
  * @param u The internal energy \f$u\f$
  */
 __attribute__((always_inline)) INLINE static float
-material_phase_state_from_internal_energy(
+material_phase_from_internal_energy(
     const float density, const float u, const enum eos_planetary_material_id mat_id) {
 
   const enum eos_planetary_type_id type =
@@ -66,43 +66,43 @@ material_phase_state_from_internal_energy(
 
     /* Ideal gas EoS */
     case eos_type_idg:
-      return idg_phase_state_from_internal_energy(
+      return idg_phase_from_internal_energy(
           density, u, &eos.all_mat_params[mat_index], &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
-      return Til_phase_state_from_internal_energy(
+      return Til_phase_from_internal_energy(
           density, u, &eos.all_mat_params[mat_index], &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
-      return Til_phase_state_from_internal_energy(
+      return Til_phase_from_internal_energy(
           density, u, &eos.all_mat_params[mat_index],
           &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
-      return HM80_phase_state_from_internal_energy(
+      return HM80_phase_from_internal_energy(
           density, u, &eos.all_mat_params[mat_index], &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
-      return SESAME_phase_state_from_internal_energy(
+      return SESAME_phase_from_internal_energy(
           density, u, &eos.all_mat_params[mat_index], &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
-      return SESAME_phase_state_from_internal_energy(
+      return SESAME_phase_from_internal_energy(
           density, u, &eos.all_mat_params[mat_index], &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
-      return linear_phase_state_from_internal_energy(
+      return linear_phase_from_internal_energy(
           density, u, &eos.all_mat_params[mat_index], &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
-      return SESAME_phase_state_from_internal_energy(
+      return SESAME_phase_from_internal_energy(
           density, u, &eos.all_mat_params[mat_index], &eos.all_custom[unit_id]);
 
     default:

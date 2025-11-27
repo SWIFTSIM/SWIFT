@@ -121,7 +121,7 @@ hydro_runner_iact_gradient_extra_visc_difn(struct part *restrict pi,
     }
 
     // Don't reconstruct quantities for visc at phase interfaces
-    if (pi->phase_state == pj->phase_state) {
+    if (pi->phase == pj->phase) {
       for (int j = 0; j < 3; j++) {
         pi->dv_norm_kernel_same_phase[i][j] +=
             (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
@@ -185,7 +185,7 @@ hydro_runner_iact_nonsym_gradient_extra_visc_difn(
     }
 
     // Don't reconstruct quantities for visc at phase interfaces
-    if (pi->phase_state == pj->phase_state) {
+    if (pi->phase == pj->phase) {
       for (int j = 0; j < 3; j++) {
         pi->dv_norm_kernel_same_phase[i][j] +=
             (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
@@ -236,8 +236,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float eta_crit = 0.5f * (pi->force.eta_crit + pj->force.eta_crit);
   const float slope_limiter_exp_denom = const_remix_slope_limiter_exp_denom;
   /* Slip condition between solid and inviscid fluid */
-  const float a_visc = (pi->phase_state != pj->phase_state) ? 0.f : const_remix_visc_a;
-  const float b_visc = (pi->phase_state != pj->phase_state) ? 1.f : const_remix_visc_b;
+  const float a_visc = (pi->phase != pj->phase) ? 0.f : const_remix_visc_a;
+  const float b_visc = (pi->phase != pj->phase) ? 1.f : const_remix_visc_b;
 
   if ((pi->is_h_max) || (pj->is_h_max)) {
     /* Don't reconstruct velocity if either particle has h=h_max */

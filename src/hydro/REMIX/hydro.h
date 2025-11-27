@@ -759,7 +759,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Re-set the density */
   p->rho = xp->rho_evol_full;
   p->rho_evol = xp->rho_evol_full;
-  p->phase_state = xp->phase_state_full;
+  p->phase = xp->phase_full;
 
   /* Compute the pressure */
   const float pressure =
@@ -851,8 +851,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho_evol);
   p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
 
-  p->phase_state =
-    (enum mat_phase_state)material_phase_state_from_internal_energy(
+  p->phase =
+    (enum mat_phase)material_phase_from_internal_energy(
      p->rho_evol, p->u, p->mat_id);
 
   hydro_predict_strength_end(p, dt_therm);
@@ -939,8 +939,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->drho_dt = 0.f;
   }
 
-  xp->phase_state_full =
-    (enum mat_phase_state)material_phase_state_from_internal_energy(
+  xp->phase_full =
+    (enum mat_phase)material_phase_from_internal_energy(
      xp->rho_evol_full, xp->u_full, p->mat_id);
 
 
@@ -998,10 +998,10 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->rho_evol = p->rho;
   xp->rho_evol_full = p->rho_evol;
 
-  p->phase_state =
-    (enum mat_phase_state)material_phase_state_from_internal_energy(
+  p->phase =
+    (enum mat_phase)material_phase_from_internal_energy(
      p->rho_evol, p->u, p->mat_id);
-  xp->phase_state_full = p->phase_state;
+  xp->phase_full = p->phase;
 
   hydro_first_init_part_strength(p, xp);
 

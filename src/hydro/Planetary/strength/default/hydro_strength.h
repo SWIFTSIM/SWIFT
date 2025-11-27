@@ -189,13 +189,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
 
   /* Get quantities needed for strength evolution. */
   const int mat_id = p->mat_id;
-  const int phase_state = p->phase_state;
+  const int phase = p->phase;
   const float mass = p->mass;
   const float density = p->strength_data.rho_evol;
   const float u = p->u;
   const float pressure = gas_pressure_from_internal_energy(density, u, mat_id);
   const float damage = strength_get_damage(p);
-  const float yield_stress = yield_compute_yield_stress(mat_id, phase_state, density, u, damage);
+  const float yield_stress = yield_compute_yield_stress(mat_id, phase, density, u, damage);
   const struct sym_matrix deviatoric_stress_tensor = p->strength_data.deviatoric_stress_tensor;
 
   struct sym_matrix stress_tensor;
@@ -207,7 +207,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
   damage_predict_evolve(p, stress_tensor, mat_id, mass, density, u, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
-  stress_tensor_evolve_deviatoric_stress_tensor(&p->strength_data.deviatoric_stress_tensor, p, phase_state, dt_therm);
+  stress_tensor_evolve_deviatoric_stress_tensor(&p->strength_data.deviatoric_stress_tensor, p, phase, dt_therm);
 
   /* Apply yield stress to deviatoric stress tensor. */
   yield_apply_yield_stress_to_sym_matrix(
@@ -245,8 +245,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
-  p->phase_state =
-    (enum mat_phase_state)material_phase_state_from_internal_energy(
+  p->phase =
+    (enum mat_phase)material_phase_from_internal_energy(
      p->rho, p->u, p->mat_id);
 
   /* Compute updated stress tensor. */
@@ -269,13 +269,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
 
   /* Get quantities needed for strength evolution. */
   const int mat_id = p->mat_id;
-  const int phase_state = xp->phase_state_full;
+  const int phase = xp->phase_full;
   const float mass = p->mass;
   const float density = xp->strength_data.rho_evol_full;
   const float u = xp->u_full;
   const float pressure = gas_pressure_from_internal_energy(density, u, mat_id);
   const float damage = strength_get_damage_full(xp);
-  const float yield_stress = yield_compute_yield_stress(mat_id, phase_state, density, u, damage);
+  const float yield_stress = yield_compute_yield_stress(mat_id, phase, density, u, damage);
   const struct sym_matrix deviatoric_stress_tensor = xp->strength_data.deviatoric_stress_tensor_full;
 
   struct sym_matrix stress_tensor;
@@ -286,7 +286,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
   damage_kick_evolve(p, xp, stress_tensor, mat_id, mass, density, u, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
-  stress_tensor_evolve_deviatoric_stress_tensor(&xp->strength_data.deviatoric_stress_tensor_full, p, phase_state, dt_therm);
+  stress_tensor_evolve_deviatoric_stress_tensor(&xp->strength_data.deviatoric_stress_tensor_full, p, phase, dt_therm);
 
   /* Apply yield stress to deviatoric stress tensor. */
   yield_apply_yield_stress_to_sym_matrix(
@@ -327,8 +327,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_end(
   }
 
   /* Overwrite based on evolved density. */
-  xp->phase_state_full =
-    (enum mat_phase_state)material_phase_state_from_internal_energy(
+  xp->phase_full =
+    (enum mat_phase)material_phase_from_internal_energy(
      xp->strength_data.rho_evol_full, xp->u_full, p->mat_id);
 }
 

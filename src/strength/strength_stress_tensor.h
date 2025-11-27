@@ -63,7 +63,7 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_stre
  */
 __attribute__((always_inline)) INLINE static void
 strength_compute_max_wave_speed_stress_tensor(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {
-  if (p->phase_state == mat_phase_state_solid) {
+  if (p->phase == mat_phase_solid) {
     /* Speed of longitudinal elastic wave. */
     const float shear_mod = material_shear_mod(p->mat_id);
     *wave_speed = sqrtf(soundspeed * soundspeed + (4.f / 3.f) * shear_mod / density);
@@ -117,8 +117,8 @@ strength_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
                                      const float r) {
 
   /* Only overwrite the fluid pairwise stress tensors if both particles are solid. */
-  if ((pi->phase_state == mat_phase_state_solid) &&
-      (pj->phase_state == mat_phase_state_solid)) {
+  if ((pi->phase == mat_phase_solid) &&
+      (pj->phase == mat_phase_solid)) {
 
     /* Get stress tensors. */
     get_matrix_from_sym_matrix(pairwise_stress_tensor_i, &pi->strength_data.stress_tensor);
@@ -197,15 +197,15 @@ __attribute__((always_inline)) INLINE static void stress_tensor_compute_dS_dt(st
  *
  * @param deviatoric_stress_tensor the deviatoric stress.
  * @param p The particle of interest.
- * @param phase_state The phase state.
+ * @param phase The phase state.
  * @param dt_therm The time-step.
  */
 __attribute__((always_inline)) INLINE static void stress_tensor_evolve_deviatoric_stress_tensor(
-    struct sym_matrix *deviatoric_stress_tensor, struct part *restrict p, const int phase_state,
+    struct sym_matrix *deviatoric_stress_tensor, struct part *restrict p, const int phase,
     float dt_therm) {
 
   /* Return sym_matrix with all elements 0.f if the material is not solid. */
-  if (phase_state != mat_phase_state_solid) {
+  if (phase != mat_phase_solid) {
     return zero_sym_matrix(deviatoric_stress_tensor);
   }
 

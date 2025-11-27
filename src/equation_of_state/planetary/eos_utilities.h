@@ -181,9 +181,9 @@ INLINE static void set_material_params(struct mat_params *all_mat_params,
   parser_read_file(param_file, file_params);
 
   // General properties
-  int phase_state = parser_get_opt_param_int(
-      file_params, "Material:phase_state", mat_phase_state_fluid);
-  mat_params->phase_state = (enum mat_phase_state)phase_state;
+  int state_type = parser_get_opt_param_int(
+      file_params, "Material:state_type", mat_state_type_fluid);
+  mat_params->state_type = (enum mat_state_type)state_type;
 
   // General material strength parameters
   mat_params->shear_mod =
@@ -239,7 +239,7 @@ INLINE static void set_material_params(struct mat_params *all_mat_params,
   #endif
 
 #else
-  mat_params->phase_state = mat_phase_state_fluid;
+  mat_params->state_type = mat_state_type_fluid;
 #endif /* MATERIAL_STRENGTH */
 
   // Convert units
