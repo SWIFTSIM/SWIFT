@@ -298,7 +298,7 @@ __attribute__((always_inline)) INLINE static float riemann_solver_solve(
     const float* WL, const float* WR, float* Whalf, const float* n_unit) {
 
   /* velocity of the left and right state in a frame aligned with n_unit */
-  float vL, vR, vhalf;
+  float vL, vR;
   /* sound speeds */
   float aL, aR;
   /* variables used for finding pstar */
