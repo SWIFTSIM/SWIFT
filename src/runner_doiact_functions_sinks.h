@@ -16,8 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #include "runner_doiact_sinks.h"
+
+#include <unistd.h>  // For sleep()
 
 /**
  * @brief Calculate gas and sink interaction around #sink
@@ -39,7 +40,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Anything to do here? */
-  if (c->sinks.count == 0) return;
+  if (c->hydro.count == 0 || c->sinks.count == 0) return;
   if (!cell_is_active_sinks(c, e)) return;
 
   const int scount = c->sinks.count;
@@ -181,7 +182,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Anything to do here? */
-  if (ci->sinks.count == 0) return;
+  if (ci->hydro.count == 0 || ci->sinks.count == 0) return;
   if (!cell_is_active_sinks(ci, e)) return;
 
   const int scount_i = ci->sinks.count;
@@ -292,10 +293,194 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      if (si->ti_drift != e->ti_current)
-        error("Particle si not drifted to current time");
-      if (sj->ti_drift != e->ti_current)
-        error("Particle sj not drifted to current time");
+      if (si->ti_drift != e->ti_current) {
+        warning("1 %lld ci->sinks.density = %p %i", ci->cellID,
+                ci->sinks.density, ci->nodeID);
+        warning("1 %lld ci.hydro->super->sinks.density = %p, %i",
+                ci->hydro.super->cellID, ci->hydro.super->sinks.density,
+                ci->hydro.super->nodeID);
+        warning("1 %lld ci.hydro->super->sinks.density = %p %i",
+                ci->top->cellID, ci->top->sinks.density, ci->top->nodeID);
+
+        warning("1 %lld cj->sinks.density = %p, %i", cj->cellID,
+                cj->sinks.density, cj->nodeID);
+        warning("1 %lld cj.hydro->super->sinks.density = %p, %i",
+                cj->hydro.super->cellID, cj->hydro.super->sinks.density,
+                cj->hydro.super->nodeID);
+        warning("1 %lld, cj.hydro->super->sinks.density = %p, %i",
+                cj->top->cellID, cj->top->sinks.density, cj->top->nodeID);
+
+        warning("1.1 --------------------");
+        if (ci->hydro.super->sinks.density != NULL) {
+          for (struct link *l = ci->hydro.super->sinks.density; l != NULL;
+               l = l->next) {
+            struct task *t = l->t;
+            struct cell *ck = t->ci;
+            struct cell *cl = t->cj;
+            const int ck_active =
+                cell_is_active_sinks(ck, e) || cell_is_active_hydro(ck, e);
+            const int cl_active =
+                (cl != NULL) &&
+                (cell_is_active_sinks(cl, e) || cell_is_active_hydro(cl, e));
+            if (cl != NULL) {
+              message(
+                  "[1, %lld, %lld, %d, %d] Check existence of sinks.density, t "
+                  "= %p, t->flags = %lld, type = %d, subtype = %d, ck_active = "
+                  "%d, ck_active = %d, t->skip = %d",
+                  ck->cellID, cl->cellID, ck->nodeID, cl->nodeID, t, t->flags,
+                  t->type, t->subtype, ck_active, cl_active, t->skip);
+            } else {
+              message(
+                  "[1, %lld, %d] Check existence of sinks.density, t = %p, "
+                  "t->flags = %lld, type = %d, subtype = %d, ck_active = %d, "
+                  "t->skip = %d",
+                  ck->cellID, ck->nodeID, t, t->flags, t->type, t->subtype,
+                  ck_active, t->skip);
+            }
+          }
+        }
+        warning("1.2 --------------------");
+
+        warning("1.3 --------------------");
+        if (cj->hydro.super->sinks.density != NULL) {
+          for (struct link *l = cj->hydro.super->sinks.density; l != NULL;
+               l = l->next) {
+            struct task *t = l->t;
+            struct cell *ck = t->ci;
+            struct cell *cl = t->cj;
+            const int ck_active =
+                cell_is_active_sinks(ck, e) || cell_is_active_hydro(ck, e);
+            const int cl_active =
+                (cl != NULL) &&
+                (cell_is_active_sinks(cl, e) || cell_is_active_hydro(cl, e));
+
+            if (cl != NULL) {
+              message(
+                  "[1, %lld, %lld, %d, %d] Check existence of sinks.density, t "
+                  "= %p, t->flags = %lld, type = %d, subtype = %d, ck_active = "
+                  "%d, ck_active = %d, t->skip = %d",
+                  ck->cellID, cl->cellID, ck->nodeID, cl->nodeID, t, t->flags,
+                  t->type, t->subtype, ck_active, cl_active, t->skip);
+            } else {
+              message(
+                  "[1, %lld, %d] Check existence of sinks.density, t = %p, "
+                  "t->flags = %lld, type = %d, subtype = %d, ck_active = %d, "
+                  "t->skip = %d",
+                  ck->cellID, ck->nodeID, t, t->flags, t->type, t->subtype,
+                  ck_active, t->skip);
+            }
+          }
+        }
+        warning("1.4 --------------------");
+
+        scheduler_write_cell_dependencies_debug(&r->e->sched, e->verbose,
+                                                e->step, ci);
+        scheduler_write_cell_dependencies_debug(&r->e->sched, e->verbose,
+                                                e->step, cj);
+        sleep(10);
+        error(
+            "Particle si not drifted to current time. si->id = %lld, sj->id = "
+            "%lld | i: hydro super = %lld, grav super = %lld,"
+            " top = %lld, c = %lld, nodeID = %d | j hydro super = %lld, grav "
+            "super = %lld,"
+            " top = %lld, c = %lld, nodeID = %d",
+            si->id, sj->id, ci->hydro.super->cellID, ci->grav.super->cellID,
+            ci->top->cellID, ci->cellID, ci->nodeID, cj->hydro.super->cellID,
+            cj->grav.super->cellID, cj->top->cellID, cj->cellID, cj->nodeID);
+      }
+      if (sj->ti_drift != e->ti_current) {
+        warning("2 %lld ci->sinks.density = %p %i", ci->cellID,
+                ci->sinks.density, ci->nodeID);
+        warning("2 %lld ci.hydro->super->sinks.density = %p, %i",
+                ci->hydro.super->cellID, ci->hydro.super->sinks.density,
+                ci->hydro.super->nodeID);
+        warning("2 %lld ci.hydro->super->sinks.density = %p %i",
+                ci->top->cellID, ci->top->sinks.density, ci->top->nodeID);
+
+        warning("2 %lld cj->sinks.density = %p, %i", cj->cellID,
+                cj->sinks.density, cj->nodeID);
+        warning("2 %lld cj.hydro->super->sinks.density = %p, %i",
+                cj->hydro.super->cellID, cj->hydro.super->sinks.density,
+                cj->hydro.super->nodeID);
+        warning("2 %lld, cj.hydro->super->sinks.density = %p, %i",
+                cj->top->cellID, cj->top->sinks.density, cj->top->nodeID);
+
+        warning("2.1 --------------------");
+        if (ci->hydro.super->sinks.density != NULL) {
+          for (struct link *l = ci->hydro.super->sinks.density; l != NULL;
+               l = l->next) {
+            struct task *t = l->t;
+            struct cell *ck = t->ci;
+            struct cell *cl = t->cj;
+            const int ck_active =
+                cell_is_active_sinks(ck, e) || cell_is_active_hydro(ck, e);
+            const int cl_active =
+                (cl != NULL) &&
+                (cell_is_active_sinks(cl, e) || cell_is_active_hydro(cl, e));
+            if (cl != NULL) {
+              warning(
+                  "[2, %lld, %lld, %d, %d] Check existence of sinks.density, t "
+                  "= %p, t->flags = %lld, type = %d, subtype = %d, ck_active = "
+                  "%d, ck_active = %d, t->skip = %d",
+                  ck->cellID, cl->cellID, ck->nodeID, cl->nodeID, t, t->flags,
+                  t->type, t->subtype, ck_active, cl_active, t->skip);
+            } else {
+              warning(
+                  "[2, %lld, %d] Check existence of sinks.density, t = %p, "
+                  "t->flags = %lld, type = %d, subtype = %d, ck_active = %d, "
+                  "t->skip = %d",
+                  ck->cellID, ck->nodeID, t, t->flags, t->type, t->subtype,
+                  ck_active, t->skip);
+            }
+          }
+        }
+        warning("2.2 --------------------");
+        if (cj->hydro.super->sinks.density != NULL) {
+          for (struct link *l = cj->hydro.super->sinks.density; l != NULL;
+               l = l->next) {
+            struct task *t = l->t;
+            struct cell *ck = t->ci;
+            struct cell *cl = t->cj;
+            const int ck_active =
+                cell_is_active_sinks(ck, e) || cell_is_active_hydro(ck, e);
+            const int cl_active =
+                (cl != NULL) &&
+                (cell_is_active_sinks(cl, e) || cell_is_active_hydro(cl, e));
+
+            if (cl != NULL) {
+              warning(
+                  "[2, %lld, %lld, %d, %d] Check existence of sinks.density, t "
+                  "= %p, t->flags = %lld, type = %d, subtype = %d, ck_active = "
+                  "%d, ck_active = %d, t->skip = %d",
+                  ck->cellID, cl->cellID, ck->nodeID, cl->nodeID, t, t->flags,
+                  t->type, t->subtype, ck_active, cl_active, t->skip);
+            } else {
+              warning(
+                  "[2, %lld, %d] Check existence of sinks.density, t = %p, "
+                  "t->flags = %lld, type = %d, subtype = %d, ck_active = %d, "
+                  "t->skip = %d",
+                  ck->cellID, ck->nodeID, t, t->flags, t->type, t->subtype,
+                  ck_active, t->skip);
+            }
+          }
+        }
+        warning("2.3 --------------------");
+
+        scheduler_write_cell_dependencies_debug(&r->e->sched, e->verbose,
+                                                e->step, ci);
+        scheduler_write_cell_dependencies_debug(&r->e->sched, e->verbose,
+                                                e->step, cj);
+        sleep(10);
+        error(
+            "Particle sj not drifted to current time. si->id = %lld, sj->id = "
+            "%lld | i: hydro super = %lld, grav super = %lld,"
+            " top = %lld, c = %lld, nodeID = %d | j hydro super = %lld, grav "
+            "super = %lld,"
+            " top = %lld, c = %lld, nodeID = %d",
+            si->id, sj->id, ci->hydro.super->cellID, ci->grav.super->cellID,
+            ci->top->cellID, ci->cellID, ci->nodeID, cj->hydro.super->cellID,
+            cj->grav.super->cellID, cj->top->cellID, cj->cellID, cj->nodeID);
+      }
 #endif
 
       if (r2 < hig2 || r2 < hjg2) {
@@ -728,8 +913,10 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *e = r->e;
 
   /* Should we even bother? */
-  const int should_do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
-  const int should_do_cj = cj->sinks.count != 0 && cell_is_active_sinks(cj, e);
+  const int should_do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
+                           cell_is_active_sinks(ci, e);
+  const int should_do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
+                           cell_is_active_sinks(cj, e);
 
   if (!should_do_ci && !should_do_cj) return;
 
@@ -761,10 +948,10 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
     const int do_cj_sink = 1;
 #endif
 
-    const int do_ci =
-        ci->sinks.count != 0 && cell_is_active_sinks(ci, e) && do_ci_sink;
-    const int do_cj =
-        cj->sinks.count != 0 && cell_is_active_sinks(cj, e) && do_cj_sink;
+    const int do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
+                      cell_is_active_sinks(ci, e) && do_ci_sink;
+    const int do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
+                      cell_is_active_sinks(cj, e) && do_cj_sink;
 
     if (do_ci) {
 
@@ -814,7 +1001,8 @@ void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int timer) {
 #endif
 
   /* Should we even bother? */
-  const int should_do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
+  const int should_do_ci = ci->hydro.count != 0 && ci->sinks.count != 0 &&
+                           cell_is_active_sinks(ci, e);
 
   if (!should_do_ci) return;
 
