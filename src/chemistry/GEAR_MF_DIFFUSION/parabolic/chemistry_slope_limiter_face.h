@@ -64,7 +64,6 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
   /* *dUi *= alphai; */
   /* *dUj *= alphaj; */
 
-  /* The Gizmo slope limiter works better. */
   /* const float xij_i_norm = */
   /*     sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]); */
 
