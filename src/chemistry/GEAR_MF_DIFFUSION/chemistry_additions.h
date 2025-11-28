@@ -213,7 +213,6 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     const float Vinv = 1.0 / p->geometry.volume;
-    const float dt_therm_phys = dt_therm*cosmo->a*cosmo->a;
 
     /* Homogeneous equation update for inactive particles */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
@@ -232,7 +231,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
        dt is set again in chemistry_prepare_force() */
     chd->flux_dt = -1.0f;
   } else if (chd->flux_dt == 0.0f) {
-    /* something tricky happens at the beginning of the simulation: the flux
+    /* Something tricky happens at the beginning of the simulation: the flux
        exchange is done for all particles, but using a time step of 0. This
        in itself is not a problem. However, it causes some issues with the
        initialisation of flux.dt for inactive particles, since this value will
@@ -244,6 +243,8 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
   }
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  const float dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
+
   /* Kick the source term for half-timestep (for active and inactive part) */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data, cosmo);
