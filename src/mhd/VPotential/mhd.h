@@ -597,7 +597,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 
   /* Sets Induction equation */
   for (int i = 0; i < 3; i++) {
-      p->mhd_data.dAdt[i] = - p->mhd_data.resistive_eta * p->mhd_data.JPred[i];
+      p->mhd_data.dAdt[i] =  p->mhd_data.resistive_eta * p->mhd_data.JPred[i];
       for (int k = 0; k < 3; k++) 
          p->mhd_data.dAdt[i] += p->mhd_data.grad.Mat_da[k][i];
   }
@@ -711,11 +711,14 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
-  /*
+  
   for (int i = 0; i < 3; i++) 
-      for (int k = 0; k < 3; k++) 
-         p->a_hydro[i] += p->mhd_data.grad.Mat_F[i][k];
- */ 
+         p->a_hydro[i] -= ( 
+	 p->mhd_data.JPred[(i+1)%3] * p->mhd_data.BPred[(i+2)%3]-
+	 p->mhd_data.JPred[(i+2)%3] * p->mhd_data.BPred[(i+1)%3]) / mu_0
+	 + p->mhd_data.BPred[i] / mu_0 * p->mhd_data.divB ;
+//      for (int k = 0; k < 3; k++) 
+//	 p->mhd_data.grad.Mat_F[i][k];
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] *= p->mass;

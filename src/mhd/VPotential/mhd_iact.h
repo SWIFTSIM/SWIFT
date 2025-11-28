@@ -18,7 +18,7 @@
  ******************************************************************************/
 #ifndef SWIFT_VECTOR_POTENTIAL_MHD_IACT_H
 #define SWIFT_VECTOR_POTENTIAL_MHD_IACT_H
-#define VP_ADV_GAUGE
+////#define VP_ADV_GAUGE
 
 #include "periodic.h"
 
@@ -568,7 +568,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, 1.0f));
 
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
-  for (int i = 0; i < 3; i++)
+/*  for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
       pi->a_hydro[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
@@ -578,7 +578,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
       pj->a_hydro[i] += mi * Bj[i] * tensile_correction_scale_j *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
-    }
+    }*/
   /* Save forces*/
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
@@ -586,9 +586,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
       pj->mhd_data.tot_mag_F[i] -=
           mi * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pi->mhd_data.tot_mag_F[i] -=
+      pi->mhd_data.tot_mag_F[i] -= tensile_correction_scale_i *
           mj * Bi[i] * (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
-      pj->mhd_data.tot_mag_F[i] +=
+      pj->mhd_data.tot_mag_F[i] += tensile_correction_scale_j *
           mi * Bj[i] * (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
   }
@@ -757,19 +757,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
 
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
-  for (int i = 0; i < 3; i++)
+/*  for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
       pi->a_hydro[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
       pi->a_hydro[i] -= mj * Bi[i] * tensile_correction_scale_i *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
-    }
+    }*/
   /* Save forces*/
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       pi->mhd_data.tot_mag_F[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pi->mhd_data.tot_mag_F[i] -=
+      pi->mhd_data.tot_mag_F[i] -= tensile_correction_scale_i *
           mj * Bi[i] * (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
   }
