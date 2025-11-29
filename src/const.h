@@ -148,7 +148,11 @@
 #ifdef SHADOWSWIFT_STEER_MOTION
 /*! @brief More agressive cell steering for cold flows, where the other
  * criterion might become ineffective. */
-// #define SHADOWSWIFT_STEERING_COLD_FLOWS
+//#define SHADOWSWIFT_STEERING_COLD_FLOWS
+#ifndef SHADOWSWIFT_STEERING_COLD_FLOWS// Only one flow steering at a time
+#define SHADOWSWIFT_STEERING_FACEANGLE_FLOWS /* See Vogelsberger 2012, this
+                                                also impacts refining */
+#endif
 #endif
 #endif
 /* Options controlling thermal energy evolution */
@@ -167,7 +171,7 @@
 
 /*! @brief This option enables a (more) exact gravitational work term */
 #ifndef RIEMANN_SOLVER_HLLC
-// #define SHADOWSWIFT_EXACT_GRAV_WORK
+#define SHADOWSWIFT_EXACT_GRAV_WORK
 #endif
 
 /*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT

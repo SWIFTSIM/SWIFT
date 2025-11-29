@@ -120,11 +120,11 @@ __attribute__((always_inline)) INLINE static void hydro_set_mass(
 __attribute__((always_inline)) INLINE static void
 hydro_set_comoving_internal_energy_dt(struct part* restrict p,
                                       const float du_dt) {
+
   const float old_du_dt = hydro_get_comoving_internal_energy_dt(p);
-  const float du = (du_dt - old_du_dt) * p->flux.dt;
-  p->flux.energy += p->conserved.mass * du;
-  p->flux.entropy +=
-      p->conserved.mass * gas_entropy_from_internal_energy(p->rho, du);
+
+  // Store cooling du_dt (without mass) to use for next timestep
+  p->cool_du_dt_prev = du_dt - old_du_dt;
 }
 
 /**
