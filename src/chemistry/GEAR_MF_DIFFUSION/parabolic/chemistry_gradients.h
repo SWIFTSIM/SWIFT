@@ -53,11 +53,14 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     const float dx[3], const float r, const float xij_i[3],
     const struct cosmology *cosmo, double Ui[4], double Uj[4]) {
 
+  const struct chemistry_part_data *chi = &pi->chemistry_data;
+  const struct chemistry_part_data *chj = &pj->chemistry_data;
+
   /* Metal density */
   Ui[0] = chemistry_get_comoving_metal_density(pi, metal);
   Uj[0] = chemistry_get_comoving_metal_density(pj, metal);
 
-  /* Hyperbolic flux. Note for parabolic diffusion this is 0. */
+  /* Hyperbolic flux. Note: For parabolic diffusion this is 0. */
   Ui[1] = 0.0;
   Ui[2] = 0.0;
   Ui[3] = 0.0;
@@ -68,10 +71,34 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   /* No need to check unphysical state here: they haven't been touched since
      the call to chemistry_end_density() */
 
+  /* Get the gradients */
   double grad_rhoZ_i[3];
   double grad_rhoZ_j[3];
   chemistry_get_metal_density_gradients(pi, metal, grad_rhoZ_i);
   chemistry_get_metal_density_gradients(pj, metal, grad_rhoZ_j);
+
+  /* Cell limit the gradients now */
+  const double shoot_tol = 0.0;
+  const double alpha_i = chemistry_slope_limit_quantity(
+      /*gradient=*/ grad_rhoZ_i,
+      /*maxr=    */ chi->limiter.maxr,
+      /*value=   */ chemistry_get_comoving_metal_density(pi, metal),
+      /*valmin=  */ chi->limiter.rhoZ[metal][0],
+      /*valmax=  */ chi->limiter.rhoZ[metal][1],
+      /*condition_number*/ pi->geometry.condition_number,
+      /*pos_preserve*/ 1,
+      /*shoot_tol*/ shoot_tol);
+  const double alpha_j = chemistry_slope_limit_quantity(
+      /*gradient=*/ grad_rhoZ_j,
+      /*maxr=    */ chj->limiter.maxr,
+      /*value=   */ chemistry_get_comoving_metal_density(pj, metal),
+      /*valmin=  */ chj->limiter.rhoZ[metal][0],
+      /*valmax=  */ chj->limiter.rhoZ[metal][1],
+      /*condition_number*/ pj->geometry.condition_number,
+      /*pos_preserve*/ 1,
+      /*shoot_tol*/ shoot_tol);
+  chemistry_slope_limit_quantity_apply(grad_rhoZ_i, alpha_i);
+  chemistry_slope_limit_quantity_apply(grad_rhoZ_j, alpha_j);
 
   /* Compute interface position (relative to pj, since we don't need the
      actual position) eqn. (8)

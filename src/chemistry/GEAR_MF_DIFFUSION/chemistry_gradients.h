@@ -546,11 +546,37 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
     const struct part *restrict pi, const struct part *restrict pj, int metal,
     const float dx[3], const struct cosmology *cosmo, double *Zi, double *Zj) {
 
+  const struct chemistry_part_data *chi = &pi->chemistry_data;
+  const struct chemistry_part_data *chj = &pj->chemistry_data;
   const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
 
+  /* Get the gradients */
   double grad_Z_i[3], grad_Z_j[3];
   chemistry_get_metal_mass_fraction_gradients(pi, metal, grad_Z_i);
   chemistry_get_metal_mass_fraction_gradients(pj, metal, grad_Z_j);
+
+  /* Cell limit the gradients now */
+  const double shoot_tol = 0.0;
+  const double alpha_i = chemistry_slope_limit_quantity(
+      /*gradient=*/ grad_Z_i,
+      /*maxr=    */ chi->limiter.maxr,
+      /*value=   */ chemistry_get_metal_mass_fraction(pi, metal),
+      /*valmin=  */ chi->limiter.Z[metal][0],
+      /*valmax=  */ chi->limiter.Z[metal][1],
+      /*condition_number*/ pi->geometry.condition_number,
+      /*pos_preserve*/ 1,
+      /*shoot_tol*/ shoot_tol);
+  const double alpha_j = chemistry_slope_limit_quantity(
+      /*gradient=*/ grad_Z_j,
+      /*maxr=    */ chj->limiter.maxr,
+      /*value=   */ chemistry_get_metal_mass_fraction(pj, metal),
+      /*valmin=  */ chj->limiter.Z[metal][0],
+      /*valmax=  */ chj->limiter.Z[metal][1],
+      /*condition_number*/ pj->geometry.condition_number,
+      /*pos_preserve*/ 1,
+      /*shoot_tol*/ shoot_tol);
+  chemistry_slope_limit_quantity_apply(grad_Z_i, alpha_i);
+  chemistry_slope_limit_quantity_apply(grad_Z_j, alpha_j);
 
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8)

@@ -47,6 +47,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     const float dx[3], const float r, const float xij_i[3],
     const struct cosmology *cosmo, double Ui[4], double Uj[4]) {
 
+  const struct chemistry_part_data *chi = &pi->chemistry_data;
+  const struct chemistry_part_data *chj = &pj->chemistry_data;
+
   /* Get the metal density (comoving) and the hyperbolic flux (physical) */
   Ui[0] = chemistry_get_comoving_metal_density(pi, metal);
   Ui[1] = pi->chemistry_data.flux[metal][0];
@@ -64,6 +67,30 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   double grad_rhoZ_j[3];
   chemistry_get_metal_density_gradients(pi, metal, grad_rhoZ_i);
   chemistry_get_metal_density_gradients(pj, metal, grad_rhoZ_j);
+
+  /* Cell limit the metal density gradients now. The fluxes were already cell
+     limited. */
+  const double shoot_tol = 0.0;
+  const double alpha_i = chemistry_slope_limit_quantity(
+      /*gradient=*/ grad_rhoZ_i,
+      /*maxr=    */ chi->limiter.maxr,
+      /*value=   */ chemistry_get_comoving_metal_density(pi, metal),
+      /*valmin=  */ chi->limiter.rhoZ[metal][0],
+      /*valmax=  */ chi->limiter.rhoZ[metal][1],
+      /*condition_number*/ pi->geometry.condition_number,
+      /*pos_preserve*/ 1,
+      /*shoot_tol*/ shoot_tol);
+  const double alpha_j = chemistry_slope_limit_quantity(
+      /*gradient=*/ grad_rhoZ_j,
+      /*maxr=    */ chj->limiter.maxr,
+      /*value=   */ chemistry_get_comoving_metal_density(pj, metal),
+      /*valmin=  */ chj->limiter.rhoZ[metal][0],
+      /*valmax=  */ chj->limiter.rhoZ[metal][1],
+      /*condition_number*/ pj->geometry.condition_number,
+      /*pos_preserve*/ 1,
+      /*shoot_tol*/ shoot_tol);
+  chemistry_slope_limit_quantity_apply(grad_rhoZ_i, alpha_i);
+  chemistry_slope_limit_quantity_apply(grad_rhoZ_j, alpha_j);
 
   /* Since the fluxes are stored in physical units, we need to convert the
      gradients to physical units */
