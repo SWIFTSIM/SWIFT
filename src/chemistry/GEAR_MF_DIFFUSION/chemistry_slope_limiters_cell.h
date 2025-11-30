@@ -121,8 +121,8 @@ chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
 }
 
 /**
- * @brief Slope-limit the given quantity. Result will be written directly
- * to double gradient[3].
+ * @brief Slope-limit the given quantity. Only compute the cell limiter
+ * factor. To apply it, call chemistry_slope_limit_quantity_apply().
  *
  * @param gradient the gradient of the quantity
  * @param maxr maximal distance to any neighbour of the particle
@@ -132,16 +132,20 @@ chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
  * @param condition_number Condition number of the particle geometric matrix E
  * @param pos_preserve Flag to use a positivity-preserving slope limiter for
  * quantities that should not become negative (e.g. densities, metallicities).
+ * @param shoot_tol Allowable gradients overshoot tolerance for the
+ * pos_preserve mode.
+ * @return alpha Factor to cell limit the gradients.
  */
-__attribute__((always_inline)) INLINE static void
+__attribute__((always_inline)) INLINE static double
 chemistry_slope_limit_quantity(double gradient[3], const float maxr,
                                const double value, const double valmin,
                                const double valmax,
                                const float condition_number,
-                               const int pos_preserve) {
+                               const int pos_preserve, const double shoot_tol) {
 
   double gradtrue = sqrt(gradient[0] * gradient[0] + gradient[1] * gradient[1] +
                          gradient[2] * gradient[2]);
+  double alpha = 1.0;
 
   if (gradtrue != 0.0) {
     gradtrue *= maxr;
@@ -158,11 +162,10 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
     /* Base slope limiter */
     const double min_temp =
         min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
-    double alpha = min(1.0, min_temp);
+    alpha = min(1.0, min_temp);
 
     /* Positivity-preserving mechanism */
     if (pos_preserve) {
-      const double shoot_tol = 0.0;  // Allowable overshoot tolerance
       const double overshoot_corr = gradmin + shoot_tol * gradmax;
       const double f_corr_overshoot =
           (overshoot_corr < gradmax) ? overshoot_corr : gradmax;
@@ -182,7 +185,7 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
          need to divide (value - final_fmin) by maxr. */
       const double cfac_pos_preserve = (value - final_fmin) / gradtrue;
       alpha = (cfac_pos_preserve < alpha) ? cfac_pos_preserve : alpha;
-    }
+    } /* Positivity-preserving mode */
 
     /* If valmin == valmax == value, then we are at a local maximum/minimum and
        so the gradient should be 0.
@@ -193,18 +196,37 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
       alpha = 0.0;
     }
 
-    /* Apply the limiting factor to the gradient */
-    if (alpha < 1.0) {
-      gradient[0] *= alpha;
-      gradient[1] *= alpha;
-      gradient[2] *= alpha;
-    }
   } /* gradtrue != 0 */
+  return alpha;
+}
+
+/**
+ * @brief Apply the cell limiter to the given quantity. Result will be written
+ * directly to double gradient[3].
+ *
+ * @param gradient the gradient of the quantity
+ * @param alpha Factor to cell limit the gradients.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_slope_limit_quantity_apply(double gradient[3], const double alpha) {
+  /* Apply the limiting factor to the gradient */
+  if (alpha < 1.0) {
+    gradient[0] *= alpha;
+    gradient[1] *= alpha;
+    gradient[2] *= alpha;
+  }
 }
 
 /**
  * @brief Slope limit cell gradients.
- * This is done in chemistry_gradients_finalise().
+ *
+ * Note 1: This is done in chemistry_gradients_finalise().
+ * Note 2: This function irrevocably alters the gradients. DO NOT update here
+ * gradients that are used to solve PDEs, e.g. the parabolic diffusion. The
+ * flux requires the "full" gradients and not cell limited ones. Cell limiting
+ * the diffusion driver gradient q alters the diffusion equations and MUST be
+ * cell limited during the gradients extrapolation step, before the face
+ * limiter.
  *
  * @param p Particle.
  * @param cd The global properties of the chemistry scheme.
@@ -219,35 +241,20 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   const float vylim[2] = {chd->limiter.v[1][0], chd->limiter.v[1][1]};
   const float vzlim[2] = {chd->limiter.v[2][0], chd->limiter.v[2][1]};
 
-  /* Gizmo's positivity preserving mode increases artificial diffusion for
-     hyperbolic scheme. For the parabolic, it suppresses diffusion features. */
-  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
-    chemistry_slope_limit_quantity(
-        /*gradient=*/chd->gradients.Z[m],
-        /*maxr=    */ maxr,
-        /*value=   */ chemistry_get_metal_mass_fraction(p, m),
-        /*valmin=  */ chd->limiter.Z[m][0],
-        /*valmax=  */ chd->limiter.Z[m][1],
-        /*condition_number*/ N_cond,
-        /*pos_preserve*/ 0);
-
-    chemistry_slope_limit_quantity(
-        /*gradient=*/chd->gradients.rhoZ[m],
-        /*maxr=    */ maxr,
-        /*value=   */ chemistry_get_comoving_metal_density(p, m),
-        /*valmin=  */ chd->limiter.rhoZ[m][0],
-        /*valmax=  */ chd->limiter.rhoZ[m][1],
-        /*condition_number*/ N_cond,
-        /*pos_preserve*/ 0);
-
+  /* DO NOT cell limit rho*Z and Z here as they can be used as diffusion
+     drivers. Cell limiting the diffusion drivers reduces the diffusion
+     strength and thus irrevocably alters the PDE being solved. */
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     for (int i = 0; i < 3; i++) {
-      chemistry_slope_limit_quantity(
-          chd->gradients.flux[m][i], maxr, chd->flux[m][i],
-          chd->limiter.flux[m][i][0], chd->limiter.flux[m][i][1], N_cond, 0);
+      const double alpha_flux = chemistry_slope_limit_quantity(
+	  chd->gradients.flux[m][i], maxr, chd->flux[m][i],
+	  chd->limiter.flux[m][i][0], chd->limiter.flux[m][i][1], N_cond, 0,
+	  0.0);
+      chemistry_slope_limit_quantity_apply(chd->gradients.flux[m][i], alpha_flux);
     }
-#endif
   }
+#endif
 
   /* Use doubles since chemistry_slope_limit_quantity() accepts double arrays.
    */
@@ -265,12 +272,16 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   gradvz[2] = chd->gradients.v[2][2];
 
   /* Slope limit the velocity gradients */
-  chemistry_slope_limit_quantity(gradvx, maxr, p->v[0], vxlim[0], vxlim[1],
-                                 N_cond, 0);
-  chemistry_slope_limit_quantity(gradvy, maxr, p->v[1], vylim[0], vylim[1],
-                                 N_cond, 0);
-  chemistry_slope_limit_quantity(gradvz, maxr, p->v[2], vzlim[0], vzlim[1],
-                                 N_cond, 0);
+  const double alpha_vx = chemistry_slope_limit_quantity(
+      gradvx, maxr, p->v[0], vxlim[0], vxlim[1], N_cond, 0, 0.0);
+  const double alpha_vy = chemistry_slope_limit_quantity(
+      gradvy, maxr, p->v[1], vylim[0], vylim[1], N_cond, 0, 0.0);
+  const double alpha_vz = chemistry_slope_limit_quantity(
+      gradvz, maxr, p->v[2], vzlim[0], vzlim[1], N_cond, 0, 0.0);
+
+  chemistry_slope_limit_quantity_apply(gradvx, alpha_vx);
+  chemistry_slope_limit_quantity_apply(gradvy, alpha_vy);
+  chemistry_slope_limit_quantity_apply(gradvz, alpha_vz);
 
   /* Set the velocity gradient values */
   chd->gradients.v[0][0] = gradvx[0];
