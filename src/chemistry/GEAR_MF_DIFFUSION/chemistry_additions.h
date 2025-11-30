@@ -212,7 +212,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     }
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-    const float Vinv = 1.0 / p->geometry.volume;
+    const double Vinv = 1.0 / p->geometry.volume;
 
     /* Homogeneous equation update for inactive particles */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
