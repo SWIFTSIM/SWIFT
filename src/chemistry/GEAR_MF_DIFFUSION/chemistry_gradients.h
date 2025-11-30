@@ -463,7 +463,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
   chemistry_part_normalise_gradients(p, norm);
 
   /* Limit the cell gradients */
-  /* chemistry_slope_limit_cell(p, cd); */
+  chemistry_slope_limit_cell(p, cd);
 }
 
 /**
