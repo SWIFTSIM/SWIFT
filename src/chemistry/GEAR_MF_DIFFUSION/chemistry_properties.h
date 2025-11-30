@@ -25,6 +25,10 @@
    can happen if the metal mass is close to 0. */
 #define GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE 0.0
 
+/* Cell slope limiter beta factors. The default values come from Hopkins (2015) */
+#define GIZMO_SLOPE_LIMITER_BETA_MIN 1.0
+#define GIZMO_SLOPE_LIMITER_BETA_MAX 2.0
+
 /**
  * @brief The diffusion mode
  */

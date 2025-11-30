@@ -22,9 +22,6 @@
 #include "chemistry_getters.h"
 #include "hydro.h"
 
-#define GIZMO_SLOPE_LIMITER_BETA_MIN 1.0
-#define GIZMO_SLOPE_LIMITER_BETA_MAX 2.0
-
 /**
  * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_slope_limiters_cell.h
  * @brief File containing routines concerning the cell slope limiter for the
