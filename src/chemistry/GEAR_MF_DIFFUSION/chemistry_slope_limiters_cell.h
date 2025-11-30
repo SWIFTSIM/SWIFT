@@ -66,13 +66,6 @@ chemistry_slope_limit_cell_init(struct part *p) {
   p->chemistry_data.limiter.v[2][0] = FLT_MAX;
   p->chemistry_data.limiter.v[2][1] = -FLT_MAX;
 
-  p->chemistry_data.limiter.v_tilde[0][0] = FLT_MAX;
-  p->chemistry_data.limiter.v_tilde[0][1] = -FLT_MAX;
-  p->chemistry_data.limiter.v_tilde[1][0] = FLT_MAX;
-  p->chemistry_data.limiter.v_tilde[1][1] = -FLT_MAX;
-  p->chemistry_data.limiter.v_tilde[2][0] = FLT_MAX;
-  p->chemistry_data.limiter.v_tilde[2][1] = -FLT_MAX;
-
   p->chemistry_data.limiter.maxr = -FLT_MAX;
 }
 
@@ -88,7 +81,9 @@ __attribute__((always_inline)) INLINE static void
 chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   struct chemistry_part_data *chj = &pj->chemistry_data;
+#endif
 
   /* Basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
@@ -124,19 +119,6 @@ chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
   chi->limiter.v[1][1] = max(pj->v[1], chi->limiter.v[1][1]);
   chi->limiter.v[2][0] = min(pj->v[2], chi->limiter.v[2][0]);
   chi->limiter.v[2][1] = max(pj->v[2], chi->limiter.v[2][1]);
-
-  chi->limiter.v_tilde[0][0] = min(chj->filtered.rho_v[0] / chj->filtered.rho,
-                                   chi->limiter.v_tilde[0][0]);
-  chi->limiter.v_tilde[0][1] = max(chj->filtered.rho_v[0] / chj->filtered.rho,
-                                   chi->limiter.v_tilde[0][1]);
-  chi->limiter.v_tilde[1][0] = min(chj->filtered.rho_v[1] / chj->filtered.rho,
-                                   chi->limiter.v_tilde[1][0]);
-  chi->limiter.v_tilde[1][1] = max(chj->filtered.rho_v[1] / chj->filtered.rho,
-                                   chi->limiter.v_tilde[1][1]);
-  chi->limiter.v_tilde[2][0] = min(chj->filtered.rho_v[2] / chj->filtered.rho,
-                                   chi->limiter.v_tilde[2][0]);
-  chi->limiter.v_tilde[2][1] = max(chj->filtered.rho_v[2] / chj->filtered.rho,
-                                   chi->limiter.v_tilde[2][1]);
 
   chi->limiter.maxr = max(r, chi->limiter.maxr);
 }
@@ -239,15 +221,6 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   const float vxlim[2] = {chd->limiter.v[0][0], chd->limiter.v[0][1]};
   const float vylim[2] = {chd->limiter.v[1][0], chd->limiter.v[1][1]};
   const float vzlim[2] = {chd->limiter.v[2][0], chd->limiter.v[2][1]};
-  const float vx_tilde_lim[2] = {chd->limiter.v_tilde[0][0],
-                                 chd->limiter.v_tilde[0][1]};
-  const float vy_tilde_lim[2] = {chd->limiter.v_tilde[1][0],
-                                 chd->limiter.v_tilde[1][1]};
-  const float vz_tilde_lim[2] = {chd->limiter.v_tilde[2][0],
-                                 chd->limiter.v_tilde[2][1]};
-  const float v_tilde[3] = {chd->filtered.rho_v[0] / chd->filtered.rho,
-                            chd->filtered.rho_v[1] / chd->filtered.rho,
-                            chd->filtered.rho_v[2] / chd->filtered.rho};
 
   /* Gizmo's positivity preserving mode increases artificial diffusion for
      hyperbolic scheme. For the parabolic, it suppresses diffusion features. */
@@ -281,7 +254,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
 
   /* Use doubles since chemistry_slope_limit_quantity() accepts double arrays.
    */
-  double gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3], gradvy_tilde[3], gradvz_tilde[3];
+  double gradvx[3], gradvy[3], gradvz[3];
 
   /* Get the velocity gradients and cast them as double */
   gradvx[0] = chd->gradients.v[0][0];
@@ -294,16 +267,6 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   gradvz[1] = chd->gradients.v[2][1];
   gradvz[2] = chd->gradients.v[2][2];
 
-  gradvx_tilde[0] = chd->filtered.grad_v_tilde[0][0];
-  gradvx_tilde[1] = chd->filtered.grad_v_tilde[0][1];
-  gradvx_tilde[2] = chd->filtered.grad_v_tilde[0][2];
-  gradvy_tilde[0] = chd->filtered.grad_v_tilde[1][0];
-  gradvy_tilde[1] = chd->filtered.grad_v_tilde[1][1];
-  gradvy_tilde[2] = chd->filtered.grad_v_tilde[1][2];
-  gradvz_tilde[0] = chd->filtered.grad_v_tilde[2][0];
-  gradvz_tilde[1] = chd->filtered.grad_v_tilde[2][1];
-  gradvz_tilde[2] = chd->filtered.grad_v_tilde[2][2];
-
   /* Slope limit the velocity gradients */
   chemistry_slope_limit_quantity(gradvx, maxr, p->v[0], vxlim[0], vxlim[1],
                                  N_cond, 0);
@@ -311,12 +274,6 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                                  N_cond, 0);
   chemistry_slope_limit_quantity(gradvz, maxr, p->v[2], vzlim[0], vzlim[1],
                                  N_cond, 0);
-  chemistry_slope_limit_quantity(gradvx_tilde, maxr, v_tilde[0],
-                                 vx_tilde_lim[0], vx_tilde_lim[1], N_cond, 0);
-  chemistry_slope_limit_quantity(gradvy_tilde, maxr, v_tilde[1],
-                                 vy_tilde_lim[0], vy_tilde_lim[1], N_cond, 0);
-  chemistry_slope_limit_quantity(gradvz_tilde, maxr, v_tilde[2],
-                                 vz_tilde_lim[0], vz_tilde_lim[1], N_cond, 0);
 
   /* Set the velocity gradient values */
   chd->gradients.v[0][0] = gradvx[0];
@@ -328,16 +285,6 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   chd->gradients.v[2][0] = gradvz[0];
   chd->gradients.v[2][1] = gradvz[1];
   chd->gradients.v[2][2] = gradvz[2];
-
-  chd->filtered.grad_v_tilde[0][0] = gradvx_tilde[0];
-  chd->filtered.grad_v_tilde[0][1] = gradvx_tilde[1];
-  chd->filtered.grad_v_tilde[0][2] = gradvx_tilde[2];
-  chd->filtered.grad_v_tilde[1][0] = gradvy_tilde[0];
-  chd->filtered.grad_v_tilde[1][1] = gradvy_tilde[1];
-  chd->filtered.grad_v_tilde[1][2] = gradvy_tilde[2];
-  chd->filtered.grad_v_tilde[2][0] = gradvz_tilde[0];
-  chd->filtered.grad_v_tilde[2][1] = gradvz_tilde[1];
-  chd->filtered.grad_v_tilde[2][2] = gradvz_tilde[2];
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_CELL_H */

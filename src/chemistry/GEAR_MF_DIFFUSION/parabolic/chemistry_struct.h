@@ -83,9 +83,6 @@ struct chemistry_part_data {
     /*! Extreme values of the fluid velocity among the neighbours. */
     float v[3][2];
 
-    /*! Extreme values of the filtered velocity among the neighbours. */
-    float v_tilde[3][2];
-
     /*! Maximal distance to all neighbouring faces. */
     float maxr;
 
@@ -105,7 +102,10 @@ struct chemistry_part_data {
     /*! Filtered (rho * v). tilde(v) = filtered(rho*v) / filtered(rho) */
     float rho_v[3];
 
-    /*! Gradient of tilde(v) */
+    /*! Gradient of tilde(v). Note: We do not need to slope limit this
+        gradient because it is not used for conserved quantity
+        reconstruction. This gradient is used to compute the traceless shear
+        matrix. */
     float grad_v_tilde[3][3];
   } filtered;
 
