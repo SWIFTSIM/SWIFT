@@ -2268,9 +2268,12 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       struct part *pi = &c->hydro.parts[pi_idx];
       /* Anything to do here? */
       if (!part_is_active(pi, e)) continue;
-      /* Derefine if below volume criteria and about to be <= 0 mass */
-      if ((pi->geometry.volume < hydro->particle_derefinement_volume_threshold)
-        && (pi->conserved.mass + pi->flux.mass) <= 0.f)
+      /* Derefine if below volume criteria and about to be <= 0 mass
+       * Continue if volume is above or not going to be <= 0 mass, derefine
+       * if volume smaller than threshold AND mass negative
+       */
+      if ((pi->geometry.volume > hydro->particle_derefinement_volume_threshold)
+        || (pi->conserved.mass + pi->flux.mass) > 0.f)
         continue;
 
       /* We have a particle that should be de-refined, check its neighbours for

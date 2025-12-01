@@ -187,19 +187,19 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
      * Can also in the future be enabled under these conditions:
      * neighboring generators are too close -> perhaps a distance / face distance = 1/2 thing
      * high face angle? */
-    if (soundspeed <= 0.f) {
+    if (soundspeed > 0.f) {
       vchar = 0;
     } else {
-      float Mach_low = 5.f;
-      float Mach_high = 100.f;
-      float Mach_part = sqrtf(fluid_v[0] * fluid_v[0] +
+      const float Mach_low = 5.f;
+      const float Mach_part = sqrtf(fluid_v[0] * fluid_v[0] +
                                 fluid_v[1] * fluid_v[1] +
                                 fluid_v[2] * fluid_v[2]) / soundspeed;
       if (Mach_part > Mach_low) {
+        const float Mach_high = 15.f;
         // Apply cold steering
 #ifdef SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT
         /* Apply a smoother gradient to steering if between Mach low and high */
-        if (Mach_part < Mach_high) {
+        if (Mach_part <= Mach_high) {
           hydro_velocities_steering_gradient(&vchar, soundspeed, vchar_dt, Mach_low, Mach_high, Mach_part);
         } else {
           /* Mach is higher than max, just set to max steering */
