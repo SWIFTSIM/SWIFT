@@ -215,7 +215,7 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cpi,
 
   /* Did we do a MM task here? */
   if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                           /*is_tree_walk=*/cpi == cpi->top ? 0 : 1)) {
+                           /*is_tree_walk=*/cpj == cpj->top ? 0 : 1)) {
     return;
   }
 
