@@ -85,6 +85,33 @@ hydro_generator_velocity_half_kick(struct part* p, struct xpart* xp, float dt) {
 }
 
 /**
+ * @brief Calculates gradient of cold steering.
+ *
+ * Note: Only called with SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT
+ *
+ * @param vchar the characteristic velocity governming steering strength
+ * @param soundspeed
+ * @param vchar_dt the maximum cold steering corrective velocity
+ * @param Mach1 minimum threshold for cold steering
+ * @param Mach2 threshold for using maximum steering
+ * @param Mach_part mach of current particle
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_velocities_steering_gradient(
+  float* restrict vchar, soundspeed, float vchar_dt, float Mach1,
+  float Mach2, float Mach_part) {
+  /* Set steering linear gradient (y = mx + c, find m) */
+  float steering_gradient = (vchar_dt - soundspeed) / (Mach2 - Mach1);
+
+  /* Fix c */
+  float steering_constant = soundspeed - (vchar_dt - soundspeed) /
+                                          (Mach2 / Mach1 - 1);
+
+  /* Set Vchar */
+  *vchar = steering_gradient * Mach_part + steering_constant;
+}
+
+/**
  * @brief Set the velocity of a ShadowSWIFT particle, based on the values of its
  * primitive variables and the geometry of its voronoi cell.
  *
@@ -96,7 +123,6 @@ hydro_generator_velocity_half_kick(struct part* p, struct xpart* xp, float dt) {
 __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     struct part* restrict p, struct xpart* restrict xp,
     const struct hydro_props* hydro_properties, float dt) {
-
   /* We first get the particle velocity. */
   float v[3] = {0.f, 0.f, 0.f};
   float fluid_v[3] = {0.f, 0.f, 0.f};
@@ -125,9 +151,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     v[2] = fluid_v[2];
 
 #ifdef SHADOWSWIFT_STEER_MOTION
-    /* Add a correction to the velocity to keep particle positions close enough
-       to the centroid of their voronoi cell. */
-    /* The correction term below is based on the one from Springel (2010). */
+
     float ds[3];
     ds[0] = p->geometry.centroid[0];
     ds[1] = p->geometry.centroid[1];
@@ -155,11 +179,47 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     const float max_angle = p->geometry.max_face_angle;
     float beta = 2.25f;
     float f_shaping_speed = 0.5f;
+    float vchar = soundspeed; // Determines cold steering aggresssiveness, default is moderate
+    float vchar_dt = d / dt; // Timestep based correction
+
+#ifdef SHADOWSWIFT_STEERING_COLD_FLOWS
+    /* Enables much more aggressive cold steering if the cell has high Mach (assumed cold),
+     * Can also in the future be enabled under these conditions:
+     * neighboring generators are too close -> perhaps a distance / face distance = 1/2 thing
+     * high face angle? */
+    if (soundspeed <= 0.f) {
+      vchar = 0;
+    } else {
+      float Mach_low = 5.f;
+      float Mach_high = 100.f;
+      float Mach_part = sqrtf(fluid_v[0] * fluid_v[0] +
+                                fluid_v[1] * fluid_v[1] +
+                                fluid_v[2] * fluid_v[2]) / soundspeed;
+      if (Mach_part > Mach_low) {
+        // Apply cold steering
+#ifdef SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT
+        /* Apply a smoother gradient to steering if between Mach low and high */
+        if (Mach_part < Mach_high) {
+          hydro_velocities_steering_gradient(&vchar, soundspeed, vchar_dt, Mach_low, Mach_high, Mach_part);
+        } else {
+          /* Mach is higher than max, just set to max steering */
+          vchar = vchar_dt;
+#else
+        /* Default cold steering */
+        vchar = vchar_dt;
+#endif
+      }
+#endif
+
+    /* Additionally impose that we use the timestep based steering if it is less aggressive than soundspeed steering */
+    if (vchar_dt < vchar) {
+      vchar = vchar_dt;
+    }
 
     if (max_angle > 0.75 * beta) {
       /* Enter bottom two options of Weinberger 2020 Eq. 39
        * and apply default factor f_shaping */
-      float fac = f_shaping_speed * soundspeed / d;
+      float fac = f_shaping_speed * vchar / d;
 
       if (max_angle < beta) {
         /* Enter second option of Weinberger 2020 Eq. 39
@@ -173,8 +233,8 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
       v[1] += ds[1] * fac;
       v[2] += ds[2] * fac;
     }
-/* Enter else correspondning strictly to SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
- * being off, but SHADOWSWIFT_STEER_MOTION being on*/
+/* Enter else correspondning strictly to SHADOWSWIFT_STEERING_FACEANGLE_FLOWS * being off, but
+ * SHADOWSWIFT_STEER_MOTION being on*/
 #else
 
     /* Add a correction to the velocity to keep particle positions close enough

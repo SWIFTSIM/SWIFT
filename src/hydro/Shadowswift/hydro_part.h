@@ -290,6 +290,9 @@ struct part {
      * the safety radius of the voronoi cell of this particle. */
     float search_radius;
 
+    /*! Max face angle, alpha_max as described in Vogelberger 2012 2.2.2 (i) */
+    float max_face_angle;
+
   } geometry;
 
   struct {

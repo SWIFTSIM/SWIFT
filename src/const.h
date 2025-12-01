@@ -148,13 +148,14 @@
 #ifdef SHADOWSWIFT_STEER_MOTION
 /*! @brief More agressive cell steering for cold flows, where the other
  * criterion might become ineffective. */
-//#define SHADOWSWIFT_STEERING_COLD_FLOWS
-#ifndef SHADOWSWIFT_STEERING_COLD_FLOWS// Only one flow steering at a time
-#define SHADOWSWIFT_STEERING_FACEANGLE_FLOWS /* See Vogelsberger 2012, this
-                                                also impacts refining */
+#define SHADOWSWIFT_STEERING_COLD_FLOWS
+/*! @brief Enable smoother gradient of cold steering */
+#define SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT
+/*! @brief Uses a geometric argument for enabling steering, see Vogelsberger 2012 */
+#define SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
 #endif
 #endif
-#endif
+
 /* Options controlling thermal energy evolution */
 #define THERMAL_ENERGY_SWITCH_NONE 0
 #define THERMAL_ENERGY_SWITCH_SPRINGEL 1
