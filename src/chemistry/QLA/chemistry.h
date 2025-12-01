@@ -92,19 +92,48 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     const struct cosmology *cosmo) {}
 
 /**
- * @brief Updates to the chemistry data after the hydro force loop.
+ * @brief Finishes the gradient calculation.
  *
  * Nothing to do here.
+ *
+ * @param p The particle to act upon.
+ * @param cd The global properties of the chemistry scheme.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_gradient(
+    struct part *p, const struct chemistry_global_data *cd) {}
+
+/**
+ * @brief Updates to the chemistry data after the hydro force loop.
  *
  * @param p The particle to act upon.
  * @param cosmo The current cosmological model.
  * @param with_cosmology Are we running with the cosmology?
  * @param time Current time of the simulation.
  * @param dt Time step (in physical units).
+ * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part *restrict p, const struct cosmology *cosmo,
-    const int with_cosmology, const double time, const double dt) {}
+    const int with_cosmology, const double time, const double dt,
+    const struct chemistry_global_data *cd) {}
+
+/**
+ * @brief Prepare a particle for the force calculation.
+ *
+ * Nothing to do here.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ * @param cosmo The current cosmological model.
+ * @param dt_alpha The time-step used to evolve non-cosmological quantities such
+ *                 as the artificial viscosity.
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
+ * @param cd The global properties of the chemistry scheme.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_prepare_force(
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo, const float dt_alpha, const float dt_therm,
+    const struct chemistry_global_data *cd) {}
 
 /**
  * @brief Computes the chemistry-related time-step constraint.
@@ -437,5 +466,20 @@ chemistry_get_star_total_metal_mass_fraction_for_luminosity(
 
   return 0.f;
 }
+
+/**
+ * @brief Extra chemistry operations to be done during the drift.
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ * @param dt_therm The drift time-step for thermal quantities.
+ * @param cosmo The current cosmological model.
+ * @param chem_data The global properties of the chemistry scheme.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_predict_extra(
+    struct part *p, struct xpart *xp, float dt_drift, float dt_therm,
+    const struct cosmology *cosmo,
+    const struct chemistry_global_data *chem_data) {}
 
 #endif /* SWIFT_CHEMISTRY_QLA_H */

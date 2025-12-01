@@ -136,7 +136,8 @@ const char *engine_policy_names[] = {"none",
                                      "rt",
                                      "power spectra",
                                      "moving mesh",
-                                     "moving mesh hydro"};
+                                     "moving mesh hydro",
+                                     "no_io"};
 
 const int engine_default_snapshot_subsample[swift_type_count] = {0};
 
