@@ -9,11 +9,54 @@ jeans_length=${jeans_length:=0.250}  #Jeans wavelenght in unit of the boxsize
 rho=${rho:=0.1} # Gas density
 run_name=${run_name:=""}
 with_cosmo=${with_cosmo:=0}
+with_initial_metals=${with_initial_metals:=0} # Do we want some initial pollution?
 
+# Choose the right parameters
+if [ "$with_initial_metals" -eq 1 ];
+then
+	echo "Running with an initial metal pollution (no SF and feedback)"
+
+	# With initial pollution: no SF
+	metal_mass_fraction=1e-4
+    radius=0.05
+	swift_run_parameters=""
+
+	if [ "$with_cosmo" -eq 1 ];
+	then
+		parameter_file="params_cosmology_initial_metallicity.yml"
+	else
+		parameter_file="params_initial_metallicity.yml"
+	fi
+else
+	echo "Running with SF and feedback (no initial pollution)"
+
+	# Without initial pollution: do SF
+	metal_mass_fraction=0.0
+	radius=0.0
+	swift_run_parameters="--star-formation --sync"
+
+	if [ "$with_cosmo" -eq 1 ];
+	then
+		parameter_file="params_cosmology.yml"
+	else
+		parameter_file="params.yml"
+	fi
+fi
+
+# Add cosmology runtime parameter to the executable
+if [ "$with_cosmo" -eq 1 ];
+then
+	echo "Running with cosmology"
+	swift_run_parameters="$swift_run_parameters --cosmology"
+fi
+
+echo "Parameter file: $parameter_file"
 
 # Remove the ICs
 if [ -e ICs_homogeneous_box.hdf5 ]
 then
+    echo "------------------------------"
+	echo "Removing ICs..."
     rm ICs_homogeneous_box.hdf5
 fi
 
@@ -22,8 +65,9 @@ if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
     python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 \
-	    --lJ $jeans_length --rho $rho
+	    --lJ $jeans_length --rho $rho --epsilon $radius --metal_mass_fraction $metal_mass_fraction
 fi
+
 
 # Get the Grackle cooling table
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
@@ -32,7 +76,7 @@ then
     ./getGrackleCoolingTable.sh
 fi
 
-
+# Get the chemistry table
 if [ ! -e POPIIsw.h5 ]
 then
     echo "Fetching the chemistry tables..."
@@ -53,19 +97,14 @@ fi
 
 printf "Running simulation..."
 
-if [ "$with_cosmo" -eq 1 ]; then
-../../../swift --hydro --star-formation --stars --self-gravity --feedback \
-	       --cooling --sync --limiter --cosmology \
-	       --threads=$n_threads params_cosmology.yml 2>&1 | tee output.log
-else
-../../../swift --hydro --star-formation --stars --self-gravity --feedback \
-	       --cooling --sync --limiter \
-	       --threads=$n_threads params.yml 2>&1 | tee output.log
-fi
+
+../../../swift --hydro --stars --self-gravity --feedback \
+	       --cooling --limiter $swift_run_parameters  \
+	       --threads=$n_threads $parameter_file 2>&1 | tee output.log
 
 #Do some data analysis to show what's in this box
-python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5 --symlog
-python3 metal_projection.py snap/snapshot_*0.hdf5 --vmin=-20 --vmax=-3 --log
+python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5 #--symlog
+python3 metal_projection.py snap/snapshot_*0.hdf5 --vmin=-13 --vmax=-8 --log
 python3 plot_projected_qty.py --qty "internal_energy" snap/snapshot_*0.hdf5 --log
 python3 plot_projected_qty.py --qty "pressure" snap/snapshot_*0.hdf5 --log
 

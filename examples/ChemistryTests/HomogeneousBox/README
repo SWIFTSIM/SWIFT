@@ -30,14 +30,24 @@ You can remove the adaptive softening. In this case, you may need to change the 
 The run.sh script calls `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
 
 # Run
-Type run.sh, and let's go!
+Type run.sh, and let's go! Below, we propose some predefined variations
 
-# Debugging notes
-You can track the metal mass injected by feedback and diffused by the chemitry module by adding `CFLAGS="-DSWIFT_CHEMISTRY_DEBUG_CHECKS" ./configure [other parameters]`. This will also output the total diffused metal mass by each particles over the simulation. If you sum these values, you can track metal mass conservation. Notice that star formation removes metal.
+./run.sh                                        Run with SF and feedback. Stars pollute the gas and diffusion propagates metal with a Smagorinksy model
+run_name="test" ./run.sh                        Similar but then creates a directory "test" and move snapshots and images to this directory.
+level=6 ./run.sh                                Similar but at higher resolution
+with_initial_metallicity=1 ./run.sh             Run with an initial spherical metal pollution, without SF. The metals are propagated with a constant diffusion coefficient, in a passive-scalar mode.
+with_initial_metallicity=1 level=6 ./run.sh     Similarly but at higher resolution
 
-# Use cosmology
-This example can be run with cosmology if you comment some lines in `src/space.c:space_check_cosmology()`. You have to comment the line with "The cold dark matter content of the simulation does not match the cosmology in the parameter file [...]" (aroun line 2134) and the liens below. These lines check that the matter content in the initial conditions match with the cosmology.
+We insist to play with the different diffusion parameters to understand how they affect the physics.
+
+## Use cosmology
+This example can be run with cosmology if you comment some lines in `src/space.c:space_check_cosmology()`. You have to comment the line with "The cold dark matter content of the simulation does not match the cosmology in the parameter file [...]" (around line 2134) and the kines below. These lines check that the matter content in the initial conditions match with the cosmology. This example is gas only and hence does not match the cosmological matter content
 
 Then, run with
 
 jeans_length=250 rho=0.000001 with_cosmo=1 ./run.sh
+jeans_length=250 rho=0.000001 with_cosmo=1  with_initial_metallicity=1 ./run.sh
+
+# Debugging notes
+You can track the metal mass injected by feedback and diffused by the chemitry module by adding `CFLAGS="-DSWIFT_CHEMISTRY_DEBUG_CHECKS" ./configure [other parameters]`. This will also output the total diffused metal mass by each particles over the simulation. If you sum these values, you can track metal mass conservation. Notice that star formation removes metal.
+
