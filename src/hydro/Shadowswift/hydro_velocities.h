@@ -98,7 +98,7 @@ hydro_generator_velocity_half_kick(struct part* p, struct xpart* xp, float dt) {
  */
 __attribute__((always_inline)) INLINE static void
 hydro_velocities_steering_gradient(
-  float* restrict vchar, soundspeed, float vchar_dt, float Mach1,
+  float* restrict vchar, float soundspeed, float vchar_dt, float Mach1,
   float Mach2, float Mach_part) {
   /* Set steering linear gradient (y = mx + c, find m) */
   float steering_gradient = (vchar_dt - soundspeed) / (Mach2 - Mach1);
@@ -204,11 +204,13 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
         } else {
           /* Mach is higher than max, just set to max steering */
           vchar = vchar_dt;
+        }
 #else
         /* Default cold steering */
-        vchar = vchar_dt;
+          vchar = vchar_dt;
 #endif
-      }
+        }
+    }
 #endif
 
     /* Additionally impose that we use the timestep based steering if it is less aggressive than soundspeed steering */
