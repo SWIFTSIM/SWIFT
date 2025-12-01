@@ -19,7 +19,6 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_RIEMANN_HLL_H
 #define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_RIEMANN_HLL_H
 
-
 #include "../chemistry_riemann_checks.h"
 #include "../chemistry_riemann_utils.h"
 #include "../chemistry_struct.h"
