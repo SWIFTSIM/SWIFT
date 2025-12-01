@@ -2268,9 +2268,6 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       struct part *pi = &c->hydro.parts[pi_idx];
       /* Anything to do here? */
       if (!part_is_active(pi, e)) continue;
-      //if (pi->geometry.volume > hydro->particle_derefinement_volume_threshold)
-      //  continue; // This is where we would switch to a  mass or something criteria
-      //e.s->nr_parts // number gas parts
       /* Derefine if below volume criteria and about to be <= 0 mass */
       if ((pi->geometry.volume < hydro->particle_derefinement_volume_threshold)
         && (pi->conserved.mass + pi->flux.mass) <= 0.f)
