@@ -101,7 +101,12 @@ runner_iact_nonsym_feedback_apply(
     const struct unit_system *us, const struct cooling_function_data *cooling,
     const integertime_t ti_current, const double time_base) {
 
+  // message("No feedback applied");
+
   const double e_sn = si->feedback_data.energy_ejected;
+  const double e_preSN = si->feedback_data.preSN.energy_ejected;
+
+  // message("The preSN energy of the particle %lli is : %lf",si->id,e_preSN);
 
   const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);
@@ -125,9 +130,10 @@ runner_iact_nonsym_feedback_apply(
   const double dm = m_ej * weight;
   const double new_mass = mj + dm;
 
+  /* Distribute SN */
   if (e_sn != 0.0) {
     /* Energy received */
-    const double du = e_sn * weight / new_mass;
+    const double du = (e_sn)*weight / new_mass;
 
     xpj->feedback_data.delta_mass += dm;
     xpj->feedback_data.delta_u += du;
@@ -142,6 +148,11 @@ runner_iact_nonsym_feedback_apply(
       pj->chemistry_data.metal_mass[i] +=
           weight * si->feedback_data.metal_mass_ejected[i];
     }
+
+    /* Set the indication of SN event for cooling*/
+    xpj->feedback_data.hit_by_SN = 1;
+  } else {
+    xpj->feedback_data.hit_by_SN = 0;
   }
 
   /*****************************************/
@@ -149,7 +160,17 @@ runner_iact_nonsym_feedback_apply(
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                        hydro_props, fb_props, phys_const, us,
                                        cooling, ti_current, time_base);
+ 
   /*****************************************/
+  /* Distribute pre-SN */
+  if (e_preSN != 0.0) {
+    /* Energy received */
+    /* Here the new mass correspond to the mass added by supernovae
+    in the case where both supernovae and pre-SN feedback occur .
+    The pre-SN feedback does not yet implement a change in the mass !*/
+    const double du = (e_preSN)*weight / new_mass;
+    xpj->feedback_data.delta_u += du;
+  }
 
   /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);

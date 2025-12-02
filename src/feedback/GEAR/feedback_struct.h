@@ -43,12 +43,16 @@ struct feedback_xpart_data {
   /*! Radiation struct */
   struct {
 
+    /* TODO: Convert to char */    
     /*! Tag to ionize the part */
     int is_ionized;
 
     /*! Momemtum received from a radiation_pressure */
     float delta_p[3];
   } radiation;
+  
+  /*! Indicator if the particule receive energy from SN specifically */
+  char hit_by_SN;
 };
 
 /**
@@ -92,7 +96,7 @@ struct feedback_spart_data {
   /*! Gas metallicity at the star location */
   float Z_star;
 
-  /*! Pre-SN data struct */
+  /*! Pre-SN data structs */
   struct {
 
     /*! Bolometric luminosity (physical units) */
@@ -110,6 +114,19 @@ struct feedback_spart_data {
         stromgren_sphere[GEAR_STROMGREN_NUMBER_NEIGHBOURS];
 
   } radiation;
+  
+  struct {
+
+    /*! Energy injected in the surrounding particles, needs to be double as the
+     * energy is momentally passed as energy per unit time in erg/yr units and
+     * is of order 10^40*/ /* TODO:change into float for memory but /!\ change the stellar_wind.c functions in accordance */
+    double energy_ejected;
+
+    /*! Mass injected in the surrounding particles, needs to be double as the
+     mass is currently in Msol units and can be of orders 10^-40 */ /* TODO: change into float for memory*/
+    double mass_ejected;
+
+  } preSN;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */
