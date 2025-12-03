@@ -47,6 +47,7 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct chemistry_global_data *chemistry_data = e->chemistry;
 #endif
 
   TIMER_TIC;
@@ -160,7 +161,8 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                     t_current, cosmo, with_cosmology);
+                                     t_current, cosmo, with_cosmology,
+                                     chemistry_data);
 #endif
       }
       if (doj) {
@@ -188,7 +190,8 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                     t_current, cosmo, with_cosmology);
+                                     t_current, cosmo, with_cosmology,
+                                     chemistry_data);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -218,6 +221,7 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct chemistry_global_data *chemistry_data = e->chemistry;
 #endif
 
   TIMER_TIC;
@@ -327,7 +331,8 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                     t_current, cosmo, with_cosmology);
+                                     t_current, cosmo, with_cosmology,
+                                     chemistry_data);
 #endif
       }
       if (doj) {
@@ -355,7 +360,8 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                     t_current, cosmo, with_cosmology);
+                                     t_current, cosmo, with_cosmology,
+                                     chemistry_data);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -383,6 +389,7 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct chemistry_global_data *chemistry_data = e->chemistry;
 #endif
 
   TIMER_TIC;
@@ -482,7 +489,7 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                              t_current, cosmo, with_cosmology);
+                              t_current, cosmo, with_cosmology, chemistry_data);
 #endif
       } else if (doi) {
 
@@ -505,7 +512,8 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                     t_current, cosmo, with_cosmology);
+                                     t_current, cosmo, with_cosmology,
+                                     chemistry_data);
 #endif
       } else if (doj) {
 
@@ -532,7 +540,8 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                     t_current, cosmo, with_cosmology);
+                                     t_current, cosmo, with_cosmology,
+                                     chemistry_data);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -560,6 +569,7 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct chemistry_global_data *chemistry_data = e->chemistry;
 #endif
 
   TIMER_TIC;
@@ -659,7 +669,7 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                              t_current, cosmo, with_cosmology);
+                              t_current, cosmo, with_cosmology, chemistry_data);
 #endif
       } else if (doi) {
 
@@ -682,7 +692,8 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                     t_current, cosmo, with_cosmology);
+                                     t_current, cosmo, with_cosmology,
+                                     chemistry_data);
 #endif
       } else if (doj) {
 
@@ -709,7 +720,8 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                     t_current, cosmo, with_cosmology);
+                                     t_current, cosmo, with_cosmology,
+                                     chemistry_data);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -743,6 +755,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, const struct cell *restrict ci,
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct chemistry_global_data *chemistry_data = e->chemistry;
 #endif
 
   TIMER_TIC;
@@ -813,7 +826,8 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_timebin(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, pj->h, pi, pj, a, H, time_base,
-                                     t_current, cosmo, with_cosmology);
+                                     t_current, cosmo, with_cosmology,
+                                     chemistry_data);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -847,6 +861,7 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct chemistry_global_data *chemistry_data = e->chemistry;
 #endif
 
   TIMER_TIC;
@@ -924,7 +939,8 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
+                                       t_current, cosmo, with_cosmology,
+                                       chemistry_data);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -992,7 +1008,8 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
+                                       t_current, cosmo, with_cosmology,
+                                       chemistry_data);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -1096,6 +1113,7 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *c,
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct chemistry_global_data *chemistry_data = e->chemistry;
 #endif
 
   TIMER_TIC;
@@ -1169,7 +1187,8 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *c,
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                     t_current, cosmo, with_cosmology);
+                                     t_current, cosmo, with_cosmology,
+                                     chemistry_data);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -1220,6 +1239,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct chemistry_global_data *chemistry_data = e->chemistry;
 #endif
 
   TIMER_TIC;
@@ -1384,7 +1404,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
+                                       t_current, cosmo, with_cosmology,
+                                       chemistry_data);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -1502,7 +1523,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
+                                       t_current, cosmo, with_cosmology,
+                                       chemistry_data);
 #endif
         }
       } /* loop over the parts in ci. */
@@ -1586,6 +1608,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct chemistry_global_data *chemistry_data = e->chemistry;
 #endif
 
   TIMER_TIC;
@@ -1818,7 +1841,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
+                                       t_current, cosmo, with_cosmology,
+                                       chemistry_data);
 #endif
         }
       } /* loop over the active parts in cj. */
@@ -1917,7 +1941,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                  t_current, cosmo, with_cosmology);
+                                  t_current, cosmo, with_cosmology,
+                                  chemistry_data);
 #endif
           } else {
 
@@ -1941,7 +1966,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H,
                                          time_base, t_current, cosmo,
-                                         with_cosmology);
+                                         with_cosmology, chemistry_data);
 #endif
           }
         }
@@ -2068,7 +2093,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
+                                       t_current, cosmo, with_cosmology,
+                                       chemistry_data);
 #endif
         }
       } /* loop over the active parts in ci. */
@@ -2167,7 +2193,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_timebin(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                  t_current, cosmo, with_cosmology);
+                                  t_current, cosmo, with_cosmology,
+                                  chemistry_data);
 #endif
           } else {
 
@@ -2192,7 +2219,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H,
                                          time_base, t_current, cosmo,
-                                         with_cosmology);
+                                         with_cosmology, chemistry_data);
 #endif
           }
         }
@@ -2277,6 +2304,7 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct chemistry_global_data *chemistry_data = e->chemistry;
 #endif
 
   TIMER_TIC;
@@ -2386,7 +2414,8 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
+                                       t_current, cosmo, with_cosmology,
+                                       chemistry_data);
 #endif
         }
       } /* loop over all the particles we want to update. */
@@ -2469,7 +2498,8 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                t_current, cosmo, with_cosmology);
+                                t_current, cosmo, with_cosmology,
+                                chemistry_data);
 #endif
         } else if (doi) {
 
@@ -2494,7 +2524,8 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
+                                       t_current, cosmo, with_cosmology,
+                                       chemistry_data);
 #endif
         } else if (doj) {
 
@@ -2523,7 +2554,8 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
+                                       t_current, cosmo, with_cosmology,
+                                       chemistry_data);
 #endif
         } /* Hit or miss */
       } /* loop over all other particles. */
@@ -2597,6 +2629,7 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct chemistry_global_data *chemistry_data = e->chemistry;
 #endif
 
   TIMER_TIC;
@@ -2706,7 +2739,8 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
+                                       t_current, cosmo, with_cosmology,
+                                       chemistry_data);
 #endif
         }
       } /* loop over all other particles. */
@@ -2790,7 +2824,8 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                t_current, cosmo, with_cosmology);
+                                t_current, cosmo, with_cosmology,
+                                chemistry_data);
 #endif
         } else if (doi) {
 
@@ -2816,7 +2851,8 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
+                                       t_current, cosmo, with_cosmology,
+                                       chemistry_data);
 #endif
         } else if (doj) {
 
