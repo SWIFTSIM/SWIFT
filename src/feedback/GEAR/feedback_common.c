@@ -161,9 +161,9 @@ void feedback_will_do_feedback(
  * @param cosmo The current cosmological model.
  * @param time The current time (in double)
  */
-double compute_star_age_end_of_step(const struct spart* sp,
+double compute_star_age_end_of_step(const struct spart *sp,
                                     const int with_cosmology,
-                                    const struct cosmology* cosmo,
+                                    const struct cosmology *cosmo,
                                     const double time) {
   double star_age_end_of_step;
   if (with_cosmology) {
@@ -194,9 +194,9 @@ double compute_star_age_end_of_step(const struct spart* sp,
  * @param time_base The time base.
  * @param time The current time (in double)
  */
-void compute_time(const struct spart* sp, const int with_cosmology,
-                  const struct cosmology* cosmo, double* star_age_beg_of_step,
-                  double* dt_enrichment, integertime_t* ti_begin_star,
+void compute_time(const struct spart *sp, const int with_cosmology,
+                  const struct cosmology *cosmo, double *star_age_beg_of_step,
+                  double *dt_enrichment, integertime_t *ti_begin_star,
                   const integertime_t ti_current, const double time_base,
                   const double time) {
   const integertime_t ti_step = get_integer_timestep(sp->time_bin);
