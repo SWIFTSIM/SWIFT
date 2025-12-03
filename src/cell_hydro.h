@@ -95,7 +95,7 @@ struct cell_hydro {
     struct task *cooling_out;
 
     /*! Task for cooling */
-    struct task *cooling;
+    struct task *cooling[HYDRO_COOLING_NTASK];
 
     /*! Task for star formation */
     struct task *star_formation;

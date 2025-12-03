@@ -515,7 +515,7 @@ void *runner_main(void *data) {
           runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
           break;
         case task_type_cooling:
-          runner_do_cooling(r, t->ci, 1);
+          runner_do_cooling(r, t->ci, t->flags, HYDRO_COOLING_NTASK, 1);
           break;
         case task_type_star_formation:
           runner_do_star_formation(r, t->ci, 1);

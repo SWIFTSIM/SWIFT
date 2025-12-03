@@ -180,7 +180,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.drift_out = NULL;
     c->hydro.cooling_in = NULL;
     c->hydro.cooling_out = NULL;
-    c->hydro.cooling = NULL;
+    for (int i = 0; i < HYDRO_COOLING_NTASK; i++) {
+      c->hydro.cooling[i] = NULL;
+    }
     c->grav.long_range = NULL;
     c->grav.down_in = NULL;
     c->grav.down = NULL;

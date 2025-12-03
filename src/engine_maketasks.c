@@ -1679,10 +1679,12 @@ void engine_add_cooling(struct engine *e, struct cell *c,
 
     /* Add the cooling task and its dependencies */
     struct scheduler *s = &e->sched;
-    c->hydro.cooling = scheduler_addtask(s, task_type_cooling,
-                                         task_subtype_none, 0, 0, c, NULL);
-    scheduler_addunlock(s, cooling_in, c->hydro.cooling);
-    scheduler_addunlock(s, c->hydro.cooling, cooling_out);
+    for (int i = 0; i < HYDRO_COOLING_NTASK; i++) {
+      c->hydro.cooling[i] = scheduler_addtask(s, task_type_cooling,
+                                              task_subtype_none, i, 0, c, NULL);
+      scheduler_addunlock(s, cooling_in, c->hydro.cooling[i]);
+      scheduler_addunlock(s, c->hydro.cooling[i], cooling_out);
+    }
 
   } else {
     /* Keep recursing */

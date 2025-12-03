@@ -218,8 +218,10 @@ void cell_recursively_activate_cooling(struct cell *c, struct scheduler *s,
   if ((c->hydro.count == 0) || !cell_is_active_hydro(c, e)) return;
 
   /* Is the ghost at this level? */
-  if (c->hydro.cooling != NULL) {
-    scheduler_activate(s, c->hydro.cooling);
+  if (c->hydro.cooling[0] != NULL) {
+    for (int i = 0; i < HYDRO_COOLING_NTASK; i++) {
+      scheduler_activate(s, c->hydro.cooling[i]);
+    }
   } else {
 
 #ifdef SWIFT_DEBUG_CHECKS

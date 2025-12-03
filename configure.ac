@@ -3202,6 +3202,17 @@ case "$with_rt" in
    ;;
 esac
 
+# Task-multiplexing
+
+#  Number of hydro cooling tasks per cell
+AC_ARG_WITH([hydro-cooling-ntask],
+   [AS_HELP_STRING([--with-hydro-cooling-ntask=<ntask>],
+      [number of hydro cooling tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_hydro_cooling_ntask="$withval"],
+   [with_hydro_cooling_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([HYDRO_COOLING_NTASK], [$with_hydro_cooling_ntask], [Number of hydro cooling tasks per cell])
 
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
@@ -3387,6 +3398,7 @@ AC_MSG_RESULT([
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
+   Hydro cooling ntask  : $with_hydro_cooling_ntask
 
    Atomic operations in tasks  : $enable_atomics_within_tasks
    Individual timers           : $enable_timers
