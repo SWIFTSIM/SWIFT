@@ -160,7 +160,7 @@ runner_iact_nonsym_feedback_apply(
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                        hydro_props, fb_props, phys_const, us,
                                        cooling, ti_current, time_base);
- 
+
   /*****************************************/
   /* Distribute pre-SN */
   if (e_preSN != 0.0) {

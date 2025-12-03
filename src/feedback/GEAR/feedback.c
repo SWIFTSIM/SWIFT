@@ -55,48 +55,48 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   /* Did the particle receive a supernovae */
   if (xp->feedback_data.delta_u == 0) return;
 
-    /* Turn off the cooling */
-    cooling_set_part_time_cooling_off(p, xp, e->time);
+  /* Turn off the cooling */
+  cooling_set_part_time_cooling_off(p, xp, e->time);
 
   /* Turn off the cooling only when SN are involved */
   if (xp->feedback_data.hit_by_SN) {
     cooling_set_part_time_cooling_off(p, xp, e->time);
   }
 
-    if (xp->feedback_data.delta_mass < 0.) {
-      error("Delta mass smaller than 0");
-    }
+  if (xp->feedback_data.delta_mass < 0.) {
+    error("Delta mass smaller than 0");
+  }
 
-    /* Update mass */
-    const float old_mass = hydro_get_mass(p);
-    const float new_mass = old_mass + xp->feedback_data.delta_mass;    
+  /* Update mass */
+  const float old_mass = hydro_get_mass(p);
+  const float new_mass = old_mass + xp->feedback_data.delta_mass;
 
-    hydro_set_mass(p, new_mass);
+  hydro_set_mass(p, new_mass);
 
-    xp->feedback_data.delta_mass = 0;
+  xp->feedback_data.delta_mass = 0;
 
-    /* Update the density */
-    p->rho *= new_mass / old_mass;
+  /* Update the density */
+  p->rho *= new_mass / old_mass;
 
-    /* Update internal energy */
-    const float u =
-        hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
-    const float u_new = u + xp->feedback_data.delta_u;
+  /* Update internal energy */
+  const float u =
+      hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
+  const float u_new = u + xp->feedback_data.delta_u;
 
-    hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
-    hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
+  hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
+  hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
 
-    xp->feedback_data.delta_u = 0.;
+  xp->feedback_data.delta_u = 0.;
 
-    /* Update the velocities */
-    for (int i = 0; i < 3; i++) {
-      const float dv = xp->feedback_data.delta_p[i] / new_mass;
+  /* Update the velocities */
+  for (int i = 0; i < 3; i++) {
+    const float dv = xp->feedback_data.delta_p[i] / new_mass;
 
-      xp->v_full[i] += dv;
-      p->v[i] += dv;
+    xp->v_full[i] += dv;
+    p->v[i] += dv;
 
-      xp->feedback_data.delta_p[i] = 0;
-    }
+    xp->feedback_data.delta_p[i] = 0;
+  }
 
   /*----------------------------------------*/
   /* Update the radiation fields */

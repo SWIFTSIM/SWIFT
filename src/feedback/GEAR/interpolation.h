@@ -406,7 +406,7 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_double_free(
   free(interp->data);
   interp->data = NULL;
 }
-    
+
 ////////////////////////////// Interpolation 2D
 ////////////////////////////////////
 

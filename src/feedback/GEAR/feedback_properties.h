@@ -49,7 +49,7 @@ struct feedback_props {
 
   /*! Radiation pressure momentum effectively injected */
   float radiation_pressure_efficiency;
-  
+
   /*! Pre-supernova feedback energy effectively deposited */
   float preSN_efficiency;
 };

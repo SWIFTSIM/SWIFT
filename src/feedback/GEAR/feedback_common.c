@@ -210,7 +210,6 @@ void feedback_will_do_feedback(
       !sp->feedback_data.is_dead;
 }
 
-
 /**
  * @brief Compute age of the star at the end of the current timestep.
  *

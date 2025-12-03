@@ -688,7 +688,7 @@ void stellar_evolution_props_init(struct stellar_model* sm,
 
   /* Initialize the radiation model */
   radiation_init(&sm->rad, params, sm, us, phys_const);
-  
+
   /* Initialize the stellar wind model */
   stellar_wind_init(&sm->sw, params, sm, us);
 
@@ -761,7 +761,7 @@ void stellar_evolution_restore(struct stellar_model* sm, FILE* stream) {
 
   /* Restore the radiation model */
   radiation_restore(&sm->rad, stream, sm);
-  
+
   /* Restore the stellar wind model */
   stellar_wind_restore(&sm->sw, stream, sm);
 }
@@ -1128,7 +1128,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
     error("This function can only be called for single/individual stars!");
   }
 
-  /*****************************************/  
+  /*****************************************/
   /* Subgrid radiation */
   /* Bands:
      - ionizing : photo ionisation
@@ -1150,7 +1150,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   /* 	   sp->id, sp->star_type, sp->mass, */
   /* 	  sp->feedback_data.radiation.dot_N_ion,
    * sp->feedback_data.radiation.L_bol); */
-  
+
   /*****************************************/
   /* Stellar winds */
 
@@ -1242,7 +1242,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
      stars). So, the mass range is [M_min_IMF, M_not_dead_yet]. */
 
   /* The minimal mass fixed for SSP and continuous stars */
-  const float m_min = sm->imf.mass_min * phys_const->const_solar_mass;  
+  const float m_min = sm->imf.mass_min * phys_const->const_solar_mass;
 
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
@@ -1274,9 +1274,9 @@ void stellar_evolution_compute_preSN_feedback_spart(
   if (m_beg_step < sm->imf.mass_min) return;
 
   /* Star particles representing only the continuous part of the IMF need a
-     special treatment. They do not contain stars above the mass that separate the
-     IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
-     module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
+     special treatment. They do not contain stars above the mass that separate
+     the IMF into two parts (variable called minimal_discrete_mass_Msun in the
+     sink module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
      feedback for the discrete part. */
   if (sp->star_type == star_population_continuous_IMF) {
     m_beg_step = min(m_beg_step, sm->imf.minimal_discrete_mass_Msun);
@@ -1285,8 +1285,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
   /*****************************************/
   /* Radiation */
   const float m_init =
-    stellar_evolution_compute_initial_mass(sp, sm, phys_const);
-  
+      stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+
   /* Now get the IMF averaged quantities per unit mass _in M_sun_ */
   const float L_bol = radiation_get_luminosities_from_integral(
       &sm->rad, log10f(m_min), log10f(m_end_step));
@@ -1307,8 +1307,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
   /*****************************************/
   /* Stellar winds */
-  /* TODO: Here we should use the m_min instead of the M_beg_step */  
- 
+  /* TODO: Here we should use the m_min instead of the M_beg_step */
+
   /* initialize */
   sp->feedback_data.preSN.energy_ejected = 0;
   sp->feedback_data.preSN.mass_ejected = 0;

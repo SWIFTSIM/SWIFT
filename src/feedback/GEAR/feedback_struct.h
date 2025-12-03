@@ -43,14 +43,14 @@ struct feedback_xpart_data {
   /*! Radiation struct */
   struct {
 
-    /* TODO: Convert to char */    
+    /* TODO: Convert to char */
     /*! Tag to ionize the part */
     int is_ionized;
 
     /*! Momemtum received from a radiation_pressure */
     float delta_p[3];
   } radiation;
-  
+
   /*! Indicator if the particule receive energy from SN specifically */
   char hit_by_SN;
 };
@@ -114,7 +114,7 @@ struct feedback_spart_data {
         stromgren_sphere[GEAR_STROMGREN_NUMBER_NEIGHBOURS];
 
   } radiation;
-  
+
   struct {
 
     /*! Energy injected in the surrounding particles, needs to be double as the

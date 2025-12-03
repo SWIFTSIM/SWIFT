@@ -239,7 +239,7 @@ struct stellar_wind {
   } raw;
 
   /*! Yields integrated */
-  struct {  
+  struct {
     /*! Integrated (over the IMF) energy ejected by stellar winds. */
     struct interpolation_2d ejected_energy_per_progenitor_mass;
 
@@ -291,7 +291,7 @@ struct stellar_model {
 
   /*! The stellar radiation */
   struct radiation rad;
-  
+
   /*! The stellar wind */
   struct stellar_wind sw;
 
