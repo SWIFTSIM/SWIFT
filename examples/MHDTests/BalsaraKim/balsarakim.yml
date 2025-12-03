@@ -1,25 +1,25 @@
 MetaData:
-  run_name:   BK-AR
+  run_name:   BalsaraKim
 
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.99e33   # g
+  UnitMass_in_cgs:     6.757e41  # g
   UnitLength_in_cgs:   3.086e21  # cm
-  UnitVelocity_in_cgs: 1.e5      # Centimeters per second
+  UnitVelocity_in_cgs: 38.23e5   # Centimeters per second
   UnitCurrent_in_cgs:  1.e10     # Amperes
   UnitTemp_in_cgs:     1         # Kelvin
 
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.      # The starting time of the simulation (in internal units).
-  time_end:   4.e-3      # The end time of the simulation (in internal units).
-  dt_min:     1.e-15  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     .1e-5      # The maximal time-step size of the simulation (in internal units).
+  time_end:   3.5e-2  # The end time of the simulation (in internal units).
+  dt_min:     1.e-18  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1.e-4   # The maximal time-step size of the simulation (in internal units).
 
 # Parameters for MHD schemes
 MHD:
   monopole_subtraction:   1.0
-  artificial_diffusion:   1.0
+  artificial_diffusion:   0.1
   hyperbolic_dedner:      1.0 
   hyperbolic_dedner_divv: 0.5
   parabolic_dedner:       1.0
@@ -27,17 +27,18 @@ MHD:
 
 BalsaraKimForcing:
   coords:        ./injection_coords.txt  # File containing times and locations of energy injections
-  r_inj:         5.                      # (opt) Injection radius in parsec, default: 5 pc
-  E_inj:         1.e51                   # (opt) Injection energy in erg, default: 1.e51 erg
-  set_const_u:   1                       # (opt) whether to set a constant specific energy, default: 0
-  u_inj:         3.0298e15               # (opt) if set_const_u=1, what specific energy to inject in the particles, default: 2.8263e15 (cm/s)**2
-  
+  r_inj:         5.               # (opt) Injection radius in parsec, default: 5 pc
+  inj_model:     set_u            # what injection model to use o
+  E_inj:         1.e53            # (opt) Injection energy in erg, default: 1.e51 erg
+  u_inj:         3.0298e15        # (opt) if set_const_u=1, what specific energy to inject in the particles, default: 2.8263e15 (cm/s)**2
+  v_inj:         500              # (opt) if set_const_v=1, the injection velocity in km/s, default: 200 km/s
+
 # Parameters governing the snapshots
 Snapshots:
   subdir:              snapshots
   basename:            BK # Common part of the name of output files
   time_first:          0.
-  delta_time:          2.e-5
+  delta_time:          6.e-4
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -50,11 +51,11 @@ SPH:
   CFL_condition:         0.05      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   1.e2
   max_ghost_iterations:  1000
-  h_max:                 0.04     # Maximum smoothing length. Since the density in the post-shock region becomes very low, we need to make sure that this does not exceed 1/3 of the periodic box (including kernel gamma ~ 2)
+  h_max:                 0.02     # Maximum smoothing length. Since the density in the post-shock region becomes very low, we need to make sure that this does not exceed 1/3 of the periodic box (including kernel gamma ~ 2)
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./BalsaraKim-init.hdf5          # The file to read
+  file_name:  ./BalsaraKim.hdf5          # The file to read
   periodic:   1
 
 EAGLECooling:
@@ -66,16 +67,16 @@ EAGLECooling:
   dir_name: ./coolingtables/
 
 EAGLEChemistry:
-  init_abundance_metal:        0.014        # Mass fraction in *all* metals
-  init_abundance_Hydrogen:     0.70649785   # Mass fraction in Hydrogen
-  init_abundance_Helium:       0.28055534   # Mass fraction in Helium
-  init_abundance_Carbon:       2.0665436e-3 # Mass fraction in Carbon
-  init_abundance_Nitrogen:     8.3562563e-4 # Mass fraction in Nitrogen
-  init_abundance_Oxygen:       5.4926244e-3 # Mass fraction in Oxygen
-  init_abundance_Neon:         1.4144605e-3 # Mass fraction in Neon
-  init_abundance_Magnesium:    5.907064e-4  # Mass fraction in Magnesium
-  init_abundance_Silicon:      6.825874e-4  # Mass fraction in Silicon
-  init_abundance_Iron:         1.1032152e-3 # Mass fraction in Iron
+  init_abundance_metal:        4.75e-4        #4.75e-4  0.014        # Mass fraction in *all* metals
+  init_abundance_Hydrogen:     0.999525   #0.999525 0.70649785   # Mass fraction in Hydrogen
+  init_abundance_Helium:       0.   #0.       0.28055534   # Mass fraction in Helium
+  init_abundance_Carbon:       1.4e-4 #1.4e-4   2.0665436e-3 # Mass fraction in Carbon
+  init_abundance_Nitrogen:     0. #0.       8.3562563e-4 # Mass fraction in Nitrogen
+  init_abundance_Oxygen:       3.2e-4 #3.2e-4   5.4926244e-3 # Mass fraction in Oxygen
+  init_abundance_Neon:         0. #0.       1.4144605e-3 # Mass fraction in Neon
+  init_abundance_Magnesium:    0.  #0.       5.907064e-4  # Mass fraction in Magnesium
+  init_abundance_Silicon:      1.5e-5  #1.5e-5   6.825874e-4  # Mass fraction in Silicon
+  init_abundance_Iron:         0. #0.       1.1032152e-3 # Mass fraction in Iron
 
 EoS:
   isothermal_internal_energy: 1240419161676.6465
