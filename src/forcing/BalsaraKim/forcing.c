@@ -27,10 +27,11 @@
 void forcing_update(struct forcing_terms *terms, const double time_old) {
 
   /* if the current time is later than the latest SN event */
-  if (time_old > terms->times[terms->size - 1]) {
+  if (time_old >= terms->times[terms->size - 1]) {
     /* we do not want any more energy injections */
     terms->final_injection = 1;
   }
+
   /* else, if the next SN has happened, update the index to the next SN event */
   else if (time_old >= terms->times[terms->t_index]) {
     message("%d particles passed time condition", terms->counter);
