@@ -67,8 +67,6 @@ struct forcing_terms {
     /* keep track if the final injection has happened already */
     int final_injection;
 
-    /* store the max allowed dt here as well (FOR NOW) */
-    const float dt_max;
 };
 
 /**
@@ -116,13 +114,16 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
         time);
 
       /* store old specific energy and velocity */
-      double u_old = p->u;
-      double v_old = sqrtf(xp->v_full[0]*xp->v_full[0] + 
+      const double u_old = xp->u_full;
+      const double v_old = sqrtf(xp->v_full[0]*xp->v_full[0] + 
                            xp->v_full[1]*xp->v_full[1] +
                            xp->v_full[2]*xp->v_full[2]);
 
       double u_new;
       double v_new;
+
+      /* Get change in internal energy due to hydro forces */
+      /* const float hydro_du_dt = p->u_dt; */
 
       /* inject energy according to specified model */
       enum mechanism injection_model = terms->injection_model;
@@ -204,13 +205,13 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
-    double time, const struct forcing_terms* terms,
-    const struct phys_const* phys_const, const struct part* p,
-    const struct xpart* xp) {
+    double time, const struct forcing_terms* terms, const struct space* s,
+    const double dt_max, const struct phys_const* phys_const, 
+    const struct part* p, const struct xpart* xp) {
  
   const int t_index = terms->t_index;
 
-  if ((terms->times[t_index] - time) > 2 * terms->dt_max) {
+  if ((terms->times[t_index] - time) > dt_max) {
     return FLT_MAX;
   }
   
@@ -218,26 +219,36 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
   SN_loc[0] = terms->x_SN[t_index];
   SN_loc[1] = terms->y_SN[t_index];
   SN_loc[2] = terms->z_SN[t_index];
-
+  
+  
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-
+  
   double dx = SN_loc[0] - p->x[0];
   double dy = SN_loc[1] - p->x[1];
   double dz = SN_loc[2] - p->x[2];
 
-  dx = nearest(dx, .2);
-  dy = nearest(dy, .2);
-  dz = nearest(dz, .2);
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
 
-  double distance = sqrtf( dx * dx + dy * dy + dz * dz);
+  double distance = sqrtf( dx * dx + dy * dy + dz * dz ) - terms->r_inj;
+  
+  float v_abs2 = xp->v_full[0] * xp->v_full[0] +
+		 xp->v_full[1] * xp->v_full[1] +
+		 xp->v_full[2] * xp->v_full[2];
 
-  if (distance < 2 * terms->r_inj) {
-    return 1.e-6;  
-  } 
+
+  float v_sig = sqrtf( p->viscosity.v_sig * p->viscosity.v_sig + v_abs2);
+		   
+  if (distance / v_sig < dt_max) {
+    return dt_max / 100.;
+  }
   else {
     return FLT_MAX;
-  }
+  }  
 }
 
 /**  
@@ -451,8 +462,5 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   terms->t_index = 0;
   terms->counter = 0;
   terms->final_injection = 0;
-
-  terms->dt_max = parser_get_param_float(parameter_file,
-        "TimeIntegration:dt_max");
 }
 #endif /* SWIFT_FORCING_BALSARAKIM_H */
