@@ -47,7 +47,7 @@ struct cell_stars {
     struct spart *parts_rebuild;
 
     /*! The star ghost task itself */
-    struct task *density_ghost;
+    struct task *density_ghost[STARS_GHOST_NTASK];
 
     /*! The first star ghost task related to kinetic feedback */
     struct task *prep1_ghost;
