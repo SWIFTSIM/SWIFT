@@ -3033,11 +3033,18 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         /* Store current values of dx_max and h_max. */
         if (t->type == task_type_self) {
           cell_activate_subcell_rt_tasks(ci, NULL, s, sub_cycle);
+
+          /* Activate the drift task. */
+          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
         }
 
         /* Store current values of dx_max and h_max. */
         else if (t->type == task_type_pair) {
           cell_activate_subcell_rt_tasks(ci, cj, s, sub_cycle);
+
+          /* Activate the drift tasks. */
+          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
         }
       }
     }
