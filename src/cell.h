@@ -356,9 +356,11 @@ enum cell_flags {
   cell_flag_do_hydro_sub_sync = (1UL << 18),
   cell_flag_unskip_self_grav_processed = (1UL << 19),
   cell_flag_unskip_pair_grav_processed = (1UL << 20),
-  cell_flag_skip_rt_sort = (1UL << 21),    /* skip rt_sort after a RT recv? */
-  cell_flag_do_rt_sub_sort = (1UL << 22),  /* same as hydro_sub_sort for RT */
-  cell_flag_rt_requests_sort = (1UL << 23) /* was this sort requested by RT? */
+  cell_flag_skip_rt_sort = (1UL << 21),     /* skip rt_sort after a RT recv? */
+  cell_flag_do_rt_sub_sort = (1UL << 22),   /* same as hydro_sub_sort for RT */
+  cell_flag_rt_requests_sort = (1UL << 23), /* was this sort requested by RT? */
+  cell_flag_do_sidm_drift = (1UL << 24),
+  cell_flag_do_sidm_sub_drift = (1UL << 25)
 };
 
 /**
@@ -628,6 +630,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
 void cell_drift_sink(struct cell *c, const struct engine *e, int force);
 void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
                       struct replication_list *replication_list);
+void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
+                       struct replication_list *replication_list);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
@@ -699,6 +703,8 @@ void cell_remove_sink(const struct engine *e, struct cell *c,
                       struct sink *sink);
 void cell_remove_bpart(const struct engine *e, struct cell *c,
                        struct bpart *bp);
+void cell_remove_sipart(const struct engine *e, struct cell *c,
+                        struct sipart *sip);
 struct spart *cell_add_spart(struct engine *e, struct cell *c);
 struct gpart *cell_add_gpart(struct engine *e, struct cell *c);
 struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,

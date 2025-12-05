@@ -1,0 +1,95 @@
+#!/bin/bash
+
+# List each test that should be run
+declare -a TEST_LIST=(test27cellsSIDM)
+
+# Run same test for each executable
+for TEST in "${TEST_LIST[@]}"
+do
+  # Test for particles with the same smoothing length
+  for v in {0..3}
+  do
+    echo ""
+
+    rm -f sidm_brute_force_27_standard.dat swift_sidm_dopair_27_standard.dat
+
+    echo "Running ./$TEST -n 6 -r 1 -d 0 -f standard"
+    ./$TEST -n 6 -r 1 -d 0 -f standard
+
+
+    if [ -e sidm_brute_force_27_standard.dat ]
+    then
+      if python3 ./difffloat.py sidm_brute_force_27_standard.dat swift_sidm_dopair_27_standard.dat ./tolerance_27_normal.dat 6
+      then
+        echo "Accuracy test passed"
+      else
+        echo "Accuracy test failed"
+        exit 1
+      fi
+    else
+      echo "Error Missing test output file"
+      exit 1
+    fi
+
+    echo "------------"
+
+  done
+
+  # Test for particles with random smoothing lengths
+  for v in {0..3}
+  do
+    echo ""
+
+    rm -f sidm_brute_force_27_standard.dat swift_sidm_dopair_27_standard.dat
+
+    echo "Running ./$TEST -n 6 -r 1 -d 0 -f standard -v $v -p 1.1"
+    ./$TEST -n 6 -r 1 -d 0 -f standard -v $v -p 1.1
+
+    if [ -e brute_force_27_standard.dat ]
+    then
+      if python3 ./difffloat.py sidm_brute_force_27_standard.dat swift_sidm_dopair_27_standard.dat ./tolerance_27_perturbed_h.dat 6
+      then
+        echo "Accuracy test passed"
+      else
+        echo "Accuracy test failed"
+        exit 1
+      fi
+    else
+      echo "Error Missing test output file"
+      exit 1
+    fi
+
+    echo "------------"
+
+  done
+
+  # Test for particles with random smoothing lengths
+  for v in {0..3}
+  do
+    echo ""
+
+    rm -f sidm_brute_force_27_standard.dat swift_sidm_dopair_27_standard.dat
+
+    echo "Running ./$TEST -n 6 -r 1 -d 0 -f standard -v $v -p 1.3"
+    ./$TEST -n 6 -r 1 -d 0 -f standard -v $v -p 1.3
+
+    if [ -e brute_force_27_standard.dat ]
+    then
+      if python3 ./difffloat.py sidm_brute_force_27_standard.dat swift_sidm_dopair_27_standard.dat ./tolerance_27_perturbed_h2.dat 6
+      then
+        echo "Accuracy test passed"
+      else
+        echo "Accuracy test failed"
+        exit 1
+      fi
+    else
+      echo "Error Missing test output file"
+      exit 1
+    fi
+
+    echo "------------"
+
+  done
+done
+
+exit $?

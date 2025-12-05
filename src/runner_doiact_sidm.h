@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
- *               2018 Loic Hausammann (loic.hausammann@epfl.ch)
+ *               2025 Katy Proctor (katy.proctor@fysik.su.se)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -40,10 +40,12 @@
 #define _DOSELF1_SUBSET_SIDM(f) PASTE(runner_doself_subset_sidm, f)
 #define DOSELF1_SUBSET_SIDM _DOSELF1_SUBSET_SIDM(FUNCTION)
 
-#define _DOSELF1_SUBSET_BRANCH_SIDM(f) PASTE(runner_doself_subset_branch_sidm, f)
+#define _DOSELF1_SUBSET_BRANCH_SIDM(f) \
+  PASTE(runner_doself_subset_branch_sidm, f)
 #define DOSELF1_SUBSET_BRANCH_SIDM _DOSELF1_SUBSET_BRANCH_SIDM(FUNCTION)
 
-#define _DOPAIR1_SUBSET_BRANCH_SIDM(f) PASTE(runner_dopair_subset_branch_sidm, f)
+#define _DOPAIR1_SUBSET_BRANCH_SIDM(f) \
+  PASTE(runner_dopair_subset_branch_sidm, f)
 #define DOPAIR1_SUBSET_BRANCH_SIDM _DOPAIR1_SUBSET_BRANCH_SIDM(FUNCTION)
 
 #define _DOSELF1_BRANCH_SIDM(f) PASTE(runner_doself_branch_sidm, f)
@@ -86,27 +88,31 @@
 #define IACT_SIDM _IACT_SIDM(FUNCTION)
 
 void DOSELF1_BRANCH_SIDM(struct runner *r, const struct cell *c,
-                    const int limit_min_h, const int limit_max_h);
+                         const int limit_min_h, const int limit_max_h);
 void DOPAIR1_BRANCH_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
-                    const int limit_min_h, const int limit_max_h);
+                         const int limit_min_h, const int limit_max_h);
 
 void DOSUB_SELF1_SIDM(struct runner *r, struct cell *c, int recurse_below_h_max,
-                 const int gettimer);
+                      const int gettimer);
 void DOSUB_PAIR1_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
-                 int recurse_below_h_max, const int gettimer);
+                      int recurse_below_h_max, const int gettimer);
 
-void DOSUB_SELF1_SUBSET_SIDM(struct runner *r, struct cell *ci, struct sipart *siparts,
-                       const int *ind, const int sicount, const int gettimer);
-void DOSUB_PAIR1_SUBSET_SIDM(struct runner *r, struct cell *ci, struct sipart *siparts,
-                       const int *ind, const int sicount, struct cell *cj,
-                       const int gettimer);
+void DOSUB_SELF1_SUBSET_SIDM(struct runner *r, struct cell *ci,
+                             struct sipart *siparts, const int *ind,
+                             const int sicount, const int gettimer);
+void DOSUB_PAIR1_SUBSET_SIDM(struct runner *r, struct cell *ci,
+                             struct sipart *siparts, const int *ind,
+                             const int sicount, struct cell *cj,
+                             const int gettimer);
 
 void DOSELF1_SUBSET_BRANCH_SIDM(struct runner *r, const struct cell *ci,
-                          struct sipart *restrict siparts, const int *ind,
-                          const int sicount);
-void DOPAIR1_SUBSET_BRANCH_SIDM(struct runner *r, const struct cell *restrict ci,
-                          struct sipart *restrict siparts_i, const int *ind,
-                          const int sicount, struct cell *restrict cj);
+                                struct sipart *restrict siparts, const int *ind,
+                                const int sicount);
+void DOPAIR1_SUBSET_BRANCH_SIDM(struct runner *r,
+                                const struct cell *restrict ci,
+                                struct sipart *restrict siparts_i,
+                                const int *ind, const int sicount,
+                                struct cell *restrict cj);
 
 #define SIPART_IS_ACTIVE sipart_is_active
 #define CELL_IS_ACTIVE_SIDM cell_is_active_sidm

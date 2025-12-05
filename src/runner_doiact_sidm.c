@@ -24,10 +24,10 @@
 
 /* Local headers. */
 #include "active.h"
-#include "sidm_iact.h"
 #include "cell.h"
 #include "engine.h"
 #include "runner.h"
+#include "sidm_iact.h"
 #include "space_getsid.h"
 #include "timers.h"
 

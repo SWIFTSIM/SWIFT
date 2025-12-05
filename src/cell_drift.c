@@ -36,6 +36,7 @@
 #include "multipole.h"
 #include "neutrino.h"
 #include "rt.h"
+#include "sidm.h"
 #include "sink.h"
 #include "star_formation.h"
 #include "tracers.h"
@@ -148,6 +149,22 @@ void cell_set_ti_old_sink(struct cell *c, const integertime_t ti) {
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) cell_set_ti_old_sink(c->progeny[k], ti);
+    }
+  }
+}
+
+/**
+ * @brief Recursively set the siparts' ti_old_part to the current time.
+ *
+ * @param c The cell to update.
+ * @param ti The current integer time.
+ */
+void cell_set_ti_old_sipart(struct cell *c, const integertime_t ti) {
+
+  c->sidm.ti_old_part = ti;
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) cell_set_ti_old_sipart(c->progeny[k], ti);
     }
   }
 }
@@ -1163,6 +1180,183 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 
   /* Clear the drift flags. */
   cell_clear_flag(c, cell_flag_do_sink_drift | cell_flag_do_sink_sub_drift);
+}
+
+/**
+ * @brief Recursively drifts the #sipart in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ * @param force Drift the particles irrespective of the #cell flags.
+ */
+void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
+                       struct replication_list *replication_list_in) {
+
+  const int periodic = e->s->periodic;
+  const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const float sidm_h_max = e->sidm_properties->h_max;
+  const float sidm_h_min = e->sidm_properties->h_min;
+  const integertime_t ti_old_sipart = c->sidm.ti_old_part;
+  const integertime_t ti_current = e->ti_current;
+  struct sipart *const siparts = c->sidm.parts;
+
+  float dx_max = 0.f, dx2_max = 0.f;
+  float cell_h_max = 0.f;
+  float cell_h_max_active = 0.f;
+
+  /* Drift irrespective of cell flags? */
+  force = (force || cell_get_flag(c, cell_flag_do_sidm_drift));
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we only drift local cells. */
+  if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current < ti_old_sipart) error("Attempt to drift to the past");
+#endif
+
+  /* Early abort? */
+  if (c->sidm.count == 0) {
+
+    /* Clear the drift flags. */
+    cell_clear_flag(c, cell_flag_do_sidm_drift | cell_flag_do_sidm_sub_drift);
+
+    /* Update the time of the last drift */
+    cell_set_ti_old_sipart(c, ti_current);
+
+    return;
+  }
+
+  /* Ok, we have some particles somewhere in the hierarchy to drift
+
+     IMPORTANT: after this point we must not return without freeing the
+     replication lists if we allocated them.
+  */
+  struct replication_list *replication_list = NULL;
+
+  /* Are we not in a leaf ? */
+  if (c->split && (force || cell_get_flag(c, cell_flag_do_sidm_sub_drift))) {
+
+    /* Loop over the progeny and collect their data. */
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+
+        /* Recurse */
+        cell_drift_sipart(cp, e, force, replication_list);
+
+        /* Update */
+        dx_max = max(dx_max, cp->sidm.dx_max_part);
+        cell_h_max = max(cell_h_max, cp->sidm.h_max);
+        cell_h_max_active = max(cell_h_max_active, cp->sidm.h_max_active);
+      }
+    }
+
+    /* Store the values */
+    c->sidm.h_max = cell_h_max;
+    c->sidm.h_max_active = cell_h_max_active;
+    c->sidm.dx_max_part = dx_max;
+
+    /* Update the time of the last drift */
+    c->sidm.ti_old_part = ti_current;
+
+  } else if (!c->split && force && ti_current > ti_old_sipart) {
+
+    /* Drift from the last time the cell was drifted to the current time */
+    double dt_drift;
+    if (with_cosmology) {
+      dt_drift =
+          cosmology_get_drift_factor(e->cosmology, ti_old_sipart, ti_current);
+    } else {
+      dt_drift = (ti_current - ti_old_sipart) * e->time_base;
+    }
+
+    /* Loop over all the SIDM particles in the cell */
+    const size_t nr_siparts = c->sidm.count;
+    for (size_t k = 0; k < nr_siparts; k++) {
+
+      /* Get a handle on the sipart. */
+      struct sipart *const sip = &siparts[k];
+
+      /* Drift... */
+      drift_sipart(sip, dt_drift, ti_old_sipart, ti_current, e,
+                   replication_list, c->loc);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure the particle does not drift by more than a box length. */
+      if (fabs(sip->v[0] * dt_drift) > e->s->dim[0] ||
+          fabs(sip->v[1] * dt_drift) > e->s->dim[1] ||
+          fabs(sip->v[2] * dt_drift) > e->s->dim[2]) {
+        error("Particle drifts by more than a box length!");
+      }
+#endif
+
+      /* In non-periodic BC runs, remove particles that crossed the border */
+      if (!periodic) {
+
+        /* Did the particle leave the box?  */
+        if ((sip->x[0] > dim[0]) || (sip->x[0] < 0.) ||  // x
+            (sip->x[1] > dim[1]) || (sip->x[1] < 0.) ||  // y
+            (sip->x[2] > dim[2]) || (sip->x[2] < 0.)) {  // z
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+#ifdef WITH_CSDS
+          if (e->policy & engine_policy_csds) {
+            error("Logging of SIDM particles is not yet implemented.");
+          }
+#endif
+
+          /* Remove the particle entirely */
+          cell_remove_sipart(e, c, sip);
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
+      }
+
+      /* Limit h to within the allowed range */
+      sip->h = min(sip->h, sidm_h_max);
+      sip->h = max(sip->h, sidm_h_min);
+
+      /* Set the appropriate depth level for this particle */
+      cell_set_sipart_h_depth(sip, c);
+
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = sip->x_diff[0] * sip->x_diff[0] +
+                        sip->x_diff[1] * sip->x_diff[1] +
+                        sip->x_diff[2] * sip->x_diff[2];
+      dx2_max = max(dx2_max, dx2);
+
+      /* Maximal smoothing length */
+      cell_h_max = max(cell_h_max, sip->h);
+
+      /* Get ready for a density calculation */
+      sidm_init_sipart(sip);
+
+      /* Update the maximal active smoothing length in the cell */
+      cell_h_max_active = max(cell_h_max_active, sip->h);
+    }
+
+    /* Now, get the maximal particle motion from its square */
+    dx_max = sqrtf(dx2_max);
+
+    /* Store the values */
+    c->sidm.h_max = cell_h_max;
+    c->sidm.h_max_active = cell_h_max_active;
+    c->sidm.dx_max_part = dx_max;
+
+    /* Update the time of the last drift */
+    c->sidm.ti_old_part = ti_current;
+  }
+
+  /* Clear the drift flags. */
+  cell_clear_flag(c, cell_flag_do_sidm_drift | cell_flag_do_sidm_sub_drift);
 }
 
 /**

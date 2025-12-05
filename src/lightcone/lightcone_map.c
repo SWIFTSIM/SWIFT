@@ -200,7 +200,7 @@ void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id,
   hid_t file_space_id = H5Screate_simple(1, file_dims, NULL);
   if (file_space_id < 0) error("Unable to create file dataspace");
 
-    /* Select the part of the dataset in the file to write to */
+  /* Select the part of the dataset in the file to write to */
 #ifdef WITH_MPI
 #ifdef HAVE_PARALLEL_HDF5
   if (collective) {

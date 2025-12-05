@@ -45,6 +45,7 @@ enum {
   timer_drift_gpart,
   timer_drift_spart,
   timer_drift_bpart,
+  timer_drift_sipart,
   timer_kick1,
   timer_kick2,
   timer_timestep,

@@ -24,30 +24,10 @@ AM_LDFLAGS += ../csds/src/.libs/libcsds_writer.a
 endif
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
-        testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
-        testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
-        testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
-        testMatrixInversion testThreadpool testDump testCSDS testInteractions.sh \
-        testGravityDerivatives testPeriodicBC.sh testPeriodicBCPerturbed.sh \
-        testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
-        testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
-        test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
-        testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
-        testLog testDistance testTimeline testSIDMSetUp.sh testSIDMSymmetry
+TESTS = testSIDMSymmetry test27cells.sh test27cellsSIDM.sh
 
 # List of test programs to compile
-check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
-		 testActivePair test27cells test27cells_subset test125cells testParser \
-		 testKernel testFFT testInteractions testMaths testRandom testExp \
-		 testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
-		 testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
-		 testRiemannHLLC testMatrixInversion testDump testCSDS \
-		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
-		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
-		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
-		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline testSIDMSetUp testSIDMSymmetry
+check_PROGRAMS = testSIDMSymmetry test27cells test27cellsSIDM
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a

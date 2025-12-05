@@ -45,6 +45,19 @@ struct cell_sidm {
     /*! Pointer to the #sipart data at rebuild time. */
     struct sipart *parts_rebuild;
 
+    /*! Pointer for the sorted indices. */
+    struct sort_entry *sort;
+
+    /*! Super cell, i.e. the highest-level parent cell that has an SIDM
+     * pair/self tasks */
+    struct cell *super;
+
+    /*! The task computing this cell's sorts. */
+    struct task *sorts;
+
+    /*! The drift task for parts */
+    struct task *drift;
+
     /*! The SIDM ghost task itself */
     struct task *density_ghost;
 
@@ -74,6 +87,9 @@ struct cell_sidm {
 
     /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
     float dx_max_sort_old;
+
+    /*! Bit-mask indicating the sorted directions */
+    uint16_t sorted;
 
 #ifdef SIDM_NONE
   };

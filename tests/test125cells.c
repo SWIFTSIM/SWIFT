@@ -691,7 +691,7 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 125; ++j)
       runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0, 0, 0);
 
-      /* Do the density calculation */
+    /* Do the density calculation */
 
 /* Initialise the particle cache. */
 #ifdef WITH_VECTORIZATION
@@ -801,7 +801,7 @@ int main(int argc, char *argv[]) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
-      /* Do the force calculation */
+    /* Do the force calculation */
 
 #ifdef WITH_VECTORIZATION
     /* Initialise the cache. */
