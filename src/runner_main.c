@@ -349,7 +349,7 @@ void *runner_main(void *data) {
           runner_do_init_grav(r, ci, 1);
           break;
         case task_type_ghost:
-          runner_do_ghost(r, ci, 1);
+          runner_do_ghost(r, ci, t->flags, HYDRO_GHOST_NTASK, 1);
           break;
 #ifdef EXTRA_HYDRO_LOOP
         case task_type_extra_ghost:
@@ -357,7 +357,7 @@ void *runner_main(void *data) {
           break;
 #endif
         case task_type_stars_ghost:
-          runner_do_stars_ghost(r, ci, 1);
+          runner_do_stars_ghost(r, ci, t->flags, STARS_GHOST_NTASK, 1);
           break;
         case task_type_bh_density_ghost:
           runner_do_black_holes_density_ghost(r, ci, 1);
@@ -515,7 +515,7 @@ void *runner_main(void *data) {
           runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
           break;
         case task_type_cooling:
-          runner_do_cooling(r, t->ci, 1);
+          runner_do_cooling(r, t->ci, t->flags, HYDRO_COOLING_NTASK, 1);
           break;
         case task_type_star_formation:
           runner_do_star_formation(r, t->ci, 1);
