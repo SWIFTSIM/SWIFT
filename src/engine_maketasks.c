@@ -653,6 +653,65 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
 }
 
 /**
+ * @brief Add send tasks for the SIDM pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param ci The sending #cell.
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_rho The density comm. task, if it has already been created.
+ * @param t_sink_formation_counts The send_sink_formation_counts, if it has
+ * been created.
+ */
+void engine_addtasks_send_sidm(struct engine *e, struct cell *ci,
+                               struct cell *cj, struct task *t_rho) {
+
+#ifdef WITH_MPI
+
+  struct link *l = NULL;
+  struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
+
+  /* Check if any of the density tasks are for the target node. */
+  for (l = ci->sidm.density; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+      break;
+
+  /* If so, attach send tasks. */
+  if (l != NULL) {
+
+    if (t_rho == NULL) {
+
+      /* Make sure this cell is tagged. */
+      cell_ensure_tagged(ci);
+
+      /* Create the tasks and their dependencies? */
+      t_rho = scheduler_addtask(s, task_type_send, task_subtype_sipart_rho,
+                                ci->mpi.tag, 0, ci, cj);
+
+      /* Ghost before you send */
+      scheduler_addunlock(s, ci->sidm.super->sidm.drift, t_rho);
+      scheduler_addunlock(s, ci->sidm.super->sidm.density_ghost, t_rho);
+    }
+
+    engine_addlink(e, &ci->mpi.send, t_rho);
+  }
+
+  /* Recurse? */
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send_sidm(e, ci->progeny[k], cj, t_rho);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Add recv tasks for hydro pairs to a hierarchy of cells.
  *
  * @param e The #engine.
@@ -1354,6 +1413,63 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
         engine_addtasks_recv_gravity(
             e, c->progeny[k], t_grav_counts, t_grav, t_fof, tend, with_fof,
             with_sinks, with_star_formation, with_star_formation_sink);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Add recv tasks for black_holes pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param c The foreign #cell.
+ * @param t_rho The density comm. task, if it has already been created.
+ * @param t_bh_merger The BH swallow comm. task, if it has already been created.
+ * @param t_gas_swallow The gas swallow comm. task, if it has already been
+ * created.
+ * @param t_feedback The recv_feed #task, if it has already been created.
+ * @param tend The top-level time-step communication #task.
+ */
+void engine_addtasks_recv_sidm(struct engine *e, struct cell *c,
+                               struct task *t_rho, struct task *const tend) {
+
+#ifdef WITH_MPI
+  struct scheduler *s = &e->sched;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Have we reached a level where there are any sidm tasks ? */
+  if (t_rho == NULL && c->sidm.density != NULL) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
+    /* Create the tasks. */
+    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_sipart_rho,
+                              c->mpi.tag, 0, c, NULL);
+  }
+
+  if (t_rho != NULL) {
+    engine_addlink(e, &c->mpi.recv, t_rho);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == e->nodeID) error("Local cell!");
+#endif
+
+    for (struct link *l = c->sidm.density; l != NULL; l = l->next) {
+      scheduler_addunlock(s, l->t, t_rho);
+    }
+  }
+
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_recv_sidm(e, c->progeny[k], t_rho, tend);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2279,6 +2395,55 @@ void engine_make_external_gravity_tasks(struct engine *e) {
 }
 
 /**
+ * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks -- hydro version
+ *
+ * Tasks are only created here. The dependencies will be added later on.
+ *
+ * Note that there is no need to recurse below the super-cell. Note also
+ * that we only add tasks if the relevant particles are present in the cell.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param star_resort_cell Pointer to the cell where the star_resort task has
+ * been created. NULL above that level or if not running with star formation.
+ */
+void engine_make_hierarchical_tasks_sidm(struct engine *e, struct cell *c) {
+
+  struct scheduler *s = &e->sched;
+  const int with_sidm = (e->policy & engine_policy_sidm);
+#ifdef WITH_CSDS
+  const int with_csds = (e->policy & engine_policy_csds);
+#endif
+
+  /* Are we in a super-cell ? */
+  if (c->sidm.super == c) {
+
+    /* TODO:Add the SIDM sort task. */
+
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+
+      /* Add the drift task. */
+      c->sidm.drift = scheduler_addtask(s, task_type_drift_sipart,
+                                        task_subtype_none, 0, 0, c, NULL);
+
+      /* Generate the ghost tasks. */
+      c->sidm.density_ghost = scheduler_addtask(s, task_type_sidm_density_ghost,
+                                                task_subtype_none, 0,
+                                                /* implicit = */ 1, c, NULL);
+    }
+  } else { /* We are above the super-cell so need to go deeper */
+
+    /* Recurse. */
+    if (c->split)
+      for (int k = 0; k < 8; k++)
+        if (c->progeny[k] != NULL)
+          engine_make_hierarchical_tasks_sidm(e, c->progeny[k]);
+  }
+}
+
+/**
  * @brief Counts the tasks associated with one cell and constructs the links
  *
  * For each hydrodynamic and gravity task, construct the links with
@@ -2606,6 +2771,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
   const int with_sink = (e->policy & engine_policy_sinks);
+  const int with_sidm = (e->policy & engine_policy_sidm);
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_gradient = NULL;
 #endif
@@ -2628,6 +2794,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_rt_transport = NULL;
   struct task *t_sink_do_sink_swallow = NULL;
   struct task *t_sink_do_gas_swallow = NULL;
+  struct task *t_sidm_density = NULL;
 
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -2738,6 +2905,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               flags, 0, ci, NULL);
       }
 
+      /* The SIDM tasks */
+      if (with_sidm) {
+        t_sidm_density =
+            scheduler_addtask(sched, task_type_self, task_subtype_sidm_density,
+                              flags, 0, ci, NULL);
+      }
+
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &ci->hydro.force, t_force);
       if (with_timestep_limiter) {
@@ -2767,6 +2941,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (with_rt) {
         engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
         engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
+      }
+      if (with_sidm) {
+        engine_addlink(e, &ci->sidm.density, t_sidm_density);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
