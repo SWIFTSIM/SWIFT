@@ -211,7 +211,8 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  
   const int t_index = terms->t_index;
 
-  if ((terms->times[t_index] - time) > dt_max) {
+  if (((terms->times[t_index] - time) > dt_max) ||
+      (terms->final_injection == 1)) {
     return FLT_MAX;
   }
   
