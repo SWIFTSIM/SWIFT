@@ -549,7 +549,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
     atomic_max_f(&c->stars.h_max, h_max);
     atomic_max_f(&c->stars.h_max_active, h_max_active);
 
-    for (int i = 0; i < c->stars.count; ++i) {
+    for (int i = offset; i < c->stars.count; i += ntasks) {
       const struct spart *sp = &c->stars.parts[i];
       const float h = c->stars.parts[i].h;
       if (spart_is_inhibited(sp, e)) continue;
