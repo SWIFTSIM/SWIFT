@@ -143,7 +143,7 @@ struct hydro_props {
   /*! Is particle de-refinement enabled? */
   int particle_derefinement;
 
-  /*! Volume threshold below which a particle will be removed */
+  /*! Max volume above which we do not derefine a particle */
   float particle_derefinement_volume_threshold;
 
   /* ------ Viscosity and diffusion ---------------- */

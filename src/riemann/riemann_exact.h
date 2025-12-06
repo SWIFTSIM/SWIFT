@@ -198,8 +198,9 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
   s = 0.0f;
   fs = 0.0f;
 
-  /* if f(a) f(b) >= 0 then error-exit */
-  if (fa * fb >= 0.0f) {
+  /* if f(a) f(b) > 0 then error-exit
+   * Left as > not >= in case of fa or fb = 0 */
+  if (fa * fb > 0.0f) {
     error(
         "Brent's method called with equal sign function values!\n"
         "f(%g) = %g, f(%g) = %g\n",

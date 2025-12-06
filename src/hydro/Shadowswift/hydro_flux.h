@@ -94,8 +94,10 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
 
   double V_inv_i = 1. / pi->geometry.volume;
   double V_inv_j = 1. / pi->geometry.volume;
-  double flux_fac_i = (1. + 1e-5) * pi->geometry.nface * pi->flux.dt;
-  double flux_fac_j = (1. + 1e-5) * pj->geometry.nface * pj->flux.dt;
+  double flux_fac_i =  pi->flux.dt * pi->geometry.nface;
+  double flux_fac_j =  pj->flux.dt * pj->geometry.nface;
+  //double flux_fac_i = (1. + 1e-5) * pi->geometry.area / Anorm * pi->flux.dt;
+  //double flux_fac_j = (1. + 1e-5) * pj->geometry.area / Anorm * pj->flux.dt;
   double m_dagger_i = pi->conserved.mass - flux_fac_i * fluxes[0];
   double m_dagger_j = pj->conserved.mass + flux_fac_j * fluxes[0];
   double rho_i = m_dagger_i * V_inv_i;
@@ -116,84 +118,129 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
   float fluxes_lo[6];
   hydro_compute_flux(Wi, Wj, n_unit, vLR, Anorm, fluxes_lo);
   double theta_rho = 1.;
+
   if (rho_i < epsilon_rho) {
+
     double rho_lo = (pi->conserved.mass - flux_fac_i * fluxes_lo[0]) * V_inv_i;
     theta_rho = fmin(theta_rho, (epsilon_rho - rho_lo) / (rho_i - rho_lo));
   }
+
   if (rho_j < epsilon_rho) {
+
     double rho_lo = (pj->conserved.mass + flux_fac_j * fluxes_lo[0]) * V_inv_j;
     theta_rho = fmin(theta_rho, (epsilon_rho - rho_lo) / (rho_j - rho_lo));
   }
+
   theta_rho = fmax(0., theta_rho);
   for (int k = 0; k < 6; ++k) {
+
     fluxes[k] = fluxes_lo[k] * (1. - theta_rho) + fluxes[k] * theta_rho;
   }
 
   float Qi[6], Qj[6];
   hydro_part_get_conserved_variables(pi, Qi);
   hydro_part_get_conserved_variables(pj, Qj);
+
   for (int k = 0; k < 6; ++k) {
     Qi[k] -= flux_fac_i * fluxes[k];
     Qj[k] += flux_fac_j * fluxes[k];
   }
+
+  /* dE acts on entire cell, should not be multiplied by flux_fac */
+  //Qi[4] -= pi->gravity.dE_prev;
+  //Qj[4] -= pj->gravity.dE_prev;
+
   double mi_inv = 1. / Qi[0];
   double mj_inv = 1. / Qj[0];
+
   double ui =
       (Qi[4] - 0.5 * (Qi[1] * Qi[1] + Qi[2] * Qi[2] + Qi[3] * Qi[3]) * mi_inv) *
       mi_inv;
+
   double uj =
       (Qj[4] - 0.5 * (Qj[1] * Qj[1] + Qj[2] * Qj[2] + Qj[3] * Qj[3]) * mj_inv) *
       mj_inv;
+
   double Pi = gas_pressure_from_internal_energy(Qi[0] * V_inv_i, ui);
   double Pj = gas_pressure_from_internal_energy(Qj[0] * V_inv_j, uj);
+
   /* Anything to do here? */
   if (Pi > epsilon_P && Pj > epsilon_P) return;
   double theta_P = 1.;
   if (Pi < epsilon_P) {
+
     float Q_lo[6];
     hydro_part_get_conserved_variables(pi, Q_lo);
+
     for (int k = 0; k < 6; ++k) {
       Q_lo[k] -= flux_fac_i * fluxes_lo[k];
     }
+    /* dE acts on entire cell, should not be multiplied by flux_fac */
+    //Q_lo[4] -= pi->gravity.dE_prev;
+
     double m_inv = 1. / Q_lo[0];
     double u_lo =
         (Q_lo[4] -
          0.5 * (Q_lo[1] * Q_lo[1] + Q_lo[2] * Q_lo[2] + Q_lo[3] * Q_lo[3]) *
              m_inv) *
         m_inv;
+
     double P_lo = gas_pressure_from_internal_energy(Q_lo[0] * V_inv_i, u_lo);
     theta_P = fmin(theta_P, (epsilon_P - P_lo) / (Pi - P_lo));
   }
   if (Pj < epsilon_P) {
+
     float Q_lo[6];
     hydro_part_get_conserved_variables(pj, Q_lo);
+
     for (int k = 0; k < 6; ++k) {
       Q_lo[k] += flux_fac_j * fluxes_lo[k];
     }
+
+    /* dE acts on entire cell, should not be multiplied by flux_fac */
+    //Q_lo[4] -= pj->gravity.dE_prev;
+
     double m_inv = 1. / Q_lo[0];
     double u_lo =
         (Q_lo[4] -
          0.5 * (Q_lo[1] * Q_lo[1] + Q_lo[2] * Q_lo[2] + Q_lo[3] * Q_lo[3]) *
              m_inv) *
         m_inv;
+
     double P_lo = gas_pressure_from_internal_energy(Q_lo[0] * V_inv_j, u_lo);
     theta_P = fmin(theta_P, (epsilon_P - P_lo) / (Pj - P_lo));
   }
+
   theta_P = fmax(0., theta_P);
+
   for (int k = 0; k < 6; ++k) {
+
     fluxes[k] = fluxes_lo[k] * (1. - theta_P) + fluxes[k] * theta_P;
   }
 
-  /* Fall back to first order fluxes if limiter has failed */
-  if (pi->conserved.mass < flux_fac_i * fluxes[0] ||
-      pj->conserved.mass < -flux_fac_j * fluxes[0] ||
-      pi->conserved.energy < flux_fac_i * fluxes[4] ||
-      pj->conserved.energy < -flux_fac_j * fluxes[4]) {
-#ifdef SHADOWSWIFT_WARNINGS
-    warning(
-        "Positivity flux limiter failed! Falling back to first order flux "
-        "estimates");
-#endif
+  /* As an absolute last resort, just rescale fluxes if necessary */
+  double theta = 1.;
+  if (pi->conserved.mass <
+      pi->geometry.area / Anorm * pi->flux.dt * fluxes[0]) {
+    theta = fmin(theta, pi->conserved.mass / (flux_fac_i * fluxes[0]));
+  }
+  if (pj->conserved.mass <
+      -pj->geometry.area / Anorm * pj->flux.dt * fluxes[0]) {
+    theta = fmin(theta, pj->conserved.mass / (-flux_fac_j * fluxes[0]));
+  }
+  if (pi->conserved.energy <
+      flux_fac_i * fluxes[4]) {
+    theta = fmin(theta, (pi->conserved.energy) /
+      (flux_fac_i * fluxes[4]));
+  }
+  if (pj->conserved.energy <
+      -flux_fac_j * fluxes[4]) {
+    theta = fmin(theta, (pj->conserved.energy) /
+      (-flux_fac_j * fluxes[4]));
+  }
+  theta = fmax(0., theta);
+  if (theta < 1.) {
+
     for (int k = 0; k < 6; ++k) {
       fluxes[k] = fluxes_lo[k];
     }

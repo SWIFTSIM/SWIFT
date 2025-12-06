@@ -359,6 +359,39 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   float W[6];
   hydro_part_get_primitive_variables(p, W);
   hydro_gradients_extrapolate_in_time(p, W, dt_therm, p->dW_time);
+
+  float new_internal_energy;
+  float old_internal_energy;
+  old_internal_energy = gas_internal_energy_from_pressure(W[0], W[4]);
+  new_internal_energy = old_internal_energy + p->cool_du_dt_prev * dt_therm / 2;
+
+  /* Limit internal energy decrease to max 1/2 of internal energy */
+  new_internal_energy = fmax(new_internal_energy, 0.5 * old_internal_energy);
+
+  /* Apply internal energy floor */
+  new_internal_energy = fmax(new_internal_energy,
+    hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy);
+
+  /* Calculate new Pressure */
+  float new_pressure;
+  new_pressure = gas_pressure_from_internal_energy(W[0],
+    new_internal_energy);
+
+
+  /* Calculate new Entropy */
+  float new_entropy;
+  float floor_entropy;
+  floor_entropy = entropy_floor(p, cosmo, floor_props);
+  new_entropy = gas_entropy_from_internal_energy(W[0],
+    new_internal_energy);
+
+  /* Apply Entropy Floor */
+  new_entropy = fmax(floor_entropy, new_entropy);
+
+  W[4] = new_pressure;
+  W[5] = new_entropy;
+
+  hydro_part_set_primitive_variables(p, W);
 #endif
 
   const float pressure_with_floor =
@@ -416,7 +449,10 @@ hydro_convert_conserved_to_primitive(
   /* Check for vacuum (or near limits of floating point precision), which give
    * rise to precision errors resulting in NaNs... */
   const double epsilon = 16. * FLT_MIN;
-  if (Q[0] < epsilon || Q[4] < epsilon) {
+  if (fabs(Q[0]) < epsilon || fabs(Q[4]) < epsilon) {
+    message("Float Minimum is = %e", epsilon);
+    message("Resetting Q and W to 0! Q[0] = Mass = %e", Q[0]);
+    message("Resetting Q and W to 0! Q[4] = Energy = %e", Q[4]);
     for (int k = 0; k < 6; k++) {
       Q[k] = 0.f;
       W[k] = 0.f;
@@ -549,8 +585,21 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   /* First of all, rescale the internal energy.
    * NOTE: At this point, the part->conserved.energy field contains the internal
    * energy, as this is read from the ICs */
-  const float internal_energy =
+  float internal_energy =
       p->conserved.energy / cosmo->a_factor_internal_energy;
+
+  /* Update xp->u_full as well for later when thermal switches are called */
+  xp->u_full = internal_energy;
+
+  /* Apply the minimal energy limit */
+  const float min_comoving_energy =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+
+  if (xp->u_full < min_comoving_energy) {
+    xp->u_full = min_comoving_energy;
+    internal_energy = min_comoving_energy;
+    p->flux.energy = 0.f;
+  }
 
   /* Set primitive quantities */
   W[0] = p->conserved.mass * volume_inv;
@@ -599,6 +648,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float dt_grav, float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
+
+  float dE_springel;
 
   if (dt_therm < 0.0f) {
     /* We are reversing a kick1 due to the timestep limiter */
@@ -667,15 +718,33 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
        * differ for cosmological simulations). */
       float dt_grav_corr1 = 0.f;
       float dt_grav_corr2 = 0.f;
+      float flux_for_gravity[6];
+
       if (p->flux.dt > 0.) {
         dt_grav_corr1 = p->gravity.dt;
         dt_grav_corr2 = dt_grav;
-      }
-      dE_grav = hydro_gravity_energy_update_term(
-          dt_grav_corr1, dt_grav_corr2, xp->a_grav, a_grav, p->gravity.mflux,
-          p->v_part_full, grav_kick);
 
-      Q[4] += dE_grav;
+        /* Grab current fluxes */
+        hydro_part_get_fluxes(p, flux_for_gravity);
+      } else {
+        /* If no flux exchange set to 0 */
+        for (int k = 0; k < 6; ++k) {
+          flux_for_gravity[k] = 0.f;
+        }
+      }
+      dE_springel = hydro_gravity_energy_update_term(
+          dt_grav_corr1, dt_grav_corr2, xp->a_grav,
+          a_grav, p->gravity.mflux, p->v_part_full,
+          grav_kick, p->conserved.momentum, flux_for_gravity,
+          p->conserved.energy);
+
+
+      /* Store for use in flux limiter */
+      p->gravity.dE_prev = dE_springel;
+
+      /* Add potential gravitational energy change to conserved energy */
+      Q[4] += dE_springel;
+
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -694,6 +763,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       Q[1] += flux[1];
       Q[2] += flux[2];
       Q[3] += flux[3];
+
 #if defined(EOS_ISOTHERMAL_GAS)
       /* Nothing to do here. We will use the EoS equation to set the energy and
        * entropy using the updated kinetic energy and constant internal energy
@@ -712,21 +782,19 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
           Pcorr * (p->v[0] * p->gradients.P[0] + p->v[1] * p->gradients.P[1] +
                    p->v[2] * p->gradients.P[2]);
 #endif
-    }
 
-    #ifdef SHADOWSWIFT_WARNINGS
-    if (Q[0] < 0. || Q[4] < 0.)
-      warning(
-          "Negative mass or energy after applying fluxes! "
-          "\n\tupdated mass = %E, updated energy = %E, "
-          "\n\told mass = %E, old energy = %E, "
-          "\n\tmflux = %E, energyflux = %E, dE_grav = %E"
-          "\n\tdensity = %E, pressure = %E"
-          "\n\tp->x = (%E, %E, %E), p->v = (%E, %E, %E)",
-          Q[0], Q[4], p->conserved.mass, p->conserved.energy, p->flux.mass,
-          p->flux.energy, dE_grav, p->rho, p->P, p->x[0], p->x[1], p->x[2],
-          p->v[0], p->v[1], p->v[2]);
-    #endif
+      /* Kick energy using cool_du_dt (* dt_therm), use updated mass to do energy kick */
+      Q[4] += p->cool_du_dt_prev * Q[0] * dt_therm;
+
+      /* Also add entropy changes */
+      float rho = Q[0] / p->geometry.volume;
+      float entropy_dt = gas_entropy_from_internal_energy(rho,
+        p->cool_du_dt_prev);
+      Q[5] += Q[0] * entropy_dt * dt_therm;
+
+      /* Cool XP as well */
+      xp->u_full += p->cool_du_dt_prev * dt_therm;
+    }
 
     /* Compute primitive quantities. Note that this may also modify the vector
      * of conserved quantities (e.g. for cold flows).
@@ -790,6 +858,33 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->gravity.dt = dt_grav;
     p->gravity.dt_corr = dt_kick_corr;
 
+    /*Update Cooling and Entropy*/
+    float Q[6];
+    hydro_part_get_conserved_variables(p, Q);
+
+    /* Kick energy using cool_du_dt (* dt_therm), use updated mass to do energy kick */
+    Q[4] += p->cool_du_dt_prev * Q[0] * dt_therm;
+
+    /* Also add entropy changes */
+    float rho = Q[0] / p->geometry.volume;
+    float entropy_dt = gas_entropy_from_internal_energy(rho,
+      p->cool_du_dt_prev);
+    Q[5] += Q[0] * entropy_dt * dt_therm;
+
+    /* Cool XP as well */
+    xp->u_full += p->cool_du_dt_prev * dt_therm;
+
+    /* Compute primitive quantities. Note that this may also modify the vector
+     * of conserved quantities (e.g. for cold flows).
+     * This also applies entropy floor/minimal internal energy limit. */
+    float W[6];
+    hydro_convert_conserved_to_primitive(p, xp, cosmo, hydro_props, floor_props,
+                                         Q, W);
+
+    /* Update the particle */
+    hydro_part_set_conserved_variables(p, Q);
+    hydro_part_set_primitive_variables(p, W);
+
     /* Signal we just did a restore */
     p->timestepvars.last_kick = RESTORE_AFTER_ROLLBACK;
 
@@ -811,6 +906,34 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
     hydro_velocities_set(p, xp, hydro_props, p->flux.dt);
+
+
+    /*Update Cooling and Entropy*/
+    float Q[6];
+    hydro_part_get_conserved_variables(p, Q);
+
+    /* Kick energy using cool_du_dt (* dt_therm), use updated mass to do energy kick */
+    Q[4] += p->cool_du_dt_prev * Q[0] * dt_therm;
+
+    /* Also add entropy changes */
+    float rho = Q[0] / p->geometry.volume;
+    float entropy_dt = gas_entropy_from_internal_energy(rho,
+      p->cool_du_dt_prev);
+    Q[5] += Q[0] * entropy_dt * dt_therm;
+
+    /* Cool XP as well */
+    xp->u_full += p->cool_du_dt_prev * dt_therm;
+
+    /* Compute primitive quantities. Note that this may also modify the vector
+     * of conserved quantities (e.g. for cold flows).
+     * This also applies entropy floor/minimal internal energy limit. */
+    float W[6];
+    hydro_convert_conserved_to_primitive(p, xp, cosmo, hydro_props, floor_props,
+                                         Q, W);
+
+    /* Update the particle */
+    hydro_part_set_conserved_variables(p, Q);
+    hydro_part_set_primitive_variables(p, W);
 
     /* Signal we just did a kick1 */
     p->timestepvars.last_kick = KICK1;
@@ -836,6 +959,33 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
     hydro_velocities_set(p, xp, hydro_props, p->flux.dt);
+
+    /*Update Cooling and Entropy*/
+    float Q[6];
+    hydro_part_get_conserved_variables(p, Q);
+
+    /* Kick energy using cool_du_dt (* dt_therm), use updated mass to do energy kick */
+    Q[4] += p->cool_du_dt_prev * Q[0] * dt_therm;
+
+    /* Also add entropy changes */
+    float rho = Q[0] / p->geometry.volume;
+    float entropy_dt = gas_entropy_from_internal_energy(rho,
+      p->cool_du_dt_prev);
+    Q[5] += Q[0] * entropy_dt * dt_therm;
+
+    /* Cool XP as well */
+    xp->u_full += p->cool_du_dt_prev * dt_therm;
+
+    /* Compute primitive quantities. Note that this may also modify the vector
+     * of conserved quantities (e.g. for cold flows).
+     * This also applies entropy floor/minimal internal energy limit. */
+    float W[6];
+    hydro_convert_conserved_to_primitive(p, xp, cosmo, hydro_props, floor_props,
+                                         Q, W);
+
+    /* Update the particle */
+    hydro_part_set_conserved_variables(p, Q);
+    hydro_part_set_primitive_variables(p, W);
 
     /* Signal we just did a kick1 */
     p->timestepvars.last_kick = KICK1;

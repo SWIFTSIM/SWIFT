@@ -2152,6 +2152,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
+  const struct star_formation *star_formation = e->star_formation;
+
 
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
@@ -2188,6 +2190,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
          * _part_has_no_neighbours version instead of _end_density */
         chemistry_part_has_no_neighbours(p, &c->hydro.xparts[i], chemistry,
                                          cosmo);
+
+        /* Call star formation end density (useful for GEAR)*/
+        /* Might be moved to gradient ghost - only for Moving Mesh*/
+        star_formation_end_density(p, &c->hydro.xparts[i], star_formation, cosmo);
 
         /* Update position of #gparts for gravity calculation at the end of
          * timestep */
@@ -2262,7 +2268,12 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       struct part *pi = &c->hydro.parts[pi_idx];
       /* Anything to do here? */
       if (!part_is_active(pi, e)) continue;
-      if (pi->geometry.volume > hydro->particle_derefinement_volume_threshold)
+      /* Derefine if below volume criteria and about to be <= 0 mass
+       * Continue if volume is above or not going to be <= 0 mass, derefine
+       * if volume smaller than threshold AND mass negative
+       */
+      if ((pi->geometry.volume > hydro->particle_derefinement_volume_threshold)
+        || (pi->conserved.mass + pi->flux.mass) > 0.f)
         continue;
 
       /* We have a particle that should be de-refined, check its neighbours for

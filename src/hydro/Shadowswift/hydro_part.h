@@ -290,6 +290,9 @@ struct part {
      * the safety radius of the voronoi cell of this particle. */
     float search_radius;
 
+    /*! Max face angle, alpha_max as described in Vogelberger 2012 2.2.2 (i) */
+    float max_face_angle;
+
   } geometry;
 
   struct {
@@ -322,6 +325,9 @@ struct part {
       /*! Current value of the mass flux vector. */
       float mflux[3];
 
+      /* Previous dE in hydro_kick_extra */
+      float dE_prev;
+
     } gravity;
 
     /* Unused in the ShadowSWIFT scheme, put in union to save space */
@@ -349,6 +355,21 @@ struct part {
 
   /*! Cooling information */
   struct cooling_part_data cooling_data;
+
+  /*! Cool_du_dt of previous time step */
+  float cool_du_dt_prev;
+
+  /*! Grackle Cooling Rate */
+  float grackle_dudt;
+
+  /*! Radiated energy in particle */
+  float radiated_energy;
+
+  /*! Hydro dudt in particle */
+  float hydro_dudt;
+
+  /*! Gravity dudt in particle */
+  float gravity_dudt;
 
   /*! Additional data used by the feedback */
   struct feedback_part_data feedback_data;

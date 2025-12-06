@@ -247,6 +247,29 @@ INLINE static void convert_part_potential(const struct engine* e,
     ret[0] = 0.f;
 }
 
+INLINE static void convert_velocity_divergence(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+
+  const struct cosmology* cosmo = e->cosmology;
+
+  /* Copy velocity divergence, 1/3 omitted */
+  ret[0] =   p->gradients.v[0][0] +
+             p->gradients.v[1][1] +
+             p->gradients.v[2][2];
+  ret[0] += hydro_dimension * cosmo->H;
+}
+
+INLINE static void convert_grav_dudt(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+
+  const struct cosmology* cosmo = e->cosmology;
+
+  /* Gravitational dudt with dE Springel */
+  ret[0] = p->gravity.dE_prev / p->flux.mass;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -259,7 +282,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 14;
+  *num_fields = 20;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -282,7 +305,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
 
   list[4] = io_make_output_field_convert_part(
       "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
-      3.f * hydro_gamma_minus_one, parts, xparts, convert_u,
+      -3.f * hydro_gamma_minus_one, parts, xparts, convert_u,
       "Co-moving thermal energies per unit mass of the particles");
 
   list[5] = io_make_physical_output_field(
@@ -317,16 +340,45 @@ INLINE static void hydro_write_particles(const struct part* parts,
       io_make_output_field("Flux_counts", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                            parts, flux_count, "Flux counters of the particles");
 
+  list[13] = io_make_output_field_convert_part(
+      "VelocityDivergences", FLOAT, 1, UNIT_CONV_FREQUENCY, 0.f, parts, xparts,
+      convert_velocity_divergence,
+      "Velocity Divergences of the particles");
+
+  list[14] = io_make_output_field(
+      "GrackleCooling_dudt", FLOAT, 1, UNIT_CONV_COOLING_RATE, 0.f, parts,
+      grackle_dudt,
+      "Cooling Rate From Grackle");
+
+  list[15] = io_make_output_field(
+      "RadiatedEnergy", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, parts, radiated_energy,
+      "Total Radiated Energy of This Particle");
+
+  list[16] = io_make_output_field(
+    "Hydro_dudt", FLOAT, 1, UNIT_CONV_COOLING_RATE, 0.f, parts,
+    hydro_dudt,
+    "Cooling Rate From Hydro");
+
+  list[17] = io_make_output_field(
+    "Gravity_dudt", FLOAT, 1, UNIT_CONV_COOLING_RATE, 0.f, parts,
+    gravity_dudt,
+    "Gravity dudt");
+
+  list[18] = io_make_output_field(
+  "dt_flux", FLOAT, 1, UNIT_CONV_TIME, 0.f, parts,
+  flux.dt,
+  "Flux dt: p.flux.dt");
+
 #if defined(HYDRO_DIMENSION_1D)
-  list[13] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_LENGTH, 1.f,
+  list[19] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_LENGTH, 1.f,
                                   parts, geometry.volume,
                                   "Co-moving volumes of the particles");
 #elif defined(HYDRO_DIMENSION_2D)
-  list[13] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_AREA, 2.f,
+  list[19] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_AREA, 2.f,
                                   parts, geometry.volume,
                                   "Co-moving volumes of the particles");
 #elif defined(HYDRO_DIMENSION_3D)
-  list[13] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_VOLUME, 3.f,
+  list[19] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_VOLUME, 3.f,
                                   parts, geometry.volume,
                                   "Co-moving volumes of the particles");
 #else
