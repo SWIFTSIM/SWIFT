@@ -403,6 +403,11 @@ runner_iact_chemistry_fluxes_common(
   const float mindt =
       (chj->flux_dt > 0.f) ? fminf(chi->flux_dt, chj->flux_dt) : chi->flux_dt;
 
+  /* Nothing to do */
+  if (mindt == 0.f) {
+    return;
+  }
+
   /*****************************************/
   /* Predict the velocity at the interface to compute fluxes */
   /* Get the hydro W_L and W_R */
