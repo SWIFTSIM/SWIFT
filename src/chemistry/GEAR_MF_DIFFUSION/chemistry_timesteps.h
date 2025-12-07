@@ -62,7 +62,7 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
 
   if (chem_data->diffusion_mode == isotropic_constant) {
     /* Isotropic constant diffusion has the simple expression: */
-    return delta_x * delta_x / norm_matrix_K;
+    return CFL_condition * delta_x * delta_x / norm_matrix_K;
   }
   /* From here, we are either isotropic smagorinksy or anisotropic */
 
