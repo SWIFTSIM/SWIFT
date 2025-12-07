@@ -491,7 +491,61 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part *restrict p, const struct cosmology *cosmo,
     const int with_cosmology, const double time, const double dt,
-    const struct chemistry_global_data *cd) {}
+    const struct chemistry_global_data *cd) {
+
+  struct chemistry_part_data *chd = &p->chemistry_data;
+
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    const double m_metal_old = chd->metal_mass[i];
+
+    /* Update the conserved variable */
+    chd->metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i);
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+    /* Update the diffused metal mass */
+    chd->diffused_metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i);
+#endif
+
+    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
+				     hydro_get_mass(p), /*callloc=*/2,
+				     /*element*/ i, p->id);
+  }
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  const double Vinv = 1.0 / p->geometry.volume;
+
+  /* Homogeneous equation update for inactive particles */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    /* For the flux, we are updating d(U*V)/dt = - Sum div F*A*dt and we want
+       U = flux, not V*U. For the metal mass, U = metal density so U*V = mass */
+    chd->flux[i][0] += chd->flux_riemann[i][0] * Vinv;
+    chd->flux[i][1] += chd->flux_riemann[i][1] * Vinv;
+    chd->flux[i][2] += chd->flux_riemann[i][2] * Vinv;
+  }
+#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
+
+  /* Reset the metal mass fluxes now that they have been applied */
+  chemistry_part_reset_fluxes(p);
+
+  /* Invalidate the particle time-step. It is considered to be inactive until
+     dt is set again in chemistry_prepare_force() */
+  chd->flux_dt = -1.0f;
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  const float dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
+
+  /* Kick the source term for half-timestep (for active and inactive part) */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data,
+					      cosmo);
+  /* Element-wise sanity checks */
+    chemistry_check_unphysical_diffusion_flux(chd->flux[i]);
+  }
+#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
+
+  /* Sanity check on the total metal mass */
+  chemistry_check_unphysical_total_metal_mass(p, 3);
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0
