@@ -88,7 +88,7 @@ chemistry_riemann_compute_K_star(const struct part *restrict pi,
 }
 
 /**
- * @brief Limit the diffusion matrix at the interface to aboir excessively
+ * @brief Limit the diffusion matrix at the interface to avoid excessively
  * large diffusion coefficients.
  *
  * @param pi Particle i.
@@ -187,7 +187,7 @@ chemistry_riemann_compute_alpha(const double c_s_L, const double c_s_R,
   const double r_term = (0.2 + r) / (0.2 + r + r * r);
 
   const double norm_grad_q_star =
-      sqrtf(grad_q_star[0] * grad_q_star[0] + grad_q_star[1] * grad_q_star[1] +
+      sqrt(grad_q_star[0] * grad_q_star[0] + grad_q_star[1] * grad_q_star[1] +
             grad_q_star[2] * grad_q_star[2]);
   double norm_term =
       norm_K_star_times_grad_q_star / (norm_K_star * norm_grad_q_star);
