@@ -2937,6 +2937,13 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   struct space *s = r->e->s;
   const struct engine *e = r->e;
 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT) || \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+  const int rt_request = 1;
+#else
+  const int rt_request = 0;
+#endif
+
   TIMER_TIC;
 
   /* Should we even bother? */
@@ -2955,15 +2962,13 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
      * Since h_max might have changed, we may not have sorted at this level */
     if (!(ci->hydro.sorted & (1 << sid)) ||
         ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
-      /* Bert: RT probably broken here! */
       runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
-                           /*rt_request=*/0, /*clock=*/0);
+                           rt_request, /*clock=*/0);
     }
     if (!(cj->hydro.sorted & (1 << sid)) ||
         cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
-      /* Bert: RT probably broken here! */
       runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
-                           /*rt_request=*/0, /*clock=*/0);
+                           rt_request, /*clock=*/0);
     }
 
     /* We interact all particles in that cell:
@@ -2992,20 +2997,14 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
        * Since h_max might have changed, we may not have sorted at this level */
       if (!(ci->hydro.sorted & (1 << sid)) ||
           ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
-        /* Bert: RT probably broken here! */
         runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
-                             /*rt_request=*/0, /*clock=*/0);
+                             rt_request, /*clock=*/0);
       }
       if (!(cj->hydro.sorted & (1 << sid)) ||
           cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
-        /* Bert: RT probably broken here! */
         runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
-                             /*rt_request=*/0, /*clock=*/0);
+                             rt_request, /*clock=*/0);
       }
-
-      /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
-       */
-      /* 	      cj->hydro.count); */
 
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
          with all their neighbours */
@@ -3107,6 +3106,13 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *e = r->e;
   struct space *s = e->s;
 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT) || \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+  const int rt_request = 1;
+#else
+  const int rt_request = 0;
+#endif
+
   TIMER_TIC;
 
   /* Should we even bother? */
@@ -3125,15 +3131,13 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
      * Since h_max might have changed, we may not have sorted at this level */
     if (!(ci->hydro.sorted & (1 << sid)) ||
         ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
-      /* Bert: RT probably broken here! */
       runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
-                           /*rt_request=*/0, /*clock=*/0);
+                           rt_request, /*clock=*/0);
     }
     if (!(cj->hydro.sorted & (1 << sid)) ||
         cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
-      /* Bert: RT probably broken here! */
       runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
-                           /*rt_request=*/0, /*clock=*/0);
+                           rt_request, /*clock=*/0);
     }
 
     /* We interact all particles in that cell:
@@ -3161,20 +3165,14 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
        * Since h_max might have changed, we may not have sorted at this level */
       if (!(ci->hydro.sorted & (1 << sid)) ||
           ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
-        /* Bert: RT probably broken here! */
         runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
-                             /*rt_request=*/0, /*clock=*/0);
+                             rt_request, /*clock=*/0);
       }
       if (!(cj->hydro.sorted & (1 << sid)) ||
           cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
-        /* Bert: RT probably broken here! */
         runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
-                             /*rt_request=*/0, /*clock=*/0);
+                             rt_request, /*clock=*/0);
       }
-
-      /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
-       */
-      /* 	      cj->hydro.count); */
 
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
          with all their neighbours */
