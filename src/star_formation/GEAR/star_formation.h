@@ -392,6 +392,8 @@ INLINE static void star_formation_copy_properties(
 
   /* Copy the progenitor id */
   sp->sf_data.progenitor_id = p->id;
+
+  message("[%lld] A new star is born!", sp->id);
 }
 
 /**
