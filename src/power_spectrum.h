@@ -101,7 +101,7 @@ struct power_spectrum_data {
 #endif
 };
 
-void power_init(struct power_spectrum_data* p, struct swift_params* params,
+void power_spectrum_init(struct power_spectrum_data* p, struct swift_params* params,
                 int nr_threads);
 void calc_all_power_spectra(struct power_spectrum_data* pow_data,
                             const struct space* s, struct threadpool* tp,

@@ -136,6 +136,9 @@
 #include "runner_doiact_hydro.h"
 #include "runner_doiact_undef.h"
 
+/* LIKWID Markers. */
+#include "../likwid_wrapper.h"
+
 /**
  * @brief The #runner main thread routine.
  *
@@ -147,6 +150,7 @@ void *runner_main(void *data) {
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
 
+  swift_likwid_marker_start_region("runner_main");
   /* Main loop. */
   while (1) {
 
@@ -582,6 +586,7 @@ void *runner_main(void *data) {
 
     } /* main loop. */
   }
+  swift_likwid_marker_stop_region("runner_main");
 
   /* Be kind, rewind. */
   return NULL;

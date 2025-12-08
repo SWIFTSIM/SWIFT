@@ -1287,7 +1287,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
  *
  * @param nr_threads The number of threads used.
  */
-void power_init(struct power_spectrum_data* p, struct swift_params* params,
+void power_spectrum_init(struct power_spectrum_data* p, struct swift_params* params,
                 int nr_threads) {
 
 #ifdef HAVE_FFTW
