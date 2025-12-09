@@ -76,6 +76,7 @@ int find_parent_linear(const struct part *parts, int cnt, long long id) {
     return -1; // not found
 }
 
+/* serialise the splits */
 /**** split gas particles within BH hsml ****/
 void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
   struct engine *e = r->e;
@@ -94,7 +95,8 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
   if (count_leaf == 0 || !cell_is_active_hydro(c, e)) {
     return;
   }
-  
+
+  lock_lock(&c->top->stars.star_formation_lock);
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
@@ -102,7 +104,11 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 
 	struct cell *restrict cp = c->progeny[k];
 	runner_do_particle_split(r, cp, 0);
-      
+	
+        /* Update the h_max */
+        c->hydro.h_max = max(c->hydro.h_max, cp->hydro.h_max);
+        c->hydro.h_max_active =
+            max(c->hydro.h_max_active, cp->hydro.h_max_active);
       }
   } else {
     
@@ -111,51 +117,52 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
     const int n_split = 7;
     
     // Now loop over gas particles at parent cell, this is broked but we get the full
-    //set of parent splits in one go, probs best to save the full parent list and then split
-    
+    //set of parent splits in one go, probs best to save the full parent list and then split    
     int j = 0;
+
+    //loop has to be long, idk why this works but it does...
     while (j < c->top->hydro.count){
       struct part *p  = &parts[j];
       struct xpart *xp = &xparts[j];
 
       //this only really needs to be calculated once
       const float child_mass = p->mass / n_split;  
-      //double new_h = p->h * pow(1.0 / n_split, 1.0 / 3.0);
       double new_h = p->h;
       
-      if (p->split_flag == 2){
+      if ((p->split_flag == 2) || (p->split_flag == 0)){
 	j ++;
 	continue;
       }
-   
+      
       // If gas particle is marked for splitting
       if (p->split_flag == 1) {
 	//immediately mark as split
-	p->split_flag = 2;                  
-        // Update the parent before any memmove
-        p->mass = child_mass;                                                                                                                                                                                                   
-        if (p->gpart){                                                                                                                                                                                             
+	p->split_flag = 2;                  	
+	// Update the parent before any memmove
+        p->mass = child_mass;
+	
+	/* force activation
+        if (p->gpart){                
           p->gpart->mass = child_mass;
-	  if (!gpart_is_active(p->gpart, e)){                                                                                                                                      
-             message("gparent is not active, ACTIVATE!");                                                                                                                                                         
+	  if (!gpart_is_active(p->gpart, e)){                                                                                                                           
+             message("gparent is not active, ACTIVATE!");
              p->gpart->time_bin = e->min_active_bin;}   
-	}                                                                                                                                                                                                                    
-        //need to set it as active if its not (idk this is overkill but whatevs) 
-        if (!part_is_active(p, e)){                                                                                                                                                                               
+	}                                                                                                                                                                               
+	if (!part_is_active(p, e)){                                                                                                                                                                               
           message("parent is not active, ACTIVATE!");
           p->time_bin = e->min_active_bin;}
-	
+	*/
 	//split into 3D shape
 	message("------- splitting particles ------");
-	double delta = p->h / 4;
+	double delta = p->h / 2;
 	/*3D cross*/
+	
 	double offsets[6][3] = {
 	  {+delta, 0.0, 0.0}, {-delta, 0.0, 0.0},
 	  {0.0, +delta, 0.0}, {0.0, -delta, 0.0},
 	  {0.0, 0.0, +delta}, {0.0, 0.0, -delta}
 	};
-	
-	
+		
 	//check particle masses add up
 #ifdef SWIFT_DEBUG_CHECKS
 	double child_mass_sum = 0.0;
@@ -163,48 +170,43 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 
 	// Spawn children
 	// problem of looping whilst list shifting
-	//int parent_index = p - c->hydro.parts; //idx in cell list
 	const long long parent_id = p->id;
-	//struct part *parent = p;
-	//struct xpart *parent_xp = xp;
 
 	struct part parent = *p;    // copy all fields of parent 
 	struct xpart parent_xp = *xp;
-	
-	message("Cell: %p, Parent before splits: id=%lld, mass=%e, pos=(%g,%g,%g), vel=(%g,%g,%g)",
+	/*
+	message("Cell: %p, Parent before splits: id=%lld, mass=%e, pos=(%g,%g,%g), vel=(%g,%g,%g), a_hydro=(%g,%g,%g)",
 		(void*)c, parent.id, parent.mass, parent.x[0], parent.x[1], parent.x[2],
-		parent.v[0], parent.v[1], parent.v[2]);
-
+		parent.v[0], parent.v[1], parent.v[2], parent.a_hydro[0], parent.a_hydro[1], parent.a_hydro[2]);
+	*/
+	//struct part **child_list = malloc((n_split-1) * sizeof(struct part *));
+	//long long *child_ids = malloc((n_split-1) * sizeof(long long));
+	
 	for (int n = 0; n < (n_split-1); n++) { 
 	  double pos_offsets[3] = {offsets[n][0], offsets[n][1], offsets[n][2]};
-	  //double pos_offsets[3] = { Off[n][0], Off[n][1], Off[n][2] };
-
-	  //pass pointers to copy of parent
+	  
 	  struct part *child = cell_spawn_new_part_from_part(e, c, &parent, &parent_xp, child_mass, pos_offsets, new_h);
 	  
-	  message("Cell: %p, has new child: id=%lld",
-                (void*)c, child->id);
-
+	  //message("Cell: %p, child id: id=%lld has gpart id: %lld", (void*)c, child->id, child->gpart->id_or_neg_offset);
+	  
+	  //child_list[n] = child;
+	  //child_ids[n] = child->id;
+	  
 	  int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id);
 	  if (parent_index == -1) error("parent not found!");
 	  
-	  message("child id=%lld  vel=(%g,%g,%g) pressure=%g", child->id, child->v[0], child->v[1], child->v[2], child->force.pressure);
-	  
-	  //update parent in top cell, otherwise they leave and never come back
-	  //parent =  &c->top->hydro.parts[parent_index];
-	  //if (parent->id != parent_id)error("parent lost!");
-	  //parent_xp = &c->top->hydro.xparts[parent_index]; 
-	  // switch split flag 
 	  if (child == NULL)
 	    error("Failed to spawn child particle in gas splitting.");
+	  
 #ifdef SWIFT_DEBUG_CHECKS
 	  child_mass_sum += child->mass;
 #endif
-	  // Mark child as split
-	  child->split_flag = 2;
+	  
 	}
 
-
+	//free(child_list);
+	//free(child_ids);
+	
 	//check mass conservation
 #ifdef SWIFT_DEBUG_CHECKS
 	double total_mass = child_mass + child_mass_sum;
@@ -213,49 +215,25 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	if (fabs(total_mass - expected_mass) > 1e-8) // tighter tolerance
 	  error("Mass conservation broken in splitting: parent+children = %e, expected %e",
 		total_mass, n_split * child_mass);
-	
 #endif
-	int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id); 
-	message("Leaf Cell: %p,Parent ID after full split: %lld, mass=%e",                                                                                                                                       
-                c,c->top->hydro.parts[parent_index].id, c->top->hydro.parts[parent_index].mass);     
 	/*
 	int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id); 
-	// Update the parent safely after all children are spawned at top level!
-	c->top->hydro.parts[parent_index].mass = child_mass;
-	c->top->hydro.parts[parent_index].h = new_h;
-	if (c->top->hydro.parts[parent_index].gpart){
-          c->top->hydro.parts[parent_index].gpart->mass = child_mass;}
-        
-	message("Leaf Cell: %p,Parent ID after full split: %lld, mass=%e",
-                c,
-                c->top->hydro.parts[parent_index].id, c->top->hydro.parts[parent_index].mass);
-	
-	//need to set it as active if its not (idk this is overkill but whatevs)
-	if (!part_is_active(&c->top->hydro.parts[parent_index], e)){
-	  message("parent is not active, ACTIVATE!");
-	  c->top->hydro.parts[parent_index].time_bin = e->min_active_bin;}
-	
-	if (c->top->hydro.parts[parent_index].gpart){
-	  c->top->hydro.parts[parent_index].gpart->mass = child_mass;
-	  if (!gpart_is_active(c->top->hydro.parts[parent_index].gpart, e)){
-	     message("gparent is not active, ACTIVATE!");
-	     c->top->hydro.parts[parent_index].gpart->time_bin = e->min_active_bin;}
-	}
-        */
+	message("Leaf Cell: %p,Parent ID after full split: %lld, mass=%e",                                                                                                                                
+                c,c->top->hydro.parts[parent_index].id, c->top->hydro.parts[parent_index].mass);     
+	*/
       }
       j ++;
-    }
-  }    
-  
+    }    
+  }   
+  lock_unlock(&c->top->stars.star_formation_lock);
   /* If we formed any hydro parts, need to force flag for resort and drift*/
   if (c->hydro.count!= count_leaf) {
     //message("setting resort flag");
     //cell_set_hydro_resort_flag(c);
-    //cell_set_hydro_resort_flag(c->top);
+    cell_set_hydro_resort_flag(c->top);
     cell_set_flag(c->top, cell_flag_do_hydro_drift);
     cell_set_flag(c->top, cell_flag_do_grav_drift);
-    }
-
+  }
 }
 
 extern const int sort_stack_size;
@@ -634,7 +612,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
               /* Are we using a model that actually generates star particles? */
               if (swift_star_formation_model_creates_stars) {
-
+		
                 /* Check if we should create a new particle or transform one */
                 if (n_spart_to_create == 1 && n_spart_convert == 1) {
                   /* Convert the gas particle to a star particle */

@@ -1172,6 +1172,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         struct part *p = &parts[pid[i]];
         struct xpart *xp = &xparts[pid[i]];
 
+	
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
         if (!part_is_active(p, e)) error("Ghost applied to inactive particle");
@@ -1256,7 +1257,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Compute variables required for the gradient loop */
             hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
             mhd_prepare_gradient(p, xp, cosmo, hydro_props);
-
+	    
             /* The particle gradient values are now set.  Do _NOT_
                try to read any particle density variables! */
 

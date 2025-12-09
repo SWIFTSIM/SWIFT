@@ -99,11 +99,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
   dv[2] = pi->v[2] - pj->v[2];
+
   const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
 
   pi->viscosity.div_v -= faci * dvdr;
   pj->viscosity.div_v -= facj * dvdr;
 
+ 
   /* Compute dv cross r */
   curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
   curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
@@ -376,7 +378,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
-
+  
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -449,7 +451,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a_hydro[0] += mi * acc * dx[0];
   pj->a_hydro[1] += mi * acc * dx[1];
   pj->a_hydro[2] += mi * acc * dx[2];
-
+  
+  if ((pi->split_flag == 2) || (pj->split_flag == 2)){
+    if ((pi->v[0] > 1e4) || (pj->v[0] > 1e4)){
+          message(
+      "SPLIT INTERACTION:\n"
+      "  pi: id=%lld  m=%g  h=%g  P=%g  flag=%d\n"
+      "      a_hydro = (%g, %g, %g)\n"
+      "  pj: id=%lld  m=%g  rho=%g  P=%g  flag=%d\n"
+      "      a_hydro = (%g, %g, %g)\n"
+      "  geometry:\n"
+      "      pix = (%g, %g, %g)  \n"
+      "      pjx = (%g, %g, %g)  \n",
+      // pi 
+      pi->id, pi->mass, pi->h, pi->force.pressure, pi->split_flag,
+      pi->a_hydro[0], pi->a_hydro[1], pi->a_hydro[2],
+      // pj 
+      pj->id, pj->mass, pj->rho, pj->force.pressure, pj->split_flag,
+      pj->a_hydro[0], pj->a_hydro[1], pj->a_hydro[2],
+      // geometry 
+      pi->x[0], pi->x[1], pi->x[2],
+      pj->x[0],	pj->x[1], pj->x[2]
+      
+		  );}    
+  }
+  
   /* Get the time derivative for u. */
   const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
   const float sph_du_term_j = P_over_rho2_j * dvdr * r_inv * wj_dr;
@@ -509,6 +535,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     struct part* restrict pi, const struct part* restrict pj, const float a,
     const float H) {
 
+  
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
@@ -594,7 +621,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[0] -= mj * acc * dx[0];
   pi->a_hydro[1] -= mj * acc * dx[1];
   pi->a_hydro[2] -= mj * acc * dx[2];
-
+  
   /* Get the time derivative for u. */
   const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
 

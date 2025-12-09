@@ -85,6 +85,17 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   size_t size_bparts = s->size_bparts;
   size_t size_sinks = s->size_sinks;
 
+  /*lily debugging for loop
+  for (size_t k = 0; k < nr_parts; k++) {
+    struct part *p = &s->parts[k];  
+    if ((p->split_flag == 2) && (s->e->dt_min < 1e-7)) {
+      message("Debug: Split particle id=%lld, mass=%g, pos=(%g,%g,%g), vel=(%g,%g,%g), split_flag=%d",
+	      p->id, p->mass, p->x[0], p->x[1], p->x[2],
+	      p->v[0], p->v[1], p->v[2], p->split_flag);
+      error("dt got small");
+    }
+    }*/
+  
   /* Counter for the number of inhibited particles found on the node */
   size_t count_inhibited_parts = 0;
   size_t count_inhibited_gparts = 0;
@@ -208,7 +219,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
 
     for (size_t k = 0; k < nr_parts; /* void */) {
-
       /* Inhibited particle or foreign particle */
       if (h_index[k] == -1 || cells_top[h_index[k]].nodeID != local_nodeID) {
 

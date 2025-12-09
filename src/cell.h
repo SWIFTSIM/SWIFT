@@ -108,7 +108,6 @@ struct pcell {
 
   /*! Hydro variables */
   struct {
-
     /*! Number of #part in this cell. */
     int count;
 

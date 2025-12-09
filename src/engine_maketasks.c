@@ -1412,7 +1412,6 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
       
       
       if (is_self_gravity) {
-
         /* Initialisation of the multipoles */
         c->grav.init = scheduler_addtask(s, task_type_init_grav,
                                          task_subtype_none, 0, 0, c, NULL);

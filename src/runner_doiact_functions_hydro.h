@@ -75,7 +75,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[pid];
-
+    
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
