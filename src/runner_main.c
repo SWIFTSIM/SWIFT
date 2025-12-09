@@ -452,11 +452,20 @@ void *runner_main(void *data) {
           runner_do_drift_gpart(r, ci, 1);
 	  break;
 	  //lily
-        case task_type_particle_split:
-	  runner_do_particle_split(r, ci,1);
+	  //this task needs to be performed by a single thread...
+	case task_type_particle_split:
+	  if (ci->top->black_holes.count > 0){
+
+	    /* Only run on the BH’s timestep */
+	    //if (ci->top->black_holes.time_bin != r->e->time)
+	    //  break;
+	    
+	      runner_do_particle_split(r, ci,1);}
 	  break;
         case task_type_hydro_resort:
-	  runner_do_hydro_resort(r,ci,1);
+	  if (ci->top->black_holes.count > 0){
+	    runner_do_hydro_resort(r,ci,1);
+	  }
 	  break;
 	  //end lily
         case task_type_kick1:

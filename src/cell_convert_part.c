@@ -48,13 +48,11 @@ void cell_recursively_shift_parts(struct cell *c,
 
   if (main_branch) {
     c->hydro.count++;
-
     /* Invalidate sorting */
     c->hydro.sorted = 0;
     cell_free_hydro_sorts(c);
   } else {
     c->hydro.parts++;
-    //is this necessary?
     c->hydro.xparts++;
   }
 }
@@ -88,7 +86,7 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
   }
   
   /* Lock top-level cell */
-  lock_lock(&top->stars.star_formation_lock);
+  //lock_lock(&top->stars.star_formation_lock);
   /* Are we out of space? */
   if (top->hydro.count == top->hydro.count_total) {
     
@@ -143,7 +141,7 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
   top2->hydro.ti_old_part = e->ti_current;
 
   /* Unlock */
-  lock_unlock(&top->stars.star_formation_lock);
+  //lock_unlock(&top->stars.star_formation_lock);
 
   /* Initialize new particle */
   struct part *p = &c->hydro.parts[0];
@@ -152,12 +150,12 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
   
   bzero(p, sizeof(struct part));
   bzero(xp, sizeof(struct xpart));
-  
-  //p->x[0] = c->loc[0] + 0.5 * c->width[0];
-  //p->x[1] = c->loc[1] + 0.5 * c->width[1];
-  //p->x[2] = c->loc[2] + 0.5 * c->width[2];
+
+  /* Release the local lock before exiting. */
+  //if (lock_unlock(&top->stars.star_formation_lock) != 0)
+  //  error("Failed to unlock the top-level cell.");
  
-  p->time_bin = e->min_active_bin;
+  //p->time_bin = e->min_active_bin;
   
 #ifdef SWIFT_DEBUG_CHECKS
   p->ti_drift = e->ti_current;
@@ -171,6 +169,7 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
   result.xp = xp;
   return result;
 }
+
 
 struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
 					   const struct part *p,
@@ -198,7 +197,8 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
   
   struct part *new_p = new_part.p;
   struct xpart *new_xp = new_part.xp;
-  
+
+ 
   /* Did we run out of free part slots? */
   if (new_p == NULL) return NULL;
 
@@ -213,7 +213,7 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
 
   /* give the child a new name */
   new_p->id = space_get_new_unique_id(e->s);
- 
+  //message("Inside cell_convert_part.c, c:%p is given child of id:%lld", (void*)c, new_p->id);
   /* ope there goes gravity */
   if (has_gpart) {
 
@@ -239,13 +239,15 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
 
     /* Re-link: point the child at its new gpart */
     new_p->gpart = gp;
+
     
     /* Fix the ID offset so it refers back to the child */
     gp->id_or_neg_offset = -(new_p - e->s->parts);
-
+    //message("in cell %p, gp idx offset:%lld for child id:%lld", (void*)c,  gp->id_or_neg_offset, new_p->id);
+    
     /* Synchronize clocks */
     //reduced timebin
-    //gp->time_bin = p->time_bin - 1;
+    //gp->time_bin = p->time_bin + 1;
   } else {
     /* No gpart exists for parent, so child also has none */
     new_p->gpart = NULL;
@@ -268,8 +270,9 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
 
   /* Set a smoothing length */
   new_p->h = new_h;
+  
   //reduce timebin to ensure its active
-  //new_p->time_bin = p->time_bin - 1;
+  //new_p->time_bin = p->time_bin + 1;
   
   /* Here comes the BABY! */ 
   return new_p;
@@ -729,6 +732,7 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->grav.parts + n_copy > top->grav.parts + top->grav.count)
     error("Copying beyond the allowed range");
+  if (c->grav.parts + n_copy > top->grav.parts + top->grav.count)
 #endif
 
   if (n_copy > 0) {
@@ -740,7 +744,6 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
     /* Update the gpart->part links (shift by 1) */
     struct gpart *gparts = c->grav.parts;
     for (size_t i = 0; i < n_copy; ++i) {
-
       /* Skip inhibited particles */
       if (gpart_is_inhibited(&c->grav.parts[i + 1], e)) continue;
       

@@ -957,7 +957,7 @@ void engine_config(int restart, int fof, struct engine *e,
     if (!(e->policy & engine_policy_star_formation ||
           e->policy & engine_policy_sinks) ||
         !swift_star_formation_model_creates_stars) {
-      space_extra_sparts = 0;
+      //space_extra_sparts = 0;
       //lily: we do need extra gparts!
       //space_extra_gparts = 0;
       space_extra_sinks = 0;
