@@ -108,6 +108,18 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 }
 
 /**
+ * @brief Prepares a s-particle for its interactions with sidm
+ *
+ * @param sp The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void stars_init_spart_sidm(
+    struct spart *sp) {
+
+  sp->density_sidm.wcount = 0.f;
+  sp->density_sidm.wcount_dh = 0.f;
+}
+
+/**
  * @brief Predict additional particle fields forward in time when drifting
  *
  * @param sp The particle
@@ -163,6 +175,26 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
 }
 
 /**
+ * @brief Finishes the calculation of density on stars
+ *
+ * @param sp The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void stars_end_sidm_density(
+    struct spart *sp, const struct cosmology *cosmo) {
+
+  /* Some smoothing length multiples. */
+  const float h = sp->h_sidm;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+
+  /* Finish the calculation by inserting the missing h-factors */
+  sp->density_sidm.wcount *= h_inv_dim;
+  sp->density_sidm.wcount_dh *= h_inv_dim_plus_one;
+}
+
+/**
  * @brief Sets all particle fields to sensible values when the #spart has 0
  * ngbs.
  *
@@ -185,6 +217,31 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
   /* Re-set problematic values */
   sp->density.wcount = kernel_root * h_inv_dim;
   sp->density.wcount_dh = 0.f;
+}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #spart has 0
+ * ngbs.
+ *
+ * @param sp The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void stars_spart_has_no_sidm_neighbours(
+    struct spart *restrict sp, const struct cosmology *cosmo) {
+
+  warning(
+      "Star particle with ID %lld treated as having no sidm neighbours (h: %g, "
+      "wcount: %g).",
+      sp->id, sp->h, sp->density.wcount);
+
+  /* Some smoothing length multiples. */
+  const float h = sp->h_sidm;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Re-set problematic values */
+  sp->density_sidm.wcount = kernel_root * h_inv_dim;
+  sp->density_sidm.wcount_dh = 0.f;
 }
 
 /**

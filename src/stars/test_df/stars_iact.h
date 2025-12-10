@@ -64,6 +64,52 @@ runner_iact_nonsym_stars_density(const float r2, const float dx[3],
 }
 
 /**
+ * @brief Density interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sparticle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_stars_sidm_density(const float r2, const float dx[3],
+                                 const float hi, const float hj,
+                                 struct spart *restrict si,
+                                 const struct sipart *restrict sipj, const float a,
+                                 const float H) {
+
+  float wi, wi_dx;
+
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+
+  /* Compute the kernel function */
+  const float hi_inv = 1.0f / hi;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
+
+  /* Compute contribution to the number of neighbours */
+  si->density_sidm.wcount += wi;
+  si->density_sidm.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+#ifdef DEBUG_INTERACTIONS_STARS
+  
+  error("This will need updating to use in SIDM density calculations");
+
+  /* Update ngb counters */
+  if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS_STARS)
+    si->ids_ngbs_density[si->num_ngb_density] = sipj->id;
+
+  /* Update ngb counters */
+  ++si->num_ngb_density;
+#endif
+}
+
+/**
  * @brief Feedback interaction between two particles (non-symmetric).
  *
  * @param r2 Comoving square distance between the two particles.

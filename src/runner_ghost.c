@@ -2590,7 +2590,7 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Finish the density calculation */
-          stars_sidm_end_density(sp, cosmo);
+          stars_end_sidm_density(sp, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = sp->density_sidm.wcount * h_old_dim;
@@ -2693,7 +2693,7 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
             redo += 1;
 
             /* Re-initialise everything */
-            sidm_init_spart(sp);
+            stars_init_spart_sidm(sp);
 
             /* Off we go ! */
             continue;
@@ -2711,7 +2711,7 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
               // ghost_stats_no_ngb_sidm_converged(&c->ghost_statistics);
-              sidm_spart_has_no_neighbours(sp, cosmo);
+              stars_spart_has_no_sidm_neighbours(sp, cosmo);
             }
 
           } else {
