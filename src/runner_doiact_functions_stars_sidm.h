@@ -783,8 +783,8 @@ void DOSUB_PAIR_SUBSET_STARS_SIDM(struct runner *r, struct cell *ci,
   if (!cell_is_active_stars(ci, e)) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_stars_sidm_task(ci, cj) &&
-      cell_can_recurse_in_pair_stars_sidm_task(cj, ci)) {
+  if (cell_can_recurse_in_pair_stars_sidm_task(ci) &&
+      cell_can_recurse_in_pair_stars_sidm_task(cj)) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB_STARS_SIDM(ci, sparts, ind);
