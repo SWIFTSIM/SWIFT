@@ -1825,7 +1825,7 @@ __attribute__((always_inline)) static INLINE void cell_set_spart_h_depth(
  * @param sp The #spart.
  * @param leaf_cell The leaf cell where the particle is located.
  */
-__attribute__((always_inline)) static INLINE void cell_set_spart_h_sidm_depth(
+__attribute__((always_inline)) static INLINE void cell_set_spart_sidm_h_depth(
     struct spart *sp, const struct cell *leaf_cell) {
 
   const float h = sp->sidm.h;

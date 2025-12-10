@@ -271,7 +271,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
 #ifdef STARS_SIDM_INTERACTIONS
   /* Also set the correct depth for star-sidm interactions */
-  cell_set_spart_h_sidm_depth(sp,c);
+  cell_set_spart_sidm_h_depth(sp,c);
 #endif
 
   /* Register that we used one of the free slots. */
