@@ -620,26 +620,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   //const float eta_OWAR_ij = sqrtf(pi->mhd_data.eta_OWAR * pj->mhd_data.eta_OWAR);
   //const float eta_OWAR_ij = fmaxf(pi->mhd_data.eta_OWAR, pj->mhd_data.eta_OWAR);
 
-  const float rhoij_a = 0.5f * (rhoi + rhoj);
-  const float rhoij_inv = 1.0f / rhoij_a;
+  //const float rhoij_a = 0.5f * (rhoi + rhoj);
+  const float rhoij_inv = 1.0f / (rhoi*rhoj);
 
   const float grad_term_ij = f_ij * wi_dr + f_ji * wj_dr;
 
   const float OWAR_pref_ij = eta_OWAR_ij * rhoij_inv * grad_term_ij * r_inv;
 
   for (int k; k < 3; k++){
-    pi->mhd_data.B_over_rho_dt[k] += mj / rhoi * OWAR_pref_ij * dB[k];
-    pj->mhd_data.B_over_rho_dt[k] -= mi / rhoj * OWAR_pref_ij * dB[k];
+    pi->mhd_data.B_over_rho_dt[k] += mj * OWAR_pref_ij * dB[k];
+    pj->mhd_data.B_over_rho_dt[k] -= mi * OWAR_pref_ij * dB[k];
 
-    pi->mhd_data.B_over_rho_dt_AR[k] += mj / rhoi * OWAR_pref_ij * dB[k];
-    pj->mhd_data.B_over_rho_dt_AR[k] -= mi / rhoj * OWAR_pref_ij * dB[k];
+    pi->mhd_data.B_over_rho_dt_AR[k] += mj * OWAR_pref_ij * dB[k];
+    pj->mhd_data.B_over_rho_dt_AR[k] -= mi * OWAR_pref_ij * dB[k];
   }
 
-  pi->u_dt -= 0.5f * mj * permeability_inv / rhoi * OWAR_pref_ij * dB_2;
-  pj->u_dt -= 0.5f * mi * permeability_inv / rhoj * OWAR_pref_ij * dB_2;
+  pi->u_dt -= 0.5f * mj * permeability_inv * OWAR_pref_ij * dB_2;
+  pj->u_dt -= 0.5f * mi * permeability_inv * OWAR_pref_ij * dB_2;
 
-  pi->mhd_data.u_dt_AR -= 0.5f * mj * permeability_inv / rhoi * OWAR_pref_ij * dB_2;
-  pj->mhd_data.u_dt_AR -= 0.5f * mi * permeability_inv / rhoj * OWAR_pref_ij * dB_2;
+  pi->mhd_data.u_dt_AR -= 0.5f * mj * permeability_inv * OWAR_pref_ij * dB_2;
+  pj->mhd_data.u_dt_AR -= 0.5f * mi * permeability_inv * OWAR_pref_ij * dB_2;
 
 
   /* Save induction sources */
@@ -653,8 +653,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
         mi * resistive_eta_j * dB_dt_pref_PR * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
     pj->mhd_data.Diff_B_source[i] -= mi * art_diff_pref * dB[i];
-    pi->mhd_data.Diff_B_source[i] += mj / rhoi * OWAR_pref_ij * dB[i];
-    pj->mhd_data.Diff_B_source[i] -= mi / rhoj * OWAR_pref_ij * dB[i];
+    pi->mhd_data.Diff_B_source[i] += mj * OWAR_pref_ij * dB[i];
+    pj->mhd_data.Diff_B_source[i] -= mi * OWAR_pref_ij * dB[i];
   }
 }
 
@@ -909,26 +909,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   //const float eta_OWAR_ij = fmaxf(pi->mhd_data.eta_OWAR, pj->mhd_data.eta_OWAR);
 
 
-  const float rhoij_a = 0.5f * (rhoi + rhoj);
-  const float rhoij_inv = 1.0f / rhoij_a;
+  //const float rhoij_a = 0.5f * (rhoi + rhoj);
+  const float rhoij_inv = 1.0f / (rhoi*rhoj);
 
   const float grad_term_ij = f_ij * wi_dr + f_ji * wj_dr;
 
   const float OWAR_pref_ij = eta_OWAR_ij * rhoij_inv * grad_term_ij * r_inv;
 
   for (int k; k < 3; k++){
-    pi->mhd_data.B_over_rho_dt[k] += mj / rhoi * OWAR_pref_ij * dB[k];
-    pj->mhd_data.B_over_rho_dt[k] -= mi / rhoj * OWAR_pref_ij * dB[k];
+    pi->mhd_data.B_over_rho_dt[k] += mj * OWAR_pref_ij * dB[k];
+    pj->mhd_data.B_over_rho_dt[k] -= mi * OWAR_pref_ij * dB[k];
 
-    pi->mhd_data.B_over_rho_dt_AR[k] += mj / rhoi * OWAR_pref_ij * dB[k];
-    pj->mhd_data.B_over_rho_dt_AR[k] -= mi / rhoj * OWAR_pref_ij * dB[k];
+    pi->mhd_data.B_over_rho_dt_AR[k] += mj * OWAR_pref_ij * dB[k];
+    pj->mhd_data.B_over_rho_dt_AR[k] -= mi * OWAR_pref_ij * dB[k];
   }
 
-  pi->u_dt -= 0.5f * mj * permeability_inv / rhoi * OWAR_pref_ij * dB_2;
-  pj->u_dt -= 0.5f * mi * permeability_inv / rhoj * OWAR_pref_ij * dB_2;
+  pi->u_dt -= 0.5f * mj * permeability_inv * OWAR_pref_ij * dB_2;
+  pj->u_dt -= 0.5f * mi * permeability_inv * OWAR_pref_ij * dB_2;
 
-  pi->mhd_data.u_dt_AR -= 0.5f * mj * permeability_inv / rhoi * OWAR_pref_ij * dB_2;
-  pj->mhd_data.u_dt_AR -= 0.5f * mi * permeability_inv / rhoj * OWAR_pref_ij * dB_2;
+  pi->mhd_data.u_dt_AR -= 0.5f * mj * permeability_inv * OWAR_pref_ij * dB_2;
+  pj->mhd_data.u_dt_AR -= 0.5f * mi * permeability_inv * OWAR_pref_ij * dB_2;
 
   /* Save induction sources */
 
@@ -938,8 +938,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
         resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
 
-    pi->mhd_data.Diff_B_source[i] += mj / rhoi * OWAR_pref_ij * dB[i];
-    pj->mhd_data.Diff_B_source[i] -= mi / rhoj * OWAR_pref_ij * dB[i];
+    pi->mhd_data.Diff_B_source[i] += mj * OWAR_pref_ij * dB[i];
+    pj->mhd_data.Diff_B_source[i] -= mi * OWAR_pref_ij * dB[i];
   }
 }
 
