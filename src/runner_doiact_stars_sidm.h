@@ -28,32 +28,39 @@
 #define _DOSELF1_STARS_SIDM(f) PASTE(runner_doself_stars_sidm, f)
 #define DOSELF1_STARS_SIDM _DOSELF1_STARS_SIDM(FUNCTION)
 
-#define _DO_SYM_PAIR1_STARS_SIDM(f) PASTE(runner_do_sym_pair_stars_sidm, f)
-#define DO_SYM_PAIR1_STARS_SIDM _DO_SYM_PAIR1_STARS_SIDM(FUNCTION)
-
-#define _DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(f) PASTE(runner_do_nonsym_pair_stars_sidm_naive, f)
+#define _DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(f) \
+  PASTE(runner_do_nonsym_pair_stars_sidm_naive, f)
 #define DO_NONSYM_PAIR1_STARS_SIDM_NAIVE _DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(FUNCTION)
 
 #define _DOPAIR1_STARS_SIDM_NAIVE(f) PASTE(runner_dopair_stars_sidm_naive, f)
 #define DOPAIR1_STARS_SIDM_NAIVE _DOPAIR1_STARS_SIDM_NAIVE(FUNCTION)
 
-#define _DOPAIR1_SUBSET_STARS_SIDM(f) PASTE(runner_dopair_subset_stars_sidm, f)
-#define DOPAIR1_SUBSET_STARS_SIDM _DOPAIR1_SUBSET_STARS_SIDM(FUNCTION)
-
-#define _DOPAIR1_SUBSET_STARS_SIDM_NAIVE(f) PASTE(runner_dopair_subset_stars_sidm_naive, f)
+#define _DOPAIR1_SUBSET_STARS_SIDM_NAIVE(f) \
+  PASTE(runner_dopair_subset_stars_sidm_naive, f)
 #define DOPAIR1_SUBSET_STARS_SIDM_NAIVE _DOPAIR1_SUBSET_STARS_SIDM_NAIVE(FUNCTION)
 
 #define _DOSELF1_SUBSET_STARS_SIDM(f) PASTE(runner_doself_subset_stars_sidm, f)
 #define DOSELF1_SUBSET_STARS_SIDM _DOSELF1_SUBSET_STARS_SIDM(FUNCTION)
 
-#define _DOSELF1_SUBSET_BRANCH_STARS_SIDM(f) PASTE(runner_doself_subset_branch_stars_sidm, f)
+#define _DOSELF1_SUBSET_BRANCH_STARS_SIDM(f) \
+  PASTE(runner_doself_subset_branch_stars_sidm, f)
 #define DOSELF1_SUBSET_BRANCH_STARS_SIDM _DOSELF1_SUBSET_BRANCH_STARS_SIDM(FUNCTION)
 
-#define _DOPAIR1_SUBSET_BRANCH_STARS_SIDM(f) PASTE(runner_dopair_subset_branch_stars_sidm, f)
+#define _DOPAIR1_SUBSET_BRANCH_STARS_SIDM(f) \
+  PASTE(runner_dopair_subset_branch_stars_sidm, f)
 #define DOPAIR1_SUBSET_BRANCH_STARS_SIDM _DOPAIR1_SUBSET_BRANCH_STARS_SIDM(FUNCTION)
 
 #define _DOSUB_SUBSET_STARS_SIDM(f) PASTE(runner_dosub_subset_stars_sidm, f)
 #define DOSUB_SUBSET_STARS_SIDM _DOSUB_SUBSET_STARS_SIDM(FUNCTION)
+
+#define _DOSUB_SELF_SUBSET_STARS_SIDM(f) PASTE(runner_dosub_self_subset_stars_sidm, f)
+#define DOSUB_SELF_SUBSET_STARS_SIDM _DOSUB_SELF_SUBSET_STARS_SIDM(FUNCTION)
+
+#define _DOSUB_PAIR_SUBSET_STARS_SIDM(f) PASTE(runner_dosub_pair_subset_stars_sidm, f)
+#define DOSUB_PAIR_SUBSET_STARS_SIDM _DOSUB_PAIR_SUBSET_STARS_SIDM(FUNCTION)
+
+#define _FIND_SUB_STARS_SIDM(f) PASTE(runner_find_sub_stars_sidm, f)
+#define FIND_SUB_STARS_SIDM _FIND_SUB_STARS_SIDM(FUNCTION)
 
 #define _DOSELF1_BRANCH_STARS_SIDM(f) PASTE(runner_doself_branch_stars_sidm, f)
 #define DOSELF1_BRANCH_STARS_SIDM _DOSELF1_BRANCH_STARS_SIDM(FUNCTION)
@@ -82,20 +89,34 @@
 #define _IACT_STARS_SIDM(f) PASTE(runner_iact_nonsym_stars_sidm, f)
 #define IACT_STARS_SIDM _IACT_STARS_SIDM(FUNCTION)
 
-void DOSELF1_BRANCH_STARS_SIDM(struct runner *r, struct cell *c);
-void DOPAIR1_BRANCH_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *cj);
+void DOSELF1_BRANCH_STARS_SIDM(struct runner *r, const struct cell *c,
+                          const int limit_min_h, const int limit_max_h);
+void DOPAIR1_BRANCH_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
+                          const int limit_min_h, const int limit_max_h);
 
-void DOSUB_SELF1_STARS_SIDM(struct runner *r, struct cell *ci, int gettimer);
+void DOSUB_SELF1_STARS_SIDM(struct runner *r, struct cell *ci,
+                       int recurse_below_h_max, const int gettimer);
 void DOSUB_PAIR1_STARS_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
-                    int gettimer);
+                       int recurse_below_h_max, const int gettimer);
 
-void DOSELF1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, struct cell *restrict ci,
-                              struct spart *restrict sparts, int *restrict ind,
-                              const int scount);
-void DOPAIR1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, struct cell *restrict ci,
-                              struct spart *restrict sparts_i,
-                              int *restrict ind, int const scount,
-                              struct cell *restrict cj);
+void DOSELF1_SUBSET_BRANCH_STARS_SIDM(struct runner *r, const struct cell *ci,
+                                 struct spart *restrict sparts, const int *ind,
+                                 const int scount);
+
+void DOPAIR1_SUBSET_BRANCH_STARS_SIDM(struct runner *r,
+                                 const struct cell *restrict ci,
+                                 struct spart *restrict sparts_i,
+                                 const int *ind, const int scount,
+                                 struct cell *restrict cj);
+
+void DOSUB_PAIR_SUBSET_STARS_SIDM(struct runner *r, struct cell *ci,
+                             struct spart *sparts, const int *ind,
+                             const int scount, struct cell *cj,
+                             const int gettimer);
+
+void DOSUB_SELF_SUBSET_STARS_SIDM(struct runner *r, struct cell *ci,
+                             struct spart *sparts, const int *ind,
+                             const int scount, const int gettimer);
 
 void DOSUB_SUBSET_STARS_SIDM(struct runner *r, struct cell *ci, struct spart *sparts,
-                     int *ind, const int scount, struct cell *cj, int gettimer);
+                        int *ind, int scount, struct cell *cj, int gettimer);
