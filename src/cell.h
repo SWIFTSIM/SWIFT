@@ -1826,7 +1826,7 @@ __attribute__((always_inline)) static INLINE void cell_set_spart_h_depth(
 }
 
 /**
- * @brief Set the depth_h_sidm field of a #spart.
+ * @brief Set the sidm.depth_h field of a #spart.
  *
  * @param sp The #spart.
  * @param leaf_cell The leaf cell where the particle is located.
@@ -1834,7 +1834,7 @@ __attribute__((always_inline)) static INLINE void cell_set_spart_h_depth(
 __attribute__((always_inline)) static INLINE void cell_set_spart_h_sidm_depth(
     struct spart *sp, const struct cell *leaf_cell) {
 
-  const float h = sp->h_sidm;
+  const float h = sp->sidm.h;
   const struct cell *c = leaf_cell;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1843,14 +1843,14 @@ __attribute__((always_inline)) static INLINE void cell_set_spart_h_sidm_depth(
 
   /* Case where h is much smaller than the leaf cell itself */
   if (h < c->h_min_allowed) {
-    sp->depth_h_sidm = c->depth;
+    sp->sidm.depth_h = c->depth;
     return;
   }
 
   /* Climb the tree to find the correct level */
   while (c != NULL) {
     if (h >= c->h_min_allowed && h < c->h_max_allowed) {
-      sp->depth_h_sidm = c->depth;
+      sp->sidm.depth_h = c->depth;
       return;
     }
     c = c->parent;

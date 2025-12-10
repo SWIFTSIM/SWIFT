@@ -115,8 +115,8 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 __attribute__((always_inline)) INLINE static void stars_init_spart_sidm(
     struct spart *sp) {
 
-  sp->density_sidm.wcount = 0.f;
-  sp->density_sidm.wcount_dh = 0.f;
+  sp->sidm.density.wcount = 0.f;
+  sp->sidm.density.wcount_dh = 0.f;
 }
 
 /**
@@ -184,14 +184,14 @@ __attribute__((always_inline)) INLINE static void stars_end_sidm_density(
     struct spart *sp, const struct cosmology *cosmo) {
 
   /* Some smoothing length multiples. */
-  const float h = sp->h_sidm;
+  const float h = sp->sidm.h;
   const float h_inv = 1.0f / h;                       /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   /* Finish the calculation by inserting the missing h-factors */
-  sp->density_sidm.wcount *= h_inv_dim;
-  sp->density_sidm.wcount_dh *= h_inv_dim_plus_one;
+  sp->sidm.density.wcount *= h_inv_dim;
+  sp->sidm.density.wcount_dh *= h_inv_dim_plus_one;
 }
 
 /**
@@ -235,13 +235,13 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_sidm_neighb
       sp->id, sp->h, sp->density.wcount);
 
   /* Some smoothing length multiples. */
-  const float h = sp->h_sidm;
+  const float h = sp->sidm.h;
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
   /* Re-set problematic values */
-  sp->density_sidm.wcount = kernel_root * h_inv_dim;
-  sp->density_sidm.wcount_dh = 0.f;
+  sp->sidm.density.wcount = kernel_root * h_inv_dim;
+  sp->sidm.density.wcount_dh = 0.f;
 }
 
 /**

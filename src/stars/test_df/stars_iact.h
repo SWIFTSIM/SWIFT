@@ -93,8 +93,8 @@ runner_iact_nonsym_stars_sidm_density(const float r2, const float dx[3],
   kernel_deval(ui, &wi, &wi_dx);
 
   /* Compute contribution to the number of neighbours */
-  si->density_sidm.wcount += wi;
-  si->density_sidm.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+  si->sidm.density.wcount += wi;
+  si->sidm.density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
 #ifdef DEBUG_INTERACTIONS_STARS
   

@@ -2539,7 +2539,7 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < c->stars.count; k++)
       if (spart_is_active(&sparts[k], e)) {
         pid[count] = k;
-        h_0[count] = sparts[k].h_sidm;
+        h_0[count] = sparts[k].sidm.h;
         left[count] = 0.f;
         right[count] = stars_h_max;
         ++count;
@@ -2569,7 +2569,7 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Get some useful values */
         const float h_init = h_0[i];
-        const float h_old = sp->h_sidm;
+        const float h_old = sp->sidm.h;
         const float h_old_dim = pow_dimension(h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
 
@@ -2593,12 +2593,12 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
           stars_end_sidm_density(sp, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
-          const float n_sum = sp->density_sidm.wcount * h_old_dim;
+          const float n_sum = sp->sidm.density.wcount * h_old_dim;
           const float n_target = stars_eta_dim;
           const float f = n_sum - n_target;
           const float f_prime =
-              sp->density_sidm.wcount_dh * h_old_dim +
-              hydro_dimension * sp->density_sidm.wcount * h_old_dim_minus_one;
+              sp->sidm.density.wcount_dh * h_old_dim +
+              hydro_dimension * sp->sidm.density.wcount * h_old_dim_minus_one;
 
           /* Improve the bisection bounds */
           if (n_sum < n_target)
@@ -2614,8 +2614,8 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Skip if h is already h_max and we don't have enough neighbours */
           /* Same if we are below h_min */
-          if (((sp->h_sidm >= stars_h_max) && (f < 0.f)) ||
-              ((sp->h_sidm <= stars_h_min) && (f > 0.f))) {
+          if (((sp->sidm.h >= stars_h_max) && (f < 0.f)) ||
+              ((sp->sidm.h <= stars_h_min) && (f > 0.f))) {
 
             /* We have a particle whose smoothing length is already set (wants
              * to be larger but has already hit the maximum OR wants to be
@@ -2623,8 +2623,8 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
              * as if the smoothing length had converged correctly  */
 
             /* Check if h_max has increased */
-            h_max = max(h_max, sp->h_sidm);
-            h_max_active = max(h_max_active, sp->h_sidm);
+            h_max = max(h_max, sp->sidm.h);
+            h_max_active = max(h_max_active, sp->sidm.h);
 
             /* Ok, we are done with this particle */
             continue;
@@ -2673,17 +2673,17 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
               (h_old == left[i] && h_new == right[i])) {
 
             /* Bisect the remaining interval */
-            sp->h_sidm = pow_inv_dimension(
+            sp->sidm.h = pow_inv_dimension(
                 0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
 
           } else {
 
             /* Normal case */
-            sp->h_sidm = h_new;
+            sp->sidm.h = h_new;
           }
 
           /* If within the allowed range, try again */
-          if (sp->h_sidm < stars_h_max && sp->h_sidm > stars_h_min) {
+          if (sp->sidm.h < stars_h_max && sp->sidm.h > stars_h_min) {
 
             /* Flag for another round of fun */
             pid[redo] = pid[i];
@@ -2698,15 +2698,15 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
             /* Off we go ! */
             continue;
 
-          } else if (sp->h_sidm <= stars_h_min) {
+          } else if (sp->sidm.h <= stars_h_min) {
 
             /* Ok, this particle is a lost cause... */
-            sp->h_sidm = stars_h_min;
+            sp->sidm.h = stars_h_min;
 
-          } else if (sp->h_sidm >= stars_h_max) {
+          } else if (sp->sidm.h >= stars_h_max) {
 
             /* Ok, this particle is a lost cause... */
-            sp->h_sidm = stars_h_max;
+            sp->sidm.h = stars_h_max;
 
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
@@ -2727,8 +2727,8 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
         cell_set_spart_h_sidm_depth(sp, c);
 
         /* Check if h_max has increased */
-        h_max = max(h_max, sp->h_sidm);
-        h_max_active = max(h_max_active, sp->h_sidm);
+        h_max = max(h_max, sp->sidm.h);
+        h_max_active = max(h_max_active, sp->sidm.h);
 
         // ghost_stats_converged_sidm(&c->ghost_statistics, sp);
       }
@@ -2785,8 +2785,8 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
           "particles:");
       for (int i = 0; i < count; i++) {
         struct spart *sp = &sparts[pid[i]];
-        warning("ID: %lld, h: %g, wcount: %g", sp->id, sp->h_sidm,
-                sp->density_sidm.wcount);
+        warning("ID: %lld, h: %g, wcount: %g", sp->id, sp->sidm.h,
+                sp->sidm.density.wcount);
       }
 
       error("Smoothing length failed to converge on %i particles.", count);
@@ -2806,7 +2806,7 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < c->stars.count; ++i) {
     const struct spart *sp = &c->stars.parts[i];
-    const float h = c->stars.parts[i].h_sidm;
+    const float h = c->stars.parts[i].sidm.h;
     if (spart_is_inhibited(sp, e)) continue;
 
     if (h > c->stars.sidm.h_max)

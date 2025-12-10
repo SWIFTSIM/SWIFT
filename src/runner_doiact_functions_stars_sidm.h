@@ -77,8 +77,8 @@ void DOSELF1_STARS_SIDM(struct runner *r, const struct cell *c,
 
     /* Get a hold of the ith spart in ci. */
     struct spart *si = &sparts[sid];
-    const char depth_i = si->depth_h_sidm;
-    const float hi = si->h_sidm;
+    const char depth_i = si->sidm.depth_h;
+    const float hi = si->sidm.h;
     const float hig2 = hi * hi * kernel_gamma2;
 
     /* Skip inhibited particles */
@@ -198,7 +198,7 @@ void DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(struct runner *r,
 
     /* Get a hold of the ith spart in ci. */
     struct spart *si = &sparts_i[sid];
-    const char depth_i = si->depth_h_sidm;
+    const char depth_i = si->sidm.depth_h;
 
     /* Skip inhibited particles */
     if (spart_is_inhibited(si, e)) continue;
@@ -206,7 +206,7 @@ void DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(struct runner *r,
     /* Skip inactive particles */
     if (!spart_is_active(si, e)) continue;
 
-    const float hi = si->h_sidm;
+    const float hi = si->sidm.h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
                           (float)(si->x[1] - (cj->loc[1] + shift[1])),
@@ -322,7 +322,7 @@ void DOPAIR1_SUBSET_STARS_SIDM_NAIVE(struct runner *r,
     const double pix = spi->x[0] - (shift[0]);
     const double piy = spi->x[1] - (shift[1]);
     const double piz = spi->x[2] - (shift[2]);
-    const float hi = spi->h_sidm;
+    const float hi = spi->sidm.h;
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -400,7 +400,7 @@ void DOSELF1_SUBSET_STARS_SIDM(struct runner *r, const struct cell *ci,
     const float spix[3] = {(float)(spi->x[0] - ci->loc[0]),
                            (float)(spi->x[1] - ci->loc[1]),
                            (float)(spi->x[2] - ci->loc[2])};
-    const float hi = spi->h_sidm;
+    const float hi = spi->sidm.h;
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
