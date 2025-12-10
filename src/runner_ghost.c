@@ -2500,7 +2500,7 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
   int redo = 0, count = 0;
 
   /* Running value of the maximal smoothing length */
-  float h_max = c->stars.h_max_sidm;
+  float h_max = c->stars.sidm.h_max;
   float h_max_active = 0.f;
 
   // TIMER_TIC;
@@ -2516,8 +2516,8 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
         runner_do_sidm_density_ghost(r, c->progeny[k], 0);
 
         /* Update h_max */
-        h_max = max(h_max, c->progeny[k]->stars.h_max_sidm);
-        h_max_active = max(h_max_active, c->progeny[k]->stars.h_max_active_sidm);
+        h_max = max(h_max, c->progeny[k]->stars.sidm.h_max);
+        h_max_active = max(h_max_active, c->progeny[k]->stars.sidm.h_max_active);
       }
     }
   } else {
@@ -2745,7 +2745,7 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
         finger->parent) {
 
           /* Run through this cell's density interactions. */
-          for (struct link *l = finger->stars.density_sidm; l != NULL; l =
+          for (struct link *l = finger->stars.sidm.density; l != NULL; l =
           l->next) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2800,8 +2800,8 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
   }
 
   /* Update h_max */
-  c->stars.h_max_sidm = h_max;
-  c->stars.h_max_active_sidm = h_max_active;
+  c->stars.sidm.h_max = h_max;
+  c->stars.sidm.h_max_active = h_max_active;
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < c->stars.count; ++i) {
@@ -2809,7 +2809,7 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
     const float h = c->stars.parts[i].h_sidm;
     if (spart_is_inhibited(sp, e)) continue;
 
-    if (h > c->stars.h_max_sidm)
+    if (h > c->stars.sidm.h_max)
       error("Particle has h larger than h_max (id=%lld)", sp->id);
     if (spart_is_active(sp, e) && h > c->stars.sidm.h_max_active)
       error("Active particle has h larger than h_max_active (id=%lld)",
@@ -2819,10 +2819,10 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
-  if (c->stars.density_sidm_ghost) {
+  if (c->stars.sidm.density_ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
-      atomic_max_f(&tmp->stars.h_max_sidm, h_max);
-      atomic_max_f(&tmp->stars.h_max_active_sidm, h_max_active);
+      atomic_max_f(&tmp->stars.sidm.h_max, h_max);
+      atomic_max_f(&tmp->stars.sidm.h_max_active, h_max_active);
     }
   }
 

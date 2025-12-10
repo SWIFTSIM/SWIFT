@@ -1039,7 +1039,7 @@ cell_can_recurse_in_pair_stars_sidm_task(const struct cell *ci,
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
   return ci->split && cj->split &&
-         ((kernel_gamma * ci->stars.h_max_old_sidm +
+         ((kernel_gamma * ci->stars.sidm.h_max_old +
            ci->stars.dx_max_part_old) < 0.5f * ci->dmin) &&
          ((kernel_gamma * cj->sidm.h_max_old + cj->sidm.dx_max_part_old) <
           0.5f * cj->dmin);
@@ -1056,7 +1056,7 @@ cell_can_recurse_in_subpair_stars_sidm_task(const struct cell *c) {
 
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
-  return ((kernel_gamma * c->stars.h_max_active_sidm + c->stars.dx_max_part_old) <
+  return ((kernel_gamma * c->stars.sidm.h_max_active + c->stars.dx_max_part_old) <
           0.5f * c->dmin);
 }
 
@@ -1071,7 +1071,7 @@ cell_can_recurse_in_self_stars_sidm_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split &&
-         (kernel_gamma * c->stars.h_max_old_sidm < 0.5f * c->dmin) &&
+         (kernel_gamma * c->stars.sidm.h_max_old < 0.5f * c->dmin) &&
          (kernel_gamma * c->sidm.h_max_old < 0.5f * c->dmin);
 }
 
@@ -1085,7 +1085,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_subself_stars_sidm_task(const struct cell *c) {
 
   /* Is the cell not smaller than the smoothing length? */
-  return (kernel_gamma * c->stars.h_max_active_sidm < 0.5f * c->dmin);
+  return (kernel_gamma * c->stars.sidm.h_max_active < 0.5f * c->dmin);
 }
 
 /**

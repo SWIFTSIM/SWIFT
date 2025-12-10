@@ -2432,7 +2432,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 
 #ifdef STARS_SIDM_INTERACTIONS
   /* Un-skip the star-SIDM density tasks involved with this cell. */
-  for (struct link *l = c->stars.density_sidm; l != NULL; l = l->next) {
+  for (struct link *l = c->stars.sidm.density; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;

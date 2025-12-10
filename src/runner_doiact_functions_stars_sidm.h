@@ -213,7 +213,7 @@ void DO_NONSYM_PAIR1_STARS_SIDM_NAIVE(struct runner *r,
                           (float)(si->x[2] - (cj->loc[2] + shift[2]))};
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (hi > ci->stars.h_max_active_sidm)
+    if (hi > ci->stars.sidm.h_max_active)
       error("Particle has h larger than h_max_active");
 #endif
 
@@ -517,10 +517,10 @@ void DOSELF1_BRANCH_STARS_SIDM(struct runner *r, const struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Did we mess up the recursion? */
-  if (c->stars.h_max_old_sidm * kernel_gamma > c->dmin)
+  if (c->stars.sidm.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
-  if (!limit_max_h && c->stars.h_max_active_sidm * kernel_gamma > c->dmin)
+  if (!limit_max_h && c->stars.sidm.h_max_active * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   /* Did we mess up the recursion? */
