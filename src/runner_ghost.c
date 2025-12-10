@@ -2537,7 +2537,7 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
     if ((right = (float *)malloc(sizeof(float) * c->stars.count)) == NULL)
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->stars.count; k++)
-      if (sipart_is_active(&sparts[k], e)) {
+      if (spart_is_active(&sparts[k], e)) {
         pid[count] = k;
         h_0[count] = sparts[k].h_sidm;
         left[count] = 0.f;
@@ -2807,11 +2807,11 @@ void runner_do_stars_sidm_ghost(struct runner *r, struct cell *c, int timer) {
   for (int i = 0; i < c->stars.count; ++i) {
     const struct spart *sp = &c->stars.parts[i];
     const float h = c->stars.parts[i].h_sidm;
-    if (sipart_is_inhibited(sp, e)) continue;
+    if (spart_is_inhibited(sp, e)) continue;
 
     if (h > c->stars.h_max_sidm)
       error("Particle has h larger than h_max (id=%lld)", sp->id);
-    if (spart_is_active(sp, e) && h > c->stars.h_max_active_sidm)
+    if (spart_is_active(sp, e) && h > c->stars.sidm.h_max_active)
       error("Active particle has h larger than h_max_active (id=%lld)",
             sp->id);
   }
