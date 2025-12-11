@@ -89,8 +89,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct feedback_props *feedback_props = e->feedback_props;
   const struct rt_props *rt_props = e->rt_props;
-  const float stars_h_max = e->hydro_properties->h_max;
-  const float stars_h_min = e->hydro_properties->h_min;
+  const float stars_h_max = e->stars_properties->h_max;
+  const float stars_h_min = e->stars_properties->h_min;
   const float eps = e->stars_properties->h_tolerance;
   const float stars_eta_dim =
       pow_dimension(e->stars_properties->eta_neighbours);

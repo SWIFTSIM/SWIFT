@@ -225,6 +225,14 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->h_tolerance =
       parser_get_opt_param_float(params, "Stars:h_tolerance", p->h_tolerance);
 
+  /* Maximal smoothing length for stars */
+  sp->h_max = parser_get_opt_param_float(
+      params, "Stars:h_max", 5.f);
+
+  /* Minimal smoothing length for stars */
+  sp->h_min = parser_get_opt_param_float(
+      params, "Stars:h_min", p->h_min);
+
   /* Get derived properties */
   sp->target_neighbours = pow_dimension(sp->eta_neighbours) * kernel_norm;
   const float delta_eta = sp->eta_neighbours * (1.f + sp->h_tolerance);
