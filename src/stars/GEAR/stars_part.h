@@ -153,12 +153,6 @@ struct stars_props {
   /*! Smoothing length tolerance */
   float h_tolerance;
 
-  /*! Maximal smoothing length for stars */
-  float h_max;
-
-  /*! Minimal smoothing length for stars */
-  float h_min;
-
   /*! Tolerance on neighbour number  (for info only)*/
   float delta_neighbours;
 
