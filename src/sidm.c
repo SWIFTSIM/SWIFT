@@ -42,7 +42,7 @@ struct exact_density_data {
  * @brief Mapper function for the exact sidm checks.
  *
  * @brief map_data The #siparts.
- * @brief nr_siparts The number of star particles.
+ * @brief nr_siparts The number of sidm particles.
  * @brief extra_data Pointers to the structure containing global interaction
  * counters.
  */
@@ -142,7 +142,7 @@ void sidm_exact_density_compute_mapper(void *map_data, int nr_siparts,
 }
 
 /**
- * @brief Compute the exact interactions for a selection of star particles
+ * @brief Compute the exact interactions for a selection of sidm particles
  * by running a brute force loop over all the particles in the simulation.
  *
  * Will be incorrect over MPI.
@@ -174,7 +174,7 @@ void sidm_exact_density_compute(struct space *s, const struct engine *e) {
 }
 
 /**
- * @brief Check the star particles' density and force calculations against the
+ * @brief Check the sidm particles' density and force calculations against the
  * values obtained via the brute-force summation.
  *
  * @param s The #space.
@@ -316,18 +316,18 @@ void sidm_exact_density_check(struct space *s, const struct engine *e,
   if (wrong_rho)
     error(
         "Density difference larger than the allowed tolerance for %d "
-        "star particles! (out of %d particles)",
+        "sidm particles! (out of %d particles)",
         wrong_rho, counter);
   else
-    message("Verified %d star particles", counter);
+    message("Verified %d sidm particles", counter);
 
   /* if (wrong_n_ngb) */
   /*   error( */
   /*       "N_ngb difference larger than the allowed tolerance for %d " */
-  /*       "star particles! (out of %d particles)", */
+  /*       "sidm particles! (out of %d particles)", */
   /*       wrong_n_ngb, counter); */
   /* else */
-  /*   message("Verified %d star particles", counter); */
+  /*   message("Verified %d sidm particles", counter); */
 
   if (e->verbose)
     message("Writing brute-force density files took %.3f %s. ",
