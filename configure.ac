@@ -447,6 +447,20 @@ elif test "$sink_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_SINK_DENSITY_CHECKS], [$enableval] ,[Enable sink density brute-force checks])
 fi
 
+# Check if sidm density checks are on for some particles.
+AC_ARG_ENABLE([sidm-density-checks],
+   [AS_HELP_STRING([--enable-sidm-density-checks],
+     [Activate expensive brute-force sidm density checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [sidm_density_checks="$enableval"],
+   [sidm_density_checks="no"]
+)
+if test "$sidm_density_checks" = "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-sidm-density-checks!)
+elif test "$sidm_density_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_SIDM_DENSITY_CHECKS], [$enableval] ,[Enable sidm density brute-force checks])
+fi
+
 # Check if ghost statistics are enabled
 AC_ARG_ENABLE([ghost-statistics],
    [AS_HELP_STRING([--enable-ghost-statistics],
