@@ -18,6 +18,7 @@
  ******************************************************************************/
 #ifndef SWIFT_SHADOWSWIFT_HYDRO_VELOCITIES_H
 #define SWIFT_SHADOWSWIFT_HYDRO_VELOCITIES_H
+#include <grackle.h>
 
 /**
  * @brief Initialize the ShadowSWIFT particle velocities before the start of the
@@ -179,15 +180,13 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     const float max_angle = p->geometry.max_face_angle;
     float beta = 2.25f;
     float f_shaping_speed = 0.5f;
-    float vchar = soundspeed; // Determines cold steering aggresssiveness, default is moderate
+    float vchar = soundspeed; // Determines cold steering aggresssiveness
     float vchar_dt = d / dt; // Timestep based correction
 
 #ifdef SHADOWSWIFT_STEERING_COLD_FLOWS
-    /* Enables much more aggressive cold steering if the cell has high Mach (assumed cold),
-     * Can also in the future be enabled under these conditions:
-     * neighboring generators are too close -> perhaps a distance / face distance = 1/2 thing
-     * high face angle? */
-    if (soundspeed > 0.f) {
+    /* Enables much more aggressive cold steering if the cell
+     * has high Mach (assumed cold) */
+    if (soundspeed <= 0.f) {
       vchar = 0;
     } else {
       const float Mach_low = 5.f;
@@ -199,8 +198,9 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
         // Apply cold steering
 #ifdef SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT
         /* Apply a smoother gradient to steering if between Mach low and high */
-        if (Mach_part <= Mach_high) {
-          hydro_velocities_steering_gradient(&vchar, soundspeed, vchar_dt, Mach_low, Mach_high, Mach_part);
+        if (Mach_part < Mach_high) {
+          hydro_velocities_steering_gradient(&vchar, soundspeed, vchar_dt,
+            Mach_low, Mach_high, Mach_part);
         } else {
           /* Mach is higher than max, just set to max steering */
           vchar = vchar_dt;
@@ -213,7 +213,8 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     }
 #endif
 
-    /* Additionally impose that we use the timestep based steering if it is less aggressive than soundspeed steering */
+    /* Additionally impose that we use the timestep based steering if
+     * it is less aggressive than soundspeed steering */
     if (vchar_dt < vchar) {
       vchar = vchar_dt;
     }
@@ -259,7 +260,174 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
         /* In very cold flows, the sound speed may be significantly slower than
          * the actual speed of the particles, rendering this scheme ineffective.
          * In this case, use a criterion based on the timestep instead */
-        if (25.f * soundspeed * soundspeed < fluid_v[0] * fluid_v[0] +
+
+        // /* Gather all variables for cold steering criteria */
+        // const float *g = xp->a_grav;
+        //
+        // float Egrav = p->conserved.mass * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
+        //               hydro_get_comoving_psize(p);
+        //
+        // const float thermal_energy = xp->u_full * p->conserved.mass;
+        //
+        // /* NOT SAFE, CAN have 0 soundspeed */
+        // const float mach_cold = sqrtf(fluid_v[0] * fluid_v[0] +
+        //                                  fluid_v[1] * fluid_v[1] +
+        //                                  fluid_v[2] * fluid_v[2]) / soundspeed;
+        //
+        // const float Ekin_cold = 0.5f * p->conserved.mass * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+
+        // /* Apply cold steering if needed */
+        // /* Demand cold and high mach, if very high mach always */
+        // if (((thermal_energy < 1e-1 * Egrav) &&
+        //           (mach_cold > 10)) || mach_cold > 50) {
+        //   // message("here! Thermal = %g, Ekin + thermal = %g, Egrav = %g, mach_cold = %g, dens = %g",
+        //   //   thermal_energy, p->timestepvars.Ekin + thermal_energy, Egrav, mach_cold, p->rho);
+        //
+        //   float div_v = p->gradients.v[0][0] +
+        //                p->gradients.v[1][1] +
+        //                p->gradients.v[2][2];
+        //
+        //   fac = fac_dt;
+        // }
+
+        /* If cold (and high M) -> No steering
+         * If gravitationally dominant (and high M) -> No steering
+         * Else -> Steering (for hotter less gravitationally excited gas) */
+
+        // /* Steer if gas satisfies:
+        //  * Cold
+        //  * Gravitationally indifferent (not largely perturbed by g)
+        //  * Mach is above 5.
+        //  * Else: Do Not Cold Steer */
+        // if ((thermal_energy < 1e-2 * (Ekin_cold + thermal_energy) &&
+        //      thermal_energy > 1e-2 * Egrav) && mach_cold > 5) {
+        //
+        //   message("here! Thermal = %g, Ekinmax + thermal = %g, Ekin_cold = %g, Egrav = %g, mach_cold = %g, dens = %g, mass = %g, massflux = %g",
+        //     thermal_energy, p->timestepvars.Ekin + thermal_energy, Ekin_cold, Egrav, mach_cold, p->rho, p->conserved.mass, p->flux.mass);
+        //
+        //
+        //
+        //   fac = fac_dt;
+        // } // Not so sure this works... Egrav term still isnt enough. Plenty of cold unperturbed gas at centres
+
+
+        /* Physical constants
+         * Can't access properly but if we assume neutral minimum internal
+         * energy initialisation, this works to get m_h * (gamma-1) / kB
+         */
+        const double mp_gammaminusone_over_kb =
+          hydro_properties->minimal_temperature /
+            (hydro_properties->minimal_internal_energy *
+              hydro_properties->mu_neutral);
+
+
+
+        /* Gas properties */
+        const double T_transition = hydro_properties->hydrogen_ionization_temperature;
+        const double mu_neutral = hydro_properties->mu_neutral;
+        const double mu_ionised = hydro_properties->mu_ionised;
+
+        /* Particle temperature */
+        const double u = xp->u_full;
+
+        /* Temperature over mean molecular weight */
+        const double T_over_mu = u * mp_gammaminusone_over_kb;
+        double temperature;
+
+        /* Are we above or below the HII -> HI transition? */
+        if (T_over_mu > (T_transition + 1.) / mu_ionised) {
+          temperature = T_over_mu * mu_ionised;
+        }
+        else if (T_over_mu < (T_transition - 1.) / mu_neutral) {
+          temperature = T_over_mu * mu_neutral;
+        }
+        else {
+          temperature = T_transition;
+        }
+
+        // /* Donkey steering */
+        // if (((p->rho < 5) &&
+        //   (2500.f * soundspeed * soundspeed < fluid_v[0] * fluid_v[0] +
+        //                                       fluid_v[1] * fluid_v[1] +
+        //                                       fluid_v[2] * fluid_v[2])) ||
+        //   ((temperature > 10 * hydro_properties->hydrogen_ionization_temperature)
+        //     && (25.f * soundspeed * soundspeed < fluid_v[0] * fluid_v[0] +
+        //                                           fluid_v[1] * fluid_v[1] +
+        //                                           fluid_v[2] * fluid_v[2]))) {
+        //
+        //   // message("here! Thermal = %g, Ekinmax + thermal = %g, Ekin_cold = %g, Egrav = %g, mach_cold = %g, dens = %g, mass = %g, massflux = %g",
+        //   //   thermal_energy, p->timestepvars.Ekin + thermal_energy, Ekin_cold, Egrav, mach_cold, p->rho, p->conserved.mass, p->flux.mass);
+        //
+        //
+        //
+        //   fac = fac_dt;
+        //      }
+
+        // /* Donkey steering, no density criteria needed */
+        // if (((2500.f * soundspeed * soundspeed < fluid_v[0] * fluid_v[0] +
+        //                                       fluid_v[1] * fluid_v[1] +
+        //                                       fluid_v[2] * fluid_v[2])) ||
+        //   ((temperature > 10 * hydro_properties->hydrogen_ionization_temperature)
+        //     && (25.f * soundspeed * soundspeed < fluid_v[0] * fluid_v[0] +
+        //                                           fluid_v[1] * fluid_v[1] +
+        //                                           fluid_v[2] * fluid_v[2]))) {
+        //
+        //   fac = fac_dt;
+        //                                           }
+
+
+
+        // /* If mflux/m > 1e-2 (and low M) -> No Steering
+        //  * If mflux/m < 1e-2 (and high M) -> Steering
+        //  * Basically, little growth + high mach -> steer. The rest is fine */
+        // if ((( (p->flux.mass / p->conserved.mass) < 1e-3) && mach_cold > 50) ) {
+        //
+        //   // message("here! Thermal = %g, Ekin_cold = %g, Egrav = %g, mach_cold = %g, dens = %g, mass = %g, massflux = %g, potential E = %g",
+        //   //   thermal_energy, Ekin_cold, Egrav, mach_cold, p->rho, p->conserved.mass, p->flux.mass, p->gpart->potential * p->conserved.mass);
+        //
+        //   // if (thermal_energy > 1e-5 * (p->timestepvars.Ekin + thermal_energy)) {
+        //   //   message("Ekin_max = %g, p.mach = %g,", p->timestepvars.Ekin, p->timestepvars.mach_number);
+        //   // }
+        //
+        //   fac = fac_dt;
+        //
+        // } /* SEEMINGLY LOVES TO APPLY TO EXACT WRONG PARTICLES!, actually in tests it seems fine? IDK why it does that. In restarts from Mach50 it was good? Redo. Mach50 AND
+        // bad idea sadly SADLY THIS LEADS TO NaNs and CRASHES WITH EXPLODING SHELLS!*/
+
+
+
+
+
+
+        // /* Apply cold steering if needed */
+        // /* Demand cold and high mach, if very high mach always */
+        // if (((thermal_energy < 1e-3 * (p->timestepvars.Ekin + thermal_energy) ||
+        //           thermal_energy < 1e-3 * Egrav) &&
+        //           mach_cold < 8) || mach_cold > 50) {
+        //   // message("here! Thermal = %g, Ekin + thermal = %g, Egrav = %g, mach_cold = %g",
+        //   //   thermal_energy, p->timestepvars.Ekin + thermal_energy, Egrav, mach_cold);
+        //   fac = fac_dt;
+        //
+        //           }
+
+        // /* Gravitational Potential Based Steering:
+        //  * If negative Potential -> Assume collapsing, No steering
+        //  * If positive and cold (High M) -> Assume void and steer
+        //  * Unsure how this will work for non-cosmo runs whose
+        //  * potentials are always negative........... */
+        // if ((100.f * soundspeed * soundspeed < fluid_v[0] * fluid_v[0] +
+        //                                          fluid_v[1] * fluid_v[1] +
+        //                                          fluid_v[2] * fluid_v[2])
+        //                                          && p->gpart->potential > 0.f) {
+        //
+        //   fac = fac_dt;
+        // }
+
+
+
+
+
+        if (2500.f * soundspeed * soundspeed < fluid_v[0] * fluid_v[0] +
                                                  fluid_v[1] * fluid_v[1] +
                                                  fluid_v[2] * fluid_v[2]) {
           fac = fac_dt;
