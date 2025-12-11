@@ -110,12 +110,12 @@ runner_iact_nonsym_feedback_apply(
                                    ? 0.
                                    : 1. / si->feedback_data.enrichment_weight;
 
-  /* Mass received */
-  const double m_ej =
-      si->feedback_data.preSN.mass_ejected + si->feedback_data.mass_ejected;
+  /* Mass received by Stellar Winds */
+  double m_ej =
+      si->feedback_data.preSN.mass_ejected;
   const double weight = mj * wi * si_inv_weight;
-  const double dm = m_ej * weight;
-  const double new_mass = mj + dm;
+  double dm = m_ej * weight;
+  double new_mass = mj + dm;
 
   /* Distribute pre-SN */
   if (e_preSN != 0.0 && weight > 0.0) {
@@ -248,10 +248,16 @@ runner_iact_nonsym_feedback_apply(
 
   /* Distribute SN */
   if (e_sn != 0.0) {
+    
+    /* Mass received by SN */
+    m_ej = si->feedback_data.mass_ejected;
+    dm = m_ej * weight;
+    new_mass += dm;
+
     /* Energy received */
     const double du = (e_sn)*weight / new_mass;
 
-    xpj->feedback_data.delta_mass += dm;
+    
     xpj->feedback_data.delta_u += du;
 
     /* Compute momentum received. */
@@ -267,6 +273,11 @@ runner_iact_nonsym_feedback_apply(
 
     /* Set the indication of SN event for cooling*/
     xpj->feedback_data.hit_by_SN = 1;
+  }
+
+  if (xpj->feedback_data.hit_by_preSN || xpj->feedback_data.hit_by_SN) {
+    /* Update the mass of the gas particle */
+    xpj->feedback_data.delta_mass += new_mass - mj;
   }
 
   /* Impose maximal viscosity (only for SN) */
