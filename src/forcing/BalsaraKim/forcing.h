@@ -67,6 +67,9 @@ struct forcing_terms {
     /* keep track if the final injection has happened already */
     int final_injection;
 
+    /* amplification factor for the dedner field */
+    float dedner_amp;
+
 };
 
 /**
@@ -140,6 +143,9 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
 
           /* store injected energy */
           xp->forcing_data.forcing_injected_energy += (u_new - u_old) * p->mass;
+
+          /* increase dedner field */
+          xp->mhd_data.psi_over_ch_full *= terms->dedner_amp;
           break;
         
         case SET_CONST_U:
@@ -447,6 +453,10 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
 	      "BalsaraKimForcing:u_inj", 2.8263e15);
   double vel_inj = parser_get_opt_param_double(parameter_file,
         "BalsaraKimForcing:v_inj", 200) * 1.e5;
+
+  /* Read dedner handling */
+  terms->dedner_amp = parser_get_opt_param_float(parameter_file,
+         "BalsaraKimForcing:psi_amp_factor", 1.);
 
   /* convert everything to internal units */
   double parsec_ui = phys_const->const_parsec;
