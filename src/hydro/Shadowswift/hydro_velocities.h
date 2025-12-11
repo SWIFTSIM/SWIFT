@@ -174,50 +174,51 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
      * why not. The argument of face angles is allegedly more robust, it is
      * recommended that this feature remain enabled by default. */
 
-
-
     /* Angle Steering Parameters (AREPO Defaults) */
     const float max_angle = p->geometry.max_face_angle;
-    float beta = 2.25f;
-    float f_shaping_speed = 0.5f;
+    const float beta = 2.25f;
+    const float f_shaping_speed = 0.5f;
+    const float vchar_dt = d / dt; // Timestep based correction
     float vchar = soundspeed; // Determines cold steering aggresssiveness
-    float vchar_dt = d / dt; // Timestep based correction
-
-#ifdef SHADOWSWIFT_STEERING_COLD_FLOWS
-    /* Enables much more aggressive cold steering if the cell
-     * has high Mach (assumed cold) */
-    if (soundspeed <= 0.f) {
-      vchar = 0;
-    } else {
-      const float Mach_low = 5.f;
-      const float Mach_part = sqrtf(fluid_v[0] * fluid_v[0] +
-                                fluid_v[1] * fluid_v[1] +
-                                fluid_v[2] * fluid_v[2]) / soundspeed;
-      if (Mach_part > Mach_low) {
-        const float Mach_high = 15.f;
-        // Apply cold steering
-#ifdef SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT
-        /* Apply a smoother gradient to steering if between Mach low and high */
-        if (Mach_part < Mach_high) {
-          hydro_velocities_steering_gradient(&vchar, soundspeed, vchar_dt,
-            Mach_low, Mach_high, Mach_part);
-        } else {
-          /* Mach is higher than max, just set to max steering */
-          vchar = vchar_dt;
-        }
-#else
-        /* Default cold steering */
-          vchar = vchar_dt;
-#endif
-        }
-    }
-#endif
 
     /* Additionally impose that we use the timestep based steering if
      * it is less aggressive than soundspeed steering */
     if (vchar_dt < vchar) {
       vchar = vchar_dt;
-    }
+    } else {
+
+#ifdef SHADOWSWIFT_STEERING_COLD_FLOWS
+      /* Enables much more aggressive cold steering if the cell
+       * has high Mach (assumed cold) */
+      if (soundspeed <= 0.f) {
+        vchar = 0;
+      } else {
+        const float Mach_low = 5.f;
+        const float Mach_part = sqrtf(fluid_v[0] * fluid_v[0] +
+                                  fluid_v[1] * fluid_v[1] +
+                                  fluid_v[2] * fluid_v[2]) / soundspeed;
+        if (Mach_part > Mach_low) {
+          const float Mach_high = 15.f;
+          // Apply cold steering
+#ifdef SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT
+          /* Apply a smoother steering gradient if between Mach low and high */
+          if (Mach_part < Mach_high) {
+            hydro_velocities_steering_gradient(&vchar, soundspeed, vchar_dt,
+              Mach_low, Mach_high, Mach_part);
+          } else {
+            /* Mach is higher than max, just set to max steering */
+            vchar = vchar_dt;
+          }
+#else
+          /* Default cold steering */
+          vchar = vchar_dt;
+#endif
+        }
+      }
+#endif
+
+    } // End (vchar_dt < vchar)
+
 
     if (max_angle > 0.75 * beta) {
       /* Enter bottom two options of Weinberger 2020 Eq. 39
