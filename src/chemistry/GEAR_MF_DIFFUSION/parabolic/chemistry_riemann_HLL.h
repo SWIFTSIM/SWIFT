@@ -86,14 +86,12 @@ chemistry_riemann_solver_hopkins2017_HLL(
   const double lambda_plus = fabs(u_rel) + c_fast;
   const double lambda_minus = -lambda_plus;
 
-  /* Handle vacuum: vacuum does not require iteration and is always exact */
-  if (chemistry_riemann_is_vacuum(WL, WR, u_L, u_R, c_s_L, c_s_R)) {
-    *metal_flux = 0.0f;
-    return;
-  }
-
-  if (lambda_plus == 0.f && lambda_minus == 0.f) {
+  if (lambda_plus == 0.f && lambda_minus == 0.f || fabs(lambda_plus - lambda_minus) < GEAR_FVMP_DIFFUSION_WAVESPEED_ESTIMATE_DIFFERENCE_TOLERANCE) {
     *metal_flux = 0.f;
+    message(
+	    "[%lld, %lld] Lambda_plus (%e) and lambda_minus (%e) are very"
+	    " close! Setting the fluxes to 0 to precent excessively large fluxes",
+	    pi->id, pj->id, lambda_plus, lambda_minus);
     return;
   }
 

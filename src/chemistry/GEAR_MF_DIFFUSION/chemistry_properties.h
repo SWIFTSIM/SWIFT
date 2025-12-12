@@ -29,6 +29,10 @@
    overshoot for diffusion */
 #define GEAR_FVPM_DIFFUSION_CELL_LIMITER_SHOOT_TOLERANGE 0.2
 
+/* Tolerance for the Riemann solver wavespeed estimate to avoid large numbers
+   when the wavespeeds are close */
+#define GEAR_FVMP_DIFFUSION_WAVESPEED_ESTIMATE_DIFFERENCE_TOLERANCE 1e-8
+
 /* Enable the flux limiters. You can turn off the ones you don't want */
 #define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_EXTREMA_AWARE
 #define GEAR_FVPM_DIFFUSION_EXTREMA_AWARE_FLUX_LIMITER_SAFETY_FACTOR 0.1
