@@ -241,7 +241,92 @@ chemistry_riemann_solver_hopkins2017_HLL(
       fabs(F_dir) > epsilon * fabs(flux_hll)) {
     *metal_flux = 0.0;
   } else {
+#if !defined (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_EXTREMA_PRESERVING)
     *metal_flux = flux_hll;
+#else
+    /* Diffusion should not create new extrema. We (try to) ensure this with
+       the following flux limiter */
+    const struct chemistry_part_data *chi = &pi->chemistry_data;
+    const struct chemistry_part_data *chj = &pj->chemistry_data;
+
+    const float mindt =
+      (chj->flux_dt > 0.f) ? fminf(chi->flux_dt, chj->flux_dt) : chi->flux_dt;
+
+    /* Current metal mass reservoir */
+    const double mZi = chi->metal_mass[m];
+    const double mZj = chj->metal_mass[m];
+
+    /* Convert the flux to mass */
+    const double mZ_exchanged = flux_hll * Anorm * mindt;
+
+    /* Limits */
+    const double rhoZ_max = min(chi->limiter.rhoZ[m][1], chj->limiter.rhoZ[m][1]);
+    const double rhoZ_min = min(chi->limiter.rhoZ[m][0], chj->limiter.rhoZ[m][0]);
+
+    const float Vi = pi->geometry.volume;
+    const float Vj = pj->geometry.volume;
+    double Phi_1, Phi_2, Phi;
+
+    if (mZ_exchanged > 0.0) /* i loses mass to j */ {
+      /* In this case, we want rhoZi_final >= rhoZ_min.
+	 So, (mZi - Phi_1*mZ_exchanged)/Vi >= rhoZ_min
+	 <=>  mZi - rhoZ_min*Vi >= Phi_1*mZ_exchanged
+	 <=> Phi_1 <= (mZi - rhoZ_min*Vi)/mZ_exchanged.
+
+	 But we also need rhoZj_final <= rhoZ_max.
+	 So,  (mZj + Phi_2*mZ_exchanged)/Vj <= rhoZ_max
+	 <=>  Phi_2*mZ_exchanged <= rhoZ_max*Vj - mZj
+	 <=>  Phi_2 <= (rhoZ_max*Vj - mZj)/mZ_exchanged
+
+	 Finally, we take Phi = min(Phi_1, Phi_2)
+
+	 Note that we multiply the final inequations by a safety factor \in (0,
+	 1] to take into account that there are other neighbours to process.
+      */
+      Phi_1 = (mZi - rhoZ_min * Vi) / mZ_exchanged;
+      Phi_2 = (rhoZ_max * Vj - mZj) / mZ_exchanged;
+    } else /* j loses mass i */ {
+      /* In this case, we want rhoZj_final >= rhoZ_min.
+	 So, (mZj - Phi_1*mZ_exchanged)/Vj >= rhoZ_min
+	 <=>  mZj - rhoZ_min*Vj >= Phi_1*mZ_exchanged
+	 <=> Phi_1 <= (mZj - rhoZ_min*Vj)/mZ_exchanged.
+
+	 But we also need rhoZi_final <= rhoZ_max.
+	 So,  (mZi + Phi_2*mZ_exchanged)/Vi <= rhoZ_max
+	 <=>  Phi_2*mZ_exchanged <= rhoZ_max*Vi - mZi
+	 <=>  Phi_2 <= (rhoZ_max*Vi - mZi)/mZ_exchanged
+
+	 Finally, we take Phi = min(Phi_1, Phi_2)
+
+	 Note that we multiply the final inequations by a safety factor \in (0,
+	 1] to take into account that there are other neighbours to process.
+      */
+      Phi_1 = (mZj - rhoZ_min * Vj) / fabs(mZ_exchanged);
+      Phi_2 = (rhoZ_max * Vi - mZi) / fabs(mZ_exchanged);
+    }
+    Phi = min(Phi_1, Phi_2);
+    Phi = min(1.0, GEAR_FVPM_DIFFUSION_EXTREMA_PRESERVING_FLUX_LIMITER_SAFETY_FACTOR*Phi);
+
+    /* Now rescale the flux */
+    *metal_flux = Phi * flux_hll;
+
+    if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_OUTPUT_VERBOSITY == 1 && Phi < 1.0) {
+      const float rho_i = hydro_get_comoving_density(pi);
+      const float rho_j = hydro_get_comoving_density(pj);
+      message(
+	  "[%lld, %lld] UL = %e, UR = %e, mZL = %e, mZR = %e, mZi = %e, mZj = "
+	  "%e"
+	  " | rho_i = %e, rho_j = %e, Vi = %e, Vj = %e | alpha = %e, F_L = %e, "
+	  " F_R = %e, F_2 = %e, F_U = %e | flux_hll = %e,"
+	  " F_dir = %e | Phi = %e, Phi_1 = %e, Phi_2 = %e | metal_mass_final = "
+	  "%e",
+	  pi->id, pj->id, UL, UR, UL * Vi, UR * Vj, mZi, mZj, rho_i, rho_j, Vi,
+	  Vj, alpha, Flux_L * Anorm * mindt, Flux_R * Anorm * mindt,
+	  F_2 * Anorm * mindt, F_U * Anorm * mindt, flux_hll * Anorm * mindt,
+	  F_dir * Anorm * mindt, Phi, Phi_1, Phi_2,
+	  Phi * flux_hll * Anorm * mindt);
+    }
+#endif /* GEAR_FVPM_DIFFUSION_FLUX_LIMITER_EXTREMA_PRESERVING */
   }
 }
 
