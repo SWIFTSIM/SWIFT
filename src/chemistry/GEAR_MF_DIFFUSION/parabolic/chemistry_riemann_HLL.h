@@ -251,6 +251,13 @@ chemistry_riemann_solver_hopkins2017_HLL(
 #if !defined(GEAR_FVPM_DIFFUSION_FLUX_LIMITER_EXTREMA_AWARE)
     *metal_flux = flux_hll;
 #else
+
+    /* In this case, there is nothing to limit */
+    if (flux_hll == 0.0) {
+      *metal_flux = flux_hll;
+      return;
+    }
+
     /* Diffusion should not create new extrema. We (try to) ensure this with
        the following flux limiter */
     const struct chemistry_part_data *chi = &pi->chemistry_data;
