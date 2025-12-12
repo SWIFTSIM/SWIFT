@@ -346,6 +346,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
 
   /* eta OWAR averaging */
   p->mhd_data.eta_OWAR_avrg += p->mhd_data.eta_OWAR * p->mass / p->rho * kernel_root;
+  p->mhd_data.eta_OWAR_avrg *= pow_dimension(1.f / (p->h));
 
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
