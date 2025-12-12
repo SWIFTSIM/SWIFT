@@ -74,7 +74,7 @@ __attribute__((always_inline)) INLINE static void
 chemistry_limit_metal_mass_flux(const struct part *restrict pi,
                                 const struct part *restrict pj, const int metal,
                                 double fluxes[4], const float dt) {
-
+#ifdef GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGGRESSIVE_RESCALING
   const struct chemistry_part_data *chi = &pi->chemistry_data;
   const struct chemistry_part_data *chj = &pj->chemistry_data;
 
@@ -83,24 +83,33 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
 
   /* Use the updated metal masses to ensure that the final result won't be
    * negative */
-  const double m_Z_i = chi->metal_mass[metal] + chi->metal_mass_riemann[metal];
-  const double m_Z_j = chj->metal_mass[metal] + chj->metal_mass_riemann[metal];
+  const double mZi = chi->metal_mass[metal] + chi->metal_mass_riemann[metal];
+  const double mZj = chj->metal_mass[metal] + chj->metal_mass_riemann[metal];
 
   /* This one seemed to work for a certain time */
-  const double upwind_mass = (metal_mass_interface > 0.0) ? m_Z_i : m_Z_j;
+  const double upwind_mass = (metal_mass_interface > 0.0) ? mZi : mZj;
 
-  /* Choose upwind mass to determine a stability bound on the maximum allowed
-     mass exchange, (we do this to prevent negative masses under all
-     circumstances) */
-  const double max_mass = 0.9 * upwind_mass;
+  /* Choose upwind mass to determine a stability bound on the maximum allowed */
+  /* mass exchange, (we do this to prevent negative masses under all */
+  /* circumstances) */
+  const double max_mass = 0.9 * fabs(upwind_mass);
   if (fabs(metal_mass_interface) > 0.0 &&
       fabs(metal_mass_interface) > max_mass) {
     const double factor = max_mass / fabs(metal_mass_interface);
+    const double flux_init = fluxes[0];
     fluxes[0] *= factor;
     fluxes[1] *= factor;
     fluxes[2] *= factor;
     fluxes[3] *= factor;
+    if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY > 1) {
+      message(
+	  "[%lld, %lld] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
+	  " mZi_r = %e, mZj_r = %e, upwind_mass = %e, mZi = %e, mZj = %e",
+	  pi->id, pj->id, flux_init, fluxes[0], factor, mZi, mZj,
+	  upwind_mass, chi->metal_mass[metal], chj->metal_mass[metal]);
+    }
   }
+#endif /* GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGGRESSIVE */
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_FLUX_H  */

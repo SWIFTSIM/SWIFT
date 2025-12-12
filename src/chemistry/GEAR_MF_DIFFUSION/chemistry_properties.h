@@ -25,6 +25,14 @@
 #define GIZMO_SLOPE_LIMITER_BETA_MIN 1.0
 #define GIZMO_SLOPE_LIMITER_BETA_MAX 2.0
 
+/* Enable the flux limiters. You can turn off the ones you don't want */
+#define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_EXTREMA_PRESERVING
+#define GEAR_FVPM_DIFFUSION_EXTREMA_PRESERVING_FLUX_LIMITER_SAFETY_FACTOR 0.1
+#define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGRESSIVE_RESCALING
+
+/* Verbosity for the flux limiters */
+#define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_OUTPUT_VERBOSITY 0
+
 /**
  * @brief The diffusion mode
  */
