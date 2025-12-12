@@ -20,6 +20,7 @@
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_FLUX_H
 
 #include "chemistry_getters.h"
+#include "chemistry_properties.h"
 
 /* Import the right file */
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
@@ -74,7 +75,7 @@ __attribute__((always_inline)) INLINE static void
 chemistry_limit_metal_mass_flux(const struct part *restrict pi,
                                 const struct part *restrict pj, const int metal,
                                 double fluxes[4], const float dt) {
-#ifdef GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGGRESSIVE_RESCALING
+#if defined(GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGRESSIVE_RESCALING)
   const struct chemistry_part_data *chi = &pi->chemistry_data;
   const struct chemistry_part_data *chj = &pj->chemistry_data;
 
@@ -109,7 +110,7 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
           chi->metal_mass[metal], chj->metal_mass[metal]);
     }
   }
-#endif /* GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGGRESSIVE */
+#endif /* GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGGRESSIVE_RESCALING */
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_FLUX_H  */

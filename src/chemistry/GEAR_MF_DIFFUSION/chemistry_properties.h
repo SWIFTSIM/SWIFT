@@ -41,7 +41,7 @@
 #define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGRESSIVE_RESCALING
 
 /* Verbosity for the flux limiters */
-#define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_OUTPUT_VERBOSITY 0
+#define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY 0
 
 /**
  * @brief The diffusion mode
