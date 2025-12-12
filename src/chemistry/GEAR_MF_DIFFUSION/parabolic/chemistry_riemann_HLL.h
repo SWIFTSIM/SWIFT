@@ -321,7 +321,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
     /* Now rescale the flux */
     *metal_flux = Phi * flux_hll;
 
-    if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_OUTPUT_VERBOSITY == 1 && Phi < 1.0) {
+    if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY == 1 && Phi < 1.0) {
       const float rho_i = hydro_get_comoving_density(pi);
       const float rho_j = hydro_get_comoving_density(pj);
       message(
