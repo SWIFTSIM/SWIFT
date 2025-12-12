@@ -88,48 +88,6 @@ chemistry_riemann_compute_K_star(const struct part *restrict pi,
 }
 
 /**
- * @brief Limit the diffusion matrix at the interface to avoid excessively
- * large diffusion coefficients.
- *
- * @param pi Particle i.
- * @param pj Particle j.
- * @param Anorm Surface area of the interface (in physical units).
- * @param cosmo The current cosmological model.
- * @param (return) K_star The norm of the diffusion matrix at the interface
- * (in physical units).
- * @param (return) K_star The diffusion matrix at the interface (in physical
- * units).
- */
-__attribute__((always_inline)) INLINE static void
-chemistry_riemann_prevent_large_K_star(const struct part *restrict pi,
-                                       const struct part *restrict pj,
-                                       const float Anorm,
-                                       const struct cosmology *cosmo,
-                                       double *norm_K_star,
-                                       double K_star[3][3]) {
-
-  /* Prevent exessively large diffusion coefficients. This is taken from Gizmo.
-   */
-  const float min_dt =
-      (pj->chemistry_data.flux_dt > 0.f)
-          ? fminf(pi->chemistry_data.flux_dt, pj->chemistry_data.flux_dt)
-          : pi->chemistry_data.flux_dt;
-  const double min_mass = min(hydro_get_mass(pi), hydro_get_mass(pj));
-  const double min_h = min(pi->h, pj->h) * cosmo->a * kernel_gamma;
-
-  double mass_flux = Anorm * *norm_K_star / min_h * min_dt / min_mass;
-  if (mass_flux > 0.25) {
-    /* warning("Mass_flux > 0.25, reducing the diffusion coefficient"); */
-    for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 3; ++j) {
-        K_star[i][j] *= 0.25 / mass_flux;
-      }
-    }
-  }
-  *norm_K_star *= 0.25 / mass_flux;
-}
-
-/**
  * @brief Compute the artificial diffusivity \alpha from eqn (7-11) in Hopkins
  * 2017. While solving the Rieman problem with HLL/GLF, we do not use \alpha=1
  * because the effective numerical diffusivity can exceed the physical

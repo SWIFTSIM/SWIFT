@@ -109,11 +109,6 @@ chemistry_riemann_solver_hopkins2017_HLL(
     return;
   }
 
-  /* Prevent exessively large diffusion coefficients (same as
-     Gizmo). Uncomment this line if you want to use it. */
-  /* chemistry_riemann_prevent_large_K_star(pi, pj, Anorm, cosmo, &norm_K_star,
-   * K_star); */
-
   /* Get U_star. Already in physical units. */
   const double U_star = 0.5 * (UR + UL);
 
