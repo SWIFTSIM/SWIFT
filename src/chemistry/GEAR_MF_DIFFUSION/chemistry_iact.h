@@ -378,8 +378,8 @@ runner_iact_chemistry_fluxes_common(
    * happens. We curently just ignore this case and display a message. */
   const float rdim = pow_dimension(r);
   if (dA_dot_dx > 1.e-6f * rdim) {
-    error("Ill conditioned gradient matrix (%g %g %g %g %g)!", dA_dot_dx,
-            Anorm, Vi, Vj, r);
+    error("Ill conditioned gradient matrix (%g %g %g %g %g)!", dA_dot_dx, Anorm,
+          Vi, Vj, r);
   }
 #endif
 
@@ -454,7 +454,7 @@ runner_iact_chemistry_fluxes_common(
   /* Now solve the Riemann problem for each metal specie */
   /* Helper variable */
   const float a2 = cosmo->a * cosmo->a;
-  const float Anorm_p = a2*Anorm;
+  const float Anorm_p = a2 * Anorm;
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
 
     /* Predict the diffusion state at the interface to compute fluxes */

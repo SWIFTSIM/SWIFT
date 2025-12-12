@@ -79,7 +79,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* Cell limit the gradients now */
   const double alpha_i = chemistry_slope_limit_quantity(
-      /*gradient=*/ grad_rhoZ_i,
+      /*gradient=*/grad_rhoZ_i,
       /*maxr=    */ chi->limiter.maxr,
       /*value=   */ chemistry_get_comoving_metal_density(pi, metal),
       /*valmin=  */ chi->limiter.rhoZ[metal][0],
@@ -88,7 +88,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
       /*pos_preserve*/ 1,
       /*shoot_tol*/ GEAR_FVPM_DIFFUSION_CELL_LIMITER_SHOOT_TOLERANGE);
   const double alpha_j = chemistry_slope_limit_quantity(
-      /*gradient=*/ grad_rhoZ_j,
+      /*gradient=*/grad_rhoZ_j,
       /*maxr=    */ chj->limiter.maxr,
       /*value=   */ chemistry_get_comoving_metal_density(pj, metal),
       /*valmin=  */ chj->limiter.rhoZ[metal][0],

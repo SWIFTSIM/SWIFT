@@ -75,14 +75,13 @@ __attribute__((always_inline)) INLINE static void fvpm_geometry_init(
   fvpm_reset_centroids(p);
 }
 
-
 /**
  * @brief Sets the geometry fields to sensible values when #part has 0 ngbs.
  *
  * @param p the particle to work on
  */
-__attribute__((always_inline)) INLINE static void fvpm_geometry_part_has_no_neighbours(
-    struct part *restrict p) {
+__attribute__((always_inline)) INLINE static void
+fvpm_geometry_part_has_no_neighbours(struct part *restrict p) {
 
   /* Re-set problematic values */
   p->geometry.volume = 1.0f;
@@ -171,7 +170,8 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
 #endif
 #ifdef GIZMO_PATHOLOGICAL_WARNING
     message("Condition number too large: %g (> %g, p->id: %llu)!",
-            p->geometry.condition_number, const_gizmo_max_condition_number, p->id);
+            p->geometry.condition_number, const_gizmo_max_condition_number,
+            p->id);
 #endif
     /* add a correction to the number of neighbours for this particle */
     p->geometry.wcorr = const_gizmo_w_correction_factor * p->geometry.wcorr;

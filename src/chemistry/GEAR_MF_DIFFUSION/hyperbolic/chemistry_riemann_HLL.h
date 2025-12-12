@@ -51,7 +51,8 @@
  * @param m Index of metal specie to update.
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The #cosmology.
- * @param fluxes (return) The resulting flux at the interface (in physical units).
+ * @param fluxes (return) The resulting flux at the interface (in physical
+ * units).
  */
 __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
     const float dx[3], const struct part *restrict pi,
@@ -70,10 +71,10 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   const double uR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
 
   const double c_diff_L =
-  chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo);
+      chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo);
   const double c_diff_R =
       chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo);
-  const double lambda_plus = max(uL + c_diff_L, uR + c_diff_R); /* S_R */
+  const double lambda_plus = max(uL + c_diff_L, uR + c_diff_R);  /* S_R */
   const double lambda_minus = max(uL - c_diff_L, uR - c_diff_R); /* S_L */
 
   if (lambda_plus == 0.0 && lambda_minus == 0.0) {
@@ -90,23 +91,23 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /* Project the fluxes to reduce to a 1D Problem with 4 quantities */
   double fluxL[4];
   fluxL[0] = hyperFluxL[0][0] * n_unit[0] + hyperFluxL[0][1] * n_unit[1] +
-	     hyperFluxL[0][2] * n_unit[2];
+             hyperFluxL[0][2] * n_unit[2];
   fluxL[1] = hyperFluxL[1][0] * n_unit[0] + hyperFluxL[1][1] * n_unit[1] +
-	     hyperFluxL[1][2] * n_unit[2];
+             hyperFluxL[1][2] * n_unit[2];
   fluxL[2] = hyperFluxL[2][0] * n_unit[0] + hyperFluxL[2][1] * n_unit[1] +
-	     hyperFluxL[2][2] * n_unit[2];
+             hyperFluxL[2][2] * n_unit[2];
   fluxL[3] = hyperFluxL[3][0] * n_unit[0] + hyperFluxL[3][1] * n_unit[1] +
-	     hyperFluxL[3][2] * n_unit[2];
+             hyperFluxL[3][2] * n_unit[2];
 
   double fluxR[4];
   fluxR[0] = hyperFluxR[0][0] * n_unit[0] + hyperFluxR[0][1] * n_unit[1] +
-	     hyperFluxR[0][2] * n_unit[2];
+             hyperFluxR[0][2] * n_unit[2];
   fluxR[1] = hyperFluxR[1][0] * n_unit[0] + hyperFluxR[1][1] * n_unit[1] +
-	     hyperFluxR[1][2] * n_unit[2];
+             hyperFluxR[1][2] * n_unit[2];
   fluxR[2] = hyperFluxR[2][0] * n_unit[0] + hyperFluxR[2][1] * n_unit[1] +
-	     hyperFluxR[2][2] * n_unit[2];
+             hyperFluxR[2][2] * n_unit[2];
   fluxR[3] = hyperFluxR[3][0] * n_unit[0] + hyperFluxR[3][1] * n_unit[1] +
-	     hyperFluxR[3][2] * n_unit[2];
+             hyperFluxR[3][2] * n_unit[2];
 
   /***************************************************************************/
   /* Now solve the Riemann problem */
@@ -122,14 +123,18 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
     const double one_over_dl = 1.f / (lambda_plus - lambda_minus);
     const double lprod = lambda_plus * lambda_minus;
     const double fluxes_HLL[4] = {
-	(lambda_plus * fluxL[0] - lambda_minus * fluxR[0] +
-	 lprod * (UR[0] - UL[0])) * one_over_dl,
-	(lambda_plus * fluxL[1] - lambda_minus * fluxR[1] +
-	 lprod * (UR[1] - UL[1])) * one_over_dl,
-	(lambda_plus * fluxL[2] - lambda_minus * fluxR[2] +
-	 lprod * (UR[2] - UL[2])) * one_over_dl,
-	(lambda_plus * fluxL[3] - lambda_minus * fluxR[3] +
-	 lprod * (UR[3] - UL[3])) * one_over_dl};
+        (lambda_plus * fluxL[0] - lambda_minus * fluxR[0] +
+         lprod * (UR[0] - UL[0])) *
+            one_over_dl,
+        (lambda_plus * fluxL[1] - lambda_minus * fluxR[1] +
+         lprod * (UR[1] - UL[1])) *
+            one_over_dl,
+        (lambda_plus * fluxL[2] - lambda_minus * fluxR[2] +
+         lprod * (UR[2] - UL[2])) *
+            one_over_dl,
+        (lambda_plus * fluxL[3] - lambda_minus * fluxR[3] +
+         lprod * (UR[3] - UL[3])) *
+            one_over_dl};
 
     /* The pure hyperbolic HLL flux is unstable when tau -> 0, i.e. in the
        parabolic diffusion regime. To make the solution stable, we use the
@@ -145,8 +150,8 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
     chemistry_get_physical_parabolic_flux(pj, m, F_par_R, chem_data, cosmo);
     double metal_flux_parabolic = 0.0;
     chemistry_riemann_solver_hopkins2017_HLL(
-	dx, pi, pj, UL[0], UR[0], WL, WR, F_par_L, F_par_R, Anorm, n_unit, m,
-	chem_data, cosmo, &metal_flux_parabolic);
+        dx, pi, pj, UL[0], UR[0], WL, WR, F_par_L, F_par_R, Anorm, n_unit, m,
+        chem_data, cosmo, &metal_flux_parabolic);
 
     /* Now blend the fluxes, similarly to Berthon et al (2007)
        (https://link.springer.com/10.1007/s10915-006-9108-6).
@@ -157,6 +162,19 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
     fluxes[1] = alpha * fluxes_HLL[1];
     fluxes[2] = alpha * fluxes_HLL[2];
     fluxes[3] = alpha * fluxes_HLL[3];
+
+    /* fluxes[0] = fluxes_HLL[0]; */
+    /* fluxes[1] = fluxes_HLL[1]; */
+    /* fluxes[2] = fluxes_HLL[2]; */
+    /* fluxes[3] = fluxes_HLL[3];     */
+
+    /* message( */
+    /*     "lambda_minus = %e, lambda_plus = %e, alpha = %e, flux_HLL = (%e %e
+     * %e %e)" */
+    /*     " fluxes_par = (%e), final_fluxes = (%e %e %e %e)", lambda_minus, */
+    /*     lambda_plus, alpha, fluxes_HLL[0], fluxes_HLL[1], fluxes_HLL[2], */
+    /*     fluxes_HLL[3], metal_flux_parabolic, fluxes[0], fluxes[1], fluxes[2],
+     * fluxes[3]); */
 
   } else if (lambda_plus < 0.0) {
     for (int i = 0; i < 4; i++) {

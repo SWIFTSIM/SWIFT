@@ -21,7 +21,8 @@
 
 #define GEAR_LABELS_SIZE 10  // redumndant with the one defined in
 
-/* Cell slope limiter beta factors. The default values come from Hopkins (2015) */
+/* Cell slope limiter beta factors. The default values come from Hopkins (2015)
+ */
 #define GIZMO_SLOPE_LIMITER_BETA_MIN 1.0
 #define GIZMO_SLOPE_LIMITER_BETA_MAX 2.0
 

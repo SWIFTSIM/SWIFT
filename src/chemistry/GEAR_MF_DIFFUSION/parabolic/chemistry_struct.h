@@ -60,7 +60,8 @@ struct chemistry_part_data {
 
   /* Gradients. */
   struct {
-    /*! Metal mass fraction gradient. It is used to compute the diffusion flux. */
+    /*! Metal mass fraction gradient. It is used to compute the diffusion flux.
+     */
     double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
 
     /*! Metal density gradient. */

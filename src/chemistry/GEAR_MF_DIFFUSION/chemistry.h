@@ -394,9 +394,12 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   /*****************************************/
   /* Finish computations on the filtered quantities */
   /* Multiply by the smoothing factor */
-  p->chemistry_data.filtered.rho_v[0] *= GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
-  p->chemistry_data.filtered.rho_v[1] *= GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
-  p->chemistry_data.filtered.rho_v[2] *= GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
+  p->chemistry_data.filtered.rho_v[0] *=
+      GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
+  p->chemistry_data.filtered.rho_v[1] *=
+      GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
+  p->chemistry_data.filtered.rho_v[2] *=
+      GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
 
   /* Add self term (is it needed for rho? the formula does not include it) */
   /* p->chemistry_data.filtered.rho += hydro_get_mass(p) * kernel_root; */
@@ -507,8 +510,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 #endif
 
     chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
-				     hydro_get_mass(p), /*callloc=*/2,
-				     /*element*/ i, p->id);
+                                     hydro_get_mass(p), /*callloc=*/2,
+                                     /*element*/ i, p->id);
   }
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
@@ -537,8 +540,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   /* Kick the source term for half-timestep (for active and inactive part) */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data,
-					      cosmo);
-  /* Element-wise sanity checks */
+                                              cosmo);
+    /* Element-wise sanity checks */
     chemistry_check_unphysical_diffusion_flux(chd->flux[i]);
   }
 #endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
@@ -896,14 +899,15 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   /* Update diffusion coefficient */
   chd->kappa = chemistry_get_diffusion_coefficient(p, chem_data, cosmo);
 
-/* #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION) */
+  /* #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION) */
   /* Not sure but maybe we can still predict here. SPHENIX does that for
      internal energy: it kicks it in kick_extra() and predicts in
      predict_extra() */
-    /* Predict the flux */
-    /* chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data, cosmo); */
+  /* Predict the flux */
+  /* chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data,
+   * cosmo); */
   /* } */
-/* #endif /\* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION *\/ */
+  /* #endif /\* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION *\/ */
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */

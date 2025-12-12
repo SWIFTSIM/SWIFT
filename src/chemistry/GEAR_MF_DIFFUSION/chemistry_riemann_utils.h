@@ -146,7 +146,7 @@ chemistry_riemann_compute_alpha(const double c_s_L, const double c_s_R,
 
   const double norm_grad_q_star =
       sqrt(grad_q_star[0] * grad_q_star[0] + grad_q_star[1] * grad_q_star[1] +
-            grad_q_star[2] * grad_q_star[2]);
+           grad_q_star[2] * grad_q_star[2]);
   double norm_term =
       norm_K_star_times_grad_q_star / (norm_K_star * norm_grad_q_star);
 
@@ -211,7 +211,7 @@ chemistry_riemann_compute_hyperbolic_blending_factor(
   double K_star[3][3];
   chemistry_riemann_compute_K_star(pi, pj, chem_data, cosmo, K_star);
   const double norm_K_star = chemistry_get_matrix_norm(K_star);
-  const double norm_D_star = norm_K_star*q_star/U_star;
+  const double norm_D_star = norm_K_star * q_star / U_star;
   const double delta_x = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const double tau_numerical = delta_x * delta_x / norm_D_star;
 
@@ -235,7 +235,7 @@ chemistry_riemann_compute_hyperbolic_blending_factor(
   if (alpha > 1.0) {
     alpha = 1.0;
   }
-  if(alpha < 0.0) {
+  if (alpha < 0.0) {
     alpha = 0.0;
   }
 

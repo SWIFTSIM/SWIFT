@@ -21,10 +21,10 @@
 
 #include "chemistry_getters.h"
 #include "chemistry_gradients_extrapolate.h"
+#include "chemistry_properties.h"
 #include "chemistry_setters.h"
 #include "chemistry_slope_limiters_cell.h"
 #include "chemistry_slope_limiters_face.h"
-#include "chemistry_properties.h"
 #include "chemistry_unphysical.h"
 #include "kernel_hydro.h"
 
@@ -247,8 +247,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   dvz_tilde_i[1] = dv_tilde[2] * psii_tilde[1];
   dvz_tilde_i[2] = dv_tilde[2] * psii_tilde[2];
 
-  chemistry_part_update_hydro_gradients(pi, dvx_i, dvy_i, dvz_i,
-                                        dvx_tilde_i, dvy_tilde_i, dvz_tilde_i);
+  chemistry_part_update_hydro_gradients(pi, dvx_i, dvy_i, dvz_i, dvx_tilde_i,
+                                        dvy_tilde_i, dvz_tilde_i);
 
   /* Compute velocity gradients for pj */
   float dvx_j[3], dvy_j[3], dvz_j[3], dvx_tilde_j[3], dvy_tilde_j[3],
@@ -274,8 +274,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   dvz_tilde_j[1] = dv_tilde[2] * psij_tilde[1];
   dvz_tilde_j[2] = dv_tilde[2] * psij_tilde[2];
 
-  chemistry_part_update_hydro_gradients(pj, dvx_j, dvy_j, dvz_j,
-                                        dvx_tilde_j, dvy_tilde_j, dvz_tilde_j);
+  chemistry_part_update_hydro_gradients(pj, dvx_j, dvy_j, dvz_j, dvx_tilde_j,
+                                        dvy_tilde_j, dvz_tilde_j);
 
   /*****************************************/
   /* Collect the cell's min and max for the slope limiter. */
@@ -558,7 +558,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
 
   /* Cell limit the gradients now */
   const double alpha_i = chemistry_slope_limit_quantity(
-      /*gradient=*/ grad_Z_i,
+      /*gradient=*/grad_Z_i,
       /*maxr=    */ chi->limiter.maxr,
       /*value=   */ chemistry_get_metal_mass_fraction(pi, metal),
       /*valmin=  */ chi->limiter.Z[metal][0],
@@ -567,7 +567,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
       /*pos_preserve*/ 1,
       /*shoot_tol*/ GEAR_FVPM_DIFFUSION_CELL_LIMITER_SHOOT_TOLERANGE);
   const double alpha_j = chemistry_slope_limit_quantity(
-      /*gradient=*/ grad_Z_j,
+      /*gradient=*/grad_Z_j,
       /*maxr=    */ chj->limiter.maxr,
       /*value=   */ chemistry_get_metal_mass_fraction(pj, metal),
       /*valmin=  */ chj->limiter.Z[metal][0],
@@ -592,7 +592,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
   double dZj = chemistry_gradients_extrapolate_double(grad_Z_j, xij_j);
 
   /* Apply the slope limiter at this interface */
-#if defined (CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   chemistry_slope_limit_face_scalar(Zi, Zj, &dZi, &dZj, xij_i, xij_j, r);
 #else
   chemistry_slope_limit_face(Zi, Zj, &dZi, &dZj, xij_i, xij_j, r);

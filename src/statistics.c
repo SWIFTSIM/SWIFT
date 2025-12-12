@@ -108,9 +108,9 @@ void stats_add(struct statistics *a, const struct statistics *b) {
 
 #if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_MF_DIFFUSION) || \
     defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-      for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
-	a->gas_metal_mass[l] += b->gas_metal_mass[l];
-      }
+  for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
+    a->gas_metal_mass[l] += b->gas_metal_mass[l];
+  }
 #endif /* GEAR Chemistry modules */
 }
 
@@ -890,10 +890,13 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
   /* Print the dynamic species indices */
   for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
     int index = num_fields + l;
-    fprintf(file, "# (%d) Total mass of metal species with index %d in the gas phase. \n",
-	    index, l);
+    fprintf(
+        file,
+        "# (%d) Total mass of metal species with index %d in the gas phase. \n",
+        index, l);
     fprintf(file, "#       Unit = %e gram\n", us->UnitMass_in_cgs);
-    fprintf(file, "#       Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+    fprintf(file, "#       Unit = %e Msun\n",
+            1. / phys_const->const_solar_mass);
   }
   fprintf(file, "#\n"); /* Add final newline */
 #endif
@@ -913,15 +916,14 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
     defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Print the dynamic species indices */
   for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
-      int index = num_fields + l;
-      char index_str[15];
-      // Create the string representation, e.g., "(40)"
-      snprintf(index_str, 15, "(%d)", index);
-      fprintf(file, " %14s", index_str);
+    int index = num_fields + l;
+    char index_str[15];
+    // Create the string representation, e.g., "(40)"
+    snprintf(index_str, 15, "(%d)", index);
+    fprintf(file, " %14s", index_str);
   }
-  fprintf(file, " \n");  /* Add final newline */
+  fprintf(file, " \n"); /* Add final newline */
 #endif
-
 
   fprintf(
       file,
@@ -941,10 +943,10 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
     defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Print the dynamic species names (just the index) */
   for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
-      char name_str[15];
-      /* Create the string representation, e.g., "Z_Idx_0" */
-      snprintf(name_str, 15, "Z_Idx_%d", l);
-      fprintf(file, " %14s", name_str);
+    char name_str[15];
+    /* Create the string representation, e.g., "Z_Idx_0" */
+    snprintf(name_str, 15, "Z_Idx_%d", l);
+    fprintf(file, " %14s", name_str);
   }
   fprintf(file, " \n"); /* Add final newline */
 #endif
@@ -991,7 +993,7 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
     defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Loop and print the dynamic species masses (40) onwards */
   for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
-      fprintf(file, " %14e", stats->gas_metal_mass[l]);
+    fprintf(file, " %14e", stats->gas_metal_mass[l]);
   }
   fprintf(file, "\n"); /* Add the final newline */
 #endif

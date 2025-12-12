@@ -94,10 +94,10 @@ chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
     chi->limiter.Z[m][1] = min(1.0, chi->limiter.Z[m][1]);
 
     /* Collect the comoving metal density */
-    chi->limiter.rhoZ[m][0] =
-        min(chemistry_get_comoving_metal_density(pj, m), chi->limiter.rhoZ[m][0]);
-    chi->limiter.rhoZ[m][1] =
-        max(chemistry_get_comoving_metal_density(pj, m), chi->limiter.rhoZ[m][1]);
+    chi->limiter.rhoZ[m][0] = min(chemistry_get_comoving_metal_density(pj, m),
+                                  chi->limiter.rhoZ[m][0]);
+    chi->limiter.rhoZ[m][1] = max(chemistry_get_comoving_metal_density(pj, m),
+                                  chi->limiter.rhoZ[m][1]);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     for (int i = 0; i < 3; i++) {
@@ -248,10 +248,11 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     for (int i = 0; i < 3; i++) {
       const double alpha_flux = chemistry_slope_limit_quantity(
-	  chd->gradients.flux[m][i], maxr, chd->flux[m][i],
-	  chd->limiter.flux[m][i][0], chd->limiter.flux[m][i][1], N_cond, 0,
-	  0.0);
-      chemistry_slope_limit_quantity_apply(chd->gradients.flux[m][i], alpha_flux);
+          chd->gradients.flux[m][i], maxr, chd->flux[m][i],
+          chd->limiter.flux[m][i][0], chd->limiter.flux[m][i][1], N_cond, 0,
+          0.0);
+      chemistry_slope_limit_quantity_apply(chd->gradients.flux[m][i],
+                                           alpha_flux);
     }
   }
 #endif

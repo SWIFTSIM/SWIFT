@@ -494,7 +494,7 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_TIME] = -1.f;
       break;
 
-  case UNIT_CONV_MASS_DIFFUSIVITY:
+    case UNIT_CONV_MASS_DIFFUSIVITY:
       baseUnitsExp[UNIT_MASS] = 1.f;
       baseUnitsExp[UNIT_LENGTH] = -1.f;
       baseUnitsExp[UNIT_TIME] = -1.f;

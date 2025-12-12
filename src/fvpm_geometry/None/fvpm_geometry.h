@@ -76,8 +76,8 @@ __attribute__((always_inline)) INLINE static void fvpm_geometry_init(
  *
  * @param p the particle to work on
  */
-__attribute__((always_inline)) INLINE static void fvpm_geometry_part_has_no_neighbours(
-    struct part *restrict p) {}
+__attribute__((always_inline)) INLINE static void
+fvpm_geometry_part_has_no_neighbours(struct part *restrict p) {}
 
 /**
  * @brief Finish the computation of the matrix.

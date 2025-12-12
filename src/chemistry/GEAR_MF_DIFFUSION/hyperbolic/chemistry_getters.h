@@ -124,7 +124,8 @@ chemistry_get_hyperbolic_flux_gradients(const struct part *restrict p,
 }
 
 /**
- * @brief Get the *physical* gradients of diffusion flux for a given metal specie.
+ * @brief Get the *physical* gradients of diffusion flux for a given metal
+ * specie.
  *
  * @param p Particle.
  * @param metal Index of metal specie.
@@ -167,9 +168,9 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hyperbolic_flux(
   /* Safeguard against non physical/pathological results... */
   if (p->chemistry_data.tau == 0.0) {
     /* Don't do anything to avoid NaNs */
-    for (int i=0 ; i < 4; i++) {
+    for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 3; i++) {
-	hypflux[i][j] = 0.0;
+        hypflux[i][j] = 0.0;
       }
     }
     return;

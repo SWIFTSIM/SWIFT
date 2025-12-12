@@ -85,7 +85,6 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
   }
 }
 
-
 /**
  * @brief Slope limit the slopes at the interface between two particles
  *
@@ -101,9 +100,10 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
  * @param xij_j Relative position vector of the interface w.r.t. partilce j.
  * @param r Distance between particle i and particle j.
  */
-__attribute__((always_inline)) INLINE static void chemistry_slope_limit_face_scalar(
-    double *Ui, double *Uj, double *dUi, double *dUj, const float xij_i[3],
-    const float *xij_j, float r) {
+__attribute__((always_inline)) INLINE static void
+chemistry_slope_limit_face_scalar(double *Ui, double *Uj, double *dUi,
+                                  double *dUj, const float xij_i[3],
+                                  const float *xij_j, float r) {
 
   const float xij_i_norm =
       sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);

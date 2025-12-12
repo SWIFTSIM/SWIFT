@@ -110,18 +110,18 @@ chemistry_part_integrate_flux_source_term(
   struct chemistry_part_data *chd = &p->chemistry_data;
   const double tau = chd->tau;
   const double exp_decay = exp(-dt / tau);
-  const double one_minus_exp_decay = - expm1(-dt/tau);
+  const double one_minus_exp_decay = -expm1(-dt / tau);
   const double flux_current[3] = {chd->flux[metal][0], chd->flux[metal][1],
-				  chd->flux[metal][2]};
+                                  chd->flux[metal][2]};
   double flux_parabolic[3];
   chemistry_get_physical_parabolic_flux(p, metal, flux_parabolic, chem_data,
-					cosmo);
+                                        cosmo);
 
   for (int i = 0; i < 3; i++) {
     if (tau != 0.0) {
       /* Note that parabolic flux already includes the minus term. */
       chd->flux[metal][i] =
-	flux_current[i] * exp_decay + flux_parabolic[i] * one_minus_exp_decay;
+          flux_current[i] * exp_decay + flux_parabolic[i] * one_minus_exp_decay;
     } else {
       /* The asymptotic solution is that Flux(t+Delta t) = Flux_parabolic(t) */
       chd->flux[metal][i] = flux_parabolic[i];
@@ -146,7 +146,8 @@ chemistry_part_integrate_flux_source_term(
  * @param Anorm Surface area of the interface (in physical units).
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The current cosmological model.
- * @param fluxes (return) The resulting flux at the interface (in physical units).
+ * @param fluxes (return) The resulting flux at the interface (in physical
+ * units).
  */
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
     const float dx[3], const struct part *restrict pi,
@@ -173,16 +174,18 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
 
   /* (flux[3], q / tau * K) */
   double hyper_flux_L[4][3];
-  chemistry_get_hyperbolic_flux(pi, metal, UL, qL, chem_data, cosmo, hyper_flux_L);
+  chemistry_get_hyperbolic_flux(pi, metal, UL, qL, chem_data, cosmo,
+                                hyper_flux_L);
   double hyper_flux_R[4][3];
-  chemistry_get_hyperbolic_flux(pj, metal, UR, qR, chem_data, cosmo, hyper_flux_R);
+  chemistry_get_hyperbolic_flux(pj, metal, UR, qR, chem_data, cosmo,
+                                hyper_flux_R);
 
   chemistry_check_unphysical_hyperbolic_flux(hyper_flux_L);
   chemistry_check_unphysical_hyperbolic_flux(hyper_flux_R);
 
   chemistry_riemann_solve_for_flux(dx, pi, pj, UL, UR, WL, WR, hyper_flux_L,
-				   hyper_flux_R, Anorm, n_unit, metal,
-				   chem_data, cosmo, fluxes);
+                                   hyper_flux_R, Anorm, n_unit, metal,
+                                   chem_data, cosmo, fluxes);
 
   /* Anorm is already in physical units here. */
   fluxes[0] *= Anorm;

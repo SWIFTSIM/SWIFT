@@ -59,7 +59,8 @@ INLINE static void convert_gas_metals(const struct engine *e,
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     /* Add the mass exchanged in the Riemann solver to write updated metal
        masses */
-    double mZi = p->chemistry_data.metal_mass[i] + p->chemistry_data.metal_mass_riemann[i];
+    double mZi = p->chemistry_data.metal_mass[i] +
+                 p->chemistry_data.metal_mass_riemann[i];
     double Zi = mZi / hydro_get_mass(p);
     ret[i] = Zi;
     m_Z += mZi;
@@ -164,9 +165,11 @@ INLINE static int chemistry_write_particles(const struct part *parts,
       "Mass fraction of each element");
 
   list[1] = io_make_physical_output_field_convert_part(
-      "DiffusionMatrices", DOUBLE, 9, UNIT_CONV_MASS_DIFFUSIVITY, 0.f, parts, xparts,
+      "DiffusionMatrices", DOUBLE, 9, UNIT_CONV_MASS_DIFFUSIVITY, 0.f, parts,
+      xparts,
       /*can convert to comoving=*/0, convert_chemistry_diffusion_matrix,
-      "Physical diffusion matrix K, stored in a vector. The effective diffusivity is defined as D = K*q/U");
+      "Physical diffusion matrix K, stored in a vector. The effective "
+      "diffusivity is defined as D = K*q/U");
 
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   list[2] = io_make_output_field_convert_part(

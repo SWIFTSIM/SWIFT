@@ -54,8 +54,8 @@ __attribute__((always_inline)) INLINE double chemistry_get_metal_mass_fluxes(
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void chemistry_part_reset_mass_fluxes(
-    struct part *restrict p) {
+__attribute__((always_inline)) INLINE static void
+chemistry_part_reset_mass_fluxes(struct part *restrict p) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     p->chemistry_data.metal_mass_riemann[i] = 0.0;
   }
@@ -103,10 +103,10 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
     fluxes[3] *= factor;
     if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY > 1) {
       message(
-	  "[%lld, %lld] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
-	  " mZi_r = %e, mZj_r = %e, upwind_mass = %e, mZi = %e, mZj = %e",
-	  pi->id, pj->id, flux_init, fluxes[0], factor, mZi, mZj,
-	  upwind_mass, chi->metal_mass[metal], chj->metal_mass[metal]);
+          "[%lld, %lld] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
+          " mZi_r = %e, mZj_r = %e, upwind_mass = %e, mZi = %e, mZj = %e",
+          pi->id, pj->id, flux_init, fluxes[0], factor, mZi, mZj, upwind_mass,
+          chi->metal_mass[metal], chj->metal_mass[metal]);
     }
   }
 #endif /* GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGGRESSIVE */

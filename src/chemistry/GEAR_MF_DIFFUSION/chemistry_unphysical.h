@@ -61,15 +61,13 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
   if (metal_mass_fraction < 0.0) {
     if (callloc == 1) {
       /* Do not extrapolate, use 0th order reconstruction. */
-      *metal_mass =
-          (Z_old >= 0.0) ? mZ_old : 0.0;
+      *metal_mass = (Z_old >= 0.0) ? mZ_old : 0.0;
     } else {
       /* Note: Correcting metal masses afterwards can artificially create metal
          mass out of nothing. This mass creation might is never compensated and
          can lead to huge metal mass creation, bigger than gas mass. */
-      error("[%lld, %d] Negative metal mass case %d | %e %e | %e %e",
-            id, element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
-            Z_old);
+      error("[%lld, %d] Negative metal mass case %d | %e %e | %e %e", id,
+            element, callloc, *metal_mass, metal_mass_fraction, mZ_old, Z_old);
       /* metal_mass = 0.0; */
     }
   }
@@ -170,12 +168,12 @@ chemistry_check_unphysical_total_metal_mass(struct part *restrict p,
  * @param id Particle id.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_check_unphysical_metallicity(double *Z, int callloc,
-				       const int metal, const long long id) {
+chemistry_check_unphysical_metallicity(double *Z, int callloc, const int metal,
+                                       const long long id) {
 
   if (isinf(*Z) || isnan(*Z))
-    error("[%lld, %d] Got inf/nan metallicity, case %d | %.6e ",
-	  id, metal, callloc, *Z);
+    error("[%lld, %d] Got inf/nan metallicity, case %d | %.6e ", id, metal,
+          callloc, *Z);
 
   /* Check that we do not have unphysical values */
   if (*Z > 1.0) {

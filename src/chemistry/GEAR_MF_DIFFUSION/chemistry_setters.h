@@ -85,8 +85,8 @@ chemistry_part_reset_gradients(struct part *restrict p) {
  * @param drhoZ Metal density gradient (of size 3).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_diffusion_gradients(struct part *restrict p,
-					  int metal, double dZ[3], double drhoZ[3]) {
+chemistry_part_update_diffusion_gradients(struct part *restrict p, int metal,
+                                          double dZ[3], double drhoZ[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -112,8 +112,8 @@ chemistry_part_update_diffusion_gradients(struct part *restrict p,
  * @param dvz_tilde z Velocity tilde gradient contribution.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_hydro_gradients(struct part *restrict p,
-                                      float dvx[3], float dvy[3], float dvz[3],
+chemistry_part_update_hydro_gradients(struct part *restrict p, float dvx[3],
+                                      float dvy[3], float dvz[3],
                                       float dvx_tilde[3], float dvy_tilde[3],
                                       float dvz_tilde[3]) {
 
