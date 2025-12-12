@@ -586,16 +586,16 @@ INLINE static int mhd_write_particles(const struct part* parts,
   list[16] = io_make_output_field_convert_part(
       "FlowDecompositionTest", FLOAT, 4, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_InductionDecomposition, " Testing flow decomposition ratios and new OW ");
-  list[18] = io_make_output_field(
+  list[17] = io_make_output_field(
       "OWARResistivitiesAvrg", FLOAT, 1, UNIT_CONV_MAGNETIC_DIFFUSIVITY,
       0, parts, mhd_data.eta_OWAR_avrg,
       "OWAR averaged values");
-  list[19] = io_make_output_field(
+  list[18] = io_make_output_field(
       "OWARResistivities", FLOAT, 1, UNIT_CONV_MAGNETIC_DIFFUSIVITY,
       0, parts, mhd_data.eta_OWAR,
       "OWAR instant values");
 
-  return 18;
+  return 19;
 }
 
 /**
