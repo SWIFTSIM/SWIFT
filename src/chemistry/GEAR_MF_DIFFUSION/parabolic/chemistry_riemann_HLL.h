@@ -23,8 +23,10 @@
 #include "../chemistry_riemann_checks.h"
 #include "../chemistry_riemann_utils.h"
 #include "../chemistry_struct.h"
+#include "../chemistry_properties.h"
 #include "hydro.h"
 #include "sign.h"
+#include "minmax.h"
 
 /**
  * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_riemann_HLL.h
@@ -212,32 +214,32 @@ chemistry_riemann_solver_hopkins2017_HLL(
     qj = chemistry_get_metal_mass_fraction(pj, m);
   }
   const double dq = qj - qi;
-  const double nabla_o_q_dir[3] = {dx_p[0] * dq / dx_p_norm_2,
-                                   dx_p[1] * dq / dx_p_norm_2,
-                                   dx_p[2] * dq / dx_p_norm_2};
-  const double kappa_mean =
-      0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+  const double grad_q_dir[3] = {dx_p[0] * dq / dx_p_norm_2,
+				dx_p[1] * dq / dx_p_norm_2,
+				dx_p[2] * dq / dx_p_norm_2};
 
-  const double F_A_left_side[3] = {-kappa_mean * nabla_o_q_dir[0],
-                                   -kappa_mean * nabla_o_q_dir[1],
-                                   -kappa_mean * nabla_o_q_dir[2]};
+  double F_dir_left_side[3] = {0.0, 0.0, 0.0};
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      F_dir_left_side[i] += K_star[i][j]*grad_q_dir[j];
+    }
+  }
 
-  const double F_A_right_side[3] = {Anorm * dx_p[0] / dx_p_norm,
-                                    Anorm * dx_p[1] / dx_p_norm,
-                                    Anorm * dx_p[2] / dx_p_norm};
+  const double F_dir_right_side[3] = {dx_p[0] / dx_p_norm,
+				      dx_p[1] / dx_p_norm,
+				      dx_p[2] / dx_p_norm};
 
-  const double F_times_A_dir = F_A_left_side[0] * F_A_right_side[0] +
-                               F_A_left_side[1] * F_A_right_side[1] +
-                               F_A_left_side[2] * F_A_right_side[2];
-
-  /* Get F_HLL * A_ij */
-  const double F_HLL_times_A = flux_hll * Anorm;
+  /* We don't need to multiply by Anorm since flux_hll is not yet multiplied by
+     Anorm */
+  const double F_dir = F_dir_left_side[0] * F_dir_right_side[0] +
+		       F_dir_left_side[1] * F_dir_right_side[1] +
+		       F_dir_left_side[2] * F_dir_right_side[2];
 
   /* Now, choose the righ flux to get F_diff_ij^* */
   const double epsilon = chem_data->hll_riemann_solver_epsilon;
-  if (F_times_A_dir * F_HLL_times_A < 0.0 &&
-      fabs(F_times_A_dir) > epsilon * fabs(F_HLL_times_A)) {
-    *metal_flux = 0;
+  if (F_dir * flux_hll < 0.0 &&
+      fabs(F_dir) > epsilon * fabs(flux_hll)) {
+    *metal_flux = 0.0;
   } else {
     *metal_flux = flux_hll;
   }
