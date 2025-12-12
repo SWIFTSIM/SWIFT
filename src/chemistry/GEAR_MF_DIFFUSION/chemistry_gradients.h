@@ -24,6 +24,7 @@
 #include "chemistry_setters.h"
 #include "chemistry_slope_limiters_cell.h"
 #include "chemistry_slope_limiters_face.h"
+#include "chemistry_properties.h"
 #include "chemistry_unphysical.h"
 #include "kernel_hydro.h"
 
@@ -556,7 +557,6 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
   chemistry_get_metal_mass_fraction_gradients(pj, metal, grad_Z_j);
 
   /* Cell limit the gradients now */
-  const double shoot_tol = 0.0;
   const double alpha_i = chemistry_slope_limit_quantity(
       /*gradient=*/ grad_Z_i,
       /*maxr=    */ chi->limiter.maxr,
@@ -565,7 +565,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
       /*valmax=  */ chi->limiter.Z[metal][1],
       /*condition_number*/ pi->geometry.condition_number,
       /*pos_preserve*/ 1,
-      /*shoot_tol*/ shoot_tol);
+      /*shoot_tol*/ GEAR_FVPM_DIFFUSION_CELL_LIMITER_SHOOT_TOLERANGE);
   const double alpha_j = chemistry_slope_limit_quantity(
       /*gradient=*/ grad_Z_j,
       /*maxr=    */ chj->limiter.maxr,
@@ -574,7 +574,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
       /*valmax=  */ chj->limiter.Z[metal][1],
       /*condition_number*/ pj->geometry.condition_number,
       /*pos_preserve*/ 1,
-      /*shoot_tol*/ shoot_tol);
+      /*shoot_tol*/ GEAR_FVPM_DIFFUSION_CELL_LIMITER_SHOOT_TOLERANGE);
   chemistry_slope_limit_quantity_apply(grad_Z_i, alpha_i);
   chemistry_slope_limit_quantity_apply(grad_Z_j, alpha_j);
 

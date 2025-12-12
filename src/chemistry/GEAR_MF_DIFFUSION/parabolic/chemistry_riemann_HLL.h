@@ -305,7 +305,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
       Phi_2 = (rhoZ_max * Vi - mZi) / fabs(mZ_exchanged);
     }
     Phi = min(Phi_1, Phi_2);
-    Phi = min(1.0, GEAR_FVPM_DIFFUSION_EXTREMA_PRESERVING_FLUX_LIMITER_SAFETY_FACTOR*Phi);
+    Phi = min(1.0, GEAR_FVPM_DIFFUSION_EXTREMA_AWARE_FLUX_LIMITER_SAFETY_FACTOR*Phi);
 
     /* Now rescale the flux */
     *metal_flux = Phi * flux_hll;
@@ -326,7 +326,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
 	  F_dir * Anorm * mindt, Phi, Phi_1, Phi_2,
 	  Phi * flux_hll * Anorm * mindt);
     }
-#endif /* GEAR_FVPM_DIFFUSION_FLUX_LIMITER_EXTREMA_PRESERVING */
+#endif /* GEAR_FVPM_DIFFUSION_FLUX_LIMITER_EXTREMA_AWARE */
   }
 }
 

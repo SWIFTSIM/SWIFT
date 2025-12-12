@@ -78,7 +78,6 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   chemistry_get_metal_density_gradients(pj, metal, grad_rhoZ_j);
 
   /* Cell limit the gradients now */
-  const double shoot_tol = 0.0;
   const double alpha_i = chemistry_slope_limit_quantity(
       /*gradient=*/ grad_rhoZ_i,
       /*maxr=    */ chi->limiter.maxr,
@@ -87,7 +86,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
       /*valmax=  */ chi->limiter.rhoZ[metal][1],
       /*condition_number*/ pi->geometry.condition_number,
       /*pos_preserve*/ 1,
-      /*shoot_tol*/ shoot_tol);
+      /*shoot_tol*/ GEAR_FVPM_DIFFUSION_CELL_LIMITER_SHOOT_TOLERANGE);
   const double alpha_j = chemistry_slope_limit_quantity(
       /*gradient=*/ grad_rhoZ_j,
       /*maxr=    */ chj->limiter.maxr,
@@ -96,7 +95,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
       /*valmax=  */ chj->limiter.rhoZ[metal][1],
       /*condition_number*/ pj->geometry.condition_number,
       /*pos_preserve*/ 1,
-      /*shoot_tol*/ shoot_tol);
+      /*shoot_tol*/ GEAR_FVPM_DIFFUSION_CELL_LIMITER_SHOOT_TOLERANGE);
   chemistry_slope_limit_quantity_apply(grad_rhoZ_i, alpha_i);
   chemistry_slope_limit_quantity_apply(grad_rhoZ_j, alpha_j);
 
