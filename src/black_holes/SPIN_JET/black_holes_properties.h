@@ -76,7 +76,7 @@ enum accretion_efficiency_modes {
 struct black_holes_props {
 
   /* ----- Basic neighbour search properties ------ */
-
+  
   /*! Resolution parameter */
   float eta_neighbours;
 

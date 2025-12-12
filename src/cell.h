@@ -179,7 +179,10 @@ struct pcell {
 
   /*! Black hole variables */
   struct {
-
+    
+    /* lily --> has the black hole identified neighbours to be split?*/
+    int perform_hydro_split;
+    
     /*! Number of #spart in this cell. */
     int count;
 
