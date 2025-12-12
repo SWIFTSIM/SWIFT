@@ -333,7 +333,7 @@ INLINE static void calculate_effective_resistivity(const struct engine* e,
   /* Effective resistivity */
 
   const float effective_resistivity =
-      Abs_Diff_B * p->rho / (Abs_Delta_B + FLT_MIN);
+      Abs_Diff_B / (Abs_Delta_B / p->rho + FLT_MIN);
 
   ret[0] = effective_resistivity;
 }

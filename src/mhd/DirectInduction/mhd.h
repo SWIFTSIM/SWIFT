@@ -327,7 +327,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   p->mhd_data.mean_SPH_err = 0.f;
   for (int k = 0; k < 3; k++) {
     p->mhd_data.mean_grad_SPH_err[k] = 0.f;
-    p->mhd_data.Delta_B[k] = 0.0f;
+    //p->mhd_data.Delta_B[k] = 0.0f;
   }
 
   p->mhd_data.eta_OWAR_avrg = 0.0f;
@@ -411,7 +411,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   float OW;
   OW = 1.0f;
 
-  const float d_ip = cbrtf(p->mass / p->rho);
+  const float d_ip = p->h; //cbrtf(p->mass / p->rho);
 
   p->mhd_data.eta_OWAR = NormShearAndRotation * d_ip * d_ip / OW; 
 
@@ -556,6 +556,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   for (int k = 0; k < 3; k++) {
     p->mhd_data.Adv_B_source[k] = 0.0f;
     p->mhd_data.Diff_B_source[k] = 0.0f;
+    p->mhd_data.Delta_B[k] = 0.0f;
   }
 
 }
