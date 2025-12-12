@@ -241,7 +241,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
       fabs(F_dir) > epsilon * fabs(flux_hll)) {
     *metal_flux = 0.0;
   } else {
-#if !defined (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_EXTREMA_PRESERVING)
+#if !defined (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_EXTREMA_AWARE)
     *metal_flux = flux_hll;
 #else
     /* Diffusion should not create new extrema. We (try to) ensure this with
