@@ -185,8 +185,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   /*
 
   /* eta OWAR averaging */
-  pi->mhd_data.eta_OWAR_avrg += mj / rhoj * wi;
-  pj->mhd_data.eta_OWAR_avrg += mi / rhoi * wj;
+  pi->mhd_data.eta_OWAR_avrg += pi->mhd_data.eta_OWAR * mj / rhoj * wi;
+  pj->mhd_data.eta_OWAR_avrg += pj->mhd_data.eta_OWAR * mi / rhoi * wj;
 
 }
 
