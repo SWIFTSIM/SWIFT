@@ -918,17 +918,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   for (int k; k < 3; k++){
     pi->mhd_data.B_over_rho_dt[k] += mj * OWAR_pref_ij * dB[k];
-    pj->mhd_data.B_over_rho_dt[k] -= mi * OWAR_pref_ij * dB[k];
 
     pi->mhd_data.B_over_rho_dt_AR[k] += mj * OWAR_pref_ij * dB[k];
-    pj->mhd_data.B_over_rho_dt_AR[k] -= mi * OWAR_pref_ij * dB[k];
   }
 
   pi->u_dt -= 0.5f * mj * permeability_inv * OWAR_pref_ij * dB_2;
-  pj->u_dt -= 0.5f * mi * permeability_inv * OWAR_pref_ij * dB_2;
 
   pi->mhd_data.u_dt_AR -= 0.5f * mj * permeability_inv * OWAR_pref_ij * dB_2;
-  pj->mhd_data.u_dt_AR -= 0.5f * mi * permeability_inv * OWAR_pref_ij * dB_2;
 
   /* Save induction sources */
 
@@ -939,7 +935,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
 
     pi->mhd_data.Diff_B_source[i] += mj * OWAR_pref_ij * dB[i];
-    pj->mhd_data.Diff_B_source[i] -= mi * OWAR_pref_ij * dB[i];
   }
 }
 
