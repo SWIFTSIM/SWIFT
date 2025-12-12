@@ -175,13 +175,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
 
   /* Calculate Delta B */
 
-  const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float grad_term_sym = 0.5f * (f_ij * wi_dr + f_ji * wj_dr);
+  const float grad_term_sym = (f_ij * wi_dr + f_ji * wj_dr);
+  const float rhoij_inv = 1.0f / (rhoi*rhoj);
 
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.Delta_B[k] += mj / (rho_ij * rhoi) * grad_term_sym * r_inv * dB[k];
-    pj->mhd_data.Delta_B[k] -= mi / (rho_ij * rhoj) * grad_term_sym * r_inv * dB[k];
+    pi->mhd_data.Delta_B[k] += mj * rhoij_inv * grad_term_sym * r_inv * dB[k];
+    pi->mhd_data.Delta_B[k] -= mi * rhoij_inv * grad_term_sym * r_inv * dB[k];
   }
+
 }
 
 /**
@@ -206,7 +207,7 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 const float hi, const float hj,
                                 struct part *restrict pi,
-                                struct part *restrict pj,
+                                const struct part *restrict pj,
                                 const float mu_0, const float a,
                                 const float H) {
 
@@ -294,12 +295,11 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   /* Calculate Delta B */
 
-  const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float grad_term_sym = 0.5f * (f_ij * wi_dr + f_ji * wj_dr);
+  const float grad_term_sym = (f_ij * wi_dr + f_ji * wj_dr);
+  const float rhoij_inv = 1.0f / (rhoi*rhoj);
 
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.Delta_B[k] += mj / (rho_ij * rhoi) * grad_term_sym * r_inv * dB[k];
-    pj->mhd_data.Delta_B[k] -= mi / (rho_ij * rhoj) * grad_term_sym * r_inv * dB[k];
+    pi->mhd_data.Delta_B[k] += mj * rhoij_inv * grad_term_sym * r_inv * dB[k];
   }
 
 }
