@@ -178,7 +178,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     const float max_angle = p->geometry.max_face_angle;
     const float beta = 2.25f;
     const float f_shaping_speed = 0.5f;
-    const float vchar_dt = d / dt; // Timestep based correction
+    const float vchar_dt = dt > 0. ? d / dt : 0.;// Timestep based correction
     float vchar = soundspeed; // Determines cold steering aggresssiveness
 
     /* Additionally impose that we use the timestep based steering if
