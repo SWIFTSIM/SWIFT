@@ -175,9 +175,10 @@ chemistry_riemann_solver_hopkins2017_HLL(
 
   /* Define some convenient variables. Convert to physical: add a for the norm
    */
+
+  /* Re check carefully the signs of the flux */
   const float dx_p[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a, dx[2] * cosmo->a};
-  const float dx_p_norm_2 =
-      sqrtf(dx_p[0] * dx_p[0] + dx_p[1] * dx_p[1] + dx_p[2] * dx_p[2]);
+  const float dx_p_norm_2 = dx_p[0] * dx_p[0] + dx_p[1] * dx_p[1] + dx_p[2] * dx_p[2];
   const float dx_p_norm = sqrtf(dx_p_norm_2);
 
   /* Now compute alpha to reduce numerical diffusion below physical
