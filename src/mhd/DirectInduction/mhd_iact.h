@@ -182,6 +182,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     pi->mhd_data.Delta_B[k] += mj * rhoij_inv * grad_term_sym * r_inv * dB[k];
     pi->mhd_data.Delta_B[k] -= mi * rhoij_inv * grad_term_sym * r_inv * dB[k];
   }
+ 
+  /* eta OWAR averaging */
+  pi->mhd_data.eta_OWAR_avrg += mj / rhoj * wi;
+  pj->mhd_data.eta_OWAR_avrg += mi / rhoi * wj;
 
 }
 
@@ -301,6 +305,10 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.Delta_B[k] += mj * rhoij_inv * grad_term_sym * r_inv * dB[k];
   }
+  
+  /* eta OWAR averaging */
+  pi->mhd_data.eta_OWAR_avrg += mj / rhoj * wi;
+
 
 }
 
@@ -615,7 +623,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /* OWAR symmetric */
 
-  const float eta_OWAR_ij = 0.5f * (pi->mhd_data.eta_OWAR + pj->mhd_data.eta_OWAR);
+  const float eta_OWAR_ij = 0.5f * (pi->mhd_data.eta_OWAR_avrg + pj->mhd_data.eta_OWAR_avrg);
   //const float eta_OWAR_ij = 2.0f * pi->mhd_data.eta_OWAR * pj->mhd_data.eta_OWAR / (pi->mhd_data.eta_OWAR + pj->mhd_data.eta_OWAR + 10.0f * FLT_MIN);
   //const float eta_OWAR_ij = sqrtf(pi->mhd_data.eta_OWAR * pj->mhd_data.eta_OWAR);
   //const float eta_OWAR_ij = fmaxf(pi->mhd_data.eta_OWAR, pj->mhd_data.eta_OWAR);
@@ -673,7 +681,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    struct part *restrict pi, const struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
   /* Get r and 1/r. */
@@ -903,7 +911,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* OWAR symmetric */
 
-  const float eta_OWAR_ij = 0.5f * (pi->mhd_data.eta_OWAR + pj->mhd_data.eta_OWAR);
+  const float eta_OWAR_ij = 0.5f * (pi->mhd_data.eta_OWAR_avrg + pj->mhd_data.eta_OWAR_avrg);
   //const float eta_OWAR_ij = 2.0f * pi->mhd_data.eta_OWAR * pj->mhd_data.eta_OWAR / (pi->mhd_data.eta_OWAR + pj->mhd_data.eta_OWAR + 10.0f * FLT_MIN);
   //const float eta_OWAR_ij = sqrtf(pi->mhd_data.eta_OWAR * pj->mhd_data.eta_OWAR);
   //const float eta_OWAR_ij = fmaxf(pi->mhd_data.eta_OWAR, pj->mhd_data.eta_OWAR);

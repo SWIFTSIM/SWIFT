@@ -89,6 +89,7 @@ struct mhd_part_data {
 
   /* OW artificial resistivity */
   float eta_OWAR;
+  float eta_OWAR_avrg;
 
   /* Velocity tensor */
   float grad_v_tensor[3][3];

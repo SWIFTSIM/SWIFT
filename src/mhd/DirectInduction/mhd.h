@@ -330,6 +330,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     p->mhd_data.Delta_B[k] = 0.0f;
   }
 
+  p->mhd_data.eta_OWAR_avrg = 0.0f;
+  
 }
 
 /**
@@ -341,6 +343,10 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     struct part *p) {
+
+  /* eta OWAR averaging */
+  p->mhd_data.eta_OWAR_avrg += p->mhd_data.eta_OWAR * p->mass / p->rho * kernel_root;
+
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
   /* Finish SPH_1 calculation*/
