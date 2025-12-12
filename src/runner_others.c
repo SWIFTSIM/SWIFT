@@ -92,11 +92,11 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 #endif
 
    /* Anything to do here? */
+  /* only enter loop if the black hole has identified particles that need splitting */
   if (count_leaf == 0 || !cell_is_active_hydro(c, e)) {
     return;
   }
-
-  lock_lock(&c->top->stars.star_formation_lock);
+  
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
@@ -113,13 +113,13 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
   } else {
     
     //hardcode splits for now
-    // options are nsplit = 7, 13 (odd because we count the og central particle
+    
     const int n_split = 7;
     
     // Now loop over gas particles at parent cell, this is broked but we get the full
     //set of parent splits in one go, probs best to save the full parent list and then split    
     int j = 0;
-
+    //lock_lock(&c->top->stars.star_formation_lock);
     //loop has to be long, idk why this works but it does...
     while (j < c->top->hydro.count){
       struct part *p  = &parts[j];
@@ -140,18 +140,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	p->split_flag = 2;                  	
 	// Update the parent before any memmove
         p->mass = child_mass;
-	
-	/* force activation
-        if (p->gpart){                
-          p->gpart->mass = child_mass;
-	  if (!gpart_is_active(p->gpart, e)){                                                                                                                           
-             message("gparent is not active, ACTIVATE!");
-             p->gpart->time_bin = e->min_active_bin;}   
-	}                                                                                                                                                                               
-	if (!part_is_active(p, e)){                                                                                                                                                                               
-          message("parent is not active, ACTIVATE!");
-          p->time_bin = e->min_active_bin;}
-	*/
+        
 	//split into 3D shape
 	message("------- splitting particles ------");
 	double delta = p->h / 2;
@@ -174,11 +163,11 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 
 	struct part parent = *p;    // copy all fields of parent 
 	struct xpart parent_xp = *xp;
-	/*
+	
 	message("Cell: %p, Parent before splits: id=%lld, mass=%e, pos=(%g,%g,%g), vel=(%g,%g,%g), a_hydro=(%g,%g,%g)",
 		(void*)c, parent.id, parent.mass, parent.x[0], parent.x[1], parent.x[2],
 		parent.v[0], parent.v[1], parent.v[2], parent.a_hydro[0], parent.a_hydro[1], parent.a_hydro[2]);
-	*/
+	
 	//struct part **child_list = malloc((n_split-1) * sizeof(struct part *));
 	//long long *child_ids = malloc((n_split-1) * sizeof(long long));
 	
@@ -216,16 +205,16 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	  error("Mass conservation broken in splitting: parent+children = %e, expected %e",
 		total_mass, n_split * child_mass);
 #endif
-	/*
+	
 	int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id); 
 	message("Leaf Cell: %p,Parent ID after full split: %lld, mass=%e",                                                                                                                                
                 c,c->top->hydro.parts[parent_index].id, c->top->hydro.parts[parent_index].mass);     
-	*/
+	
       }
       j ++;
-    }    
-  }   
-  lock_unlock(&c->top->stars.star_formation_lock);
+    } 
+  } 
+  
   /* If we formed any hydro parts, need to force flag for resort and drift*/
   if (c->hydro.count!= count_leaf) {
     //message("setting resort flag");

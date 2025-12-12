@@ -1682,7 +1682,8 @@ void engine_skip_force_and_kick(struct engine *e) {
     struct task *t = &tasks[i];
 
     /* Skip everything that updates the particles */
-    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+    if (t->type == task_type_hydro_resort || t->type == task_type_particle_split ||
+	t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
         t->type == task_type_drift_sink || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||

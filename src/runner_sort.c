@@ -43,6 +43,10 @@ void runner_do_hydro_resort(struct runner *r, struct cell *c, const int timer) {
 
   TIMER_TIC;
 
+  /* only run if we are on the top level cell that has a BH and if splitting has occured*/
+  if ((c->top->black_holes.count < 0)) {
+    return;
+  }
   
   /* Did we demand a recalculation of the hydro sorts? */
   if (cell_get_flag(c, cell_flag_do_hydro_resort)) {

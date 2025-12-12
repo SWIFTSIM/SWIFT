@@ -552,7 +552,10 @@ runner_iact_nonsym_bh_gas_swallow(
     // Within 2*BH smoothing length? Mark for splitting                                                                                                                      
     if (dist <= 2*bi->h) {
       pj->split_flag = 1;
-      //message("marked inactive particle to be split, ACTIVATE");
+      // if we identified particles to split -> mark bh for later use
+      //pass the pointer to this flag to make things faster if needed... c->bh.perform_split here ?
+      //if (!perform_hydro_split) bi->perform_hydro_split = 1;
+
     }
   }
   

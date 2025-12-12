@@ -455,12 +455,10 @@ void *runner_main(void *data) {
 	  //this task needs to be performed by a single thread...
 	case task_type_particle_split:
 	  if (ci->top->black_holes.count > 0){
-
 	    /* Only run on the BH’s timestep */
 	    //if (ci->top->black_holes.time_bin != r->e->time)
 	    //  break;
-	    
-	      runner_do_particle_split(r, ci,1);}
+	    runner_do_particle_split(r, ci,1);}
 	  break;
         case task_type_hydro_resort:
 	  if (ci->top->black_holes.count > 0){

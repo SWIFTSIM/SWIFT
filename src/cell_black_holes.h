@@ -119,6 +119,10 @@ struct cell_black_holes {
 
   /*! Nr of #bpart in this cell. */
   int count;
+
+  /* lily --> has the black hole identified neighbours to be split?*/
+  int perform_hydro_split;
+
 };
 
 #endif /* SWIFT_CELL_BLACK_HOLES_H */

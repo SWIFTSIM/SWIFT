@@ -1230,6 +1230,12 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   /* Are we at the top-level? */
   if (c->top == c && c->nodeID == e->nodeID) {
 
+    /*lily split task */
+    if (c->black_holes.count > 0){
+      c->hydro.particle_split = scheduler_addtask(s, task_type_particle_split,
+						  task_subtype_none, 0, 0, c, NULL);
+	}
+
     if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 ||
         c->black_holes.count > 0 || c->sinks.count > 0) {
       c->timestep_collect = scheduler_addtask(s, task_type_collect,
@@ -1407,8 +1413,8 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
       scheduler_addunlock(s, c->grav.end_force, c->super->kick2);
 
       //lily                                                                                                                                                                                             
-      if (c->hydro.particle_split){
-	scheduler_addunlock(s, c->grav.drift, c->hydro.particle_split);}
+      if (c->top->hydro.particle_split){
+	scheduler_addunlock(s, c->grav.drift, c->top->hydro.particle_split);}
       
       
       if (is_self_gravity) {
@@ -1429,8 +1435,8 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                               task_subtype_none, 0, 1, c, NULL);
 
 	//lily
-	if (c->hydro.particle_split)
-          scheduler_addunlock(s, c->grav.drift_out, c->hydro.particle_split);
+	if (c->top->hydro.particle_split)
+	  scheduler_addunlock(s, c->grav.drift_out, c->top->hydro.particle_split);
 	
         c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
                                              task_subtype_none, 0, 1, c, NULL);
@@ -1451,6 +1457,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+	
       }
     }
   }
@@ -1614,6 +1621,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
     c->hydro.sorts =
         scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
 
+    //lily
+    c->hydro.hydro_resort = scheduler_addtask(s, task_type_hydro_resort,
+                                                task_subtype_none, 0, 0, c, NULL);
     if (with_feedback) {
       c->stars.sorts = scheduler_addtask(s, task_type_stars_sort,
                                          task_subtype_none, 0, 0, c, NULL);
@@ -1632,22 +1642,14 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       /* Add the drift task. */
       c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
                                          task_subtype_none, 0, 0, c, NULL);
-
-
       
-      
-      //<<lily>>: please work   
-      c->hydro.hydro_resort = scheduler_addtask(s, task_type_hydro_resort,
-                                             task_subtype_none, 0, 0, c, NULL);
+    
+      if (c->top->black_holes.count > 0){
+	scheduler_addunlock(s,  c->hydro.drift, c->top->hydro.particle_split);
+	scheduler_addunlock(s,  c->top->hydro.particle_split,  c->hydro.hydro_resort);
 
-      c->hydro.particle_split = scheduler_addtask(s, task_type_particle_split,
-						  task_subtype_none, 0, 0, c, NULL);
-
-      scheduler_addunlock(s,  c->hydro.drift, c->hydro.particle_split);
-      scheduler_addunlock(s,  c->hydro.particle_split,  c->hydro.hydro_resort);
-      
-      if (c->hydro.sorts)
-	scheduler_addunlock(s,  c->hydro.hydro_resort, c->hydro.sorts);
+	if (c->hydro.sorts)
+	  scheduler_addunlock(s,  c->hydro.hydro_resort, c->hydro.sorts);}
       
       /* Add the task finishing the force calculation */
       c->hydro.end_force = scheduler_addtask(s, task_type_end_hydro_force,

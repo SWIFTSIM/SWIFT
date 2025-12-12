@@ -86,7 +86,7 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
   }
   
   /* Lock top-level cell */
-  //lock_lock(&top->stars.star_formation_lock);
+  lock_lock(&top->stars.star_formation_lock);
   /* Are we out of space? */
   if (top->hydro.count == top->hydro.count_total) {
     
@@ -141,7 +141,7 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
   top2->hydro.ti_old_part = e->ti_current;
 
   /* Unlock */
-  //lock_unlock(&top->stars.star_formation_lock);
+  lock_unlock(&top->stars.star_formation_lock);
 
   /* Initialize new particle */
   struct part *p = &c->hydro.parts[0];
@@ -271,8 +271,8 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
   /* Set a smoothing length */
   new_p->h = new_h;
   
-  //reduce timebin to ensure its active
-  //new_p->time_bin = p->time_bin + 1;
+  //inherit parents' timebin
+  new_p->time_bin = p->time_bin;
   
   /* Here comes the BABY! */ 
   return new_p;
