@@ -309,7 +309,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   */
 
   /* eta OWAR averaging */
-  pi->mhd_data.eta_OWAR_avrg += mj / rhoj * wi;
+  pi->mhd_data.eta_OWAR_avrg += pj->mhd_data.eta_OWAR * mj / rhoj * wi;
 
 
 }
