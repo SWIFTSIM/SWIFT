@@ -58,11 +58,11 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
   /* Fix negative masses */
   const double metal_mass_fraction = *metal_mass / gas_mass;
   const double Z_old = mZ_old / gas_mass;
-  if (metal_mass_fraction < GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE) {
+  if (metal_mass_fraction < 0.0) {
     if (callloc == 1) {
       /* Do not extrapolate, use 0th order reconstruction. */
       *metal_mass =
-          (Z_old >= GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE) ? mZ_old : 0.0;
+          (Z_old >= 0.0) ? mZ_old : 0.0;
     } else {
       /* Note: Correcting metal masses afterwards can artificially create metal
          mass out of nothing. This mass creation might is never compensated and

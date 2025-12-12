@@ -78,7 +78,7 @@ chemistry_get_part_corrected_metal_mass(const struct part *restrict p,
                                         int metal) {
   double mZi = p->chemistry_data.metal_mass[metal];
   double Zi = chemistry_get_metal_mass_fraction(p, metal);
-  if (Zi >= GEAR_NEGATIVE_METAL_MASS_FRACTION_TOLERANCE) {
+  if (Zi >= 0.0) {
     /* We tolerate a small deviation around 0 due to flux exchanges. But
        other modules need not be aware of this. Ensure metal mass is positive to
        avoid problems (e.g. for cooling). */
