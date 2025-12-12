@@ -107,7 +107,8 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
     /* Compute the expression in the square bracket in eq (15). Notice that I
        rewrote it to avoid division by 0 when norm_nabla_q = 0.
        This expression ensures the correctness of parabolic diffusion. But at
-       the cost of being nut usable is cosmo simulations... */
+       the cost of being not usable is cosmo simulations... The SN enrichment
+       creates huge gradients that slow down everything. */
     expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
   }
 

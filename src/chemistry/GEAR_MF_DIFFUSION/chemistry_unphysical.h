@@ -67,7 +67,7 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
       /* Note: Correcting metal masses afterwards can artificially create metal
          mass out of nothing. This mass creation might is never compensated and
          can lead to huge metal mass creation, bigger than gas mass. */
-      error("[%lld, %d] Negative metal density/mass case %d | %e %e | %e %e",
+      error("[%lld, %d] Negative metal mass case %d | %e %e | %e %e",
             id, element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
             Z_old);
       /* metal_mass = 0.0; */
