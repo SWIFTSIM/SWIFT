@@ -320,10 +320,13 @@ chemistry_riemann_solver_hopkins2017_HLL(
       Phi_1 = (mZj - rhoZ_min * Vj) / fabs(mZ_exchanged);
       Phi_2 = (rhoZ_max * Vi - mZi) / fabs(mZ_exchanged);
     }
+    /* Multiply by a safety factor */
+    Phi_1 *= GEAR_FVPM_DIFFUSION_EXTREMA_AWARE_FLUX_LIMITER_SAFETY_FACTOR;
+    Phi_2 *= GEAR_FVPM_DIFFUSION_EXTREMA_AWARE_FLUX_LIMITER_SAFETY_FACTOR;
+
+    /* Take the most restrictive */
     Phi = min(Phi_1, Phi_2);
-    Phi =
-        min(1.0,
-            GEAR_FVPM_DIFFUSION_EXTREMA_AWARE_FLUX_LIMITER_SAFETY_FACTOR * Phi);
+    Phi = min(1.0, Phi);
 
     /* Now rescale the flux */
     *metal_flux = Phi * flux_hll;
