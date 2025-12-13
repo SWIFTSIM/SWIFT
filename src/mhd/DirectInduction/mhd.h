@@ -392,7 +392,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
           p->mhd_data.shear_tensor[i][j] = 0.5f * (grad_v_tensor[i][j] + grad_v_tensor[j][i])  - (compression / 3.0f) * delta[i][j];
-          ShearAndRotation[i][j] = grad_v_tensor[i][j] - (compression / 3.0f) * delta[i][j];
+          ShearAndRotation[i][j] = p->mhd_data.shear_tensor[i][j]; //grad_v_tensor[i][j] - (compression / 3.0f) * delta[i][j];
           NormShearAndRotation += ShearAndRotation[i][j]*ShearAndRotation[i][j];
       }
   }
