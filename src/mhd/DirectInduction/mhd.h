@@ -422,12 +422,6 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   /* Finish SPH_1 calculation*/
   p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho;
 
-  const float rho = p->rho;
-  float B[3];
-  B[0] = p->mhd_data.B_over_rho[0] * rho;
-  B[1] = p->mhd_data.B_over_rho[1] * rho;
-  B[2] = p->mhd_data.B_over_rho[2] * rho;
-
   // Finish calculation by computing shear tensor
 
   float grad_v_tensor[3][3];
