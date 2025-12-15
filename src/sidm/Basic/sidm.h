@@ -60,6 +60,15 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
   sip->density.wcount_dh = 0.f;
   sip->rho = 0.f;
   sip->density.rho_dh = 0.f;
+
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+  sip->N_density = 0;
+  sip->N_density_exact = 0;
+  sip->rho_exact = 0.f;
+  sip->n = 0.f;
+  sip->n_exact = 0.f;
+  sip->inhibited_exact = 0;
+#endif
 }
 
 /**
@@ -89,9 +98,9 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
   sip->density.wcount *= h_inv_dim;
   sip->density.wcount_dh *= h_inv_dim_plus_one;
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  sip->n_density += kernel_root;
-  sip->n_density *= h_inv_dim;
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+  sip->n += kernel_root;
+  sip->n *= h_inv_dim;
 #endif
 }
 
