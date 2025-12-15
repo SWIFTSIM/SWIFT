@@ -595,7 +595,25 @@ INLINE static int mhd_write_particles(const struct part* parts,
       0, parts, mhd_data.eta_OWAR,
       "OWAR instant values");
 
-  return 19;
+  list[19] = io_make_output_field(
+      "RMSNweight", FLOAT, 1, UNIT_CONV_NO_UNITS,
+      0, parts, mhd_data.r_ms_Nweight,
+      "mean square number weighted neighbor distance over h_a");
+  list[20] = io_make_output_field(
+      "RMSKweight", FLOAT, 1, UNIT_CONV_NO_UNITS,
+      0, parts, mhd_data.r_ms_Kweight,
+      "mean square density weighted neighbor distance over h_a");
+
+  list[21] = io_make_output_field(
+      "RCMNweight", FLOAT, 1, UNIT_CONV_NO_UNITS,
+      0, parts, mhd_data.r_cm_abs_Nweight,
+      "center of mass number weighted neighbor distance over h_a");
+  list[22] = io_make_output_field(
+      "RCMKweight", FLOAT, 1, UNIT_CONV_NO_UNITS,
+      0, parts, mhd_data.r_cm_abs_Kweight,
+      "center of mass weighted neighbor distance over h_a");
+
+  return 23;
 }
 
 /**
