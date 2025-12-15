@@ -109,6 +109,8 @@ struct mhd_part_data {
   float r_ms_Kweight;
   float r_cm_Nweight[3];
   float r_cm_Kweight[3];
+  float r_cm_abs_Nweight;
+  float r_cm_abs_Kweight;
   float N_weight;
   float K_weight;
 
