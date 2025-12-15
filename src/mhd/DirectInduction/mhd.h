@@ -302,7 +302,7 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
     p->mhd_data.r_ms_Kweight=0.0f;
     p->mhd_data.N_weight=0.0f;
     p->mhd_data.K_weight=0.0f;
-    for (int i = 0; i < 3; i++) {
+    for (int k = 0; k < 3; k++) {
         p->mhd_data.r_cm_Nweight[k] = 0.0f;
         p->mhd_data.r_cm_Kweight[k] = 0.0f;
     }
@@ -331,7 +331,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
     p->mhd_data.r_ms_Kweight /= p->mhd_data.K_weight;
     p->mhd_data.r_ms_Nweight = sqrtf(p->mhd_data.r_ms_Nweight) / p->h;
     p->mhd_data.r_ms_Kweight = sqrtf(p->mhd_data.r_ms_Kweight) / p->h;
-    for (int i = 0; i < 3; i++) {
+    for (int k = 0; k < 3; k++) {
         p->mhd_data.r_cm_Nweight[k] /= p->mhd_data.N_weight;
         p->mhd_data.r_cm_Kweight[k] /= p->mhd_data.K_weight;
     }
@@ -508,8 +508,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   //const float d_ip = 2.0f*p->h; //cbrtf(p->mass / p->rho);
 
   /* R mean square */
-  const float d_ip = p->mhd_data.r_ms_Nweight * p->h;
-  //const float d_ip = p->mhd_data.r_ms_Kweight * p->h;
+  //const float d_ip = p->mhd_data.r_ms_Nweight * p->h;
+  const float d_ip = p->mhd_data.r_ms_Kweight * p->h;
 
   /* R center of mass */ 
   //const float d_ip = fmaxf(cbrtf(p->mass / p->rho),p->mhd_data.r_cm_abs_Nweight * p->h );

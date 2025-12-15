@@ -56,7 +56,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   kernel_deval(uj, &wj, &wj_dx);
 
   /* Compute distances */
-  dx2 = dx[0]*dx[0]+dx[1]*dx[1]+dx[2]*dx[2];
+  const float dx2 = dx[0]*dx[0]+dx[1]*dx[1]+dx[2]*dx[2];
 
   pi->mhd_data.r_ms_Nweight += dx2;
   pi->mhd_data.r_ms_Kweight += dx2 * mj * wi;
@@ -111,7 +111,7 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
 
 
   /* Compute distances */
-  dx2 = dx[0]*dx[0]+dx[1]*dx[1]+dx[2]*dx[2];
+  const float dx2 = dx[0]*dx[0]+dx[1]*dx[1]+dx[2]*dx[2];
 
   pi->mhd_data.r_ms_Nweight += dx2;
   pi->mhd_data.r_ms_Kweight += dx2 * mj * wi;
@@ -261,12 +261,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
 
   const float grad_term_sym = (f_ij * wi_dr + f_ji * wj_dr);
   const float rhoij_inv = 1.0f / (rhoi*rhoj);
-  /*
-  for (int k = 0; k < 3; k++) {
-    pi->mhd_data.Delta_B[k] += mj * rhoij_inv * grad_term_sym * r_inv * dB[k];
-    pi->mhd_data.Delta_B[k] -= mi * rhoij_inv * grad_term_sym * r_inv * dB[k];
-  }
-  /*
 
   /* eta OWAR averaging */
   pi->mhd_data.eta_OWAR_avrg += pj->mhd_data.eta_OWAR * mj / rhoj * wi;
