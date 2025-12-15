@@ -236,7 +236,7 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cpi,
 
   /* Alas, we made a task, recurse down but don't go further than where the
      tasks are. */
-  else if (ci != cpi) {
+  else {
     for (int i = 0; i < 8; i++) {
       if (cpi->progeny[i] == NULL) continue;
       for (int j = 0; j < 8; j++) {
