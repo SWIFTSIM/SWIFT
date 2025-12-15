@@ -104,6 +104,14 @@ struct mhd_part_data {
   float AdvS_B_source[3];
 
 
+  /* r_ms */
+  float r_ms_Nweight;
+  float r_ms_Kweight;
+  float r_cm_Nweight[3];
+  float r_cm_Kweight[3];
+  float N_weight;
+  float K_weight;
+
 };
 
 /**

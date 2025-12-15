@@ -296,7 +296,18 @@ mhd_set_v_sig_based_on_velocity_kick(struct part *p,
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_init_part(
-    struct part *p) {}
+    struct part *p) {
+
+    p->mhd_data.r_ms_Nweight=0.0f;
+    p->mhd_data.r_ms_Kweight=0.0f;
+    p->mhd_data.N_weight=0.0f;
+    p->mhd_data.K_weight=0.0f;
+    for (int i = 0; i < 3; i++) {
+        p->mhd_data.r_cm_Nweight[k] = 0.0f;
+        p->mhd_data.r_cm_Kweight[k] = 0.0f;
+    }
+
+}
 
 /**
  * @brief Finishes the density calculation.
@@ -312,7 +323,16 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_density(
-    struct part *p, const struct cosmology *cosmo) {}
+    struct part *p, const struct cosmology *cosmo) {
+    
+    p->mhd_data.r_ms_Nweight /= p->mhd_data.N_weight;
+    p->mhd_data.r_ms_Kweight /= p->mhd_data.K_weight;
+    for (int i = 0; i < 3; i++) {
+        p->mhd_data.r_cm_Nweight[k] /= p->mhd_data.N_weight;
+        p->mhd_data.r_cm_Kweight[k] /= p->mhd_data.K_weight;
+    }
+
+}
 
 /**
  * @brief Prepare a particle for the gradient calculation.

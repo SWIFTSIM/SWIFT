@@ -35,7 +35,48 @@
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float mu_0,
-    const float a, const float H) {}
+    const float a, const float H) {
+
+  float wi, wj, wi_dx, wj_dx;
+
+  const float r = sqrtf(r2);
+
+  /* Get the masses. */
+  const float mi = pi->mass;
+  const float mj = pj->mass;
+
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+
+  kernel_deval(ui, &wi, &wi_dx);
+
+  const float hj_inv = 1.f / hj;
+  const float uj = r * hj_inv;
+
+  kernel_deval(uj, &wj, &wj_dx);
+
+  /* Compute distances */
+  dx2 = dx[0]*dx[0]+dx[1]*dx[1]+dx[2]*dx[2];
+
+  pi->mhd_data.r_ms_Nweight += dx2;
+  pi->mhd_data.r_ms_Kweight += dx2 * mj * wi;
+  for (int k = 0; k < 3; k++) {
+      pi->mhd_data.r_cm_Nweight[k] += dx[k];
+      pi->mhd_data.r_cm_Kweight[k] += dx[k] * mj * wi;
+  }
+  pi->mhd_data.N_weight += 1;
+  pi->mhd_data.K_weight += mj * wi;
+
+  pj->mhd_data.r_ms_Nweight += dx2;
+  pj->mhd_data.r_ms_Kweight += dx2 * mi * wj;
+  for (int k = 0; k < 3; k++) {
+      pj->mhd_data.r_cm_Nweight[k] -= dx[k];
+      pj->mhd_data.r_cm_Kweight[k] -= dx[k] * mi * wj;
+  }
+  pj->mhd_data.N_weight += 1;
+  pj->mhd_data.K_weight += mi * wj;
+
+}
 
 /**
  * @brief MHD-Density interaction between two particles. (non-symmetric)
@@ -55,7 +96,32 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                const float hi, const float hj,
                                struct part *restrict pi,
                                const struct part *restrict pj, const float mu_0,
-                               const float a, const float H) {}
+                               const float a, const float H) {
+  float wi, wj, wi_dx, wj_dx;
+
+  const float r = sqrtf(r2);
+
+  /* Get the masses. */
+  const float mj = pj->mass;
+
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+
+  kernel_deval(ui, &wi, &wi_dx);
+
+
+  /* Compute distances */
+  dx2 = dx[0]*dx[0]+dx[1]*dx[1]+dx[2]*dx[2];
+
+  pi->mhd_data.r_ms_Nweight += dx2;
+  pi->mhd_data.r_ms_Kweight += dx2 * mj * wi;
+  for (int k = 0; k < 3; k++) {
+      pi->mhd_data.r_cm_Nweight[k] += dx[k];
+      pi->mhd_data.r_cm_Kweight[k] += dx[k] * mj * wi;
+  }
+  pi->mhd_data.N_weight += 1;
+  pi->mhd_data.K_weight += mj * wi;
+}
 
 /**
  * @brief Calculate the MHD-gradient interaction between particle i and particle
