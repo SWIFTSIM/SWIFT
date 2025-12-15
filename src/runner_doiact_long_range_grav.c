@@ -203,8 +203,6 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cpi,
 
   /* Get the maximum distance at which we can have a non-mesh interaction. */
   struct engine *e = s->e;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
   /* Handle on the pair's gravity business. */
   struct gravity_tensors *multi_i = ci->grav.multipole;
