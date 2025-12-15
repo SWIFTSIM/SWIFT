@@ -103,7 +103,6 @@ struct sipart {
   /*! Exact value of the density field obtained via brute-force loop */
   float rho_exact;
 
-  int has_done_feedback;
 #endif
 
 } SWIFT_STRUCT_ALIGN;

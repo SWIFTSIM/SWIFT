@@ -274,8 +274,7 @@ void sidm_exact_density_check(struct space *s, const struct engine *e,
     const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
                          kernel_gamma * sipi->h * sipi->h * sipi->h * sipi->n_exact;
 
-    if (id % SWIFT_SIDM_DENSITY_CHECKS == 0 && sipart_is_starting(sipi, e) &&
-        (sipi->has_done_feedback || e->step <= 0)) {
+    if (id % SWIFT_SIDM_DENSITY_CHECKS == 0 && sipart_is_starting(sipi, e)) {
 
       counter++;
 
