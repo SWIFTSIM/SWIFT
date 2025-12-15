@@ -205,7 +205,7 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cpi,
   struct engine *e = s->e;
 
   /* Handle on the pair's gravity business. */
-  struct gravity_tensors *multi_i = ci->grav.multipole;
+  struct gravity_tensors *multi_i = cpi->grav.multipole;
   struct gravity_tensors *multi_j = cpj->grav.multipole;
 
   /* Don't allow self-interactions */
