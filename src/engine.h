@@ -34,7 +34,6 @@
 
 /* Includes. */
 #include "barrier.h"
-#include "cell.h"
 #include "clocks.h"
 #include "collectgroup.h"
 #include "ic_info.h"
@@ -56,6 +55,7 @@ struct black_holes_properties;
 struct extra_io_properties;
 struct external_potential;
 struct forcing_terms;
+struct cell;
 
 /**
  * @brief The different policies the #engine can follow.
@@ -788,6 +788,8 @@ void engine_activate_fof_attach_tasks(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);
+int engine_gravity_can_use_mesh(struct engine *e, const struct cell *ci,
+                                const struct cell *cj);
 int engine_gravity_need_cell_pair_task(struct engine *e, struct cell *ci,
                                        struct cell *cj, const int periodic,
                                        const int use_mesh);

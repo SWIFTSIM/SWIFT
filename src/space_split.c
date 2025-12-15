@@ -993,28 +993,25 @@ void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
  */
 void space_split(struct space *s, int verbose) {
 
+  const ticks tic = getticks();
+
   s->min_a_grav = FLT_MAX;
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
   if (!s->with_zoom_region) {
 
-    const ticks tic = getticks();
-
     threadpool_map(&s->e->threadpool, space_split_mapper,
                    s->local_cells_with_particles_top,
                    s->nr_local_cells_with_particles, sizeof(int),
                    threadpool_auto_chunk_size, s);
 
-    if (verbose)
-      message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-              clocks_getunit());
   }
 
   /* When running with a zoom region we do each cell grid individually. */
   else {
 
-    ticks tic = getticks();
+    const ticks zoom_tic = getticks();
 
     /* Create the cell tree for zoom cells and populate their multipoles. */
     threadpool_map(&s->e->threadpool, zoom_space_split_mapper,
@@ -1024,11 +1021,11 @@ void space_split(struct space *s, int verbose) {
 
     if (verbose)
       message("Zoom cell tree and multipole construction took %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
+              clocks_from_ticks(getticks() - zoom_tic), clocks_getunit());
 
     if (s->zoom_props->with_buffer_cells) {
 
-      tic = getticks();
+      const ticks buffer_tic = getticks();
 
       /* Create the background cell trees and populate their multipoles. */
       threadpool_map(&s->e->threadpool, buffer_space_split_mapper,
@@ -1038,10 +1035,10 @@ void space_split(struct space *s, int verbose) {
 
       if (verbose)
         message("Buffer cell tree and multipole construction took %.3f %s.",
-                clocks_from_ticks(getticks() - tic), clocks_getunit());
+                clocks_from_ticks(getticks() - buffer_tic), clocks_getunit());
     }
 
-    tic = getticks();
+    const ticks bkg_tic = getticks();
 
     /* Create the background cell trees and populate their multipoles. */
     threadpool_map(&s->e->threadpool, bkg_space_split_mapper,
@@ -1051,6 +1048,10 @@ void space_split(struct space *s, int verbose) {
 
     if (verbose)
       message("Background cell tree and multipole construction took %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
+              clocks_from_ticks(getticks() - bkg_tic), clocks_getunit());
   }
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }

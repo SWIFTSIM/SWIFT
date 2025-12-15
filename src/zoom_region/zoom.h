@@ -20,6 +20,9 @@
 #ifndef SWIFT_ZOOM_H
 #define SWIFT_ZOOM_H
 
+/* Config parameters. */
+#include <config.h>
+
 /* HDF5 header. */
 #include <hdf5.h>
 
