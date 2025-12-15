@@ -213,16 +213,8 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cpi,
   /* Don't allow self-interactions */
   if (cpi == cpj) return;
 
-  /* Did we do a MM task here? */
-  if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                           /*is_tree_walk=*/cpj == cpj->top ? 0 : 1)) {
-    return;
-  }
-
-  /* Are we beyond the mesh distance? */
-  const double min_radius2 =
-      cell_min_dist2_same_size(cpi, cpj, s->periodic, s->dim);
-  if (min_radius2 > max_distance2) {
+  /* Can we use the mesh? */
+  if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Need to account for the interactions we missed */
     accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
@@ -236,10 +228,16 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cpi,
 
     /* Record that this multipole received a contribution */
     multi_i->pot.interacted = 1;
-
   }
 
-  /* Ok, recurse down but don't go further than where the tasks are. */
+  /* OK, well did we do a MM task instead? */
+  else if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
+                                /*is_tree_walk=*/cpj == cpj->top ? 0 : 1)) {
+    return;
+  }
+
+  /* Alas, we made a task, recurse down but don't go further than where the
+     tasks are. */
   else if (ci != cpi) {
     for (int i = 0; i < 8; i++) {
       if (cpi->progeny[i] == NULL) continue;
