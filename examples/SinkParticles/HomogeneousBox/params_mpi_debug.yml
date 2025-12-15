@@ -29,11 +29,13 @@ Snapshots:
   basename:   snapshot      # Common part of the name of output files
   time_first: 0.            # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 1e-2        # Time difference between consecutive outputs (in internal units)
+  recording_triggers_part: [1.0227e-4, 1.0227e-5]   # Recording starts 100M and 10M years before a snapshot
+  recording_triggers_bpart: [1.0227e-4, 1.0227e-5]  # Recording starts 100M and 10M years before a snapshot
 
 Scheduler:
-  cell_extra_gparts: 10000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sinks: 10000       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sparts: 10000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_gparts: 100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks: 0       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts: 100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells: 3        #
   dependency_graph_frequency: 1  # (Optional) Dumping frequency of the dependency graph. By default, writes only at the first step.
   dependency_graph_cell:       25 # Once the code crashes, you can get the problematic cells
@@ -55,8 +57,22 @@ SPH:
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   h_max:                 5
   h_min_ratio:           0.1
-  minimal_temperature:   1
+  minimal_temperature:   20
 
+
+Stars:
+  timestep_age_threshold_unlimited_Myr: 30.      # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.
+  timestep_age_threshold_Myr:           10.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_young_Myr:               1       # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_old_Myr:                 5         # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
+
+  resolution_eta:        1.1642   # Target smoothing length in units of the mean inter-particle separation
+  h_tolerance:           7e-3
+  luminosity_filename:   ./photometry
+
+#################################################################################
+# GEAR Subgrid physics stars here
+#################################################################################
 
 # Cooling with Grackle 3.0
 GrackleCooling:
@@ -71,18 +87,7 @@ GrackleCooling:
   max_steps: 1000
   convergence_limit: 1e-2
   thermal_time_myr: 5
-  initial_nHII_to_nH_ratio:   2.393761E-004    # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHeI_to_nH_ratio:   7.900000E-002    # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHeII_to_nH_ratio:  5.692753E-020    # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHeIII_to_nH_ratio: 0                # initial nHeIII to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nDI_to_nH_ratio:    2.529538E-005    # initial nDI    to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nDII_to_nH_ratio:   4.284496E-009    # initial nDII   to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHM_to_nH_ratio:    6.509693E-012    # initial nHM    to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nH2I_to_nH_ratio:   1.891128E-005    # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nH2II_to_nH_ratio:  4.153181E-005    # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHDI_to_nH_ratio:   3.356904E-006    # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
   maximal_density_Hpcm3: -1    # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
-
 
 GEARChemistry:
   initial_metallicity: 1e-6
@@ -96,47 +101,122 @@ GEARFeedback:
   imf_transition_metallicity: -5         # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
-
-GEARSink:
-  use_fixed_cut_off_radius: 1                 # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
-  cut_off_radius: 5e-3                        # Cut off radius of all the sinks in internal units. Ignored if use_fixed_cut_off_radius is 0.
-  f_acc: 1e-2
-  temperature_threshold_K: 1000               # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
-  density_threshold_Hpcm3: 1e1                # Minimum gas density (in g/cm3) required to form a sink particle.
-  maximal_density_threshold_Hpcm3: 1e5        # If the gas density exceeds this value (in g/cm3), a sink forms regardless of temperature if all other criteria are passed.
-  stellar_particle_mass_Msun: 50              # Mass of the stellar particle representing the low mass stars, in solar mass
-  minimal_discrete_mass_Msun: 8               # Minimal mass of stars represented by discrete particles, in solar mass
-  stellar_particle_mass_first_stars_Msun: 50  # Mass of the stellar particle representing the low mass stars, in solar mass
-  minimal_discrete_mass_first_stars_Msun: 8   # Minimal mass of stars represented by discrete particles, in solar mass
-  star_spawning_sigma_factor: 0.5             # Factor to rescale the velocity dispersion of the stars when they are spawned. (Default: 0.2)
-  sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
-  sink_formation_smoothing_length_criterion: 1    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
-  sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
-  sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
-  sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
-  disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)
-
-  # Timesteps parameters
-  CFL_condition:                        0.5       # Courant-Friedrich-Levy condition for time integration.
-  timestep_age_threshold_unlimited_Myr: 100.      # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.
-  timestep_age_threshold_Myr:           25.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
-  max_timestep_young_Myr:               0.5       # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
-  max_timestep_old_Myr:                  1.       # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
-  n_IMF:                                 2.       # (Optional) Number of times the IMF mass can be swallowed in a single timestep. (Default: FLTM_MAX)
-
 GEARStarFormation:
   star_formation_efficiency: 0.01     # star formation efficiency (c_*)
   maximal_temperature_K:     3e4      # Upper limit to the temperature of a star forming particle
   density_threshold_Hpcm3:   1e1      # Density threshold in Hydrogen atoms/cm3
-  n_stars_per_particle: 4
+  n_stars_per_particle:      2        # Number of stars
   min_mass_frac: 0.5
 
 GEARPressureFloor:
   jeans_factor: 10
 
+
+#################################################################################
+# EAGLE Subgrid physics stars here
+#################################################################################
+
+EAGLEChemistry: 	     # Solar abundances
+  init_abundance_metal:      0.014
+  init_abundance_Hydrogen:   0.70649785
+  init_abundance_Helium:     0.28055534
+  init_abundance_Carbon:     2.0665436e-3
+  init_abundance_Nitrogen:   8.3562563e-4
+  init_abundance_Oxygen:     5.4926244e-3
+  init_abundance_Neon:       1.4144605e-3
+  init_abundance_Magnesium:  5.907064e-4
+  init_abundance_Silicon:    6.825874e-4
+  init_abundance_Iron:       1.1032152e-3
+
+# EAGLE cooling parameters
+EAGLECooling:
+  dir_name:                ./coolingtables/
+  H_reion_z:               11.5
+  H_reion_eV_p_H:          2.0
+  He_reion_z_centre:       3.5
+  He_reion_z_sigma:        0.5
+  He_reion_eV_p_H:         2.0
+
+# PS2020 cooling parameters
+PS2020Cooling:
+  dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the cooling tables
+  H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
+  H_reion_eV_p_H:          2.0
+  He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+  delta_logTEOS_subgrid_properties: 0.3      # delta log T above the EOS below which the subgrid properties use Teq assumption
+  rapid_cooling_threshold:          0.333333 # Switch to rapid cooling regime for dt / t_cool above this threshold.
+
+# EAGLE star formation parameters
+EAGLEStarFormation:
+  SF_threshold:                      Zdep         # Zdep (Schaye 2004) or Subgrid
+  SF_model:                          PressureLaw  # PressureLaw (Schaye et al. 2008) or SchmidtLaw
+  KS_normalisation:                  1.515e-4     # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+  KS_exponent:                       1.4          # The exponent of the Kennicutt-Schmidt law.
+  min_over_density:                  100.0        # The over-density above which star-formation is allowed.
+  KS_high_density_threshold_H_p_cm3: 1e3          # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+  KS_high_density_exponent:          2.0          # Slope of the Kennicut-Schmidt law above the high-density threshold.
+  EOS_entropy_margin_dex:            0.3          # When using Z-based SF threshold, logarithm base 10 of the maximal entropy above the EOS at which stars can form.
+  threshold_norm_H_p_cm3:            0.1          # When using Z-based SF threshold, normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_Z0:                      0.002        # When using Z-based SF threshold, reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
+  threshold_slope:                   -0.64        # When using Z-based SF threshold, slope of the metal-dependant star formation threshold
+  threshold_max_density_H_p_cm3:     10.0         # When using Z-based SF threshold, maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_temperature1_K:          1000         # When using subgrid-based SF threshold, subgrid temperature below which gas is star-forming.
+  threshold_temperature2_K:          31622        # When using subgrid-based SF threshold, subgrid temperature below which gas is star-forming if also above the density limit.
+  threshold_number_density_H_p_cm3:  10           # When using subgrid-based SF threshold, subgrid number density above which gas is star-forming if also below the second temperature limit.
+  num_of_stars_per_gas_particle:     8
   
-Stars:
-  timestep_age_threshold_unlimited_Myr: 30.      # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.
-  timestep_age_threshold_Myr:           10.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
-  max_timestep_young_Myr:               1       # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
-  max_timestep_old_Myr:                 5         # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
+# Parameters for the EAGLE "equation of state"
+EAGLEEntropyFloor:
+  Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
+  Jeans_temperature_norm_K:        8000      # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
+  Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
+  Cool_density_threshold_H_p_cm3: 1e-5       # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Cool_over_density_threshold:    10.        # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
+  Cool_temperature_norm_K:        8000       # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
+  Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
+
+# EAGLE feedback model
+EAGLEFeedback:
+  use_SNII_feedback:                    1               # Global switch for SNII thermal (stochastic) feedback.
+  use_SNIa_feedback:                    1               # Global switch for SNIa thermal (continuous) feedback.
+  use_AGB_enrichment:                   1               # Global switch for enrichement from AGB stars.
+  use_SNII_enrichment:                  1               # Global switch for enrichement from SNII stars.
+  use_SNIa_enrichment:                  1               # Global switch for enrichement from SNIa stars.
+  filename:                             ./yieldtables/  # Path to the directory containing the EAGLE yield tables.
+  IMF_min_mass_Msun:                    0.1             # Minimal stellar mass considered for the Chabrier IMF in solar masses.
+  IMF_max_mass_Msun:                  100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
+  SNII_min_mass_Msun:                   6.0             # Minimal mass considered for SNII stars in solar masses.
+  SNII_max_mass_Msun:                 100.0             # Maximal mass considered for SNII stars in solar masses.
+  SNII_feedback_model:                  Random          # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
+  SNII_sampled_delay:                   0               # Sample the SNII lifetimes to do feedback.
+  SNII_wind_delay_Gyr:                  0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event when not sampling.
+  SNII_delta_T_K:                       3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
+  SNII_energy_erg:                      1.0e51          # Energy of one SNII explosion in ergs.
+  SNII_energy_fraction_function:        EAGLE           # Type of functional form to use for scaling the energy fraction with density and metallicity ('EAGLE', 'Separable', or 'Independent').
+  SNII_energy_fraction_min:             0.3             # Minimal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_max:             3.0             # Maximal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_Z_0:             0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
+  SNII_energy_fraction_n_0_H_p_cm3:     1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
+  SNII_energy_fraction_n_Z:             0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
+  SNII_energy_fraction_n_n:             0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
+  SNII_energy_fraction_use_birth_density: 1             # Are we using the density at birth to compute f_E or at feedback time?
+  SNII_energy_fraction_use_birth_metallicity: 1         # Are we using the metallicity at birth to compuote f_E or at feedback time?
+  SNIa_DTD:                             PowerLaw        # Functional form of the SNIa delay time distribution.
+  SNIa_DTD_delay_Gyr:                   0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
+  SNIa_DTD_power_law_norm_p_Msun:       0.0012          # Normalization of the SNIa delay time distribution (in Msun^-1).
+  SNIa_energy_erg:                     1.0e51           # Energy of one SNIa explosion in ergs.
+  AGB_ejecta_velocity_km_p_s:          10.0             # Velocity of the AGB ejectas in km/s.
+  stellar_evolution_age_cut_Gyr:        0.1             # Stellar age in Gyr above which the enrichment is down-sampled.
+  stellar_evolution_sampling_rate:       10             # Number of time-steps in-between two enrichment events for a star above the age threshold.
+  SNII_yield_factor_Hydrogen:           1.0             # (Optional) Correction factor to apply to the Hydrogen yield from the SNII channel.
+  SNII_yield_factor_Helium:             1.0             # (Optional) Correction factor to apply to the Helium yield from the SNII channel.
+  SNII_yield_factor_Carbon:             0.5             # (Optional) Correction factor to apply to the Carbon yield from the SNII channel.
+  SNII_yield_factor_Nitrogen:           1.0             # (Optional) Correction factor to apply to the Nitrogen yield from the SNII channel.
+  SNII_yield_factor_Oxygen:             1.0             # (Optional) Correction factor to apply to the Oxygen yield from the SNII channel.
+  SNII_yield_factor_Neon:               1.0             # (Optional) Correction factor to apply to the Neon yield from the SNII channel.
+  SNII_yield_factor_Magnesium:          2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
+  SNII_yield_factor_Silicon:            1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
+  SNII_yield_factor_Iron:               0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.

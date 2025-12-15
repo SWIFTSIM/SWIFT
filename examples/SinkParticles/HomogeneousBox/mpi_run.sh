@@ -15,7 +15,20 @@ then
     python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 --lJ $jeans_length
 fi
 
+# Create output directory
+DIR=snap #First test of units conversion
+if [ -d "$DIR" ];
+then
+    echo "$DIR directory exists. Its content will be removed."
+    rm -r $DIR
+else
+    echo "$DIR directory does not exists. It will be created."
+    mkdir $DIR
+fi
 
+##############################################################################
+# GEAR Tables
+##############################################################################
 # Get the Grackle cooling table
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
@@ -30,32 +43,36 @@ then
     ./getChemistryTable.sh
 fi
 
-
-# Create output directory
-DIR=snap #First test of units conversion
-if [ -d "$DIR" ];
+###############################################################################
+# EAGLE Tables
+###############################################################################
+# Grab the cooling, yield, and photometry tables if they are not present.
+if [ ! -e yieldtables ]
 then
-    echo "$DIR directory exists. Its content will be removed."
-    rm -r $DIR
-else
-    echo "$DIR directory does not exists. It will be created."
-    mkdir $DIR
+    echo "Fetching EAGLE yield tables..."
+    ../../EAGLE_ICs/getEagleYieldTable.sh
 fi
+
+if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ]
+then
+    echo "Fetching EAGLE-XL cooling tables..."
+    ../../EAGLE_ICs/getPS2020CoolingTables.sh
+fi
+
+if [ ! -e photometry ]
+then
+    echo "Fetching EAGLE photometry tables..."
+    ../../EAGLE_ICs/getEaglePhotometryTable.sh
+fi
+
+###############################################################################
 
 printf "Running simulation..."
 
-mpirun -n $n_ranks ../../../swift_mpi --pin --hydro --star-formation --stars --self-gravity --feedback --cooling --sync --limiter --threads=1 --verbose 0 params_mpi_debug.yml 2>&1 | tee output.log
+mpirun -n $n_ranks ../../../swift_mpi --pin --hydro --star-formation --stars --self-gravity --feedback --cooling --sync --limiter --threads=1 --pin --verbose 0 params_mpi_debug.yml 2>&1 | tee output.log
 
 #Do some data analysis to show what's in this box
-python3 plot_gas_density.py -i 282 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 282 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 0 -f 282 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 0 -f 282 -s 'snap/snapshot'
-
-runner_doiact_grav.c:runner_dopair_grav_pp_truncated():1039: [204, foreign] gpj not drifted to current time, ci = 262154, cj = 458777, ci->super = 10, cj->super = 25, node_j = 1, node_j = 2 
-
-[0001] [00086.0] runner_doiact_grav.c:runner_dopair_grav_pp_truncated()
-:1039: [204, foreign] gpj not drifted to current time, ci = 262148, cj =
-294937, ci->super = 4, cj->super = 25, node_j = 1, node_j = 2
-
-[0001] [00093.8] runner_doiact_grav.c:runner_dopair_grav_pp_truncated():1039: [204, foreign] gpj not drifted to current time, ci = 262148, cj = 294937, ci->super = 4, cj->super = 25, node_j = 1, node_j = 2 
+# python3 plot_gas_density.py -i 282 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 282 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 0 -f 282 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 0 -f 282 -s 'snap/snapshot'
