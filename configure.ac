@@ -3482,6 +3482,7 @@ AC_MSG_RESULT([
    Naive interactions          : $enable_naive_interactions
    Naive stars interactions    : $enable_naive_interactions_stars
    Gravity checks              : $gravity_force_checks
+   SIDM density checks         : $sidm_density_checks
    Custom icbrtf               : $enable_custom_icbrtf
    Planetary fixed entropy     : $planetary_fixed_entropy
    Ghost statistics            : $ghost_stats
