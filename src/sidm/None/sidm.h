@@ -56,7 +56,7 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sidm_end_density(
-    struct sipart *sip, const struct cosmology *cosmo) {}
+    struct sipart *sip) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #sipart has 0
