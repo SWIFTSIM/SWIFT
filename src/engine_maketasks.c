@@ -2295,7 +2295,6 @@ void engine_make_external_gravity_tasks(struct engine *e) {
 void engine_make_hierarchical_tasks_sidm(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
-  const int with_sidm = (e->policy & engine_policy_sidm);
 #ifdef WITH_CSDS
   const int with_csds = (e->policy & engine_policy_csds);
 #endif

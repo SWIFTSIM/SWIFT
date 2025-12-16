@@ -894,7 +894,7 @@ void pairs_all_sidm_density(struct runner *r, struct cell *ci,
 
 void self_all_sidm_density(struct runner *r, struct cell *ci) {
 
-  float r2, hi, hj, hig2, hjg2;
+  float hi, hj, hig2, hjg2;
   struct sipart *sipi, *sipj;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
