@@ -2223,7 +2223,7 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Finish the density calculation */
-          sidm_end_density(sip, cosmo);
+          sidm_end_density(sip);
 
           /* Are we using the alternative definition of the
              number of neighbours? */

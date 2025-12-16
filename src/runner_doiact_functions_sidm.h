@@ -156,6 +156,9 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
         struct sipart *restrict sipj = &siparts[sijd];
         const char depth_j = sipj->depth_h;
 
+        /* Skip inhibited particles. */
+        if (sipart_is_inhibited(sipj, e)) continue;
+
         /* This particle's (square of) search radius. */
         const float hj = sipj->h;
         const float hjg2 = hj * hj * kernel_gamma2;
@@ -182,7 +185,6 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
         const int doi = (r2 < hig2);
 
         /* We know nothing about pj
-         * -> Check whether it is active
          * -> Check whether it is in the right range of h
          * -> Check the distance to pi */
         const int doj =
@@ -253,7 +255,7 @@ void DOPAIR1_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!CELL_IS_ACTIVE_SIDM(ci, e) && !CELL_IS_ACTIVE_SIDM(cj, e)) return;
+  if (!cell_is_active_sidm(ci, e) && !cell_is_active_sidm(cj, e)) return;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -296,6 +298,7 @@ void DOPAIR1_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
     /* Skip inhibited particles. */
     if (sipart_is_inhibited(sipi, e)) continue;
 
+    const int sipi_active = sipart_is_active(sipi, e);
     const char depth_i = sipi->depth_h;
     const float hi = sipi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -312,6 +315,7 @@ void DOPAIR1_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
       /* Skip inhibited particles. */
       if (sipart_is_inhibited(sipj, e)) continue;
 
+      const int sipj_active = sipart_is_active(sipj, e);
       const char depth_j = sipj->depth_h;
       const float hj = sipj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -332,10 +336,10 @@ void DOPAIR1_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
         error("Particle sipj not drifted to current time");
 #endif
 
-      const int doi =
-          (r2 < hig2) && (depth_i >= min_depth) && (depth_i <= max_depth);
-      const int doj =
-          (r2 < hjg2) && (depth_j >= min_depth) && (depth_j <= max_depth);
+      const int doi = sipi_active && (r2 < hig2) && (depth_i >= min_depth) &&
+                      (depth_i <= max_depth);
+      const int doj = sipj_active && (r2 < hjg2) && (depth_j >= min_depth) &&
+                      (depth_j <= max_depth);
 
       /* Hit or miss? */
       if (doi) {
@@ -383,7 +387,7 @@ void DOSELF1_SIDM_NAIVE(struct runner *r, const struct cell *c,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!CELL_IS_ACTIVE_SIDM(c, e)) return;
+  if (!cell_is_active_sidm(c, e)) return;
 
   /* Cosmological terms and physical constants */
   const float a = cosmo->a;
@@ -411,6 +415,7 @@ void DOSELF1_SIDM_NAIVE(struct runner *r, const struct cell *c,
     /* Skip inhibited particles. */
     if (sipart_is_inhibited(sipi, e)) continue;
 
+    const int sipi_active = sipart_is_active(sipi, e);
     const char depth_i = sipi->depth_h;
     const float hi = sipi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -429,6 +434,7 @@ void DOSELF1_SIDM_NAIVE(struct runner *r, const struct cell *c,
 
       const float hj = sipj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
+      const int sipj_active = sipart_is_active(sipj, e);
       const char depth_j = sipj->depth_h;
 
       /* Compute the pairwise distance. */
@@ -439,10 +445,10 @@ void DOSELF1_SIDM_NAIVE(struct runner *r, const struct cell *c,
                      sipix[2] - sipjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      const int doi =
-          (r2 < hig2) && (depth_i >= min_depth) && (depth_i <= max_depth);
-      const int doj =
-          (r2 < hjg2) && (depth_j >= min_depth) && (depth_j <= max_depth);
+      const int doi = sipi_active && (r2 < hig2) && (depth_i >= min_depth) &&
+                      (depth_i <= max_depth);
+      const int doj = sipj_active && (r2 < hjg2) && (depth_j >= min_depth) &&
+                      (depth_j <= max_depth);
 
 #if defined(SWIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
@@ -528,8 +534,10 @@ void DOPAIR1_SUBSET_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
     const float hi = sipi->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
-    /* Skip inhibited particles. */
-    if (sipart_is_inhibited(sipi, e)) continue;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!sipart_is_active(sipi, e))
+      error("Trying to correct smoothing length of inactive particle !");
+#endif
 
     /* Loop over the parts in cj. */
     for (int sijd = 0; sijd < sicount_j; sijd++) {
@@ -708,7 +716,7 @@ void DOSELF1_BRANCH_SIDM(struct runner *r, const struct cell *c,
   if (c->sidm.count == 0) return;
 
   /* Anything to do here? */
-  if (!CELL_IS_ACTIVE_SIDM(c, e)) return;
+  if (!cell_is_active_sidm(c, e)) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -723,7 +731,7 @@ void DOSELF1_BRANCH_SIDM(struct runner *r, const struct cell *c,
 #endif
 
   /* Check that cells are drifted. */
-  if (!CELL_ARE_SIPART_DRIFTED(c, e)) error("Interacting undrifted cell.");
+  if (!cell_are_sipart_drifted(c, e)) error("Interacting undrifted cell.");
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOSELF1_SIDM_NAIVE(r, c, limit_min_h, limit_max_h);
@@ -751,10 +759,10 @@ void DOPAIR1_BRANCH_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
   if (ci->sidm.count == 0 || cj->sidm.count == 0) return;
 
   /* Anything to do here? */
-  if (!CELL_IS_ACTIVE_SIDM(ci, e) && !CELL_IS_ACTIVE_SIDM(cj, e)) return;
+  if (!cell_is_active_sidm(ci, e) && !cell_is_active_sidm(cj, e)) return;
 
   /* Check that cells are drifted. */
-  if (!CELL_ARE_SIPART_DRIFTED(ci, e) || !CELL_ARE_SIPART_DRIFTED(cj, e))
+  if (!cell_are_sipart_drifted(ci, e) || !cell_are_sipart_drifted(cj, e))
     error("Interacting undrifted cells.");
 
   /* No sorted intreactions here -> use the naive ones */
@@ -781,7 +789,7 @@ void DOSUB_PAIR1_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *e = r->e;
 
   /* Should we even bother? */
-  if (!CELL_IS_ACTIVE_SIDM(ci, e) && !CELL_IS_ACTIVE_SIDM(cj, e)) return;
+  if (!cell_is_active_sidm(ci, e) && !cell_is_active_sidm(cj, e)) return;
   if (ci->sidm.count == 0 || cj->sidm.count == 0) return;
 
   /* Get the type of pair and flip ci/cj if needed. */
@@ -841,7 +849,7 @@ void DOSUB_SELF1_SIDM(struct runner *r, struct cell *c, int recurse_below_h_max,
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (c->sidm.count == 0 || !CELL_IS_ACTIVE_SIDM(c, r->e)) return;
+  if (c->sidm.count == 0 || !cell_is_active_sidm(c, r->e)) return;
 
   /* We reached a leaf OR a cell small enough to process quickly */
   if (!c->split || c->sidm.count < space_recurse_size_self_sidm) {

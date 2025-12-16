@@ -67,7 +67,7 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sidm_end_density(
-    struct sipart *sip, const struct cosmology *cosmo) {
+    struct sipart *sip) {
 
   /* Some smoothing length multiples. */
   const float h = sip->h;
@@ -75,7 +75,15 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
+  /* Final operation on the density (add self-contribution). */
+  sip->rho += sip->mass * kernel_root;
+  sip->density.rho_dh -= hydro_dimension * sip->mass * kernel_root;
+  sip->density.wcount += kernel_root;
+  sip->density.wcount_dh -= hydro_dimension * kernel_root;
+
   /* Finish the calculation by inserting the missing h-factors */
+  sip->rho *= h_inv_dim;
+  sip->density.rho_dh *= h_inv_dim_plus_one;
   sip->density.wcount *= h_inv_dim;
   sip->density.wcount_dh *= h_inv_dim_plus_one;
 }
@@ -115,3 +123,14 @@ __attribute__((always_inline)) INLINE static void sidm_predict_extra(
     struct sipart *restrict sip, float dt_drift) {}
 
 #endif /* SWIFT_BASIC_SIDM_H */
+
+/**
+ * @brief Returns the comoving density of a particle
+ *
+ * @param sip The si-particle of interest
+ */
+__attribute__((always_inline)) INLINE static float sidm_get_comoving_density(
+    const struct sipart *restrict sip) {
+
+  return sip->rho;
+}

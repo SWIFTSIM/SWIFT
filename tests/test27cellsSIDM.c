@@ -30,21 +30,41 @@
 /* Local headers. */
 #include "swift.h"
 
+#if defined(WITH_VECTORIZATION)
+#define DOSELF1 runner_doself1_branch_sidm_density
+#define DOSELF1_SUBSET runner_doself_subset_branch_sidm_density
+#define DOPAIR1_SUBSET runner_dopair_subset_branch_sidm_density
+#define DOPAIR1 runner_dopair1_branch_sidm_density
+#ifdef TEST_DOSELF_SUBSET
+#define DOSELF1_NAME "runner_doself_subset_branch_sidm_density"
+#else
+#define DOSELF1_NAME "runner_doself1_branch_sidm_density"
+#endif
+#ifdef TEST_DOPAIR_SUBSET
+#define DOPAIR1_NAME "runner_dopair_subset_branch_sidm_density"
+#else
+#define DOPAIR1_NAME "runner_dopair1_branch_sidm_density"
+#endif
+#endif
 
-#define DOSELF1 runner_doself_branch_sidm_density
+#ifndef DOSELF1
+#define DOSELF1 runner_doself1_branch_sidm_density
 #define DOSELF1_SUBSET runner_doself_subset_branch_sidm_density
 #ifdef TEST_DOSELF_SUBSET
 #define DOSELF1_NAME "runner_doself_subset_branch_sidm_density"
 #else
-#define DOSELF1_NAME "runner_doself_branch_sidm_density"
+#define DOSELF1_NAME "runner_doself1_branch_sidm_density"
+#endif
 #endif
 
+#ifndef DOPAIR1
+#define DOPAIR1 runner_dopair1_branch_sidm_density
 #define DOPAIR1_SUBSET runner_dopair_subset_branch_sidm_density
-#define DOPAIR1 runner_dopair_branch_sidm_density
 #ifdef TEST_DOPAIR_SUBSET
-#define DOPAIR1_NAME "runner_dopair_subset_branch_sidm_density"
+#define DOPAIR1_NAME "runner_dopair1_subset_branch_sidm_density"
 #else
-#define DOPAIR1_NAME "runner_dopair_branch_sidm_density"
+#define DOPAIR1_NAME "runner_dopair1_branch_sidm_density"
+#endif
 #endif
 
 #define NODE_ID 0
@@ -65,8 +85,10 @@
  * @param h_pert The perturbation to apply to the smoothing length.
  */
 struct cell *make_cell(size_t n_sidm, double *offset, double size, double h,
-                       long long *sipartId, double pert, double h_pert) {
-  const size_t sicount = n_sidm * n_sidm * n_sidm ;
+                       double density, long long *sipartId, double pert,
+                       double h_pert) {
+  const size_t sicount = n_sidm * n_sidm * n_sidm;
+  const double volume = size * size * size;
   float h_max = 0.f;
   struct cell *cell = NULL;
   if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
@@ -76,7 +98,8 @@ struct cell *make_cell(size_t n_sidm, double *offset, double size, double h,
 
   if (posix_memalign((void **)&cell->sidm.parts, sipart_align,
                      sicount * sizeof(struct sipart)) != 0) {
-    error("couldn't allocate siparticles, no. of siparticles: %d", (int)sicount);
+    error("couldn't allocate siparticles, no. of siparticles: %d",
+          (int)sicount);
   }
   bzero(cell->sidm.parts, sicount * sizeof(struct sipart));
 
@@ -94,7 +117,7 @@ struct cell *make_cell(size_t n_sidm, double *offset, double size, double h,
         sipart->x[2] =
             offset[2] +
             size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n_sidm;
-        
+
         sipart->v[0] = 0.f;
         sipart->v[1] = 0.f;
         sipart->v[2] = 0.f;
@@ -106,6 +129,8 @@ struct cell *make_cell(size_t n_sidm, double *offset, double size, double h,
         h_max = fmaxf(h_max, sipart->h);
         sipart->id = ++(*sipartId);
         // sipart->depth_h = 0;
+        sipart->mass = density * volume / sicount;
+        sipart->time_bin = 1;
 
 #ifdef SWIFT_DEBUG_CHECKS
         sipart->ti_drift = 8;
@@ -167,10 +192,10 @@ void zero_particle_fields(struct cell *c) {
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c, const struct cosmology *cosmo) {
+void end_calculation(struct cell *c) {
 
   for (int siid = 0; siid < c->sidm.count; siid++) {
-    sidm_end_density(&c->sidm.parts[siid], cosmo);
+    sidm_end_density(&c->sidm.parts[siid]);
 
     /* Recover the common "Neighbour number" definition */
     c->sidm.parts[siid].density.wcount *= pow_dimension(c->sidm.parts[siid].h);
@@ -186,21 +211,20 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   FILE *file = fopen(fileName, "w");
 
   /* Write header */
-  fprintf(file,
-          "# %4s %10s %10s %10s %13s %13s\n",
-          "ID", "pos_x", "pos_y", "pos_z", "wcount", "wcount_dh");
+  fprintf(file, "# %4s %10s %10s %10s %13s %13s %13s %13s\n", "ID", "pos_x",
+          "pos_y", "pos_z", "wcount", "wcount_dh", "rho", "rho_dh");
 
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
   for (int siid = 0; siid < main_cell->sidm.count; siid++) {
-    fprintf(file,
-            "%6llu %10f %10f %10f %13e %13e\n",
+    fprintf(file, "%6llu %10f %10f %10f %13e %13e %13e %13e\n",
             main_cell->sidm.parts[siid].id, main_cell->sidm.parts[siid].x[0],
             main_cell->sidm.parts[siid].x[1], main_cell->sidm.parts[siid].x[2],
             main_cell->sidm.parts[siid].density.wcount,
-            main_cell->sidm.parts[siid].density.wcount_dh
-    );
+            main_cell->sidm.parts[siid].density.wcount_dh,
+            sidm_get_comoving_density(&main_cell->sidm.parts[siid]),
+            main_cell->sidm.parts[siid].density.rho_dh);
   }
 
   /* Write all other cells */
@@ -215,14 +239,13 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
                 i - 1, j - 1, k - 1);
 
         for (int sipjd = 0; sipjd < cj->sidm.count; sipjd++) {
-          fprintf(
-              file,
-              "%6llu %10f %10f %10f %13e %13e\n",
-              cj->sidm.parts[sipjd].id, cj->sidm.parts[sipjd].x[0],
-              cj->sidm.parts[sipjd].x[1], cj->sidm.parts[sipjd].x[2],
-              cj->sidm.parts[sipjd].density.wcount,
-              cj->sidm.parts[sipjd].density.wcount_dh
-          );
+          fprintf(file, "%6llu %10f %10f %10f %13e %13e %13e %13e\n",
+                  cj->sidm.parts[sipjd].id, cj->sidm.parts[sipjd].x[0],
+                  cj->sidm.parts[sipjd].x[1], cj->sidm.parts[sipjd].x[2],
+                  cj->sidm.parts[sipjd].density.wcount,
+                  cj->sidm.parts[sipjd].density.wcount_dh,
+                  sidm_get_comoving_density(&main_cell->sidm.parts[sipjd]),
+                  main_cell->sidm.parts[sipjd].density.rho_dh);
         }
       }
     }
@@ -231,20 +254,20 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 }
 
 /* Just a forward declaration... */
-void runner_dopair_branch_sidm_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj, int limit_h_min,
-                                   int limit_h_max);
-void runner_doself_branch_sidm_density(struct runner *r, struct cell *c,
-                                   int limit_h_min, int limit_h_max);
+void runner_dopair1_branch_sidm_density(struct runner *r, struct cell *ci,
+                                        struct cell *cj, int limit_h_min,
+                                        int limit_h_max);
+void runner_doself1_branch_sidm_density(struct runner *r, struct cell *c,
+                                        int limit_h_min, int limit_h_max);
 void runner_dopair_subset_branch_sidm_density(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct sipart *restrict siparts_i,
-                                         int *restrict ind, int sicount,
-                                         struct cell *restrict cj);
+                                              struct cell *restrict ci,
+                                              struct sipart *restrict siparts_i,
+                                              int *restrict ind, int sicount,
+                                              struct cell *restrict cj);
 void runner_doself_subset_branch_sidm_density(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct sipart *restrict siparts,
-                                         int *restrict ind, int sicount);
+                                              struct cell *restrict ci,
+                                              struct sipart *restrict siparts,
+                                              int *restrict ind, int sicount);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -254,7 +277,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   size_t runs = 0, siparticles = 0;
-  double h = 1.23485, size = 1.;
+  double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0., h_pert = 0.;
   char outputFileNameExtension[100] = "";
   char outputFileName[200] = "";
@@ -272,7 +295,7 @@ int main(int argc, char *argv[]) {
   srand(0);
 
   int c;
-  while ((c = getopt(argc, argv, "s:h:p:n:r:t:d:f:")) != -1) {
+  while ((c = getopt(argc, argv, "m:s:h:p:n:r:t:d:f:")) != -1) {
     switch (c) {
       case 'h':
         sscanf(optarg, "%lf", &h);
@@ -292,6 +315,9 @@ int main(int argc, char *argv[]) {
       case 'd':
         sscanf(optarg, "%lf", &perturbation);
         break;
+      case 'm':
+        sscanf(optarg, "%lf", &rho);
+        break;
       case 'f':
         strcpy(outputFileNameExtension, optarg);
         break;
@@ -310,6 +336,7 @@ int main(int argc, char *argv[]) {
         "\n\nOptions:"
         "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
         "\n-p                 - Random fractional change in h, h=h*random(1,p)"
+        "\n-m rho             - Physical density in the cell"
         "\n-s size            - Physical size of the cell"
         "\n-d pert            - Perturbation to apply to the particles [0,1["
         "\n-f fileName        - Part of the file name used to save the dumps\n",
@@ -323,6 +350,7 @@ int main(int argc, char *argv[]) {
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
   message("Neighbour target: N = %f", pow_dimension(h) * kernel_norm);
+  message("Density target: rho = %f", rho);
 
   printf("\n");
 
@@ -362,12 +390,13 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 3; ++k) {
         double offset[3] = {i * size, j * size, k * size};
-        cells[i * 9 + j * 3 + k] =
-            make_cell(siparticles, offset, size, h, &sipartId, perturbation, h_pert);
+        cells[i * 9 + j * 3 + k] = make_cell(siparticles, offset, size, h, rho,
+                                             &sipartId, perturbation, h_pert);
 
-        runner_do_drift_sipart(&runner, cells[i * 9 + j * 3 + k], 0); 
+        runner_do_drift_sipart(&runner, cells[i * 9 + j * 3 + k], 0);
 
-        // runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0, 0,
+        // runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0,
+        // 0,
         //                      0); // TODO:SIDM sorting
       }
     }
@@ -391,10 +420,10 @@ int main(int argc, char *argv[]) {
     int sicount = 0;
     if ((siid = (int *)malloc(sizeof(int) * main_cell->sidm.count)) == NULL)
       error("Can't allocate memory for siid.");
-    for (int k = 0; k < main_cell->sidm.count; k++){
-        siid[sicount] = k;
-        ++sicount;
-      }
+    for (int k = 0; k < main_cell->sidm.count; k++) {
+      siid[sicount] = k;
+      ++sicount;
+    }
 #endif
 
     /* Run all the pairs */
@@ -429,7 +458,7 @@ int main(int argc, char *argv[]) {
     time += toc - tic;
 
     /* Let's get physical ! */
-    end_calculation(main_cell, &cosmo);
+    end_calculation(main_cell);
 
     /* Dump if necessary */
     if (i % 50 == 0) {
@@ -472,7 +501,8 @@ int main(int argc, char *argv[]) {
 
   /* Run all the brute-force pairs */
   for (int j = 0; j < 27; ++j)
-    if (cells[j] != main_cell) pairs_all_sidm_density(&runner, main_cell, cells[j]);
+    if (cells[j] != main_cell)
+      pairs_all_sidm_density(&runner, main_cell, cells[j]);
 
   /* And now the self-interaction */
   self_all_sidm_density(&runner, main_cell);
@@ -480,10 +510,11 @@ int main(int argc, char *argv[]) {
   const ticks toc = getticks();
 
   /* Let's get physical ! */
-  end_calculation(main_cell, &cosmo);
+  end_calculation(main_cell);
 
   /* Dump */
-  sprintf(outputFileName, "sidm_brute_force_27_%.150s.dat", outputFileNameExtension);
+  sprintf(outputFileName, "sidm_brute_force_27_%.150s.dat",
+          outputFileNameExtension);
   dump_particle_fields(outputFileName, main_cell, cells);
 
   /* Output timing */

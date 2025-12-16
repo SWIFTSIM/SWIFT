@@ -25,33 +25,33 @@
 
 #define PASTE(x, y) x##_##y
 
-#define _DOSELF1_SIDM(f) PASTE(runner_doself_sidm, f)
+#define _DOSELF1_SIDM(f) PASTE(runner_doself1_sidm, f)
 #define DOSELF1_SIDM _DOSELF1_SIDM(FUNCTION)
 
-#define _DOPAIR1_SIDM_NAIVE(f) PASTE(runner_dopair_sidm_naive, f)
+#define _DOPAIR1_SIDM_NAIVE(f) PASTE(runner_dopair1_sidm_naive, f)
 #define DOPAIR1_SIDM_NAIVE _DOPAIR1_SIDM_NAIVE(FUNCTION)
 
-#define _DOPAIR1_SUBSET_SIDM(f) PASTE(runner_dopair_subset_sidm, f)
+#define _DOPAIR1_SUBSET_SIDM(f) PASTE(runner_dopair1_subset_sidm, f)
 #define DOPAIR1_SUBSET_SIDM _DOPAIR1_SUBSET_SIDM(FUNCTION)
 
-#define _DOPAIR1_SUBSET_SIDM_NAIVE(f) PASTE(runner_dopair_subset_sidm_naive, f)
+#define _DOPAIR1_SUBSET_SIDM_NAIVE(f) PASTE(runner_dopair1_subset_sidm_naive, f)
 #define DOPAIR1_SUBSET_SIDM_NAIVE _DOPAIR1_SUBSET_SIDM_NAIVE(FUNCTION)
 
-#define _DOSELF1_SUBSET_SIDM(f) PASTE(runner_doself_subset_sidm, f)
+#define _DOSELF1_SUBSET_SIDM(f) PASTE(runner_doself1_subset_sidm, f)
 #define DOSELF1_SUBSET_SIDM _DOSELF1_SUBSET_SIDM(FUNCTION)
 
 #define _DOSELF1_SUBSET_BRANCH_SIDM(f) \
-  PASTE(runner_doself_subset_branch_sidm, f)
+  PASTE(runner_doself1_subset_branch_sidm, f)
 #define DOSELF1_SUBSET_BRANCH_SIDM _DOSELF1_SUBSET_BRANCH_SIDM(FUNCTION)
 
 #define _DOPAIR1_SUBSET_BRANCH_SIDM(f) \
-  PASTE(runner_dopair_subset_branch_sidm, f)
+  PASTE(runner_dopair1_subset_branch_sidm, f)
 #define DOPAIR1_SUBSET_BRANCH_SIDM _DOPAIR1_SUBSET_BRANCH_SIDM(FUNCTION)
 
-#define _DOSELF1_BRANCH_SIDM(f) PASTE(runner_doself_branch_sidm, f)
+#define _DOSELF1_BRANCH_SIDM(f) PASTE(runner_doself1_branch_sidm, f)
 #define DOSELF1_BRANCH_SIDM _DOSELF1_BRANCH_SIDM(FUNCTION)
 
-#define _DOPAIR1_BRANCH_SIDM(f) PASTE(runner_dopair_branch_sidm, f)
+#define _DOPAIR1_BRANCH_SIDM(f) PASTE(runner_dopair1_branch_sidm, f)
 #define DOPAIR1_BRANCH_SIDM _DOPAIR1_BRANCH_SIDM(FUNCTION)
 
 #define _DOSUB_PAIR1_SIDM(f) PASTE(runner_dosub_pair_sidm, f)
@@ -113,7 +113,3 @@ void DOPAIR1_SUBSET_BRANCH_SIDM(struct runner *r,
                                 struct sipart *restrict siparts_i,
                                 const int *ind, const int sicount,
                                 struct cell *restrict cj);
-
-#define SIPART_IS_ACTIVE sipart_is_active
-#define CELL_IS_ACTIVE_SIDM cell_is_active_sidm
-#define CELL_ARE_SIPART_DRIFTED cell_are_sipart_drifted

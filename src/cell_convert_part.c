@@ -755,7 +755,7 @@ void cell_remove_sink(const struct engine *e, struct cell *c,
 }
 
 /**
- * @brief "Remove" a sink particle from the calculation.
+ * @brief "Remove" an SIDM particle from the calculation.
  *
  * The particle is inhibited and will officially be removed at the next
  * rebuild.
