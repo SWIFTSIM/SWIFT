@@ -5,6 +5,7 @@ set -e
 
 # Script parameters
 n_threads=${n_threads:=8}  # Number of threads to use
+n_ranks=${n_ranks:=0}  # Number of threads to use
 level=${level:=5}  # Number of particles = 2^(3*level)
 gas_density=${gas_density:=1}  # Gas density in atom/cm^3
 box_mass=${box_mass:=10000000} # Mass of the gas particles
@@ -73,18 +74,25 @@ else
     mkdir $DIR
 fi
 
+if [[ $n_ranks -gt 0 ]]; then
+  swift="mpirun -n $n_ranks ../../../swift_mpi"
+else
+  swift="../../../swift"
+fi
+
+
 printf "Running simulation..."
 
 # Run the appropriate command based on with_hydro_MFM value
 if [ "$with_hydro_MFM" -eq 1 ]; then
     # ./configure --with-hydro=gizmo-mfm --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-stars=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks --with-riemann-solver=hllc && make clean && make -j12
     echo "Running with MFM hydro solver..."
-    ../../../swift --hydro --external-gravity --stars \
+    $swift --hydro --external-gravity --stars \
 		     --threads=$n_threads params.yml 2>&1 | tee output.log
 else
     # ./configure --with-chemistry=GEAR-MFM-DIFFUSION_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-tbbmalloc --enable-compiler-warnings --enable-debug --enable-debugging-checks
     echo "Running with SPH hydro solver"
-    ../../../swift --hydro --external-gravity --stars --feedback \
+    $swift --hydro --external-gravity --stars --feedback \
 		     --threads=$n_threads params.yml 2>&1 | tee output.log
 fi
 
