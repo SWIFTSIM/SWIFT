@@ -34,9 +34,10 @@
    when the wavespeeds are close */
 #define GEAR_FVMP_DIFFUSION_WAVESPEED_ESTIMATE_DIFFERENCE_TOLERANCE 1e-8
 
-/* Enable the flux limiters. You can turn off the ones you don't want */
+/* Enable the flux limiters. You can turn off the ones you don't want by
+   commenting these lines*/
 #define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_EXTREMA_AWARE
-#define GEAR_FVPM_DIFFUSION_EXTREMA_AWARE_FLUX_LIMITER_SAFETY_FACTOR 0.1
+#define GEAR_FVPM_DIFFUSION_EXTREMA_AWARE_FLUX_LIMITER_SAFETY_FACTOR 1.0
 
 #define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGRESSIVE_RESCALING
 
