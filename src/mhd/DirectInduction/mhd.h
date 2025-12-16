@@ -509,12 +509,14 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
 
   /* R mean square */
   //const float d_ip = p->mhd_data.r_ms_Nweight * p->h;
-  const float d_ip = p->mhd_data.r_ms_Kweight * p->h;
+  //const float d_ip = p->mhd_data.r_ms_Kweight * p->h;
 
   /* R center of mass */ 
   //const float d_ip = fmaxf(cbrtf(p->mass / p->rho),p->mhd_data.r_cm_abs_Nweight * p->h );
   //const float d_ip = fmaxf(cbrtf(p->mass / p->rho),p->mhd_data.r_cm_abs_Kweight * p->h );
   
+  const float d_ip = fmaxf(cbrtf(p->mass / p->rho), 2.0f * p->mhd_data.r_cm_abs_Nweight * p->h);
+
   p->mhd_data.eta_OWAR = NormShearAndRotation * d_ip * d_ip / OW; 
 
 }
