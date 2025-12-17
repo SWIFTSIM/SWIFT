@@ -5,7 +5,7 @@ set -e
 
 # Script parameters
 n_threads=${n_threads:=8}  # Number of threads to use
-n_ranks=${n_ranks:=0}  # Number of threads to use
+n_ranks=${n_ranks:=0}  # Number of ranks to use
 level=${level:=5}  # Number of particles = 2^(3*level)
 gas_density=${gas_density:=1}  # Gas density in atom/cm^3
 box_mass=${box_mass:=10000000} # Mass of the gas particles
