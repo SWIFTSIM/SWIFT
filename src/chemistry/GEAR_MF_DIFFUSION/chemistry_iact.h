@@ -401,7 +401,7 @@ runner_iact_chemistry_fluxes_common(
   /* Get the time step for the flux exchange. This is always the smallest time
    * step among the two particles. */
   const float mindt =
-      (chj->flux_dt > 0.f) ? fminf(chi->flux_dt, chj->flux_dt) : chi->flux_dt;
+      (chj->flux.dt > 0.f) ? fminf(chi->flux.dt, chj->flux.dt) : chi->flux.dt;
 
   /* Nothing to do */
   if (mindt == 0.f) {
@@ -482,10 +482,10 @@ runner_iact_chemistry_fluxes_common(
      * the time integration results in conserved quantity += flux * dt */
     /* Unlike in SPH schemes, we do need to update inactive neighbours, so that
      * the fluxes are always exchanged symmetrically. Thanks to our sneaky use
-     * of flux_dt, we can detect inactive neighbours through their negative time
+     * of flux.dt, we can detect inactive neighbours through their negative time
      * step. */
     chemistry_part_update_fluxes_left(pi, m, totflux, mindt);
-    if (mode == 1 || (chj->flux_dt < 0.f)) {
+    if (mode == 1 || (chj->flux.dt < 0.f)) {
       chemistry_part_update_fluxes_right(pj, m, totflux, mindt);
     }
   }
@@ -550,8 +550,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
 
   int local_mode = 0;
 
-  const int pi_is_active = pi->chemistry_data.flux_dt > 0.f;
-  const int pj_is_active = pj->chemistry_data.flux_dt > 0.f;
+  const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
+  const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
 
   if (pi_is_active && pj_is_active) {
     if (pi->id < pj->id) {

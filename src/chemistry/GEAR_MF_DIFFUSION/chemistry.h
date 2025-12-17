@@ -471,7 +471,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const float dt_alpha, const float dt_therm,
     const struct chemistry_global_data *cd) {
-  p->chemistry_data.flux_dt = dt_therm * cosmo->a * cosmo->a;
+  p->chemistry_data.flux.dt = dt_therm * cosmo->a * cosmo->a;
 
   /* Update the diffusion coefficient for the new loop */
   p->chemistry_data.kappa = chemistry_get_diffusion_coefficient(p, cd, cosmo);
@@ -521,30 +521,14 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     /* For the flux, we are updating d(U*V)/dt = - Sum div F*A*dt and we want
        U = flux, not V*U. For the metal mass, U = metal density so U*V = mass */
-    chd->flux[i][0] += chd->flux_riemann[i][0] * Vinv;
-    chd->flux[i][1] += chd->flux_riemann[i][1] * Vinv;
-    chd->flux[i][2] += chd->flux_riemann[i][2] * Vinv;
+    chd->diffusion_flux[i][0] += chd->flux.flux[i][0] * Vinv;
+    chd->diffusion_flux[i][1] += chd->flux.flux[i][1] * Vinv;
+    chd->diffusion_flux[i][2] += chd->flux.flux[i][2] * Vinv;
   }
 #endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
 
   /* Reset the metal mass fluxes now that they have been applied */
   chemistry_part_reset_fluxes(p);
-
-  /* Invalidate the particle time-step. It is considered to be inactive until
-     dt is set again in chemistry_prepare_force() */
-  chd->flux_dt = -1.0f;
-
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  const float dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
-
-  /* Kick the source term for half-timestep (for active and inactive part) */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data,
-                                              cosmo);
-    /* Element-wise sanity checks */
-    chemistry_check_unphysical_diffusion_flux(chd->flux[i]);
-  }
-#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
 
   /* Sanity check on the total metal mass */
   chemistry_check_unphysical_total_metal_mass(p, 3);
@@ -645,9 +629,9 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    p->chemistry_data.flux[i][0] = 0.0;
-    p->chemistry_data.flux[i][1] = 0.0;
-    p->chemistry_data.flux[i][2] = 0.0;
+    p->chemistry_data.diffusion_flux[i][0] = 0.0;
+    p->chemistry_data.diffusion_flux[i][1] = 0.0;
+    p->chemistry_data.diffusion_flux[i][2] = 0.0;
   }
   p->chemistry_data.timestepvars.vmax = 0.0;
 #endif

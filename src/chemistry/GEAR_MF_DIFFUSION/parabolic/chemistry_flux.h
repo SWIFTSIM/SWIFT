@@ -35,7 +35,7 @@
 __attribute__((always_inline)) INLINE static void chemistry_part_reset_fluxes(
     struct part *restrict p) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    p->chemistry_data.metal_mass_riemann[i] = 0.0;
+    p->chemistry_data.flux.metal_mass[i] = 0.0;
   }
 }
 
@@ -55,7 +55,7 @@ __attribute__((always_inline)) INLINE static void chemistry_part_reset_fluxes(
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_fluxes_left(struct part *restrict p, const int metal,
                                   const double fluxes[4], const float dt) {
-  p->chemistry_data.metal_mass_riemann[metal] -= fluxes[0] * dt;
+  p->chemistry_data.flux.metal_mass[metal] -= fluxes[0] * dt;
 }
 
 /**
@@ -74,7 +74,7 @@ chemistry_part_update_fluxes_left(struct part *restrict p, const int metal,
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_fluxes_right(struct part *restrict p, const int metal,
                                    const double fluxes[4], const float dt) {
-  p->chemistry_data.metal_mass_riemann[metal] += fluxes[0] * dt;
+  p->chemistry_data.flux.metal_mass[metal] += fluxes[0] * dt;
 }
 
 /**

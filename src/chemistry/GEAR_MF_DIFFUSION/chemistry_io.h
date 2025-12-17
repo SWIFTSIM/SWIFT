@@ -60,7 +60,7 @@ INLINE static void convert_gas_metals(const struct engine *e,
     /* Add the mass exchanged in the Riemann solver to write updated metal
        masses */
     double mZi = p->chemistry_data.metal_mass[i] +
-                 p->chemistry_data.metal_mass_riemann[i];
+                 p->chemistry_data.flux.metal_mass[i];
     double Zi = mZi / hydro_get_mass(p);
     ret[i] = Zi;
     m_Z += mZi;
@@ -131,9 +131,9 @@ INLINE static void convert_gas_diffusion_flux_norm(const struct engine *e,
                                                    const struct xpart *xp,
                                                    double *ret) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    double F_diff[3] = {p->chemistry_data.flux[i][0],
-                        p->chemistry_data.flux[i][1],
-                        p->chemistry_data.flux[i][2]};
+    double F_diff[3] = {p->chemistry_data.diffusion_flux[i][0],
+                        p->chemistry_data.diffusion_flux[i][1],
+                        p->chemistry_data.diffusion_flux[i][2]};
     ret[i] = sqrt(F_diff[0] * F_diff[0] + F_diff[1] * F_diff[1] +
                   F_diff[2] * F_diff[2]);
   }

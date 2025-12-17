@@ -198,6 +198,37 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     const struct hydro_props *hydro_props,
     const struct chemistry_global_data *chem_data) {
 
+  struct chemistry_part_data *chd = &p->chemistry_data;
+
+  if (chd->flux.dt > 0.0) {
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  const float dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
+
+  /* Kick the source term for the timestep */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data,
+					      cosmo);
+    /* Element-wise sanity checks */
+    chemistry_check_unphysical_diffusion_flux(chd->diffusion_flux[i]);
+  }
+#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
+
+  /* Invalidate the particle time-step. It is considered to be inactive until
+       dt is set again in chemistry_prepare_force() */
+  chd->flux.dt = -1.0f;
+
+  } else if (chd->flux.dt == 0.0f) {
+    /* something tricky happens at the beginning of the simulation: the flux
+       exchange is done for all particles, but using a time step of 0. This
+       in itself is not a problem. However, it causes some issues with the
+       initialisation of flux.dt for inactive particles, since this value will
+       remain 0 until the particle is active again, and its flux.dt is set to
+       the actual time step in chemistry_prepare_force(). We have to make sure it
+       is properly set to -1 here, so that inactive particles are indeed found
+       to be inactive during the flux loop. */
+    chd->flux.dt = -1.0f;
+  }
+
   /* Reset wcorr */
   p->geometry.wcorr = 1.0f;
 

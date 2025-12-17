@@ -52,14 +52,14 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* Get the metal density (comoving) and the hyperbolic flux (physical) */
   Ui[0] = chemistry_get_comoving_metal_density(pi, metal);
-  Ui[1] = pi->chemistry_data.flux[metal][0];
-  Ui[2] = pi->chemistry_data.flux[metal][1];
-  Ui[3] = pi->chemistry_data.flux[metal][2];
+  Ui[1] = pi->chemistry_data.diffusion_flux[metal][0];
+  Ui[2] = pi->chemistry_data.diffusion_flux[metal][1];
+  Ui[3] = pi->chemistry_data.diffusion_flux[metal][2];
 
   Uj[0] = chemistry_get_comoving_metal_density(pj, metal);
-  Uj[1] = pj->chemistry_data.flux[metal][0];
-  Uj[2] = pj->chemistry_data.flux[metal][1];
-  Uj[3] = pj->chemistry_data.flux[metal][2];
+  Uj[1] = pj->chemistry_data.diffusion_flux[metal][0];
+  Uj[2] = pj->chemistry_data.diffusion_flux[metal][1];
+  Uj[3] = pj->chemistry_data.diffusion_flux[metal][2];
   /* No need to check unphysical state here: they haven't been touched since
      the call to chemistry_end_density() */
 

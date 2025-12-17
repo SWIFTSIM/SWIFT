@@ -31,9 +31,6 @@ struct chemistry_part_data {
    * volume. */
   double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
-  /*! Metal mass flux computed with the Riemann solver */
-  double metal_mass_riemann[GEAR_CHEMISTRY_ELEMENT_COUNT];
-
 #ifdef HYDRO_DOES_MASS_FLUX
   /* Note: This is only used by the MFV hydro scheme. */
   /*! Mass fluxes of the metals in a given element */
@@ -45,8 +42,15 @@ struct chemistry_part_data {
   double diffused_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 #endif
 
+  /* Fluxes. */
+  struct {
+    /*! Metal mass flux computed with the Riemann solver */
+    double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
   /*! Particle chemistry time-step. */
-  float flux_dt;
+    float dt;
+
+  } flux;
 
   /*! Isotropic diffusion coefficient. The matrix K is proportional to kappa.
    Note about units:

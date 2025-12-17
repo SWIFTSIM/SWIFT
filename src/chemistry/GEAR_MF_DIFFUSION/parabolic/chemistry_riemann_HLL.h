@@ -264,15 +264,15 @@ chemistry_riemann_solver_hopkins2017_HLL(
     const struct chemistry_part_data *chj = &pj->chemistry_data;
 
     const float mindt =
-        (chj->flux_dt > 0.f) ? fminf(chi->flux_dt, chj->flux_dt) : chi->flux_dt;
+        (chj->flux.dt > 0.f) ? fminf(chi->flux.dt, chj->flux.dt) : chi->flux.dt;
 
     /* Current metal mass reservoir. Take into account what was previously
        computed. Note this make the flux limiter path dependent (not a big
        problem actually) and NOT antisymetric under the exchange of i and
        j. Hence, we must update both pi and pj at the same time even when they
        are both active. */
-    const double mZi = chi->metal_mass[m] + chi->metal_mass_riemann[m];
-    const double mZj = chj->metal_mass[m] + chj->metal_mass_riemann[m];
+    const double mZi = chi->metal_mass[m] + chi->flux.metal_mass[m];
+    const double mZj = chj->metal_mass[m] + chj->flux.metal_mass[m];
 
     /* Convert the flux to mass */
     const double mZ_exchanged = flux_hll * Anorm * mindt;

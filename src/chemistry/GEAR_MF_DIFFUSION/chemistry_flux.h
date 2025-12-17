@@ -47,7 +47,7 @@
  */
 __attribute__((always_inline)) INLINE double chemistry_get_metal_mass_fluxes(
     const struct part *restrict p, int metal) {
-  return p->chemistry_data.metal_mass_riemann[metal];
+  return p->chemistry_data.flux.metal_mass[metal];
 }
 
 /**
@@ -58,7 +58,7 @@ __attribute__((always_inline)) INLINE double chemistry_get_metal_mass_fluxes(
 __attribute__((always_inline)) INLINE static void
 chemistry_part_reset_mass_fluxes(struct part *restrict p) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    p->chemistry_data.metal_mass_riemann[i] = 0.0;
+    p->chemistry_data.flux.metal_mass[i] = 0.0;
   }
 }
 
@@ -84,8 +84,8 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
 
   /* Use the updated metal masses to ensure that the final result won't be
    * negative */
-  const double mZi = chi->metal_mass[metal] + chi->metal_mass_riemann[metal];
-  const double mZj = chj->metal_mass[metal] + chj->metal_mass_riemann[metal];
+  const double mZi = chi->metal_mass[metal] + chi->flux.metal_mass[metal];
+  const double mZj = chj->metal_mass[metal] + chj->flux.metal_mass[metal];
 
   /* This one seemed to work for a certain time */
   const double upwind_mass = (metal_mass_interface > 0.0) ? mZi : mZj;

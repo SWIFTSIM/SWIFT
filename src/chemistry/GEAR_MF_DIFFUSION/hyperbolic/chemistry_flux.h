@@ -36,10 +36,10 @@
 __attribute__((always_inline)) INLINE static void chemistry_part_reset_fluxes(
     struct part *restrict p) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    p->chemistry_data.metal_mass_riemann[i] = 0.0;
-    p->chemistry_data.flux_riemann[i][0] = 0.0;
-    p->chemistry_data.flux_riemann[i][1] = 0.0;
-    p->chemistry_data.flux_riemann[i][2] = 0.0;
+    p->chemistry_data.flux.metal_mass[i] = 0.0;
+    p->chemistry_data.flux.flux[i][0] = 0.0;
+    p->chemistry_data.flux.flux[i][1] = 0.0;
+    p->chemistry_data.flux.flux[i][2] = 0.0;
   }
 }
 
@@ -59,10 +59,10 @@ __attribute__((always_inline)) INLINE static void chemistry_part_reset_fluxes(
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_fluxes_left(struct part *restrict p, const int metal,
                                   const double fluxes[4], const float dt) {
-  p->chemistry_data.metal_mass_riemann[metal] -= fluxes[0] * dt;
-  p->chemistry_data.flux_riemann[metal][0] -= fluxes[1] * dt;
-  p->chemistry_data.flux_riemann[metal][1] -= fluxes[2] * dt;
-  p->chemistry_data.flux_riemann[metal][2] -= fluxes[3] * dt;
+  p->chemistry_data.flux.metal_mass[metal] -= fluxes[0] * dt;
+  p->chemistry_data.flux.flux[metal][0] -= fluxes[1] * dt;
+  p->chemistry_data.flux.flux[metal][1] -= fluxes[2] * dt;
+  p->chemistry_data.flux.flux[metal][2] -= fluxes[3] * dt;
 }
 
 /**
@@ -81,10 +81,10 @@ chemistry_part_update_fluxes_left(struct part *restrict p, const int metal,
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_fluxes_right(struct part *restrict p, const int metal,
                                    const double fluxes[4], const float dt) {
-  p->chemistry_data.metal_mass_riemann[metal] += fluxes[0] * dt;
-  p->chemistry_data.flux_riemann[metal][0] += fluxes[1] * dt;
-  p->chemistry_data.flux_riemann[metal][1] += fluxes[2] * dt;
-  p->chemistry_data.flux_riemann[metal][2] += fluxes[3] * dt;
+  p->chemistry_data.flux.metal_mass[metal] += fluxes[0] * dt;
+  p->chemistry_data.flux.flux[metal][0] += fluxes[1] * dt;
+  p->chemistry_data.flux.flux[metal][1] += fluxes[2] * dt;
+  p->chemistry_data.flux.flux[metal][2] += fluxes[3] * dt;
 }
 
 /**
@@ -111,8 +111,8 @@ chemistry_part_integrate_flux_source_term(
   const double tau = chd->tau;
   const double exp_decay = exp(-dt / tau);
   const double one_minus_exp_decay = -expm1(-dt / tau);
-  const double flux_current[3] = {chd->flux[metal][0], chd->flux[metal][1],
-                                  chd->flux[metal][2]};
+  const double flux_current[3] = {chd->diffusion_flux[metal][0], chd->diffusion_flux[metal][1],
+                                  chd->diffusion_flux[metal][2]};
   double flux_parabolic[3];
   chemistry_get_physical_parabolic_flux(p, metal, flux_parabolic, chem_data,
                                         cosmo);
@@ -120,11 +120,11 @@ chemistry_part_integrate_flux_source_term(
   for (int i = 0; i < 3; i++) {
     if (tau != 0.0) {
       /* Note that parabolic flux already includes the minus term. */
-      chd->flux[metal][i] =
+      chd->diffusion_flux[metal][i] =
           flux_current[i] * exp_decay + flux_parabolic[i] * one_minus_exp_decay;
     } else {
       /* The asymptotic solution is that Flux(t+Delta t) = Flux_parabolic(t) */
-      chd->flux[metal][i] = flux_parabolic[i];
+      chd->diffusion_flux[metal][i] = flux_parabolic[i];
     }
   }
 }
