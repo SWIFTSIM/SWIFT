@@ -288,7 +288,7 @@ if rho_L != rho_R:
     rho[I_L] = rho_L
     rho[I_R] = rho_R
 else:
-    rho = rho_L  # atom/cc
+    rho = rho_L*np.ones(N)  # atom/cc
 
 # Unit conversion (Do we need to change to dimension ?)
 rho = rho * constants.m_p / units.cm ** dimension
