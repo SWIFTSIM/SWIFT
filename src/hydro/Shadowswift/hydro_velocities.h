@@ -176,68 +176,65 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
     /* Angle Steering Parameters (AREPO Defaults) */
     const float max_angle = p->geometry.max_face_angle;
-    const float beta = 2.25f;
-    const float f_shaping_speed = 0.5f;
+    const float beta = 2.25f; // Controls how steep angle is before steering. Lower -> more cells steered. AREPO = 2.25
+    const float f_shaping_speed = 0.67f; // Steering aggressiveness factor. AREPO 0.5
     const float vchar_dt = dt > 0. ? d / dt : 0.;// Timestep based correction
-    float vchar = soundspeed; // Determines cold steering aggresssiveness
+    float vchar = soundspeed; // Determines cold steering corrective velocity. Default is soundspeed.
 
     /* Additionally impose that we use the timestep based steering if
      * it is less aggressive than soundspeed steering */
     if (vchar_dt < vchar) {
       vchar = vchar_dt;
     } else {
+      if (max_angle > 0.75 * beta) {
+        /* Enter bottom two options of Weinberger 2020 Eq. 39
+         * and apply default factor f_shaping */
 
 #ifdef SHADOWSWIFT_STEERING_COLD_FLOWS
-      /* Enables much more aggressive cold steering if the cell
-       * has high Mach (assumed cold) */
-      if (soundspeed <= 0.f) {
-        vchar = 0;
-      } else {
-        const float Mach_low = 5.f;
-        const float Mach_part = sqrtf(fluid_v[0] * fluid_v[0] +
-                                  fluid_v[1] * fluid_v[1] +
-                                  fluid_v[2] * fluid_v[2]) / soundspeed;
-        if (Mach_part > Mach_low) {
-          const float Mach_high = 15.f;
-          // Apply cold steering
-#ifdef SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT
-          /* Apply a smoother steering gradient if between Mach low and high */
-          if (Mach_part < Mach_high) {
-            hydro_velocities_steering_gradient(&vchar, soundspeed, vchar_dt,
-              Mach_low, Mach_high, Mach_part);
-          } else {
-            /* Mach is higher than max, just set to max steering */
-            vchar = vchar_dt;
-          }
+        /* Enables much more aggressive cold steering if the cell
+         * has high Mach (assumed cold) */
+        if (soundspeed <= 0.f) {
+          vchar = 0;
+        } else {
+          const float Mach_low = 5.f;
+          const float Mach_part = sqrtf(fluid_v[0] * fluid_v[0] +
+                                    fluid_v[1] * fluid_v[1] +
+                                    fluid_v[2] * fluid_v[2]) / soundspeed;
+          if (Mach_part > Mach_low) {
+            const float Mach_high = 10.f;
+
+#ifdef SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT // Apply cold steering
+            /* Apply a smoother steering gradient if between Mach low and high */
+            if (Mach_part < Mach_high) {
+              hydro_velocities_steering_gradient(&vchar, soundspeed, vchar_dt,
+                Mach_low, Mach_high, Mach_part);
+            } else {
+              /* Mach is higher than max, just set to max steering */
+              vchar = vchar_dt;
+            }
 #else
-          /* Default cold steering */
-          vchar = vchar_dt;
+            /* Default cold steering */
+            vchar = vchar_dt;
 #endif
+          }
         }
-      }
 #endif
+        float fac = f_shaping_speed * vchar / d;
 
-    } // End (vchar_dt < vchar)
+        if (max_angle < beta) {
+          /* Enter second option of Weinberger 2020 Eq. 39
+           * and apply correction*/
+          fac *= (max_angle - 0.75 * beta) / (0.25 * beta);
 
+        } // Else, no further factors needed to apply third option
 
-    if (max_angle > 0.75 * beta) {
-      /* Enter bottom two options of Weinberger 2020 Eq. 39
-       * and apply default factor f_shaping */
-      float fac = f_shaping_speed * vchar / d;
-
-      if (max_angle < beta) {
-        /* Enter second option of Weinberger 2020 Eq. 39
-         * and apply correction*/
-        fac *= (max_angle - 0.75 * beta) / (0.25 * beta);
-
-      } // Else, no further factors needed to apply third option
-
-      /* Apply velocity corrections */
-      v[0] += ds[0] * fac;
-      v[1] += ds[1] * fac;
-      v[2] += ds[2] * fac;
-    }
-/* Enter else correspondning strictly to SHADOWSWIFT_STEERING_FACEANGLE_FLOWS * being off, but
+        /* Apply velocity corrections */
+        v[0] += ds[0] * fac;
+        v[1] += ds[1] * fac;
+        v[2] += ds[2] * fac;
+      }
+    } // End vchar_dt > vchar
+/* Enter else correspondning strictly to SHADOWSWIFT_STEERING_FACEANGLE_FLOWS being off, but
  * SHADOWSWIFT_STEER_MOTION being on*/
 #else
 
