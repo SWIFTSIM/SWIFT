@@ -110,17 +110,26 @@ runner_iact_nonsym_feedback_apply(
                                    ? 0.
                                    : 1. / si->feedback_data.enrichment_weight;
 
-  /* Mass received by Stellar Winds */
-  double m_ej =
-      si->feedback_data.preSN.mass_ejected;
   const double weight = mj * wi * si_inv_weight;
-  double dm = m_ej * weight;
-  double new_mass = mj + dm;
+  double m_ej = 0.0;
+  double dm = 0.0;
+  double new_mass = 0.0;
 
   /* Distribute pre-SN */
   if (e_preSN != 0.0 && weight > 0.0) {
-    /* If the distance is null, no need to use calculation ressources */
+
+    /* Mass received by Stellar Winds */
+    /* For physical consistency, we consider that the pre-SN feedback occurs before the SN feedback, not in the same time !
+       Thus, we have to perform the calculation first with the mass ejected by the winds, otherwise the effects of the winds would be artificially boosted by the SNe !
+       (It is similar to not do the pre-SN feedback in the same step as SN, in that case the mass of the gas is not impacted by the mass ejected by SNe.) */
+    m_ej = si->feedback_data.preSN.mass_ejected;
+    dm = m_ej * weight;
+    new_mass = mj + dm;
+    /* If the distance is null, no need to use calculation ressources. */
     if (r2 > 0.0 && new_mass > 0.0) {
+
+      
+      
       /* -------------------- set to physical quantities -------------------- */
       /* Cosmology constant */
       const float a = cosmo->a;
@@ -250,8 +259,11 @@ runner_iact_nonsym_feedback_apply(
   if (e_sn != 0.0) {
     
     /* Mass received by SN */
+    // For the conservation of mass and energy, we perform the calculation only with the mass actually ejected by the SN (not the combination of pre-SN and SN)
     m_ej = si->feedback_data.mass_ejected;
     dm = m_ej * weight;
+    /* But we are considering that the stellar wind occurs before the SN, so the total new mass to take into account is the combination of both.
+       It is similar to not do pre-SN feedback in the same step as SN, in that case the mass of the gas is the one after receiving mass from the pre-SN feedback at the previous step. */
     new_mass += dm;
 
     /* Energy received */
