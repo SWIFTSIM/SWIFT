@@ -118,7 +118,7 @@ runner_iact_nonsym_feedback_apply(
   if (e_preSN != 0.0 && weight > 0.0) {
 
     /* Mass received by Stellar Winds */
-    /* For physical consistency, we consider that the pre-SN feedback occurs before the SN feedback, not in the same time !
+    /* For physical consistency, we consider that the pre-SN feedback occurs before the SN feedback, not at the same time !
        Thus, we have to perform the calculation first with the mass ejected by the winds, otherwise the effects of the winds would be artificially boosted by the SNe !
        (It is similar to not do the pre-SN feedback in the same step as SN, in that case the mass of the gas is not impacted by the mass ejected by SNe.) */
     m_ej = si->feedback_data.preSN.mass_ejected;
@@ -126,9 +126,6 @@ runner_iact_nonsym_feedback_apply(
     new_mass = mj + dm_SW;
     /* If the distance is null, no need to use calculation ressources. */
     if (r2 > 0.0 && new_mass > 0.0) {
-
-      
-      
       /* -------------------- set to physical quantities -------------------- */
       /* Cosmology constant */
       const float a = cosmo->a;
@@ -258,7 +255,7 @@ runner_iact_nonsym_feedback_apply(
   if (e_sn != 0.0) {
     
     /* Mass received by SN */
-    // For the conservation of mass and energy, we perform the calculation only with the mass actually ejected by the SN (not the combination of pre-SN and SN)
+    /* For the conservation of mass and energy, we perform the calculation only with the mass actually ejected by the SN (not the combination of pre-SN and SN) */
     m_ej = si->feedback_data.mass_ejected;
     const double dm_SN = m_ej * weight;
     /* But we are considering that the stellar wind occurs before the SN, so the total new mass to take into account is the combination of both.
@@ -267,8 +264,6 @@ runner_iact_nonsym_feedback_apply(
 
     /* Energy received */
     const double du = (e_sn)*weight / new_mass;
-
-    
     xpj->feedback_data.delta_u += du;
 
     /* Compute momentum received. */
