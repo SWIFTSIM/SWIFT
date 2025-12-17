@@ -15,10 +15,12 @@ with
 - X=`GEAR-MF-DIFFUSION` for the parabolic diffusion scheme,
 - X=`GEAR-MF-HYPERBOLIC-DIFFUSION_10` for the hyperbolic diffusion scheme.
 
-
 and then
 
 make -j
+
+Note that you can also use the Gizmo MFM scheme to test diffusion by adding `--with-hydro=gizmo-mfm --with-riemann-solver=hllc` to the configuration step.
+
 
 # ICs
 The run.sh script calls `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
