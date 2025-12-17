@@ -83,9 +83,10 @@ void feedback_will_do_feedback(
   sp->feedback_data.preSN.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
 
-  /* Quit if the birth_scale_factor or birth_time is negative. 
+  /* Quit if the birth_scale_factor or birth_time is negative.
      No Feedback event for the initial fake step. */
-  if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0 || sp->time_bin == 0) return;
+  if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0 || sp->time_bin == 0)
+    return;
 
   /* Pick the correct table. (if only one table, threshold is < 0) */
   const float metal =
