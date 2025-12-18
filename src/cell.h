@@ -2239,7 +2239,7 @@ __attribute__((always_inline)) INLINE static int zoom_cell_overlaps_zoom_region(
     const struct cell *c, const struct space *s) {
 
   /* Simple tolerance to suppress FP noise */
-  const double tol = 1e-6 * c->width[0];
+  const double tol = 1e-6 * s->zoom_props->dim[0];
 
   /* Cell boundaries */
   const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
