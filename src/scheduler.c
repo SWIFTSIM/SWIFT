@@ -1653,6 +1653,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
        * have 0 particles but are never "empty"). */
       if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
 
+      /* Skip entirely foreign pairs. */
+      if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
+
       /* Are we at the zoom top level and if so can we get away with using
        * the mesh here instead of a direct interaction? */
       if (cell_pair_is_zoom_tl(cpi, cpj, sp) &&
@@ -1725,9 +1728,23 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
     /* Get a handle on the cell involved. */
     const struct cell *ci = t->ci;
 
-    /* Get the first progeny that exists. */
+    /* Get the first progeny that exists and is local (and in the case
+     * of a non-void progeny: has particles. */
     int first_child = 0;
-    while (ci->progeny[first_child] == NULL && first_child < 8) first_child++;
+    for (; first_child < 8; first_child++) {
+      /* Skip non-existant progeny. */
+      if (ci->progeny[first_child] == NULL) continue;
+
+      /* Skip empty non-void progeny. */
+      if (ci->progeny[first_child]->subtype != cell_subtype_void &&
+          ci->progeny[first_child]->grav.count == 0)
+        continue;
+
+      /* Skip foreign progeny (no such thing as a foreign self task). */
+      if (ci->progeny[first_child]->type == cell_type_zoom &&
+          ci->progeny[first_child]->nodeID != engine_rank)
+        continue;
+    }
 
     /* If we have found no progeny, we are done here. */
     if (first_child == 8) break;
@@ -1739,8 +1756,18 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
     /* Create a self for all progeny beyond the first. */
     for (int i = first_child + 1; i < 8; i++) {
 
-      /* Skip empty progeny. */
+      /* Skip non-existant progeny. */
       if (ci->progeny[i] == NULL) continue;
+
+      /* Skip empty non-void progeny. */
+      if (ci->progeny[i]->subtype != cell_subtype_void &&
+          ci->progeny[i]->grav.count == 0)
+        continue;
+
+      /* Skip non-local progeny (no such thing as a foreign self task). */
+      if (ci->progeny[i]->type == cell_type_zoom &&
+          ci->progeny[i]->nodeID != engine_rank)
+        continue;
 
       /* Create the self task. */
       zoom_scheduler_splittask_gravity_void_self(
@@ -1752,13 +1779,30 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
     /* Create pair tasks for all pairs of progeny. */
     for (int j = 0; j < 8; j++) {
 
-      /* Skip empty progeny. */
+      /* Skip non-existant progeny. */
       if (ci->progeny[j] == NULL) continue;
+
+      /* Skip empty non-void progeny. */
+      if (ci->progeny[j]->subtype != cell_subtype_void &&
+          ci->progeny[j]->grav.count == 0)
+        continue;
 
       for (int k = j + 1; k < 8; k++) {
 
-        /* Skip empty progeny. */
+        /* Skip non-existant progeny. */
         if (ci->progeny[k] == NULL) continue;
+
+        /* Skip empty non-void progeny. */
+        if (ci->progeny[k]->subtype != cell_subtype_void &&
+            ci->progeny[k]->grav.count == 0)
+          continue;
+
+        /* Skip entirely foreign pairs. */
+        if ((ci->progeny[j]->type == cell_type_zoom &&
+             ci->progeny[k]->type == cell_type_zoom) &&
+            ci->progeny[j]->nodeID != engine_rank &&
+            ci->progeny[k]->nodeID != engine_rank)
+          continue;
 
         /* Check if we are at the zoom top level and if so can we get away
          * with using the mesh here instead of a direct interaction? */
@@ -1777,8 +1821,10 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
     }
   }
 
-  /* If we still have a void cell here, kill off the task. */
-  if (t->ci->subtype == cell_subtype_void) {
+  /* Exit and kill the task if we ended up with an empty task, a foreign task or
+   * we still have a void cell. */
+  if (t->ci == NULL || t->ci->nodeID != engine_rank ||
+      t->ci->subtype == cell_subtype_void) {
     t->type = task_type_none;
     t->subtype = task_subtype_none;
     t->ci = NULL;
