@@ -211,23 +211,26 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
-    double time, const struct forcing_terms* terms, const struct space* s,
+    const double time, const timebin_t max_active_bin, const double time_base, 
+    const struct forcing_terms* terms, const struct space* s,
     const double dt_max, const struct phys_const* phys_const, 
     const struct part* p, const struct xpart* xp) {
  
   const int t_index = terms->t_index;
 
+  /* Don't do anything if there is no injection happening in the near future */
   if (((terms->times[t_index] - time) > dt_max) ||
       (terms->final_injection == 1)) {
     return FLT_MAX;
   }
   
+  /* Get injection coordinates of the next injection */
   float SN_loc[3];
   SN_loc[0] = terms->x_SN[t_index];
   SN_loc[1] = terms->y_SN[t_index];
   SN_loc[2] = terms->z_SN[t_index];
   
-  
+  /* Compute distance to center injection volume */
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   
@@ -241,17 +244,25 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
     dz = nearest(dz, dim[2]);
   }
 
+  /* Distance to the injection volume, is allowed to be negative */
   double distance = sqrtf( dx * dx + dy * dy + dz * dz ) - terms->r_inj;
-  
+
+  /* Compute an upper limit estimate of the signal velocity */
   float v_abs2 = xp->v_full[0] * xp->v_full[0] +
-		 xp->v_full[1] * xp->v_full[1] +
-		 xp->v_full[2] * xp->v_full[2];
+		             xp->v_full[1] * xp->v_full[1] +
+		             xp->v_full[2] * xp->v_full[2];
 
-
-  float v_sig = sqrtf( p->viscosity.v_sig * p->viscosity.v_sig + v_abs2);
+  float v_sig = sqrtf( p->viscosity.v_sig * p->viscosity.v_sig + v_abs2 );
 		   
+  /* Could the particle be in the injection volume in dt_max time*/
   if (distance / v_sig < dt_max) {
-    return dt_max / 100.;
+
+    /* Compute timestep such that particle would be active */
+    float new_dt_forcing;
+    /* new_dt_forcing = get_timestep( max_active_bin, time_base ) / 10;*/
+    new_dt_forcing = fmaxf(terms->times[t_index] - time, 1.e-18);
+
+    return new_dt_forcing;
   }
   else {
     return FLT_MAX;
