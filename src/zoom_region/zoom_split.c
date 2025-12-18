@@ -337,8 +337,11 @@ void zoom_void_space_split(struct space *s, int verbose) {
   for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
     struct cell *zoom_cell = &cells_top[cid];
 
-    /* Get the void parent (we know it must have one by here). */
+    /* Get the void parent. */
     struct cell *void_parent = zoom_cell->void_parent;
+
+    /* Skip if we don't have a void parent (empty zoom cell). */
+    if (void_parent == NULL) continue;
 
     /* Get the top level void cell. */
     struct cell *top = void_parent->top;
