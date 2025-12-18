@@ -465,6 +465,12 @@ struct cell {
    * a zoom region. */
   struct cell *void_parent;
 
+  /*! (Only applicable to void cells) Flag for whether this void cell has
+   * real, non-empty, local zoom cells nested within it. Certain geometries
+   * or totally foreign progeny can lead to this being false and we need
+   * to be able to know this at a glance. */
+  int contains_zoom_cells;
+
   /*! Cell flags bit-mask. */
   volatile uint32_t flags;
 
