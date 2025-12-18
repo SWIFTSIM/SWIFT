@@ -317,6 +317,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->split = 0;
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
+      message("Unpacking cell progeny %d at depth %d with count %d", k,
+              c->depth, pc->progeny[k]);
       struct cell *temp;
       space_getcells(s, 1, &temp, 0);
       temp->hydro.count = 0;
