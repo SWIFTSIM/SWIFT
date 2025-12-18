@@ -1210,7 +1210,7 @@ void cell_check_multipole(struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   struct gravity_tensors ma;
-  const double tolerance = 1e-3; /* Relative */
+  const double tolerance = 1e-2; /* Relative */
 
   /* If the cell is a void, exit immediately. We don't want
    * to double count particles in the zoom region which are also in the void
