@@ -60,12 +60,11 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   int ncells = zoom_props->nr_bkg_cells;
 
   /* Allocate the indices of void cells */
-  if (swift_memalign(
-          "void_cell_indices", (void **)&s->zoom_props->void_cell_indices,
-          SWIFT_STRUCT_ALIGNMENT, zoom_props->nr_bkg_cells * sizeof(int)) != 0)
+  if (swift_memalign("void_cell_indices",
+                     (void **)&s->zoom_props->void_cell_indices,
+                     SWIFT_STRUCT_ALIGNMENT, ncells * sizeof(int)) != 0)
     error("Failed to allocate indices of local top-level background cells.");
-  bzero(s->zoom_props->void_cell_indices,
-        zoom_props->nr_bkg_cells * sizeof(int));
+  bzero(s->zoom_props->void_cell_indices, ncells * sizeof(int));
 
   /* Loop over the background cells and find cells containing
    * the void region. */

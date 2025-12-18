@@ -471,6 +471,12 @@ struct cell {
    * a zoom region. */
   struct cell *void_parent;
 
+  /*! (Only applicable to void cells) Flag for whether this void cell has
+   * real, non-empty, local zoom cells nested within it. Certain geometries
+   * or totally foreign progeny can lead to this being false and we need
+   * to be able to know this at a glance. */
+  int contains_zoom_cells;
+
   /*! Cell flags bit-mask. */
   volatile uint32_t flags;
 
@@ -2258,6 +2264,9 @@ __attribute__((always_inline)) static INLINE void cell_set_bpart_h_depth(
 __attribute__((always_inline)) INLINE static int zoom_cell_overlaps_zoom_region(
     const struct cell *c, const struct space *s) {
 
+  /* Simple tolerance to suppress FP noise */
+  const double tol = 1e-6 * s->zoom_props->dim[0];
+
   /* Cell boundaries */
   const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
   const double cell_max[3] = {c->loc[0] + c->width[0], c->loc[1] + c->width[1],
@@ -2280,7 +2289,7 @@ __attribute__((always_inline)) INLINE static int zoom_cell_overlaps_zoom_region(
       fmin(cell_max[2], zoom_max[2]) - fmax(cell_min[2], zoom_min[2]);
 
   /* Check if overlap lengths are positive */
-  return (overlap_x > 0.0 && overlap_y > 0.0 && overlap_z > 0.0);
+  return (overlap_x > tol) && (overlap_y > tol) && (overlap_z > tol);
 }
 
 /**

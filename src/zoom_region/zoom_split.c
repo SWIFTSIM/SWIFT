@@ -375,6 +375,31 @@ void zoom_void_space_split(struct space *s, int verbose) {
   for (int ind = 0; ind < nr_void_cells; ind++) {
     struct cell *c = &cells_top[void_cell_indices[ind]];
     zoom_void_split_recursive(s, c, /*tpid*/ 0);
+
+    /* Reset the contains zoom cells flag, we're about to recompute it. */
+    c->contains_zoom_cells = 0;
+  }
+
+  /* Flag which void cells are useful (i.e. contain zoom cells) by looping
+   * over zoom cells. */
+  int nr_useful_voids = 0;
+  for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
+    struct cell *zoom_cell = &cells_top[cid];
+
+    /* Get the void parent. */
+    struct cell *void_parent = zoom_cell->void_parent;
+
+    /* Skip if we don't have a void parent (empty zoom cell). */
+    if (void_parent == NULL) continue;
+
+    /* Get the top level void cell. */
+    struct cell *top = void_parent->top;
+
+    /* Flag that this void cell contains zoom cells. */
+    if (!top->contains_zoom_cells) {
+      nr_useful_voids++;
+      top->contains_zoom_cells = 1;
+    }
   }
 
 #ifdef WITH_MPI
@@ -407,9 +432,12 @@ void zoom_void_space_split(struct space *s, int verbose) {
   free(void_ti_gravity_beg_max);
 #endif
 
-  if (verbose)
+  if (verbose) {
+    message("Found %d void cells with zoom cells out of %d total void cells.",
+            nr_useful_voids, nr_void_cells);
     message("Void cell tree and multipole construction took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
 
