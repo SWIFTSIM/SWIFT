@@ -401,7 +401,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
-     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
   const int do_ci_stars = (ci->nodeID == e->nodeID) && (ci->stars.count != 0) &&
                           (cj->hydro.count != 0) && cell_is_active_stars(ci, e);
   const int do_cj_stars = (cj->nodeID == e->nodeID) && (cj->stars.count != 0) &&
@@ -803,7 +805,9 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, const struct cell *restrict ci,
   TIMER_TIC;
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
-     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
   const int do_ci_stars = ci->nodeID == r->e->nodeID;
   const int do_cj_stars = cj->nodeID == r->e->nodeID;
 #else
