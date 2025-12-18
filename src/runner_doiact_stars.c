@@ -70,10 +70,14 @@
 #include "runner_doiact_functions_stars.h"
 #include "runner_doiact_undef.h"
 
+#endif /* EXTRA_STAR_LOOPS_2 */
+
+#ifdef EXTRA_STAR_LOOPS_3
+
 /* Import the stars prepare2 loop functions. */
 #define FUNCTION prep4
 #define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP4
 #include "runner_doiact_functions_stars.h"
 #include "runner_doiact_undef.h"
 
-#endif /* EXTRA_STAR_LOOPS_2 */
+#endif /* EXTRA_STAR_LOOPS_3 */

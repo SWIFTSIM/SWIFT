@@ -96,13 +96,17 @@
 #include "runner_doiact_stars.h"
 #include "runner_doiact_undef.h"
 
+#endif /* EXTRA_STAR_LOOPS_2 */
+
+#ifdef EXTRA_STAR_LOOPS_3
+
 /* Import the stars prepare4 loop functions. */
 #define FUNCTION prep4
 #define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP4
 #include "runner_doiact_stars.h"
 #include "runner_doiact_undef.h"
 
-#endif /* EXTRA_STAR_LOOPS_2 */
+#endif /* EXTRA_STAR_LOOPS_3 */
 
 /* Import the stars feedback loop functions. */
 #define FUNCTION feedback
@@ -251,6 +255,8 @@ void *runner_main(void *data) {
 #ifdef EXTRA_STAR_LOOPS_2
           else if (t->subtype == task_subtype_stars_prep3)
             runner_dosub_self_stars_prep3(r, ci, /*below_h_max=*/0, 1);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
           else if (t->subtype == task_subtype_stars_prep4)
             runner_dosub_self_stars_prep4(r, ci, /*below_h_max=*/0, 1);
 #endif
@@ -311,6 +317,8 @@ void *runner_main(void *data) {
 #ifdef EXTRA_STAR_LOOPS_2
           else if (t->subtype == task_subtype_stars_prep3)
             runner_dosub_pair_stars_prep3(r, ci, cj, /*below_h_max=*/0, 1);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
           else if (t->subtype == task_subtype_stars_prep4)
             runner_dosub_pair_stars_prep4(r, ci, cj, /*below_h_max=*/0, 1);
 #endif

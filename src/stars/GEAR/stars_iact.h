@@ -65,7 +65,7 @@ runner_iact_nonsym_stars_density(const float r2, const float dx[3],
 #if FEEDBACK_GEAR_MECHANICAL_MODE >= 1
 /**
  * @brief Prepare the feedback by computing the required quantities (loop 1).
- * Used for updating properties of star particles required for the feedback.
+ * Used for updating properties of gas particles required for the feedback.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -102,8 +102,7 @@ runner_iact_nonsym_stars_prep2(const float r2, const float dx[3],
                                const float hi, const float hj, struct spart *si,
                                const struct part *pj, const float a,
                                const float H) {}
-#endif /* FEEDBACK_GEAR_MECHANICAL_MODE >=1 */
-#if FEEDBACK_GEAR_MECHANICAL_MODE >= 2
+
 /**
  * @brief Prepare the feedback by computing the required quantities (loop 3).
  * Used for updating properties of star particles required for the feedback.
@@ -123,7 +122,8 @@ runner_iact_nonsym_stars_prep3(const float r2, const float dx[3],
                                const float hi, const float hj, struct spart *si,
                                const struct part *pj, const float a,
                                const float H) {}
-
+#endif /* FEEDBACK_GEAR_MECHANICAL_MODE >=1 */
+#if FEEDBACK_GEAR_MECHANICAL_MODE >= 2
 /**
  * @brief Prepare the feedback by computing the required quantities (loop 4).
  * Used for updating properties of star particles required for the feedback.

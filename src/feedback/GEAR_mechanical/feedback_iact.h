@@ -70,6 +70,45 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
 
 /**
  * @brief Prepare the feedback by computing the required quantities (loop 1).
+ * Used for updating properties of gas particles required for the feedback.
+ *
+ * Note: Not used in GEAR_mechanical.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle (updated).
+ * @param pj Second (gas) particle (not updated).
+ * @param xpj Extra particle data
+ * @param cosmo The cosmological model.
+ * @param ti_current Current integer time.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
+                                  const float hi, const float hj,
+                                  struct spart *si, const struct part *pj,
+                                  const struct xpart *xpj,
+                                  const struct cosmology *cosmo,
+                                  const struct feedback_props *fb_props,
+                                  const integertime_t ti_current) {
+
+  const float r_max_2 = fb_props->r_max * fb_props->r_max;
+
+  /* If the particle is farther than the maximal radius, it does not receive
+     feedback */
+  if (r2 > r_max_2) {
+    return;
+  }
+
+  /* Do we have supernovae? */
+  if (!feedback_should_inject_SN_feedback(si)) {
+    return;
+  }
+}
+
+/**
+ * @brief Prepare the feedback by computing the required quantities (loop 2).
  * Used for updating properties of star particles required for the feedback.
  *
  * In GEAR, compute the first quantities required for the enrichment vector
@@ -86,7 +125,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
  * @param ti_current Current integer time.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
+runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
                                   const float hi, const float hj,
                                   struct spart *si, struct part *pj,
                                   const struct xpart *xpj,
@@ -143,7 +182,7 @@ runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
  * @param ti_current Current integer time.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
+runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
                                   const float hi, const float hj,
                                   struct spart *si, const struct part *pj,
                                   const struct xpart *xpj,
@@ -192,7 +231,7 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
  * @param ti_current Current integer time.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
+runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
                                   const float hi, const float hj,
                                   struct spart *si, const struct part *pj,
                                   const struct xpart *xpj,
@@ -274,44 +313,6 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
       w_j_bar_norm * chemistry_get_total_metal_mass_fraction_for_feedback(pj);
 }
 
-/**
- * @brief Prepare the feedback by computing the required quantities (loop 4).
- *
- * Note: Not used.
- * TODO: Probably to be removed later.
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (si - pj).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param si First (star) particle (updated).
- * @param pj Second (gas) particle (not updated).
- * @param xpj Extra particle data
- * @param cosmo The cosmological model.
- * @param ti_current Current integer time.
- */
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
-                                  const float hi, const float hj,
-                                  struct spart *si, const struct part *pj,
-                                  const struct xpart *xpj,
-                                  const struct cosmology *cosmo,
-                                  const struct feedback_props *fb_props,
-                                  const integertime_t ti_current) {
-
-  const float r_max_2 = fb_props->r_max * fb_props->r_max;
-
-  /* If the particle is farther than the maximal radius, it does not receive
-     feedback */
-  if (r2 > r_max_2) {
-    return;
-  }
-
-  /* Do we have supernovae? */
-  if (!feedback_should_inject_SN_feedback(si)) {
-    return;
-  }
-}
 #endif /*  FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
 
 /**
