@@ -13,6 +13,7 @@ The feedback is composed of a few different models:
   - The supernovae of type II (SNII) defines the rates and yields,
   - The supernovae of type Ia (SNIa) defines the rates and yields,
   - The energy injection that defines how to inject the energy / metals into the particles.
+  - The Stellar Winds (SW) defines the energy and mass continuously ejected by stars until their death. 
 
 Most of the parameters are defined inside a table (``GEARFeedback:yields_table``) but can be override with some parameters in the YAML file.
 I will not describe theses parameters more than providing them at the end of this section.
@@ -97,6 +98,42 @@ When a star goes into a supernova (type II and Ia), the stellar evolution determ
 
 We have two models for the distribution of these fluxes and the subgrid modelling of the supernovae : GEAR model and GEAR mechanical model. We describe the two schemes in the  :ref:`gear_sn_feedback_models` page.
 
+Stellar winds 
+^^^^^^^^^^^^^ 
+
+The stellar wind model used in GEAR is based on the work of `Deng et al. (2024b) <https://arxiv.org/abs/2405.08869>`_. 
+
+The energy and mass ejected by a star (single type of stellar particle) in GEAR depends only on two parameters: its initial mass (:math:`M_{init}`) and its metallicity (:math:`Z`). 
+A set of power law allows to calculate two quantity, the mass ejected (:math:`\dot{M}`) and the terminal wind velocity (:math:`v_\infty`): 
+
+.. math::
+  \log_{10}\mathcal{A} = \left\{ \begin{array}{rcl} b_0 + b_1 x + b_2 x^2 + b_3 x^3 + b_4 x^4\ , & x\leq x_0,\\
+  \mathcal{A}_0 + \frac{d \log_{10}\mathcal{A}}{dx}\bigg|_{x=x_0}(x - x_0)\ , & x > x_0,
+  \end{array} \right.
+
+.. math::
+  \mathcal{A}_0 = b_0 + b_1 x_0 + b_2 x^2_0 + b_3 x^3_0 + b_4 x^4_0,
+
+.. math::
+  \frac{d\log_{10}\mathcal{A}}{dx}\bigg|_{x=x_0} = (b_1 + 2b_2 x_0 + 3b_3 x^2_0 + 4b_4 x^3_0),
+
+.. math::
+  b_i = a_{i0} + a_{i1} y + a_{i2} y^2
+
+with :math:`\mathcal{A}(M,Z)` being either :math:`\dot{M}` or/and :math:`v_\infty`, :math:`y\equiv \log_{10}(Z)`, :math:`x\equiv \log_{10}(M_{init})` where :math:`x_0` is a mass limit above which the behavior is better fitted by linear relation.
+Then, the power ejected is simply:
+
+.. math::
+  \dot{E} = L = \frac{1}{2}\dot{M}v_\infty
+
+The power and mass ejected by a stellar particle owning an entire or partial IMF is the sum of all the stars contained in the stellar particle, or more precisely, the integral over the part of the IMF that is not dead yet:
+
+.. math::
+  Q_{\star} = M_{\star}\int^{M_u}_{M_{min}}\underbrace{\delta(t-\tau(m))\frac{\phi(m)}{m}}_{number\ of\ stars\ of\ mass\ m}Q(m)dm
+
+Where :math:`Q(m)` is the wanted quantity (either :math:`\dot{M}` or :math:`L`) for a single star of mass :math:`m`, :math:`Q_{\star}` the wanted quantity of the stellar particle, :math:`M_u` the upper mass limits for a star dying (or exploding), :math:`M_{min}` the minimal mass of the IMF, :math:`\delta` is the Dirac function and :math:`\phi` is the initial mass function (in mass).
+
+
 
 Generating a new table
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -119,6 +156,7 @@ Finally for the ``SNII``, the mass limits are given by ``Mmin`` and ``Mmax``. Fo
 
   GEARFeedback:
     supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
+    pre_supernovae_efficiency: 1                             # the pre supernovae efficiency, used for stellar wind
     yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
     discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   GEARInitialMassFunction:
@@ -126,9 +164,9 @@ Finally for the ``SNII``, the mass limits are given by ``Mmin`` and ``Mmax``. Fo
     exponents:  [0.7, -0.8, -1.7, -1.3]            # Exponents of each part of the IMF
     mass_limits_msun:  [0.05, 0.08, 0.5, 1, 50]    # Limits in mass between each part of the IMF
   GEARLifetime:
-   quadratic:  [-40.1107, 5.50992, 0.782432]  # Quadratic terms in the fit
-   linear:  [141.93, -15.8895, -3.25578]      # Linear terms in the fit
-   constant:  [-261.366, 17.0735, 9.86606]    # Constant terms in the fit
+    quadratic:  [-40.1107, 5.50992, 0.782432]  # Quadratic terms in the fit
+    linear:  [141.93, -15.8895, -3.25578]      # Linear terms in the fit
+    constant:  [-261.366, 17.0735, 9.86606]    # Constant terms in the fit
   GEARSupernovaeIa:
     exponent:  -0.35                      # Exponent for the distribution of companions
     min_mass_white_dwarf_progenitor:  3   # Minimal mass of a progenitor of white dwarf
@@ -141,4 +179,7 @@ Finally for the ``SNII``, the mass limits are given by ``Mmin`` and ``Mmax``. Fo
     coef_main_sequence:  0.05             # Coefficient for the distribution of main sequence companions
     white_dwarf_mass:  1.38               # Mass of a white dwarf
   GEARSupernovaeII:
-  interpolation_size:  200                # Number of elements for the interpolation of the data
+    interpolation_size:  200                # Number of elements for the interpolation of the data
+  GEARStellar_wind:
+    interpolation_size_mass:        200       # Size of the mass array of the grid used in stellar winds yields.
+    interpolation_size_metallicity: 110       # Size of the metallicity array of the grid used in stellar winds yields.
