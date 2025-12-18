@@ -104,7 +104,7 @@ Stellar winds
 The stellar wind model used in GEAR is based on the work of `Deng et al. (2024b) <https://arxiv.org/abs/2405.08869>`_. 
 
 The energy and mass ejected by a star (single type of stellar particle) in GEAR depends only on two parameters: its initial mass (:math:`M_{init}`) and its metallicity (:math:`Z`). 
-A set of power law allows to calculate two quantity, the mass ejected (:math:`\dot{M}`) and the terminal wind velocity (:math:`v_\infty`): 
+A set of power laws allows us to calculate two quantities, the mass ejected (:math:`\dot{M}`) and the terminal wind velocity (:math:`v_\infty`): 
 
 .. math::
   \log_{10}\mathcal{A} = \left\{ \begin{array}{rcl} b_0 + b_1 x + b_2 x^2 + b_3 x^3 + b_4 x^4\ , & x\leq x_0,\\
@@ -120,8 +120,8 @@ A set of power law allows to calculate two quantity, the mass ejected (:math:`\d
 .. math::
   b_i = a_{i0} + a_{i1} y + a_{i2} y^2
 
-with :math:`\mathcal{A}(M,Z)` being either :math:`\dot{M}` or/and :math:`v_\infty`, :math:`y\equiv \log_{10}(Z)`, :math:`x\equiv \log_{10}(M_{init})` where :math:`x_0` is a mass limit above which the behavior is better fitted by linear relation.
-Then, the power ejected is simply:
+with :math:`\mathcal{A}(M,Z)` being either :math:`\dot{M}` or/and :math:`v_\infty`, :math:`y\equiv \log_{10}(Z)`, :math:`x\equiv \log_{10}(M_{init})` where :math:`x_0` is a mass limit above which a linear relation better fits the behavior.
+Then, the power ejected is:
 
 .. math::
   \dot{E} = L = \frac{1}{2}\dot{M}v_\infty
