@@ -1171,6 +1171,24 @@ __attribute__((always_inline)) INLINE static int cell_is_direct_neighbour(
   return fabs(dist2) < 1e-10;
 }
 
+/**
+ * @brief Check if a cell is spatially contained within another cell.
+ *
+ * @param inner The potentially contained #cell.
+ * @param outer The potentially containing #cell.
+ *
+ * @return 1 if inner is inside outer, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_inside(
+    const struct cell *inner, const struct cell *outer) {
+  return (inner->loc[0] >= outer->loc[0] &&
+          inner->loc[0] < outer->loc[0] + outer->width[0] &&
+          inner->loc[1] >= outer->loc[1] &&
+          inner->loc[1] < outer->loc[1] + outer->width[1] &&
+          inner->loc[2] >= outer->loc[2] &&
+          inner->loc[2] < outer->loc[2] + outer->width[2]);
+}
+
 /* Inlined functions (for speed). */
 
 /**
