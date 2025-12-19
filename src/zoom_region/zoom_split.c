@@ -553,6 +553,8 @@ void zoom_void_space_split(struct space *s, int verbose) {
     int bad_max_timesteps = 0;
     for (int ind = 0; ind < nr_void_cells; ind++) {
       struct cell *c = &cells_top[void_cell_indices[ind]];
+      /* We only care if the void cell matters (i.e. contains zoom cells). */
+      if (!c->contains_zoom_cells) continue;
       if (c->grav.ti_end_min == -1) bad_min_timesteps++;
       if (c->grav.ti_beg_max == -1) bad_max_timesteps++;
     }
