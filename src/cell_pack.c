@@ -54,11 +54,6 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
           c->depth, cellID_names[c->type], subcellID_names[c->subtype],
           c->nodeID);
   }
-
-  if (c->type >= cell_type_count || c->subtype >= cell_subtype_count) {
-    error("Packing cell with invalid type/subtype (depth=%d type=%d subtype=%d nodeID=%d)",
-          c->depth, c->type, c->subtype, c->nodeID);
-  }
 #endif
 
   /* Start by packing the data of the current cell. */
@@ -275,11 +270,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
     error("Unpacking pcell with negative maxdepth=%d (type=%s subtype=%s counts: hydro=%d grav=%d stars=%d)",
           pc->maxdepth, cellID_names[pc->type], subcellID_names[pc->subtype],
           pc->hydro.count, pc->grav.count, pc->stars.count);
-  }
-
-  if (pc->type >= cell_type_count || pc->subtype >= cell_subtype_count) {
-    error("Unpacking pcell with invalid type/subtype (maxdepth=%d type=%d subtype=%d)",
-          pc->maxdepth, pc->type, pc->subtype);
   }
 
   /* Verify the receiving cell has valid depth */
