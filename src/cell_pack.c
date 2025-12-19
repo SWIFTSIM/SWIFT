@@ -282,6 +282,15 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
         c->depth, cellID_names[c->type], subcellID_names[c->subtype],
         c->nodeID);
   }
+
+  /* Warn about suspiciously deep cells (should never exceed 64) */
+  if (c->depth > 64) {
+    error(
+        "Unpacking into cell with excessive depth=%d (should never exceed 64!) "
+        "pc->maxdepth=%d type=%s subtype=%s nodeID=%d - possible recursion bug!",
+        c->depth, pc->maxdepth, cellID_names[c->type],
+        subcellID_names[c->subtype], c->nodeID);
+  }
 #endif
 
   /* Unpack the current pcell. */
