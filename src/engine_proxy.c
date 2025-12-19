@@ -70,10 +70,6 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
     proxy_type |= (int)proxy_cell_type_hydro;
   }
 
-  /* Get the indices of the cells */
-  const int cid = (int)(ci - s->cells_top);
-  const int cjd = (int)(cj - s->cells_top);
-
   /* In the gravity case, check distances using the MAC. */
   if (with_gravity) {
 
