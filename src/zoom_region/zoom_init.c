@@ -236,9 +236,9 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
   /* Share answers amoungst nodes. */
 
   /* Boundary. */
-  MPI_Allreduce(MPI_IN_PLACE, &min_bounds[0], 3, MPI_DOUBLE, MPI_MIN,
+  MPI_Allreduce(MPI_IN_PLACE, min_bounds, 3, MPI_DOUBLE, MPI_MIN,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &max_bounds[1], 3, MPI_DOUBLE, MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE, max_bounds, 3, MPI_DOUBLE, MPI_MAX,
                 MPI_COMM_WORLD);
 
   /* CoM */
