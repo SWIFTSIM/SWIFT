@@ -59,16 +59,12 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   int offset = zoom_props->bkg_cell_offset;
   int ncells = zoom_props->nr_bkg_cells;
 
-  /* Work out how many void cells we should have. */
-  int void_cdim = s->zoom_props->void_dim[0] * s->iwidth[0] * 1.0001;
-  int target_void_count = void_cdim * void_cdim * void_cdim;
-
   /* Allocate the indices of void cells */
-  if (swift_memalign(
-          "void_cell_indices", (void **)&s->zoom_props->void_cell_indices,
-          SWIFT_STRUCT_ALIGNMENT, target_void_count * sizeof(int)) != 0)
+  if (swift_memalign("void_cell_indices",
+                     (void **)&s->zoom_props->void_cell_indices,
+                     SWIFT_STRUCT_ALIGNMENT, ncells * sizeof(int)) != 0)
     error("Failed to allocate indices of local top-level background cells.");
-  bzero(s->zoom_props->void_cell_indices, target_void_count * sizeof(int));
+  bzero(s->zoom_props->void_cell_indices, ncells * sizeof(int));
 
   /* Loop over the background cells and find cells containing
    * the void region. */
@@ -83,12 +79,6 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
       zoom_props->void_cell_indices[zoom_props->nr_void_cells++] = cid;
     }
   }
-
-  if (target_void_count != zoom_props->nr_void_cells)
-    error(
-        "Not all void cells were found and labelled! (target_void_count=%d, "
-        "found_void_count=%d)",
-        target_void_count, zoom_props->nr_void_cells);
 
   if (verbose) message("Found %d void cells", zoom_props->nr_void_cells);
 
