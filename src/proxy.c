@@ -635,17 +635,21 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 
       /* Check the receiving cell has valid depth */
       if (c->depth < 0) {
-        error("Proxy %d: cell_in[%d/%d] has negative depth=%d before unpacking (type=%s subtype=%s nodeID=%d)",
-              pid, j, proxies[pid].nr_cells_in, c->depth,
-              cellID_names[c->type], subcellID_names[c->subtype], c->nodeID);
+        error(
+            "Proxy %d: cell_in[%d/%d] has negative depth=%d before unpacking "
+            "(type=%s subtype=%s nodeID=%d)",
+            pid, j, proxies[pid].nr_cells_in, c->depth, cellID_names[c->type],
+            subcellID_names[c->subtype], c->nodeID);
       }
 
       /* Check the incoming pcell has valid maxdepth */
       if (pc->maxdepth < 0) {
-        error("Proxy %d: pcell for cell_in[%d/%d] has negative maxdepth=%d (type=%s subtype=%s counts: hydro=%d grav=%d)",
-              pid, j, proxies[pid].nr_cells_in, pc->maxdepth,
-              cellID_names[pc->type], subcellID_names[pc->subtype],
-              pc->hydro.count, pc->grav.count);
+        error(
+            "Proxy %d: pcell for cell_in[%d/%d] has negative maxdepth=%d "
+            "(type=%s subtype=%s counts: hydro=%d grav=%d)",
+            pid, j, proxies[pid].nr_cells_in, pc->maxdepth,
+            cellID_names[pc->type], subcellID_names[pc->subtype],
+            pc->hydro.count, pc->grav.count);
       }
 
       count_check += c->mpi.pcell_size;

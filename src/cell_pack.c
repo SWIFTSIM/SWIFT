@@ -338,10 +338,15 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->split = 0;
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
-      if (c->depth < 0)
-        message("Unpacking cell progeny %d at depth %d with count %d (%s/%s)",
-                k, c->depth, pc->progeny[k], cellID_names[c->type],
-                subcellID_names[c->subtype]);
+      if (c->depth < 0) {
+        error("Parent cell has negative depth when creating progeny %d! "
+              "c->depth=%d pc->progeny[%d]=%d c->type=%s c->subtype=%s "
+              "pc->type=%s pc->subtype=%s pc->maxdepth=%d",
+              k, c->depth, k, pc->progeny[k],
+              cellID_names[c->type], subcellID_names[c->subtype],
+              cellID_names[pc->type], subcellID_names[pc->subtype],
+              pc->maxdepth);
+      }
       struct cell *temp;
       space_getcells(s, 1, &temp, 0);
       temp->hydro.count = 0;
