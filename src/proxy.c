@@ -627,14 +627,28 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     // message( "cell data from proxy %i has arrived." , pid );
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Validate pcells before unpacking */
+    /* Validate cells and pcells before unpacking */
+    int count_check = 0;
     for (int j = 0; j < proxies[pid].nr_cells_in; j++) {
-      struct pcell *pc = &proxies[pid].pcells_in[j];
-      if (pc->maxdepth < 0) {
-        error("Proxy %d: pcell[%d] has negative maxdepth=%d (type=%s subtype=%s counts: hydro=%d grav=%d)",
-              pid, j, pc->maxdepth, cellID_names[pc->type],
-              subcellID_names[pc->subtype], pc->hydro.count, pc->grav.count);
+      struct cell *c = proxies[pid].cells_in[j];
+      struct pcell *pc = &proxies[pid].pcells_in[count_check];
+
+      /* Check the receiving cell has valid depth */
+      if (c->depth < 0) {
+        error("Proxy %d: cell_in[%d/%d] has negative depth=%d before unpacking (type=%s subtype=%s nodeID=%d)",
+              pid, j, proxies[pid].nr_cells_in, c->depth,
+              cellID_names[c->type], subcellID_names[c->subtype], c->nodeID);
       }
+
+      /* Check the incoming pcell has valid maxdepth */
+      if (pc->maxdepth < 0) {
+        error("Proxy %d: pcell for cell_in[%d/%d] has negative maxdepth=%d (type=%s subtype=%s counts: hydro=%d grav=%d)",
+              pid, j, proxies[pid].nr_cells_in, pc->maxdepth,
+              cellID_names[pc->type], subcellID_names[pc->subtype],
+              pc->hydro.count, pc->grav.count);
+      }
+
+      count_check += c->mpi.pcell_size;
     }
 #endif
 
