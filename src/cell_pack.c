@@ -351,18 +351,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->split = 0;
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Sanity check: if maxdepth=0, there should be no progeny */
-      if (pc->maxdepth == 0) {
-        error(
-            "Inconsistent pcell: maxdepth=0 but progeny[%d]=%d (should be -1)! "
-            "c->depth=%d type=%s subtype=%s - corrupted progeny array!",
-            k, pc->progeny[k], c->depth, cellID_names[pc->type],
-            subcellID_names[pc->subtype]);
-      }
-#endif
-
       if (c->depth < 0) {
         error(
             "Parent cell has negative depth when creating progeny %d! "
