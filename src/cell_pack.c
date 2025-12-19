@@ -282,6 +282,15 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
         c->depth, cellID_names[c->type], subcellID_names[c->subtype],
         c->nodeID);
   }
+
+  /* Check if recursion would overflow the depth field */
+  if (c->depth + 1 < 0) {
+    error(
+        "Depth overflow detected! c->depth=%d, c->depth+1=%d would be "
+        "negative (type=%s subtype=%s nodeID=%d pc->maxdepth=%d)",
+        c->depth, c->depth + 1, cellID_names[c->type],
+        subcellID_names[c->subtype], c->nodeID, pc->maxdepth);
+  }
 #endif
 
   /* Unpack the current pcell. */
