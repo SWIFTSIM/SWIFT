@@ -267,16 +267,20 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
 
   /* Verify the pcell has valid data before unpacking */
   if (pc->maxdepth < 0) {
-    error("Unpacking pcell with negative maxdepth=%d (type=%s subtype=%s counts: hydro=%d grav=%d stars=%d)",
-          pc->maxdepth, cellID_names[pc->type], subcellID_names[pc->subtype],
-          pc->hydro.count, pc->grav.count, pc->stars.count);
+    error(
+        "Unpacking pcell with negative maxdepth=%d (type=%s subtype=%s counts: "
+        "hydro=%d grav=%d stars=%d)",
+        pc->maxdepth, cellID_names[pc->type], subcellID_names[pc->subtype],
+        pc->hydro.count, pc->grav.count, pc->stars.count);
   }
 
   /* Verify the receiving cell has valid depth */
   if (c->depth < 0) {
-    error("Unpacking into cell with negative depth=%d (type=%s subtype=%s nodeID=%d)",
-          c->depth, cellID_names[c->type], subcellID_names[c->subtype],
-          c->nodeID);
+    error(
+        "Unpacking into cell with negative depth=%d (type=%s subtype=%s "
+        "nodeID=%d)",
+        c->depth, cellID_names[c->type], subcellID_names[c->subtype],
+        c->nodeID);
   }
 #endif
 
@@ -339,13 +343,13 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
       if (c->depth < 0) {
-        error("Parent cell has negative depth when creating progeny %d! "
-              "c->depth=%d pc->progeny[%d]=%d c->type=%s c->subtype=%s "
-              "pc->type=%s pc->subtype=%s pc->maxdepth=%d",
-              k, c->depth, k, pc->progeny[k],
-              cellID_names[c->type], subcellID_names[c->subtype],
-              cellID_names[pc->type], subcellID_names[pc->subtype],
-              pc->maxdepth);
+        error(
+            "Parent cell has negative depth when creating progeny %d! "
+            "c->depth=%d pc->progeny[%d]=%d c->type=%s c->subtype=%s "
+            "pc->type=%s pc->subtype=%s pc->maxdepth=%d",
+            k, c->depth, k, pc->progeny[k], cellID_names[c->type],
+            subcellID_names[c->subtype], cellID_names[pc->type],
+            subcellID_names[pc->subtype], pc->maxdepth);
       }
       struct cell *temp;
       space_getcells(s, 1, &temp, 0);
