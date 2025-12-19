@@ -35,6 +35,7 @@
  * @param proxy_type The type of proxy needed.
  * @param nodeID The current node ID.
  */
+#ifdef WITH_MPI
 static void zoom_get_void_cell_proxies(struct engine *e, struct cell *ci,
                                        struct cell *cj, const int proxy_type,
                                        const int nodeID) {
@@ -86,6 +87,7 @@ static void zoom_get_void_cell_proxies(struct engine *e, struct cell *ci,
     }
   }
 }
+#endif /* WITH_MPI */
 
 /**
  * @brief Create and fill the proxies.
