@@ -384,6 +384,16 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       if (k & 1) temp->loc[2] += temp->width[2];
       temp->depth = c->depth + 1;
       temp->split = 0;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify temp->depth is sane after assignment */
+      if (temp->depth < 0 || temp->depth != c->depth + 1) {
+        error(
+            "temp->depth corrupted after assignment! c->depth=%d, assigned "
+            "c->depth+1=%d, but temp->depth=%d (progeny %d)",
+            c->depth, c->depth + 1, temp->depth, k);
+      }
+#endif
       temp->hydro.dx_max_part = 0.f;
       temp->hydro.dx_max_sort = 0.f;
       temp->stars.dx_max_part = 0.f;
