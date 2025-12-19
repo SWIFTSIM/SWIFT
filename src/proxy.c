@@ -625,6 +625,19 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     // message( "cell data from proxy %i has arrived." , pid );
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Validate pcells before unpacking */
+    for (int j = 0; j < proxies[pid].nr_cells_in; j++) {
+      struct pcell *pc = &proxies[pid].pcells_in[j];
+      if (pc->maxdepth < 0) {
+        error("Proxy %d: pcell[%d] has negative maxdepth=%d (type=%s subtype=%s counts: hydro=%d grav=%d)",
+              pid, j, pc->maxdepth, cellID_names[pc->type],
+              subcellID_names[pc->subtype], pc->hydro.count, pc->grav.count);
+      }
+    }
+#endif
+
     for (int count = 0, j = 0; j < proxies[pid].nr_cells_in; j++)
       count += cell_unpack(&proxies[pid].pcells_in[count],
                            proxies[pid].cells_in[j], s, with_gravity);
