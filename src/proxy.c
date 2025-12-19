@@ -678,12 +678,12 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
       }
 
       /* Check that progeny indices are within bounds */
-      for (int k = 0; k < 8; k++) {
-        if (pc->progeny[k] >= c->mpi.pcell_size) {
+      for (int p = 0; p < 8; p++) {
+        if (pc->progeny[p] >= c->mpi.pcell_size) {
           error(
               "Proxy %d: pcell for cell_in[%d/%d] has invalid progeny[%d]=%d "
               "(exceeds pcell_size=%d) - out of bounds!",
-              pid, j, proxies[pid].nr_cells_in, k, pc->progeny[k],
+              pid, j, proxies[pid].nr_cells_in, p, pc->progeny[p],
               c->mpi.pcell_size);
         }
       }
