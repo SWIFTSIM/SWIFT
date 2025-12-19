@@ -282,15 +282,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
         c->depth, cellID_names[c->type], subcellID_names[c->subtype],
         c->nodeID);
   }
-
-  /* Check if recursion would overflow the depth field */
-  if (c->depth + 1 < 0) {
-    error(
-        "Depth overflow detected! c->depth=%d, c->depth+1=%d would be "
-        "negative (type=%s subtype=%s nodeID=%d pc->maxdepth=%d)",
-        c->depth, c->depth + 1, cellID_names[c->type],
-        subcellID_names[c->subtype], c->nodeID, pc->maxdepth);
-  }
 #endif
 
   /* Unpack the current pcell. */
@@ -360,6 +351,19 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
             subcellID_names[c->subtype], cellID_names[pc->type],
             subcellID_names[pc->subtype], pc->maxdepth);
       }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check if recursion would overflow the depth field */
+      if (c->depth + 1 < 0) {
+        error(
+            "Depth overflow detected creating progeny %d! c->depth=%d, "
+            "c->depth+1=%d would be negative (type=%s subtype=%s nodeID=%d "
+            "pc->maxdepth=%d)",
+            k, c->depth, c->depth + 1, cellID_names[c->type],
+            subcellID_names[c->subtype], c->nodeID, pc->maxdepth);
+      }
+#endif
+
       struct cell *temp;
       space_getcells(s, 1, &temp, 0);
       temp->hydro.count = 0;
