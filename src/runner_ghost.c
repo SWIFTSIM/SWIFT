@@ -501,8 +501,19 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
 
             /* Self interaction? */
             if (l->t->type == task_type_self) {
-              runner_dosub_self_subset_stars_density(r, finger, sparts, sid,
-                                                     scount, 1);
+
+              /* if we have split the self tasks, then we only want to call
+               *  doself_subset once, for the split task with flag 0 */
+#if STARS_SELF_NTASK > 1
+              const int run_on_all_selfs = 0;
+#else
+              const int run_on_all_selfs = 1;
+#endif
+              if (run_on_all_selfs || l->t->flags == 0) {
+
+                runner_dosub_self_subset_stars_density(r, finger, sparts, sid,
+                                                       scount, 1);
+              }
             }
 
             /* Otherwise, pair interaction? */

@@ -2628,7 +2628,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
   struct task *t_force = NULL;
   struct task *t_limiter = NULL;
-  struct task *t_star_density = NULL;
+  struct task *t_star_self_density[STARS_SELF_NTASK] = {NULL};
+  struct task *t_star_pair_density = NULL;
   struct task *t_star_feedback = NULL;
   struct task *t_bh_density = NULL;
   struct task *t_bh_swallow = NULL;
@@ -2689,9 +2690,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* The stellar feedback tasks */
       if (with_feedback) {
-        t_star_density =
-            scheduler_addtask(sched, task_type_self, task_subtype_stars_density,
-                              flags, 0, ci, NULL);
+
+        for (int i = 0; i < STARS_SELF_NTASK; i++) {
+          t_star_self_density[i] =
+              scheduler_addtask(sched, task_type_self,
+                                task_subtype_stars_density, i, 0, ci, NULL);
+        }
+
         t_star_feedback =
             scheduler_addtask(sched, task_type_self,
                               task_subtype_stars_feedback, flags, 0, ci, NULL);
@@ -2757,7 +2762,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->hydro.limiter, t_limiter);
       }
       if (with_feedback) {
-        engine_addlink(e, &ci->stars.density, t_star_density);
+        for (int i = 0; i < STARS_SELF_NTASK; i++) {
+          engine_addlink(e, &ci->stars.density, t_star_self_density[i]);
+        }
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
 #ifdef EXTRA_STAR_LOOPS
         engine_addlink(e, &ci->stars.prepare1, t_star_prep1);
@@ -2809,24 +2816,30 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_feedback) {
 
-        if (with_cooling)
-          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                              t_star_density);
+        for (int iself = 0; iself < STARS_SELF_NTASK; iself++) {
 
-        scheduler_addunlock(sched, ci->hydro.super->stars.drift,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
-                            t_star_density);
-        for (int i = 0; i < STARS_GHOST_NTASK; i++) {
-          scheduler_addunlock(sched, t_star_density,
-                              ci->hydro.super->stars.density_ghost[i]);
+          if (with_cooling) {
+            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                t_star_self_density[iself]);
+          }
+
+          scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                              t_star_self_density[iself]);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_star_self_density[iself]);
+          scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
+                              t_star_self_density[iself]);
+          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                              t_star_self_density[iself]);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_star_self_density[iself]);
+
+          for (int jghost = 0; jghost < STARS_GHOST_NTASK; jghost++) {
+            scheduler_addunlock(sched, t_star_self_density[iself],
+                                ci->hydro.super->stars.density_ghost[jghost]);
+          }
         }
+
 #ifdef EXTRA_STAR_LOOPS
         for (int i = 0; i < STARS_GHOST_NTASK; i++) {
           scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost[i],
@@ -2993,7 +3006,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* The stellar feedback tasks */
       if (with_feedback) {
-        t_star_density =
+        t_star_pair_density =
             scheduler_addtask(sched, task_type_pair, task_subtype_stars_density,
                               flags, 0, ci, cj);
         t_star_feedback =
@@ -3078,8 +3091,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->hydro.limiter, t_limiter);
       }
       if (with_feedback) {
-        engine_addlink(e, &ci->stars.density, t_star_density);
-        engine_addlink(e, &cj->stars.density, t_star_density);
+        engine_addlink(e, &ci->stars.density, t_star_pair_density);
+        engine_addlink(e, &cj->stars.density, t_star_pair_density);
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
         engine_addlink(e, &cj->stars.feedback, t_star_feedback);
 #ifdef EXTRA_STAR_LOOPS
@@ -3158,10 +3171,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_feedback) {
         scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                            t_star_density);
+                            t_star_pair_density);
         if (ci->hydro.super != cj->hydro.super) {
           scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-                              t_star_density);
+                              t_star_pair_density);
         }
       }
 
@@ -3180,19 +3193,19 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           if (with_cooling)
             scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                                t_star_density);
+                                t_star_pair_density);
 
           scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                              t_star_density);
+                              t_star_pair_density);
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
-                              t_star_density);
+                              t_star_pair_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              t_star_density);
+                              t_star_pair_density);
           scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
-                              t_star_density);
+                              t_star_pair_density);
           for (int i = 0; i < STARS_GHOST_NTASK; i++) {
 
-            scheduler_addunlock(sched, t_star_density,
+            scheduler_addunlock(sched, t_star_pair_density,
                                 ci->hydro.super->stars.density_ghost[i]);
           }
 #ifdef EXTRA_STAR_LOOPS
@@ -3347,19 +3360,19 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             if (with_cooling)
               scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
-                                  t_star_density);
+                                  t_star_pair_density);
 
             scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
-                                t_star_density);
+                                t_star_pair_density);
             scheduler_addunlock(sched, cj->hydro.super->stars.drift,
-                                t_star_density);
+                                t_star_pair_density);
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                t_star_density);
+                                t_star_pair_density);
             scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
-                                t_star_density);
+                                t_star_pair_density);
             for (int i = 0; i < STARS_GHOST_NTASK; i++) {
 
-              scheduler_addunlock(sched, t_star_density,
+              scheduler_addunlock(sched, t_star_pair_density,
                                   cj->hydro.super->stars.density_ghost[i]);
             }
 #ifdef EXTRA_STAR_LOOPS
