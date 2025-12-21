@@ -60,7 +60,7 @@ struct forcing_terms {
 };
 
 /**
- * @brief Computes the forcing terms.
+ * @brief Computes the hydrodynamic forcing terms.
  *
  * Based on G.O.Roberts, Dynamo action of fluid motions with two-dimensional
  * periodicity, Royal Society, Feb. 3, 1972;
@@ -76,7 +76,7 @@ struct forcing_terms {
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
-__attribute__((always_inline)) INLINE static void forcing_terms_apply(
+__attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     const double time, const struct forcing_terms *terms, const struct space *s,
     const struct phys_const *phys_const, struct part *p, struct xpart *xp) {
 
@@ -145,6 +145,62 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   xp->v_full[1] = v_Rob[1];
   xp->v_full[2] = v_Rob[2] * Vz_factor;
 }
+
+/**
+ * @brief Computes the gravitational forcing terms.
+ *
+ * We do nothing in this 'none' scheme.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param gp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
+    const long long id, const struct forcing_terms *terms, struct gpart *gp) {
+  /* Nothing to do here */
+}
+
+/**
+ * @brief Sets the forcing of gparts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param gp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_gpart_drift_apply(
+    const long long id, const struct forcing_terms *terms, struct gpart *gp) {}
+
+/**
+ * @brief Sets the forcing of parts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_part_drift_apply(
+    const long long id, const struct forcing_terms *terms, struct part *p,
+    struct xpart *xp) {}
+
+/**
+ * @brief Sets the forcing of sparts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_spart_drift_apply(
+    const long long id, const struct forcing_terms *terms, struct spart *sp) {}
+
+/**
+ * @brief Sets the forcing of bparts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param bp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_bpart_drift_apply(
+    const long long id, const struct forcing_terms *terms, struct bpart *bp) {}
 
 /**
  * @brief Computes the time-step condition due to the forcing terms.
