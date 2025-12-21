@@ -76,6 +76,8 @@
  *
  * @param r The runner thread.
  * @param c The cell.
+ * @param offset First particle in the cell to treat (for split tasks).
+ * @param ntasks Interval between successive particles that are treated.
  * @param timer Are we timing this ?
  */
 void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
@@ -1104,6 +1106,8 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
  *
  * @param r The runner thread.
  * @param c The cell.
+ * @param offset First particle in the cell to treat (for split tasks).
+ * @param ntasks Interval between successive particles that are treated.
  * @param timer Are we timing this ?
  */
 void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
