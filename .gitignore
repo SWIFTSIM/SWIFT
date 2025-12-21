@@ -101,6 +101,7 @@ tests/test27cells
 tests/test27cells_subset
 tests/test27cellsStars
 tests/test27cellsStars_subset
+tests/test27cellsSIDM
 tests/testPeriodicBC
 tests/test125cells
 tests/brute_force_27_standard.dat
@@ -163,6 +164,7 @@ tests/test27cells.sh
 tests/test27cellsPerturbed.sh
 tests/test27cellsStars.sh
 tests/test27cellsStarsPerturbed.sh
+tests/test27cellsSIDM.sh
 tests/test125cells.sh
 tests/test125cellsPerturbed.sh
 tests/testParser.sh
