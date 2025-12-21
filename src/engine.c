@@ -139,7 +139,7 @@ const char *engine_policy_names[] = {"none",
                                      "moving mesh",
                                      "moving mesh hydro",
                                      "no_io",
-				     "sidm"};
+                                     "sidm"};
 
 const int engine_default_snapshot_subsample[swift_type_count] = {0};
 
