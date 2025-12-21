@@ -86,6 +86,11 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
   sip->density.rho_dh *= h_inv_dim_plus_one;
   sip->density.wcount *= h_inv_dim;
   sip->density.wcount_dh *= h_inv_dim_plus_one;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  sip->n_density += kernel_root;
+  sip->n_density *= h_inv_dim;
+#endif
 }
 
 /**
