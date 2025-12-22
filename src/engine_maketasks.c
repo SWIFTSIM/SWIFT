@@ -479,12 +479,20 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
 
 #ifdef EXTRA_STAR_LOOPS_2
-      /* Prep3 ghost before second send */
+
+      /* Prep2 unlocks prep3 ghost before third send */
+      scheduler_addunlock(s, t_prep2, ci->hydro.super->stars.prep3_ghost);
+
+      /* Prep3 ghost before third send */
       scheduler_addunlock(s, ci->hydro.super->stars.prep3_ghost, t_prep3);
 
 
 #ifdef EXTRA_STAR_LOOPS_3
-      /* Prep4 ghost before second send */
+
+      /* Prep3 unlocks prep4 ghost before fourth send */
+      scheduler_addunlock(s, t_prep3, ci->hydro.super->stars.prep4_ghost);
+
+      /* Prep4 ghost before fourth send */
       scheduler_addunlock(s, ci->hydro.super->stars.prep4_ghost, t_prep4);
 
       /* The fourth send_stars task should unlock the super_cell's "end of star
@@ -1178,12 +1186,14 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #ifdef EXTRA_STAR_LOOPS_2
     /* Receive stars for the third time after the prep3 loop */
     for (struct link *l = c->stars.prepare3; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_prep2, l->t);
       scheduler_addunlock(s, l->t, t_prep3);
     }
 
 #ifdef EXTRA_STAR_LOOPS_3
     /* Receive stars for the fourth time after the prep4 loop */
     for (struct link *l = c->stars.prepare4; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_prep3, l->t);
       scheduler_addunlock(s, l->t, t_prep4);
     }
 
