@@ -41,18 +41,18 @@ hydro_gravity_energy_update_term(const float dt_kick_corr1,
                                  const float* fluxes,
                                  const float conserved_energy) {
 
-  /* Gravitational work term due to mass fluxes */
-  float grav_work[3] = {
-    dt_kick_corr1 * a_grav1[0] + dt_kick_corr2 * a_grav2[0],
-    dt_kick_corr1 * a_grav1[1] + dt_kick_corr2 * a_grav2[1],
-    dt_kick_corr1 * a_grav1[2] + dt_kick_corr2 * a_grav2[2],
-};
-  float dE = mflux[0] * grav_work[0] + mflux[1] * grav_work[1] +
-             mflux[2] * grav_work[2];
-
-  /* Gravitational kick at generator */
-  dE += v_full[0] * grav_kick[0] + v_full[1] * grav_kick[1] +
-        v_full[2] * grav_kick[2];
+//   /* Gravitational work term due to mass fluxes */
+//   float grav_work[3] = {
+//     dt_kick_corr1 * a_grav1[0] + dt_kick_corr2 * a_grav2[0],
+//     dt_kick_corr1 * a_grav1[1] + dt_kick_corr2 * a_grav2[1],
+//     dt_kick_corr1 * a_grav1[2] + dt_kick_corr2 * a_grav2[2],
+// };
+//   float dE = mflux[0] * grav_work[0] + mflux[1] * grav_work[1] +
+//              mflux[2] * grav_work[2];
+//
+//   /* Gravitational kick at generator */
+//   dE += v_full[0] * grav_kick[0] + v_full[1] * grav_kick[1] +
+//         v_full[2] * grav_kick[2];
 
   /* Default onto simpler calculation if dE springel fails.
    * Seen in Uttenhove PhD thesis Eq 230 */
