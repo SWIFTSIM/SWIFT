@@ -55,50 +55,39 @@ hydro_gravity_energy_update_term(const float dt_kick_corr1,
         v_full[2] * grav_kick[2];
 
   /* Default onto simpler calculation if dE springel fails.
-   * Seen in Uttenhove PhD thesis Eq 161
-   * Also includes fluxes[4] incase it goes negative from addition later*/
-  if (conserved_energy + dE +  fluxes[4] < 0.) {
+   * Seen in Uttenhove PhD thesis Eq 230 */
+ float dE;
 
-    /* Corresponds to momentum p_n*/
-    float conserved_momentum1[3] = {
-    conserved_momentum_grav_kicked[0] - grav_kick[0],
-    conserved_momentum_grav_kicked[1] - grav_kick[1],
-    conserved_momentum_grav_kicked[2] - grav_kick[2],
-    };
-
-    /* Naive guess at updated momentum p_n+1, since dE is added which will
-     * update fluxes, we must make a guess at p_n+1. It should be a reasonable
-     * guess
-     * corresponds to p_n + grav_kick + momentum_flux */
-    float conserved_momentum2[3] = {
-    conserved_momentum_grav_kicked[0] + fluxes[1],
-    conserved_momentum_grav_kicked[1] + fluxes[2],
-    conserved_momentum_grav_kicked[2] + fluxes[3],
-      };
-
-    float grav_work_simple[3] = {
-      dt_kick_corr1 * conserved_momentum1[0] * a_grav1[0] +
-        dt_kick_corr2 * conserved_momentum2[0] * a_grav2[0],
-      dt_kick_corr1 * conserved_momentum1[1] * a_grav1[1] +
-       dt_kick_corr2 * conserved_momentum2[1] * a_grav2[1],
-      dt_kick_corr1 * conserved_momentum1[2] * a_grav1[2] +
-        dt_kick_corr2 * conserved_momentum2[2] * a_grav2[2],
+  /* Corresponds to momentum p_n*/
+  float conserved_momentum1[3] = {
+  conserved_momentum_grav_kicked[0] - grav_kick[0],
+  conserved_momentum_grav_kicked[1] - grav_kick[1],
+  conserved_momentum_grav_kicked[2] - grav_kick[2],
   };
 
-    // float dE_simple =  - energy_flux - (grav_work_simple[0] +
-    //   grav_work_simple[1] * grav_work_simple[2]);
+  /* Naive guess at updated momentum p_n+1, since dE is added which will
+   * update fluxes, we must make a guess at p_n+1. It should be a reasonable
+   * guess
+   * corresponds to p_n + grav_kick + momentum_flux */
+  float conserved_momentum2[3] = {
+  conserved_momentum_grav_kicked[0] + fluxes[1],
+  conserved_momentum_grav_kicked[1] + fluxes[2],
+  conserved_momentum_grav_kicked[2] + fluxes[3],
+    };
 
-    /* We do not add energy flux, it is added after dE in hydro.h */
-    /* Notice signs, factor -1 accounted for later */
-    float dE_simple = grav_work_simple[0] +
-      grav_work_simple[1] * grav_work_simple[2];
+  float grav_work_simple[3] = {
+    dt_kick_corr1 * conserved_momentum1[0] * a_grav1[0] +
+      dt_kick_corr2 * conserved_momentum2[0] * a_grav2[0],
+    dt_kick_corr1 * conserved_momentum1[1] * a_grav1[1] +
+     dt_kick_corr2 * conserved_momentum2[1] * a_grav2[1],
+    dt_kick_corr1 * conserved_momentum1[2] * a_grav1[2] +
+      dt_kick_corr2 * conserved_momentum2[2] * a_grav2[2],
+  };
 
-    /* Reset to 0, change to new simpler contribution */
-    dE = 0.;
-    dE += dE_simple;
-
-  }
-
+  /* We do not add energy flux, it is added after dE in hydro.h */
+  /* Notice signs, factor -1 accounted for later */
+  dE = grav_work_simple[0] +
+    grav_work_simple[1] * grav_work_simple[2];
 
   return dE;
 }
