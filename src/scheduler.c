@@ -2540,7 +2540,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->ci->grav.parts_fof_foreign;
 
         } else if (t->subtype == task_subtype_spart_density ||
-                   t->subtype == task_subtype_spart_prep2) {
+                   t->subtype == task_subtype_spart_prep2 ||
+                   t->subtype == task_subtype_spart_prep3 ||
+		   t->subtype == task_subtype_spart_prep4) {
 
           count = t->ci->stars.count;
           size = count * sizeof(struct spart);
@@ -2648,7 +2650,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->buff;
 
         } else if (t->subtype == task_subtype_spart_density ||
-                   t->subtype == task_subtype_spart_prep2) {
+                   t->subtype == task_subtype_spart_prep2 ||
+                   t->subtype == task_subtype_spart_prep3 ||
+		   t->subtype == task_subtype_spart_prep4) {
 
           count = t->ci->stars.count;
           size = count * sizeof(struct spart);

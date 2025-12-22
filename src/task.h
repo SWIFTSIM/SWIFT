@@ -145,7 +145,7 @@ enum task_subtypes {
   task_subtype_spart_density,
   task_subtype_part_prep1,
   task_subtype_spart_prep2,
-  task_subtype_part_prep3,
+  task_subtype_spart_prep3,
   task_subtype_spart_prep4,
   task_subtype_stars_density,
   task_subtype_stars_prep1,

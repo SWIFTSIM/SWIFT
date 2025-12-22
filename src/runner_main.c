@@ -510,6 +510,10 @@ void *runner_main(void *data) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_spart_prep2) {
             runner_do_recv_spart(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_spart_prep3) {
+            runner_do_recv_spart(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_spart_prep4) {
+            runner_do_recv_spart(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {
             runner_do_recv_bpart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_feedback) {

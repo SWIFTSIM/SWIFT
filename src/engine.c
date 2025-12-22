@@ -1829,6 +1829,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_spart_density ||
         t->subtype == task_subtype_part_prep1 ||
         t->subtype == task_subtype_spart_prep2 ||
+	t->subtype == task_subtype_spart_prep3 ||
+	t->subtype == task_subtype_spart_prep4 ||
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_grav_counts ||
         t->subtype == task_subtype_rt_gradient ||
