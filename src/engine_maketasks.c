@@ -4432,7 +4432,7 @@ void engine_maketasks(struct engine *e) {
         error(
             "Cell %d (type/subtype=%s/%s depth=%d) has foreign gravity pairs "
             "(cj=%s/%s cj->nodeID=%d, depth=%d, cjd=%d, min_dist_CoM2=%.3e, "
-            "ci->grav.count, cj->grav.count), but no send task!",
+            "ci->grav.count=%d, cj->grav.count=%d), but no send task!",
             i, cellID_names[c->type], subcellID_names[c->subtype], c->depth,
             cellID_names[l->t->cj->type], subcellID_names[l->t->cj->subtype],
             l->t->cj->nodeID, l->t->cj->depth, (int)(l->t->cj->top - cells),
