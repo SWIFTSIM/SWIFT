@@ -1231,7 +1231,8 @@ float cooling_timestep(const struct cooling_function_data* cooling,
  */
 void cooling_split_part(struct part* p, struct xpart* xp, double n) {
 
-  error("Loic: to be implemented");
+  xp->cooling_data.radiated_energy /= n;
+
 }
 
 /**
