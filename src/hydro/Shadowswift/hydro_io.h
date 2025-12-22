@@ -108,6 +108,7 @@ INLINE static void convert_u(const struct engine* e, const struct part* p,
   } else {
     ret[0] = hydro_get_comoving_internal_energy(p, xp);
   }
+  ret[0] = xp->u_full;
 }
 
 /**
@@ -270,6 +271,27 @@ INLINE static void convert_grav_dudt(const struct engine* e,
   ret[0] = p->gravity.dE_prev / p->flux.mass;
 }
 
+
+
+INLINE static void convert_mach_number(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+
+  float fluid_v[3] = {0.f, 0.f, 0.f};
+  fluid_v[0] = p->v[0] + xp->v_full[0] - p->v_part_full[0];
+  fluid_v[1] = p->v[1] + xp->v_full[1] - p->v_part_full[1];
+  fluid_v[2] = p->v[2] + xp->v_full[2] - p->v_part_full[2];
+
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
+
+  /* returns the mach number of gas, calculated via fluid velocities under
+   * same criteria as in hydro_velocities for cold steering */
+
+  // Source of NaN?
+  ret[0] = sqrtf(fluid_v[0] * fluid_v[0] + fluid_v[1] * fluid_v[1] +
+                 fluid_v[2] * fluid_v[2]) / soundspeed;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -282,7 +304,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 20;
+  *num_fields = 22;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -384,6 +406,16 @@ INLINE static void hydro_write_particles(const struct part* parts,
 #else
   error("Unknown hydro dimension!");
 #endif
+
+  list[20] = io_make_output_field_convert_part(
+  "MachNumber", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+  convert_mach_number,
+  "Mach Number");
+
+  list[21] = io_make_output_field("MaxCellAngle", FLOAT, 1,
+    UNIT_CONV_NO_UNITS, 0.f, parts, geometry.max_face_angle,
+    "MaxCellAngle alpha in Velocity Steering");
+
 }
 
 /**
