@@ -232,30 +232,30 @@ void zoom_partition_voids(struct space *s, int nodeID) {
 
   /* Initialise the void cell nodeIDs to -1 (non-local). */
   for (int k = 0; k < s->zoom_props->nr_void_cells; k++) {
-    s->cells_top[s->zoom_props->void_cell_indices[k]].nodeID = 0;
+    s->cells_top[s->zoom_props->void_cell_indices[k]].nodeID = -1;
   }
 
-  // /* Run through the local zoom cells and mark their containing void cells as
-  //  * local. */
-  // for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-  //
-  //   /* Get the cell. */
-  //   struct cell *c = &s->cells_top[k];
-  //
-  //   /* Skip foreign cells. */
-  //   if (c->nodeID != nodeID) continue;
-  //
-  //   /* Find the top level void cell index. */
-  //   double x = c->loc[0] + (c->width[0] / 2);
-  //   double y = c->loc[1] + (c->width[1] / 2);
-  //   double z = c->loc[2] + (c->width[2] / 2);
-  //   int vid =
-  //       cell_getid_offset(s->cdim, s->zoom_props->bkg_cell_offset, x, y, z);
-  //
-  //   /* Get the void cell. */
-  //   struct cell *vc = &s->cells_top[vid];
-  //
-  //   /* Set the void cell's nodeID. */
-  //   vc->nodeID = nodeID;
-  // }
+  /* Run through the local zoom cells and mark their containing void cells as
+   * local. */
+  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+
+    /* Get the cell. */
+    struct cell *c = &s->cells_top[k];
+
+    /* Skip foreign cells. */
+    if (c->nodeID != nodeID) continue;
+
+    /* Find the top level void cell index. */
+    double x = c->loc[0] + (c->width[0] / 2);
+    double y = c->loc[1] + (c->width[1] / 2);
+    double z = c->loc[2] + (c->width[2] / 2);
+    int vid =
+        cell_getid_offset(s->cdim, s->zoom_props->bkg_cell_offset, x, y, z);
+
+    /* Get the void cell. */
+    struct cell *vc = &s->cells_top[vid];
+
+    /* Set the void cell's nodeID. */
+    vc->nodeID = nodeID;
+  }
 }
