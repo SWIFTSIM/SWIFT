@@ -299,19 +299,37 @@ static void zoom_makeproxies_bkg_cells(struct engine *e) {
 
               struct cell *cj = &cells[cjd];
 
+              /* Debug output for specific cells */
+              if ((cid == 22588 && cjd == 22622) || (cid == 22622 && cjd == 22588)) {
+                message(
+                    "Checking pair cid=%d cjd=%d: ci->nodeID=%d cj->nodeID=%d "
+                    "ci->subtype=%d cj->subtype=%d nodeID=%d",
+                    cid, cjd, ci->nodeID, cj->nodeID, ci->subtype, cj->subtype,
+                    nodeID);
+              }
+
               /* Check if we have void cells */
               const int ci_is_void = (ci->subtype == cell_subtype_void);
               const int cj_is_void = (cj->subtype == cell_subtype_void);
 
               /* Skip void<->void pairs - already handled in zoom cell stage */
-              if (ci_is_void && cj_is_void) continue;
+              if (ci_is_void && cj_is_void) {
+                if ((cid == 22588 && cjd == 22622) || (cid == 22622 && cjd == 22588)) {
+                  message("  -> Skipping void<->void pair");
+                }
+                continue;
+              }
 
               /* For non-void pairs, apply standard node checks early */
               if (!ci_is_void && !cj_is_void) {
                 /* Early abort (both same node or both foreign) */
                 if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
-                    (ci->nodeID != nodeID && cj->nodeID != nodeID))
+                    (ci->nodeID != nodeID && cj->nodeID != nodeID)) {
+                  if ((cid == 22588 && cjd == 22622) || (cid == 22622 && cjd == 22588)) {
+                    message("  -> Skipping due to node check (both same or both foreign)");
+                  }
                   continue;
+                }
               }
 
               /* Calculate maximum distance for this pair */
@@ -328,14 +346,29 @@ static void zoom_makeproxies_bkg_cells(struct engine *e) {
               /* Get the proxy type */
               int proxy_type = engine_get_proxy_type(e, ci, cj, pair_r_max);
 
+              if ((cid == 22588 && cjd == 22622) || (cid == 22622 && cjd == 22588)) {
+                message("  -> proxy_type=%d pair_r_max=%e", proxy_type, pair_r_max);
+              }
+
               /* Abort if not in range at all */
-              if (proxy_type == proxy_cell_type_none) continue;
+              if (proxy_type == proxy_cell_type_none) {
+                if ((cid == 22588 && cjd == 22622) || (cid == 22622 && cjd == 22588)) {
+                  message("  -> Skipping: proxy_type is none");
+                }
+                continue;
+              }
 
               /* If exactly one cell is void, use special handling */
               if (ci_is_void || cj_is_void) {
+                if ((cid == 22588 && cjd == 22622) || (cid == 22622 && cjd == 22588)) {
+                  message("  -> Calling zoom_get_void_cell_proxies");
+                }
                 zoom_get_void_cell_proxies(e, ci, cj, proxy_type, nodeID);
               } else {
                 /* Regular cells - add proxy directly */
+                if ((cid == 22588 && cjd == 22622) || (cid == 22622 && cjd == 22588)) {
+                  message("  -> Adding proxy directly via engine_add_proxy");
+                }
                 engine_add_proxy(e, ci, cj, proxy_type);
               }
             }
