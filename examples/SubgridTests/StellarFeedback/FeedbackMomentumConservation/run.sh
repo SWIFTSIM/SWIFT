@@ -3,6 +3,7 @@
 # make run.sh fail if a subcommand fails
 set -e
 
+n_ranks=${n_ranks:=0}  # Number of ranks to use
 n_threads=${n_threads:=8}  #Number of threads to use
 level=${level:=6}  #Number of particles = 2^(3*level)
 gas_density=${gas_density:=1} #Gas density in atom/cm^3
@@ -51,10 +52,16 @@ else
     mkdir $DIR
 fi
 
+if [[ $n_ranks -gt 0 ]]; then
+  swift="mpirun -n $n_ranks ../../../../swift_mpi"
+else
+  swift="../../../../swift"
+fi
+
 printf "Running simulation..."
 # NOTE: run without cooling
-../../../../swift --hydro --stars --external-gravity --feedback \
-	       --sync --limiter --threads=$n_threads \
+$swift --hydro --stars --external-gravity --feedback \
+	       --sync --limiter --pin --threads=$n_threads \
 	       params.yml 2>&1 | tee output.log
 
 python3 plot_momentum_conservation.py
