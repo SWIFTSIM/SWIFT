@@ -94,6 +94,7 @@ static void zoom_get_void_cell_proxies(struct engine *e, struct cell *ci,
     }
   }
 }
+#endif /* WITH_MPI */
 
 /**
  * @brief Create and fill the proxies.
