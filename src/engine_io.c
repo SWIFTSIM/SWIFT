@@ -232,7 +232,7 @@ int engine_dump_restarts(struct engine *e, const int drifted_all,
 #endif
 #endif
 
-      restart_write(e, e->restart_file);
+      if (!(e->policy & engine_policy_no_io)) restart_write(e, e->restart_file);
 
 #ifdef WITH_MPI
       /* Make sure all ranks finished writing to avoid having incomplete
@@ -321,33 +321,35 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
             e->time_base, with_cosmology, e->cosmology);
   }
 
-/* Dump (depending on the chosen strategy) ... */
+  /* Dump (depending on the chosen strategy) ... */
+  if (!(e->policy & engine_policy_no_io)) {
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 
-  MPI_Info info;
-  MPI_Info_create(&info);
+    MPI_Info info;
+    MPI_Info_create(&info);
 
-  if (e->snapshot_distributed) {
+    if (e->snapshot_distributed) {
 
-    write_output_distributed(e, e->internal_units, e->snapshot_units, fof,
-                             e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
+      write_output_distributed(e, e->internal_units, e->snapshot_units, fof,
+                               e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
 
-  } else {
+    } else {
 
 #if defined(HAVE_PARALLEL_HDF5)
-    write_output_parallel(e, e->internal_units, e->snapshot_units, fof,
+      write_output_parallel(e, e->internal_units, e->snapshot_units, fof,
+                            e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
+#else
+      write_output_serial(e, e->internal_units, e->snapshot_units, fof,
                           e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
-#else
-    write_output_serial(e, e->internal_units, e->snapshot_units, fof, e->nodeID,
-                        e->nr_nodes, MPI_COMM_WORLD, info);
 #endif
-  }
-  MPI_Info_free(&info);
+    }
+    MPI_Info_free(&info);
 #else
-  write_output_single(e, e->internal_units, e->snapshot_units, fof);
+    write_output_single(e, e->internal_units, e->snapshot_units, fof);
 #endif /* WITH_MPI */
 #endif /* WITH_HDF5 */
+  } /* If !(e->policy & engine_policy_no_io) */
 
   /* Cancel any triggers that are switched on */
   if (num_snapshot_triggers_part > 0 || num_snapshot_triggers_spart > 0 ||

@@ -91,8 +91,9 @@ enum engine_policy {
   engine_policy_power_spectra = (1 << 27),
   engine_policy_grid = (1 << 28),
   engine_policy_grid_hydro = (1 << 29),
+  engine_policy_no_io = (1 << 30),
 };
-#define engine_maxpolicy 30
+#define engine_maxpolicy 31
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -749,6 +750,7 @@ void engine_config(int restart, int fof, struct engine *e,
 void engine_launch(struct engine *e, const char *call);
 int engine_prepare(struct engine *e);
 void engine_run_rt_sub_cycles(struct engine *e);
+void engine_first_init_particles(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
 int engine_step(struct engine *e);
