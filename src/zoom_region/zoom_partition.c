@@ -230,6 +230,11 @@ void zoom_partition_voids(struct space *s, int nodeID) {
   }
 #endif
 
+  /* Initialise the void cell nodeIDs to -1 (non-local). */
+  for (int k = 0; k < s->zoom_props->nr_void_cells; k++) {
+    s->cells_top[s->zoom_props->void_cell_indices[k]].nodeID = -1;
+  }
+
   /* Run through the local zoom cells and mark their containing void cells as
    * local. */
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
