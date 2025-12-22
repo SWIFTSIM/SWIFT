@@ -650,46 +650,6 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
             subcellID_names[c->subtype], c->nodeID);
       }
     }
-
-    /* Validate pcells array before unpacking */
-    int count_check = 0;
-    for (int j = 0; j < proxies[pid].nr_cells_in; j++) {
-      struct cell *c = proxies[pid].cells_in[j];
-      struct pcell *pc = &proxies[pid].pcells_in[count_check];
-
-      /* Check the incoming pcell has valid maxdepth */
-      if (pc->maxdepth < 0) {
-        error(
-            "Proxy %d: pcell for cell_in[%d/%d] has negative maxdepth=%d "
-            "(type=%s subtype=%s counts: hydro=%d grav=%d)",
-            pid, j, proxies[pid].nr_cells_in, pc->maxdepth,
-            cellID_names[pc->type], subcellID_names[pc->subtype],
-            pc->hydro.count, pc->grav.count);
-      }
-
-      /* Check for excessive maxdepth that would cause overflow (limit is 64) */
-      if (pc->maxdepth > 64) {
-        error(
-            "Proxy %d: pcell for cell_in[%d/%d] has excessive maxdepth=%d "
-            "(limit is 64, would overflow depth field!) type=%s subtype=%s "
-            "c->depth=%d - likely corrupted or wrong cell being packed!",
-            pid, j, proxies[pid].nr_cells_in, pc->maxdepth,
-            cellID_names[pc->type], subcellID_names[pc->subtype], c->depth);
-      }
-
-      /* Check that progeny indices are within bounds */
-      for (int p = 0; p < 8; p++) {
-        if (pc->progeny[p] >= c->mpi.pcell_size) {
-          error(
-              "Proxy %d: pcell for cell_in[%d/%d] has invalid progeny[%d]=%d "
-              "(exceeds pcell_size=%d) - out of bounds!",
-              pid, j, proxies[pid].nr_cells_in, p, pc->progeny[p],
-              c->mpi.pcell_size);
-        }
-      }
-
-      count_check += c->mpi.pcell_size;
-    }
 #endif
 
     for (int count = 0, j = 0; j < proxies[pid].nr_cells_in; j++)
