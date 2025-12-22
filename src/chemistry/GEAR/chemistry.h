@@ -585,7 +585,11 @@ __attribute__((always_inline)) INLINE static void chemistry_add_bpart_to_bpart(
  */
 __attribute__((always_inline)) INLINE static void chemistry_split_part(
     struct part* p, const double n) {
-  error("Loic: to be implemented");
+
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    p->chemistry_data.metal_mass[i] /=n;
+    p->chemistry_data.metal_mass_fluxes[i] /=n;
+  }
 }
 
 /**
