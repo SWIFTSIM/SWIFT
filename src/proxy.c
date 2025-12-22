@@ -490,7 +490,7 @@ void proxy_cells_count_mapper(void *map_data, int num_elements,
   for (int k = 0; k < num_elements; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* We should not be sending void cells. */
-    if (cells[k].subtype == cell_subtype_void)
+    if (cells[k].subtype == cell_subtype_void && cells[k].mpi.sendto)
       error("Trying to send void cell.");
 #endif
     if (cells[k].mpi.sendto)
