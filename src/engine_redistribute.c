@@ -988,6 +988,14 @@ void engine_redistribute(struct engine *e) {
                  nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
                  &redist_data);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify all destinations are valid */
+  for (size_t k = 0; k < nr_gparts; k++) {
+    if (g_dest[k] < 0 || g_dest[k] >= nr_nodes)
+      error("Invalid gpart destination after mapping (%d).", g_dest[k]);
+  }
+#endif
+
   /* Sort the gparticles according to their cell index. */
   if (nr_gparts > 0)
     space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts,
