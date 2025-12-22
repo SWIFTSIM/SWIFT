@@ -566,13 +566,13 @@ void zoom_void_space_split(struct space *s, int verbose) {
 
     /* If we have any bad timesteps we have a problem. */
     if (bad_min_timesteps > 0) {
-      error(
+      message(
           "%d void cells have incorrect minimum end timesteps after MPI "
           "reduction!",
           bad_min_timesteps);
     }
     if (bad_max_timesteps > 0) {
-      error(
+      message(
           "%d void cells have incorrect maximum begin timesteps after MPI "
           "reduction!",
           bad_max_timesteps);
