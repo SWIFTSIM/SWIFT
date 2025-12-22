@@ -1360,6 +1360,7 @@ __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
     swift_free("hydro.sort", c->hydro.sort);
     c->hydro.sort = NULL;
     c->hydro.sort_allocated = 0;
+    c->hydro.sorted = 0;
   }
 #endif
 }
@@ -1477,6 +1478,7 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
     swift_free("stars.sort", c->stars.sort);
     c->stars.sort = NULL;
     c->stars.sort_allocated = 0;
+    c->stars.sorted = 0;
   }
 #endif
 }
