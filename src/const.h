@@ -149,8 +149,10 @@
 /*! @brief More agressive cell steering for cold flows, where the other
  * criterion might become ineffective. */
 #define SHADOWSWIFT_STEERING_COLD_FLOWS
+#ifdef SHADOWSWIFT_STEERING_COLD_FLOWS
 /*! @brief Enable smoother gradient of cold steering */
 #define SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT
+#endif
 /*! @brief Uses a geometric argument for enabling steering, see Vogelsberger 2012 */
 #define SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
 #endif

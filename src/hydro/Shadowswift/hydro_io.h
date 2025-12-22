@@ -94,20 +94,22 @@ INLINE static void convert_h(const struct engine* e, const struct part* p,
 INLINE static void convert_u(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
-  float Q[6], fluxes[6];
-  hydro_part_get_conserved_variables(p, Q);
-  hydro_part_get_fluxes(p, fluxes);
-  for (int i = 0; i < 6; i++) {
-    Q[i] += fluxes[i];
-  }
-  float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
-  float Ekin = 0.5f * m_inv * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]);
-  float Etherm = Q[4] - Ekin;
-  if (Etherm > 1e-6 * Ekin) {
-    ret[0] = m_inv * (Q[4] - Ekin);
-  } else {
-    ret[0] = hydro_get_comoving_internal_energy(p, xp);
-  }
+  // //ANOTHER METHOD
+  // float Q[6], fluxes[6];
+  // hydro_part_get_conserved_variables(p, Q);
+  // hydro_part_get_fluxes(p, fluxes);
+  // Q[0] += fluxes[0];
+  //
+  // const double m_inv = (Q[0] != 0.0f) ? 1.0 / Q[0] : 0.0f;
+  //
+  // double thermal_energy_evolved =
+  //     p->conserved.mass * xp->u_full + fluxes[4] -
+  //     (p->v[0] * fluxes[1] + p->v[1] * fluxes[2] + p->v[2] * fluxes[3]) +
+  //     0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) *
+  //         fluxes[0];
+  //
+  // ret[0] = thermal_energy_evolved * m_inv;
+
   ret[0] = xp->u_full;
 }
 
