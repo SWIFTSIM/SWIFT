@@ -97,23 +97,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
 
-  /* Debug for cell 22588 */
-  const int cid = (int)(ci - e->s->cells_top);
-  if (cid == 22588) {
-    message(
-        "engine_addtasks_send_gravity: ci=%d cj->nodeID=%d has_tasks=%d "
-        "t_grav=%p t_pack_grav=%p",
-        cid, nodeID, cell_get_flag(ci, cell_flag_has_tasks), (void *)t_grav,
-        (void *)t_pack_grav);
-  }
-
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(ci, cell_flag_has_tasks)) {
-    if (cid == 22588) {
-      message("  -> Aborting: no cell_flag_has_tasks");
-    }
-    return;
-  }
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   if (t_grav_counts == NULL && with_star_formation && ci->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -134,24 +119,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
         (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
 
-  /* Debug for cell 22588 */
-  if (cid == 22588) {
-    message("  -> Checked grav links: l=%p (found link for nodeID=%d)",
-            (void *)l, nodeID);
-  }
-
-  /* Print the first zoom cell (index 0 in e->s->cells_top). */
-  if (&e->s->cells_top[0] == ci) {
-    message("ci->nodeID=%d cj->nodeID=%d link=%p t_grav=%p (%s/%s)", ci->nodeID,
-            cj->nodeID, (void *)l, (void *)t_grav, cellID_names[ci->type],
-            subcellID_names[ci->subtype]);
-  }
-
   /* If so, attach send tasks. */
   if (l != NULL) {
-    if (cid == 22588) {
-      message("  -> Found gravity link, will create tasks");
-    }
 
     /* Create the tasks and their dependencies? */
     if (t_grav == NULL) {
@@ -202,12 +171,6 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     if (with_star_formation && ci->hydro.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_grav_counts);
     }
-
-    if (cid == 22588) {
-      message("  -> Added pack task %p to ci->mpi.pack", (void *)t_pack_grav);
-    }
-  } else if (cid == 22588) {
-    message("  -> No gravity link found (l=NULL), not creating tasks");
   }
 
   /* Recurse? */
@@ -4415,9 +4378,6 @@ void engine_maketasks(struct engine *e) {
       for (int k = 0; k < p->nr_cells_out; k++) {
         send_cell_type_pairs[num_send_cells].ci = p->cells_out[k];
         send_cell_type_pairs[num_send_cells].cj = p->cells_in[k];
-        if (send_cell_type_pairs[num_send_cells].ci == &cells[0]) {
-          message("Found the first zoom cell!!!!!!!!!!!");
-        }
         send_cell_type_pairs[num_send_cells++].type = p->cells_out_type[k];
       }
     }
