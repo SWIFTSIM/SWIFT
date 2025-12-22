@@ -379,15 +379,18 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
           + p->conserved.momentum[1] * p->conserved.momentum[1]
           + p->conserved.momentum[2] * p->conserved.momentum[2]) * m_inv_1;
 
-  ekin_2 = 0.5 * ((p->conserved.momentum[0] + p->flux.momentum[0]) * (p->conserved.momentum[0] + p->flux.momentum[0]) +
-            (p->conserved.momentum[1] + p->flux.momentum[1]) * (p->conserved.momentum[1] + p->flux.momentum[1]) +
-            (p->conserved.momentum[2] + p->flux.momentum[2]) * (p->conserved.momentum[2] + p->flux.momentum[2])) *
-              m_inv_2;
+  /* Still safe from setting in previous kick */
+  float thermal_energy_initial = p->conserved.energy - ekin_1;
 
-  internal_energy_1 = (p->conserved.energy - ekin_1) * m_inv_1;
-  internal_energy_2 = (p->conserved.energy + p->flux.energy - ekin_2) * m_inv_2;
+  double thermal_energy_evolved = /* STRICT ENERGY*/
+          thermal_energy_initial + p->flux.energy -
+          (p->v[0] * p->flux.momentum[0] + p->v[1] * p->flux.momentum[1] +
+            p->v[2] * p->flux.momentum[2]) +
+          0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) *
+              p->flux.mass;
+  float u = thermal_energy_evolved * m_inv_2;
 
-  du_dt = (internal_energy_2 - internal_energy_1) / p->flux.dt;
+  du_dt = (u - thermal_energy_initial * m_inv_1) / p->flux.dt;
 
   return du_dt;
 }
