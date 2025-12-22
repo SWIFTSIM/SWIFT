@@ -582,11 +582,13 @@ void task_unlock(struct task *t) {
         cell_unlocktree(ci);
       } else if (subtype == task_subtype_sink_do_sink_swallow) {
         cell_sink_unlocktree(ci);
-      } else if ((subtype == task_subtype_stars_density) ||
-                 (subtype == task_subtype_stars_prep1) ||
+      } else if (subtype == task_subtype_stars_density) {
+        cell_sunlocktree(ci, /*split_task=*/(STARS_SELF_NTASK > 1));
+        cell_unlocktree(ci);
+      } else if ((subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
                  (subtype == task_subtype_stars_feedback)) {
-        cell_sunlocktree(ci, /*split_task=*/(STARS_SELF_NTASK > 1));
+        cell_sunlocktree(ci, 0);
         cell_unlocktree(ci);
       } else if ((subtype == task_subtype_bh_density) ||
                  (subtype == task_subtype_bh_feedback) ||
@@ -820,16 +822,23 @@ int task_lock(struct task *t) {
       } else if (subtype == task_subtype_sink_do_sink_swallow) {
         if (ci->sinks.hold) return 0;
         if (cell_sink_locktree(ci) != 0) return 0;
-      } else if ((subtype == task_subtype_stars_density) ||
-                 (subtype == task_subtype_stars_prep1) ||
+      } else if (subtype == task_subtype_stars_density) {
+        if (ci->stars.hold) return 0;
+        if (ci->hydro.hold) return 0;
+        if (cell_slocktree(ci, /*split_task=*/(STARS_SELF_NTASK > 1)) != 0)
+          return 0;
+        if (cell_locktree(ci) != 0) {
+          cell_sunlocktree(ci, /*split_task=*/(STARS_SELF_NTASK > 1));
+          return 0;
+        }
+      } else if ((subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
                  (subtype == task_subtype_stars_feedback)) {
         if (ci->stars.hold) return 0;
         if (ci->hydro.hold) return 0;
-        if (cell_slocktree(ci, /*split_task=*/(STARS_SELF_NTASK > 0)) != 0)
-          return 0;
+        if (cell_slocktree(ci, /*split_task=*/0) != 0) return 0;
         if (cell_locktree(ci) != 0) {
-          cell_sunlocktree(ci, /*split_task=*/(STARS_SELF_NTASK > 0));
+          cell_sunlocktree(ci, /*split_task=*/0);
           return 0;
         }
       } else if ((subtype == task_subtype_bh_density) ||
