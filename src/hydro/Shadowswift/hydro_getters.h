@@ -354,9 +354,6 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
   float m_inv_1;
   float m_inv_2;
   float ekin_1;
-  float ekin_2;
-  float internal_energy_1;
-  float internal_energy_2;
   float du_dt;
 
   // Do we need to catch old mass?
