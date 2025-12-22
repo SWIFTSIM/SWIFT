@@ -4431,12 +4431,12 @@ void engine_maketasks(struct engine *e) {
             cell_min_dist2(l->t->ci->top, l->t->cj->top, s->periodic, s->dim);
         error(
             "Cell %d (type/subtype=%s/%s depth=%d) has foreign gravity pairs "
-            "(cj=%s/%s cj->nodeID=%d, depth=%d, cjd=%d, min_dist_CoM2=%.3e), "
-            "but no send task!",
+            "(cj=%s/%s cj->nodeID=%d, depth=%d, cjd=%d, min_dist_CoM2=%.3e, "
+            "ci->grav.count, cj->grav.count), but no send task!",
             i, cellID_names[c->type], subcellID_names[c->subtype], c->depth,
             cellID_names[l->t->cj->type], subcellID_names[l->t->cj->subtype],
             l->t->cj->nodeID, l->t->cj->depth, (int)(l->t->cj->top - cells),
-            min_dist_CoM2);
+            min_dist_CoM2, l->t->ci->grav.count, l->t->cj->grav.count);
       }
     }
 #endif
