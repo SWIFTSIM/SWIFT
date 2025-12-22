@@ -2294,14 +2294,14 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         int pj_idx =
             face->left_idx == pi_idx ? face->right_idx : face->left_idx;
         struct part *pj = &ngb_cells[sid]->hydro.parts[pj_idx];
-        /* Should we de-refine pj instead? */
-        if (pj->time_bin == time_bin_apoptosis ||
-            (part_is_active(pj, e) &&
-             pj->geometry.volume < pi->geometry.volume)) {
-          /* we found a conflict, so we can't de-refine pi, continue the outer
-           * loop instead */
-          goto next_particle;
-        }
+        // /* Should we de-refine pj instead? */
+        // if (pj->time_bin == time_bin_apoptosis ||
+        //     (part_is_active(pj, e) &&
+        //      pj->geometry.volume < pi->geometry.volume)) {
+        //   /* we found a conflict, so we can't de-refine pi, continue the outer
+        //    * loop instead */
+        //   goto next_particle;
+        // }
         total_weight += hydro_part_get_derefinement_weight_face(
             pi, pj, face->surface_area, face->midpoint);
       }
