@@ -216,9 +216,9 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
-    const double time, const struct forcing_terms* terms, 
-    const struct space* s, const struct phys_const* phys_const, 
-    const struct part* p, const struct xpart* xp) {
+    const double time, const struct forcing_terms *terms, 
+    const struct space *s, const struct phys_const *phys_const, 
+    const struct part *p, const struct xpart *xp) {
  
   const int t_index = terms->t_index;
 
