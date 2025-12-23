@@ -20,6 +20,7 @@
 #include "hydro.h"
 #include "periodic.h"
 #include "timeline.h"
+#include "timestep_sync_part.h"
 
 enum mechanism {
   SET_U       = 0,
@@ -144,8 +145,6 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
           /* store injected energy */
           xp->forcing_data.forcing_injected_energy += (u_new - u_old) * p->mass;
 
-          /* increase dedner field */
-          xp->mhd_data.psi_over_ch_full *= terms->dedner_amp;
           break;
         
         case SET_CONST_U:
@@ -195,6 +194,11 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
           error("no injection model specified");
           
       }
+
+      /* increase dedner field */
+      xp->mhd_data.psi_over_ch_full *= terms->dedner_amp;
+      
+      timestep_sync_part(p);
     }
   }
 }
