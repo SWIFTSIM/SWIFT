@@ -4382,6 +4382,35 @@ void engine_maketasks(struct engine *e) {
       }
     }
 
+    /* Debug: Check if cells 22588 or 22622 are in the send list */
+    int found_22588 = 0, found_22622 = 0;
+    for (int n = 0; n < num_send_cells; n++) {
+      const int ci_id = (int)(send_cell_type_pairs[n].ci - cells);
+      const int cj_id = (int)(send_cell_type_pairs[n].cj - cells);
+      if (ci_id == 22588 || cj_id == 22588) {
+        found_22588 = 1;
+        message(
+            "Found cell 22588 in send_cell_type_pairs[%d]: ci=%d cj=%d "
+            "type=%d ci->nodeID=%d cj->nodeID=%d",
+            n, ci_id, cj_id, send_cell_type_pairs[n].type,
+            send_cell_type_pairs[n].ci->nodeID,
+            send_cell_type_pairs[n].cj->nodeID);
+      }
+      if (ci_id == 22622 || cj_id == 22622) {
+        found_22622 = 1;
+        message(
+            "Found cell 22622 in send_cell_type_pairs[%d]: ci=%d cj=%d "
+            "type=%d ci->nodeID=%d cj->nodeID=%d",
+            n, ci_id, cj_id, send_cell_type_pairs[n].type,
+            send_cell_type_pairs[n].ci->nodeID,
+            send_cell_type_pairs[n].cj->nodeID);
+      }
+    }
+    if (!found_22588)
+      message("Cell 22588 NOT found in send_cell_type_pairs list!");
+    if (!found_22622)
+      message("Cell 22622 NOT found in send_cell_type_pairs list!");
+
     threadpool_map(&e->threadpool, engine_addtasks_send_mapper,
                    send_cell_type_pairs, num_send_cells,
                    sizeof(struct cell_type_pair), threadpool_auto_chunk_size,
