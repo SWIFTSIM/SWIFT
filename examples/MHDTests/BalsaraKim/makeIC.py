@@ -44,10 +44,10 @@ B0  = 3.64731873              # microgauss
 B0 /= 1e7 * uM / (ut**2 * uA) # code units
 
 
-fileName = "BalsaraKim-init-phantom.hdf5"
+fileName = "BalsaraKim.hdf5"
 
 # ---------------------------------------------------
-glass = h5py.File("glassCube_128.hdf5", "r")
+glass = h5py.File("glassCube_64.hdf5", "r")
 
 # Read particle positions and h from the glass
 pos = glass["/PartType0/Coordinates"][:, :]

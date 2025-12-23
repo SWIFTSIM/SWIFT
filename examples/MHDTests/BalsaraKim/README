@@ -8,6 +8,7 @@ This test consists of a series of energy injections at pre-determined times and 
     2) Sharp and filamentary density structure
     3) Saturation of the magnetic energy
 
+Note: the test takes quite some time to run due to the imposed timestepping procedure
 
 Running the test
 ________________
@@ -18,19 +19,15 @@ configure swift as:
 Get the glass IC file: 
 wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/glassCube_64.hdf5
 
-OR
-
-wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/glassCube_128.hdf5
-
-Adjust the ICs (insert the ICs you are using):
-python3 makeIC.py <glassCube_64.hdf5/glassCube_128.hdf5>
+Adjust the ICs:
+python3 makeIC.py
 
 Get the EAGLE cooling tables:
 wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/CoolingTables/EAGLE/coolingtables.tar.gz
 tar -xvzf coolingtables.tar.gz
 
 And run the simulation
-../../swift --hydro --cooling balsarakim.yml |& tee output.log
+../../../swift --hydro --cooling balsarakim.yml |& tee output.log
 
 You can also set up the test by running:
 ./run.sh
@@ -41,7 +38,9 @@ _______________________
 
 To analyse the snapshots you can run the following
 
-<TODO>
+python3 MakeMovie.py snapshots/ 0.5 BK-movie.mp4
+
+python3 PlotEnergyEvolution.py snapshots/ BK-energy.png
 
 
 Adjustments & Variations
@@ -59,7 +58,4 @@ There are multiple possible ways of injecting energy you can specify in the para
     3) set the velocity of particles radially to a given value (IN DEVELOPMENT)
 
 3. changing the cooling scheme
-The example uses the EAGLE cooling scheme and chemistry which, although the chemistry does not evolve, allows for a (metallicity and) temparature dependent cooling coefficient. In principle other cooling schemes are also possible. Note that we explicitely run without an entropy floor to capture the fragmentation and filamentary resulting structure. TO CHECK: EFFECT OF DIFFERENT COOLING SCHEMES.
-
-
-
+The example uses the EAGLE cooling scheme and chemistry which, although the chemistry does not evolve, allows for a (metallicity and) temparature dependent cooling coefficient. In principle other cooling schemes are also possible. Note that we explicitely run without an entropy floor to capture the fragmentation and filamentary resulting structure.
