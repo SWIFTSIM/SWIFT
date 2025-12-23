@@ -72,6 +72,9 @@ __attribute__((always_inline)) INLINE static void feedback_recouple_set_flags(
   p->cooling_data.subgrid_temp = 0.f;
   p->cooling_data.subgrid_dens = hydro_get_physical_density(p, cosmo);
   p->cooling_data.subgrid_fcold = 0.f;
+
+  /* Make sure to sync the newly coupled part on the timeline */
+  timestep_sync_part(p);
 }
 
 /**

@@ -108,6 +108,36 @@ black_hole_set_kick_direction(const struct bpart *bi, const struct part *pj,
 }
 
 /**
+ * @brief Categorise gas temperature as hot or cold or neither for BH accretion
+ *
+ * @param bi First particle (black hole).
+ * @param pj Second particle (gas, not updated).
+ * @param cosmo The cosmological model.
+ * @param bh_props The properties of the BH scheme
+ */
+__attribute__((always_inline)) INLINE static int
+black_hole_gas_hot_or_cold(const struct bpart *bi, const struct part *pj,
+    const struct cosmology *cosmo, const struct black_holes_props *bh_props)
+{
+  /* Neighbour internal energy */
+  const float uj = hydro_get_drifted_comoving_internal_energy(pj);
+
+  /* Determine if it is hot or cold gas surrounding the SMBH */
+  int gas_state = 0;
+  const float Tj =
+      uj * cosmo->a_factor_internal_energy / bh_props->temp_to_u_factor;
+  if (Tj > bh_props->environment_temperature_cut && pj->sf_data.SFR <= 0.f) {
+    gas_state = 1;
+  }
+  /* Cold gas must be cold, SF'ing, and in same galaxy as BH */
+  if (Tj < bh_props->cold_gas_temperature_cut && pj->sf_data.SFR > 0. && bi->galaxy_data.stellar_mass == pj->galaxy_data.stellar_mass) {
+    gas_state = -1;
+  }
+
+  return gas_state;
+}
+		
+/**
  * @brief Density interaction between two particles (non-symmetric).
  *
  * @param r2 Comoving square distance between the two particles.
@@ -182,36 +212,22 @@ runner_iact_nonsym_bh_gas_density(
   const float dv[3] = {pj->v[0] - bi->v[0], pj->v[1] - bi->v[1],
                        pj->v[2] - bi->v[2]};
 
-  /* Account for hot and cold gas surrounding the SMBH */
-  int is_hot_gas = 0;
-  const float Tj =
-      uj * cosmo->a_factor_internal_energy / bh_props->temp_to_u_factor;
-  /*const float rho_crit_0 = cosmo->critical_density_0;
-  const float rho_crit_baryon = cosmo->Omega_b * rho_crit_0;
-  const double rho_com = hydro_get_comoving_density(pj);
-  const double rho_phys = hydro_get_physical_density(pj, cosmo);
-  const float T_EoS = entropy_floor_temperature(pj, cosmo, floor_props);
-  if ((rho_com >= rho_crit_baryon * floor_props->Jeans_over_density_threshold)
-      && (rho_phys >= floor_props->Jeans_density_threshold)) {
-    if (Tj > T_EoS * bh_props->fixed_T_above_EoS_factor) {
-      is_hot_gas = 1;
-    }
-  }
-  else {
-    if (Tj > bh_props->environment_temperature_cut) {
-      is_hot_gas = 1;
-    }
-  }*/
-  if (Tj > bh_props->environment_temperature_cut && pj->sf_data.SFR <= 0.f) {
-    is_hot_gas = 1;
-  }
+  /* Classify gas as hot or cold for accretion */
+  const int gas_temperature_state = black_hole_gas_hot_or_cold(bi, pj, cosmo, bh_props);
 
-  if (is_hot_gas) {
+  if (gas_temperature_state == 1) {
     bi->hot_gas_mass += mj;
     bi->hot_gas_internal_energy += mj * uj; /* Not kernel weighted */
-  } else {
+  } 
+  else if (gas_temperature_state == -1) {
+#if COOLING_GRACKLE_MODE >= 2
+    /* With subgrid ISM model, only allow cold component to be accreted */
+    bi->cold_gas_mass += mj * pj->cooling_data.subgrid_fcold;
+#else
     bi->cold_gas_mass += mj;
+#endif
     bi->gas_SFR += max(pj->sf_data.SFR, 0.);
+    //if (bi->subgrid_mass * bh_props->mass_to_solar_mass > 1.e10) message("BH_SFR bid=%lld pid=%lld mj=%g psfr=%g nH=%g T=%g fH2=%g totSFR=%g", bi->id, pj->id, mj * bh_props->mass_to_solar_mass, max(pj->sf_data.SFR, 0.) * bh_props->mass_to_solar_mass / bh_props->time_to_yr, pj->rho * bh_props->conv_factor_density_to_cgs / 1.673e-24, pj->u * cosmo->a_factor_internal_energy / (bh_props->T_K_to_int * bh_props->temp_to_u_factor), pj->sf_data.H2_fraction, bi->gas_SFR * bh_props->mass_to_solar_mass / bh_props->time_to_yr);
   }
 
   const float L_x = mj * (dx[1] * dv[2] - dx[2] * dv[1]);
@@ -422,33 +438,31 @@ runner_iact_nonsym_bh_gas_swallow(
   const float ui = r * hi_inv;
   kernel_eval(ui, &wi);
 
-  /* Sum up cold disk mass corotating relative to total angular momentum. */
-  /* Neighbour internal energy */
-  const float uj = hydro_get_drifted_comoving_internal_energy(pj);
+  /* Sum up cold disk mass corotating relative to total angular momentum.
+   * This can't be used to compute accretion since it is not summable
+   * prior to this swallow routine; we need an intermediate loop
+   * if we want to use this to set accretion ala Simba.*/
+   
   const float mj = hydro_get_mass(pj);
 
-  /* Identify gas surrounding the SMBH as hot or cold */
-  const float Tj =
-      uj * cosmo->a_factor_internal_energy / bh_props->temp_to_u_factor;
-  int is_hot_gas = 0;
-  if (Tj > bh_props->environment_temperature_cut && pj->sf_data.SFR <= 0.) {
-    is_hot_gas = 1;
-  }
+  /* Classify gas as hot or cold for accretion */
+  const int gas_temperature_state = black_hole_gas_hot_or_cold(bi, pj, cosmo, bh_props);
 
-  /* Compute gas angular momentum around BH */
   const float Lx = mj * (dx[1] * dv[2] - dx[2] * dv[1]);
   const float Ly = mj * (dx[2] * dv[0] - dx[0] * dv[2]);
   const float Lz = mj * (dx[0] * dv[1] - dx[1] * dv[0]);
   const float proj = Lx * bi->angular_momentum_gas[0] +
                      Ly * bi->angular_momentum_gas[1] +
                      Lz * bi->angular_momentum_gas[2];
-  if ((proj > 0.f) && (is_hot_gas == 0)) {
+  if ((proj > 0.f) && gas_temperature_state == -1) {
     bi->cold_disk_mass += mj;
   }
 
   /* Probability to swallow this particle */
   float prob = -1.f;
   float f_accretion = bi->f_accretion;
+
+  /* No accretion? Nothing to do */
   if (f_accretion <= 0.f) return;
 
   const float pj_mass_orig = mj;
@@ -836,9 +850,9 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
           (bj->merger_data.swallow_mass == bi->subgrid_mass &&
            bj->merger_data.swallow_id < bi->id)) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-        message("BH %lld wants to swallow BH particle %lld", bi->id, bj->id);
-#endif
+//#ifdef SWIFT_DEBUG_CHECKS
+        if (bi->mass * bh_props->mass_to_solar_mass > 1.e9) message("BH_MERGE bid=%lld to swallow bid=%lld: MBHi=%g MBHj=%g Mgali=%g Mgalj=%g", bi->id, bj->id, bi->subgrid_mass * bh_props->mass_to_solar_mass, bj->subgrid_mass * bh_props->mass_to_solar_mass, bi->galaxy_data.stellar_mass * bh_props->mass_to_solar_mass, bj->galaxy_data.stellar_mass * bh_props->mass_to_solar_mass);
+//#endif
 
         bj->merger_data.swallow_id = bi->id;
         bj->merger_data.swallow_mass = bi->subgrid_mass;
@@ -1053,6 +1067,13 @@ runner_iact_nonsym_bh_gas_feedback(
          * particle */
         hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
         hydro_set_drifted_physical_internal_energy(pj, cosmo, NULL, u_new);
+
+#if COOLING_GRACKLE_MODE >= 2
+	/* Take AGN-heated gas out of subgrid ISM mode */
+	pj->cooling_data.subgrid_temp = 0.f;
+	pj->cooling_data.subgrid_dens = hydro_get_physical_density(pj, cosmo);
+	pj->cooling_data.subgrid_fcold = 0.f;
+#endif
 
         /* Shut off cooling for some time, if desired */
         if (bh_props->adaf_cooling_shutoff_factor > 0.f) {

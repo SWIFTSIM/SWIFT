@@ -121,6 +121,9 @@ struct black_holes_props {
   /*! Where do we distinguish between hot gas for Bondi? */
   float environment_temperature_cut;
 
+  /*! Where do we distinguish between cold gas for torque accretion? */
+  float cold_gas_temperature_cut;
+
   /*! Number of dynamical times over which gas is accreted from accretion disk
    */
   float dynamical_time_factor;
@@ -561,7 +564,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->environment_temperature_cut = parser_get_opt_param_float(
       params, "ObsidianAGN:environment_temperature_cut_K", 1.0e5f);
+
+  bp->cold_gas_temperature_cut = parser_get_opt_param_float(
+      params, "ObsidianAGN:cold_gas_temperature_cut_K", bp->environment_temperature_cut);
+
   bp->environment_temperature_cut *= T_K_to_int;
+  bp->cold_gas_temperature_cut *= T_K_to_int;
 
   bp->dynamical_time_factor = parser_get_opt_param_float(
       params, "ObsidianAGN:dynamical_time_factor", 1.f);
