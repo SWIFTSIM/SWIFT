@@ -176,8 +176,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Compute the next timestep (forcing terms condition) */
   const float new_dt_forcing = forcing_terms_timestep(
-      e->time, e->max_active_bin, e->time_base, e->forcing_terms, 
-      e->s, e->dt_max, e->physical_constants, p, xp);
+      e->time, e->forcing_terms, e->s, e->physical_constants, p, xp);
 
   /* Compute the next timestep (chemistry condition, e.g. diffusion) */
   const float new_dt_chemistry =

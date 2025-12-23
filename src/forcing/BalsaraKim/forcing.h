@@ -71,6 +71,10 @@ struct forcing_terms {
     /* amplification factor for the dedner field */
     float dedner_amp;
 
+    /* min and max timestep, for timestep computation purposes */
+    float dt_min;
+    float dt_max;
+
 };
 
 /**
@@ -120,14 +124,11 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
       /* store old specific energy and velocity */
       const double u_old = xp->u_full;
       const double v_old = sqrtf(xp->v_full[0]*xp->v_full[0] + 
-                           xp->v_full[1]*xp->v_full[1] +
-                           xp->v_full[2]*xp->v_full[2]);
+                                 xp->v_full[1]*xp->v_full[1] +
+                                 xp->v_full[2]*xp->v_full[2]);
 
       double u_new;
       double v_new;
-
-      /* Get change in internal energy due to hydro forces */
-      /* const float hydro_du_dt = p->u_dt; */
 
       /* inject energy according to specified model */
       enum mechanism injection_model = terms->injection_model;
@@ -215,15 +216,14 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
-    const double time, const timebin_t max_active_bin, const double time_base, 
-    const struct forcing_terms* terms, const struct space* s,
-    const double dt_max, const struct phys_const* phys_const, 
+    const double time, const struct forcing_terms* terms, 
+    const struct space* s, const struct phys_const* phys_const, 
     const struct part* p, const struct xpart* xp) {
  
   const int t_index = terms->t_index;
 
   /* Don't do anything if there is no injection happening in the near future */
-  if (((terms->times[t_index] - time) > dt_max) ||
+  if (((terms->times[t_index] - time) > terms->dt_max) ||
       (terms->final_injection == 1)) {
     return FLT_MAX;
   }
@@ -259,12 +259,11 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
   float v_sig = sqrtf( p->viscosity.v_sig * p->viscosity.v_sig + v_abs2 );
 		   
   /* Could the particle be in the injection volume in dt_max time*/
-  if (distance / v_sig < dt_max) {
+  if (distance / v_sig < terms->dt_max) {
 
     /* Compute timestep such that particle would be active */
     float new_dt_forcing;
-    /* new_dt_forcing = get_timestep( max_active_bin, time_base ) / 10;*/
-    new_dt_forcing = fmaxf(terms->times[t_index] - time, 1.e-18);
+    new_dt_forcing = fmaxf(terms->times[t_index] - time, terms->dt_min);
 
     return new_dt_forcing;
   }
@@ -472,6 +471,12 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   /* Read dedner handling */
   terms->dedner_amp = parser_get_opt_param_float(parameter_file,
          "BalsaraKimForcing:psi_amp_factor", 1.);
+
+  /* Read min and max timestep to store here as well */
+  terms->dt_min = parser_get_param_float(parameter_file,
+          "TimeIntegration:dt_min");
+  terms->dt_max = parser_get_param_float(parameter_file,
+          "TimeIntegration:dt_max");
 
   /* convert everything to internal units */
   double parsec_ui = phys_const->const_parsec;
