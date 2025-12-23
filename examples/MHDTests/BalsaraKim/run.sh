@@ -13,5 +13,12 @@ then
 	python3 makeIC.py
 fi
 
+if [ ! -e coolingtables ]
+then
+	echo "Fetchin cooling tables"
+	wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/CoolingTables/EAGLE/coolingtables.tar.gz
+	tar -xf coolingtables.tar.gz
+fi
+
 # Run SWIFT
 ../../../swift --hydro --cooling --threads=8 balsarakim.yml |& tee output.log
