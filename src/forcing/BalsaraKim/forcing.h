@@ -68,9 +68,6 @@ struct forcing_terms {
     /* keep track if the final injection has happened already */
     int final_injection;
 
-    /* amplification factor for the dedner field */
-    float dedner_amp;
-
     /* min and max timestep, for timestep computation purposes */
     float dt_min;
     float dt_max;
@@ -195,9 +192,6 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
           error("no injection model specified");
           
       }
-
-      /* increase dedner field */
-      xp->mhd_data.psi_over_ch_full *= terms->dedner_amp;
       
       timestep_sync_part(p);
     }
@@ -467,10 +461,6 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
 	      "BalsaraKimForcing:u_inj", 2.8263e15);
   double vel_inj = parser_get_opt_param_double(parameter_file,
         "BalsaraKimForcing:v_inj", 200) * 1.e5;
-
-  /* Read dedner handling */
-  terms->dedner_amp = parser_get_opt_param_float(parameter_file,
-         "BalsaraKimForcing:psi_amp_factor", 1.);
 
   /* Read min and max timestep to store here as well */
   terms->dt_min = parser_get_param_float(parameter_file,
