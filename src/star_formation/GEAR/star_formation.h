@@ -38,6 +38,9 @@
 #include "stars.h"
 #include "units.h"
 
+/* Does the star formation model move the hydro particles?
+   This will update the c->hydro.dx_max_part and
+   c->hydro.dx_max_sort after forming a star. */
 #define star_formation_need_update_dx_max 1
 
 /**
