@@ -390,6 +390,14 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           c->hydro.dx_max_sort =
               max(cp->hydro.dx_max_sort, c->hydro.dx_max_sort);
         }
+
+	/* Update the dx_max */
+	if (swift_star_formation_model_creates_stars) {
+	  c->stars.dx_max_part =
+	    max(c->stars.dx_max_part, cp->stars.dx_max_part);
+	  c->stars.dx_max_sort =
+	      max(c->stars.dx_max_sort, cp->stars.dx_max_sort);
+	}
       }
   } else {
 
@@ -514,6 +522,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                   c->hydro.dx_max_part = max(c->hydro.dx_max_part, dx_part);
                   c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
                 }
+
+		if (n_spart_spawn >= 1) {
+		  /* Update the spart displacement information.
+		     Note: no need to update quantities further up the tree as this task
+		     is always called at the top-level. */
+		  cell_update_max_displacement_spart(c, sp);
+		}
 
 #ifdef WITH_CSDS
                 if (n_spart_to_create == 1 && n_spart_convert == 1) {

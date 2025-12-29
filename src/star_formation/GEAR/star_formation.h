@@ -297,6 +297,13 @@ INLINE static void star_formation_separate_particles(const struct engine *e,
   sp->gpart->x[1] = sp->x[1];
   sp->gpart->x[2] = sp->x[2];
 
+  /* Update the offsets since last cell construction */
+  const float delta_pos[3] = {
+    delta_x * max_displacement * p->h,
+    delta_y * max_displacement * p->h,
+    delta_z * max_displacement * p->h};
+  spart_add_displacement(sp, delta_pos);
+
   /* Do the gas particle. */
   const double mass_ratio = sp->mass / hydro_get_mass(p);
   const double dx[3] = {mass_ratio * delta_x * max_displacement * p->h,
