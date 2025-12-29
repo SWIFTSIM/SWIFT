@@ -239,6 +239,12 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
         c->stars.h_max = max(c->stars.h_max, cp->stars.h_max);
         c->stars.h_max_active =
             max(c->stars.h_max_active, cp->stars.h_max_active);
+
+	/* Update the dx_max */
+	c->stars.dx_max_part =
+              max(c->stars.dx_max_part, cp->stars.dx_max_part);
+	c->stars.dx_max_sort =
+              max(c->stars.dx_max_sort, cp->stars.dx_max_sort);
       }
   } else {
 
@@ -289,6 +295,11 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           /* Update the h_max */
           c->stars.h_max = max(c->stars.h_max, sp->h);
           c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
+
+          /* Update the displacement information.
+             Note: no need to update quantities further up the tree as this task
+             is always called at the top-level. */
+	  cell_update_max_displacement_spart(c, sp);
 
           /* Update sink properties */
           sink_update_sink_properties_during_star_formation(

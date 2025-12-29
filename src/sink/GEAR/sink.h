@@ -20,6 +20,7 @@
 #ifndef SWIFT_GEAR_SINK_H
 #define SWIFT_GEAR_SINK_H
 
+#include "stars.h"
 #include <float.h>
 
 /* Put pragma if gsl around here */
@@ -837,23 +838,25 @@ INLINE static void sink_star_formation_give_new_position(const struct engine *e,
       2 * M_PI *
       random_unit_interval(sp->id, e->ti_current, (enum random_number_type)3);
   const float rmax = si->h * kernel_gamma;
-  const double r = rmax * random_unit_interval(sp->id, e->ti_current,
-                                               (enum random_number_type)4);
+  const double r = rmax * random_unit_interval(sp->id, e->ti_current, (enum random_number_type)4);
   const double cos_theta =
       1.0 - 2.0 * random_unit_interval(sp->id, e->ti_current,
                                        (enum random_number_type)5);
   const double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
-  double new_pos[3] = {r * sin_theta * cos(phi), r * sin_theta * sin(phi),
+  const float delta_pos[3] = {r * sin_theta * cos(phi), r * sin_theta * sin(phi),
                        r * cos_theta};
 
   /* Assign this new position to the star and its gpart */
-  sp->x[0] += new_pos[0];
-  sp->x[1] += new_pos[1];
-  sp->x[2] += new_pos[2];
+  sp->x[0] += delta_pos[0];
+  sp->x[1] += delta_pos[1];
+  sp->x[2] += delta_pos[2];
   sp->gpart->x[0] = sp->x[0];
   sp->gpart->x[1] = sp->x[1];
   sp->gpart->x[2] = sp->x[2];
+
+  /* Update the offsets since last cell construction */
+  spart_add_displacement(sp, delta_pos);
 }
 
 /**
