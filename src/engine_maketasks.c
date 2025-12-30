@@ -88,11 +88,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   const int with_star_formation_sink) {
 
 #ifdef WITH_MPI
-#if !defined(SWIFT_DEBUG_CHECKS)
-  if (with_sinks) {
-    error("TODO: Sink and star formation sink over MPI");
-  }
-
+#ifdef SWIFT_DEBUG_CHECKS
   /* Ensure both cells exist. */
   if (ci == NULL) {
     error("ci is NULL. cj=%p (%s/%s, cj->depth=%d, cj->count=%d, cj->nodeID)",
@@ -104,6 +100,13 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
           (void *)ci, cellID_names[ci->type], subcellID_names[ci->subtype],
           ci->depth, ci->grav.count, ci->nodeID);
   }
+#endif
+
+#if !defined(SWIFT_DEBUG_CHECKS)
+  if (with_sinks) {
+    error("TODO: Sink and star formation sink over MPI");
+  }
+
 #endif
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
