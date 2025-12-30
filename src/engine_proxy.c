@@ -122,6 +122,20 @@ void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
                       const int proxy_type) {
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure neither cell is NULL */
+  if (ci == NULL) {
+    error(
+        "ci is NULL. cj=%p (%s/%s, cj->count=%d, cj->nodeID=%d)",
+        (void *)cj, cellID_names[cj->type], subcellID_names[cj->subtype],
+        cj->grav.count, cj->nodeID);
+  }
+  if (cj == NULL) {
+    error(
+        "cj is NULL. ci=%p (%s/%s, ci->count=%d, ci->nodeID=%d)",
+        (void *)ci, cellID_names[ci->type], subcellID_names[ci->subtype],
+        ci->grav.count, ci->nodeID);
+  }
+
   /* Ensure we aren't trying to make a proxy for a void cell */
   if (ci->subtype == cell_subtype_void) {
     error("Trying to make a proxy for a void ci (%s/%s -> %s/%s)",
