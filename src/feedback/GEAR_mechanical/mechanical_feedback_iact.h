@@ -22,6 +22,8 @@
 #include "feedback.h"
 #include "hydro.h"
 
+#define internal_energy_snowplow_exponent -6.5
+
 __attribute__((always_inline)) INLINE static void
 mechanical_feedback_accumulate_fluxes_for_conservation_check(
     struct spart *si, const double dm, const double dp[3], const double m_ej,
@@ -83,13 +85,10 @@ runner_iact_nonsym_mechanical_1_feedback_apply(
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
-  // TODO: Convert to an ifdef constant
-  const float internal_energy_snowplow_exponent = -6.5;
-
   /* ... physical momentum */
   const double p_ej = sqrt(2 * m_ej * E_ej);
   const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
-                        w_j_bar[2] * p_ej};
+			w_j_bar[2] * p_ej};
   const double dE = w_j_bar_norm * E_ej;
 
   /* Now boost to the 'laboratory' frame */
@@ -100,36 +99,13 @@ runner_iact_nonsym_mechanical_1_feedback_apply(
   /* ... physical total energy */
   const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
   const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
-                                 dp_prime[1] * dp_prime[1] +
-                                 dp_prime[2] * dp_prime[2];
+				 dp_prime[1] * dp_prime[1] +
+				 dp_prime[2] * dp_prime[2];
   const double dE_prime = dE + 1.0 / (2.0 * dm) * (dp_prime_norm_2 - dp_norm_2);
 
-  /* ... physical internal energy */
-  /* Compute kinetic energy difference before and after SN */
-  const double p_old_norm_2 =
-      mj * mj *
-      (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
-  const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
-                           mj * v_j_p[1] + dp_prime[1],
-                           mj * v_j_p[2] + dp_prime[2]};
-  const double p_new_norm_2 =
-      p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
-
-  const double E_kin_old = p_old_norm_2 / (2.0 * mj);
-  const double E_kin_new = p_new_norm_2 / (2.0 * new_mass);
-  *dKE = E_kin_new - E_kin_old;
-
-  const double U_old = hydro_get_physical_internal_energy(pj, xpj, cosmo);
-  const double E_old = U_old + E_kin_old;
-  const double E_new = E_old + dE_prime;
-  const double U_new = E_new - E_kin_new;
-
-  /* Compute the physical internal energy */
-  *dU = U_new - U_old;
-
-  /* --Now, we take into account for potentially unresolved energy-conserving
-     phase of the SN explosion-- */
-
+  /* Now, we take into account for potentially unresolved energy-conserving
+     phase of the SN explosion. If we cannot resolve this phase, we give mostly
+     momentum. The thermal energy will be radiated away because of cooling. */
   const double PdV_work_fraction = sqrt(1 + mj / dm);
   const double p_terminal = feedback_get_physical_SN_terminal_momentum(
       si, pj, xpj, phys_const, us, cosmo);
@@ -145,22 +121,65 @@ runner_iact_nonsym_mechanical_1_feedback_apply(
   dp_prime[1] *= p_factor;
   dp_prime[2] *= p_factor;
 
+  /* Note: Changing dp_prime after computing the total energy is correct. The
+     total energy does not specify how much energy goes into kinetic and
+     internal form. The p_factor changes the ratio: the energy that goes into
+     the PdV work (thus increasing the momentum and kinetic energy) is
+     automatically transformed from thermal to kinetic energy.
+     However, to compute the total kinetic energy, we need to use the updated
+     dp_prime. */
+
+  /* ... physical internal energy */
+  /* Compute kinetic energy difference before and after SN */
+  const double p_old_norm_2 =
+      mj * mj *
+      (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
+  const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
+			   mj * v_j_p[1] + dp_prime[1],
+			   mj * v_j_p[2] + dp_prime[2]};
+  const double p_new_norm_2 =
+      p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
+
+  const double E_kin_old = p_old_norm_2 / (2.0 * mj);
+  const double E_kin_new = p_new_norm_2 / (2.0 * new_mass);
+  *dKE = E_kin_new - E_kin_old;
+
+  const double U_old = hydro_get_physical_internal_energy(pj, xpj, cosmo);
+  const double E_old = U_old + E_kin_old;
+  const double E_new = E_old + dE_prime;
+  const double U_new = E_new - E_kin_new;
+
+  /* Compute the physical internal energy */
+  *dU = U_new - U_old;
+
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
+  message(
+      "E_ej = %e, p_ej = %e, p_terminal = %e, p_factor = %e"
+      "E_new = %e, U_new = %e, E_kin_new = %e,"
+      "E_old = %e, U_old = %e, E_kin_old = %e, "
+      "dE_prime = %e, dU = %e",
+      E_ej, p_ej, p_terminal, p_factor,
+      E_new, U_new, E_kin_new, E_old, U_old, E_kin_old,
+      dE_prime, *dU);
+#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
+
   /* Compute the comoving cooling radius */
   const float r_cool = cosmo->a_inv * feedback_get_physical_SN_cooling_radius(
-                                          si, p_ej, p_terminal, cosmo);
+					  si, p_ej, p_terminal, cosmo);
+  const float r_cool_2 = r_cool * r_cool;
 
   /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
-  if (r2 > r_cool * r_cool) {
+  if (r2 > r_cool_2) {
     const float r = sqrt(r2);
     *dU *= pow(r / r_cool, internal_energy_snowplow_exponent);
 #ifdef SWIFT_DEBUG_CHECKS
     message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.",
-            r_cool);
+	    r_cool);
 #endif /* SWIFT_DEBUG_CHECKS */
   } /* else we do not change dU */
 
   mechanical_feedback_accumulate_fluxes_for_conservation_check(si, dm, dp, m_ej,
-                                                               p_ej, E_ej);
+							       p_ej, E_ej);
 }
 
 #elif FEEDBACK_GEAR_MECHANICAL_MODE == 2
@@ -202,7 +221,7 @@ runner_iact_nonsym_mechanical_2_feedback_apply(
 
   const double f_kin_0 = fb_props->f_kin_0;
 
-  /* ... momentum */
+  /* Compute the relevant variables from the accumulators. */
   const double E_tot =
       E_ej + 0.5 * m_ej * si->feedback_data.accumulator.E_total;
   const double epsilon = f_kin_0 * E_tot; /* coupled kinetic energy */
