@@ -91,14 +91,16 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure both cells exist. */
   if (ci == NULL) {
-    error("ci is NULL. cj=%p (%s/%s, cj->depth=%d, cj->count=%d, cj->nodeID)",
-          (void *)cj, cellID_names[cj->type], subcellID_names[cj->subtype],
-          cj->depth, cj->grav.count, cj->nodeID);
+    error(
+        "ci is NULL. cj=%p (%s/%s, cj->depth=%d, cj->count=%d, cj->nodeID=%d)",
+        (void *)cj, cellID_names[cj->type], subcellID_names[cj->subtype],
+        cj->depth, cj->grav.count, cj->nodeID);
   }
   if (cj == NULL) {
-    error("cj is NULL. ci=%p (%s/%s, ci->depth=%d, ci->count=%d, ci->nodeID)",
-          (void *)ci, cellID_names[ci->type], subcellID_names[ci->subtype],
-          ci->depth, ci->grav.count, ci->nodeID);
+    error(
+        "cj is NULL. ci=%p (%s/%s, ci->depth=%d, ci->count=%d, ci->nodeID=%d)",
+        (void *)ci, cellID_names[ci->type], subcellID_names[ci->subtype],
+        ci->depth, ci->grav.count, ci->nodeID);
   }
 #endif
 
