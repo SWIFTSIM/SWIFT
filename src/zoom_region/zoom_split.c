@@ -381,7 +381,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
    * reduction. */
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
     if (zoom_ti_gravity_end_min[k] > s->e->ti_current ||
-        zoom_ti_gravity_beg_max[k] < 0 ||
+        zoom_ti_gravity_end_min[k] < 0 || zoom_ti_gravity_beg_max[k] < 0 ||
         zoom_ti_gravity_end_min[k] > zoom_ti_gravity_beg_max[k]) {
       error(
           "Invalid gravity timestep information for zoom cell %d after MPI "
@@ -441,36 +441,6 @@ void zoom_void_space_split(struct space *s, int verbose) {
       top->contains_zoom_cells = 1;
     }
   }
-
-#ifdef WITH_MPI
-  /* Make sure all void cells agree on their gravity timesteps across
-   * ranks. */
-  integertime_t *void_ti_gravity_end_min =
-      (integertime_t *)malloc(nr_void_cells * sizeof(integertime_t));
-  integertime_t *void_ti_gravity_beg_max =
-      (integertime_t *)malloc(nr_void_cells * sizeof(integertime_t));
-  for (int ind = 0; ind < nr_void_cells; ind++) {
-    struct cell *c = &cells_top[void_cell_indices[ind]];
-    void_ti_gravity_end_min[ind] = c->grav.ti_end_min;
-    void_ti_gravity_beg_max[ind] = c->grav.ti_beg_max;
-  }
-
-  /* Reduce the timestep information across ranks (long long). */
-  MPI_Allreduce(MPI_IN_PLACE, void_ti_gravity_end_min, nr_void_cells,
-                MPI_LONG_LONG_INT, MPI_MIN, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, void_ti_gravity_beg_max, nr_void_cells,
-                MPI_LONG_LONG_INT, MPI_MAX, MPI_COMM_WORLD);
-
-  /* Update the void cells with the reduced information. */
-  for (int ind = 0; ind < nr_void_cells; ind++) {
-    struct cell *c = &cells_top[void_cell_indices[ind]];
-    c->grav.ti_end_min = void_ti_gravity_end_min[ind];
-    c->grav.ti_beg_max = void_ti_gravity_beg_max[ind];
-  }
-
-  free(void_ti_gravity_end_min);
-  free(void_ti_gravity_beg_max);
-#endif
 
   if (verbose) {
     message("Found %d void cells with zoom cells out of %d total void cells.",
