@@ -708,6 +708,10 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
 
   /* Do we need to grow the number of in cells? */
   if (p->nr_cells_in == p->size_cells_in) {
+#ifdef SWIFT_DEBUG_CHECKS
+    message("Growing proxy input cell list from %d to %d", p->size_cells_in,
+            p->size_cells_in * proxy_buffgrow);
+#endif /* SWIFT_DEBUG_CHECKS */
 
     p->size_cells_in *= proxy_buffgrow;
 
@@ -763,6 +767,10 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
 
   /* Do we need to grow the number of out cells? */
   if (p->nr_cells_out == p->size_cells_out) {
+#ifdef SWIFT_DEBUG_CHECKS
+    message("Growing proxy output cell list from %d to %d", p->size_cells_out,
+            p->size_cells_out * proxy_buffgrow);
+#endif /* SWIFT_DEBUG_CHECKS */
     p->size_cells_out *= proxy_buffgrow;
 
     struct cell **temp_cell;
