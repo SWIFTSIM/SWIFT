@@ -2021,7 +2021,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         c->stars.prep3_ghost =
             scheduler_addtask(s, task_type_stars_prep_ghost3, task_subtype_none,
                               0, /* implicit = */ 1, c, NULL);
-
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
         c->stars.prep4_ghost =
             scheduler_addtask(s, task_type_stars_prep_ghost4, task_subtype_none,
                               0, /* implicit = */ 1, c, NULL);
