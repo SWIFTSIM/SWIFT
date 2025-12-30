@@ -728,6 +728,13 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
     p->cells_in_type = temp_type;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we don't have a NULL cell being added */
+  if (c == NULL) {
+    error("Attempting to add NULL cell to proxy input list.");
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
+
   /* Add the cell. */
   p->cells_in[p->nr_cells_in] = c;
   p->cells_in_type[p->nr_cells_in] = type;
@@ -774,6 +781,13 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
     swift_free("cells_out_type", p->cells_out_type);
     p->cells_out_type = temp_type;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we don't have a NULL cell being added */
+  if (c == NULL) {
+    error("Attempting to add NULL cell to proxy output list.");
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Add the cell. */
   p->cells_out[p->nr_cells_out] = c;
