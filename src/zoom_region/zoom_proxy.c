@@ -54,6 +54,12 @@ static void zoom_get_void_cell_proxies(struct engine *e, struct cell *ci,
   const int ci_is_void = (ci->subtype == cell_subtype_void);
   const int cj_is_void = (cj->subtype == cell_subtype_void);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we don't have NULL cells here */
+  if (ci == NULL || cj == NULL)
+    error("NULL cell passed to zoom void proxy checker.");
+#endif
+
   /* Both are void - need to check zoom cells in both */
   if (ci_is_void && cj_is_void) {
     for (int zid = 0; zid < s->zoom_props->nr_zoom_cells; zid++) {
@@ -278,6 +284,8 @@ void zoom_engine_makeproxies(struct engine *e) {
     struct proxy *p = &e->proxies[pid];
 
     for (int k = 0; k < p->nr_cells_out; k++) {
+      if (p->cells_out[k] == NULL) error("NULL cell in proxy output list.");
+      if (p->cells_in[k] == NULL) error("NULL cell in proxy input list.");
       send_cell_type_pairs[num_send_cells].ci = p->cells_out[k];
       send_cell_type_pairs[num_send_cells].cj = p->cells_in[k];
       send_cell_type_pairs[num_send_cells++].type = p->cells_out_type[k];
