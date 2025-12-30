@@ -23,14 +23,6 @@
 #include "proxy.h"
 #include "zoom.h"
 
-/**
- * @brief Structure to hold a cell pair and the proxy type.
- */
-struct cell_type_pair {
-  struct cell *ci, *cj;
-  int type;
-};
-
 #ifdef WITH_MPI
 /**
  * @brief Get proxies for void cell pairs by checking nested zoom cells.
@@ -263,64 +255,6 @@ void zoom_engine_makeproxies(struct engine *e) {
       }
     }
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Validate the proxies */
-
-  /* Loop over the proxies and add the send tasks, which also generates the
-   * cell tags for super-cells. */
-  int max_num_send_cells = 0;
-  for (int pid = 0; pid < e->nr_proxies; pid++)
-    max_num_send_cells += e->proxies[pid].nr_cells_out;
-  struct cell_type_pair *send_cell_type_pairs = NULL;
-  if ((send_cell_type_pairs = (struct cell_type_pair *)malloc(
-           sizeof(struct cell_type_pair) * max_num_send_cells)) == NULL)
-    error("Failed to allocate temporary cell pointer list.");
-  int num_send_cells = 0;
-
-  for (int pid = 0; pid < e->nr_proxies; pid++) {
-
-    /* Get a handle on the proxy. */
-    struct proxy *p = &e->proxies[pid];
-
-    for (int k = 0; k < p->nr_cells_out; k++) {
-      if (p->cells_out[k] == NULL)
-        message(
-            "NULL cell in proxy output list (%d of %d at proxy %d with type "
-            "%d).",
-            k, p->nr_cells_out, pid, p->cells_out_type[k]);
-      if (p->cells_in[k] == NULL)
-        message(
-            "NULL cell in proxy input list (%d of %d at proxy %d with type "
-            "%d).",
-            k, p->nr_cells_out, pid, p->cells_out_type[k]);
-      send_cell_type_pairs[num_send_cells].ci = p->cells_out[k];
-      send_cell_type_pairs[num_send_cells].cj = p->cells_in[k];
-      send_cell_type_pairs[num_send_cells++].type = p->cells_out_type[k];
-    }
-  }
-
-  /* Ensure we have valid cells */
-  for (int n = 0; n < num_send_cells; n++) {
-    struct cell *ci = send_cell_type_pairs[n].ci;
-    struct cell *cj = send_cell_type_pairs[n].cj;
-    if (ci == NULL) {
-      error(
-          "ci is NULL. cj=%p (%s/%s, cj->depth=%d, cj->count=%d, "
-          "cj->nodeID=%d)",
-          (void *)cj, cellID_names[cj->type], subcellID_names[cj->subtype],
-          cj->depth, cj->grav.count, cj->nodeID);
-    }
-    if (cj == NULL) {
-      error(
-          "cj is NULL. ci=%p (%s/%s, ci->depth=%d, ci->count=%d, "
-          "ci->nodeID=%d)",
-          (void *)ci, cellID_names[ci->type], subcellID_names[ci->subtype],
-          ci->depth, ci->grav.count, ci->nodeID);
-    }
-  }
-  free(send_cell_type_pairs);
-#endif
 
   /* Be clear about the time */
   if (e->verbose)
