@@ -96,14 +96,14 @@ void feedback_update_part(struct part *p, struct xpart *xp,
     p->v[i] += dv;
 
     /* Reset the values */
-    xp->feedback_data.delta_p[i] = 0;
+    xp->feedback_data.delta_p[i] = 0.0;
   }
 
   /* Reset the values */
-  xp->feedback_data.delta_u = 0.;
-  xp->feedback_data.delta_E_kin = 0.;
-  xp->feedback_data.delta_mass = 0;
-  xp->feedback_data.number_SN = 0;
+  xp->feedback_data.delta_u = 0.0;
+  xp->feedback_data.delta_E_kin = 0.0;
+  xp->feedback_data.delta_mass = 0.0;
+  xp->feedback_data.number_SN = 0.0;
 }
 
 /**
@@ -173,19 +173,19 @@ void feedback_init_spart(struct spart *sp) {
   sp->feedback_data.f_sum_plus_term[1] = 0.0;
   sp->feedback_data.f_sum_plus_term[2] = 0.0;
 
-  sp->feedback_data.accumulator.E_total = 0;
-  sp->feedback_data.accumulator.beta_1 = 0;
-  sp->feedback_data.accumulator.beta_2 = 0;
-  sp->feedback_data.weighted_gas_density = 0;
-  sp->feedback_data.weighted_gas_metallicity = 0;
+  sp->feedback_data.accumulator.E_total = 0.0;
+  sp->feedback_data.accumulator.beta_1 = 0.0;
+  sp->feedback_data.accumulator.beta_2 = 0.0;
+  sp->feedback_data.weighted_gas_density = 0.0;
+  sp->feedback_data.weighted_gas_metallicity = 0.0;
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   sp->feedback_data.fluxes_conservation_check.delta_m = 0.0;
   sp->feedback_data.fluxes_conservation_check.delta_p_norm = 0.0;
 
-  sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0;
-  sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0;
-  sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0;
+  sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0.0;
+  sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0.0;
+  sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0.0;
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 }
 
@@ -197,7 +197,7 @@ void feedback_init_spart(struct spart *sp) {
  */
 void feedback_reset_feedback(struct spart *sp,
                              const struct feedback_props *feedback_props) {
-  sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.energy_ejected = 0.0;
   sp->feedback_data.enrichment_weight = 0.f;
 
   sp->feedback_data.f_sum_minus_term[0] = 0.0;
@@ -208,19 +208,19 @@ void feedback_reset_feedback(struct spart *sp,
   sp->feedback_data.f_sum_plus_term[1] = 0.0;
   sp->feedback_data.f_sum_plus_term[2] = 0.0;
 
-  sp->feedback_data.accumulator.E_total = 0;
-  sp->feedback_data.accumulator.beta_1 = 0;
-  sp->feedback_data.accumulator.beta_2 = 0;
-  sp->feedback_data.weighted_gas_density = 0;
-  sp->feedback_data.weighted_gas_metallicity = 0;
+  sp->feedback_data.accumulator.E_total = 0.0;
+  sp->feedback_data.accumulator.beta_1 = 0.0;
+  sp->feedback_data.accumulator.beta_2 = 0.0;
+  sp->feedback_data.weighted_gas_density = 0.0;
+  sp->feedback_data.weighted_gas_metallicity = 0.0;
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   sp->feedback_data.fluxes_conservation_check.delta_m = 0.0;
   sp->feedback_data.fluxes_conservation_check.delta_p_norm = 0.0;
 
-  sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0;
-  sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0;
-  sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0;
+  sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0.0;
+  sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0.0;
+  sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0.0;
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 }
 
