@@ -737,6 +737,11 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
   if (c == NULL) {
     error("Attempting to add NULL cell to proxy input list.");
   }
+
+  /* Ensure the entries make sense */
+  if (p->nr_cells_in > 0 && p->cells_in[p->nr_cells_in - 1] == NULL) {
+    error("Previous entry in proxy input list is NULL %d.", p->nr_cells_in - 1);
+  }
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Add the cell. */
@@ -794,6 +799,12 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
   /* Ensure we don't have a NULL cell being added */
   if (c == NULL) {
     error("Attempting to add NULL cell to proxy output list.");
+  }
+
+  /* Ensure the entries make sense */
+  if (p->nr_cells_out > 0 && p->cells_out[p->nr_cells_out - 1] == NULL) {
+    error("Previous entry in proxy output list is NULL %d.",
+          p->nr_cells_out - 1);
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
