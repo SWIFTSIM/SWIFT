@@ -755,7 +755,7 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
  *
  * @param p The #proxy.
  * @param c The #cell.
- * @param type Why is this cell in the proxy (hdro, gravity, ...) ?
+ * @param type Why is this cell in the proxy (hydro, gravity, ...) ?
  */
 void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
 
