@@ -269,6 +269,11 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
       continue;
     }
 
+    /* If the zoom progeny is empty there's nothing to do. */
+    else if (cell_is_empty(cp)) {
+      continue;
+    }
+
     /* Update the timestep information. */
     ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
     ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
