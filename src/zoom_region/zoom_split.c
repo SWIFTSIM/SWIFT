@@ -349,6 +349,25 @@ void zoom_void_space_split(struct space *s, int verbose) {
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we have valid timestep information for all zoom cells before the
+   * reduction. */
+  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+    struct cell *c = &s->cells_top[k];
+    if (c->nodeID == engine_rank) {
+      if (zoom_ti_gravity_end_min[k] > s->e->ti_current ||
+          zoom_ti_gravity_beg_max[k] < 0 ||
+          zoom_ti_gravity_end_min[k] > zoom_ti_gravity_beg_max[k]) {
+        error(
+            "Invalid gravity timestep information for zoom cell %d on rank "
+            "%d! (ti_end_min=%lld, ti_beg_max=%lld, ti_current=%lld)",
+            k, engine_rank, zoom_ti_gravity_end_min[k],
+            zoom_ti_gravity_beg_max[k], s->e->ti_current);
+      }
+    }
+  }
+#endif
+
   /* Reduce the timestep information across ranks (long long). */
   MPI_Allreduce(MPI_IN_PLACE, zoom_ti_gravity_end_min,
                 s->zoom_props->nr_zoom_cells, MPI_LONG_LONG_INT, MPI_MIN,
@@ -356,6 +375,22 @@ void zoom_void_space_split(struct space *s, int verbose) {
   MPI_Allreduce(MPI_IN_PLACE, zoom_ti_gravity_beg_max,
                 s->zoom_props->nr_zoom_cells, MPI_LONG_LONG_INT, MPI_MAX,
                 MPI_COMM_WORLD);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we have valid timestep information for all zoom cells after the
+   * reduction. */
+  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+    if (zoom_ti_gravity_end_min[k] > s->e->ti_current ||
+        zoom_ti_gravity_beg_max[k] < 0 ||
+        zoom_ti_gravity_end_min[k] > zoom_ti_gravity_beg_max[k]) {
+      error(
+          "Invalid gravity timestep information for zoom cell %d after MPI "
+          "reduction! (ti_end_min=%lld, ti_beg_max=%lld, ti_current=%lld)",
+          k, zoom_ti_gravity_end_min[k], zoom_ti_gravity_beg_max[k],
+          s->e->ti_current);
+    }
+  }
+#endif
 
   /* Update the zoom cells with the reduced information. */
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
