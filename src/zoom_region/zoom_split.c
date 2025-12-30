@@ -331,7 +331,6 @@ void zoom_void_space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-#ifdef WITH_MPI
   /* Unpack some useful information. */
   struct cell *cells_top = s->cells_top;
   int *void_cell_indices = s->zoom_props->void_cell_indices;
