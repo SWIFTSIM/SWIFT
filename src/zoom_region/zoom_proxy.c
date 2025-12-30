@@ -285,12 +285,12 @@ void zoom_engine_makeproxies(struct engine *e) {
 
     for (int k = 0; k < p->nr_cells_out; k++) {
       if (p->cells_out[k] == NULL)
-        error(
+        message(
             "NULL cell in proxy output list (%d of %d at proxy %d with type "
             "%d).",
             k, p->nr_cells_out, pid, p->cells_out_type[k]);
       if (p->cells_in[k] == NULL)
-        error(
+        message(
             "NULL cell in proxy input list (%d of %d at proxy %d with type "
             "%d).",
             k, p->nr_cells_out, pid, p->cells_out_type[k]);
