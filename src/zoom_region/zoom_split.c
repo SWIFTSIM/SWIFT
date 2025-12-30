@@ -264,10 +264,10 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
       maxdepth = max(maxdepth, cp->maxdepth);
     }
 
-    // /* If the progeny is a non-local non-void cell we're done. */
-    // else if (cp->nodeID != engine_rank) {
-    //   continue;
-    // }
+    /* If the progeny is a non-local non-void cell we're done. */
+    else if (cp->nodeID != engine_rank) {
+      continue;
+    }
 
     /* Update the timestep information. */
     ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
@@ -332,79 +332,6 @@ void zoom_void_space_split(struct space *s, int verbose) {
   const ticks tic = getticks();
 
 #ifdef WITH_MPI
-  /* Ensure we have the timesteps for all zoom cells before we split and link
-   * them in. */
-  integertime_t *zoom_ti_gravity_end_min = (integertime_t *)malloc(
-      s->zoom_props->nr_zoom_cells * sizeof(integertime_t));
-  integertime_t *zoom_ti_gravity_beg_max = (integertime_t *)malloc(
-      s->zoom_props->nr_zoom_cells * sizeof(integertime_t));
-  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-    struct cell *c = &s->cells_top[k];
-    if (c->nodeID != engine_rank) {
-      zoom_ti_gravity_end_min[k] = s->e->ti_current;
-      zoom_ti_gravity_beg_max[k] = 0;
-    } else {
-      zoom_ti_gravity_end_min[k] = c->grav.ti_end_min;
-      zoom_ti_gravity_beg_max[k] = c->grav.ti_beg_max;
-    }
-  }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure we have valid timestep information for all zoom cells before the
-   * reduction. */
-  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-    struct cell *c = &s->cells_top[k];
-    if (c->nodeID == engine_rank) {
-      if (zoom_ti_gravity_end_min[k] > s->e->ti_current ||
-          zoom_ti_gravity_beg_max[k] < 0 ||
-          zoom_ti_gravity_end_min[k] > zoom_ti_gravity_beg_max[k]) {
-        error(
-            "Invalid gravity timestep information for zoom cell %d on rank "
-            "%d! (ti_end_min=%lld, ti_beg_max=%lld, ti_current=%lld)",
-            k, engine_rank, zoom_ti_gravity_end_min[k],
-            zoom_ti_gravity_beg_max[k], s->e->ti_current);
-      }
-    }
-  }
-#endif
-
-  /* Reduce the timestep information across ranks (long long). */
-  MPI_Allreduce(MPI_IN_PLACE, zoom_ti_gravity_end_min,
-                s->zoom_props->nr_zoom_cells, MPI_LONG_LONG_INT, MPI_MIN,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, zoom_ti_gravity_beg_max,
-                s->zoom_props->nr_zoom_cells, MPI_LONG_LONG_INT, MPI_MAX,
-                MPI_COMM_WORLD);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure we have valid timestep information for all zoom cells after the
-   * reduction. */
-  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-    struct cell *c = &s->cells_top[k];
-    if (zoom_ti_gravity_end_min[k] > s->e->ti_current ||
-        zoom_ti_gravity_end_min[k] < 0 || zoom_ti_gravity_beg_max[k] < 0 ||
-        zoom_ti_gravity_end_min[k] > zoom_ti_gravity_beg_max[k]) {
-      error(
-          "Invalid gravity timestep information for zoom cell %d after MPI "
-          "reduction! (ti_end_min=%lld, ti_beg_max=%lld, ti_current=%lld, "
-          "c->grav.count=%d)",
-          k, zoom_ti_gravity_end_min[k], zoom_ti_gravity_beg_max[k],
-          s->e->ti_current, c->grav.count);
-    }
-  }
-#endif
-
-  /* Update the zoom cells with the reduced information. */
-  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-    struct cell *c = &s->cells_top[k];
-    c->grav.ti_end_min = zoom_ti_gravity_end_min[k];
-    c->grav.ti_beg_max = zoom_ti_gravity_beg_max[k];
-  }
-
-  free(zoom_ti_gravity_end_min);
-  free(zoom_ti_gravity_beg_max);
-#endif
-
   /* Unpack some useful information. */
   struct cell *cells_top = s->cells_top;
   int *void_cell_indices = s->zoom_props->void_cell_indices;
