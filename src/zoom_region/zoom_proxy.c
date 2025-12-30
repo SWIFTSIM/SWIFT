@@ -23,6 +23,14 @@
 #include "proxy.h"
 #include "zoom.h"
 
+/**
+ * @brief Structure to hold a cell pair and the proxy type.
+ */
+struct cell_type_pair {
+  struct cell *ci, *cj;
+  int type;
+};
+
 #ifdef WITH_MPI
 /**
  * @brief Get proxies for void cell pairs by checking nested zoom cells.
