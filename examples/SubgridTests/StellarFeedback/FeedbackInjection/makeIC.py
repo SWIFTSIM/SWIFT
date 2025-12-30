@@ -85,7 +85,7 @@ def parse_options():
         type=str,
         choices=["gaussian", "exponential"],
         default="gaussian",
-        help="Choose the z-axis density profile: 'gaussian' or 'exponential' (default: exponential).",
+        help="Choose the z-axis density profile: 'gaussian' or 'exponential' (default: gaussian).",
     )
 
     parser.add_argument("--seed", type=int, default=1, help="Random seed")
