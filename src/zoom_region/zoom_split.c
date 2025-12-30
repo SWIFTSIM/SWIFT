@@ -264,10 +264,10 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
       maxdepth = max(maxdepth, cp->maxdepth);
     }
 
-    /* If the progeny is a non-local non-void cell we're done. */
-    else if (cp->nodeID != engine_rank) {
-      continue;
-    }
+    // /* If the progeny is a non-local non-void cell we're done. */
+    // else if (cp->nodeID != engine_rank) {
+    //   continue;
+    // }
 
     /* Update the timestep information. */
     ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
