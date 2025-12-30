@@ -748,6 +748,9 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
   p->cells_in[p->nr_cells_in] = c;
   p->cells_in_type[p->nr_cells_in] = type;
   p->nr_cells_in += 1;
+  message("Proxy %d: added cell_in[%d] (type=%s subtype=%s nodeID=%d)",
+          p->nodeID, p->nr_cells_in - 1, cellID_names[c->type],
+          subcellID_names[c->subtype], c->nodeID);
 }
 
 /**
