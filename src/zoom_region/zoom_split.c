@@ -361,6 +361,9 @@ void zoom_void_space_split(struct space *s, int verbose) {
     /* Skip if we don't have a void parent (empty zoom cell). */
     if (void_parent == NULL) continue;
 
+    /* Skip empty zoom cells. */
+    if (zoom_cell->grav.count == 0) continue;
+
     /* Get the top level void cell. */
     struct cell *top = void_parent->top;
 
