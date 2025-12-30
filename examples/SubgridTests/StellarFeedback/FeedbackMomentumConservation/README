@@ -1,13 +1,16 @@
 # Intro
-This example consists of a homogeneous and periodic box filled with gas particles of equal mass. 100 individual star particle are distributed randomlt in the box. They will go into supernova one after the other, starting at ~ 7 Myr and separated by 1 Myr.
 
-This examples tests the momentum conservation after the explosion of each supernova.
+In the (xy) midplane (i.e. centre of the box), the particles are placed with a uniform probability distribution and in the z-axis, the particles are placed with a Gaussian distribution function \rho(z) = \exp(-z^2 / 2 h^2), where h is the mean inter-particle separation in the midplane. 100 individual star particle are distributed randomly in the box. They will go into supernova one after the other, starting at ~ 7 Myr and separated by 1 Myr.
+
+This examples tests the momentum conservation after the explosion of each supernova to ensure the accuracy of the mechanical feedback momentum injection. We also enforce an isothermal equation of state to dissipate the injected energy.
+
+Note that we use Gizmo MFM instead of SPHENIX as hydro solver as it is more accurate to check momentum conservation.
 
 # Configure
 To run this example with the GEAR model,
 
 ```
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=X --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-equation-of-state=isothermal-gas --with-hydro=gizmo-mfm --with-riemann-solver=hllc
+./configure --with-chemistry=GEAR_10 --with-feedback=X --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT --with-equation-of-state=isothermal-gas --with-hydro=gizmo-mfm --with-riemann-solver=hllc
 ```
 
 where X can be:
