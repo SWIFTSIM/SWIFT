@@ -95,14 +95,14 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 
   /* Ensure both cells exist. */
   if (ci == NULL) {
-    error("ci is NULL. cj=%p (%s/%s, cj->depth=%d, cj->count=%d)", (void *)cj,
-          cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
-          cj->grav.count);
+    error("ci is NULL. cj=%p (%s/%s, cj->depth=%d, cj->count=%d, cj->nodeID)",
+          (void *)cj, cellID_names[cj->type], subcellID_names[cj->subtype],
+          cj->depth, cj->grav.count, cj->nodeID);
   }
   if (cj == NULL) {
-    error("cj is NULL. ci=%p (%s/%s, ci->depth=%d, ci->count=%d)", (void *)ci,
-          cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
-          ci->grav.count);
+    error("cj is NULL. ci=%p (%s/%s, ci->depth=%d, ci->count=%d, ci->nodeID)",
+          (void *)ci, cellID_names[ci->type], subcellID_names[ci->subtype],
+          ci->depth, ci->grav.count, ci->nodeID);
   }
 #endif
   struct link *l = NULL;
