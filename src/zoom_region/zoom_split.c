@@ -380,14 +380,16 @@ void zoom_void_space_split(struct space *s, int verbose) {
   /* Ensure we have valid timestep information for all zoom cells after the
    * reduction. */
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+    struct cell *c = &s->cells_top[k];
     if (zoom_ti_gravity_end_min[k] > s->e->ti_current ||
         zoom_ti_gravity_end_min[k] < 0 || zoom_ti_gravity_beg_max[k] < 0 ||
         zoom_ti_gravity_end_min[k] > zoom_ti_gravity_beg_max[k]) {
       error(
           "Invalid gravity timestep information for zoom cell %d after MPI "
-          "reduction! (ti_end_min=%lld, ti_beg_max=%lld, ti_current=%lld)",
+          "reduction! (ti_end_min=%lld, ti_beg_max=%lld, ti_current=%lld, "
+          "c->grav.count=%d)",
           k, zoom_ti_gravity_end_min[k], zoom_ti_gravity_beg_max[k],
-          s->e->ti_current);
+          s->e->ti_current, c->grav.count);
     }
   }
 #endif
