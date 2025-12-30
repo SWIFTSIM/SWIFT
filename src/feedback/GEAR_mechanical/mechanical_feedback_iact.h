@@ -154,8 +154,8 @@ runner_iact_nonsym_mechanical_1_feedback_apply(
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   message(
-      "E_ej = %e, p_ej = %e, p_terminal = %e, p_factor = %e"
-      "E_new = %e, U_new = %e, E_kin_new = %e,"
+      "E_ej = %e, p_ej = %e, p_terminal = %e, p_factor = %e, "
+      "E_new = %e, U_new = %e, E_kin_new = %e, "
       "E_old = %e, U_old = %e, E_kin_old = %e, "
       "dE_prime = %e, dU = %e",
       E_ej, p_ej, p_terminal, p_factor,
