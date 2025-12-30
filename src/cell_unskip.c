@@ -2417,7 +2417,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     }
 
     else if (t->type == task_type_pair) {
-      /* NOTE TODO : The MPI is to be properly done */
       /* We only want to activate the task if the cell is active and is
          going to update some gas on the *local* node */
       if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
@@ -2425,7 +2424,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         scheduler_activate(s, t);
       }
       /* Cells ci and cj are from different MPI domains */
-      /* NOTE TODO : The MPI is to be properly done */
       else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (ci_active)) {
         /* In task prep3, we update stars so sparts must be on the local node */
         scheduler_activate(s, t);
@@ -2460,7 +2458,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     }
 
     else if (t->type == task_type_pair) {
-      /* NOTE TODO : The MPI is to be properly done */
       /* We only want to activate the task if the cell is active and is
          going to update some gas on the *local* node */
       if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
