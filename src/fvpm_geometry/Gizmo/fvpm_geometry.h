@@ -74,6 +74,31 @@ __attribute__((always_inline)) INLINE static void fvpm_geometry_init(
 }
 
 /**
+ * @brief Sets the geometry fields to sensible values when #part has 0 ngbs.
+ *
+ * @param p the particle to work on
+ */
+__attribute__((always_inline)) INLINE static void
+fvpm_geometry_part_has_no_neighbours(struct part *restrict p) {
+
+  /* Re-set problematic values */
+  p->geometry.volume = 1.0f;
+  p->geometry.matrix_E[0][0] = 1.0f;
+  p->geometry.matrix_E[0][1] = 0.0f;
+  p->geometry.matrix_E[0][2] = 0.0f;
+  p->geometry.matrix_E[1][0] = 0.0f;
+  p->geometry.matrix_E[1][1] = 1.0f;
+  p->geometry.matrix_E[1][2] = 0.0f;
+  p->geometry.matrix_E[2][0] = 0.0f;
+  p->geometry.matrix_E[2][1] = 0.0f;
+  p->geometry.matrix_E[2][2] = 1.0f;
+  p->geometry.condition_number = 1.f;
+
+  /* reset the centroid variables used for the velocity correction in MFV */
+  fvpm_reset_centroids(p);
+}
+
+/**
  * @brief Finish the computation of the matrix.
  *
  * @param p the particle to work on
@@ -115,10 +140,10 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
       p->geometry.matrix_E[2][1] * p->geometry.matrix_E[2][1] +
       p->geometry.matrix_E[2][2] * p->geometry.matrix_E[2][2];
 
-  float condition_number = 0.0f;
+  p->geometry.condition_number = 0.0f;
   if (invert_dimension_by_dimension_matrix(p->geometry.matrix_E) != 0) {
     /* something went wrong in the inversion; force bad condition number */
-    condition_number = const_gizmo_max_condition_number + 1.0f;
+    p->geometry.condition_number = const_gizmo_max_condition_number + 1.0f;
   } else {
     const float condition_number_Einv =
         p->geometry.matrix_E[0][0] * p->geometry.matrix_E[0][0] +
@@ -131,19 +156,20 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
         p->geometry.matrix_E[2][1] * p->geometry.matrix_E[2][1] +
         p->geometry.matrix_E[2][2] * p->geometry.matrix_E[2][2];
 
-    condition_number =
+    p->geometry.condition_number =
         hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
   }
 
-  if (condition_number > const_gizmo_max_condition_number &&
+  if (p->geometry.condition_number > const_gizmo_max_condition_number &&
       p->geometry.wcorr > const_gizmo_min_wcorr) {
 #ifdef GIZMO_PATHOLOGICAL_ERROR
     error("Condition number larger than %g (%g)!",
-          const_gizmo_max_condition_number, condition_number);
+          const_gizmo_max_condition_number, p->geometry.condition_number);
 #endif
 #ifdef GIZMO_PATHOLOGICAL_WARNING
     message("Condition number too large: %g (> %g, p->id: %llu)!",
-            condition_number, const_gizmo_max_condition_number, p->id);
+            p->geometry.condition_number, const_gizmo_max_condition_number,
+            p->id);
 #endif
     /* add a correction to the number of neighbours for this particle */
     p->geometry.wcorr = const_gizmo_w_correction_factor * p->geometry.wcorr;

@@ -72,6 +72,14 @@ __attribute__((always_inline)) INLINE static void fvpm_geometry_init(
     struct part *restrict p) {}
 
 /**
+ * @brief Sets the geometry fields to sensible values when #part has 0 ngbs.
+ *
+ * @param p the particle to work on
+ */
+__attribute__((always_inline)) INLINE static void
+fvpm_geometry_part_has_no_neighbours(struct part *restrict p) {}
+
+/**
  * @brief Finish the computation of the matrix.
  *
  * @param p the particle to work on
