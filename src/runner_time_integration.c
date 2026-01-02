@@ -1417,6 +1417,14 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
         p->limited_part = 1;
 #endif
 
+	/* message( */
+	/*	"[%lld] Limiting this particle's timestep ! (wakeup = %d, t_beg_old = " */
+	/*	"%lld, t_end_old = %lld, t_beg_new = %lld, t_end_new = %lld)", */
+	/*	p->id, p->limiter_data.wakeup, p->flux.t_begin, p->flux.t_end, */
+        /*	ti_beg_new, ti_end_new);         */
+	/* Update the particles properties */
+	hydro_timestep_limiter_extra(p, xp, ti_beg_new, ti_end_new);
+
         /* What is the next sync-point ? */
         ti_hydro_end_min = min(ti_end_new, ti_hydro_end_min);
 
@@ -1593,6 +1601,11 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
         p->limited_part = 1;
 #endif
+
+	/* Update the particles properties */
+	const integertime_t ti_beg_new = ti_current;
+	const integertime_t ti_end_new = ti_current + ti_new_step;
+	hydro_timestep_synchronisation_extra(p, xp, ti_beg_new, ti_end_new);
 
         /* What is the next sync-point ? */
         ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);

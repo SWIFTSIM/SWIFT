@@ -109,6 +109,15 @@ struct part {
     /* Particle time step. Used to compute time-integrated fluxes. */
     float dt;
 
+    /* Start of this particle's timestep */
+    integertime_t ti_begin;
+
+    /* End of this particle's timestep */
+    integertime_t ti_end;
+
+    /*! Has this particle been woken up by the limiter? */
+    char limited_part;
+
   } flux;
 
   /*! Geometrical quantities used for hydro. */

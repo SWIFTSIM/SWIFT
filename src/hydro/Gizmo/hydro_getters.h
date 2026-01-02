@@ -383,4 +383,28 @@ hydro_get_physical_internal_energy_dt(const struct part *restrict p,
          cosmo->a_factor_internal_energy;
 }
 
+/**
+ * @brief Returns the timestep required for flux integration.
+ *
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
+ * @param ti_start the (integer) time of the start of the drift.
+ * @param ti_end the (integer) time of the end of the drift.
+ * @param time_base the minimal time-step size of the simulation.
+ */
+__attribute__((always_inline)) INLINE static float hydro_compute_flux_timestep(
+    const struct cosmology *cosmo, const integertime_t ti_begin,
+    const integertime_t ti_end, const double time_base) {
+
+  float dt_therm = 0.0f;
+
+  if (cosmo->a != 1.0 && cosmo->a2_inv != 1.0) {
+    dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_begin, ti_end);
+  } else {
+    const integertime_t delta_t = ti_end - ti_begin;
+    dt_therm = (float)(delta_t * time_base);
+  }
+  return dt_therm;
+}
+
 #endif /* SWIFT_GIZMO_HYDRO_GETTERS_H */

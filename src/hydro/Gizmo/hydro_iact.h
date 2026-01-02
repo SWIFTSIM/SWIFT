@@ -410,10 +410,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float totflux[5];
   hydro_compute_flux(Wi, Wj, n_unit, vij, Anorm, totflux);
 
-  /* get the time step for the flux exchange. This is always the smallest time
+  /* Get the time step for the flux exchange. This is always the smallest time
      step among the two particles */
+  const integertime_t t_beg_max = max(pi->flux.ti_begin, pj->flux.ti_begin);
+  const integertime_t t_end_min = min(pi->flux.ti_end, pj->flux.ti_end);
   const float mindt =
-      (pj->flux.dt > 0.0f) ? fminf(pi->flux.dt, pj->flux.dt) : pi->flux.dt;
+      hydro_compute_flux_timestep(cosmo, t_beg_max, t_end_min, time_base);
+
+  /* If particles do not overla, there is no flux exchange. */
+  if (mindt == 0.0) {
+    return;
+  }
+
+  /* const float mindt_old = */
+  /*     (pj->flux.dt > 0.0f) ? fminf(pi->flux.dt, pj->flux.dt) : pi->flux.dt; */
+  /* if (mindt_old != mindt) { */
+  /*   message( */
+  /*       "[%lld %lld] mindt_old = %e, mindt = %e, t_beg_max = %lld, t_end_min = " */
+  /*       "%lld, t_beg_i = %lld, t_end_i = %lld, t_beg_j = %lld, t_end_j = %lld", */
+  /*       pi->id, pj->id, mindt_old, mindt, t_beg_max, t_end_min, */
+  /*       pi->flux.ti_begin, pi->flux.ti_end, pj->flux.ti_begin, */
+  /*       pj->flux.ti_end); */
+  /*   } */
 
   hydro_part_update_fluxes_left(pi, totflux, dx, mindt);
 

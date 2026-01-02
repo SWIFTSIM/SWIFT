@@ -122,6 +122,42 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
 }
 
 /**
+ * @brief Extra operations done during the timestep limiter, if the particle
+ * was limited.
+ *
+ * @param p Particle to act upon.
+ * @param xp Extended particle data to act upon.
+ * @param ti_beg_new the (integer) Time of the start of the drift.
+ * @param ti_end_new the (integer) Time of the end of the drift.
+ */
+__attribute__((always_inline)) INLINE static void hydro_timestep_limiter_extra(
+    struct part *p, struct xpart *restrict xp, const integertime_t ti_beg_new,
+    const integertime_t ti_end_new) {
+
+  p->flux.ti_begin = ti_beg_new;
+  p->flux.ti_end = ti_end_new;
+  p->flux.limited_part = 1;
+}
+
+/**
+ * @brief Extra operations done during the synchronisation, if the particle
+ * was limited.
+ *
+ * @param p Particle to act upon.
+ * @param xp Extended particle data to act upon.
+ * @param ti_beg_new the (integer) Time of the start of the drift.
+ * @param ti_end_new the (integer) Time of the end of the drift.
+ */
+__attribute__((always_inline)) INLINE static void hydro_timestep_synchronisation_extra(
+    struct part *p, struct xpart *restrict xp, const integertime_t ti_beg_new,
+    const integertime_t ti_end_new) {
+
+  p->flux.ti_begin = ti_beg_new;
+  p->flux.ti_end = ti_end_new;
+  p->flux.limited_part = 1;
+}
+
+/**
  * @brief Initialises the particles for the first time
  *
  * This function is called only once just after the ICs have been
@@ -633,6 +669,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   }
 
   if (p->flux.dt > 0.0f) {
+    /* We are in kick2. Let's update the conserved variables! */
     float flux[5];
     hydro_part_get_fluxes(p, flux);
 
@@ -645,7 +682,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* We use the EoS equation in a sneaky way here just to get the constant u
      */
     p->conserved.energy =
-        p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
+	p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
     p->conserved.energy += flux[4];
 #endif
@@ -665,8 +702,43 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
        is properly set to -1 here, so that inactive particles are indeed found
        to be inactive during the flux loop. */
     p->flux.dt = -1.0f;
+  } else {
+    /* We are now in kick1/timestep_limiter/timestep_sync... Let's update the
+     * timestep information! */
+
+    /* Update only if we are in kick1. The limiter performs its update in
+       hydro_timestep_limiter_extra(). Note that the changes made by the
+       positive dt in timestep_limit_part() are overwritten by
+       hydro_timestep_limiter_extra(). So it does not matter if we change the
+       timestep variables here.
+
+       For the synchronisation, the same remarks apply, but with the function
+       hydro_timestep_synchronisation_extra(). */
+      if (dt_therm > 0.0 && !p->flux.limited_part) {
+	/* In this case, t_begin and t_end were updated in
+	   hydro_timestep_limiter_extra(). So we do not need to update a limited
+	   particle */
+
+      /* The time-bin was updated in timestep or limiter loop */
+      const integertime_t ti_step_new = get_integer_timestep(p->time_bin);
+      const integertime_t ti_begin_new = p->flux.ti_end;
+      const integertime_t ti_end_new = ti_begin_new + ti_step_new;
+
+      /* if (p->flux.t_begin != 0 && p->flux.t_end != 0) { */
+      /*   message( */
+      /*       "[%lld] ti_begin_old = %lld, ti_end_old = %lld,  ti_begin_new = " */
+      /*       "%lld, ti_end_new = %lld", */
+      /*       p->id, p->flux.t_begin, p->flux.t_end, ti_begin_new, ti_end_new); */
+      /* }         */
+
+      p->flux.ti_begin = ti_begin_new;
+      p->flux.ti_end = ti_end_new;
+      }
   }
 
+  /* We can reset the flag now */
+  p->flux.limited_part = 0;
+  
 #ifndef HYDRO_GAMMA_5_3
 
   const float Pcorr = (dt_hydro - dt_therm) * p->geometry.volume;
