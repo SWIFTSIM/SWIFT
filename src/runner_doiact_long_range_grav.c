@@ -238,7 +238,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
   struct engine *e = s->e;
 
   /* Handle on ci's gravity business. */
-  struct gravity_tensors *multi_i = cpi->grav.multipole;
+  struct gravity_tensors *multi_i = ci->grav.multipole;
   struct gravity_tensors *multi_j = cpj->grav.multipole;
 
   /* Can we use the mesh for this pair? */
@@ -262,6 +262,12 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
     /* We would create real tasks, so recurse to find mesh interactions */
     for (int i = 0; i < 8; i++) {
       if (cpi->progeny[i] == NULL) continue;
+      /* Only recurse if this progeny is in a branch related to ci:
+       * either the progeny contains ci (we're above ci) or ci contains the
+       * progeny (we're at/below ci) */
+      if (!cell_contains_progeny(cpi->progeny[i], ci) &&
+          !cell_contains_progeny(ci, cpi->progeny[i]))
+        continue;
       for (int j = 0; j < 8; j++) {
         if (cpj->progeny[j] == NULL) continue;
         runner_count_mesh_interactions_pair_recursive(ci, cpi->progeny[i],
