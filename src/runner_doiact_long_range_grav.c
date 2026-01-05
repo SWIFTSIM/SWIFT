@@ -607,7 +607,7 @@ void runner_count_mesh_interactions_uniform(struct runner *r, struct cell *ci,
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
-    if (engine_gravity_can_use_mesh)(e, top, cj, s)) {
+    if (engine_gravity_can_use_mesh(e, top, cj, s)) {
       runner_count_mesh_interaction(multi_i, multi_j);
     }
   }
