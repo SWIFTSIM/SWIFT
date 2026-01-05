@@ -589,12 +589,6 @@ void runner_count_mesh_interactions_uniform(struct runner *r, struct cell *ci,
   struct engine *e = r->e;
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
-  const int periodic = e->mesh->periodic;
-  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-
-  /* Get the maximum distance at which we can have a non-mesh interaction. */
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
@@ -612,11 +606,8 @@ void runner_count_mesh_interactions_uniform(struct runner *r, struct cell *ci,
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
-    /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
-
     /* Are we beyond the distance where the truncated forces are 0 ?*/
-    if (min_radius2 > max_distance2) {
+    if (engine_gravity_can_use_mesh)(e, top, cj, s)) {
       runner_count_mesh_interaction(multi_i, multi_j);
     }
   }
