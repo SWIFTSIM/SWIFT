@@ -663,6 +663,13 @@ INLINE static void star_formation_copy_properties(
     sp->gpart->x[0] = sp->x[0];
     sp->gpart->x[1] = sp->x[1];
     sp->gpart->x[2] = sp->x[2];
+
+    /* Update the offsets since last cell construction */
+    const float delta_pos[3] = {
+      delta_x * max_displacement * p->h,
+      delta_y * max_displacement * p->h,
+      delta_z * max_displacement * p->h};
+    spart_add_displacement(sp, delta_pos);
   }
 }
 
