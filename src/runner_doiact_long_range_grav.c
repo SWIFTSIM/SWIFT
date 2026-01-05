@@ -188,6 +188,31 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
 }
 
 /**
+ * @brief Increment the mesh interaction counters.
+ *
+ * This is a helper function for incrementing the mesh interaction counters
+ * for debugging purposes.
+ *
+ * @param multi_i The multipole receiving the interaction.
+ * @param multi_j The multipole giving the interaction.
+ */
+static void runner_count_mesh_interaction(
+    struct gravity_tensors *restrict multi_i,
+    struct gravity_tensors *restrict multi_j) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Need to account for the mesh interactions we missed */
+  accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Need to account for the mesh interactions we missed */
+  accumulate_add_ll(&multi_i->pot.num_interacted_pm, multi_j->m_pole.num_gpart);
+#endif
+  /* Record that this multipole received a contribution */
+  multi_i->pot.interacted = 1;
+}
+
+/**
  * @brief Recurse accumulating mesh interactions.
  *
  * @param ci The #cell of interest.
@@ -213,19 +238,9 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cpi,
 
   /* Can we use the mesh? */
   if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Need to account for the interactions we missed */
-    accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
-#endif
-
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    /* Need to account for the interactions we missed */
-    accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                      multi_j->m_pole.num_gpart);
-#endif
-
-    /* Record that this multipole received a contribution */
-    multi_i->pot.interacted = 1;
+    /* Record the mesh interaction */
+    runner_count_mesh_interaction(multi_i, multi_j);
+    return;
   }
 
   /* OK, well did we do a MM task instead? */
