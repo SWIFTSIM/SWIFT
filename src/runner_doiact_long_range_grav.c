@@ -262,8 +262,6 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
     /* We would create real tasks, so recurse to find mesh interactions */
     for (int i = 0; i < 8; i++) {
       if (cpi->progeny[i] == NULL) continue;
-      message("Checking progeny %d for pairs at depth %d (ci->depth=%d)", i,
-              cpi->progeny[i]->depth, ci->depth);
       if (!cell_contains_progeny(cpi->progeny[i], ci) &&
           !cell_contains_progeny(ci, cpi->progeny[i]))
         continue;
@@ -308,9 +306,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
 
     /* Recurse on self interactions for each progeny */
     for (int k = 0; k < 8; k++) {
-      if (cpi->progeny[k] != NULL &&
-          (cell_contains_progeny(cpi->progeny[k], ci) ||
-           cell_contains_progeny(ci, cpi->progeny[k]))) {
+      if (cpi->progeny[k] != NULL) {
         runner_count_mesh_interactions_self_recursive(ci, cpi->progeny[k], s);
       }
     }
@@ -319,17 +315,11 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
     for (int j = 0; j < 8; j++) {
       if (cpi->progeny[j] == NULL) continue;
       struct cell *cpj = cpi->progeny[j];
-      message(
-          "i loop: Checking progeny %d for selfs at depth %d (ci->depth=%d)", j,
-          cpj->depth, ci->depth);
       if (!cell_contains_progeny(cpj, ci) && !cell_contains_progeny(ci, cpj))
         continue;
       for (int k = j + 1; k < 8; k++) {
         if (cpi->progeny[k] == NULL) continue;
         struct cell *cpk = cpi->progeny[k];
-        message(
-            "j loop: Checking progeny %d for selfs at depth %d (ci->depth=%d)",
-            k, cpk->depth, ci->depth);
         if (!cell_contains_progeny(cpk, ci) && !cell_contains_progeny(ci, cpk))
           continue;
 
