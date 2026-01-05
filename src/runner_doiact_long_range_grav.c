@@ -250,36 +250,41 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
   struct gravity_tensors *multi_i = cpi->grav.multipole;
   struct gravity_tensors *multi_j = cpj->grav.multipole;
 
-  /* Can we use the mesh for this pair? */
-  if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
-    /* Record the mesh interaction */
-    runner_count_mesh_interaction(multi_i, multi_j);
-    return;
-  }
-
   /* Should this pair be split? */
   if (cell_can_split_pair_gravity_task(cpi) &&
       cell_can_split_pair_gravity_task(cpj)) {
 
-    /* Can we use M-M for this pair? */
-    if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/1)) {
-      /* This would be handled by a M-M task, nothing to count */
-      return;
-    }
-
-    /* Check particle count threshold - mirrors scheduler_splittask_gravity */
+    /* Check particle count threshold - mirrors scheduler_splittask_gravity
+     */
     const long long gcount_i = cpi->grav.count;
     const long long gcount_j = cpj->grav.count;
     if (gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
       return;
     }
 
-    /* We would create real tasks, so recurse to find mesh interactions */
+    /* Recurse on all progeny pairs */
     for (int i = 0; i < 8; i++) {
       if (cpi->progeny[i] == NULL) continue;
+      struct cell *cpi = cpi->progeny[i];
       for (int j = 0; j < 8; j++) {
         if (cpj->progeny[j] == NULL) continue;
+        struct cell *cpj = cpj->progeny[j];
+
+        /* Can we use the mesh for this pair? */
+        if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
+          /* Record the mesh interaction */
+          runner_count_mesh_interaction(multi_i, multi_j);
+          return;
+        }
+
+        /* Can we use M-M for this pair? */
+        if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
+                                 /*is_tree_walk=*/1)) {
+          /* This would be handled by a M-M task, nothing to count */
+          return;
+        }
+
+        /* We would create real tasks, so recurse to find mesh interactions */
         runner_count_mesh_interactions_pair_recursive(ci, cpi->progeny[i],
                                                       cpj->progeny[j], s);
       }
