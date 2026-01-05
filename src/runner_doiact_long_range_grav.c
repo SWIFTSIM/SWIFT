@@ -382,6 +382,30 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
 }
 
 /**
+ * @brief Increment the mesh interaction counters.
+ *
+ * This is a helper function for incrementing the mesh interaction counters
+ * for debugging purposes.
+ *
+ * @param multi_i The multipole receiving the interaction.
+ * @param multi_j The multipole giving the interaction.
+ */
+void runner_count_mesh_interaction(struct gravity_tensors *restrict multi_i,
+                                   struct gravity_tensors *restrict multi_j) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Need to account for the mesh interactions we missed */
+  accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Need to account for the mesh interactions we missed */
+  accumulate_add_ll(&multi_i->pot.num_interacted_pm, multi_j->m_pole.num_gpart);
+#endif
+  /* Record that this multipole received a contribution */
+  multi_i->pot.interacted = 1;
+}
+
+/**
  * @brief Recurse to the zoom depth in bkg cells accumulating interactions.
  *
  * This is a helper function for runner_count_mesh_interactions_zoom.
@@ -440,18 +464,7 @@ void runner_count_mesh_interactions_zoom_bkg_recursive(struct cell *ci,
 
   /* Are we beyond the distance where the truncated forces are 0 ?*/
   if (min_radius2 > max_distance2) {
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Need to account for the interactions we missed */
-    accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
-#endif
-
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    /* Need to account for the interactions we missed */
-    accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                      multi_j->m_pole.num_gpart);
-#endif
-    /* Record that this multipole received a contribution */
-    multi_i->pot.interacted = 1;
+    runner_count_mesh_interaction(multi_i, multi_j);
   }
 #else
   error("This function should not be called without debugging checks enabled!");
@@ -540,19 +553,7 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Need to account for the interactions we missed */
-      accumulate_add_ll(&multi_i->pot.num_interacted,
-                        multi_j->m_pole.num_gpart);
-#endif
-
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-      /* Need to account for the interactions we missed */
-      accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                        multi_j->m_pole.num_gpart);
-#endif
-      /* Record that this multipole received a contribution */
-      multi_i->pot.interacted = 1;
+      runner_count_mesh_interaction(multi_i, multi_j);
     } else if (ci->type == cell_type_zoom &&
                cj->subtype == cell_subtype_neighbour) {
       /* Ok we made a task here, between a zoom ci and bkg cj. */
@@ -616,19 +617,7 @@ void runner_count_mesh_interactions_uniform(struct runner *r, struct cell *ci,
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Need to account for the interactions we missed */
-      accumulate_add_ll(&multi_i->pot.num_interacted,
-                        multi_j->m_pole.num_gpart);
-#endif
-
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-      /* Need to account for the interactions we missed */
-      accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                        multi_j->m_pole.num_gpart);
-#endif
-      /* Record that this multipole received a contribution */
-      multi_i->pot.interacted = 1;
+      runner_count_mesh_interaction(multi_i, multi_j);
     }
   }
 #else
