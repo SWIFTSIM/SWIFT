@@ -230,6 +230,11 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
+  /* No self interactions here */
+  if (cpi == cpj) {
+    error("Self interactions should not be handled in this function!");
+  }
+
   struct engine *e = s->e;
 
   /* Handle on ci's gravity business. */
