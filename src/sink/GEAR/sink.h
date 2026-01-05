@@ -833,19 +833,20 @@ INLINE static void sink_star_formation_give_new_position(const struct engine *e,
   }
 #endif
 
-  /* Put the star randomly within the accretion radius of the sink */
+  /* Put the star randomly within the sink's smoothing length */
+  const float max_displacement = 1.0;
+  const float rmax = si->h * max_displacement;
+  const double r = rmax * random_unit_interval(sp->id, e->ti_current, (enum random_number_type)4);
   const double phi =
       2 * M_PI *
       random_unit_interval(sp->id, e->ti_current, (enum random_number_type)3);
-  const float rmax = si->h * kernel_gamma;
-  const double r = rmax * random_unit_interval(sp->id, e->ti_current, (enum random_number_type)4);
   const double cos_theta =
       1.0 - 2.0 * random_unit_interval(sp->id, e->ti_current,
-                                       (enum random_number_type)5);
+				       (enum random_number_type)5);
   const double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
   const float delta_pos[3] = {r * sin_theta * cos(phi), r * sin_theta * sin(phi),
-                       r * cos_theta};
+		       r * cos_theta};
 
   /* Assign this new position to the star and its gpart */
   sp->x[0] += delta_pos[0];

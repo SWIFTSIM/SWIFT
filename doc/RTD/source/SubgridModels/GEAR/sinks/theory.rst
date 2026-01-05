@@ -230,7 +230,7 @@ As explained at the beginning of this section, GEAR uses two IMFs for the popula
 Star spawning
 ~~~~~~~~~~~~~
 
-Once the sink spawns a star particle, we need to give properties to the star. From the sink, the star inherits the chemistry properties. The star is placed randomly within the sink's accretion radius. We draw the star's velocity components from a Gaussian distribution with mean :math:`\mu = 0` and standard deviation :math:`\sigma` determined as follows:
+Once the sink spawns a star particle, we need to give properties to the star. From the sink, the star inherits the chemistry properties. The star is placed randomly within the sink's smoothing length. We draw the star's velocity components from a Gaussian distribution with mean :math:`\mu = 0` and standard deviation :math:`\sigma` determined as follows:
 
 .. math::
    \sigma = f \cdot \sqrt{\frac{G_N M_s}{r_{\text{acc}}}} \; ,
