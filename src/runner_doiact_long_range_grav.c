@@ -315,14 +315,16 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
     for (int j = 0; j < 8; j++) {
       if (cpi->progeny[j] == NULL) continue;
       struct cell *cpj = cpi->progeny[j];
-      message("Checking progeny %d for selfs at depth %d (ci->depth=%d)", j,
-              cpj->depth, ci->depth);
+      message(
+          "i loop: Checking progeny %d for selfs at depth %d (ci->depth=%d)", j,
+          cpj->depth, ci->depth);
       if (!cell_contains_progeny(cpj, ci)) continue;
       for (int k = j + 1; k < 8; k++) {
         if (cpi->progeny[k] == NULL) continue;
         struct cell *cpk = cpi->progeny[k];
-        message("  Checking progeny %d for selfs at depth %d (ci->depth=%d)", k,
-                cpk->depth, ci->depth);
+        message(
+            "j loop: Checking progeny %d for selfs at depth %d (ci->depth=%d)",
+            k, cpk->depth, ci->depth);
         if (!cell_contains_progeny(cpk, ci)) continue;
 
         /* Can we use the mesh for this pair? */
