@@ -235,6 +235,20 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
     error("Self interactions should not be handled in this function!");
   }
 
+  /* Ensure ci is contained within cpi. */
+  int found = 0;
+  struct cell *temp = ci;
+  while (temp != NULL) {
+    if (temp == cpi) {
+      found = 1;
+      break;
+    }
+    temp = temp->parent;
+  }
+  if (!found) {
+    error("ci is not contained within cpi!");
+  }
+
   struct engine *e = s->e;
 
   /* Handle on ci's gravity business. */
