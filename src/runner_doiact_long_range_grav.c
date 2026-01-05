@@ -229,41 +229,41 @@ static void runner_count_mesh_interaction(
  * @param cpj The current #cell from cj's hierarchy being processed.
  * @param s The #space.
  */
-static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
-                                                          struct cell *cpi,
-                                                          struct cell *cpj,
+static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
+                                                          struct cell *ci,
+                                                          struct cell *cj,
                                                           struct space *s) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
   /* No self interactions here */
-  if (cpi == cpj) {
+  if (ci == cj) {
     error("Self interactions should not be handled in this function!");
   }
-  if (ci == cpj) {
+  if (c == cj) {
     error("Self interactions should not be handled in this function!");
   }
 
   struct engine *e = s->e;
 
   /* Should this pair be split? */
-  if (cell_can_split_pair_gravity_task(cpi) &&
-      cell_can_split_pair_gravity_task(cpj)) {
+  if (cell_can_split_pair_gravity_task(ci) &&
+      cell_can_split_pair_gravity_task(cj)) {
 
     /* Check particle count threshold - mirrors scheduler_splittask_gravity */
-    const long long gcount_i = cpi->grav.count;
-    const long long gcount_j = cpj->grav.count;
+    const long long gcount_i = ci->grav.count;
+    const long long gcount_j = cj->grav.count;
     if (gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
       return;
     }
 
     /* Recurse on all progeny pairs */
     for (int i = 0; i < 8; i++) {
-      if (cpi->progeny[i] == NULL) continue;
-      struct cell *cpi = cpi->progeny[i];
+      if (ci->progeny[i] == NULL) continue;
+      struct cell *cpi = ci->progeny[i];
       for (int j = 0; j < 8; j++) {
-        if (cpj->progeny[j] == NULL) continue;
-        struct cell *cpj = cpj->progeny[j];
+        if (cj->progeny[j] == NULL) continue;
+        struct cell *cpj = cj->progeny[j];
 
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
@@ -299,12 +299,12 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
  * This function mirrors the logic in scheduler_splittask_gravity for self
  * tasks, recursing down the cell hierarchy and counting mesh interactions.
  *
- * @param ci The #cell of interest (active cell receiving interactions).
- * @param cpi The current #cell from ci's hierarchy being processed.
+ * @param c The #cell of interest (active cell receiving interactions).
+ * @param ci The current #cell from c's hierarchy being processed.
  * @param s The #space.
  */
-static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
-                                                          struct cell *cpi,
+static void runner_count_mesh_interactions_self_recursive(struct cell *c,
+                                                          struct cell *ci,
                                                           struct space *s) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
@@ -312,26 +312,26 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
   struct engine *e = s->e;
 
   /* Should this self task be split? */
-  if (cell_can_split_self_gravity_task(cpi)) {
+  if (cell_can_split_self_gravity_task(ci)) {
 
     /* Check particle count threshold - mirrors scheduler_splittask_gravity */
-    if (cpi->grav.count < space_subsize_self_grav) {
+    if (ci->grav.count < space_subsize_self_grav) {
       return;
     }
 
     /* Recurse on self interactions for each progeny */
     for (int k = 0; k < 8; k++) {
-      if (cpi->progeny[k] == NULL) continue;
-      runner_count_mesh_interactions_self_recursive(ci, cpi->progeny[k], s);
+      if (ci->progeny[k] == NULL) continue;
+      runner_count_mesh_interactions_self_recursive(c, ci->progeny[k], s);
     }
 
     /* Now handle pair interactions between progeny */
     for (int j = 0; j < 8; j++) {
-      if (cpi->progeny[j] == NULL) continue;
-      struct cell *cpj = cpi->progeny[j];
+      if (ci->progeny[j] == NULL) continue;
+      struct cell *cpj = ci->progeny[j];
       for (int k = j + 1; k < 8; k++) {
-        if (cpi->progeny[k] == NULL) continue;
-        struct cell *cpk = cpi->progeny[k];
+        if (ci->progeny[k] == NULL) continue;
+        struct cell *cpk = ci->progeny[k];
 
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpj, cpk)) {
@@ -342,7 +342,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
         }
 
         /* Otherwise recurse as a pair interaction */
-        runner_count_mesh_interactions_pair_recursive(ci, cpj, cpk, s);
+        runner_count_mesh_interactions_pair_recursive(c, cpj, cpk, s);
       }
     }
   }
