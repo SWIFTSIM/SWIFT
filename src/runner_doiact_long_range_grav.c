@@ -269,14 +269,14 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
           runner_count_mesh_interaction(c->grav.multipole, cpj->grav.multipole);
-          return;
+          continue;
         }
 
         /* Can we use M-M for this pair? */
         if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
                                  /*is_tree_walk=*/1)) {
           /* This would be handled by a M-M task, nothing to count */
-          return;
+          continue;
         }
 
         /* We would create real tasks, so recurse to find mesh interactions */
