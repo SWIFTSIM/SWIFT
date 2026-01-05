@@ -309,17 +309,25 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
 
     /* Recurse on self interactions for each progeny */
     for (int k = 0; k < 8; k++) {
-      if (cpi->progeny[k] != NULL) {
-        runner_count_mesh_interactions_self_recursive(ci, cpi->progeny[k], s);
-      }
+      if (cpi->progeny[k] == NULL) continue;
+      if (!cell_contains_progeny(cpi->progeny[k], ci) &&
+          !cell_contains_progeny(ci, cpi->progeny[k]))
+        continue;
+      runner_count_mesh_interactions_self_recursive(ci, cpi->progeny[k], s);
     }
 
     /* Now handle pair interactions between progeny */
     for (int j = 0; j < 8; j++) {
       if (cpi->progeny[j] == NULL) continue;
+      if (!cell_contains_progeny(cpi->progeny[j], ci) &&
+          !cell_contains_progeny(ci, cpi->progeny[j]))
+        continue;
       struct cell *cpj = cpi->progeny[j];
       for (int k = j + 1; k < 8; k++) {
         if (cpi->progeny[k] == NULL) continue;
+        if (!cell_contains_progeny(cpi->progeny[k], ci) &&
+            !cell_contains_progeny(ci, cpi->progeny[k]))
+          continue;
         struct cell *cpk = cpi->progeny[k];
 
         /* Can we use the mesh for this pair? */
