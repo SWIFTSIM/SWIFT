@@ -262,9 +262,6 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
     /* We would create real tasks, so recurse to find mesh interactions */
     for (int i = 0; i < 8; i++) {
       if (cpi->progeny[i] == NULL) continue;
-      if (!cell_contains_progeny(cpi->progeny[i], ci) &&
-          !cell_contains_progeny(ci, cpi->progeny[i]))
-        continue;
       for (int j = 0; j < 8; j++) {
         if (cpj->progeny[j] == NULL) continue;
         runner_count_mesh_interactions_pair_recursive(ci, cpi->progeny[i],
@@ -315,13 +312,9 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
     for (int j = 0; j < 8; j++) {
       if (cpi->progeny[j] == NULL) continue;
       struct cell *cpj = cpi->progeny[j];
-      if (!cell_contains_progeny(cpj, ci) && !cell_contains_progeny(ci, cpj))
-        continue;
       for (int k = j + 1; k < 8; k++) {
         if (cpi->progeny[k] == NULL) continue;
         struct cell *cpk = cpi->progeny[k];
-        if (!cell_contains_progeny(cpk, ci) && !cell_contains_progeny(ci, cpk))
-          continue;
 
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpj, cpk)) {
