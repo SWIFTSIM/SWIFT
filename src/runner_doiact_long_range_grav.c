@@ -268,8 +268,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(cpi->grav.multipole,
-                                        cpj->grav.multipole);
+          runner_count_mesh_interaction(c->grav.multipole, cpj->grav.multipole);
           return;
         }
 
@@ -281,7 +280,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         }
 
         /* We would create real tasks, so recurse to find mesh interactions */
-        runner_count_mesh_interactions_pair_recursive(ci, cpi, cpj, s);
+        runner_count_mesh_interactions_pair_recursive(c, cpi, cpj, s);
       }
     }
   }
@@ -336,8 +335,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpj, cpk)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(cpj->grav.multipole,
-                                        cpk->grav.multipole);
+          runner_count_mesh_interaction(c->grav.multipole, cpk->grav.multipole);
           continue;
         }
 
