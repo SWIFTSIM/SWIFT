@@ -739,13 +739,10 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
 __attribute__((always_inline)) INLINE static int cell_contains_progeny(
     const struct cell *c, const struct cell *progeny) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Make sure the progeny is below or equal to c in the tree */
-  if (c->depth > progeny->depth) {
-    error("Progeny depth (%d) smaller than cell depth (%d)!", progeny->depth,
-          c->depth);
+  /* If the progeny is not below c, return false right away */
+  if (progeny->depth < c->depth) {
+    return 0;
   }
-#endif
 
   /* Check all parents of progeny to see if we reach c */
   const struct cell *current = progeny;
