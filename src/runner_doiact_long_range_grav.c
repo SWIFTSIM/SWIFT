@@ -268,6 +268,13 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
       return;
     }
 
+    /* Check particle count threshold - mirrors scheduler_splittask_gravity */
+    const long long gcount_i = cpi->grav.count;
+    const long long gcount_j = cpj->grav.count;
+    if (gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
+      return;
+    }
+
     /* We would create real tasks, so recurse to find mesh interactions */
     for (int i = 0; i < 8; i++) {
       if (cpi->progeny[i] == NULL) continue;
@@ -316,12 +323,14 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
   /* Should this self task be split? */
   if (cell_can_split_self_gravity_task(cpi)) {
 
+    /* Check particle count threshold - mirrors scheduler_splittask_gravity */
+    if (cpi->grav.count < space_subsize_self_grav) {
+      return;
+    }
+
     /* Recurse on self interactions for each progeny */
     for (int k = 0; k < 8; k++) {
       if (cpi->progeny[k] == NULL) continue;
-      if (!cell_contains_progeny(cpi->progeny[k], ci) &&
-          !cell_contains_progeny(ci, cpi->progeny[k]))
-        continue;
       runner_count_mesh_interactions_self_recursive(ci, cpi->progeny[k], s);
     }
 
