@@ -20,7 +20,6 @@
 #ifndef SWIFT_GEAR_SINK_H
 #define SWIFT_GEAR_SINK_H
 
-#include "stars.h"
 #include <float.h>
 
 /* Put pragma if gsl around here */
