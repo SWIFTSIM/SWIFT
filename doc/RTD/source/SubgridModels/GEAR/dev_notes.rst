@@ -41,7 +41,7 @@ The feedback sequence in GEAR is as follows:
 
 The current timestep then ends, and a new one begins with:
 
-#. **Drift (``feedback_update_part()``)**:
+#. **Drift** (``feedback_update_part()``):
    Gas particle properties are updated at this point, *before* the hydrodynamics loop.
 
 Note that the *task order is not modified* by this scheme. For example, drift operations still always occur before hydrodynamics and gravity.
