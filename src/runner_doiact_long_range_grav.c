@@ -488,13 +488,7 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
 
   struct engine *e = r->e;
   struct space *s = e->s;
-  struct cell *cells = s->cells_top;
-  const int periodic = e->mesh->periodic;
-  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-
-  /* Get the maximum distance at which we can have a non-mesh interaction. */
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
+  struct cell *cells = s->zoom_props->bkg_cells_top;
 
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
@@ -503,12 +497,8 @@ void runner_count_mesh_interactions_zoom(struct runner *r, struct cell *ci,
   struct cell *compare_top_i = top;
   struct cell *compare_top_j = NULL;
 
-  /* Loop over all cells. */
+  /* Loop over all top level background cells. */
   for (int n = 0; n < s->nr_cells; n++) {
-
-    /* Skip void cells to avoid double counting their top level progeny
-     * in the zoom (and buffer) cell grids. */
-    if (cells[n].subtype == cell_subtype_void) continue;
 
     /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[n];
