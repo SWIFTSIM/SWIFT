@@ -213,54 +213,118 @@ static void runner_count_mesh_interaction(
 }
 
 /**
- * @brief Recurse accumulating mesh interactions.
+ * @brief Recursively accumulate mesh interactions for pair interactions.
  *
- * @param ci The #cell of interest.
- * @param cpi The #cell progenitor of ci.
- * @param cpj The #cell progenitor of cj.
+ * This function mirrors the logic in scheduler_splittask_gravity for pair
+ * tasks, recursing down the cell hierarchy and counting mesh interactions.
+ *
+ * @param ci The #cell of interest (active cell receiving interactions).
+ * @param cpi The current #cell from ci's hierarchy being processed.
+ * @param cpj The current #cell from cj's hierarchy being processed.
  * @param s The #space.
  */
-void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cpi,
-                                              struct cell *cpj,
-                                              struct space *s) {
+static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
+                                                          struct cell *cpi,
+                                                          struct cell *cpj,
+                                                          struct space *s) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
-  /* Get the maximum distance at which we can have a non-mesh interaction. */
   struct engine *e = s->e;
 
-  /* Handle on the pair's gravity business. */
-  struct gravity_tensors *multi_i = cpi->grav.multipole;
+  /* Handle on ci's gravity business. */
+  struct gravity_tensors *multi_i = ci->grav.multipole;
   struct gravity_tensors *multi_j = cpj->grav.multipole;
 
-  /* Don't allow self-interactions */
-  if (cpi == cpj) return;
-
-  /* Can we use the mesh? */
+  /* Can we use the mesh for this pair? */
   if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
     /* Record the mesh interaction */
     runner_count_mesh_interaction(multi_i, multi_j);
     return;
   }
 
-  /* OK, well did we do a MM task instead? */
-  else if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                                /*is_tree_walk=*/cpj == cpj->top ? 0 : 1)) {
-    return;
-  }
+  /* Should this pair be split? */
+  if (cell_can_split_pair_gravity_task(cpi) &&
+      cell_can_split_pair_gravity_task(cpj)) {
 
-  /* Alas, we made a task, recurse down but don't go further than where the
-     tasks are. */
-  else if (cpi->grav.super != cpi && cpj->grav.super != cpj) {
+    /* Can we use M-M for this pair? */
+    if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
+                             /*is_tree_walk=*/1)) {
+      /* This would be handled by a M-M task, nothing to count */
+      return;
+    }
+
+    /* We would create real tasks, so recurse to find mesh interactions */
     for (int i = 0; i < 8; i++) {
       if (cpi->progeny[i] == NULL) continue;
       for (int j = 0; j < 8; j++) {
         if (cpj->progeny[j] == NULL) continue;
-        runner_count_mesh_interactions_recursive(ci, cpi->progeny[i],
-                                                 cpj->progeny[j], s);
+        runner_count_mesh_interactions_pair_recursive(ci, cpi->progeny[i],
+                                                      cpj->progeny[j], s);
       }
     }
   }
+  /* else: We have a real task that doesn't split further, no mesh
+   * interactions to count */
+
+#else
+  error("This function should not be called without debugging checks enabled!");
+#endif
+}
+
+/**
+ * @brief Recursively accumulate mesh interactions for self interactions.
+ *
+ * This function mirrors the logic in scheduler_splittask_gravity for self
+ * tasks, recursing down the cell hierarchy and counting mesh interactions.
+ *
+ * @param ci The #cell of interest (active cell receiving interactions).
+ * @param cpi The current #cell from ci's hierarchy being processed.
+ * @param s The #space.
+ */
+static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
+                                                          struct cell *cpi,
+                                                          struct space *s) {
+
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
+  struct engine *e = s->e;
+
+  /* Handle on ci's gravity business. */
+  struct gravity_tensors *multi_i = ci->grav.multipole;
+
+  /* Should this self task be split? */
+  if (cell_can_split_self_gravity_task(cpi)) {
+
+    /* Recurse on self interactions for each progeny */
+    for (int k = 0; k < 8; k++) {
+      if (cpi->progeny[k] != NULL) {
+        runner_count_mesh_interactions_self_recursive(ci, cpi->progeny[k], s);
+      }
+    }
+
+    /* Now handle pair interactions between progeny */
+    for (int j = 0; j < 8; j++) {
+      if (cpi->progeny[j] == NULL) continue;
+      struct cell *cpj = cpi->progeny[j];
+      for (int k = j + 1; k < 8; k++) {
+        if (cpi->progeny[k] == NULL) continue;
+        struct cell *cpk = cpi->progeny[k];
+
+        /* Can we use the mesh for this pair? */
+        if (engine_gravity_can_use_mesh(e, cpj, cpk)) {
+          /* Record the mesh interaction */
+          runner_count_mesh_interaction(multi_i, cpk->grav.multipole);
+          continue;
+        }
+
+        /* Otherwise recurse as a pair interaction */
+        runner_count_mesh_interactions_pair_recursive(ci, cpj, cpk, s);
+      }
+    }
+  }
+  /* else: We have a real task that doesn't split further, no mesh
+   * interactions to count */
 
 #else
   error("This function should not be called without debugging checks enabled!");
@@ -271,9 +335,12 @@ void runner_count_mesh_interactions_recursive(struct cell *ci, struct cell *cpi,
  * @brief Accumulate the number of particle mesh interactions for debugging
  * purposes.
  *
+ * This function mirrors the task creation and splitting logic to count
+ * mesh interactions that ci would receive from all top-level cells.
+ *
  * @param r The thread #runner.
- * @param ci The #cell of interest.
- * @param top The current top-level cell.
+ * @param ci The #cell of interest (active cell receiving interactions).
+ * @param top The current top-level cell (ci's top-level parent).
  */
 void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
                                     struct cell *top) {
@@ -284,18 +351,46 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
 
-  /* Loop over all cells. */
+  /* Get the multipole of the cell we are interacting. */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+
+  /* First, handle self interactions from the top-level cell.
+   * This mirrors the self task created at the top level. */
+  runner_count_mesh_interactions_self_recursive(ci, top, s);
+
+  /* Now loop over all other top-level cells for pair interactions.
+   * This mirrors the pair tasks created between top-level cells. */
   for (int n = 0; n < s->nr_cells; n++) {
 
-    /* Handle on the top-level cell and it's gravity business*/
+    /* Handle on the top-level cell and its gravity business */
     struct cell *cj = &cells[n];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
+
+    /* Avoid self contributions (already handled above) */
+    if (top == cj) continue;
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
-    /* Did we interact via the mesh with this pair or any of their progeny? */
-    runner_count_mesh_interactions_recursive(ci, top, cj, s);
+    /* Can we use the mesh for this top-level pair? */
+    if (engine_gravity_can_use_mesh(e, top, cj)) {
+
+      /* If so, record the mesh interaction */
+      runner_count_mesh_interaction(multi_i, multi_j);
+      continue;
+    }
+
+    /* Can we use M-M for this top-level pair? */
+    if (cell_can_use_pair_mm(top, cj, e, s, /*use_rebuild_data=*/1,
+                             /*is_tree_walk=*/0)) {
+
+      /* M-M task handles this, nothing to count */
+      continue;
+    }
+
+    /* We would create a pair task here, so recurse to count mesh interactions
+     * that arise from task splitting */
+    runner_count_mesh_interactions_pair_recursive(ci, top, cj, s);
   }
 #else
   error(
