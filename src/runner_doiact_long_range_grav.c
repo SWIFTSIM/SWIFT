@@ -306,9 +306,11 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
   /* Should this self task be split? */
   if (cell_can_split_self_gravity_task(cpi)) {
 
+    message("Splitting at depth %d (ci->depth=%d)", cpi->depth, ci->depth);
+
     /* Recurse on self interactions for each progeny */
     for (int k = 0; k < 8; k++) {
-      if (cpi->progeny[k] != NULL &&
+      if (cpi->progeny[k] != NULL && cpi->depth < ci->depth &&
           cell_contains_progeny(cpi->progeny[k], ci)) {
         runner_count_mesh_interactions_self_recursive(ci, cpi->progeny[k], s);
       }
