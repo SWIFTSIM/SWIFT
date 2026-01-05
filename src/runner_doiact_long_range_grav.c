@@ -246,16 +246,11 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
 
   struct engine *e = s->e;
 
-  /* Handle on ci's gravity business. */
-  struct gravity_tensors *multi_i = cpi->grav.multipole;
-  struct gravity_tensors *multi_j = cpj->grav.multipole;
-
   /* Should this pair be split? */
   if (cell_can_split_pair_gravity_task(cpi) &&
       cell_can_split_pair_gravity_task(cpj)) {
 
-    /* Check particle count threshold - mirrors scheduler_splittask_gravity
-     */
+    /* Check particle count threshold - mirrors scheduler_splittask_gravity */
     const long long gcount_i = cpi->grav.count;
     const long long gcount_j = cpj->grav.count;
     if (gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
@@ -273,7 +268,8 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(multi_i, multi_j);
+          runner_count_mesh_interaction(cpi->grav.multipole,
+                                        cpj->grav.multipole);
           return;
         }
 
@@ -315,9 +311,6 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
 
   struct engine *e = s->e;
 
-  /* Handle on ci's gravity business. */
-  struct gravity_tensors *multi_i = cpi->grav.multipole;
-
   /* Should this self task be split? */
   if (cell_can_split_self_gravity_task(cpi)) {
 
@@ -343,7 +336,8 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpj, cpk)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(multi_i, cpk->grav.multipole);
+          runner_count_mesh_interaction(cpj->grav.multipole,
+                                        cpk->grav.multipole);
           continue;
         }
 
