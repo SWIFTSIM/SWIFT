@@ -301,7 +301,8 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
   /* Handle on ci's gravity business. */
   struct gravity_tensors *multi_i = cpi->grav.multipole;
 
-  message("At depth %d (ci->depth=%d)", cpi->depth, ci->depth);
+  message("At depth %d %p (ci->depth=%d %p)", cpi->depth, (void *)cpi,
+          ci->depth, (void *)ci);
 
   /* Should this self task be split? */
   if (cell_can_split_self_gravity_task(cpi)) {
