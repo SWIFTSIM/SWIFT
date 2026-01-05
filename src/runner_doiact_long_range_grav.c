@@ -264,7 +264,9 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
       if (cpi->progeny[i] == NULL) continue;
       message("Checking progeny %d for pairs at depth %d (ci->depth=%d)", i,
               cpi->progeny[i]->depth, ci->depth);
-      if (!cell_contains_progeny(cpi->progeny[i], ci)) continue;
+      if (!cell_contains_progeny(cpi->progeny[i], ci) &&
+          !cell_contains_progeny(ci, cpi->progeny[i]))
+        continue;
       for (int j = 0; j < 8; j++) {
         if (cpj->progeny[j] == NULL) continue;
         runner_count_mesh_interactions_pair_recursive(ci, cpi->progeny[i],
@@ -301,18 +303,14 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
   /* Handle on ci's gravity business. */
   struct gravity_tensors *multi_i = cpi->grav.multipole;
 
-  message("At depth %d %p (ci->depth=%d %p)", cpi->depth, (void *)cpi,
-          ci->depth, (void *)ci);
-
   /* Should this self task be split? */
   if (cell_can_split_self_gravity_task(cpi)) {
 
-    message("Splitting at depth %d (ci->depth=%d)", cpi->depth, ci->depth);
-
     /* Recurse on self interactions for each progeny */
     for (int k = 0; k < 8; k++) {
-      if (cpi->progeny[k] != NULL && cpi->depth < ci->depth &&
-          cell_contains_progeny(cpi->progeny[k], ci)) {
+      if (cpi->progeny[k] != NULL &&
+          (cell_contains_progeny(cpi->progeny[k], ci) ||
+           cell_contains_progeny(ci, cpi->progeny[k]))) {
         runner_count_mesh_interactions_self_recursive(ci, cpi->progeny[k], s);
       }
     }
@@ -324,14 +322,16 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
       message(
           "i loop: Checking progeny %d for selfs at depth %d (ci->depth=%d)", j,
           cpj->depth, ci->depth);
-      if (!cell_contains_progeny(cpj, ci)) continue;
+      if (!cell_contains_progeny(cpj, ci) && !cell_contains_progeny(ci, cpj))
+        continue;
       for (int k = j + 1; k < 8; k++) {
         if (cpi->progeny[k] == NULL) continue;
         struct cell *cpk = cpi->progeny[k];
         message(
             "j loop: Checking progeny %d for selfs at depth %d (ci->depth=%d)",
             k, cpk->depth, ci->depth);
-        if (!cell_contains_progeny(cpk, ci)) continue;
+        if (!cell_contains_progeny(cpk, ci) && !cell_contains_progeny(ci, cpk))
+          continue;
 
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpj, cpk)) {
