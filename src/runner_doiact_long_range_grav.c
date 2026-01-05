@@ -235,18 +235,9 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
     error("Self interactions should not be handled in this function!");
   }
 
-  /* Ensure ci is contained within cpi. */
-  int found = 0;
-  struct cell *temp = ci;
-  while (temp != NULL) {
-    if (temp == cpi) {
-      found = 1;
-      break;
-    }
-    temp = temp->parent;
-  }
-  if (!found) {
-    error("ci is not contained within cpi!");
+  /* Ensure ci is contained within cpi, if not we're done */
+  if (cell_contains_progeny(cpi, ci) == 0) {
+    return;
   }
 
   struct engine *e = s->e;
