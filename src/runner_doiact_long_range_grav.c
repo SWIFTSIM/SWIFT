@@ -199,6 +199,12 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
 static void runner_count_mesh_interaction(
     struct gravity_tensors *restrict multi_i,
     struct gravity_tensors *restrict multi_j) {
+
+  /* Ensure we aren't self-interacting */
+  if (multi_i == multi_j) {
+    error("Self interactions should not be handled in this function!");
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Need to account for the mesh interactions we missed */
   accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
