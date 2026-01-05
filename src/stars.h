@@ -56,9 +56,8 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
  * @param sp The #spart to update.
  * @param displacement The 3D displacement vector to add.
  */
-__attribute__((always_inline))
-INLINE static void spart_add_displacement(struct spart *restrict sp,
-					  const float displacement[3]) {
+__attribute__((always_inline)) INLINE static void spart_add_displacement(
+    struct spart *restrict sp, const float displacement[3]) {
 
   sp->x_diff[0] += displacement[0];
   sp->x_diff[1] += displacement[1];

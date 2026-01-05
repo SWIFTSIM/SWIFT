@@ -1803,16 +1803,16 @@ __attribute__((always_inline)) static INLINE void cell_set_bpart_h_depth(
  */
 __attribute__((always_inline)) static INLINE void
 cell_update_max_displacement_spart(struct cell *restrict c,
-				   const struct spart *restrict sp) {
+                                   const struct spart *restrict sp) {
 
   /* Compute displacements */
   const float dx2_part = sp->x_diff[0] * sp->x_diff[0] +
-			 sp->x_diff[1] * sp->x_diff[1] +
-			 sp->x_diff[2] * sp->x_diff[2];
+                         sp->x_diff[1] * sp->x_diff[1] +
+                         sp->x_diff[2] * sp->x_diff[2];
 
   const float dx2_sort = sp->x_diff_sort[0] * sp->x_diff_sort[0] +
-			 sp->x_diff_sort[1] * sp->x_diff_sort[1] +
-			 sp->x_diff_sort[2] * sp->x_diff_sort[2];
+                         sp->x_diff_sort[1] * sp->x_diff_sort[1] +
+                         sp->x_diff_sort[2] * sp->x_diff_sort[2];
 
   const float dx_part = sqrtf(dx2_part);
   const float dx_sort = sqrtf(dx2_sort);
