@@ -306,7 +306,8 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *ci,
 
     /* Recurse on self interactions for each progeny */
     for (int k = 0; k < 8; k++) {
-      if (cpi->progeny[k] != NULL) {
+      if (cpi->progeny[k] != NULL &&
+          cell_contains_progeny(cpi->progeny[k], ci)) {
         runner_count_mesh_interactions_self_recursive(ci, cpi->progeny[k], s);
       }
     }
