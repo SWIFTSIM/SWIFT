@@ -235,11 +235,6 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
     error("Self interactions should not be handled in this function!");
   }
 
-  /* Ensure ci is contained within cpi, if not we're done */
-  if (cell_contains_progeny(cpi, ci) == 0) {
-    return;
-  }
-
   struct engine *e = s->e;
 
   /* Handle on ci's gravity business. */
@@ -267,6 +262,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
     /* We would create real tasks, so recurse to find mesh interactions */
     for (int i = 0; i < 8; i++) {
       if (cpi->progeny[i] == NULL) continue;
+      if (!cell_contains_progeny(cpi->progeny[i], ci)) continue;
       for (int j = 0; j < 8; j++) {
         if (cpj->progeny[j] == NULL) continue;
         runner_count_mesh_interactions_pair_recursive(ci, cpi->progeny[i],
