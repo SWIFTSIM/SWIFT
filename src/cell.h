@@ -731,6 +731,26 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
 }
 
 /**
+ * @brief Test if a cell contains a progeny at some level.
+ *
+ * @param c The #cell.
+ * @param progeny The progeny #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_contains_progeny(
+    const struct cell *c, const struct cell *progeny) {
+
+  /* Check all parents of progeny to see if we reach c */
+  const struct cell *current = progeny;
+  while (current != NULL) {
+    if (current == c) {
+      return 1;
+    }
+    current = current->parent;
+  }
+  return 0;
+}
+
+/**
  * @brief Compute the square of the minimal distance between any two points in
  * two cells of the same size
  *
