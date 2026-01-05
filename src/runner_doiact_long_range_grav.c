@@ -243,7 +243,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
   struct engine *e = s->e;
 
   /* Handle on ci's gravity business. */
-  struct gravity_tensors *multi_i = cpi->grav.multipole;
+  struct gravity_tensors *multi_i = ci->grav.multipole;
   struct gravity_tensors *multi_j = cpj->grav.multipole;
 
   /* Can we use the mesh for this pair? */
