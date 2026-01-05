@@ -285,8 +285,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *ci,
         }
 
         /* We would create real tasks, so recurse to find mesh interactions */
-        runner_count_mesh_interactions_pair_recursive(ci, cpi->progeny[i],
-                                                      cpj->progeny[j], s);
+        runner_count_mesh_interactions_pair_recursive(ci, cpi, cpj, s);
       }
     }
   }
