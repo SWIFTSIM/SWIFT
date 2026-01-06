@@ -261,6 +261,10 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
     for (int i = 0; i < 8; i++) {
       if (ci->progeny[i] == NULL) continue;
       struct cell *cpi = ci->progeny[i];
+      if (cell_contains_progeny(cpi, c) && cpi->depth <= c->depth) {
+        /* Avoid double counting self interactions involving c */
+        continue;
+      }
       for (int j = 0; j < 8; j++) {
         if (cj->progeny[j] == NULL) continue;
         struct cell *cpj = cj->progeny[j];
@@ -328,9 +332,17 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
     for (int j = 0; j < 8; j++) {
       if (ci->progeny[j] == NULL) continue;
       struct cell *cpj = ci->progeny[j];
+      if (cell_contains_progeny(cpj, c) && cpj->depth <= c->depth) {
+        /* Avoid double counting self interactions involving c */
+        continue;
+      }
       for (int k = j + 1; k < 8; k++) {
         if (ci->progeny[k] == NULL) continue;
         struct cell *cpk = ci->progeny[k];
+        if (cell_contains_progeny(cpk, c) && cpk->depth <= c->depth) {
+          /* Avoid double counting self interactions involving c */
+          continue;
+        }
 
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpj, cpk)) {
