@@ -48,6 +48,7 @@ void test(void) {
   const int with_cosmology = floor(random_uniform(0., 2.));
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
+  struct chemistry_global_data chemistry_data;
 
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
@@ -225,7 +226,7 @@ void test(void) {
   runner_iact_force(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_mhd_force(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
   runner_iact_diffusion(r2, dx, pi.h, pj.h, &pi, &pj, a, H, time_base,
-                        ti_current, &cosmo, with_cosmology);
+                        ti_current, &cosmo, with_cosmology, &chemistry_data);
   runner_iact_timebin(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_rt_timebin(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
 
@@ -233,7 +234,8 @@ void test(void) {
   runner_iact_nonsym_force(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   runner_iact_nonsym_mhd_force(r2, dx, pi2.h, pj2.h, &pi2, &pj2, mu_0, a, H);
   runner_iact_nonsym_diffusion(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H,
-                               time_base, ti_current, &cosmo, with_cosmology);
+                               time_base, ti_current, &cosmo, with_cosmology,
+                               &chemistry_data);
   runner_iact_nonsym_timebin(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   runner_iact_nonsym_rt_timebin(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   dx[0] = -dx[0];
@@ -242,7 +244,8 @@ void test(void) {
   runner_iact_nonsym_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
   runner_iact_nonsym_mhd_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2, mu_0, a, H);
   runner_iact_nonsym_diffusion(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H,
-                               time_base, ti_current, &cosmo, with_cosmology);
+                               time_base, ti_current, &cosmo, with_cosmology,
+                               &chemistry_data);
   runner_iact_nonsym_timebin(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
   runner_iact_nonsym_rt_timebin(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
 

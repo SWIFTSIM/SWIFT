@@ -48,6 +48,7 @@ void test(void) {
   const int with_cosmology = floor(random_uniform(0., 2.));
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
+  struct chemistry_global_data chemistry_data;
 
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
@@ -133,7 +134,8 @@ void test(void) {
   runner_iact_nonsym_timebin(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_rt_timebin(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_diffusion(r2, dx, pi.h, pj.h, &pi, &pj, a, H, time_base,
-                               ti_current, &cosmo, with_cosmology);
+                               ti_current, &cosmo, with_cosmology,
+                               &chemistry_data);
 
   /* Check that the particles are the same */
   j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));
