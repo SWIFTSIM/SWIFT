@@ -90,6 +90,11 @@
 
 #ifdef EXTRA_STAR_LOOPS_2
 
+/* Check that we have enabled the first two loops */
+#if !defined(EXTRA_STAR_LOOPS)
+#error "Third-star neighbour loops require first and second-star neighbour loops. Enable EXTRA_STAR_LOOPS in src/feedback.h."
+#endif
+
 /* Import the stars prepare3 loop functions. */
 #define FUNCTION prep3
 #define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP3
@@ -99,6 +104,11 @@
 #endif /* EXTRA_STAR_LOOPS_2 */
 
 #ifdef EXTRA_STAR_LOOPS_3
+
+/* Check that we have enabled the first three loops */
+#if !defined(EXTRA_STAR_LOOPS) || !defined(EXTRA_STAR_LOOPS_2)
+#error "Fourth-star neighbour loops require the first three neighbour loops. Enable EXTRA_STAR_LOOPS and EXTRA_STAR_LOOPS_2 in src/feedback.h."
+#endif
 
 /* Import the stars prepare4 loop functions. */
 #define FUNCTION prep4
