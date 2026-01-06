@@ -296,81 +296,81 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
   error("This function should not be called without debugging checks enabled!");
 #endif
 }
-//
-// /**
-//  * @brief Recursively accumulate mesh interactions for self interactions.
-//  *
-//  * This function mirrors the logic in scheduler_splittask_gravity for self
-//  * tasks, recursing down the cell hierarchy and counting mesh interactions.
-//  *
-//  * @param c The #cell of interest (active cell receiving interactions).
-//  * @param ci The current #cell from c's hierarchy being processed.
-//  * @param s The #space.
-//  */
-// static void runner_count_mesh_interactions_self_recursive(struct cell *c,
-//                                                           struct cell *ci,
-//                                                           struct space *s) {
-//
-// #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
-//
-//   struct engine *e = s->e;
-//
-//   /* Should this self task be split? */
-//   if (cell_can_split_self_gravity_task(ci)) {
-//
-//     /* Check particle count threshold - mirrors scheduler_splittask_gravity
-//     */ if (ci->grav.count < space_subsize_self_grav) {
-//       return;
-//     }
-//
-//     /* Recurse on self interactions for each progeny */
-//     for (int k = 0; k < 8; k++) {
-//       if (ci->progeny[k] == NULL) continue;
-//       if (!cell_contains_progeny(ci->progeny[k], c) &&
-//           ci->progeny[k]->depth <= c->depth) {
-//         /* Avoid double counting self interactions involving c */
-//         continue;
-//       }
-//       runner_count_mesh_interactions_self_recursive(c, ci->progeny[k], s);
-//     }
-//
-//     /* Now handle pair interactions between progeny */
-//     for (int j = 0; j < 8; j++) {
-//       if (ci->progeny[j] == NULL) continue;
-//       struct cell *cpj = ci->progeny[j];
-//       if (!cell_contains_progeny(cpj, c) && cpj->depth <= c->depth) {
-//         /* Avoid double counting self interactions involving c */
-//         continue;
-//       }
-//       for (int k = j + 1; k < 8; k++) {
-//         if (ci->progeny[k] == NULL) continue;
-//         struct cell *cpk = ci->progeny[k];
-//         if (!cell_contains_progeny(cpk, c) && cpk->depth <= c->depth) {
-//           /* Avoid double counting self interactions involving c */
-//           continue;
-//         }
-//
-//         /* Can we use the mesh for this pair? */
-//         if (engine_gravity_can_use_mesh(e, cpj, cpk)) {
-//           /* Record the mesh interaction */
-//           runner_count_mesh_interaction(c->grav.multipole,
-//           cpk->grav.multipole); continue;
-//         }
-//
-//         /* Otherwise recurse as a pair interaction */
-//         runner_count_mesh_interactions_pair_recursive(c, cpj, cpk, s);
-//       }
-//     }
-//   }
-//   /* else: We have a real task that doesn't split further, no mesh
-//    * interactions to count */
-//
-// #else
-//   error("This function should not be called without debugging checks
-//   enabled!");
-// #endif
-// }
-//
+
+/**
+ * @brief Recursively accumulate mesh interactions for self interactions.
+ *
+ * This function mirrors the logic in scheduler_splittask_gravity for self
+ * tasks, recursing down the cell hierarchy and counting mesh interactions.
+ *
+ * @param c The #cell of interest (active cell receiving interactions).
+ * @param ci The current #cell from c's hierarchy being processed.
+ * @param s The #space.
+ */
+static void runner_count_mesh_interactions_self_recursive(struct cell *c,
+                                                          struct cell *ci,
+                                                          struct space *s) {
+
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
+  struct engine *e = s->e;
+
+  /* Should this self task be split? */
+  if (cell_can_split_self_gravity_task(ci)) {
+
+    /* Check particle count threshold - mirrors scheduler_splittask_gravity
+     */
+    if (ci->grav.count < space_subsize_self_grav) {
+      return;
+    }
+
+    /* Recurse on self interactions for each progeny */
+    for (int k = 0; k < 8; k++) {
+      if (ci->progeny[k] == NULL) continue;
+      if (!cell_contains_progeny(ci->progeny[k], c) &&
+          ci->progeny[k]->depth <= c->depth) {
+        /* Avoid double counting self interactions involving c */
+        continue;
+      }
+      runner_count_mesh_interactions_self_recursive(c, ci->progeny[k], s);
+    }
+
+    /* Now handle pair interactions between progeny */
+    for (int j = 0; j < 8; j++) {
+      if (ci->progeny[j] == NULL) continue;
+      struct cell *cpj = ci->progeny[j];
+      if (!cell_contains_progeny(cpj, c) && cpj->depth <= c->depth) {
+        /* Avoid double counting self interactions involving c */
+        continue;
+      }
+      for (int k = j + 1; k < 8; k++) {
+        if (ci->progeny[k] == NULL) continue;
+        struct cell *cpk = ci->progeny[k];
+        if (!cell_contains_progeny(cpk, c) && cpk->depth <= c->depth) {
+          /* Avoid double counting self interactions involving c */
+          continue;
+        }
+
+        /* Can we use the mesh for this pair? */
+        if (engine_gravity_can_use_mesh(e, cpj, cpk)) {
+          /* Record the mesh interaction */
+          runner_count_mesh_interaction(c->grav.multipole, cpk->grav.multipole);
+          continue;
+        }
+
+        /* Otherwise recurse as a pair interaction */
+        runner_count_mesh_interactions_pair_recursive(c, cpj, cpk, s);
+      }
+    }
+  }
+  /* else: We have a real task that doesn't split further, no mesh
+   * interactions to count */
+
+#else
+  error("This function should not be called without debugging checks enabled!");
+#endif
+}
+
 /**
  * @brief Accumulate the number of particle mesh interactions for debugging
  * purposes.
@@ -394,9 +394,9 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
-  // /* First, handle self interactions from the top-level cell.
-  //  * This mirrors the self task created at the top level. */
-  // runner_count_mesh_interactions_self_recursive(ci, top, s);
+  /* First, handle self interactions from the top-level cell.
+   * This mirrors the self task created at the top level. */
+  runner_count_mesh_interactions_self_recursive(ci, top, s);
 
   /* Now loop over all other top-level cells for pair interactions.
    * This mirrors the pair tasks created between top-level cells. */
