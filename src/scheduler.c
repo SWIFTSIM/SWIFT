@@ -1499,12 +1499,13 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                 if (cj->progeny[j] != NULL) {
                   struct cell *cpj = cj->progeny[j];
 
-                  /* If running with the mesh this pair may be beyond the mesh
-                   * criterion meaning we won't need a task here. */
-                  if (engine_gravity_can_use_mesh(e, cpi, cpj) &&
-                      cpi->top != cpj->top) {
-                    continue;
-                  }
+                  // /* If running with the mesh this pair may be beyond the
+                  // mesh
+                  //  * criterion meaning we won't need a task here. */
+                  // if (engine_gravity_can_use_mesh(e, cpi, cpj) &&
+                  //     cpi->top != cpj->top) {
+                  //   continue;
+                  // }
 
                   /* Can we use a M-M interaction here? */
                   if (cell_can_use_pair_mm(cpi, cpj, e, sp,
