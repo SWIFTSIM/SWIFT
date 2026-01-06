@@ -261,26 +261,24 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
     for (int i = 0; i < 8; i++) {
       if (ci->progeny[i] == NULL) continue;
       struct cell *cpi = ci->progeny[i];
-      if (!cell_contains_progeny(cpi, c) && cpi->depth <= c->depth) {
-        /* Avoid double counting self interactions involving c */
-        message("Skipping progeny i=%d cpi->depth=%d c->depth=%d", i,
-                cpi->depth, c->depth);
-        continue;
-      }
       for (int j = 0; j < 8; j++) {
         if (cj->progeny[j] == NULL) continue;
         struct cell *cpj = cj->progeny[j];
-        if (!cell_contains_progeny(cpj, c) && cpj->depth <= c->depth) {
-          /* Avoid double counting self interactions involving c */
-          message("Skipping progeny j=%d cpj->depth=%d c->depth=%d", j,
-                  cpj->depth, c->depth);
-          continue;
-        }
 
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(c->grav.multipole, cpj->grav.multipole);
+          if (c == cpi)
+            runner_count_mesh_interaction(c->grav.multipole,
+                                          cpj->grav.multipole);
+          else if (cell_contains_progeny(cpi, c))
+            runner_count_mesh_interaction(c->grav.multipole,
+                                          cpj->grav.multipole);
+          else if (cell_contains_progeny(c, cpi))
+            runner_count_mesh_interaction(cpi->grav.multipole,
+                                          cpj->grav.multipole);
+          else { /*Nothing to do here*/
+          }
           continue;
         }
 
