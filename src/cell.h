@@ -739,6 +739,11 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
 __attribute__((always_inline)) INLINE static int cell_contains_progeny(
     const struct cell *c, const struct cell *progeny) {
 
+  /* Early exit if progeny is above c. */
+  if (progeny->depth < c->depth) {
+    return 0;
+  }
+
   /* Check all parents of progeny to see if we reach c */
   const struct cell *current = progeny;
   while (current != NULL) {

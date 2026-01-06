@@ -392,9 +392,9 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
-  /* First, handle self interactions from the top-level cell.
-   * This mirrors the self task created at the top level. */
-  runner_count_mesh_interactions_self_recursive(ci, top, s);
+  // /* First, handle self interactions from the top-level cell.
+  //  * This mirrors the self task created at the top level. */
+  // runner_count_mesh_interactions_self_recursive(ci, top, s);
 
   /* Now loop over all other top-level cells for pair interactions.
    * This mirrors the pair tasks created between top-level cells. */
