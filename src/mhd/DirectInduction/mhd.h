@@ -505,6 +505,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   float OW;
   OW = 1.0f;
 
+  const float d_ip = 2.0f * cbrtf(p->mass / p->rho);
   //const float d_ip = 2.0f*p->h; //cbrtf(p->mass / p->rho);
 
   /* R mean square */
@@ -515,7 +516,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   //const float d_ip = fmaxf(cbrtf(p->mass / p->rho),p->mhd_data.r_cm_abs_Nweight * p->h );
   //const float d_ip = fmaxf(cbrtf(p->mass / p->rho),p->mhd_data.r_cm_abs_Kweight * p->h );
   
-  const float d_ip = fmaxf(cbrtf(p->mass / p->rho), 2.0f * p->mhd_data.r_cm_abs_Nweight * p->h);
+  //const float d_ip = fmaxf(cbrtf(p->mass / p->rho), 2.0f * p->mhd_data.r_cm_abs_Nweight * p->h);
 
   p->mhd_data.eta_OWAR = NormShearAndRotation * d_ip * d_ip / OW; 
 
