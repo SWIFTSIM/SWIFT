@@ -429,7 +429,7 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
 
     /* We would create a pair task here, so recurse to count mesh interactions
      * that arise from task splitting */
-    runner_count_mesh_interactions_pair_recursive(ci, top, cj, s);
+    runner_count_mesh_interactions_pair_recursive(ci, ci, cj, s);
   }
 #else
   error(
