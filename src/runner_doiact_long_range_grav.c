@@ -233,6 +233,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
                                                           struct cell *ci,
                                                           struct cell *cj,
                                                           struct space *s) {
+  return;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
@@ -427,10 +428,9 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
       continue;
     }
 
-    // /* We would create a pair task here, so recurse to count mesh
-    // interactions
-    //  * that arise from task splitting */
-    // runner_count_mesh_interactions_pair_recursive(ci, top, cj, s);
+    /* We would create a pair task here, so recurse to count mesh interactions
+     * that arise from task splitting */
+    runner_count_mesh_interactions_pair_recursive(ci, top, cj, s);
   }
 #else
   error(
