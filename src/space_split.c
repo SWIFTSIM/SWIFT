@@ -776,7 +776,9 @@ void space_split(struct space *s, int verbose) {
                  s->nr_local_cells_with_particles, sizeof(int),
                  threadpool_auto_chunk_size, s);
 
-  if (verbose)
+  if (verbose) {
+    message("Max tree depth after split: %d", s->maxdepth);
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+  }
 }
