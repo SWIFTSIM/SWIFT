@@ -268,16 +268,17 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
-          if (c == cpi)
+          if (c == cpi) {
             runner_count_mesh_interaction(c->grav.multipole,
                                           cpj->grav.multipole);
-          else if (cell_contains_progeny(cpi, c))
+          } else if (cell_contains_progeny(cpi, c)) {
             runner_count_mesh_interaction(c->grav.multipole,
                                           cpj->grav.multipole);
-          else if (cell_contains_progeny(c, cpi))
+          } else if (cell_contains_progeny(c, cpi)) {
             runner_count_mesh_interaction(cpi->grav.multipole,
                                           cpj->grav.multipole);
-          else { /*Nothing to do here*/
+          } else {
+            /*Nothing to do here*/
           }
           continue;
         }
@@ -316,8 +317,6 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
                                                           struct cell *ci,
                                                           struct space *s) {
 
-  return;
-
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
   struct engine *e = s->e;
@@ -334,11 +333,6 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
     /* Recurse on self interactions for each progeny */
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] == NULL) continue;
-      if (!cell_contains_progeny(ci->progeny[k], c) &&
-          ci->progeny[k]->depth <= c->depth) {
-        /* Avoid double counting self interactions involving c */
-        continue;
-      }
       runner_count_mesh_interactions_self_recursive(c, ci->progeny[k], s);
     }
 
@@ -346,22 +340,22 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
     for (int j = 0; j < 8; j++) {
       if (ci->progeny[j] == NULL) continue;
       struct cell *cpj = ci->progeny[j];
-      if (!cell_contains_progeny(cpj, c) && cpj->depth <= c->depth) {
-        /* Avoid double counting self interactions involving c */
-        continue;
-      }
       for (int k = j + 1; k < 8; k++) {
         if (ci->progeny[k] == NULL) continue;
         struct cell *cpk = ci->progeny[k];
-        if (!cell_contains_progeny(cpk, c) && cpk->depth <= c->depth) {
-          /* Avoid double counting self interactions involving c */
-          continue;
-        }
 
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpj, cpk)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(c->grav.multipole, cpk->grav.multipole);
+          if (cell_contains_progeny(cpj, c)) {
+            runner_count_mesh_interaction(c->grav.multipole,
+                                          cpk->grav.multipole);
+          } else if (cell_contains_progeny(c, cpj)) {
+            runner_count_mesh_interaction(cpk->grav.multipole,
+                                          c->grav.multipole);
+          } else {
+            /*Nothing to do here*/
+          }
           continue;
         }
 
@@ -384,6 +378,9 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
  *
  * This function mirrors the task creation and splitting logic to count
  * mesh interactions that ci would receive from all top-level cells.
+ *
+ * NOTE: This will recurse over cells that are not directly realted to c (the
+ * super cell of ci). It will not add their contribution though so is "safe".
  *
  * @param r The thread #runner.
  * @param ci The #cell of interest (active cell receiving interactions).
