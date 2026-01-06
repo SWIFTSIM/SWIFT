@@ -505,7 +505,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   float OW;
   OW = 1.0f;
 
-  const float d_ip = 2.0f * cbrtf(p->mass / p->rho);
+  const float d_ip = 2.0f * p->h; //cbrtf(p->mass / p->rho);
   //const float d_ip = 2.0f*p->h; //cbrtf(p->mass / p->rho);
 
   /* R mean square */
