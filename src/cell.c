@@ -1286,13 +1286,17 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
  * tree.
  * @param with_hydro Are we running with hydrodynamics on?
  * @param with_grav Are we running with gravity on?
+ * @param with_sigm Are we running with SIDM on?
  */
 void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
-                    const int with_grav) {
+                    const int with_grav, const int with_sidm) {
+
   /* Are we in a cell which is either the hydro or gravity super? */
   if (super == NULL && ((with_hydro && c->hydro.super != NULL) ||
-                        (with_grav && c->grav.super != NULL)))
+                        (with_grav && c->grav.super != NULL) ||
+                        (with_sidm && c->sidm.super != NULL))) {
     super = c;
+  }
 
   /* Set the super-cell */
   c->super = super;
@@ -1301,19 +1305,23 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        cell_set_super(c->progeny[k], super, with_hydro, with_grav);
+        cell_set_super(c->progeny[k], super, with_hydro, with_grav, with_sidm);
 }
 
 /**
- * @brief Set the super-cell pointers for all cells in a hierarchy.
+ * @brief Set the super-cell pointers for hydro tasks for all cells in a
+ * hierarchy.
  *
  * @param c The top-level #cell to play with.
- * @param super_hydro Pointer to the deepest cell with tasks in this part of
- * the tree.
+ * @param super_hydro Pointer to the deepest cell with hydro tasks in this part
+ * of the tree.
  */
 void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
+
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_hydro == NULL && c->hydro.density != NULL) super_hydro = c;
+  if (super_hydro == NULL && c->hydro.density != NULL) {
+    super_hydro = c;
+  }
 
   /* Set the super-cell */
   c->hydro.super = super_hydro;
@@ -1326,16 +1334,43 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 }
 
 /**
- * @brief Set the super-cell pointers for all cells in a hierarchy.
+ * @brief Set the super-cell pointers for sidm tasks for all cells in a
+ * hierarchy.
+ *
+ * @param c The top-level #cell to play with.
+ * @param super_hydro Pointer to the deepest cell with sidm tasks in this part
+ * of the tree.
+ */
+void cell_set_super_sidm(struct cell *c, struct cell *super_sidm) {
+
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_sidm == NULL && c->sidm.density != NULL) {
+    super_sidm = c;
+  }
+
+  /* Set the super-cell */
+  c->sidm.super = super_sidm;
+
+  /* Recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) cell_set_super_sidm(c->progeny[k], super_sidm);
+}
+
+/**
+ * @brief Set the super-cell pointers for gravity tasks for all cells in a
+ * hierarchy.
  *
  * @param c The top-level #cell to play with.
  * @param super_gravity Pointer to the deepest cell with tasks in this part of
  * the tree.
  */
 void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
+
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_gravity == NULL && (c->grav.grav != NULL || c->grav.mm != NULL))
+  if (super_gravity == NULL && (c->grav.grav != NULL || c->grav.mm != NULL)) {
     super_gravity = c;
+  }
 
   /* Set the super-cell */
   c->grav.super = super_gravity;
@@ -1348,7 +1383,8 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
 }
 
 /**
- * @brief Mapper function to set the super pointer of the cells.
+ * @brief Mapper function to set the super pointer of the cells and their MPI
+ * tags.
  *
  * @param map_data The top-level cells.
  * @param num_elements The number of top-level cells.
@@ -1360,6 +1396,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_grav = (e->policy & engine_policy_self_gravity) ||
                         (e->policy & engine_policy_external_gravity);
+  const int with_sidm = (e->policy & engine_policy_sidm);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -1372,11 +1409,14 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
     /* Super-pointer for hydro */
     if (with_hydro) cell_set_super_hydro(c, NULL);
 
+    /* Super-pointer for SIDM */
+    if (with_sidm) cell_set_super_sidm(c, NULL);
+
     /* Super-pointer for gravity */
     if (with_grav) cell_set_super_gravity(c, NULL);
 
     /* Super-pointer for common operations */
-    cell_set_super(c, NULL, with_hydro, with_grav);
+    cell_set_super(c, NULL, with_hydro, with_grav, with_sidm);
   }
 }
 

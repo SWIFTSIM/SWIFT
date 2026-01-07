@@ -34,7 +34,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
-        testLog testDistance testTimeline testSIDMSetUp.sh testSIDMSymmetry
+        testLog testDistance testTimeline \
+        testSIDMSetUp.sh testSIDMSymmetry test27cellsSIDM.sh
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -47,7 +48,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline testSIDMSetUp testSIDMSymmetry
+		 testNeutrinoFermiDirac testLog testTimeline \
+	         testSIDMSetUp testSIDMSymmetry test27cellsSIDM
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -166,6 +168,8 @@ testSIDMSetUp_SOURCES = testSIDMSetUp.c
 
 testSIDMSymmetry_SOURCES = testSIDMSymmetry.c
 
+test27cellsSIDM_SOURCES = test27cellsSIDM.c
+
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              test27cells.sh test27cellsPerturbed.sh testParser.sh testPeriodicBC.sh \
@@ -179,4 +183,6 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              output_list_scale_factor.txt testEOS_plot.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
-             testNeutrinoCosmology.dat testNeutrinoCosmology.sh testSIDMSetUp.sh makeInputSIDM.py testSIDM.yml
+             testNeutrinoCosmology.dat testNeutrinoCosmology.sh \
+	     testSIDMSetUp.sh makeInputSIDM.py testSIDM.yml test27cellsSIDM.sh \
+	     tests/tolerance_27_normal_SIDM.dat tests/tolerance_27_perturbed_h2_SIDM.dat tests/tolerance_27_perturbed_h_SIDM.dat

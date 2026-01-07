@@ -28,12 +28,6 @@
 #define ENGINE_POLICY engine_policy_none
 #endif
 
-void select_output_space_clean(struct space *s) { free(s->xparts); };
-
-void select_output_engine_clean(struct engine *e) {
-  threadpool_clean(&e->threadpool);
-}
-
 int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
@@ -206,11 +200,8 @@ int main(int argc, char *argv[]) {
 
   /* Clean-up */
   message("Cleaning memory.");
-  select_output_engine_clean(&e);
-  select_output_space_clean(&s);
   cosmology_clean(&cosmo);
-  free(parts);
-  free(siparts);
+  engine_clean(&e, /*fof=*/0, /*restart=*/0);
 
   return 0;
 }

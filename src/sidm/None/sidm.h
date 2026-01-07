@@ -19,6 +19,10 @@
 #ifndef SWIFT_NONE_SIDM_H
 #define SWIFT_NONE_SIDM_H
 
+/* Local includes */
+#include "sidm_part.h"
+#include "sidm_properties.h"
+
 /**
  * @brief Initialises the si-particles for the first time
  *
@@ -52,7 +56,7 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sidm_end_density(
-    struct sipart *sip, const struct cosmology *cosmo) {}
+    struct sipart *sip) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #sipart has 0
@@ -63,5 +67,25 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
  */
 __attribute__((always_inline)) INLINE static void sidm_sipart_has_no_neighbours(
     struct sipart *restrict sip, const struct cosmology *cosmo) {}
+
+/**
+ * @brief Predict additional particle fields forward in time when drifting
+ *
+ * @param sip The #sipart.
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void sidm_predict_extra(
+    struct sipart *restrict sip, float dt_drift) {}
+
+/**
+ * @brief Returns the comoving density of a particle
+ *
+ * @param sip The si-particle of interest
+ */
+__attribute__((always_inline)) INLINE static float sidm_get_comoving_density(
+    const struct sipart *restrict sip) {
+
+  return sip->rho;
+}
 
 #endif /* SWIFT_NONE_SIDM_H */
