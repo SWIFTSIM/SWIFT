@@ -99,11 +99,11 @@ void engine_makeproxies(struct engine *e) {
   if (periodic) {
     if (delta_cells >= cdim[0] / 2) {
       if (cdim[0] % 2 == 0) {
-	delta_m = cdim[0] / 2;
-	delta_p = cdim[0] / 2 - 1;
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
       } else {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2;
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
       }
     }
   } else {
@@ -112,7 +112,6 @@ void engine_makeproxies(struct engine *e) {
       delta_p = cdim[0];
     }
   }
-
 
   /* Let's be verbose about this choice */
   if (e->verbose)
