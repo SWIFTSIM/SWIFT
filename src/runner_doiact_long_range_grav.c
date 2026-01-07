@@ -317,8 +317,6 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
                                                           struct cell *ci,
                                                           struct space *s) {
 
-  return;
-
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
   struct engine *e = s->e;
@@ -353,8 +351,8 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
             runner_count_mesh_interaction(c->grav.multipole,
                                           cpk->grav.multipole);
           } else if (cell_contains_progeny(c, cpj)) {
-            runner_count_mesh_interaction(cpk->grav.multipole,
-                                          c->grav.multipole);
+            runner_count_mesh_interaction(cpj->grav.multipole,
+                                          cpk->grav.multipole);
           } else {
             /*Nothing to do here*/
           }
