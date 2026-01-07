@@ -1383,7 +1383,8 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
 }
 
 /**
- * @brief Mapper function to set the super pointer of the cells.
+ * @brief Mapper function to set the super pointer of the cells and their MPI
+ * tags.
  *
  * @param map_data The top-level cells.
  * @param num_elements The number of top-level cells.
