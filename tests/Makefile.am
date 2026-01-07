@@ -184,4 +184,5 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh \
-	     testSIDMSetUp.sh makeInputSIDM.py testSIDM.yml test27cellsSIDM.sh
+	     testSIDMSetUp.sh makeInputSIDM.py testSIDM.yml test27cellsSIDM.sh \
+	     tests/tolerance_27_normal_SIDM.dat tests/tolerance_27_perturbed_h2_SIDM.dat tests/tolerance_27_perturbed_h_SIDM.dat
