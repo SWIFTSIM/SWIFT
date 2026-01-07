@@ -1445,11 +1445,11 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                 if (ci->progeny[k] == NULL) continue;
                 struct cell *cpj = ci->progeny[k];
 
-                // /* If running with the mesh this pair may be beyond the mesh
-                //  * criterion meaning we won't need a task here. */
-                // if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
-                //   continue;
-                // }
+                /* If running with the mesh this pair may be beyond the mesh
+                 * criterion meaning we won't need a task here. */
+                if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
+                  continue;
+                }
 
                 scheduler_splittask_gravity(
                     scheduler_addtask(s, task_type_pair, t->subtype,
@@ -1502,7 +1502,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                   /* If running with the mesh this pair may be beyond the mesh
                    * criterion meaning we won't need a task here. */
                   if (engine_gravity_can_use_mesh(e, cpi, cpj) &&
-                      cpi->top != cpj->top) {
+                      cpi->top == cpj->top) {
                     continue;
                   }
 
