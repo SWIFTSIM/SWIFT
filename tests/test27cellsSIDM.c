@@ -224,8 +224,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             sidm_get_comoving_density(&main_cell->sidm.parts[siid]),
             main_cell->sidm.parts[siid].density.rho_dh,
             main_cell->sidm.parts[siid].density.wcount,
-            main_cell->sidm.parts[siid].density.wcount_dh
-    );
+            main_cell->sidm.parts[siid].density.wcount_dh);
   }
 
   /* Write all other cells */
@@ -246,8 +245,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
                   sidm_get_comoving_density(&main_cell->sidm.parts[sipjd]),
                   main_cell->sidm.parts[sipjd].density.rho_dh,
                   cj->sidm.parts[sipjd].density.wcount,
-                  cj->sidm.parts[sipjd].density.wcount_dh
-                 );
+                  cj->sidm.parts[sipjd].density.wcount_dh);
         }
       }
     }

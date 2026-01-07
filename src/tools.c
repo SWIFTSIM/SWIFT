@@ -932,14 +932,16 @@ void self_all_sidm_density(struct runner *r, struct cell *ci) {
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Hit or miss? */
-      if (r2 < hig2 && sipart_is_active(sipi, e) && !sipart_is_inhibited(sipj, e)) {
+      if (r2 < hig2 && sipart_is_active(sipi, e) &&
+          !sipart_is_inhibited(sipj, e)) {
 
         /* Interact */
         runner_iact_nonsym_sidm_density(r2, dx, hi, hj, sipi, sipj, a, H);
       }
 
       /* Hit or miss? */
-      if (r2 < hjg2 && sipart_is_active(sipj, e) && !sipart_is_inhibited(sipi, e)) {
+      if (r2 < hjg2 && sipart_is_active(sipj, e) &&
+          !sipart_is_inhibited(sipi, e)) {
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];

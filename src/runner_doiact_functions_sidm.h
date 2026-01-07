@@ -64,7 +64,8 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
   for (int k = 0; k < sicount; k++) {
     const struct sipart *sip = &siparts[k];
     const char depth = sip->depth_h;
-    if ((sipart_is_active(sip, e)) && (depth >= min_depth) && (depth <= max_depth)) {
+    if ((sipart_is_active(sip, e)) && (depth >= min_depth) &&
+        (depth <= max_depth)) {
       indt[sicountdt] = k;
       sicountdt += 1;
     }
@@ -93,7 +94,8 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
     const float hig2 = hi * hi * kernel_gamma2;
 
     /* Is the ith particle in the range of h we care about? */
-    const int update_i = (sipart_is_active(sipi, e)) && (depth_i >= min_depth) && (depth_i <= max_depth);
+    const int update_i = (sipart_is_active(sipi, e)) &&
+                         (depth_i >= min_depth) && (depth_i <= max_depth);
 
     /* If false then it can only act as a neighbour of others */
     if (!update_i) {
@@ -187,8 +189,8 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
         /* We know nothing about pj
          * -> Check whether it is in the right range of h
          * -> Check the distance to pi */
-        const int doj = (sipart_is_active(sipj, e)) &&
-            (depth_j >= min_depth) && (depth_j <= max_depth) && (r2 < hjg2);
+        const int doj = (sipart_is_active(sipj, e)) && (depth_j >= min_depth) &&
+                        (depth_j <= max_depth) && (r2 < hjg2);
 
         /* Hit or miss? */
         if (doi && doj) {
