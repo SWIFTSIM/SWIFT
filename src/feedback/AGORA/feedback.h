@@ -61,6 +61,16 @@ void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e);
 
 /**
+ * @brief Finishes the #part density calculation.
+ *
+ * Nothing to do here.
+ *
+ * @param p The particle to act upon
+ * @param xp The extra particle to act upon
+ */
+void feedback_end_density(struct part *p, struct xpart *xp);
+
+/**
  * @brief Reset the gas particle-carried fields related to feedback at the
  * start of a step.
  *

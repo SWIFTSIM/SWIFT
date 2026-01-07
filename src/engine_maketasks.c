@@ -398,13 +398,17 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  * @param cj Dummy cell containing the nodeID of the receiving node.
  * @param t_density The send_density #task, if it has already been created.
  * @param t_prep2 The send_prep2 #task, if it has already been created.
+ * @param t_prep3 The send_prep3 #task, if it has already been created.
+ * @param t_prep4 The send_prep4 #task, if it has already been created.
  * @param t_sf_counts The send_sf_counts, if it has been created.
  * @param with_star_formation Are we running with star formation on?
  * @param with_star_formation_sink Are we running with star formation sink?
  */
 void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_density,
-                                struct task *t_prep2, struct task *t_sf_counts,
+                                struct task *t_prep2, struct task *t_prep3,
+                                struct task *t_prep4,
+                                struct task *t_sf_counts,
                                 const int with_star_formation,
                                 const int with_star_formation_sink) {
 #ifdef WITH_MPI
@@ -457,6 +461,14 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       t_prep2 = scheduler_addtask(s, task_type_send, task_subtype_spart_prep2,
                                   ci->mpi.tag, 0, ci, cj);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+      t_prep3 = scheduler_addtask(s, task_type_send, task_subtype_spart_prep3,
+                                  ci->mpi.tag, 0, ci, cj);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+      t_prep4 = scheduler_addtask(s, task_type_send, task_subtype_spart_prep4,
+                                  ci->mpi.tag, 0, ci, cj);
+#endif
 
 #ifdef EXTRA_STAR_LOOPS
       /* The first send_stars task should unlock prep1 ghost */
@@ -465,9 +477,42 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       /* Prep2 ghost before second send */
       scheduler_addunlock(s, ci->hydro.super->stars.prep2_ghost, t_prep2);
 
+
+#ifdef EXTRA_STAR_LOOPS_2
+
+      /* Prep2 unlocks prep3 ghost before third send */
+      scheduler_addunlock(s, t_prep2, ci->hydro.super->stars.prep3_ghost);
+
+      /* Prep3 ghost before third send */
+      scheduler_addunlock(s, ci->hydro.super->stars.prep3_ghost, t_prep3);
+
+
+#ifdef EXTRA_STAR_LOOPS_3
+
+      /* Prep3 unlocks prep4 ghost before fourth send */
+      scheduler_addunlock(s, t_prep3, ci->hydro.super->stars.prep4_ghost);
+
+      /* Prep4 ghost before fourth send */
+      scheduler_addunlock(s, ci->hydro.super->stars.prep4_ghost, t_prep4);
+
+      /* The fourth send_stars task should unlock the super_cell's "end of star
+       * block" task. */
+      scheduler_addunlock(s, t_prep4, ci->hydro.super->stars.stars_out);
+#else /* Without EXTRA_STAR_LOOPS_3 */
+      /* The third send_stars task should unlock the super_cell's "end of star
+       * block" task. */
+      scheduler_addunlock(s, t_prep3, ci->hydro.super->stars.stars_out);
+#endif /* EXTRA_STAR_LOOPS_3 */
+
+
+#else /* Without EXTRA_STAR_LOOPS_2 */
+
       /* The second send_stars task should unlock the super_cell's "end of star
        * block" task. */
       scheduler_addunlock(s, t_prep2, ci->hydro.super->stars.stars_out);
+#endif /* EXTRA_STAR_LOOPS_2 */
+
+
 #else
       /* The send_stars task should unlock the super_cell's "end of star block"
        * task. */
@@ -486,7 +531,13 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       if (with_star_formation && ci->hydro.count > 0) {
         scheduler_addunlock(s, t_sf_counts, t_density);
 #ifdef EXTRA_STAR_LOOPS
-        scheduler_addunlock(s, t_sf_counts, t_prep2);
+	scheduler_addunlock(s, t_sf_counts, t_prep2);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+	scheduler_addunlock(s, t_sf_counts, t_prep3);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+	scheduler_addunlock(s, t_sf_counts, t_prep4);
 #endif
       }
     }
@@ -494,6 +545,12 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
     engine_addlink(e, &ci->mpi.send, t_density);
 #ifdef EXTRA_STAR_LOOPS
     engine_addlink(e, &ci->mpi.send, t_prep2);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+    engine_addlink(e, &ci->mpi.send, t_prep3);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+    engine_addlink(e, &ci->mpi.send, t_prep4);
 #endif
     if (with_star_formation && ci->hydro.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
@@ -505,7 +562,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_stars(e, ci->progeny[k], cj, t_density, t_prep2,
-                                   t_sf_counts, with_star_formation,
+                                   t_prep3, t_prep4, t_sf_counts, with_star_formation,
                                    with_star_formation_sink);
 
 #else
@@ -1002,6 +1059,8 @@ void engine_addtasks_recv_rt_advance_cell_time(struct engine *e, struct cell *c,
  * @param c The foreign #cell.
  * @param t_density The recv_density #task, if it has already been created.
  * @param t_prep2 The recv_prep2 #task, if it has already been created.
+ * @param t_prep3 The send_prep3 #task, if it has already been created.
+ * @param t_prep4 The send_prep4 #task, if it has already been created.
  * @param t_sf_counts The recv_sf_counts, if it has been created.
  * @param tend The top-level time-step communication #task.
  * @param with_star_formation Are we running with star formation on?
@@ -1009,6 +1068,7 @@ void engine_addtasks_recv_rt_advance_cell_time(struct engine *e, struct cell *c,
  */
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                 struct task *t_density, struct task *t_prep2,
+				struct task *t_prep3, struct task *t_prep4,
                                 struct task *t_sf_counts,
                                 struct task *const tend,
                                 const int with_star_formation,
@@ -1053,6 +1113,14 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     t_prep2 = scheduler_addtask(s, task_type_recv, task_subtype_spart_prep2,
                                 c->mpi.tag, 0, c, NULL);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+    t_prep3 = scheduler_addtask(s, task_type_recv, task_subtype_spart_prep3,
+				c->mpi.tag, 0, c, NULL);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+    t_prep4 = scheduler_addtask(s, task_type_recv, task_subtype_spart_prep4,
+				c->mpi.tag, 0, c, NULL);
+#endif
     if (with_star_formation && c->hydro.count > 0) {
 
       /* Receive the stars only once the counts have been received */
@@ -1061,6 +1129,12 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #ifdef EXTRA_STAR_LOOPS
       scheduler_addunlock(s, t_sf_counts, t_prep2);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+	scheduler_addunlock(s, t_sf_counts, t_prep3);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+	scheduler_addunlock(s, t_sf_counts, t_prep4);
+#endif
     }
   }
 
@@ -1068,6 +1142,12 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     engine_addlink(e, &c->mpi.recv, t_density);
 #ifdef EXTRA_STAR_LOOPS
     engine_addlink(e, &c->mpi.recv, t_prep2);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+    engine_addlink(e, &c->mpi.recv, t_prep3);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+    engine_addlink(e, &c->mpi.recv, t_prep4);
 #endif
     if (with_star_formation && c->hydro.count > 0) {
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
@@ -1080,6 +1160,12 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
       scheduler_addunlock(s, t_density, c->stars.sorts);
 #ifdef EXTRA_STAR_LOOPS
       scheduler_addunlock(s, c->stars.sorts, t_prep2);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+      scheduler_addunlock(s, c->stars.sorts, t_prep3);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+      scheduler_addunlock(s, c->stars.sorts, t_prep4);
 #endif
     }
 
@@ -1100,18 +1186,48 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
       scheduler_addunlock(s, l->t, t_prep2);
     }
 
+#ifdef EXTRA_STAR_LOOPS_2
+    /* Receive stars for the third time after the prep3 loop */
+    for (struct link *l = c->stars.prepare3; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_prep2, l->t);
+      scheduler_addunlock(s, l->t, t_prep3);
+    }
+
+#ifdef EXTRA_STAR_LOOPS_3
+    /* Receive stars for the fourth time after the prep4 loop */
+    for (struct link *l = c->stars.prepare4; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_prep3, l->t);
+      scheduler_addunlock(s, l->t, t_prep4);
+    }
+
+    /* Start updating local gas only after sparts have been received */
+    for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_prep4, l->t);
+      scheduler_addunlock(s, l->t, tend);
+    }
+#else /* Without EXTRA_STAR_LOOPS_3 */
+    /* Start updating local gas only after sparts have been received */
+    for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_prep3, l->t);
+      scheduler_addunlock(s, l->t, tend);
+    }
+#endif /* EXTRA_STAR_LOOPS_3 */
+
+#else /* Without EXTRA_STAR_LOOPS_2 */
     /* Start updating local gas only after sparts have been received */
     for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_prep2, l->t);
       scheduler_addunlock(s, l->t, tend);
     }
-#else
+#endif /* EXTRA_STAR_LOOPS_2 */
+
+#else /* Without EXTRA_STAR_LOOPS */
     /* Start updating local gas only after sparts have been received */
     for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_density, l->t);
       scheduler_addunlock(s, l->t, tend);
     }
-#endif
+#endif /* EXTRA_STAR_LOOPS */
   }
 
   /* Recurse? */
@@ -1119,7 +1235,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_stars(e, c->progeny[k], t_density, t_prep2,
-                                   t_sf_counts, tend, with_star_formation,
+                                   t_prep3, t_prep4, t_sf_counts, tend,
+                                   with_star_formation,
                                    with_star_formation_sink);
 
 #else
@@ -1911,6 +2028,16 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_stars_prep_ghost2, task_subtype_none,
                               0, /* implicit = */ 1, c, NULL);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+        c->stars.prep3_ghost =
+            scheduler_addtask(s, task_type_stars_prep_ghost3, task_subtype_none,
+                              0, /* implicit = */ 1, c, NULL);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+        c->stars.prep4_ghost =
+            scheduler_addtask(s, task_type_stars_prep_ghost4, task_subtype_none,
+                              0, /* implicit = */ 1, c, NULL);
+#endif
 
 #ifdef WITH_CSDS
         if (with_csds) {
@@ -2626,6 +2753,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_star_prep1 = NULL;
   struct task *t_star_prep2 = NULL;
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+  struct task *t_star_prep3 = NULL;
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+  struct task *t_star_prep4 = NULL;
+#endif
   struct task *t_force = NULL;
   struct task *t_limiter = NULL;
   struct task *t_star_self_density[STARS_SELF_NTASK] = {NULL};
@@ -2709,6 +2842,16 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addtask(sched, task_type_self, task_subtype_stars_prep2,
                               flags, 0, ci, NULL);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+	t_star_prep3 =
+	    scheduler_addtask(sched, task_type_self, task_subtype_stars_prep3,
+			      flags, 0, ci, NULL);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+	t_star_prep4 =
+	    scheduler_addtask(sched, task_type_self, task_subtype_stars_prep4,
+			      flags, 0, ci, NULL);
+#endif
       }
 
       /* The sink tasks */
@@ -2769,6 +2912,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #ifdef EXTRA_STAR_LOOPS
         engine_addlink(e, &ci->stars.prepare1, t_star_prep1);
         engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+	engine_addlink(e, &ci->stars.prepare3, t_star_prep3);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+	engine_addlink(e, &ci->stars.prepare4, t_star_prep4);
 #endif
       }
       if (with_sink) {
@@ -2855,16 +3004,38 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             t_star_prep2);
         scheduler_addunlock(sched, t_star_prep2,
                             ci->hydro.super->stars.prep2_ghost);
+
+#ifdef EXTRA_STAR_LOOPS_2
         scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
-                            t_star_feedback);
-#else
+                            t_star_prep3);
+        scheduler_addunlock(sched, t_star_prep3,
+                            ci->hydro.super->stars.prep3_ghost);
+
+#ifdef EXTRA_STAR_LOOPS_3
+	scheduler_addunlock(sched, ci->hydro.super->stars.prep3_ghost,
+			    t_star_prep4);
+	scheduler_addunlock(sched, t_star_prep4,
+			    ci->hydro.super->stars.prep4_ghost);
+	scheduler_addunlock(sched, ci->hydro.super->stars.prep4_ghost,
+			    t_star_feedback);
+#else /* Without EXTRA_STAR_LOOPS_3 */
+	scheduler_addunlock(sched, ci->hydro.super->stars.prep3_ghost,
+			    t_star_feedback);
+#endif /* EXTRA_STAR_LOOPS_3 */
+
+#else  /* Without EXTRA_STAR_LOOPS_2 */
+	scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
+			    t_star_feedback);
+#endif /* EXTRA_STAR_LOOPS_2 */
+
+#else  /* Without EXTRA_STAR_LOOPS */
         for (int i = 0; i < STARS_GHOST_NTASK; i++) {
           scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost[i],
                               t_star_feedback);
         }
-#endif
-        scheduler_addunlock(sched, t_star_feedback,
-                            ci->hydro.super->stars.stars_out);
+#endif /* EXTRA_STAR_LOOPS */
+	scheduler_addunlock(sched, t_star_feedback,
+			    ci->hydro.super->stars.stars_out);
       }
 
       if (with_sink) {
@@ -3019,6 +3190,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_star_prep2 = scheduler_addtask(
             sched, task_type_pair, task_subtype_stars_prep2, flags, 0, ci, cj);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+	t_star_prep3 = scheduler_addtask(
+	    sched, task_type_pair, task_subtype_stars_prep3, flags, 0, ci, cj);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+	t_star_prep4 = scheduler_addtask(
+	    sched, task_type_pair, task_subtype_stars_prep4, flags, 0, ci, cj);
+#endif
       }
 
       /* The sink tasks */
@@ -3100,6 +3279,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->stars.prepare1, t_star_prep1);
         engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
         engine_addlink(e, &cj->stars.prepare2, t_star_prep2);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+	engine_addlink(e, &ci->stars.prepare3, t_star_prep3);
+	engine_addlink(e, &cj->stars.prepare3, t_star_prep3);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+	engine_addlink(e, &ci->stars.prepare4, t_star_prep4);
+	engine_addlink(e, &cj->stars.prepare4, t_star_prep4);
 #endif
       }
       if (with_sink) {
@@ -3224,16 +3411,38 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_star_prep2);
           scheduler_addunlock(sched, t_star_prep2,
                               ci->hydro.super->stars.prep2_ghost);
-          scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
-                              t_star_feedback);
-#else
-          for (int i = 0; i < STARS_GHOST_NTASK; i++) {
+
+#ifdef EXTRA_STAR_LOOPS_2
+	  scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
+			      t_star_prep3);
+	  scheduler_addunlock(sched, t_star_prep3,
+			      ci->hydro.super->stars.prep3_ghost);
+
+#ifdef EXTRA_STAR_LOOPS_3
+	  scheduler_addunlock(sched, ci->hydro.super->stars.prep3_ghost,
+			      t_star_prep4);
+	  scheduler_addunlock(sched, t_star_prep4,
+			      ci->hydro.super->stars.prep4_ghost);
+	  scheduler_addunlock(sched, ci->hydro.super->stars.prep4_ghost,
+			      t_star_feedback);
+#else /* Without EXTRA_STAR_LOOPS_3 */
+	scheduler_addunlock(sched, ci->hydro.super->stars.prep3_ghost,
+			    t_star_feedback);
+#endif /* EXTRA_STAR_LOOPS_3 */
+
+#else  /* Without EXTRA_STAR_LOOPS_2 */
+	  scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
+			      t_star_feedback);
+#endif /* EXTRA_STAR_LOOPS_2 */
+
+#else  /* Without EXTRA_STAR_LOOPS */
+	  for (int i = 0; i < STARS_GHOST_NTASK; i++) {
             scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost[i],
                                 t_star_feedback);
           }
-#endif
-          scheduler_addunlock(sched, t_star_feedback,
-                              ci->hydro.super->stars.stars_out);
+#endif /* EXTRA_STAR_LOOPS */
+	  scheduler_addunlock(sched, t_star_feedback,
+			      ci->hydro.super->stars.stars_out);
         }
 
         if (with_sink) {
@@ -3377,33 +3586,54 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             }
 #ifdef EXTRA_STAR_LOOPS
             for (int i = 0; i < STARS_GHOST_NTASK; i++) {
-
               scheduler_addunlock(
                   sched, cj->hydro.super->stars.density_ghost[i], t_star_prep1);
             }
-            scheduler_addunlock(sched, t_star_prep1,
-                                cj->hydro.super->stars.prep1_ghost);
-            scheduler_addunlock(sched, t_star_prep1,
-                                cj->hydro.super->hydro.prep1_ghost);
-            scheduler_addunlock(sched, cj->hydro.super->stars.prep1_ghost,
-                                t_star_prep2);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.prep1_ghost,
-                                t_star_prep2);
-            scheduler_addunlock(sched, t_star_prep2,
-                                cj->hydro.super->stars.prep2_ghost);
-            scheduler_addunlock(sched, cj->hydro.super->stars.prep2_ghost,
-                                t_star_feedback);
-#else
-            for (int i = 0; i < STARS_GHOST_NTASK; i++) {
+	    scheduler_addunlock(sched, t_star_prep1,
+				cj->hydro.super->stars.prep1_ghost);
+	    scheduler_addunlock(sched, t_star_prep1,
+				cj->hydro.super->hydro.prep1_ghost);
+	    scheduler_addunlock(sched, cj->hydro.super->stars.prep1_ghost,
+				t_star_prep2);
+	    scheduler_addunlock(sched, cj->hydro.super->hydro.prep1_ghost,
+				t_star_prep2);
+	    scheduler_addunlock(sched, t_star_prep2,
+				cj->hydro.super->stars.prep2_ghost);
 
+#ifdef EXTRA_STAR_LOOPS_2
+	    scheduler_addunlock(sched, cj->hydro.super->stars.prep2_ghost,
+				t_star_prep3);
+	    scheduler_addunlock(sched, t_star_prep3,
+				cj->hydro.super->stars.prep3_ghost);
+
+#ifdef EXTRA_STAR_LOOPS_3
+	    scheduler_addunlock(sched, cj->hydro.super->stars.prep3_ghost,
+				t_star_prep4);
+	    scheduler_addunlock(sched, t_star_prep4,
+				cj->hydro.super->stars.prep4_ghost);
+	    scheduler_addunlock(sched, cj->hydro.super->stars.prep4_ghost,
+				t_star_feedback);
+#else /* Without EXTRA_STAR_LOOPS_3 */
+	scheduler_addunlock(sched, cj->hydro.super->stars.prep3_ghost,
+			    t_star_feedback);
+#endif /* EXTRA_STAR_LOOPS_3 */
+
+
+#else  /* Without EXTRA_STAR_LOOPS_2 */
+	    scheduler_addunlock(sched, cj->hydro.super->stars.prep2_ghost,
+				t_star_feedback);
+#endif /* EXTRA_STAR_LOOPS_2 */
+
+#else  /* Without EXTRA_STAR_LOOPS */
+            for (int i = 0; i < STARS_GHOST_NTASK; i++) {
               scheduler_addunlock(sched,
                                   cj->hydro.super->stars.density_ghost[i],
                                   t_star_feedback);
             }
-#endif
-            scheduler_addunlock(sched, t_star_feedback,
-                                cj->hydro.super->stars.stars_out);
-          }
+#endif /* EXTRA_STAR_LOOPS */
+	    scheduler_addunlock(sched, t_star_feedback,
+				cj->hydro.super->stars.stars_out);
+	  }
 
           if (with_sink) {
 
@@ -3778,8 +4008,9 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
       engine_addtasks_send_stars(e, ci, cj, /*t_density=*/NULL,
-                                 /*t_prep2=*/NULL,
-                                 /*t_sf_counts=*/NULL, with_star_formation,
+                                 /*t_prep2=*/NULL, /*t_prep3=*/NULL,
+                                 /*t_prep4=*/NULL, /*t_sf_counts=*/NULL,
+                                 with_star_formation,
                                  with_star_formation_sink);
 
     /* Add the send tasks for the cells in the proxy that have a black holes
@@ -3891,6 +4122,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
       engine_addtasks_recv_stars(e, ci, /*t_density=*/NULL, /*t_prep2=*/NULL,
+				 /*t_prep3=*/NULL, /*t_prep4=*/NULL,
                                  /*t_sf_counts=*/NULL, tend,
                                  with_star_formation, with_star_formation_sink);
 
