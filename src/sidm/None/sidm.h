@@ -77,4 +77,15 @@ __attribute__((always_inline)) INLINE static void sidm_sipart_has_no_neighbours(
 __attribute__((always_inline)) INLINE static void sidm_predict_extra(
     struct sipart *restrict sip, float dt_drift) {}
 
+/**
+ * @brief Returns the comoving density of a particle
+ *
+ * @param sip The si-particle of interest
+ */
+__attribute__((always_inline)) INLINE static float sidm_get_comoving_density(
+    const struct sipart *restrict sip) {
+
+  return sip->rho;
+}
+
 #endif /* SWIFT_NONE_SIDM_H */
