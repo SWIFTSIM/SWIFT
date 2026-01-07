@@ -196,7 +196,7 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
  * @param multi_i The multipole receiving the interaction.
  * @param multi_j The multipole giving the interaction.
  */
-static void runner_count_mesh_interaction(
+static void runner_accumulate_interaction(
     struct gravity_tensors *restrict multi_i,
     struct gravity_tensors *restrict multi_j) {
 
@@ -216,6 +216,33 @@ static void runner_count_mesh_interaction(
 #endif
   /* Record that this multipole received a contribution */
   multi_i->pot.interacted = 1;
+}
+
+static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
+                                          struct cell *cj) {
+
+  /* Do we share the same top level cell? i.e. are we self-interacting? */
+  int is_self = ci->top == cj->top;
+
+  /* Decide which cell we are updating. */
+  if (super == ci) {
+    runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
+  } else if (cell_contains_progeny(ci, super)) {
+    runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
+  } else if (cell_contains_progeny(super, ci)) {
+    runner_accumulate_interaction(ci->grav.multipole, cj->grav.multipole);
+  }
+
+  /* Handle the symmetric case for self interactions */
+  if (is_self) {
+    if (super == cj) {
+      runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
+    } else if (cell_contains_progeny(cj, super)) {
+      runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
+    } else if (cell_contains_progeny(super, cj)) {
+      runner_accumulate_interaction(cj->grav.multipole, ci->grav.multipole);
+    }
+  }
 }
 
 /**
@@ -268,18 +295,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
-          if (c == cpi) {
-            runner_count_mesh_interaction(c->grav.multipole,
-                                          cpj->grav.multipole);
-          } else if (cell_contains_progeny(cpi, c)) {
-            runner_count_mesh_interaction(c->grav.multipole,
-                                          cpj->grav.multipole);
-          } else if (cell_contains_progeny(c, cpi)) {
-            runner_count_mesh_interaction(cpi->grav.multipole,
-                                          cpj->grav.multipole);
-          } else {
-            /*Nothing to do here*/
-          }
+          runner_count_mesh_interaction(c, cpi, cpj);
           continue;
         }
 
@@ -347,17 +363,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (engine_gravity_can_use_mesh(e, cpj, cpk)) {
           /* Record the mesh interaction */
-          if (cell_contains_progeny(cpj, c)) {
-            runner_count_mesh_interaction(c->grav.multipole,
-                                          cpk->grav.multipole);
-          } else if (cell_contains_progeny(c, cpj)) {
-            runner_count_mesh_interaction(cpj->grav.multipole,
-                                          cpk->grav.multipole);
-            runner_count_mesh_interaction(cpk->grav.multipole,
-                                          cpj->grav.multipole);
-          } else {
-            /*Nothing to do here*/
-          }
+          runner_count_mesh_interaction(c, cpj, cpk);
           continue;
         }
 
