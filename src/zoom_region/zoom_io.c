@@ -25,6 +25,7 @@
 
 /* Local includes. */
 #include "common_io.h"
+#include "engine.h"
 #include "error.h"
 #include "space.h"
 #include "zoom.h"
@@ -70,7 +71,7 @@ void zoom_write_metadata(hid_t root_grp, hid_t head_grp,
 
   /* Write out the rest of the data.*/
   io_write_attribute(h_zoom, "CentreOfMass", DOUBLE, center, 3);
-  io_write_attribute(h_zoom, "Shift", DOUBLE, zp->zoom_shift, 3);
+  io_write_attribute(h_zoom, "Shift", DOUBLE, zp->applied_zoom_shift, 3);
   io_write_attribute(h_zoom, "Size", DOUBLE, zp->dim, 3);
   io_write_attribute(h_zoom, "CDim", INT, zp->cdim, 3);
   io_write_attribute_i(h_zoom, "NZoomCells", zp->nr_zoom_cells);
@@ -80,6 +81,13 @@ void zoom_write_metadata(hid_t root_grp, hid_t head_grp,
                      zp->region_upper_bounds, 3);
   io_write_attribute(h_zoom, "InternalCenter", DOUBLE, internal_center, 3);
   io_write_attribute_i(h_zoom, "Depth", zp->zoom_cell_depth);
+
+  /* If we are running with cosmology write out the scale factor at the
+   * last shift */
+  if (s->e->policy & engine_policy_cosmology) {
+    io_write_attribute(h_zoom, "ScaleFactorLastShift", DOUBLE,
+                       &zp->scale_factor_at_last_shift, 1);
+  }
 
   H5Gclose(h_zoom);
 }

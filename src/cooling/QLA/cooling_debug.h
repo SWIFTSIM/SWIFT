@@ -20,6 +20,6 @@
 #define SWIFT_COOLING_QLA_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void cooling_debug_particle(
-    const struct part* p, const struct xpart* xp) {}
+    const struct part *p, const struct xpart *xp) {}
 
 #endif /* SWIFT_COOLING_QLA_DEBUG_H */

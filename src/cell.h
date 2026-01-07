@@ -465,6 +465,12 @@ struct cell {
    * a zoom region. */
   struct cell *void_parent;
 
+  /*! (Only applicable to void cells) Flag for whether this void cell has
+   * real, non-empty, local zoom cells nested within it. Certain geometries
+   * or totally foreign progeny can lead to this being false and we need
+   * to be able to know this at a glance. */
+  int contains_zoom_cells;
+
   /*! Cell flags bit-mask. */
   volatile uint32_t flags;
 
@@ -981,6 +987,50 @@ __attribute__((always_inline)) INLINE int cell_getid_from_pos(
     const int k = z * s->iwidth[2];
     return cell_getid(s->cdim, i, j, k);
   }
+}
+
+/**
+ * @brief Is this cell pair at the zoom top level?
+ *
+ * A zoom top level pair can either be a pair of depth 0 zoom cells, or a
+ * depth 0 zoom cell and a neighbour background cell at the zoom cell depth.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param s The #space.
+ * @return 1 if both cells are at the zoom top level, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_pair_is_zoom_tl(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    const struct space *restrict s) {
+
+  /* Are the cells zoom top level cells? */
+  int ci_is_zoom_tl = (ci->type == cell_type_zoom && ci->depth == 0);
+  int cj_is_zoom_tl = (cj->type == cell_type_zoom && cj->depth == 0);
+
+  /* Are the cells neighbour background cells at the zoom cell depth? */
+  int ci_is_neighbour_at_zoom_depth =
+      (ci->subtype == cell_subtype_neighbour &&
+       ci->depth == s->zoom_props->zoom_cell_depth);
+  int cj_is_neighbour_at_zoom_depth =
+      (cj->subtype == cell_subtype_neighbour &&
+       cj->depth == s->zoom_props->zoom_cell_depth);
+
+  /* If both cells are type zoom and have depth 0 then by definition they are
+   * zoom top level cells. */
+  if (ci_is_zoom_tl && cj_is_zoom_tl) {
+    return 1;
+  }
+
+  /* If one cell is zoom type and at depth 0, and the other is a background
+   * neighbour cell at the zoom top level cell depth then we also have a zoom
+   * top level pair. */
+  if ((ci_is_zoom_tl && cj_is_neighbour_at_zoom_depth) ||
+      (cj_is_zoom_tl && ci_is_neighbour_at_zoom_depth)) {
+    return 1;
+  }
+
+  return 0;
 }
 
 /**
@@ -2188,6 +2238,9 @@ __attribute__((always_inline)) static INLINE void cell_set_bpart_h_depth(
 __attribute__((always_inline)) INLINE static int zoom_cell_overlaps_zoom_region(
     const struct cell *c, const struct space *s) {
 
+  /* Simple tolerance to suppress FP noise */
+  const double tol = 1e-6 * s->zoom_props->dim[0];
+
   /* Cell boundaries */
   const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
   const double cell_max[3] = {c->loc[0] + c->width[0], c->loc[1] + c->width[1],
@@ -2210,7 +2263,7 @@ __attribute__((always_inline)) INLINE static int zoom_cell_overlaps_zoom_region(
       fmin(cell_max[2], zoom_max[2]) - fmax(cell_min[2], zoom_min[2]);
 
   /* Check if overlap lengths are positive */
-  return (overlap_x > 0.0 && overlap_y > 0.0 && overlap_z > 0.0);
+  return (overlap_x > tol) && (overlap_y > tol) && (overlap_z > tol);
 }
 
 /**

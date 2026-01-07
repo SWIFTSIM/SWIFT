@@ -113,3 +113,24 @@ be run on problems with more than :math:`10^{5}` particles when
 particles via the argument ``N`` of the configuration option is recommended.
 This mode must be run on a single node/rank, and is primarily designed for pure
 gravity tests (i.e., DMO).
+
+By setting `ForceChecks:only_when_all_active` in the parameter file to 1, the
+exact forces will only be computed when all gparts are active. Additionally, 
+setting `ForceChecks:only_at_snapshots` to 1 will make the code only compute
+the exact forces at the time of snapshot outputs. These options can be used to 
+either limit the computational burden or isolate the force errors to specific
+times. Note that in both cases the exact forces are always calculated on the first step. 
+
+To target only a specific subset of particles for the force checks, you can
+use the parameter `ForceChecks:exact_gravity_check_types` with a 1 for each type 
+you want to include and a 0 for each type you want to exclude. For example:
+
+.. code:: YAML
+
+  ForceChecks:
+    only_at_snapshots:      1    # Only compute exact forces during timesteps when a snapshot is being dumped.
+    exact_gravity_check_types:     [0, 1, 0, 0, 0, 0, 0] # Only compute exact forces for PartType1 (dark matter) particles.
+
+will only compute the exact forces for PartType1 (dark matter) particles and  
+only during timesteps when a snapshot is being dumped.
+
