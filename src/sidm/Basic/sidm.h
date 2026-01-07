@@ -58,6 +58,8 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
 
   sip->density.wcount = 0.f;
   sip->density.wcount_dh = 0.f;
+  sip->rho = 0.f;
+  sip->density.rho_dh = 0.f;
 }
 
 /**

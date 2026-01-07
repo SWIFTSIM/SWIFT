@@ -212,7 +212,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
   /* Write header */
   fprintf(file, "# %4s %10s %10s %10s %13s %13s %13s %13s\n", "ID", "pos_x",
-          "pos_y", "pos_z", "wcount", "wcount_dh", "rho", "rho_dh");
+          "pos_y", "pos_z", "rho", "rho_dh", "wcount", "wcount_dh");
 
   fprintf(file, "# Main cell --------------------------------------------\n");
 
@@ -221,10 +221,11 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     fprintf(file, "%6llu %10f %10f %10f %13e %13e %13e %13e\n",
             main_cell->sidm.parts[siid].id, main_cell->sidm.parts[siid].x[0],
             main_cell->sidm.parts[siid].x[1], main_cell->sidm.parts[siid].x[2],
-            main_cell->sidm.parts[siid].density.wcount,
-            main_cell->sidm.parts[siid].density.wcount_dh,
             sidm_get_comoving_density(&main_cell->sidm.parts[siid]),
-            main_cell->sidm.parts[siid].density.rho_dh);
+            main_cell->sidm.parts[siid].density.rho_dh,
+            main_cell->sidm.parts[siid].density.wcount,
+            main_cell->sidm.parts[siid].density.wcount_dh
+    );
   }
 
   /* Write all other cells */
@@ -242,10 +243,11 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
           fprintf(file, "%6llu %10f %10f %10f %13e %13e %13e %13e\n",
                   cj->sidm.parts[sipjd].id, cj->sidm.parts[sipjd].x[0],
                   cj->sidm.parts[sipjd].x[1], cj->sidm.parts[sipjd].x[2],
-                  cj->sidm.parts[sipjd].density.wcount,
-                  cj->sidm.parts[sipjd].density.wcount_dh,
                   sidm_get_comoving_density(&main_cell->sidm.parts[sipjd]),
-                  main_cell->sidm.parts[sipjd].density.rho_dh);
+                  main_cell->sidm.parts[sipjd].density.rho_dh,
+                  cj->sidm.parts[sipjd].density.wcount,
+                  cj->sidm.parts[sipjd].density.wcount_dh
+                 );
         }
       }
     }
@@ -347,6 +349,7 @@ int main(int argc, char *argv[]) {
   /* Help users... */
   message("DOSELF1 function called: %s", DOSELF1_NAME);
   message("DOPAIR1 function called: %s", DOPAIR1_NAME);
+  message("Vector size: %d", VEC_SIZE);
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
   message("Neighbour target: N = %f", pow_dimension(h) * kernel_norm);

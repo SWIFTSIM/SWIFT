@@ -830,6 +830,9 @@ void pairs_all_sidm_density(struct runner *r, struct cell *ci,
     hi = sipi->h;
     hig2 = hi * hi * kernel_gamma2;
 
+    /* Skip inactive particles. */
+    if (!sipart_is_active(sipi, e)) continue;
+
     const float sipix = sipi->x[0] - shift_i[0];
     const float sipiy = sipi->x[1] - shift_i[1];
     const float sipiz = sipi->x[2] - shift_i[2];
@@ -863,6 +866,9 @@ void pairs_all_sidm_density(struct runner *r, struct cell *ci,
     sipj = &cj->sidm.parts[j];
     hj = sipj->h;
     hjg2 = hj * hj * kernel_gamma2;
+
+    /* Skip inactive particles. */
+    if (!sipart_is_active(sipj, e)) continue;
 
     const float sipjx = sipj->x[0] - shift_j[0];
     const float sipjy = sipj->x[1] - shift_j[1];
@@ -926,14 +932,14 @@ void self_all_sidm_density(struct runner *r, struct cell *ci) {
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Hit or miss? */
-      if (r2 < hig2 && !sipart_is_inhibited(sipj, e)) {
+      if (r2 < hig2 && sipart_is_active(sipi, e) && !sipart_is_inhibited(sipj, e)) {
 
         /* Interact */
         runner_iact_nonsym_sidm_density(r2, dx, hi, hj, sipi, sipj, a, H);
       }
 
       /* Hit or miss? */
-      if (r2 < hjg2 && !sipart_is_inhibited(sipi, e)) {
+      if (r2 < hjg2 && sipart_is_active(sipj, e) && !sipart_is_inhibited(sipi, e)) {
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];
