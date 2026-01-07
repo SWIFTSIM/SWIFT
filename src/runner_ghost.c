@@ -76,9 +76,12 @@
  *
  * @param r The runner thread.
  * @param c The cell.
+ * @param offset First particle in the cell to treat (for split tasks).
+ * @param ntasks Interval between successive particles that are treated.
  * @param timer Are we timing this ?
  */
-void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
+void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
+                           const int ntasks, const int timer) {
 
   struct spart *restrict sparts = c->stars.parts;
   const struct engine *e = r->e;
@@ -116,7 +119,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        runner_do_stars_ghost(r, c->progeny[k], 0);
+        runner_do_stars_ghost(r, c->progeny[k], offset, ntasks, /*timer=*/0);
 
         /* Update h_max */
         h_max = max(h_max, c->progeny[k]->stars.h_max);
@@ -138,7 +141,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
       error("Can't allocate memory for left.");
     if ((right = (float *)malloc(sizeof(float) * c->stars.count)) == NULL)
       error("Can't allocate memory for right.");
-    for (int k = 0; k < c->stars.count; k++)
+    for (int k = offset; k < c->stars.count; k += ntasks)
       if (spart_is_active(&sparts[k], e) &&
           (feedback_is_active(&sparts[k], e) || with_rt)) {
         sid[scount] = k;
@@ -500,8 +503,19 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Self interaction? */
             if (l->t->type == task_type_self) {
-              runner_dosub_self_subset_stars_density(r, finger, sparts, sid,
-                                                     scount, 1);
+
+              /* if we have split the self tasks, then we only want to call
+               *  doself_subset once, for the split task with flag 0 */
+#if STARS_SELF_NTASK > 1
+              const int run_on_all_selfs = 0;
+#else
+              const int run_on_all_selfs = 1;
+#endif
+              if (run_on_all_selfs || l->t->flags == 0) {
+
+                runner_dosub_self_subset_stars_density(r, finger, sparts, sid,
+                                                       scount, 1);
+              }
             }
 
             /* Otherwise, pair interaction? */
@@ -542,30 +556,36 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     free(right);
     free(sid);
     free(h_0);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Update h_max */
+    atomic_max_f(&c->stars.h_max, h_max);
+    atomic_max_f(&c->stars.h_max_active, h_max_active);
+
+    for (int i = offset; i < c->stars.count; i += ntasks) {
+      const struct spart *sp = &c->stars.parts[i];
+      const float h = c->stars.parts[i].h;
+      if (spart_is_inhibited(sp, e)) continue;
+
+      if (h > c->stars.h_max)
+        error("Particle has h larger than h_max (id=%lld)", sp->id);
+
+      if (spart_is_active(sp, e) && (feedback_is_active(sp, e) || with_rt) &&
+          (h > c->stars.h_max_active))
+        error("Active particle has h larger than h_max_active (id=%lld)",
+              sp->id);
+    }
+#endif
   }
 
   /* Update h_max */
-  c->stars.h_max = h_max;
-  c->stars.h_max_active = h_max_active;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < c->stars.count; ++i) {
-    const struct spart *sp = &c->stars.parts[i];
-    const float h = c->stars.parts[i].h;
-    if (spart_is_inhibited(sp, e)) continue;
-
-    if (h > c->stars.h_max)
-      error("Particle has h larger than h_max (id=%lld)", sp->id);
-
-    if (spart_is_active(sp, e) && (feedback_is_active(sp, e) || with_rt) &&
-        (h > c->stars.h_max_active))
-      error("Active particle has h larger than h_max_active (id=%lld)", sp->id);
-  }
-#endif
+  atomic_max_f(&c->stars.h_max, h_max);
+  atomic_max_f(&c->stars.h_max_active, h_max_active);
 
   /* The ghost may not always be at the top level.
-   * Therefore we need to update h_max between the super- and top-levels */
-  if (c->stars.density_ghost) {
+   * Therefore we need to update h_max between the super- and top-levels
+   * Note: We can check the 0th entry as they are either all NULL or none */
+  if (c->stars.density_ghost[0]) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->stars.h_max, h_max);
       atomic_max_f(&tmp->stars.h_max_active, h_max_active);
@@ -1086,9 +1106,12 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
  *
  * @param r The runner thread.
  * @param c The cell.
+ * @param offset First particle in the cell to treat (for split tasks).
+ * @param ntasks Interval between successive particles that are treated.
  * @param timer Are we timing this ?
  */
-void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
+void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
+                     const int ntasks, const int timer) {
 
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
@@ -1128,7 +1151,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        runner_do_ghost(r, c->progeny[k], 0);
+        runner_do_ghost(r, c->progeny[k], offset, ntasks, /*timer=*/0);
 
         /* Update h_max */
         h_max = max(h_max, c->progeny[k]->hydro.h_max);
@@ -1151,7 +1174,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       error("Can't allocate memory for left.");
     if ((right = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
       error("Can't allocate memory for right.");
-    for (int k = 0; k < c->hydro.count; k++)
+    for (int k = offset; k < c->hydro.count; k += ntasks)
       if (part_is_active(&parts[k], e)) {
         pid[count] = k;
         h_0[count] = parts[k].h;
@@ -1575,28 +1598,34 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     free(right);
     free(pid);
     free(h_0);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Update h_max */
+    atomic_max_f(&c->hydro.h_max, h_max);
+    atomic_max_f(&c->hydro.h_max_active, h_max_active);
+
+    for (int i = offset; i < c->hydro.count; i += ntasks) {
+      const struct part *p = &c->hydro.parts[i];
+      const float h = c->hydro.parts[i].h;
+      if (part_is_inhibited(p, e)) continue;
+
+      if (h > c->hydro.h_max)
+        error("Particle has h larger than h_max (id=%lld)", p->id);
+      if (part_is_active(p, e) && h > c->hydro.h_max_active)
+        error("Active particle has h larger than h_max_active (id=%lld)",
+              p->id);
+    }
+#endif
   }
 
   /* Update h_max */
-  c->hydro.h_max = h_max;
-  c->hydro.h_max_active = h_max_active;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < c->hydro.count; ++i) {
-    const struct part *p = &c->hydro.parts[i];
-    const float h = c->hydro.parts[i].h;
-    if (part_is_inhibited(p, e)) continue;
-
-    if (h > c->hydro.h_max)
-      error("Particle has h larger than h_max (id=%lld)", p->id);
-    if (part_is_active(p, e) && h > c->hydro.h_max_active)
-      error("Active particle has h larger than h_max_active (id=%lld)", p->id);
-  }
-#endif
+  atomic_max_f(&c->hydro.h_max, h_max);
+  atomic_max_f(&c->hydro.h_max_active, h_max_active);
 
   /* The ghost may not always be at the top level.
-   * Therefore we need to update h_max between the super- and top-levels */
-  if (c->hydro.ghost) {
+   * Therefore we need to update h_max between the super- and top-levels
+   * Note: We can check the 0th entry as they are either all NULL or none */
+  if (c->hydro.ghost[0]) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->hydro.h_max, h_max);
       atomic_max_f(&tmp->hydro.h_max_active, h_max_active);

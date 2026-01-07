@@ -3234,6 +3234,47 @@ case "$with_rt" in
    ;;
 esac
 
+# Task-multiplexing
+
+#  Number of hydro cooling tasks per cell
+AC_ARG_WITH([hydro-cooling-ntask],
+   [AS_HELP_STRING([--with-hydro-cooling-ntask=<ntask>],
+      [number of hydro cooling tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_hydro_cooling_ntask="$withval"],
+   [with_hydro_cooling_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([HYDRO_COOLING_NTASK], [$with_hydro_cooling_ntask], [Number of hydro cooling tasks per cell])
+
+#  Number of stars density ghost tasks per cell
+AC_ARG_WITH([hydro-ghost-ntask],
+   [AS_HELP_STRING([--with-hydro-ghost-ntask=<ntask>],
+      [number of hydro density ghost tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_hydro_ghost_ntask="$withval"],
+   [with_hydro_ghost_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([HYDRO_GHOST_NTASK], [$with_hydro_ghost_ntask], [Number of hydro density ghost tasks per cell])
+
+#  Number of stars density ghost tasks per cell
+AC_ARG_WITH([stars-ghost-ntask],
+   [AS_HELP_STRING([--with-stars-ghost-ntask=<ntask>],
+      [number of stars density ghost tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_stars_ghost_ntask="$withval"],
+   [with_stars_ghost_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([STARS_GHOST_NTASK], [$with_stars_ghost_ntask], [Number of stars density ghost tasks per cell])
+
+#  Number of stars density self tasks per cell
+AC_ARG_WITH([stars-self-ntask],
+   [AS_HELP_STRING([--with-stars-self-ntask=<ntask>],
+      [number of stars density self tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_stars_self_ntask="$withval"],
+   [with_stars_self_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([STARS_SELF_NTASK], [$with_stars_self_ntask], [Number of stars density self tasks per cell])
 
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
@@ -3422,6 +3463,11 @@ AC_MSG_RESULT([
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
+   Hydro cooling ntask  : $with_hydro_cooling_ntask
+   Hydro ghost ntask    : $with_hydro_ghost_ntask
+   Stars ghost ntask    : $with_stars_ghost_ntask
+   Stars self ntask     : $with_stars_self_ntask
+
 
    Atomic operations in tasks  : $enable_atomics_within_tasks
    Individual timers           : $enable_timers
