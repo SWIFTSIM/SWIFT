@@ -428,7 +428,7 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
     if (engine_gravity_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
-      runner_count_mesh_interaction(multi_i, multi_j);
+      runner_count_mesh_interaction(ci, top, cj);
       continue;
     }
 
