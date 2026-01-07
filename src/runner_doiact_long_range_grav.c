@@ -353,8 +353,8 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
           } else if (cell_contains_progeny(c, cpj)) {
             runner_count_mesh_interaction(cpj->grav.multipole,
                                           cpk->grav.multipole);
-            runnger_count_mesh_interaction(cpk->grav.multipole,
-                                           cpj->grav.multipole);
+            runner_count_mesh_interaction(cpk->grav.multipole,
+                                          cpj->grav.multipole);
           } else {
             /*Nothing to do here*/
           }
