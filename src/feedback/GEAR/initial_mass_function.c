@@ -561,6 +561,12 @@ void initial_mass_function_dump(const struct initial_mass_function *imf,
     restart_write_blocks((void *)imf->coef, sizeof(float), imf->n_parts, stream,
                          "imf_coef", "imf_coef");
   }
+
+  /* Dump the mass fraction */
+  if (imf->mass_fraction != NULL) {
+    restart_write_blocks((void *)imf->mass_fraction, sizeof(float), imf->n_parts + 1, stream,
+                        "imf_mass_fraction", "imf_mass_fraction");
+  }
 }
 
 /**
@@ -597,6 +603,13 @@ void initial_mass_function_restore(struct initial_mass_function *imf,
     imf->coef = (float *)malloc(sizeof(float) * imf->n_parts);
     restart_read_blocks((void *)imf->coef, sizeof(float), imf->n_parts, stream,
                         NULL, "imf_coef");
+  }
+
+  /* Restore the mass fraction */
+  if (imf->mass_fraction != NULL) {
+    imf->mass_fraction = (float *)malloc(sizeof(float) * (imf->n_parts + 1));
+    restart_read_blocks((void *)imf->mass_fraction, sizeof(float), imf->n_parts + 1, stream,
+                        NULL, "imf_mass_fraction");
   }
 }
 
