@@ -11,6 +11,7 @@ import numpy as np
 from subprocess import call
 import argparse
 from os import path
+import collections
 
 # define task colours in the dict here:
 task_colours = {
@@ -61,6 +62,15 @@ def parse_args():
         dest="with_levels",
         help="Write the number of each task at each level for each task individually",
         action="store_true",
+    )
+
+    parser.add_argument(
+        "-f",
+        "--filter",
+        dest="filter",
+        choices=["none", "stars"],
+        default="none",
+        help="Filter the graph to show only tasks related to XXX.",
     )
 
     parser.add_argument(
@@ -715,10 +725,38 @@ def set_task_colours(data):
 
     return data
 
+def filter_star_dependencies(row):
+    """
+    Filter for star-centric tasks and the SF backbone.
+
+    Parameters
+    ----------
+    row : pandas.Series
+        A row from the dependency dataframe containing task_in and task_out.
+
+    Returns
+    -------
+    keep : bool
+        True if the dependency should be kept in the graph.
+    """
+    tin, tout = row["task_in"], row["task_out"]
+
+    # Standard star-centric tasks
+    if task_is_stars(tin) or task_is_stars(tout):
+        return True
+
+    # Add kick2 -> SF -> send_grav_count
+    if tin == "kick2" and "star_formation" in tout:
+        return True
+    if "star_formation" in tin and "send_grav_count" in tout:
+        return True
+
+    return False
 
 if __name__ == "__main__":
 
     args, files = parse_args()
+    filter_value = args.filter
 
     for f in files:
         # output
@@ -732,6 +770,12 @@ if __name__ == "__main__":
         data = read_csv(f, delimiter=",", comment="#")
         git = get_git_version(f, git)
 
+        # Filter for stars
+        if filter_value == "stars":
+            mask = data.apply(filter_star_dependencies, axis=1)
+            data = data[mask].reset_index(drop=True)
+
+        # Apply the colors
         data = set_task_colours(data)
 
         # write output
