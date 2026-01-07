@@ -218,6 +218,27 @@ static void runner_accumulate_interaction(
   multi_i->pot.interacted = 1;
 }
 
+/**
+ * @brief Count a mesh interaction between two related cells.
+ *
+ * Since the counts are accumulated downwards from the super level in the
+ * grav/down task we need to update different cells based on the cells we have
+ * been passed. This function will select what cell should be updated based on
+ * the nesting:
+ *   - If the super cell is nested within ci, then the super cell is updated.
+ *   - If the super cell is ci, then they are both the same and it does not
+ *     matter which is updated.
+ *   - If ci is nested within the super cell, then ci is updated.
+ *   - If we have a self interaction (pair nested within the same top cell):
+ *     - If the super cell is nested within cj, then the super cell is updated.
+ *     - If the super cell is cj, then they are both the same and it does not
+ *       matter which is updated.
+ *     - If cj is nested within the super cell, then cj is updated.
+ *
+ * @param super The super-cell being updated.
+ * @param ci The first #cell in the pair.
+ * @param cj The second #cell in the pair.
+ */
 static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
                                           struct cell *cj) {
 
