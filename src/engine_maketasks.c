@@ -476,6 +476,8 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 #endif
     t_sf_counts = scheduler_addtask(s, task_type_send, task_subtype_sf_counts,
                                     ci->mpi.tag, 0, ci, cj);
+
+    /* Don't send before we formed sinks. */
     scheduler_addunlock(s, ci->sinks.star_formation_sink, t_sf_counts);
   }
 
@@ -735,10 +737,6 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
       t_sink_merger = scheduler_addtask(
           s, task_type_send, task_subtype_sink_merger, ci->mpi.tag, 0, ci, cj);
 
-      /* Add dependencies between the send tasks to respect the taks order */
-      scheduler_addunlock(s, t_rho, t_sink_gas_swallow);
-      scheduler_addunlock(s, t_sink_gas_swallow, t_sink_merger);
-
       /* Drift before you send density */
       scheduler_addunlock(s, ci->hydro.super->sinks.drift, t_rho);
 
@@ -747,9 +745,12 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, t_rho, ci->hydro.super->sinks.sink_ghost1);
 
       if (ci->hydro.count > 0) {
+	/* Add dependencies send_sink_counts --> send rho, gas swallow, sink
+	   merger. This ensures the new counts are sent before any other
+	   information */
         scheduler_addunlock(s, t_sink_formation_counts, t_rho);
-        /* Maybe we need to add a dependency on sink_ghost1 and/or sink_ghost2
-         */
+        scheduler_addunlock(s, t_sink_formation_counts, t_sink_gas_swallow);
+	scheduler_addunlock(s, t_sink_formation_counts, t_sink_merger);
       }
 
       /* Ghost1 before you send the sink gas swallow */
@@ -772,9 +773,9 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
          send_sink_rho --> send_sink_gas_swallow -->
          send_sink_merger. These dependencies ensure we do not send before the
          previous send task was done. They also ensure that if the sink_ghost
-         or sink_do_gas, we do not break the dependenvies. */
-      /* scheduler_addunlock(s, t_rho, t_sink_gas_swallow); */
-      /* scheduler_addunlock(s, t_sink_gas_swallow, t_sink_merger); */
+         or sink_do_gas, we do not break the dependencies. */
+      scheduler_addunlock(s, t_rho, t_sink_gas_swallow);
+      scheduler_addunlock(s, t_sink_gas_swallow, t_sink_merger);
     }
 
     engine_addlink(e, &ci->mpi.send, t_rho);
@@ -1474,8 +1475,12 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
     /* scheduler_addunlock(s, t_sink_gas_swallow, t_sink_merger); */
 
     if (c->hydro.count > 0) {
-      /* Receive the sinks only once the counts have been received */
+      /* Add dependencies recv_sink_counts --> recv rho, gas swallow, sink
+	 merger. This ensures the new counts are received before any other
+	 information. */
       scheduler_addunlock(s, t_sink_formation_counts, t_rho);
+      scheduler_addunlock(s, t_sink_formation_counts, t_sink_gas_swallow);
+      scheduler_addunlock(s, t_sink_formation_counts, t_sink_merger);
     }
   }
 
