@@ -127,9 +127,10 @@ __attribute__((always_inline)) INLINE static void sidm_sipart_has_no_neighbours(
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void sidm_predict_extra(
-    struct sipart *restrict sip, float dt_drift) {}
+    struct sipart *restrict sip, float dt_drift) {
 
-#endif /* SWIFT_BASIC_SIDM_H */
+  /* TODO: We may need to add something here later like evolving rho */
+}
 
 /**
  * @brief Returns the comoving density of a particle
@@ -141,3 +142,5 @@ __attribute__((always_inline)) INLINE static float sidm_get_comoving_density(
 
   return sip->rho;
 }
+
+#endif /* SWIFT_BASIC_SIDM_H */
