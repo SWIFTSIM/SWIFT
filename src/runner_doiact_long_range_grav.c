@@ -187,6 +187,8 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
   } /* Loop over relevant top-level cells (i) */
 }
 
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
 /**
  * @brief Increment the mesh interaction counters.
  *
@@ -282,8 +284,6 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
                                                           struct cell *cj,
                                                           struct space *s) {
 
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
-
   /* No self interactions here */
   if (ci == cj) {
     error("Self interactions should not be handled in this function!");
@@ -334,10 +334,6 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
   }
   /* else: We have a real task that doesn't split further, no mesh
    * interactions to count */
-
-#else
-  error("This function should not be called without debugging checks enabled!");
-#endif
 }
 
 /**
@@ -353,8 +349,6 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
 static void runner_count_mesh_interactions_self_recursive(struct cell *c,
                                                           struct cell *ci,
                                                           struct space *s) {
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
   struct engine *e = s->e;
 
@@ -395,11 +389,8 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
   }
   /* else: We have a real task that doesn't split further, no mesh
    * interactions to count */
-
-#else
-  error("This function should not be called without debugging checks enabled!");
-#endif
 }
+#endif
 
 /**
  * @brief Accumulate the number of particle mesh interactions for debugging
