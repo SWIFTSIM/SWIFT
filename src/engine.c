@@ -1239,8 +1239,11 @@ int engine_estimate_nr_tasks(const struct engine *e) {
       /* 1 star formation */
       n1 += 1;
 #ifdef WITH_MPI
-      /* sf_count: send and recv              | 2 */
-      n1 += 2;
+      /* sink_count send/recv                 | 2
+         sf_count: send and recv              | 2
+         grav_counts: send and recv           | 2
+      */
+      n1 += 6;
 #endif
     }
 #ifdef WITH_MPI
