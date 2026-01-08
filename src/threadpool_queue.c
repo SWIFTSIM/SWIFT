@@ -435,24 +435,18 @@ static void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
 }
 
 /**
- * @brief Check if queue mode is active and process work if so.
+ * @brief Worker loop for queue mode (called from threadpool_runner).
  *
- * This is called from threadpool_runner() to handle queue-based execution.
+ * This is the public entry point called from threadpool_runner() when
+ * queue mode is active.
  *
  * @param tp The #threadpool.
  * @param thread_id The ID of the calling thread.
- *
- * @return 1 if queue mode was active and work was processed, 0 otherwise.
  */
-int threadpool_queue_run_if_active(struct threadpool *tp, int thread_id) {
+void threadpool_queue_run(struct threadpool *tp, int thread_id) {
 
-  /* Check if queue mode is active. */
-  struct threadpool_queue_state *state = threadpool_queue_get_state(tp, 0);
-  if (state == NULL || !state->active) return 0;
-
-  /* Run the queue worker loop. */
+  /* Run the internal queue worker loop. */
   threadpool_queue_chomp(tp, thread_id);
-  return 1;
 }
 
 /**
@@ -603,6 +597,7 @@ void threadpool_map_with_queue(struct threadpool *tp,
 
   /* Activate queue mode and set up the threadpool for execution. */
   state->active = 1;
+  tp->use_queue = 1;
   tp->map_function = map_function;
   tp->map_data = map_data;
   tp->map_extra_data = extra_data;
@@ -615,6 +610,7 @@ void threadpool_map_with_queue(struct threadpool *tp,
 
   /* Deactivate queue mode. */
   state->active = 0;
+  tp->use_queue = 0;
 
 #ifdef SWIFT_DEBUG_THREADPOOL
   threadpool_log(tp, -1, count, tic_total, getticks());

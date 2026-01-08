@@ -214,9 +214,11 @@ static void *threadpool_runner(void *data) {
        to shut down threads without leaving the barriers in an invalid state. */
     if (tp->map_function == NULL) pthread_exit(NULL);
 
-    /* Do actual work (queue or chunk mode). */
+    /* Do actual work. */
     const int tid = atomic_inc(&tp->num_threads_running);
-    if (!threadpool_queue_run_if_active(tp, tid)) {
+    if (tp->use_queue) {
+      threadpool_queue_run(tp, tid);
+    } else {
       threadpool_chomp(tp, tid);
     }
   }
@@ -268,6 +270,7 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   tp->map_data_stride = 0;
   tp->map_data_chunk = 0;
   tp->map_function = NULL;
+  tp->use_queue = 0;
 
   /* Allocate the threads, one less than requested since the calling thread
      works as well. */
