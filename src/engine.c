@@ -4285,13 +4285,13 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   los_struct_restore(los_properties, stream);
   e->los_properties = los_properties;
 
-#ifdef WITH_LIGHTCONE
   struct lightcone_array_props *lightcone_array_properties =
-      (struct lightcone_array_props *)malloc(
-          sizeof(struct lightcone_array_props));
+      (struct lightcone_array_props *)calloc(
+          1, sizeof(struct lightcone_array_props));
+#ifdef WITH_LIGHTCONE
   lightcone_array_struct_restore(lightcone_array_properties, stream);
-  e->lightcone_array_properties = lightcone_array_properties;
 #endif
+  e->lightcone_array_properties = lightcone_array_properties;
 
   struct ic_info *ics_metadata =
       (struct ic_info *)malloc(sizeof(struct ic_info));
