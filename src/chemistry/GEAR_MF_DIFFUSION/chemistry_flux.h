@@ -75,6 +75,7 @@ __attribute__((always_inline)) INLINE static void
 chemistry_limit_metal_mass_flux(const struct part *restrict pi,
                                 const struct part *restrict pj, const int metal,
                                 double fluxes[4], const float dt) {
+
 #if defined(GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGRESSIVE_RESCALING)
   const struct chemistry_part_data *chi = &pi->chemistry_data;
   const struct chemistry_part_data *chj = &pj->chemistry_data;
@@ -84,11 +85,10 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
 
   /* Use the updated metal masses to ensure that the final result won't be
    * negative */
-  const double mZi = chi->metal_mass[metal] + chi->flux.metal_mass[metal];
-  const double mZj = chj->metal_mass[metal] + chj->flux.metal_mass[metal];
+  const double mZi_0 = chi->metal_mass[metal];
+  const double mZj_0 = chj->metal_mass[metal];
 
-  /* This one seemed to work for a certain time */
-  const double upwind_mass = (metal_mass_interface > 0.0) ? mZi : mZj;
+  const double upwind_mass = (mZi_0 > mZj_0) ? mZi_0 : mZj_0;
 
   /* Choose upwind mass to determine a stability bound on the maximum allowed */
   /* mass exchange, (we do this to prevent negative masses under all */
@@ -103,11 +103,11 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
     fluxes[2] *= factor;
     fluxes[3] *= factor;
     if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY > 1) {
-      message(
-          "[%lld, %lld] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
-          " mZi_r = %e, mZj_r = %e, upwind_mass = %e, mZi = %e, mZj = %e",
-          pi->id, pj->id, flux_init, fluxes[0], factor, mZi, mZj, upwind_mass,
-          chi->metal_mass[metal], chj->metal_mass[metal]);
+    message(
+	    "[%lld, %lld] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
+	    " mZi_r = %e, mZj_r = %e, upwind_mass = %e, mZi = %e, mZj = %e",
+	    pi->id, pj->id, flux_init, fluxes[0], factor, mZi_0, mZj_0, upwind_mass,
+	    chi->metal_mass[metal], chj->metal_mass[metal]);
     }
   }
 #endif /* GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGGRESSIVE_RESCALING */
