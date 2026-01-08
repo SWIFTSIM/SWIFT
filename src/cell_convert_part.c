@@ -755,6 +755,44 @@ void cell_remove_sink(const struct engine *e, struct cell *c,
 }
 
 /**
+ * @brief "Remove" an SIDM particle from the calculation.
+ *
+ * The particle is inhibited and will officially be removed at the next
+ * rebuild.
+ *
+ * @param e The #engine running on this node.
+ * @param c The #cell from which to remove the particle.
+ * @param sip The #sipart to remove.
+ */
+void cell_remove_sipart(const struct engine *e, struct cell *c,
+                        struct sipart *sip) {
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  /* Don't remove a particle twice */
+  if (sip->time_bin == time_bin_inhibited) return;
+
+  /* Mark the particle as inhibited and stand-alone */
+  sip->time_bin = time_bin_inhibited;
+  if (sip->gpart) {
+    sip->gpart->time_bin = time_bin_inhibited;
+    sip->gpart->id_or_neg_offset = 1;
+    sip->gpart->type = swift_type_dark_matter;
+  }
+
+  /* Update the space-wide counters */
+  const size_t one = 1;
+  atomic_add(&e->s->nr_inhibited_siparts, one);
+  if (sip->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the sipart */
+  sip->gpart = NULL;
+}
+
+/**
  * @brief "Remove" a gas particle from the calculation and convert its gpart
  * friend to a dark matter particle.
  *

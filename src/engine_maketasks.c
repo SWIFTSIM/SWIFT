@@ -2292,6 +2292,54 @@ void engine_make_external_gravity_tasks(struct engine *e) {
 }
 
 /**
+ * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks -- hydro version
+ *
+ * Tasks are only created here. The dependencies will be added later on.
+ *
+ * Note that there is no need to recurse below the super-cell. Note also
+ * that we only add tasks if the relevant particles are present in the cell.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param star_resort_cell Pointer to the cell where the star_resort task has
+ * been created. NULL above that level or if not running with star formation.
+ */
+void engine_make_hierarchical_tasks_sidm(struct engine *e, struct cell *c) {
+
+  struct scheduler *s = &e->sched;
+#ifdef WITH_CSDS
+  const int with_csds = (e->policy & engine_policy_csds);
+#endif
+
+  /* Are we in a super-cell ? */
+  if (c->sidm.super == c) {
+
+    /* TODO:Add the SIDM sort task. */
+
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+
+      /* Add the drift task. */
+      c->sidm.drift = scheduler_addtask(s, task_type_drift_sipart,
+                                        task_subtype_none, 0, 0, c, NULL);
+
+      /* Generate the ghost tasks. */
+      c->sidm.density_ghost = scheduler_addtask(s, task_type_sidm_density_ghost,
+                                                task_subtype_none, 0,
+                                                /* implicit = */ 1, c, NULL);
+    }
+  } else { /* We are above the super-cell so need to go deeper */
+
+    /* Recurse. */
+    if (c->split)
+      for (int k = 0; k < 8; k++)
+        if (c->progeny[k] != NULL)
+          engine_make_hierarchical_tasks_sidm(e, c->progeny[k]);
+  }
+}
+
+/**
  * @brief Counts the tasks associated with one cell and constructs the links
  *
  * For each hydrodynamic and gravity task, construct the links with
@@ -3673,6 +3721,132 @@ struct cell_type_pair {
 };
 
 /**
+ * @brief Constructs the top-level pair tasks for the first SIDM loop over
+ * neighbours
+ *
+ * Here we construct all the tasks for all possible neighbouring non-empty
+ * local cells in the hierarchy. No dependencies are being added thus far.
+ * Additional loop over neighbours can later be added by simply duplicating
+ * all the tasks created by this function.
+ *
+ * @param map_data Offset of first two indices disguised as a pointer.
+ * @param num_elements Number of cells to traverse.
+ * @param extra_data The #engine.
+ */
+void engine_make_sidmloop_tasks_mapper(void *map_data, int num_elements,
+                                       void *extra_data) {
+
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+  const int periodic = e->s->periodic;
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+
+    /* Integer indices of the cell in the top-level grid */
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Skip cells without SIDM particles */
+    if (ci->sidm.count == 0) continue;
+
+    /* If the cell is local build a self-interaction */
+    if (ci->nodeID == nodeID) {
+      scheduler_addtask(sched, task_type_self, task_subtype_sidm_density, 0, 0,
+                        ci, NULL);
+    }
+
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          struct cell *cj = &cells[cjd];
+
+          /* Is that neighbour local and does it have SIDM particles ? */
+          if ((cid >= cjd) || (cj->sidm.count == 0) ||
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
+
+          /* Construct the pair task */
+          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+          scheduler_addtask(sched, task_type_pair, task_subtype_sidm_density,
+                            sid, 0, ci, cj);
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+          /* Let's cross-check that we had a proxy for that cell */
+          if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[cj->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == cj) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "SIDM task!",
+                  cjd);
+          } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[ci->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == ci) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "SIDM task!",
+                  cid);
+          }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
+        }
+      }
+    }
+  }
+}
+
+/**
  * @brief Recurse down to the super level and add a dependency between
  * rt_advance_cell_time and tend tasks. Note: This function is intended
  * for the sending side, i.e. for local cells.
@@ -4104,6 +4278,16 @@ void engine_maketasks(struct engine *e) {
   /* Add the external gravity tasks. */
   if (e->policy & engine_policy_external_gravity)
     engine_make_external_gravity_tasks(e);
+
+  /* Add the SIDM tasks. */
+  if (e->policy & engine_policy_sidm) {
+    threadpool_map(&e->threadpool, engine_make_sidmloop_tasks_mapper, NULL,
+                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
+  }
+
+  if (e->verbose)
+    message("Making SIDM tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   if (e->sched.nr_tasks == 0 && (s->nr_gparts > 0 || s->nr_parts > 0))
     error("We have particles but no hydro or gravity tasks were created.");

@@ -38,6 +38,7 @@
 #include "mhd.h"
 #include "part.h"
 #include "rt.h"
+#include "sidm.h"
 #include "sink.h"
 #include "stars.h"
 
@@ -361,3 +362,61 @@ __attribute__((always_inline)) INLINE static void drift_sink(
 }
 
 #endif /* SWIFT_DRIFT_H */
+
+/**
+ * @brief Perform the 'drift' operation on an #sipart
+ *
+ * @param sip The #sipart to drift.
+ * @param dt_drift The drift time-step.
+ * @param ti_old Integer start of time-step (for debugging checks).
+ * @param ti_current Integer end of time-step (for debugging checks).
+ */
+__attribute__((always_inline)) INLINE static void drift_sipart(
+    struct sipart *restrict sip, double dt_drift, integertime_t ti_old,
+    integertime_t ti_current, const struct engine *e,
+    struct replication_list *replication_list, const double cell_loc[3]) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sip->ti_drift != ti_old)
+    error(
+        "si-particle has not been drifted to the current time "
+        "sip->ti_drift=%lld, "
+        "c->ti_old=%lld, ti_current=%lld",
+        sip->ti_drift, ti_old, ti_current);
+
+  sip->ti_drift = ti_current;
+#endif
+
+#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+
+  /* Get the ID of the sipart */
+  const long long id = sip->id;
+
+  /* Cancel the velocity of the particles */
+  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
+
+    /* Don't move! */
+    sip->v[0] = 0.f;
+    sip->v[1] = 0.f;
+    sip->v[2] = 0.f;
+  }
+#endif
+
+#ifdef WITH_LIGHTCONE
+  error("Lightcone treatment of SIDM needs implementing");  // TODO:unnecessary?
+#endif
+
+  /* Drift... */
+  sip->x[0] += sip->v[0] * dt_drift;
+  sip->x[1] += sip->v[1] * dt_drift;
+  sip->x[2] += sip->v[2] * dt_drift;
+
+  /* Predict the values of the extra fields */
+  sidm_predict_extra(sip, dt_drift);  // TODO
+
+  /* Compute offsets since last cell construction */
+  for (int k = 0; k < 3; k++) {
+    const float dx = sip->v[k] * dt_drift;
+    sip->x_diff[k] -= dx;
+  }
+}
