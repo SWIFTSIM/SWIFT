@@ -553,26 +553,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     const struct cosmology *cosmo, const int with_cosmology,
     const struct chemistry_global_data *chem_data) {
 
-  int local_mode = 0;
-
-  const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
-  const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
-
-  if (pi_is_active && pj_is_active) {
-    if (pi->id < pj->id) {
-      /* pi has the duty to update both pi and pj symmetrically */
-      local_mode = 1;
-    } else {
-      /* Nothing to do. The other particle will update symmetrically */
-      return;
-    }
-  } else {
-    /* pi or pj is active. No trick is needed here: only the active particle
-       will update both particles. So we can use the default implementation. */
-    local_mode = 0;
-  }
   runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
-                                      local_mode);
+                                      0);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_IACT_H */
