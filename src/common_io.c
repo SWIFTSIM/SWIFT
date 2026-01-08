@@ -52,6 +52,7 @@
 #include "stars_io.h"
 #include "tracers_io.h"
 #include "velociraptor_io.h"
+#include "forcing_io.h"
 
 /* Some standard headers. */
 #include <math.h>
@@ -1746,6 +1747,7 @@ void io_select_hydro_fields(const struct part *const parts,
   }
   *num_fields += extra_io_write_particles(parts, xparts, list + *num_fields,
                                           with_cosmology);
+  *num_fields += forcing_write_particles(parts, xparts, list + *num_fields);
 }
 
 /**

@@ -125,8 +125,8 @@ __attribute__((always_inline)) INLINE static void forcing_bpart_drift_apply(
  */
 __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
     double time, const struct forcing_terms *terms,
-    const struct phys_const *phys_const, const struct part *p,
-    const struct xpart *xp) {
+    const struct space *s, const struct phys_const *phys_const, 
+    const struct part *p, const struct xpart *xp) {
 
   /* No time-step size limit */
   return FLT_MAX;

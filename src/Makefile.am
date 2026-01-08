@@ -79,7 +79,7 @@ include_HEADERS += lightcone/lightcone_crossing.h lightcone/lightcone_array.h li
 include_HEADERS += lightcone/lightcone_map_types.h lightcone/projected_kernel.h lightcone/lightcone_shell.h
 include_HEADERS += lightcone/healpix_util.h lightcone/pixel_index.h
 include_HEADERS += adaptive_softening.h adaptive_softening_iact.h adaptive_softening_struct.h
-include_HEADERS += forcing.h
+include_HEADERS += forcing.h forcing_io.h forcing_struct.h
 include_HEADERS += power_spectrum.h
 include_HEADERS += ghost_stats.h
 include_HEADERS += swift_lustre_api.h
@@ -170,6 +170,12 @@ SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_rate_equations.c
 SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_cooling.c
 endif
 
+# source files for Balsara-Kim forcing
+BALSARAKIM_FORCING_SOURCES = 
+if HAVE_BALSARAKIM_FORCING 
+BALSARAKIM_FORCING_SOURCES += forcing/BalsaraKim/forcing.c
+endif
+
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c
@@ -208,7 +214,7 @@ AM_SOURCES += lightcone/lightcone.c lightcone/lightcone_particle_io.c lightcone/
 AM_SOURCES += lightcone/healpix_util.c lightcone/lightcone_array.c lightcone/lightcone_map.c
 AM_SOURCES += lightcone/lightcone_map_types.c lightcone/projected_kernel.c lightcone/lightcone_shell.c
 AM_SOURCES += power_spectrum.c
-AM_SOURCES += forcing.c
+AM_SOURCES += forcing.c $(BALSARAKIM_FORCING_SOURCES)
 AM_SOURCES += ghost_stats.c
 AM_SOURCES += $(EAGLE_EXTRA_IO_SOURCES)
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES)
@@ -379,8 +385,10 @@ nobase_noinst_HEADERS += stars/EAGLE/stars_debug.h stars/EAGLE/stars_part.h
 nobase_noinst_HEADERS += stars/GEAR/stars.h stars/GEAR/stars_iact.h stars/GEAR/stars_io.h
 nobase_noinst_HEADERS += stars/GEAR/stars_debug.h stars/GEAR/stars_csds.h stars/GEAR/stars_part.h
 nobase_noinst_HEADERS += stars/GEAR/stars_stellar_type.h
-nobase_noinst_HEADERS += forcing/none/forcing.h forcing/roberts_flow/forcing.h forcing/roberts_flow_acceleration/forcing.h
-nobase_noinst_HEADERS += forcing/ABC_flow/forcing.h
+nobase_noinst_HEADERS += forcing/none/forcing.h forcing/none/forcing_io.h forcing/none/forcing_struct.h
+nobase_noinst_HEADERS += forcing/roberts_flow/forcing.h forcing/roberts_flow_acceleration/forcing.h
+nobase_noinst_HEADERS += forcing/ABC_flow/forcing.h forcing/BalsaraKim/forcing.h forcing/BalsaraKim/forcing_io.h 
+nobase_noinst_HEADERS += forcing/BalsaraKim/forcing_struct.h
 nobase_noinst_HEADERS += potential/none/potential.h potential/point_mass/potential.h
 nobase_noinst_HEADERS += potential/isothermal/potential.h potential/disc_patch/potential.h
 nobase_noinst_HEADERS += potential/sine_wave/potential.h potential/constant/potential.h
