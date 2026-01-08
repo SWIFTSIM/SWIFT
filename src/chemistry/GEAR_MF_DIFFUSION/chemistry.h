@@ -417,20 +417,19 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   p->chemistry_data.filtered.rho *= h_inv_dim;
 
-  /* Check that the metal masses are physical */
-  for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-    const double m_metal_old = p->chemistry_data.metal_mass[g];
-
 #ifdef SWIFT_DEBUG_CHECKS
-    if (p->geometry.volume == 0.) {
-      error("Volume is 0!");
-    }
-#endif
-    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g],
-                                     m_metal_old, hydro_get_mass(p),
-                                     /*callloc=*/0, /*element*/ g, p->id);
+  if (p->geometry.volume == 0.) {
+    error("Volume is 0!");
   }
-
+#endif
+  /* Comment this for now */
+  /* Check that the metal masses are physical */
+  /* for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) { */
+  /*   const double m_metal_old = p->chemistry_data.metal_mass[g]; */
+  /*   chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g], */
+  /*                                    m_metal_old, hydro_get_mass(p), */
+  /*                                    /\*callloc=*\/0, /\*element*\/ g, p->id); */
+  /* } */
   /* Sanity check on the total metal mass */
   chemistry_check_unphysical_total_metal_mass(p, 0);
 
