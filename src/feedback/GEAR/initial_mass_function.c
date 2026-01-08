@@ -585,32 +585,30 @@ void initial_mass_function_restore(struct initial_mass_function *imf,
                                    FILE *stream,
                                    const struct stellar_model *sm) {
 
-  /* Restore the mass limits */
-  if (imf->mass_limits != NULL) {
+  if (imf->n_parts > 0) {
+    message("imf->n_parts = %d", imf->n_parts);
+
+    /* Restore the mass limits */
     imf->mass_limits = (float *)malloc(sizeof(float) * (imf->n_parts + 1));
     restart_read_blocks((void *)imf->mass_limits, sizeof(float),
-                        imf->n_parts + 1, stream, NULL, "imf_mass_limits");
-  }
+			imf->n_parts + 1, stream, NULL, "imf_mass_limits");
 
-  /* Restore the exponents */
-  if (imf->exp != NULL) {
+    /* Restore the exponents */
     imf->exp = (float *)malloc(sizeof(float) * imf->n_parts);
     restart_read_blocks((void *)imf->exp, sizeof(float), imf->n_parts, stream,
-                        NULL, "imf_exponents");
-  }
+			NULL, "imf_exponents");
 
-  /* Restore the coefficients */
-  if (imf->coef != NULL) {
+    /* Restore the coefficients */
     imf->coef = (float *)malloc(sizeof(float) * imf->n_parts);
     restart_read_blocks((void *)imf->coef, sizeof(float), imf->n_parts, stream,
-                        NULL, "imf_coef");
-  }
+			NULL, "imf_coef");
 
-  /* Restore the mass fraction */
-  if (imf->mass_fraction != NULL) {
+    /* Restore the mass fraction */
     imf->mass_fraction = (float *)malloc(sizeof(float) * (imf->n_parts + 1));
     restart_read_blocks((void *)imf->mass_fraction, sizeof(float),
-                        imf->n_parts + 1, stream, NULL, "imf_mass_fraction");
+			imf->n_parts + 1, stream, NULL, "imf_mass_fraction");
+  } else {
+    error("Cannot allocate memory if imf->n_parts <= 0 (%d)!", imf->n_parts);
   }
 }
 
