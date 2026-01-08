@@ -59,6 +59,7 @@ enum task_types {
   task_type_drift_bpart,
   task_type_drift_gpart,
   task_type_drift_gpart_out, /* Implicit */
+  task_type_drift_sipart,
   task_type_end_hydro_force,
   task_type_kick1,
   task_type_kick2,
@@ -119,6 +120,7 @@ enum task_types {
   task_type_rt_advance_cell_time,
   task_type_rt_sort,
   task_type_rt_collect_times,
+  task_type_sidm_density_ghost,
   task_type_count
 } __attribute__((packed));
 
@@ -162,6 +164,8 @@ enum task_subtypes {
   task_subtype_sink_do_gas_swallow,
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
+  task_subtype_sidm_density,
+  task_subtype_sipart_rho,
   task_subtype_count
 } __attribute__((packed));
 

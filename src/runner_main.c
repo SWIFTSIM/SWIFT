@@ -136,6 +136,12 @@
 #include "runner_doiact_hydro.h"
 #include "runner_doiact_undef.h"
 
+/* Import the SIDM density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_sidm.h"
+#include "runner_doiact_undef.h"
+
 /**
  * @brief The #runner main thread routine.
  *
@@ -261,6 +267,8 @@ void *runner_main(void *data) {
             runner_do_sinks_gas_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_self(r, ci, 1);
+          else if (t->subtype == task_subtype_sidm_density)
+            runner_dosub_self_sidm_density(r, ci, /*below_h_max=*/0, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -319,6 +327,8 @@ void *runner_main(void *data) {
             runner_do_sinks_gas_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_pair(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_sidm_density)
+            runner_dosub_pair_sidm_density(r, ci, cj, /*below_h_max=*/0, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -376,6 +386,9 @@ void *runner_main(void *data) {
           break;
         case task_type_sink_density_ghost:
           runner_do_sinks_density_ghost(r, ci, 1);
+          break;
+        case task_type_sidm_density_ghost:
+          runner_do_sidm_density_ghost(r, ci, 1);
           break;
         case task_type_drift_part:
           runner_do_drift_part(r, ci, 1);

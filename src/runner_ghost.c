@@ -72,6 +72,13 @@
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
+/* Import the SIDM density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_sidm.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION
+
 /**
  * @brief Intermediate task after the density to check that the smoothing
  * lengths are correct.
@@ -2152,7 +2159,7 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
   const int use_mass_weighted_num_ngb =
       e->sidm_properties->use_mass_weighted_num_ngb;
   const int max_smoothing_iter = e->sidm_properties->max_smoothing_iterations;
-  int redo = 0, count = 0;
+  int redo = 0, sicount = 0;
 
   /* Running value of the maximal smoothing length */
   float h_max = c->sidm.h_max;
@@ -2179,12 +2186,12 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
 
     /* Init the list of active particles that have to be updated and their
      * current smoothing lengths. */
-    int *pid = NULL;
+    int *siid = NULL;
     float *h_0 = NULL;
     float *left = NULL;
     float *right = NULL;
-    if ((pid = (int *)malloc(sizeof(int) * c->sidm.count)) == NULL)
-      error("Can't allocate memory for pid.");
+    if ((siid = (int *)malloc(sizeof(int) * c->sidm.count)) == NULL)
+      error("Can't allocate memory for siid.");
     if ((h_0 = (float *)malloc(sizeof(float) * c->sidm.count)) == NULL)
       error("Can't allocate memory for h_0.");
     if ((left = (float *)malloc(sizeof(float) * c->sidm.count)) == NULL)
@@ -2193,28 +2200,28 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->sidm.count; k++)
       if (sipart_is_active(&siparts[k], e)) {
-        pid[count] = k;
-        h_0[count] = siparts[k].h;
-        left[count] = 0.f;
-        right[count] = sidm_h_max;
-        ++count;
+        siid[sicount] = k;
+        h_0[sicount] = siparts[k].h;
+        left[sicount] = 0.f;
+        right[sicount] = sidm_h_max;
+        ++sicount;
       }
 
     /* While there are particles that need to be updated... */
-    for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
+    for (int num_reruns = 0; sicount > 0 && num_reruns < max_smoothing_iter;
          num_reruns++) {
 
-      ghost_stats_account_for_sidm(&c->ghost_statistics, num_reruns, count,
-                                   siparts, pid);
+      ghost_stats_account_for_sidm(&c->ghost_statistics, num_reruns, sicount,
+                                   siparts, siid);
 
       /* Reset the redo-count. */
       redo = 0;
 
       /* Loop over the remaining active parts in this cell. */
-      for (int i = 0; i < count; i++) {
+      for (int i = 0; i < sicount; i++) {
 
         /* Get a direct pointer on the part. */
-        struct sipart *sip = &siparts[pid[i]];
+        struct sipart *sip = &siparts[siid[i]];
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
@@ -2245,7 +2252,7 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Finish the density calculation */
-          sidm_end_density(sip, cosmo);
+          sidm_end_density(sip);
 
           /* Are we using the alternative definition of the
              number of neighbours? */
@@ -2349,7 +2356,7 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
           if (sip->h < sidm_h_max && sip->h > sidm_h_min) {
 
             /* Flag for another round of fun */
-            pid[redo] = pid[i];
+            siid[redo] = siid[i];
             h_0[redo] = h_0[i];
             left[redo] = left[i];
             right[redo] = right[i];
@@ -2400,67 +2407,63 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
        * converged again */
 
       /* Re-set the counter for the next loop (potentially). */
-      count = redo;
-      //       if (count > 0) {
+      sicount = redo;
+      if (sicount > 0) {
 
-      //         /* Climb up the cell hierarchy. */
-      //         for (struct cell *finger = c; finger != NULL; finger =
-      //         finger->parent) {
+        /* Climb up the cell hierarchy. */
+        for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
-      //           /* Run through this cell's density interactions. */
-      //           for (struct link *l = finger->sidm.density; l != NULL; l =
-      //           l->next) {
+          /* Run through this cell's density interactions. */
+          for (struct link *l = finger->sidm.density; l != NULL; l = l->next) {
 
-      // #ifdef SWIFT_DEBUG_CHECKS
-      //             if (l->t->ti_run < r->e->ti_current)
-      //               error("Density task should have been run.");
-      // #endif
+#ifdef SWIFT_DEBUG_CHECKS
+            if (l->t->ti_run < r->e->ti_current)
+              error("Density task should have been run.");
+#endif
 
-      //             /* Self-interaction? */
-      //             if (l->t->type == task_type_self) {
-      //               runner_dosub_self_subset_sidm_density(r, finger, parts,
-      //               pid, count, 1);
-      //             }
+            /* Self-interaction? */
+            if (l->t->type == task_type_self) {
+              runner_dosub_self_subset_sidm_density(r, finger, siparts, siid,
+                                                    sicount, 1);
+            }
 
-      //             /* Otherwise, pair interaction? */
-      //             else if (l->t->type == task_type_pair) {
+            /* Otherwise, pair interaction? */
+            else if (l->t->type == task_type_pair) {
 
-      //               /* Left or right? */
-      //               if (l->t->ci == finger)
-      //                 runner_dosub_pair_subset_sidm_density(r, finger, parts,
-      //                 pid, count,
-      //                                                  l->t->cj, 1);
-      //               else
-      //                 runner_dosub_pair_subset_sidm_density(r, finger, parts,
-      //                 pid, count,
-      //                                                  l->t->ci, 1);
-      //             } else {
-      // #ifdef SWIFT_DEBUG_CHECKS
-      //               error("Invalid sub-type!");
-      // #endif
-      //             }
-      //           }
-      //         }
-      //       }
+              /* Left or right? */
+              if (l->t->ci == finger)
+                runner_dosub_pair_subset_sidm_density(r, finger, siparts, siid,
+                                                      sicount, l->t->cj, 1);
+              else
+                runner_dosub_pair_subset_sidm_density(r, finger, siparts, siid,
+                                                      sicount, l->t->ci, 1);
+            } else {
+#ifdef SWIFT_DEBUG_CHECKS
+              error("Invalid sub-type!");
+#endif
+            }
+          }
+        }
+      }
     }
 
-    if (count) {
+    if (sicount) {
       warning(
           "Smoothing length failed to converge for the following SIDM "
           "particles:");
-      for (int i = 0; i < count; i++) {
-        struct sipart *sip = &siparts[pid[i]];
+      for (int i = 0; i < sicount; i++) {
+        struct sipart *sip = &siparts[siid[i]];
         warning("ID: %lld, h: %g, wcount: %g", sip->id, sip->h,
                 sip->density.wcount);
       }
 
-      error("Smoothing length failed to converge on %i particles.", count);
+      error("Smoothing length failed to converge on %i particles.", sicount);
     }
 
     /* Be clean */
     free(left);
     free(right);
-    free(pid);
+    free(siid);
     free(h_0);
   }
 
@@ -2472,7 +2475,6 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
   for (int i = 0; i < c->sidm.count; ++i) {
     const struct sipart *sip = &c->sidm.parts[i];
     const float h = c->sidm.parts[i].h;
-    if (sipart_is_inhibited(sip, e)) continue;
 
     if (h > c->sidm.h_max)
       error("Particle has h larger than h_max (id=%lld)", sip->id);
@@ -2491,5 +2493,5 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer) TIMER_TOC(timer_do_ghost);
+  if (timer) TIMER_TOC(timer_do_sidm_ghost);
 }

@@ -145,6 +145,29 @@ __attribute__((always_inline)) INLINE static int cell_are_bpart_drifted(
 }
 
 /**
+ * @brief Check that the #sipart in a #cell have been drifted to the current
+ * time.
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_are_sipart_drifted(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->sidm.ti_old_part > e->ti_current)
+    error(
+        "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
+        "and e->ti_current=%lld (t=%e)",
+        c->sidm.ti_old_part, c->sidm.ti_old_part * e->time_base, e->ti_current,
+        e->ti_current * e->time_base);
+#endif
+
+  return (c->sidm.ti_old_part == e->ti_current);
+}
+
+/**
  * @brief Check that the #part in a #cell have been drifted to the current time.
  * This is just a prototype function to keep the iact functions clean. As we
  * don't care about the drifts during the RT sub-cycling, this always just
@@ -295,7 +318,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_sinks(
 }
 
 /**
- * @brief Does a cell contain any sink-particle finishing their time-step now ?
+ * @brief Does a cell contain any sidm-particle finishing their time-step now ?
  *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
