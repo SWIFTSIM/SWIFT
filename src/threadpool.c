@@ -217,7 +217,7 @@ static void *threadpool_runner(void *data) {
     /* Do actual work. */
     const int tid = atomic_inc(&tp->num_threads_running);
     if (tp->use_queue) {
-      threadpool_queue_run(tp, tid);
+      threadpool_queue_chomp(tp, tid);
     } else {
       threadpool_chomp(tp, tid);
     }

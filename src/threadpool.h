@@ -174,7 +174,7 @@ void threadpool_clean(struct threadpool *tp);
 /* Queue-based threadpool prototypes. */
 void threadpool_queue_init(struct threadpool *tp);
 void threadpool_queue_clean(struct threadpool *tp);
-void threadpool_queue_run(struct threadpool *tp, int thread_id);
+void threadpool_queue_chomp(struct threadpool *tp, int thread_id);
 void threadpool_map_with_queue(struct threadpool *tp,
                                threadpool_map_function map_function,
                                void *map_data, size_t N, int stride, int chunk,
