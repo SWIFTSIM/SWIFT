@@ -4023,6 +4023,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
     free((void *)e->neutrino_properties);
+    free((void *)e->neutrino_response);
     free((void *)e->hydro_properties);
     free((void *)e->physical_constants);
     free((void *)e->internal_units);
@@ -4106,7 +4107,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   fof_struct_dump(e->fof_properties, stream);
 #endif
   los_struct_dump(e->los_properties, stream);
+#ifdef WITH_LIGHTCONE
   lightcone_array_struct_dump(e->lightcone_array_properties, stream);
+#endif
   ic_info_struct_dump(e->ics_metadata, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
@@ -4282,11 +4285,13 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   los_struct_restore(los_properties, stream);
   e->los_properties = los_properties;
 
+#ifdef WITH_LIGHTCONE
   struct lightcone_array_props *lightcone_array_properties =
       (struct lightcone_array_props *)malloc(
           sizeof(struct lightcone_array_props));
   lightcone_array_struct_restore(lightcone_array_properties, stream);
   e->lightcone_array_properties = lightcone_array_properties;
+#endif
 
   struct ic_info *ics_metadata =
       (struct ic_info *)malloc(sizeof(struct ic_info));
