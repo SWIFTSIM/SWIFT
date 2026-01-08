@@ -608,7 +608,7 @@ void initial_mass_function_restore(struct initial_mass_function *imf,
       error("Restart: Failed to allocate the IMF mass limits.");
     }
     restart_read_blocks((void *)imf->mass_limits, sizeof(float),
-			imf->n_parts + 1, stream, NULL, "imf_mass_limits");
+                        imf->n_parts + 1, stream, NULL, "imf_mass_limits");
 
     /* Restore the exponents */
     imf->exp = NULL;

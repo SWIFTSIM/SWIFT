@@ -182,7 +182,8 @@ __attribute__((always_inline)) INLINE static void lifetime_init(
  *
  * @param life lifetime struct in which pointers to tables set to NULL.
  */
-__attribute__((always_inline)) INLINE static void lifetime_zero_pointers(struct lifetime *life) {
+__attribute__((always_inline)) INLINE static void lifetime_zero_pointers(
+    struct lifetime *life) {
   /* Nothing to do here */
 }
 

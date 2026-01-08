@@ -275,9 +275,9 @@ void feedback_first_init_spart(struct spart *sp,
  */
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
 
-/* To make sure everything is restored correctly, we zero all the pointers to
-   tables. If they are not restored correctly, we would crash after restart on
-   the first call to the feedback routines. Helps debugging. */
+  /* To make sure everything is restored correctly, we zero all the pointers to
+     tables. If they are not restored correctly, we would crash after restart on
+     the first call to the feedback routines. Helps debugging. */
   struct feedback_props feedback_copy = *feedback;
 
   /* Zero the stellar_evolution */
