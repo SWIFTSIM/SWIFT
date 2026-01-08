@@ -275,9 +275,15 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           if (sp == NULL)
             error("Run out of available star particles or gparts");
 
+	  float displacement[3] = {0.0, 0.0, 0.0};
+
           /* Copy the properties to the star particle */
           sink_copy_properties_to_star(s, sp, e, sink_props, cosmo,
-                                       with_cosmology, phys_const, us);
+                                       with_cosmology, phys_const, us,
+                                       displacement);
+
+	  /* Update the offsets since last cell construction */
+	  spart_add_displacement(sp, displacement);
 
           /* Verify that we do not have too many stars in the leaf for
            * the sort task to be able to act. */
@@ -290,18 +296,35 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
                 "(2) The size of the sorting stack must be increased in "
                 "runner_sort.c.");
 
-          /* Update the h_max */
-          c->stars.h_max = max(c->stars.h_max, sp->h);
-          c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
+	  /* Update the h_max */
+	  c->stars.h_max = max(c->stars.h_max, sp->h);
+	  c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
 
-          /* Update the displacement information.
-             Note: no need to update quantities further up the tree as this task
-             is always called at the top-level. */
-          cell_update_max_displacement_spart(c, sp);
+	  /* Update the maximum displacement information of a cell based on a
+	     spart's movement.
+	     Notes:
+	      - We need to update these offsets everytime we spawn a new spart.
+	      - The information needs to be propagated to the cell hierarchy.
+	   */
+	  /* Compute displacements */
+	  const float dx2_part = sp->x_diff[0] * sp->x_diff[0] +
+	    sp->x_diff[1] * sp->x_diff[1] +
+	    sp->x_diff[2] * sp->x_diff[2];
 
-          /* Update sink properties */
-          sink_update_sink_properties_during_star_formation(
-              s, sp, e, sink_props, phys_const, star_counter);
+	  const float dx2_sort = sp->x_diff_sort[0] * sp->x_diff_sort[0] +
+	    sp->x_diff_sort[1] * sp->x_diff_sort[1] +
+	    sp->x_diff_sort[2] * sp->x_diff_sort[2];
+
+	  const float dx_part = sqrtf(dx2_part);
+	  const float dx_sort = sqrtf(dx2_sort);
+
+	  /* Update the cell's running maximum displacement */
+	  c->stars.dx_max_part = max(c->stars.dx_max_part, dx_part);
+	  c->stars.dx_max_sort = max(c->stars.dx_max_sort, dx_sort);
+
+	  /* Update sink properties */
+	  sink_update_sink_properties_during_star_formation(
+	      s, sp, e, sink_props, phys_const, star_counter);
         } /* Loop over the stars to spawn */
 
         /* Update the sink after star formation */
@@ -488,12 +511,17 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
               /* Did we get a star? (Or did we run out of spare ones?) */
               if (sp != NULL) {
+		float displacement[3] = {0.0, 0.0, 0.0};
 
                 /* Copy the properties of the gas particle to the star particle
                  */
                 star_formation_copy_properties(
                     p, xp, sp, e, sf_props, cosmo, with_cosmology, phys_const,
-                    hydro_props, us, cooling, e->chemistry, part_converted);
+                    hydro_props, us, cooling, e->chemistry, part_converted,
+                    displacement);
+
+		/* Update the offsets since last cell construction */
+		spart_add_displacement(sp, displacement);
 
                 /* Update the Star formation history */
                 star_formation_logger_log_new_spart(sp, &c->stars.sfh);
@@ -521,11 +549,31 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                   c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
                 }
 
-                if (n_spart_spawn >= 1) {
-                  /* Update the spart displacement information.
-                     Note: no need to update quantities further up the tree as
-                     this task is always called at the top-level. */
-                  cell_update_max_displacement_spart(c, sp);
+		if (n_spart_spawn >= 1) {
+		  /* Update the maximum displacement information of a cell based
+		     on a spart's movement.
+		     Notes:
+		       - We need to update these offsets everytime we spawn a
+			 new spart.
+		       - The information needs to be propagated to the cell
+			 hierarchy.
+		  */
+		  /* Compute displacements */
+		  const float dx2_part = sp->x_diff[0] * sp->x_diff[0] +
+		    sp->x_diff[1] * sp->x_diff[1] +
+		    sp->x_diff[2] * sp->x_diff[2];
+
+		  const float dx2_sort = sp->x_diff_sort[0] * sp->x_diff_sort[0] +
+		    sp->x_diff_sort[1] * sp->x_diff_sort[1] +
+		    sp->x_diff_sort[2] * sp->x_diff_sort[2];
+
+		  const float dx_part = sqrtf(dx2_part);
+		  const float dx_sort = sqrtf(dx2_sort);
+
+		  /* Note: no need to update quantities further up the tree as
+		     this task is always called at the top-level */
+		  c->stars.dx_max_part = max(c->stars.dx_max_part, dx_part);
+		  c->stars.dx_max_sort = max(c->stars.dx_max_sort, dx_sort);
                 }
 
 #ifdef WITH_CSDS

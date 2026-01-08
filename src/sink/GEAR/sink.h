@@ -819,10 +819,12 @@ INLINE static int sink_spawn_star(struct sink *sink, const struct engine *e,
  * @param e The #engine.
  * @param si The #sink generating a star.
  * @param sp The #spart generated.
+ * @param (return) displacement The 3D displacement vector of the star with respect to
+ * the sink position.
  */
 INLINE static void sink_star_formation_give_new_position(const struct engine *e,
                                                          struct sink *si,
-                                                         struct spart *sp) {
+                                                         struct spart *sp, float displacement[3]) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (si->x[0] != sp->x[0] || si->x[1] != sp->x[1] || si->x[2] != sp->x[2]) {
     error(
@@ -845,19 +847,17 @@ INLINE static void sink_star_formation_give_new_position(const struct engine *e,
                                        (enum random_number_type)5);
   const double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
-  const float delta_pos[3] = {r * sin_theta * cos(phi),
-                              r * sin_theta * sin(phi), r * cos_theta};
+  displacement[0] = r * sin_theta * cos(phi);
+  displacement[1] = r * sin_theta * sin(phi);
+  displacement[2] = r * cos_theta;
 
   /* Assign this new position to the star and its gpart */
-  sp->x[0] += delta_pos[0];
-  sp->x[1] += delta_pos[1];
-  sp->x[2] += delta_pos[2];
+  sp->x[0] += displacement[0];
+  sp->x[1] += displacement[1];
+  sp->x[2] += displacement[2];
   sp->gpart->x[0] = sp->x[0];
   sp->gpart->x[1] = sp->x[1];
   sp->gpart->x[2] = sp->x[2];
-
-  /* Update the offsets since last cell construction */
-  spart_add_displacement(sp, delta_pos);
 }
 
 /**
@@ -925,15 +925,17 @@ INLINE static void sink_star_formation_give_new_velocity(
  * @param with_cosmology If we run with cosmology.
  * @param phys_const The physical constants in internal units.
  * @param us The internal unit system.
+ * @param (return) displacement The 3D displacement vector of the star with respect to
+ * the sink position.
  */
 INLINE static void sink_copy_properties_to_star(
     struct sink *sink, struct spart *sp, const struct engine *e,
     const struct sink_props *sink_props, const struct cosmology *cosmo,
     const int with_cosmology, const struct phys_const *phys_const,
-    const struct unit_system *restrict us) {
+    const struct unit_system *restrict us, float displacement[3]) {
 
   /* Give the stars a new position */
-  sink_star_formation_give_new_position(e, sink, sp);
+  sink_star_formation_give_new_position(e, sink, sp, displacement);
 
   /* Set the mass (do not forget the sink's gpart friend!) */
   sp->mass = sink->target_mass_Msun * phys_const->const_solar_mass;
