@@ -21,6 +21,7 @@
 #include "periodic.h"
 #include "timeline.h"
 #include "timestep_sync_part.h"
+#include "equation_of_state.h"
 
 enum mechanism {
   SET_U       = 0,
@@ -119,13 +120,19 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
         time);
 
       /* store old specific energy and velocity */
-      const double u_old = xp->u_full;
+      const double u_old = hydro_get_comoving_internal_energy(p, xp);
       const double v_old = sqrtf(xp->v_full[0]*xp->v_full[0] + 
                                  xp->v_full[1]*xp->v_full[1] +
                                  xp->v_full[2]*xp->v_full[2]);
-
+ 
+      /* initialise new internal energy and velocity */
       double u_new;
       double v_new;
+      
+      /* initialise new entropy if needed */
+      #if defined(HOPKINS_PE_SPH) || defined(GADGET2_SPH)
+        double A_new;
+      #endif
 
       /* inject energy according to specified model */
       enum mechanism injection_model = terms->injection_model;
@@ -137,12 +144,19 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
           /* compute new specific energy */
           u_new = terms->E_inj / (p->rho * terms->V_inj);
 
-          /* set the specific energy */
-          xp->u_full = u_new;
+          #if defined(HOPKINS_PE_SPH) || defined(GADGET2_SPH)
+            /* need to convert to entropy for entropy schemes */
+            A_new = gas_entropy_from_internal_energy(p->rho, u_new);
+            
+            /* set the entropy instead of internal energy */
+            xp->entropy_full = A_new;
+	        #else
+            /* set the specific energy */
+            xp->u_full = u_new;
+          #endif
 
           /* store injected energy */
           xp->forcing_data.forcing_injected_energy += (u_new - u_old) * p->mass;
-
           break;
         
         case SET_CONST_U:
@@ -150,8 +164,16 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
           /* get new specific energy */
           u_new = terms->u_inj;
 
-          /* set the specific energy */
-          xp->u_full = u_new;
+          #if defined(HOPKINS_PE_SPH) || defined(GADGET2_SPH)
+            /* need to convert to entropy for entropy schemes */
+            A_new = gas_entropy_from_internal_energy(p->rho, u_new);
+            
+            /* set the entropy instead of internal energy */
+            xp->entropy_full = A_new;
+          #else
+            /* set the specific energy */
+            xp->u_full = u_new;
+          #endif
 
           /* store injected energy */
           xp->forcing_data.forcing_injected_energy += (u_new - u_old) * p->mass;
@@ -306,7 +328,9 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
 		             xp->v_full[1] * xp->v_full[1] +
 		             xp->v_full[2] * xp->v_full[2];
 
-  float v_sig = sqrtf( p->viscosity.v_sig * p->viscosity.v_sig + v_abs2 );
+  float v_sound = hydro_get_comoving_soundspeed(p);
+
+  float v_sig = sqrtf( v_sound * v_sound + v_abs2 );
 		   
   /* Could the particle be in the injection volume in dt_max time*/
   if (distance / v_sig < terms->dt_max) {
