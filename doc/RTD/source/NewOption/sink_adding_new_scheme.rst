@@ -63,4 +63,4 @@ These functions are located in ``sink/Default/sink.h``.
 
 .. warning::
 
-   An important subtelty when creating new particles is to update the maximal displacement of these particles by calling the function ``spart_add_displacement(spart, delta_pos)``.
+   An important subtelty when creating new particles is to update the maximal displacement of these particles by returning a 3D displacement vector in ``sink_copy_properties_to_star()``. The code then uses this information in ``runner_do_star_formation_sink()`` to update the cell's value.
