@@ -214,8 +214,11 @@ static void *threadpool_runner(void *data) {
        to shut down threads without leaving the barriers in an invalid state. */
     if (tp->map_function == NULL) pthread_exit(NULL);
 
-    /* Do actual work. */
-    threadpool_chomp(tp, atomic_inc(&tp->num_threads_running));
+    /* Do actual work (queue or chunk mode). */
+    const int tid = atomic_inc(&tp->num_threads_running);
+    if (!threadpool_queue_run_if_active(tp, tid)) {
+      threadpool_chomp(tp, tid);
+    }
   }
 }
 
@@ -281,6 +284,9 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
 
   /* Wait for all the threads to be up and running. */
   swift_barrier_wait(&tp->wait_barrier);
+
+  /* Queue extension lazy init hook. */
+  threadpool_queue_init(tp);
 }
 
 /**
@@ -421,6 +427,9 @@ void threadpool_clean(struct threadpool *tp) {
   }
   free(tp->logs);
 #endif
+
+  /* Queue extension cleanup. */
+  threadpool_queue_clean(tp);
 }
 
 /**
