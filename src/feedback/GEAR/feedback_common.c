@@ -275,9 +275,21 @@ void feedback_first_init_spart(struct spart *sp,
  */
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
 
-  restart_write_blocks((void *)feedback, sizeof(struct feedback_props), 1,
+  /* To make sure everything is restored correctly, we zero all the pointers to
+     tables. If they are not restored correctly, we would crash after restart on
+     the first call to the feedback routines. Helps debugging. */
+  struct feedback_props feedback_copy = *feedback;
+
+  /* Zero the stellar_evolution */
+  stellar_evolution_zero_pointers(feedback_copy.stellar_model);
+  if (feedback->metallicity_max_first_stars != -1) {
+    stellar_evolution_zero_pointers(feedback_copy.stellar_model_first_stars);
+  }
+
+  restart_write_blocks((void *)&feedback_copy, sizeof(struct feedback_props), 1,
                        stream, "feedback", "feedback function");
 
+  /* Now dump the stellar evolution */
   stellar_evolution_dump(&feedback->stellar_model, stream);
   if (feedback->metallicity_max_first_stars != -1) {
     stellar_evolution_dump(&feedback->stellar_model_first_stars, stream);

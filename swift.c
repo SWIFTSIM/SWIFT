@@ -1953,17 +1953,18 @@ int main(int argc, char *argv[]) {
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (e.neutrino_properties->use_linear_response)
     neutrino_response_clean(e.neutrino_response);
-  if (with_self_gravity && s.periodic) pm_mesh_clean(e.mesh);
+  if (e.mesh->periodic) pm_mesh_clean(e.mesh);
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
-  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
   if (with_rt) rt_clean(e.rt_props, restart);
   if (with_power) power_clean(e.power_data);
+  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
   extra_io_clean(e.io_extra_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
   if (restart) free(refparams);
+  if (restart) output_options_clean(output_options);
   free(output_options);
 
 #ifdef WITH_MPI
