@@ -116,10 +116,10 @@ static void threadpool_queue_destroy_state(struct threadpool *tp) {
  * indexing with bitwise AND.
  *
  * Note that the queue remains allocated once grown instead of being freed
- * when empty to avoid repeated allocations. This is fine since of the course
- * of the run the maximum queue size will be relatively stable (and likely
- * grow rather than shrink). It will be freed when the threadpool is destroyed
- * and threadpool_clean is called.
+ * at the end of a call to threadpool_map_with_queue to avoid repeated
+ * allocations. This is fine since of the course of the run the maximum queue
+ * size will be relatively stable (and likely grow rather than shrink). It will
+ * be freed when the threadpool is destroyed and threadpool_clean is called.
  *
  * @param queue The #threadpool_queue to resize.
  * @param need The minimum number of tasks the queue must hold.
