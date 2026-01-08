@@ -1004,10 +1004,10 @@ void space_split(struct space *s, int verbose) {
 
   ticks tic = getticks();
 
-  threadpool_map(&s->e->threadpool, space_split_build_mapper,
-                 s->local_cells_with_particles_top,
-                 s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
+  threadpool_map_with_queue(&s->e->threadpool, space_split_build_mapper,
+                            s->local_cells_with_particles_top,
+                            s->nr_local_cells_with_particles, sizeof(int),
+                            threadpool_auto_chunk_size, s);
 
   if (verbose)
     message("Building cell tree took %.3f %s.",
@@ -1015,10 +1015,10 @@ void space_split(struct space *s, int verbose) {
 
   tic = getticks();
 
-  threadpool_map(&s->e->threadpool, space_split_collect_mapper,
-                 s->local_cells_with_particles_top,
-                 s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
+  threadpool_map_with_queue(&s->e->threadpool, space_split_collect_mapper,
+                            s->local_cells_with_particles_top,
+                            s->nr_local_cells_with_particles, sizeof(int),
+                            threadpool_auto_chunk_size, s);
 
   if (verbose && s->with_self_gravity)
     message("Collecting properties and constructing multipoles took %.3f %s.",
