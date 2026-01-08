@@ -138,6 +138,14 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     Uj[0] = m_Zj_not_extrapolated * hydro_get_comoving_density(pj) / mj;
   }
 
+  if (m_Zi_not_extrapolated < 0.0) {
+    Ui[0] = 0.0;
+  }
+
+  if (m_Zj_not_extrapolated < 0.0) {
+    Uj[0] = 0.0;
+  }
+
   /* Convert Ui[0] and Uj[0] (metal density) to physical units */
   Ui[0] *= cosmo->a3_inv;
   Uj[0] *= cosmo->a3_inv;

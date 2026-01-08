@@ -251,14 +251,14 @@ runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
  * @param pj Particle j.
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The #cosmology.
- * @param mode 0 if non-symmetric interaction, 1 if symmetric
+ * @param interaction_mode 0 if non-symmetric interaction, 1 if symmetric.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_chemistry_fluxes_common(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj,
     const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo, int mode) {
+    const struct cosmology *cosmo, int interaction_mode) {
 
   /* If the masses are null, then there is nothing to diffuse. */
   if ((hydro_get_mass(pi) == 0.0 || hydro_get_mass(pj) == 0) ||
@@ -299,7 +299,7 @@ runner_iact_chemistry_fluxes_common(
 
   /* Store the signal velocity */
   chi->timestepvars.vmax = max(chi->timestepvars.vmax, vmax);
-  if (mode == 1) {
+  if (interaction_mode == 1) {
     chj->timestepvars.vmax = max(chj->timestepvars.vmax, vmax);
   }
 #endif
@@ -390,7 +390,7 @@ runner_iact_chemistry_fluxes_common(
   }
 
   chi->timestepvars.delxbar += wj * hj_inv_dim * Anorm;
-  if (mode == 1) {
+  if (interaction_mode == 1) {
     chj->timestepvars.delxbar += wi * hi_inv_dim * Anorm;
   }
 
@@ -490,7 +490,7 @@ runner_iact_chemistry_fluxes_common(
      * of flux.dt, we can detect inactive neighbours through their negative time
      * step. */
     chemistry_part_update_fluxes_left(pi, m, totflux, mindt);
-    if (mode == 1 || (chj->flux.dt < 0.f)) {
+    if (interaction_mode == 1 || (chj->flux.dt < 0.f)) {
       chemistry_part_update_fluxes_right(pj, m, totflux, mindt);
     }
   }
