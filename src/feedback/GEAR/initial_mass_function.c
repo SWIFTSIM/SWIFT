@@ -600,7 +600,6 @@ void initial_mass_function_restore(struct initial_mass_function *imf,
                                    const struct stellar_model *sm) {
 
   if (imf->n_parts > 0) {
-    message("imf->n_parts = %d", imf->n_parts);
 
     /* Restore the mass limits */
     imf->mass_limits = (float *)malloc(sizeof(float) * (imf->n_parts + 1));
