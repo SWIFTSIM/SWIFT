@@ -530,6 +530,20 @@ void initial_mass_function_init(struct initial_mass_function *imf,
 }
 
 /**
+ * @brief Zero pointers in initial_mass_function structs
+ *
+ * @param imf initial_mass_function struct in which pointers to tables
+ * set to NULL
+ */
+void initial_mass_function_zero_pointers(struct initial_mass_function *imf) {
+
+  imf->mass_limits = NULL;
+  imf->mass_fraction = NULL;
+  imf->exp = NULL;
+  imf->coef = NULL;
+}
+
+/**
  * @brief Write a initial_mass_function struct to the given FILE as a stream of
  * bytes.
  *

@@ -1046,3 +1046,18 @@ void stellar_evolution_compute_preSN_feedback_spart(
     const struct cosmology *cosmo, const struct unit_system *us,
     const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {}
+
+/**
+ * @brief Zero pointers in stellar_model structs
+ *
+ * @param sm stellar_model struct in which pointers to tables
+ * set to NULL
+ */
+void stellar_evolution_zero_pointers(struct stellar_model sm) {
+
+  /* Delegate zeroing to the sub-modules */
+  initial_mass_function_zero_pointers(&sm.imf);
+  lifetime_zero_pointers(&sm.lifetime);
+  supernovae_ii_zero_pointers(&sm.snii);
+  supernovae_ia_zero_pointers(&sm.snia);
+}

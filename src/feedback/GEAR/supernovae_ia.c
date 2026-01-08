@@ -341,6 +341,15 @@ void supernovae_ia_init(struct supernovae_ia *snia,
 }
 
 /**
+ * @brief Zero pointers in supernovae_ia structs
+ *
+ * @param snia supernovae_ia struct in which pointers to tables set to NULL.
+ */
+void supernovae_ia_zero_pointers(struct supernovae_ia *snia) {
+  /* Nothing to do here */
+}
+
+/**
  * @brief Write a supernovae_ia struct to the given FILE as a stream of bytes.
  *
  * Here we are only writing the arrays, everything else has been copied in the

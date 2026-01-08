@@ -108,4 +108,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
     const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt);
 
+void stellar_evolution_zero_pointers(struct stellar_model sm);
+
+
 #endif  // SWIFT_STELLAR_EVOLUTION_GEAR_H
