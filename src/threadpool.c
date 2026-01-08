@@ -309,7 +309,7 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
  *        depending on the number of threads and tasks (recommended), or
  *        #threadpool_uniform_chunk_size to spread the tasks evenly over the
  *        threads in one go.
- * @param extra_data Addtitional pointer that will be passed to the mapping
+ * @param extra_data Additional pointer that will be passed to the mapping
  *        function, may contain additional data.
  */
 void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
