@@ -34,87 +34,11 @@
 #include "error.h"
 #include "minmax.h"
 
-/* External threadpool symbols. */
-extern pthread_key_t threadpool_tid;
-
 #ifdef SWIFT_DEBUG_THREADPOOL
 /* Forward declaration of logging function from threadpool.c. */
 void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
                     ticks tic, ticks toc);
 #endif
-
-/* Task description for work-stealing queue. */
-struct threadpool_queue_task {
-
-  /* Pointer to the data to be processed. */
-  void *data;
-
-  /* Number of elements in this task. */
-  int count;
-};
-
-/* Per-thread work-stealing queue. */
-struct threadpool_queue {
-
-  /* Mutex protecting this queue. */
-  pthread_mutex_t lock;
-
-  /* Buffer of tasks (power-of-2 sized for fast indexing). */
-  struct threadpool_queue_task *tasks;
-
-  /* Capacity of the task buffer (always power of 2). */
-  int capacity;
-
-  /* Head index (for stealing from the front). */
-  int head;
-
-  /* Tail index (for owner pop from the back). */
-  int tail;
-};
-
-/* Per-threadpool queue state. */
-struct threadpool_queue_state {
-
-  /* The threadpool this state belongs to. */
-  struct threadpool *tp;
-
-  /* Array of per-thread queues. */
-  struct threadpool_queue *queues;
-
-  /* Mutex protecting the sleep condition variable. */
-  pthread_mutex_t sleep_lock;
-
-  /* Condition variable for waking sleeping threads. */
-  pthread_cond_t sleep_cond;
-
-  /* Number of threads currently sleeping. */
-  int sleeping_count;
-
-  /* Is the queue system currently active for this threadpool? */
-  int active;
-
-  /* Number of tasks currently in flight (being processed or queued). */
-  int tasks_in_flight;
-
-  /* Cached map function for queue mode. */
-  threadpool_map_function map_function;
-
-  /* Cached extra data for queue mode. */
-  void *map_extra_data;
-};
-
-/* Registry node for mapping threadpools to their queue state. */
-struct threadpool_queue_registry_node {
-
-  /* The queue state. */
-  struct threadpool_queue_state *state;
-
-  /* Next node in the registry linked list. */
-  struct threadpool_queue_registry_node *next;
-};
-
-/* Global registry of threadpool queue states. */
-static struct threadpool_queue_registry_node *threadpool_queue_registry = NULL;
 
 /**
  * @brief Get or create the queue state for a threadpool.
@@ -127,12 +51,8 @@ static struct threadpool_queue_registry_node *threadpool_queue_registry = NULL;
 static struct threadpool_queue_state *threadpool_queue_get_state(
     struct threadpool *tp, int create) {
 
-  /* Search for existing state. */
-  struct threadpool_queue_registry_node *node = threadpool_queue_registry;
-  while (node != NULL) {
-    if (node->state->tp == tp) return node->state;
-    node = node->next;
-  }
+  /* Return existing state if present. */
+  if (tp->queue_state != NULL) return tp->queue_state;
 
   /* Not found - create if requested. */
   if (!create) return NULL;
@@ -171,14 +91,8 @@ static struct threadpool_queue_state *threadpool_queue_get_state(
   state->map_function = NULL;
   state->map_extra_data = NULL;
 
-  /* Add to registry. */
-  struct threadpool_queue_registry_node *new_node =
-      (struct threadpool_queue_registry_node *)malloc(sizeof(*new_node));
-  if (new_node == NULL)
-    error("Failed to allocate threadpool queue registry node.");
-  new_node->state = state;
-  new_node->next = threadpool_queue_registry;
-  threadpool_queue_registry = new_node;
+  /* Store in threadpool. */
+  tp->queue_state = state;
 
   return state;
 }
@@ -190,33 +104,24 @@ static struct threadpool_queue_state *threadpool_queue_get_state(
  */
 static void threadpool_queue_destroy_state(struct threadpool *tp) {
 
-  /* Find and remove from registry. */
-  struct threadpool_queue_registry_node **node_ptr =
-      &threadpool_queue_registry;
-  while (*node_ptr != NULL) {
-    if ((*node_ptr)->state->tp == tp) {
-      struct threadpool_queue_registry_node *node = *node_ptr;
-      *node_ptr = node->next;
-      struct threadpool_queue_state *state = node->state;
+  /* Get the state. */
+  struct threadpool_queue_state *state = tp->queue_state;
+  if (state == NULL) return;
 
-      /* Clean up per-thread queues. */
-      for (int i = 0; i < tp->num_threads; i++) {
-        pthread_mutex_destroy(&state->queues[i].lock);
-        free(state->queues[i].tasks);
-      }
-      free(state->queues);
-
-      /* Clean up synchronization primitives. */
-      pthread_mutex_destroy(&state->sleep_lock);
-      pthread_cond_destroy(&state->sleep_cond);
-
-      /* Free the state and registry node. */
-      free(state);
-      free(node);
-      return;
-    }
-    node_ptr = &(*node_ptr)->next;
+  /* Clean up per-thread queues. */
+  for (int i = 0; i < tp->num_threads; i++) {
+    pthread_mutex_destroy(&state->queues[i].lock);
+    free(state->queues[i].tasks);
   }
+  free(state->queues);
+
+  /* Clean up synchronization primitives. */
+  pthread_mutex_destroy(&state->sleep_lock);
+  pthread_cond_destroy(&state->sleep_cond);
+
+  /* Free the state. */
+  free(state);
+  tp->queue_state = NULL;
 }
 
 /**
@@ -384,6 +289,8 @@ static void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
 
   /* Get the queue state for this threadpool. */
   struct threadpool_queue_state *state = threadpool_queue_get_state(tp, 0);
+  if (state == NULL)
+    error("Queue mode activated but queue state does not exist!");
 
   while (1) {
 
@@ -486,6 +393,8 @@ void threadpool_queue_add(struct threadpool *tp, void **data_ptrs, int count) {
 
   /* Get or create the queue state. */
   struct threadpool_queue_state *state = threadpool_queue_get_state(tp, 1);
+  if (state == NULL)
+    error("Failed to get or create threadpool queue state!");
 
   /* Get the calling thread's ID. */
   const int thread_id = threadpool_gettid();
@@ -559,6 +468,8 @@ void threadpool_map_with_queue(struct threadpool *tp,
 
   /* Get or create the queue state. */
   struct threadpool_queue_state *state = threadpool_queue_get_state(tp, 1);
+  if (state == NULL)
+    error("Failed to get or create threadpool queue state!");
   state->map_function = map_function;
   state->map_extra_data = extra_data;
 

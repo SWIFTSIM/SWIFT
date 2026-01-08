@@ -36,6 +36,9 @@
 #define threadpool_auto_chunk_size 0
 #define threadpool_uniform_chunk_size -1
 
+/* Key for thread-specific data (thread ID). */
+extern pthread_key_t threadpool_tid;
+
 /* Function type for mappings. */
 typedef void (*threadpool_map_function)(void *map_data, int num_elements,
                                         void *extra_data);
@@ -67,6 +70,66 @@ struct mapper_log {
   int count;
 };
 
+/* Task description for work-stealing queue. */
+struct threadpool_queue_task {
+
+  /* Pointer to the data to be processed. */
+  void *data;
+
+  /* Number of elements in this task. */
+  int count;
+};
+
+/* Per-thread work-stealing queue. */
+struct threadpool_queue {
+
+  /* Mutex protecting this queue. */
+  pthread_mutex_t lock;
+
+  /* Buffer of tasks (power-of-2 sized for fast indexing). */
+  struct threadpool_queue_task *tasks;
+
+  /* Capacity of the task buffer (always power of 2). */
+  int capacity;
+
+  /* Head index (for stealing from the front). */
+  int head;
+
+  /* Tail index (for owner pop from the back). */
+  int tail;
+};
+
+/* Per-threadpool queue state. */
+struct threadpool_queue_state {
+
+  /* The threadpool this state belongs to. */
+  struct threadpool *tp;
+
+  /* Array of per-thread queues. */
+  struct threadpool_queue *queues;
+
+  /* Mutex protecting the sleep condition variable. */
+  pthread_mutex_t sleep_lock;
+
+  /* Condition variable for waking sleeping threads. */
+  pthread_cond_t sleep_cond;
+
+  /* Number of threads currently sleeping. */
+  int sleeping_count;
+
+  /* Is the queue system currently active for this threadpool? */
+  int active;
+
+  /* Number of tasks currently in flight (being processed or queued). */
+  int tasks_in_flight;
+
+  /* Cached map function for queue mode. */
+  threadpool_map_function map_function;
+
+  /* Cached extra data for queue mode. */
+  void *map_extra_data;
+};
+
 /* Data of a threadpool. */
 struct threadpool {
 
@@ -92,6 +155,9 @@ struct threadpool {
   /* Flag indicating if queue mode is active. */
   volatile int use_queue;
 
+  /* Queue state for work-stealing mode. */
+  struct threadpool_queue_state *queue_state;
+
 #ifdef SWIFT_DEBUG_THREADPOOL
   struct mapper_log *logs;
 #endif
@@ -105,7 +171,7 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
 int threadpool_gettid(void);
 void threadpool_clean(struct threadpool *tp);
 
-/* Queue-based threadpool functions (in threadpool_queue.c). */
+/* Queue-based threadpool prototypes. */
 void threadpool_queue_init(struct threadpool *tp);
 void threadpool_queue_clean(struct threadpool *tp);
 void threadpool_queue_run(struct threadpool *tp, int thread_id);
@@ -114,6 +180,7 @@ void threadpool_map_with_queue(struct threadpool *tp,
                                void *map_data, size_t N, int stride, int chunk,
                                void *extra_data);
 void threadpool_queue_add(struct threadpool *tp, void **ptrs, int n_ptrs);
+
 #ifdef HAVE_SETAFFINITY
 void threadpool_set_affinity_mask(cpu_set_t *entry_affinity);
 #endif

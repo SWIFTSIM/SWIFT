@@ -40,8 +40,8 @@
 #include "error.h"
 #include "minmax.h"
 
-/* Keys for thread specific data. */
-static pthread_key_t threadpool_tid;
+/* Keys for thread specific data (used by threadpool_queue.c). */
+pthread_key_t threadpool_tid;
 
 /* Affinity mask shared by all threads, and if set. */
 #ifdef HAVE_SETAFFINITY
@@ -271,6 +271,7 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   tp->map_data_chunk = 0;
   tp->map_function = NULL;
   tp->use_queue = 0;
+  tp->queue_state = NULL;
 
   /* Allocate the threads, one less than requested since the calling thread
      works as well. */
