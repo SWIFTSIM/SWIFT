@@ -188,6 +188,8 @@ void threadpool_set_affinity_mask(cpu_set_t *entry_affinity);
 void threadpool_reset_log(struct threadpool *tp);
 void threadpool_dump_log(struct threadpool *tp, const char *filename,
                          int reset);
+void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
+                    ticks tic, ticks toc);
 #endif
 
 #endif /* SWIFT_THREADPOOL_H */

@@ -56,8 +56,8 @@ static void threadpool_apply_affinity_mask(void);
 /**
  * @brief Store a log entry of the given chunk.
  */
-static void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
-                           ticks tic, ticks toc) {
+void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
+                    ticks tic, ticks toc) {
   struct mapper_log *log = &tp->logs[tid > 0 ? tid : 0];
 
   /* Check if we need to re-allocate the log buffer. */

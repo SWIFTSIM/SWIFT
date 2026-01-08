@@ -34,12 +34,6 @@
 #include "error.h"
 #include "minmax.h"
 
-#ifdef SWIFT_DEBUG_THREADPOOL
-/* Forward declaration of logging function from threadpool.c. */
-void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
-                    ticks tic, ticks toc);
-#endif
-
 /**
  * @brief Get or create the queue state for a threadpool.
  *
