@@ -35,21 +35,12 @@
 #include "minmax.h"
 
 /**
- * @brief Get or create the queue state for a threadpool.
+ * @brief Initialize queue support for a threadpool (called from
+ * threadpool_init).
  *
  * @param tp The #threadpool.
- * @param create If non-zero, create the state if it doesn't exist.
- *
- * @return The queue state, or NULL if not found and create is zero.
  */
-static struct threadpool_queue_state *threadpool_queue_get_state(
-    struct threadpool *tp, int create) {
-
-  /* Return existing state if present. */
-  if (tp->queue_state != NULL) return tp->queue_state;
-
-  /* Not found - create if requested. */
-  if (!create) return NULL;
+void threadpool_queue_init(struct threadpool *tp) {
 
   /* Allocate the state structure. */
   struct threadpool_queue_state *state =
@@ -87,8 +78,6 @@ static struct threadpool_queue_state *threadpool_queue_get_state(
 
   /* Store in threadpool. */
   tp->queue_state = state;
-
-  return state;
 }
 
 /**
@@ -125,6 +114,12 @@ static void threadpool_queue_destroy_state(struct threadpool *tp) {
  * Resizes the queue buffer to a power-of-2 size that can hold at least
  * @c need tasks. The buffer size always grows by powers of 2 for efficient
  * indexing with bitwise AND.
+ *
+ * Note that the queue remains allocated once grown instead of being freed
+ * when empty to avoid repeated allocations. This is fine since of the course
+ * of the run the maximum queue size will be relatively stable (and likely
+ * grow rather than shrink). It will be freed when the threadpool is destroyed
+ * and threadpool_clean is called.
  *
  * @param queue The #threadpool_queue to resize.
  * @param need The minimum number of tasks the queue must hold.
@@ -282,9 +277,7 @@ static void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
   pthread_setspecific(threadpool_tid, &local_tid);
 
   /* Get the queue state for this threadpool. */
-  struct threadpool_queue_state *state = threadpool_queue_get_state(tp, 0);
-  if (state == NULL)
-    error("Queue mode activated but queue state does not exist!");
+  struct threadpool_queue_state *state = tp->queue_state;
 
   while (1) {
 
@@ -317,8 +310,7 @@ static void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
 
       /* Wake all sleeping threads so they can exit and reach the barrier. */
       pthread_mutex_lock(&state->sleep_lock);
-      if (state->sleeping_count > 0)
-        pthread_cond_broadcast(&state->sleep_cond);
+      if (state->sleeping_count > 0) pthread_cond_broadcast(&state->sleep_cond);
       pthread_mutex_unlock(&state->sleep_lock);
       break;
     }
@@ -351,16 +343,6 @@ void threadpool_queue_run(struct threadpool *tp, int thread_id) {
 }
 
 /**
- * @brief Initialize queue support for a threadpool (called from
- * threadpool_init).
- *
- * This is a no-op as queue state is created lazily on first use.
- *
- * @param tp The #threadpool.
- */
-void threadpool_queue_init(struct threadpool *tp) { (void)tp; }
-
-/**
  * @brief Clean up queue support for a threadpool (called from
  * threadpool_clean).
  *
@@ -385,10 +367,10 @@ void threadpool_queue_add(struct threadpool *tp, void **data_ptrs, int count) {
 
   if (count <= 0) return;
 
-  /* Get or create the queue state. */
-  struct threadpool_queue_state *state = threadpool_queue_get_state(tp, 1);
+  /* Get the queue state. */
+  struct threadpool_queue_state *state = tp->queue_state;
   if (state == NULL)
-    error("Failed to get or create threadpool queue state!");
+    error("Cannot add tasks to queue: queue mode not initialized!");
 
   /* Get the calling thread's ID. */
   const int thread_id = threadpool_gettid();
@@ -460,10 +442,10 @@ void threadpool_map_with_queue(struct threadpool *tp,
     return;
   }
 
-  /* Get or create the queue state. */
-  struct threadpool_queue_state *state = threadpool_queue_get_state(tp, 1);
+  /* Get the queue state. */
+  struct threadpool_queue_state *state = tp->queue_state;
   if (state == NULL)
-    error("Failed to get or create threadpool queue state!");
+    error("Queue state not initialized! This should not happen.");
   state->map_function = map_function;
   state->map_extra_data = extra_data;
 
@@ -484,7 +466,8 @@ void threadpool_map_with_queue(struct threadpool *tp,
   int task_count = 0;
 
   while (offset < count) {
-    const int current_chunk = (int)min((size_t)initial_chunk_size, count - offset);
+    const int current_chunk =
+        (int)min((size_t)initial_chunk_size, count - offset);
     void *chunk_data = (char *)map_data + (stride * offset);
 
     pthread_mutex_lock(&state->queues[target_thread].lock);
