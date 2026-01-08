@@ -30,7 +30,6 @@
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
-#include "forcing_struct.h"
 
 /* Extra particle data not needed during the computation. */
 struct xpart {
@@ -61,9 +60,6 @@ struct xpart {
 
   /* Additional data used by the feedback */
   struct feedback_xpart_data feedback_data;
-
-  /* Additional data used by the forcing scheme */
-  struct forcing_xpart_data forcing_data;
 
 } SWIFT_STRUCT_ALIGN;
 
