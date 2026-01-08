@@ -257,13 +257,14 @@ INLINE static void star_formation_update_part_not_SFR(
  * @param p The #part generating a star.
  * @param xp The #xpart generating a star.
  * @param sp The new #spart.
- * @param (return) displacement The 3D displacement vector of the star with respect to
- * the sink position.
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
 INLINE static void star_formation_separate_particles(const struct engine *e,
                                                      struct part *p,
                                                      struct xpart *xp,
-                                                     struct spart *sp, float displacement[3]) {
+                                                     struct spart *sp,
+                                                     float displacement[3]) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->x[0] != sp->x[0] || p->x[1] != sp->x[1] || p->x[2] != sp->x[2]) {
     error(
@@ -308,8 +309,8 @@ INLINE static void star_formation_separate_particles(const struct engine *e,
   /* Do the gas particle. */
   const double mass_ratio = sp->mass / hydro_get_mass(p);
   const double dx[3] = {mass_ratio * displacement[0],
-			mass_ratio * displacement[1],
-			mass_ratio * displacement[2]};
+                        mass_ratio * displacement[1],
+                        mass_ratio * displacement[2]};
 
   p->x[0] -= dx[0];
   p->x[1] -= dx[1];
@@ -346,8 +347,8 @@ INLINE static void star_formation_separate_particles(const struct engine *e,
  * @param cooling The #cooling_function_data.
  * @param chem_data The global properties of the chemistry scheme.
  * @param convert_part Did we convert a part (or spawned one)?
- * @param (return) displacement The 3D displacement vector of the star with respect to
- * the sink position.
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
 INLINE static void star_formation_copy_properties(
     struct part *p, struct xpart *xp, struct spart *sp, const struct engine *e,
@@ -356,7 +357,8 @@ INLINE static void star_formation_copy_properties(
     const struct hydro_props *restrict hydro_props,
     const struct unit_system *restrict us,
     const struct cooling_function_data *restrict cooling,
-    const struct chemistry_global_data *chem_data, const int convert_part, float displacement[3]) {
+    const struct chemistry_global_data *chem_data, const int convert_part,
+    float displacement[3]) {
 
   /* Initialize the feedback */
   feedback_init_after_star_formation(sp, e->feedback_props, star_population);

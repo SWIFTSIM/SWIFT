@@ -819,12 +819,12 @@ INLINE static int sink_spawn_star(struct sink *sink, const struct engine *e,
  * @param e The #engine.
  * @param si The #sink generating a star.
  * @param sp The #spart generated.
- * @param (return) displacement The 3D displacement vector of the star with respect to
- * the sink position.
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
-INLINE static void sink_star_formation_give_new_position(const struct engine *e,
-                                                         struct sink *si,
-                                                         struct spart *sp, float displacement[3]) {
+INLINE static void sink_star_formation_give_new_position(
+    const struct engine *e, struct sink *si, struct spart *sp,
+    float displacement[3]) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (si->x[0] != sp->x[0] || si->x[1] != sp->x[1] || si->x[2] != sp->x[2]) {
     error(
@@ -925,8 +925,8 @@ INLINE static void sink_star_formation_give_new_velocity(
  * @param with_cosmology If we run with cosmology.
  * @param phys_const The physical constants in internal units.
  * @param us The internal unit system.
- * @param (return) displacement The 3D displacement vector of the star with respect to
- * the sink position.
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
 INLINE static void sink_copy_properties_to_star(
     struct sink *sink, struct spart *sp, const struct engine *e,

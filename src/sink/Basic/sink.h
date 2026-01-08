@@ -541,8 +541,8 @@ INLINE static int sink_spawn_star(struct sink *sink, const struct engine *e,
  * @param with_cosmology If we run with cosmology.
  * @param phys_const The physical constants in internal units.
  * @param us The internal unit system.
- * @param (return) displacement The 3D displacement vector of the star with respect to
- * the sink position.
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
 INLINE static void sink_copy_properties_to_star(
     struct sink *sink, struct spart *sp, const struct engine *e,
