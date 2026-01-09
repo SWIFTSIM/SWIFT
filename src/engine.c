@@ -95,6 +95,7 @@
 #include "restart.h"
 #include "rt_properties.h"
 #include "runner.h"
+#include "sidm.h"
 #include "sidm_properties.h"
 #include "sink_properties.h"
 #include "sort_part.h"
@@ -2430,6 +2431,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+  /* Run the brute-force stars calculation for some parts */
+  if (e->policy & engine_policy_sidm) sidm_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the sidm calculation */
+  if (e->policy & engine_policy_sidm)
+    sidm_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure all woken-up particles have been processed */
   space_check_limiter(e->s);
@@ -2998,6 +3008,15 @@ int engine_step(struct engine *e) {
       }
     }
   }
+#endif
+
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+  /* Run the brute-force stars calculation for some parts */
+  if (e->policy & engine_policy_sidm) sidm_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the sidm calculation */
+  if (e->policy & engine_policy_sidm)
+    sidm_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
