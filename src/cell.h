@@ -260,6 +260,9 @@ struct pcell_step {
 
     /*! Minimal integer end-of-timestep in this cell (gravity) */
     integertime_t ti_end_min;
+
+    /*! Maximal distance any #gpart has travelled since last rebuild */
+    float dx_max_part;
   } grav;
 
   struct {

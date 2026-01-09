@@ -248,6 +248,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->black_holes.h_max = 0.f;
       cp->black_holes.h_max_active = 0.f;
       cp->black_holes.dx_max_part = 0.f;
+      cp->grav.dx_max_part = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->top = c->top;
@@ -535,6 +536,11 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       ti_gravity_end_min = min(ti_gravity_end_min, ti_end);
       ti_gravity_beg_max = max(ti_gravity_beg_max, ti_beg);
+
+      /* Reset x_diff */
+      gparts[k].x_diff[0] = 0.f;
+      gparts[k].x_diff[1] = 0.f;
+      gparts[k].x_diff[2] = 0.f;
     }
 
     /* sparts: Get dt_min/dt_max */
