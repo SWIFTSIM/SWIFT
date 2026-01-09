@@ -65,9 +65,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_density(
   sipj->density.wcount += wj;
   sipj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  sipi->n_density += wi;
-  sipj->n_density += wj;
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+  sipi->n += wi;
+  sipj->n += wj;
   sipi->N_density++;
   sipj->N_density++;
 #endif
@@ -109,8 +109,8 @@ runner_iact_nonsym_sidm_density(const float r2, const float dx[3],
   sipi->density.wcount += wi;
   sipi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  sipi->n_density += wi;
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+  sipi->n += wi;
   sipi->N_density++;
 #endif
 }

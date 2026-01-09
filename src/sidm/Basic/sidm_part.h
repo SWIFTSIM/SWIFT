@@ -85,6 +85,28 @@ struct sipart {
 
 #endif
 
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+
+  /* Integer number of neighbours in the density loop */
+  int N_density;
+
+  /* Exact integer number of neighbours in the density loop */
+  int N_density_exact;
+
+  /*! Weighted numer of neighbours in the density loop */
+  float n;
+
+  /*! Exact value of the weighted numer of neighbours in the density loop */
+  float n_exact;
+
+  /*! Exact value of the density field obtained via brute-force loop */
+  float rho_exact;
+
+  /*! Has this particle interacted with any unhibited neighbour? */
+  char inhibited_exact;
+
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_BASIC_SIDM_PART_H */
