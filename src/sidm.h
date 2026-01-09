@@ -33,4 +33,11 @@
 #error "Invalid choice of SIDM model"
 #endif
 
+struct engine;
+struct space;
+
+void sidm_exact_density_compute(struct space *s, const struct engine *e);
+void sidm_exact_density_check(struct space *s, const struct engine *e,
+                              const double rel_tol);
+
 #endif /* SWIFT_SIDM_H */
