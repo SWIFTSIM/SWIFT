@@ -260,6 +260,9 @@ struct pcell_step {
 
     /*! Minimal integer end-of-timestep in this cell (gravity) */
     integertime_t ti_end_min;
+
+    /*! Maximal distance any #gpart has travelled since last rebuild */
+    float dx_max_part;
   } grav;
 
   struct {
@@ -717,6 +720,8 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
+int cell_can_use_mesh(struct engine *e, const struct cell *ci,
+                      const struct cell *cj);
 
 /**
  * @brief Does a #cell contain no particle at all.
@@ -728,6 +733,31 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
 
   return (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
           c->black_holes.count == 0 && c->sinks.count == 0);
+}
+
+/**
+ * @brief Test if a cell contains a progeny at some level.
+ *
+ * @param c The #cell.
+ * @param progeny The progeny #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_contains_progeny(
+    const struct cell *c, const struct cell *progeny) {
+
+  /* Early exit if progeny is above c. */
+  if (progeny->depth < c->depth) {
+    return 0;
+  }
+
+  /* Check all parents of progeny to see if we reach c */
+  const struct cell *current = progeny;
+  while (current != NULL) {
+    if (current == c) {
+      return 1;
+    }
+    current = current->parent;
+  }
+  return 0;
 }
 
 /**
