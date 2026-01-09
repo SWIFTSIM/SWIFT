@@ -1648,6 +1648,7 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology *cosmo = e->cosmology;
   int count = c->hydro.count;
+  float h_max_active_rt = 0.f;
 
   /* Anything to do here? */
   if (count == 0) return;
@@ -1660,6 +1661,7 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         runner_do_rt_ghost1(r, c->progeny[k], 0);
+        h_max_active_rt = max(h_max_active_rt, c->progeny[k]->rt.h_max_active);
       }
     }
   } else {
@@ -1672,6 +1674,8 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
 
       /* Skip inactive parts */
       if (!part_is_rt_active(p, e)) continue;
+
+      h_max_active_rt = max(h_max_active_rt, p->h);
 
       /* First reset everything that needs to be reset for the following
        * subcycle */
@@ -1691,6 +1695,32 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
       rt_finalise_injection(p, e->rt_props);
     }
   }
+
+  c->rt.h_max_active = h_max_active_rt;
+
+  /* The ghost may not always be at the top level.
+   * Therefore we need to update h_max between the super- and top-levels */
+  if (c->rt.rt_ghost1) {
+    for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+      atomic_max_f(&tmp->rt.h_max_active, h_max_active_rt);
+    }
+  }
+
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->hydro.count; ++i) {
+    const struct part *p = &c->hydro.parts[i];
+    const float h = c->hydro.parts[i].h;
+    if (part_is_inhibited(p, e)) continue;
+
+    if (h > c->hydro.h_max)
+      error("Particle has h larger than h_max (id=%lld)", p->id);
+    if (part_is_rt_active(p, e) && h > c->rt.h_max_active)
+      error("Active particle has h larger than h_max_active (id=%lld)", p->id);
+  }
+#endif
+
+
 
   if (timer) TIMER_TOC(timer_do_rt_ghost1);
 }
