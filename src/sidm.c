@@ -47,7 +47,7 @@ struct exact_density_data {
  * counters.
  */
 void sidm_exact_density_compute_mapper(void *map_data, int nr_siparts,
-                                        void *extra_data) {
+                                       void *extra_data) {
 #ifdef SWIFT_SIDM_DENSITY_CHECKS
 
   /* Unpack the data */
@@ -182,7 +182,7 @@ void sidm_exact_density_compute(struct space *s, const struct engine *e) {
  * @param rel_tol Relative tolerance for the checks
  */
 void sidm_exact_density_check(struct space *s, const struct engine *e,
-                               const double rel_tol) {
+                              const double rel_tol) {
 
 #ifdef SWIFT_SIDM_DENSITY_CHECKS
 
@@ -272,7 +272,8 @@ void sidm_exact_density_check(struct space *s, const struct engine *e,
     const int found_inhibited = sipi->inhibited_exact;
 
     const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
-                         kernel_gamma * sipi->h * sipi->h * sipi->h * sipi->n_exact;
+                         kernel_gamma * sipi->h * sipi->h * sipi->h *
+                         sipi->n_exact;
 
     if (id % SWIFT_SIDM_DENSITY_CHECKS == 0 && sipart_is_starting(sipi, e)) {
 
@@ -281,8 +282,8 @@ void sidm_exact_density_check(struct space *s, const struct engine *e,
       fprintf(
           file_exact,
           "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e %16.8e\n",
-          id, sipi->x[0], sipi->x[1], sipi->x[2], sipi->h, sipi->N_density_exact, 0,
-          sipi->rho_exact, sipi->n_exact, N_ngb);
+          id, sipi->x[0], sipi->x[1], sipi->x[2], sipi->h,
+          sipi->N_density_exact, 0, sipi->rho_exact, sipi->n_exact, N_ngb);
 
       /* Check that we did not go above the threshold.
        * Note that we ignore particles that saw an inhibited particle as a
@@ -292,7 +293,8 @@ void sidm_exact_density_check(struct space *s, const struct engine *e,
           (fabsf(sipi->rho / sipi->rho_exact - 1.f) > rel_tol ||
            fabsf(sipi->rho_exact / sipi->rho - 1.f) > rel_tol)) {
         message("RHO: id=%lld swift=%e exact=%e N_true=%d N_swift=%d", id,
-                sipi->rho, sipi->rho_exact, sipi->N_density_exact, sipi->N_density);
+                sipi->rho, sipi->rho_exact, sipi->N_density_exact,
+                sipi->N_density);
         wrong_rho++;
       }
 
