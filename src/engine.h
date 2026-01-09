@@ -783,8 +783,6 @@ void engine_activate_fof_attach_tasks(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);
-int engine_gravity_can_use_mesh(struct engine *e, const struct cell *ci,
-                                const struct cell *cj);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_make_fof_tasks(struct engine *e);

@@ -1447,7 +1447,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
                 /* If running with the mesh this pair may be beyond the mesh
                  * criterion meaning we won't need a task here. */
-                if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
+                if (cell_can_use_mesh(e, cpi, cpj)) {
                   continue;
                 }
 
@@ -1501,7 +1501,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
                   /* If running with the mesh this pair may be beyond the mesh
                    * criterion meaning we won't need a task here. */
-                  if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
+                  if (cell_can_use_mesh(e, cpi, cpj)) {
                     continue;
                   }
 

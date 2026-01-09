@@ -314,7 +314,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         struct cell *cpj = cj->progeny[j];
 
         /* Can we use the mesh for this pair? */
-        if (engine_gravity_can_use_mesh(e, cpi, cpj)) {
+        if (cell_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
           runner_count_mesh_interaction(c, cpi, cpj);
           continue;
@@ -376,7 +376,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
         struct cell *cpk = ci->progeny[k];
 
         /* Can we use the mesh for this pair? */
-        if (engine_gravity_can_use_mesh(e, cpj, cpk)) {
+        if (cell_can_use_mesh(e, cpj, cpk)) {
           /* Record the mesh interaction */
           runner_count_mesh_interaction(c, cpj, cpk);
           continue;
@@ -434,7 +434,7 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Can we use the mesh for this top-level pair? */
-    if (engine_gravity_can_use_mesh(e, top, cj)) {
+    if (cell_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
       runner_count_mesh_interaction(ci, top, cj);
