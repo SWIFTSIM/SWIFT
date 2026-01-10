@@ -677,6 +677,9 @@ void space_split_build_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
 
+  /* Set the tpid for this cell (needed for space_getcells). */
+  c->tpid = tpid;
+
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
     error(
@@ -703,12 +706,11 @@ void space_split_build_recursive(struct space *s, struct cell *c,
                c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
                buff, sbuff, bbuff, gbuff, sink_buff);
 
-    /* Buffers for the progenitors */
-    struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
-                     *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
-                     *progeny_sink_buff = sink_buff;
+    /* Collect non-empty progeny to add to the queue. */
+    struct cell *progeny_to_queue[8];
+    int num_progeny_to_queue = 0;
 
-    /* Loop over progeny, cleaning up or splitting and recursing. */
+    /* Loop over progeny, cleaning up or queueing for further splitting. */
     for (int k = 0; k < 8; k++) {
 
       /* Get the progenitor */
@@ -724,22 +726,20 @@ void space_split_build_recursive(struct space *s, struct cell *c,
 
       } else {
 
-        /* Recurse */
-        space_split_build_recursive(s, cp, progeny_buff, progeny_sbuff,
-                                    progeny_bbuff, progeny_gbuff,
-                                    progeny_sink_buff, tpid);
-
-        /* Update the pointers in the buffers */
-        progeny_buff += cp->hydro.count;
-        progeny_gbuff += cp->grav.count;
-        progeny_sbuff += cp->stars.count;
-        progeny_bbuff += cp->black_holes.count;
-        progeny_sink_buff += cp->sinks.count;
-
-        /* Increase the depth */
-        maxdepth = max(maxdepth, cp->maxdepth);
+        /* Add to the queue for processing */
+        progeny_to_queue[num_progeny_to_queue++] = cp;
       }
     }
+
+    /* Add the progeny to the threadpool queue if we have any. */
+    if (num_progeny_to_queue > 0) {
+      threadpool_queue_add(&s->e->threadpool, (void **)progeny_to_queue,
+                           num_progeny_to_queue);
+    }
+
+    /* For split cells, the maxdepth will be determined by the progeny which
+     * are processed asynchronously. For now, set to current depth. */
+    maxdepth = c->depth;
   } /* Split or let it be? */
 
   /* Otherwise we're in a leaf, collect the data from the particles in this
@@ -749,6 +749,9 @@ void space_split_build_recursive(struct space *s, struct cell *c,
     bzero(c->progeny, sizeof(struct cell *) * 8);
     c->split = 0;
     maxdepth = c->depth;
+
+    /* Update the global maximum depth from this leaf. */
+    atomic_max(&s->maxdepth, maxdepth);
   }
 
   /* Set the maximum depth. */
@@ -756,9 +759,6 @@ void space_split_build_recursive(struct space *s, struct cell *c,
 
   /* No runner owns this cell yet. We assign those during scheduling. */
   c->owner = -1;
-
-  /* Store the global max depth */
-  if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
 }
 
 /**
@@ -887,7 +887,7 @@ void space_split_collect_recursive(struct space *s, struct cell *c) {
  * @brief #threadpool mapper function to split cells if they contain
  *        too many particles.
  *
- * @param map_data Pointer towards the top-cells.
+ * @param map_data Pointer towards the cells to split.
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
@@ -895,19 +895,14 @@ void space_split_build_mapper(void *map_data, int num_cells, void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
-  struct cell *cells_top = s->cells_top;
-  int *local_cells_with_particles = (int *)map_data;
+  struct cell **cells = (struct cell **)map_data;
 
   /* Threadpool id of current thread. */
   short int tpid = threadpool_gettid();
 
-  /* Loop over the non-empty cells */
+  /* Loop over the cells */
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[local_cells_with_particles[ind]];
-
-    /* Set the top level cells tpid (this is assigned to sub-cells in
-     * space_get_cells guaranteeing the same tpid as this top level cells). */
-    c->tpid = tpid;
+    struct cell *c = cells[ind];
 
     /* Allocate the particle buffers. */
     struct cell_buff *buff = NULL, *sbuff = NULL, *bbuff = NULL, *gbuff = NULL,
@@ -1004,10 +999,24 @@ void space_split(struct space *s, int verbose) {
 
   ticks tic = getticks();
 
+  /* Create an array of cell pointers for the threadpool queue. */
+  struct cell **cells_to_split = NULL;
+  if (swift_memalign("cells_to_split", (void **)&cells_to_split,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(struct cell *) * s->nr_local_cells_with_particles) !=
+      0)
+    error("Failed to allocate cell pointer array.");
+
+  for (int i = 0; i < s->nr_local_cells_with_particles; i++) {
+    cells_to_split[i] = &s->cells_top[s->local_cells_with_particles_top[i]];
+  }
+
   threadpool_map_with_queue(&s->e->threadpool, space_split_build_mapper,
-                            s->local_cells_with_particles_top,
-                            s->nr_local_cells_with_particles, sizeof(int),
-                            threadpool_auto_chunk_size, s);
+                            cells_to_split, s->nr_local_cells_with_particles,
+                            sizeof(struct cell *), threadpool_auto_chunk_size,
+                            s);
+
+  swift_free("cells_to_split", cells_to_split);
 
   if (verbose)
     message("Building cell tree took %.3f %s.",
@@ -1015,10 +1024,10 @@ void space_split(struct space *s, int verbose) {
 
   tic = getticks();
 
-  threadpool_map_with_queue(&s->e->threadpool, space_split_collect_mapper,
-                            s->local_cells_with_particles_top,
-                            s->nr_local_cells_with_particles, sizeof(int),
-                            threadpool_auto_chunk_size, s);
+  threadpool_map(&s->e->threadpool, space_split_collect_mapper,
+                 s->local_cells_with_particles_top,
+                 s->nr_local_cells_with_particles, sizeof(int),
+                 threadpool_auto_chunk_size, s);
 
   if (verbose && s->with_self_gravity)
     message("Collecting properties and constructing multipoles took %.3f %s.",
