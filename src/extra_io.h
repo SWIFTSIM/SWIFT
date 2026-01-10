@@ -28,7 +28,7 @@
 #include "extra_io/EAGLE/extra_io.h"
 #elif defined(EXTRA_IO_NONE)
 
-struct extra_io_properties {};
+struct extra_io_properties { int a; };
 
 INLINE static int extra_io_write_particles(const struct part *parts,
                                            const struct xpart *xparts,
