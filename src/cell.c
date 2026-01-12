@@ -1709,3 +1709,48 @@ int cell_can_use_mesh(struct engine *e, const struct cell *ci,
   /* Are we beyond the distance where the truncated forces are 0 ?*/
   return (min_radius2 > max_distance2);
 }
+
+/**
+ * @brief Do we need a rebuild based on whether two cells can still use PM
+ * interactions despite motion since the last rebuild.
+ *
+ * This will test if particles in the two cells are far enough apart to use
+ * the mesh with and without including the maximal displacement of a gpart since
+ * the last rebuild. At the rebuild we made tasks based on the particle which
+ * are wholly inside cells.
+ *
+ * @param e The #engine.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @return 1 if we could use the mesh and now can't, 0 otherwise.
+ */
+int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
+                               const struct cell *cj) {
+
+  struct space *s = e->s;
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+  /* If not periodic then we cannot use the mesh */
+  if (!s->periodic) {
+    return 0;
+  }
+
+  /* Could we use the mesh at rebuild time? */
+  const int could_use_mesh_at_rebuild = cell_can_use_mesh(e, ci, cj);
+
+  /* If we could not use the mesh at rebuild time then no one cares */
+  if (!could_use_mesh_at_rebuild) {
+    return 0;
+  }
+
+  /*Minimal distance between any pair of particles including max
+   * displacement since rebuild */
+  const double min_radius2 =
+      cell_min_dist2_with_max_dx(ci, cj, s->periodic, s->dim);
+
+  /* Are we beyond the distance where the truncated forces are 0 ?*/
+  const int can_use_mesh_now = (min_radius2 > max_distance2);
+
+  return (could_use_mesh_at_rebuild && !can_use_mesh_now);
+}
